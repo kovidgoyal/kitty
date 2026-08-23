@@ -209,13 +209,17 @@ sanitized_filename_from_url(const char *url) {
 
 
 static void
-dnd_set_test_write_func(PyObject *func, size_t mime_list_size_cap, size_t present_data_cap, size_t remote_drag_limit) {
+dnd_set_test_write_func(PyObject *func, size_t mime_list_size_cap, size_t present_data_cap, size_t remote_drag_limit, int case_insensitive_tempdir) {
     (void)machine_id;
     Py_CLEAR(g_dnd_test_write_func);
     g_dnd_test_write_func = Py_XNewRef(func);
     MIME_LIST_SIZE_CAP = mime_list_size_cap ? mime_list_size_cap : DEFAULT_MIME_LIST_SIZE_CAP;
     PRESENT_DATA_CAP = present_data_cap ? present_data_cap : DEFAULT_PRESENT_DATA_CAP;
     REMOTE_DRAG_LIMIT = remote_drag_limit ? remote_drag_limit : DEFAULT_REMOTE_DRAG_LIMIT;
+    // Allows tests to exercise both the case-sensitive and the case-insensitive
+    // filesystem code paths regardless of the filesystem the tests run on. A
+    // negative value means auto-detect, as in normal operation.
+    tempdir_case_insensitive = case_insensitive_tempdir < 0 ? -1 : (case_insensitive_tempdir ? 1 : 0);
 }
 
 static int
@@ -2652,9 +2656,10 @@ static PyObject *
 py_dnd_set_test_write_func(PyObject *self UNUSED, PyObject *args) {
     PyObject *func = Py_None;
     unsigned mime_list_size_cap = 0, present_data_cap = 0, remote_drag_limit = 0;
-    if (!PyArg_ParseTuple(args, "|OIII", &func, &mime_list_size_cap, &present_data_cap, &remote_drag_limit)) return NULL;
+    int case_insensitive_tempdir = -1;
+    if (!PyArg_ParseTuple(args, "|OIIIi", &func, &mime_list_size_cap, &present_data_cap, &remote_drag_limit, &case_insensitive_tempdir)) return NULL;
     // Pass None to clear the interceptor and restore normal operation.
-    dnd_set_test_write_func(func == Py_None ? NULL : func, mime_list_size_cap, present_data_cap, remote_drag_limit);
+    dnd_set_test_write_func(func == Py_None ? NULL : func, mime_list_size_cap, present_data_cap, remote_drag_limit, case_insensitive_tempdir);
     Py_RETURN_NONE;
 }
 

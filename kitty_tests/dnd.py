@@ -361,15 +361,22 @@ class WriteCapture:
 
 
 @contextmanager
-def dnd_test_window(mime_list_cap=0, present_data_cap=0, remote_drag_limit=0):
+def dnd_test_window(mime_list_cap=0, present_data_cap=0, remote_drag_limit=0, case_insensitive_tempdir=-1):
     """Context manager that creates a fake window + write-capture harness.
 
     Yields (window_id, screen, capture) where:
     * ``screen``       – Screen object whose window_id matches the fake window
     * ``capture``      – WriteCapture accumulating bytes sent to the child
+
+    ``case_insensitive_tempdir`` forces kitty to treat the directory used for
+    remote drag data as being on a case-insensitive (1) or case-sensitive (0)
+    filesystem. The default of -1 auto-detects, as in normal operation. Tests
+    that depend on how identically named directory entries are handled must
+    force it, since otherwise their behavior varies by platform (macOS
+    filesystems are typically case-insensitive, Linux ones are not).
     """
     capture = WriteCapture()
-    dnd_set_test_write_func(capture, mime_list_cap, present_data_cap, remote_drag_limit)
+    dnd_set_test_write_func(capture, mime_list_cap, present_data_cap, remote_drag_limit, case_insensitive_tempdir)
     os_window_id, window_id = dnd_test_create_fake_window()
     capture.window_id = window_id
     try:
@@ -2992,9 +2999,13 @@ class TestDnDProtocol(BaseTest):
         ignored), so a subsequent request to write into that "directory" used to
         follow the symlink and write attacker controlled files at an arbitrary
         location.
+
+        The temporary directory is forced to be case-sensitive as on a
+        case-insensitive filesystem the duplicate name is renamed before it can
+        collide, see test_remote_drag_case_insensitive_duplicate_entries.
         """
         uri_list = b'file:///home/user/root\r\n'
-        with tempfile.TemporaryDirectory() as escape_target, dnd_test_window() as (screen, cap):
+        with tempfile.TemporaryDirectory() as escape_target, dnd_test_window(case_insensitive_tempdir=0) as (screen, cap):
             self._setup_remote_drag(screen, cap, uri_list)
             # Top-level directory (handle 2) with two identically named entries
             b64 = standard_b64encode(b'evil\x00evil').decode()
@@ -3025,9 +3036,13 @@ class TestDnDProtocol(BaseTest):
             self.assertEqual(os.listdir(escape_target), [], 'drag source wrote data outside its temporary directory')
 
     def test_remote_drag_symlinked_intermediate_component_cannot_escape(self) -> None:
-        """A symlink at an intermediate component of a sub-directory path must not be traversed."""
+        """A symlink at an intermediate component of a sub-directory path must not be traversed.
+
+        As above, the temporary directory is forced to be case-sensitive so that
+        the two identically named entries actually collide on all platforms.
+        """
         uri_list = b'file:///home/user/root\r\n'
-        with tempfile.TemporaryDirectory() as escape_target, dnd_test_window() as (screen, cap):
+        with tempfile.TemporaryDirectory() as escape_target, dnd_test_window(case_insensitive_tempdir=0) as (screen, cap):
             os.mkdir(os.path.join(escape_target, 'sub'))
             self._setup_remote_drag(screen, cap, uri_list)
             # root/ (handle 2) with two entries both named "evil"
@@ -3058,6 +3073,46 @@ class TestDnDProtocol(BaseTest):
             escaped = os.path.join(escape_target, 'sub', 'pwned.txt')
             self.assertFalse(os.path.exists(escaped), f'drag source data escaped the temporary directory to: {escaped}')
             self.assertEqual(os.listdir(os.path.join(escape_target, 'sub')), [], 'drag source wrote data outside its temporary directory')
+
+    def test_remote_drag_case_insensitive_duplicate_entries(self) -> None:
+        """On a case-insensitive filesystem identically named entries are renamed apart.
+
+        This is the code path taken on macOS, where the temporary directory is
+        normally on a case-insensitive filesystem. The symlink and the directory
+        no longer collide, so the drag succeeds, but the data must still be
+        written inside the temporary directory, not through the symlink.
+        """
+        uri_list = b'file:///home/user/root\r\n'
+        with tempfile.TemporaryDirectory() as escape_target, dnd_test_window(case_insensitive_tempdir=1) as (screen, cap):
+            self._setup_remote_drag(screen, cap, uri_list)
+            # root/ (handle 2) with two entries both named "evil"
+            b64 = standard_b64encode(b'evil\x00evil').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=2))
+            parse_bytes(screen, client_remote_file(1, '', item_type=2))
+
+            # Entry 1: symlink "evil" -> outside
+            b64 = standard_b64encode(escape_target.encode()).decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=1, parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_file(1, '', item_type=1, parent_handle=2, entry_num=1))
+
+            # Entry 2: directory "evil" (handle 3), renamed to avoid the collision
+            b64 = standard_b64encode(b'file.txt').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=3, parent_handle=2, entry_num=2))
+            parse_bytes(screen, client_remote_file(1, '', item_type=3, parent_handle=2, entry_num=2))
+            self._assert_no_output(cap)
+
+            b64 = standard_b64encode(b'data').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=0, parent_handle=3, entry_num=1))
+            parse_bytes(screen, client_remote_file(1, '', item_type=0, parent_handle=3, entry_num=1))
+            self.assert_drag_data_complete(cap)
+
+            root_path = dnd_test_probe_state(cap.window_id, 'drag_remote_item_path:0')
+            self.assertIsNotNone(root_path, 'root path should be known')
+            written = os.path.join(root_path, 'case-conflict-1-evil', 'file.txt')
+            self.assertTrue(os.path.isfile(written), f'renamed directory entry must exist at: {written}')
+            with open(written, 'rb') as f:
+                self.ae(f.read(), b'data')
+            self.assertEqual(os.listdir(escape_target), [], 'drag source wrote data outside its temporary directory')
 
     def test_remote_drag_uri_list_with_comments(self) -> None:
         """URI list with comment lines (starting with #) should filter them out."""
