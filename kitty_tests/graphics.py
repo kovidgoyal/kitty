@@ -463,6 +463,41 @@ class TestGraphics(BaseTest):
         s.reset()
         self.assertEqual(g.disk_cache.total_size, 0)
 
+    def test_load_images_from_file_edge_cases(self):
+        s, g, pl, sl = load_helpers(self)
+        random_data = byte_block(32 * 1024)
+
+        with tempfile.NamedTemporaryFile(prefix='tty-graphics-protocol-') as f:
+            # A window of the file specified with a non page aligned offset
+            f.write(b'x' * 3 + random_data + b'y' * 5), f.flush()
+            sl(f.name, s=1024, v=8, t='f', S=len(random_data), O=3, expecting_data=random_data)
+
+            # A file that is truncated after the size declared in the command
+            # must be reported as insufficient data rather than crashing
+            f.seek(0), f.truncate(), f.write(random_data[:128]), f.flush()
+            self.ae(pl(f.name, s=1024, v=8, t='f', S=len(random_data)), f'ENODATA:Insufficient image data: 128 < {len(random_data)}')
+
+            # Ditto when the size is not declared and is read from the file itself
+            self.ae(pl(f.name, s=1024, v=8, t='f'), f'ENODATA:Insufficient image data: 128 < {len(random_data)}')
+
+            # An offset past the end of the file
+            self.ae(pl(f.name, s=1024, v=8, t='f', O=4096), f'ENODATA:Insufficient image data: 0 < {len(random_data)}')
+
+        # Only regular files may be read
+        with tempfile.TemporaryDirectory(prefix='tty-graphics-protocol-') as tdir:
+            fifo = os.path.join(tdir, 'fifo')
+            os.mkfifo(fifo)
+            self.assertTrue(pl(fifo, s=1024, v=8, t='f').startswith('EBADF:'), 'Reading from a FIFO was not refused')
+
+        # A shared memory object truncated to less than the declared size
+        name = '/kitty-test-shm-truncated'
+        shm_write(name, random_data[:64])
+        self.ae(pl(name, s=1024, v=8, t='s', S=len(random_data)), f'ENODATA:Insufficient image data: 64 < {len(random_data)}')
+        self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that the object was deleted
+
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
+
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
     def test_load_png(self):
         s, g, pl, sl = load_helpers(self)

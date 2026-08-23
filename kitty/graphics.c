@@ -111,9 +111,6 @@ free_load_data(LoadData *ld) {
     ld->buf_used = 0;
     ld->buf_capacity = 0;
     ld->buf = NULL;
-    if (ld->mapped_file) munmap(ld->mapped_file, ld->mapped_file_sz);
-    ld->mapped_file = NULL;
-    ld->mapped_file_sz = 0;
     ld->loading_for = (const ImageAndFrame){0};
 }
 
@@ -328,19 +325,42 @@ set_command_failed_response(const char *code, const char *fmt, ...) {
     }
 
 static bool
-mmap_img_file(GraphicsManager *self, int fd, size_t sz, off_t offset) {
-    if (!sz) {
-        struct stat s;
-        if (fstat(fd, &s) != 0) ABRT(EBADF, "Failed to fstat() the fd: %d file with error: [%d] %s", fd, errno, strerror(errno));
-        sz = s.st_size;
+read_img_file(GraphicsManager *self, int fd, size_t sz, off_t offset, size_t max_to_read) {
+    LoadData *ld = &self->currently_loading;
+    struct stat s;
+    if (fstat(fd, &s) != 0) ABRT(EBADF, "Failed to fstat() the fd: %d file with error: [%d] %s", fd, errno, strerror(errno));
+    // The graphics protocol specification mandates that only regular files be
+    // read. Reading from FIFOs/devices/etc. can block forever or have
+    // side-effects.
+    if (!S_ISREG(s.st_mode)) ABRT(EBADF, "The image file with fd: %d is not a regular file", fd);
+    if (!sz) sz = offset < s.st_size ? (size_t)(s.st_size - offset) : 0;
+    if (sz > max_to_read) sz = max_to_read;
+    free(ld->buf);
+    // Note that the data is copied rather than mmap()ed as the client is free
+    // to truncate the file at any time, which would cause SIGBUS when reading
+    // from a mapping of it. With read() a truncated file simply results in a
+    // short read, which is reported as insufficient data by the caller.
+    ld->buf = malloc(sz ? sz : 1);
+    if (!ld->buf) ABRT(ENOMEM, "Out of memory allocating %zu bytes to read image file", sz);
+    ld->buf_capacity = sz;
+    ld->buf_used = 0;
+    while (ld->buf_used < sz) {
+        ssize_t n = pread(fd, ld->buf + ld->buf_used, sz - ld->buf_used, offset + (off_t)ld->buf_used);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            ABRT(EIO, "Failed to read from image file fd: %d with error: [%d] %s", fd, errno, strerror(errno));
+        }
+        if (!n) break; // EOF, the file is smaller than expected, reported as insufficient data by the caller
+        ld->buf_used += n;
     }
-    void *addr = mmap(0, sz, PROT_READ, MAP_SHARED, fd, offset);
-    if (addr == MAP_FAILED)
-        ABRT(EBADF, "Failed to map image file fd: %d at offset: %zd with size: %zu with error: [%d] %s", fd, offset, sz, errno, strerror(errno));
-    self->currently_loading.mapped_file = addr;
-    self->currently_loading.mapped_file_sz = sz;
     return true;
 err:
+    // Discard any partially read data, the caller is not guaranteed to call
+    // free_load_data() on failure.
+    free(ld->buf);
+    ld->buf = NULL;
+    ld->buf_capacity = 0;
+    ld->buf_used = 0;
     return false;
 }
 
@@ -635,7 +655,11 @@ load_image_data(
                     ABRT("EPERM", "Permission denied to read image file");
                 }
             }
-            load_data->loading_completed_successfully = mmap_img_file(self, fd, g->data_sz, g->data_offset);
+            // When the data needs further processing the entire (possibly
+            // compressed) payload is needed, otherwise reading more than the
+            // expected number of bytes is pointless.
+            const size_t max_to_read = (g->compressed || data_fmt == PNG) ? MAX_DATA_SZ : load_data->data_sz;
+            load_data->loading_completed_successfully = read_img_file(self, fd, g->data_sz, g->data_offset, max_to_read);
             safe_close(fd, __FILE__, __LINE__);
             if (transmission_type == 't' && strstr(fname, "tty-graphics-protocol") != NULL) {
                 if (global_state.boss) {
@@ -650,20 +674,15 @@ load_image_data(
 }
 
 static Image *
-process_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, const unsigned char transmission_type, const uint32_t data_fmt) {
+process_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, const uint32_t data_fmt) {
     bool needs_processing = g->compressed || data_fmt == PNG;
     if (needs_processing) {
         uint8_t *buf;
         size_t bufsz;
-#define IB                                                  \
-    {                                                       \
-        if (self->currently_loading.buf) {                  \
-            buf = self->currently_loading.buf;              \
-            bufsz = self->currently_loading.buf_used;       \
-        } else {                                            \
-            buf = self->currently_loading.mapped_file;      \
-            bufsz = self->currently_loading.mapped_file_sz; \
-        }                                                   \
+#define IB                                        \
+    {                                             \
+        buf = self->currently_loading.buf;        \
+        bufsz = self->currently_loading.buf_used; \
     }
         switch (g->compressed) {
             case 'z':
@@ -691,21 +710,10 @@ process_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, 
         if (self->currently_loading.buf_used < self->currently_loading.data_sz) {
             ABRT("ENODATA", "Insufficient image data: %zu < %zu", self->currently_loading.buf_used, self->currently_loading.data_sz);
         }
-        if (self->currently_loading.mapped_file) {
-            munmap(self->currently_loading.mapped_file, self->currently_loading.mapped_file_sz);
-            self->currently_loading.mapped_file = NULL;
-            self->currently_loading.mapped_file_sz = 0;
-        }
     } else {
-        if (transmission_type == 'd') {
-            if (self->currently_loading.buf_used < self->currently_loading.data_sz) {
-                ABRT("ENODATA", "Insufficient image data: %zu < %zu", self->currently_loading.buf_used, self->currently_loading.data_sz);
-            } else self->currently_loading.data = self->currently_loading.buf;
-        } else {
-            if (self->currently_loading.mapped_file_sz < self->currently_loading.data_sz) {
-                ABRT("ENODATA", "Insufficient image data: %zu < %zu", self->currently_loading.mapped_file_sz, self->currently_loading.data_sz);
-            } else self->currently_loading.data = self->currently_loading.mapped_file;
-        }
+        if (self->currently_loading.buf_used < self->currently_loading.data_sz) {
+            ABRT("ENODATA", "Insufficient image data: %zu < %zu", self->currently_loading.buf_used, self->currently_loading.data_sz);
+        } else self->currently_loading.data = self->currently_loading.buf;
         self->currently_loading.loading_completed_successfully = true;
     }
     return img;
@@ -819,7 +827,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     img = load_image_data(self, img, g, tt, fmt, payload);
     if (!img || !self->currently_loading.loading_completed_successfully) return NULL;
     self->currently_loading.loading_for = (const ImageAndFrame){0};
-    img = process_image_data(self, img, g, tt, fmt);
+    img = process_image_data(self, img, g, fmt);
     if (!img) return NULL;
     size_t required_sz = (size_t)(self->currently_loading.is_opaque ? 3 : 4) * self->currently_loading.width * self->currently_loading.height;
     if (self->currently_loading.data_sz != required_sz)
@@ -1752,7 +1760,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     img = load_image_data(self, img, g, tt, fmt, payload);
     if (!img || !load_data->loading_completed_successfully) return NULL;
     self->currently_loading.loading_for = (const ImageAndFrame){0};
-    img = process_image_data(self, img, g, tt, fmt);
+    img = process_image_data(self, img, g, fmt);
     if (!img || !load_data->loading_completed_successfully) return img;
 
     const unsigned long bytes_per_pixel = load_data->is_opaque ? 3 : 4;

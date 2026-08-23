@@ -264,6 +264,14 @@ Detailed list of changes
 
 - Text sizing protocol: Fix a buffer overflow when a natural width (no explicit ``w`` key) text sizing escape code contains a grapheme cluster longer than four codepoints
 
+- Graphics protocol: Fix a crash when transmitting image data via a file or
+  shared memory object (``t=f``, ``t=t`` or ``t=s``) and the client truncates
+  it while kitty is reading from it.
+
+- Graphics protocol: Fix reading image data from a file or shared memory
+  object at an offset (the ``O`` key) failing unless the offset happened to be
+  a multiple of the system page size
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -135,9 +135,6 @@ typedef struct {
     uint8_t *buf;
     size_t buf_capacity, buf_used;
 
-    uint8_t *mapped_file;
-    size_t mapped_file_sz;
-
     size_t data_sz;
     uint8_t *data;
     bool is_4byte_aligned;
