@@ -696,6 +696,70 @@ class TestDnDProtocol(BaseTest):
             self.assertEqual(len(r_events), 1, raw)
             self.ae(r_events[0]['payload'], b'')
 
+    def test_data_request_before_drop_denied(self) -> None:
+        """Data requests sent while the drag is merely hovering are rejected with EPERM."""
+        with dnd_test_window() as (screen, cap):
+            self._register_for_drops(screen, cap, 'text/plain text/uri-list')
+            dnd_test_set_mouse_pos(cap.window_id, 0, 0, 0, 0)
+            # Only a move event so far, no drop.
+            dnd_test_fake_drop_event(cap.window_id, False, ['text/plain', 'text/uri-list'])
+            cap.consume()
+
+            # All three request forms must be denied before the drop.
+            for req in (client_request_data(1), client_request_uri_data(2, 1), client_dir_read(2, 1)):
+                parse_bytes(screen, req)
+                events = self._get_events(cap)
+                self.assertEqual(len(events), 1, events)
+                self.ae(events[0]['type'], 'R')
+                self.ae(events[0]['payload'].strip().partition(b':')[0], b'EPERM')
+
+            # The denial must not have terminated the drag session: after an
+            # actual drop, requests work as usual.
+            dnd_test_fake_drop_event(cap.window_id, True, ['text/plain', 'text/uri-list'])
+            cap.consume()
+            parse_bytes(screen, client_request_data(1))
+            dnd_test_fake_drop_data(cap.window_id, 'text/plain', b'hello')
+            combined = b''.join(e['payload'] for e in parse_escape_codes_b64(cap.consume()) if e['type'] == 'r')
+            self.ae(combined, b'hello')
+
+    def test_drag_leave_discards_drag_session_data(self) -> None:
+        """When the drag leaves the window all data obtained from it is discarded."""
+        import os
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, 'secret.txt'), 'wb') as f:
+                f.write(b'secret data')
+            uri_list = f'file://{root}\r\n'.encode()
+            with dnd_test_window() as (screen, cap):
+                self._setup_uri_drop(screen, cap, uri_list)
+                # Get a directory handle for root.
+                parse_bytes(screen, client_request_uri_data(2, 1))
+                events = parse_escape_codes_b64(cap.consume())
+                d_events = [e for e in events if e['type'] == 'r' and is_dir_event(e)]
+                self.assertTrue(d_events, 'expected directory listing for root')
+                handle_id = dir_handle(d_events[0])
+                self.assertGreater(dnd_test_probe_state(cap.window_id, 'drop_num_dir_handles'), 0)
+                self.assertGreater(dnd_test_probe_state(cap.window_id, 'drop_uri_list_sz'), 0)
+
+                # Drag leaves the window.
+                dnd_test_fake_drop_event(cap.window_id, False, None)
+                cap.consume()  # discard the leave event
+
+                # The URI list, directory handles and any in-flight file
+                # transfer must be gone.
+                self.ae(dnd_test_probe_state(cap.window_id, 'drop_num_dir_handles'), 0)
+                self.ae(dnd_test_probe_state(cap.window_id, 'drop_uri_list_sz'), 0)
+                self.ae(dnd_test_probe_state(cap.window_id, 'drop_file_fd_plus_one'), 0)
+                self.assertFalse(dnd_test_probe_state(cap.window_id, 'drop_dropped'))
+
+                # Requests using the stale handle must fail.
+                parse_bytes(screen, client_dir_read(handle_id, 1))
+                events = self._get_events(cap)
+                self.assertEqual(len(events), 1, events)
+                self.ae(events[0]['type'], 'R')
+                self.ae(events[0]['payload'].strip().partition(b':')[0], b'EPERM')
+
     # ---- remote file/directory transfer tests ----------------
 
     def _setup_uri_drop(self, screen, cap, uri_list_data: bytes, mimes=None):

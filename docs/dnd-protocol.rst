@@ -104,6 +104,15 @@ mandatory, terminals must send the full list of MIME types available in
 the drop. The client program can now request data for the MIME types
 it is interested in.
 
+Data may only be requested after a drop has actually occurred, receiving
+movement events is not sufficient. Terminals must reject any data request
+received before the drop event with an ``EPERM`` error. Since no drop is in
+progress, this particular error does not terminate anything. Additionally,
+when a drag leaves the window without a drop having occurred, terminals must
+discard all data and resources associated with the drag session, such as
+previously fetched URI lists, in-progress file transfers and directory
+handles. Requests referring to them must fail.
+
 Requesting data is done by sending an escape code of the form::
 
     OSC _dnd_code ; t=r:x=idx ST

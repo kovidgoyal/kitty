@@ -251,6 +251,8 @@ Detailed list of changes
 
 - IME preedit text: use underline rather than reverse video (:pull:`10386`)
 
+- Drag and drop protocol: deny requests for drag data made before the user has actually dropped something onto the window
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1367,6 +1367,23 @@ drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y,
         return;
     }
 
+    if (!w->drop.dropped) {
+        /* The user has not actually dropped anything on this window, so the
+         * client is not allowed to read any drag data. Movement events are
+         * informational only; consent to transfer data is given by the drop. */
+        int32_t saved_x = w->drop.current_request_x;
+        int32_t saved_y = w->drop.current_request_y;
+        int32_t saved_Y = w->drop.current_request_Y;
+        w->drop.current_request_x = cell_x;
+        w->drop.current_request_y = cell_y;
+        w->drop.current_request_Y = pixel_y;
+        drop_send_error(w, EPERM, "drop data can only be requested after a drop");
+        w->drop.current_request_x = saved_x;
+        w->drop.current_request_y = saved_y;
+        w->drop.current_request_Y = saved_Y;
+        return;
+    }
+
     if (w->drop.num_data_requests >= arraysz(w->drop.data_requests)) {
         /* Queue full: deny with EMFILE and end the drop */
         int32_t saved_x = w->drop.current_request_x;
@@ -1397,6 +1414,18 @@ drop_left_child(Window *w) {
     w->drop.hovered = false;
     w->drop.dropped = false;
     drop_free_offered_mimes(w);
+    /* The drag session no longer involves this window, so discard everything
+     * obtained from it: otherwise a previously fetched URI list, open
+     * directory handles and an in-flight file transfer would let the client
+     * keep reading files with no drag in progress. */
+    drop_close_file_fd(w);
+    drop_free_request_queue(w);
+    drop_free_dir_handles(w);
+    free(w->drop.uri_list);
+    w->drop.uri_list = NULL;
+    w->drop.uri_list_sz = 0;
+    free(w->drop.getting_data_for_mime);
+    w->drop.getting_data_for_mime = NULL;
     if (w->drop.wanted) {
         char buf[128];
         int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=m:x=-1:y=-1", DND_CODE);
@@ -2893,6 +2922,10 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
         return ans;
     }
     if (strcmp(q, "drop_getting_data_for_mime") == 0) { return PyUnicode_FromString(w->drop.getting_data_for_mime ? w->drop.getting_data_for_mime : ""); }
+    if (strcmp(q, "drop_dropped") == 0) { return Py_NewRef(w->drop.dropped ? Py_True : Py_False); }
+    if (strcmp(q, "drop_num_dir_handles") == 0) { return PyLong_FromSize_t(w->drop.num_dir_handles); }
+    if (strcmp(q, "drop_uri_list_sz") == 0) { return PyLong_FromSize_t(w->drop.uri_list_sz); }
+    if (strcmp(q, "drop_file_fd_plus_one") == 0) { return PyLong_FromLong((long)w->drop.file_fd_plus_one); }
     if (strcmp(q, "can_offer") == 0) { return Py_NewRef(w->drag_source.can_offer ? Py_True : Py_False); }
     if (strcmp(q, "drag_operations") == 0) { return PyLong_FromLong((long)w->drag_source.allowed_operations); }
     if (strcmp(q, "drag_mimes") == 0) {
