@@ -3910,18 +3910,6 @@ apply_titlebar_color_settings(_GLFWwindow *window) {
 #undef tc
 }
 
-static void
-apply_window_corner_curve(_GLFWwindow *window) {
-    if (!window || !window->decorated) return;
-    if (@available(macOS 26.0, *)) {
-        GLFWWindow *nsw = window->ns.object;
-        NSView *frame_view = nsw.contentView.superview;
-        CALayer *layer = frame_view.layer;
-        if (!layer) return;
-        layer.cornerCurve = kCACornerCurveContinuous;
-    }
-}
-
 
 GLFWAPI void
 glfwCocoaSetWindowLevel(GLFWwindow *w, const char *level_spec) {
@@ -4064,7 +4052,6 @@ glfwCocoaSetWindowChrome(
         if (desired_mask != current_style_mask) { [nsw setStyleMask:desired_mask]; }
 #undef tc
         apply_titlebar_color_settings(window);
-        apply_window_corner_curve(window);
 
         // HACK: Changing the style mask can cause the first responder to be cleared
         [nsw makeFirstResponder:window->ns.view];
