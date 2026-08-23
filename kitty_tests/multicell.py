@@ -150,6 +150,22 @@ def test_multicell(self: TestMulticell) -> None:
         for x in range(1, 3):
             comb(x, y)
     comb(0, 1)
+
+    # Regression test for buffer overflow when a natural width (w=0) grapheme
+    # cluster is longer than the ListOfChars stack buffer. See the accumulation
+    # loop in screen_handle_multicell_command(). The cluster is accumulated in
+    # full (overflowing the buffer before the fix) even though the text stored
+    # per cell is later capped at MAX_NUM_CODEPOINTS_PER_CELL (24).
+    capped = 'a' + '́' * 23
+    s.reset()
+    multicell(s, 'a' + '́' * 32)
+    ac(0, 0, is_multicell=True, width=1, scale=1, x=0, y=0, text=capped, natural_width=True)
+    # A second, even longer cluster exercises the heap-backed buffer after the first flush.
+    s.reset()
+    multicell(s, 'a' + '́' * 32 + 'b' + '́' * 48)
+    ac(0, 0, is_multicell=True, x=0, y=0, text=capped, natural_width=True)
+    ac(1, 0, is_multicell=True, x=0, y=0, text='b' + '́' * 23, natural_width=True)
+
     s.reset()
     multicell(s, 'aüa', scale=2)
     self.ae(s.cursor.x, 6)

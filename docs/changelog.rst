@@ -253,6 +253,8 @@ Detailed list of changes
 
 - Drag and drop protocol: deny requests for drag data made before the user has actually dropped something onto the window
 
+- Text sizing protocol: Fix a buffer overflow when a natural width (no explicit ``w`` key) text sizing escape code contains a grapheme cluster longer than four codepoints
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

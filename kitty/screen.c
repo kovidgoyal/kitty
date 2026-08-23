@@ -1619,8 +1619,10 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
             char_type ch = self->lc->chars[i];
             CharProps cp = char_props_for(ch);
             if (cp.is_invalid) continue;
-            if ((s = grapheme_segmentation_step(s, cp)).add_to_current_cell || (wcwidth_std(cp) == 0 && lc.count)) lc.chars[lc.count++] = ch;
-            else {
+            if ((s = grapheme_segmentation_step(s, cp)).add_to_current_cell || (wcwidth_std(cp) == 0 && lc.count)) {
+                ensure_space_for_chars(&lc, lc.count + 1);
+                lc.chars[lc.count++] = ch;
+            } else {
                 if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
                 switch (wcwidth_std(cp)) {
                     case 0:
