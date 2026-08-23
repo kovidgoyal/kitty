@@ -32,6 +32,20 @@ def bash_ok():
     return int(major_ver) >= 5 and relstatus == 'release'
 
 
+def run_interactive_bash(command: str, env: dict[str, str], cwd: str | None = None) -> 'subprocess.CompletedProcess[bytes]':
+    """Run an interactive bash without letting it touch our controlling terminal.
+
+    An interactive bash whose stderr is not a terminal falls back to opening
+    /dev/tty to do job control on. That is the terminal the test suite is
+    itself running in, and bash makes its own process group the foreground one
+    on it for as long as it runs. When tests run in parallel, a second bash
+    started in that window sees that it is not in the foreground process group
+    and does kill(0, SIGTTIN), which stops the entire test run. Giving bash its
+    own session leaves it with no controlling terminal, so it cannot interfere.
+    """
+    return subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], cwd=cwd, env=env, capture_output=True, start_new_session=True)
+
+
 def extract_sudo_function(content: str, opening='sudo() {', closing='}', witht='command sudo TERMINFO="$TERMINFO" "$@";', without='command sudo "$@";') -> str:
     """Extract the sudo() function from bash/zsh shell integration content using indentation."""
     lines = content.split('\n')
@@ -174,7 +188,7 @@ class ShellIntegration(BaseTest):
                 env = basic_shell_env(home_dir)
                 env['KITTY_BASH_INTEGRATION'] = integration_script
                 env['KITTY_SHELL_INTEGRATION'] = f'{common_options} {options}'
-                cp = subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], env=env, capture_output=True)
+                cp = run_interactive_bash(command, env)
                 self.assertEqual(cp.returncode, 0, cp.stderr.decode())
                 self.assertEqual(cp.stdout.decode() != 'original', has_command_hook)
 
@@ -193,7 +207,7 @@ class ShellIntegration(BaseTest):
             env = basic_shell_env(home_dir)
             env['KITTY_BASH_INTEGRATION'] = integration_script
             env['PATH'] = os.pathsep.join((home_dir, env['PATH']))
-            cp = subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], cwd=home_dir, env=env, capture_output=True)
+            cp = run_interactive_bash(command, env, cwd=home_dir)
             self.assertEqual(cp.returncode, 0, cp.stderr.decode())
             self.assertIn(': ~\x07', cp.stdout.decode())
 

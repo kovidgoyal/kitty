@@ -12,7 +12,7 @@ import sys
 import time
 import unittest
 from collections.abc import Callable, Generator, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from functools import lru_cache
 from tempfile import TemporaryDirectory, mkdtemp
 from typing import (
@@ -165,7 +165,9 @@ class GoProc:
         os.mkdir(env['XDG_CONFIG_HOME'])
         env['XDG_CACHE_HOME'] = self.tdir + '/cache'
         os.mkdir(env['XDG_CACHE_HOME'])
-        self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+        # start_new_session so that go tests cannot touch the terminal the
+        # test suite is being run from, see detach_from_controlling_terminal()
+        self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, stdin=subprocess.DEVNULL, start_new_session=True)
         self.stdout_fd = self.proc.stdout.fileno()
 
     @property
@@ -341,6 +343,21 @@ def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
     os._exit(exit_code)
 
 
+def detach_from_controlling_terminal() -> None:
+    """Put the calling process into its own session, with no controlling terminal.
+
+    Tests must never depend on the terminal the test suite happens to be run
+    from, and must never be able to disturb it. Without this, any program a
+    test runs can reach it via /dev/tty; a job control aware shell for instance
+    will make its own process group the foreground one on it, and a second such
+    shell started while that is the case stops the entire test run with SIGTTIN.
+    """
+    try:
+        os.setsid()
+    except OSError:  # already a session leader
+        pass
+
+
 def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[int]]:
     """Chunk tests and fork worker processes. Returns (pids, read_fds)."""
     n = min(os.cpu_count() or 4, 8, len(tests))
@@ -355,7 +372,9 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
         pid = os.fork()
         if pid == 0:
             os.close(r)
-            devnull = os.open(os.devnull, os.O_WRONLY)
+            detach_from_controlling_terminal()
+            devnull = os.open(os.devnull, os.O_RDWR)
+            os.dup2(devnull, 0)
             os.dup2(devnull, 1)
             os.dup2(devnull, 2)
             os.close(devnull)
@@ -402,6 +421,7 @@ def spawn_test_workers(tests: list[unittest.TestCase]) -> tuple[list[subprocess.
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            start_new_session=True,  # see detach_from_controlling_terminal()
         )
         os.close(w)
         assert proc.stdin is not None
@@ -674,6 +694,31 @@ def collect_worker_results(
     return True, True
 
 
+def terminate_workers(pids: list[int], procs: list['subprocess.Popen[bytes]'], go_proc: Optional[GoProc]) -> None:
+    """Kill any still running workers.
+
+    Workers run in their own sessions, so they do not get the SIGINT/SIGQUIT
+    the terminal sends to the foreground job when the user interrupts the test
+    run. Without this they would be left behind as orphans.
+    """
+    import signal
+
+    for pid in pids:
+        # waitpid() fails with ChildProcessError if pid was already reaped, which
+        # also guarantees we never signal an unrelated process that reused it
+        with suppress(ChildProcessError, OSError):
+            if os.waitpid(pid, os.WNOHANG)[0] == 0:
+                os.kill(pid, signal.SIGKILL)
+                os.waitpid(pid, 0)
+    # Popen.kill() is a no-op once the process has been reaped
+    for proc in procs:
+        proc.kill()
+        proc.wait()
+    if go_proc is not None:
+        go_proc.proc.kill()
+        go_proc.proc.wait()
+
+
 def run_tests(report_env: bool = False) -> None:
     report_env = report_env or is_ci
     import argparse
@@ -741,25 +786,29 @@ def run_tests(report_env: bool = False) -> None:
     else:
         go_proc = None
     sys.stdout.flush()
-    # Module filter with no python tests but go tests present: run go only
-    if args.module and not tests_list:
-        _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
-        raise SystemExit(0 if go_ok else 1)
+    try:
+        # Module filter with no python tests but go tests present: run go only
+        if args.module and not tests_list:
+            _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
+            raise SystemExit(0 if go_ok else 1)
 
-    if use_parallel:
-        python_ok, go_ok = collect_worker_results(worker_pids, worker_procs, read_fds, len(tests_list), go_proc=go_proc)
-    elif tests_list:
-        python_ok = run_cli(all_tests, args.verbosity)
-        if go_proc is not None:
-            _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
+        if use_parallel:
+            python_ok, go_ok = collect_worker_results(worker_pids, worker_procs, read_fds, len(tests_list), go_proc=go_proc)
+        elif tests_list:
+            python_ok = run_cli(all_tests, args.verbosity)
+            if go_proc is not None:
+                _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
+            else:
+                go_ok = True
         else:
-            go_ok = True
-    else:
-        python_ok = True
-        if go_proc is not None:
-            _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
-        else:
-            go_ok = True
+            python_ok = True
+            if go_proc is not None:
+                _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
+            else:
+                go_ok = True
+    except BaseException:
+        terminate_workers(worker_pids, worker_procs, go_proc)
+        raise
 
     exit_code = 0 if (python_ok and go_ok) else 1
 
