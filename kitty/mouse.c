@@ -290,14 +290,6 @@ border_contains_mouse(BorderRect *br, double tolerance, Edge *edges) {
 }
 
 
-static double
-distance_to_window(Window *w) {
-    double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
-    double cx = (window_left(w) + window_right(w)) / 2.0;
-    double cy = (window_top(w) + window_bottom(w)) / 2.0;
-    return (x - cx) * (x - cx) + (y - cy) * (y - cy);
-}
-
 static bool clamp_to_window = false;
 
 static bool
@@ -1114,27 +1106,6 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
     return ans;
 }
 
-static Window *
-closest_window_for_event(unsigned int *window_idx) {
-    Window *ans = NULL;
-    double closest_distance = UINT_MAX;
-    if (global_state.callback_os_window->num_tabs > 0) {
-        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-        for (unsigned int i = 0; i < t->num_windows; i++) {
-            Window *w = t->windows + i;
-            if (w->visible) {
-                double d = distance_to_window(w);
-                if (d < closest_distance) {
-                    ans = w;
-                    closest_distance = d;
-                    *window_idx = i;
-                }
-            }
-        }
-    }
-    return ans;
-}
-
 void
 focus_in_event(void) {
     // Ensure that no URL is highlighted and the mouse cursor is in default shape
@@ -1434,19 +1405,20 @@ mouse_event(const int button, int modifiers, int action) {
         }
     } else if (w) {
         debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);
+        // Button presses/releases in the padding around the cell area of the
+        // window are mapped to the nearest cell, so that, for example,
+        // selections can be started by pressing in the padding. Note that this
+        // is deliberately not done for pure movement events so that merely
+        // hovering over the padding does not cause URL detection and the like.
+        // Also note that it does not apply to windows matched only because the
+        // mouse is over their scrollbar, which can be drawn in the margin,
+        // outside the window.
+        clamp_to_window = button > -1 && contains_mouse(w);
         handle_event(w, button, modifiers, window_idx);
-    } else if (button == GLFW_MOUSE_BUTTON_LEFT && osw->mouse_button_pressed[button]) {
-        // initial click, clamp it to the closest window
-        w = closest_window_for_event(&window_idx);
-        if (w) {
-            clamp_to_window = true;
-            debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);
-            handle_event(w, button, modifiers, window_idx);
-            clamp_to_window = false;
-        } else debug("no window for event\n");
+        clamp_to_window = false;
     } else {
         mouse_cursor_shape = DEFAULT_POINTER;
-        debug("\n");
+        debug("no window for event\n");
     }
     if (mouse_cursor_shape != old_cursor) set_mouse_cursor(mouse_cursor_shape);
 }

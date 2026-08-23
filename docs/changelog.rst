@@ -242,6 +242,13 @@ Detailed list of changes
 
 - IME preedit text: use underline rather than reverse video (:pull:`10386`)
 
+- Map mouse button presses in the :opt:`padding <window_padding_width>`
+  around a window to the nearest cell, so that, for example, selections can be
+  started by pressing in the padding. Presses in the :opt:`margins
+  <window_margin_width>` and in the region around window borders used for
+  :opt:`dragging borders <window_drag_tolerance>` no longer start selections
+  (:iss:`10393`)
+
 - Graphics protocol: Fix a regression in 0.45.0 that caused the overwrite
   composition mode for animation frames (``a=f``) to be controlled by the
   undocumented ``C`` key instead of the documented ``X`` key (:iss:`10379`)
