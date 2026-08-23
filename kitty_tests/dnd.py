@@ -4,6 +4,7 @@
 import errno
 import os
 import re
+import tempfile
 from base64 import standard_b64encode
 from contextlib import contextmanager
 from functools import partial
@@ -2969,6 +2970,94 @@ class TestDnDProtocol(BaseTest):
             child_path = os.path.join(dir_path, 'empty_child.txt')
             self.assertTrue(os.path.isfile(child_path), f'empty child file must exist on disk: {child_path}')
             self.assertEqual(os.path.getsize(child_path), 0, f'child file must be empty: {child_path}')
+
+    def assert_symlink_traversal_refused(self, cap) -> None:
+        """The drag must have been aborted because a directory entry was a symlink.
+
+        O_NOFOLLOW combined with O_DIRECTORY reports ENOTDIR on Linux and ELOOP on
+        some other platforms, so accept either.
+        """
+        events = self._get_events(cap)
+        self.assertEqual(len(events), 1, events)
+        self.ae(events[0]['type'], 'E')
+        self.assertIn(events[0]['payload'].partition(b':')[0], (b'ENOTDIR', b'ELOOP'), events)
+
+    def test_remote_drag_symlinked_subdir_cannot_escape_tempdir(self) -> None:
+        """A directory entry that resolves through a symlink must not be written to.
+
+        A malicious client can send a directory listing containing two entries with
+        the same name, registering the first as a symlink pointing outside the
+        temporary directory and the second as a directory. The symlink creation
+        succeeds and the mkdirat for the directory fails with EEXIST (which is
+        ignored), so a subsequent request to write into that "directory" used to
+        follow the symlink and write attacker controlled files at an arbitrary
+        location.
+        """
+        uri_list = b'file:///home/user/root\r\n'
+        with tempfile.TemporaryDirectory() as escape_target, dnd_test_window() as (screen, cap):
+            self._setup_remote_drag(screen, cap, uri_list)
+            # Top-level directory (handle 2) with two identically named entries
+            b64 = standard_b64encode(b'evil\x00evil').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=2))
+            parse_bytes(screen, client_remote_file(1, '', item_type=2))
+            self._assert_no_output(cap)
+
+            # Entry 1: symlink named "evil" pointing outside the temporary directory
+            b64 = standard_b64encode(escape_target.encode()).decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=1, parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_file(1, '', item_type=1, parent_handle=2, entry_num=1))
+            self._assert_no_output(cap)
+
+            # Entry 2: directory named "evil" (handle 3), mkdirat fails with EEXIST
+            b64 = standard_b64encode(b'pwned.txt').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=3, parent_handle=2, entry_num=2))
+            parse_bytes(screen, client_remote_file(1, '', item_type=3, parent_handle=2, entry_num=2))
+            self._assert_no_output(cap)
+
+            # Now write a child of the "directory" -- must not traverse the symlink
+            b64 = standard_b64encode(b'owned').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=0, parent_handle=3, entry_num=1))
+            # kitty must refuse to open the symlinked directory and abort the drag
+            self.assert_symlink_traversal_refused(cap)
+
+            escaped = os.path.join(escape_target, 'pwned.txt')
+            self.assertFalse(os.path.exists(escaped), f'drag source data escaped the temporary directory to: {escaped}')
+            self.assertEqual(os.listdir(escape_target), [], 'drag source wrote data outside its temporary directory')
+
+    def test_remote_drag_symlinked_intermediate_component_cannot_escape(self) -> None:
+        """A symlink at an intermediate component of a sub-directory path must not be traversed."""
+        uri_list = b'file:///home/user/root\r\n'
+        with tempfile.TemporaryDirectory() as escape_target, dnd_test_window() as (screen, cap):
+            os.mkdir(os.path.join(escape_target, 'sub'))
+            self._setup_remote_drag(screen, cap, uri_list)
+            # root/ (handle 2) with two entries both named "evil"
+            b64 = standard_b64encode(b'evil\x00evil').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=2))
+            parse_bytes(screen, client_remote_file(1, '', item_type=2))
+
+            # Entry 1: symlink "evil" -> outside
+            b64 = standard_b64encode(escape_target.encode()).decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=1, parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_file(1, '', item_type=1, parent_handle=2, entry_num=1))
+
+            # Entry 2: directory "evil" (handle 3) containing a sub directory "sub"
+            b64 = standard_b64encode(b'sub').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=3, parent_handle=2, entry_num=2))
+            parse_bytes(screen, client_remote_file(1, '', item_type=3, parent_handle=2, entry_num=2))
+            self._assert_no_output(cap)
+
+            # "sub" is a directory (handle 4) that would be reached via root/evil/sub
+            b64 = standard_b64encode(b'pwned.txt').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=4, parent_handle=3, entry_num=1))
+            self.assert_symlink_traversal_refused(cap)
+
+            b64 = standard_b64encode(b'owned').decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=0, parent_handle=4, entry_num=1))
+            cap.consume()
+
+            escaped = os.path.join(escape_target, 'sub', 'pwned.txt')
+            self.assertFalse(os.path.exists(escaped), f'drag source data escaped the temporary directory to: {escaped}')
+            self.assertEqual(os.listdir(os.path.join(escape_target, 'sub')), [], 'drag source wrote data outside its temporary directory')
 
     def test_remote_drag_uri_list_with_comments(self) -> None:
         """URI list with comment lines (starting with #) should filter them out."""

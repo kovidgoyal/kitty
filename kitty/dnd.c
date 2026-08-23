@@ -65,6 +65,8 @@ get_errno_name(int err) {
         case ENOMEM: return "ENOMEM";
         case EFBIG: return "EFBIG";
         case EISDIR: return "EISDIR";
+        case ELOOP: return "ELOOP";
+        case ENOTDIR: return "ENOTDIR";
         case ENOSPC: return "ENOSPC";
         case 0: return "OK";
         default: return "EUNKNOWN";
@@ -2436,7 +2438,7 @@ toplevel_data_for_drag(
             log_error("Failed to create directory for drag source item at: %s/%u with error: %s", ds.base_dir_for_remote_items, uri_item_idx, strerror(err));
             abrt(err, "failed to create directory for drag source item");
         }
-        int fd = safe_openat(ds.base_dir_fd_plus_one - 1, path, O_RDONLY | O_DIRECTORY, 0);
+        int fd = safe_openat(ds.base_dir_fd_plus_one - 1, path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW, 0);
         if (fd < 0) abrt(errno, "failed to open directory for drag source item");
         ri->top_level_parent_dir_fd_plus_one = fd + 1;
         if (!ds.file_promises) {
@@ -2448,26 +2450,69 @@ toplevel_data_for_drag(
 }
 
 static DragRemoteItem *
-find_by_handle(DragRemoteItem *parent, int handle, char *path_to_parent, size_t *path_len) {
+find_by_handle(DragRemoteItem *parent, int handle) {
     if (parent->type == handle) return parent;
     DragRemoteItem *x;
     for (size_t i = 0; i < parent->children_sz; i++) {
-        DragRemoteItem *child = parent->children + i;
-        size_t before = *path_len;
-        size_t n = snprintf(path_to_parent + before, PATH_MAX - before, "/%s", child->dir_entry_name);
-        if (n + before + 1 >= PATH_MAX) return NULL;
-        *path_len += n;
-        if ((x = find_by_handle(parent->children + i, handle, path_to_parent, path_len))) return x;
-        *path_len = before;
+        if ((x = find_by_handle(parent->children + i, handle))) return x;
     }
     return NULL;
+}
+
+// Maximum nesting depth of a remote drag source directory tree. Prevents
+// unbounded recursion in open_subdir_of_drag() for a maliciously deep tree.
+#define MAX_DRAG_DIR_DEPTH 128u
+
+// Open the directory for item by walking down from the top-level directory of
+// the drag source item, one component at a time, with O_NOFOLLOW. Constructing
+// a path and opening it is unsafe: a malicious client can send a directory
+// listing with two identically named entries, registering the first as a
+// symlink pointing outside the temporary directory and the second as a
+// directory. Creating the directory then fails with EEXIST (which is ignored)
+// and opening the path would follow the symlink, allowing the client to write
+// arbitrary files anywhere the kitty process can write. Starting at a directory
+// we created ourselves and refusing to traverse symlinks keeps every write
+// contained within the temporary directory.
+static int
+open_subdir_of_drag(DragRemoteItem *root, DragRemoteItem *item, unsigned depth) {
+    if (depth > MAX_DRAG_DIR_DEPTH) {
+        errno = ELOOP;
+        return -1;
+    }
+    if (!item->dir_entry_name) {
+        errno = EINVAL;
+        return -1;
+    }
+    int parent_fd, ans;
+    bool close_parent_fd = false;
+    if (item == root) {
+        if (!root->top_level_parent_dir_fd_plus_one) {
+            errno = EINVAL;
+            return -1;
+        }
+        parent_fd = root->top_level_parent_dir_fd_plus_one - 1;
+    } else {
+        if (!item->parent) {
+            errno = EINVAL;
+            return -1;
+        }
+        parent_fd = open_subdir_of_drag(root, item->parent, depth + 1);
+        if (parent_fd < 0) return -1;
+        close_parent_fd = true;
+    }
+    ans = safe_openat(parent_fd, item->dir_entry_name, O_DIRECTORY | O_RDONLY | O_NOFOLLOW, 0);
+    if (close_parent_fd) {
+        int saved_errno = errno;
+        safe_close(parent_fd, __FILE__, __LINE__);
+        errno = saved_errno;
+    }
+    return ans;
 }
 
 static void
 subdir_data_for_drag(
     Window *w,
     unsigned mime_item_idx,
-    unsigned uri_item_idx,
     int handle,
     unsigned entry_num,
     unsigned item_type,
@@ -2489,16 +2534,13 @@ subdir_data_for_drag(
         }
     }
     if (parent == NULL || !parent->fd_plus_one) {
-        char path[PATH_MAX + 1];
-        path[PATH_MAX] = 0;
         if (!root->dir_entry_name) abrt(EINVAL, "drag source sub directory parent dir does not exist");
-        size_t pos = snprintf(path, PATH_MAX, "%s/%u/%s", ds.base_dir_for_remote_items, uri_item_idx, root->dir_entry_name);
-        parent = find_by_handle(root, handle, path, &pos);
+        parent = find_by_handle(root, handle);
         if (!parent) abrt(EINVAL, "drag source sub directory parent dir handle does not exist");
         mi.currently_open_subdir = parent;
         if (!parent->fd_plus_one) {
-            int fd = safe_open(path, O_DIRECTORY | O_RDONLY, 0);
-            if (fd < 0) abrt(errno, "drag source failed to create sub directory");
+            int fd = open_subdir_of_drag(root, parent, 0);
+            if (fd < 0) abrt(errno, "drag source failed to open sub directory");
             parent->fd_plus_one = fd + 1;
         }
     }
@@ -2581,7 +2623,7 @@ drag_remote_file_data(Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, boo
         }
     } else {
         if (y < 1) abrt(EINVAL, "drag source remote item y index cannot be less than 1");
-        subdir_data_for_drag(w, mime_item_idx, uri_item_idx, Y, y - 1, X, has_more, payload, payload_sz, &ri);
+        subdir_data_for_drag(w, mime_item_idx, Y, y - 1, X, has_more, payload, payload_sz, &ri);
         if (all_data_received && ri && all_children_complete(ri)) {
             ri->completed = true;
             while (1) {

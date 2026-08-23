@@ -253,6 +253,8 @@ Detailed list of changes
 
 - Drag and drop protocol: deny requests for drag data made before the user has actually dropped something onto the window
 
+- Drag and drop protocol: Deny drag sources that send identically named symlink/dir entries with an appropriate error
+
 - Text sizing protocol: Fix a buffer overflow when a natural width (no explicit ``w`` key) text sizing escape code contains a grapheme cluster longer than four codepoints
 
 
