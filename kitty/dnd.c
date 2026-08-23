@@ -952,7 +952,7 @@ drop_send_file_chunks(Window *w) {
 static bool
 drop_send_file_data(Window *w, const char *path) {
     drop_close_file_fd(w);
-    int fd = safe_open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK, 0);
+    int fd = safe_open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOFOLLOW, 0);
     if (fd < 0) {
         switch (errno) {
             case ENOENT:
