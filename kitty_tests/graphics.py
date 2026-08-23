@@ -511,6 +511,8 @@ class TestGraphics(BaseTest):
         # a 25-byte chunk previously caused a crash.
         res = pl(b'x' * 25, f=100)
         self.ae(res.partition(':')[0], 'EBADPNG')
+        if Image is None:
+            return
         # Test that a truncated PNG (valid header + IHDR declaring more rows
         # than the IDAT data can produce, with no trailing chunks) is rejected
         # cleanly instead of causing libpng to parse uninitialized memory. The
