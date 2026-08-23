@@ -511,6 +511,18 @@ class TestGraphics(BaseTest):
         # a 25-byte chunk previously caused a crash.
         res = pl(b'x' * 25, f=100)
         self.ae(res.partition(':')[0], 'EBADPNG')
+        # Test that a truncated PNG (valid header + IHDR declaring more rows
+        # than the IDAT data can produce, with no trailing chunks) is rejected
+        # cleanly instead of causing libpng to parse uninitialized memory. The
+        # read callback must abort via png_error() when it runs out of bytes.
+        w, h = 3, 3
+        buf = BytesIO()
+        Image.frombytes('RGBA', (w, h), byte_block(w * h * 4)).save(buf, 'PNG')
+        full = buf.getvalue()
+        # Drop the trailing bytes (IDAT tail + IEND) so the stream runs out
+        # while libpng still expects more compressed data.
+        truncated = full[:-16]
+        self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, truncated)
 
     def test_gr_operations_with_numbers(self):
         s = self.create_screen()

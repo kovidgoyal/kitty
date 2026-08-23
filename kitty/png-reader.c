@@ -21,11 +21,16 @@ struct fake_file {
 static void
 read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
     struct fake_file *f = png_get_io_ptr(png);
-    if (f) {
-        size_t amt = MIN(length, f->sz - f->cur);
-        memcpy(out, f->buf + f->cur, amt);
-        f->cur += amt;
-    }
+    if (!f) png_error(png, "PNG read callback invoked with no input buffer");
+    // libpng's png_rw_ptr contract requires supplying the full requested
+    // length or aborting via png_error(). Returning fewer bytes silently leaves
+    // libpng's read buffer partially uninitialized, which it then parses as
+    // legitimate stream bytes. This happens for a truncated stream, e.g. IDAT
+    // chunks that do not carry enough compressed data for the rows declared in
+    // IHDR, with no further chunks following.
+    if (length > f->sz - f->cur) png_error(png, "PNG data is truncated: not enough bytes to satisfy read request");
+    memcpy(out, f->buf + f->cur, length);
+    f->cur += length;
 }
 
 struct custom_error_handler {
