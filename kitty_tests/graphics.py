@@ -11,6 +11,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from io import BytesIO
 
+from kitty.constants import is_macos
 from kitty.fast_data_types import base64_decode, base64_encode, load_png_data, shm_unlink, shm_write
 
 from .base import BaseTest, parse_bytes
@@ -345,6 +346,47 @@ class TestGraphics(BaseTest):
         remove(3)
         self.assertEqual(dc.holes(), {(1, 9)})
 
+    def test_disk_cache_entry_changed_while_being_written(self):
+        # The disk cache write thread releases the lock while writing an entry
+        # to disk, so the entry can be replaced or removed in the meantime. The
+        # data written for it is then stale and must neither be associated with
+        # the entry nor be allowed to leak space in the cache file.
+        s = self.create_screen()
+        dc = s.grman.disk_cache
+        dc.small_hole_threshold = 0
+
+        # Replaced while being written
+        dc.pause_writes()
+        dc.add(b'k1', b'a' * 100)
+        self.assertTrue(dc.wait_until_writes_paused())
+        dc.add(b'k1', b'b' * 200)
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        # The new data must have been written to disk rather than the entry
+        # being marked as written at the position of the old data
+        self.assertEqual(dc.num_cached_in_ram(), 0)
+        self.assertEqual(dc.get(b'k1'), b'b' * 200)
+        self.assertEqual(dc.total_size, 200)
+        # The space used by the stale data must have been reclaimed
+        self.assertEqual(dc.holes(), {(0, 100)})
+        self.assertEqual(dc.end_of_data_offset(), 300)
+
+        # Removed while being written
+        dc.pause_writes()
+        dc.add(b'k2', b'c' * 50)
+        self.assertTrue(dc.wait_until_writes_paused())
+        self.assertTrue(dc.remove(b'k2'))
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        self.assertRaises(KeyError, dc.get, b'k2')
+        self.assertEqual(dc.total_size, 200)
+        # k2 was written into the existing 100 byte hole, both the 50 bytes it
+        # used and the 50 byte remainder must be reclaimed and coalesced
+        self.assertEqual(dc.holes(), {(0, 100)})
+        self.assertEqual(dc.end_of_data_offset(), 300)
+        # The untouched entry must be unaffected throughout
+        self.assertEqual(dc.get(b'k1'), b'b' * 200)
+
     def test_suppressing_gr_command_responses(self):
         s, g, pl, sl = load_helpers(self)
         self.ae(pl('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
@@ -489,10 +531,23 @@ class TestGraphics(BaseTest):
             os.mkfifo(fifo)
             self.assertTrue(pl(fifo, s=1024, v=8, t='f').startswith('EBADF:'), 'Reading from a FIFO was not refused')
 
+        # A window of a shared memory object with a non page aligned offset
+        name = '/kitty-test-shm-offset'
+        shm_write(name, b'x' * 3 + random_data + b'y' * 5)
+        sl(name, s=1024, v=8, t='s', S=len(random_data), O=3, expecting_data=random_data)
+        self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that the object was deleted
+
         # A shared memory object truncated to less than the declared size
         name = '/kitty-test-shm-truncated'
         shm_write(name, random_data[:64])
-        self.ae(pl(name, s=1024, v=8, t='s', S=len(random_data)), f'ENODATA:Insufficient image data: 64 < {len(random_data)}')
+        # macOS rounds the size of a shared memory object up to a multiple of
+        # the page size, zero filling the padding, and reports the rounded up
+        # size via fstat(), so more data than was written is available there.
+        available = 64
+        if is_macos:
+            page_size = os.sysconf('SC_PAGESIZE')
+            available = min(len(random_data), (64 + page_size - 1) // page_size * page_size)
+        self.ae(pl(name, s=1024, v=8, t='s', S=len(random_data)), f'ENODATA:Insufficient image data: {available} < {len(random_data)}')
         self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that the object was deleted
 
         s.reset()
@@ -1406,6 +1461,33 @@ class TestGraphics(BaseTest):
                 'EINVAL',
                 f'Expected EINVAL for overflow in compose offset parameter {offset_param!r}',
             )
+
+    def test_animation_frame_long_reference_chain(self):
+        # A new frame based on another frame with a long/large reference chain is
+        # stored as a fully coalesced key frame rather than as a delta
+        s = self.create_screen()
+        g = s.grman
+        li = make_send_command(s)
+        self.assertEqual(li(a='t').code, 'OK')
+        self.assertEqual(g.disk_cache.total_size, 36)
+
+        # frame 2 is a delta on top of the root frame
+        self.assertEqual(li(payload='2' * 36, c=1).frame_number, 2)
+        self.assertEqual(g.disk_cache.total_size, 72)
+
+        # frame 3 is based on frame 2, whose reference chain is now large enough
+        # that frame 3 must be coalesced into a full key frame
+        self.assertEqual(li(payload='4' * 12, c=2, s=2, v=2).frame_number, 3)
+        img = g.image_for_client_id(1)
+        self.assertEqual(
+            img['extra_frames'],
+            (
+                {'gap': 40, 'id': 2, 'data': b'2' * 36},
+                {'gap': 40, 'id': 3, 'data': b'444444222222' * 2 + b'2' * 12},
+            ),
+        )
+        # a full 36 byte key frame, not a 12 byte delta
+        self.assertEqual(g.disk_cache.total_size, 108)
 
     def test_animation_frame_chunked_loading(self):
         # continuation chunks of a chunked a=f transmission carry only the m key,

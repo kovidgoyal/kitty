@@ -35,6 +35,10 @@ typedef struct {
     size_t data_sz;
     bool written_to_disk, uses_encryption, memory_only;
     off_t pos_in_cache_file;
+    // Incremented every time the data for an entry is replaced. Used to detect
+    // entries that were replaced/removed while their previous data was being
+    // written to disk by the write thread, see retire_currently_writing().
+    unsigned long long generation;
     uint8_t encryption_key[64];
 } CacheValue;
 
@@ -121,9 +125,13 @@ typedef struct {
     } currently_writing;
     cache_map map;
     Holes holes;
-    unsigned long long total_size;
+    unsigned long long total_size, generation_counter;
     off_t end_of_data_offset;
     bool needs_encryption;
+    struct {
+        // Testing only, see wait_while_writes_paused()
+        bool requested, active;
+    } pause_writes;
 } DiskCache;
 
 #define mutex(op) pthread_mutex_##op(&self->lock)
@@ -416,6 +424,7 @@ find_cache_entry_to_write(DiskCache *self) {
                 self->currently_writing.val.data = s->data;
                 s->data = NULL;
                 self->currently_writing.val.data_sz = s->data_sz;
+                self->currently_writing.val.generation = s->generation;
                 self->currently_writing.val.pos_in_cache_file = -1;
                 s->uses_encryption = false;
                 if (self->needs_encryption && secure_random_bytes(s->encryption_key, sizeof(s->encryption_key))) {
@@ -470,14 +479,36 @@ write_dirty_entry(DiskCache *self) {
 
 static void
 retire_currently_writing(DiskCache *self) {
+    // The mutex is released while the actual write happens, so the entry we
+    // just wrote could have been removed from the cache or had its data
+    // replaced in the meantime. In that case the entry must not be marked as
+    // written to disk (its current data is still only in RAM) and the space
+    // used by the now stale data we just wrote has to be reclaimed.
     cache_map_itr i = vt_get(&self->map, self->currently_writing.key);
-    if (!vt_is_end(i)) {
+    if (!vt_is_end(i) && i.data->val->generation == self->currently_writing.val.generation) {
         i.data->val->written_to_disk = true;
         i.data->val->pos_in_cache_file = self->currently_writing.val.pos_in_cache_file;
+    } else if (self->currently_writing.val.pos_in_cache_file > -1 && self->currently_writing.val.data_sz) {
+        add_hole(self, self->currently_writing.val.pos_in_cache_file, self->currently_writing.val.data_sz);
     }
     free(self->currently_writing.val.data);
     self->currently_writing.val.data = NULL;
     self->currently_writing.val.data_sz = 0;
+    self->currently_writing.val.generation = 0;
+}
+
+static void
+wait_while_writes_paused(DiskCache *self) {
+    // Testing only. Allows tests to deterministically interleave cache
+    // operations with an in-flight write. Must be called with the lock held.
+    while (UNLIKELY(self->pause_writes.requested) && !self->shutting_down) {
+        self->pause_writes.active = true;
+        mutex(unlock);
+        struct timespec a = {.tv_nsec = MONOTONIC_T_1e6}, b; // 1ms sleep
+        nanosleep(&a, &b);
+        mutex(lock);
+    }
+    self->pause_writes.active = false;
 }
 
 static int
@@ -509,6 +540,7 @@ write_loop(void *data) {
         if (found_dirty_entry) {
             write_dirty_entry(self);
             mutex(lock);
+            wait_while_writes_paused(self);
             retire_currently_writing(self);
             mutex(unlock);
             continue;
@@ -641,25 +673,16 @@ create_cache_entry(void) {
     return s;
 }
 
-bool
-add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *data, size_t data_sz, bool memory_only) {
-    DiskCache *self = (DiskCache *)self_;
-    if (!ensure_state(self)) return false;
-    if (key_sz > MAX_KEY_SIZE) {
-        PyErr_SetString(PyExc_KeyError, "cache key is too long");
-        return false;
-    }
-    RAII_ALLOC(uint8_t, copied_data, malloc(data_sz));
-    if (!copied_data) {
-        PyErr_NoMemory();
-        return false;
-    }
-    memcpy(copied_data, data, data_sz);
+static bool
+add_to_disk_cache_impl(DiskCache *self, const void *key, size_t key_sz, uint8_t *owned_data, size_t data_sz, bool memory_only) {
+    // On success ownership of owned_data passes to the cache, on failure the
+    // caller retains ownership.
     CacheKey k = {.hash_key = (void *)key, .hash_keylen = key_sz};
+    bool ok = false;
+    CacheValue *s;
 
     mutex(lock);
     cache_map_itr i = vt_get(&self->map, k);
-    CacheValue *s;
     if (vt_is_end(i)) {
         k.hash_key = malloc(key_sz);
         if (!k.hash_key) {
@@ -667,8 +690,13 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *d
             goto end;
         }
         memcpy(k.hash_key, key, key_sz);
-        if (!(s = create_cache_entry())) goto end;
+        if (!(s = create_cache_entry())) {
+            free_cache_key(k);
+            goto end;
+        }
         if (vt_is_end(vt_insert(&self->map, k, s))) {
+            free_cache_key(k);
+            free_cache_value(s);
             PyErr_NoMemory();
             goto end;
         }
@@ -676,19 +704,54 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *d
         s = i.data->val;
         remove_from_disk(self, s);
         self->total_size -= MIN(self->total_size, s->data_sz);
-        if (s->data) free(s->data);
+        free(s->data);
     }
-    s->data = copied_data;
+    s->data = owned_data;
     s->data_sz = data_sz;
-    copied_data = NULL;
+    s->generation = ++self->generation_counter;
     s->memory_only = memory_only;
     s->written_to_disk = memory_only;
     if (memory_only) s->pos_in_cache_file = -1;
     self->total_size += s->data_sz;
+    ok = true;
 end:
     mutex(unlock);
-    if (PyErr_Occurred()) return false;
+    if (!ok) return false;
     if (!memory_only) wakeup_write_loop(self);
+    return true;
+}
+
+static bool
+add_to_disk_cache_preflight(DiskCache *self, size_t key_sz) {
+    if (!ensure_state(self)) return false;
+    if (key_sz > MAX_KEY_SIZE) {
+        PyErr_SetString(PyExc_KeyError, "cache key is too long");
+        return false;
+    }
+    return true;
+}
+
+bool
+add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *data, size_t data_sz, bool memory_only) {
+    DiskCache *self = (DiskCache *)self_;
+    if (!add_to_disk_cache_preflight(self, key_sz)) return false;
+    RAII_ALLOC(uint8_t, copied_data, malloc(MAX(data_sz, 1u)));
+    if (!copied_data) {
+        PyErr_NoMemory();
+        return false;
+    }
+    memcpy(copied_data, data, data_sz);
+    if (!add_to_disk_cache_impl(self, key, key_sz, copied_data, data_sz, memory_only)) return false;
+    copied_data = NULL; // ownership transferred to the cache
+    return true;
+}
+
+bool
+add_to_disk_cache_move(PyObject *self_, const void *key, size_t key_sz, void **data, size_t data_sz, bool memory_only) {
+    DiskCache *self = (DiskCache *)self_;
+    if (!add_to_disk_cache_preflight(self, key_sz)) return false;
+    if (!add_to_disk_cache_impl(self, key, key_sz, *data, data_sz, memory_only)) return false;
+    *data = NULL; // ownership transferred to the cache
     return true;
 }
 
@@ -890,6 +953,63 @@ wait_for_write(PyObject *self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
+static bool
+wait_for_pause_state(DiskCache *self, bool active, monotonic_t timeout) {
+    // Only used for testing. Note that the write thread holds the lock from
+    // the moment it clears pause_writes.active until it has finished retiring
+    // the entry it wrote, so observing active == false means the write has
+    // been fully accounted for.
+    monotonic_t end_at = monotonic() + timeout;
+    while (monotonic() <= end_at) {
+        mutex(lock);
+        const bool is_active = self->pause_writes.active;
+        mutex(unlock);
+        if (is_active == active) return true;
+        wakeup_write_loop(self);
+        struct timespec a = {.tv_nsec = MONOTONIC_T_1e6}, b; // 1ms sleep
+        nanosleep(&a, &b);
+    }
+    return false;
+}
+
+static PyObject *
+pause_writes(PyObject *self_, PyObject *args UNUSED) {
+    // Only used for testing. Makes the write thread stop just after writing an
+    // entry to disk and just before it records the entry as written.
+    DiskCache *self = (DiskCache *)self_;
+    if (!ensure_state(self)) return NULL;
+    mutex(lock);
+    self->pause_writes.requested = true;
+    mutex(unlock);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+resume_writes(PyObject *self_, PyObject *args) {
+    // Only used for testing. Returns after the write thread has resumed and
+    // finished retiring the entry it was paused on.
+    DiskCache *self = (DiskCache *)self_;
+    double timeout = 20;
+    PA("|d", &timeout);
+    if (!ensure_state(self)) return NULL;
+    mutex(lock);
+    self->pause_writes.requested = false;
+    mutex(unlock);
+    if (wait_for_pause_state(self, false, s_double_to_monotonic_t(timeout))) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+static PyObject *
+wait_until_writes_paused(PyObject *self_, PyObject *args) {
+    // Only used for testing
+    DiskCache *self = (DiskCache *)self_;
+    double timeout = 20;
+    PA("|d", &timeout);
+    if (!ensure_state(self)) return NULL;
+    if (wait_for_pause_state(self, true, s_double_to_monotonic_t(timeout))) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 static PyObject *
 end_of_data_offset(PyObject *self_, PyObject *args UNUSED) {
     // Only used for testing
@@ -1014,6 +1134,9 @@ static PyMethodDef methods[] = {
     {"num_cached_in_ram", num_cached_in_ram, METH_NOARGS, NULL},
     {"get", get, METH_VARARGS, NULL},
     {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
+    {"pause_writes", pause_writes, METH_NOARGS, NULL},
+    {"resume_writes", resume_writes, METH_VARARGS, NULL},
+    {"wait_until_writes_paused", wait_until_writes_paused, METH_VARARGS, NULL},
     {"end_of_data_offset", end_of_data_offset, METH_NOARGS, NULL},
     {"clear", clear, METH_NOARGS, NULL},
     {"holes", holes, METH_NOARGS, NULL},

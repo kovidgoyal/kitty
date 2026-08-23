@@ -258,6 +258,18 @@ Detailed list of changes
   the animation frame, when the continuation chunks contain only the ``m``
   key, as prescribed by the spec
 
+- Graphics protocol: Reduce memory usage and speed up image transmission by
+  moving image data into the disk cache instead of copying it. Images transmitted
+  with the transient usage hint no longer keep a redundant second copy of their
+  data in memory for their entire lifetime
+
+- Graphics protocol: Fix a memory leak when transmitting an animation frame
+  based on a frame with a long chain of references to other frames
+
+- Graphics protocol: Fix image data being lost or read back incorrectly in the
+  rare case that an image was overwritten or deleted while its previous data
+  was being written to the disk cache by the cache's background thread
+
 - Drag and drop protocol: deny requests for drag data made before the user has actually dropped something onto the window
 
 - Drag and drop protocol: Deny drag sources that send identically named symlink/dir entries with an appropriate error

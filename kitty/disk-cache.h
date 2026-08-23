@@ -10,6 +10,12 @@
 
 PyObject *create_disk_cache(void);
 bool add_to_disk_cache(PyObject *self, const void *key, size_t key_sz, const void *data, size_t data_sz, bool memory_only);
+// As above, but takes ownership of *data (which must be a malloc() allocated
+// pointer), setting it to NULL. Ownership is transferred only on success, on
+// failure the caller remains responsible for freeing it. Note that once
+// ownership has been transferred the data must not be read or written by the
+// caller, the cache write thread can modify it at any time.
+bool add_to_disk_cache_move(PyObject *self, const void *key, size_t key_sz, void **data, size_t data_sz, bool memory_only);
 bool remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz);
 void *read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void *(allocator)(void *, size_t), void *, bool);
 PyObject *read_from_disk_cache_python(PyObject *self_, const void *key, size_t key_sz, bool);
