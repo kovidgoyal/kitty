@@ -20,7 +20,7 @@ require (
 	github.com/kovidgoyal/go-shm v1.0.0
 	github.com/kovidgoyal/imaging v1.8.23
 	github.com/nwaples/rardecode/v2 v2.3.0
-	github.com/seancfoley/ipaddress-go v1.8.1
+	github.com/seancfoley/ipaddress-go v1.8.3
 	github.com/sgtdi/fswatcher v1.3.0
 	github.com/shirou/gopsutil/v4 v4.26.7
 	github.com/ulikunitz/xz v0.5.16
