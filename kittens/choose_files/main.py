@@ -59,7 +59,7 @@ opt(
     '',
     add_to_default=False,
     long_text="""
-An ignore pattern to ignore matched files. Uses the same sytax as :code:`.gitignore` files (see :code:`man gitignore`).
+An ignore pattern to ignore matched files. Uses the same syntax as :code:`.gitignore` files (see :code:`man gitignore`).
 Anchored patterns match with respect to whatever directory is currently being displayed.
 Can be specified multiple times to use multiple patterns. Note that every pattern
 has to be checked against every file, so use sparingly.
@@ -188,7 +188,7 @@ map(
     long_text="""
 Type a file name/path rather than filtering the list of existing files.
 Useful when specifying a file or directory name for saving that does not yet exist.
-When choosing existing directories, will accept the directory whoose
+When choosing existing directories, will accept the directory whose
 contents are being currently displayed as the choice.
 Does not work when selecting files to open rather than to save.
 """,
@@ -292,7 +292,7 @@ The syntax is :code:`type:expression:Descriptive Name`.
 For example: :code:`mime:image/png:Images` and :code:`mime:image/gif:Images` and :code:`glob:*.[tT][xX][Tt]:Text files`.
 Note that glob patterns are case-sensitive. The mimetype specification is treated as a glob expressions as well, so you can,
 for example, use :code:`mime:text/*` to match all text files. The first filter in the list will be applied by default. Use a filter
-such as :code:`glob:*:All` to match all files. Note that filtering only appies to files, not directories.
+such as :code:`glob:*:All` to match all files. Note that filtering only applies to files, not directories.
 
 
 --suggested-save-file-name

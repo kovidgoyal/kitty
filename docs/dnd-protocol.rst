@@ -504,7 +504,7 @@ Key      Value                 Default    Description
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``1``
 
-``i``    Postive integer       ``0``      This id is for use by multiplexers.
+``i``    Positive integer       ``0``      This id is for use by multiplexers.
                                           When it is set, all responses from
                                           the terminal in that session will
                                           have it set to the same value.
