@@ -1213,7 +1213,7 @@ def glfw_init_env(
 
     elif module == 'cocoa':
         ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
-        for f_ in 'Cocoa IOKit CoreFoundation CoreVideo QuartzCore UniformTypeIdentifiers'.split():
+        for f_ in 'Cocoa IOKit CoreFoundation CoreVideo UniformTypeIdentifiers'.split():
             ans.ldpaths.extend(('-framework', f_))
 
     elif module == 'wayland':
