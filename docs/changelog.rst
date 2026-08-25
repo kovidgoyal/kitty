@@ -284,6 +284,11 @@ Detailed list of changes
   object at an offset (the ``O`` key) failing unless the offset happened to be
   a multiple of the system page size
 
+- Clipboard protocol: Report an ``EFBIG`` error to programs that try to write
+  more data to the clipboard than allowed by :opt:`clipboard_max_size`, instead
+  of silently truncating their data. Also fix :opt:`clipboard_max_size` being
+  interpreted in units of TB rather than MB (:iss:`10399`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

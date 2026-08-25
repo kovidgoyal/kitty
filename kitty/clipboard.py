@@ -275,7 +275,7 @@ class WriteRequest:
         self.tempfile = Tempfile(max_size=rollover_size)
         self.mime_map: dict[str, MimePos] = {}
         self.currently_writing_mime = ''
-        self.max_size = (get_options().clipboard_max_size * 1024 * 1024) if max_size < 0 else max_size
+        self.max_size = int(get_options().clipboard_max_size * 1024 * 1024) if max_size < 0 else max_size
         self.aliases: dict[str, str] = {}
         self.committed = False
         self.permission_pending = True
@@ -334,8 +334,8 @@ class WriteRequest:
                 decoded = b''
             if decoded:
                 self.tempfile.write(decoded)
-                if self.max_size > 0 and self.tempfile.tell() > (self.max_size * 1024 * 1024):
-                    log_error(f'Clipboard write request has more data than allowed by clipboard_max_size ({self.max_size}), truncating')
+                if self.max_size > 0 and self.tempfile.tell() > self.max_size:
+                    log_error(f'Clipboard write request has more data than allowed by clipboard_max_size ({self.max_size} bytes), ignoring further data')
                     self.max_size_exceeded = True
 
     def data_for(self, mime: str = 'text/plain', offset: int = 0, size: int = -1) -> bytes:
@@ -430,6 +430,10 @@ class ClipboardRequestManager:
                         w.screen.send_escape_code_to_child(ESC_OSC, wr.encode_response(status='EINVAL'))
                     self.in_flight_write_request = None
                     raise
+                if wr.max_size_exceeded:
+                    if w is not None:
+                        w.screen.send_escape_code_to_child(ESC_OSC, wr.encode_response(status='EFBIG'))
+                    self.in_flight_write_request = None
             else:
                 self.commit_write_request(wr)
 

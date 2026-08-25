@@ -150,6 +150,8 @@ func write_loop(inputs []*Input, opts *Options) (err error) {
 				return fmt.Errorf("Could not write to clipboard as permission was denied")
 			case "EBUSY":
 				return fmt.Errorf("Could not write to clipboard, a temporary error occurred, try again later.")
+			case "EFBIG":
+				return fmt.Errorf("Could not write to clipboard as there is too much data, see the clipboard_max_size option in the terminal")
 			default:
 				return fmt.Errorf("Could not write to clipboard unknowns status returned from terminal: %#v", metadata["status"])
 			}

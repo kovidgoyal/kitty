@@ -3056,7 +3056,9 @@ opt(
     long_text="""
 The maximum size (in MB) of data from programs running in kitty that will be
 stored for writing to the system clipboard. A value of zero means no size limit
-is applied. See also :opt:`clipboard_control`.
+is applied. Programs using the :doc:`clipboard protocol <clipboard>` that try to
+write more data than this are sent an ``EFBIG`` error and their data is
+discarded. See also :opt:`clipboard_control`.
 """,
 )
 

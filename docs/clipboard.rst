@@ -119,6 +119,11 @@ Here ``ERRORCODE`` must be one of:
 ``status=EBUSY``
     Sent if there is some temporary problem, such as multiple clients in a
     multiplexer trying to access the clipboard simultaneously.
+``status=EFBIG``
+    Sent if the amount of data being written is larger than the maximum size
+    the terminal is willing to store for the clipboard. Terminals are free to
+    impose such a limit to avoid Denial-of-service attacks, however, they must
+    accept at least 64MB of data.
 
 Once an error occurs, the terminal must ignore all further OSC 5522 write related packets until it
 sees the start of a new write with a ``type=write`` packet.

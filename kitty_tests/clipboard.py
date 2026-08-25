@@ -52,3 +52,48 @@ class TestClipboard(BaseTest):
         c2 = standard_b64encode(b'2' * 4096)
         self.ae(standard_b64decode(c1) + standard_b64decode(c2), d.decode(c1) + d.decode(c2))
         self.assertFalse(d.needs_more_data())
+
+    def test_clipboard_write_too_much_data(self):
+        from kitty.clipboard import Clipboard, ClipboardRequestManager, ClipboardType, encode_mime
+        from kitty.fast_data_types import set_boss
+
+        class Window:
+            id = 1
+
+            def __init__(self, screen):
+                self.screen = screen
+
+        class Boss:
+            def __init__(self, window):
+                self.clipboard = Clipboard()
+                self.primary_selection = Clipboard(ClipboardType.primary_selection)
+                self.window_id_map = {window.id: window}
+
+        s = self.create_screen(options={'clipboard_max_size': 16 / (1024 * 1024)})
+        c = s.callbacks
+        w = Window(s)
+        set_boss(Boss(w))
+        try:
+            crm = ClipboardRequestManager(w.id)
+
+            def send(metadata, payload=b''):
+                data = metadata.encode('ascii')
+                if payload:
+                    data += b';' + standard_b64encode(payload)
+                crm.parse_osc_5522(memoryview(data))
+
+            mime = f'mime={encode_mime("text/plain")}'
+            send('type=write')
+            send(f'type=wdata:{mime}', b'a' * 16)
+            self.ae(c.wtcbuf, b'')
+            self.assertIsNotNone(crm.in_flight_write_request)
+            send(f'type=wdata:{mime}', b'a' * 4)
+            self.assertIn(b'type=write:status=EFBIG', c.wtcbuf)
+            self.assertIsNone(crm.in_flight_write_request)
+            # further packets for the aborted request must be ignored
+            c.clear()
+            send(f'type=wdata:{mime}', b'a' * 4)
+            send('type=wdata')
+            self.ae(c.wtcbuf, b'')
+        finally:
+            set_boss(None)
