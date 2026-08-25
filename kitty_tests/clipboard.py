@@ -97,3 +97,67 @@ class TestClipboard(BaseTest):
             self.ae(c.wtcbuf, b'')
         finally:
             set_boss(None)
+
+    def test_clipboard_malformed_write_packets(self):
+        from kitty.clipboard import Clipboard, ClipboardRequestManager, ClipboardType, encode_mime
+        from kitty.fast_data_types import set_boss
+
+        class Window:
+            id = 1
+
+            def __init__(self, screen):
+                self.screen = screen
+
+        class Boss:
+            def __init__(self, window):
+                self.clipboard = Clipboard()
+                self.primary_selection = Clipboard(ClipboardType.primary_selection)
+                self.window_id_map = {window.id: window}
+
+        s = self.create_screen()
+        c = s.callbacks
+        w = Window(s)
+        set_boss(Boss(w))
+        try:
+            crm = ClipboardRequestManager(w.id)
+
+            def send(metadata, epayload=b''):
+                data = metadata.encode('ascii')
+                if epayload:
+                    data += b';' + epayload
+                crm.parse_osc_5522(memoryview(data))
+
+            mime = f'mime={encode_mime("text/plain")}'
+
+            def t(*packets):
+                c.clear()
+                send('type=write:id=w1')
+                send(f'type=wdata:{mime}', standard_b64encode(b'xxx'))
+                c.clear()
+                for packet in packets:
+                    send(*packet)
+                self.ae(c.wtcbuf, b'\x1b]5522;type=write:status=EINVAL:id=w1\x1b\\')
+                self.assertIsNone(crm.in_flight_write_request)
+                # further packets for the aborted request must be ignored
+                c.clear()
+                send(f'type=wdata:{mime}', standard_b64encode(b'xxx'))
+                send('type=wdata')
+                self.ae(c.wtcbuf, b'')
+
+            # alias payload that is not valid base64
+            t((f'type=walias:{mime}', b'AAA'))
+            # alias payload that is not valid UTF-8
+            t((f'type=walias:{mime}', b'/w=='))
+            # alias packet without a MIME type
+            t(('type=walias', standard_b64encode(b'text/rtf')))
+            # metadata value that is not valid base64
+            t(('type=walias:mime=AAA', standard_b64encode(b'text/rtf')))
+            t(('type=wdata:mime=AAA', standard_b64encode(b'xxx')))
+            # a malformed read packet must not abort the write request
+            c.clear()
+            send('type=write:id=w2')
+            send('type=read:id=r1', b'AAA')
+            self.ae(c.wtcbuf, b'')
+            self.assertIsNotNone(crm.in_flight_write_request)
+        finally:
+            set_boss(None)

@@ -382,13 +382,24 @@ class ClipboardRequestManager:
             except Exception:
                 log_error('Malformed OSC 5522: metadata is not key=value pairs')
                 return
-            m[k] = decode_metadata_value(k, v)
+            m[k] = v
         typ = m.get('type', '')
+        try:
+            m = {k: decode_metadata_value(k, v) for k, v in m.items()}
+        except Exception as e:
+            log_error(f'Malformed OSC 5522: could not decode a metadata value. Error: {e}')
+            if typ in ('wdata', 'walias') and self.in_flight_write_request is not None:
+                self.abort_write_request(self.in_flight_write_request, 'EINVAL')
+            return
         if typ == 'read':
-            payload = base64.standard_b64decode(epayload)
+            try:
+                mime_types = tuple(base64.standard_b64decode(epayload).decode('utf-8').split())
+            except Exception as e:
+                log_error(f'Malformed OSC 5522: read request payload is not valid base64 encoded UTF-8. Error: {e}')
+                return
             rr = ReadRequest(
                 is_primary_selection=m.get('loc', '') == 'primary',
-                mime_types=tuple(payload.decode('utf-8').split()),
+                mime_types=mime_types,
                 protocol_type=ProtocolType.osc_5522,
                 id=sanitize_id(m.get('id', '')),
                 human_name=m.get('name', ''),
@@ -406,14 +417,23 @@ class ClipboardRequestManager:
             self.handle_write_request(self.in_flight_write_request)
         elif typ == 'walias':
             wr = self.in_flight_write_request
+            if wr is None:
+                return
             mime = m.get('mime', '')
-            if mime and wr is not None:
+            if not mime:
+                log_error('Clipboard alias request has no MIME type, aborting the write request')
+                self.abort_write_request(wr, 'EINVAL')
+                return
+            try:
                 aliases = base64.standard_b64decode(epayload).decode('utf-8').split()
-                for alias in aliases:
-                    wr.aliases[alias] = mime
+            except Exception as e:
+                log_error(f'Clipboard alias request payload is not valid base64 encoded UTF-8, aborting the write request. Error: {e}')
+                self.abort_write_request(wr, 'EINVAL')
+                return
+            for alias in aliases:
+                wr.aliases[alias] = mime
         elif typ == 'wdata':
             wr = self.in_flight_write_request
-            w = get_boss().window_id_map.get(self.window_id)
             if wr is None:
                 return
             mime = m.get('mime', '')
@@ -421,21 +441,21 @@ class ClipboardRequestManager:
                 try:
                     wr.add_base64_data(epayload, mime)
                 except OSError:
-                    if w is not None:
-                        w.screen.send_escape_code_to_child(ESC_OSC, wr.encode_response(status='EIO'))
-                    self.in_flight_write_request = None
+                    self.abort_write_request(wr, 'EIO')
                     raise
                 except Exception:
-                    if w is not None:
-                        w.screen.send_escape_code_to_child(ESC_OSC, wr.encode_response(status='EINVAL'))
-                    self.in_flight_write_request = None
+                    self.abort_write_request(wr, 'EINVAL')
                     raise
                 if wr.max_size_exceeded:
-                    if w is not None:
-                        w.screen.send_escape_code_to_child(ESC_OSC, wr.encode_response(status='EFBIG'))
-                    self.in_flight_write_request = None
+                    self.abort_write_request(wr, 'EFBIG')
             else:
                 self.commit_write_request(wr)
+
+    def abort_write_request(self, wr: WriteRequest, status: str) -> None:
+        self.in_flight_write_request = None
+        w = get_boss().window_id_map.get(self.window_id)
+        if w is not None:
+            w.screen.send_escape_code_to_child(ESC_OSC, wr.encode_response(status=status))
 
     def commit_write_request(self, wr: WriteRequest, needs_flush: bool = True) -> None:
         if needs_flush:

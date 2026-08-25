@@ -135,7 +135,7 @@ Finally, clients have the ability to *alias* MIME types when sending data to
 the clipboard. To do that, the client must send a ``type=walias`` packet of the
 form::
 
-    <OSC>5522;type=walias;mime=<base64 encoded target MIME type>;<base64 encoded, space separated list of aliases><ST>
+    <OSC>5522;type=walias:mime=<base64 encoded target MIME type>;<base64 encoded, space separated list of aliases><ST>
 
 The effect of an alias is that the system clipboard will make available all the
 aliased MIME types, with the same data as was transmitted for the target MIME
