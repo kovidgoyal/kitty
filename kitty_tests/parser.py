@@ -158,6 +158,11 @@ class TestParser(BaseTest):
             self.ae(base64_decode(src.encode()), expected.encode(), f'Decoding of {src} failed')
             self.ae(base64_decode(src.replace('=', '').encode()), expected.encode(), f'Decoding of {src} failed')
             self.ae(base64_encode(expected.encode()), src.replace('=', '').encode(), f'Encoding of {expected} failed')
+            self.ae(base64_decode(src.encode(), True), expected.encode(), f'Strict decoding of {src} failed')
+        # in strict mode characters outside the base64 alphabet and missing padding are rejected
+        for invalid in ('bGlnaHQgdw=', 'bGlnaHQgdw', 'bGln!!Qgdw==', 'bGlnaHQgdw==\n', '!!!!', 'bGl'):
+            self.assertRaises(ValueError, base64_decode, invalid.encode(), True)
+        self.ae(base64_decode(b'', True), b'')
 
     def test_simple_parsing(self):
         s = self.create_screen()

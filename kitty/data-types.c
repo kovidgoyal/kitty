@@ -101,14 +101,20 @@ base64_encode_into(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject *
-pybase64_decode(PyObject UNUSED *self, PyObject *input_data) {
+pybase64_decode(PyObject UNUSED *self, PyObject *const *args, Py_ssize_t nargs) {
+    if (nargs < 1 || nargs > 2) {
+        PyErr_SetString(PyExc_TypeError, "must supply one or two arguments");
+        return NULL;
+    }
     RAII_PY_BUFFER(view);
-    if (PyUnicode_Check(input_data)) view.buf = (void *)PyUnicode_AsUTF8AndSize(input_data, &view.len);
-    else if (PyObject_GetBuffer(input_data, &view, PyBUF_SIMPLE) != 0) return NULL;
+    if (PyUnicode_Check(args[0])) view.buf = (void *)PyUnicode_AsUTF8AndSize(args[0], &view.len);
+    else if (PyObject_GetBuffer(args[0], &view, PyBUF_SIMPLE) != 0) return NULL;
+    const bool strict = nargs > 1 ? PyObject_IsTrue(args[1]) : false;
     size_t sz = required_buffer_size_for_base64_decode(view.len);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
-    if (!base64_decode8(view.buf, view.len, (unsigned char *)PyBytes_AS_STRING(ans), &sz)) {
+    unsigned char *dest = (unsigned char *)PyBytes_AS_STRING(ans);
+    if (!(strict ? base64_decode8_strict(view.buf, view.len, dest, &sz) : base64_decode8(view.buf, view.len, dest, &sz))) {
         Py_DECREF(ans);
         PyErr_SetString(PyExc_ValueError, "Invalid base64 input data");
         return NULL;
@@ -842,7 +848,7 @@ static PyMethodDef module_methods[] = {
     {"set_iutf8_fd", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"base64_encode", (PyCFunction)(void (*)(void))(pybase64_encode), METH_FASTCALL, ""},
     {"base64_encode_into", (PyCFunction)base64_encode_into, METH_VARARGS, ""},
-    {"base64_decode", (PyCFunction)(void (*)(void))(pybase64_decode), METH_O, ""},
+    {"base64_decode", (PyCFunction)(void (*)(void))(pybase64_decode), METH_FASTCALL, ""},
     {"base64_decode_into", (PyCFunction)base64_decode_into, METH_VARARGS, ""},
     {"char_props_for", py_char_props_for, METH_O, ""},
     {"split_into_graphemes", (PyCFunction)split_into_graphemes, METH_O, ""},

@@ -16,6 +16,7 @@ from .fast_data_types import (
     GLFW_CLIPBOARD,
     GLFW_PRIMARY_SELECTION,
     StreamingBase64Decoder,
+    base64_decode,
     find_in_memoryview,
     get_boss,
     get_clipboard_mime,
@@ -205,11 +206,15 @@ def encode_mime(x: str) -> str:
     return base64.standard_b64encode(x.encode('utf-8')).decode('ascii')
 
 
+def strict_base64_decode(x: str | bytes | memoryview) -> bytes:
+    # Unlike the base64 module from the stdlib this rejects characters outside
+    # the base64 alphabet as required by RFC 4648 and is faster as it uses SIMD
+    return base64_decode(x, True)
+
+
 def decode_metadata_value(k: str, x: str) -> str:
     if k in ('mime', 'name', 'pw'):
-        import base64
-
-        x = base64.standard_b64decode(x).decode('utf-8')
+        x = strict_base64_decode(x).decode('utf-8')
     return x
 
 
@@ -280,6 +285,7 @@ class WriteRequest:
         self.committed = False
         self.permission_pending = True
         self.commit_pending = False
+        self.aborted = False
 
     def encode_response(self, status: str = 'OK') -> bytes:
         ans = f'{self.protocol_type.value};type=write:status={status}'
@@ -305,7 +311,15 @@ class WriteRequest:
             x = {mime: self.tempfile.create_chunker(pos.start, pos.size) for mime, pos in self.mime_map.items()}
             cp.set_mime(x)
 
+    def abort(self, msg: str) -> ValueError:
+        # returns the error to raise, so that callers read as: raise self.abort(...)
+        self.aborted = True
+        self.decoder.reset()
+        return ValueError(msg)
+
     def add_base64_data(self, data: str | bytes | memoryview, mime: str = 'text/plain') -> None:
+        if self.aborted:
+            return
         if isinstance(data, str):
             data = data.encode('ascii')
         if self.currently_writing_mime and self.currently_writing_mime != mime:
@@ -317,21 +331,25 @@ class WriteRequest:
 
     def flush_base64_data(self) -> None:
         if self.currently_writing_mime:
-            if self.decoder.needs_more_data():
-                log_error('Received incomplete data for clipboard')
+            incomplete = self.decoder.needs_more_data()
             self.decoder.reset()
             start = self.mime_map[self.currently_writing_mime][0]
             self.mime_map[self.currently_writing_mime] = MimePos(start, self.tempfile.tell() - start)
             self.currently_writing_mime = ''
+            if incomplete:
+                # the data is not padded to a multiple of four bytes. This is
+                # tolerated for the legacy OSC 52 protocol as it has no way to
+                # report errors to the client.
+                if self.protocol_type is ProtocolType.osc_5522:
+                    raise self.abort('Incomplete base64 data, missing padding bytes')
+                log_error('Received incomplete data for clipboard')
 
     def write_base64_data(self, b: bytes | memoryview) -> None:
         if not self.max_size_exceeded:
             try:
                 decoded = self.decoder.decode(b)
             except ValueError as e:
-                log_error(f'Clipboard write request has invalid data, ignoring this chunk of data. Error: {e}')
-                self.decoder.reset()
-                decoded = b''
+                raise self.abort(f'Invalid base64 data: {e}') from e
             if decoded:
                 self.tempfile.write(decoded)
                 if self.max_size > 0 and self.tempfile.tell() > self.max_size:
@@ -364,8 +382,6 @@ class ClipboardRequestManager:
         self.granted_passwords: dict[str, GrantedPermission] = {}
 
     def parse_osc_5522(self, data: memoryview) -> None:
-        import base64
-
         from .notifications import sanitize_id
 
         idx = find_in_memoryview(data, ord(b';'))
@@ -393,7 +409,7 @@ class ClipboardRequestManager:
             return
         if typ == 'read':
             try:
-                mime_types = tuple(base64.standard_b64decode(epayload).decode('utf-8').split())
+                mime_types = tuple(strict_base64_decode(epayload).decode('utf-8').split())
             except Exception as e:
                 log_error(f'Malformed OSC 5522: read request payload is not valid base64 encoded UTF-8. Error: {e}')
                 return
@@ -425,7 +441,7 @@ class ClipboardRequestManager:
                 self.abort_write_request(wr, 'EINVAL')
                 return
             try:
-                aliases = base64.standard_b64decode(epayload).decode('utf-8').split()
+                aliases = strict_base64_decode(epayload).decode('utf-8').split()
             except Exception as e:
                 log_error(f'Clipboard alias request payload is not valid base64 encoded UTF-8, aborting the write request. Error: {e}')
                 self.abort_write_request(wr, 'EINVAL')
@@ -437,19 +453,23 @@ class ClipboardRequestManager:
             if wr is None:
                 return
             mime = m.get('mime', '')
-            if mime:
-                try:
-                    wr.add_base64_data(epayload, mime)
-                except OSError:
-                    self.abort_write_request(wr, 'EIO')
-                    raise
-                except Exception:
-                    self.abort_write_request(wr, 'EINVAL')
-                    raise
-                if wr.max_size_exceeded:
-                    self.abort_write_request(wr, 'EFBIG')
-            else:
-                self.commit_write_request(wr)
+            try:
+                if not mime:
+                    self.commit_write_request(wr)
+                    return
+                wr.add_base64_data(epayload, mime)
+            except OSError:
+                self.abort_write_request(wr, 'EIO')
+                raise
+            except ValueError as e:
+                log_error(f'Clipboard write request payload is not valid base64, aborting the write request. Error: {e}')
+                self.abort_write_request(wr, 'EINVAL')
+                return
+            except Exception:
+                self.abort_write_request(wr, 'EINVAL')
+                raise
+            if wr.max_size_exceeded:
+                self.abort_write_request(wr, 'EFBIG')
 
     def abort_write_request(self, wr: WriteRequest, status: str) -> None:
         self.in_flight_write_request = None
@@ -486,11 +506,17 @@ class ClipboardRequestManager:
                 wr = self.osc52_in_flight_write_requests.get(d)
                 if wr is None:
                     wr = self.osc52_in_flight_write_requests[d] = WriteRequest(d is ClipboardType.primary_selection)
-                wr.add_base64_data(data)
+                try:
+                    wr.add_base64_data(data)
+                except ValueError as e:
+                    # OSC 52 has no way to report errors to the client so just
+                    # discard the entire request
+                    log_error(f'Ignoring OSC 52 clipboard write request as it is not valid base64. Error: {e}')
                 if is_partial:
                     return
                 self.osc52_in_flight_write_requests.pop(d, None)
-                self.handle_write_request(wr)
+                if not wr.aborted:
+                    self.handle_write_request(wr)
 
     def handle_write_request(self, wr: WriteRequest) -> None:
         wr.flush_base64_data()

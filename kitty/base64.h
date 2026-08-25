@@ -41,6 +41,17 @@ base64_decode8(const uint8_t *src, size_t src_sz, uint8_t *dest, size_t *dest_sz
     return true;
 }
 
+// Same as base64_decode8() but rejects, rather than ignoring, data that is not
+// valid RFC-4648 base64, that is, data containing characters outside the
+// base64 alphabet or data that is not correctly padded.
+static inline bool
+base64_decode8_strict(const uint8_t *src, size_t src_sz, uint8_t *dest, size_t *dest_sz) {
+    if (*dest_sz < required_buffer_size_for_base64_decode(src_sz)) return false;
+    // base64_decode() returns zero both for invalid characters and for input
+    // that ends in the middle of a four byte group, i.e. missing padding bytes
+    return base64_decode((const char *)src, src_sz, (char *)dest, dest_sz, 0) != 0;
+}
+
 static inline bool
 base64_encode8(const unsigned char *src, size_t src_len, unsigned char *out, size_t *out_len, bool add_padding) {
     if (*out_len < required_buffer_size_for_base64_encode(src_len)) return false;

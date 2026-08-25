@@ -98,6 +98,91 @@ class TestClipboard(BaseTest):
         finally:
             set_boss(None)
 
+    def test_clipboard_invalid_base64(self):
+        from kitty.clipboard import Clipboard, ClipboardRequestManager, ClipboardType, encode_mime
+        from kitty.fast_data_types import set_boss
+
+        class Window:
+            id = 1
+
+            def __init__(self, screen):
+                self.screen = screen
+
+        class Boss:
+            def __init__(self, window):
+                self.clipboard = Clipboard()
+                self.primary_selection = Clipboard(ClipboardType.primary_selection)
+                self.window_id_map = {window.id: window}
+
+        s = self.create_screen()
+        c = s.callbacks
+        w = Window(s)
+        set_boss(Boss(w))
+        try:
+            crm = ClipboardRequestManager(w.id)
+            mime = f'mime={encode_mime("text/plain")}'
+
+            def send(metadata, epayload=b''):
+                data = metadata.encode('ascii')
+                if epayload:
+                    data += b';' + epayload
+                crm.parse_osc_5522(memoryview(data))
+
+            def t(*payloads, expected_status=b'EINVAL'):
+                c.clear()
+                send('type=write:id=w1')
+                for payload in payloads:
+                    send(f'type=wdata:{mime}', payload)
+                send('type=wdata')
+                self.ae(c.wtcbuf, b'\x1b]5522;type=write:status=' + expected_status + b':id=w1\x1b\\')
+                self.assertIsNone(crm.in_flight_write_request)
+
+            # characters outside the base64 alphabet must be rejected not ignored
+            t(b'!!!')
+            t(b'SGVs!!!bG8=')
+            t(standard_b64encode(b'good'), b'SGVs!!!bG8=')
+            t(b'\n' + standard_b64encode(b'data with a newline in the payload'))
+            # data that is not correctly padded must be rejected
+            t(b'SGVsbG8')
+            t(standard_b64encode(b'good'), b'SGVsbG8')
+            # data split into chunks at non multiple of four boundaries is valid
+            ec = standard_b64encode(b'some data')
+            t(ec[:3], ec[3:7], ec[7:], expected_status=b'DONE')
+            t(*(ec[i : i + 1] for i in range(len(ec))), expected_status=b'DONE')
+
+            # invalid base64 in a metadata value must be rejected
+            c.clear()
+            send('type=write:id=w2')
+            send(f'type=wdata:mime={encode_mime("text/plain")[:-1]}!', standard_b64encode(b'xxx'))
+            self.ae(c.wtcbuf, b'\x1b]5522;type=write:status=EINVAL:id=w2\x1b\\')
+            self.assertIsNone(crm.in_flight_write_request)
+
+            # OSC 52 write requests with invalid base64 must be ignored entirely
+            # as OSC 52 has no way to report errors to the client
+            written = []
+
+            class RecordingRequestManager(ClipboardRequestManager):
+                def handle_write_request(self, wr):
+                    written.append(wr)
+
+            rrm = RecordingRequestManager(w.id)
+            rrm.parse_osc_52(memoryview(b'c;' + standard_b64encode(b'new value')))
+            self.ae([x.data_for() for x in written], [b'new value'])
+            written.clear()
+            rrm.parse_osc_52(memoryview(b'c;SGVs!!!bG8='))
+            self.ae(written, [])
+            # including when the invalid data is spread over multiple chunks
+            # (continuation chunks have an empty where field, see continue_osc_52() in vt-parser.c)
+            rrm.parse_osc_52(memoryview(b'c;SGVs'), is_partial=True)
+            rrm.parse_osc_52(memoryview(b';!!!!'), is_partial=True)
+            rrm.parse_osc_52(memoryview(b';bG8='))
+            self.ae(written, [])
+            # unpadded data is however tolerated for OSC 52
+            rrm.parse_osc_52(memoryview(b'c;' + standard_b64encode(b'unpadded').rstrip(b'=')))
+            self.ae([x.data_for() for x in written], [b'unpadded'])
+        finally:
+            set_boss(None)
+
     def test_clipboard_malformed_write_packets(self):
         from kitty.clipboard import Clipboard, ClipboardRequestManager, ClipboardType, encode_mime
         from kitty.fast_data_types import set_boss
