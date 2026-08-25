@@ -636,6 +636,25 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
     global_state.callback_os_window = NULL;
 }
 
+static bool
+refresh_mouse_position_for_hit_test(GLFWwindow *w, OSWindow *window) {
+#ifdef __APPLE__
+    if (__builtin_available(macOS 26.0, *)) {
+        // AppKit can report stale mouseMoved locations after application focus changes.
+        // Query the current position for discrete pointer events without emitting a move event.
+        double x, y;
+        glfwGetCursorPos(w, &x, &y);
+        window->mouse_x = x * window->viewport_x_ratio;
+        window->mouse_y = y * window->viewport_y_ratio;
+        return true;
+    }
+#else
+    (void)w;
+    (void)window;
+#endif
+    return false;
+}
+
 static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
@@ -648,12 +667,15 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     OSWindow *window = global_state.callback_os_window;
     window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < arraysz(global_state.callback_os_window->mouse_button_pressed)) {
+        bool position_was_refreshed = refresh_mouse_position_for_hit_test(w, window);
         if (!window->has_received_cursor_pos_event) { // ensure mouse position is correct
             window->has_received_cursor_pos_event = true;
-            double x, y;
-            glfwGetCursorPos(w, &x, &y);
-            window->mouse_x = x * window->viewport_x_ratio;
-            window->mouse_y = y * window->viewport_y_ratio;
+            if (!position_was_refreshed) {
+                double x, y;
+                glfwGetCursorPos(w, &x, &y);
+                window->mouse_x = x * window->viewport_x_ratio;
+                window->mouse_y = y * window->viewport_y_ratio;
+            }
             if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
         }
         global_state.callback_os_window->mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
@@ -692,6 +714,7 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
 static void
 scroll_callback(GLFWwindow *w, const GLFWScrollEvent *ev) {
     if (!set_callback_window(w)) return;
+    if (global_state.callback_os_window->is_focused) refresh_mouse_position_for_hit_test(w, global_state.callback_os_window);
     monotonic_t now = monotonic();
     if (OPT(mouse_hide.scroll_unhide)) cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
