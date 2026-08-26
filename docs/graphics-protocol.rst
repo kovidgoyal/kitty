@@ -68,6 +68,7 @@ Other terminals that have implemented the graphics protocol:
 
 * `Ghostty <https://ghostty.org>`_
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
+* `Mobile SSH <https://mobile-ssh.github.io/docs/terminal/>`_
 * `st (with a patch) <https://st.suckless.org/patches/kitty-graphics-protocol>`_
 * `Warp <https://docs.warp.dev/getting-started/changelog#id-2025.03.26-v0.2025.03.26.08.10>`_
 * `wayst <https://github.com/91861/wayst>`_
