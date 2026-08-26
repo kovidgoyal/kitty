@@ -15,9 +15,7 @@ will not get any more responses.
 
 ### Contributing code
 
-Install [the dependencies](https://sw.kovidgoyal.net/kitty/build/#dependencies)
-using your favorite package manager. Build and run kitty [from
-source](https://sw.kovidgoyal.net/kitty/build/#install-and-run-from-source).
+Build and run kitty [from source](https://sw.kovidgoyal.net/kitty/build/).
 
 Make a fork, submit your Pull Request. If it's a large/controversial change, open an issue
 beforehand to discuss it, so that you don't waste your time making a pull
