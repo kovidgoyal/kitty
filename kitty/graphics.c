@@ -1601,15 +1601,21 @@ typedef struct {
 
 
 static void
-compose_rectangles(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
-    // compose two equal sized, non-overlapping rectangles at different offsets
-    // does not do bounds checking on the data arrays
+compose_rectangles(const ComposeData d, uint8_t *under_data, const size_t under_data_sz, const uint8_t *over_data, const size_t over_data_sz) {
+    // compose two equal sized, non-overlapping rectangles at different offsets.
+    // The per-row guard in ROW_ITER ensures that inconsistent geometry (offsets
+    // or dimensions larger than the actual buffers) can never cause an out of
+    // bounds read or write. All offset arithmetic is done in size_t to avoid
+    // 32-bit overflow.
     const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
     const unsigned min_width = MIN(d.under_width, d.over_width);
-#define ROW_ITER                                                                                                                  \
-    for (unsigned y = 0; y < d.under_height && y < d.over_height; y++) {                                                          \
-        uint8_t *under_row = under_data + (y + d.under_offset_y) * d.under_px_sz * d.stride + (d.under_offset_x * d.under_px_sz); \
-        const uint8_t *over_row = over_data + (y + d.over_offset_y) * d.over_px_sz * d.stride + (d.over_offset_x * d.over_px_sz);
+#define ROW_ITER                                                                                                                                \
+    for (unsigned y = 0; y < d.under_height && y < d.over_height; y++) {                                                                        \
+        const size_t under_off = (size_t)(y + d.under_offset_y) * d.under_px_sz * d.stride + (size_t)d.under_offset_x * d.under_px_sz;          \
+        const size_t over_off = (size_t)(y + d.over_offset_y) * d.over_px_sz * d.stride + (size_t)d.over_offset_x * d.over_px_sz;               \
+        if (under_off + (size_t)d.under_px_sz * min_width > under_data_sz || over_off + (size_t)d.over_px_sz * min_width > over_data_sz) break; \
+        uint8_t *under_row = under_data + under_off;                                                                                            \
+        const uint8_t *over_row = over_data + over_off;
     if (can_copy_rows) { ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_width); }
     return;
 }
@@ -1623,14 +1629,21 @@ COPY_PIXELS
 }
 
 static void
-compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
+compose(const ComposeData d, uint8_t *under_data, const size_t under_data_sz, const uint8_t *over_data, const size_t over_data_sz) {
+    // The per-row guard in ROW_ITER ensures that inconsistent geometry (an
+    // overlay declaring more data than it actually has, or an oversized base)
+    // can never cause an out of bounds read or write. All offset arithmetic is
+    // done in size_t to avoid 32-bit overflow.
     const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
     unsigned min_row_sz = d.over_offset_x < d.under_width ? d.under_width - d.over_offset_x : 0;
     min_row_sz = MIN(min_row_sz, d.over_width);
-#define ROW_ITER                                                                                                                   \
-    for (unsigned y = 0; y + d.over_offset_y < d.under_height && y < d.over_height; y++) {                                         \
-        uint8_t *under_row = under_data + (y + d.over_offset_y) * d.under_px_sz * d.under_width + d.under_px_sz * d.over_offset_x; \
-        const uint8_t *over_row = over_data + y * d.over_px_sz * d.over_width;
+#define ROW_ITER                                                                                                                                  \
+    for (unsigned y = 0; y + d.over_offset_y < d.under_height && y < d.over_height; y++) {                                                        \
+        const size_t under_off = (size_t)(y + d.over_offset_y) * d.under_px_sz * d.under_width + (size_t)d.under_px_sz * d.over_offset_x;         \
+        const size_t over_off = (size_t)y * d.over_px_sz * d.over_width;                                                                          \
+        if (under_off + (size_t)d.under_px_sz * min_row_sz > under_data_sz || over_off + (size_t)d.over_px_sz * min_row_sz > over_data_sz) break; \
+        uint8_t *under_row = under_data + under_off;                                                                                              \
+        const uint8_t *over_row = over_data + over_off;
 #define END_ITER }
     if (can_copy_rows) {
         ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_row_sz);
@@ -1649,7 +1662,7 @@ compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
 }
 
 static CoalescedFrameData
-get_coalesced_frame_data_standalone(const Image *img, const Frame *f, uint8_t *frame_data) {
+get_coalesced_frame_data_standalone(const Image *img, const Frame *f, uint8_t *frame_data, const size_t frame_data_sz) {
     CoalescedFrameData ans = {0};
     ans.transient = f->transient;
     bool is_full_frame = f->width == img->width && f->height == img->height && !f->x && !f->y;
@@ -1696,7 +1709,7 @@ get_coalesced_frame_data_standalone(const Image *img, const Frame *f, uint8_t *f
         .under_width = img->width,
         .under_height = img->height,
         .needs_blending = f->alpha_blend && !f->is_opaque};
-    compose(d, base, frame_data);
+    compose(d, base, (size_t)img->width * img->height * bytes_per_pixel, frame_data, frame_data_sz);
     ans.buf = base;
     ans.is_4byte_aligned = bytes_per_pixel == 4 || (img->width % 4) == 0;
     ans.is_opaque = f->is_opaque;
@@ -1713,7 +1726,7 @@ get_coalesced_frame_data_impl(GraphicsManager *self, Image *img, const Frame *f,
     void *frame_data;
     ImageAndFrame key = {.image_id = img->internal_id, .frame_id = f->id};
     if (!read_from_cache(self, key, &frame_data, &frame_data_sz)) return ans;
-    if (!f->base_frame_id) return get_coalesced_frame_data_standalone(img, f, frame_data);
+    if (!f->base_frame_id) return get_coalesced_frame_data_standalone(img, f, frame_data, frame_data_sz);
     Frame *base = frame_for_id(img, f->base_frame_id);
     if (!base) {
         free(frame_data);
@@ -1734,7 +1747,7 @@ get_coalesced_frame_data_impl(GraphicsManager *self, Image *img, const Frame *f,
         .under_width = img->width,
         .under_height = img->height,
         .needs_blending = f->alpha_blend && !f->is_opaque};
-    compose(d, base_data.buf, frame_data);
+    compose(d, base_data.buf, (size_t)img->width * img->height * d.under_px_sz, frame_data, frame_data_sz);
     free(frame_data);
     base_data.transient = base_data.transient || f->transient;
     return base_data;
@@ -1867,7 +1880,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
                     .under_width = img->width,
                     .under_height = img->height,
                     .needs_blending = transmitted_frame.alpha_blend && !transmitted_frame.is_opaque};
-                compose(d, cfd.buf, load_data->data);
+                compose(d, cfd.buf, (size_t)img->width * img->height * d.under_px_sz, load_data->data, load_data->data_sz);
                 free_load_data(load_data);
                 // Transfer ownership of the coalesced frame to the load data,
                 // keeping data aliased to buf so it is freed/moved as usual
@@ -1927,7 +1940,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             .under_width = frame->width,
             .under_height = frame->height,
             .needs_blending = transmitted_frame.alpha_blend && !transmitted_frame.is_opaque};
-        compose(d, cfd.buf, load_data->data);
+        compose(d, cfd.buf, (size_t)frame->width * frame->height * d.under_px_sz, load_data->data, load_data->data_sz);
         const ImageAndFrame key = {.image_id = img->internal_id, .frame_id = frame->id};
         // Upload before caching, the cache takes ownership of the data
         if (frame == current_frame(img)) {
@@ -2143,7 +2156,7 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
         .under_width = width,
         .under_height = height,
         .stride = img->width};
-    compose_rectangles(d, dest_data.buf, src_data.buf);
+    compose_rectangles(d, dest_data.buf, (size_t)img->width * img->height * d.under_px_sz, src_data.buf, (size_t)img->width * img->height * d.over_px_sz);
     bool transient = src_data.transient || dest_data.transient;
     const ImageAndFrame key = {.image_id = img->internal_id, .frame_id = dest_frame->id};
     // frame is now a fully coalesced frame
@@ -2857,6 +2870,14 @@ pycreate_canvas(PyObject *self UNUSED, PyObject *args) {
     Py_ssize_t over_sz;
     const uint8_t *over_data;
     if (!PyArg_ParseTuple(args, "y#IIIIII", &over_data, &over_sz, &over_width, &x, &y, &width, &height, &bytes_per_pixel)) return NULL;
+    if (bytes_per_pixel != 3 && bytes_per_pixel != 4) {
+        PyErr_SetString(PyExc_ValueError, "bytes_per_pixel must be 3 or 4");
+        return NULL;
+    }
+    if (!over_width) {
+        PyErr_SetString(PyExc_ValueError, "over_width must be non-zero");
+        return NULL;
+    }
     size_t canvas_sz = (size_t)width * height * bytes_per_pixel;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, canvas_sz);
     if (!ans) return NULL;
@@ -2866,14 +2887,14 @@ pycreate_canvas(PyObject *self UNUSED, PyObject *args) {
     ComposeData cd = {
         .needs_blending = bytes_per_pixel == 4,
         .over_width = over_width,
-        .over_height = over_sz / (bytes_per_pixel * over_width),
+        .over_height = (size_t)over_sz / ((size_t)bytes_per_pixel * over_width),
         .under_width = width,
         .under_height = height,
         .over_px_sz = bytes_per_pixel,
         .under_px_sz = bytes_per_pixel,
         .over_offset_x = x,
         .over_offset_y = y};
-    compose(cd, canvas, over_data);
+    compose(cd, canvas, canvas_sz, over_data, (size_t)over_sz);
 
     return ans;
 }

@@ -1462,6 +1462,36 @@ class TestGraphics(BaseTest):
                 f'Expected EINVAL for overflow in compose offset parameter {offset_param!r}',
             )
 
+    def test_graphics_compose_canvas_bounds(self):
+        from kitty.fast_data_types import create_canvas
+
+        # Sanity: a well formed overlay is copied correctly onto the canvas.
+        overlay = bytes(range(1, 13))  # 2x2 RGB overlay
+        canvas = create_canvas(overlay, 2, 0, 0, 2, 2, 3)
+        self.assertEqual(canvas, overlay)
+        # out of bounds overlay
+        big_overlay = bytes((i % 251) + 1 for i in range(4 * 4 * 3))
+        canvas = create_canvas(big_overlay, 4, 0, 0, 2, 2, 3)
+        self.assertEqual(len(canvas), 2 * 2 * 3)
+        expected = big_overlay[0:6] + big_overlay[12:18]  # first two rows, first two pixels
+        self.assertEqual(canvas, expected)
+        # out of bounds offset overlay
+        canvas = create_canvas(overlay, 2, 1000, 1000, 2, 2, 3)
+        self.assertEqual(canvas, b'\x00' * (2 * 2 * 3))
+        # A huge offset (near UINT32_MAX) must not overflow the address math.
+        canvas = create_canvas(overlay, 2, 0xFFFFFFFF, 0xFFFFFFFF, 2, 2, 3)
+        self.assertEqual(canvas, b'\x00' * (2 * 2 * 3))
+        # A partially overlapping overlay: place a 2x2 overlay at x=1,y=1 of a
+        # 2x2 canvas so only its top-left pixel lands inside the canvas.
+        canvas = create_canvas(overlay, 2, 1, 1, 2, 2, 3)
+        expected = bytearray(2 * 2 * 3)
+        expected[9:12] = overlay[0:3]  # bottom-right pixel of canvas
+        self.assertEqual(canvas, bytes(expected))
+        # Degenerate/invalid parameters must raise instead of crashing.
+        self.assertRaises(ValueError, create_canvas, overlay, 0, 0, 0, 2, 2, 3)
+        self.assertRaises(ValueError, create_canvas, overlay, 2, 0, 0, 2, 2, 0)
+        self.assertRaises(ValueError, create_canvas, overlay, 2, 0, 0, 2, 2, 5)
+
     def test_animation_frame_long_reference_chain(self):
         # A new frame based on another frame with a long/large reference chain is
         # stored as a fully coalesced key frame rather than as a delta
