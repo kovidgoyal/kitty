@@ -270,11 +270,11 @@ Detailed list of changes
   rare case that an image was overwritten or deleted while its previous data
   was being written to the disk cache by the cache's background thread
 
-- Drag and drop protocol: deny requests for drag data made before the user has actually dropped something onto the window
+- Drag and drop protocol: deny requests for drag data made before the user has actually dropped something onto the window (:cve:`2026-80432`)
 
-- Drag and drop protocol: Deny drag sources that send identically named symlink/dir entries with an appropriate error
+- Drag and drop protocol: Deny drag sources that send identically named symlink/dir entries with an appropriate error (:cve:`2026-80430`)
 
-- Text sizing protocol: Fix a buffer overflow when a natural width (no explicit ``w`` key) text sizing escape code contains a grapheme cluster longer than four codepoints
+- Text sizing protocol: Fix a buffer overflow when a natural width text sizing escape code contains a grapheme cluster longer than four codepoints (:cve:`2026-80431`)
 
 - Graphics protocol: Fix a crash when transmitting image data via a file or
   shared memory object (``t=f``, ``t=t`` or ``t=s``) and the client truncates
