@@ -249,6 +249,8 @@ Detailed list of changes
   :opt:`dragging borders <window_drag_tolerance>` no longer start selections
   (:iss:`10393`)
 
+- dnd kitten: Add an option to use file copies instead of hard links for copy drops (:pull:`10412`)
+
 - Graphics protocol: Fix a regression in 0.45.0 that caused the overwrite
   composition mode for animation frames (``a=f``) to be controlled by the
   undocumented ``C`` key instead of the documented ``X`` key (:iss:`10379`)
