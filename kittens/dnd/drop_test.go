@@ -3,6 +3,7 @@
 package dnd
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -51,6 +52,54 @@ func sortedStrings(s []string) []string {
 	out := append([]string(nil), s...)
 	sort.Strings(out)
 	return out
+}
+
+func TestLocalCopyHardlinkPolicy(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		action        int
+		copy_mode     string
+		want_hardlink bool
+	}{
+		{"copy-auto", copy_on_drop, "auto", true},
+		{"copy-independent", copy_on_drop, "independent", false},
+		{"move-auto", move_on_drop, "auto", true},
+		{"move-independent", move_on_drop, "independent", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			src := filepath.Join(tmp, "src")
+			dst := filepath.Join(tmp, "dst")
+			files := map[string]string{"file.txt": "top level", "folder/nested.txt": "nested"}
+			if err := os.Mkdir(dst, 0755); err != nil {
+				t.Fatal(err)
+			}
+			buildTree(t, src, files, nil)
+
+			if err := do_local_copy(context.Background(), openDir(t, dst), []string{filepath.Join(src, "file.txt"), filepath.Join(src, "folder")}, tc.action, tc.copy_mode); err != nil {
+				t.Fatalf("do_local_copy: %v", err)
+			}
+			for path, content := range files {
+				source_info, err := os.Stat(filepath.Join(src, path))
+				if err != nil {
+					t.Fatal(err)
+				}
+				copied := filepath.Join(dst, path)
+				copied_info, err := os.Stat(copied)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if same := os.SameFile(source_info, copied_info); same != tc.want_hardlink {
+					t.Errorf("os.SameFile() for %s: got %v, want %v", path, same, tc.want_hardlink)
+				}
+				if data, err := os.ReadFile(copied); err != nil {
+					t.Fatal(err)
+				} else if string(data) != content {
+					t.Errorf("copied file %s has unexpected content", path)
+				}
+			}
+		})
+	}
 }
 
 // TestFindOverwrites_NoOverlap verifies that an empty result is returned when
