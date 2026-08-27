@@ -2159,16 +2159,10 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
     compose_rectangles(d, dest_data.buf, (size_t)img->width * img->height * d.under_px_sz, src_data.buf, (size_t)img->width * img->height * d.over_px_sz);
     bool transient = src_data.transient || dest_data.transient;
     const ImageAndFrame key = {.image_id = img->internal_id, .frame_id = dest_frame->id};
-    // frame is now a fully coalesced frame
-    dest_frame->x = 0;
-    dest_frame->y = 0;
-    dest_frame->width = img->width;
-    dest_frame->height = img->height;
-    dest_frame->base_frame_id = 0;
-    dest_frame->bgcolor = 0;
     // Upload before caching, the cache takes ownership of the data
-    *is_dirty = (g->other_frame_number - 1) == img->current_frame_index;
-    if (*is_dirty) update_current_frame(self, img, &dest_data);
+    const bool is_current_frame = (g->other_frame_number - 1) == img->current_frame_index;
+    *is_dirty = is_current_frame;
+    if (is_current_frame) update_current_frame(self, img, &dest_data);
     const size_t dest_sz = ((size_t)(dest_data.is_opaque ? 3 : 4)) * img->width * img->height;
     void *dest_buf = dest_data.buf;
     dest_data.buf = NULL;
@@ -2177,6 +2171,17 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
         if (PyErr_Occurred()) PyErr_Print();
         set_command_failed_response("ENOSPC", "Failed to store image data in cache");
     } else {
+        // The frame is now a fully coalesced frame. Commit its descriptor only
+        // after the matching data has been accepted by the cache.
+        dest_frame->x = 0;
+        dest_frame->y = 0;
+        dest_frame->width = img->width;
+        dest_frame->height = img->height;
+        dest_frame->base_frame_id = 0;
+        dest_frame->bgcolor = 0;
+        dest_frame->is_opaque = dest_data.is_opaque;
+        dest_frame->is_4byte_aligned = dest_data.is_4byte_aligned;
+        dest_frame->alpha_blend = false;
         dest_frame->transient = transient;
     }
 }
