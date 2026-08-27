@@ -24,6 +24,16 @@ text/uri-list.
 Path to the directory in which dropped data is saved. Defaults to the current working directory.
 
 
+--copy-mode
+type=choices
+choices=auto,independent
+default=auto
+Control how local files are handled for Copy drops. The default, :code:`auto`, uses hard links
+when possible for performance and falls back to copying file data. :code:`independent` always
+copies file data, so modifying a dropped file cannot modify its source. Move drops always use
+hard links when possible.
+
+
 --confirm-drop-overwrite
 type=bool-set
 Ask for confirmation when dropping text/uri-list data if the drop will cause any existing

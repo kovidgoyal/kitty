@@ -130,7 +130,8 @@ func uniqify_child_names(names []string, is_case_sensitive_filesystem bool) []st
 	return names
 }
 
-func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (err error) {
+func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, action int, copy_mode string) (err error) {
+	disallow_hardlinks := action == copy_on_drop && copy_mode == "independent"
 	var src_file *os.File
 	defer func() {
 		if src_file != nil {
@@ -162,7 +163,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (e
 				return err
 			}
 			err = utils.CopyFolderContents(ctx, src_file, d, utils.CopyFolderOptions{
-				Disallow_hardlinks: true,
+				Disallow_hardlinks: disallow_hardlinks,
 				Filter_files: func(parent *os.File, child os.FileInfo) bool {
 					return child.IsDir() || child.Mode().IsRegular() || child.Mode()&fs.ModeSymlink != 0
 				},
@@ -172,6 +173,13 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (e
 				return err
 			}
 		} else if st.Mode().IsRegular() {
+			if !disallow_hardlinks {
+				// First try a hard link
+				dest := filepath.Join(dest_dir.Name(), filepath.Base(path))
+				if err = os.Link(path, dest); err == nil {
+					continue
+				}
+			}
 			if src_file, err = os.Open(path); err != nil {
 				return err
 			}
@@ -198,7 +206,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (e
 	return
 }
 
-func do_local_copy_in_goroutine(ctx context.Context, dest_dir *os.File, completion chan error, uri_list []string, wakeup func()) {
+func do_local_copy_in_goroutine(ctx context.Context, dest_dir *os.File, completion chan error, uri_list []string, action int, copy_mode string, wakeup func()) {
 	var err error
 	defer func() {
 		if r := recover(); r != nil {
@@ -207,7 +215,7 @@ func do_local_copy_in_goroutine(ctx context.Context, dest_dir *os.File, completi
 		completion <- err
 		wakeup()
 	}()
-	err = do_local_copy(ctx, dest_dir, uri_list)
+	err = do_local_copy(ctx, dest_dir, uri_list, action, copy_mode)
 }
 
 type path_stack struct {
@@ -687,7 +695,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		}
 		drop_status.local_copy.ctx, drop_status.local_copy.cancel_ctx = context.WithCancel(context.Background())
 		drop_status.local_copy.completion = make(chan error, 1)
-		go do_local_copy_in_goroutine(drop_status.local_copy.ctx, f, drop_status.local_copy.completion, file_paths, func() { dnd.lp.WakeupMainThread() })
+		go do_local_copy_in_goroutine(drop_status.local_copy.ctx, f, drop_status.local_copy.completion, file_paths, drop_status.action, dnd.opts.CopyMode, func() { dnd.lp.WakeupMainThread() })
 	}
 	return
 }
