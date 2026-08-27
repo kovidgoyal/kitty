@@ -1451,6 +1451,20 @@ class TestGraphics(BaseTest):
                 {'gap': 40, 'id': 3, 'data': b'3' * 12 + (b'333abc' + b'3' * 6) * 2},
             ),
         )
+
+        # Composing into a frame materializes it as a full frame. Its pixel
+        # format metadata must be updated to match the coalesced frame data.
+        rgba_screen = self.create_screen()
+        rgba_grman = rgba_screen.grman
+        rgba_li = make_send_command(rgba_screen)
+        self.assertEqual(rgba_li(payload=b'\0' * 48, a='t', f=32).code, 'OK')
+        self.assertEqual(rgba_li(payload=b'R' * 12, c=1, s=2, v=2, f=24).code, 'OK')
+        frame_before_composition = rgba_grman.image_for_client_id(1)['extra_frames'][0]['data']
+        self.assertEqual(len(frame_before_composition), 48)
+        self.assertEqual(rgba_li(payload=b'', a='c', f=0, s=0, v=0, r=1, c=2, w=1, h=1, x=3, y=2).code, 'OK')
+        frame_after_composition = rgba_grman.image_for_client_id(1)['extra_frames'][0]['data']
+        self.assertEqual(frame_after_composition, frame_before_composition)
+
         # Test that compose commands with offset values that would overflow a 32-bit
         # unsigned integer are correctly rejected with EINVAL instead of crashing.
         # In the old code, UINT32_MAX + img->width wrapped around as uint32_t to a
