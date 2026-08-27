@@ -427,8 +427,7 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
                         w = boss.window_id_map.get(target_window_id)
                         boss.call_remote_control(self_window=w, args=tuple(launch_args + ([m] if isinstance(m, str) else m)))
                     else:
-                        if isinstance(m, str):
-                            boss.open_url(m, program, cwd=cwd)
+                        boss.open_url(m, program, cwd=cwd)
 
 
 if __name__ == '__main__':

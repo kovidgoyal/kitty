@@ -271,7 +271,7 @@ def open_cmd(
     )
 
 
-def open_url(url: str, program: str | list[str] = 'default', cwd: str | None = None, extra_env: dict[str, str] | None = None) -> 'PopenType[bytes]':
+def open_url(url: str | list[str], program: str | list[str] = 'default', cwd: str | None = None, extra_env: dict[str, str] | None = None) -> 'PopenType[bytes]':
     return open_cmd(command_for_open(program), url, cwd=cwd, extra_env=extra_env)
 
 

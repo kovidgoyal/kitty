@@ -2825,13 +2825,14 @@ class Boss:
         self.open_url(website_url())
 
     @ac('misc', 'Open the specified URL')
-    def open_url(self, url: str, program: str | list[str] | None = None, cwd: str | None = None) -> None:
+    def open_url(self, url: str | list[str], program: str | list[str] | None = None, cwd: str | None = None) -> None:
         if not url:
             return
         if isinstance(program, str):
             program = to_cmdline(program)
         found_action = False
         if program is None:
+            assert isinstance(url, str)
             from .open_actions import actions_for_url
 
             actions = list(actions_for_url(url))
