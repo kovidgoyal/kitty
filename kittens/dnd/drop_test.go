@@ -3,6 +3,7 @@
 package dnd
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -51,6 +52,41 @@ func sortedStrings(s []string) []string {
 	out := append([]string(nil), s...)
 	sort.Strings(out)
 	return out
+}
+
+func TestLocalCopyCreatesIndependentFiles(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	dst := filepath.Join(tmp, "dst")
+	files := map[string]string{"file.txt": "top level", "folder/nested.txt": "nested"}
+	if err := os.Mkdir(dst, 0755); err != nil {
+		t.Fatal(err)
+	}
+	buildTree(t, src, files, nil)
+
+	if err := do_local_copy(context.Background(), openDir(t, dst), []string{filepath.Join(src, "file.txt"), filepath.Join(src, "folder")}); err != nil {
+		t.Fatalf("do_local_copy: %v", err)
+	}
+	for path, original := range files {
+		copied := filepath.Join(dst, path)
+		data, err := os.ReadFile(copied)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != original {
+			t.Errorf("copied file %s has unexpected content", path)
+		}
+		if err := os.WriteFile(copied, []byte("changed"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		data, err = os.ReadFile(filepath.Join(src, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != original {
+			t.Errorf("source file %s changed through copied file", path)
+		}
+	}
 }
 
 // TestFindOverwrites_NoOverlap verifies that an empty result is returned when

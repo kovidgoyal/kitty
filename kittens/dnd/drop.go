@@ -162,6 +162,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (e
 				return err
 			}
 			err = utils.CopyFolderContents(ctx, src_file, d, utils.CopyFolderOptions{
+				Disallow_hardlinks: true,
 				Filter_files: func(parent *os.File, child os.FileInfo) bool {
 					return child.IsDir() || child.Mode().IsRegular() || child.Mode()&fs.ModeSymlink != 0
 				},
@@ -171,15 +172,10 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (e
 				return err
 			}
 		} else if st.Mode().IsRegular() {
-			// First try a hard link
-			dest := filepath.Join(dest_dir.Name(), filepath.Base(path))
-			if err = os.Link(path, dest); err == nil {
-				continue
-			}
 			if src_file, err = os.Open(path); err != nil {
 				return err
 			}
-			d, err := utils.CreateAt(dest_dir, filepath.Base(dest), st.Mode().Perm())
+			d, err := utils.CreateAt(dest_dir, filepath.Base(path), st.Mode().Perm())
 			if err != nil {
 				return err
 			}
