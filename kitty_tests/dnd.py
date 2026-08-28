@@ -16,6 +16,7 @@ from kitty.fast_data_types import (
     dnd_set_test_write_func,
     dnd_test_cleanup_fake_window,
     dnd_test_create_fake_window,
+    dnd_test_drag_get_data,
     dnd_test_drag_notify,
     dnd_test_drop_update_mimes,
     dnd_test_fake_drop_data,
@@ -2858,24 +2859,26 @@ class TestDnDProtocol(BaseTest):
             self.assert_drag_data_complete(cap)
 
     def test_remote_drag_process_item_data_basic(self) -> None:
-        """Basic drag_process_item_data: send data for a MIME type after DROPPED state."""
-        with dnd_test_window() as (screen, cap):
-            # Set up a non-remote drag with text/plain
-            parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;{machine_id()}'))
-            parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
-            cap.consume()
-            dnd_test_force_drag_dropped(cap.window_id)
-            dnd_test_request_drag_data(cap.window_id, 0)
-            # Send data for text/plain (index 0)
-            b64 = standard_b64encode(b'test data').decode()
-            parse_bytes(screen, client_drag_send_data(0, b64))
-            self._assert_no_output(cap)
-            # End of data
-            parse_bytes(screen, client_drag_send_data(0, ''))
-            # Should get a notification (but no error)
-            events = self._get_events(cap)
-            for ev in events:
-                self.assertNotEqual(ev['type'], 'E', f'unexpected error: {ev}')
+        """MIME data reads finish at EOF, even when no data was sent."""
+        for data in (b'', b'test data'):
+            with self.subTest(data=data), dnd_test_window() as (screen, cap):
+                parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;{machine_id()}'))
+                parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
+                cap.consume()
+                dnd_test_force_drag_dropped(cap.window_id)
+                with self.assertRaises(OSError) as pending:
+                    dnd_test_drag_get_data(cap.window_id, 'text/plain')
+                self.assertEqual(pending.exception.errno, errno.EAGAIN)
+                cap.consume()
+                if data:
+                    parse_bytes(screen, client_drag_send_data(0, standard_b64encode(data).decode(), more=True))
+                    self.assertEqual(dnd_test_drag_get_data(cap.window_id, 'text/plain'), data)
+                    with self.assertRaises(OSError) as pending:
+                        dnd_test_drag_get_data(cap.window_id, 'text/plain')
+                    self.assertEqual(pending.exception.errno, errno.EAGAIN)
+                parse_bytes(screen, client_drag_send_data(0, ''))
+                self.assertEqual(dnd_test_drag_get_data(cap.window_id, 'text/plain'), b'')
+                self._assert_no_output(cap)
 
     def test_remote_drag_process_item_data_error(self) -> None:
         """Client can report an error via t=E for a MIME data delivery."""
@@ -2889,6 +2892,9 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_send_error(0, 'EPERM'))
             # The error should propagate but not crash
             cap.consume()
+            with self.assertRaises(OSError) as failed:
+                dnd_test_drag_get_data(cap.window_id, 'text/plain')
+            self.assertEqual(failed.exception.errno, errno.EPERM)
 
     def test_remote_drag_process_item_data_invalid_index(self) -> None:
         """Sending data for a non-existent MIME index is rejected."""
