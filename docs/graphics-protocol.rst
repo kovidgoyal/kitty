@@ -66,6 +66,7 @@ Libraries:
 
 Other terminals that have implemented the graphics protocol:
 
+* `AbsoluteTelnet/SSH <https://www.celestialsoftware.net/kitty-graphics-protocol>`_
 * `Ghostty <https://ghostty.org>`_
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
 * `Mobile SSH <https://mobile-ssh.github.io/docs/terminal/>`_
