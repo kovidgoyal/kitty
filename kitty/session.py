@@ -450,12 +450,19 @@ def get_all_known_sessions() -> dict[str, str]:
             for kd in kdefs:
                 for key_action in opts.alias_map.resolve_aliases(kd.definition, 'map'):
                     if key_action.func == 'goto_session':
-                        path = ''
-                        for x in key_action.args:
-                            if isinstance(x, str) and not x.startswith('-'):
-                                path = x
-                                break
-                        if path:
+                        cmdline: list[str] = []
+                        for arg in key_action.args:
+                            assert isinstance(arg, str)
+                            cmdline.append(arg)
+                        try:
+                            _, args = parse_goto_session_cmdline(cmdline)
+                        except ValueError:
+                            continue
+                        if args and (path := args[0]):
+                            if len(args) == 1:
+                                with suppress(ValueError):
+                                    if int(path) < 0:
+                                        continue
                             path, session_name = resolve_session_path_and_name(path)
                             if session_name not in all_known_sessions:
                                 all_known_sessions[session_name] = path
