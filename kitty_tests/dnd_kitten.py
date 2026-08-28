@@ -123,10 +123,10 @@ class TestDnDKitten(BaseTest):
             self.pty.write_to_child(chunk)
             self.pty.write_to_child(b'\x1b\\', flush=is_last and flush)
 
-    def finish_setup(self, remote_client: bool = False, cli_args=()):
+    def finish_setup(self, remote_client: bool = False, cli_args=(), stdin_fd=None):
         cmd = [kitten_exe(), 'dnd']
         cmd += list(cli_args)
-        self.pty = self.enterContext(PTY(argv=cmd, cwd=self.kitten_wd, rows=25, columns=80, window_id=self.capture.window_id))
+        self.pty = self.enterContext(PTY(argv=cmd, cwd=self.kitten_wd, rows=25, columns=80, window_id=self.capture.window_id, stdin_fd=stdin_fd))
         self.capture.pty = self.pty
         self.pty.callbacks.printbuf = self
         self.screen = self.pty.screen
@@ -392,6 +392,48 @@ class TestDnDKitten(BaseTest):
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:
             self.assertEqual(fa.read(), fb.read(), f'{a} ({os.path.getsize(a)}) != {b} ({os.path.getsize(b)})')
+
+    def test_dnd_kitten_stdin(self):
+        from .graphics import png_data
+
+        drag_thumbnail = os.path.join(self.test_dir, 'drag.png')
+        with open(drag_thumbnail, 'wb') as f:
+            f.write(png_data)
+        file_path = os.path.join(self.kitten_wd, 'text.txt')
+        file_data = b'file contents'
+        with open(file_path, 'wb') as f:
+            f.write(file_data)
+        stdin_data = b'<b>hello</b>\x00\xff'
+        for cli_args, expected in (
+            ((), {'text/plain': stdin_data}),
+            (('--drag=text/plain:-',), {'text/plain': stdin_data}),
+            (('--drag=text/plain:/dev/stdin',), {'text/plain': stdin_data}),
+            (('--drag=text/html:-',), {'text/html': stdin_data}),
+            (('--drag=text/html:/dev/stdin',), {'text/html': stdin_data}),
+            (('--drag=text/html:-', '--drag=text/plain:/dev/stdin'), {'text/html': stdin_data, 'text/plain': stdin_data}),
+            ((f'--drag=text/plain:{file_path}', '--drag=text/html:-'), {'text/plain': file_data, 'text/html': stdin_data}),
+            ((f'--drag=text/html:{file_path}',), {'text/plain': stdin_data, 'text/html': file_data}),
+            ((f'--drag=text/plain:{file_path}', '--drag=text/plain:-'), {'text/plain': stdin_data}),
+            (('--drag=text/plain:-', f'--drag=text/plain:{file_path}'), {'text/plain': file_data}),
+        ):
+            with self.subTest(cli_args=cli_args):
+                read_fd, write_fd = os.pipe()
+                with os.fdopen(write_fd, 'wb') as f:
+                    f.write(stdin_data)
+                self.finish_setup(cli_args=(f'--drag-thumbnail={drag_thumbnail}',) + cli_args, stdin_fd=read_fd)
+                try:
+                    self.assertTrue(self.probe_state('can_offer'))
+                    copy, move = self.get_button_geometry()
+                    dnd_test_start_drag_offer(self.capture.window_id, copy[0] + 1, copy[1] + 1)
+                    self.send_dnd_command_to_kitten('DRAG_ACTIVE')
+                    self.wait_for_responses('DRAG_ACTIVE')
+                    self.send_dnd_command_to_kitten('DRAG_OK')
+                    self.wait_for_responses('DRAG_OK')
+                    self.assertEqual(set(self.probe_state('drag_mimes')), set(expected))
+                    for mime, payload in expected.items():
+                        self.assertEqual(self.read_drag_data(mime), payload)
+                finally:
+                    self.exit_kitten()
 
     def test_dnd_kitten_drag(self):
         from .graphics import png_data

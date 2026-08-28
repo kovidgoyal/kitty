@@ -9,6 +9,7 @@ type=list
 When starting a drag, use the specified file as the data source for the specified
 MIME type. Syntax is: mime-type:path/to/file. For example image/jpeg:mypic.jpg
 Can be specified multiple times to drag multiple MIME types.
+Use :code:`-` or :file:`/dev/stdin` to read from STDIN. The same input can be used for multiple MIME types.
 
 
 --drop
@@ -82,7 +83,7 @@ If the text/uri-list MIME type is dropped onto this window, the files and direct
 copied into the current working directory. When dragging from this window, if a move operation is
 performed when dropping and the drop is to a remote machine, the files and directories to drag and deleted.
 
-If data is present on STDIN it is set as text/plain when dragging, unless text/plain is specified via --drag.
+If data is present on STDIN it is set as text/plain when dragging, unless STDIN is used explicitly via --drag or text/plain is specified via --drag.
 Any text/plain data that is dropped onto this window is output to STDOUT, if STDOUT is connected to a file, otherwise it
 is discarded.
 
