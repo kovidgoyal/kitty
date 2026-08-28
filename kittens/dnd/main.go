@@ -350,6 +350,8 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 		}
 	}
 	drag_sources := make(map[string]*drag_source)
+	var stdin_data []byte
+	stdin_read := false
 	for _, spec := range opts.Drag {
 		mime, src, found := strings.Cut(spec, ":")
 		if !found {
@@ -357,13 +359,14 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 		}
 		s := &drag_source{human_name: src, mime_type: mime}
 		if src == "-" || src == "/dev/stdin" {
-			data, err := io.ReadAll(os.Stdin)
-			if err != nil {
-				return 1, err
+			if !stdin_read {
+				stdin_data, err = io.ReadAll(os.Stdin)
+				if err != nil {
+					return 1, err
+				}
+				stdin_read = true
 			}
-			if len(data) > 0 {
-				drag_sources["text/plain"] = &drag_source{human_name: "STDIN", mime_type: "text/plain", data: data}
-			}
+			s.human_name, s.data = "STDIN", stdin_data
 		} else {
 			path, err := filepath.Abs(utils.Expanduser(src))
 			if err != nil {
@@ -374,7 +377,7 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 		drag_sources[mime] = s
 	}
 
-	if _, has_plain := drag_sources["text/plain"]; os.Stdin != nil && !has_plain && !tty.IsTerminal(os.Stdin.Fd()) {
+	if _, has_plain := drag_sources["text/plain"]; os.Stdin != nil && !stdin_read && !has_plain && !tty.IsTerminal(os.Stdin.Fd()) {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return 1, err
