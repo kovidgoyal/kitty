@@ -35,6 +35,58 @@ class TestConfParsing(BaseTest):
     def test_cli_parsing(self):
         cli_parsing(self)
 
+    def test_session_discovery(self):
+        from unittest.mock import patch
+
+        from kitty.config import load_config
+        from kitty.constants import config_dir
+        from kitty.fast_data_types import set_options
+        from kitty.session import get_all_known_sessions, seen_session_paths
+
+        def discover(*lines):
+            bad_lines = []
+            opts = load_config(overrides=('clear_all_shortcuts yes', *lines), accumulate_bad_lines=bad_lines)
+            self.assertFalse(bad_lines)
+            set_options(opts)
+            return get_all_known_sessions()
+
+        with patch.dict(seen_session_paths, {}, clear=True):
+            for args, name in (
+                ('work.kitty-session', 'work'),
+                ('--sort-by alphabetical work.kitty-session', 'work'),
+                ('--sort-by=alphabetical work.kitty-session', 'work'),
+                ('--active-only=no --sort-by recent work.kitty-session', 'work'),
+                ('work.kitty-session --sort-by alphabetical', 'work'),
+                ('-- "-work project.kitty-session"', '-work project'),
+                ('-- -0', '-0'),
+                ('', ''),
+                ('--sort-by alphabetical', ''),
+                ('--sort-by=alphabetical', ''),
+                ('--active-only', ''),
+                ('-1', ''),
+                ('-- -1', ''),
+                ('--sort-by alphabetical -- -2', ''),
+                ('--sort-by', ''),
+                ('--sort-by invalid work.kitty-session', ''),
+                ('--unknown work.kitty-session', ''),
+                ('--active-only=invalid work.kitty-session', ''),
+            ):
+                with self.subTest(args=args):
+                    filename = f'{name}.kitty-session' if name != '-0' else name
+                    expected = {name: os.path.join(config_dir, filename)} if name else {}
+                    self.ae(discover(f'map f7 goto_session {args}'), expected)
+
+            seen_path = os.path.join(self.tdir, 'work.kitty-session')
+            seen_session_paths['work'] = seen_path
+            self.ae(
+                discover(
+                    'action_alias project goto_session --sort-by alphabetical',
+                    'map f7 project work.kitty-session',
+                    'map f8 combine : goto_session --sort-by : project other.kitty-session',
+                ),
+                {'work': seen_path, 'other': os.path.join(config_dir, 'other.kitty-session')},
+            )
+
 
 def cli_parsing(self):
     from kitty.cli import CLIOptions, Options, parse_cmdline, parse_option_spec
