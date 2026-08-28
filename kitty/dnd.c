@@ -2121,6 +2121,20 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
         return;
     }
 
+    // Open temp file if not yet open, including for an empty transfer.
+    if (!ds.items[idx].fd_plus_one) {
+        int fd = open_item_tmpfile();
+        if (fd < 0) {
+            cancel_drag(w, EIO, "failed to open temporary file to store drag source item data");
+            return;
+        }
+        ds.items[idx].fd_plus_one = fd + 1;
+        ds.items[idx].data_decode_initialized = true;
+        ds.items[idx].data_size = 0;     // read position for pread
+        ds.items[idx].data_capacity = 0; // bytes written to file
+        base64_init_stream_decoder(&ds.items[idx].base64_state);
+    }
+
     // End of data: has_more == 0 and empty payload
     if (has_more == 0 && payload_sz == 0) {
         ds.items[idx].data_decode_initialized = false;
@@ -2133,20 +2147,6 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
             }
         }
         return;
-    }
-
-    // Open temp file if not yet open
-    if (!ds.items[idx].fd_plus_one) {
-        int fd = open_item_tmpfile();
-        if (fd < 0) {
-            cancel_drag(w, EIO, "failed to open temporary file to store drag source item data");
-            return;
-        }
-        ds.items[idx].fd_plus_one = fd + 1;
-        ds.items[idx].data_decode_initialized = true;
-        ds.items[idx].data_size = 0;     // read position for pread
-        ds.items[idx].data_capacity = 0; // bytes written to file
-        base64_init_stream_decoder(&ds.items[idx].base64_state);
     }
 
     // Decode and write payload data
