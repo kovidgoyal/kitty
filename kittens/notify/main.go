@@ -40,7 +40,6 @@ type parsed_data struct {
 	expire_time             time.Duration
 	title, body, identifier string
 	image_data              []byte
-	initial_msg             string
 }
 
 func (p *parsed_data) create_metadata() string {
@@ -86,6 +85,10 @@ func (p *parsed_data) generate_chunks(callback func(string)) {
 	write_chunk := func(middle string) {
 		callback(prefix + middle + ESC_CODE_SUFFIX)
 	}
+	if p.title == "" {
+		write_chunk(":p=close;")
+		return
+	}
 
 	add_payload := func(payload_type, payload string) {
 		if payload == "" {
@@ -127,10 +130,11 @@ func (p *parsed_data) run_loop() (err error) {
 		})
 	}
 	lp.OnInitialize = func() (string, error) {
-		if p.initial_msg != "" {
-			return p.initial_msg, nil
-		}
 		p.generate_chunks(func(x string) { lp.QueueWriteString(x) })
+		if p.title == "" {
+			// Closing an existing notification does not guarantee a close response.
+			poll_for_close()
+		}
 		return "", nil
 	}
 	lp.OnEscapeCode = func(ect loop.EscapeCodeType, data []byte) error {
@@ -262,17 +266,19 @@ func (p *parsed_data) load_image_data() (err error) {
 }
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
-	if len(args) == 0 {
-		return 1, fmt.Errorf("Must specify a TITLE for the notification")
-	}
 	var p parsed_data
 	p.opts = opts
-	p.title = args[0]
+	if len(args) > 0 {
+		p.title = args[0]
+	}
 	if len(args) > 1 {
 		p.body = strings.Join(args[1:], " ")
 	}
 	ident := opts.Identifier
 	if ident == "" {
+		if p.title == "" {
+			return 1, fmt.Errorf("Must specify a non-empty TITLE for the notification or specify an identifier to close a notification.")
+		}
 		if ident, err = random_ident(); err != nil {
 			return 1, fmt.Errorf("Failed to generate a random identifier with error: %w", err)
 		}
@@ -287,34 +293,14 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if !check_id_valid(opts.IconCacheId) {
 		return 1, bad_ident(opts.IconCacheId)
 	}
-	if len(p.title) == 0 {
-		if ident == "" {
-			return 1, fmt.Errorf("Must specify a non-empty TITLE for the notification or specify an identifier to close a notification.")
-		}
-		msg := ESC_CODE_PREFIX + "i=" + ident + ":p=close;" + ESC_CODE_SUFFIX
-		if opts.OnlyPrintEscapeCode {
-			_, err = os.Stdout.WriteString(msg)
-		} else if p.wait_till_closed {
-			p.initial_msg = msg
-			err = p.run_loop()
-		} else {
-			var term *tty.Term
-			if term, err = tty.OpenControllingTerm(); err != nil {
-				return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", err)
-			}
-			if _, err = term.WriteString(msg); err != nil {
-				term.RestoreAndClose()
-				return 1, err
-			}
-			term.RestoreAndClose()
-		}
-	}
-	if p.expire_time, err = parse_duration(opts.ExpireAfter); err != nil {
-		return 1, fmt.Errorf("Invalid expire time: %s with error: %w", opts.ExpireAfter, err)
-	}
 	p.wait_till_closed = opts.WaitTillClosed
-	if err = p.load_image_data(); err != nil {
-		return 1, fmt.Errorf("Failed to load image data from %s with error %w", opts.IconPath, err)
+	if p.title != "" {
+		if p.expire_time, err = parse_duration(opts.ExpireAfter); err != nil {
+			return 1, fmt.Errorf("Invalid expire time: %s with error: %w", opts.ExpireAfter, err)
+		}
+		if err = p.load_image_data(); err != nil {
+			return 1, fmt.Errorf("Failed to load image data from %s with error %w", opts.IconPath, err)
+		}
 	}
 	if opts.OnlyPrintEscapeCode {
 		p.generate_chunks(func(x string) {
