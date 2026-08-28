@@ -193,6 +193,7 @@ ensure_canvas_can_fit(FontGroup *fg, unsigned cells, unsigned scale) {
 #undef cs
     size_in_bytes = (sizeof(fg->canvas.alpha_mask[0]) * SUPERSAMPLE_FACTOR * SUPERSAMPLE_FACTOR * 2 * fg->fcm.cell_width * fg->fcm.cell_height * scale * scale);
     if (size_in_bytes > fg->canvas.alpha_mask_sz_in_bytes) {
+        free(fg->canvas.alpha_mask);
         fg->canvas.alpha_mask_sz_in_bytes = size_in_bytes;
         fg->canvas.alpha_mask = malloc(fg->canvas.alpha_mask_sz_in_bytes);
         if (!fg->canvas.alpha_mask) fatal("Out of memory allocating canvas");
