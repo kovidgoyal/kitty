@@ -89,7 +89,7 @@ func benchmark_data(description string, data string, opts Options) (duration tim
 	if !opts.Render {
 		finalize += resume_rendering
 	}
-	finalize += strings.Repeat("\x1b[5n", count)
+	finalize += "\x1b[6n" + strings.Repeat("\x1b[5n", count)
 	if err = write_with_retry(finalize); err != nil {
 		return
 	}
