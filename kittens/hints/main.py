@@ -366,6 +366,8 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
         if m:
             matches.append(m)
             groupdicts.append(g)
+    if not matches:
+        return
     joiner = data['multiple_joiner']
     try:
         is_int: int | None = int(joiner)
