@@ -27,7 +27,6 @@ alpha-blending and text over graphics.
 
 Some applications that use the kitty graphics protocol:
 
-* `awrit <https://github.com/chase/awrit>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
 * `blackcat <https://github.com/j-c-m/blackcat>`_ - a modern compatible cat with image support
 * `bicat <https://github.com/stevenxxiu/bicat>`_ - a terminal image viewer that also works in the Vifm file manager, with nested Tmux support
 * `broot <https://dystroy.org/broot/>`_ - a terminal file explorer and manager, with preview of images, SVG, PDF, etc.
@@ -42,6 +41,7 @@ Some applications that use the kitty graphics protocol:
 * `nvim <https://github.com/neovim/neovim/issues/30889>`__ - A TUI editor that can display images in the terminal
 * `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
 * `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with image previews
+* `terminal-browser <https://terminal-browser.com/>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
 * `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
 * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
 * `tpix <https://github.com/jesvedberg/tpix>`_ - a statically compiled binary that can be used to display images and easily installed on remote servers without root access

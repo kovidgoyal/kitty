@@ -108,10 +108,10 @@ base application that uses kitty's graphics protocol for images.
 A text mode WWW browser that supports kitty's graphics protocol to display
 images.
 
-.. _tool_awrit:
+.. _tool_terminal_browser:
 
-`awrit <https://github.com/chase/awrit>`__
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`terminal-browser <https://terminal-browser.com/>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A full Chromium based web browser running in the terminal using kitty's
 graphics protocol.
 
