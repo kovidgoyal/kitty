@@ -1042,6 +1042,7 @@ render_prepared_os_window(
                 draw_cells(trd, os_window, i == tab->active_window, true, false, NULL, now);
         }
     }
+    draw_rounded_borders(br, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     setup_os_window_for_rendering(os_window, tab, active_window, false, now);
     if (global_state.thumbnail_callback.os_window == os_window->id) {
         thumbnail_callback(os_window);

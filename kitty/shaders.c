@@ -349,15 +349,7 @@ thickness_as_float(const OSWindow *os_window, unsigned level) {
 
 static void
 draw_rounded_rect(
-    const OSWindow *os_window,
-    Viewport rect,
-    unsigned framebuffer_height,
-    unsigned thickness_level,
-    unsigned corner_radius_px,
-    color_type srgb_color,
-    color_type srgb_background,
-    float bg_alpha) {
-    float thickness = (float)thickness_as_float(os_window, thickness_level);
+    Viewport rect, unsigned framebuffer_height, float thickness, unsigned corner_radius_px, color_type srgb_color, color_type srgb_background, float bg_alpha) {
     bind_program(ROUNDED_RECT_PROGRAM);
     color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "color"), srgb_color, 1.f);
     color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "background_color"), srgb_background, bg_alpha);
@@ -1265,7 +1257,7 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
     restore_viewport();
     free_texture(&data.texture_id);
     // finally draw border with transparent bg
-    draw_rounded_rect(ui->os_window, border_rect, sh, 1, ui->cell_width, fg, bg, 0.f);
+    draw_rounded_rect(border_rect, sh, (float)thickness_as_float(ui->os_window, 1), ui->cell_width, fg, bg, 0.f);
     return border_rect.height;
 }
 
@@ -2071,6 +2063,19 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
 
 // Borders {{{
 
+static void
+populate_border_colors(GLuint colors[9], color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, const OSWindow *w) {
+    colors[0] = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
+    colors[1] = OPT(active_border_color);
+    colors[2] = OPT(inactive_border_color);
+    colors[3] = 0;
+    colors[4] = OPT(bell_border_color);
+    colors[5] = OPT(tab_bar_background);
+    colors[6] = OPT(tab_bar_margin_color);
+    colors[7] = w->tab_bar_edge_color.left;
+    colors[8] = w->tab_bar_edge_color.right;
+}
+
 ssize_t
 create_border_vao(void) {
     ssize_t vao_idx = create_vao();
@@ -2118,17 +2123,8 @@ draw_borders(
         if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
         unmap_vao_buffer(vao_idx, 0);
     }
-    color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
-    GLuint colors[9] = {
-        default_bg,
-        OPT(active_border_color),
-        OPT(inactive_border_color),
-        0,
-        OPT(bell_border_color),
-        OPT(tab_bar_background),
-        OPT(tab_bar_margin_color),
-        w->tab_bar_edge_color.left,
-        w->tab_bar_edge_color.right};
+    GLuint colors[9];
+    populate_border_colors(colors, active_window_bg, num_visible_windows, all_windows_have_same_bg, w);
     void *colors_buf =
         map_vao_buffer_for_write_only(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, 0, program_uniform_block(BORDERS_PROGRAM, "Colors").size);
     const ArrayInformation border_colors_array = program_uniform_array(BORDERS_PROGRAM, "colors");
@@ -2140,6 +2136,27 @@ draw_borders(
     if (!w->needs_layers) glDisable(GL_FRAMEBUFFER_SRGB);
     unbind_program();
     unbind_vertex_array();
+}
+
+void
+draw_rounded_borders(BorderRects *br, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
+    if (!br->num_border_rects) return;
+    GLuint colors[9];
+    populate_border_colors(colors, active_window_bg, num_visible_windows, all_windows_have_same_bg, w);
+    bind_vertex_array(br->vao_idx);
+    if (!w->needs_layers) glEnable(GL_FRAMEBUFFER_SRGB);
+    for (unsigned i = 0; i < br->num_border_rects; i++) {
+        const BorderRect *r = br->rect_buf + i;
+        if (!r->radius || !r->thickness) continue;
+        Viewport rect = {.left = r->px.left, .top = r->px.top, .width = r->px.right - r->px.left, .height = r->px.bottom - r->px.top};
+        unsigned radius = MIN(r->radius, MIN(rect.width, rect.height) / 2);
+        unsigned color_index = r->color & 0xff;
+        color_type color = color_index == 3 ? r->color >> 8 : colors[MIN(color_index, 8u)];
+        draw_rounded_rect(rect, w->viewport_height, (float)r->thickness, radius, color, 0, 0.f);
+    }
+    if (!w->needs_layers) glDisable(GL_FRAMEBUFFER_SRGB);
+    unbind_program();
+    // Leave the VAO bound for the fullscreen blit in stop_os_window_rendering().
 }
 
 // }}}

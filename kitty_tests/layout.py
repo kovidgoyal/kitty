@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import layout_dimension, lgd
@@ -101,6 +102,33 @@ class TestLayout(BaseTest):
     def setUp(self):
         super().setUp()
         self.set_options({'tab_bar_style': 'hidden'})
+
+    def test_window_border_radius_geometry(self):
+        q = create_layout(Splits)
+        windows = create_windows(q, 1)
+        windows.active_window.set_geometry(WindowGeometry(10, 20, 110, 120, 0, 0))
+        group = windows.active_group
+        color = BorderColor.active
+        straight = [
+            Border(8, 18, 112, 19, color, -1, True),
+            Border(8, 121, 112, 122, color, 1, True),
+            Border(8, 18, 9, 122, color, -1),
+            Border(111, 18, 112, 122, color, 1),
+        ]
+
+        rects = []
+        add_borders(rects, color, group)
+        self.ae(rects, straight)
+
+        rects = []
+        add_borders(rects, color, group, 12)
+        self.ae(
+            rects,
+            [
+                *(border._replace(render=False) for border in straight),
+                Border(8, 18, 112, 122, color, render=False, radius=12, thickness=1),
+            ],
+        )
 
     def do_ops_test(self, q):
         windows = create_windows(q)
