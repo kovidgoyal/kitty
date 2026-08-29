@@ -287,6 +287,9 @@ Detailed list of changes
   object at an offset (the ``O`` key) failing unless the offset happened to be
   a multiple of the system page size
 
+- Graphics protocol: Accept POSIX shared memory names that omit the leading
+  slash, so clients that encode the name without it still work on macOS
+
 - Clipboard protocol: Report an ``EFBIG`` error to programs that try to write
   more data to the clipboard than allowed by :opt:`clipboard_max_size`, instead
   of silently truncating their data. Also fix :opt:`clipboard_max_size` being

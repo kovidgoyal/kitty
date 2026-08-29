@@ -502,6 +502,11 @@ class TestGraphics(BaseTest):
         shm_write(name, random_data)
         sl(name, s=1024, v=8, t='s', expecting_data=random_data)
         self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that file was deleted
+        # Name without a leading slash. POSIX names start with '/'; Darwin requires it.
+        name = '/kitty-test-shm-noslash'
+        shm_write(name, random_data)
+        sl(name[1:], s=1024, v=8, t='s', expecting_data=random_data)
+        self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that file was deleted
         s.reset()
         self.assertEqual(g.disk_cache.total_size, 0)
 

@@ -696,6 +696,14 @@ load_image_data(
         case 's': // POSIX shared memory
             if (g->payload_sz > 2048) ABRT("EINVAL", "Filename too long");
             snprintf(fname, sizeof(fname) / sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
+            if (transmission_type == 's' && fname[0] && fname[0] != '/') {
+                // POSIX shm names start with '/'. Darwin shm_open requires that form.
+                size_t n = strlen(fname);
+                if (n + 2 <= sizeof(fname)) {
+                    memmove(fname + 1, fname, n + 1);
+                    fname[0] = '/';
+                }
+            }
             if (transmission_type == 's') fd = safe_shm_open(fname, O_RDONLY, 0);
             else fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0); // O_NONBLOCK so that opening a FIFO pipe does not block
             if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
