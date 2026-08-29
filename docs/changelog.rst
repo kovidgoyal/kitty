@@ -37,6 +37,9 @@ should see a 15-35% improvement depending on workload. Some details:
 
 #. Improve throughput when processing large amounts of plain text by another ~10% by finding runs of printable ASCII chars with :term:`SIMD`, filling cells using wide stores and skipping unnecessary work in the scrolling hot path when there are no images
 
+#. Speed up pixel compositing with :term:`SIMD` vectorization: alpha blending of graphics protocol images and animation frames is 2-3.5x faster and glyph alpha masks are composited onto canvases using the same vectorized primitives.
+
+
 
 
 Vertical tabs [0.48]

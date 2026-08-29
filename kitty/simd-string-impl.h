@@ -24,6 +24,9 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d UNUSED, const uint8_t *src UNUSED, size_
     const uint8_t *haystack UNUSED, const size_t sz UNUSED, const uint8_t a UNUSED, const uint8_t b UNUSED) NOSIMD
     void FUNC(xor_data64)(const uint8_t key[64] UNUSED, uint8_t *data UNUSED, const size_t data_sz UNUSED) NOSIMD size_t
     FUNC(printable_ascii_run_length)(const uint32_t *chars UNUSED, const size_t sz UNUSED) NOSIMD
+    void FUNC(blend_over_straight)(uint8_t *dst UNUSED, const uint8_t *src UNUSED, size_t num_pixels UNUSED) NOSIMD
+    void FUNC(blend_over_opaque)(uint8_t *dst UNUSED, unsigned dst_bpp UNUSED, const uint8_t *src UNUSED, size_t num_pixels UNUSED) NOSIMD
+    void FUNC(composite_alpha_mask)(uint32_t *dst UNUSED, const uint8_t *mask UNUSED, size_t num_pixels UNUSED, uint32_t color_rgb UNUSED) NOSIMD
 #undef NOSIMD
 #else
 
@@ -96,6 +99,31 @@ _Pragma("clang diagnostic pop")
 #define create_zero_integer simde_mm_setzero_si128
 #define create_all_ones_integer() simde_mm_set1_epi64x(-1)
 #define zero_upper()
+#define set1_epi16(x) simde_mm_set1_epi16((short)(x))
+#define add_epi16 simde_mm_add_epi16
+#define mullo_epi16 simde_mm_mullo_epi16
+#define shift_right_by_bits16 simde_mm_srli_epi16
+#define unpacklo_epi8 simde_mm_unpacklo_epi8
+#define unpackhi_epi8 simde_mm_unpackhi_epi8
+#define packus_epi16 simde_mm_packus_epi16
+#define packus_epi32 simde_mm_packus_epi32
+#define add_epi32 simde_mm_add_epi32
+#define sub_epi32 simde_mm_sub_epi32
+#define mullo_epi32 simde_mm_mullo_epi32
+#define cmpeq_epi32 simde_mm_cmpeq_epi32
+#define max_epu32 simde_mm_max_epu32
+#define shuffle_epi32 simde_mm_shuffle_epi32
+#define cvtepi32_ps simde_mm_cvtepi32_ps
+#define cvtps_epi32 simde_mm_cvtps_epi32
+#define div_ps simde_mm_div_ps
+// set the same four 32-bit values in every 128-bit lane, a is the highest lane
+#define set_epi32_in_lanes(a, b, c, d) simde_mm_set_epi32(a, b, c, d)
+// replicate the alpha byte of each 4-byte pixel into all four of its bytes
+#define alpha_broadcast_pattern() set_epi8(15, 15, 15, 15, 11, 11, 11, 11, 7, 7, 7, 7, 3, 3, 3, 3)
+// widen the qth quarter (sizeof(integer_t)/4 bytes) of A into 32-bit lanes, q must be a literal
+#define widen_quarter(A, q) simde_mm_cvtepu8_epi32(simde_mm_srli_si128(A, 4 * (q)))
+// restore byte order after packus_epi32+packus_epi16 of four widened quarters
+#define fixup_packed_dword_order(v) (v)
 
     static inline int FUNC(is_zero)(const integer_t a) {
     return simde_mm_testz_si128(a, a);
@@ -170,6 +198,31 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 #define shift_right_by_bits32 simde_mm256_srli_epi32
 #define create_zero_integer simde_mm256_setzero_si256
 #define create_all_ones_integer() simde_mm256_set1_epi64x(-1)
+#define set1_epi16(x) simde_mm256_set1_epi16((short)(x))
+#define add_epi16 simde_mm256_add_epi16
+#define mullo_epi16 simde_mm256_mullo_epi16
+#define shift_right_by_bits16 simde_mm256_srli_epi16
+#define unpacklo_epi8 simde_mm256_unpacklo_epi8
+#define unpackhi_epi8 simde_mm256_unpackhi_epi8
+#define packus_epi16 simde_mm256_packus_epi16
+#define packus_epi32 simde_mm256_packus_epi32
+#define add_epi32 simde_mm256_add_epi32
+#define sub_epi32 simde_mm256_sub_epi32
+#define mullo_epi32 simde_mm256_mullo_epi32
+#define cmpeq_epi32 simde_mm256_cmpeq_epi32
+#define max_epu32 simde_mm256_max_epu32
+#define shuffle_epi32 simde_mm256_shuffle_epi32
+#define cvtepi32_ps simde_mm256_cvtepi32_ps
+#define cvtps_epi32 simde_mm256_cvtps_epi32
+#define div_ps simde_mm256_div_ps
+// set the same four 32-bit values in every 128-bit lane, a is the highest lane
+#define set_epi32_in_lanes(a, b, c, d) simde_mm256_set_epi32(a, b, c, d, a, b, c, d)
+// replicate the alpha byte of each 4-byte pixel into all four of its bytes (in-lane indices)
+#define alpha_broadcast_pattern() set_epi8(15, 15, 15, 15, 11, 11, 11, 11, 7, 7, 7, 7, 3, 3, 3, 3, 15, 15, 15, 15, 11, 11, 11, 11, 7, 7, 7, 7, 3, 3, 3, 3)
+// widen the qth quarter (sizeof(integer_t)/4 bytes) of A into 32-bit lanes, q must be a literal
+#define widen_quarter(A, q) simde_mm256_cvtepu8_epi32(simde_mm_srli_si128(simde_mm256_extracti128_si256(A, (q) / 2), 8 * ((q) % 2)))
+// restore byte order after the per 128-bit lane packus_epi32+packus_epi16 of four widened quarters
+#define fixup_packed_dword_order(v) simde_mm256_permutevar8x32_epi32(v, simde_mm256_setr_epi32(0, 4, 1, 5, 2, 6, 3, 7))
 #define numbered_bytes() set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #define reverse_numbered_bytes() \
     simde_mm256_setr_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
@@ -954,6 +1007,153 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
 #undef handle_trailing_bytes
 }
 
+// Pixel compositing {{{
+
+static inline integer_t
+FUNC(load_bytes_as_dwords)(const uint8_t *p) {
+#if KITTY_SIMD_LEVEL == 128
+    uint32_t v;
+    memcpy(&v, p, sizeof(v));
+    return simde_mm_cvtepu8_epi32(simde_mm_cvtsi32_si128((int32_t)v));
+#else
+    return simde_mm256_cvtepu8_epi32(simde_mm_loadl_epi64((const simde__m128i *)p));
+#endif
+}
+
+void
+FUNC(composite_alpha_mask)(uint32_t *dst, const uint8_t *mask, const size_t num_pixels, const uint32_t color_rgb) {
+    const uint32_t col = (color_rgb << 8) & 0xffffff00;
+    const integer_t col_vec = set1_epi32((int32_t)col), low_byte = set1_epi32(0xff);
+    const size_t px_per_iter = sizeof(integer_t) / 4;
+    size_t i = 0;
+    for (; i + px_per_iter <= num_pixels; i += px_per_iter) {
+        const integer_t m = FUNC(load_bytes_as_dwords)(mask + i);
+        const integer_t d = load_unaligned((const integer_t *)(dst + i));
+        store_unaligned((integer_t *)(dst + i), or_si(col_vec, max_epu32(m, and_si(d, low_byte))));
+    }
+    for (; i < num_pixels; i++) {
+        const uint32_t dst_alpha = dst[i] & 0xff, mask_alpha = mask[i];
+        dst[i] = col | MAX(mask_alpha, dst_alpha);
+    }
+    zero_upper();
+}
+
+static inline integer_t
+FUNC(div255_epu16)(const integer_t x) {
+    // rounding division of 16-bit lanes by 255, exact for values <= 65407, matches div255_round()
+    const integer_t y = add_epi16(x, set1_epi16(128));
+    return shift_right_by_bits16(add_epi16(y, shift_right_by_bits16(y, 8)), 8);
+}
+
+// Blend the 4-byte RGBA pixels in over onto the pixels in under, with under considered fully
+// opaque: out_c = round((over_c * alpha + under_c * (255 - alpha)) / 255) for each of the first
+// three channels, with the alpha bytes set to 255
+static inline integer_t
+FUNC(blend_opaque_pixels)(const integer_t under, const integer_t over) {
+    const integer_t zero = create_zero_integer();
+    const integer_t alpha = shuffle_epi8(over, alpha_broadcast_pattern());
+    const integer_t inv_alpha = xor_si(alpha, create_all_ones_integer()); // 255 - alpha in every byte
+    const integer_t lo = FUNC(div255_epu16)(
+        add_epi16(mullo_epi16(unpacklo_epi8(over, zero), unpacklo_epi8(alpha, zero)), mullo_epi16(unpacklo_epi8(under, zero), unpacklo_epi8(inv_alpha, zero))));
+    const integer_t hi = FUNC(div255_epu16)(
+        add_epi16(mullo_epi16(unpackhi_epi8(over, zero), unpackhi_epi8(alpha, zero)), mullo_epi16(unpackhi_epi8(under, zero), unpackhi_epi8(inv_alpha, zero))));
+    // the per 128-bit lane unpacks and pack are symmetric so byte order is preserved
+    return or_si(packus_epi16(lo, hi), set1_epi32((int32_t)0xff000000));
+}
+
+#if KITTY_SIMD_LEVEL == 128
+#define blend_opaque_pixels_128bit FUNC(blend_opaque_pixels)
+#else
+// 128-bit version of blend_opaque_pixels for the 3 bytes per pixel destination case, whose
+// expand/compact shuffles cannot cross 128-bit lane boundaries
+static inline simde__m128i
+blend_opaque_pixels_128bit(const simde__m128i under, const simde__m128i over) {
+    const simde__m128i zero = simde_mm_setzero_si128(), c128 = simde_mm_set1_epi16(128);
+    const simde__m128i alpha = simde_mm_shuffle_epi8(over, simde_mm_set_epi8(15, 15, 15, 15, 11, 11, 11, 11, 7, 7, 7, 7, 3, 3, 3, 3));
+    const simde__m128i inv_alpha = simde_mm_xor_si128(alpha, simde_mm_set1_epi64x(-1));
+    simde__m128i t, y;
+    t = simde_mm_add_epi16(
+        simde_mm_mullo_epi16(simde_mm_unpacklo_epi8(over, zero), simde_mm_unpacklo_epi8(alpha, zero)),
+        simde_mm_mullo_epi16(simde_mm_unpacklo_epi8(under, zero), simde_mm_unpacklo_epi8(inv_alpha, zero)));
+    y = simde_mm_add_epi16(t, c128);
+    const simde__m128i lo = simde_mm_srli_epi16(simde_mm_add_epi16(y, simde_mm_srli_epi16(y, 8)), 8);
+    t = simde_mm_add_epi16(
+        simde_mm_mullo_epi16(simde_mm_unpackhi_epi8(over, zero), simde_mm_unpackhi_epi8(alpha, zero)),
+        simde_mm_mullo_epi16(simde_mm_unpackhi_epi8(under, zero), simde_mm_unpackhi_epi8(inv_alpha, zero)));
+    y = simde_mm_add_epi16(t, c128);
+    const simde__m128i hi = simde_mm_srli_epi16(simde_mm_add_epi16(y, simde_mm_srli_epi16(y, 8)), 8);
+    return simde_mm_or_si128(simde_mm_packus_epi16(lo, hi), simde_mm_set1_epi32((int32_t)0xff000000));
+}
+#endif
+
+void
+FUNC(blend_over_opaque)(uint8_t *dst, const unsigned dst_bpp, const uint8_t *src, const size_t num_pixels) {
+    size_t i = 0;
+    if (dst_bpp == 4) {
+        const size_t px_per_iter = sizeof(integer_t) / 4;
+        for (; i + px_per_iter <= num_pixels; i += px_per_iter) {
+            const integer_t s = load_unaligned((const integer_t *)(src + 4 * i)), d = load_unaligned((const integer_t *)(dst + 4 * i));
+            store_unaligned((integer_t *)(dst + 4 * i), FUNC(blend_opaque_pixels)(d, s));
+        }
+    } else {
+        // Expand each group of four 3-byte pixels to 4-byte pixels with a byte shuffle, blend, and
+        // compact back with another shuffle, using 128-bit registers at every level since the
+        // shuffles cannot cross 128-bit lane boundaries. The 16-byte destination loads cover 4
+        // bytes beyond the four pixels being processed, which stay inside dst as long as at least
+        // six pixels remain. Only the 12 blended bytes are stored, both to leave the extra bytes
+        // untouched and because a 16-byte store would overlap the next iteration's load, stalling
+        // on failed store to load forwarding.
+        const simde__m128i expand = simde_mm_set_epi8(-1, 11, 10, 9, -1, 8, 7, 6, -1, 5, 4, 3, -1, 2, 1, 0);
+        const simde__m128i compact = simde_mm_set_epi8(-1, -1, -1, -1, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
+        for (; i + 6 <= num_pixels; i += 4) {
+            const simde__m128i s = simde_mm_loadu_si128((const simde__m128i *)(src + 4 * i));
+            const simde__m128i d = simde_mm_loadu_si128((const simde__m128i *)(dst + 3 * i));
+            const simde__m128i blended = simde_mm_shuffle_epi8(blend_opaque_pixels_128bit(simde_mm_shuffle_epi8(d, expand), s), compact);
+            simde_mm_storel_epi64((simde__m128i *)(dst + 3 * i), blended);
+            const uint32_t last = (uint32_t)simde_mm_extract_epi32(blended, 2);
+            memcpy(dst + 3 * i + 8, &last, sizeof(last));
+        }
+    }
+    for (; i < num_pixels; i++) blend_pixel_over_opaque(dst + dst_bpp * i, src + 4 * i, dst_bpp);
+    zero_upper();
+}
+
+// Straight alpha over blend of pixels unpacked into 32-bit lanes, four consecutive lanes per
+// pixel. Matches the arithmetic of blend_pixel_over_straight() bit for bit: exact integer
+// numerator and denominator, IEEE single precision division, round to nearest.
+static inline integer_t
+FUNC(blend_straight_dwords)(const integer_t d, const integer_t s) {
+    const integer_t c255 = set1_epi32(255);
+    const integer_t alpha = shuffle_epi32(s, _MM_SHUFFLE(3, 3, 3, 3)), dst_alpha = shuffle_epi32(d, _MM_SHUFFLE(3, 3, 3, 3));
+    const integer_t inv_alpha = sub_epi32(c255, alpha);
+    const integer_t denom = add_epi32(mullo_epi32(alpha, c255), mullo_epi32(dst_alpha, inv_alpha));
+    const integer_t num = add_epi32(mullo_epi32(mullo_epi32(s, alpha), c255), mullo_epi32(mullo_epi32(d, dst_alpha), inv_alpha));
+    integer_t r = cvtps_epi32(div_ps(cvtepi32_ps(num), cvtepi32_ps(denom)));
+    const integer_t y = add_epi32(denom, set1_epi32(128)); // out alpha = round(denom / 255)
+    const integer_t out_alpha = shift_right_by_bits32(add_epi32(y, shift_right_by_bits32(y, 8)), 8);
+    r = blendv_epi8(r, out_alpha, set_epi32_in_lanes(-1, 0, 0, 0));
+    // both src and dst fully transparent => leave dst unchanged (this also discards the NaN from the 0/0 above)
+    return blendv_epi8(r, d, cmpeq_epi32(denom, create_zero_integer()));
+}
+
+void
+FUNC(blend_over_straight)(uint8_t *dst, const uint8_t *src, const size_t num_pixels) {
+    const size_t px_per_iter = sizeof(integer_t) / 4;
+    size_t i = 0;
+    for (; i + px_per_iter <= num_pixels; i += px_per_iter) {
+        const integer_t s = load_unaligned((const integer_t *)(src + 4 * i)), d = load_unaligned((const integer_t *)(dst + 4 * i));
+        const integer_t r0 = FUNC(blend_straight_dwords)(widen_quarter(d, 0), widen_quarter(s, 0));
+        const integer_t r1 = FUNC(blend_straight_dwords)(widen_quarter(d, 1), widen_quarter(s, 1));
+        const integer_t r2 = FUNC(blend_straight_dwords)(widen_quarter(d, 2), widen_quarter(s, 2));
+        const integer_t r3 = FUNC(blend_straight_dwords)(widen_quarter(d, 3), widen_quarter(s, 3));
+        store_unaligned((integer_t *)(dst + 4 * i), fixup_packed_dword_order(packus_epi16(packus_epi32(r0, r1), packus_epi32(r2, r3))));
+    }
+    for (; i < num_pixels; i++) blend_pixel_over_straight(dst + 4 * i, src + 4 * i);
+    zero_upper();
+}
+
+#undef blend_opaque_pixels_128bit
+// }}}
 
 #undef FUNC
 #undef integer_t
@@ -1012,4 +1212,25 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
 #undef is_zero
 #undef zero_upper
 #undef print_register_as_bytes
+#undef set1_epi16
+#undef add_epi16
+#undef mullo_epi16
+#undef shift_right_by_bits16
+#undef unpacklo_epi8
+#undef unpackhi_epi8
+#undef packus_epi16
+#undef packus_epi32
+#undef add_epi32
+#undef sub_epi32
+#undef mullo_epi32
+#undef cmpeq_epi32
+#undef max_epu32
+#undef shuffle_epi32
+#undef cvtepi32_ps
+#undef cvtps_epi32
+#undef div_ps
+#undef set_epi32_in_lanes
+#undef alpha_broadcast_pattern
+#undef widen_quarter
+#undef fixup_packed_dword_order
 #endif // KITTY_NO_SIMD

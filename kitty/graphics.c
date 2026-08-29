@@ -11,6 +11,7 @@
 #include "disk-cache.h"
 #include "iqsort.h"
 #include "safe-wrappers.h"
+#include "simd-string.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1542,29 +1543,6 @@ typedef struct {
     bool is_4byte_aligned, is_opaque, transient;
 } CoalescedFrameData;
 
-static void
-blend_on_opaque(uint8_t *under_px, const uint8_t *over_px) {
-    const float alpha = (float)over_px[3] / 255.f;
-    const float alpha_op = 1.f - alpha;
-    for (unsigned i = 0; i < 3; i++) under_px[i] = (uint8_t)(over_px[i] * alpha + under_px[i] * alpha_op);
-}
-
-static void
-alpha_blend(uint8_t *dest_px, const uint8_t *src_px) {
-    if (src_px[3]) {
-        const float dest_a = (float)dest_px[3] / 255.f, src_a = (float)src_px[3] / 255.f;
-        const float alpha = src_a + dest_a * (1.f - src_a);
-        dest_px[3] = (uint8_t)(255 * alpha);
-        if (!dest_px[3]) {
-            dest_px[0] = 0;
-            dest_px[1] = 0;
-            dest_px[2] = 0;
-            return;
-        }
-        for (unsigned i = 0; i < 3; i++) dest_px[i] = (uint8_t)((src_px[i] * src_a + dest_px[i] * dest_a * (1.f - src_a)) / alpha);
-    }
-}
-
 typedef struct {
     bool needs_blending;
     uint32_t over_px_sz, under_px_sz;
@@ -1572,93 +1550,63 @@ typedef struct {
     uint32_t stride;
 } ComposeData;
 
-#define COPY_RGB              \
-    under_px[0] = over_px[0]; \
-    under_px[1] = over_px[1]; \
-    under_px[2] = over_px[2];
-#define COPY_PIXELS                                                                         \
-    if (d.needs_blending) {                                                                 \
-        if (d.under_px_sz == 3) { ROW_ITER PIX_ITER blend_on_opaque(under_px, over_px); }   \
-    }                                                                                       \
-    }                                                                                       \
-    else { ROW_ITER PIX_ITER alpha_blend(under_px, over_px); }                              \
-    }                                                                                       \
-    }                                                                                       \
-    }                                                                                       \
-    else {                                                                                  \
-        if (d.under_px_sz == 4) {                                                           \
-            if (d.over_px_sz == 4) { ROW_ITER PIX_ITER COPY_RGB under_px[3] = over_px[3]; } \
-        }                                                                                   \
-    }                                                                                       \
-    else { ROW_ITER PIX_ITER COPY_RGB under_px[3] = 255; }                                  \
-    }                                                                                       \
-    }                                                                                       \
-    }                                                                                       \
-    else { ROW_ITER PIX_ITER COPY_RGB }                                                     \
-    }                                                                                       \
-    }                                                                                       \
+static void
+copy_or_blend_row(
+    uint8_t *under_row, const uint8_t *over_row, const unsigned num_px, const uint32_t under_px_sz, const uint32_t over_px_sz, const bool needs_blending) {
+    if (needs_blending && over_px_sz == 4) {
+        // over is straight alpha RGBA
+        if (under_px_sz == 4) blend_over_straight(under_row, over_row, num_px);
+        else blend_over_opaque(under_row, 3, over_row, num_px);
+    } else {
+        for (unsigned x = 0; x < num_px; x++) {
+            uint8_t *under_px = under_row + (size_t)under_px_sz * x;
+            const uint8_t *over_px = over_row + (size_t)over_px_sz * x;
+            under_px[0] = over_px[0];
+            under_px[1] = over_px[1];
+            under_px[2] = over_px[2];
+            if (under_px_sz == 4) under_px[3] = over_px_sz == 4 ? over_px[3] : 255;
+        }
     }
-
+}
 
 static void
 compose_rectangles(const ComposeData d, uint8_t *under_data, const size_t under_data_sz, const uint8_t *over_data, const size_t over_data_sz) {
     // compose two equal sized, non-overlapping rectangles at different offsets.
-    // The per-row guard in ROW_ITER ensures that inconsistent geometry (offsets
-    // or dimensions larger than the actual buffers) can never cause an out of
+    // The per-row guard ensures that inconsistent geometry (offsets or
+    // dimensions larger than the actual buffers) can never cause an out of
     // bounds read or write. All offset arithmetic is done in size_t to avoid
     // 32-bit overflow.
     const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
     const unsigned min_width = MIN(d.under_width, d.over_width);
-#define ROW_ITER                                                                                                                                \
-    for (unsigned y = 0; y < d.under_height && y < d.over_height; y++) {                                                                        \
-        const size_t under_off = (size_t)(y + d.under_offset_y) * d.under_px_sz * d.stride + (size_t)d.under_offset_x * d.under_px_sz;          \
-        const size_t over_off = (size_t)(y + d.over_offset_y) * d.over_px_sz * d.stride + (size_t)d.over_offset_x * d.over_px_sz;               \
-        if (under_off + (size_t)d.under_px_sz * min_width > under_data_sz || over_off + (size_t)d.over_px_sz * min_width > over_data_sz) break; \
-        uint8_t *under_row = under_data + under_off;                                                                                            \
+    for (unsigned y = 0; y < d.under_height && y < d.over_height; y++) {
+        const size_t under_off = (size_t)(y + d.under_offset_y) * d.under_px_sz * d.stride + (size_t)d.under_offset_x * d.under_px_sz;
+        const size_t over_off = (size_t)(y + d.over_offset_y) * d.over_px_sz * d.stride + (size_t)d.over_offset_x * d.over_px_sz;
+        if (under_off + (size_t)d.under_px_sz * min_width > under_data_sz || over_off + (size_t)d.over_px_sz * min_width > over_data_sz) break;
+        uint8_t *under_row = under_data + under_off;
         const uint8_t *over_row = over_data + over_off;
-    if (can_copy_rows) { ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_width); }
-    return;
-}
-#define PIX_ITER                                             \
-    for (unsigned x = 0; x < min_width; x++) {               \
-        uint8_t *under_px = under_row + (d.under_px_sz * x); \
-        const uint8_t *over_px = over_row + (d.over_px_sz * x);
-COPY_PIXELS
-#undef PIX_ITER
-#undef ROW_ITER
+        if (can_copy_rows) memcpy(under_row, over_row, (size_t)d.over_px_sz * min_width);
+        else copy_or_blend_row(under_row, over_row, min_width, d.under_px_sz, d.over_px_sz, d.needs_blending);
+    }
 }
 
 static void
 compose(const ComposeData d, uint8_t *under_data, const size_t under_data_sz, const uint8_t *over_data, const size_t over_data_sz) {
-    // The per-row guard in ROW_ITER ensures that inconsistent geometry (an
-    // overlay declaring more data than it actually has, or an oversized base)
-    // can never cause an out of bounds read or write. All offset arithmetic is
+    // The per-row guard ensures that inconsistent geometry (an overlay
+    // declaring more data than it actually has, or an oversized base) can
+    // never cause an out of bounds read or write. All offset arithmetic is
     // done in size_t to avoid 32-bit overflow.
     const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
     unsigned min_row_sz = d.over_offset_x < d.under_width ? d.under_width - d.over_offset_x : 0;
     min_row_sz = MIN(min_row_sz, d.over_width);
-#define ROW_ITER                                                                                                                                  \
-    for (unsigned y = 0; y + d.over_offset_y < d.under_height && y < d.over_height; y++) {                                                        \
-        const size_t under_off = (size_t)(y + d.over_offset_y) * d.under_px_sz * d.under_width + (size_t)d.under_px_sz * d.over_offset_x;         \
-        const size_t over_off = (size_t)y * d.over_px_sz * d.over_width;                                                                          \
-        if (under_off + (size_t)d.under_px_sz * min_row_sz > under_data_sz || over_off + (size_t)d.over_px_sz * min_row_sz > over_data_sz) break; \
-        uint8_t *under_row = under_data + under_off;                                                                                              \
+    for (unsigned y = 0; y + d.over_offset_y < d.under_height && y < d.over_height; y++) {
+        const size_t under_off = (size_t)(y + d.over_offset_y) * d.under_px_sz * d.under_width + (size_t)d.under_px_sz * d.over_offset_x;
+        const size_t over_off = (size_t)y * d.over_px_sz * d.over_width;
+        if (under_off + (size_t)d.under_px_sz * min_row_sz > under_data_sz || over_off + (size_t)d.over_px_sz * min_row_sz > over_data_sz) break;
+        uint8_t *under_row = under_data + under_off;
         const uint8_t *over_row = over_data + over_off;
-#define END_ITER }
-    if (can_copy_rows) {
-        ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_row_sz);
-        END_ITER
-        return;
+        if (can_copy_rows) memcpy(under_row, over_row, (size_t)d.over_px_sz * min_row_sz);
+        else copy_or_blend_row(under_row, over_row, min_row_sz, d.under_px_sz, d.over_px_sz, d.needs_blending);
     }
-#define PIX_ITER                                             \
-    for (unsigned x = 0; x < min_row_sz; x++) {              \
-        uint8_t *under_px = under_row + (d.under_px_sz * x); \
-        const uint8_t *over_px = over_row + (d.over_px_sz * x);
-    COPY_PIXELS
-#undef COPY_RGB
-#undef PIX_ITER
-#undef ROW_ITER
-#undef END_ITER
 }
 
 static CoalescedFrameData

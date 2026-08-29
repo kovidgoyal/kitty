@@ -13,6 +13,7 @@ from kitty.fast_data_types import (
     has_avx2,
     has_avx512,
     has_sse4_2,
+    test_blend_pixels,
     test_find_either_of_two_bytes,
     test_printable_ascii_run_length,
     test_utf8_decode_to_sentinel,
@@ -835,6 +836,42 @@ class TestParser(BaseTest):
                 for align_offset in range(64):
                     data = base + base_data[:extra]
                     t(key, data, align_offset)
+
+    def test_blend_pixels(self):
+        rng = random.Random(0x1B7F5)
+        impls = []
+        if has_sse4_2:
+            impls.append(2)
+        if has_avx2:
+            impls.append(3)
+        if has_avx512:
+            impls.append(4)
+        impls.append(0)
+
+        def t(kind, dst, src, color=0xFFFFFF, align_offsets=(0, 1, 2, 3, 7, 13)):
+            expected = test_blend_pixels(kind, dst, src, 1, color, 0)
+            for which_function in impls:
+                for align_offset in align_offsets:
+                    actual = test_blend_pixels(kind, dst, src, which_function, color, align_offset)
+                    self.ae(expected, actual, f'{kind=} {which_function=} {align_offset=} num_pixels={len(src) // 4}')
+
+        for num_pixels in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 255, 256, 257):
+            src = bytearray(rng.getrandbits(8) for _ in range(4 * num_pixels))
+            # ensure fully transparent and fully opaque source pixels are well represented
+            for i in range(num_pixels):
+                if i % 5 == 0:
+                    src[4 * i + 3] = 0
+                elif i % 5 == 1:
+                    src[4 * i + 3] = 255
+            src = bytes(src)
+            dst4 = bytes(rng.getrandbits(8) for _ in range(4 * num_pixels))
+            dst3 = bytes(rng.getrandbits(8) for _ in range(3 * num_pixels))
+            mask = bytes(rng.getrandbits(8) for _ in range(num_pixels))
+            t('straight', dst4, src)
+            t('opaque', dst4, src)
+            t('opaque3', dst3, src)
+            # keep the destination pixels 4-byte aligned for the mask variant
+            t('mask', dst4, mask, color=0x123456, align_offsets=(0, 4, 12, 36))
 
     def test_esc_codes(self):
         s = self.create_screen()

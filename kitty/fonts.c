@@ -14,6 +14,7 @@
 #include "decorations.h"
 #include "glyph-cache.h"
 #include "print-graphics.h"
+#include "simd-string.h"
 
 #define MISSING_GLYPH 1
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
@@ -870,15 +871,12 @@ static PyObject *descriptor_for_idx = NULL;
 void
 render_alpha_mask(
     const uint8_t *alpha_mask, pixel *dest, const Region *src_rect, const Region *dest_rect, size_t src_stride, size_t dest_stride, pixel color_rgb) {
-    pixel col = (color_rgb << 8) & 0xffffff00;
+    const size_t src_width = src_rect->right > src_rect->left ? src_rect->right - src_rect->left : 0;
+    const size_t dest_width = dest_rect->right > dest_rect->left ? dest_rect->right - dest_rect->left : 0;
+    const size_t width = MIN(src_width, dest_width);
+    if (!width) return;
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
-        pixel *d = dest + dest_stride * dr;
-        const uint8_t *s = alpha_mask + src_stride * sr;
-        for (size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
-            uint8_t src_alpha = d[dc] & 0xff;
-            uint8_t alpha = s[sc];
-            d[dc] = col | MAX(alpha, src_alpha);
-        }
+        composite_alpha_mask(dest + dest_stride * dr + dest_rect->left, alpha_mask + src_stride * sr + src_rect->left, width, color_rgb);
     }
 }
 
@@ -1055,9 +1053,8 @@ render_scaled_decoration(FontCellMetrics unscaled_metrics, FontCellMetrics scale
     unsigned src_limit = MIN(scaled_metrics.cell_height, src.bottom), dest_limit = MIN(unscaled_metrics.cell_height, dest.bottom);
     unsigned cell_width = MIN(scaled_metrics.cell_width, unscaled_metrics.cell_width);
     for (unsigned srcy = src.top, desty = dest.top; srcy < src_limit && desty < dest_limit; srcy++, desty++) {
-        uint8_t *srcp = alpha_mask + cell_width * srcy;
-        pixel *destp = output + cell_width * desty;
-        for (unsigned x = 0; x < cell_width; x++) destp[x] = 0xffffff00 | srcp[x];
+        // the output was zeroed above so this sets destp[x] = 0xffffff00 | srcp[x]
+        composite_alpha_mask(output + cell_width * desty, alpha_mask + cell_width * srcy, cell_width, 0xffffff);
     }
 }
 
@@ -2494,7 +2491,9 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
             void *s = ((uint8_t *)PyBytes_AS_STRING(PyTuple_GET_ITEM(cells, c)));
             if (is_32_bit) {
                 pixel *src = (pixel *)s + cell_width * r;
-                for (i = 0; i < cell_width; i++, dest++) dest[0] = alpha_blend(src[0], bgcolor);
+                for (i = 0; i < cell_width; i++) dest[i] = (pixel)bgcolor;
+                blend_over_opaque((uint8_t *)dest, 4, (const uint8_t *)src, cell_width);
+                dest += cell_width;
             } else {
                 uint8_t *src = (uint8_t *)s + cell_width * r;
                 for (i = 0; i < cell_width; i++, dest++) dest[0] = alpha_blend(0x00ffffff | ((src[i] & 0xff) << 24), bgcolor);
