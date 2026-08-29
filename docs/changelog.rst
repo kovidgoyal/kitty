@@ -40,8 +40,6 @@ should see a 15-35% improvement depending on workload. Some details:
 #. Speed up pixel compositing with :term:`SIMD` vectorization: alpha blending of graphics protocol images and animation frames is 2-3.5x faster and glyph alpha masks are composited onto canvases using the same vectorized primitives.
 
 
-
-
 Vertical tabs [0.48]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
