@@ -113,11 +113,8 @@ class Borders:
         if opts.draw_window_borders_for_single_window and num_visible_groups == 1:
             os_window_focused = current_focused_os_window_id() == self.os_window_id
 
-        radius, radius_unit = opts.window_border_radius
-        if radius_unit == 'pt':
-            radius = pt_to_px(radius, self.os_window_id)
-        else:
-            radius = round(radius)
+        radius_val, radius_unit = opts.window_border_radius
+        radius = pt_to_px(radius_val, self.os_window_id) if radius_unit == 'pt' else round(radius_val)
 
         if draw_borders and not draw_minimal_borders:
             for i, wg in enumerate(groups):
@@ -128,7 +125,7 @@ class Borders:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if wg.needs_attention else BorderColor.inactive
-                add_borders(rects, color, wg, int(radius))
+                add_borders(rects, color, wg, radius)
 
         if draw_minimal_borders:
             for border_line in current_layout.get_minimal_borders(all_windows):

@@ -37,6 +37,7 @@ fragment_main(
     uniform float2 params,
     uniform float4 color,
     uniform float4 background_color,
+    uniform float4 outer_color,
     float4 frag_coord: SV_Position // SV_Position provides gl_FragCoord equivalent in Slang
     )
     : SV_Target {
@@ -58,11 +59,15 @@ fragment_main(
 
     // Smooth borders (anti-alias)
     static const float step_size = 1.0;
-    float alpha = smoothstep(-step_size, step_size, outer_edge) - smoothstep(-step_size, step_size, inner_edge);
+    float outer_coverage = smoothstep(-step_size, step_size, outer_edge);
+    float alpha = outer_coverage - smoothstep(-step_size, step_size, inner_edge);
 
     float4 ans = color;
     ans.a *= alpha;
 
+    // background_color shows under and inside the border, outer_color fills
+    // the corner regions between the rounded outline and the bounding rect
+    float4 under = lerp(outer_color, background_color, outer_coverage);
     // pre-multiplied output
-    return alpha_blend(ans, background_color);
+    return alpha_blend(ans, under);
 }

@@ -420,6 +420,7 @@ typedef struct BorderRect {
 typedef struct BorderRects {
     BorderRect *rect_buf;
     unsigned int num_border_rects, capacity;
+    unsigned int num_rounded_rects;
     bool is_dirty;
     ssize_t vao_idx;
 } BorderRects;

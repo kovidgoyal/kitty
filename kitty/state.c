@@ -729,6 +729,7 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
     BorderRects *br = &tab->border_rects;
     br->is_dirty = true;
     br->num_border_rects = PyList_GET_SIZE(rects);
+    br->num_rounded_rects = 0;
     ensure_space_for(br, rect_buf, BorderRect, br->num_border_rects + 1, capacity, 32, false);
     for (unsigned i = 0; i < br->num_border_rects; i++) {
         PyObject *pr = PyList_GET_ITEM(rects, i);
@@ -746,6 +747,7 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
         r->color = color;
         r->border_type = border_type;
         r->horizontal = horizontal;
+        if (r->radius && r->thickness) br->num_rounded_rects++;
         if (!render) r->left = r->top = r->right = r->bottom = -2.f;
     }
     END_WITH_TAB
