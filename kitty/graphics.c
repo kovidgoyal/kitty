@@ -696,8 +696,10 @@ load_image_data(
         case 's': // POSIX shared memory
             if (g->payload_sz > 2048) ABRT("EINVAL", "Filename too long");
             snprintf(fname, sizeof(fname) / sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
-            if (transmission_type == 's') fd = safe_shm_open(fname, O_RDONLY, 0);
-            else fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0); // O_NONBLOCK so that opening a FIFO pipe does not block
+            if (transmission_type == 's') {
+                if (fname[0] != '/') ABRT("EBADF", "Failed to open file for graphics transmission with error: %s", "POSIX SHM names must start with /");
+                fd = safe_shm_open(fname, O_RDONLY, 0);
+            } else fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0); // O_NONBLOCK so that opening a FIFO pipe does not block
             if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
             if (global_state.boss && transmission_type != 's') {
                 RAII_PyObject(cret_, PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_file", "si", fname, fd));
