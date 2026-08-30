@@ -349,8 +349,15 @@ thickness_as_float(const OSWindow *os_window, unsigned level) {
 
 static void
 draw_rounded_rect(
-    Viewport rect, unsigned framebuffer_height, float thickness, unsigned corner_radius_px, color_type srgb_color, color_type srgb_background, float bg_alpha,
-    color_type srgb_outer, float outer_alpha) {
+    Viewport rect,
+    unsigned framebuffer_height,
+    float thickness,
+    unsigned corner_radius_px,
+    color_type srgb_color,
+    color_type srgb_background,
+    float bg_alpha,
+    color_type srgb_outer,
+    float outer_alpha) {
     bind_program(ROUNDED_RECT_PROGRAM);
     color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "color"), srgb_color, 1.f);
     color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "background_color"), srgb_background, bg_alpha);
