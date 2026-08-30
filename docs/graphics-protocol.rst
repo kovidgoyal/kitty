@@ -347,7 +347,7 @@ Value of `t`          Meaning
 ``s``                 A *shared memory object*, which on POSIX systems is a
                       `POSIX shared memory object <https://pubs.opengroup.org/onlinepubs/9699919799/functions/shm_open.html>`_
                       and on Windows is a
-                      `Named shared memory object <https://docs.microsoft.com/en-us/windows/win32/memory/creating-named-shared-memory>`_.
+                      `Named shared memory object <https://docs.microsoft.com/en-us/windows/win32/memory/creating-named-shared-memory>`_. On POSIX shm names **must** start with a :file:`/` and be at most ``NAME_MAX`` characters none of which are slashes.
                       The terminal emulator must read the data from the memory
                       object and then unlink and close it on POSIX and just
                       close it on Windows.
