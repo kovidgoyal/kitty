@@ -506,6 +506,7 @@ option_names = (
     'wheel_scroll_min_lines',
     'wheel_scroll_multiplier',
     'window_alert_on_bell',
+    'window_border_radius',
     'window_border_width',
     'window_drag_tolerance',
     'window_logo_alpha',
@@ -719,6 +720,7 @@ class Options:
     wheel_scroll_min_lines: int = 1
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True
+    window_border_radius: tuple[float, str] = (0, 'pt')
     window_border_width: tuple[float, str] = (0.5, 'pt')
     window_drag_tolerance: float = 2.0
     window_logo_alpha: float = 0.5

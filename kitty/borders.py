@@ -6,7 +6,7 @@ from enum import IntFlag
 from functools import partial
 from typing import NamedTuple
 
-from .fast_data_types import current_focused_os_window_id, get_options, set_borders_rects
+from .fast_data_types import current_focused_os_window_id, get_options, pt_to_px, set_borders_rects
 from .typing_compat import LayoutType
 from .utils import color_as_int
 from .window_list import WindowGroup, WindowList
@@ -25,19 +25,22 @@ class Border(NamedTuple):
     color: BorderColor
     border_type: int = 0
     horizontal: bool = False
+    render: bool = True
+    radius: int = 0
+    thickness: int = 0
 
 
-def vertical_edge(rects: list[Border], color: BorderColor, width: int, top: int, bottom: int, left: int, border_type: int) -> None:
+def vertical_edge(rects: list[Border], color: BorderColor, width: int, top: int, bottom: int, left: int, border_type: int, render: bool = True) -> None:
     if width > 0:
-        rects.append(Border(left, top, left + width, bottom, color, border_type, False))
+        rects.append(Border(left, top, left + width, bottom, color, border_type, False, render))
 
 
-def horizontal_edge(rects: list[Border], color: BorderColor, height: int, left: int, right: int, top: int, border_type: int) -> None:
+def horizontal_edge(rects: list[Border], color: BorderColor, height: int, left: int, right: int, top: int, border_type: int, render: bool = True) -> None:
     if height > 0:
-        rects.append(Border(left, top, right, top + height, color, border_type, True))
+        rects.append(Border(left, top, right, top + height, color, border_type, True, render))
 
 
-def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> None:
+def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup, radius: int = 0) -> None:
     geometry = wg.geometry
     if geometry is None:
         return
@@ -60,10 +63,13 @@ def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> Non
     bottom += width
     pl = pr = pb = pt = width
     wid = wg.active_window_id
-    h(pt, left, right, top, -wid)
-    h(pb, left, right, bt, wid)
-    v(pl, top, bottom, left, -wid)
-    v(pr, top, bottom, lr, wid)
+    render_edges = radius < 1
+    h(pt, left, right, top, -wid, render_edges)
+    h(pb, left, right, bt, wid, render_edges)
+    v(pl, top, bottom, left, -wid, render_edges)
+    v(pr, top, bottom, lr, wid, render_edges)
+    if radius > 0:
+        rects.append(Border(left, top, right, bottom, color, render=False, radius=radius, thickness=width))
 
 
 class Borders:
@@ -107,6 +113,12 @@ class Borders:
         if opts.draw_window_borders_for_single_window and num_visible_groups == 1:
             os_window_focused = current_focused_os_window_id() == self.os_window_id
 
+        radius, radius_unit = opts.window_border_radius
+        if radius_unit == 'pt':
+            radius = pt_to_px(radius, self.os_window_id)
+        else:
+            radius = round(radius)
+
         if draw_borders and not draw_minimal_borders:
             for i, wg in enumerate(groups):
                 window_bg = color_as_int(wg.default_bg)
@@ -116,7 +128,7 @@ class Borders:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if wg.needs_attention else BorderColor.inactive
-                add_borders(rects, color, wg)
+                add_borders(rects, color, wg, int(radius))
 
         if draw_minimal_borders:
             for border_line in current_layout.get_minimal_borders(all_windows):

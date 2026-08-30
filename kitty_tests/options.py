@@ -307,6 +307,10 @@ def conf_parsing(self):
 
     opts = p('font_size 11.37', 'clear_all_shortcuts y', 'color23 red')
     self.ae(opts.font_size, 11.37)
+    radius_opts = p('window_border_radius 7px')
+    self.ae(radius_opts.window_border_radius, (7.0, 'px'))
+    radius_opts = p('window_border_radius -2')
+    self.ae(radius_opts.window_border_radius, (0.0, 'pt'))
     self.ae(opts.mouse_hide_wait[0], 0 if is_macos else 3)
     self.ae(opts.mouse_hide_wait[1], 0)
     self.ae(opts.mouse_hide_wait[2], 40)

@@ -735,8 +735,10 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
         unsigned long color;
         long long border_type;
         BorderRect *r = br->rect_buf + i;
-        int horizontal;
-        if (!PyArg_ParseTuple(pr, "IIIIkLp", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &border_type, &horizontal)) return NULL;
+        int horizontal, render;
+        if (!PyArg_ParseTuple(
+                pr, "IIIIkLppII", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &border_type, &horizontal, &render, &r->radius, &r->thickness))
+            return NULL;
         r->left = gl_pos_x(r->px.left, osw->viewport_width);
         r->top = gl_pos_y(r->px.top, osw->viewport_height);
         r->right = r->left + gl_size(r->px.right - r->px.left, osw->viewport_width);
@@ -744,6 +746,7 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
         r->color = color;
         r->border_type = border_type;
         r->horizontal = horizontal;
+        if (!render) r->left = r->top = r->right = r->bottom = -2.f;
     }
     END_WITH_TAB
     Py_RETURN_NONE;

@@ -200,6 +200,8 @@ Detailed list of changes
 0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Add :opt:`window_border_radius` for rounded window borders
+
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload

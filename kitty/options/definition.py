@@ -1665,6 +1665,20 @@ drawn.
 )
 
 opt(
+    'window_border_radius',
+    '0',
+    option_type='window_border_width',
+    long_text="""
+The corner radius of window borders. Can be either in pixels (px) or pts (pt).
+Values in pts will be rounded to the nearest number of pixels based on screen
+resolution. If not specified, the unit is assumed to be pts. A value of zero
+disables rounded borders. This option applies only when full window borders are
+drawn; it has no effect with minimal borders. Rounded borders are drawn over
+corner cells, so use :opt:`window_padding_width` to keep text clear of them.
+""",
+)
+
+opt(
     'draw_window_borders_for_single_window',
     'no',
     option_type='to_bool',

@@ -1530,6 +1530,9 @@ class Parser:
     def window_alert_on_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_alert_on_bell'] = to_bool(val)
 
+    def window_border_radius(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_border_radius'] = window_border_width(val)
+
     def window_border_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_border_width'] = window_border_width(val)
 
