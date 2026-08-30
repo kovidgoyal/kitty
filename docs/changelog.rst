@@ -200,11 +200,11 @@ Detailed list of changes
 0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Add :opt:`window_border_radius` for rounded window borders
-
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
+
+- Add :opt:`window_border_radius` for rounded window borders (:pull:`10421`)
 
 - A new option :opt:`remap_modifiers` to allow having modifier keys behave as different modifier keys (:pull:`10307`)
 
