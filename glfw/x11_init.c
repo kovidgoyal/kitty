@@ -708,7 +708,7 @@ _glfwPlatformInit(bool *supports_window_occlusion) {
     _glfw.x11.display = XOpenDisplay(NULL);
     if (!_glfw.x11.display) {
         const char *display = getenv("DISPLAY");
-        if (display) {
+        if (display && display[0]) {
             _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to open display %s", display);
         } else {
             _glfwInputError(GLFW_PLATFORM_ERROR, "X11: The DISPLAY environment variable is missing");

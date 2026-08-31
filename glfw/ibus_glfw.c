@@ -286,7 +286,7 @@ get_ibus_address_file_name(void) {
     const char *host = "unix";
     // See https://github.com/ibus/ibus/commit/8ce25208c3f4adfd290a032c6aa739d2b7580eb1 for why we need this dance.
     const char *de = getenv("WAYLAND_DISPLAY");
-    if (de) {
+    if (de && de[0]) {
         disp_num = de;
     } else {
         const char *de = getenv("DISPLAY");
