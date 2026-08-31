@@ -3463,7 +3463,8 @@ window. A value of :code:`menubar` will show the title of the currently active
 window in the macOS global menu bar, making use of otherwise wasted space. A
 value of :code:`all` will show the title in both places, and :code:`none` hides
 the title. See :opt:`macos_menubar_title_max_length` for how to control the
-length of the title in the menu bar.
+length of the title in the menu bar. Note that when displaying the title in the
+menubar it is prefixed by :code:`::` as a separator which cannot be changed.
 """,
 )
 
