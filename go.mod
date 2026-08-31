@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.26.6
 
 require (
-	github.com/ALTree/bigfloat v0.2.0
+	github.com/ALTree/bigfloat v0.3.0
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/dlclark/regexp2 v1.12.0
@@ -19,7 +19,7 @@ require (
 	github.com/kovidgoyal/go-parallel v1.1.1
 	github.com/kovidgoyal/go-shm v1.0.0
 	github.com/kovidgoyal/imaging v1.8.23
-	github.com/nwaples/rardecode/v2 v2.3.0
+	github.com/nwaples/rardecode/v2 v2.4.1
 	github.com/seancfoley/ipaddress-go v1.8.3
 	github.com/sgtdi/fswatcher v1.3.0
 	github.com/shirou/gopsutil/v4 v4.26.7
