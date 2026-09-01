@@ -5,7 +5,7 @@
 import os
 import subprocess
 
-from kitty.constants import kitten_exe
+from kitty.constants import is_macos, kitten_exe
 from kitty.fast_data_types import shm_unlink
 from kitty.shm import SharedMemory
 
@@ -29,6 +29,8 @@ class SHMTest(BaseTest):
             self.assertEqual(data, q)
 
     def test_shm_ownership_verification(self):
+        if is_macos:
+            self.skipTest('macOS does not support fchmod() for shm files')
         with SharedMemory(size=64, unlink_on_exit=True) as shm:
             shm.verify_owner_and_mode()
             for mode in (0o644, 0o400, 0o660):
