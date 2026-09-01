@@ -159,17 +159,12 @@ def create_shared_memory(data: Any, prefix: str) -> str:
 
 def read_data_from_shared_memory(shm_name: str) -> Any:
     import json
-    import stat
 
     from kitty.shm import SharedMemory
 
     with SharedMemory(shm_name, readonly=True) as shm:
         shm.unlink()
-        if shm.stats.st_uid != os.geteuid() or shm.stats.st_gid != os.getegid():
-            raise ValueError(f'Incorrect owner on pwfile: uid={shm.stats.st_uid} gid={shm.stats.st_gid}')
-        mode = stat.S_IMODE(shm.stats.st_mode)
-        if mode != stat.S_IREAD | stat.S_IWRITE:
-            raise ValueError(f'Incorrect permissions on pwfile: 0o{mode:03o}')
+        shm.verify_owner_and_mode()
         return json.loads(shm.read_data_with_size())
 
 

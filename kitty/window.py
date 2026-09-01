@@ -1808,23 +1808,40 @@ class Window:
     def handle_remote_askpass(self, msgb: memoryview) -> None:
         from .shm import SharedMemory
 
-        msg = str(msgb, 'utf-8')
-        with SharedMemory(name=msg, readonly=True) as shm:
+        name = str(msgb, 'utf-8')
+        try:
+            shm = SharedMemory(name=name)
+        except OSError as err:
+            log_error(f'Ignoring ask request as opening its shared memory object failed with error: {err}')
+            return
+        try:
+            # The askpass client polls its own mapping for the answer, so
+            # unlinking the name here does not affect it and prevents anyone
+            # else from opening this object while we are using it.
+            shm.unlink()
+            shm.verify_owner_and_mode()
             shm.seek(1)
             data = json.loads(shm.read_data_with_size())
+            q = str(data['type'])
+            message: str = sanitize_control_codes(data['message'])
+            choices = tuple(map(sanitize_control_codes, data['choices'])) if q == 'choose' else ()
+        except Exception as err:
+            shm.close()
+            log_error(f'Ignoring invalid ask request with error: {err}')
+            return
 
         def callback(ans: Any) -> None:
-            data = json.dumps(ans)
-            with SharedMemory(name=msg) as shm:
+            try:
                 shm.seek(1)
-                shm.write_data_with_size(data)
+                shm.write_data_with_size(json.dumps(ans))
                 shm.flush()
                 shm.seek(0)
                 shm.write(b'\x01')
+            finally:
+                shm.close()
 
-        message: str = data['message']
         window_title = 'A program wants your input'
-        if data['type'] == 'confirm':
+        if q == 'confirm':
             get_boss().confirm(
                 message,
                 callback,
@@ -1833,16 +1850,22 @@ class Window:
                 confirm_on_accept=bool(data.get('confirm_on_accept', True)),
                 title=window_title,
             )
-        elif data['type'] == 'choose':
-            get_boss().choose(message, callback, *data['choices'], window=self, default=data.get('default', ''), title=window_title)
-        elif data['type'] == 'get_line':
+        elif q == 'choose':
+            get_boss().choose(message, callback, *choices, window=self, default=data.get('default', ''), title=window_title)
+        elif q == 'get_line':
             which = 'password' if data.get('is_password') else 'input'
             message = f'\x1b[33mA program running in this window is asking for your {which}\x1b[m\n\n{message}'
             get_boss().get_line(
-                message, callback, window=self, is_password=bool(data.get('is_password')), prompt=data.get('prompt', '> '), window_title=window_title
+                message,
+                callback,
+                window=self,
+                is_password=bool(data.get('is_password')),
+                prompt=sanitize_control_codes(data.get('prompt', '> ')),
+                window_title=window_title,
             )
         else:
-            log_error(f'Ignoring ask request with unknown type: {data["type"]}')
+            shm.close()
+            log_error(f'Ignoring ask request with unknown type: {q}')
 
     def handle_remote_print(self, msg: memoryview) -> None:
         text = process_remote_print(msg)

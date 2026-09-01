@@ -27,3 +27,14 @@ class SHMTest(BaseTest):
         with SharedMemory(name=name, unlink_on_exit=True) as shm:
             q = shm.read_data_with_size()
             self.assertEqual(data, q)
+
+    def test_shm_ownership_verification(self):
+        with SharedMemory(size=64, unlink_on_exit=True) as shm:
+            shm.verify_owner_and_mode()
+            for mode in (0o644, 0o400, 0o660):
+                os.fchmod(shm.fileno(), mode)
+                with SharedMemory(name=shm.name, readonly=True) as shm2:
+                    self.assertRaises(ValueError, shm2.verify_owner_and_mode)
+            os.fchmod(shm.fileno(), 0o600)
+            with SharedMemory(name=shm.name, readonly=True) as shm2:
+                shm2.verify_owner_and_mode()
