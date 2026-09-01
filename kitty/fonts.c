@@ -15,6 +15,7 @@
 #include "glyph-cache.h"
 #include "print-graphics.h"
 #include "simd-string.h"
+#include "bidi.h"
 
 #define MISSING_GLYPH 1
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
@@ -50,6 +51,8 @@ static struct {
     char_type *codepoints;
     size_t capacity;
 } shape_buffer = {0};
+static int bidi_current_run_level = 0;
+static bool bidi_current_run_is_rtl = false;
 static size_t max_texture_size = 1024, max_array_len = 1024;
 typedef enum { LIGA_FEATURE, DLIG_FEATURE, CALT_FEATURE } HBFeature;
 
@@ -1217,6 +1220,8 @@ load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *t
     hb_buffer_add_codepoints(harfbuzz_buffer, shape_buffer.codepoints, num, 0, num);
     hb_buffer_guess_segment_properties(harfbuzz_buffer);
     if (OPT(force_ltr)) hb_buffer_set_direction(harfbuzz_buffer, HB_DIRECTION_LTR);
+    else if (bidi_current_run_is_rtl) hb_buffer_set_direction(harfbuzz_buffer, HB_DIRECTION_RTL);
+    else if (bidi_current_run_level & 1) hb_buffer_set_direction(harfbuzz_buffer, HB_DIRECTION_RTL);
 }
 
 
@@ -2068,9 +2073,9 @@ multicell_intersects_cursor(const Line *line, index_type lnum, const Cursor *cur
     } else return lnum == cursor->y;
 }
 
-void
-render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc) {
-#define RENDER                                                                                                          \
+static void
+render_line_nobidi(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc) {
+#define RENDER_NOBIDI                                                                                                   \
     if (run_font.font_idx != NO_FONT && i > first_cell_in_run) {                                                        \
         int cursor_offset = -1;                                                                                         \
         if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x <= i && cursor->x < line->xnum && \
@@ -2121,42 +2126,24 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             if (cell_font.font_idx > 0) {
                 Font *font = (fg->fonts + cell_font.font_idx);
                 glyph_index glyph_id = glyph_id_for_codepoint(font->face, first_ch);
-
                 int width = get_glyph_width(font->face, glyph_id);
                 desired_cells = (unsigned int)ceilf((float)width / fg->fcm.cell_width);
             }
             desired_cells = MIN(desired_cells, cell_cap_for_codepoint(first_ch));
-
             unsigned int num_spaces = 0;
             while (i + num_spaces + 1 < line->xnum &&
-                   (cell_is_char(line->cpu_cells + i + num_spaces + 1, ' ') || cell_is_char(line->cpu_cells + i + num_spaces + 1, 0x2002)) // space or en-space
+                   (cell_is_char(line->cpu_cells + i + num_spaces + 1, ' ') || cell_is_char(line->cpu_cells + i + num_spaces + 1, 0x2002))
                    && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA && num_spaces + 1 < desired_cells) {
                 num_spaces++;
-                // We have a private use char followed by space(s), render it as a multi-cell ligature.
                 GPUCell *space_cell = line->gpu_cells + i + num_spaces;
-                // Ensure the space cell uses the foreground color from the PUA cell.
-                // This is needed because there are applications like
-                // Powerline that use PUA+space with different foreground colors
-                // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
                 space_cell->fg = gpu_cell->fg;
                 space_cell->decoration_fg = gpu_cell->decoration_fg;
             }
             if (num_spaces) {
                 center_glyph = true;
-                RENDER
+                RENDER_NOBIDI
                 center_glyph = false;
-                render_run(
-                    fg,
-                    line->cpu_cells + i,
-                    line->gpu_cells + i,
-                    num_spaces + 1,
-                    cell_font,
-                    true,
-                    center_glyph,
-                    -1,
-                    disable_ligature_strategy,
-                    line->text_cache,
-                    lc);
+                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font, true, center_glyph, -1, disable_ligature_strategy, line->text_cache, lc);
                 run_font = basic_font;
                 first_cell_in_run = i + num_spaces + 1;
                 i += num_spaces;
@@ -2165,12 +2152,190 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         }
         if (run_font.font_idx == NO_FONT) run_font = cell_font;
         if (run_fonts_are_equal(&run_font, &cell_font)) continue;
-        RENDER
+        RENDER_NOBIDI
         run_font = cell_font;
         first_cell_in_run = i;
     }
-    RENDER
-#undef RENDER
+    RENDER_NOBIDI
+#undef RENDER_NOBIDI
+}
+
+static void
+render_line_bidi(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc, BidiInfo *bidi) {
+    FontGroup *fg = (FontGroup *)fg_;
+    RunFont basic_font = {.scale = 1, .font_idx = NO_FONT};
+    bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR;
+    // Find content limit to avoid reordering trailing empty cells
+    index_type xlimit = line->xnum;
+    while (xlimit > 0 && !line->cpu_cells[xlimit-1].ch_and_idx) xlimit--;
+    if (xlimit == 0) {
+        render_line_nobidi(fg_, line, lnum, cursor, disable_ligature_strategy, lc);
+        return;
+    }
+    // Iterate over logical bidi runs (contiguous same level)
+    index_type logical_pos = 0;
+    while (logical_pos < xlimit) {
+        FriBidiLevel lvl = bidi->levels[logical_pos];
+        index_type run_len = 1;
+        while (logical_pos + run_len < xlimit && bidi->levels[logical_pos + run_len] == lvl) run_len++;
+        // Skip runs that are only empty? Already trimmed
+        // Compute visual start for this bidi run (min ltov)
+        FriBidiStrIndex visual_start = bidi->logical_to_visual[logical_pos];
+        for (index_type k = 1; k < run_len; k++) {
+            FriBidiStrIndex v = bidi->logical_to_visual[logical_pos + k];
+            if (v < visual_start) visual_start = v;
+        }
+        bool is_rtl = (lvl & 1);
+        // Now process font sub-runs within this logical bidi run
+        RunFont run_font = basic_font;
+        bool center_glyph = false;
+        index_type first_cell_in_run = logical_pos;
+        index_type sub_i;
+        bool has_pending_run = false;
+        // Helper to flush pending font run
+#define FLUSH_BIDI_SUBRUN(end_idx) \
+        do { \
+            if (run_font.font_idx != NO_FONT && (end_idx) > first_cell_in_run) { \
+                index_type sub_len = (end_idx) - first_cell_in_run; \
+                index_type sub_offset_in_bidi = first_cell_in_run - logical_pos; \
+                FriBidiStrIndex visual_sub_start; \
+                if (is_rtl) { \
+                    visual_sub_start = visual_start + (run_len - sub_offset_in_bidi - sub_len); \
+                } else { \
+                    visual_sub_start = visual_start + sub_offset_in_bidi; \
+                } \
+                int cursor_offset = -1; \
+                if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x < (end_idx) && cursor->x < line->xnum && multicell_intersects_cursor(line, lnum, cursor)) \
+                    cursor_offset = cursor->x - first_cell_in_run; \
+                bidi_current_run_level = lvl; \
+                bidi_current_run_is_rtl = is_rtl; \
+                if (visual_sub_start + sub_len <= line->xnum) { \
+                    render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + visual_sub_start, sub_len, run_font, false, center_glyph, cursor_offset, disable_ligature_strategy, line->text_cache, lc); \
+                } else { \
+                    render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, sub_len, run_font, false, center_glyph, cursor_offset, disable_ligature_strategy, line->text_cache, lc); \
+                } \
+                bidi_current_run_is_rtl = false; \
+                bidi_current_run_level = 0; \
+            } \
+        } while(0)
+
+        for (sub_i = logical_pos; sub_i < logical_pos + run_len; sub_i++) {
+            RunFont cell_font = basic_font;
+            CPUCell *cpu_cell = line->cpu_cells + sub_i;
+            if (cpu_cell->is_multicell) {
+                if (cpu_cell->x) {
+                    if (cpu_cell->x + 1u < mcd_x_limit(cpu_cell)) sub_i += mcd_x_limit(cpu_cell) - cpu_cell->x - 1u;
+                    continue;
+                }
+                cell_font.scale = cpu_cell->scale;
+                cell_font.subscale_n = cpu_cell->subscale_n;
+                cell_font.subscale_d = cpu_cell->subscale_d;
+                cell_font.align.vertical = cpu_cell->valign;
+                cell_font.align.horizontal = cpu_cell->halign;
+                cell_font.multicell_y = cpu_cell->y;
+            }
+            text_in_cell(cpu_cell, line->text_cache, lc);
+            bool is_main_font, is_emoji_presentation;
+            // For font selection we need gpu cell at logical position (color/attrs)
+            GPUCell *gpu_cell = line->gpu_cells + sub_i;
+            const char_type first_ch = lc->chars[0];
+            cell_font.font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
+            CharProps cp = char_props_for(first_ch);
+            if (cell_font.font_idx != MISSING_FONT && ((!is_main_font && !is_emoji_presentation && cp.is_symbol) ||
+                                                       (cell_font.font_idx != BOX_FONT && (is_private_use(cp))) || is_non_emoji_dingbat(first_ch, cp))) {
+                unsigned int desired_cells = 1;
+                if (cell_font.font_idx > 0) {
+                    Font *font = (fg->fonts + cell_font.font_idx);
+                    glyph_index gid = glyph_id_for_codepoint(font->face, first_ch);
+                    int width = get_glyph_width(font->face, gid);
+                    desired_cells = (unsigned int)ceilf((float)width / fg->fcm.cell_width);
+                }
+                desired_cells = MIN(desired_cells, cell_cap_for_codepoint(first_ch));
+                unsigned int num_spaces = 0;
+                // Check if PUA expansion fits within bidi run and line
+                while (sub_i + num_spaces + 1 < logical_pos + run_len && sub_i + num_spaces + 1 < line->xnum &&
+                       (cell_is_char(line->cpu_cells + sub_i + num_spaces + 1, ' ') || cell_is_char(line->cpu_cells + sub_i + num_spaces + 1, 0x2002))
+                       && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA && num_spaces + 1 < desired_cells) {
+                    num_spaces++;
+                    // Need to map space cell visual position as well: but PUA block is treated as single visual unit
+                    // Simplify: keep PUA ligature in logical order without bidi reorder for this block
+                    // The spaces are part of same bidi run, so visual mapping for block still applies
+                    GPUCell *space_cell_logical = line->gpu_cells + sub_i + num_spaces;
+                    // Also need to set decoration on visual space cell? For now set on logical too
+                    space_cell_logical->fg = gpu_cell->fg;
+                    space_cell_logical->decoration_fg = gpu_cell->decoration_fg;
+                    // Also set visual space cell colors
+                    index_type space_logical = sub_i + num_spaces;
+                    // Find visual for this space: within rtl run, its visual pos is mirrored
+                    FriBidiStrIndex vs = 0;
+                    if (space_logical < line->xnum) {
+                        FriBidiStrIndex v = bidi->logical_to_visual[space_logical];
+                        // For PUA block we handle separately below
+                        (void)v; (void)vs;
+                    }
+                }
+                if (num_spaces) {
+                    FLUSH_BIDI_SUBRUN(sub_i);
+                    center_glyph = true;
+                    // Compute visual start for PUA block (sub_len = num_spaces+1)
+                    index_type pua_len = num_spaces + 1;
+                    index_type pua_offset = sub_i - logical_pos;
+                    FriBidiStrIndex pua_visual_start;
+                    if (is_rtl) pua_visual_start = visual_start + (run_len - pua_offset - pua_len);
+                    else pua_visual_start = visual_start + pua_offset;
+                    bidi_current_run_level = lvl;
+                    bidi_current_run_is_rtl = is_rtl;
+                    if (pua_visual_start + pua_len <= line->xnum) {
+                        // For PUA we render directly to visual
+                        render_run(fg, line->cpu_cells + sub_i, line->gpu_cells + pua_visual_start, pua_len, cell_font, true, true, -1, disable_ligature_strategy, line->text_cache, lc);
+                    } else {
+                        render_run(fg, line->cpu_cells + sub_i, line->gpu_cells + sub_i, pua_len, cell_font, true, true, -1, disable_ligature_strategy, line->text_cache, lc);
+                    }
+                    bidi_current_run_is_rtl = false;
+                    bidi_current_run_level = 0;
+                    center_glyph = false;
+                    run_font = basic_font;
+                    first_cell_in_run = sub_i + pua_len;
+                    sub_i += num_spaces;
+                    has_pending_run = false;
+                    continue;
+                }
+            }
+            if (run_font.font_idx == NO_FONT) { run_font = cell_font; first_cell_in_run = sub_i; has_pending_run = true; }
+            else if (!run_fonts_are_equal(&run_font, &cell_font)) {
+                FLUSH_BIDI_SUBRUN(sub_i);
+                run_font = cell_font;
+                first_cell_in_run = sub_i;
+                has_pending_run = true;
+            } else {
+                has_pending_run = true;
+            }
+        }
+        if (has_pending_run) FLUSH_BIDI_SUBRUN(logical_pos + run_len);
+#undef FLUSH_BIDI_SUBRUN
+        logical_pos += run_len;
+    }
+    // Render trailing empty cells as blank
+    for (index_type i = xlimit; i < line->xnum; i++) line->gpu_cells[i].sprite_idx = 0;
+}
+
+void
+render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc) {
+    if (OPT(force_ltr)) {
+        render_line_nobidi(fg_, line, lnum, cursor, disable_ligature_strategy, lc);
+        return;
+    }
+    BidiInfo bidi = {0};
+    bool has_bidi = bidi_compute(line, &bidi);
+    bool needs_bidi = has_bidi && bidi.max_level > 1;
+    // Also check quickly if line contains RTL: if max_level>1 then reordered
+    if (needs_bidi) {
+        render_line_bidi(fg_, line, lnum, cursor, disable_ligature_strategy, lc, &bidi);
+        bidi_free(&bidi);
+        return;
+    }
+    if (has_bidi) bidi_free(&bidi);
+    render_line_nobidi(fg_, line, lnum, cursor, disable_ligature_strategy, lc);
 }
 
 StringCanvas

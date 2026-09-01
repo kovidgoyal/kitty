@@ -800,6 +800,10 @@ def kitty_env(args: Options) -> Env:
         platform_libs.extend(pkg_config('cairo-fc', '--libs'))
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
+    # FriBidi for Arabic/BiDi support
+    with suppress(SystemExit, subprocess.CalledProcessError):
+        cflags.extend(pkg_config('fribidi', '--cflags-only-I', fatal=False))
+        platform_libs.extend(pkg_config('fribidi', '--libs', fatal=False))
     pylib = get_python_flags(args, cflags)
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
