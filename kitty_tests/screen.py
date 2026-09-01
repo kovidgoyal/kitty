@@ -1963,9 +1963,15 @@ class TestScreen(BaseTest):
             parse_bytes(s, b'\x1b]21;' + ';'.join(f'{k}={v}' for k, v in send.items()).encode() + b'\a')
             self.ae(s.callbacks.color_control_responses, [expected] if expected else [])
 
+        # Unknown fields must be reported with their name base64 encoded, not echoed back
+        # verbatim, to prevent using this escape code to emit arbitrary printable ASCII text
         q(
             {k: '?' for k in 'background foreground 213 unknown'.split()},
-            {'background': opts.background, 'foreground': opts.foreground, '213': Color(255, 135, 255), 'unknown': '?'},
+            {'background': opts.background, 'foreground': opts.foreground, '213': Color(255, 135, 255), 'unknown': ['unknown']},
+        )
+        q(
+            {'arbitrary text!': '?', ' 5 ': '?', 'transparent_background_colorX': '?'},
+            {'unknown': ['arbitrary text!', ' 5 ', 'transparent_background_colorX']},
         )
         q({'background': 'aquamarine'})
         q(
@@ -1981,7 +1987,7 @@ class TestScreen(BaseTest):
         q({'213': '?'}, {'213': Color(216, 125, 215)})
         self.assertTrue(s.color_profile.palette_color_is_generated(213))
         s.color_profile.reload_from_opts(opts)
-        q({'transparent_background_color9': '?'}, {'transparent_background_color9': '?'})
+        q({'transparent_background_color9': '?'}, {'unknown': ['transparent_background_color9']})
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': ''})
         q({'transparent_background_color2': 'red@0.5'})
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': (Color(255, 0, 0), 126)})

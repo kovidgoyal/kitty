@@ -298,6 +298,10 @@ Detailed list of changes
   of silently truncating their data. Also fix :opt:`clipboard_max_size` being
   interpreted in units of TB rather than MB (:iss:`10399`)
 
+- Color control protocol: Report unknown fields as ``unknown=<base64 encoded
+  field name>`` instead of echoing the field name back verbatim, which allowed
+  using the escape code to make the terminal emit arbitrary printable ASCII text
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

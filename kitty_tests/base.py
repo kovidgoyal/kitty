@@ -66,6 +66,7 @@ class Callbacks:
             self.pty.reset_termios_state()
 
     def color_control(self, code, data) -> None:
+        from kitty.fast_data_types import base64_decode
         from kitty.window import color_control
 
         response = color_control(self.color_profile, code, data)
@@ -79,7 +80,14 @@ class Callbacks:
                     ans = x
                 return ans
 
-            parts = {x.partition('=')[0]: p(x.partition('=')[2]) for x in response.split(';')[1:]}
+            parts = {}
+            for x in response.split(';')[1:]:
+                k, _, v = x.partition('=')
+                if k == 'unknown':
+                    # unknown field names are base64 encoded, collect the decoded names in a list
+                    parts.setdefault('unknown', []).append(base64_decode(v).decode('ascii'))
+                else:
+                    parts[k] = p(v)
             self.color_control_responses.append(parts)
 
     def title_changed(self, data, is_base64=False) -> None:

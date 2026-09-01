@@ -103,9 +103,22 @@ This indicates that the foreground color is red and the cursor color is
 undefined (typically the cursor takes the color of the text under it and the
 text takes the color of the background).
 
-If the terminal does not know a field that a client sends to it for a query it
-must respond back with the ``field=?``, that is, it must send back a question
-mark as the value.
+If the terminal does not know a field that a client sends to it, it must respond
+with a field named ``unknown`` whose value is the :rfc:`Base64 <4648>` encoded
+name of the unknown field. There is one such ``unknown`` field in the response
+for every unknown field in the request, in the order the unknown fields were
+received. The field name is encoded rather than echoed back verbatim so that
+this escape code cannot be abused to make the terminal emit arbitrary text. For
+example, if the client sends::
+
+    <OSC> 21 ; foreground=? ; nonsense=? <ST>
+
+The terminal responds (``bm9uc2Vuc2U`` being the Base64 encoding of ``nonsense``)::
+
+    <OSC> 21 ; foreground=rgb:ff/00/00 ; unknown=bm9uc2Vuc2U <ST>
+
+Note that the Base64 encoding used here is without padding (the terminal does not
+append ``=`` bytes) so that the response can always be parsed unambiguously.
 
 
 Setting color values
