@@ -2289,7 +2289,20 @@ uniqify_dir_entries_for_case_insensitive_fs(DragRemoteItem *children, size_t cou
     vt_cleanup(&seen);
 }
 
-static void
+// The following functions can abort the drag when they encounter an error.
+// Aborting calls cancel_drag() -> drag_free_offer(), which frees the offer
+// including the DragRemoteItem the caller is holding. They therefore return
+// false on abort (and true otherwise) so callers know to stop touching the now
+// freed memory. abrt() is redefined here to return false instead of void; it is
+// restored to its void form after subdir_data_for_drag().
+#undef abrt
+#define abrt(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return false;                  \
+    }
+
+static bool
 populate_dir_entries(Window *w, DragRemoteItem *ri) {
     size_t num = count_occurrences((char *)ri->data, ri->data_sz, 0) + 1;
     ri->children = calloc(num + 1, sizeof(ri->children[0]));
@@ -2319,9 +2332,10 @@ populate_dir_entries(Window *w, DragRemoteItem *ri) {
         ptr = p ? p + 1 : end;
     }
     if (tempdir_case_insensitive == 1) uniqify_dir_entries_for_case_insensitive_fs(ri->children, ri->children_sz);
+    return true;
 }
 
-static void
+static bool
 add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload, size_t payload_sz, int dirfd) {
     if (payload_sz && payload) {
         if (payload_sz > 4096) abrt(EINVAL, "drag source item data chunk too large");
@@ -2391,7 +2405,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                     log_error("Failed to create directory for drag source item with name: %s and error: %s", ri->dir_entry_name, strerror(err));
                     abrt(err, "failed to create directory for drag source item");
                 }
-                populate_dir_entries(w, ri);
+                if (!populate_dir_entries(w, ri)) return false;
                 break;
         }
         free(ri->data);
@@ -2399,6 +2413,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
         ri->data_capacity = 0;
         ri->data_sz = 0;
     }
+    return true;
 }
 
 static int
@@ -2413,7 +2428,7 @@ ensure_base_dir_for_drag(Window *w) {
     return 0;
 }
 
-static void
+static bool
 toplevel_data_for_drag(
     Window *w,
     DragRemoteItem *ri,
@@ -2450,7 +2465,7 @@ toplevel_data_for_drag(
             mi.uri_list[uri_item_idx] = as_file_url(ds.base_dir_for_remote_items, path, ri->dir_entry_name);
         }
     }
-    add_payload(w, ri, has_more, payload, payload_sz, ri->top_level_parent_dir_fd_plus_one - 1);
+    return add_payload(w, ri, has_more, payload, payload_sz, ri->top_level_parent_dir_fd_plus_one - 1);
 }
 
 static DragRemoteItem *
@@ -2513,7 +2528,7 @@ open_subdir_of_drag(DragRemoteItem *root, DragRemoteItem *item, unsigned depth) 
     return ans;
 }
 
-static void
+static bool
 subdir_data_for_drag(
     Window *w,
     unsigned mime_item_idx,
@@ -2555,8 +2570,16 @@ subdir_data_for_drag(
         (*ri)->type = item_type;
         base64_init_stream_decoder(&(*ri)->base64_state);
     }
-    add_payload(w, *ri, has_more, payload, payload_sz, parent->fd_plus_one - 1);
+    return add_payload(w, *ri, has_more, payload, payload_sz, parent->fd_plus_one - 1);
 }
+
+// Restore abrt() to its void-returning form for the remaining functions.
+#undef abrt
+#define abrt(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return;                        \
+    }
 
 void
 drag_offer_start_to_child(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_x, int32_t pixel_y) {
@@ -2619,7 +2642,7 @@ drag_remote_file_data(Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, boo
         ri = mi.remote_items + uri_item_idx;
     }
     if (!Y) {
-        toplevel_data_for_drag(w, ri, mime_item_idx, uri_item_idx, X, has_more, payload, payload_sz);
+        if (!toplevel_data_for_drag(w, ri, mime_item_idx, uri_item_idx, X, has_more, payload, payload_sz)) return;
         if (all_data_received && all_children_complete(ri)) {
             ri->completed = true;
             if (ds.file_promises) finish_file_promise(w, uri_item_idx, ri);
@@ -2627,7 +2650,7 @@ drag_remote_file_data(Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, boo
         }
     } else {
         if (y < 1) abrt(EINVAL, "drag source remote item y index cannot be less than 1");
-        subdir_data_for_drag(w, mime_item_idx, Y, y - 1, X, has_more, payload, payload_sz, &ri);
+        if (!subdir_data_for_drag(w, mime_item_idx, Y, y - 1, X, has_more, payload, payload_sz, &ri)) return;
         if (all_data_received && ri && all_children_complete(ri)) {
             ri->completed = true;
             while (1) {
