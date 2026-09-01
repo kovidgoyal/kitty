@@ -274,6 +274,47 @@ class TestLayout(BaseTest):
         self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2]})
         self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'top': [2]})
 
+    def test_resize_window_towards_to(self):
+        # Ensure correct resizing direction
+        for location, is_horizontal in (('vsplit', True), ('hsplit', False)):
+            q = create_layout(Splits)
+            all_windows = create_windows(q, num=0)
+            q.add_window(all_windows, Window(1))
+            q.add_window(all_windows, Window(2), location=location)
+            pair = q.pairs_root.pair_for_window(1)
+            self.assertIsNotNone(pair)
+
+            for increment, expected_bias in ((-0.1, 0.4), (0.1, 0.6)):
+                pair.bias = 0.5
+                self.assertTrue(q.modify_size_of_window(all_windows, 1, increment, is_horizontal, is_towards_edge=True))
+                self.ae(pair.bias, expected_bias)
+                pair.bias = 0.5
+                self.assertTrue(q.modify_size_of_window(all_windows, 2, increment, is_horizontal, is_towards_edge=True))
+                self.ae(pair.bias, expected_bias)
+
+    def test_resize_window_towards_to_middle_window(self):
+        # Ensure resizing the middle window moves the correct window border in
+        # the correct direction
+        # Layout: w1 | w2 | w3, or the vertical equivalent. Window 2 has
+        # one border in the parent pair and another in its own pair with w3.
+        for location, is_horizontal in (('vsplit', True), ('hsplit', False)):
+            q = create_layout(Splits)
+            all_windows = create_windows(q, num=0)
+            q.add_window(all_windows, Window(1))
+            q.add_window(all_windows, Window(2), location=location)
+            q.add_window(all_windows, Window(3), location=location)
+            parent_pair = q.pairs_root.pair_for_window(1)
+            middle_pair = q.pairs_root.pair_for_window(2)
+            self.assertIsNotNone(parent_pair)
+            self.assertIsNotNone(middle_pair)
+            self.assertIsNot(parent_pair, middle_pair)
+
+            for increment, expected_bias in ((-0.1, 0.4), (0.1, 0.6)):
+                parent_pair.bias = middle_pair.bias = 0.5
+                self.assertTrue(q.modify_size_of_window(all_windows, 2, increment, is_horizontal, is_towards_edge=True))
+                self.ae(parent_pair.bias, 0.5)
+                self.ae(middle_pair.bias, expected_bias)
+
     def test_splits_unserialize_into_unused_layout(self):
         # Restoring the state of a layout that was not the active one when the session
         # was saved: its pairs tree is empty, and the window list must not be
