@@ -1453,6 +1453,7 @@ free_in_progress_drop_data(_GLFWwindow *window) {
         [[NSFileManager defaultManager] removeItemAtURL:d->in_progress_drop.temp_dir error:&error];
         [d->in_progress_drop.temp_dir release];
     }
+    if (d->in_progress_drop.lazy_receivers) [d->in_progress_drop.lazy_receivers release];
     if (d->in_progress_drop.data_map) [d->in_progress_drop.data_map release];
     if (d->in_progress_drop.path_map) [d->in_progress_drop.path_map release];
     if (d->in_progress_drop.pending_requests) [d->in_progress_drop.pending_requests release];
@@ -1634,6 +1635,78 @@ send_data_available_event_on_next_event_loop_tick(GLFWid wid, const char *mime) 
     });
 }
 
+// Fulfill stored file promises into a fresh temp dir and publish the results.
+// Called lazily from _glfwPlatformRequestDropData on the first content request.
+static void
+start_lazy_fulfillment(_GLFWwindow *window, NSArray *receivers) {
+    _GLFWDropData *d = &window->ns.drop_data;
+    NSError *mkdirError = nil;
+    NSURL *tempDirURL = [[NSFileManager defaultManager] URLForDirectory:NSItemReplacementDirectory
+                                                               inDomain:NSUserDomainMask
+                                                      appropriateForURL:[NSURL fileURLWithPath:NSTemporaryDirectory()]
+                                                                 create:YES
+                                                                  error:&mkdirError];
+    if (!tempDirURL) {
+        NSLog(@"Failed to create temp dir for file promises: %@", mkdirError);
+        d->in_progress_drop.promises_loaded = YES;
+        return;
+    }
+    // Track the dir from the start so end-of-drop cleanup can remove it even if
+    // fulfillment is still in flight when the drop ends.
+    d->in_progress_drop.temp_dir = [tempDirURL retain];
+    const unsigned long long request_id = d->in_progress_drop.request_id;
+    GLFWid wid = window->id;
+    NSOperationQueue *workQueue = [[[NSOperationQueue alloc] init] autorelease];
+    dispatch_group_t promiseGroup = dispatch_group_create();
+    NSMutableDictionary *results = [[NSMutableDictionary alloc] init];
+    for (NSFilePromiseReceiver *receiver in receivers) {
+        dispatch_group_enter(promiseGroup);
+        NSArray<NSString *> *types = receiver.fileTypes;
+        [receiver receivePromisedFilesAtDestination:tempDirURL
+                                            options:@{}
+                                     operationQueue:workQueue
+                                             reader:^(NSURL *_Nonnull fileURL, NSError *_Nullable error) {
+                                               id result = error;
+                                               if (!result) {
+                                                   NSInputStream *s = [NSInputStream inputStreamWithURL:fileURL];
+                                                   [s open];
+                                                   if ([s streamStatus] == NSStreamStatusError) result = [s streamError];
+                                                   else result = s;
+                                               }
+                                               for (NSString *type in types) {
+                                                   const char *mime = uti_to_mime(type);
+                                                   if (mime) results[@(mime)] = result;
+                                               }
+                                               dispatch_group_leave(promiseGroup);
+                                             }];
+    }
+    dispatch_group_notify(promiseGroup, dispatch_get_main_queue(), ^{
+      _GLFWwindow *w = NULL;
+      for (_GLFWwindow *ww = _glfw.windowListHead; ww; ww = ww->next) {
+          if (ww->id == wid) {
+              w = ww;
+              break;
+          }
+      }
+      if (w && w->ns.drop_data.in_progress_drop.request_id == request_id) {
+          _GLFWDropData *dd = &w->ns.drop_data;
+          dd->in_progress_drop.path_map = results;
+          dd->in_progress_drop.promises_loaded = YES;
+          // Only synthesize a uri-list when the pasteboard carried no URLs of its
+          // own; otherwise keep the (still valid) source paths already published.
+          if (dd->in_progress_drop.data_map[@"text/uri-list"] == nil) build_uri_list(dd);
+          if (dd->in_progress_drop.pending_requests) {
+              for (NSString *mime in dd->in_progress_drop.pending_requests) { send_data_available_event_on_next_event_loop_tick(wid, [mime UTF8String]); }
+          }
+      } else {
+          NSError *error = nil;
+          [[NSFileManager defaultManager] removeItemAtURL:tempDirURL error:&error];
+          [results release];
+      }
+    });
+    [promiseGroup release];
+}
+
 static void
 create_uri_list(_GLFWDropData *d, NSArray *urls) {
     NSMutableArray<NSString *> *items = [NSMutableArray array];
@@ -1674,16 +1747,6 @@ build_uri_list(_GLFWDropData *d) {
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
     if (!reset_drop_copy_mimes(d)) return NO;
-    NSError *mkdirError = nil;
-    NSURL *tempDirURL = [[NSFileManager defaultManager] URLForDirectory:NSItemReplacementDirectory
-                                                               inDomain:NSUserDomainMask
-                                                      appropriateForURL:[NSURL fileURLWithPath:NSTemporaryDirectory()]
-                                                                 create:YES
-                                                                  error:&mkdirError];
-    if (!tempDirURL) {
-        NSLog(@"Failed to create temp dir for file promises: %@", mkdirError);
-        return NO;
-    }
     d->in_progress_drop.data_map = [[NSMutableDictionary alloc] init];
     NSPasteboard *pasteboard = [sender draggingPasteboard];
     NSMutableArray<NSURL *> *urls = [NSMutableArray array];
@@ -1709,70 +1772,17 @@ build_uri_list(_GLFWDropData *d) {
     }
     NSArray *receivers = [pasteboard readObjectsForClasses:@[ [NSFilePromiseReceiver class] ] options:nil];
     if ([receivers count] > 0) {
+        // Lazy fulfillment: fulfilling a file promise MOVES the provider's staging file
+        // into our destination directory, invalidating the source path we just published
+        // as text/uri-list — and our copy is removed at end-of-drop, so the consumer is
+        // left with no usable file anywhere (macOS screenshot thumbnail drops hit this:
+        // the pasted NSIRD_screencaptureui_* path dies when the promise is fulfilled).
+        // Instead, keep the receivers and only fulfill when a content MIME is actually
+        // requested in _glfwPlatformRequestDropData. Path-as-text consumers are served
+        // from the pasteboard URLs above and the provider keeps its staging file alive
+        // (the same behavior as dragging into Terminal.app).
+        d->in_progress_drop.lazy_receivers = [receivers retain];
         d->in_progress_drop.request_id = ++window->ns.drop_request_counter;
-        unsigned long long request_id = d->in_progress_drop.request_id;
-        GLFWid wid = window->id;
-        NSOperationQueue *workQueue = [[[NSOperationQueue alloc] init] autorelease];
-        dispatch_group_t promiseGroup = dispatch_group_create();
-        NSMutableDictionary *results = [[NSMutableDictionary alloc] init];
-        unsigned url_counter = 0;
-        for (NSFilePromiseReceiver *receiver in receivers) {
-            dispatch_group_enter(promiseGroup);
-            NSArray<NSString *> *types = receiver.fileTypes;
-            unsigned url_list_idx = 0;
-            for (NSString *type in types) {
-                UTType *promisedType = [UTType typeWithIdentifier:type];
-                if (promisedType && [promisedType conformsToType:UTTypeFileURL]) {
-                    url_list_idx = ++url_counter;
-                    break;
-                }
-            }
-            [receiver receivePromisedFilesAtDestination:tempDirURL
-                                                options:@{}
-                                         operationQueue:workQueue
-                                                 reader:^(NSURL *_Nonnull fileURL, NSError *_Nullable error) {
-                                                   if (url_list_idx)
-                                                       results[[NSString stringWithFormat:@"kitty-internal/uri-list-item-%u", url_list_idx - 1]] =
-                                                           error ? error : fileURL;
-                                                   else {
-                                                       id result = error;
-                                                       if (!result) {
-                                                           NSInputStream *s = [NSInputStream inputStreamWithURL:fileURL];
-                                                           [s open];
-                                                           if ([s streamStatus] == NSStreamStatusError) result = [s streamError];
-                                                           else result = s;
-                                                       }
-                                                       for (NSString *type in types) {
-                                                           const char *mime = uti_to_mime(type);
-                                                           if (mime) results[@(mime)] = result;
-                                                       }
-                                                   }
-                                                   dispatch_group_leave(promiseGroup);
-                                                 }];
-        }
-        dispatch_group_notify(promiseGroup, dispatch_get_main_queue(), ^{
-          _GLFWwindow *w = NULL;
-          for (_GLFWwindow *ww = _glfw.windowListHead; ww; ww = ww->next) {
-              if (ww->id == wid) {
-                  w = ww;
-                  break;
-              }
-          }
-          if (w && w->ns.drop_data.in_progress_drop.request_id == request_id) {
-              _GLFWDropData *d = &w->ns.drop_data;
-              d->in_progress_drop.path_map = results;
-              d->in_progress_drop.promises_loaded = YES;
-              d->in_progress_drop.temp_dir = [tempDirURL retain];
-              build_uri_list(d);
-              if (d->in_progress_drop.pending_requests) {
-                  for (NSString *mime in d->in_progress_drop.pending_requests) { send_data_available_event_on_next_event_loop_tick(wid, [mime UTF8String]); }
-              }
-          } else {
-              NSError *error = nil;
-              [[NSFileManager defaultManager] removeItemAtURL:tempDirURL error:&error];
-          }
-        });
-        [promiseGroup release];
     } else d->in_progress_drop.promises_loaded = true;
 
     size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
@@ -1804,6 +1814,14 @@ _glfwPlatformRequestDropData(_GLFWwindow *window, const char *mime) {
     if (d->in_progress_drop.data_map[@(mime)] != nil) {
         send_data_available_event_on_next_event_loop_tick(window->id, mime);
         return 0;
+    }
+    if (d->in_progress_drop.lazy_receivers != nil) {
+        // First content request for this drop: fulfill the promises now. Path-as-text
+        // consumers (text/uri-list) never reach this branch because the pasteboard
+        // URLs are already in data_map — they keep the provider's staging file alive.
+        NSArray *receivers = d->in_progress_drop.lazy_receivers;
+        d->in_progress_drop.lazy_receivers = nil;
+        start_lazy_fulfillment(window, receivers);
     }
     if (!d->in_progress_drop.promises_loaded) {
         if (d->in_progress_drop.pending_requests == nil) d->in_progress_drop.pending_requests = [[NSMutableSet alloc] init];

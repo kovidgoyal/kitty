@@ -121,6 +121,7 @@ typedef struct _GLFWDropData {
     struct {
         unsigned long long request_id;
         id temp_dir;
+        id lazy_receivers; // NSFilePromiseReceiver[] stored at drop time, fulfilled lazily on first content request
         id data_map; // map MIME to NSError or NSInputStream
         id path_map; // map MIME to NSError or NSInputStream or NSUrl
         id pending_requests;
