@@ -44,6 +44,7 @@ static void drop_pop_request(Window *w);
 
 static size_t
 count_occurrences(const char *str, size_t len, char target) {
+    if (!str) return 0;
     size_t count = 0;
     const char *ptr = str;
     while ((ptr = memchr(ptr, target, len - (ptr - str))) != NULL) {
