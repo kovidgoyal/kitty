@@ -393,7 +393,10 @@ class PatchFile:
     @property
     def dest_file(self) -> IO[bytes]:
         if self._dest_file is None:
-            self._dest_file = tempfile.NamedTemporaryFile(mode='wb', dir=os.path.dirname(os.path.abspath(os.path.realpath(self.path))), delete=False)
+            # Note: deliberately no realpath() here, the temporary file must be
+            # created next to the destination itself, not next to whatever a
+            # symlink at the destination happens to point to.
+            self._dest_file = tempfile.NamedTemporaryFile(mode='wb', dir=os.path.dirname(os.path.abspath(self.path)), delete=False)
         return self._dest_file
 
     def close(self) -> None:
@@ -406,7 +409,7 @@ class PatchFile:
             self._dest_file.close()
             p.finish_delta_data()
             if self.src_file is not None:
-                os.replace(self.dest_file.name, self.src_file.name)
+                os.replace(self.dest_file.name, self.path)
         if self.src_file is not None and not self.src_file.closed:
             self.src_file.close()
 
@@ -431,7 +434,10 @@ class PatchFile:
         if self.signature_done:
             return 0
         if self.src_file is None:
-            self.src_file = open(self.path, 'rb')
+            # O_NOFOLLOW so that a symlink planted at the destination cannot be
+            # used to read some other file and leak its signature to the sender
+            flags = os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+            self.src_file = open(os.open(self.path, flags), mode='rb', closefd=True)
             return self.patcher.signature_header(buf)
         n = self.src_file.readinto(self.block_buffer)
         if n > 0:
@@ -468,6 +474,15 @@ class DestFile:
         self.actual_file: PatchFile | IO[bytes] | None = None
         self.failed = False
         self.bytes_written = 0
+
+    @property
+    def can_patch_in_place(self) -> bool:
+        # A differential (rsync) transfer reads the existing file and renames a
+        # temporary file over it, bypassing the unlink and O_NOFOLLOW defences
+        # in write_data(). So only allow it when the destination is a plain
+        # regular file with no other links to it.
+        es = self.existing_stat
+        return es is not None and not self.needs_unlink and stat.S_ISREG(es.st_mode)
 
     def signature_iterator(self) -> PatchFile:
         self.actual_file = PatchFile(self.name, self.existing_stat.st_size if self.existing_stat is not None else 0)
@@ -1028,7 +1043,7 @@ class FileTransmission:
                         sz = df.existing_stat.st_size if df.existing_stat is not None else -1
                         ttype = (
                             TransmissionType.rsync
-                            if sz > -1 and df.ttype is TransmissionType.rsync and df.ftype is FileType.regular
+                            if sz > -1 and df.ttype is TransmissionType.rsync and df.ftype is FileType.regular and df.can_patch_in_place
                             else TransmissionType.simple
                         )
                         self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name, size=sz, ttype=ttype)
