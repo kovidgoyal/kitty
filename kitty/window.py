@@ -1726,10 +1726,10 @@ class Window:
     def handle_remote_echo(self, msg: memoryview) -> None:
         # This is used by the ssh kitten to flush garbage from the tty on exit
         data = base64_decode(msg)
-        if re.match(rb'\d+$', data) is None:
-            log_error(f'Invalid echo message received from client: {data!r}')
-        else:
+        if data.isdigit():
             self.write_to_child(data)
+        else:
+            log_error(f'Invalid echo message received from client: {data!r}')
 
     def handle_remote_ssh(self, msg: memoryview) -> None:
         from kittens.ssh.utils import get_ssh_data
