@@ -871,6 +871,15 @@ read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
     if (ret == 0) {
         global_state.drop_dest.num_left--;
         if (!global_state.drop_dest.num_left) {
+#ifdef __APPLE__
+            // Files dropped as file promises are fulfilled into a temp dir that is deleted
+            // when the drop ends. Since their paths are what is given to the program running
+            // in the window, keep them alive for a while, see Boss.dropped_file_promises_dir()
+            if (glfwCocoaPreserveDroppedFilePromises) {
+                const char *promises_dir = glfwCocoaPreserveDroppedFilePromises(window);
+                if (promises_dir && promises_dir[0]) call_boss(dropped_file_promises_dir, "s", promises_dir);
+            }
+#endif
             WINDOW_CALLBACK(
                 on_drop,
                 "OOii",

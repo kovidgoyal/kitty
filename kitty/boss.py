@@ -188,6 +188,9 @@ if TYPE_CHECKING:
 
 RCResponse = Union[dict[str, Any], None, AsyncResponse]
 
+# How long files dropped onto kitty as macOS file promises are kept alive for, in seconds
+DROPPED_FILE_PROMISES_LIFETIME = 600.0
+
 ThumbnailCallback = Callable[[int, int, bytes, int, int], None]
 
 
@@ -2201,6 +2204,21 @@ class Boss:
         elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom:
             if (tab_id := tm.tab_bar.tab_id_at(x, y)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
                 w.on_drop(drop)
+
+    def dropped_file_promises_dir(self, path: str) -> None:
+        # Called by the C code on macOS with the temporary directory holding the
+        # files a drop of file promises was fulfilled into. Their paths are what
+        # is given to the program running in the window, so the files must
+        # outlive the drop. Keep them around for a while, ensuring they are
+        # removed even if kitty is killed before that.
+        self.atexit.rmtree(path)
+
+        def remove_dropped_files(timer_id: int | None) -> None:
+            import shutil
+
+            shutil.rmtree(path, ignore_errors=True)
+
+        add_timer(remove_dropped_files, DROPPED_FILE_PROMISES_LIFETIME, False)
 
     def on_drag_source_finished(
         self, was_dropped: bool, was_canceled: bool, accepted_mime_type: str, action: int, data: dict[str, bytes] | None, needs_toplevel_on_wayland: bool

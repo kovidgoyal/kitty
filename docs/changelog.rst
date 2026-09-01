@@ -302,6 +302,10 @@ Detailed list of changes
   field name>`` instead of echoing the field name back verbatim, which allowed
   using the escape code to make the terminal emit arbitrary printable ASCII text
 
+- macOS: Fix dropping files that are provided as file promises pasting paths to
+  files that no longer exist. The dropped files are now kept alive for
+  ten minutes and removed when kitty quits (:iss:`10430`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

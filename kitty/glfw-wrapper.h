@@ -2508,6 +2508,10 @@ typedef void (*glfwCocoaRegisterMIMETypes_func)(GLFWwindow*, const char**, size_
 GFW_EXTERN glfwCocoaRegisterMIMETypes_func glfwCocoaRegisterMIMETypes_impl;
 #define glfwCocoaRegisterMIMETypes glfwCocoaRegisterMIMETypes_impl
 
+typedef const char* (*glfwCocoaPreserveDroppedFilePromises_func)(GLFWwindow*);
+GFW_EXTERN glfwCocoaPreserveDroppedFilePromises_func glfwCocoaPreserveDroppedFilePromises_impl;
+#define glfwCocoaPreserveDroppedFilePromises glfwCocoaPreserveDroppedFilePromises_impl
+
 typedef void (*glfwCocoaSetWindowLevel_func)(GLFWwindow*, const char*);
 GFW_EXTERN glfwCocoaSetWindowLevel_func glfwCocoaSetWindowLevel_impl;
 #define glfwCocoaSetWindowLevel glfwCocoaSetWindowLevel_impl

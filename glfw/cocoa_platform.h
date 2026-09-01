@@ -125,6 +125,7 @@ typedef struct _GLFWDropData {
         id path_map; // map MIME to NSError or NSInputStream or NSUrl
         id pending_requests;
         bool promises_loaded;
+        bool keep_temp_dir; // when true temp_dir is not deleted at end of drop, the application owns it
     } in_progress_drop;
 } _GLFWDropData;
 

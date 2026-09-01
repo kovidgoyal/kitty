@@ -506,6 +506,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwCocoaRegisterMIMETypes_impl) = dlsym(handle, "glfwCocoaRegisterMIMETypes");
     if (glfwCocoaRegisterMIMETypes_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwCocoaPreserveDroppedFilePromises_impl) = dlsym(handle, "glfwCocoaPreserveDroppedFilePromises");
+    if (glfwCocoaPreserveDroppedFilePromises_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwCocoaSetWindowLevel_impl) = dlsym(handle, "glfwCocoaSetWindowLevel");
     if (glfwCocoaSetWindowLevel_impl == NULL) dlerror(); // clear error indicator
 
