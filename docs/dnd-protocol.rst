@@ -144,6 +144,14 @@ queued data requests must be discarded by the terminal. The ``operation``
 is required and must specify the final action the client took with the data.
 If unset (aka ``0``) the terminal must assume the drop was canceled.
 
+.. note::
+
+    On some platforms, such as macOS, there is no :code:`text/uri-list`
+    MIME type. It gets synthesized from underlying structures such as file
+    promises. In such cases, the files pointed to by the URLs are only
+    guaranteed to exist while the drop is active, clients should copy out the
+    files before closing the drop, to ensure continued access to them.
+
 Dropping from remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
