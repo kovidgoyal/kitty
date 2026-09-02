@@ -132,6 +132,12 @@ func watch_for_config_changes(ctx context.Context, action func() error, debounce
 	for _, p := range all_paths.AsSlice() {
 		desired_dirs.Add(filepath.Dir(p))
 	}
+	// Always watch the parent dirs of the original config paths so that we
+	// detect file creation even when no config file exists yet (e.g. a fresh
+	// empty config directory).
+	for _, p := range config_paths {
+		desired_dirs.Add(filepath.Dir(resolve_path(p)))
+	}
 	if desired_dirs.Len() == 0 {
 		return fmt.Errorf("No directories to watch provided")
 	}

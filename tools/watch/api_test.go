@@ -373,6 +373,51 @@ func TestWatchForConfigChanges(t *testing.T) {
 	}
 }
 
+// TestWatchForConfigChangesEmptyConfigDir verifies that the watcher starts
+// successfully when the config file does not yet exist (e.g. KITTY_CONFIG_DIRECTORY
+// points to a fresh empty directory) and fires the action once the file is created.
+func TestWatchForConfigChangesEmptyConfigDir(t *testing.T) {
+	tdir := resolve_path(t.TempDir())
+	main_conf := filepath.Join(tdir, "kitty.conf")
+	// main_conf intentionally does not exist — simulates a fresh empty config directory.
+
+	var action_count atomic.Int32
+	action := func() error {
+		action_count.Add(1)
+		return nil
+	}
+
+	const debounce = 50 * time.Millisecond
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- watch_for_config_changes(ctx, action, debounce, []string{main_conf})
+	}()
+
+	// prime_watcher creates kitty.conf on its first write and retries until
+	// the watcher delivers an event, confirming the directory watch is active.
+	prime_watcher(t, main_conf, &action_count, debounce)
+
+	// A subsequent modification must also trigger an action.
+	before := action_count.Load()
+	write_file(t, main_conf, "font_size 14\n")
+	if wait_for_count(&action_count, before+1, 2*time.Second) <= before {
+		t.Fatalf("Expected action after modifying config file created in previously empty dir")
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("watch_for_config_changes returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("watch_for_config_changes did not exit after context cancel")
+	}
+}
+
 func TestWatchForConfigChangesDebounce(t *testing.T) {
 	tdir := t.TempDir()
 	main_conf := filepath.Join(tdir, "kitty.conf")
