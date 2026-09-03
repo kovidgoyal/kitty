@@ -1013,6 +1013,13 @@ class TestParser(BaseTest):
         self.ae(c.wtcbuf, b'\x1b[?2033;1$y')
         pb('\033[?2033l', ('screen_reset_mode', 2033, 1))
 
+    def test_malformed_csi_subparam_does_not_corrupt_sgr(self):
+        # Regression for #10434: \e[?:m sets is_sub_param[0]=true in the CSI
+        # state. reset_csi must clear that flag so the next SGR isn't rejected.
+        s = self.create_screen()
+        parse_bytes(s, b'\033[?:m\033[31m')
+        self.ae(s.cursor.fg, 1 << 8 | 1)  # red (ANSI color 1)
+
     def test_csi_code_rep(self):
         s = self.create_screen(8)
         pb = partial(self.parse_bytes_dump, s)

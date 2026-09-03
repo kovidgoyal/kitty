@@ -258,6 +258,7 @@ reset_csi(ParsedCSI *csi) {
     csi->is_valid = false;
     csi->accumulator = 0;
     csi->mult = 1;
+    memset(csi->is_sub_param, 0, sizeof(csi->is_sub_param));
 }
 // }}}
 
