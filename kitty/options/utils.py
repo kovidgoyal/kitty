@@ -299,7 +299,7 @@ def resize_window(func: str, rest: str) -> FuncArgsType:
         args = ['wider', 1]
     else:
         quality = vals[0].lower()
-        if quality not in ('reset', 'taller', 'shorter', 'wider', 'narrower'):
+        if quality not in ('reset', 'taller', 'shorter', 'wider', 'narrower', 'towards_top', 'towards_bottom', 'towards_right', 'towards_left'):
             log_error(f'Invalid quality specification: {quality}')
             quality = 'wider'
         increment = 1
