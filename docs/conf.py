@@ -17,7 +17,6 @@ from functools import lru_cache, partial
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple
 
 from docutils import nodes
-
 from docutils.parsers.rst.roles import normalize_options
 from pygments.lexer import RegexLexer
 from pygments.lexer import bygroups as untyped_bygroups
