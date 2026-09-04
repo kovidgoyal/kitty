@@ -1826,8 +1826,8 @@ io_loop(void *data) {
             ret = poll(children_fds, self->count + EXTRA_FDS, -1);
         }
         if (ret > 0) {
-            if (children_fds[0].revents && POLLIN) drain_fd(children_fds[0].fd); // wakeup
-            if (children_fds[1].revents && POLLIN) {
+            if (children_fds[0].revents & POLLIN) drain_fd(children_fds[0].fd); // wakeup
+            if (children_fds[1].revents & POLLIN) {
                 SignalSet ss = {0};
                 data_received = true;
                 read_signals(children_fds[1].fd, handle_signal, &ss);

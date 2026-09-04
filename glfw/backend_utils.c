@@ -329,6 +329,15 @@ finalizePollData(EventLoopData *eld) {
 #endif
 }
 
+static int
+display_fd_ready(EventLoopData *eld) {
+    // watches[0] is always the display fd. Errors count as ready: the display
+    // callback must complete the read rather than cancel it, so that a
+    // compositor disconnect is turned into a display error instead of a poll()
+    // that keeps returning immediately forever.
+    return eld->fds[0].revents & (POLLIN | POLLERR | POLLHUP | POLLNVAL);
+}
+
 int
 pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func display_callback) {
     int read_ok = 0;
@@ -344,7 +353,7 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
             errno = 0;
             result = pollWithTimeout(eld->fds, eld->watches_count, timeout);
             int saved_errno = errno;
-            if (display_callback) display_callback(result, eld->fds[0].revents && eld->watches[0].events, NULL);
+            if (display_callback) display_callback(result, display_fd_ready(eld), NULL);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
@@ -359,7 +368,7 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
             errno = 0;
             result = poll(eld->fds, eld->watches_count, -1);
             int saved_errno = errno;
-            if (display_callback) display_callback(result, eld->fds[0].revents && eld->watches[0].events, NULL);
+            if (display_callback) display_callback(result, display_fd_ready(eld), NULL);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);

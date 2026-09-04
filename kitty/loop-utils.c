@@ -88,7 +88,9 @@ init_loop_data(LoopData *ld, ...) {
 static void
 remove_signal_handlers(LoopData *ld) {
 #ifndef HAS_SIGNAL_FD
-    signal_write_fd = -1;
+    // Only clear the global write fd if it is owned by this loop. Loops that
+    // handle no signals must not disable signal delivery for the loop that does.
+    if (ld->signal_fds[1] > -1 && signal_write_fd == ld->signal_fds[1]) signal_write_fd = -1;
     CLOSE(signal_fds, 0);
     CLOSE(signal_fds, 1);
 #endif
@@ -97,7 +99,7 @@ remove_signal_handlers(LoopData *ld) {
         safe_close(ld->signal_read_fd, __FILE__, __LINE__);
         sigprocmask(SIG_UNBLOCK, &ld->signals, NULL);
 #endif
-        for (size_t i = 0; i < ld->num_handled_signals; i++) signal(ld->num_handled_signals, SIG_DFL);
+        for (size_t i = 0; i < ld->num_handled_signals; i++) signal(ld->handled_signals[i], SIG_DFL);
     }
     ld->signal_read_fd = -1;
     ld->num_handled_signals = 0;

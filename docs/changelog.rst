@@ -308,6 +308,12 @@ Detailed list of changes
   files that no longer exist. The dropped files are now kept alive for
   ten minutes and removed when kitty quits (:iss:`10430`)
 
+- macOS: Fix all signal handling being permanently disabled after the first
+  window that used the graphics protocol is closed. This caused exited window
+  shells to accumulate as zombie processes and also broke reloading the config
+  with ``SIGUSR1`` and quitting on ``SIGINT``/``SIGTERM``/``SIGHUP``
+  (:iss:`10436`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
