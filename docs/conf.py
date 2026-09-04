@@ -18,10 +18,7 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple
 
 from docutils import nodes
 
-try:
-    from docutils.parsers.rst.roles import normalize_options
-except ImportError:
-    from docutils.parsers.rst.roles import set_classes as normalize_options  # type: ignore
+from docutils.parsers.rst.roles import normalize_options
 from pygments.lexer import RegexLexer
 from pygments.lexer import bygroups as untyped_bygroups
 from pygments.token import Comment, Error, Keyword, Literal, Name, Number, String, Whitespace
@@ -231,7 +228,7 @@ def commit_role(
         prb = inliner.problematic(rawtext, rawtext, msg)
         return [prb], [msg]
     url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
-    normalize_options(options)
+    options = normalize_options(options)
     short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
     return [node], []
@@ -572,7 +569,7 @@ def link_role(
         return [prb], [msg]
     text, url = m.group(1, 2)
     url = url.replace(' ', '')
-    normalize_options(options)
+    options = normalize_options(options)
     node = nodes.reference(rawtext, text, refuri=url, **options)
     return [node], []
 
