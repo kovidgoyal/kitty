@@ -52,7 +52,7 @@ MA_CAT(MA_NAME, _get)(MA_TYPE_NAME *self, size_t sz) {
         void *chunk = NULL;
         if (MA_BLOCK_SIZE >= sizeof(void *) && MA_BLOCK_SIZE % sizeof(void *) == 0) {
             if (posix_memalign(&chunk, MA_BLOCK_SIZE, block_sz) != 0) chunk = NULL;
-            memset(chunk, 0, block_sz);
+            else memset(chunk, 0, block_sz);
         } else chunk = calloc(1, block_sz);
         if (!chunk) { return NULL; }
         if (count > self->capacity) {
