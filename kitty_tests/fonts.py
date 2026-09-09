@@ -14,12 +14,14 @@ from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import (
     DECAWM,
     ParsedFontFeature,
+    Screen,
     get_fallback_font,
     set_allow_use_of_box_fonts,
     sprite_idx_to_pos,
     sprite_map_set_layout,
     sprite_map_set_limits,
     test_render_line,
+    test_shape,
     test_sprite_position_increment,
     wcwidth,
 )
@@ -487,6 +489,37 @@ class Rendering(FontBaseTest):
 
         self.ae(groups('i\u0332\u0308', font='LiberationMono-Regular.ttf'), [(1, 2)])
         self.ae(groups('u\u0332 u\u0332\u0301', font='LiberationMono-Regular.ttf'), [(1, 2), (1, 1), (1, 2)])
+
+    def test_shaped_run_cache(self):
+        # test_shape() already checks that a cached run matches the HarfBuzz
+        # output for the same run, here we check that different runs sharing a
+        # font, and therefore a cache, do not collide with each other
+        ctx = partial(setup_for_testing, size=self.font_size, dpi=self.dpi, main_face_path=self.path_for_font(self.font_name))
+
+        def shape(text):
+            s = Screen(None, 1, max(8, len(text) * 2))
+            s.draw(text)
+            return test_shape(s.line(0), None)
+
+        texts = ('abcd', 'a===b', '->', '<==>', '-' * 18, 'x' * 32, 'x' * 33, 'a<!--b', '\u00e1\u00e9', 'a>\u2060<b')
+        cold = {}
+        for text in texts:
+            with ctx():  # a fresh font, and therefore an empty cache, for every run
+                cold[text] = shape(text)
+        with ctx():  # all runs now share a single cache
+            for text in texts + tuple(reversed(texts)):
+                self.ae(cold[text], shape(text), f'cached shaping differs for: {text!r}')
+
+    def test_shaping_with_many_combining_chars(self):
+        # cells can hold more codepoints than MAX_NUM_CODEPOINTS_PER_CELL when
+        # built via the Python API, which must not overflow the shaped run cache key
+        s = Screen(None, 1, 64)
+        s.draw('a' * 32)
+        line = s.line(0)
+        for x in range(32):
+            for i in range(40):
+                line.add_combining_char(x, chr(0x300 + (i % 16)))
+        self.ae(sum(g[0] for g in test_shape(line, None)), 32)
 
     def test_emoji_presentation(self):
         s = self.create_screen()

@@ -130,6 +130,9 @@ fill_key(
     for (; num_cells; cells++, num_cells--) {
         if (cells->is_multicell && cells->x) continue;
         text_in_cell(cells, tc, &lc);
+        // the scratch buffer is sized assuming this limit, cells that exceed it
+        // (only possible via the Python API) are simply not cached
+        if (lc.count > MAX_NUM_CODEPOINTS_PER_CELL) return false;
         uint16_t advance = 1;
         if (cells->is_multicell) advance = (uint16_t)(cells->width * cells->scale);
         uint32_t hdr = ((uint32_t)advance << 16) | (uint32_t)lc.count;
