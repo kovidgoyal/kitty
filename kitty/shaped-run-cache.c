@@ -1,0 +1,249 @@
+/*
+ * shaped-run-cache.c
+ * Copyright (C) 2026 Kovid Goyal <kovid at kovidgoyal.net>
+ *
+ * Distributed under terms of the GPL3 license.
+ */
+
+#include "shaped-run-cache.h"
+
+#define SHAPED_RUN_MAX_CELLS 32u
+#define SHAPED_RUN_MAX_ENTRIES 2048u
+#define SHAPED_RUN_MAX_BYTES (1024u * 1024u)
+
+typedef struct ShapedRunKey {
+    uint32_t keysz_in_bytes;
+    uint8_t disable_ligature, force_ltr, scale, subscale;
+    uint8_t data[];
+} ShapedRunKey;
+static_assert(sizeof(ShapedRunKey) == 8, "Fix the ordering of ShapedRunKey");
+
+typedef struct ShapedRunValue {
+    unsigned num_glyphs, num_groups;
+} ShapedRunValue;
+
+static inline hb_glyph_info_t *
+val_info(ShapedRunValue *v) {
+    return (hb_glyph_info_t *)(v + 1);
+}
+
+static inline hb_glyph_position_t *
+val_positions(ShapedRunValue *v) {
+    return (hb_glyph_position_t *)(val_info(v) + v->num_glyphs);
+}
+
+static inline ShapeGroup *
+val_groups(ShapedRunValue *v) {
+    return (ShapeGroup *)(val_positions(v) + v->num_glyphs);
+}
+
+static inline size_t
+val_size(unsigned num_glyphs, unsigned num_groups) {
+    return sizeof(ShapedRunValue) + num_glyphs * (sizeof(hb_glyph_info_t) + sizeof(hb_glyph_position_t)) + num_groups * sizeof(ShapeGroup);
+}
+
+#define NAME shaped_run_map
+#define KEY_TY const ShapedRunKey *
+#define VAL_TY ShapedRunValue *
+static uint64_t shaped_run_map_hash(KEY_TY key);
+#define HASH_FN shaped_run_map_hash
+static bool shaped_run_map_cmpr(KEY_TY a, KEY_TY b);
+#define CMPR_FN shaped_run_map_cmpr
+#define MA_NAME Key
+#define MA_BLOCK_SIZE 16u
+static_assert(MA_BLOCK_SIZE > sizeof(ShapedRunKey), "increase arena block size");
+#define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
+#include "arena.h"
+#define MA_NAME Val
+#define MA_BLOCK_SIZE 16u
+#define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
+#include "arena.h"
+
+#include "kitty-verstable.h"
+
+static uint64_t
+shaped_run_map_hash(const ShapedRunKey *key) {
+    return vt_hash_bytes(key, sizeof(ShapedRunKey) + key->keysz_in_bytes);
+}
+
+static bool
+shaped_run_map_cmpr(const ShapedRunKey *a, const ShapedRunKey *b) {
+    return a->keysz_in_bytes == b->keysz_in_bytes && memcmp(a, b, sizeof(ShapedRunKey) + a->keysz_in_bytes) == 0;
+}
+
+typedef struct HashTable {
+    shaped_run_map table;
+    KeyMonotonicArena keys;
+    ValMonotonicArena vals;
+    struct {
+        ShapedRunKey *key;
+        size_t capacity;
+    } scratch;
+} HashTable;
+
+SHAPED_RUN_MAP_HANDLE
+create_shaped_run_hash_table(void) {
+    HashTable *ans = calloc(1, sizeof(HashTable));
+    if (ans) vt_init(&ans->table);
+    return (SHAPED_RUN_MAP_HANDLE)ans;
+}
+
+void
+free_shaped_run_hash_table(SHAPED_RUN_MAP_HANDLE *map) {
+    HashTable **mapref = (HashTable **)map;
+    if (*mapref) {
+        vt_cleanup(&mapref[0]->table);
+        Key_free_all(&mapref[0]->keys);
+        Val_free_all(&mapref[0]->vals);
+        free(mapref[0]->scratch.key);
+        free(mapref[0]);
+        mapref[0] = NULL;
+    }
+}
+
+static bool
+shaped_run_too_long(index_type num_cells) {
+    return num_cells > SHAPED_RUN_MAX_CELLS;
+}
+
+static bool
+fill_key(
+    HashTable *ht, const CPUCell *cells, index_type num_cells, const TextCache *tc, bool disable_ligature, bool force_ltr, uint8_t scale, uint8_t subscale) {
+    const size_t keysz_in_bytes = (size_t)num_cells * (sizeof(uint32_t) + MAX_NUM_CODEPOINTS_PER_CELL * sizeof(char_type));
+    if (!ht->scratch.key || keysz_in_bytes > ht->scratch.capacity) {
+        const size_t newsz = sizeof(ht->scratch.key[0]) + keysz_in_bytes + 64;
+        ht->scratch.key = realloc(ht->scratch.key, newsz);
+        if (!ht->scratch.key) {
+            ht->scratch.capacity = 0;
+            return false;
+        }
+        ht->scratch.capacity = newsz - sizeof(ht->scratch.key[0]);
+        memset(ht->scratch.key, 0, newsz);
+    }
+#define scratch ht->scratch.key
+    RAII_ListOfChars(lc);
+    size_t used = 0;
+    scratch->disable_ligature = disable_ligature;
+    scratch->force_ltr = force_ltr;
+    scratch->scale = scale;
+    scratch->subscale = subscale;
+    for (; num_cells; cells++, num_cells--) {
+        if (cells->is_multicell && cells->x) continue;
+        text_in_cell(cells, tc, &lc);
+        uint16_t advance = 1;
+        if (cells->is_multicell) advance = (uint16_t)(cells->width * cells->scale);
+        uint32_t hdr = ((uint32_t)advance << 16) | (uint32_t)lc.count;
+        memcpy(scratch->data + used, &hdr, sizeof(hdr));
+        used += sizeof(hdr);
+        if (lc.count) {
+            memcpy(scratch->data + used, lc.chars, lc.count * sizeof(char_type));
+            used += lc.count * sizeof(char_type);
+        }
+    }
+    scratch->keysz_in_bytes = (uint32_t)used;
+    return true;
+#undef scratch
+}
+
+bool
+shaped_run_get(
+    SHAPED_RUN_MAP_HANDLE map,
+    const CPUCell *cells,
+    index_type num_cells,
+    const TextCache *tc,
+    bool disable_ligature,
+    bool force_ltr,
+    uint8_t scale,
+    uint8_t subscale,
+    ShapedRun *result) {
+    HashTable *ht = (HashTable *)map;
+    if (!ht) return false;
+    if (shaped_run_too_long(num_cells)) return false;
+    if (!fill_key(ht, cells, num_cells, tc, disable_ligature, force_ltr, scale, subscale)) return false;
+#define scratch ht->scratch.key
+    shaped_run_map_itr n = vt_get(&ht->table, scratch);
+    if (vt_is_end(n)) return false;
+    ShapedRunValue *v = n.data->val;
+    result->num_glyphs = v->num_glyphs;
+    result->num_groups = v->num_groups;
+    result->info = v->num_glyphs ? val_info(v) : NULL;
+    result->positions = v->num_glyphs ? val_positions(v) : NULL;
+    result->groups = v->num_groups ? val_groups(v) : NULL;
+    return true;
+#undef scratch
+}
+
+static size_t
+key_arena_alloc(const KeyMonotonicArena *a) {
+    size_t n = a->capacity * sizeof(a->blocks[0]);
+    for (size_t i = 0; i < a->count; i++) n += a->blocks[i].capacity;
+    return n;
+}
+
+static size_t
+val_arena_alloc(const ValMonotonicArena *a) {
+    size_t n = a->capacity * sizeof(a->blocks[0]);
+    for (size_t i = 0; i < a->count; i++) n += a->blocks[i].capacity;
+    return n;
+}
+
+static size_t
+shaped_run_live_bytes(const HashTable *ht) {
+    const size_t buckets = vt_bucket_count(&ht->table);
+    const size_t scratch = ht->scratch.key ? sizeof(ShapedRunKey) + ht->scratch.capacity : 0;
+    return sizeof(HashTable) + scratch + key_arena_alloc(&ht->keys) + val_arena_alloc(&ht->vals) + buckets * (sizeof(shaped_run_map_bucket) + sizeof(uint16_t));
+}
+
+static bool
+shaped_run_at_cap(const HashTable *ht) {
+    if (vt_size(&ht->table) >= SHAPED_RUN_MAX_ENTRIES) return true;
+    if (shaped_run_live_bytes(ht) >= SHAPED_RUN_MAX_BYTES) return true;
+    return false;
+}
+
+static void
+shaped_run_drop(HashTable *ht) {
+    vt_cleanup(&ht->table);
+    Key_free_all(&ht->keys);
+    Val_free_all(&ht->vals);
+    vt_init(&ht->table);
+}
+
+void
+shaped_run_put(
+    SHAPED_RUN_MAP_HANDLE map,
+    const CPUCell *cells,
+    index_type num_cells,
+    const TextCache *tc,
+    bool disable_ligature,
+    bool force_ltr,
+    uint8_t scale,
+    uint8_t subscale,
+    const hb_glyph_info_t *info,
+    const hb_glyph_position_t *positions,
+    unsigned num_glyphs,
+    const ShapeGroup *groups,
+    unsigned num_groups) {
+    HashTable *ht = (HashTable *)map;
+    if (!ht) return;
+    if (shaped_run_too_long(num_cells)) return;
+    if ((num_glyphs && (!info || !positions)) || (num_groups && !groups)) return;
+    if (!fill_key(ht, cells, num_cells, tc, disable_ligature, force_ltr, scale, subscale)) return;
+#define scratch ht->scratch.key
+    if (!vt_is_end(vt_get(&ht->table, scratch))) return;
+    if (shaped_run_at_cap(ht)) shaped_run_drop(ht);
+    ShapedRunKey *key = Key_get(&ht->keys, sizeof(ShapedRunKey) + scratch->keysz_in_bytes);
+    if (!key) return;
+    memcpy(key, scratch, sizeof(scratch[0]) + scratch->keysz_in_bytes);
+    ShapedRunValue *val = Val_get(&ht->vals, val_size(num_glyphs, num_groups));
+    if (!val) return;
+    val->num_glyphs = num_glyphs;
+    val->num_groups = num_groups;
+    if (num_glyphs) {
+        memcpy(val_info(val), info, num_glyphs * sizeof(info[0]));
+        memcpy(val_positions(val), positions, num_glyphs * sizeof(positions[0]));
+    }
+    if (num_groups) memcpy(val_groups(val), groups, num_groups * sizeof(groups[0]));
+    if (vt_is_end(vt_insert(&ht->table, key, val))) return;
+#undef scratch
+}
