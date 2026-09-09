@@ -14,6 +14,7 @@
 #define SHAPED_RUN_MAX_ENTRIES 2048u
 #define SHAPED_RUN_MAX_BYTES (1024u * 1024u)
 #define SHAPED_RUN_MA_BLOCK_SIZE 16u
+#define SHAPED_RUN_SLAB 4096u
 
 typedef struct ShapedRunKey {
     uint32_t keysz_in_bytes;
@@ -56,11 +57,12 @@ static bool shaped_run_map_cmpr(KEY_TY a, KEY_TY b);
 #define MA_NAME Key
 #define MA_BLOCK_SIZE SHAPED_RUN_MA_BLOCK_SIZE
 static_assert(MA_BLOCK_SIZE > sizeof(ShapedRunKey), "increase arena block size");
-#define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
+static_assert(SHAPED_RUN_SLAB % MA_BLOCK_SIZE == 0, "slab must be a multiple of the block size");
+#define MA_ARENA_NUM_BLOCKS (SHAPED_RUN_SLAB / MA_BLOCK_SIZE)
 #include "arena.h"
 #define MA_NAME Val
 #define MA_BLOCK_SIZE SHAPED_RUN_MA_BLOCK_SIZE
-#define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
+#define MA_ARENA_NUM_BLOCKS (SHAPED_RUN_SLAB / MA_BLOCK_SIZE)
 #include "arena.h"
 
 #include "kitty-verstable.h"
