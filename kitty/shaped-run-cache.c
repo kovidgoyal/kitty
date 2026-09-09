@@ -79,7 +79,6 @@ typedef struct HashTable {
     shaped_run_map table;
     KeyMonotonicArena keys;
     ValMonotonicArena vals;
-    size_t used; // arena-rounded key+value payload of live entries
     struct {
         ShapedRunKey *key;
         size_t capacity;
@@ -184,15 +183,21 @@ shaped_run_get(
     return true;
 }
 
+// Must count bytes actually malloced, not the sum of the requested sizes. The
+// arenas hand out space from fixed size blocks and strand the tail of a block
+// whenever the next allocation does not fit in it, which for run lengths that
+// happen to produce a value just over half a block wastes almost half of every
+// block. Counting requested sizes instead understates real usage by up to ~2x.
 static size_t
-arena_round(size_t sz) {
-    size_t n = (sz / SHAPED_RUN_MA_BLOCK_SIZE) * SHAPED_RUN_MA_BLOCK_SIZE;
-    return n < sz ? n + SHAPED_RUN_MA_BLOCK_SIZE : n;
+shaped_run_live_bytes(const HashTable *ht) {
+    const size_t buckets = vt_bucket_count(&ht->table);
+    const size_t scratch = ht->scratch.key ? sizeof(ShapedRunKey) + ht->scratch.capacity : 0;
+    return sizeof(HashTable) + scratch + ht->keys.allocated + ht->vals.allocated + buckets * (sizeof(shaped_run_map_bucket) + sizeof(uint16_t));
 }
 
 static bool
 shaped_run_at_cap(const HashTable *ht) {
-    return vt_size(&ht->table) >= SHAPED_RUN_MAX_ENTRIES || ht->used >= SHAPED_RUN_MAX_BYTES;
+    return vt_size(&ht->table) >= SHAPED_RUN_MAX_ENTRIES || shaped_run_live_bytes(ht) >= SHAPED_RUN_MAX_BYTES;
 }
 
 static void
@@ -201,7 +206,6 @@ shaped_run_drop(HashTable *ht) {
     Key_free_all(&ht->keys);
     Val_free_all(&ht->vals);
     vt_init(&ht->table);
-    ht->used = 0;
 }
 
 void
@@ -220,10 +224,8 @@ shaped_run_put(
     if ((num_glyphs && (!info || !positions)) || (num_groups && !groups)) return;
 #define scratch ht->scratch.key
     if (shaped_run_at_cap(ht)) shaped_run_drop(ht);
-    const size_t key_sz = sizeof(ShapedRunKey) + scratch->keysz_in_bytes;
-    const size_t vsz = val_size(num_glyphs, num_groups);
-    ShapedRunKey *key = Key_get(&ht->keys, key_sz);
-    ShapedRunValue *val = key ? Val_get(&ht->vals, vsz) : NULL;
+    ShapedRunKey *key = Key_get(&ht->keys, sizeof(ShapedRunKey) + scratch->keysz_in_bytes);
+    ShapedRunValue *val = key ? Val_get(&ht->vals, val_size(num_glyphs, num_groups)) : NULL;
     // the arenas cannot free individual allocations, so on failure drop the
     // whole cache rather than leaking what was allocated for this entry
     if (!val) {
@@ -238,10 +240,6 @@ shaped_run_put(
         memcpy(val_positions(val), positions, num_glyphs * sizeof(positions[0]));
     }
     if (num_groups) memcpy(val_groups(val), groups, num_groups * sizeof(groups[0]));
-    if (vt_is_end(vt_insert(&ht->table, key, val))) {
-        shaped_run_drop(ht);
-        return;
-    }
-    ht->used += arena_round(key_sz) + arena_round(vsz);
+    if (vt_is_end(vt_insert(&ht->table, key, val))) shaped_run_drop(ht);
 #undef scratch
 }
