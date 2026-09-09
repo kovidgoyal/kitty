@@ -1475,8 +1475,9 @@ ensure_group_capacity(size_t num_cells, size_t num_groups) {
 static bool
 restore_shaped_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, const ShapedRun *cached) {
     if (!ensure_group_capacity(num_cells, cached->num_groups)) return false;
-    zero_at_ptr_count(group_state.groups, group_state.groups_capacity);
+    // every group up to group_idx is overwritten below and nothing reads past it, so zeroing the whole array is unnecessary
     if (cached->num_groups) memcpy(group_state.groups, cached->groups, cached->num_groups * sizeof(Group));
+    else zero_at_ptr(group_state.groups);
     if (cached->num_glyphs) {
         if (!ensure_group_glyph_storage(cached->num_glyphs)) return false;
         memcpy(group_state.info_storage, cached->info, cached->num_glyphs * sizeof(cached->info[0]));
@@ -1899,20 +1900,7 @@ shape_run(
         hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, group_state.num_glyphs, dbuf, sizeof(dbuf), NULL, harfbuzz_font_for_face(font->face), HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS);
         printf("\n%s\n", dbuf);
 #endif
-    shaped_run_put(
-        font->shaped_run_hash_table,
-        first_cpu_cell,
-        num_cells,
-        tc,
-        disable_ligature,
-        OPT(force_ltr),
-        key_scale,
-        subscale,
-        G(info),
-        G(positions),
-        (unsigned)G(num_glyphs),
-        G(groups),
-        (unsigned)(G(group_idx) + 1));
+    shaped_run_put(font->shaped_run_hash_table, G(info), G(positions), (unsigned)G(num_glyphs), G(groups), (unsigned)(G(group_idx) + 1));
     if (scale != 1.f) {
         apply_scale_to_font_group(fg, NULL);
         if (!face_apply_scaling(font->face, (FONTS_DATA_HANDLE)fg) && PyErr_Occurred()) PyErr_Print();

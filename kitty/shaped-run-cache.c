@@ -7,6 +7,9 @@
 
 #include "shaped-run-cache.h"
 
+// Note that these limits apply to every Font, of which there are at least a
+// dozen per FontGroup once fallback and symbol fonts are in use, so the total
+// memory used by shaped run caches is a multiple of SHAPED_RUN_MAX_BYTES.
 #define SHAPED_RUN_MAX_CELLS 32u
 #define SHAPED_RUN_MAX_ENTRIES 2048u
 #define SHAPED_RUN_MAX_BYTES (1024u * 1024u)
@@ -78,6 +81,7 @@ typedef struct HashTable {
     struct {
         ShapedRunKey *key;
         size_t capacity;
+        bool key_is_valid; // true when key describes the run from the last shaped_run_get()
     } scratch;
 } HashTable;
 
@@ -161,11 +165,14 @@ shaped_run_get(
     ShapedRun *result) {
     HashTable *ht = (HashTable *)map;
     if (!ht) return false;
+    ht->scratch.key_is_valid = false;
     if (shaped_run_too_long(num_cells)) return false;
     if (!fill_key(ht, cells, num_cells, tc, disable_ligature, force_ltr, scale, subscale)) return false;
-#define scratch ht->scratch.key
-    shaped_run_map_itr n = vt_get(&ht->table, scratch);
-    if (vt_is_end(n)) return false;
+    shaped_run_map_itr n = vt_get(&ht->table, ht->scratch.key);
+    if (vt_is_end(n)) {
+        ht->scratch.key_is_valid = true; // so that shaped_run_put() can re-use it
+        return false;
+    }
     ShapedRunValue *v = n.data->val;
     result->num_glyphs = v->num_glyphs;
     result->num_groups = v->num_groups;
@@ -173,7 +180,6 @@ shaped_run_get(
     result->positions = v->num_glyphs ? val_positions(v) : NULL;
     result->groups = v->num_groups ? val_groups(v) : NULL;
     return true;
-#undef scratch
 }
 
 static size_t
@@ -215,31 +221,28 @@ shaped_run_drop(HashTable *ht) {
 void
 shaped_run_put(
     SHAPED_RUN_MAP_HANDLE map,
-    const CPUCell *cells,
-    index_type num_cells,
-    const TextCache *tc,
-    bool disable_ligature,
-    bool force_ltr,
-    uint8_t scale,
-    uint8_t subscale,
     const hb_glyph_info_t *info,
     const hb_glyph_position_t *positions,
     unsigned num_glyphs,
     const ShapeGroup *groups,
     unsigned num_groups) {
     HashTable *ht = (HashTable *)map;
-    if (!ht) return;
-    if (shaped_run_too_long(num_cells)) return;
+    // the key for this run was built by the shaped_run_get() call that missed,
+    // without it we have no way of knowing what run these glyphs belong to
+    if (!ht || !ht->scratch.key_is_valid) return;
+    ht->scratch.key_is_valid = false;
     if ((num_glyphs && (!info || !positions)) || (num_groups && !groups)) return;
-    if (!fill_key(ht, cells, num_cells, tc, disable_ligature, force_ltr, scale, subscale)) return;
 #define scratch ht->scratch.key
-    if (!vt_is_end(vt_get(&ht->table, scratch))) return;
     if (shaped_run_at_cap(ht)) shaped_run_drop(ht);
     ShapedRunKey *key = Key_get(&ht->keys, sizeof(ShapedRunKey) + scratch->keysz_in_bytes);
-    if (!key) return;
+    ShapedRunValue *val = key ? Val_get(&ht->vals, val_size(num_glyphs, num_groups)) : NULL;
+    // the arenas cannot free individual allocations, so on failure drop the
+    // whole cache rather than leaking what was allocated for this entry
+    if (!val) {
+        shaped_run_drop(ht);
+        return;
+    }
     memcpy(key, scratch, sizeof(scratch[0]) + scratch->keysz_in_bytes);
-    ShapedRunValue *val = Val_get(&ht->vals, val_size(num_glyphs, num_groups));
-    if (!val) return;
     val->num_glyphs = num_glyphs;
     val->num_groups = num_groups;
     if (num_glyphs) {
@@ -247,6 +250,6 @@ shaped_run_put(
         memcpy(val_positions(val), positions, num_glyphs * sizeof(positions[0]));
     }
     if (num_groups) memcpy(val_groups(val), groups, num_groups * sizeof(groups[0]));
-    if (vt_is_end(vt_insert(&ht->table, key, val))) return;
+    if (vt_is_end(vt_insert(&ht->table, key, val))) shaped_run_drop(ht);
 #undef scratch
 }
