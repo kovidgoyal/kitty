@@ -13,6 +13,7 @@
 #define SHAPED_RUN_MAX_CELLS 32u
 #define SHAPED_RUN_MAX_ENTRIES 2048u
 #define SHAPED_RUN_MAX_BYTES (1024u * 1024u)
+#define SHAPED_RUN_MA_BLOCK_SIZE 16u
 
 typedef struct ShapedRunKey {
     uint32_t keysz_in_bytes;
@@ -53,12 +54,12 @@ static uint64_t shaped_run_map_hash(KEY_TY key);
 static bool shaped_run_map_cmpr(KEY_TY a, KEY_TY b);
 #define CMPR_FN shaped_run_map_cmpr
 #define MA_NAME Key
-#define MA_BLOCK_SIZE 16u
+#define MA_BLOCK_SIZE SHAPED_RUN_MA_BLOCK_SIZE
 static_assert(MA_BLOCK_SIZE > sizeof(ShapedRunKey), "increase arena block size");
 #define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
 #include "arena.h"
 #define MA_NAME Val
-#define MA_BLOCK_SIZE 16u
+#define MA_BLOCK_SIZE SHAPED_RUN_MA_BLOCK_SIZE
 #define MA_ARENA_NUM_BLOCKS (2048u / MA_BLOCK_SIZE)
 #include "arena.h"
 
@@ -78,6 +79,7 @@ typedef struct HashTable {
     shaped_run_map table;
     KeyMonotonicArena keys;
     ValMonotonicArena vals;
+    size_t used; // arena-rounded key+value payload of live entries
     struct {
         ShapedRunKey *key;
         size_t capacity;
@@ -183,31 +185,14 @@ shaped_run_get(
 }
 
 static size_t
-key_arena_alloc(const KeyMonotonicArena *a) {
-    size_t n = a->capacity * sizeof(a->blocks[0]);
-    for (size_t i = 0; i < a->count; i++) n += a->blocks[i].capacity;
-    return n;
-}
-
-static size_t
-val_arena_alloc(const ValMonotonicArena *a) {
-    size_t n = a->capacity * sizeof(a->blocks[0]);
-    for (size_t i = 0; i < a->count; i++) n += a->blocks[i].capacity;
-    return n;
-}
-
-static size_t
-shaped_run_live_bytes(const HashTable *ht) {
-    const size_t buckets = vt_bucket_count(&ht->table);
-    const size_t scratch = ht->scratch.key ? sizeof(ShapedRunKey) + ht->scratch.capacity : 0;
-    return sizeof(HashTable) + scratch + key_arena_alloc(&ht->keys) + val_arena_alloc(&ht->vals) + buckets * (sizeof(shaped_run_map_bucket) + sizeof(uint16_t));
+arena_round(size_t sz) {
+    size_t n = (sz / SHAPED_RUN_MA_BLOCK_SIZE) * SHAPED_RUN_MA_BLOCK_SIZE;
+    return n < sz ? n + SHAPED_RUN_MA_BLOCK_SIZE : n;
 }
 
 static bool
 shaped_run_at_cap(const HashTable *ht) {
-    if (vt_size(&ht->table) >= SHAPED_RUN_MAX_ENTRIES) return true;
-    if (shaped_run_live_bytes(ht) >= SHAPED_RUN_MAX_BYTES) return true;
-    return false;
+    return vt_size(&ht->table) >= SHAPED_RUN_MAX_ENTRIES || ht->used >= SHAPED_RUN_MAX_BYTES;
 }
 
 static void
@@ -216,6 +201,7 @@ shaped_run_drop(HashTable *ht) {
     Key_free_all(&ht->keys);
     Val_free_all(&ht->vals);
     vt_init(&ht->table);
+    ht->used = 0;
 }
 
 void
@@ -234,8 +220,10 @@ shaped_run_put(
     if ((num_glyphs && (!info || !positions)) || (num_groups && !groups)) return;
 #define scratch ht->scratch.key
     if (shaped_run_at_cap(ht)) shaped_run_drop(ht);
-    ShapedRunKey *key = Key_get(&ht->keys, sizeof(ShapedRunKey) + scratch->keysz_in_bytes);
-    ShapedRunValue *val = key ? Val_get(&ht->vals, val_size(num_glyphs, num_groups)) : NULL;
+    const size_t key_sz = sizeof(ShapedRunKey) + scratch->keysz_in_bytes;
+    const size_t vsz = val_size(num_glyphs, num_groups);
+    ShapedRunKey *key = Key_get(&ht->keys, key_sz);
+    ShapedRunValue *val = key ? Val_get(&ht->vals, vsz) : NULL;
     // the arenas cannot free individual allocations, so on failure drop the
     // whole cache rather than leaking what was allocated for this entry
     if (!val) {
@@ -250,6 +238,10 @@ shaped_run_put(
         memcpy(val_positions(val), positions, num_glyphs * sizeof(positions[0]));
     }
     if (num_groups) memcpy(val_groups(val), groups, num_groups * sizeof(groups[0]));
-    if (vt_is_end(vt_insert(&ht->table, key, val))) shaped_run_drop(ht);
+    if (vt_is_end(vt_insert(&ht->table, key, val))) {
+        shaped_run_drop(ht);
+        return;
+    }
+    ht->used += arena_round(key_sz) + arena_round(vsz);
 #undef scratch
 }
