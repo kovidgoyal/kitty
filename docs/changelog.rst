@@ -261,6 +261,9 @@ Detailed list of changes
 
 - dnd kitten: Add an option to use file copies instead of hard links for copy drops (:pull:`10412`)
 
+- Fix :opt:`sync_to_monitor` presenting new frames while idle even when the
+  screen has not changed
+
 - Fix a malformed CSI escape sequence such as ``\e[?:`` corrupting the parser state so that subsequent SGR color codes are ignored (:iss:`10434`)
 
 - Graphics protocol: Fix a regression in 0.45.0 that caused the overwrite

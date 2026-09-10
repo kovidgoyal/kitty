@@ -1018,7 +1018,8 @@ render_prepared_os_window(
     color_type active_window_bg,
     unsigned int num_visible_windows,
     bool all_windows_have_same_bg,
-    monotonic_t now) {
+    monotonic_t now,
+    bool input_read) {
     Tab *tab = os_window->tabs + os_window->active_tab;
     setup_os_window_for_rendering(os_window, tab, NULL, true, now);
     BorderRects *br = &tab->border_rects;
@@ -1054,7 +1055,11 @@ render_prepared_os_window(
     os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
     if (os_window->redraw_count) os_window->redraw_count--;
-    if (USE_RENDER_FRAMES) request_frame_render(os_window);
+    if (USE_RENDER_FRAMES) {
+        // Keep a compositor frame outstanding only while the PTY is feeding.
+        if (input_read) request_frame_render(os_window);
+        else os_window->render_state = RENDER_FRAME_NOT_REQUESTED;
+    }
 #undef WD
 #undef TD
 }
@@ -1073,7 +1078,7 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
 }
 
 bool
-render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
+render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images, bool input_read) {
     if (!w->num_tabs) return false;
     if (!should_os_window_be_rendered(w) && global_state.thumbnail_callback.os_window != w->id) {
         update_os_window_title(w);
@@ -1118,7 +1123,7 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
         needs_render = true;
     if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
     if (w->render_calls < 3 && background_image_for_os_window(w) != NULL) needs_render = true;
-    if (needs_render) render_prepared_os_window(w, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg, now);
+    if (needs_render) render_prepared_os_window(w, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg, now, input_read);
     if (w->is_focused) change_menubar_title(w->window_title);
     return needs_render;
 }
@@ -1143,7 +1148,7 @@ render(monotonic_t now, bool input_read) {
         // rendering is done in cocoa_os_window_resized()
         if (w->live_resize.in_progress) continue;
 #endif
-        if (!render_os_window(w, now, scan_for_animated_images)) {
+        if (!render_os_window(w, now, scan_for_animated_images, input_read)) {
             // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
             if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
         }
