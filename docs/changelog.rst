@@ -264,6 +264,9 @@ Detailed list of changes
 - Fix :opt:`sync_to_monitor` presenting new frames while idle even when the
   screen has not changed
 
+- Fix always-active custom shaders such as ``water`` stopping when the window is
+  idle
+
 - Fix a malformed CSI escape sequence such as ``\e[?:`` corrupting the parser state so that subsequent SGR color codes are ignored (:iss:`10434`)
 
 - Graphics protocol: Fix a regression in 0.45.0 that caused the overwrite
