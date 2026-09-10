@@ -644,6 +644,7 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
             // Always-active, non-attached group — never enters the state machine.
             any_active = true;
             this_active = true;
+            min_step = MIN(min_step, cg->animation_step);
         } else {
             monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
             if (cg->animation_start_events != 0) {

@@ -373,7 +373,7 @@ cocoa_out_of_sequence_render(OSWindow *window) {
     if (window->fonts_data->sprite_map) {
         window->needs_render = true;
         window->render_state = RENDER_FRAME_READY;
-        rendered = render_os_window(window, monotonic(), true);
+        rendered = render_os_window(window, monotonic(), true, false);
     }
     if (!rendered) {
         debug_rendering("Cocoa out of sequence render did not happen\n");
