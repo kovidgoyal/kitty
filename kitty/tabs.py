@@ -668,9 +668,9 @@ class Tab:  # {{{
         else:
             self.goto_layout(layout_name)
 
-    def resize_window_by(self, window_id: int, increment: float, is_horizontal: bool) -> str | None:
+    def resize_window_by(self, window_id: int, increment: float, is_horizontal: bool, is_towards_edge: bool = False) -> str | None:
         increment_as_percent = self.current_layout.bias_increment_for_cell(self.windows, is_horizontal) * increment
-        if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal):
+        if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal, is_towards_edge):
             self.relayout()
             return None
         return 'Could not resize'
@@ -695,10 +695,11 @@ class Tab:  # {{{
             return
         if increment < 1:
             raise ValueError(increment)
-        is_horizontal = quality in ('wider', 'narrower')
-        increment *= 1 if quality in ('wider', 'taller') else -1
+        is_towards_edge = quality.startswith('towards_')
+        is_horizontal = quality in ('wider', 'narrower', 'towards_right', 'towards_left')
+        increment *= 1 if quality in ('wider', 'taller', 'towards_right', 'towards_bottom') else -1
         w = self.active_window
-        if w is not None and self.resize_window_by(w.id, increment, is_horizontal) is not None:
+        if w is not None and self.resize_window_by(w.id, increment, is_horizontal, is_towards_edge) is not None:
             if get_options().enable_audio_bell:
                 ring_bell(self.os_window_id)
 

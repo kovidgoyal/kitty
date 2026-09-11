@@ -413,9 +413,9 @@ class Pair:
         b = max(0, min(bias, 100)) / 100
         self.bias = b if window_id == self.one else (1.0 - b)
 
-    def modify_size_of_child(self, which: int, increment: float, is_horizontal: bool, layout_object: 'Splits') -> bool:
+    def modify_size_of_child(self, which: int, increment: float, is_horizontal: bool, layout_object: 'Splits', is_towards_edge: bool = False) -> bool:
         if is_horizontal == self.horizontal and not self.is_redundant:
-            if which == 2:
+            if which == 2 and not is_towards_edge:
                 increment *= -1
             new_bias = max(0, min(self.bias + increment, 1))
             if new_bias != self.bias:
@@ -425,7 +425,7 @@ class Pair:
         parent = self.parent(layout_object.pairs_root)
         if parent is not None:
             which = 1 if parent.one is self else 2
-            return parent.modify_size_of_child(which, increment, is_horizontal, layout_object)
+            return parent.modify_size_of_child(which, increment, is_horizontal, layout_object, is_towards_edge)
         return False
 
     def neighbors_for_window(self, window_id: int, ans: NeighborsMap, layout_object: 'Splits', all_windows: WindowList) -> None:
@@ -653,7 +653,7 @@ class Splits(Layout):
         if bias is not None:
             p.bias = bias
 
-    def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
+    def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True, is_towards_edge: bool = False) -> bool:
         grp = all_windows.group_for_window(window_id)
         if grp is None:
             return False
@@ -661,7 +661,7 @@ class Splits(Layout):
         if pair is None:
             return False
         which = 1 if pair.one == grp.id else 2
-        return pair.modify_size_of_child(which, increment, is_horizontal, self)
+        return pair.modify_size_of_child(which, increment, is_horizontal, self, is_towards_edge)
 
     def remove_all_biases(self) -> bool:
         for pair in self.pairs_root.self_and_descendants():
