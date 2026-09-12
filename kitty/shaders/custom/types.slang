@@ -41,6 +41,10 @@ public struct KittyCustomShaderData {
     // animation_progress is NOT tied to trail duration; use cursor_trail_state.x for opacity instead.
     public float4 cursor_trail_corners_x; // UV x-coordinates of the 4 animated trail quad corners
     public float4 cursor_trail_corners_y; // UV y-coordinates of the 4 animated trail quad corners
+    // Previous-frame animated trail quad corners. These are available for
+    // custom shaders that perform temporal effects.
+    public float4 cursor_trail_prev_corners_x;
+    public float4 cursor_trail_prev_corners_y;
     // .x=left, .y=right, .z=top, .w=bottom UV edges of the current cursor rectangle
     public float4 cursor_trail_edge;
     // .x=left, .y=right, .z=top, .w=bottom UV edges of the cursor rectangle before the most recent move.
@@ -54,7 +58,6 @@ public struct KittyCustomShaderData {
     // .rgb = trail color (falls back to cursor_color.rgb when cursor_trail_color option is "none").
     // .a = trail opacity (0..1); zero when the trail is inactive.
     public float4 cursor_trail_color;
-
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
     // You can use t.viewport to derive the actual size and position of the
