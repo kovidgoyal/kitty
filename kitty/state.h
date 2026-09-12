@@ -35,6 +35,10 @@ typedef struct UrlPrefix {
 
 typedef enum AdjustmentUnit { POINT = 0, PERCENT = 1, PIXEL = 2 } AdjustmentUnit;
 typedef enum UnderlineHyperlinks { UNDERLINE_ON_HOVER = 0, UNDERLINE_ALWAYS = 1, UNDERLINE_NEVER = 2 } UnderlineHyperlinks;
+typedef enum CursorTrailMotionBlurMode {
+    CURSOR_TRAIL_MOTION_BLUR_DISCONNECTED = 0,
+    CURSOR_TRAIL_MOTION_BLUR_CONNECTED = 1
+} CursorTrailMotionBlurMode;
 typedef enum ShowHyperlinkTargets {
     SHOW_HYPERLINK_TARGETS_NEVER = 0,
     SHOW_HYPERLINK_TARGETS_ALWAYS = 1,
@@ -70,6 +74,14 @@ typedef struct Options {
     color_type cursor_trail_color;
     int cursor_trail_start_threshold_x;
     int cursor_trail_start_threshold_y;
+    bool cursor_trail_motion_blur;
+    CursorTrailMotionBlurMode cursor_trail_motion_blur_mode;
+    bool cursor_trail_antialiasing;
+    int cursor_trail_motion_blur_samples;
+    int cursor_trail_antialiasing_samples;
+    float cursor_trail_min_opacity;
+    float cursor_trail_target_blend_start;
+    float cursor_trail_target_blend_end;
     unsigned int url_style;
     unsigned int scrollback_pager_history_size;
     bool scrollback_fill_enlarged_window;
@@ -438,6 +450,9 @@ typedef struct CursorTrail {
     float cursor_edge_y[2];
     float prev_cursor_edge_x[2]; // cursor_edge_x before the most recent cursor move
     float prev_cursor_edge_y[2]; // cursor_edge_y before the most recent cursor move
+    bool has_previous_position;
+    float previous_corner_x[4];
+    float previous_corner_y[4];
 } CursorTrail;
 
 typedef struct Tab {

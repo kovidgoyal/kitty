@@ -947,14 +947,43 @@ class Parser:
     def cursor_trail(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail'] = positive_int(val)
 
+    def cursor_trail_antialiasing(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_antialiasing'] = to_bool(val)
+
+    def cursor_trail_antialiasing_samples(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_antialiasing_samples'] = positive_int(val)
+
     def cursor_trail_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_color'] = to_color_or_none(val)
 
     def cursor_trail_decay(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_decay'] = cursor_trail_decay(val)
 
+    def cursor_trail_min_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_min_opacity'] = unit_float(val)
+
+    def cursor_trail_motion_blur(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_motion_blur'] = to_bool(val)
+
+    def cursor_trail_motion_blur_mode(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_cursor_trail_motion_blur_mode:
+            raise ValueError(f"The value {val} is not a valid choice for cursor_trail_motion_blur_mode")
+        ans["cursor_trail_motion_blur_mode"] = val
+
+    choices_for_cursor_trail_motion_blur_mode = frozenset(('disconnected', 'connected', 'original'))
+
+    def cursor_trail_motion_blur_samples(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_motion_blur_samples'] = positive_int(val)
+
     def cursor_trail_start_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_start_threshold'] = cursor_trail_start_threshold(val)
+
+    def cursor_trail_target_blend_end(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_target_blend_end'] = unit_float(val)
+
+    def cursor_trail_target_blend_start(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_target_blend_start'] = unit_float(val)
 
     def cursor_underline_thickness(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_underline_thickness'] = positive_float(val)

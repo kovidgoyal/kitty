@@ -226,6 +226,110 @@ convert_from_opts_cursor_trail(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_cursor_trail_motion_blur(PyObject *val, Options *opts) {
+    opts->cursor_trail_motion_blur = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_cursor_trail_motion_blur(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_motion_blur");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_motion_blur(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_motion_blur_mode(PyObject *val, Options *opts) {
+    opts->cursor_trail_motion_blur_mode = cursor_trail_motion_blur_mode(val);
+}
+
+static void
+convert_from_opts_cursor_trail_motion_blur_mode(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_motion_blur_mode");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_motion_blur_mode(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_antialiasing(PyObject *val, Options *opts) {
+    opts->cursor_trail_antialiasing = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_cursor_trail_antialiasing(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_antialiasing");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_antialiasing(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_motion_blur_samples(PyObject *val, Options *opts) {
+    opts->cursor_trail_motion_blur_samples = PyLong_AsLong(val);
+}
+
+static void
+convert_from_opts_cursor_trail_motion_blur_samples(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_motion_blur_samples");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_motion_blur_samples(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_antialiasing_samples(PyObject *val, Options *opts) {
+    opts->cursor_trail_antialiasing_samples = PyLong_AsLong(val);
+}
+
+static void
+convert_from_opts_cursor_trail_antialiasing_samples(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_antialiasing_samples");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_antialiasing_samples(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_min_opacity(PyObject *val, Options *opts) {
+    opts->cursor_trail_min_opacity = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_min_opacity(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_min_opacity");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_min_opacity(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_target_blend_start(PyObject *val, Options *opts) {
+    opts->cursor_trail_target_blend_start = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_target_blend_start(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_target_blend_start");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_target_blend_start(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_target_blend_end(PyObject *val, Options *opts) {
+    opts->cursor_trail_target_blend_end = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_target_blend_end(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_target_blend_end");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_target_blend_end(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_cursor_trail_decay(PyObject *val, Options *opts) {
     cursor_trail_decay(val, opts);
 }
@@ -1599,6 +1703,22 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_cursor_stop_blinking_after(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_trail(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_motion_blur(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_motion_blur_mode(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_antialiasing(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_motion_blur_samples(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_antialiasing_samples(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_min_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_target_blend_start(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_target_blend_end(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_trail_decay(py_opts, opts);
     if (PyErr_Occurred()) return false;
