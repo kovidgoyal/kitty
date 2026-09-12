@@ -306,6 +306,12 @@ cursor_trail_color(PyObject *src, Options *opts) {
     opts->cursor_trail_color = color_or_none_as_int(src);
 }
 
+static inline CursorTrailMotionBlurMode
+cursor_trail_motion_blur_mode(PyObject *x) {
+    const char *mode = PyUnicode_AsUTF8(x);
+    return mode && strcmp(mode, "connected") == 0 ? CURSOR_TRAIL_MOTION_BLUR_CONNECTED : CURSOR_TRAIL_MOTION_BLUR_DISCONNECTED;
+}
+
 static void
 parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {
     PyObject *mv = PyObject_GetAttrString(val, "mod_value");

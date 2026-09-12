@@ -7,7 +7,6 @@ struct VertexOutput {
     float4 position : SV_Position;
 };
 
-// Main Vertex Shader Entry Point
 [shader("vertex")]
 VertexOutput
 vertex_main(uint vertex_id: SV_VertexID, uniform float4 x_coords, uniform float4 y_coords) {
@@ -18,12 +17,15 @@ vertex_main(uint vertex_id: SV_VertexID, uniform float4 x_coords, uniform float4
     return output;
 }
 
-
-// Main Fragment Shader Entry Point
 [shader("fragment")]
 float4
-fragment_main(float2 frag_pos: TEXCOORD, uniform float2 cursor_edge_x, uniform float2 cursor_edge_y, uniform float3 trail_color, uniform float trail_opacity)
-    : SV_Target {
+fragment_main(
+    float2 frag_pos: TEXCOORD,
+    uniform float2 cursor_edge_x,
+    uniform float2 cursor_edge_y,
+    uniform float3 trail_color,
+    uniform float trail_opacity
+): SV_Target {
     float opacity = trail_opacity;
     // Evaluate if the fragment falls inside the bounding box of the cursor
     float in_x = step(cursor_edge_x[0], frag_pos.x) * step(frag_pos.x, cursor_edge_x[1]);
