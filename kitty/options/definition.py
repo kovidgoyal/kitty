@@ -462,6 +462,57 @@ using the :opt:`custom_shaders` option, for example: :code:`custom_shaders curso
 """,
 )
 
+opt('cursor_trail_motion_blur', 'no', option_type='to_bool', ctype='bool',
+    long_text='''
+Enable temporal supersampling motion blur for :opt:`cursor_trail`.
+'''
+    )
+
+opt('cursor_trail_motion_blur_mode', 'disconnected', choices=('disconnected', 'connected', 'original'),
+    ctype='cursor_trail_motion_blur_mode', long_text='''
+Select the motion-blur path. :code:`disconnected` matches kitty's original
+lagging cursor behavior. :code:`connected` integrates the trail all the way
+to the target cursor. :code:`original` is accepted as a compatibility alias
+for :code:`disconnected`.
+'''
+    )
+
+opt('cursor_trail_antialiasing', 'no', option_type='to_bool', ctype='bool',
+    long_text='''
+Enable spatial supersampling antialiasing for :opt:`cursor_trail`.
+'''
+    )
+
+opt('cursor_trail_motion_blur_samples', '64', option_type='positive_int', ctype='int',
+    long_text='''
+Number of temporal samples used by cursor-trail motion blur.
+'''
+    )
+
+opt('cursor_trail_antialiasing_samples', '16', option_type='positive_int', ctype='int',
+    long_text='''
+Number of spatial subpixel samples used by cursor-trail antialiasing.
+'''
+    )
+
+opt('cursor_trail_min_opacity', '0.2', option_type='unit_float', ctype='float',
+    long_text='''
+Minimum opacity of the motion-blurred cursor trail.
+'''
+    )
+
+opt('cursor_trail_target_blend_start', '0.1', option_type='unit_float', ctype='float',
+    long_text='''
+Fraction of the trail distance over which the target-end opacity blend starts.
+'''
+    )
+
+opt('cursor_trail_target_blend_end', '0.02', option_type='unit_float', ctype='float',
+    long_text='''
+Fraction of the trail distance at which the target-end opacity blend is complete.
+'''
+    )
+
 opt(
     'cursor_trail_decay',
     '0.1 0.4',

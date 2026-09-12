@@ -160,6 +160,14 @@ update_cursor_trail_needs_render(CursorTrail *ct, Window *w, ndc_coords g) {
 
 bool
 update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+    if (OPT(cursor_trail_motion_blur)) {
+        if (ct->has_previous_position) {
+            for (int i = 0; i < 4; i++) {
+                ct->previous_corner_x[i] = ct->corner_x[i];
+                ct->previous_corner_y[i] = ct->corner_y[i];
+            }
+        }
+    }
     ct->target_updated = false;
     ndc_coords g = {
         .xstart = gl_pos_x(w->render_data.geometry.left, os_window->viewport_width),
@@ -178,6 +186,18 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
 
     bool needs_render_prev = ct->needs_render;
     update_cursor_trail_needs_render(ct, w, g);
+
+    if (OPT(cursor_trail_motion_blur)) {
+        if (!ct->has_previous_position) {
+            for (int i = 0; i < 4; i++) {
+                ct->previous_corner_x[i] = ct->corner_x[i];
+                ct->previous_corner_y[i] = ct->corner_y[i];
+            }
+            ct->has_previous_position = true;
+        }
+    } else {
+        ct->has_previous_position = false;
+    }
 
     ct->updated_at = now;
 

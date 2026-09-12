@@ -21,6 +21,7 @@ import kitty.types
 choices_for_allow_cloning = typing.Literal['yes', 'y', 'true', 'no', 'n', 'false', 'ask']
 choices_for_allow_remote_control = typing.Literal['password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true']
 choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled']
+choices_for_cursor_trail_motion_blur_mode = typing.Literal['disconnected', 'connected', 'original']
 choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'cell', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
 choices_for_focus_follows_mouse = typing.Literal['no', 'n', 'false', 'y', 'yes', 'true', 'drop']
 choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
@@ -345,9 +346,17 @@ option_names = (
     'cursor_stop_blinking_after',
     'cursor_text_color',
     'cursor_trail',
+    'cursor_trail_antialiasing',
+    'cursor_trail_antialiasing_samples',
     'cursor_trail_color',
     'cursor_trail_decay',
+    'cursor_trail_min_opacity',
+    'cursor_trail_motion_blur',
+    'cursor_trail_motion_blur_mode',
+    'cursor_trail_motion_blur_samples',
     'cursor_trail_start_threshold',
+    'cursor_trail_target_blend_end',
+    'cursor_trail_target_blend_start',
     'cursor_underline_thickness',
     'custom_shaders',
     'default_pointer_shape',
@@ -572,9 +581,17 @@ class Options:
     cursor_stop_blinking_after: float = 15.0
     cursor_text_color: kitty.fast_data_types.Color | None = Color(17, 17, 17)
     cursor_trail: int = 0
+    cursor_trail_antialiasing: bool = False
+    cursor_trail_antialiasing_samples: int = 16
     cursor_trail_color: kitty.fast_data_types.Color | None = None
     cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
+    cursor_trail_min_opacity: float = 0.2
+    cursor_trail_motion_blur: bool = False
+    cursor_trail_motion_blur_mode: choices_for_cursor_trail_motion_blur_mode = 'disconnected'
+    cursor_trail_motion_blur_samples: int = 64
     cursor_trail_start_threshold: tuple[int, int] = (2, 2)
+    cursor_trail_target_blend_end: float = 0.02
+    cursor_trail_target_blend_start: float = 0.1
     cursor_underline_thickness: float = 2.0
     custom_shaders: tuple[str, ...] = ()
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'

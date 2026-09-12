@@ -11,6 +11,7 @@
 #include "colors.h"
 #include <stddef.h>
 #include <string.h>
+#include <math.h>
 #include "animation.h"
 #include "animation-parse.h"
 #include "text-cache.h"
@@ -1437,7 +1438,7 @@ draw_scrollbar(const UIRenderData *ui) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
         glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
-        draw_quad(true, 0);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
     // Draw scrollbar thumb (handle)
@@ -2184,22 +2185,97 @@ draw_rounded_borders(BorderRects *br, color_type active_window_bg, unsigned int 
 void
 draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     bind_program(TRAIL_PROGRAM);
+    color_type trail_color = OPT(cursor_trail_color);
+    if (trail_color == 0) trail_color = active_window ? active_window->render_data.screen->last_rendered.cursor_bg : OPT(foreground);
 
-    glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "x_coords"), 1, trail->corner_x);
-    glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "y_coords"), 1, trail->corner_y);
-
+    const bool motion_blur_enabled = OPT(cursor_trail_motion_blur);
+    const bool antialiasing_enabled = OPT(cursor_trail_antialiasing);
+    const bool connected = motion_blur_enabled && OPT(cursor_trail_motion_blur_mode) == CURSOR_TRAIL_MOTION_BLUR_CONNECTED;
+    const GLint x_loc = program_uniform_location(TRAIL_PROGRAM, "x_coords");
+    const GLint y_loc = program_uniform_location(TRAIL_PROGRAM, "y_coords");
+    const GLint trail_x_loc = program_uniform_location(TRAIL_PROGRAM, "trail_x_coords");
+    const GLint trail_y_loc = program_uniform_location(TRAIL_PROGRAM, "trail_y_coords");
     glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_x"), 1, trail->cursor_edge_x);
     glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_y"), 1, trail->cursor_edge_y);
-
-    color_type trail_color = OPT(cursor_trail_color);
-    if (trail_color == 0) { // 0 means "none" was specified
-        trail_color = active_window ? active_window->render_data.screen->last_rendered.cursor_bg : OPT(foreground);
-    }
     color_vec3(program_uniform_location(TRAIL_PROGRAM, "trail_color"), trail_color);
 
-    glUniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), trail->opacity);
+    if (!motion_blur_enabled && !antialiasing_enabled) {
+        glUniform1i(program_uniform_location(TRAIL_PROGRAM, "motion_blur_enabled_fragment"), 0);
+        glUniform1i(program_uniform_location(TRAIL_PROGRAM, "antialiasing_enabled_fragment"), 0);
+        glUniform1i(program_uniform_location(TRAIL_PROGRAM, "antialiasing_enabled_vertex"), 0);
+        glUniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), trail->opacity);
+        glUniform4fv(x_loc, 1, trail->corner_x);
+        glUniform4fv(y_loc, 1, trail->corner_y);
+        draw_quad(true, 0);
+        unbind_program();
+        return;
+    }
 
-    draw_quad(true, 0);
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+    glUniform1i(program_uniform_location(TRAIL_PROGRAM, "motion_blur_enabled_fragment"), motion_blur_enabled);
+    glUniform1i(program_uniform_location(TRAIL_PROGRAM, "antialiasing_enabled_fragment"), antialiasing_enabled);
+    glUniform1i(program_uniform_location(TRAIL_PROGRAM, "antialiasing_enabled_vertex"), antialiasing_enabled);
+
+    OSWindow *os_window = active_window ? os_window_for_kitty_window(active_window->id) : NULL;
+    float pixel_size[2] = {
+        os_window && os_window->viewport_width > 0 ? gl_size(1, os_window->viewport_width) : 0.001f,
+        os_window && os_window->viewport_height > 0 ? gl_size(1, os_window->viewport_height) : 0.001f,
+    };
+    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "pixel_size"), 1, pixel_size);
+    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "trail_pixel_size"), 1, pixel_size);
+
+    const float target_x[4] = {trail->cursor_edge_x[1], trail->cursor_edge_x[1], trail->cursor_edge_x[0], trail->cursor_edge_x[0]};
+    const float target_y[4] = {trail->cursor_edge_y[0], trail->cursor_edge_y[1], trail->cursor_edge_y[1], trail->cursor_edge_y[0]};
+    const float *motion_end_x = connected ? target_x : trail->corner_x;
+    const float *motion_end_y = connected ? target_y : trail->corner_y;
+    int samples = motion_blur_enabled ? MAX(1, MIN(256, OPT(cursor_trail_motion_blur_samples))) : 1;
+    const int subpixel_samples = antialiasing_enabled ? MAX(1, MIN(256, OPT(cursor_trail_antialiasing_samples))) : 1;
+    glUniform1i(program_uniform_location(TRAIL_PROGRAM, "subpixel_samples"), subpixel_samples);
+    const float cursor_opacity = active_window ? active_window->render_data.screen->cursor_render_info.cursor_opacity : 1.0f;
+    glUniform1f(program_uniform_location(TRAIL_PROGRAM, "target_cursor_opacity"), connected ? cursor_opacity : 1.0f);
+
+    float previous_center_x = 0.0f, previous_center_y = 0.0f, target_center_x = 0.0f, target_center_y = 0.0f;
+    for (int i = 0; i < 4; i++) {
+        previous_center_x += motion_blur_enabled ? trail->previous_corner_x[i] : trail->corner_x[i];
+        previous_center_y += motion_blur_enabled ? trail->previous_corner_y[i] : trail->corner_y[i];
+        target_center_x += motion_end_x[i];
+        target_center_y += motion_end_y[i];
+    }
+    previous_center_x *= 0.25f; previous_center_y *= 0.25f;
+    target_center_x *= 0.25f; target_center_y *= 0.25f;
+    const float motion_distance_px = motion_blur_enabled ? hypotf(
+        (target_center_x - previous_center_x) / pixel_size[0], (target_center_y - previous_center_y) / pixel_size[1]) : 0.0f;
+    const float blend_start = motion_blur_enabled ? OPT(cursor_trail_target_blend_start) : 0.0f;
+    const float blend_end = motion_blur_enabled ? MIN(blend_start, OPT(cursor_trail_target_blend_end)) : 0.0f;
+    glUniform1f(program_uniform_location(TRAIL_PROGRAM, "target_blend_start_radius"), motion_distance_px * blend_start);
+    glUniform1f(program_uniform_location(TRAIL_PROGRAM, "target_blend_end_radius"), motion_distance_px * blend_end);
+    glUniform1f(program_uniform_location(TRAIL_PROGRAM, "target_blend_exposure"), 1.0f / MAX(0.001f, OPT(cursor_trail_min_opacity)) - 1.0f);
+
+    const float effective_opacity = motion_blur_enabled
+        ? OPT(cursor_trail_min_opacity) + (1.0f - OPT(cursor_trail_min_opacity)) * fmaxf(trail->opacity, cursor_opacity)
+        : trail->opacity;
+    // Temporal samples approximate an integral over the shutter interval, so
+    // each sample contributes an equal 1/N share. Using 1/sqrt(N) saturates
+    // overlapping samples and hides the spatial AA coverage at the trail edge.
+    const float sample_opacity = effective_opacity / (float)samples;
+    float x_coords[4], y_coords[4];
+    for (int i = 0; i < samples; i++) {
+        const float t = motion_blur_enabled ? ((float)i + 0.5f) / (float)samples : 1.0f;
+        for (int j = 0; j < 4; j++) {
+            const float start_x = motion_blur_enabled ? trail->previous_corner_x[j] : trail->corner_x[j];
+            const float start_y = motion_blur_enabled ? trail->previous_corner_y[j] : trail->corner_y[j];
+            x_coords[j] = start_x + (motion_end_x[j] - start_x) * t;
+            y_coords[j] = start_y + (motion_end_y[j] - start_y) * t;
+        }
+        glUniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), sample_opacity);
+        glUniform4fv(x_loc, 1, x_coords);
+        glUniform4fv(y_loc, 1, y_coords);
+        glUniform4fv(trail_x_loc, 1, x_coords);
+        glUniform4fv(trail_y_loc, 1, y_coords);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
+    glDisable(GL_BLEND);
     unbind_program();
 }
 
