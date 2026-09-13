@@ -4,6 +4,7 @@ package unicode_input
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -25,6 +26,8 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
+
+	_ "embed"
 )
 
 var _ = fmt.Print
@@ -38,8 +41,19 @@ const default_set_of_symbols string = `
 îïðñòóôõöøœš ùúûüýÿþªºαΩ∞
 `
 
+//go:embed lean4_abbreviations.json
+var LEAN4_ABBREV_RAW []byte
+
 var DEFAULT_SET []rune
 var EMOTICONS_SET []rune
+
+type Lean4Abbrev struct {
+	Abbrev string `json:"abbrev"`
+	Value  string `json:"value"`
+}
+
+// The order in the array indicates "priority"
+var LEAN4_ABBREV []Lean4Abbrev
 
 const DEFAULT_MODE string = "HEX"
 
@@ -53,6 +67,10 @@ func build_sets() {
 	EMOTICONS_SET = make([]rune, 0, 0x1f64f-0x1f600+1)
 	for i := 0x1f600; i <= 0x1f64f; i++ {
 		EMOTICONS_SET = append(EMOTICONS_SET, rune(i))
+	}
+
+	if err := json.Unmarshal([]byte(LEAN4_ABBREV_RAW), &LEAN4_ABBREV); err != nil {
+		os.Exit(-1)
 	}
 }
 
@@ -130,6 +148,7 @@ const (
 	NAME
 	EMOTICONS
 	FAVORITES
+	LEAN4
 )
 
 type ModeData struct {
@@ -138,7 +157,7 @@ type ModeData struct {
 	title string
 }
 
-var all_modes [4]ModeData
+var all_modes [5]ModeData
 
 type checkpoints_key struct {
 	mode       Mode
@@ -246,6 +265,23 @@ func (self *handler) update_codepoints() {
 				q.codepoints = unicode_names.CodePointsForQuery(query)
 			}
 		}
+	case LEAN4:
+		q.text = self.rl.AllText()
+		query := strings.ToLower(q.text)
+
+		// TODO: Input strings, not runes
+		clear(q.codepoints)
+		// for _, v := range slices.Backward(LEAN4_ABBREV) {
+		for _, v := range LEAN4_ABBREV {
+			if len(query) == 0 || strings.Contains(v.Abbrev, query) {
+				var first rune
+				for _, c := range v.Value {
+					first = c
+					break
+				}
+				q.codepoints = append(q.codepoints, first)
+			}
+		}
 	}
 	if !q.is_equal(self.checkpoints_key) {
 		self.checkpoints_key = q
@@ -271,7 +307,7 @@ func (self *handler) update_current_char() {
 				self.current_char = rune(code)
 			}
 		}
-	case NAME:
+	case NAME, LEAN4:
 		cc := self.table.current_codepoint()
 		if cc > 0 && cc <= unicode.MaxRune {
 			self.current_char = rune(cc)
@@ -332,7 +368,7 @@ func (self *handler) draw_screen() {
 		y += 1
 	}
 	switch self.mode {
-	case NAME:
+	case NAME, LEAN4:
 		writeln("Enter words from the name of the character")
 	case HEX:
 		writeln("Enter the hex code for the character")
@@ -359,7 +395,7 @@ func (self *handler) draw_screen() {
 	switch self.mode {
 	case HEX:
 		write_help(fmt.Sprintf("Type %s followed by the index for the recent entries below", INDEX_CHAR))
-	case NAME:
+	case NAME, LEAN4:
 		write_help(fmt.Sprintf("Use Tab or arrow keys to choose a character. Type space and %s to select by index", INDEX_CHAR))
 	case FAVORITES:
 		write_help("Press F12 to edit the list of favorites")
@@ -506,6 +542,9 @@ func (self *handler) on_key_event(event *loop.KeyEvent) (err error) {
 	} else if event.MatchesPressOrRepeat("f4") || event.MatchesPressOrRepeat("ctrl+4") {
 		event.Handled = true
 		self.switch_mode(FAVORITES)
+	} else if event.MatchesPressOrRepeat("f5") || event.MatchesPressOrRepeat("ctrl+5") {
+		event.Handled = true
+		self.switch_mode(LEAN4)
 	} else if event.MatchesPressOrRepeat("ctrl+tab") || event.MatchesPressOrRepeat("ctrl+]") {
 		event.Handled = true
 		self.next_mode(1)
@@ -523,6 +562,8 @@ func (self *handler) on_key_event(event *loop.KeyEvent) (err error) {
 			self.handle_emoticons_key_event(event)
 		case FAVORITES:
 			self.handle_favorites_key_event(event)
+		case LEAN4:
+			self.handle_name_key_event(event)
 		}
 	}
 	if !event.Handled {
@@ -569,6 +610,8 @@ func run_loop(opts *Options) (lp *loop.Loop, err error) {
 			h.mode = EMOTICONS
 		case "FAVORITES":
 			h.mode = FAVORITES
+		case "LEAN4":
+			h.mode = LEAN4
 		}
 	case "code":
 		h.mode = HEX
@@ -578,11 +621,14 @@ func run_loop(opts *Options) (lp *loop.Loop, err error) {
 		h.mode = EMOTICONS
 	case "favorites":
 		h.mode = FAVORITES
+	case "lean4":
+		h.mode = LEAN4
 	}
 	all_modes[0] = ModeData{mode: HEX, title: "Code", key: "F1"}
 	all_modes[1] = ModeData{mode: NAME, title: "Name", key: "F2"}
 	all_modes[2] = ModeData{mode: EMOTICONS, title: "Emoticons", key: "F3"}
 	all_modes[3] = ModeData{mode: FAVORITES, title: "Favorites", key: "F4"}
+	all_modes[4] = ModeData{mode: LEAN4, title: "Lean4", key: "F5"}
 
 	lp.OnInitialize = func() (string, error) {
 		h.initialize()
@@ -618,6 +664,8 @@ func run_loop(opts *Options) (lp *loop.Loop, err error) {
 			cached_data.Mode = "EMOTICONS"
 		case FAVORITES:
 			cached_data.Mode = "FAVORITES"
+		case LEAN4:
+			cached_data.Mode = "LEAN4"
 		}
 		if h.current_char != InvalidChar {
 			cached_data.Recent = h.recent

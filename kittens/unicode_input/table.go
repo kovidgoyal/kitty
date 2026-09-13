@@ -88,7 +88,7 @@ func (self *table) current_codepoint() rune {
 func (self *table) set_codepoints(codepoints []rune, mode Mode, current_idx int) {
 	delta := len(codepoints) - len(self.codepoints)
 	self.codepoints = codepoints
-	if self.codepoints != nil && mode != FAVORITES && mode != HEX {
+	if self.codepoints != nil && mode != FAVORITES && mode != HEX && mode != LEAN4 {
 		slices.Sort(self.codepoints)
 	}
 	self.mode = mode
@@ -135,7 +135,7 @@ func (self *table) layout(rows, cols int) string {
 	output := strings.Builder{}
 	output.Grow(4096)
 	switch self.mode {
-	case NAME:
+	case NAME, LEAN4:
 		as_parts = func(i int, codepoint rune) cell_data {
 			return cell_data{idx: ljust(encode_hint(i), idx_size), ch: resolved_char(codepoint, self.emoji_variation), desc: title(unicode_names.NameForCodePoint(codepoint))}
 		}
@@ -162,6 +162,7 @@ func (self *table) layout(rows, cols int) string {
 			}
 			output.WriteString(text)
 		}
+
 	default:
 		as_parts = func(i int, codepoint rune) cell_data {
 			return cell_data{idx: ljust(encode_hint(i), idx_size), ch: resolved_char(codepoint, self.emoji_variation)}
@@ -193,7 +194,7 @@ func (self *table) layout(rows, cols int) string {
 	}
 	longest := 0
 	switch self.mode {
-	case NAME:
+	case NAME, LEAN4:
 		for _, p := range parts {
 			longest = utils.Max(longest, idx_size+2+len(p.desc)+2)
 		}
