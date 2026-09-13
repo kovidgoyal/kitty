@@ -20,7 +20,7 @@ default form specified in the Unicode standard for the symbol is used.
 --tab
 type=choices
 default=previous
-choices=previous,code,name,emoticons,favorites
+choices=previous,code,name,emoticons,favorites,lean4
 The initial tab to display. Defaults to using the tab from the previous kitten invocation.
 
 

@@ -267,13 +267,12 @@ func (self *handler) update_codepoints() {
 		}
 	case LEAN4:
 		q.text = self.rl.AllText()
-		query := strings.ToLower(q.text)
 
 		// TODO: Input strings, not runes
 		clear(q.codepoints)
 		// for _, v := range slices.Backward(LEAN4_ABBREV) {
 		for _, v := range LEAN4_ABBREV {
-			if len(query) == 0 || strings.Contains(v.Abbrev, query) {
+			if len(q.text) == 0 || strings.Contains(v.Abbrev, q.text) {
 				var first rune
 				for _, c := range v.Value {
 					first = c
