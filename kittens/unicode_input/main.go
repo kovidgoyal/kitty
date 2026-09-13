@@ -271,15 +271,28 @@ func (self *handler) update_codepoints() {
 		// TODO: Input strings, not runes
 		clear(q.codepoints)
 		// for _, v := range slices.Backward(LEAN4_ABBREV) {
+		exactMatch := false
+		var exactMatchRune rune
+
 		for _, v := range LEAN4_ABBREV {
-			if len(q.text) == 0 || strings.Contains(v.Abbrev, q.text) {
+			queryMatch := len(q.text) == 0 || strings.Contains(v.Abbrev, q.text)
+			isExactMatch := v.Abbrev == q.text
+			if queryMatch {
 				var first rune
 				for _, c := range v.Value {
 					first = c
 					break
 				}
-				q.codepoints = append(q.codepoints, first)
+				if isExactMatch {
+					exactMatchRune = first
+					exactMatch = true
+				} else {
+					q.codepoints = append(q.codepoints, first)
+				}
 			}
+		}
+		if exactMatch {
+			q.codepoints = append([]rune{exactMatchRune}, q.codepoints...)
 		}
 	}
 	if !q.is_equal(self.checkpoints_key) {
