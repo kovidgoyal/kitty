@@ -202,6 +202,10 @@ Detailed list of changes
 0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Splits layout: Add an optional proportional sizing policy that preserves
+  adjusted window weights when adding, closing or repositioning windows.
+  See :doc:`layouts` for configuration.
+
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
