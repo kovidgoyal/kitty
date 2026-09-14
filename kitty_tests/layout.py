@@ -858,11 +858,11 @@ class TestLayout(BaseTest):
 
 
 class TestProportionalSplits(BaseTest):
-    def make_layout(self, shape=None, **options):
+    def make_layout(self, shape=None, num=3, **options):
         q = create_layout(Splits)
         q.layout_opts = SplitsLayoutOpts({'proportional': 'yes', **options})
         windows = create_windows(q, num=0)
-        for i in range(1, 4 if shape else 2):
+        for i in range(1, num + 1 if shape else 2):
             q.add_window(windows, Window(i), location='vsplit')
         if shape:
             q.pairs_root.unserialize(shape, lambda x: x)
@@ -932,6 +932,19 @@ class TestProportionalSplits(BaseTest):
             q.add_window(windows, Window(i), location='vsplit')
         q.remove_windows(1, 3, 5)
         self.check_weights(q, {2: 0.5, 4: 0.5})
+
+    def test_proportional_batch_close_mixed_axes(self):
+        for horizontal in (True, False):
+            shape = {
+                'horizontal': horizontal,
+                'one': 1,
+                'two': {'horizontal': horizontal, 'one': {'horizontal': not horizontal, 'one': 2, 'two': 3}, 'two': 4},
+            }
+            q, windows = self.make_layout(shape, num=4)
+            q.remove_windows(1, 2)
+            # The surviving center pane keeps its column's width, even though
+            # the other pane in that column was removed at the same time.
+            self.check_weights(q, {3: 0.5, 4: 0.5})
 
     def test_proportional_mixed_axes(self):
         q, windows = self.make_layout({'bias': 0.4, 'one': 1, 'two': {'horizontal': False, 'bias': 0.25, 'one': 2, 'two': 3}})

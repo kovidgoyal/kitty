@@ -154,6 +154,24 @@ class Pair:
 
         tune(self)
 
+    def preserve_weights_on_removal(self, removed: Collection[int]) -> bool:
+        # Each perpendicular subtree is one unit along this split axis. If
+        # some of its windows survive, retain its full share on this axis.
+        def tune(child: Pair | int | None, weight: float) -> float:
+            if isinstance(child, Pair):
+                if child.horizontal != self.horizontal:
+                    return weight if child.preserve_weights_on_removal(removed) else 0.0
+                if child.is_redundant:
+                    return tune(child.one or child.two, weight)
+                one = tune(child.one, weight * child.bias)
+                two = tune(child.two, weight * (1 - child.bias))
+                if one > 0 and two > 0:
+                    child.bias = one / (one + two)
+                return one + two
+            return weight if child is not None and child not in removed else 0.0
+
+        return tune(self, 1.0) > 0
+
     def remove_windows(self, window_ids: Collection[int]) -> None:
         if isinstance(self.one, int) and self.one in window_ids:
             self.one = None
@@ -618,15 +636,8 @@ class Splits(Layout):
 
     def remove_windows(self, *windows_to_remove: int) -> None:
         root = self.pairs_root
-        plans: dict[tuple[bool, frozenset[int]], dict[int, float]] = {}
         if self.layout_opts.proportional:
-            for group_id in windows_to_remove:
-                pair = root.pair_for_window(group_id)
-                if pair is not None and (container := self.proportional_container(group_id, pair.horizontal)) is not None:
-                    weights = container.window_weights()
-                    survivors = frozenset(weights).difference(windows_to_remove)
-                    if len(survivors) > 1:
-                        plans[container.horizontal, survivors] = weights
+            root.preserve_weights_on_removal(frozenset(windows_to_remove))
         for pair in root.self_and_descendants():
             pair.remove_windows(windows_to_remove)
         root.collapse_redundant_pairs()
@@ -634,11 +645,6 @@ class Splits(Layout):
             q = root.one or root.two
             if isinstance(q, Pair):
                 self.pairs_root = q
-        for (horizontal, survivors), weights in plans.items():
-            for pair in self.pairs_root.self_and_descendants():
-                if pair.horizontal == horizontal and frozenset(pair.all_window_ids()) == survivors:
-                    pair.set_window_weights(weights)
-                    break
 
     def proportional_container(self, group_id: int, horizontal: bool) -> Pair | None:
         root = self.pairs_root
