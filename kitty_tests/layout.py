@@ -855,3 +855,117 @@ class TestLayout(BaseTest):
         d = drtw(q, all_windows, wD, TOP_EDGE)
         self.ae(d.vertical_id, right_pair_id)
         self.ae(d.height_increases_downwards, True)
+
+
+class TestSplitBorderResize(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.set_options({'tab_bar_style': 'hidden'})
+
+    def make_layout(self, shape):
+        layout = create_layout(Splits)
+        windows = create_windows(layout, num=0)
+        for i in range(1, 5):
+            layout.add_window(windows, Window(i))
+        layout.pairs_root.unserialize(shape, lambda x: x)
+        layout(windows)
+        return layout, windows
+
+    def test_left_center_stack_right_after_resize(self):
+        layout, windows = self.make_layout(
+            {
+                'bias': 1 / 3,
+                'one': 1,
+                'two': {'one': {'horizontal': False, 'one': 2, 'two': 3}, 'two': 4},
+            }
+        )
+        root = layout.pairs_root
+        right_pair = root.two
+        center = right_pair.one
+        ws = {w.id: w for w in windows}
+        # Resize right first, then alternate both sides of the left and right
+        # dividers and both halves of the central horizontal divider.
+        for _ in range(3):
+            for wid, edge, expected in (
+                (4, LEFT_EDGE, right_pair),
+                (2, LEFT_EDGE, root),
+                (3, LEFT_EDGE, root),
+                (1, RIGHT_EDGE, root),
+                (2, RIGHT_EDGE, right_pair),
+                (3, RIGHT_EDGE, right_pair),
+                (2, BOTTOM_EDGE, center),
+                (3, TOP_EDGE, center),
+            ):
+                for increment in (0.04, -0.03):
+                    with self.subTest(wid=wid, edge=edge, increment=increment):
+                        data = layout.drag_resize_target_windows(ws[wid], 0, 0, edge, windows)
+                        horizontal = bool(edge & (LEFT_EDGE | RIGHT_EDGE))
+                        target = data.horizontal_id if horizontal else data.vertical_id
+                        forwards = data.width_increases_rightwards if horizontal else data.height_increases_downwards
+                        self.assertEqual(target, id(expected))
+                        self.assertTrue(forwards)
+                        before = {id(p): p.bias for p in root.self_and_descendants()}
+                        self.assertTrue(layout.drag_resize_window(windows, target, increment, horizontal))
+                        layout(windows)
+                        for p in root.self_and_descendants():
+                            self.assertAlmostEqual(
+                                p.bias,
+                                before[id(p)] + (increment if p is expected else 0),
+                            )
+
+    def test_all_rendered_internal_borders(self):
+        # All 5 binary tree shapes with 4 leaves, with every combination of
+        # horizontal/vertical ancestors: 40 distinct arrangements.
+        def shapes(ids):
+            if len(ids) == 1:
+                yield ids[0]
+                return
+            for n in range(1, len(ids)):
+                for one in shapes(ids[:n]):
+                    for two in shapes(ids[n:]):
+                        for horizontal in (True, False):
+                            yield {
+                                'horizontal': horizontal,
+                                'bias': 0.39,
+                                'one': one,
+                                'two': two,
+                            }
+
+        count = 0
+        for shape in shapes((1, 2, 3, 4)):
+            layout, windows = self.make_layout(shape)
+            ws = {w.id: w for w in windows}
+            for pair in layout.pairs_root.self_and_descendants():
+                if pair.is_redundant:
+                    continue
+                for half in pair.between_borders:
+                    for border in half:
+                        trailing = border.window_id > 0
+                        edge = (RIGHT_EDGE if trailing else LEFT_EDGE) if pair.horizontal else (BOTTOM_EDGE if trailing else TOP_EDGE)
+                        with self.subTest(shape=shape, wid=border.window_id, edge=edge):
+                            data = layout.drag_resize_target_windows(ws[abs(border.window_id)], 0, 0, edge, windows)
+                            target = data.horizontal_id if pair.horizontal else data.vertical_id
+                            forwards = data.width_increases_rightwards if pair.horizontal else data.height_increases_downwards
+                            self.assertEqual(target, id(pair))
+                            self.assertTrue(forwards)
+                count += 1
+        self.assertEqual(count, 120)
+
+    def test_corner_axes_independent_and_single_pane(self):
+        layout, windows = self.make_layout(
+            {
+                'one': 1,
+                'two': {'one': {'horizontal': False, 'one': 2, 'two': 3}, 'two': 4},
+            }
+        )
+        ws = {w.id: w for w in windows}
+        data = layout.drag_resize_target_windows(ws[2], 0, 0, LEFT_EDGE | BOTTOM_EDGE, windows)
+        self.assertEqual(data.horizontal_id, id(layout.pairs_root))
+        self.assertEqual(data.vertical_id, id(layout.pairs_root.two.one))
+        self.assertTrue(data.width_increases_rightwards)
+        self.assertTrue(data.height_increases_downwards)
+        layout.pairs_root = Pair()
+        layout.pairs_root.one = 1
+        data = layout.drag_resize_target_windows(ws[1], 0, 0, LEFT_EDGE | TOP_EDGE, windows)
+        self.assertIsNone(data.horizontal_id)
+        self.assertIsNone(data.vertical_id)
