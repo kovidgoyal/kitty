@@ -210,7 +210,7 @@ func SplitForCompletion(s string) (argv []string, position_of_last_arg int) {
 					}
 					if pos < len(s) { // trailing whitespace
 						argv = append(argv, "")
-						position_of_last_arg += len(s) - pos + 1
+						position_of_last_arg = len(s)
 					}
 				}
 			} else {

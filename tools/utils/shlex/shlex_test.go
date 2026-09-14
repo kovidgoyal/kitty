@@ -96,6 +96,9 @@ func TestSplitForCompletion(t *testing.T) {
 	test("a b", 2, "a", "b")
 	test("a b ", 4, "a", "b", "")
 	test("a b  ", 5, "a", "b", "")
+	test("ab cd ", 6, "ab", "cd", "")
+	test("launch --type ", 14, "launch", "--type", "")
+	test(`a "b c" `, 8, "a", "b c", "")
 	test(`a "b c"`, 2, "a", "b c")
 	test(`a "b c`, 2, "a", "b c")
 }
