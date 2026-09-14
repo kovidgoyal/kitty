@@ -977,10 +977,18 @@ class Tab:  # {{{
         attach_window(self.os_window_id, self.id, window.id)
         self._add_window(window, overlay_for=overlay_for)
 
-    def attach_windows(self, windows: Iterable[Window]) -> None:
+    def attach_windows(self, windows: Iterable[Window], *, next_to: Window | None = None, horizontal: bool = True, after: bool = True) -> None:
         overlay_for: int | None = None
         for window in windows:
-            self.attach_window(window, overlay_for)
+            if overlay_for is None and next_to is not None:
+                window.change_tab(self)
+                attach_window(self.os_window_id, self.id, window.id)
+                self.windows.add_window(window)
+                self.current_layout.insert_window_next_to(self.windows, window, next_to, horizontal, after)
+                self.mark_tab_bar_dirty()
+                self.relayout()
+            else:
+                self.attach_window(window, overlay_for)
             overlay_for = window.id
 
     def set_active_window(self, x: Window | int, for_keep_focus: Window | None = None) -> None:

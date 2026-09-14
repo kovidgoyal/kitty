@@ -202,6 +202,10 @@ Detailed list of changes
 0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Allow dropping a tab containing a single window into another tab's layout,
+  using the existing window drop preview and preserving running programs.
+  See :doc:`overview` for details.
+
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload

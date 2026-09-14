@@ -2148,8 +2148,19 @@ class Boss:
                 in_tab_bar = tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom
                 detach = not in_tab_bar or tab.os_window_id != tm.os_window_id or is_leave
                 change_drag_thumbnail(tab.os_window_id, 1 if detach else 0)
+                in_content = central.left <= x < central.right and central.top <= y < central.bottom
+                window = tab.active_window
+                merge_window = (
+                    window is not None
+                    and tab.windows.num_groups == 1
+                    and tm.active_tab is not None
+                    and tm.active_tab is not tab
+                    and in_content
+                    and not is_leave
+                )
                 for q in self.all_tab_managers:
-                    is_dest = q is tm and (in_tab_bar or os_window_id != tab.os_window_id) and not is_leave
+                    q.on_window_drop_move(window.id if merge_window and window is not None else 0, merge_window and q is tm, x, y)
+                    is_dest = not merge_window and q is tm and (in_tab_bar or os_window_id != tab.os_window_id) and not is_leave
                     q.on_tab_drop_move(tab_id, is_dest, x, y)
             window_id, drag_started = get_window_being_dragged()[:2]
             if window_id and drag_started:
@@ -2179,12 +2190,17 @@ class Boss:
         if (tidb := drop.get(f'application/net.kovidgoyal.kitty-tab-{os.getpid()}')) and (tab := self.tab_for_id(int(tidb))):
             central, tab_bar = viewport_for_window(os_window_id)[:2]
             in_tab_bar = tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom
-            if in_tab_bar or tab.os_window_id != tm.os_window_id:
+            in_content = central.left <= x < central.right and central.top <= y < central.bottom
+            window = tab.active_window
+            if in_content and window is not None and tab.windows.num_groups == 1 and tm.active_tab is not None and tm.active_tab is not tab:
+                tm.on_window_drop(x, y, window.id)
+            elif in_tab_bar or tab.os_window_id != tm.os_window_id:
                 tm.on_tab_drop(x, y)
             else:
                 self._move_tab_to(tab)
             set_tab_being_dragged()
             for tm in self.all_tab_managers:
+                tm.on_window_drop_move()
                 tm.on_tab_drop_move()
                 tm.layout_tab_bar()  # ensure tab bar is fully updated
             return
@@ -2244,15 +2260,34 @@ class Boss:
             return
         if (tab_id := int((data or {}).get(f'application/net.kovidgoyal.kitty-tab-{os.getpid()}', b'0').decode())) and get_tab_being_dragged()[0] == tab_id:
             tab = self.tab_for_id(tab_id)
-            if tab is not None and needs_toplevel_on_wayland:
+            if was_dropped and not was_canceled and tab is not None and needs_toplevel_on_wayland:
                 for tm in self.all_tab_managers:
+                    target = tm.window_being_dropped
+                    if (
+                        target is not None
+                        and tab.windows.num_groups == 1
+                        and (window := tab.active_window) is not None
+                        and (dest_window := self.window_id_map.get(target.window_id)) is not None
+                    ):
+                        if target.quadrant == 5:
+                            self._move_window_to(window, target_tab_id=dest_window.tab_id)
+                        else:
+                            directions: dict[int, Literal['left', 'right', 'top', 'bottom']] = {1: 'left', 2: 'right', 3: 'top', 4: 'bottom'}
+                            self._insert_window_in_direction(window, dest_window, directions.get(target.quadrant, 'right'))
+                        set_tab_being_dragged()
+                        for manager in self.all_tab_managers:
+                            manager.on_window_drop_move()
+                            manager.on_tab_drop_move()
+                            manager.layout_tab_bar()
+                        return
                     if tm.tab_being_dropped:
                         tm.on_tab_drop(0, 0, bypass_move=True)
                         return
             set_tab_being_dragged()
             for tm in self.all_tab_managers:
+                tm.on_window_drop_move()
                 tm.on_tab_drop_move()
-            if was_dropped and tab is not None:  # detach tab into new OS Window
+            if was_dropped and not was_canceled and tab is not None:  # detach tab into new OS Window
                 self._move_tab_to(tab)
 
     @ac(
@@ -3638,16 +3673,16 @@ class Boss:
         if src_tab is None or dest_tab is None:
             return
         with self.suppress_focus_change_events():
-            if src_tab is not dest_tab:
-                target_tab_id = dest_tab.id
-                self._move_window_to(window, target_tab_id=target_tab_id)
-                dest_tab_fresh = self.tab_for_id(dest_tab.id)
-                if dest_tab_fresh is None:
-                    return
-                src_tab = dest_tab_fresh
-            layout = src_tab.current_layout
             horizontal = direction in ('left', 'right')
             after = direction in ('right', 'bottom')
+            if src_tab is not dest_tab:
+                # Insert directly at the drop target. Attaching at the default
+                # location first would change existing split proportions.
+                dest_tab.attach_windows(src_tab.detach_window(window), next_to=dest_window, horizontal=horizontal, after=after)
+                self._cleanup_tab_after_window_removal(src_tab)
+                dest_tab.make_active()
+                return
+            layout = src_tab.current_layout
             layout.insert_window_next_to(src_tab.windows, window, dest_window, horizontal, after)
             src_tab.relayout()
 

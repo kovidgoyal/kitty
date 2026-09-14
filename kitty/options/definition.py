@@ -1162,7 +1162,9 @@ opt(
     long_text="""
 The threshold distance the mouse must move to start a drag and drop. Dragging
 works for tabs and windows. You can drag tabs to re-order them, detach
-them into new OS Windows or move them to another OS Window. Similarly,
+them into new OS Windows or move them to another OS Window. A tab with a single
+window can also be dropped into another tab's content area to insert that window
+at the highlighted edge, within the same kitty process. Similarly,
 by dragging the titlebar of a window (see :ac:`toggle_window_title_bars`)
 you can re-order it in its layout, detach it or move it to another tab.
 A value of zero disables all dragging.
