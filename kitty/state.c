@@ -1555,8 +1555,12 @@ PYWRAP1(set_os_window_pos) {
 
 PYWRAP1(set_boss) {
     Py_CLEAR(global_state.boss);
-    global_state.boss = args;
-    Py_INCREF(global_state.boss);
+    if (args == Py_None) {
+        global_state.boss = NULL;
+    } else {
+        global_state.boss = args;
+        Py_INCREF(global_state.boss);
+    }
     Py_RETURN_NONE;
 }
 
