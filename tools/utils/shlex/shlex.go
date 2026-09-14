@@ -23,8 +23,8 @@ import (
 )
 
 type Word struct {
-	Value   string // The word is empty if EOF is reached
-	Pos     int    // The position in the input string of the word or the trailer
+	Value   string // The word, which can be empty if it was an empty quoted string
+	Pos     int    // The position in the input string of the word or the trailer, -1 if EOF is reached
 	Err     error  // Indicates an error (unterminated string or trailing unescaped backslash)
 	Trailer string // Extra trailing data such as an unterminated string or an unescaped backslash. Present only if Err != nil
 }
@@ -45,6 +45,7 @@ type Lexer struct {
 	src                         string
 	src_sz, src_pos, word_start int
 	buf                         strings.Builder
+	allow_empty                 bool
 }
 
 // NewLexer creates a new lexer from an input string.
@@ -58,6 +59,7 @@ func (self *Lexer) start_word() {
 }
 
 func (self *Lexer) get_word() Word {
+	self.allow_empty = false
 	return Word{Pos: self.word_start, Value: self.buf.String()}
 }
 
@@ -77,7 +79,7 @@ func (self *Lexer) write_escaped_ch() bool {
 	return false
 }
 
-// Next returns the next word. At EOF Word.Value will be ""
+// Next returns the next word. At EOF Word.Pos will be -1
 func (self *Lexer) Next() (ans Word) {
 	const string_with_escapes_delim = '"'
 	const string_without_escapes_delim = '\''
@@ -113,7 +115,7 @@ func (self *Lexer) Next() (ans Word) {
 			switch ch {
 			case ' ', '\n', '\r', '\t':
 				self.state = lex_normal
-				if self.buf.Len() > 0 {
+				if self.buf.Len() > 0 || self.allow_empty {
 					return self.get_word()
 				}
 			case string_with_escapes_delim:
@@ -134,6 +136,7 @@ func (self *Lexer) Next() (ans Word) {
 			switch ch {
 			case string_without_escapes_delim:
 				self.state = word
+				self.allow_empty = true
 			default:
 				self.write_ch(ch)
 			}
@@ -141,6 +144,7 @@ func (self *Lexer) Next() (ans Word) {
 			switch ch {
 			case string_with_escapes_delim:
 				self.state = word
+				self.allow_empty = true
 			case escape_char:
 				self.write_escaped_ch()
 			default:
@@ -151,7 +155,7 @@ func (self *Lexer) Next() (ans Word) {
 	switch self.state {
 	case word:
 		self.state = lex_normal
-		if self.buf.Len() > 0 {
+		if self.buf.Len() > 0 || self.allow_empty {
 			return self.get_word()
 		}
 	case string_with_escapes, string_without_escapes:
@@ -163,6 +167,7 @@ func (self *Lexer) Next() (ans Word) {
 	case lex_normal:
 
 	}
+	ans.Pos = -1
 	return
 }
 
@@ -175,7 +180,7 @@ func Split(s string) (ans []string, err error) {
 		if word.Err != nil {
 			return ans, word.Err
 		}
-		if word.Value == "" {
+		if word.Pos < 0 {
 			break
 		}
 		ans = append(ans, word.Value)
@@ -200,7 +205,7 @@ func SplitForCompletion(s string) (argv []string, position_of_last_arg int) {
 	argv = make([]string, 0, len(s)/4)
 	for {
 		word := t.Next()
-		if word.Value == "" {
+		if word.Pos < 0 || word.Err != nil {
 			if word.Trailer == "" {
 				trimmed := strings.TrimRight(s, " ")
 				if len(trimmed) < len(s) { // trailing spaces
