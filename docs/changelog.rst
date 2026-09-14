@@ -206,7 +206,7 @@ Detailed list of changes
 
 - Custom shaders: Allow tinting inactive windows toward a configurable color,
   preserving the tab bar and active window padding. Support static effects
-  without periodic redraws.
+  without periodic redraws, and fix re-enabling a previously disabled shader.
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
 

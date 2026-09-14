@@ -8,10 +8,12 @@ import os
 import shutil
 import subprocess
 import tempfile
+from unittest.mock import patch
 
 from kitty.constants import slangc
 from kitty.shaders.slang import (
     EntryPoint,
+    LoadShaderPrograms,
     SlangFile,
     Stage,
     build_custom_shader_pipeline_glsl,
@@ -61,6 +63,25 @@ class TestSlang(BaseTest):
         self.assertTrue(vertex)
         self.assertTrue(fragment)
         self.ae(metadata['pipeline']['groups'][0]['animation_step'], 0)
+
+    def test_custom_shader_reenable(self):
+        from kitty.fast_data_types import CUSTOM_END_PROGRAM
+        from kitty.options.types import defaults
+
+        loader = LoadShaderPrograms()
+        loader.last_built_custom_shaders = {}
+        pipeline = parse_pipeline_definition(['startgroup', 'animation_step 0', 'shaders focus-highlight', 'endgroup'], 'test')
+        self.ae(pipeline['groups'][0]['animation_step'], 0)
+        with (
+            patch('kitty.shaders.slang.parse_pipeline', return_value=pipeline),
+            patch('kitty.shaders.slang.build_custom_shader_pipeline_glsl', return_value=('vertex', 'fragment', {})),
+            patch('kitty.shaders.slang.compile_program') as compile_program,
+        ):
+            for shaders in (('test',), (), ('test',)):
+                loader.opts = defaults._replace(custom_shaders=shaders)
+                loader.compile_custom_shaders(allow_recompile=True)
+            operations = [c.args[1] for c in compile_program.call_args_list if c.args[0] == CUSTOM_END_PROGRAM]
+            self.ae(operations, [('vertex',), (), ('vertex',)])
 
     def test_slang_parser(self):
         def check(src: str, expected: SlangFile) -> None:
