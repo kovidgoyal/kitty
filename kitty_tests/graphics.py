@@ -11,7 +11,6 @@ from contextlib import suppress
 from dataclasses import dataclass
 from io import BytesIO
 
-from kitty.constants import is_macos
 from kitty.fast_data_types import base64_decode, base64_encode, load_png_data, shm_unlink, shm_write
 
 from .base import BaseTest, parse_bytes
@@ -21,6 +20,12 @@ try:
 except ImportError:
     Image = None
 png_data = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
+
+
+def num_open_fds():
+    with suppress(OSError):
+        return len(os.listdir('/proc/self/fd'))
+    return len(os.listdir('/dev/fd'))
 
 
 def send_command(screen, cmd, payload=b''):
@@ -508,6 +513,11 @@ class TestGraphics(BaseTest):
     def test_load_images_from_file_edge_cases(self):
         s, g, pl, sl = load_helpers(self)
         random_data = byte_block(32 * 1024)
+        # Failures to read an image file must all be reported with the same
+        # response, otherwise a client, which can be a program running on a
+        # remote machine or in a sandbox, can use the response to probe the
+        # filesystem for the existence, type and size of files.
+        generic_error = 'EBADF:Failed to read image file'
 
         with tempfile.NamedTemporaryFile(prefix='tty-graphics-protocol-') as f:
             # A window of the file specified with a non page aligned offset
@@ -515,21 +525,42 @@ class TestGraphics(BaseTest):
             sl(f.name, s=1024, v=8, t='f', S=len(random_data), O=3, expecting_data=random_data)
 
             # A file that is truncated after the size declared in the command
-            # must be reported as insufficient data rather than crashing
+            # must be reported as a generic failure rather than crashing or
+            # leaking the size of the file
             f.seek(0), f.truncate(), f.write(random_data[:128]), f.flush()
-            self.ae(pl(f.name, s=1024, v=8, t='f', S=len(random_data)), f'ENODATA:Insufficient image data: 128 < {len(random_data)}')
+            self.ae(pl(f.name, s=1024, v=8, t='f', S=len(random_data)), generic_error)
 
             # Ditto when the size is not declared and is read from the file itself
-            self.ae(pl(f.name, s=1024, v=8, t='f'), f'ENODATA:Insufficient image data: 128 < {len(random_data)}')
+            self.ae(pl(f.name, s=1024, v=8, t='f'), generic_error)
 
             # An offset past the end of the file
-            self.ae(pl(f.name, s=1024, v=8, t='f', O=4096), f'ENODATA:Insufficient image data: 0 < {len(random_data)}')
+            self.ae(pl(f.name, s=1024, v=8, t='f', O=4096), generic_error)
 
         # Only regular files may be read
         with tempfile.TemporaryDirectory(prefix='tty-graphics-protocol-') as tdir:
             fifo = os.path.join(tdir, 'fifo')
             os.mkfifo(fifo)
-            self.assertTrue(pl(fifo, s=1024, v=8, t='f').startswith('EBADF:'), 'Reading from a FIFO was not refused')
+            self.ae(pl(fifo, s=1024, v=8, t='f'), generic_error, 'Reading from a FIFO was not refused')
+
+            # Neither the existence nor the type of a file may be leaked, so a
+            # non-existent file, a directory and a file that is too small must
+            # all give byte for byte identical responses
+            small = os.path.join(tdir, 'small')
+            with open(small, 'wb') as sf:
+                sf.write(random_data[:7])
+            for path in (os.path.join(tdir, 'does-not-exist'), tdir, small):
+                self.ae(pl(path, s=1024, v=8, t='f'), generic_error, path)
+
+            # Failing to read a file must not leak the file descriptor opened
+            # for it, else a client can exhaust the process wide fd limit
+            paths = (small, tdir, os.path.join(tdir, 'does-not-exist'), fifo)
+            for path in paths:
+                pl(path, s=1024, v=8, t='f')  # warm up any lazily opened fds
+            before = num_open_fds()
+            for i in range(64):
+                for path in paths:
+                    pl(path, s=1024, v=8, t='f')
+            self.ae(before, num_open_fds(), 'File descriptors were leaked when failing to read image files')
 
         # A window of a shared memory object with a non page aligned offset
         name = '/kitty-test-shm-offset'
@@ -540,16 +571,67 @@ class TestGraphics(BaseTest):
         # A shared memory object truncated to less than the declared size
         name = '/kitty-test-shm-truncated'
         shm_write(name, random_data[:64])
-        # macOS rounds the size of a shared memory object up to a multiple of
-        # the page size, zero filling the padding, and reports the rounded up
-        # size via fstat(), so more data than was written is available there.
-        available = 64
-        if is_macos:
-            page_size = os.sysconf('SC_PAGESIZE')
-            available = min(len(random_data), (64 + page_size - 1) // page_size * page_size)
-        self.ae(pl(name, s=1024, v=8, t='s', S=len(random_data)), f'ENODATA:Insufficient image data: {available} < {len(random_data)}')
+        self.ae(pl(name, s=1024, v=8, t='s', S=len(random_data)), generic_error)
         self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that the object was deleted
 
+        # A shared memory object that could not be opened must also be
+        # removed, and reported with the same generic error
+        self.ae(pl('/kitty-test-shm-missing', s=1024, v=8, t='s'), generic_error)
+        self.ae(pl('kitty-test-shm-no-leading-slash', s=1024, v=8, t='s'), generic_error)
+
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
+
+    def test_graphics_file_reading_policy(self):
+        from kitty.fast_data_types import set_boss
+        from kitty.utils import is_ok_to_read_image_file, is_ok_to_read_image_path
+
+        class Boss:
+            def __init__(self):
+                self.path_checks = []
+                self.fd_checks = []
+
+            def is_ok_to_read_image_path(self, path):
+                self.path_checks.append(path)
+                return is_ok_to_read_image_path(path)
+
+            def is_ok_to_read_image_file(self, path, fd):
+                self.fd_checks.append(path)
+                return is_ok_to_read_image_file(path, fd)
+
+            def safe_delete_temp_file(self, path):
+                with suppress(FileNotFoundError):
+                    os.remove(path)
+
+        s, g, pl, sl = load_helpers(self)
+        random_data = byte_block(32 * 1024)
+        generic_error = 'EBADF:Failed to read image file'
+        boss = Boss()
+        set_boss(boss)
+        try:
+            # Files in protected locations must be refused based on their path
+            # alone, without ever being opened, since both opening a file and
+            # the error from a failed open leak its existence
+            protected = ('/proc/self/cmdline', '/proc/does-not-exist', '/sys/kernel/does-not-exist', '/dev/null', '/dev/does-not-exist')
+            for path in protected:
+                self.ae(pl(path, s=1024, v=8, t='f'), generic_error, path)
+            self.assertFalse(boss.fd_checks, 'A file in a protected location was opened before the policy was applied')
+            self.ae(len(boss.path_checks), len(protected))
+
+            # Refusing to read a file must not leak the fd opened for it
+            before = num_open_fds()
+            for i in range(64):
+                for path in protected:
+                    pl(path, s=1024, v=8, t='f')
+            self.ae(before, num_open_fds(), 'File descriptors were leaked when refusing to read image files')
+
+            # Allowed files are still readable
+            with tempfile.NamedTemporaryFile() as f:
+                f.write(random_data), f.flush()
+                sl(f.name, s=1024, v=8, t='f', expecting_data=random_data)
+                self.ae(boss.fd_checks[-1], f.name)
+        finally:
+            set_boss(None)
         s.reset()
         self.assertEqual(g.disk_cache.total_size, 0)
 

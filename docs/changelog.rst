@@ -302,6 +302,10 @@ Detailed list of changes
   object at an offset (the ``O`` key) failing unless the offset happened to be
   a multiple of the system page size
 
+- Graphics protocol: Fix file descriptor leak that can be triggered by malicious clients
+
+- Graphics protocol: Make fileopen failure responses generic to avoid leaking any information about failed files
+
 - Clipboard protocol: Report an ``EFBIG`` error to programs that try to write
   more data to the clipboard than allowed by :opt:`clipboard_max_size`, instead
   of silently truncating their data. Also fix :opt:`clipboard_max_size` being

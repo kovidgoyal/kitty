@@ -344,6 +344,28 @@ set_command_failed_response(const char *code, const char *fmt, ...) {
         goto err;                                        \
     }
 
+// Reading an image file can fail for many different reasons: the file does
+// not exist, it is not readable, it is of the wrong type, it is smaller than
+// the client claimed, etc. The client can be a program running on a remote
+// machine over SSH or a sandboxed process, so telling it which of these
+// happened lets it probe the filesystem for the existence, type and size of
+// files it has no business knowing anything about. So all such failures are
+// answered back with one identical, information free, error and the actual
+// reason is written to the kitty log, which only the local user can see.
+#define IMAGE_FILE_ERROR_CODE "EBADF"
+#define IMAGE_FILE_ERROR_MSG "Failed to read image file"
+#define FAIL_IMAGE_FILE(...)                                                            \
+    {                                                                                   \
+        log_error(__VA_ARGS__);                                                         \
+        set_command_failed_response(IMAGE_FILE_ERROR_CODE, "%s", IMAGE_FILE_ERROR_MSG); \
+    }
+// As above but for use in functions that clean up via a goto err; label.
+#define FABRT(...)                    \
+    {                                 \
+        FAIL_IMAGE_FILE(__VA_ARGS__); \
+        goto err;                     \
+    }
+
 #ifdef __APPLE__
 // On macOS POSIX shared memory objects cannot be read() from, they can only be
 // accessed via mmap(). Unlike with regular files, there is no risk of SIGBUS
@@ -357,7 +379,7 @@ copy_from_shm(GraphicsManager *self, int fd, size_t sz, off_t offset) {
     const size_t delta = (size_t)(offset - page_start), map_sz = sz + delta;
     void *addr = mmap(0, map_sz, PROT_READ, MAP_SHARED, fd, page_start);
     if (addr == MAP_FAILED)
-        ABRT(EIO, "Failed to map shm object fd: %d at offset: %zd with size: %zu with error: [%d] %s", fd, (ssize_t)page_start, map_sz, errno, strerror(errno));
+        FABRT("Failed to map shm object fd: %d at offset: %zd with size: %zu with error: [%d] %s", fd, (ssize_t)page_start, map_sz, errno, strerror(errno));
     memcpy(ld->buf, (uint8_t *)addr + delta, sz);
     munmap(addr, map_sz);
     ld->buf_used = sz;
@@ -371,12 +393,12 @@ static bool
 read_img_file(GraphicsManager *self, int fd, size_t sz, off_t offset, size_t max_to_read, bool is_shm) {
     LoadData *ld = &self->currently_loading;
     struct stat s;
-    if (fstat(fd, &s) != 0) ABRT(EBADF, "Failed to fstat() the fd: %d file with error: [%d] %s", fd, errno, strerror(errno));
+    if (fstat(fd, &s) != 0) FABRT("Failed to fstat() the fd: %d file with error: [%d] %s", fd, errno, strerror(errno));
     // The graphics protocol specification mandates that only regular files be
     // read. Reading from FIFOs/devices/etc. can block forever or have
     // side-effects. POSIX shared memory fds on macOS do not report as regular
     // files via fstat(), so skip this check for them.
-    if (!is_shm && !S_ISREG(s.st_mode)) ABRT(EBADF, "The image file with fd: %d is not a regular file", fd);
+    if (!is_shm && !S_ISREG(s.st_mode)) FABRT("The image file with fd: %d is not a regular file", fd);
     const size_t available = offset < s.st_size ? (size_t)(s.st_size - offset) : 0;
     if (!sz) sz = available;
     if (sz > max_to_read) sz = max_to_read;
@@ -387,7 +409,7 @@ read_img_file(GraphicsManager *self, int fd, size_t sz, off_t offset, size_t max
     // simply results in a short read, which is reported as insufficient data
     // by the caller.
     ld->buf = malloc(sz ? sz : 1);
-    if (!ld->buf) ABRT(ENOMEM, "Out of memory allocating %zu bytes to read image file", sz);
+    if (!ld->buf) FABRT("Out of memory allocating %zu bytes to read image file", sz);
     ld->buf_capacity = sz;
     ld->buf_used = 0;
 #ifdef __APPLE__
@@ -402,7 +424,7 @@ read_img_file(GraphicsManager *self, int fd, size_t sz, off_t offset, size_t max
             ssize_t n = pread(fd, ld->buf + ld->buf_used, sz - ld->buf_used, offset + (off_t)ld->buf_used);
             if (n < 0) {
                 if (errno == EINTR) continue;
-                ABRT(EIO, "Failed to read from image file fd: %d with error: [%d] %s", fd, errno, strerror(errno));
+                FABRT("Failed to read from image file fd: %d with error: [%d] %s", fd, errno, strerror(errno));
             }
             if (!n) break; // EOF, the file is smaller than expected, reported as insufficient data by the caller
             ld->buf_used += n;
@@ -533,7 +555,6 @@ png_from_file_pointer(FILE *fp, const char *path_for_error_messages, uint8_t **d
     unsigned char *buf = malloc(capacity);
     if (!buf) {
         log_error("Out of memory reading PNG file at: %s", path_for_error_messages);
-        fclose(fp);
         return false;
     }
     while (!feof(fp)) {
@@ -543,7 +564,6 @@ png_from_file_pointer(FILE *fp, const char *path_for_error_messages, uint8_t **d
             if (!new_buf) {
                 free(buf);
                 log_error("Out of memory reading PNG file at: %s", path_for_error_messages);
-                fclose(fp);
                 return false;
             }
             buf = new_buf;
@@ -665,10 +685,82 @@ get_free_client_id(const GraphicsManager *self) {
 #define MAX_DATA_SZ (4u * 100000000u)
 enum FORMATS { RGB = 24, RGBA = 32, PNG = 100 };
 
+static bool
+is_file_transmission(const unsigned char transmission_type) {
+    return transmission_type == 'f' || transmission_type == 't' || transmission_type == 's';
+}
+
+// Ask the boss if path is allowed to be read. This is deliberately based on
+// the path alone, so that it can be answered before the file is opened.
+static bool
+is_ok_to_read_image_path(const char *path) {
+    if (!global_state.boss) return true;
+    RAII_PyObject(ret, PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_path", "s", path));
+    if (!ret) {
+        PyErr_Print();
+        return false;
+    }
+    return ret == Py_True;
+}
+
+// Ask the boss if the already opened file at path is allowed to be read.
+static bool
+is_ok_to_read_image_fd(const char *path, int fd) {
+    if (!global_state.boss) return true;
+    RAII_PyObject(ret, PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_file", "si", path, fd));
+    if (!ret) {
+        PyErr_Print();
+        return false;
+    }
+    return ret == Py_True;
+}
+
+// Read image data from a file or a POSIX shared memory object. The fd is
+// closed on all code paths, not just the successful one, otherwise a client
+// can exhaust the process wide file descriptor limit, taking down the entire
+// kitty process with it, simply by asking for files it is not allowed to read.
+static bool
+load_image_data_from_file(
+    GraphicsManager *self, const GraphicsCommand *g, const unsigned char transmission_type, const char *fname, const size_t max_to_read, bool *was_opened) {
+    const bool is_shm = transmission_type == 's';
+    int fd;
+    *was_opened = false;
+    if (is_shm) {
+        if (fname[0] != '/') {
+            FAIL_IMAGE_FILE("Failed to open shared memory object: %s with error: %s", fname, "POSIX SHM names must start with /");
+            return false;
+        }
+        fd = safe_shm_open(fname, O_RDONLY, 0);
+    } else {
+        // The policy check has to happen before the file is opened. Merely
+        // opening a file can have side-effects and whether the open succeeds
+        // or not tells the client if the file exists, which it must not be
+        // able to discover for files it is not allowed to read.
+        if (!is_ok_to_read_image_path(fname)) {
+            FAIL_IMAGE_FILE("Refusing to read image file: %s as permission was denied", fname);
+            return false;
+        }
+        fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0); // O_NONBLOCK so that opening a FIFO pipe does not block
+    }
+    if (fd == -1) {
+        FAIL_IMAGE_FILE("Failed to open file for graphics transmission: %s with error: [%d] %s", fname, errno, strerror(errno));
+        return false;
+    }
+    *was_opened = true;
+    bool ok;
+    // Check again now that the file is open, since fname could have been
+    // pointed at a different file in between the check above and the open().
+    if (!is_shm && !is_ok_to_read_image_fd(fname, fd)) {
+        FAIL_IMAGE_FILE("Refusing to read image file: %s as permission was denied", fname);
+        ok = false;
+    } else ok = read_img_file(self, fd, g->data_sz, g->data_offset, max_to_read, is_shm);
+    safe_close(fd, __FILE__, __LINE__);
+    return ok;
+}
+
 static Image *
 load_image_data(
     GraphicsManager *self, Image *img, const GraphicsCommand *g, const unsigned char transmission_type, const uint32_t data_fmt, const uint8_t *payload) {
-    int fd;
     static char fname[2056] = {0};
     LoadData *load_data = &self->currently_loading;
 
@@ -694,41 +786,47 @@ load_image_data(
         case 'f': // file
         case 't': // temporary file
         case 's': // POSIX shared memory
+        {
             if (g->payload_sz > 2048) ABRT("EINVAL", "Filename too long");
             snprintf(fname, sizeof(fname) / sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
-            if (transmission_type == 's') {
-                if (fname[0] != '/') ABRT("EBADF", "Failed to open file for graphics transmission with error: %s", "POSIX SHM names must start with /");
-                fd = safe_shm_open(fname, O_RDONLY, 0);
-            } else fd = safe_open(fname, O_CLOEXEC | O_RDONLY | O_NONBLOCK, 0); // O_NONBLOCK so that opening a FIFO pipe does not block
-            if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
-            if (global_state.boss && transmission_type != 's') {
-                RAII_PyObject(cret_, PyObject_CallMethod(global_state.boss, "is_ok_to_read_image_file", "si", fname, fd));
-                if (cret_ == NULL) {
-                    PyErr_Print();
-                    ABRT("EBADF", "Failed to check file for read permission");
-                }
-                if (cret_ != Py_True) {
-                    log_error("Refusing to read image file as permission was denied");
-                    ABRT("EPERM", "Permission denied to read image file");
-                }
-            }
             // When the data needs further processing the entire (possibly
             // compressed) payload is needed, otherwise reading more than the
             // expected number of bytes is pointless.
             const size_t max_to_read = (g->compressed || data_fmt == PNG) ? MAX_DATA_SZ : load_data->data_sz;
-            load_data->loading_completed_successfully = read_img_file(self, fd, g->data_sz, g->data_offset, max_to_read, transmission_type == 's');
-            safe_close(fd, __FILE__, __LINE__);
-            if (transmission_type == 't' && strstr(fname, "tty-graphics-protocol") != NULL) {
-                if (global_state.boss) {
-                    call_boss(safe_delete_temp_file, "s", fname);
-                } else unlink(fname);
-            } else if (transmission_type == 's') shm_unlink(fname);
-            if (!load_data->loading_completed_successfully) return NULL;
-            break;
+            bool was_opened = false;
+            const bool ok = load_image_data_from_file(self, g, transmission_type, fname, max_to_read, &was_opened);
+            // Client created temporary files and shared memory objects that
+            // were successfully opened are removed even when loading fails,
+            // so that they are not left behind to accumulate.
+            if (was_opened) {
+                if (transmission_type == 't' && strstr(fname, "tty-graphics-protocol") != NULL) {
+                    if (global_state.boss) {
+                        call_boss(safe_delete_temp_file, "s", fname);
+                    } else unlink(fname);
+                } else if (transmission_type == 's') shm_unlink(fname);
+            }
+            load_data->loading_completed_successfully = ok;
+            if (!ok) { // the error response has already been set
+                free_load_data(load_data);
+                return NULL;
+            }
+        } break;
         default: ABRT("EINVAL", "Unknown transmission type: %c", g->transmission_type);
     }
     return img;
 }
+
+// The number of bytes actually read is the size of the file the client asked
+// kitty to read, which it must not learn for files it cannot read itself, so
+// when transmitting via a file report the generic image file error instead.
+#define ABRT_INSUFFICIENT_DATA(buf_used, data_sz)                                     \
+    {                                                                                 \
+        if (is_file_transmission(g->transmission_type)) {                             \
+            log_error("Insufficient image data: %zu < %zu", (buf_used), (data_sz));   \
+            ABRT(IMAGE_FILE_ERROR_CODE, "%s", IMAGE_FILE_ERROR_MSG);                  \
+        }                                                                             \
+        ABRT("ENODATA", "Insufficient image data: %zu < %zu", (buf_used), (data_sz)); \
+    }
 
 static Image *
 process_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, const uint32_t data_fmt) {
@@ -765,11 +863,11 @@ process_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, 
 #undef IB
         self->currently_loading.data = self->currently_loading.buf;
         if (self->currently_loading.buf_used < self->currently_loading.data_sz) {
-            ABRT("ENODATA", "Insufficient image data: %zu < %zu", self->currently_loading.buf_used, self->currently_loading.data_sz);
+            ABRT_INSUFFICIENT_DATA(self->currently_loading.buf_used, self->currently_loading.data_sz);
         }
     } else {
         if (self->currently_loading.buf_used < self->currently_loading.data_sz) {
-            ABRT("ENODATA", "Insufficient image data: %zu < %zu", self->currently_loading.buf_used, self->currently_loading.data_sz);
+            ABRT_INSUFFICIENT_DATA(self->currently_loading.buf_used, self->currently_loading.data_sz);
         } else self->currently_loading.data = self->currently_loading.buf;
         self->currently_loading.loading_completed_successfully = true;
     }

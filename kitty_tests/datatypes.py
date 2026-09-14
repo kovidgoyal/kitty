@@ -32,6 +32,7 @@ from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
 from kitty.utils import (
     is_ok_to_read_image_file,
+    is_ok_to_read_image_path,
     is_path_in_temp_dir,
     lock_with_file,
     sanitize_title,
@@ -625,6 +626,12 @@ class TestDataTypes(BaseTest):
             if os.path.exists(path):
                 with open(path) as pf:
                     self.assertFalse(is_ok_to_read_image_file(path, pf.fileno()), path)
+        # The path based check must reject protected locations without needing
+        # the file to be opened first, since opening it leaks its existence
+        for path in ('', '/proc/self/cmdline', '/proc/does-not-exist', '/sys/kernel', '/dev/null', '/dev/does-not-exist'):
+            self.assertFalse(is_ok_to_read_image_path(path), path)
+        for path in ('/tmp/a.png', '/dev/shm/a.png', os.path.join(tempfile.gettempdir(), 'a.png')):
+            self.assertTrue(is_ok_to_read_image_path(path), path)
         fifo = os.path.join(tempfile.gettempdir(), 'test-kitty-fifo')
         os.mkfifo(fifo)
         fifo_fd = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)

@@ -163,6 +163,7 @@ from .utils import (
     get_editor,
     get_new_os_window_size,
     is_ok_to_read_image_file,
+    is_ok_to_read_image_path,
     is_path_in_temp_dir,
     less_version,
     log_error,
@@ -3485,6 +3486,9 @@ class Boss:
         if is_path_in_temp_dir(path):
             with suppress(FileNotFoundError):
                 os.remove(path)
+
+    def is_ok_to_read_image_path(self, path: str) -> bool:
+        return is_ok_to_read_image_path(path)
 
     def is_ok_to_read_image_file(self, path: str, fd: int) -> bool:
         return is_ok_to_read_image_file(path, fd)

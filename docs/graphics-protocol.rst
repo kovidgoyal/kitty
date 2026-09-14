@@ -360,6 +360,18 @@ from potentially untrusted sources, terminal emulators **must** refuse to read
 any device/socket/etc. special files. Only regular files are allowed.
 Additionally, terminal emulators may refuse to read files in *sensitive*
 parts of the filesystem, such as :file:`/proc`, :file:`/sys`, :file:`/dev`, etc.
+These checks should be made on the path *before* the file is opened, since
+merely opening a file can have side-effects.
+
+Because the escape codes can be emitted by a program running on a remote
+machine over SSH or by a sandboxed process, the terminal emulator **must not**
+allow such a program to use the responses to these commands to learn anything
+about files it cannot read itself. In particular, all failures to read an
+image file, be it because the file does not exist, is not readable, is not a
+regular file, lies in a sensitive location or is smaller than the client
+claimed, must be reported with a single, identical, error response. kitty
+answers with ``EBADF:Failed to read image file`` for all of these and writes
+the actual reason to its log, which only the local user can see.
 
 Local client
 ^^^^^^^^^^^^^^
