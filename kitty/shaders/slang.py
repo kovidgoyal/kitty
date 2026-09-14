@@ -1070,6 +1070,7 @@ def custom_shader(name: str = '', pipeline_dir: str = '') -> tuple[str, str, byt
 
 @lru_cache(maxsize=64)
 def pipeline_definition(name: str) -> tuple[tuple[str, ...], str]:
+    name = os.path.expanduser(name)
     if os.path.isabs(name):
         pipeline_path = name if name.endswith('.pipeline') else name + '.pipeline'
         with open(pipeline_path, 'rb') as f:
