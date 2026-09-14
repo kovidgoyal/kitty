@@ -2260,7 +2260,10 @@ class Boss:
             return
         if (tab_id := int((data or {}).get(f'application/net.kovidgoyal.kitty-tab-{os.getpid()}', b'0').decode())) and get_tab_being_dragged()[0] == tab_id:
             tab = self.tab_for_id(tab_id)
-            if was_dropped and not was_canceled and tab is not None and needs_toplevel_on_wayland:
+            # The native callback reports was_dropped=False for internal drops.
+            # Wayland can finish the source before delivering the destination's
+            # data, so complete its pending UI target unless the drag was canceled.
+            if not was_canceled and tab is not None and needs_toplevel_on_wayland:
                 for tm in self.all_tab_managers:
                     target = tm.window_being_dropped
                     if (

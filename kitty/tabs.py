@@ -2068,8 +2068,8 @@ class TabManager:  # {{{
         central = viewport_for_window(self.os_window_id)[0]
         if not (central.left <= x < central.right and central.top <= y < central.bottom):
             return None
-        rel_x = x - central.left
-        rel_y = y - central.top
+        # Window geometry is already relative to the OS window.
+        rel_x, rel_y = x, y
         if (active_tab := self.active_tab) is None:
             return None
         for win in active_tab:
@@ -2127,10 +2127,7 @@ class TabManager:  # {{{
         self._set_drag_target_tab(0)
         dest_window = self._find_window_at(x, y)
         if dest_window and dest_window.id != window_id:
-            from .fast_data_types import viewport_for_window as _vfw
-
-            central = _vfw(self.os_window_id)[0]
-            rel_y = y - central.top
+            rel_y = y
             if dest_window.show_title_bar:
                 from .fast_data_types import cell_size_for_window
 
@@ -2144,7 +2141,7 @@ class TabManager:  # {{{
                     return
             active_tab = self.active_tab
             if active_tab is not None:
-                rel_x = x - central.left
+                rel_x = x
                 g = dest_window.geometry
                 dx = rel_x - (g.left + g.right) / 2
                 dy = rel_y - (g.top + g.bottom) / 2
@@ -2197,8 +2194,8 @@ class TabManager:  # {{{
         if not in_central:
             return
 
-        rel_x = x - central.left
-        rel_y = y - central.top
+        # Window geometry is already relative to the OS window.
+        rel_x, rel_y = x, y
         if (active_tab := self.active_tab) is None:
             return
 

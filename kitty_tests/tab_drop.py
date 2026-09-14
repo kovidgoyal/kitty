@@ -4,11 +4,11 @@
 import os
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from kitty.boss import Boss
 from kitty.layout.splits import Splits
-from kitty.tabs import Tab
+from kitty.tabs import DragOverlayMode, Tab, TabManager
 
 from .base import BaseTest
 from .layout import Window, create_layout, create_windows
@@ -124,6 +124,22 @@ class TestTabDrop(BaseTest):
         Boss.on_drag_source_finished(self.boss, True, False, '', 0, self.data, True)
         self.boss._move_window_to.assert_called_once_with(self.source.active_window, target_tab_id=2)
 
+    def test_wayland_internal_drop_finishes_before_data_arrives(self):
+        target = SimpleNamespace(id=20, tab_id=2)
+        self.boss.window_id_map[20] = target
+        self.tm.window_being_dropped = SimpleNamespace(window_id=20, quadrant=1)
+        # glfw.c reports was_dropped=False while an internal drop destination
+        # exists, even for a successful drop. Data can arrive after this callback.
+        Boss.on_drag_source_finished(self.boss, False, False, '', 0, self.data, True)
+        self.boss._insert_window_in_direction.assert_called_once_with(self.source.active_window, target, 'left')
+        self.boss._move_tab_to.assert_not_called()
+
+    def test_wayland_internal_tab_reordering_is_preserved(self):
+        self.tm.tab_being_dropped = SimpleNamespace()
+        Boss.on_drag_source_finished(self.boss, False, False, '', 0, self.data, True)
+        self.tm.on_tab_drop.assert_called_once_with(0, 0, bypass_move=True)
+        self.boss._move_tab_to.assert_not_called()
+
     def test_completed_drop_is_not_detached_again(self):
         self.get_tab_being_dragged.return_value = (0, False)
         Boss.on_drag_source_finished(self.boss, True, False, '', 0, self.data, True)
@@ -167,3 +183,46 @@ class TestTabDrop(BaseTest):
             dest.attach_windows.assert_called_with(('pane', 'overlay'), next_to=target, horizontal=horizontal, after=after)
             boss._cleanup_tab_after_window_removal.assert_called_with(source)
             dest.make_active.assert_called_with()
+
+
+class TestWindowDropCoordinates(BaseTest):
+    def test_drop_with_offset_tab_bar(self):
+        for left, top in ((0, 30), (80, 0), (80, 30)):
+            for direction, quadrant in (('left', 1), ('right', 2), ('top', 3), ('bottom', 4)):
+                with self.subTest(left=left, top=top, direction=direction):
+                    central = SimpleNamespace(left=left, top=top, right=1000, bottom=800)
+                    bar = SimpleNamespace(left=0, top=0, right=left or 1000, bottom=top or 800)
+                    g = SimpleNamespace(left=left + 5, top=top + 5, right=995, bottom=795)
+                    dest = SimpleNamespace(id=20, geometry=g, show_title_bar=False)
+                    src = SimpleNamespace(id=10, tabref=lambda: None)
+                    tab = MagicMock(current_layout=SimpleNamespace(drag_overlay_mode=DragOverlayMode.free))
+                    tab.__iter__.return_value = [dest]
+                    tm = SimpleNamespace(
+                        os_window_id=1,
+                        active_tab=tab,
+                        window_drag_over_me=True,
+                        _set_drag_target_tab=Mock(),
+                        _set_drag_target_window=Mock(),
+                        _clear_force_show_title_bars=Mock(),
+                        mark_tab_bar_dirty=Mock(),
+                    )
+                    tm._find_window_at = lambda x, y: TabManager._find_window_at(tm, x, y)
+                    boss = SimpleNamespace(window_id_map={10: src}, _insert_window_in_direction=Mock(), _move_window_to=Mock())
+                    x, y = {
+                        'left': (g.left + 2, (g.top + g.bottom) // 2),
+                        'right': (g.right - 2, (g.top + g.bottom) // 2),
+                        'top': ((g.left + g.right) // 2, g.top + 2),
+                        'bottom': ((g.left + g.right) // 2, g.bottom - 2),
+                    }[direction]
+                    with (
+                        patch('kitty.fast_data_types.viewport_for_window', return_value=(central, bar)),
+                        patch('kitty.fast_data_types.cell_size_for_window', return_value=(10, 20)),
+                        patch('kitty.tabs.get_options', return_value=SimpleNamespace(window_title_bar='top')),
+                        patch('kitty.tabs.get_boss', return_value=boss),
+                        patch('kitty.tabs.set_window_being_dragged'),
+                    ):
+                        TabManager.on_window_drop_move(tm, 10, True, x, y)
+                        tm._set_drag_target_window.assert_called_with(20, quadrant)
+                        TabManager.on_window_drop(tm, x, y, 10)
+                        boss._insert_window_in_direction.assert_called_once_with(src, dest, direction)
+                        boss._move_window_to.assert_not_called()
