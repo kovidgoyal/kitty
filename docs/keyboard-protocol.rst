@@ -34,6 +34,7 @@ inside the kitty terminal to report key events.
 
 In addition to kitty, this protocol is also implemented in:
 
+* The `AbsoluteTelnet SSH client <https://www.celestialsoftware.net/absolutetelnet-ssh-implements-the-kitty-keyboard-protocol>`__
 * The `alacritty terminal <https://github.com/alacritty/alacritty/pull/7125>`__
 * The `foot terminal <https://codeberg.org/dnkl/foot/issues/319>`__
 * The `ghostty terminal <https://ghostty.org>`__
