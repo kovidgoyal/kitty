@@ -40,6 +40,7 @@ class TestSlang(BaseTest):
         pipeline = parse_pipeline_definition(
             """
             startgroup
+                animation_step 0
                 var float HIGHLIGHT_INTENSITY = 0
                 var float BORDER_WIDTH = 0
                 var float INACTIVE_DIM = 0.74
@@ -54,11 +55,12 @@ class TestSlang(BaseTest):
         with tempfile.TemporaryDirectory() as cache_dir:
             clear_caches()
             try:
-                vertex, fragment, _ = build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
+                vertex, fragment, metadata = build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
             finally:
                 clear_caches()
         self.assertTrue(vertex)
         self.assertTrue(fragment)
+        self.ae(metadata['pipeline']['groups'][0]['animation_step'], 0)
 
     def test_slang_parser(self):
         def check(src: str, expected: SlangFile) -> None:
