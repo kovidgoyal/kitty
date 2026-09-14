@@ -22,6 +22,9 @@ public struct KittyCustomShaderData {
     // .xy = lower-left corner of the window, .zw = width and height.
     // All components are zero when no active window was rendered this frame.
     public float4 active_window_geometry;
+    // Effective padding of the active window, including cell-size compensation.
+    // .xy = left/bottom, .zw = right/top, in viewport UV units.
+    public float4 active_window_padding;
     // Geometry of the most recently belled window in UV co-ordinates (origin bottom-left).
     // .xy = lower-left corner of the window, .zw = width and height.
     // If the belled window is not currently visible in the active tab/layout, equals central_area.

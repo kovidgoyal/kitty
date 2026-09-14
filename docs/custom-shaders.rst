@@ -79,6 +79,29 @@ mouse shader. In the first group we have the crt shader and its color has been
 customised. The second group defines the spotlight shader and specifies exactly
 when the spotlight animation should start and stop.
 
+For example, to blend inactive windows toward gray instead of black, save the
+following as :file:`shaders/dim-gray.pipeline` in your kitty config directory and
+set ``custom_shaders dim-gray`` and ``inactive_text_alpha 1`` in :file:`kitty.conf`::
+
+    startgroup
+        var float HIGHLIGHT_INTENSITY = 0
+        var float BORDER_WIDTH = 0
+        var float INACTIVE_DIM = 0.74
+        var float3 INACTIVE_DIM_COLOR = float3(0.2158605)
+        var bool DIM_CENTRAL_AREA_ONLY = true
+        var bool INCLUDE_WINDOW_PADDING = true
+        shaders focus-highlight
+    endgroup
+
+This uses the same shader as ``dim-inactive-windows``. ``INACTIVE_DIM`` is the
+fraction of the original color retained: ``0.74`` blends in 26% of the target
+color. ``INACTIVE_DIM_COLOR`` is in linear RGB; ``0.2158605`` corresponds to
+sRGB ``#808080``. The default target is black, preserving the existing dimming
+effect. The two optional flags preserve the tab bar and include the active
+window's padding in its unchanged area. Explicit cell backgrounds and images
+are blended together with text, while transparency and colors reported to
+terminal applications are preserved.
+
 
 Anatomy of a custom shader
 ----------------------------

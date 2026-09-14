@@ -33,6 +33,33 @@ _SUPPORT_SHADER_NAMES = frozenset(('types', 'pipeline'))
 
 
 class TestSlang(BaseTest):
+    def test_inactive_window_tint_pipeline(self):
+        if not shutil.which(slangc()[0]):
+            self.skipTest(f'slangc ({slangc()[0]}) not found in PATH')
+
+        pipeline = parse_pipeline_definition(
+            """
+            startgroup
+                var float HIGHLIGHT_INTENSITY = 0
+                var float BORDER_WIDTH = 0
+                var float INACTIVE_DIM = 0.74
+                var float3 INACTIVE_DIM_COLOR = float3(0.2158605)
+                var bool DIM_CENTRAL_AREA_ONLY = true
+                var bool INCLUDE_WINDOW_PADDING = true
+                shaders focus-highlight
+            endgroup
+            """.splitlines(),
+            'dim-gray',
+        )
+        with tempfile.TemporaryDirectory() as cache_dir:
+            clear_caches()
+            try:
+                vertex, fragment, _ = build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
+            finally:
+                clear_caches()
+        self.assertTrue(vertex)
+        self.assertTrue(fragment)
+
     def test_slang_parser(self):
         def check(src: str, expected: SlangFile) -> None:
             actual = parse_slang_text(src)
