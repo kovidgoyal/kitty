@@ -138,6 +138,24 @@ class TestBuild(BaseTest):
             self.assertEqual(cp.returncode, 0, cp.stdout)
             self.assertIn('dictation forwarding probe passed', cp.stdout)
 
+    def test_macos_ime_commit(self) -> None:
+        from kitty.constants import glfw_path, is_macos
+
+        if not is_macos or not shutil.which('clang'):
+            self.skipTest('Cocoa IME regression test is macOS only and requires clang')
+        cocoa_module = glfw_path('cocoa')
+        src = os.path.join(os.path.dirname(__file__), 'cocoa_ime_commit.m')
+        symbols = subprocess.check_output(['nm', '-g', cocoa_module], text=True)
+        asan_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if '__asan_init' in symbols else []
+        with tempfile.TemporaryDirectory() as tdir:
+            exe = os.path.join(tdir, 'cocoa_ime_commit')
+            cmd = ['clang', '-D_GLFW_COCOA', '-fno-objc-arc', '-framework', 'Cocoa', '-framework', 'Carbon']
+            cp = subprocess.run(cmd + asan_flags + [src, '-o', exe], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=60)
+            self.assertEqual(cp.returncode, 0, cp.stdout)
+            cp = subprocess.run([exe, cocoa_module], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
+            self.assertEqual(cp.returncode, 0, cp.stdout)
+            self.assertTrue(json.loads(cp.stdout)['all_passed'], cp.stdout)
+
     def test_glfw_modules(self) -> None:
         from kitty.constants import glfw_path, is_macos
 

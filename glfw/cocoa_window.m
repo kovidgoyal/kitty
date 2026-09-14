@@ -2105,6 +2105,18 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
             _glfw.ns.text[0] = 0;
         }
     }
+    // Outside key handling there is no key event to accumulate text for. This
+    // path already commits immediately, so do not constrain a full IME result
+    // to the fixed-size buffer used by the key handlers.
+    if (!in_key_handler) {
+        if (!is_ascii_control_char(utf8[0])) {
+            debug_input("Sending text to kitty from insertText called from event loop: %s\n", utf8);
+            GLFWkeyevent glfw_keyevent = {.text = utf8, .ime_state = GLFW_IME_COMMIT_TEXT};
+            _glfwInputKeyboard(window, &glfw_keyevent);
+        }
+        _glfw.ns.text[0] = 0;
+        return;
+    }
     // insertText can be called multiple times for a single key event
     size_t existing_length = strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
     size_t required_length = strlen(utf8) + 1;
@@ -2112,9 +2124,9 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     if (available_length >= required_length) {
         memcpy(_glfw.ns.text + existing_length, utf8, required_length); // copies the null terminator from utf8 as well
         _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
-        if ((!in_key_handler || in_key_handler == 2) && _glfw.ns.text[0]) {
+        if (in_key_handler == 2 && _glfw.ns.text[0]) {
             if (!is_ascii_control_char(_glfw.ns.text[0])) {
-                debug_input("Sending text to kitty from insertText called from %s: %s\n", in_key_handler ? "flagsChanged" : "event loop", _glfw.ns.text);
+                debug_input("Sending text to kitty from insertText called from flagsChanged: %s\n", _glfw.ns.text);
                 GLFWkeyevent glfw_keyevent = {.text = _glfw.ns.text, .ime_state = GLFW_IME_COMMIT_TEXT};
                 _glfwInputKeyboard(window, &glfw_keyevent);
             }
