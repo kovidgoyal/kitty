@@ -957,13 +957,18 @@ prepare_to_render_os_window(
             events |= (1u << SHADER_ANIM_EVENT_TAB_CHANGE) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
         if (*active_window_id && *active_window_id != os_window->last_active_window_id)
             events |= (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
+        const bool was_active = os_window->has_active_custom_shaders;
+        const bool was_animating = os_window->shader_anim_min_step < MONOTONIC_T_MAX;
+        const bool animation_ended = now >= os_window->shader_anim_next_end_at;
         monotonic_t min_step = update_custom_shader_animations(events, now, os_window);
         os_window->shader_anim_event_registry = 0;
         if (os_window->has_active_custom_shaders) {
             os_window->needs_layers = true;
-            needs_render = true;
+            if (events || min_step < MONOTONIC_T_MAX) needs_render = true;
         }
+        if (was_active != os_window->has_active_custom_shaders || was_animating || animation_ended) needs_render = true;
         if (min_step < MONOTONIC_T_MAX) set_maximum_wait(min_step);
+        if (os_window->shader_anim_next_end_at < MONOTONIC_T_MAX) set_maximum_wait(os_window->shader_anim_next_end_at - now);
     }
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
 }

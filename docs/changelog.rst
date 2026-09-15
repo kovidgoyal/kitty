@@ -204,6 +204,10 @@ Detailed list of changes
 
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
+- Custom shaders: Allow tinting inactive windows toward a configurable color,
+  preserving the tab bar and active window padding. Support static effects
+  without periodic redraws, and fix re-enabling a previously disabled shader.
+
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
 
 - Add :opt:`window_border_radius` for rounded window borders (:pull:`10421`)

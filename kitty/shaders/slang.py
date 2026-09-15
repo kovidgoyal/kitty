@@ -274,6 +274,7 @@ class LoadShaderPrograms:
             slot_pipelines = pmap.get(slot)
             if not slot_pipelines:
                 compile_program(prog, (), (), {}, allow_recompile)
+                self.last_built_custom_shaders.pop(prog, None)
             else:
                 try:
                     pipeline = merge_pipelines(slot_pipelines)
@@ -283,6 +284,7 @@ class LoadShaderPrograms:
                 except Exception as e:
                     log_error(f'Failed to build custom shader for slot {slot} with error: {e}')
                     compile_program(prog, (), (), {}, allow_recompile)
+                    self.last_built_custom_shaders.pop(prog, None)
                 else:
                     try:
                         if self.last_built_custom_shaders.get(prog) != (vert, frag, metadata):
@@ -291,6 +293,7 @@ class LoadShaderPrograms:
                     except Exception as e:
                         log_error(f'Failed to load custom shader for slot {slot} with error: {e}')
                         compile_program(prog, (), (), {}, allow_recompile)
+                        self.last_built_custom_shaders.pop(prog, None)
 
         do(CUSTOM_END_PROGRAM, 'end')
         compile_program(-2, (), (), {})  # initialize programs
