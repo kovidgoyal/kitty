@@ -1067,6 +1067,38 @@ class TestScreen(BaseTest):
         s.reset()
         s.draw('\N{HEAVY EXCLAMATION MARK SYMBOL}' + 4500 * '\N{VARIATION SELECTOR-16}')
 
+    def test_spacing_mark_widens_narrow_cell(self):
+        # Thai SARA AM and Lao AM are SpacingMarks with width 1 that widen the cell they combine into
+        s = self.create_screen(cols=5)
+        s.draw('จำ')
+        self.ae(s.cursor.x, 2)
+        self.assertTrue(str(s.line(0)).startswith('จำ'))
+        c = s.cpu_cells(0, 0)
+        self.assertTrue(c['mcd'])
+        self.ae(c['mcd']['width'], 2)
+        self.ae(c['x'], 0)
+        self.ae(s.cpu_cells(0, 1)['x'], 1)
+        s.reset()
+        s.draw('จ')
+        self.ae(s.cursor.x, 1)
+        s.draw('ำ')
+        self.ae(s.cursor.x, 2)
+        s.reset()
+        s.draw('จำำ')
+        self.ae(s.cursor.x, 2)
+        s.reset()
+        s.draw('ກຳ')
+        self.ae(s.cursor.x, 2)
+        s.reset()
+        s.draw('กิ')
+        self.ae(s.cursor.x, 1)
+        # widened char on the last column wraps onto the next line
+        s = self.create_screen(cols=2)
+        s.draw('aจำ')
+        self.ae((s.cursor.x, s.cursor.y), (2, 1))
+        self.ae(str(s.line(0)), 'a')
+        self.ae(str(s.line(1)), 'จำ')
+
     def test_writing_with_cursor_on_trailer_of_wide_character(self):
         s = self.create_screen()
 

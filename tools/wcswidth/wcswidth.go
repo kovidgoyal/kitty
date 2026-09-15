@@ -84,6 +84,12 @@ func (self *WCWidthIterator) handle_rune(ch rune) error {
 				self.current_width -= 1
 				self.prev_width = 1
 			}
+		default:
+			// Thai/Lao SARA AM: a SpacingMark with non-zero width widens a narrow base cell
+			if cp.Grapheme_break() == uint8(GBP_SpacingMark) && cp.Width() > 0 && self.prev_width == 1 {
+				self.current_width += 1
+				self.prev_width = 2
+			}
 		}
 	} else {
 		width := cp.Width()

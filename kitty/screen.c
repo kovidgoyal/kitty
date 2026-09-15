@@ -1172,6 +1172,32 @@ move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell
     else init_text_loop_line(self, s);
 }
 
+static void
+widen_cell_to_two(Screen *self, text_loop_state *s, CPUCell *cp, GPUCell *gp, index_type xpos) {
+    CPUCell *cpu_cell = cp + xpos;
+    GPUCell *gpu_cell = gp + xpos;
+    cpu_cell->is_multicell = true;
+    cpu_cell->width = 2;
+    cpu_cell->natural_width = true;
+    if (!cpu_cell->scale) cpu_cell->scale = 1;
+    if (xpos + 1 < self->columns) {
+        CPUCell *second = cp + xpos + 1;
+        if (second->is_multicell) {
+            if (second->y) {
+                move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
+                return;
+            }
+            nuke_multicell_char_at(self, xpos + 1, s->prev.y, false);
+        }
+        zero_cells(s, second, gp + xpos + 1);
+        self->cursor->x++;
+        *second = *cpu_cell;
+        second->x = 1;
+    } else {
+        move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
+    }
+}
+
 static bool
 is_emoji_presentation_base(char_type ch) {
     return char_props_for(ch).is_emoji_presentation_base == 1;
@@ -1187,29 +1213,8 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     if (!add_combining_char(self, ch, xpos, s->prev.y) || self->lc->count < 2) return;
     unsigned base_pos = self->lc->count - 2;
     if (ch == VS16) { // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
-        CPUCell *cpu_cell = cp + xpos;
-        GPUCell *gpu_cell = gp + xpos;
-        if (self->lc->chars[base_pos + 1] == VS16 && !cpu_cell->is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
-            cpu_cell->is_multicell = true;
-            cpu_cell->width = 2;
-            cpu_cell->natural_width = true;
-            if (!cpu_cell->scale) cpu_cell->scale = 1;
-            if (xpos + 1 < self->columns) {
-                CPUCell *second = cp + xpos + 1;
-                if (second->is_multicell) {
-                    if (second->y) {
-                        move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
-                        return;
-                    }
-                    nuke_multicell_char_at(self, xpos + 1, s->prev.y, false);
-                }
-                zero_cells(s, second, gp + xpos + 1);
-                self->cursor->x++;
-                *second = *cpu_cell;
-                second->x = 1;
-            } else {
-                move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
-            }
+        if (self->lc->chars[base_pos + 1] == VS16 && !cp[xpos].is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
+            widen_cell_to_two(self, s, cp, gp, xpos);
         }
     } else if (ch == VS15) {
         const CPUCell *cpu_cell = cp + xpos;
@@ -1220,6 +1225,10 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
                 init_segmentation_state(self, s);
             }
         }
+    } else {
+        // Thai/Lao SARA AM is a SpacingMark with non-zero width, it widens a narrow base cell
+        CharProps ch_props = char_props_for(ch);
+        if (ch_props.grapheme_break == GBP_SpacingMark && wcwidth_std(ch_props) > 0 && !cp[xpos].is_multicell) widen_cell_to_two(self, s, cp, gp, xpos);
     }
 }
 
