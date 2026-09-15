@@ -267,6 +267,9 @@ Detailed list of changes
 
 - Fix a malformed CSI escape sequence such as ``\e[?:`` corrupting the parser state so that subsequent SGR color codes are ignored (:iss:`10434`)
 
+- Fix dropping files or URLs onto a window being delivered to the wrong window,
+  or ignored entirely, when the tab bar is at the top or on either side
+
 - Graphics protocol: Fix a regression in 0.45.0 that caused the overwrite
   composition mode for animation frames (``a=f``) to be controlled by the
   undocumented ``C`` key instead of the documented ``X`` key (:iss:`10379`)
