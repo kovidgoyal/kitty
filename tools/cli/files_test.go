@@ -89,6 +89,18 @@ func TestCompleteFiles(t *testing.T) {
 	test_candidates("odir/f", "odir/four.txt")
 	test_candidates("x")
 
+	// a prefix whose only separator is the leading one, such as /us
+	if entries, err := os.ReadDir(utils.Sep); err == nil && len(entries) > 0 {
+		name := entries[0].Name()
+		prefix := utils.Sep + name[:1]
+		found := false
+		CompleteFiles(prefix, func(entry *FileEntry) {
+			found = found || strings.TrimSuffix(entry.CompletionCandidate, utils.Sep) == utils.Sep+name
+		}, "")
+		if !found {
+			t.Fatalf("Did not get %#v as a completion candidate for prefix: %#v", utils.Sep+name, prefix)
+		}
+	}
 }
 
 func TestCompleteExecutables(t *testing.T) {

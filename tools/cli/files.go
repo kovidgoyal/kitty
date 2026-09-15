@@ -65,7 +65,7 @@ func CompleteFiles(prefix string, callback func(*FileEntry), cwd string) error {
 			joinable_prefix = prefix
 		} else {
 			idx := strings.LastIndex(prefix, utils.Sep)
-			if idx > 0 {
+			if idx > -1 {
 				joinable_prefix = prefix[:idx+1]
 				base_dir = filepath.Dir(location)
 			}
