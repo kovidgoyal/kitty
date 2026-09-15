@@ -1438,7 +1438,7 @@ draw_scrollbar(const UIRenderData *ui) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
         glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
-        draw_quad(true, 0);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
     // Draw scrollbar thumb (handle)
@@ -2185,7 +2185,6 @@ draw_rounded_borders(BorderRects *br, color_type active_window_bg, unsigned int 
 void
 draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     bind_program(TRAIL_PROGRAM);
-
     glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "x_coords"), 1, trail->corner_x);
     glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "y_coords"), 1, trail->corner_y);
 
@@ -2199,7 +2198,6 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     color_vec3(program_uniform_location(TRAIL_PROGRAM, "trail_color"), trail_color);
 
     glUniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), trail->opacity);
-
     draw_quad(true, 0);
     unbind_program();
 }
@@ -2437,10 +2435,14 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float central_area[4];
         float cursor_trail_corners_x[4];
         float cursor_trail_corners_y[4];
+        float cursor_trail_prev_corners_x[4];
+        float cursor_trail_prev_corners_y[4];
         float cursor_trail_edge[4];
         float cursor_trail_prev_edge[4];
         float cursor_color[4];
         float cursor_trail_color[4];
+        float cursor_trail_effect[4];
+        float cursor_trail_effect_params[4];
         uint32_t viewport_size_pixels[2];
         float mouse_pointer_hidden;
         float cursor_trail_state;
@@ -2496,6 +2498,10 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             for (int i = 0; i < 4; i++) {
                 d->cursor_trail_corners_x[i] = NDC_TO_UV(ct->corner_x[i]);
                 d->cursor_trail_corners_y[i] = NDC_TO_UV(ct->corner_y[i]);
+                if (ct->has_previous_position) {
+                    d->cursor_trail_prev_corners_x[i] = NDC_TO_UV(ct->previous_corner_x[i]);
+                    d->cursor_trail_prev_corners_y[i] = NDC_TO_UV(ct->previous_corner_y[i]);
+                }
             }
             d->cursor_trail_edge[0] = NDC_TO_UV(ct->cursor_edge_x[0]); // left
             d->cursor_trail_edge[1] = NDC_TO_UV(ct->cursor_edge_x[1]); // right
@@ -2526,6 +2532,14 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         if (trail_color == 0) trail_color = cursor_color;
         FILL_COLOR3(d->cursor_trail_color, trail_color);
     }
+    d->cursor_trail_effect[0] = OPT(cursor_trail_motion_blur) ? 1.f : 0.f;
+    d->cursor_trail_effect[1] = OPT(cursor_trail_antialiasing) ? 1.f : 0.f;
+    d->cursor_trail_effect[2] = (float)MAX(1, MIN(256, OPT(cursor_trail_motion_blur_samples)));
+    d->cursor_trail_effect[3] = (float)MAX(1, MIN(256, OPT(cursor_trail_antialiasing_samples)));
+    d->cursor_trail_effect_params[0] = OPT(cursor_trail_min_opacity);
+    d->cursor_trail_effect_params[1] = OPT(cursor_trail_target_blend_start);
+    d->cursor_trail_effect_params[2] = OPT(cursor_trail_target_blend_end);
+    d->cursor_trail_effect_params[3] = OPT(cursor_trail_motion_blur_mode) == CURSOR_TRAIL_MOTION_BLUR_CONNECTED ? 1.f : 0.f;
 #undef FILL_COLOR3
     d->viewport_size_pixels[0] = (uint32_t)os_window->viewport_width;
     d->viewport_size_pixels[1] = (uint32_t)os_window->viewport_height;

@@ -188,6 +188,15 @@ class LoadShaderPrograms:
 
     opts: Options | None = None
 
+    def effective_custom_shaders(self, opts: Options) -> tuple[str, ...]:
+        shaders = tuple(opts.custom_shaders)
+        # Keep the legacy trail path untouched when both enhancements are
+        # disabled. The enhanced trail itself is a normal custom shader.
+        if opts.cursor_trail > 0 and (opts.cursor_trail_motion_blur or opts.cursor_trail_antialiasing):
+            if 'cursor-trail-motion-blur' not in shaders:
+                shaders += ('cursor-trail-motion-blur',)
+        return shaders
+
     def get_options(self) -> Options:
         try:
             return self.opts or get_options()
@@ -208,7 +217,7 @@ class LoadShaderPrograms:
             self(allow_recompile=True)
         else:
             opts = self.get_options()
-            if opts.custom_shaders != self.custom_shaders or self.force_recompile_of_custom_shaders:
+            if self.effective_custom_shaders(opts) != self.custom_shaders or self.force_recompile_of_custom_shaders:
                 self.compile_custom_shaders(allow_recompile=True)
 
     def __call__(self, allow_recompile: bool = False) -> None:
@@ -249,7 +258,7 @@ class LoadShaderPrograms:
     def compile_custom_shaders(self, allow_recompile: bool = False) -> None:
         self.force_recompile_of_custom_shaders = False
         opts = self.get_options()
-        self.custom_shaders = tuple(opts.custom_shaders)
+        self.custom_shaders = self.effective_custom_shaders(opts)
         pmap: dict[str, list[Pipeline]] = {}
         for k in self.custom_shaders:
             try:

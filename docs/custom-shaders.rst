@@ -29,6 +29,13 @@ Cursor trails
 You must have enabled cursor trails with something like ``cursor_trail 1`` in :file:`kitty.conf` for
 these shaders to take effect.
 
+The optional :opt:`cursor_trail_motion_blur` and :opt:`cursor_trail_antialiasing`
+settings use the bundled ``cursor-trail-motion-blur`` custom shader automatically.
+The shader performs its temporal and spatial supersampling in the final custom
+shader pass, while leaving Kitty's legacy trail path unchanged when both settings
+are disabled. Like other custom shaders, it is compiled locally with ``slangc``
+and cached; it is not downloaded at runtime.
+
 .. include:: generated/custom-shaders-cursor-trails.rst
 
 Animated backgrounds
