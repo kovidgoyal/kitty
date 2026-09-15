@@ -312,7 +312,17 @@ action, for example::
    map ctrl+right resize_window wider
    map ctrl+up resize_window taller
    map ctrl+down resize_window shorter 3
-   # reset all windows in the tab to default sizes
+
+In the :ref:`Splits layout <splits_layout>`, you can also move a window border in a fixed
+direction, for example::
+
+   map ctrl+alt+left resize_window towards_left
+   map ctrl+alt+right resize_window towards_right
+   map ctrl+alt+up resize_window towards_top
+   map ctrl+alt+down resize_window towards_bottom
+
+To reset all windows in the tab to default sizes, use::
+
    map ctrl+home resize_window reset
 
 The :ac:`resize_window` action has a second optional argument to control
