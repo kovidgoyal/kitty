@@ -185,11 +185,8 @@ Additionally, various bits of the kitty UI itself work with the mouse. You can
 drag and drop tabs in the tab bar to re-order them or move them from one OS
 Window to another, or even pop them out into a new OS Window. A tab containing a
 single window can also be dropped into the content area of another tab to insert
-its window at the highlighted edge. In the Splits layout, all four edges are
-available. The window and any overlays move together, keeping running programs
-alive; the empty source tab is removed. This also works between OS Windows
-belonging to the same kitty process. Tabs containing multiple windows keep their
-existing tab-moving behavior.
+its window at the highlighted edge.
+
 You can drag window borders to resize windows. You can double click on empty regions
 of the tab bar to create new tabs or double click on an existing tab to rename
 it.
