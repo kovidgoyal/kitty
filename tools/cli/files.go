@@ -320,7 +320,7 @@ func DirectoryCompleter(title string, relative_to relative_to) CompletionFunc {
 		mg.NoTrailingSpace = true
 		mg.IsFiles = true
 		_ = CompleteFiles(word, func(entry *FileEntry) {
-			if entry.Mode.IsDir() {
+			if entry.IsDir {
 				mg.AddMatch(entry.CompletionCandidate)
 			}
 		}, cwd)
