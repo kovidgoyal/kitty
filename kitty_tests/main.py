@@ -225,21 +225,29 @@ def env_vars(**kw: str) -> Iterator[None]:
                 os.environ[k] = v
 
 
-@contextmanager
-def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
-    gohome = os.path.expanduser('~/go')
-    slangc = os.environ.get('SLANGC') or shutil.which('slangc') or 'slangc'
+def path_for_python_tests() -> str:
+    """The PATH used by tests: the built launcher dir followed by all entries not under the real home dir."""
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
-    path = f'{launcher_dir}{os.pathsep}{path}'
-    if report_env:
-        print('Running under CI:', is_ci)
-        print('Using PATH in test environment:', path)
-        from kitty.fast_data_types import has_avx2, has_avx512, has_sse4_2
+    return f'{launcher_dir}{os.pathsep}{path}'
 
-        print(f'Intrinsics: {has_avx512=} {has_avx2=} {has_sse4_2=}')
+
+def report_test_env() -> None:
+    """Print details of the environment tests will run in. Called once in the master process as workers have their stdout captured."""
+    print('Running under CI:', is_ci)
+    print('Using PATH in test environment:', path_for_python_tests())
+    from kitty.fast_data_types import has_avx2, has_avx512, has_sse4_2
+
+    print(f'Intrinsics: {has_avx512=} {has_avx2=} {has_sse4_2=}')
+
+
+@contextmanager
+def env_for_python_tests() -> Iterator[None]:
+    gohome = os.path.expanduser('~/go')
+    slangc = os.environ.get('SLANGC') or shutil.which('slangc') or 'slangc'
+    path = path_for_python_tests()
     with (
         TemporaryDirectory() as tdir,
         env_vars(
@@ -759,8 +767,11 @@ def run_tests(report_env: bool = False) -> None:
     if args.name and not tests_list and not has_go:
         raise SystemExit('No test named %s found' % ' '.join(args.name))
 
-    # Start Python workers before modifying the main-process env; each worker
-    # calls env_for_python_tests independently for full HOME/XDG isolation.
+    if report_env:
+        report_test_env()
+
+    # Start Python workers; each worker calls env_for_python_tests independently
+    # for full HOME/XDG isolation, as does the serial path below.
     # On macOS fork()+threading is unsafe, so use subprocess workers there.
     use_parallel = len(tests_list) > PARALLEL_THRESHOLD
     worker_pids: list[int] = []
@@ -795,7 +806,15 @@ def run_tests(report_env: bool = False) -> None:
         if use_parallel:
             python_ok, go_ok = collect_worker_results(worker_pids, worker_procs, read_fds, len(tests_list), go_proc=go_proc)
         elif tests_list:
-            python_ok = run_cli(all_tests, args.verbosity)
+            # we need fonts installed in the user home directory as well, so initialize
+            # fontconfig before nuking $HOME and friends
+            from kitty.fonts.common import all_fonts_map
+
+            all_fonts_map(True)
+            # Tests must never run against the real $HOME, some of them delete
+            # files/directories in it. See run_test_worker() for the parallel equivalent.
+            with env_for_python_tests():
+                python_ok = run_cli(all_tests, args.verbosity)
             if go_proc is not None:
                 _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
             else:
