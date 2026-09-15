@@ -855,3 +855,136 @@ class TestLayout(BaseTest):
         d = drtw(q, all_windows, wD, TOP_EDGE)
         self.ae(d.vertical_id, right_pair_id)
         self.ae(d.height_increases_downwards, True)
+
+
+class TestProportionalSplits(BaseTest):
+    def make_layout(self, shape=None, num=3, **options):
+        q = create_layout(Splits)
+        q.layout_opts = SplitsLayoutOpts({'proportional': 'yes', **options})
+        windows = create_windows(q, num=0)
+        for i in range(1, num + 1 if shape else 2):
+            q.add_window(windows, Window(i), location='vsplit')
+        if shape:
+            q.pairs_root.unserialize(shape, lambda x: x)
+        return q, windows
+
+    def check_weights(self, q, expected):
+        # Observe the serialized layout, independently of the sizing helpers.
+        actual = {}
+
+        def walk(node, size):
+            if isinstance(node, int):
+                actual[node] = size
+            elif 'two' not in node:
+                walk(node['one'], size)
+            else:
+                bias = node.get('bias', 0.5)
+                walk(node['one'], size * bias)
+                walk(node['two'], size * (1 - bias))
+
+        walk(q.pairs_root.serialize(), 1.0)
+        self.ae(actual.keys(), expected.keys())
+        for wid, size in expected.items():
+            self.assertAlmostEqual(actual[wid], size)
+
+    def test_proportional_add_equal_siblings(self):
+        for location in ('vsplit', 'hsplit', None):
+            for target in (1, 2):
+                with self.subTest(location=location, target=target):
+                    q, windows = self.make_layout()
+                    q.add_window(windows, Window(2), location=location)
+                    windows.set_active_window_group_for(windows.id_map[target])
+                    q.add_window(windows, Window(3), location=location)
+                    self.check_weights(q, {1: 1 / 3, 2: 1 / 3, 3: 1 / 3})
+                    q.add_window(windows, Window(4), location=location)
+                    self.check_weights(q, dict.fromkeys((1, 2, 3, 4), 0.25))
+
+    def test_proportional_default_unchanged(self):
+        q, windows = self.make_layout(proportional='no')
+        q.add_window(windows, Window(2), location='vsplit')
+        q.add_window(windows, Window(3), location='vsplit')
+        self.check_weights(q, {1: 0.5, 2: 0.25, 3: 0.25})
+
+    def test_proportional_add_preserves_adjusted_weights(self):
+        q, windows = self.make_layout({'bias': 0.2, 'one': 1, 'two': {'bias': 0.375, 'one': 2, 'two': 3}})
+        q.add_window(windows, Window(4), location='vsplit', next_to=windows.id_map[2])
+        self.check_weights(q, {1: 2 / 13, 2: 3 / 13, 3: 5 / 13, 4: 3 / 13})
+
+    def test_proportional_explicit_bias_wins(self):
+        q, windows = self.make_layout()
+        q.add_window(windows, Window(2), location='vsplit')
+        q.add_window(windows, Window(3), location='vsplit', bias=80)
+        self.check_weights(q, {1: 0.5, 2: 0.1, 3: 0.4})
+
+    def test_proportional_close_preserves_survivors(self):
+        for removed in (1, 2, 3):
+            q, windows = self.make_layout({'bias': 0.2, 'one': 1, 'two': {'bias': 0.375, 'one': 2, 'two': 3}})
+            sizes = {1: 0.2, 2: 0.3, 3: 0.5}
+            sizes.pop(removed)
+            total = sum(sizes.values())
+            windows.remove_window(windows.id_map[removed])
+            q.remove_windows(removed)
+            self.check_weights(q, {k: v / total for k, v in sizes.items()})
+
+    def test_proportional_close_multiple(self):
+        q, windows = self.make_layout()
+        for i in range(2, 6):
+            q.add_window(windows, Window(i), location='vsplit')
+        q.remove_windows(1, 3, 5)
+        self.check_weights(q, {2: 0.5, 4: 0.5})
+
+    def test_proportional_batch_close_mixed_axes(self):
+        for horizontal in (True, False):
+            shape = {
+                'horizontal': horizontal,
+                'one': 1,
+                'two': {'horizontal': horizontal, 'one': {'horizontal': not horizontal, 'one': 2, 'two': 3}, 'two': 4},
+            }
+            q, windows = self.make_layout(shape, num=4)
+            q.remove_windows(1, 2)
+            # The surviving center pane keeps its column's width, even though
+            # the other pane in that column was removed at the same time.
+            self.check_weights(q, {3: 0.5, 4: 0.5})
+
+    def test_proportional_mixed_axes(self):
+        q, windows = self.make_layout({'bias': 0.4, 'one': 1, 'two': {'horizontal': False, 'bias': 0.25, 'one': 2, 'two': 3}})
+        q.add_window(windows, Window(4), location='hsplit', next_to=windows.id_map[2])
+        self.check_weights(q, {1: 0.4, 2: 0.12, 3: 0.36, 4: 0.12})
+        q.remove_windows(2)
+        self.check_weights(q, {1: 0.4, 3: 0.45, 4: 0.15})
+        q.remove_windows(4)
+        self.check_weights(q, {1: 0.4, 3: 0.6})
+
+    def test_proportional_perpendicular_subtree_unchanged(self):
+        q, windows = self.make_layout({'bias': 0.4, 'one': 1, 'two': {'horizontal': False, 'bias': 0.25, 'one': 2, 'two': 3}})
+        q.add_window(windows, Window(4), location='vsplit', next_to=windows.id_map[1])
+        self.check_weights(q, {1: 2 / 7, 4: 2 / 7, 2: 3 / 28, 3: 9 / 28})
+
+    def test_proportional_reposition(self):
+        q, windows = self.make_layout({'bias': 0.2, 'one': 1, 'two': {'bias': 0.375, 'one': 2, 'two': 3}})
+        q.insert_window_next_to(windows, windows.id_map[3], windows.id_map[1], True, False)
+        self.check_weights(q, {1: 2 / 7, 2: 3 / 7, 3: 2 / 7})
+        self.ae(list(q.pairs_root.all_window_ids()), [3, 1, 2])
+        before = q.layout_state()
+        q.insert_window_next_to(windows, windows.id_map[1], windows.id_map[1], True, False)
+        self.ae(q.layout_state(), before)
+
+    def test_proportional_overlay_does_not_change_weights(self):
+        q, windows = self.make_layout()
+        q.add_window(windows, Window(2), location='vsplit')
+        before = q.layout_state()
+        q.add_window(windows, Window(10), overlay_for=2)
+        self.ae(q.layout_state(), before)
+        q.add_window(windows, Window(3), location='vsplit')
+        self.check_weights(q, {1: 1 / 3, 2: 1 / 3, 3: 1 / 3})
+        self.assertIs(windows.group_for_window(windows.id_map[10]), windows.group_for_window(windows.id_map[2]))
+
+    def test_proportional_option_roundtrip_and_equalize(self):
+        q, windows = self.make_layout({'bias': 0.2, 'one': 1, 'two': {'bias': 0.375, 'one': 2, 'two': 3}}, equalize_on_window_close='yes')
+        options = SplitsLayoutOpts(q.layout_opts.serialized())
+        self.assertTrue(options.proportional)
+        self.assertTrue(options.equalize_on_close)
+        windows.remove_window(windows.id_map[1])
+        q.remove_windows(1)
+        self.assertTrue(q.on_window_removed(windows))
+        self.check_weights(q, {2: 0.5, 3: 0.5})
