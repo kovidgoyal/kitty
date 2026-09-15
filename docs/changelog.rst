@@ -202,6 +202,8 @@ Detailed list of changes
 0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Thai/Lao: Render the vowel sign AM (U+0E33/U+0EB3) correctly by widening the cell it combines into, matching wcwidth() based programs
+
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
