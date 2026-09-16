@@ -532,6 +532,8 @@ def compile_program(
 ) -> int:
     pass
 
+def custom_shader_needs_render(before: Tuple[bool, int, int], after: Tuple[bool, int, int], event_mask: int, now: int) -> bool: ...
+def simulate_custom_shader_render_ticks(num_ticks: int, event_mask: int = 0, initialize: bool = False) -> list[bool]: ...
 def set_os_window_chrome(os_window_id: int) -> bool:
     pass
 

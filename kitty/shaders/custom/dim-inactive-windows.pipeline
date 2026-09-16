@@ -1,4 +1,6 @@
 startgroup
+    # static effect, redraw only when the active window changes
+    animation_step 0
     var float HIGHLIGHT_INTENSITY = 0
     var float BORDER_WIDTH = 0
     shaders focus-highlight

@@ -313,6 +313,7 @@ add_os_window(void) {
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
     ans->background_opacity.alpha = OPT(background_opacity);
     ans->created_at = monotonic();
+    init_shader_animation_state(ans);
     END_WITH_OS_WINDOW_REFS
     return ans;
 }

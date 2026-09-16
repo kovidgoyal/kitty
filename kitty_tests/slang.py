@@ -35,41 +35,66 @@ _SUPPORT_SHADER_NAMES = frozenset(('types', 'pipeline'))
 
 
 class TestSlang(BaseTest):
-    def test_inactive_window_tint_pipeline(self):
-        if not shutil.which(slangc()[0]):
-            self.skipTest(f'slangc ({slangc()[0]}) not found in PATH')
+    def test_animation_step_parsing(self):
+        def step(val):
+            return parse_pipeline_definition(['startgroup', f'animation_step {val}', 'shaders focus-highlight', 'endgroup'], 'test')['groups'][0][
+                'animation_step'
+            ]
 
-        pipeline = parse_pipeline_definition(
-            """
-            startgroup
-                animation_step 0
-                var float HIGHLIGHT_INTENSITY = 0
-                var float BORDER_WIDTH = 0
-                var float INACTIVE_DIM = 0.74
-                var float3 INACTIVE_DIM_COLOR = float3(0.2158605)
-                var bool DIM_CENTRAL_AREA_ONLY = true
-                var bool INCLUDE_WINDOW_PADDING = true
-                shaders focus-highlight
-            endgroup
-            """.splitlines(),
-            'dim-gray',
-        )
-        with tempfile.TemporaryDirectory() as cache_dir:
-            clear_caches()
-            try:
-                vertex, fragment, metadata = build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
-            finally:
-                clear_caches()
-        self.assertTrue(vertex)
-        self.assertTrue(fragment)
-        self.ae(metadata['pipeline']['groups'][0]['animation_step'], 0)
+        # 0 means "static effect, no periodic redraws" and must survive as 0
+        self.ae(step(0), 0)
+        self.ae(step(16), 16_000_000)
+        self.assertRaises(ValueError, step, -1)
+
+    def test_custom_shader_redraw_logic(self):
+        from kitty.fast_data_types import custom_shader_needs_render, simulate_custom_shader_render_ticks
+
+        NEVER = 2**63 - 1  # MONOTONIC_T_MAX, the "nothing scheduled" sentinel
+        STEP = 50_000_000  # an animated group redrawing every 50ms
+        NOW = 1_000_000_000
+
+        def needs_render(before, after, events=0, now=NOW):
+            return custom_shader_needs_render(before, after, events, now)
+
+        idle = (False, NEVER, NEVER)
+        static = (True, NEVER, NEVER)
+        animating = (True, STEP, NEVER)
+
+        # Nothing active and nothing pending: the shader layer must not ask for frames.
+        self.assertFalse(needs_render(idle, idle))
+        self.assertFalse(needs_render(idle, idle, events=1))
+        # A static group only redraws when an event may have changed its output.
+        self.assertFalse(needs_render(static, static))
+        self.assertTrue(needs_render(static, static, events=1))
+        # An animated group redraws every tick...
+        self.assertTrue(needs_render(animating, animating))
+        # ...and gets one final frame after it stops, so the effect is cleared.
+        self.assertTrue(needs_render(animating, static))
+        self.assertTrue(needs_render(animating, idle))
+        # Groups turning on or off is always a visible change.
+        self.assertTrue(needs_render(idle, static))
+        self.assertTrue(needs_render(static, idle))
+        # The tick on which a duration bounded animation expires needs a frame,
+        # earlier ticks do not.
+        self.assertTrue(needs_render((True, NEVER, NOW), static))
+        self.assertTrue(needs_render((True, NEVER, NOW - 1), static))
+        self.assertFalse(needs_render((True, NEVER, NOW + 1), static))
+
+        # A window with no custom shaders configured must settle into asking for
+        # no frames at all, otherwise an idle kitty redraws forever. Test both a
+        # zero initialized window and one initialized the way add_os_window()
+        # does it, since zero is not the MONOTONIC_T_MAX sentinel.
+        self.ae(simulate_custom_shader_render_ticks(8, 0, True), [False] * 8)
+        self.ae(simulate_custom_shader_render_ticks(8)[1:], [False] * 7)
+        # Even a steady stream of shader events must not produce frames when
+        # there are no shaders to draw.
+        self.ae(simulate_custom_shader_render_ticks(8, 0xFF, True), [False] * 8)
 
     def test_custom_shader_reenable(self):
         from kitty.fast_data_types import CUSTOM_END_PROGRAM
         from kitty.options.types import defaults
 
         loader = LoadShaderPrograms()
-        loader.last_built_custom_shaders = {}
         pipeline = parse_pipeline_definition(['startgroup', 'animation_step 0', 'shaders focus-highlight', 'endgroup'], 'test')
         self.ae(pipeline['groups'][0]['animation_step'], 0)
         with (

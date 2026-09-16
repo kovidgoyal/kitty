@@ -484,6 +484,17 @@ typedef struct BackgroundImageRenderSettings {
 
 #define MAX_CUSTOM_SHADER_GROUPS 16
 
+// Summary of the custom shader animation state machine, cached once per frame
+// so the renderer can decide whether a new frame is needed without walking the
+// pipeline. Both deadlines use MONOTONIC_T_MAX as their "nothing to do"
+// sentinel, so this must never be left zero initialized -- see
+// init_shader_animation_state().
+typedef struct ShaderAnimState {
+    bool has_active_shaders; // at least one group will draw this frame
+    monotonic_t min_step;    // smallest animation_step across active groups, MONOTONIC_T_MAX if none want periodic redraws
+    monotonic_t next_end_at; // earliest expiry of a duration bounded active animation, MONOTONIC_T_MAX if none
+} ShaderAnimState;
+
 typedef enum {
     SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS,
     SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN,
@@ -575,9 +586,7 @@ typedef struct OSWindow {
         bool active;
         monotonic_t started_at;
     } shader_group_anim[MAX_CUSTOM_SHADER_GROUPS];
-    bool has_active_custom_shaders;
-    monotonic_t shader_anim_min_step;    // cached min animation_step across active animated groups
-    monotonic_t shader_anim_next_end_at; // earliest expiry of a duration-bounded active animation
+    ShaderAnimState shader_anim;
 } OSWindow;
 
 static inline float
@@ -769,6 +778,8 @@ void dispatch_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow *, Tab *, Window *, bool, monotonic_t);
 monotonic_t update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window);
+void init_shader_animation_state(OSWindow *os_window);
+bool custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, unsigned event_mask, monotonic_t now);
 void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling);
 bool current_framebuffer_is_ok(void);

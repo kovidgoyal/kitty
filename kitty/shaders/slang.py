@@ -184,9 +184,13 @@ class LoadShaderPrograms:
     text_old_gamma: bool = False
     custom_shaders: tuple[str, ...] = ()
     force_recompile_of_custom_shaders: bool = False
-    last_built_custom_shaders: dict[int, Any] = {}
 
     opts: Options | None = None
+
+    def __init__(self) -> None:
+        # Per-instance because it is mutable: the sources most recently compiled
+        # into each program, used to skip redundant recompiles.
+        self.last_built_custom_shaders: dict[int, tuple[str, str, dict[str, Any]]] = {}
 
     def get_options(self) -> Options:
         try:
@@ -270,11 +274,17 @@ class LoadShaderPrograms:
                 continue
             pmap.setdefault(d['slot'], []).append(d)
 
+        def disable(prog: int) -> None:
+            # Forget the cached sources as well, otherwise re-enabling the same
+            # shader later is a no-op because the sources compare equal while the
+            # program itself is empty.
+            compile_program(prog, (), (), {}, allow_recompile)
+            self.last_built_custom_shaders.pop(prog, None)
+
         def do(prog: int, slot: str) -> None:
             slot_pipelines = pmap.get(slot)
             if not slot_pipelines:
-                compile_program(prog, (), (), {}, allow_recompile)
-                self.last_built_custom_shaders.pop(prog, None)
+                disable(prog)
             else:
                 try:
                     pipeline = merge_pipelines(slot_pipelines)
@@ -283,8 +293,7 @@ class LoadShaderPrograms:
                     # print(frag, file=open('/tmp/sample.frag', 'w'))
                 except Exception as e:
                     log_error(f'Failed to build custom shader for slot {slot} with error: {e}')
-                    compile_program(prog, (), (), {}, allow_recompile)
-                    self.last_built_custom_shaders.pop(prog, None)
+                    disable(prog)
                 else:
                     try:
                         if self.last_built_custom_shaders.get(prog) != (vert, frag, metadata):
@@ -292,8 +301,7 @@ class LoadShaderPrograms:
                             self.last_built_custom_shaders[prog] = vert, frag, metadata
                     except Exception as e:
                         log_error(f'Failed to load custom shader for slot {slot} with error: {e}')
-                        compile_program(prog, (), (), {}, allow_recompile)
-                        self.last_built_custom_shaders.pop(prog, None)
+                        disable(prog)
 
         do(CUSTOM_END_PROGRAM, 'end')
         compile_program(-2, (), (), {})  # initialize programs
@@ -1304,7 +1312,10 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                 case 'animation_step':
                     if len(parts) < 2:
                         raise ValueError('animation_step requires a millisecond value')
-                    current_group['animation_step'] = int(parts[1]) * 1_000_000
+                    step_ms = int(parts[1])
+                    if step_ms < 0:
+                        raise ValueError(f'animation_step must be non-negative, not: {step_ms}')
+                    current_group['animation_step'] = step_ms * 1_000_000
                 case 'animation_stop':
                     val = ''.join(parts[1:]) if len(parts) > 1 else 'never'
                     if val == 'never':

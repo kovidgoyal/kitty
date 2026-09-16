@@ -828,7 +828,7 @@ prepare_to_render_os_window(
     bool was_previously_rendered_with_layers = os_window->needs_layers;
     os_window->needs_layers =
         (!global_state.supports_framebuffer_srgb || effective_os_window_alpha(os_window) < 1.f || os_window->live_resize.in_progress ||
-         (background_image_for_os_window(os_window) != NULL) || os_window->has_active_custom_shaders);
+         (background_image_for_os_window(os_window) != NULL) || os_window->shader_anim.has_active_shaders);
     if (TD.screen && os_window->num_tabs && !os_window->has_too_few_tabs) {
         if (!os_window->tab_bar_data_updated) {
             call_boss(update_tab_bar_data, "K", os_window->id);
@@ -945,7 +945,7 @@ prepare_to_render_os_window(
         if (blink_has_ceased && !os_window->user_is_idle) {
             os_window->user_is_idle = true;
             os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_IDLE);
-        } else if (!blink_has_ceased && OPT(cursor_blink_interval) <= 0 && os_window->has_active_custom_shaders) {
+        } else if (!blink_has_ceased && OPT(cursor_blink_interval) <= 0 && os_window->shader_anim.has_active_shaders) {
             // cursor blinking is disabled so collect_cursor_info won't schedule a wakeup for
             // this deadline; do it here so user-idle fires on time
             set_maximum_wait(OPT(cursor_stop_blinking_after) - time_since_last_activity);
@@ -957,18 +957,16 @@ prepare_to_render_os_window(
             events |= (1u << SHADER_ANIM_EVENT_TAB_CHANGE) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
         if (*active_window_id && *active_window_id != os_window->last_active_window_id)
             events |= (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
-        const bool was_active = os_window->has_active_custom_shaders;
-        const bool was_animating = os_window->shader_anim_min_step < MONOTONIC_T_MAX;
-        const bool animation_ended = now >= os_window->shader_anim_next_end_at;
+        const ShaderAnimState before = os_window->shader_anim;
         monotonic_t min_step = update_custom_shader_animations(events, now, os_window);
         os_window->shader_anim_event_registry = 0;
-        if (os_window->has_active_custom_shaders) {
-            os_window->needs_layers = true;
-            if (events || min_step < MONOTONIC_T_MAX) needs_render = true;
-        }
-        if (was_active != os_window->has_active_custom_shaders || was_animating || animation_ended) needs_render = true;
+        if (os_window->shader_anim.has_active_shaders) os_window->needs_layers = true;
+        if (custom_shader_needs_render(&before, &os_window->shader_anim, events, now)) needs_render = true;
+        // Wake up for the next animation frame and for the moment a duration
+        // bounded animation expires. Static groups (animation_step 0) have
+        // min_step == MONOTONIC_T_MAX and so schedule no periodic wakeup.
         if (min_step < MONOTONIC_T_MAX) set_maximum_wait(min_step);
-        if (os_window->shader_anim_next_end_at < MONOTONIC_T_MAX) set_maximum_wait(os_window->shader_anim_next_end_at - now);
+        if (os_window->shader_anim.next_end_at < MONOTONIC_T_MAX) set_maximum_wait(os_window->shader_anim.next_end_at - now);
     }
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
 }
