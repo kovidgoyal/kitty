@@ -587,6 +587,32 @@ class TestLayout(BaseTest):
         self.assertAlmostEqual(root.bias, 0.5, places=5)  # w1 vs right column: 1:1
         self.assertAlmostEqual(inner1.bias, 0.5, places=5)  # w2 vs w3 top/bottom: 1:1
 
+    def test_splits_collapse_nested_empty_pairs(self):
+        # Removing every window of a nested sub-tree in a single pass must not
+        # leave an empty pair behind, still consuming its share of the space.
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        for i in range(1, 6):
+            q.add_window(all_windows, Window(i))
+        q.pairs_root.unserialize({'one': {'one': {'one': 1, 'two': 2}, 'two': {'one': 3, 'two': 4}}, 'two': 5}, lambda x: x)
+        q.remove_windows(3, 2, 1, 4)
+        self.ae(list(q.pairs_root.all_window_ids()), [5])
+        for pair in q.pairs_root.self_and_descendants():
+            self.assertFalse(pair.one is None and pair.two is None, f'empty pair left in tree: {q.pairs_root}')
+        self.ae(q.pairs_root.window_weights(), {5: 1.0})
+
+    def test_splits_relayout_after_root_collapse(self):
+        # Windows added in the same relayout that collapses the root must go into
+        # the new root, not the discarded one.
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        for i in (1, 2, 3):
+            q.add_window(all_windows, Window(i), location='vsplit')
+        all_windows.remove_window(all_windows.id_map[1])
+        all_windows.add_window(Window(4))
+        q(all_windows)
+        self.ae(sorted(q.pairs_root.all_window_ids()), [2, 3, 4])
+
     def test_layout_opts_serialization(self):
         opts = SplitsLayoutOpts({})
         s = opts.serialized()
@@ -976,7 +1002,7 @@ class TestProportionalSplits(BaseTest):
         q = create_layout(Splits)
         q.layout_opts = SplitsLayoutOpts({'proportional': 'yes', **options})
         windows = create_windows(q, num=0)
-        for i in range(1, num + 1 if shape else 2):
+        for i in range(1, (num + 1) if shape else 2):
             q.add_window(windows, Window(i), location='vsplit')
         if shape:
             q.pairs_root.unserialize(shape, lambda x: x)
@@ -1102,3 +1128,43 @@ class TestProportionalSplits(BaseTest):
         q.remove_windows(1)
         self.assertTrue(q.on_window_removed(windows))
         self.check_weights(q, {2: 0.5, 3: 0.5})
+
+    def test_proportional_close_with_zero_sized_survivor(self):
+        # Window 3 has been squeezed to nothing by maximize/bias, so it has zero
+        # weight. Closing window 2 must not hand its column's space to windows 1
+        # and 4, which are not in any sub-tree that lost a window.
+        shape = {'one': 1, 'two': {'one': {'bias': 1.0, 'one': 2, 'two': 3}, 'two': 4}}
+        q, windows = self.make_layout(shape, num=4)
+        self.check_weights(q, {1: 0.5, 2: 0.25, 3: 0.0, 4: 0.25})
+        q.remove_windows(2)
+        self.check_weights(q, {1: 0.5, 3: 0.25, 4: 0.25})
+
+    def test_proportional_batch_close_matches_sequential(self):
+        # Pruning several windows in one pass (which happens when they are closed
+        # while a different layout is active) must match closing them one by one.
+        shape = {
+            'bias': 0.4,
+            'one': {'horizontal': False, 'one': 1, 'two': {'one': 2, 'two': 3}},
+            'two': {'horizontal': False, 'one': 4, 'two': {'horizontal': False, 'one': 5, 'two': 6}},
+        }
+        removed = (6, 1, 3)
+        q, windows = self.make_layout(shape, num=6)
+        q.remove_windows(*removed)
+        batch = q.pairs_root.window_weights()
+        q, windows = self.make_layout(shape, num=6)
+        for wid in removed:
+            q.remove_windows(wid)
+        sequential = q.pairs_root.window_weights()
+        self.ae(batch.keys(), sequential.keys())
+        for wid, weight in sequential.items():
+            self.assertAlmostEqual(batch[wid], weight)
+
+    def test_proportional_balanced_add(self):
+        # A window that appears without being split off an existing one (it was
+        # created while another layout was active) still gets a proportional share.
+        q, windows = self.make_layout()
+        q.add_window(windows, Window(2), location='vsplit')
+        q.add_window(windows, Window(3), location='vsplit')
+        self.check_weights(q, dict.fromkeys((1, 2, 3), 1 / 3))
+        self.ae(q.balanced_add_window(4).horizontal, q.pairs_root.horizontal)
+        self.check_weights(q, dict.fromkeys((1, 2, 3, 4), 0.25))
