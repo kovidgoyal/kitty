@@ -124,6 +124,20 @@ func TestCompleteFiles(t *testing.T) {
 	if !found {
 		t.Fatalf("Directory containing only an uppercase extension match not completed by FnmatchCompleter: %#v", c.Groups)
 	}
+
+	// mime types kitty knows about but the Go stdlib does not
+	create("zz.py")
+	c = NewCompletions()
+	MimepatCompleter("", CWD, "text/*")(c, "zz", 0)
+	found = false
+	for _, g := range c.Groups {
+		for _, m := range g.Matches {
+			found = found || m.Word == "zz.py"
+		}
+	}
+	if !found {
+		t.Fatalf("File with a mime type known only to kitty not completed by MimepatCompleter: %#v", c.Groups)
+	}
 }
 
 func TestCompleteExecutables(t *testing.T) {
