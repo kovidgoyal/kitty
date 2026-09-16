@@ -202,8 +202,6 @@ Detailed list of changes
 0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Splits layout: Fix dragging a border resizing the wrong split in nested layouts.
-
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
@@ -251,6 +249,8 @@ Detailed list of changes
   See :doc:`overview` for details.
 
 - Port remaining built in kittens from Python to Go (:pull:`10371`)
+
+- Splits layout: Fix dragging a border resizing the wrong split in nested layouts.
 
 - Graphics protocol: Fix scaled images (created with the ``r`` or ``c`` keys)
   being distorted instead of clipped when scrolled against a margin
