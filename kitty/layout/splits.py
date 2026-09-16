@@ -879,62 +879,36 @@ class Splits(Layout):
         edges: int,
         all_windows: WindowList,
     ) -> WindowResizeDragData:
-        is_right, is_bottom = bool(edges & RIGHT_EDGE), bool(edges & BOTTOM_EDGE)
-        is_leading_edge = not (is_right or is_bottom)
-        ans = WindowResizeDragData(None, is_right, None, is_bottom)
-        if (wg := all_windows.group_for_window(click_window)) is None or (pair := self.pairs_root.pair_for_window(wg.id)) is None:
+        right, bottom = bool(edges & RIGHT_EDGE), bool(edges & BOTTOM_EDGE)
+        ans = WindowResizeDragData(None, right, None, bottom)
+        group = all_windows.group_for_window(click_window)
+        if group is None:
             return ans
-        pair_parent_map = {}
-        for p in self.pairs_root.self_and_descendants():
-            if isinstance(p.one, Pair):
-                pair_parent_map[p.one] = p
-            if isinstance(p.two, Pair):
-                pair_parent_map[p.two] = p
-        p = pair
+        path = self.pairs_root.find_window_in_tree(group.id)
+        if path is None:
+            return ans
 
-        def size_increases_forwards(p: Pair) -> bool:
-            in_leading_half = not p.is_group_on_second(wg.id)
-            return is_leading_edge != in_leading_half
+        def target(horizontal: bool, trailing: bool) -> tuple[int | None, bool]:
+            fallback = None
+            for pair, in_one in reversed(path):
+                if pair.is_redundant or pair.horizontal != horizontal:
+                    continue
+                if fallback is None:
+                    fallback = id(pair)
+                # The right/bottom edge of the first child, or left/top edge
+                # of the second child, belongs to this divider. Otherwise keep
+                # climbing, even across ancestors with the same split axis.
+                if in_one == trailing:
+                    return id(pair), True
+            # Preserve native resizing from the outside edge of a layout.
+            return fallback, False
 
-        def ancestor_with_neighboring_border_of_same_orientation(p: Pair) -> Pair | None:
-            horizontal = bool(edges & (LEFT_EDGE | RIGHT_EDGE))
-            while q := pair_parent_map.get(p):
-                if q.horizontal == horizontal:
-                    if q.between_borders:
-                        return q
-                    break
-                p = q
-            return None
-
-        def pair_or_parent(p: Pair) -> tuple[Pair, bool]:
-            in_leading_half = not p.is_group_on_second(wg.id)
-            if is_leading_edge == in_leading_half and p is pair and (parent := ancestor_with_neighboring_border_of_same_orientation(p)):
-                # special case for leading edge of one or trailing edge of two with parent being same orientation
-                return parent, True
-            return p, size_increases_forwards(p)
-
-        while ans.horizontal_id is None or ans.vertical_id is None:
-            if p.is_redundant:
-                continue
-            if ans.horizontal_id is None and p.horizontal:
-                new_p, fwd = pair_or_parent(p)
-                p = new_p
-                if not p.horizontal and ans.vertical_id is None:
-                    # pair_or_parent redirected to a vertical pair; use it for vertical resize
-                    ans = ans._replace(vertical_id=id(p), height_increases_downwards=fwd)
-                else:
-                    ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=fwd)
-            if ans.vertical_id is None and not p.horizontal:
-                new_p, fwd = pair_or_parent(p)
-                p = new_p
-                if p.horizontal and ans.horizontal_id is None:
-                    # pair_or_parent redirected to a horizontal pair; use it for horizontal resize
-                    ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=fwd)
-                else:
-                    ans = ans._replace(vertical_id=id(p), height_increases_downwards=fwd)
-            if (parent := pair_parent_map.get(p)) is None:
-                break
-            p = parent
+        if edges & (LEFT_EDGE | RIGHT_EDGE):
+            horizontal_id, forwards = target(True, right)
+            ans = ans._replace(horizontal_id=horizontal_id, width_increases_rightwards=forwards)
+        if edges & (TOP_EDGE | BOTTOM_EDGE):
+            vertical_id, forwards = target(False, bottom)
+            ans = ans._replace(vertical_id=vertical_id, height_increases_downwards=forwards)
         return ans
 
     def layout_state(self) -> dict[str, Any]:
