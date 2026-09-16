@@ -4,7 +4,6 @@ package cli
 
 import (
 	"fmt"
-	"mime"
 	"os"
 	"path/filepath"
 	"slices"
@@ -191,16 +190,7 @@ func complete_by_mimepat(prefix, cwd string, patterns []string) []string {
 		if all_allowed {
 			return true
 		}
-		idx := strings.Index(name, ".")
-		if idx < 1 {
-			return false
-		}
-		ext := name[idx:]
-		mt := mime.TypeByExtension(ext)
-		if mt == "" {
-			ext = filepath.Ext(name)
-			mt = mime.TypeByExtension(ext)
-		}
+		mt := utils.GuessMimeType(name)
 		if mt == "" {
 			return false
 		}
