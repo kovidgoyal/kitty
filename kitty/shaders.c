@@ -2433,6 +2433,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float mouse_pos[4];
         float mouse_button_pressed[4];
         float active_window_geometry[4];
+        float active_window_padding[4];
         float bell_window_geometry[4];
         float central_area[4];
         float cursor_trail_corners_x[4];
@@ -2475,6 +2476,13 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         if (t->num_windows) {
             Window *w = t->windows + t->active_window;
             active_win_geom = w->render_data.geometry;
+            if (os_window->viewport_width && os_window->viewport_height) {
+                const float width = (float)os_window->viewport_width, height = (float)os_window->viewport_height;
+                d->active_window_padding[0] = (float)(w->padding.left + w->size_mismatch_padding.left) / width;
+                d->active_window_padding[1] = (float)(w->padding.bottom + w->size_mismatch_padding.bottom) / height;
+                d->active_window_padding[2] = (float)(w->padding.right + w->size_mismatch_padding.right) / width;
+                d->active_window_padding[3] = (float)(w->padding.top + w->size_mismatch_padding.top) / height;
+            }
             Screen *s = w->render_data.screen;
             if (s) {
                 active_bg = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
@@ -2990,7 +2998,7 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
 
         PyObject *astep = PyDict_GetItemString(g, "animation_step");
         cg->animation_step = (astep && PyLong_Check(astep)) ? (monotonic_t)PyLong_AsLong(astep) : ANIMATION_SAMPLE_WAIT;
-        cg->animation_step = MAX(cg->animation_step, OPT(repaint_delay));
+        cg->animation_step = cg->animation_step == 0 ? MONOTONIC_T_MAX : MAX(cg->animation_step, OPT(repaint_delay));
 
         PyObject *ae_events = PyDict_GetItemString(g, "animation_end_events");
         if (is_seq(ae_events)) cg->animation_end_events = parse_anim_event_sequence(ae_events);

@@ -16,14 +16,28 @@ static const float HIGHLIGHT_INTENSITY = 0.30;
 static const float BORDER_WIDTH = 0.04;
 // Peak additive brightness multiplier at the window border edge.
 static const float BORDER_GLOW = 0.55;
-// Dim factor applied to pixels outside the active window (1.0 = unchanged, 0.0 = black).
+// Fraction of the original color retained outside the active window (1.0 = unchanged, 0.0 = blend target).
 static const float INACTIVE_DIM = 0.3;
+// Blend target in linear RGB; black preserves the original dimming behavior.
+static const float3 INACTIVE_DIM_COLOR = float3(0.0);
+// Keep the tab bar outside the effect when requested by a pipeline.
+static const bool DIM_CENTRAL_AREA_ONLY = false;
+// Include the active window's padding in its unchanged/highlighted area.
+static const bool INCLUDE_WINDOW_PADDING = false;
 
 public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
+    if (DIM_CENTRAL_AREA_ONLY) {
+        float4 area = d.central_area;
+        if (any(t.pos < area.xy) || any(t.pos > area.xy + area.zw)) return color;
+    }
     float4 g = d.active_window_geometry;
     // Pass through unchanged if no active window geometry is known.
     if (g.z <= 0.0 || g.w <= 0.0) return color;
+    if (INCLUDE_WINDOW_PADDING) {
+        g.xy -= d.active_window_padding.xy;
+        g.zw += d.active_window_padding.xy + d.active_window_padding.zw;
+    }
 
     float2 uv = t.pos;
     float2 winMin = g.xy;
@@ -48,5 +62,5 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     }
     // Slightly dim inactive areas to draw the eye to the focused window.
     float dim = lerp(1.0, INACTIVE_DIM, strength);
-    return float4(color.rgb * dim, color.a);
+    return float4(lerp(INACTIVE_DIM_COLOR, color.rgb, dim), color.a);
 }
