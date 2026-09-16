@@ -101,6 +101,14 @@ func TestCompleteFiles(t *testing.T) {
 			t.Fatalf("Did not get %#v as a completion candidate for prefix: %#v", utils.Sep+name, prefix)
 		}
 	}
+
+	// symlinks to directories are directories
+	os.Symlink(filepath.Join(tdir, "odir"), filepath.Join(tdir, "slink"))
+	c := NewCompletions()
+	DirectoryCompleter("", CWD)(c, "s", 0)
+	if len(c.Groups) != 1 || len(c.Groups[0].Matches) != 1 || c.Groups[0].Matches[0].Word != "slink/" {
+		t.Fatalf("Symlink to directory not completed by DirectoryCompleter: %#v", c.Groups)
+	}
 }
 
 func TestCompleteExecutables(t *testing.T) {
