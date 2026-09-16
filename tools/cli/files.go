@@ -156,7 +156,7 @@ func fname_based_completer(prefix, cwd string, is_match func(string) bool) []str
 			entries, err := os.ReadDir(entry.Abspath)
 			if err == nil {
 				for _, e := range entries {
-					if is_match(e.Name()) || is_dir_or_symlink_to_dir(e, filepath.Join(entry.Abspath, e.Name())) {
+					if is_match(strings.ToLower(e.Name())) || is_dir_or_symlink_to_dir(e, filepath.Join(entry.Abspath, e.Name())) {
 						ans = append(ans, entry.CompletionCandidate)
 						return
 					}

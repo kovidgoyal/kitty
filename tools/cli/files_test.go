@@ -109,6 +109,21 @@ func TestCompleteFiles(t *testing.T) {
 	if len(c.Groups) != 1 || len(c.Groups[0].Matches) != 1 || c.Groups[0].Matches[0].Word != "slink/" {
 		t.Fatalf("Symlink to directory not completed by DirectoryCompleter: %#v", c.Groups)
 	}
+
+	// filenames inside a directory are matched case-insensitively against patterns
+	os.Mkdir(filepath.Join(tdir, "cdir"), 0700)
+	create("cdir", "B.CONF")
+	c = NewCompletions()
+	FnmatchCompleter("", CWD, "*.conf")(c, "c", 0)
+	found := false
+	for _, g := range c.Groups {
+		for _, m := range g.Matches {
+			found = found || m.Word == "cdir/"
+		}
+	}
+	if !found {
+		t.Fatalf("Directory containing only an uppercase extension match not completed by FnmatchCompleter: %#v", c.Groups)
+	}
 }
 
 func TestCompleteExecutables(t *testing.T) {
