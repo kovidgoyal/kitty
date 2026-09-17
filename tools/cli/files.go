@@ -123,8 +123,13 @@ func CompleteExecutablesInPath(prefix string, paths ...string) []string {
 		entries, err := os.ReadDir(dir)
 		if err == nil {
 			for _, e := range entries {
-				if strings.HasPrefix(e.Name(), prefix) && !e.IsDir() && unix.Access(filepath.Join(dir, e.Name()), unix.X_OK) == nil {
-					ans = append(ans, e.Name())
+				if strings.HasPrefix(e.Name(), prefix) {
+					// A symlink to a directory has IsDir() false but still passes the X_OK
+					// check, since directories are executable in the access(2) sense.
+					p := filepath.Join(dir, e.Name())
+					if unix.Access(p, unix.X_OK) == nil && !is_dir_or_symlink_to_dir(e, p) {
+						ans = append(ans, e.Name())
+					}
 				}
 			}
 		}
