@@ -155,6 +155,9 @@ func TestCompleteExecutables(t *testing.T) {
 	create("two", "two-exec", 0700)
 	os.Symlink(filepath.Join(tdir, "two", "two-exec"), filepath.Join(tdir, "one", "s"))
 	os.Symlink(filepath.Join(tdir, "one", "one-not-exec"), filepath.Join(tdir, "one", "n"))
+	// A symlink to a directory passes the X_OK check, so it must not be offered as a command.
+	os.Mkdir(filepath.Join(tdir, "two", "subdir"), 0700)
+	os.Symlink(filepath.Join(tdir, "two", "subdir"), filepath.Join(tdir, "one", "d"))
 
 	t.Setenv("PATH", strings.Join([]string{filepath.Join(tdir, "one"), filepath.Join(tdir, "two")}, string(os.PathListSeparator)))
 	test_candidates := func(prefix string, expected ...string) {
