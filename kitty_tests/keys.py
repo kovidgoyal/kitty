@@ -666,6 +666,13 @@ class TestKeys(BaseTest):
         self.ae(tm('x'), [True])
         af(tm.keyboard_mode_stack)
 
+        # passthrough_and_end: unknown key exits the mode and is passed through
+        tm = TM('map --new-mode mw --on-unknown passthrough_and_end kitty_mod+f7', 'map --mode mw left neighboring_window left')
+        self.ae(tm('ctrl+shift+f7'), [True])
+        self.ae(tm.actions, ['push_keyboard_mode mw'])
+        self.ae(tm('x'), [False])
+        af(tm.keyboard_mode_stack)
+
         # modal mapping with --on-action=end must restore OS keyboard processing
         tm = TM('map --new-mode mw --on-action end m', 'map --mode mw a new_window')
         self.ae(tm('m', 'a'), [True, True])

@@ -1414,7 +1414,7 @@ class LiteralField(Generic[T]):
         obj.__dict__[self._name] = value
 
 
-OnUnknown = Literal['beep', 'end', 'ignore', 'passthrough']
+OnUnknown = Literal['beep', 'end', 'ignore', 'passthrough', 'passthrough_and_end']
 OnAction = Literal['keep', 'end']
 
 

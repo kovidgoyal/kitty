@@ -242,6 +242,9 @@ class Mappings:
                     return True
                 if mode.on_unknown == 'passthrough':
                     return False
+                if mode.on_unknown == 'passthrough_and_end':
+                    self.pop_keyboard_mode()
+                    return False
             if not self.pop_keyboard_mode():
                 self.ring_bell()
                 return True

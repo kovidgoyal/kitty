@@ -344,6 +344,10 @@ Detailed list of changes
 - :doc:`Multiple cursors protocol </multiple-cursors-protocol>`: Fix hiding the
   main cursor with DECTCEM also hiding the extra cursors (:iss:`10489`)
 
+- Add a new ``passthrough_and_end`` value for the ``--on-unknown`` option of
+  ``map``, that passes the unknown key through to the program and also exits
+  the custom keyboard mode (:iss:`10490`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
