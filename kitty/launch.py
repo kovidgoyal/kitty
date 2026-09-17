@@ -985,36 +985,102 @@ def parse_message(msg: str, simple: Container[str]) -> Iterator[tuple[str, str]]
         yield k, v
 
 
+AbortSignal = Literal['closed', 'replaced', 'disconnected', 'interrupt', '']
+
+
+class EditRequest(NamedTuple):
+    args: list[str]
+    cwd: str
+    file_inode: tuple[int, int]
+    file_size: int
+    file_data: bytes
+    version: int
+    abort_signaled: AbortSignal
+
+
+def parse_edit_message(msg: str) -> EditRequest:
+    # Only keys that are part of the edit protocol are recognized, all others
+    # are ignored. In particular, values from the message must never be used to
+    # set attributes on the EditCmd object directly, as that would allow any
+    # program that can write to the terminal to overwrite internal state, such
+    # as the temporary directory that is deleted once editing is finished.
+    args: list[str] = []
+    cwd = ''
+    file_inode = -1, -1
+    file_size = -1
+    file_data = b''
+    version = 0
+    abort_signaled: AbortSignal = ''
+    simple = 'file_inode', 'file_data', 'abort_signaled', 'version'
+    for k, v in parse_message(msg, simple):
+        if k == 'file_inode':
+            parts = v.split(':')
+            if len(parts) > 2:
+                with suppress(ValueError):
+                    dev, inode, sz = int(parts[0]), int(parts[1]), int(parts[2])
+                    file_inode, file_size = (dev, inode), sz
+        elif k == 'a':
+            args.append(v)
+        elif k == 'file_data':
+            import base64
+
+            file_data = base64.standard_b64decode(v)
+        elif k == 'version':
+            version = int(v)
+        elif k == 'cwd':
+            cwd = v
+        elif k == 'abort_signaled':
+            # interrupt is the only abort signal clients can send, the other
+            # values of abort_signaled are used for internal state only.
+            abort_signaled = 'interrupt' if v else ''
+    return EditRequest(args, cwd, file_inode, file_size, file_data, version, abort_signaled)
+
+
 class EditCmd:
-    abort_signaled: Literal['closed', 'replaced', 'disconnected', ''] = ''
+    # Using __slots__ means an attribute that is not listed here cannot be
+    # created on this object, not even accidentally, which keeps internal state
+    # such as tdir safe from data received over the edit protocol.
+    __slots__ = (
+        'abort_signaled',
+        'args',
+        'child_is_remote',
+        'cwd',
+        'editor_exit_code',
+        'editor_window_id',
+        'file_data',
+        'file_inode',
+        'file_localpath',
+        'file_name',
+        'file_size',
+        'file_spec',
+        'is_local_file',
+        'last_mod_time',
+        'line_number',
+        'opts',
+        'source_window_id',
+        'tdir',
+        'version',
+    )
+    abort_signaled: AbortSignal
+    opts: LaunchCLIOptions
 
     def __init__(self, msg: str, child_is_remote: bool) -> None:
+        # set up the internal state that __del__ needs first, so that it works
+        # even if parsing the message below fails
         self.child_is_remote = child_is_remote
         self.tdir = ''
-        self.args: list[str] = []
-        self.cwd = self.file_name = self.file_localpath = ''
-        self.file_data = b''
-        self.file_inode = -1, -1
-        self.file_size = -1
-        self.version = 0
+        self.abort_signaled = ''
+        self.file_name = self.file_localpath = ''
         self.source_window_id = self.editor_window_id = -1
         self.editor_exit_code: int | None = None
-        simple = 'file_inode', 'file_data', 'abort_signaled', 'version'
-        for k, v in parse_message(msg, simple):
-            if k == 'file_inode':
-                q = map(int, v.split(':'))
-                self.file_inode = next(q), next(q)
-                self.file_size = next(q)
-            elif k == 'a':
-                self.args.append(v)
-            elif k == 'file_data':
-                import base64
-
-                self.file_data = base64.standard_b64decode(v)
-            elif k == 'version':
-                self.version = int(v)
-            else:
-                setattr(self, k, v)
+        req = parse_edit_message(msg)
+        self.args = req.args
+        self.cwd = req.cwd
+        self.file_inode = req.file_inode
+        self.file_size = req.file_size
+        self.file_data = req.file_data
+        self.version = req.version
+        self.abort_signaled = req.abort_signaled
         if self.abort_signaled:
             return
         if self.version > 0:
@@ -1048,6 +1114,8 @@ class EditCmd:
             self.opts.cwd = os.path.dirname(self.file_localpath)
 
     def __del__(self) -> None:
+        # tdir is only ever set to a directory created by us in __init__, never
+        # to a value coming from the edit protocol message.
         if self.tdir:
             if not self.abort_signaled == 'disconnected':
                 with suppress(OSError):

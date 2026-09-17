@@ -319,6 +319,8 @@ Detailed list of changes
 
 - Graphics protocol: Make fileopen failure responses generic to avoid leaking any information about failed files
 
+- edit-in-kitty: harden the code used to parse messages from clients
+
 - Clipboard protocol: Report an ``EFBIG`` error to programs that try to write
   more data to the clipboard than allowed by :opt:`clipboard_max_size`, instead
   of silently truncating their data. Also fix :opt:`clipboard_max_size` being
