@@ -877,7 +877,10 @@ cell_update_uniform_block(
     Line *line_for_cursor = NULL;
     rd->cursor_opacity = MAX(0, MIN(cursor->cursor_opacity, 1));
     rd->blink_opacity = MAX(0, MIN(cursor->text_blink_opacity, 1));
-    if (rd->cursor_opacity != 0 && cursor->is_visible) {
+    // The extra cursors inherit the colors of the main cursor and, optionally,
+    // its shape, so the main cursor render data must be computed even when the
+    // main cursor itself is hidden by DECTCEM.
+    if (rd->cursor_opacity != 0 && (cursor->is_visible || cursor->multicursor_count)) {
         rd->cursor_x1 = cursor->x, rd->cursor_y1 = cursor->y;
         rd->cursor_x2 = cursor->x, rd->cursor_y2 = cursor->y;
         if (pixel_scroll_enabled(screen)) {
@@ -941,6 +944,14 @@ cell_update_uniform_block(
         }
         // store last rendered cursor color for trail rendering
         screen->last_rendered.cursor_bg = rd->main_cursor_bg;
+        if (!cursor->is_visible) {
+            // Move the main cursor off screen so that only it is hidden, the
+            // extra cursors keep their shape and colors.
+            rd->cursor_x1 = screen->columns + 1;
+            rd->cursor_x2 = screen->columns;
+            rd->cursor_y1 = screen->lines + 1;
+            rd->cursor_y2 = screen->lines;
+        }
     } else {
         rd->cursor_shape = 0;
         rd->cursor_x1 = screen->columns + 1;

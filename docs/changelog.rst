@@ -341,6 +341,9 @@ Detailed list of changes
 - macOS: Fix long text from input methods being discarded when committed
   outside a key event (:pull:`10468`)
 
+- :doc:`Multiple cursors protocol </multiple-cursors-protocol>`: Fix hiding the
+  main cursor with DECTCEM also hiding the extra cursors (:iss:`10489`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
