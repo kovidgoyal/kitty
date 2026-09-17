@@ -126,7 +126,7 @@ def lex_scanner() -> Callable[[str], tuple[list[Token], str]]:
                 (r'[()]', lambda x, t: Token(TokenType.OPCODE, t)),
                 (r'@.+?:[^")\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
                 (r'[^"()\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
-                (r'".*?((?<!\\)")', lambda x, t: Token(TokenType.QUOTED_WORD, t[1:-1])),
+                (r'".*?(?<!\\)"', lambda x, t: Token(TokenType.QUOTED_WORD, t[1:-1])),
                 (r'\s+', None),
             ],
             flags=re.DOTALL,
