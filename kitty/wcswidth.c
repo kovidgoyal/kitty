@@ -49,6 +49,13 @@ wcswidth_step(WCSState *state, const char_type ch) {
                             state->prev_width = 1;
                         } else state->prev_width = 0;
                         break;
+                    default:
+                        // Thai/Lao SARA AM: a SpacingMark with non-zero width widens a narrow base cell
+                        if (cp.grapheme_break == GBP_SpacingMark && wcwidth_std(cp) > 0 && state->prev_width == 1) {
+                            ans = 1;
+                            state->prev_width = 2;
+                        }
+                        break;
                 }
                 break;
             }

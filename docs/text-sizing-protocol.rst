@@ -412,7 +412,10 @@ For each decoded code point:
 
 #. If there is no boundary, the current code point is added to the previous
    cell and processing of the code point is finished. See the :ref:`var_select`
-   section below for handling of Unicode Variation selectors.
+   section below for handling of Unicode Variation selectors. If the code point has
+   ``Grapheme_Cluster_Break=SpacingMark`` and a non-zero width and the previous
+   cell is one cell wide, the previous cell becomes two cells wide. This affects
+   only :code:`U+0E33 THAI CHARACTER SARA AM` and :code:`U+0EB3 LAO VOWEL SIGN AM`.
 
 #. If there is a boundary, but the width of the current code point is zero,
    it is added to the previous cell and processing is finished.

@@ -578,6 +578,12 @@ class TestDataTypes(BaseTest):
         self.ae(wcswidth('\U0001f610\ufe0e'), 1)
         self.ae(wcswidth('\U0001f1e6a'), 3)
         self.ae(wcswidth('\U0001f1e6a\U0001f1e8a'), 6)
+        # Thai/Lao SARA AM is a SpacingMark with width 1, it widens the cell it combines into
+        self.ae(wcswidth('จำ'), 2)
+        self.ae(wcswidth('ำ'), 1)
+        self.ae(wcswidth('กิ'), 1)
+        self.ae(wcswidth('จำำ'), 2)
+        self.ae(wcswidth('ກຳ'), 2)
         self.ae(wcswidth('\U0001f1e6\U0001f1e8a'), 3)
         self.ae(wcswidth('\U0001f1e6\U0001f1e8\U0001f1e6'), 4)
         self.ae(wcswidth('a\u00adb'), 2)
