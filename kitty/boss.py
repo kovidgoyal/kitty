@@ -457,7 +457,6 @@ class Boss:
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
             talk_fd,
             listen_fd,
-            self.listening_on.startswith('unix:'),
         )
         self.args: CLIOptions = args
         self.mouse_handler: Callable[[WindowSystemMouseEvent], None] | None = None

@@ -55,6 +55,9 @@ typedef struct {
     pthread_t io_thread, talk_thread;
 
     int talk_fd, listen_fd;
+    // Peer credentials can only be checked for UNIX sockets, so remember
+    // which of the listening sockets are UNIX sockets.
+    bool verify_talk_peer_uid, verify_listen_peer_uid;
     int benchmark_wakeup_fd;
     Message *messages;
     size_t messages_capacity, messages_count;
@@ -151,8 +154,6 @@ mask_kitty_signals_process_wide(PyObject *self UNUSED, PyObject *a UNUSED) {
     Py_RETURN_NONE;
 }
 
-static int verify_peer_uid = false;
-
 static PyObject *
 new_childmonitor_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
@@ -164,7 +165,7 @@ new_childmonitor_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwd
         PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance");
         return NULL;
     }
-    if (!PyArg_ParseTuple(args, "OO|iip", &death_notify, &dump_callback, &talk_fd, &listen_fd, &verify_peer_uid)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO|ii", &death_notify, &dump_callback, &talk_fd, &listen_fd)) return NULL;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
@@ -177,6 +178,12 @@ new_childmonitor_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwd
     if (!init_loop_data(&self->io_loop_data, KITTY_HANDLED_SIGNALS)) return PyErr_SetFromErrno(PyExc_OSError);
     self->talk_fd = talk_fd;
     self->listen_fd = listen_fd;
+    // Only processes running as the same user as us are allowed to talk to us
+    // over UNIX sockets. In particular, the single instance socket is an
+    // abstract UNIX socket on Linux, which any process on the system can
+    // connect to.
+    self->verify_talk_peer_uid = talk_fd > -1 && peer_credentials_are_available(talk_fd);
+    self->verify_listen_peer_uid = listen_fd > -1 && peer_credentials_are_available(listen_fd);
     self->benchmark_wakeup_fd = -1;
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify;
@@ -1976,22 +1983,7 @@ add_peer(int peer, bool is_remote_control_peer) {
 }
 
 static bool
-getpeerid(int fd, uid_t *euid, gid_t *egid) {
-#ifdef __linux__
-    struct ucred cr;
-    socklen_t sz = sizeof(cr);
-    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &sz) != 0) return false;
-    *euid = cr.uid;
-    *egid = cr.gid;
-#else
-    if (getpeereid(fd, euid, egid) != 0) return false;
-#endif
-    return true;
-}
-
-
-static bool
-accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer) {
+accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer, bool verify_peer_uid) {
     int peer = accept(listen_fd, NULL, NULL);
     if (UNLIKELY(peer == -1)) {
         if (errno == EINTR) return true;
@@ -2001,7 +1993,7 @@ accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer) {
     if (verify_peer_uid) {
         uid_t peer_uid;
         gid_t peer_gid;
-        if (!getpeerid(peer, &peer_uid, &peer_gid)) {
+        if (!get_peer_credentials(peer, &peer_uid, &peer_gid)) {
             log_error("Denying access to peer because failed to get uid and gid for peer: %d with error: %s", peer, strerror(errno));
             shutdown(peer, SHUT_RDWR);
             safe_close(peer, __FILE__, __LINE__);
@@ -2254,7 +2246,9 @@ talk_loop(void *data) {
         if (ret > 0) {
             for (size_t i = 0; i < num_listen_fds - 1; i++) {
                 if (fds[i].revents & POLLIN) {
-                    if (!accept_peer(fds[i].fd, self->shutting_down, fds[i].fd == self->listen_fd)) goto end;
+                    const bool is_remote_control_peer = fds[i].fd == self->listen_fd;
+                    const bool verify_peer_uid = is_remote_control_peer ? self->verify_listen_peer_uid : self->verify_talk_peer_uid;
+                    if (!accept_peer(fds[i].fd, self->shutting_down, is_remote_control_peer, verify_peer_uid)) goto end;
                 }
             }
             if (fds[num_listen_fds - 1].revents & POLLIN) {

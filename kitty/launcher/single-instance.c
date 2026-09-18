@@ -243,17 +243,43 @@ bind_unix_socket(int s, const char *basename, struct sockaddr_un *addr, cleanup_
     if (safe_lockf(fd, F_TLOCK, 0) != 0) {
         int saved_errno = errno;
         safe_close(fd, __FILE__, __LINE__);
+        cleanup->close_fd2 = false;
         errno = saved_errno;
         if (errno == EAGAIN || errno == EACCES) errno = EADDRINUSE; // client
         return false;
     }
     // First unlink the socket file and then try to bind it.
     if (unlink(addr->sun_path) != 0 && errno != ENOENT) return false;
-    if (safe_bind(s, (struct sockaddr *)addr, sizeof(*addr)) > -1) {
+    // Create the socket file accessible only to us, as a defense in depth
+    // measure, the peer uid is checked at both ends of the connection as well.
+    mode_t old_umask = umask(S_IRWXG | S_IRWXO);
+    bool bound = safe_bind(s, (struct sockaddr *)addr, sizeof(*addr)) > -1;
+    int saved_errno = errno;
+    umask(old_umask);
+    errno = saved_errno;
+    if (bound) {
         snprintf(cleanup->path1, sizeof(cleanup->path1), "%s", addr->sun_path);
         return true;
     }
     return false;
+}
+
+// Verify that the process at the other end of the specified connected socket
+// is running as the same user as us. Needed because on Linux abstract UNIX
+// sockets are accessible to every process on the system.
+static bool
+peer_is_same_user(int fd) {
+    uid_t peer_uid;
+    gid_t peer_gid;
+    if (!get_peer_credentials(fd, &peer_uid, &peer_gid)) {
+        fprintf(stderr, "Failed to get the credentials of the process at the other end of the socket with error: %s\n", strerror(errno));
+        return false;
+    }
+    if (peer_uid != geteuid()) {
+        fprintf(stderr, "Refusing to talk to a process running as the user with uid: %d rather than our uid: %d\n", (int)peer_uid, (int)geteuid());
+        return false;
+    }
+    return true;
 }
 
 static int
@@ -352,6 +378,9 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     if (!server_addr->sun_path[0]) addr_len += 1 + strlen(server_addr->sun_path + 1);
     else addr_len = sizeof(*server_addr);
     if (safe_connect(s, (struct sockaddr *)server_addr, addr_len) != 0) { fail_on_errno("Failed to connect to single instance socket"); }
+    // Check the identity of the listening process before sending it our
+    // environment, cwd and session data.
+    if (!peer_is_same_user(s)) do_exit(1);
     size_t pos = 0;
     while (pos < output.used) {
         errno = 0;
@@ -365,17 +394,31 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     if (pos < output.used) fail_on_errno("Failed to write message to single instance socket");
     shutdown(s, SHUT_RDWR);
     safe_close(s, __FILE__, __LINE__);
+    cleanup_entries.si.close_fd1 = false;
     if (notify_socket > -1) {
-        int fd = safe_accept(notify_socket, NULL, NULL);
-        if (fd < 0) fail_on_errno("Failed to accept connection on notify socket");
-        char rbuf;
         while (true) {
-            ssize_t n = recv(notify_socket, &rbuf, 1, 0);
-            if (n < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) continue;
+            int fd = safe_accept(notify_socket, NULL, NULL);
+            if (fd < 0) fail_on_errno("Failed to accept connection on notify socket");
+            // Ignore connections from processes not running as us, they cannot
+            // tell us anything about the death of our OS Window.
+            if (!peer_is_same_user(fd)) {
+                shutdown(fd, SHUT_RDWR);
+                safe_close(fd, __FILE__, __LINE__);
+                continue;
+            }
+            char rbuf;
+            while (true) {
+                ssize_t n = recv(fd, &rbuf, 1, 0);
+                if (n < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) continue;
+                break;
+            }
+            shutdown(fd, SHUT_RDWR);
+            safe_close(fd, __FILE__, __LINE__);
             break;
         }
         shutdown(notify_socket, SHUT_RDWR);
         safe_close(notify_socket, __FILE__, __LINE__);
+        cleanup_entries.notify.close_fd1 = false;
     }
 }
 

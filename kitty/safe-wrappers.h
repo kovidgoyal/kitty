@@ -136,3 +136,34 @@ safe_dup2(int a, int b) {
     while ((ret = dup2(a, b)) < 0 && errno == EINTR);
     return ret;
 }
+
+// Get the credentials of the process at the other end of the specified
+// connected UNIX socket. Note that these are the credentials the peer had when
+// it called connect()/bind() and the uid/gid are translated into the user
+// namespace of the calling process, so they can be safely compared with
+// geteuid()/getegid().
+static inline bool
+get_peer_credentials(int fd, uid_t *euid, gid_t *egid) {
+#ifdef __linux__
+    struct ucred cr;
+    socklen_t sz = sizeof(cr);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &sz) != 0) return false;
+    *euid = cr.uid;
+    *egid = cr.gid;
+#else
+    if (getpeereid(fd, euid, egid) != 0) return false;
+#endif
+    return true;
+}
+
+// Can the credentials of processes connecting to the specified listening
+// socket be obtained? Only possible for AF_UNIX sockets. Fails closed, i.e. if
+// the socket family cannot be determined we claim credentials are available,
+// which means peers will be denied since getting their credentials will fail.
+static inline bool
+peer_credentials_are_available(int fd) {
+    struct sockaddr_storage addr = {0};
+    socklen_t sz = sizeof(addr);
+    if (getsockname(fd, (struct sockaddr *)&addr, &sz) != 0) return true;
+    return addr.ss_family == AF_UNIX;
+}
