@@ -1218,17 +1218,23 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
         }
     } else if (ch == VS15) {
         const CPUCell *cpu_cell = cp + xpos;
-        if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->width == 2 && is_emoji_presentation_base(self->lc->chars[base_pos])) {
+        // natural_width is false when the width was set explicitly by the text sizing
+        // protocol, in which case the application's width wins over the variation selector,
+        // matching how VS16 and Thai/Lao SARA AM leave such cells alone.
+        if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->natural_width && cpu_cell->width == 2 &&
+            is_emoji_presentation_base(self->lc->chars[base_pos])) {
             index_type deltax = (cpu_cell->scale * cpu_cell->width) / 2;
             if (halve_multicell_width(self, xpos, s->prev.y)) {
                 self->cursor->x -= deltax;
                 init_segmentation_state(self, s);
             }
         }
-    } else {
-        // Thai/Lao SARA AM is a SpacingMark with non-zero width, it widens a narrow base cell
-        CharProps ch_props = char_props_for(ch);
-        if (ch_props.grapheme_break == GBP_SpacingMark && wcwidth_std(ch_props) > 0 && !cp[xpos].is_multicell) widen_cell_to_two(self, s, cp, gp, xpos);
+    } else if (s->seg.grapheme_break == GBP_SpacingMark && !cp[xpos].is_multicell && wcwidth_std(char_props_for(ch)) > 0) {
+        // Thai/Lao SARA AM is a SpacingMark with non-zero width, it widens a narrow base cell.
+        // s->seg was just stepped with ch, and grapheme_segmentation_step() copies the
+        // grapheme break property of ch into it, so no extra char_props_for() lookup is
+        // needed to reject the overwhelmingly common case of a zero width combining char.
+        widen_cell_to_two(self, s, cp, gp, xpos);
     }
 }
 

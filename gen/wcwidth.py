@@ -1182,6 +1182,18 @@ def gen_char_props() -> None:
         )
         for x in prop_array
     )
+    # Both kitty's wcswidth() and its text drawing code widen the cell a SpacingMark
+    # with non-zero width combines into. Only these two code points have that
+    # combination (they are Lo not Mc, so they get a width of one), and the
+    # docs/text-sizing-protocol.rst spec says so, hence the assertion.
+    spacing_marks_with_width = frozenset(ch for ch, p in enumerate(prop_array) if p.grapheme_break == 'SpacingMark' and p.width > 0)
+    if spacing_marks_with_width != {0x0E33, 0x0EB3}:
+        raise SystemExit(
+            'The set of non-zero width SpacingMarks has changed to: '
+            f'{sorted(map(hex, spacing_marks_with_width))}. Update screen.c, wcswidth.c,'
+            ' wcswidth.go and docs/text-sizing-protocol.rst to match.'
+        )
+
     test_grapheme_segmentation(partial(split_into_graphemes, gsprops))
     gseg_results = tuple(GraphemeSegmentationKey.from_int(i).result() for i in range(1 << 16))
 

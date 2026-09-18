@@ -204,6 +204,8 @@ Detailed list of changes
 
 - Thai/Lao: Render the vowel sign AM (U+0E33/U+0EB3) correctly by widening the cell it combines into, matching wcwidth() based programs
 
+- :doc:`Text sizing protocol </text-sizing-protocol>`: A cell whose width was set explicitly with the ``w`` key is no longer narrowed by a subsequent ``U+FE0E`` variation selector
+
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload

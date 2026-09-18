@@ -1067,6 +1067,45 @@ class TestScreen(BaseTest):
         s.reset()
         s.draw('\N{HEAVY EXCLAMATION MARK SYMBOL}' + 4500 * '\N{VARIATION SELECTOR-16}')
 
+    def test_explicit_width_is_not_changed_by_combining_chars(self):
+        # A width set explicitly via the text sizing protocol wins over the implicit
+        # re-sizing done by the variation selectors and Thai/Lao SARA AM
+        def mcd(text, width, follow):
+            s = self.create_screen(cols=8)
+            draw_multicell(s, text, width=width)
+            before = s.cpu_cells(0, 0)['mcd']
+            self.ae(before['width'], width)
+            self.assertFalse(before['natural_width'])
+            s.draw(follow)
+            return s, s.cpu_cells(0, 0)['mcd']
+
+        # VS15 must not narrow an explicitly widened cell
+        s, c = mcd('\u25b6', 2, '\ufe0e')
+        self.ae(c['width'], 2)
+        self.ae(s.cursor.x, 2)
+        # VS16 must not widen an explicitly narrowed cell
+        s, c = mcd('\u26d4', 1, '\ufe0f')
+        self.ae(c['width'], 1)
+        self.ae(s.cursor.x, 1)
+        # SARA AM must not widen an explicitly narrowed cell
+        s, c = mcd('\u0e08', 1, '\u0e33')
+        self.ae(c['width'], 1)
+        self.ae(s.cursor.x, 1)
+
+        # and the natural width cases still re-size, so the tests above are meaningful
+        s = self.create_screen(cols=8)
+        s.draw('\U0001f610')
+        self.ae(s.cursor.x, 2)
+        self.assertTrue(s.cpu_cells(0, 0)['mcd']['natural_width'])
+        s.draw('\ufe0e')
+        self.ae(s.cursor.x, 1)
+        self.ae(s.cpu_cells(0, 0)['mcd']['width'], 1)
+        s = self.create_screen(cols=8)
+        s.draw('\u26d4')
+        self.ae(s.cursor.x, 2)
+        s.draw('\u0e08\u0e33')
+        self.ae(s.cursor.x, 4)
+
     def test_spacing_mark_widens_narrow_cell(self):
         # Thai SARA AM and Lao AM are SpacingMarks with width 1 that widen the cell they combine into
         s = self.create_screen(cols=5)
