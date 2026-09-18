@@ -202,7 +202,7 @@ def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_
     return opts
 
 
-def store_effective_config() -> str:
+def store_effective_config() -> tuple[str, str]:
     import os
     import stat
     import tempfile
@@ -220,9 +220,10 @@ def store_effective_config() -> str:
     except OSError as err:
         # writing the effective config is a best effort debugging aid, do not
         # let it prevent kitty from starting, for example, when the disk is full
-        log_error(f'Failed to store effective config with error: {err}')
-        path = ''
-    return path
+        msg = f'Failed to store effective config with error: {err}'
+        log_error(msg)
+        return '', msg
+    return path, ''
 
 
 class KittyCommonOpts(TypedDict):
