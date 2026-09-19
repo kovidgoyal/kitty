@@ -354,6 +354,18 @@ face_equals_descriptor(PyObject *face_, PyObject *descriptor) {
 
 static char *get_variation_as_string(Face *self);
 
+static PyObject *
+has_codepoint(Face *self, PyObject *cp) {
+    unsigned long ch = PyLong_AsUnsignedLong(cp);
+    if (PyErr_Occurred()) return NULL;
+    if (ch > 0x10ffff) {
+        PyErr_SetString(PyExc_ValueError, "Not a valid unicode codepoint");
+        return NULL;
+    }
+    if (glyph_id_for_codepoint((PyObject *)self, ch) > 0) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 PyObject *
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
 #define D(key, conv, missing_ok)                                                              \
@@ -1642,6 +1654,7 @@ static PyMemberDef members[] = {
 };
 
 static PyMethodDef methods[] = {
+    METHODB(has_codepoint, METH_O),
     METHODB(postscript_name, METH_NOARGS),
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(extra_data, METH_NOARGS),

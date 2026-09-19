@@ -256,6 +256,9 @@ Detailed list of changes
 
 - Splits layout: Fix dragging a border resizing the wrong split in nested layouts.
 
+- Linux: Fix drawing a screen containing many distinct codepoints that are not
+  present in the main font causing a noticeable stall (:iss:`10496`)
+
 - Graphics protocol: Fix scaled images (created with the ``r`` or ``c`` keys)
   being distorted instead of clipped when scrolled against a margin
   (:iss:`10377`)

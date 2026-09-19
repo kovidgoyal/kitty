@@ -2710,7 +2710,7 @@ get_fallback_font(PyObject UNUSED *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Too many fallback fonts");
         return NULL;
     }
-    return fg->fonts[ans].face;
+    return Py_NewRef(fg->fonts[ans].face);
 }
 
 static PyObject *

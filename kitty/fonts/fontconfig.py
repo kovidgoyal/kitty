@@ -14,6 +14,7 @@ from kitty.fast_data_types import (
     FC_WEIGHT_REGULAR,
     FC_WIDTH_NORMAL,
     Face,
+    clear_fallback_font_cache,
     fc_list,
 )
 from kitty.fast_data_types import (
@@ -48,6 +49,7 @@ def clear_caches() -> None:
     all_fonts_map.cache_clear()
     fc_match.cache_clear()
     weight_range_for_family.cache_clear()
+    clear_fallback_font_cache()
 
 
 @lru_cache(maxsize=2)

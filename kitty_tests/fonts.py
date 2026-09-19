@@ -3,6 +3,7 @@
 
 import array
 import os
+import sys
 import tempfile
 import unittest
 from collections.abc import Iterable
@@ -13,6 +14,7 @@ from math import ceil
 from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import (
     DECAWM,
+    Face,
     ParsedFontFeature,
     Screen,
     get_fallback_font,
@@ -546,6 +548,85 @@ class Rendering(FontBaseTest):
         s.draw('\ufe0f')
         self.ae((s.cursor.x, s.cursor.y), (2, 4))
         self.ae(str(s.line(s.cursor.y)), '\u2716\ufe0f')
+
+    def test_get_fallback_font_returns_new_reference(self):
+        # get_fallback_font() used to return a borrowed reference, which freed
+        # the Face while the FontGroup was still holding on to it.
+        for text in '\u4e2d\u0627\u05d0\u0905\u0e01\u10a0':
+            try:
+                face = get_fallback_font(text, False, False)
+            except ValueError:
+                continue
+            # one reference held by the FontGroup, one by face, one by the
+            # argument to getrefcount()
+            self.assertGreaterEqual(sys.getrefcount(face), 3, f'get_fallback_font() returned a borrowed reference for {text!r}')
+            del face
+            # the Face must still be usable via the FontGroup
+            self.assertIsInstance(get_fallback_font(text, False, False).postscript_name(), str)
+            break
+        else:
+            self.skipTest('No font on this system has a fallback font for any of the tested codepoints')
+
+    @unittest.skipIf(is_macos, 'fontconfig is not used on macOS')
+    def test_fallback_font_matching(self):
+        # Fallback font matching narrows the candidates down using a cached,
+        # pre-sorted candidate list before asking fontconfig to score them,
+        # instead of scoring the entire font database for every codepoint. See
+        # https://github.com/kovidgoyal/kitty/issues/10496
+        from kitty.fast_data_types import clear_fallback_font_cache, fc_match_fallback
+
+        clear_fallback_font_cache()
+        faces = {}
+
+        def has_chars(descriptor, text):
+            key = descriptor['path'], descriptor['index']
+            if key not in faces:
+                faces[key] = Face(descriptor=descriptor)
+            face = faces[key]
+            return tuple(face.has_codepoint(ord(ch)) for ch in text)
+
+        def cells_to_test():
+            # a spread over every plane, plus the ranges most likely to need a
+            # fallback font: Private Use Area icons, Nerd Font icons, CJK,
+            # emoji, math and Braille
+            for cp in range(0, 0x110000, 0x1553):
+                yield chr(cp)
+            for start in (0xE000, 0xF0000, 0x4E00, 0x1F600, 0x2200, 0x2800):
+                for cp in range(start, start + 0x100, 0x11):
+                    yield chr(cp)
+            # multi-codepoint cells, where the best font is the one missing the
+            # fewest codepoints
+            for cp in (0x53, 0x4E2D, 0x905, 0xE0B0, 0x1F600):
+                yield chr(cp) + '\u0301'
+                yield chr(cp) + '\u20e3'
+
+        num_tested = num_changed = 0
+        # prefer_color matters most, as fontconfig ranks FC_COLOR above coverage
+        for bold, italic, prefer_color in ((False, False, False), (True, True, False), (False, False, True), (True, False, True)):
+            kw = {'bold': bold, 'italic': italic, 'prefer_color': prefer_color}
+            for text in cells_to_test():
+                if 0xD800 <= ord(text[0]) <= 0xDFFF:
+                    continue
+                expected = fc_match_fallback(text, use_candidate_cache=False, **kw)
+                actual = fc_match_fallback(text, use_candidate_cache=True, **kw)
+                num_tested += 1
+                if (expected['path'], expected['index']) == (actual['path'], actual['index']):
+                    continue
+                # fontconfig sorts with an unstable sort, so among fonts it
+                # scores identically a different one can be picked. That is
+                # acceptable only as long as glyph coverage is unchanged.
+                num_changed += 1
+                self.ae(
+                    has_chars(actual, text),
+                    has_chars(expected, text),
+                    f'Fallback font for {text!r} with {kw} has different coverage: {actual["path"]} instead of {expected["path"]}',
+                )
+        self.assertGreater(num_tested, 100)
+        # How often fonts fontconfig scores identically are ordered differently
+        # depends on the installed fonts, so this bound is deliberately loose:
+        # the meaningful check is the glyph coverage assertion above. Observed
+        # rates: 0% with a handful of fonts, 0.5% with 1600 families installed.
+        self.assertLess(num_changed, num_tested // 2, f'{num_changed} of {num_tested} fallback fonts changed')
 
     @unittest.skipUnless(is_macos, 'Only macOS has a Last Resort font')
     def test_fallback_font_not_last_resort(self):
