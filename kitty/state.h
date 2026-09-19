@@ -434,10 +434,13 @@ typedef struct CursorTrail {
     float opacity;
     float corner_x[4];
     float corner_y[4];
+    float previous_corner_x[4];
+    float previous_corner_y[4];
     float cursor_edge_x[2];
     float cursor_edge_y[2];
     float prev_cursor_edge_x[2]; // cursor_edge_x before the most recent cursor move
     float prev_cursor_edge_y[2]; // cursor_edge_y before the most recent cursor move
+    bool has_previous_position;
 } CursorTrail;
 
 typedef struct Tab {

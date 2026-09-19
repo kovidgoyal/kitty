@@ -29,6 +29,10 @@ Cursor trails
 You must have enabled cursor trails with something like ``cursor_trail 1`` in :file:`kitty.conf` for
 these shaders to take effect.
 
+The bundled ``cursor-trail-default`` shader provides temporally supersampled motion
+blur and spatial antialiasing. Enable it with :code:`custom_shaders cursor-trail-default`;
+its compile-time rendering options are documented in the shader source.
+
 .. include:: generated/custom-shaders-cursor-trails.rst
 
 Animated backgrounds
