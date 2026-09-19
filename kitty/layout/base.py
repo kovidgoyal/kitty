@@ -318,7 +318,9 @@ class Layout:
     def remove_all_biases(self) -> bool:
         return False
 
-    def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
+    def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True, is_towards_edge: bool = False) -> bool:
+        if is_towards_edge:
+            return False
         idx = all_windows.group_idx_for_window(window_id)
         if idx is None or not increment:
             return False
