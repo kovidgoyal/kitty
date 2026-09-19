@@ -7062,8 +7062,8 @@ static PyMethodDef methods[] = {
     METHODB(test_commit_write_buffer, METH_VARARGS),
     METHODB(test_parse_written_data, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
-    MND(line_edge_colors, METH_NOARGS) MND(ime_text_around_cursor, METH_NOARGS) MND(line, METH_O) MND(dump_lines_with_attrs, METH_VARARGS) MND(cpu_cells, METH_VARARGS)
-        MND(cursor_at_prompt, METH_NOARGS){"visual_line", (PyCFunction)pyvisual_line, METH_VARARGS, ""},
+    MND(line_edge_colors, METH_NOARGS) MND(ime_text_around_cursor, METH_NOARGS) MND(line, METH_O) MND(dump_lines_with_attrs, METH_VARARGS)
+        MND(cpu_cells, METH_VARARGS) MND(cursor_at_prompt, METH_NOARGS){"visual_line", (PyCFunction)pyvisual_line, METH_VARARGS, ""},
     MND(current_url_text, METH_NOARGS) MND(draw, METH_O) MND(apply_sgr, METH_O) MND(cursor_position, METH_VARARGS) MND(erase_last_command, METH_NOARGS)
         MND(set_window_char, METH_VARARGS) MND(set_progress, METH_VARARGS) MND(set_mode, METH_VARARGS) MND(reset_mode, METH_VARARGS) MND(reset, METH_VARARGS)
             MND(reset_dirty, METH_NOARGS) MND(is_using_alternate_linebuf, METH_NOARGS) MND(is_main_linebuf, METH_NOARGS) MND(cursor_move, METH_VARARGS)

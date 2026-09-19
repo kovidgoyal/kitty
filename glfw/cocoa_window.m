@@ -1988,8 +1988,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
 - (NSString *)documentAroundCursor:(NSUInteger *)insertion_point {
     NSString *before = @"", *after = @"";
     GLFWIMETextAroundCursor t = {0};
-    if (window && _glfw.callbacks.get_ime_text_around_cursor &&
-        _glfw.callbacks.get_ime_text_around_cursor((GLFWwindow *)window, &t)) {
+    if (window && _glfw.callbacks.get_ime_text_around_cursor && _glfw.callbacks.get_ime_text_around_cursor((GLFWwindow *)window, &t)) {
         if (t.before) {
             NSString *s = [NSString stringWithUTF8String:t.before];
             if (s) before = s;
@@ -2113,21 +2112,20 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     // Input methods ask for ranges of unbounded length, so clamp rather than
     // using NSIntersectionRange(), whose NSMaxRange() would overflow.
     if (range.location == NSNotFound || range.location > doc_len) {
-        debug_input("\n\tattributedSubstringForProposedRange: (%lu, %lu) -> out of range\n",
-                    (unsigned long)range.location,
-                    (unsigned long)range.length);
+        debug_input("\n\tattributedSubstringForProposedRange: (%lu, %lu) -> out of range\n", (unsigned long)range.location, (unsigned long)range.length);
         if (actualRange) *actualRange = kEmptyRange;
         return nil;
     }
     const NSRange r = NSMakeRange(range.location, MIN(range.length, doc_len - range.location));
     if (actualRange) *actualRange = r;
     NSString *ans = [doc substringWithRange:r];
-    debug_input("\n\tattributedSubstringForProposedRange: (%lu, %lu) -> (%lu, %lu) %s\n",
-                (unsigned long)range.location,
-                (unsigned long)range.length,
-                (unsigned long)r.location,
-                (unsigned long)r.length,
-                [ans UTF8String]);
+    debug_input(
+        "\n\tattributedSubstringForProposedRange: (%lu, %lu) -> (%lu, %lu) %s\n",
+        (unsigned long)range.location,
+        (unsigned long)range.length,
+        (unsigned long)r.location,
+        (unsigned long)r.length,
+        [ans UTF8String]);
     if (r.length == 0) return nil;
     return [[[NSAttributedString alloc] initWithString:ans] autorelease];
 }
@@ -2225,8 +2223,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     // See https://github.com/kovidgoyal/kitty/issues/3732
     if (selector == @selector(accessibilityRole) || selector == @selector(accessibilitySelectedText) || selector == @selector(accessibilitySelectedTextRange) ||
         selector == @selector(accessibilityNumberOfCharacters) || selector == @selector(accessibilityInsertionPointLineNumber) ||
-        selector == @selector(accessibilityValue) || selector == @selector(setAccessibilityValue:) ||
-        selector == @selector(accessibilityStringForRange:))
+        selector == @selector(accessibilityValue) || selector == @selector(setAccessibilityValue:) || selector == @selector(accessibilityStringForRange:))
         return YES;
 
     // Allow accessibility selectors needed for external window management tools
@@ -2287,10 +2284,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     const NSUInteger doc_len = [doc length];
     if (range.location == NSNotFound || range.location > doc_len) return nil;
     NSString *ans = [doc substringWithRange:NSMakeRange(range.location, MIN(range.length, doc_len - range.location))];
-    debug_input("\n\taccessibilityStringForRange: (%lu, %lu) -> %s\n",
-                (unsigned long)range.location,
-                (unsigned long)range.length,
-                [ans UTF8String]);
+    debug_input("\n\taccessibilityStringForRange: (%lu, %lu) -> %s\n", (unsigned long)range.location, (unsigned long)range.length, [ans UTF8String]);
     return ans;
 }
 

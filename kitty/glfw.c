@@ -1209,7 +1209,8 @@ screen_for_focused_window(GLFWwindow *glfw_window, OSWindow **osw_out, Window **
 
 static bool
 get_ime_cursor_position(GLFWwindow *glfw_window, GLFWIMEUpdateEvent *ev) {
-    OSWindow *osw; Window *w;
+    OSWindow *osw;
+    Window *w;
     Screen *screen = screen_for_focused_window(glfw_window, &osw, &w);
     if (!screen) return false;
     prepare_ime_position_update_event(osw, w, screen, ev);
