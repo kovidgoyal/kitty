@@ -641,6 +641,7 @@ struct _GLFWlibrary {
         GLFWcurrentselectionfun get_current_selection;
         GLFWhascurrentselectionfun has_current_selection;
         GLFWimecursorpositionfun get_ime_cursor_position;
+        GLFWimetextaroundcursorfun get_ime_text_around_cursor;
     } callbacks;
 
     // This is defined in the window API's platform.h

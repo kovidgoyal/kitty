@@ -4756,6 +4756,78 @@ screen_is_overlay_active(Screen *self) {
     return self->overlay_line.is_active;
 }
 
+static char *
+ansi_buf_tail_as_utf8(const ANSIBuf *buf, size_t start) {
+    const size_t count = buf->len - start;
+    char *ans = malloc(4 * count + 1);
+    if (!ans) return NULL;
+    size_t pos = 0;
+    for (size_t i = 0; i < count; i++) pos += encode_utf8(buf->buf[start + i], ans + pos);
+    ans[pos] = 0;
+    return ans;
+}
+
+// Soft-wrapped rows are full by definition, so only the last row of a logical
+// line has its unwritten trailing cells trimmed. Uses a caller supplied Line
+// rather than the shared self->linebuf->line view, since input methods can
+// query this from inside a key event, when something else may be using it.
+static bool
+append_row_to_ime_text(Screen *self, index_type y, index_type start, index_type limit, bool trim_trailing, Line *line, ANSIBuf *buf) {
+    init_line_(self, y, line);
+    limit = MIN(limit, trim_trailing ? xlimit_for_line(line) : line->xnum);
+    start = MIN(start, line->xnum);
+    if (start >= limit) return true;
+    return unicode_in_range(line, start, limit, true, false, false, true, buf);
+}
+
+bool
+screen_ime_text_around_cursor(Screen *self, char **before, char **after) {
+    // The text on either side of the cursor, as UTF-8, for use by input
+    // methods that need to know what surrounds the insertion point. The unit
+    // is the logical line, that is, the cursor's row plus any rows it is
+    // soft-wrapped across, since otherwise an input method would see nothing
+    // before a cursor sitting at the start of a continuation row. The walk
+    // stops at the top of the screen rather than descending into the
+    // scrollback, truncating only the far end of before, which input methods
+    // do not look at anyway.
+    // Returns false only on allocation failure. A cursor in a degenerate
+    // position simply yields empty text on both sides.
+    *before = NULL;
+    *after = NULL;
+    ANSIBuf *buf = &self->as_ansi_buf;
+    const size_t orig_len = buf->len;
+    const bool have_line = self->linebuf && self->cursor->y < self->lines;
+    const index_type cy = self->cursor->y;
+    index_type top = cy, bottom = cy;
+    if (have_line) {
+        while (top > 0 && range_line_is_continued(self, top)) top--;
+        while (bottom + 1 < self->lines && range_line_is_continued(self, bottom + 1)) bottom++;
+    }
+    // kitty defers line wrapping, so the cursor can sit one cell past the end of the row
+    const index_type cursor_x = MIN(self->cursor->x, self->columns);
+    Line line = {.xnum = self->columns, .text_cache = self->text_cache};
+    bool ok = true;
+    if (have_line) {
+        for (index_type y = top; ok && y < cy; y++) ok = append_row_to_ime_text(self, y, 0, self->columns, false, &line, buf);
+        if (ok) ok = append_row_to_ime_text(self, cy, 0, cursor_x, false, &line, buf);
+    }
+    if (ok && !(*before = ansi_buf_tail_as_utf8(buf, orig_len))) ok = false;
+    buf->len = orig_len;
+    if (have_line) {
+        if (ok) ok = append_row_to_ime_text(self, cy, cursor_x, self->columns, cy == bottom, &line, buf);
+        for (index_type y = cy + 1; ok && y <= bottom; y++) ok = append_row_to_ime_text(self, y, 0, self->columns, y == bottom, &line, buf);
+    }
+    if (ok && !(*after = ansi_buf_tail_as_utf8(buf, orig_len))) ok = false;
+    buf->len = orig_len;
+    if (!ok) {
+        free(*before);
+        free(*after);
+        *before = NULL;
+        *after = NULL;
+    }
+    return ok;
+}
+
 static void
 deactivate_overlay_line(Screen *self) {
     if (self->overlay_line.is_active && self->overlay_line.xnum && self->overlay_line.ynum < self->lines) {
@@ -6810,6 +6882,16 @@ cursor_at_prompt(Screen *self, PyObject *args UNUSED) {
 }
 
 static PyObject *
+ime_text_around_cursor(Screen *self, PyObject *a UNUSED) {
+    char *before, *after;
+    if (!screen_ime_text_around_cursor(self, &before, &after)) return PyErr_NoMemory();
+    PyObject *ans = Py_BuildValue("ss", before, after);
+    free(before);
+    free(after);
+    return ans;
+}
+
+static PyObject *
 line_edge_colors(Screen *self, PyObject *a UNUSED) {
     color_type left, right;
     if (!get_line_edge_colors(self, &left, &right)) {
@@ -6980,7 +7062,7 @@ static PyMethodDef methods[] = {
     METHODB(test_commit_write_buffer, METH_VARARGS),
     METHODB(test_parse_written_data, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
-    MND(line_edge_colors, METH_NOARGS) MND(line, METH_O) MND(dump_lines_with_attrs, METH_VARARGS) MND(cpu_cells, METH_VARARGS)
+    MND(line_edge_colors, METH_NOARGS) MND(ime_text_around_cursor, METH_NOARGS) MND(line, METH_O) MND(dump_lines_with_attrs, METH_VARARGS) MND(cpu_cells, METH_VARARGS)
         MND(cursor_at_prompt, METH_NOARGS){"visual_line", (PyCFunction)pyvisual_line, METH_VARARGS, ""},
     MND(current_url_text, METH_NOARGS) MND(draw, METH_O) MND(apply_sgr, METH_O) MND(cursor_position, METH_VARARGS) MND(erase_last_command, METH_NOARGS)
         MND(set_window_char, METH_VARARGS) MND(set_progress, METH_VARARGS) MND(set_mode, METH_VARARGS) MND(reset_mode, METH_VARARGS) MND(reset, METH_VARARGS)

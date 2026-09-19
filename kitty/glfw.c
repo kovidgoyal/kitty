@@ -1194,22 +1194,33 @@ has_current_selection(void) {
 
 void prepare_ime_position_update_event(OSWindow *osw, Window *w, Screen *screen, GLFWIMEUpdateEvent *ev);
 
+static Screen *
+screen_for_focused_window(GLFWwindow *glfw_window, OSWindow **osw_out, Window **w_out) {
+    OSWindow *osw = os_window_for_glfw_window(glfw_window);
+    if (!osw || !osw->is_focused || !osw->num_tabs) return NULL;
+    Tab *tab = osw->tabs + osw->active_tab;
+    if (!tab->num_windows) return NULL;
+    Window *w = tab->windows + tab->active_window;
+    if (!w->render_data.screen) return NULL;
+    if (osw_out) *osw_out = osw;
+    if (w_out) *w_out = w;
+    return w->render_data.screen;
+}
+
 static bool
 get_ime_cursor_position(GLFWwindow *glfw_window, GLFWIMEUpdateEvent *ev) {
-    bool ans = false;
-    OSWindow *osw = os_window_for_glfw_window(glfw_window);
-    if (osw && osw->is_focused && osw->num_tabs > 0) {
-        Tab *tab = osw->tabs + osw->active_tab;
-        if (tab->num_windows > 0) {
-            Window *w = tab->windows + tab->active_window;
-            Screen *screen = w->render_data.screen;
-            if (screen) {
-                prepare_ime_position_update_event(osw, w, screen, ev);
-                ans = true;
-            }
-        }
-    }
-    return ans;
+    OSWindow *osw; Window *w;
+    Screen *screen = screen_for_focused_window(glfw_window, &osw, &w);
+    if (!screen) return false;
+    prepare_ime_position_update_event(osw, w, screen, ev);
+    return true;
+}
+
+static bool
+get_ime_text_around_cursor(GLFWwindow *glfw_window, GLFWIMETextAroundCursor *output) {
+    Screen *screen = screen_for_focused_window(glfw_window, NULL, NULL);
+    if (!screen) return false;
+    return screen_ime_text_around_cursor(screen, &output->before, &output->after);
 }
 
 
@@ -2051,6 +2062,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwSetCurrentSelectionCallback(get_current_selection);
         glfwSetHasCurrentSelectionCallback(has_current_selection);
         glfwSetIMECursorPositionCallback(get_ime_cursor_position);
+        glfwSetIMETextAroundCursorCallback(get_ime_text_around_cursor);
         glfwSetSystemColorThemeChangeCallback(on_system_color_scheme_change);
         glfwSetClipboardLostCallback(on_clipboard_lost);
         // Request SRGB output buffer

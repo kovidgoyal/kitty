@@ -898,7 +898,7 @@ typedef enum {
     GLFW_GRAB_CURSOR,
     GLFW_GRABBING_CURSOR,
     GLFW_INVALID_CURSOR,
-/* end mouse cursor shapes */
+    /* end mouse cursor shapes */
 } GLFWCursorShape;
 /*! @} */
 
@@ -1698,6 +1698,13 @@ typedef enum { GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION } GLFWClipboardType;
 typedef GLFWDataChunk (*GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
 typedef bool (*GLFWclipboardwritedatafun)(void *object, const char *data, size_t sz);
 typedef bool (*GLFWimecursorpositionfun)(GLFWwindow *window, GLFWIMEUpdateEvent *ev);
+// The text on either side of the text cursor, used by input methods to decide
+// things like whether a space is needed between Latin and CJK text. Both are
+// UTF-8, allocated with malloc() and must be freed by the caller. Either can be NULL.
+typedef struct GLFWIMETextAroundCursor {
+    char *before, *after;
+} GLFWIMETextAroundCursor;
+typedef bool (*GLFWimetextaroundcursorfun)(GLFWwindow *window, GLFWIMETextAroundCursor *output);
 typedef void (*GLFWclipboardlostfun)(GLFWClipboardType);
 
 /*! @brief Video mode type.
@@ -1895,6 +1902,10 @@ GFW_EXTERN glfwSetHasCurrentSelectionCallback_func glfwSetHasCurrentSelectionCal
 typedef GLFWimecursorpositionfun (*glfwSetIMECursorPositionCallback_func)(GLFWimecursorpositionfun);
 GFW_EXTERN glfwSetIMECursorPositionCallback_func glfwSetIMECursorPositionCallback_impl;
 #define glfwSetIMECursorPositionCallback glfwSetIMECursorPositionCallback_impl
+
+typedef GLFWimetextaroundcursorfun (*glfwSetIMETextAroundCursorCallback_func)(GLFWimetextaroundcursorfun);
+GFW_EXTERN glfwSetIMETextAroundCursorCallback_func glfwSetIMETextAroundCursorCallback_impl;
+#define glfwSetIMETextAroundCursorCallback glfwSetIMETextAroundCursorCallback_impl
 
 typedef bool (*glfwIsLayerShellSupported_func)(void);
 GFW_EXTERN glfwIsLayerShellSupported_func glfwIsLayerShellSupported_impl;

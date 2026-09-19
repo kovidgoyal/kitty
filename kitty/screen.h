@@ -340,6 +340,7 @@ void screen_report_size(Screen *, unsigned which, unsigned modifier);
 void screen_manipulate_title_stack(Screen *, unsigned int op, unsigned int which);
 bool screen_is_overlay_active(Screen *self);
 void screen_update_overlay_text(Screen *self, const char *utf8_text);
+bool screen_ime_text_around_cursor(Screen *self, char **before, char **after);
 void screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how);
 void screen_push_key_encoding_flags(Screen *self, uint32_t val);
 void screen_pop_key_encoding_flags(Screen *self, uint32_t num);

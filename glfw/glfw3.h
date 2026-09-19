@@ -1958,6 +1958,13 @@ typedef enum { GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION } GLFWClipboardType;
 typedef GLFWDataChunk (*GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
 typedef bool (*GLFWclipboardwritedatafun)(void *object, const char *data, size_t sz);
 typedef bool (*GLFWimecursorpositionfun)(GLFWwindow *window, GLFWIMEUpdateEvent *ev);
+// The text on either side of the text cursor, used by input methods to decide
+// things like whether a space is needed between Latin and CJK text. Both are
+// UTF-8, allocated with malloc() and must be freed by the caller. Either can be NULL.
+typedef struct GLFWIMETextAroundCursor {
+    char *before, *after;
+} GLFWIMETextAroundCursor;
+typedef bool (*GLFWimetextaroundcursorfun)(GLFWwindow *window, GLFWIMETextAroundCursor *output);
 typedef void (*GLFWclipboardlostfun)(GLFWClipboardType);
 
 /*! @brief Video mode type.
@@ -2115,6 +2122,7 @@ GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun function);
 GLFWAPI GLFWcurrentselectionfun glfwSetCurrentSelectionCallback(GLFWcurrentselectionfun callback);
 GLFWAPI GLFWhascurrentselectionfun glfwSetHasCurrentSelectionCallback(GLFWhascurrentselectionfun callback);
 GLFWAPI GLFWimecursorpositionfun glfwSetIMECursorPositionCallback(GLFWimecursorpositionfun callback);
+GLFWAPI GLFWimetextaroundcursorfun glfwSetIMETextAroundCursorCallback(GLFWimetextaroundcursorfun callback);
 GLFWAPI bool glfwIsLayerShellSupported(void);
 
 /*! @brief Terminates the GLFW library.

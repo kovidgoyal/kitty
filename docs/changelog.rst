@@ -359,6 +359,10 @@ Detailed list of changes
   ``map``, that passes the unknown key through to the program and also exits
   the custom keyboard mode (:iss:`10490`)
 
+- macOS: Allow input methods to read the text around the cursor, so that input
+  methods that automatically insert a space between Latin and CJK text work
+  (:iss:`10492`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

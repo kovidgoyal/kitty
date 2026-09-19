@@ -47,6 +47,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetIMECursorPositionCallback_impl) = dlsym(handle, "glfwSetIMECursorPositionCallback");
     if (glfwSetIMECursorPositionCallback_impl == NULL) fail("Failed to load glfw function glfwSetIMECursorPositionCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetIMETextAroundCursorCallback_impl) = dlsym(handle, "glfwSetIMETextAroundCursorCallback");
+    if (glfwSetIMETextAroundCursorCallback_impl == NULL) fail("Failed to load glfw function glfwSetIMETextAroundCursorCallback with error: %s", dlerror());
+
     *(void **) (&glfwIsLayerShellSupported_impl) = dlsym(handle, "glfwIsLayerShellSupported");
     if (glfwIsLayerShellSupported_impl == NULL) fail("Failed to load glfw function glfwIsLayerShellSupported with error: %s", dlerror());
 
