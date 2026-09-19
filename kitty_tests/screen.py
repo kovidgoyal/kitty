@@ -2219,6 +2219,58 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.decoration, before.decoration)
         self.ae(s.cursor.decoration_fg, before.decoration_fg)
 
+    def test_ime_text_around_cursor(self):
+        # The text macOS input methods read to decide things like whether a
+        # space is needed between Latin and CJK text. See :iss:`10492`.
+        s = self.create_screen(cols=8, lines=3)
+        self.ae(s.ime_text_around_cursor(), ('', ''))
+
+        s.draw('abcd')
+        self.ae(s.ime_text_around_cursor(), ('abcd', ''))
+        s.cursor.x = 2
+        self.ae(s.ime_text_around_cursor(), ('ab', 'cd'))
+        s.cursor.x = 0
+        self.ae(s.ime_text_around_cursor(), ('', 'abcd'))
+        # trailing unwritten cells are trimmed, but written blanks are not
+        s.cursor.x = 4
+        s.draw('  ')
+        s.cursor.x = 4
+        self.ae(s.ime_text_around_cursor(), ('abcd', '  '))
+
+        # a cursor sitting past the last cell, with the wrap still deferred
+        s = self.create_screen(cols=4, lines=3)
+        s.draw('abcd')
+        self.ae(s.cursor.x, 4)
+        self.ae(s.ime_text_around_cursor(), ('abcd', ''))
+
+        # wide characters occupy two cells but contribute one character
+        s = self.create_screen(cols=8, lines=3)
+        s.draw('你好ab')
+        self.ae(s.ime_text_around_cursor(), ('你好ab', ''))
+        s.cursor.x = 4
+        self.ae(s.ime_text_around_cursor(), ('你好', 'ab'))
+        s.cursor.x = 2
+        self.ae(s.ime_text_around_cursor(), ('你', '好ab'))
+
+        # the unit is the logical line, not the row: without this an input
+        # method sees nothing before a cursor at the start of a wrapped row
+        s = self.create_screen(cols=4, lines=3)
+        s.draw('abcdefg')
+        self.ae((s.cursor.x, s.cursor.y), (3, 1))
+        self.ae(s.ime_text_around_cursor(), ('abcdefg', ''))
+        s.cursor.x, s.cursor.y = 0, 1
+        self.ae(s.ime_text_around_cursor(), ('abcd', 'efg'))
+        s.cursor.x, s.cursor.y = 2, 0
+        self.ae(s.ime_text_around_cursor(), ('ab', 'cdefg'))
+
+        # a hard line break ends the logical line
+        s = self.create_screen(cols=4, lines=3)
+        s.draw('ab')
+        s.carriage_return(), s.linefeed()
+        s.draw('cd')
+        s.cursor.x = 1
+        self.ae(s.ime_text_around_cursor(), ('c', 'd'))
+
 
 def detect_url(self, scale=1):
     s = self.create_screen(cols=30 * scale)
