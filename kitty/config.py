@@ -218,8 +218,10 @@ def store_effective_config() -> tuple[str, str]:
             path = os.path.join(dest, f'{os.getpid()}')
             os.replace(tf.name, path)
     except OSError as err:
-        # writing the effective config is a best effort debugging aid, do not
-        # let it prevent kitty from starting, for example, when the disk is full
+        # effective config is used by some kittens to read the config of the
+        # current kitty instance. If missing they fallback to parsing
+        # kitty.conf so ignore the error which would prevent kitty from
+        # starting.
         msg = f'Failed to store effective config with error: {err}'
         log_error(msg)
         return '', msg
