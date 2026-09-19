@@ -14,7 +14,6 @@ from math import ceil
 from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import (
     DECAWM,
-    Face,
     ParsedFontFeature,
     Screen,
     get_fallback_font,
@@ -573,7 +572,7 @@ class Rendering(FontBaseTest):
         # pre-sorted candidate list before asking fontconfig to score them,
         # instead of scoring the entire font database for every codepoint. See
         # https://github.com/kovidgoyal/kitty/issues/10496
-        from kitty.fast_data_types import clear_fallback_font_cache, fc_match_fallback
+        from kitty.fast_data_types import Face, clear_fallback_font_cache, fc_match_fallback
 
         clear_fallback_font_cache()
         faces = {}
