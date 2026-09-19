@@ -248,13 +248,25 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     const uint8_t *table_limit = table + table_len;
     size_t count = 0;
     if (_PyTuple_Resize(&design_axes, count_of_design_axis_entries) == -1) return false;
-    for (const uint8_t *pos = table + offset_to_start_of_design_axes_entries;
-         pos + size_of_design_axis_entry <= table_limit && count < count_of_design_axis_entries;
+    // Bound the loop by the actual size of the tuple being filled rather than
+    // by count_of_design_axis_entries, so that the index passed to
+    // PyTuple_SET_ITEM() below cannot run past the end of the tuple.
+    const size_t num_design_axes = (size_t)PyTuple_GET_SIZE(design_axes);
+    for (const uint8_t *pos = table + offset_to_start_of_design_axes_entries; pos + size_of_design_axis_entry <= table_limit && count < num_design_axes;
          pos += size_of_design_axis_entry, count++) {
         p = (uint16_t *)(pos + 4);
         uint16_t name_id = next, ordering = next;
         PyObject *rec = Py_BuildValue(
-            "{ss# sN sH sN}", "tag", (char *)pos, 4, "name", get_best_name(name_lookup_table, name_id), "ordering", ordering, "values", PyList_New(0));
+            "{ss# sN sH sN}",
+            "tag",
+            (char *)pos,
+            (Py_ssize_t)4,
+            "name",
+            get_best_name(name_lookup_table, name_id),
+            "ordering",
+            ordering,
+            "values",
+            PyList_New(0));
         if (!rec) return false;
         PyTuple_SET_ITEM(design_axes, count, rec);
     }
