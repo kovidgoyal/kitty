@@ -50,6 +50,25 @@ There are many more powerful options, refer to the complete list below.
     windows working directory.
 
 
+Launching docked windows
+--------------------------
+
+The :option:`launch --dock-type` option creates a fixed-size window along an
+edge of either the current tab or a normal window. For example, to open a
+ten-line shell below the active window::
+
+    map f2 launch --dock-type=window-bottom-edge --dock-size=10 --cwd=current
+
+To instead reserve space along an edge of the entire tab, use a ``tab`` dock::
+
+    map f3 launch --dock-type=tab-right-edge --dock-size=30 --cwd=current
+
+Use :option:`launch --dock-no-focus` for display-only docks such as status
+bars. Dock options are also accepted by :code:`kitten @ launch` and in session
+files. See :ref:`docked_windows` for details about scope, focus, lifetime and
+interaction with layouts.
+
+
 The piping environment
 --------------------------
 
