@@ -24,6 +24,7 @@ from .base import (
     normalize_biases,
     safe_increment_bias,
 )
+from .constraints import LinearConstraintModel
 from .vertical import borders
 
 
@@ -139,12 +140,20 @@ class Tall(Layout):
     def remove_all_biases(self) -> bool:
         self.main_bias: list[float] = list(self.layout_opts.build_bias_list())
         self.biased_map: dict[int, float] = {}
+        self._main_constraint_model = LinearConstraintModel()
+        self._variable_constraint_model = LinearConstraintModel()
+        self._single_constraint_model = LinearConstraintModel()
         return True
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
         num = all_windows.num_groups - self.num_full_size_windows
-        bias = biased_map if num > 1 else None
-        return self.perp_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias, offset=self.num_full_size_windows)
+        bias = biased_map if num > 1 and biased_map else None
+        return self.perp_axis_layout(
+            all_windows.iter_all_layoutable_groups(),
+            bias=bias,
+            offset=self.num_full_size_windows,
+            cell_allocator=self._variable_constraint_model,
+        )
 
     def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
         if idx < len(self.main_bias):
@@ -189,9 +198,9 @@ class Tall(Layout):
         if mirrored:
             groups = tuple(reversed(groups))
         main_bias = normalize_biases(main_bias[:num])
-        xlayout = self.main_axis_layout(iter(groups), bias=main_bias)
+        xlayout = self.main_axis_layout(iter(groups), bias=main_bias, cell_allocator=self._main_constraint_model)
         for wg, xl in zip(groups, xlayout):
-            yl = next(self.perp_axis_layout(iter((wg,))))
+            yl = next(self.perp_axis_layout(iter((wg,)), cell_allocator=self._single_constraint_model))
             if is_fat:
                 xl, yl = yl, xl
             yield wg, xl, yl, True
@@ -206,23 +215,23 @@ class Tall(Layout):
         size = 0
         if mirrored:
             fsg = groups[: self.num_full_size_windows + 1]
-            xlayout = self.main_axis_layout(reversed(fsg), bias=main_bias)
+            xlayout = self.main_axis_layout(reversed(fsg), bias=main_bias, cell_allocator=self._main_constraint_model)
             for i, wg in enumerate(reversed(fsg)):
                 xl = next(xlayout)
                 if i == 0:
                     size = xl.content_size + xl.space_before + xl.space_after
                     continue
-                yl = next(self.perp_axis_layout(iter((wg,))))
+                yl = next(self.perp_axis_layout(iter((wg,)), cell_allocator=self._single_constraint_model))
                 if is_fat:
                     xl, yl = yl, xl
                 yield wg, xl, yl, True
         else:
-            xlayout = self.main_axis_layout(islice(groups, self.num_full_size_windows + 1), bias=main_bias)
+            xlayout = self.main_axis_layout(islice(groups, self.num_full_size_windows + 1), bias=main_bias, cell_allocator=self._main_constraint_model)
             for i, wg in enumerate(groups):
                 if i >= self.num_full_size_windows:
                     break
                 xl = next(xlayout)
-                yl = next(self.perp_axis_layout(iter((wg,))))
+                yl = next(self.perp_axis_layout(iter((wg,)), cell_allocator=self._single_constraint_model))
                 start = xl.content_pos + xl.content_size + xl.space_after
                 if is_fat:
                     xl, yl = yl, xl
@@ -234,7 +243,7 @@ class Tall(Layout):
             if i < self.num_full_size_windows:
                 continue
             yl = next(ylayout)
-            xl = next(self.main_axis_layout(iter((wg,)), start=start, size=size))
+            xl = next(self.main_axis_layout(iter((wg,)), start=start, size=size, cell_allocator=self._single_constraint_model))
             if is_fat:
                 xl, yl = yl, xl
             yield wg, xl, yl, False
@@ -242,7 +251,11 @@ class Tall(Layout):
     def do_layout(self, windows: WindowList) -> None:
         num = windows.num_groups
         if num == 1:
-            self.layout_single_window_group(next(windows.iter_all_layoutable_groups()))
+            self.layout_single_window_group(
+                next(windows.iter_all_layoutable_groups()),
+                x_cell_allocator=self._single_constraint_model,
+                y_cell_allocator=self._single_constraint_model,
+            )
             return
         layouts = (self.simple_layout if num <= self.num_full_size_windows + 1 else self.full_layout)(windows)
         for wg, xl, yl, is_full_size in layouts:
