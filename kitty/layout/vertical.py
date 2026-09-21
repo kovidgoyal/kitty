@@ -10,6 +10,7 @@ from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import BorderLine, DragOverlayMode, Layout, LayoutData, LayoutDimension, lgd
+from .constraints import LinearConstraintModel
 
 
 def borders(
@@ -74,14 +75,15 @@ class Vertical(Layout):
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
         num_windows = all_windows.num_groups
-        bias = biased_map if num_windows > 1 else None
-        return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias)
+        bias = biased_map if num_windows > 1 and biased_map else None
+        return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias, cell_allocator=self._constraint_model)
 
     def fixed_layout(self, wg: WindowGroup) -> LayoutDimension:
         return self.perp_axis_layout(iter((wg,)), border_mult=0 if lgd.draw_minimal_borders else 1)
 
     def remove_all_biases(self) -> bool:
         self.biased_map: dict[int, float] = {}
+        self._constraint_model = LinearConstraintModel()
         return True
 
     def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:

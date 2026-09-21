@@ -4,7 +4,8 @@
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
-from kitty.layout.base import layout_dimension, lgd
+from kitty.layout.base import CellBias, calculate_cells_map, layout_dimension, lgd, normalize_biases
+from kitty.layout.constraints import LinearConstraintModel
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.types import WindowGeometry
@@ -689,6 +690,38 @@ class TestLayout(BaseTest):
         self.assertFalse(q.on_window_removed(all_windows))
         q.add_window(all_windows, Window(3), location='vsplit')
         self.assertAlmostEqual(q.pairs_root.bias, 0.8, places=5)
+
+    def test_linear_constraint_cell_allocation(self):
+        model = LinearConstraintModel()
+        for num_windows in range(1, 17):
+            sequence_biases = normalize_biases([float(i + 1) for i in range(num_windows)])
+            biases: list[CellBias] = [None, sequence_biases]
+            if num_windows > 1:
+                biases.append({0: 0.2, num_windows - 1: -0.1})
+            cell_counts = (1, num_windows * 5, num_windows * 6, num_windows * 17 + 3, 257)
+            for number_of_cells in cell_counts:
+                for bias in biases:
+                    with self.subTest(num_windows=num_windows, number_of_cells=number_of_cells, bias=bias):
+                        expected = calculate_cells_map(bias, num_windows, number_of_cells)
+                        self.ae(model(bias, num_windows, number_of_cells), expected)
+
+        model(None, 4, 100)
+        solver = model.solver
+        model(None, 4, 101)
+        self.assertIs(model.solver, solver)
+        model(None, 5, 101)
+        self.assertIsNot(model.solver, solver)
+
+        for num_windows in range(1, 17):
+            decorations = tuple((i % 3, (i + 1) % 4) for i in range(num_windows))
+            bias = normalize_biases([float(i + 1) for i in range(num_windows)])
+            for cell_length in (1, 7, 13):
+                for length in (0, num_windows * 2, num_windows * cell_length * 6 + sum(map(sum, decorations)), 511):
+                    for alignment in (0, 1, 2):
+                        args = (3, length, cell_length, decorations, alignment, bias)
+                        expected = tuple(layout_dimension(*args))
+                        actual = tuple(layout_dimension(*args, cell_allocator=model))
+                        self.ae(actual, expected)
 
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the
