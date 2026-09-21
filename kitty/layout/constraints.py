@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, kitty contributors
 
+from collections.abc import Sequence
 from math import floor
 from typing import TYPE_CHECKING, cast
 
@@ -16,6 +17,51 @@ if TYPE_CHECKING:
 VIEWPORT_STRENGTH = 1_000_000.0
 STRONG_PREFERENCE = 100_000.0
 MEDIUM_PREFERENCE = 1_000.0
+
+
+class FixedConstraintModel:
+    """Reserve fixed-size regions, clipping later regions first on shortage."""
+
+    def __init__(self) -> None:
+        self.signature: tuple[int, ...] = ()
+        self.solver = AmoebaSolver()
+        self.total = 0
+        self.content = 0
+        self.sizes: tuple[int, ...] = ()
+
+    def rebuild(self, requested: tuple[int, ...]) -> None:
+        self.signature = requested
+        self.solver = AmoebaSolver()
+        self.total = self.solver.add_variable()
+        self.content = self.solver.add_variable()
+        self.sizes = tuple(self.solver.add_variable() for _ in requested)
+        self.solver.add_edit_variable(self.total, VIEWPORT_STRENGTH)
+        self.solver.add_constraint(tuple((size, 1.0) for size in self.sizes) + ((self.content, 1.0), (self.total, -1.0)), '==', 0.0)
+        self.solver.add_constraint(((self.content, 1.0),), '>=', 0.0)
+        for i, (size, preferred) in enumerate(zip(self.sizes, requested)):
+            self.solver.add_constraint(((size, 1.0),), '>=', 0.0)
+            priority = float(len(requested) - i)
+            self.solver.add_constraint(((size, 1.0),), '==', preferred, priority)
+
+    def __call__(self, total: int, requested: Sequence[int]) -> tuple[list[int], int]:
+        signature = tuple(max(0, x) for x in requested)
+        if signature != self.signature:
+            self.rebuild(signature)
+        total = max(0, total)
+        self.solver.suggest_value(self.total, total)
+        self.solver.update_variables()
+        sizes = []
+        for size, preferred in zip(self.sizes, signature):
+            solved = self.solver.value(size)
+            if abs(solved - preferred) < 1e-9:
+                solved = preferred
+            elif abs(solved - round(solved)) < 1e-9:
+                solved = round(solved)
+            sizes.append(max(0, floor(solved)))
+        remainder = total - sum(sizes)
+        if remainder < 0:
+            raise AssertionError(f'Amoeba allocated {sum(sizes)} fixed pixels from {total}')
+        return sizes, remainder
 
 
 class SplitConstraintModel:

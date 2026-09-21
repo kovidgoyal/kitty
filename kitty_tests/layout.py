@@ -5,10 +5,10 @@ from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import CellBias, calculate_cells_map, layout_dimension, lgd, normalize_biases
-from kitty.layout.constraints import LinearConstraintModel, SplitConstraintModel
-from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
+from kitty.layout.constraints import FixedConstraintModel, LinearConstraintModel, SplitConstraintModel
+from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
-from kitty.types import WindowGeometry
+from kitty.types import DockData, WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
 
@@ -722,6 +722,32 @@ class TestLayout(BaseTest):
                         expected = tuple(layout_dimension(*args))
                         actual = tuple(layout_dimension(*args, cell_allocator=model))
                         self.ae(actual, expected)
+
+    def test_fixed_constraint_allocation(self):
+        model = FixedConstraintModel()
+        self.ae(model(40, (10, 20)), ([10, 20], 10))
+        self.ae(model(25, (10, 20)), ([10, 15], 0))
+        self.ae(model(5, (10, 20)), ([5, 0], 0))
+        model(40, (10, 20))
+        solver = model.solver
+        model(41, (10, 20))
+        self.assertIs(model.solver, solver)
+
+    def test_dock_metadata_serialization(self):
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 3)
+        owner, dock = windows.all_windows[0], windows.all_windows[2]
+        dock.dock_data = DockData('window', 'bottom', 2, owner.id, False)
+        state = layout.serialize(windows)
+
+        restored_layout = create_layout(Vertical)
+        restored = create_windows(restored_layout, 3)
+        for window in restored:
+            window.serialized_id = window.id
+        self.assertTrue(restored_layout.unserialize(state, restored))
+        self.ae(len(tuple(restored.iter_main_groups())), 2)
+        self.ae(len(tuple(restored.iter_dock_groups())), 1)
+        self.ae(restored.all_windows[2].dock_data, DockData('window', 'bottom', 2, restored.all_windows[0].id, False))
 
     def test_split_constraint_allocation(self):
         model = SplitConstraintModel()

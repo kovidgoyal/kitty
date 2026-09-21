@@ -46,6 +46,38 @@ class FloatEdges(NamedTuple):
     bottom: float = 0
 
 
+DockEdge = Literal['left', 'top', 'right', 'bottom']
+DockScope = Literal['tab', 'window']
+
+
+class DockData(NamedTuple):
+    scope: DockScope
+    edge: DockEdge
+    size: int = 1
+    owner_window_id: int = 0
+    focusable: bool = True
+
+    @property
+    def type(self) -> str:
+        return f'{self.scope}-{self.edge}-edge'
+
+    def serialize(self) -> dict[str, Any]:
+        return self._asdict()
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> 'DockData':
+        scope, edge = data.get('scope'), data.get('edge')
+        if scope not in ('tab', 'window') or edge not in ('left', 'top', 'right', 'bottom'):
+            raise ValueError(f'Invalid dock data: {data!r}')
+        return cls(
+            cast(DockScope, scope),
+            cast(DockEdge, edge),
+            max(1, int(data.get('size', 1))),
+            int(data.get('owner_window_id', 0)),
+            bool(data.get('focusable', True)),
+        )
+
+
 class WindowGeometry(NamedTuple):
     left: int
     top: int

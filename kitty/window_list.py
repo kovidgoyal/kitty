@@ -9,7 +9,7 @@ from itertools import count
 from typing import Any, Deque, Union
 
 from .fast_data_types import Color, get_options
-from .types import OverlayType, WindowGeometry
+from .types import DockData, OverlayType, WindowGeometry
 from .typing_compat import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
@@ -164,6 +164,13 @@ class WindowGroup:
             return w.is_visible_in_layout
         return False
 
+    @property
+    def dock_data(self) -> DockData | None:
+        for window in self.windows:
+            if dock := getattr(window, 'dock_data', None):
+                return dock
+        return None
+
 
 class WindowList:
     force_show_title_bars: bool = False
@@ -189,11 +196,21 @@ class WindowList:
         q = window if isinstance(window, int) else window.id
         return q in self.id_map
 
+    def serialized_docks(self) -> list[dict[str, Any]]:
+        ans = []
+        for group in self.groups:
+            if dock := group.dock_data:
+                data = dock.serialize()
+                data['window_id'] = next(w.id for w in group if getattr(w, 'dock_data', None) is dock)
+                ans.append(data)
+        return ans
+
     def serialize_state(self) -> dict[str, Any]:
         return {
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_state() for g in self.groups],
+            'docks': self.serialized_docks(),
         }
 
     def serialize_layout_state(self) -> dict[str, Any]:
@@ -201,6 +218,7 @@ class WindowList:
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_layout_state() for g in self.groups],
+            'docks': self.serialized_docks(),
         }
 
     def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int], apply: bool = True) -> dict[int, int] | None:
@@ -213,6 +231,18 @@ class WindowList:
             # some window in this collection does not correspond to a
             # serialized window
             return None
+        if apply:
+            for window in self.all_windows:
+                window.dock_data = None
+            for serialized in state.get('docks', ()):
+                if window := self.id_map.get(window_id_map.get(serialized.get('window_id'), 0)):
+                    data = dict(serialized)
+                    old_owner_window_id = int(data.get('owner_window_id') or 0)
+                    data['owner_window_id'] = window_id_map.get(old_owner_window_id, 0)
+                    try:
+                        window.dock_data = DockData.from_dict(data)
+                    except (TypeError, ValueError):
+                        pass
         ans = {}
         gmap = {g.id: g for g in self.groups}
         present_wids_map = {g.id: {w.id for w in g} for g in self.groups}
@@ -327,6 +357,12 @@ class WindowList:
     def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
         return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
 
+    def iter_main_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
+        return iter(g for g in self.groups if g.dock_data is None and (not only_visible or g.is_visible_in_layout))
+
+    def iter_dock_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
+        return iter(g for g in self.groups if g.dock_data is not None and (not only_visible or g.is_visible_in_layout))
+
     def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[tuple[int, WindowType]]:
         for i, g in enumerate(self.groups):
             if not only_visible or g.is_visible_in_layout:
@@ -354,6 +390,24 @@ class WindowList:
     @property
     def num_groups(self) -> int:
         return len(self.groups)
+
+    @property
+    def num_main_groups(self) -> int:
+        return sum(1 for _ in self.iter_main_groups())
+
+    def is_docked(self, window: WindowOrId) -> bool:
+        group = self.group_for_window(window)
+        return bool(group and group.dock_data)
+
+    def main_group_idx_for_window(self, window: WindowOrId) -> int | None:
+        try:
+            q = self.id_map[window] if isinstance(window, int) else window
+        except KeyError:
+            return None
+        for i, group in enumerate(self.iter_main_groups()):
+            if q in group:
+                return i
+        return None
 
     def window_for_id(self, x: int) -> WindowType | None:
         return self.id_map.get(x)

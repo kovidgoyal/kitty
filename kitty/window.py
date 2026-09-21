@@ -104,7 +104,7 @@ from .options.types import Options
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, NeighborsMap, OverlayType, WindowGeometry, ac, run_once
+from .types import DockData, MouseEvent, NeighborsMap, OverlayType, WindowGeometry, ac, run_once
 from .typing_compat import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int,
@@ -427,6 +427,7 @@ class WindowCreationSpec(NamedTuple):
     cwd_from: CwdRequest | None = None
     cwd: str | None = None
     overlay_for: int | None = None
+    dock_data: DockData | None = None
     env: tuple[tuple[str, str], ...] | None = None
     location: str | None = None
     copy_colors_from: int | None = None
@@ -731,6 +732,7 @@ class Window:
     child_died: bool = False
     child_exit_status: int = 0
     child_exit_code: int = 0
+    dock_data: DockData | None = None
 
     @classmethod
     @contextmanager
@@ -763,6 +765,7 @@ class Window:
         else:
             self.watchers = global_watchers().copy()
         self.keys_redirected_till_ready_from: int = 0
+        self.dock_data = None
         self.last_focused_at = 0.0
         self.is_focused: bool = False
         self.progress = Progress()
@@ -2386,6 +2389,8 @@ class Window:
         }
         if self.window_custom_type:
             ans['window_custom_type'] = self.window_custom_type
+        if self.dock_data is not None:
+            ans['dock_data'] = self.dock_data.serialize()
         if self.overlay_type is not OverlayType.transient:
             ans['overlay_type'] = self.overlay_type.value
         if self.user_vars:
@@ -2428,6 +2433,11 @@ class Window:
                 ans.append('--hold')
             if self.creation_spec.hold_after_ssh:
                 ans.append('--hold-after-ssh')
+            if self.creation_spec.dock_data is not None:
+                dock = self.creation_spec.dock_data
+                ans.extend((f'--dock-type={dock.type}', f'--dock-size={dock.size}'))
+                if not dock.focusable:
+                    ans.append('--dock-no-focus')
         ans.extend(f'--var={k}={v}' for k, v in self.user_vars.items())
         ans.extend(self.padding.as_launch_args())
         ans.extend(self.margin.as_launch_args('margin'))
