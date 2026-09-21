@@ -6,7 +6,7 @@ import os
 import shutil
 from collections.abc import Callable, Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, Literal, NamedTuple, TypedDict
+from typing import Any, Literal, NamedTuple, TypedDict, cast
 
 from .boss import Boss
 from .child import Child
@@ -17,7 +17,7 @@ from .constants import is_wayland
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
-from .types import LayerShellConfig, OverlayType, run_once
+from .types import DockData, DockEdge, DockScope, LayerShellConfig, OverlayType, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
@@ -25,6 +25,18 @@ from .window import CwdRequest, CwdRequestType, Watchers, Window
 class LaunchSpec(NamedTuple):
     opts: LaunchCLIOptions
     args: list[str]
+
+
+dock_types = (
+    'tab-left-edge',
+    'tab-top-edge',
+    'tab-right-edge',
+    'tab-bottom-edge',
+    'window-left-edge',
+    'window-top-edge',
+    'window-right-edge',
+    'window-bottom-edge',
+)
 
 
 # Options definition {{{
@@ -124,6 +136,28 @@ Where to launch the child process:
     shell protocol. Use the :option:`kitten @ launch --os-panel` option to configure the panel.
 
 #placeholder_for_formatting#
+
+
+--dock-type
+type=choices
+default=none
+choices=none,{','.join(dock_types)}
+Create the window as a fixed-size dock at an edge of the tab or of the active
+window. Only valid with :option:`--type=window`. Multiple docks can be created
+at each edge. Window docks are visible whenever their owner window is visible.
+
+
+--dock-size
+type=int
+default=1
+The size of a dock in rows for top and bottom docks, or columns for left and
+right docks. The size does not include the dock window's decorations.
+
+
+--dock-no-focus
+type=bool-set
+Prevent the dock from receiving keyboard focus or participating in focus
+navigation. Useful for status bars and other display-only docks.
 
 
 --keep-focus --dont-take-focus
@@ -592,6 +626,7 @@ class LaunchKwds(TypedDict):
     marker: str | None
     cmd: list[str] | None
     overlay_for: int | None
+    dock_data: DockData | None
     stdin: bytes | None
     hold: bool
     bias: float | None
@@ -695,6 +730,7 @@ def _launch(
         'marker': opts.marker or None,
         'cmd': None,
         'overlay_for': None,
+        'dock_data': None,
         'stdin': None,
         'hold': False,
         'bias': None,
@@ -828,6 +864,11 @@ def _launch(
         if child_death_callback is not None:
             child_death_callback(0, None)
     else:
+        if opts.dock_type != 'none':
+            if opts.type != 'window':
+                raise ValueError('--dock-type is only valid with --type=window')
+            if opts.dock_size < 1:
+                raise ValueError('--dock-size must be at least one')
         add_to_session = opts.add_to_session or ''
         match add_to_session:
             case '.':
@@ -842,6 +883,18 @@ def _launch(
             tab = target_tab
         else:
             tab = tab_for_window(boss, opts, target_tab, next_to, add_to_session)
+        if opts.dock_type != 'none':
+            scope, edge, _ = opts.dock_type.split('-', 2)
+            owner_window_id = 0
+            if scope == 'window':
+                owner = next_to if next_to is not None and next_to in tab else tab.windows.active_main_window
+                owner_group = tab.windows.group_for_window(owner) if owner is not None else None
+                if owner_group is None or owner_group.dock_data is not None:
+                    owner_group = tab.windows.active_main_group
+                if owner_group is None:
+                    raise ValueError('A window dock needs a normal window in the target tab')
+                owner_window_id = owner_group.active_window_id
+            kw['dock_data'] = DockData(cast(DockScope, scope), cast(DockEdge, edge), opts.dock_size, owner_window_id, not opts.dock_no_focus)
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
             new_window: Window = tab.new_window(

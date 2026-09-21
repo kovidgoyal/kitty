@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from unittest.mock import patch
+
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
@@ -787,6 +789,45 @@ class TestLayout(BaseTest):
         self.ae(layout.neighbors(windows)['right'][0], windows.group_for_window(window_dock).id)
         windows.set_active_window_group_for(window_dock)
         self.ae(layout.neighbors(windows)['left'][0], windows.group_for_window(owner).id)
+
+    def test_window_dock_owner_lifetime(self):
+        from kitty.tabs import Tab as RealTab
+
+        class Boss:
+            marked = []
+
+            def mark_window_for_close(self, window):
+                self.marked.append(window)
+
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        dock = Window(2)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        windows.set_active_window_group_for(owner)
+        tab = object.__new__(RealTab)
+        tab.windows, tab.os_window_id, tab.id = windows, 1, 1
+        boss = Boss()
+        with patch('kitty.tabs.remove_window'), patch('kitty.tabs.get_boss', return_value=boss):
+            RealTab.remove_window(tab, owner, do_post_removal_update=False)
+        self.assertIsNone(windows.active_window)
+        self.assertFalse(dock.is_visible_in_layout)
+        self.ae(boss.marked, [dock])
+
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        overlay = Window(2, overlay_for=owner.id)
+        windows.add_window(overlay, group_of=owner)
+        dock = Window(3)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        tab.windows = windows
+        boss.marked = []
+        with patch('kitty.tabs.remove_window'), patch('kitty.tabs.get_boss', return_value=boss):
+            RealTab.remove_window(tab, owner, do_post_removal_update=False)
+        self.ae(dock.dock_data.owner_window_id, overlay.id)
+        self.ae(boss.marked, [])
 
     def test_docks_gracefully_consume_undersized_viewport(self):
         for layout_class in (Stack, Vertical, Horizontal, Tall, Grid, Splits):

@@ -32,6 +32,13 @@ class TestConfParsing(BaseTest):
     def test_launcher(self):
         launcher(self)
 
+    def test_launch_dock_options(self):
+        from kitty.launch import parse_launch_args
+
+        opts, args = parse_launch_args(['--dock-type=window-bottom-edge', '--dock-size=3', '--dock-no-focus', 'printf', 'ok'])
+        self.ae((opts.dock_type, opts.dock_size, opts.dock_no_focus), ('window-bottom-edge', 3, True))
+        self.ae(args, ['printf', 'ok'])
+
     def test_cli_parsing(self):
         cli_parsing(self)
 

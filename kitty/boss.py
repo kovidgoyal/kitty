@@ -3842,7 +3842,7 @@ class Boss:
         min_w = opts.window_title_bar_min_windows
         currently_forced = any(t.force_show_title_bars for t in tm)
         for t in tm:
-            visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True))
+            visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True, include_docks=True))
             naturally_visible = min_w > 0 and visible >= min_w
             if not naturally_visible:
                 t.force_show_title_bars = not currently_forced
