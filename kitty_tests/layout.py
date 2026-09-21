@@ -37,10 +37,12 @@ class Window:
         return 1
 
     def effective_padding(self, edge):
-        return 1
+        value = getattr(self.padding, edge)
+        return 1 if value is None else round(value)
 
     def effective_margin(self, edge):
-        return 1
+        value = getattr(self.margin, edge)
+        return 1 if value is None else round(value)
 
     def set_visible_in_layout(self, val):
         self.is_visible_in_layout = bool(val)
@@ -1157,6 +1159,61 @@ class TestLayout(BaseTest):
                                 gaps.append(frames[i].top - frames[j].bottom)
                 self.assertTrue(gaps)
                 self.ae(len(set(gaps)), 1)
+
+    def test_neighboring_margins_collapse(self):
+        # Edges are left, top, right, bottom. These cases correspond to the
+        # documented one-, two-, three- and four-value margin shorthands.
+        cases = (
+            (Edges(3, 3, 3, 3), (3, 3)),
+            (Edges(7, 2, 7, 2), (7, 2)),
+            (Edges(7, 2, 7, 5), (7, 5)),
+            (Edges(11, 2, 7, 5), (11, 5)),
+        )
+        for margins, expected_gaps in cases:
+            with self.subTest(margins=margins):
+                q = create_layout(Splits)
+                all_windows = create_windows(q, num=0)
+                first, top_right, bottom_right = Window(1), Window(2), Window(3)
+                for window in (first, top_right, bottom_right):
+                    for edge, margin in zip(('left', 'top', 'right', 'bottom'), margins):
+                        setattr(window.margin, edge, margin)
+                        setattr(window.padding, edge, 2)
+                q.add_window(all_windows, first)
+                q.add_window(all_windows, top_right, location='vsplit')
+                q.add_window(all_windows, bottom_right, location='hsplit')
+
+                def set_dimensions(unused_windows):
+                    q._full_central = lgd.central = Region((0, 0, 263, 263, 264, 264))
+                    lgd.cell_width = lgd.cell_height = 1
+                    lgd.draw_minimal_borders = False
+
+                q._set_dimensions = set_dimensions
+                q(all_windows)
+
+                def frame(window):
+                    geometry = window.geometry
+                    border = window.effective_border()
+                    c = geometry.compensatory
+                    return Edges(
+                        geometry.left - window.effective_padding('left') - c.left - border,
+                        geometry.top - window.effective_padding('top') - c.top - border,
+                        geometry.right + window.effective_padding('right') + c.right + border,
+                        geometry.bottom + window.effective_padding('bottom') + c.bottom + border,
+                    )
+
+                left, upper, lower = map(frame, (first, top_right, bottom_right))
+                horizontal, vertical = expected_gaps
+                self.ae((upper.left - left.right, lower.left - left.right, lower.top - upper.bottom), (horizontal, horizontal, vertical))
+                self.ae((left.left, upper.top, upper.right, left.bottom), (margins.left, margins.top, 264 - margins.right, 264 - margins.bottom))
+                self.ae(left.top, upper.top)
+                self.ae(left.bottom, lower.bottom)
+                for window, window_frame in zip((first, top_right, bottom_right), (left, upper, lower)):
+                    geometry = window.geometry
+                    border = window.effective_border()
+                    self.assertGreaterEqual(geometry.left - window_frame.left - border, window.effective_padding('left'))
+                    self.assertGreaterEqual(geometry.top - window_frame.top - border, window.effective_padding('top'))
+                    self.assertGreaterEqual(window_frame.right - geometry.right - border, window.effective_padding('right'))
+                    self.assertGreaterEqual(window_frame.bottom - geometry.bottom - border, window.effective_padding('bottom'))
 
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the

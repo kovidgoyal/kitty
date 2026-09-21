@@ -717,7 +717,7 @@ class Layout:
                         before = after = -1
                     if before >= 0:
                         horizontal_neighbors.append((before, after))
-                        margins = specs[before].margins.right + specs[after].margins.left
+                        margins = max(specs[before].margins.right, specs[after].margins.left)
                         residual = geometries[before].compensatory.right + geometries[after].compensatory.left
                         minimum_gaps[0] = max(minimum_gaps[0], margins)
                         preferred_gaps[0] = max(preferred_gaps[0], margins + residual)
@@ -730,7 +730,7 @@ class Layout:
                         before = after = -1
                     if before >= 0:
                         vertical_neighbors.append((before, after))
-                        margins = specs[before].margins.bottom + specs[after].margins.top
+                        margins = max(specs[before].margins.bottom, specs[after].margins.top)
                         residual = geometries[before].compensatory.bottom + geometries[after].compensatory.top
                         minimum_gaps[1] = max(minimum_gaps[1], margins)
                         preferred_gaps[1] = max(preferred_gaps[1], margins + residual)
