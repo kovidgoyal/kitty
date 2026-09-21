@@ -7,10 +7,10 @@ from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import CellBias, calculate_cells_map, layout_dimension, lgd, normalize_biases
-from kitty.layout.constraints import FixedConstraintModel, FixedSize, LinearConstraintModel, SplitConstraintModel
+from kitty.layout.constraints import FixedConstraintModel, FixedSize, FrameConstraintModel, FrameSpec, LinearConstraintModel, SplitConstraintModel
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
-from kitty.types import DockData, WindowGeometry
+from kitty.types import DockData, Edges, WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
 
@@ -1034,6 +1034,25 @@ class TestLayout(BaseTest):
         solver = model.solver
         model(101, 0.5, 1, 10, 10)
         self.assertIs(model.solver, solver)
+
+    def test_frame_constraint_model(self):
+        specs = (
+            FrameSpec(Edges(0, 0, 100, 100), Edges(3, 6, 92, 96), Edges(3, 3, 3, 3), 20, 20),
+            FrameSpec(Edges(100, 0, 200, 50), Edges(108, 3, 197, 45), Edges(3, 3, 3, 3), 20, 20),
+            FrameSpec(Edges(100, 50, 200, 100), Edges(106, 55, 197, 97), Edges(3, 3, 3, 3), 20, 20),
+        )
+        frames, gaps = FrameConstraintModel()(specs, ((0, 1), (0, 2)), ((1, 2),), (6, 9), (8, 11))
+        left, top_right, bottom_right = frames
+        self.ae(gaps, (8, 11))
+        self.ae(left.top, top_right.top)
+        self.ae(left.bottom, bottom_right.bottom)
+        self.ae(top_right.left, bottom_right.left)
+        self.ae(top_right.right, bottom_right.right)
+        self.ae(top_right.left - left.right, gaps[0])
+        self.ae(bottom_right.left - left.right, gaps[0])
+        self.ae(bottom_right.top - top_right.bottom, gaps[1])
+        _, unified_gaps = FrameConstraintModel()(specs, ((0, 1), (0, 2)), ((1, 2),), (6, 6), (8, 11), unify_gaps=True)
+        self.ae(unified_gaps, (11, 11))
 
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the

@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, kitty contributors
 
+from collections import defaultdict
 from collections.abc import Sequence
 from math import floor
 from typing import TYPE_CHECKING, NamedTuple, cast
 
 from kitty.fast_data_types import AmoebaSolver
+from kitty.types import Edges
 
 if TYPE_CHECKING:
     from .base import CellBias
@@ -17,6 +19,100 @@ if TYPE_CHECKING:
 VIEWPORT_STRENGTH = 1_000_000.0
 STRONG_PREFERENCE = 100_000.0
 MEDIUM_PREFERENCE = 1_000.0
+FRAME_EDGE_PREFERENCE = 10.0
+
+
+class FrameSpec(NamedTuple):
+    allocation: Edges
+    preferred: Edges
+    margins: Edges
+    minimum_width: int
+    minimum_height: int
+
+
+class FrameConstraintModel:
+    """Align kitty window frames and give equivalent shared edges a common gutter."""
+
+    def __call__(
+        self,
+        specs: Sequence[FrameSpec],
+        horizontal_neighbors: Sequence[tuple[int, int]],
+        vertical_neighbors: Sequence[tuple[int, int]],
+        minimum_gaps: tuple[int, int],
+        preferred_gaps: tuple[int, int],
+        unify_gaps: bool = False,
+    ) -> tuple[tuple[Edges, ...], tuple[int, int]]:
+        if not specs:
+            return (), (0, 0)
+        solver = AmoebaSolver()
+        # Kitty windows whose allocation edges lie on the same line use the
+        # same solver variable. This encodes alignment directly and keeps the
+        # tableau small for grids, where many windows share each row/column line.
+        aligned: dict[tuple[int, int, int], list[tuple[int, int]]] = defaultdict(list)
+        pane_keys = []
+        for i, spec in enumerate(specs):
+            a = spec.allocation
+            keys = ((0, 0, a.left), (1, 0, a.top), (0, 1, a.right), (1, 1, a.bottom))
+            pane_keys.append(keys)
+            for edge, key in enumerate(keys):
+                aligned[key].append((i, edge))
+        variables = {key: solver.add_variable() for key in aligned}
+        frames = tuple(tuple(variables[key] for key in keys) for keys in pane_keys)
+
+        if unify_gaps:
+            gap = solver.add_variable()
+            gaps = (gap, gap)
+            gap_constraints = ((gap, max(minimum_gaps), max(preferred_gaps)),)
+        else:
+            gaps = (solver.add_variable(), solver.add_variable())
+            gap_constraints = tuple(zip(gaps, minimum_gaps, preferred_gaps))
+        for gap, minimum_gap, preferred_gap in gap_constraints:
+            solver.add_constraint(((gap, 1.0),), '>=', 0.0)
+            solver.add_constraint(((gap, 1.0),), '>=', max(0, minimum_gap), STRONG_PREFERENCE)
+            solver.add_constraint(((gap, 1.0),), '==', max(minimum_gap, preferred_gap), MEDIUM_PREFERENCE)
+
+        neighbor_edges: set[tuple[int, int]] = set()
+        neighbor_variables: tuple[set[tuple[int, int]], set[tuple[int, int]]] = (set(), set())
+        for before, after in horizontal_neighbors:
+            neighbor_edges.update(((before, 2), (after, 0)))
+            neighbor_variables[0].add((frames[before][2], frames[after][0]))
+        for before, after in vertical_neighbors:
+            neighbor_edges.update(((before, 3), (after, 1)))
+            neighbor_variables[1].add((frames[before][3], frames[after][1]))
+
+        for spec, (left, top, right, bottom) in zip(specs, frames):
+            solver.add_constraint(((right, 1.0), (left, -1.0)), '>=', max(0, spec.minimum_width))
+            solver.add_constraint(((bottom, 1.0), (top, -1.0)), '>=', max(0, spec.minimum_height))
+        for (axis, trailing, coordinate), edges in aligned.items():
+            variable = variables[axis, trailing, coordinate]
+            relation = '<=' if trailing else '>='
+            solver.add_constraint(((variable, 1.0),), relation, coordinate)
+            preferred_values = sorted(specs[window].preferred[edge] for window, edge in edges)
+            solver.add_constraint(((variable, 1.0),), '==', preferred_values[len(preferred_values) // 2], FRAME_EDGE_PREFERENCE)
+            outer = tuple((window, edge) for window, edge in edges if (window, edge) not in neighbor_edges)
+            if outer:
+                margin = max(specs[window].margins[edge] for window, edge in outer)
+                target = coordinate - margin if trailing else coordinate + margin
+                solver.add_constraint(((variable, 1.0),), '==', target, STRONG_PREFERENCE)
+        for gap, variables_for_axis in zip(gaps, neighbor_variables):
+            for before, after in variables_for_axis:
+                solver.add_constraint(((after, 1.0), (before, -1.0), (gap, -1.0)), '==', 0.0)
+
+        solver.update_variables()
+        # Pin the optimized gutters to integers before reading the frame edges.
+        # Geometry and configured margins are pixel-valued, and making the second
+        # solve exact prevents independent edge rounding from changing a gap at a
+        # shared boundary.
+        solved_gaps = tuple(max(0, floor(solver.value(gap) + 1e-9)) for gap in gaps)
+        for (gap, _, _), solved_gap in zip(gap_constraints, solved_gaps):
+            solver.add_constraint(((gap, 1.0),), '==', solved_gap)
+        solver.update_variables()
+
+        ans = []
+        for variables in frames:
+            values = tuple(round(solver.value(variable)) for variable in variables)
+            ans.append(Edges(*values))
+        return tuple(ans), cast(tuple[int, int], solved_gaps)
 
 
 class FixedSize(NamedTuple):
