@@ -782,7 +782,7 @@ class Splits(Layout):
         return pair
 
     def do_layout(self, windows: WindowList) -> None:
-        groups = tuple(windows.iter_all_layoutable_groups())
+        groups = tuple(windows.iter_main_groups())
         root = self.pairs_root
         all_present_group_ids = {g.id for g in groups}
         already_placed_group_ids = frozenset(root.all_window_ids())
@@ -848,6 +848,8 @@ class Splits(Layout):
             p.bias = bias
 
     def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
+        if all_windows.is_docked(window_id):
+            return False
         grp = all_windows.group_for_window(window_id)
         if grp is None:
             return False
@@ -882,7 +884,7 @@ class Splits(Layout):
         return False
 
     def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
-        groups = tuple(windows.iter_all_layoutable_groups())
+        groups = tuple(windows.iter_main_groups())
         window_count = len(groups)
         if not lgd.draw_minimal_borders or window_count < 2:
             return

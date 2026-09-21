@@ -26,6 +26,7 @@ class Window:
         self.padding = EdgeWidths()
         self.margin = EdgeWidths()
         self.focused = False
+        self.dock_data = None
 
     def focus_changed(self, focused):
         self.focused = focused
@@ -725,6 +726,7 @@ class TestLayout(BaseTest):
 
     def test_fixed_constraint_allocation(self):
         model = FixedConstraintModel()
+        self.ae(model(40, ()), ([], 40))
         self.ae(model(40, (10, 20)), ([10, 20], 10))
         self.ae(model(25, (10, 20)), ([10, 15], 0))
         self.ae(model(5, (10, 20)), ([5, 0], 0))
@@ -748,6 +750,98 @@ class TestLayout(BaseTest):
         self.ae(len(tuple(restored.iter_main_groups())), 2)
         self.ae(len(tuple(restored.iter_dock_groups())), 1)
         self.ae(restored.all_windows[2].dock_data, DockData('window', 'bottom', 2, restored.all_windows[0].id, False))
+
+    def test_dock_geometry(self):
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        tab_dock, window_dock = Window(2), Window(3)
+        tab_dock.dock_data = DockData('tab', 'top', 2)
+        window_dock.dock_data = DockData('window', 'right', 3, owner.id)
+        layout.add_window(windows, tab_dock)
+        layout.add_window(windows, window_dock)
+
+        lgd.cell_width = lgd.cell_height = 10
+        layout._full_central = Region((0, 0, 299, 199, 300, 200))
+        lgd.central = layout._calculate_tab_dock_regions(windows)
+        layout.update_visibility(windows)
+        layout.do_layout(windows)
+        layout._layout_tab_docks(windows)
+        layout._layout_window_docks(windows)
+
+        def outer(window):
+            geom = window.geometry
+            return (
+                geom.left - geom.spaces.left,
+                geom.top - geom.spaces.top,
+                geom.right + geom.spaces.right,
+                geom.bottom + geom.spaces.bottom,
+            )
+
+        self.ae(outer(tab_dock), (0, 0, 300, 26))
+        self.ae(tab_dock.geometry.ynum, 2)
+        self.ae(outer(owner), (0, 26, 264, 200))
+        self.ae(outer(window_dock), (264, 26, 300, 200))
+        self.ae(window_dock.geometry.xnum, 3)
+        windows.set_active_window_group_for(owner)
+        self.ae(layout.neighbors(windows)['right'][0], windows.group_for_window(window_dock).id)
+        windows.set_active_window_group_for(window_dock)
+        self.ae(layout.neighbors(windows)['left'][0], windows.group_for_window(owner).id)
+
+    def test_docks_gracefully_consume_undersized_viewport(self):
+        for layout_class in (Stack, Vertical, Horizontal, Tall, Grid, Splits):
+            with self.subTest(layout=layout_class.name):
+                layout = create_layout(layout_class)
+                windows = create_windows(layout, 2)
+                dock = Window(3)
+                dock.dock_data = DockData('tab', 'top', 20)
+                layout.add_window(windows, dock)
+                lgd.cell_width = lgd.cell_height = 10
+                layout._full_central = Region((0, 0, 19, 19, 20, 20))
+                lgd.central = layout._calculate_tab_dock_regions(windows)
+                layout.update_visibility(windows)
+                layout.do_layout(windows)
+                layout._layout_tab_docks(windows)
+                for window in windows:
+                    self.assertGreaterEqual(window.geometry.xnum, 0)
+                    self.assertGreaterEqual(window.geometry.ynum, 0)
+
+    def test_dock_visibility_and_focus(self):
+        empty_layout = create_layout(Stack)
+        empty_windows = create_windows(empty_layout, 0)
+        status_only = Window(1)
+        status_only.dock_data = DockData('tab', 'top', focusable=False)
+        empty_layout.add_window(empty_windows, status_only)
+        self.assertIsNone(empty_windows.active_window)
+
+        layout = create_layout(Stack)
+        windows = create_windows(layout, 2)
+        first, second = windows.all_windows
+        first_dock, second_dock, status = Window(3), Window(4), Window(5)
+        first_dock.dock_data = DockData('window', 'bottom', 1, first.id)
+        second_dock.dock_data = DockData('window', 'bottom', 1, second.id)
+        status.dock_data = DockData('tab', 'top', 1, focusable=False)
+        for dock in (first_dock, second_dock, status):
+            layout.add_window(windows, dock)
+
+        windows.set_active_window_group_for(first)
+        layout.update_visibility(windows)
+        self.assertTrue(first.is_visible_in_layout)
+        self.assertTrue(first_dock.is_visible_in_layout)
+        self.assertFalse(second.is_visible_in_layout)
+        self.assertFalse(second_dock.is_visible_in_layout)
+        self.assertTrue(status.is_visible_in_layout)
+
+        status_idx = windows.group_idx_for_window(status)
+        self.assertIsNotNone(status_idx)
+        self.assertFalse(windows.set_active_group_idx(status_idx))
+        self.assertIs(windows.active_window, first)
+        windows.activate_next_window_group(1)
+        self.assertIs(windows.active_window, second)
+        layout.update_visibility(windows)
+        windows.activate_next_window_group(1)
+        self.assertIs(windows.active_window, second_dock)
+        self.assertIs(windows.active_main_window, second)
 
     def test_split_constraint_allocation(self):
         model = SplitConstraintModel()

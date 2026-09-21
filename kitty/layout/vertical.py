@@ -20,7 +20,7 @@ def borders(
     active_group = all_windows.active_group
     needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
     try:
-        bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+        bw = next(all_windows.iter_main_groups()).effective_border()
     except StopIteration:
         bw = 0
     if not bw:
@@ -74,9 +74,9 @@ class Vertical(Layout):
     perp_axis_layout = Layout.xlayout
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_main_groups
         bias = biased_map if num_windows > 1 and biased_map else None
-        return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias, cell_allocator=self._constraint_model)
+        return self.main_axis_layout(all_windows.iter_main_groups(), bias=bias, cell_allocator=self._constraint_model)
 
     def fixed_layout(self, wg: WindowGroup) -> LayoutDimension:
         return self.perp_axis_layout(iter((wg,)), border_mult=0 if lgd.draw_minimal_borders else 1)
@@ -89,7 +89,7 @@ class Vertical(Layout):
     def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         if self.main_is_horizontal != is_horizontal:
             return False
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_main_groups
         if num_windows < 2:
             return False
         before_layout = list(self.variable_layout(all_windows, self.biased_map))
@@ -109,22 +109,22 @@ class Vertical(Layout):
 
     def generate_layout_data(self, all_windows: WindowList) -> Generator[tuple[WindowGroup, LayoutData, LayoutData], None, None]:
         ylayout = self.variable_layout(all_windows, self.biased_map)
-        for wg, yl in zip(all_windows.iter_all_layoutable_groups(), ylayout):
+        for wg, yl in zip(all_windows.iter_main_groups(), ylayout):
             xl = next(self.fixed_layout(wg))
             if self.main_is_horizontal:
                 xl, yl = yl, xl
             yield wg, xl, yl
 
     def do_layout(self, windows: WindowList) -> None:
-        window_count = windows.num_groups
+        window_count = windows.num_main_groups
         if window_count == 1:
-            self.layout_single_window_group(next(windows.iter_all_layoutable_groups()))
+            self.layout_single_window_group(next(windows.iter_main_groups()))
             return
         for wg, xl, yl in self.generate_layout_data(windows):
             self.set_window_group_geometry(wg, xl, yl)
 
     def minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
-        window_count = windows.num_groups
+        window_count = windows.num_main_groups
         if window_count < 2 or not lgd.draw_minimal_borders:
             return
         yield from borders(self.generate_layout_data(windows), self.main_is_horizontal, windows)
@@ -132,7 +132,7 @@ class Vertical(Layout):
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         wg = windows.group_for_window(window)
         assert wg is not None
-        groups = tuple(windows.iter_all_layoutable_groups())
+        groups = tuple(windows.iter_main_groups())
         idx = groups.index(wg)
         lg = len(groups)
         if lg > 1:

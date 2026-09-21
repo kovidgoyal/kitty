@@ -100,7 +100,7 @@ class Grid(Layout):
         return 0, 0
 
     def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_main_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
         row_num, col_num = self.position_for_window_idx(idx, num_windows, ncols, nrows, special_rows, special_col)
         if row_num == 0:
@@ -118,7 +118,7 @@ class Grid(Layout):
         return tuple(self.variable_layout(layout_func, num_windows, b)) == before_layout
 
     def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
-        num_windows = all_windows.num_groups
+        num_windows = all_windows.num_main_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
         row_num, col_num = self.position_for_window_idx(window_id, num_windows, ncols, nrows, special_rows, special_col)
 
@@ -172,16 +172,16 @@ class Grid(Layout):
             on_col_done(col_windows)
 
     def do_layout(self, windows: WindowList) -> None:
-        n = windows.num_groups
+        n = windows.num_main_groups
         if n == 1:
             self.layout_single_window_group(
-                next(windows.iter_all_layoutable_groups()),
+                next(windows.iter_main_groups()),
                 x_cell_allocator=self._column_constraint_model,
                 y_cell_allocator=self.row_constraint_model(1),
             )
             return
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
-        groups = tuple(windows.iter_all_layoutable_groups())
+        groups = tuple(windows.iter_main_groups())
         win_col_map: list[list[WindowGroup]] = []
 
         def on_col_done(col_windows: list[int]) -> None:
@@ -217,7 +217,7 @@ class Grid(Layout):
             position_window_in_grid_cell(window_idx, xl, yl)
 
     def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
-        n = windows.num_groups
+        n = windows.num_main_groups
         if not lgd.draw_minimal_borders or n < 2:
             return
         needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
@@ -226,7 +226,7 @@ class Grid(Layout):
         is_last_row: set[int] = set()
         is_first_column: set[int] = set()
         is_last_column: set[int] = set()
-        groups = tuple(windows.iter_all_layoutable_groups())
+        groups = tuple(windows.iter_main_groups())
         bw = groups[0].effective_border()
         if not bw:
             return
@@ -282,7 +282,7 @@ class Grid(Layout):
             yield from borders_for_window(wg.id, color, wid)
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
-        n = windows.num_groups
+        n = windows.num_main_groups
         if n < 4:
             return neighbors_for_tall_window(1, window, windows)
 
@@ -291,7 +291,7 @@ class Grid(Layout):
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row: list[int | None] = [None for i in range(ncols)]
         matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
-        wi = windows.iter_all_layoutable_groups()
+        wi = windows.iter_main_groups()
         pos_map: dict[int, tuple[int, int]] = {}
         col_counts: list[int] = []
         for col in range(ncols):

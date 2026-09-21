@@ -23,7 +23,7 @@ class FixedConstraintModel:
     """Reserve fixed-size regions, clipping later regions first on shortage."""
 
     def __init__(self) -> None:
-        self.signature: tuple[int, ...] = ()
+        self.signature: tuple[int, ...] | None = None
         self.solver = AmoebaSolver()
         self.total = 0
         self.content = 0
