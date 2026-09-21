@@ -199,12 +199,12 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
-0.49.0 [future]
+0.49.0 [2026-09-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
-- Various throughput performance improvements for a 15-35% real world improvement depending on workload
+- Throughput performance improvements for a 15-35% real world improvement depending on workload
 
 - Add :opt:`window_border_radius` for rounded window borders (:pull:`10421`)
 
