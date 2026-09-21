@@ -273,6 +273,10 @@ Detailed list of changes
 
 - Add :opt:`window_border_radius` for rounded window borders (:pull:`10421`)
 
+- Layouts: Align kitty window frames that share an outer edge, use uniform gaps
+  along each axis while preserving directional margins, and collapse margins
+  on neighboring edges
+
 - Add :ref:`docked windows <docked_windows>` at any tab or kitty window edge,
   with fixed or proportional sizing and launch, remote-control and session
   support (:iss:`2391`)

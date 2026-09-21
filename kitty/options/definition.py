@@ -1765,9 +1765,14 @@ opt(
     '0',
     option_type='edge_width',
     long_text="""
-The window margin (in pts) (blank area outside the border). A single value sets
-all four sides. Two values set the vertical and horizontal sides. Three values
-set top, horizontal and bottom. Four values set top, right, bottom and left.
+The window margin (in pts) (blank area outside the border). Margins on
+neighboring kitty window edges collapse rather than being added. To keep spacing
+consistent, the largest collapsed margin among visible horizontal neighbors is
+used as the minimum horizontal gap, and likewise for vertical neighbors. The
+gaps are also equal across both axes when those directional minima are equal. A
+single value sets all four sides. Two values set the vertical and horizontal
+sides. Three values set top, horizontal and bottom. Four values set top, right,
+bottom and left.
 """,
 )
 
@@ -1790,9 +1795,11 @@ opt(
     option_type='edge_width',
     long_text="""
 The window padding (in pts) (blank area between the text and the window border).
-A single value sets all four sides. Two values set the vertical and horizontal
-sides. Three values set top, horizontal and bottom. Four values set top, right,
-bottom and left.
+Layouts can add compensatory padding when needed to align kitty window frames
+and terminal cells; this value is the minimum intentional padding. A single value
+sets all four sides. Two values set the vertical and horizontal sides. Three
+values set top, horizontal and bottom. Four values set top, right, bottom and
+left.
 """,
 )
 
@@ -1815,8 +1822,10 @@ opt(
     choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'),
     long_text="""
 When the window size is not an exact multiple of the cell size, the cell area of
-the terminal window will have some extra padding on the sides. You can control
-how that padding is distributed with this option. Using a value of
+the terminal window will have some extra padding on the sides. Layouts also use
+this padding to keep neighboring kitty window frames aligned and their gaps uniform
+along each axis.
+You can control how that padding is distributed with this option. Using a value of
 :code:`center` means the cell area will be placed centrally. A value of
 :code:`top-left` means the padding will be only at the bottom and right edges.
 The value can be one of: :code:`top-left`, :code:`top`, :code:`top-right`,
