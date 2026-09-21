@@ -14,7 +14,7 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .constraints import FixedConstraintModel, FixedSize, LinearConstraintModel
+from .constraints import FixedConstraintModel, FixedSize, FrameConstraintModel, FrameSpec, LinearConstraintModel
 
 
 class BorderLine(NamedTuple):
@@ -316,8 +316,10 @@ class Layout:
         self._dock_constraint_models: dict[tuple[int, str], FixedConstraintModel] = {}
         self._dock_x_constraint_model = LinearConstraintModel()
         self._dock_y_constraint_model = LinearConstraintModel()
+        self._frame_constraint_model = FrameConstraintModel()
         self._full_central = lgd.central
         self._tab_dock_regions: dict[int, Region] = {}
+        self._pending_geometries: dict[int, tuple[WindowGroup, WindowGeometry]] | None = None
 
     def set_owner(self, os_window_id: int, tab_id: int) -> None:
         # Useful when moving a layout from one tab to another typically a detached tab being re-attached
@@ -623,7 +625,7 @@ class Layout:
                 cell_allocator=self._dock_y_constraint_model,
             )
         )
-        group.set_geometry(window_geometry_from_layouts(x, y))
+        self._set_group_geometry(group, window_geometry_from_layouts(x, y))
 
     def _layout_tab_docks(self, all_windows: WindowList) -> None:
         for group in all_windows.iter_dock_groups(only_visible=True):
@@ -638,7 +640,7 @@ class Layout:
                 for group in visible_docks
                 if (dock := group.dock_data) and dock.scope == 'window' and all_windows.group_for_window(dock.owner_window_id) is owner
             )
-            geom = owner.geometry
+            geom = self._group_geometry(owner)
             if not owner_docks or geom is None:
                 continue
             area = region(
@@ -651,6 +653,137 @@ class Layout:
             self._layout_group_in_region(owner, content)
             for group in owner_docks:
                 self._layout_group_in_region(group, dock_regions[group.id])
+
+    def _set_group_geometry(self, group: WindowGroup, geometry: WindowGeometry) -> None:
+        if self._pending_geometries is None:
+            group.set_geometry(geometry)
+        else:
+            self._pending_geometries[group.id] = group, geometry
+
+    def _group_geometry(self, group: WindowGroup) -> WindowGeometry | None:
+        if self._pending_geometries is not None and (pending := self._pending_geometries.get(group.id)) is not None:
+            return pending[1]
+        return group.geometry
+
+    def _constrain_frame_geometry(self) -> None:
+        if lgd.draw_minimal_borders or self._pending_geometries is None or len(self._pending_geometries) < 2:
+            return
+        pending = tuple(self._pending_geometries.values())
+        groups = tuple(x[0] for x in pending)
+        geometries = tuple(x[1] for x in pending)
+        allocations = tuple(
+            Edges(
+                g.left - g.spaces.left,
+                g.top - g.spaces.top,
+                g.right + g.spaces.right,
+                g.bottom + g.spaces.bottom,
+            )
+            for g in geometries
+        )
+        specs = []
+        for group, geometry, allocation in zip(groups, geometries, allocations):
+            border = group.effective_border()
+            padding = Edges(*(group.effective_padding(edge) for edge in ('left', 'top', 'right', 'bottom')))
+            margins = Edges(*(group.effective_margin(edge) for edge in ('left', 'top', 'right', 'bottom')))
+            preferred = Edges(
+                geometry.left - padding.left - border,
+                geometry.top - padding.top - border,
+                geometry.right + padding.right + border,
+                geometry.bottom + padding.bottom + border,
+            )
+            minimum_width = min(
+                allocation.right - allocation.left,
+                2 * border + padding.left + padding.right + (lgd.cell_width if geometry.xnum else 0),
+            )
+            minimum_height = min(
+                allocation.bottom - allocation.top,
+                2 * border + padding.top + padding.bottom + (lgd.cell_height if geometry.ynum else 0),
+            )
+            specs.append(FrameSpec(allocation, preferred, margins, minimum_width, minimum_height))
+
+        horizontal_neighbors: list[tuple[int, int]] = []
+        vertical_neighbors: list[tuple[int, int]] = []
+        minimum_gaps = [0, 0]
+        preferred_gaps = [0, 0]
+        for i, first in enumerate(allocations):
+            for j in range(i + 1, len(allocations)):
+                second = allocations[j]
+                if min(first.bottom, second.bottom) > max(first.top, second.top):
+                    if first.right == second.left:
+                        before, after = i, j
+                    elif second.right == first.left:
+                        before, after = j, i
+                    else:
+                        before = after = -1
+                    if before >= 0:
+                        horizontal_neighbors.append((before, after))
+                        margins = specs[before].margins.right + specs[after].margins.left
+                        residual = geometries[before].compensatory.right + geometries[after].compensatory.left
+                        minimum_gaps[0] = max(minimum_gaps[0], margins)
+                        preferred_gaps[0] = max(preferred_gaps[0], margins + residual)
+                if min(first.right, second.right) > max(first.left, second.left):
+                    if first.bottom == second.top:
+                        before, after = i, j
+                    elif second.bottom == first.top:
+                        before, after = j, i
+                    else:
+                        before = after = -1
+                    if before >= 0:
+                        vertical_neighbors.append((before, after))
+                        margins = specs[before].margins.bottom + specs[after].margins.top
+                        residual = geometries[before].compensatory.bottom + geometries[after].compensatory.top
+                        minimum_gaps[1] = max(minimum_gaps[1], margins)
+                        preferred_gaps[1] = max(preferred_gaps[1], margins + residual)
+        if not horizontal_neighbors and not vertical_neighbors:
+            return
+        minimum_gap_pair = minimum_gaps[0], minimum_gaps[1]
+        preferred_gap_pair = preferred_gaps[0], preferred_gaps[1]
+        # A one-value margin produces the same minimum on both axes, so retain a
+        # common visual gutter. Directional margin values keep the axes separate.
+        unify_gaps = minimum_gap_pair[0] == minimum_gap_pair[1]
+        frames, _ = self._frame_constraint_model(
+            specs,
+            horizontal_neighbors,
+            vertical_neighbors,
+            minimum_gap_pair,
+            preferred_gap_pair,
+            unify_gaps=unify_gaps,
+        )
+
+        def axis_layout(
+            frame_before: int,
+            frame_after: int,
+            allocation_before: int,
+            allocation_after: int,
+            cell_length: int,
+            padding_before: int,
+            padding_after: int,
+            border: int,
+            alignment: int,
+        ) -> LayoutData:
+            available = max(0, frame_after - frame_before - 2 * border - padding_before - padding_after)
+            cells = available // cell_length
+            content_size = cells * cell_length
+            extra = available - content_size
+            compensatory_before = extra if alignment > 0 else extra // 2 if alignment == 0 else 0
+            compensatory_after = extra - compensatory_before
+            content_pos = frame_before + border + padding_before + compensatory_before
+            return LayoutData(
+                content_pos,
+                cells,
+                content_pos - allocation_before,
+                allocation_after - content_pos - content_size,
+                content_size,
+                compensatory_before,
+                compensatory_after,
+            )
+
+        for group, allocation, frame in zip(groups, allocations, frames):
+            border = group.effective_border()
+            left, top, right, bottom = (group.effective_padding(edge) for edge in ('left', 'top', 'right', 'bottom'))
+            x = axis_layout(frame.left, frame.right, allocation.left, allocation.right, lgd.cell_width, left, right, border, lgd.alignment_x)
+            y = axis_layout(frame.top, frame.bottom, allocation.top, allocation.bottom, lgd.cell_height, top, bottom, border, lgd.alignment_y)
+            self._pending_geometries[group.id] = group, window_geometry_from_layouts(x, y)
 
     def _set_dimensions(self, all_windows: WindowList) -> None:
         self._full_central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
@@ -672,14 +805,21 @@ class Layout:
         for wg in visible_groups:
             for w in wg.windows:
                 w.show_title_bar = show_title_bar
-        if all_windows.num_main_groups:
-            self.do_layout(all_windows)
-        self._layout_tab_docks(all_windows)
-        self._layout_window_docks(all_windows)
+        self._pending_geometries = {}
+        try:
+            if all_windows.num_main_groups:
+                self.do_layout(all_windows)
+            self._layout_tab_docks(all_windows)
+            self._layout_window_docks(all_windows)
+            self._constrain_frame_geometry()
+            pending = tuple(self._pending_geometries.values())
+        finally:
+            self._pending_geometries = None
+        for group, geometry in pending:
+            group.set_geometry(geometry)
         self.blank_rects = []
-        for group in all_windows.iter_all_layoutable_groups(only_visible=True, include_docks=True):
-            if geom := group.geometry:
-                self.blank_rects.extend(blank_rects_for_window(geom))
+        for group, geometry in pending:
+            self.blank_rects.extend(blank_rects_for_window(geometry))
 
     def layout_single_window_group(
         self,
@@ -709,8 +849,8 @@ class Layout:
             x_cell_allocator=x_cell_allocator,
             y_cell_allocator=y_cell_allocator,
         )
-        wg.set_geometry(geom)
-        if add_blank_rects:
+        self._set_group_geometry(wg, geom)
+        if add_blank_rects and self._pending_geometries is None:
             self.blank_rects.extend(blank_rects_for_window(geom))
 
     def xlayout(
@@ -753,8 +893,9 @@ class Layout:
 
     def set_window_group_geometry(self, wg: WindowGroup, xl: LayoutData, yl: LayoutData) -> WindowGeometry:
         geom = window_geometry_from_layouts(xl, yl)
-        wg.set_geometry(geom)
-        self.blank_rects.extend(blank_rects_for_window(geom))
+        self._set_group_geometry(wg, geom)
+        if self._pending_geometries is None:
+            self.blank_rects.extend(blank_rects_for_window(geom))
         return geom
 
     def do_layout(self, windows: WindowList) -> None:

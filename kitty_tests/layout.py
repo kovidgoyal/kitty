@@ -134,6 +134,19 @@ class TestLayout(BaseTest):
             ],
         )
 
+        windows.active_window.set_geometry(WindowGeometry(10, 20, 110, 120, 0, 0, compensatory=Edges(2, 3, 4, 5)))
+        rects = []
+        add_borders(rects, color, group)
+        self.ae(
+            rects,
+            [
+                Border(6, 15, 116, 16, color, -1, True),
+                Border(6, 126, 116, 127, color, 1, True),
+                Border(6, 15, 7, 127, color, -1),
+                Border(115, 15, 116, 127, color, 1),
+            ],
+        )
+
     def do_ops_test(self, q):
         windows = create_windows(q)
         ids, visible_ids, expect_ids, check_visible = utils(self, q, windows)
@@ -1053,6 +1066,97 @@ class TestLayout(BaseTest):
         self.ae(bottom_right.top - top_right.bottom, gaps[1])
         _, unified_gaps = FrameConstraintModel()(specs, ((0, 1), (0, 2)), ((1, 2),), (6, 6), (8, 11), unify_gaps=True)
         self.ae(unified_gaps, (11, 11))
+
+    def test_constrained_frame_geometry(self):
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        first, top_right, bottom_right = Window(1), Window(2), Window(3)
+        q.add_window(all_windows, first)
+        q.add_window(all_windows, top_right, location='vsplit')
+        q.add_window(all_windows, bottom_right, location='hsplit')
+
+        def set_dimensions(unused_windows):
+            q._full_central = lgd.central = Region((0, 0, 239, 219, 240, 220))
+            lgd.cell_width, lgd.cell_height = 13, 17
+            lgd.draw_minimal_borders = False
+
+        q._set_dimensions = set_dimensions
+        q(all_windows)
+
+        def frame(window):
+            group = all_windows.group_for_window(window)
+            geometry = window.geometry
+            border = group.effective_border()
+            c = geometry.compensatory
+            return Edges(
+                geometry.left - group.effective_padding('left') - c.left - border,
+                geometry.top - group.effective_padding('top') - c.top - border,
+                geometry.right + group.effective_padding('right') + c.right + border,
+                geometry.bottom + group.effective_padding('bottom') + c.bottom + border,
+            )
+
+        left, upper, lower = map(frame, (first, top_right, bottom_right))
+        self.ae(left.top, upper.top)
+        self.ae(left.bottom, lower.bottom)
+        self.ae(upper.left, lower.left)
+        self.ae(upper.right, lower.right)
+        gaps = (upper.left - left.right, lower.left - left.right, lower.top - upper.bottom)
+        self.ae(gaps, (gaps[0],) * 3)
+        self.assertGreaterEqual(gaps[0], 2)  # both configured one-pixel margins
+        for window in (first, top_right, bottom_right):
+            self.assertEqual(window.geometry.right - window.geometry.left, window.geometry.xnum * lgd.cell_width)
+            self.assertEqual(window.geometry.bottom - window.geometry.top, window.geometry.ynum * lgd.cell_height)
+
+    def test_constrained_frames_across_layouts(self):
+        for layout_class, count in ((Vertical, 4), (Horizontal, 4), (Tall, 4), (Grid, 5)):
+            with self.subTest(layout=layout_class.name):
+                layout = create_layout(layout_class)
+                all_windows = create_windows(layout, count)
+
+                def set_dimensions(unused_windows):
+                    layout._full_central = lgd.central = Region((0, 0, 479, 439, 480, 440))
+                    lgd.cell_width, lgd.cell_height = 13, 17
+                    lgd.draw_minimal_borders = False
+
+                layout._set_dimensions = set_dimensions
+                layout(all_windows)
+                allocations, frames = [], []
+                for group in all_windows.groups:
+                    geometry = group.geometry
+                    allocations.append(
+                        Edges(
+                            geometry.left - geometry.spaces.left,
+                            geometry.top - geometry.spaces.top,
+                            geometry.right + geometry.spaces.right,
+                            geometry.bottom + geometry.spaces.bottom,
+                        )
+                    )
+                    border = group.effective_border()
+                    c = geometry.compensatory
+                    frames.append(
+                        Edges(
+                            geometry.left - group.effective_padding('left') - c.left - border,
+                            geometry.top - group.effective_padding('top') - c.top - border,
+                            geometry.right + group.effective_padding('right') + c.right + border,
+                            geometry.bottom + group.effective_padding('bottom') + c.bottom + border,
+                        )
+                    )
+                gaps = []
+                for i, first in enumerate(allocations):
+                    for j in range(i + 1, len(allocations)):
+                        second = allocations[j]
+                        if min(first.bottom, second.bottom) > max(first.top, second.top):
+                            if first.right == second.left:
+                                gaps.append(frames[j].left - frames[i].right)
+                            elif second.right == first.left:
+                                gaps.append(frames[i].left - frames[j].right)
+                        if min(first.right, second.right) > max(first.left, second.left):
+                            if first.bottom == second.top:
+                                gaps.append(frames[j].top - frames[i].bottom)
+                            elif second.bottom == first.top:
+                                gaps.append(frames[i].top - frames[j].bottom)
+                self.assertTrue(gaps)
+                self.ae(len(set(gaps)), 1)
 
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the

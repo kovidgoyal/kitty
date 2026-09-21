@@ -44,8 +44,9 @@ def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup, radius
     geometry = wg.geometry
     if geometry is None:
         return
-    pl, pt = wg.effective_padding('left'), wg.effective_padding('top')
-    pr, pb = wg.effective_padding('right'), wg.effective_padding('bottom')
+    c = geometry.compensatory
+    pl, pt = wg.effective_padding('left') + c.left, wg.effective_padding('top') + c.top
+    pr, pb = wg.effective_padding('right') + c.right, wg.effective_padding('bottom') + c.bottom
     left = geometry.left - pl
     top = geometry.top - pt
     lr = geometry.right

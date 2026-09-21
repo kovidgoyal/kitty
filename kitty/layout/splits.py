@@ -274,8 +274,9 @@ class Pair:
 
     def apply_window_geometry(self, window_id: int, window_geometry: WindowGeometry, id_window_map: dict[int, WindowGroup], layout_object: Layout) -> None:
         wg = id_window_map[window_id]
-        wg.set_geometry(window_geometry)
-        layout_object.blank_rects.extend(blank_rects_for_window(window_geometry))
+        layout_object._set_group_geometry(wg, window_geometry)
+        if layout_object._pending_geometries is None:
+            layout_object.blank_rects.extend(blank_rects_for_window(window_geometry))
 
     def effective_border(self, id_window_map: dict[int, WindowGroup]) -> int:
         for wid in self.all_window_ids():
