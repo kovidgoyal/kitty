@@ -1292,7 +1292,7 @@ class Tab:  # {{{
                     is_active=w is active_window,
                     is_focused=w.os_window_id == current_focused_os_window_id() and w is active_window,
                     is_self=w is self_window,
-                    neighbors_map=cl.neighbors_for_window(w, self.windows),
+                    neighbors_map=cl.neighbors_for_window_with_docks(w, self.windows),
                 )
 
     def list_groups(self) -> list[dict[str, Any]]:

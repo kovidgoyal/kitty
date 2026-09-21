@@ -379,9 +379,22 @@ class Layout:
     def neighbors(self, all_windows: WindowList) -> NeighborsMap:
         w = all_windows.active_window
         assert w is not None
-        if any(group.dock_data and group.dock_data.focusable for group in all_windows.iter_dock_groups(only_visible=True)):
-            return self._geometry_neighbors(w, all_windows)
-        return self.neighbors_for_window(w, all_windows)
+        return self.neighbors_for_window_with_docks(w, all_windows)
+
+    def neighbors_for_window_with_docks(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
+        source_group = all_windows.group_for_window(window)
+        if source_group is None:
+            return {}
+        dock = source_group.dock_data
+        if dock is not None:
+            if not dock.focusable or not source_group.is_visible_in_layout:
+                return {}
+            return self._geometry_neighbors(window, all_windows)
+        if source_group.is_visible_in_layout and any(
+            group.dock_data and group.dock_data.focusable for group in all_windows.iter_dock_groups(only_visible=True)
+        ):
+            return self._geometry_neighbors(window, all_windows)
+        return self.neighbors_for_window(window, all_windows)
 
     def _geometry_neighbors(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
         source_group = all_windows.group_for_window(window)

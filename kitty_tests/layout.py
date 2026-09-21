@@ -785,10 +785,36 @@ class TestLayout(BaseTest):
         self.ae(outer(owner), (0, 26, 264, 200))
         self.ae(outer(window_dock), (264, 26, 300, 200))
         self.ae(window_dock.geometry.xnum, 3)
+        owner_group = windows.group_for_window(owner)
+        dock_group = windows.group_for_window(window_dock)
         windows.set_active_window_group_for(owner)
-        self.ae(layout.neighbors(windows)['right'][0], windows.group_for_window(window_dock).id)
+        self.ae(layout.neighbors(windows)['right'][0], dock_group.id)
+        self.ae(layout.neighbors_for_window_with_docks(owner, windows)['right'][0], dock_group.id)
         windows.set_active_window_group_for(window_dock)
-        self.ae(layout.neighbors(windows)['left'][0], windows.group_for_window(owner).id)
+        self.ae(layout.neighbors(windows)['left'][0], owner_group.id)
+        self.ae(layout.neighbors_for_window_with_docks(window_dock, windows)['left'][0], owner_group.id)
+
+        from kitty.tabs import Tab as RealTab
+
+        class ListingTab:
+            active_window = owner
+            current_layout = layout
+
+            def __iter__(self):
+                return iter(windows)
+
+        listing_tab = ListingTab()
+        listing_tab.windows = windows
+        for window in windows:
+            window.os_window_id = 1
+            window.as_dict = lambda window=window, **kwargs: {'id': window.id, **kwargs}
+        with patch('kitty.tabs.current_focused_os_window_id', return_value=1):
+            listed = {item['id']: item for item in RealTab.list_windows(listing_tab)}
+        self.ae(listed[window_dock.id]['neighbors_map']['left'][0], owner_group.id)
+
+        tab_dock.dock_data = tab_dock.dock_data._replace(focusable=False)
+        window_dock.dock_data = window_dock.dock_data._replace(focusable=False)
+        self.ae(layout.neighbors_for_window_with_docks(window_dock, windows), {})
 
     def test_overlay_preserves_dock_group(self):
         layout = create_layout(Vertical)
