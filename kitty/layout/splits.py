@@ -11,7 +11,8 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, blank_rects_for_window, lgd, window_geometry_from_layouts
+from .base import BorderLine, CellAllocator, DragOverlayMode, Layout, LayoutOpts, blank_rects_for_window, calculate_cells_map, lgd, window_geometry_from_layouts
+from .constraints import LinearConstraintModel, SplitConstraintModel
 
 
 def child_axis_units(child: 'Pair | int | None', horizontal: bool) -> int:
@@ -37,6 +38,7 @@ class Pair:
         self.between_borders: tuple[Sequence[BorderLine], Sequence[BorderLine]] | None = None
         self.first_extent = self.second_extent = Edges()  # not including between_borders
         self.border_width: int = 0
+        self._constraint_model = SplitConstraintModel()
 
     def serialize(self) -> SerializedPair:
         ans: SerializedPair = {}
@@ -308,7 +310,17 @@ class Pair:
             ans += lgd.cell_height
         return ans
 
-    def layout_pair(self, left: int, top: int, width: int, height: int, id_window_map: dict[int, WindowGroup], layout_object: Layout) -> None:
+    def layout_pair(
+        self,
+        left: int,
+        top: int,
+        width: int,
+        height: int,
+        id_window_map: dict[int, WindowGroup],
+        layout_object: Layout,
+        x_cell_allocator: CellAllocator = calculate_cells_map,
+        y_cell_allocator: CellAllocator = calculate_cells_map,
+    ) -> None:
         self.between_borders = None
         self.left, self.top, self.width, self.height = left, top, width, height
         self.first_extent = self.second_extent = Edges(left, top, left + width, top + height)
@@ -318,12 +330,12 @@ class Pair:
         if self.one is None or self.two is None:
             q = self.one or self.two
             if isinstance(q, Pair):
-                return q.layout_pair(left, top, width, height, id_window_map, layout_object)
+                return q.layout_pair(left, top, width, height, id_window_map, layout_object, x_cell_allocator, y_cell_allocator)
             if q is None:
                 return
             wg = id_window_map[q]
-            xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult))
-            yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult))
+            xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult, cell_allocator=x_cell_allocator))
+            yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult, cell_allocator=y_cell_allocator))
             geom = window_geometry_from_layouts(xl, yl)
             self.apply_window_geometry(q, geom, id_window_map, layout_object)
             return
@@ -333,22 +345,18 @@ class Pair:
         if self.horizontal:
             min_w1 = self.one.minimum_width(id_window_map) if isinstance(self.one, Pair) else lgd.cell_width
             min_w2 = self.two.minimum_width(id_window_map) if isinstance(self.two, Pair) else lgd.cell_width
-            w1 = max(min_w1, int(self.bias * width) - bw)
-            w2 = width - w1 - bw2
-            if w2 < min_w2 and width - min_w2 - bw2 >= min_w1:
-                w2 = min_w2
-                w1 = width - w2 - bw2
+            w1, w2 = self._constraint_model(width, self.bias, bw, min_w1, min_w2)
             bleft = left + w1
             self.first_extent = Edges(left, top, left + w1, top + height)
             if isinstance(self.one, Pair):
-                self.one.layout_pair(left, top, w1, height, id_window_map, layout_object)
+                self.one.layout_pair(left, top, w1, height, id_window_map, layout_object, x_cell_allocator, y_cell_allocator)
                 if bw:
                     for etop, ebottom, window_id in self.one.edge_border(RIGHT_EDGE, id_window_map):
                         one.append(BorderLine(Edges(bleft, etop, bleft + bw, ebottom), window_id=window_id, horizontal=False))
             else:
                 wg = id_window_map[self.one]
-                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult))
-                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=w1, border_mult=border_mult))
+                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult, cell_allocator=y_cell_allocator))
+                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=w1, border_mult=border_mult, cell_allocator=x_cell_allocator))
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.one, geom, id_window_map, layout_object)
                 if bw:
@@ -356,7 +364,7 @@ class Pair:
             left += w1 + bw2
             self.second_extent = Edges(left, top, left + w2, top + height)
             if isinstance(self.two, Pair):
-                self.two.layout_pair(left, top, w2, height, id_window_map, layout_object)
+                self.two.layout_pair(left, top, w2, height, id_window_map, layout_object, x_cell_allocator, y_cell_allocator)
                 if bw:
                     for etop, ebottom, window_id in self.two.edge_border(LEFT_EDGE, id_window_map):
                         two.append(BorderLine(Edges(left - bw, etop, left, ebottom), window_id=window_id, horizontal=False))
@@ -364,29 +372,25 @@ class Pair:
                 wg = id_window_map[self.two]
                 if bw:
                     two.append(BorderLine(Edges(left - bw, top, left, top + height), window_id=-wg.active_window_id, horizontal=False))
-                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=w2, border_mult=border_mult))
-                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult))
+                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=w2, border_mult=border_mult, cell_allocator=x_cell_allocator))
+                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult, cell_allocator=y_cell_allocator))
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
         else:
             min_h1 = self.one.minimum_height(id_window_map) if isinstance(self.one, Pair) else lgd.cell_height
             min_h2 = self.two.minimum_height(id_window_map) if isinstance(self.two, Pair) else lgd.cell_height
-            h1 = max(min_h1, int(self.bias * height) - bw)
-            h2 = height - h1 - bw2
-            if h2 < min_h2 and height - min_h2 - bw2 >= min_h1:
-                h2 = min_h2
-                h1 = height - h2 - bw2
+            h1, h2 = self._constraint_model(height, self.bias, bw, min_h1, min_h2)
             btop = top + h1
             self.first_extent = Edges(left, top, left + width, top + h1)
             if isinstance(self.one, Pair):
-                self.one.layout_pair(left, top, width, h1, id_window_map, layout_object)
+                self.one.layout_pair(left, top, width, h1, id_window_map, layout_object, x_cell_allocator, y_cell_allocator)
                 if bw:
                     for eleft, eright, window_id in self.one.edge_border(BOTTOM_EDGE, id_window_map):
                         one.append(BorderLine(Edges(eleft, btop, eright, btop + bw), window_id=window_id, horizontal=True))
             else:
                 wg = id_window_map[self.one]
-                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult))
-                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=h1, border_mult=border_mult))
+                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult, cell_allocator=x_cell_allocator))
+                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=h1, border_mult=border_mult, cell_allocator=y_cell_allocator))
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.one, geom, id_window_map, layout_object)
                 if bw:
@@ -394,7 +398,7 @@ class Pair:
             top += bw2 + h1
             self.second_extent = Edges(left, top, left + width, top + h2)
             if isinstance(self.two, Pair):
-                self.two.layout_pair(left, top, width, h2, id_window_map, layout_object)
+                self.two.layout_pair(left, top, width, h2, id_window_map, layout_object, x_cell_allocator, y_cell_allocator)
                 if bw:
                     for eleft, eright, window_id in self.two.edge_border(TOP_EDGE, id_window_map):
                         two.append(BorderLine(Edges(eleft, top - bw, eright, top), window_id=window_id, horizontal=True))
@@ -402,8 +406,8 @@ class Pair:
                 wg = id_window_map[self.two]
                 if bw:
                     two.append(BorderLine(Edges(left, top - bw, left + width, top), window_id=-wg.active_window_id, horizontal=True))
-                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult))
-                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=h2, border_mult=border_mult))
+                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult, cell_allocator=x_cell_allocator))
+                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=h2, border_mult=border_mult, cell_allocator=y_cell_allocator))
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
 
@@ -691,6 +695,11 @@ class Splits(Layout):
     no_minimal_window_borders = True
     drag_overlay_mode = DragOverlayMode.free
 
+    def __init__(self, os_window_id: int, tab_id: int, layout_opts: str = '') -> None:
+        super().__init__(os_window_id, tab_id, layout_opts)
+        self._x_constraint_model = LinearConstraintModel()
+        self._y_constraint_model = LinearConstraintModel()
+
     @property
     def default_axis_is_horizontal(self) -> bool | None:
         return self.layout_opts.default_axis_is_horizontal
@@ -787,10 +796,19 @@ class Splits(Layout):
                 self.balanced_add_window(gid)
 
         if len(groups) == 1:
-            self.layout_single_window_group(groups[0])
+            self.layout_single_window_group(groups[0], x_cell_allocator=self._x_constraint_model, y_cell_allocator=self._y_constraint_model)
         else:
             id_group_map = {g.id: g for g in groups}
-            root.layout_pair(lgd.central.left, lgd.central.top, lgd.central.width, lgd.central.height, id_group_map, self)
+            root.layout_pair(
+                lgd.central.left,
+                lgd.central.top,
+                lgd.central.width,
+                lgd.central.height,
+                id_group_map,
+                self,
+                self._x_constraint_model,
+                self._y_constraint_model,
+            )
 
     def add_non_overlay_window(
         self,

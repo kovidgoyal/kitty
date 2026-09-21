@@ -5,7 +5,7 @@ from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import CellBias, calculate_cells_map, layout_dimension, lgd, normalize_biases
-from kitty.layout.constraints import LinearConstraintModel
+from kitty.layout.constraints import LinearConstraintModel, SplitConstraintModel
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.types import WindowGeometry
@@ -722,6 +722,28 @@ class TestLayout(BaseTest):
                         expected = tuple(layout_dimension(*args))
                         actual = tuple(layout_dimension(*args, cell_allocator=model))
                         self.ae(actual, expected)
+
+    def test_split_constraint_allocation(self):
+        model = SplitConstraintModel()
+        self.ae(model(100, 0.5, 1, 10, 10), (49, 49))
+        self.ae(model(100, 0.01, 1, 10, 10), (10, 88))
+        self.ae(model(100, 0.99, 1, 10, 10), (88, 10))
+        for length in range(20, 200):
+            for bias in (0.1, 0.25, 0.5, 0.75, 0.9):
+                for border in (0, 1, 2):
+                    first = max(7, int(bias * length) - border)
+                    second = length - first - 2 * border
+                    if second >= 11:
+                        self.ae(model(length, bias, border, 7, 11), (first, second))
+        for length in range(20):
+            first, second = model(length, 0.5, 1, 10, 10)
+            self.assertGreaterEqual(first, 0)
+            self.assertGreaterEqual(second, 0)
+            self.ae(first + second, max(0, length - 2))
+        model(100, 0.5, 1, 10, 10)
+        solver = model.solver
+        model(101, 0.5, 1, 10, 10)
+        self.assertIs(model.solver, solver)
 
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the

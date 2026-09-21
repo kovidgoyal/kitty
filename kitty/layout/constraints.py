@@ -14,7 +14,50 @@ if TYPE_CHECKING:
 # edits at that level and all layout preferences below it so a soft preference
 # can never enlarge the available geometry.
 VIEWPORT_STRENGTH = 1_000_000.0
+STRONG_PREFERENCE = 100_000.0
 MEDIUM_PREFERENCE = 1_000.0
+
+
+class SplitConstraintModel:
+    """Allocate the two children of a split while honoring soft minima."""
+
+    def __init__(self) -> None:
+        self.signature: tuple[float, int, int, int] | None = None
+        self.solver = AmoebaSolver()
+        self.available = 0
+        self.first = 0
+        self.second = 0
+
+    def rebuild(self, bias: float, border: int, first_minimum: int, second_minimum: int) -> None:
+        self.signature = bias, border, first_minimum, second_minimum
+        self.solver = AmoebaSolver()
+        self.available = self.solver.add_variable()
+        self.first = self.solver.add_variable()
+        self.second = self.solver.add_variable()
+        self.solver.add_edit_variable(self.available, VIEWPORT_STRENGTH)
+        self.solver.add_constraint(((self.first, 1.0), (self.second, 1.0), (self.available, -1.0)), '==', 0.0)
+        self.solver.add_constraint(((self.first, 1.0),), '>=', 0.0)
+        self.solver.add_constraint(((self.second, 1.0),), '>=', 0.0)
+        self.solver.add_constraint(((self.first, 1.0),), '>=', first_minimum, STRONG_PREFERENCE)
+        self.solver.add_constraint(((self.second, 1.0),), '>=', second_minimum, STRONG_PREFERENCE)
+        ideal_constant = 2 * bias * border - border
+        self.solver.add_constraint(((self.first, 1.0), (self.available, -bias)), '==', ideal_constant, MEDIUM_PREFERENCE)
+
+    def __call__(self, length: int, bias: float, border: int, first_minimum: int, second_minimum: int) -> tuple[int, int]:
+        signature = bias, border, first_minimum, second_minimum
+        if signature != self.signature:
+            self.rebuild(*signature)
+        available = max(0, length - 2 * border)
+        self.solver.suggest_value(self.available, available)
+        self.solver.update_variables()
+        solved = self.solver.value(self.first)
+        ideal = bias * length - border
+        if abs(solved - ideal) < 1e-9:
+            solved = ideal
+        elif abs(solved - round(solved)) < 1e-9:
+            solved = round(solved)
+        first = max(0, min(available, floor(solved)))
+        return first, available - first
 
 
 class LinearConstraintModel:
