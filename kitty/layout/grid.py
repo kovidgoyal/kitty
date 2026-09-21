@@ -13,6 +13,7 @@ from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import BorderLine, DragOverlayMode, Layout, LayoutData, LayoutDimension, ListOfWindows, layout_dimension, lgd
+from .constraints import LinearConstraintModel
 from .tall import neighbors_for_tall_window
 
 
@@ -38,7 +39,15 @@ class Grid(Layout):
     def remove_all_biases(self) -> bool:
         self.biased_rows: dict[int, float] = {}
         self.biased_cols: dict[int, float] = {}
+        self._column_constraint_model = LinearConstraintModel()
+        self._row_constraint_models: dict[int, LinearConstraintModel] = {}
         return True
+
+    def row_constraint_model(self, num: int) -> LinearConstraintModel:
+        ans = self._row_constraint_models.get(num)
+        if ans is None:
+            self._row_constraint_models[num] = ans = LinearConstraintModel()
+        return ans
 
     def column_layout(
         self,
@@ -46,7 +55,15 @@ class Grid(Layout):
         bias: Sequence[float] | None = None,
     ) -> LayoutDimension:
         decoration_pairs = tuple(repeat((0, 0), num))
-        return layout_dimension(lgd.central.left, lgd.central.width, lgd.cell_width, decoration_pairs, bias=bias, alignment=lgd.alignment_x)
+        return layout_dimension(
+            lgd.central.left,
+            lgd.central.width,
+            lgd.cell_width,
+            decoration_pairs,
+            bias=bias,
+            alignment=lgd.alignment_x,
+            cell_allocator=self._column_constraint_model,
+        )
 
     def row_layout(
         self,
@@ -54,10 +71,19 @@ class Grid(Layout):
         bias: Sequence[float] | None = None,
     ) -> LayoutDimension:
         decoration_pairs = tuple(repeat((0, 0), num))
-        return layout_dimension(lgd.central.top, lgd.central.height, lgd.cell_height, decoration_pairs, bias=bias, alignment=lgd.alignment_y)
+        constraint_model = self.row_constraint_model(num)
+        return layout_dimension(
+            lgd.central.top,
+            lgd.central.height,
+            lgd.cell_height,
+            decoration_pairs,
+            bias=bias,
+            alignment=lgd.alignment_y,
+            cell_allocator=constraint_model,
+        )
 
     def variable_layout(self, layout_func: Callable[..., LayoutDimension], num_windows: int, biased_map: dict[int, float]) -> LayoutDimension:
-        return layout_func(num_windows, bias=biased_map if num_windows > 1 else None)
+        return layout_func(num_windows, bias=biased_map if num_windows > 1 and biased_map else None)
 
     def position_for_window_idx(self, idx: int, num_windows: int, ncols: int, nrows: int, special_rows: int, special_col: int) -> tuple[int, int]:
         row_num = col_num = 0
@@ -148,7 +174,11 @@ class Grid(Layout):
     def do_layout(self, windows: WindowList) -> None:
         n = windows.num_groups
         if n == 1:
-            self.layout_single_window_group(next(windows.iter_all_layoutable_groups()))
+            self.layout_single_window_group(
+                next(windows.iter_all_layoutable_groups()),
+                x_cell_allocator=self._column_constraint_model,
+                y_cell_allocator=self.row_constraint_model(1),
+            )
             return
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         groups = tuple(windows.iter_all_layoutable_groups())
