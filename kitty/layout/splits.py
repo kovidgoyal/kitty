@@ -826,7 +826,9 @@ class Splits(Layout):
             horizontal = False
         elif location in ('before', 'first'):
             after = False
-        aw = next_to or all_windows.active_window
+        aw = next_to
+        if aw is None or all_windows.is_docked(aw):
+            aw = all_windows.active_main_window
         if bias:
             bias = max(0, min(abs(bias), 100)) / 100
         if aw is not None and (ag := all_windows.group_for_window(aw)) is not None:
@@ -941,7 +943,7 @@ class Splits(Layout):
         """Reposition an existing window as a split adjacent to next_to"""
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
-        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock_data or dest_wg.dock_data:
             return
         # Remove from current position in pairs_root
         self.remove_windows(src_wg.id)
@@ -953,6 +955,9 @@ class Splits(Layout):
             self.balanced_add_window(src_wg.id)
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
+        active_group = all_windows.active_group
+        if action_name in ('rotate', 'move_to_screen_edge', 'bias', 'maximize') and active_group is not None and active_group.dock_data:
+            return False
         if action_name == 'rotate':
             args = args or ('90',)
             try:

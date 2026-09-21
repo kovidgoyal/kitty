@@ -489,7 +489,8 @@ class Layout:
         self, all_windows: WindowList, window: WindowType, location: str | None, bias: float | None = None, next_to: WindowType | None = None
     ) -> None:
         before = False
-        next_to = next_to or all_windows.active_main_window
+        if next_to is None or all_windows.is_docked(next_to):
+            next_to = all_windows.active_main_window
         if location is not None:
             if location in ('after', 'vsplit', 'hsplit'):
                 pass

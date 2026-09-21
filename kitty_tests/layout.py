@@ -790,6 +790,24 @@ class TestLayout(BaseTest):
         windows.set_active_window_group_for(window_dock)
         self.ae(layout.neighbors(windows)['left'][0], windows.group_for_window(owner).id)
 
+    def test_docks_stay_out_of_splits_topology(self):
+        layout = create_layout(Splits)
+        windows = create_windows(layout, 0)
+        for i in range(3):
+            layout.add_window(windows, Window(i + 1))
+        owner = windows.active_window
+        dock = Window(4)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        original_tree = layout.pairs_root.serialize()
+        layout.insert_window_next_to(windows, dock, owner, True, True)
+        self.ae(layout.pairs_root.serialize(), original_tree)
+        self.assertFalse(layout.layout_action('move_to_screen_edge', ['left'], windows))
+        self.ae(layout.pairs_root.serialize(), original_tree)
+
+        layout.add_window(windows, Window(5))
+        self.ae(set(layout.pairs_root.all_window_ids()), {group.id for group in windows.iter_main_groups()})
+
     def test_window_dock_owner_lifetime(self):
         from kitty.tabs import Tab as RealTab
 
@@ -828,6 +846,8 @@ class TestLayout(BaseTest):
             RealTab.remove_window(tab, owner, do_post_removal_update=False)
         self.ae(dock.dock_data.owner_window_id, overlay.id)
         self.ae(boss.marked, [])
+        self.ae(RealTab.detach_window(tab, dock), ())
+        self.assertIn(dock, windows)
 
     def test_docks_gracefully_consume_undersized_viewport(self):
         for layout_class in (Stack, Vertical, Horizontal, Tall, Grid, Splits):

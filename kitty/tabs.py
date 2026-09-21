@@ -1005,6 +1005,8 @@ class Tab:  # {{{
         set_active_window(self.os_window_id, self.id, active_window.id if active_window else 0)
 
     def detach_window(self, window: Window) -> tuple[Window, ...]:
+        if self.windows.is_docked(window):
+            return ()
         windows = list(self.windows.windows_in_group_of(window))
         owner_group = self.windows.group_for_window(window)
         if owner_group is not None and owner_group.dock_data is None:
