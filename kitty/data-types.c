@@ -897,6 +897,7 @@ extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
 extern int init_Screen(PyObject *);
 extern bool init_animations(PyObject *);
+extern bool init_amoeba(PyObject *);
 extern bool init_fontconfig_library(PyObject *);
 extern bool init_crypto_library(PyObject *);
 extern bool init_desktop(PyObject *);
@@ -945,6 +946,7 @@ PyInit_fast_data_types(void) {
     init_monotonic();
 
     if (!init_logging(m)) return NULL;
+    if (!init_amoeba(m)) return NULL;
     if (!init_LineBuf(m)) return NULL;
     if (!init_HistoryBuf(m)) return NULL;
     if (!init_Line(m)) return NULL;
