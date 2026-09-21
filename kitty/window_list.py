@@ -202,6 +202,9 @@ class WindowList:
             if dock := group.dock_data:
                 data = dock.serialize()
                 data['window_id'] = next(w.id for w in group if getattr(w, 'dock_data', None) is dock)
+                data['window_ids'] = [w.id for w in group]
+                if dock.scope == 'window' and (owner := self.group_for_window(dock.owner_window_id)) is not None:
+                    data['owner_window_ids'] = [w.id for w in owner]
                 ans.append(data)
         return ans
 
@@ -235,14 +238,19 @@ class WindowList:
             for window in self.all_windows:
                 window.dock_data = None
             for serialized in state.get('docks', ()):
-                if window := self.id_map.get(window_id_map.get(serialized.get('window_id'), 0)):
+                old_window_ids = (serialized.get('window_id'), *(serialized.get('window_ids') or ()))
+                new_window_id = next((window_id_map[old_id] for old_id in old_window_ids if old_id in window_id_map), 0)
+                if (window := self.id_map.get(new_window_id)) is not None:
                     data = dict(serialized)
-                    old_owner_window_id = int(data.get('owner_window_id') or 0)
-                    data['owner_window_id'] = window_id_map.get(old_owner_window_id, 0)
+                    old_owner_window_ids = (data.get('owner_window_id'), *(data.get('owner_window_ids') or ()))
+                    data['owner_window_id'] = next((window_id_map[old_id] for old_id in old_owner_window_ids if old_id in window_id_map), 0)
                     try:
-                        window.dock_data = DockData.from_dict(data)
+                        dock = DockData.from_dict(data)
                     except (TypeError, ValueError):
                         pass
+                    else:
+                        for group_window in self.windows_in_group_of(window):
+                            group_window.dock_data = dock
         ans = {}
         gmap = {g.id: g for g in self.groups}
         present_wids_map = {g.id: {w.id for w in g} for g in self.groups}
@@ -368,10 +376,11 @@ class WindowList:
         return iter(g for g in self.groups if g.dock_data is not None and (not only_visible or g.is_visible_in_layout))
 
     def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[tuple[int, WindowType]]:
-        for i, g in enumerate(self.iter_main_groups(only_visible=only_visible)):
-            aw = g.active_window_id
-            for window in g:
-                if window.id == aw:
+        groups = (group for group in self.groups if (group.dock_data is None or group.dock_data.focusable) and (not only_visible or group.is_visible_in_layout))
+        for i, group in enumerate(groups):
+            active_window_id = group.active_window_id
+            for window in group:
+                if window.id == active_window_id:
                     yield i, window
                     break
 

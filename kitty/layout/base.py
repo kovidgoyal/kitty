@@ -471,15 +471,18 @@ class Layout:
         bias: float | None = None,
         next_to: WindowType | None = None,
     ) -> WindowType | None:
-        if (dock := getattr(window, 'dock_data', None)) is not None:
-            all_windows.add_window(window, make_active=dock.focusable)
-            return None
-        if overlay_for is not None:
+        dock = getattr(window, 'dock_data', None)
+        if overlay_for is not None and dock is None:
             underlay = all_windows.id_map.get(overlay_for)
             if underlay is not None:
                 window.margin, window.padding = underlay.margin.copy(), underlay.padding.copy()
+                if group := all_windows.group_for_window(underlay):
+                    window.dock_data = group.dock_data
                 all_windows.add_window(window, group_of=overlay_for, head_of_group=put_overlay_behind)
                 return underlay
+        if dock is not None:
+            all_windows.add_window(window, make_active=dock.focusable)
+            return None
         if location == 'neighbor':
             location = 'after'
         self.add_non_overlay_window(all_windows, window, location, bias, next_to)

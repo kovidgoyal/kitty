@@ -790,6 +790,49 @@ class TestLayout(BaseTest):
         windows.set_active_window_group_for(window_dock)
         self.ae(layout.neighbors(windows)['left'][0], windows.group_for_window(owner).id)
 
+    def test_overlay_preserves_dock_group(self):
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        dock = Window(2)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        overlay = Window(3, overlay_for=dock.id)
+        self.assertIs(layout.add_window(windows, overlay, overlay_for=dock.id), dock)
+        dock_group = windows.group_for_window(dock)
+        self.assertIs(dock_group, windows.group_for_window(overlay))
+        self.ae(overlay.dock_data, dock.dock_data)
+
+        for window in windows:
+            window.serialized_id = window.id
+        state = layout.serialize(windows)
+        restored_layout = create_layout(Vertical)
+        restored = create_windows(restored_layout, 0)
+        restored_owner, restored_dock, restored_overlay = Window(10), Window(20), Window(30, overlay_for=20)
+        for window, serialized_id in zip((restored_owner, restored_dock, restored_overlay), (1, 2, 3)):
+            window.serialized_id = serialized_id
+        restored.add_window(restored_owner)
+        restored.add_window(restored_dock)
+        restored.add_window(restored_overlay, group_of=restored_dock)
+        self.assertTrue(restored_layout.unserialize(state, restored))
+        self.ae(restored_dock.dock_data, restored_overlay.dock_data)
+        self.ae(restored_dock.dock_data.owner_window_id, restored_owner.id)
+
+        partial_layout = create_layout(Vertical)
+        partial = create_windows(partial_layout, 0)
+        partial_owner, partial_overlay = Window(100), Window(300)
+        partial_owner.serialized_id, partial_overlay.serialized_id = 1, 3
+        partial.add_window(partial_owner)
+        partial.add_window(partial_overlay)
+        self.assertTrue(partial_layout.unserialize(state, partial))
+        self.ae(partial_overlay.dock_data.owner_window_id, partial_owner.id)
+
+        windows.remove_window(dock)
+        self.assertIs(dock_group, windows.group_for_window(overlay))
+        self.ae(dock_group.dock_data, overlay.dock_data)
+        self.ae(len(tuple(windows.iter_dock_groups())), 1)
+        self.ae(len(tuple(windows.iter_main_groups())), 1)
+
     def test_docks_stay_out_of_splits_topology(self):
         layout = create_layout(Splits)
         windows = create_windows(layout, 0)
@@ -809,6 +852,7 @@ class TestLayout(BaseTest):
         self.ae(set(layout.pairs_root.all_window_ids()), {group.id for group in windows.iter_main_groups()})
 
     def test_window_dock_owner_lifetime(self):
+        from kitty.boss import Boss as RealBoss
         from kitty.tabs import Tab as RealTab
 
         class Boss:
@@ -824,6 +868,8 @@ class TestLayout(BaseTest):
         dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
         layout.add_window(windows, dock)
         windows.set_active_window_group_for(owner)
+        fake_tab = type('FakeTab', (), {'windows': windows})()
+        self.assertIs(RealBoss._sole_window_of_tab(None, fake_tab), owner)
         tab = object.__new__(RealTab)
         tab.windows, tab.os_window_id, tab.id = windows, 1, 1
         boss = Boss()
@@ -903,6 +949,11 @@ class TestLayout(BaseTest):
         windows.activate_next_window_group(1)
         self.assertIs(windows.active_window, second_dock)
         self.assertIs(windows.active_main_window, second)
+        self.ae([window.id for _, window in windows.iter_windows_with_number()], [second.id, second_dock.id])
+        self.ae(
+            [window.id for _, window in windows.iter_windows_with_number(only_visible=False)],
+            [first.id, second.id, first_dock.id, second_dock.id],
+        )
 
     def test_split_constraint_allocation(self):
         model = SplitConstraintModel()

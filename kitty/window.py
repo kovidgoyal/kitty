@@ -2433,8 +2433,8 @@ class Window:
                 ans.append('--hold')
             if self.creation_spec.hold_after_ssh:
                 ans.append('--hold-after-ssh')
-            if self.creation_spec.dock_data is not None:
-                dock = self.creation_spec.dock_data
+            dock = self.creation_spec.dock_data or (self.dock_data if not is_overlay else None)
+            if dock is not None:
                 ans.extend((f'--dock-type={dock.type}', f'--dock-size={dock.size}'))
                 if not dock.focusable:
                     ans.append('--dock-no-focus')
