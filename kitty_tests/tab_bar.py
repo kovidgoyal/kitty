@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from kitty.fast_data_types import LEFT_EDGE, Color, Region
 from kitty.options.utils import tab_title_wrap
-from kitty.tab_bar import CellRange, TabBar, TabBarData, as_rgb, powerline_symbols, truncate_line, wrap_title
+from kitty.tab_bar import CellRange, TabBar, TabBarData, TabExtent, WindowDropTarget, as_rgb, powerline_symbols, truncate_line, wrap_title
 from kitty.utils import color_as_int
 
 from .base import BaseTest
@@ -24,6 +24,100 @@ class DummyBoss:
 
 
 class TestTabBar(BaseTest):
+    def test_tab_insertion_uses_nearest_boundary(self):
+        tb = self.vertical_tab_bar()
+        for vertical in (False, True):
+            tb.is_vertical = vertical
+            tb.screen.resize(50, 100)
+            tb.cell_width, tb.cell_height = 10, 20
+            tb.tab_extents = tuple(
+                TabExtent(tid, CellRange(start, end), CellRange(start, end)) for tid, start, end in ((1, 2, 11), (2, 14, 23), (3, 26, 35), (-1, 38, 40))
+            )
+            cell_size = tb.cell_height if vertical else tb.cell_width
+            for coordinate, before in ((0, 1), (6.99, 1), (7, 2), (13, 2), (18.99, 2), (19, 3), (31, 0), (40, 0)):
+                pos = int(coordinate * cell_size)
+                x, y = (5, pos) if vertical else (pos, 5)
+                self.ae(tb.tab_insertion_target_at(x, y), before, (vertical, coordinate))
+
+    def test_tab_insertion_marker_does_not_replace_tabs(self):
+        tb = self.vertical_tab_bar()
+        data, extents, original = tb.last_laid_out_tabs, tb.tab_extents, self.screen_lines(tb)
+        with patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None), patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
+            tb.tab_drop_insert_before = 2
+            tb.update(data)
+            self.ae(tb.last_laid_out_tabs, data)
+            self.ae(tb.tab_extents, extents)
+            self.assertIn('━', self.screen_lines(tb)[extents[1].y.start])
+            tb.tab_drop_insert_before = None
+            tb.update(data)
+            self.ae(self.screen_lines(tb), original)
+
+    def test_window_drop_tab_edges_and_gaps(self):
+        tb = self.vertical_tab_bar()
+        for vertical in (False, True):
+            with self.subTest(vertical=vertical):
+                tb.is_vertical = vertical
+                tb.screen.resize(50, 100)
+                tb.cell_width, tb.cell_height = 10, 20
+                tb.tab_extents = tuple(
+                    TabExtent(tid, CellRange(start, end), CellRange(start, end)) for tid, start, end in ((1, 2, 11), (2, 14, 23), (-1, 26, 28))
+                )
+                cell_size = tb.cell_height if vertical else tb.cell_width
+                for coordinate, target in (
+                    (0, WindowDropTarget(before_tab_id=1)),
+                    (2.99, WindowDropTarget(before_tab_id=1)),
+                    (3, WindowDropTarget(tab_id=1)),
+                    (10.99, WindowDropTarget(tab_id=1)),
+                    (11, WindowDropTarget(before_tab_id=2)),
+                    (13, WindowDropTarget(before_tab_id=2)),
+                    (14.99, WindowDropTarget(before_tab_id=2)),
+                    (15, WindowDropTarget(tab_id=2)),
+                    (23, WindowDropTarget(before_tab_id=0)),
+                    (27, WindowDropTarget(before_tab_id=0)),
+                    (40, WindowDropTarget(before_tab_id=0)),
+                ):
+                    pos = int(coordinate * cell_size)
+                    x, y = (tb.window_geometry.left + 5, tb.window_geometry.top + pos) if vertical else (pos, 5)
+                    self.ae(tb.window_drop_target_at(x, y), target, (vertical, coordinate))
+
+    def test_window_drop_custom_full_width_tabs(self):
+        tb = self.vertical_tab_bar()
+        tb.is_vertical = False
+        tb.screen.resize(1, 100)
+        tb.cell_width = 10
+        # A full-width custom renderer returns the cell after each tab, including the
+        # first cell of its neighbor. The synthetic '+' is entirely off screen.
+        tb.tab_extents = tuple(TabExtent(tid, CellRange(start, end)) for tid, start, end in ((1, 0, 50), (2, 50, 100), (-1, 100, 150)))
+        for x, target in (
+            (49, WindowDropTarget(before_tab_id=1)),
+            (50, WindowDropTarget(tab_id=1)),
+            (449, WindowDropTarget(tab_id=1)),
+            (450, WindowDropTarget(before_tab_id=2)),
+            (549, WindowDropTarget(before_tab_id=2)),
+            (550, WindowDropTarget(tab_id=2)),
+            (949, WindowDropTarget(tab_id=2)),
+            (950, WindowDropTarget(before_tab_id=0)),
+            (999, WindowDropTarget(before_tab_id=0)),
+        ):
+            self.ae(tb.window_drop_target_at(x, 5), target, x)
+        tb.window_drop_insert_before = 0
+        tb.draw_drop_insert_marker()
+        self.ae(str(tb.screen.line(0))[-1], '┃')
+
+    def test_window_drop_marker_does_not_move_tabs(self):
+        tb = self.vertical_tab_bar()
+        data = tb.last_laid_out_tabs
+        extents, original = tb.tab_extents, self.screen_lines(tb)
+        with patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None), patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
+            tb.window_drop_insert_before = 2
+            tb.update(data)
+            self.ae(tb.tab_extents, extents)
+            self.assertIn('━', self.screen_lines(tb)[extents[1].y.start])
+            tb.window_drop_insert_before = None
+            tb.update(data)
+            self.ae(tb.tab_extents, extents)
+            self.ae(self.screen_lines(tb), original)
+
     def test_vertical_tab_bar_hit_testing(self) -> None:
         self.set_options(
             {

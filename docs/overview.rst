@@ -187,6 +187,18 @@ Window to another, or even pop them out into a new OS Window. A tab containing a
 single window can also be dropped into the content area of another tab to insert
 its window at the highlighted edge.
 
+When dragging a window, or a tab containing a single window, hover over the middle
+of another tab for 0.6 seconds to switch to it. Keep dragging into its content area
+to choose a split position before releasing the mouse. Dropping directly on the
+middle of the tab moves the window into it.
+
+The outer 10% at either end of a tab, the gaps between tabs and the ends of the
+tab bar show an insertion marker. Dropping a window there creates a new tab at
+that position. Dragging a whole tab inserts it at the marker while keeping the
+other tabs in place during the drag. Tabs containing multiple windows remain
+independent tabs, and do not switch to or merge into another tab on hover. For
+vertical tab bars, insertion positions run from top to bottom.
+
 You can drag window borders to resize windows. You can double click on empty regions
 of the tab bar to create new tabs or double click on an existing tab to rename
 it.

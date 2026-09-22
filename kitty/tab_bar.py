@@ -746,6 +746,12 @@ class TabExtent(NamedTuple):
         return self.x.start <= x <= self.x.end and self.y.start <= y <= self.y.end
 
 
+class WindowDropTarget(NamedTuple):
+    tab_id: int = 0
+    # None means an existing tab; zero means append, otherwise insert before this tab.
+    before_tab_id: int | None = None
+
+
 class TabBar:
     def __init__(self, os_window_id: int):
         self.os_window_id = os_window_id
@@ -754,6 +760,8 @@ class TabBar:
         self.data_buffer_size = 0
         self.blank_rects: tuple[Border, ...] = ()
         self.tab_extents: Sequence[TabExtent] = ()
+        self.window_drop_insert_before: int | None = None
+        self.tab_drop_insert_before: int | None = None
         self.laid_out_once = False
         self.left_edge_is_default = True
         self.right_edge_is_default = True
@@ -1061,6 +1069,7 @@ class TabBar:
         self.tab_extents = cr
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.align()
+        self.draw_drop_insert_marker()
         return self._update_edge_defaults(False)
 
     def update_vertical(self, data: Sequence[TabBarData]) -> bool:
@@ -1158,7 +1167,31 @@ class TabBar:
             s.cursor.fg = as_rgb(0xFF0000)
             s.draw('…')
         self.tab_extents = tuple(cr)
+        self.draw_drop_insert_marker()
         return self._update_edge_defaults(True)
+
+    def draw_drop_insert_marker(self) -> None:
+        before = self.tab_drop_insert_before if self.tab_drop_insert_before is not None else self.window_drop_insert_before
+        if before is None:
+            return
+        extents = tuple(te for te in self.tab_extents if te.tab_id > 0)
+        coordinate = 0
+        for te in extents:
+            cells = te.y if self.is_vertical else te.x
+            if te.tab_id == before:
+                coordinate = cells.start
+                break
+            coordinate = cells.end + 1
+        s = self.screen
+        s.cursor.fg, s.cursor.bg = self.active_fg, self.active_bg
+        s.cursor.bold, s.cursor.italic = False, False
+        if self.is_vertical:
+            s.cursor.x, s.cursor.y = 0, min(s.lines - 1, coordinate)
+            s.draw('━' * s.columns)
+        else:
+            s.cursor.x, s.cursor.y = min(s.columns - 1, coordinate), 0
+            s.draw('┃')
+        s.cursor.fg = s.cursor.bg = 0
 
     def align_with_factor(self, factor: int = 1) -> None:
         if not self.tab_extents:
@@ -1188,3 +1221,50 @@ class TabBar:
 
     def drag_axis_coordinate(self, x: int, y: int) -> int:
         return y if self.is_vertical else x
+
+    def tab_insertion_target_at(self, x: int, y: int) -> int:
+        "The tab after the nearest insertion boundary, or zero to append."
+        if not self.laid_out_once:
+            return 0
+        g = self.window_geometry
+        coordinate = y - g.top if self.is_vertical else x - g.left
+        cell_size = self.cell_height if self.is_vertical else self.cell_width
+        limit = self.screen.lines if self.is_vertical else self.screen.columns
+        extents = tuple(te for te in self.tab_extents if te.tab_id > 0)
+        for i, te in enumerate(extents):
+            cells = te.y if self.is_vertical else te.x
+            start, end = cells.start * cell_size, min(limit, cells.end + 1) * cell_size
+            if i + 1 < len(extents):
+                next_cells = extents[i + 1].y if self.is_vertical else extents[i + 1].x
+                end = min(end, next_cells.start * cell_size)
+            if end > start and coordinate < (start + end) / 2:
+                return te.tab_id
+        return 0
+
+    def window_drop_target_at(self, x: int, y: int) -> WindowDropTarget:
+        """The middle 80% of a tab accepts a window. Its outer 10% and gaps insert a new tab.
+        Called only for points inside the tab bar viewport, including its blank margins."""
+        if not self.laid_out_once:
+            return WindowDropTarget(before_tab_id=0)
+        g = self.window_geometry
+        coordinate = y - g.top if self.is_vertical else x - g.left
+        cell_size = self.cell_height if self.is_vertical else self.cell_width
+        limit = self.screen.lines if self.is_vertical else self.screen.columns
+        extents = tuple(te for te in self.tab_extents if te.tab_id > 0)
+        for i, te in enumerate(extents):
+            cells = te.y if self.is_vertical else te.x
+            start, end = cells.start * cell_size, min(limit, cells.end + 1) * cell_size
+            # Some custom renderers include the next tab's first cell in their extent.
+            if i + 1 < len(extents):
+                next_cells = extents[i + 1].y if self.is_vertical else extents[i + 1].x
+                end = min(end, next_cells.start * cell_size)
+            if end <= start:
+                continue
+            if coordinate < start + (end - start) * 0.1:
+                return WindowDropTarget(before_tab_id=te.tab_id)
+            if coordinate < end - (end - start) * 0.1:
+                return WindowDropTarget(tab_id=te.tab_id)
+            if coordinate < end:
+                before = extents[i + 1].tab_id if i + 1 < len(extents) else 0
+                return WindowDropTarget(before_tab_id=before)
+        return WindowDropTarget(before_tab_id=0)
