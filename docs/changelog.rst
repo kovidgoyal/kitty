@@ -199,6 +199,13 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
+Unreleased
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Splits layout: Dragging a divider now resizes only its adjacent regions,
+  consistently after rearranging windows. Fix nested dividers not tracking
+  mouse movement correctly, including when returning from a minimum size.
+
 0.49.0 [2026-09-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

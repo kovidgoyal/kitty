@@ -887,6 +887,8 @@ class TestSplitBorderResize(BaseTest):
     def setUp(self):
         super().setUp()
         self.set_options({'tab_bar_style': 'hidden'})
+        saved = vars(lgd).copy()
+        self.addCleanup(lambda: (vars(lgd).clear(), vars(lgd).update(saved)))
 
     def make_layout(self, shape):
         layout = create_layout(Splits)
@@ -894,6 +896,12 @@ class TestSplitBorderResize(BaseTest):
         for i in range(1, 5):
             layout.add_window(windows, Window(i))
         layout.pairs_root.unserialize(shape, lambda x: x)
+
+        def dimensions(all_windows):
+            lgd.central = Region((0, 0, 1499, 1099, 1500, 1100))
+            lgd.cell_width, lgd.cell_height = 10, 20
+
+        layout._set_dimensions = dimensions
         layout(windows)
         return layout, windows
 
@@ -922,7 +930,7 @@ class TestSplitBorderResize(BaseTest):
                 (2, BOTTOM_EDGE, center),
                 (3, TOP_EDGE, center),
             ):
-                for increment in (0.04, -0.03):
+                for increment in (3, -3):
                     with self.subTest(wid=wid, edge=edge, increment=increment):
                         data = layout.drag_resize_target_windows(ws[wid], 0, 0, edge, windows)
                         horizontal = bool(edge & (LEFT_EDGE | RIGHT_EDGE))
@@ -930,14 +938,16 @@ class TestSplitBorderResize(BaseTest):
                         forwards = data.width_increases_rightwards if horizontal else data.height_increases_downwards
                         self.assertEqual(target, id(expected))
                         self.assertTrue(forwards)
-                        before = {id(p): p.bias for p in root.self_and_descendants()}
+
+                        def positions():
+                            return {id(p): p.first_extent.right if p.horizontal else p.first_extent.bottom for p in root.self_and_descendants()}
+
+                        before = positions()
                         self.assertTrue(layout.drag_resize_window(windows, target, increment, horizontal))
                         layout(windows)
-                        for p in root.self_and_descendants():
-                            self.assertAlmostEqual(
-                                p.bias,
-                                before[id(p)] + (increment if p is expected else 0),
-                            )
+                        cell = lgd.cell_width if horizontal else lgd.cell_height
+                        for pid, position in positions().items():
+                            self.ae(position - before[pid], increment * cell if pid == target else 0)
 
     def test_all_rendered_internal_borders(self):
         # All 5 binary tree shapes with 4 leaves, with every combination of
@@ -995,6 +1005,139 @@ class TestSplitBorderResize(BaseTest):
         data = layout.drag_resize_target_windows(ws[1], 0, 0, LEFT_EDGE | TOP_EDGE, windows)
         self.assertIsNone(data.horizontal_id)
         self.assertIsNone(data.vertical_id)
+
+
+class TestSplitDragGeometry(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.set_options({'tab_bar_style': 'hidden'})
+        saved = vars(lgd).copy()
+        self.addCleanup(lambda: (vars(lgd).clear(), vars(lgd).update(saved)))
+
+    def make_layout(self, shape, minimal=True):
+        from types import SimpleNamespace
+
+        from kitty.tabs import Tab as RealTab
+
+        layout = create_layout(Splits)
+        layout.layout_opts = SplitsLayoutOpts({'proportional': 'yes'})
+        windows = create_windows(layout, num=4)
+        layout.pairs_root.unserialize(shape, lambda x: x)
+
+        def dimensions(all_windows):
+            lgd.central = Region((19, 47, 1518, 1146, 1500, 1100))
+            lgd.cell_width, lgd.cell_height = 10, 20
+            lgd.draw_minimal_borders = minimal
+
+        layout._set_dimensions = dimensions
+        tab = SimpleNamespace(current_layout=layout, windows=windows, relayout=lambda: layout(windows))
+        tab.drag_resize_window = lambda *args: RealTab.drag_resize_window(tab, *args)
+        tab.relayout()
+        return layout, windows, tab
+
+    def positions(self, layout):
+        return {
+            id(p): (p.first_extent.right if p.horizontal else p.first_extent.bottom) + p.border_width
+            for p in layout.pairs_root.self_and_descendants()
+            if not p.is_redundant
+        }
+
+    def check_drags(self, layout, tab):
+        for pair in layout.pairs_root.self_and_descendants():
+            if pair.is_redundant:
+                continue
+            cell = lgd.cell_width if pair.horizontal else lgd.cell_height
+            for steps in (3, -5, 2):
+                before = self.positions(layout)
+                self.assertTrue(tab.drag_resize_window(id(pair), steps, pair.horizontal))
+                after = self.positions(layout)
+                for pid, position in before.items():
+                    self.ae(after[pid] - position, steps * cell if pid == id(pair) else 0)
+
+    def test_split_drag_adjacent_geometry(self):
+        shapes = (
+            {'bias': 0.3, 'one': 1, 'two': {'bias': 0.4, 'one': 2, 'two': {'one': 3, 'two': 4}}},
+            {'one': {'bias': 0.6, 'one': 1, 'two': 2}, 'two': {'one': 3, 'two': 4}},
+            {'one': {'one': {'one': 1, 'two': 2}, 'two': 3}, 'two': 4},
+            {'horizontal': False, 'bias': 0.35, 'one': 4, 'two': {'one': 1, 'two': {'one': 2, 'two': 3}}},
+            {'one': 1, 'two': {'one': {'horizontal': False, 'one': 2, 'two': 3}, 'two': 4}},
+        )
+
+        def transpose(node):
+            if isinstance(node, int):
+                return node
+            return {**node, 'horizontal': not node.get('horizontal', True), 'one': transpose(node['one']), 'two': transpose(node['two'])}
+
+        for shape in shapes:
+            for oriented in (shape, transpose(shape)):
+                for minimal in (True, False):
+                    with self.subTest(shape=oriented, minimal=minimal):
+                        layout, windows, tab = self.make_layout(oriented, minimal)
+                        self.check_drags(layout, tab)
+
+    def test_split_drag_after_reposition_and_restore(self):
+        shape = {'horizontal': False, 'one': 4, 'two': {'bias': 0.3, 'one': 1, 'two': {'bias': 0.6, 'one': 2, 'two': 3}}}
+        layout, windows, tab = self.make_layout(shape)
+        ws = {w.id: w for w in windows}
+        self.check_drags(layout, tab)
+        layout.insert_window_next_to(windows, ws[3], ws[1], True, False)
+        tab.relayout()
+        self.ae(list(layout.pairs_root.two.all_window_ids()), [3, 1, 2])
+        self.check_drags(layout, tab)
+        saved = {**layout.layout_state(), 'opts': layout.layout_opts.serialized()}
+        self.assertTrue(layout.set_layout_state(saved, lambda x: x))
+        tab.relayout()
+        self.check_drags(layout, tab)
+
+    def test_split_drag_minimum_size(self):
+        layout, windows, tab = self.make_layout({'one': 1, 'two': {'one': 2, 'two': {'one': 3, 'two': 4}}})
+        root = layout.pairs_root
+        before = self.positions(layout)
+        self.assertTrue(tab.drag_resize_window(id(root), 10000, True))
+        after = self.positions(layout)
+        for pid in before:
+            if pid != id(root):
+                self.ae(after[pid], before[pid])
+        self.assertGreaterEqual(root.two.first_extent.right - root.two.first_extent.left, lgd.cell_width)
+        self.assertFalse(tab.drag_resize_window(id(root), 1, True))
+        self.assertTrue(tab.drag_resize_window(id(root), -1, True))
+        self.ae(self.positions(layout)[id(root)], after[id(root)] - lgd.cell_width)
+
+    def test_split_drag_corner_and_subcell_motion(self):
+        from types import SimpleNamespace
+
+        from kitty.boss import Boss
+        from kitty.types import WindowResizeDrag, WindowResizeDragData
+
+        layout, windows, tab = self.make_layout({'one': 1, 'two': {'one': {'horizontal': False, 'one': 2, 'two': 3}, 'two': 4}})
+        root = layout.pairs_root
+        data = WindowResizeDragData(id(root), True, id(root.two.one), True)
+        state = WindowResizeDrag(is_active=True, cell_width=10, cell_height=20, initial_x=300, initial_y=400, data=data)
+        boss = SimpleNamespace(drag_resize_of_window=state, tab_for_id=lambda _: tab)
+        before = self.positions(layout)
+        for x, y in ((301, 401), (299, 399), (300, 400)):
+            Boss.drag_resize_update(boss, x, y)
+            self.ae(self.positions(layout), before)
+        Boss.drag_resize_update(boss, 330, 440)
+        moved = self.positions(layout)
+        self.ae(moved[id(root)] - before[id(root)], 30)
+        self.ae(moved[id(root.two.one)] - before[id(root.two.one)], 40)
+        Boss.drag_resize_update(boss, 330, 440)
+        self.ae(self.positions(layout), moved)
+        Boss.drag_resize_update(boss, 300, 400)
+        self.ae(self.positions(layout), before)
+
+        # Overshooting a minimum size must not detach the divider from the
+        # pointer when the pointer comes back into the allowed region.
+        boss.drag_resize_of_window = state._replace(data=data._replace(vertical_id=None))
+        Boss.drag_resize_update(boss, 10300, 400)
+        limited = self.positions(layout)
+        Boss.drag_resize_update(boss, 9300, 400)
+        self.ae(self.positions(layout), limited)
+        Boss.drag_resize_update(boss, 330, 400)
+        self.ae(self.positions(layout)[id(root)], before[id(root)] + 30)
+        Boss.drag_resize_update(boss, 300, 400)
+        self.ae(self.positions(layout), before)
 
 
 class TestProportionalSplits(BaseTest):
