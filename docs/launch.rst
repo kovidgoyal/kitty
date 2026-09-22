@@ -53,10 +53,10 @@ There are many more powerful options, refer to the complete list below.
 Launching docked windows
 --------------------------
 
-Set :option:`launch --type` to ``window-dock`` or ``tab-dock`` to create a
-fixed-size window along an edge of a normal window or the current tab. Choose
-the edge with :option:`launch --dock-edge`. For example, to open a ten-line
-shell below the active window::
+Set :option:`launch --type` to ``window-dock`` or ``tab-dock`` to create an
+edge-docked kitty window attached to a normal kitty window or the current tab.
+Choose the edge with :option:`launch --dock-edge`. For example, to open a
+ten-line shell below the active kitty window::
 
     map f2 launch --type=window-dock --dock-edge=bottom --dock-size=10 --cwd=current
 

@@ -93,7 +93,7 @@ Where to launch the child process:
     A new :term:`kitty window <window>` in the current tab
 
 :code:`window-dock`
-    A fixed-size window attached to an edge of the active window. Use
+    An edge-docked kitty window attached to the active kitty window. Use
     :option:`--dock-edge` to select the edge.
 
 :code:`tab`
@@ -101,7 +101,7 @@ Where to launch the child process:
     :doc:`launch <launch>` command is used in :ref:`startup sessions <sessions>`.
 
 :code:`tab-dock`
-    A fixed-size window attached to an edge of the current tab. Use
+    An edge-docked kitty window attached to the current tab. Use
     :option:`--dock-edge` to select the edge.
 
 :code:`os-window`
@@ -888,7 +888,7 @@ def _launch(
                 if owner_group is None or owner_group.dock_data is not None:
                     owner_group = tab.windows.active_main_group
                 if owner_group is None:
-                    raise ValueError('A window dock needs a normal window in the target tab')
+                    raise ValueError('A window dock needs a normal kitty window in the target tab')
                 owner_window_id = owner_group.active_window_id
             kw['dock_data'] = DockData(
                 dock_scope,

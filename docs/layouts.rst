@@ -35,7 +35,7 @@ below.
 Docked windows
 ------------------
 
-A dock is a fixed-size kitty window attached to an edge of a tab or another
+A dock is an edge-docked kitty window attached to a tab or another kitty
 window. Docks work with every layout and are not part of the layout's normal
 tiling topology. This makes them useful for shells, logs, status bars and
 other tools that should keep a stable size while the rest of the tab is
@@ -43,7 +43,7 @@ rearranged.
 
 Create a dock with :option:`launch --type` set to ``window-dock`` or
 ``tab-dock`` and choose its edge with :option:`launch --dock-edge`. For example,
-these mappings create a shell below the active window and another along the
+these mappings create a shell below the active kitty window and another along the
 right edge of the tab::
 
     map f2 launch --type=window-dock --dock-edge=bottom --dock-size=10 --cwd=current
@@ -52,7 +52,7 @@ right edge of the tab::
 The :option:`launch --dock-size` is measured in rows for top and bottom docks
 and columns for left and right docks. It does not include window decorations.
 Add a ``%`` suffix, for example ``--dock-size=25%``, to instead size the entire
-dock region as a percentage of its parent window or tab along the dock axis.
+dock region as a percentage of its parent kitty window or tab along the dock axis.
 The default size is one row or column. Multiple docks can be placed on the same
 or different edges. If the tab becomes too small to accommodate every requested
 size, later-created docks are clipped first so that all geometry remains valid.
@@ -61,21 +61,21 @@ There are two dock scopes:
 
 ``tab``
     The dock reserves space at the outer edge of the tab before the selected
-    layout arranges its normal windows. It remains visible when changing the
-    active window, including in the :ref:`Stack Layout <stack_layout>`.
+    layout arranges its normal kitty windows. It remains visible when changing
+    the active kitty window, including in the :ref:`Stack Layout <stack_layout>`.
 
 ``window``
     The dock subdivides the area allocated to its owner without changing the
-    rest of the layout. Its owner is the active normal window by default. Use
-    :option:`launch --next-to` to select a different owner. The dock follows
+    rest of the layout. Its owner is the active normal kitty window by default.
+    Use :option:`launch --next-to` to select a different owner. The dock follows
     its owner's visibility, so in the Stack layout it is shown only while its
     owner is shown. Closing the owner group also closes its window docks.
 
 Docks can receive keyboard focus by default. They participate in normal focus
-navigation and visual window selection. The :ac:`toggle_dock_focus` action
-switches between a normal window and its most recently focused eligible dock;
-when run from a dock it returns to the active normal window. A typical mapping
-is::
+navigation and visual kitty window selection. The :ac:`toggle_dock_focus`
+action switches between a normal kitty window and its most recently focused
+eligible dock; when run from a dock it returns to the active normal kitty
+window. A typical mapping is::
 
     map f4 toggle_dock_focus
 
