@@ -191,6 +191,10 @@ class LoadShaderPrograms:
         # Per-instance because it is mutable: the sources most recently compiled
         # into each program, used to skip redundant recompiles.
         self.last_built_custom_shaders: dict[int, tuple[str, str, dict[str, Any]]] = {}
+        # Errors from the most recent attempt to build the shaders named by the
+        # custom_shaders option. A failure here disables the shader silently as
+        # far as rendering is concerned, so the Boss displays these to the user.
+        self.custom_shader_errors: list[str] = []
 
     def get_options(self) -> Options:
         try:
@@ -254,6 +258,15 @@ class LoadShaderPrograms:
         self.force_recompile_of_custom_shaders = False
         opts = self.get_options()
         self.custom_shaders = tuple(opts.custom_shaders)
+        self.custom_shader_errors = []
+
+        def err(msg: str) -> None:
+            # Record as well as log: a failure here leaves the shader disabled
+            # with no visible difference from not setting custom_shaders at all,
+            # so the Boss shows these to the user.
+            log_error(msg)
+            self.custom_shader_errors.append(msg)
+
         pmap: dict[str, list[Pipeline]] = {}
         for k in self.custom_shaders:
             try:
@@ -262,15 +275,15 @@ class LoadShaderPrograms:
                 try:
                     custom_shader(k)
                 except Exception as e:
-                    log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
+                    err(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
                     continue
                 try:
                     d = parse_pipeline_definition(['startgroup', f'    shaders {k}', 'endgroup'], k)
                 except Exception as e:
-                    log_error(f'Failed to build minimal shader pipeline for {k} with error: {e}')
+                    err(f'Failed to build minimal shader pipeline for {k} with error: {e}')
                     continue
             except Exception as e:
-                log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
+                err(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
                 continue
             pmap.setdefault(d['slot'], []).append(d)
 
@@ -291,8 +304,19 @@ class LoadShaderPrograms:
                     vert, frag, metadata = build_custom_shader_pipeline_glsl(pipeline)
                     # print(vert, file=open('/tmp/sample.vert', 'w'))
                     # print(frag, file=open('/tmp/sample.frag', 'w'))
+                except FileNotFoundError as e:
+                    if e.filename == slangc()[0]:
+                        # Without slangc no custom shader can be built at all, and
+                        # a bare "No such file or directory" gives no hint as to why.
+                        err(
+                            f'Failed to build custom shader for slot {slot} because the slang shader compiler'
+                            f' ({slangc()[0]}) was not found. Install shader-slang to use custom shaders.'
+                        )
+                    else:
+                        err(f'Failed to build custom shader for slot {slot} with error: {e}')
+                    disable(prog)
                 except Exception as e:
-                    log_error(f'Failed to build custom shader for slot {slot} with error: {e}')
+                    err(f'Failed to build custom shader for slot {slot} with error: {e}')
                     disable(prog)
                 else:
                     try:
@@ -300,7 +324,7 @@ class LoadShaderPrograms:
                             compile_program(prog, (vert,), (frag,), metadata, allow_recompile)
                             self.last_built_custom_shaders[prog] = vert, frag, metadata
                     except Exception as e:
-                        log_error(f'Failed to load custom shader for slot {slot} with error: {e}')
+                        err(f'Failed to load custom shader for slot {slot} with error: {e}')
                         disable(prog)
 
         do(CUSTOM_END_PROGRAM, 'end')
