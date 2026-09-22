@@ -6,7 +6,7 @@ import os
 import shutil
 from collections.abc import Callable, Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, Literal, NamedTuple, TypedDict, cast
+from typing import Any, Literal, NamedTuple, TypedDict
 
 from .boss import Boss
 from .child import Child
@@ -17,7 +17,7 @@ from .constants import is_wayland
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
-from .types import DockData, DockEdge, DockScope, LayerShellConfig, OverlayType, parse_dock_size, run_once
+from .types import DockData, LayerShellConfig, OverlayType, parse_dock_size, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
@@ -891,8 +891,8 @@ def _launch(
                     raise ValueError('A window dock needs a normal window in the target tab')
                 owner_window_id = owner_group.active_window_id
             kw['dock_data'] = DockData(
-                cast(DockScope, dock_scope),
-                cast(DockEdge, opts.dock_edge),
+                dock_scope,
+                opts.dock_edge,
                 dock_size,
                 owner_window_id,
                 not opts.dock_skip_focus,
