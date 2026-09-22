@@ -99,8 +99,8 @@ fraction of the original color retained: ``0.74`` blends in 26% of the target
 color. ``INACTIVE_DIM_COLOR`` is in linear RGB; ``0.2158605`` corresponds to
 sRGB ``#808080``. The default target is black, preserving the existing dimming
 effect. The two optional flags preserve the tab bar and include the active
-window's padding in its unchanged area. Explicit cell backgrounds and images
-are blended together with text, while transparency and colors reported to
+window's title bar and padding in its unchanged area. Explicit cell backgrounds
+and images are blended together with text, while transparency and colors reported to
 terminal applications are preserved. ``animation_step 0`` makes this static
 effect redraw only when content or shader events change.
 

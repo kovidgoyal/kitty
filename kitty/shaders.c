@@ -2532,6 +2532,15 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
                 d->active_window_padding[1] = (float)(w->padding.bottom + w->size_mismatch_padding.bottom) / height;
                 d->active_window_padding[2] = (float)(w->padding.right + w->size_mismatch_padding.right) / width;
                 d->active_window_padding[3] = (float)(w->padding.top + w->size_mismatch_padding.top) / height;
+                // The content geometry excludes the title bar. Include it before
+                // extending to the outer padding, so the effect boundary cannot
+                // cut through a title bar at either edge of the window.
+                const WindowRenderData *trd = &w->window_title_render_data;
+                if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top) {
+                    if (trd->geometry.top < active_win_geom.top) d->active_window_padding[3] += (float)(active_win_geom.top - trd->geometry.top) / height;
+                    if (trd->geometry.bottom > active_win_geom.bottom)
+                        d->active_window_padding[1] += (float)(trd->geometry.bottom - active_win_geom.bottom) / height;
+                }
             }
             Screen *s = w->render_data.screen;
             if (s) {
