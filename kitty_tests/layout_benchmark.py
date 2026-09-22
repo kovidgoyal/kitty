@@ -9,7 +9,7 @@ Python processes. This keeps the extension layer and test machine constant.
 It measures cached relayout, cached viewport resize, and kitty window topology
 changes. Run from the kitty source root after building kitty:
 
-    python3 tools/layout_benchmark.py
+    python3 kitty_tests/layout_benchmark.py
 """
 
 import argparse
