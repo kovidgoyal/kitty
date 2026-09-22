@@ -737,6 +737,7 @@ class Boss:
         if isinstance(args, SpecialWindowInstance):
             sw: SpecialWindowInstance | None = args
         else:
+            args = tuple(args)
             sw = self.args_to_special_window(args, cwd_from) if args else None
         startup_session = next(create_sessions(get_options(), special_window=sw, cwd_from=cwd_from))
         startup_session.session_name = ''
@@ -3303,10 +3304,11 @@ class Boss:
 
     def _new_tab(self, args: SpecialWindowInstance | Iterable[str], cwd_from: CwdRequest | None = None, as_neighbor: bool = False) -> Tab | None:
         special_window = None
-        if args:
-            if isinstance(args, SpecialWindowInstance):
-                special_window = args
-            else:
+        if isinstance(args, SpecialWindowInstance):
+            special_window = args
+        else:
+            args = tuple(args)
+            if args:
                 special_window = self.args_to_special_window(args, cwd_from=cwd_from)
         if not self.os_window_map:
             self.add_os_window()
@@ -3607,7 +3609,7 @@ class Boss:
             if file:
                 a(f'In file {file}:')
             [a(format_bad_line(x)) for x in groups[file]]
-        if misc_errors:
+        if misc_errors := tuple(misc_errors):
             a('In final effective configuration:')
             for line in misc_errors:
                 a(line)

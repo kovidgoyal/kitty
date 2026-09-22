@@ -944,7 +944,7 @@ ParallelRun = Callable[[Iterable[tuple[bool, str, list[str]]]], None]
 
 def create_specialisations(sources: dict[str, SlangFile], build_dir: str) -> Iterator[Command]:
     for _, base_build, _, _, sfile in iter_entry_point_shaders(sources, build_dir, build_dir):
-        if sfile.entry_points and sfile.specializations:
+        if sfile.entry_points:
             for sp in sfile.specializations:
                 if not sp.variables:
                     continue
