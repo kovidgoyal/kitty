@@ -758,34 +758,48 @@ class TestDataTypes(BaseTest):
                     os.environ[k] = saved[k]
 
     def test_lock_with_file(self):
+        def is_locked_by_another_process(path):
+            # flock() locks are per file descriptor, so a non-blocking
+            # acquisition in this process would succeed even while the lock is
+            # held here, hence the check has to happen in a child process.
+            code = f'import fcntl, os;fd = os.open({path!r}, os.O_CREAT | os.O_WRONLY);fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)'
+            return subprocess.run([kitty_exe(), '+runpy', code], capture_output=True).returncode != 0
+
         with tempfile.TemporaryDirectory() as tdir:
             lock_path = os.path.join(tdir, 'test.lock')
 
-            # normal usage: file exists during context and is removed after
+            # normal usage: the lock is held only inside the context
             with lock_with_file(lock_path):
                 self.assertTrue(os.path.exists(lock_path))
-            self.assertFalse(os.path.exists(lock_path))
+                self.assertTrue(is_locked_by_another_process(lock_path))
+            self.assertFalse(is_locked_by_another_process(lock_path))
 
-            # second acquisition of the same path succeeds after the first released it
-            with lock_with_file(lock_path):
-                self.assertTrue(os.path.exists(lock_path))
-            self.assertFalse(os.path.exists(lock_path))
-
-            # file already exists: raises FileExistsError before yielding
-            open(lock_path, 'w').close()
-            with self.assertRaises(FileExistsError):
-                with lock_with_file(lock_path):
-                    pass  # should not be reached
-            # pre-existing file must not be deleted
+            # a pre-existing, unlocked lock file must not prevent acquisition
             self.assertTrue(os.path.exists(lock_path))
-            os.remove(lock_path)
+            with lock_with_file(lock_path):
+                self.assertTrue(is_locked_by_another_process(lock_path))
+            self.assertFalse(is_locked_by_another_process(lock_path))
 
-            # lock file is removed even when the body raises
+            # the lock is released even when the body raises
             with self.assertRaises(RuntimeError):
                 with lock_with_file(lock_path):
-                    self.assertTrue(os.path.exists(lock_path))
                     raise RuntimeError('body error')
-            self.assertFalse(os.path.exists(lock_path))
+            self.assertFalse(is_locked_by_another_process(lock_path))
+
+            # a waiting process acquires the lock once it is released
+            code = f'from kitty.utils import lock_with_file;lock_with_file({lock_path!r}).__enter__();print("acquired", flush=True)'
+            with lock_with_file(lock_path):
+                p = subprocess.Popen([kitty_exe(), '+runpy', code], stdout=subprocess.PIPE)
+                try:
+                    # the child must block while we hold the lock
+                    with self.assertRaises(subprocess.TimeoutExpired):
+                        p.wait(timeout=1)
+                except Exception:
+                    p.kill()
+                    raise
+            self.assertEqual(p.stdout.readline(), b'acquired\n')
+            self.assertEqual(p.wait(timeout=30), 0)
+            p.stdout.close()
 
     def test_historybuf(self):
         lb = filled_line_buf()

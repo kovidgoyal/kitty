@@ -206,6 +206,11 @@ Unreleased
   consistently after rearranging windows. Fix nested dividers not tracking
   mouse movement correctly, including when returning from a minimum size.
 
+- Custom shaders: Fix starting a second kitty instance failing to build
+  shaders while another instance is building them, or after a previous
+  instance was killed while building them. Now instances wait for each other
+  to finish instead.
+
 0.49.0 [2026-09-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
