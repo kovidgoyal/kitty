@@ -2782,6 +2782,12 @@ class Boss:
             if w is not None and tab is not None:
                 tab.new_special_window(self.create_special_window_for_show_error(title, msg, w.id), copy_colors_from=w)
 
+    def show_custom_shader_errors(self) -> None:
+        errors = load_shader_programs.custom_shader_errors
+        if errors:
+            load_shader_programs.custom_shader_errors = []
+            self.show_error(_('Failed to load custom shaders'), '\n\n'.join(errors))
+
     @ac('mk', 'Create a new marker')
     def create_marker(self) -> None:
         w = self.window_for_dispatch or self.active_window
