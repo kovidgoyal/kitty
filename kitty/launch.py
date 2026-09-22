@@ -519,6 +519,7 @@ watcher_modules: dict[str, Any] = {}
 
 
 def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
+    watchers = tuple(watchers)
     if not watchers:
         return None
     import runpy
