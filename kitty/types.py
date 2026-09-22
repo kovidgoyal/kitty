@@ -4,6 +4,7 @@
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from enum import Enum
 from functools import update_wrapper
+from math import isfinite
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict, TypeVar, Union, cast
 
 if TYPE_CHECKING:
@@ -48,29 +49,59 @@ class FloatEdges(NamedTuple):
 
 DockEdge = Literal['left', 'top', 'right', 'bottom']
 DockScope = Literal['tab', 'window']
+DockSizeUnit = Literal['cells', 'percent']
+
+
+def parse_dock_size(raw: str | int | float) -> tuple[int | float, DockSizeUnit]:
+    value = str(raw).strip()
+    if value.endswith('%'):
+        try:
+            size = float(value[:-1])
+        except ValueError:
+            pass
+        else:
+            if isfinite(size) and 0 < size <= 100:
+                return size, 'percent'
+        raise ValueError('A percentage dock size must be greater than zero and at most 100%')
+    try:
+        size = int(value)
+    except ValueError:
+        raise ValueError('A dock size must be a positive integer or percentage') from None
+    if size < 1:
+        raise ValueError('A dock size must be at least one')
+    return size, 'cells'
 
 
 class DockData(NamedTuple):
     scope: DockScope
     edge: DockEdge
-    size: int = 1
+    size: int | float = 1
     owner_window_id: int = 0
     focusable: bool = True
+    size_unit: DockSizeUnit = 'cells'
+
+    @property
+    def size_as_cli(self) -> str:
+        suffix = '%' if self.size_unit == 'percent' else ''
+        return f'{self.size:g}{suffix}'
 
     def serialize(self) -> dict[str, Any]:
         return self._asdict()
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> 'DockData':
-        scope, edge = data.get('scope'), data.get('edge')
-        if scope not in ('tab', 'window') or edge not in ('left', 'top', 'right', 'bottom'):
+        scope, edge, size_unit = data.get('scope'), data.get('edge'), data.get('size_unit', 'cells')
+        if scope not in ('tab', 'window') or edge not in ('left', 'top', 'right', 'bottom') or size_unit not in ('cells', 'percent'):
             raise ValueError(f'Invalid dock data: {data!r}')
+        raw_size = data.get('size', 1)
+        size, parsed_unit = parse_dock_size(f'{raw_size}%' if size_unit == 'percent' else raw_size)
         return cls(
             cast(DockScope, scope),
             cast(DockEdge, edge),
-            max(1, int(data.get('size', 1))),
+            size,
             int(data.get('owner_window_id', 0)),
             bool(data.get('focusable', True)),
+            parsed_unit,
         )
 
 

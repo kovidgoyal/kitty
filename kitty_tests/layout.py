@@ -7,7 +7,7 @@ from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import CellBias, calculate_cells_map, layout_dimension, lgd, normalize_biases
-from kitty.layout.constraints import FixedConstraintModel, LinearConstraintModel, SplitConstraintModel
+from kitty.layout.constraints import FixedConstraintModel, FixedSize, LinearConstraintModel, SplitConstraintModel
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.types import DockData, WindowGeometry
@@ -728,13 +728,21 @@ class TestLayout(BaseTest):
 
     def test_fixed_constraint_allocation(self):
         model = FixedConstraintModel()
+        fixed = FixedSize
         self.ae(model(40, ()), ([], 40))
-        self.ae(model(40, (10, 20)), ([10, 20], 10))
-        self.ae(model(25, (10, 20)), ([10, 15], 0))
-        self.ae(model(5, (10, 20)), ([5, 0], 0))
-        model(40, (10, 20))
+        self.ae(model(40, (fixed(10), fixed(20))), ([10, 20], 10))
+        self.ae(model(25, (fixed(10), fixed(20))), ([10, 15], 0))
+        self.ae(model(5, (fixed(10), fixed(20))), ([5, 0], 0))
+        self.ae(model(200, (fixed(fraction=0.25), fixed(fraction=0.5))), ([50, 100], 50))
+        self.ae(model(100, (fixed(fraction=0.75), fixed(fraction=0.75))), ([75, 25], 0))
+        self.ae(model(100, (fixed(10), fixed(fraction=0.25))), ([10, 25], 65))
+        model(40, (fixed(10), fixed(20)))
         solver = model.solver
-        model(41, (10, 20))
+        model(41, (fixed(10), fixed(20)))
+        self.assertIs(model.solver, solver)
+        model(200, (fixed(fraction=0.25),))
+        solver = model.solver
+        model(240, (fixed(fraction=0.25),))
         self.assertIs(model.solver, solver)
 
     def test_dock_metadata_serialization(self):
@@ -752,6 +760,15 @@ class TestLayout(BaseTest):
         self.ae(len(tuple(restored.iter_main_groups())), 2)
         self.ae(len(tuple(restored.iter_dock_groups())), 1)
         self.ae(restored.all_windows[2].dock_data, DockData('window', 'bottom', 2, restored.all_windows[0].id, False))
+
+        dock.dock_data = DockData('window', 'bottom', 25, owner.id, False, 'percent')
+        state = layout.serialize(windows)
+        restored_layout = create_layout(Vertical)
+        restored = create_windows(restored_layout, 3)
+        for window in restored:
+            window.serialized_id = window.id
+        self.assertTrue(restored_layout.unserialize(state, restored))
+        self.ae(restored.all_windows[2].dock_data, DockData('window', 'bottom', 25.0, restored.all_windows[0].id, False, 'percent'))
 
     def test_dock_geometry(self):
         layout = create_layout(Vertical)
@@ -793,6 +810,17 @@ class TestLayout(BaseTest):
         windows.set_active_window_group_for(window_dock)
         self.ae(layout.neighbors(windows)['left'][0], owner_group.id)
         self.ae(layout.neighbors_for_window_with_docks(window_dock, windows)['left'][0], owner_group.id)
+
+        tab_dock.dock_data = DockData('tab', 'top', 25, size_unit='percent')
+        window_dock.dock_data = DockData('window', 'right', 20, owner.id, size_unit='percent')
+        lgd.central = layout._calculate_tab_dock_regions(windows)
+        layout.update_visibility(windows)
+        layout.do_layout(windows)
+        layout._layout_tab_docks(windows)
+        layout._layout_window_docks(windows)
+        self.ae(outer(tab_dock), (0, 0, 300, 50))
+        self.ae(outer(owner), (0, 50, 240, 200))
+        self.ae(outer(window_dock), (240, 50, 300, 200))
 
         from kitty.tabs import Tab as RealTab
 

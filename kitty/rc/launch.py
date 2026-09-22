@@ -32,7 +32,7 @@ class Launch(RemoteCommand):
     tab_title/str: Title for the new tab
     type/choices.window.window-dock.tab.tab-dock.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
     dock_edge/choices.{'.'.join(dock_edges)}: The edge at which to create a dock
-    dock_size/int: The dock size in rows or columns
+    dock_size/str: The dock size in rows, columns or as a percentage
     dock_skip_focus/bool: Prevent the dock from receiving keyboard focus
     keep_focus/bool: Boolean indicating whether the current window should retain focus or not
     copy_colors/bool: Boolean indicating whether to copy the colors from the current window

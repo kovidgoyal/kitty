@@ -273,8 +273,9 @@ Detailed list of changes
 
 - Add :opt:`window_border_radius` for rounded window borders (:pull:`10421`)
 
-- Add :ref:`fixed-size docked windows <docked_windows>` at any tab or window
-  edge, with launch, remote-control and session support (:iss:`2391`)
+- Add :ref:`docked windows <docked_windows>` at any tab or kitty window edge,
+  with fixed or proportional sizing and launch, remote-control and session
+  support (:iss:`2391`)
 
 - A new option :opt:`remap_modifiers` to allow having modifier keys behave as different modifier keys (:pull:`10307`)
 

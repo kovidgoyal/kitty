@@ -51,10 +51,11 @@ right edge of the tab::
 
 The :option:`launch --dock-size` is measured in rows for top and bottom docks
 and columns for left and right docks. It does not include window decorations.
+Add a ``%`` suffix, for example ``--dock-size=25%``, to instead size the entire
+dock region as a percentage of its parent window or tab along the dock axis.
 The default size is one row or column. Multiple docks can be placed on the same
 or different edges. If the tab becomes too small to accommodate every requested
-size, later-created docks are clipped first so that all geometry remains
-valid.
+size, later-created docks are clipped first so that all geometry remains valid.
 
 There are two dock scopes:
 

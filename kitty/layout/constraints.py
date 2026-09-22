@@ -3,7 +3,7 @@
 
 from collections.abc import Sequence
 from math import floor
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from kitty.fast_data_types import AmoebaSolver
 
@@ -19,17 +19,22 @@ STRONG_PREFERENCE = 100_000.0
 MEDIUM_PREFERENCE = 1_000.0
 
 
+class FixedSize(NamedTuple):
+    absolute: int = 0
+    fraction: float = 0.0
+
+
 class FixedConstraintModel:
     """Reserve fixed-size regions, clipping later regions first on shortage."""
 
     def __init__(self) -> None:
-        self.signature: tuple[int, ...] | None = None
+        self.signature: tuple[FixedSize, ...] | None = None
         self.solver = AmoebaSolver()
         self.total = 0
         self.content = 0
         self.sizes: tuple[int, ...] = ()
 
-    def rebuild(self, requested: tuple[int, ...]) -> None:
+    def rebuild(self, requested: tuple[FixedSize, ...]) -> None:
         self.signature = requested
         self.solver = AmoebaSolver()
         self.total = self.solver.add_variable()
@@ -41,10 +46,10 @@ class FixedConstraintModel:
         for i, (size, preferred) in enumerate(zip(self.sizes, requested)):
             self.solver.add_constraint(((size, 1.0),), '>=', 0.0)
             priority = float(len(requested) - i)
-            self.solver.add_constraint(((size, 1.0),), '==', preferred, priority)
+            self.solver.add_constraint(((size, 1.0), (self.total, -preferred.fraction)), '==', preferred.absolute, priority)
 
-    def __call__(self, total: int, requested: Sequence[int]) -> tuple[list[int], int]:
-        signature = tuple(max(0, x) for x in requested)
+    def __call__(self, total: int, requested: Sequence[FixedSize]) -> tuple[list[int], int]:
+        signature = tuple(FixedSize(max(0, x.absolute), max(0.0, x.fraction)) for x in requested)
         if signature != self.signature:
             self.rebuild(signature)
         total = max(0, total)
@@ -53,8 +58,9 @@ class FixedConstraintModel:
         sizes = []
         for size, preferred in zip(self.sizes, signature):
             solved = self.solver.value(size)
-            if abs(solved - preferred) < 1e-9:
-                solved = preferred
+            ideal = preferred.absolute + preferred.fraction * total
+            if abs(solved - ideal) < 1e-9:
+                solved = ideal
             elif abs(solved - round(solved)) < 1e-9:
                 solved = round(solved)
             sizes.append(max(0, floor(solved)))

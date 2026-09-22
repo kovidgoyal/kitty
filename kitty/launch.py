@@ -17,7 +17,7 @@ from .constants import is_wayland
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
-from .types import DockData, DockEdge, DockScope, LayerShellConfig, OverlayType, run_once
+from .types import DockData, DockEdge, DockScope, LayerShellConfig, OverlayType, parse_dock_size, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
@@ -147,10 +147,11 @@ owner window is visible.
 
 
 --dock-size
-type=int
 default=1
 The size of a dock in rows for top and bottom docks, or columns for left and
-right docks. The size does not include the dock window's decorations.
+right docks. Add a ``%`` suffix to instead use a percentage of the parent
+window or tab along the dock axis. A row or column count does not include the
+dock window's decorations; a percentage applies to the entire dock region.
 
 
 --dock-skip-focus
@@ -864,8 +865,7 @@ def _launch(
             child_death_callback(0, None)
     else:
         dock_scope = opts.type[:-5] if opts.type in ('window-dock', 'tab-dock') else ''
-        if dock_scope and opts.dock_size < 1:
-            raise ValueError('--dock-size must be at least one')
+        dock_size, dock_size_unit = parse_dock_size(opts.dock_size) if dock_scope else (1, 'cells')
         add_to_session = opts.add_to_session or ''
         match add_to_session:
             case '.':
@@ -890,7 +890,14 @@ def _launch(
                 if owner_group is None:
                     raise ValueError('A window dock needs a normal window in the target tab')
                 owner_window_id = owner_group.active_window_id
-            kw['dock_data'] = DockData(cast(DockScope, dock_scope), cast(DockEdge, opts.dock_edge), opts.dock_size, owner_window_id, not opts.dock_skip_focus)
+            kw['dock_data'] = DockData(
+                cast(DockScope, dock_scope),
+                cast(DockEdge, opts.dock_edge),
+                dock_size,
+                owner_window_id,
+                not opts.dock_skip_focus,
+                dock_size_unit,
+            )
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
             new_window: Window = tab.new_window(

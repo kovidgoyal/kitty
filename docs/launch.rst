@@ -64,8 +64,10 @@ To instead reserve space along an edge of the entire tab, use a ``tab-dock``::
 
     map f3 launch --type=tab-dock --dock-edge=right --dock-size=30 --cwd=current
 
-Use :option:`launch --dock-skip-focus` for display-only docks such as status
-bars. Dock options are also accepted by :code:`kitten @ launch` and in session
+The :option:`launch --dock-size` can be a number of rows or columns, or a
+percentage such as ``25%``. Use :option:`launch --dock-skip-focus` for
+display-only docks such as status bars. Dock options are also accepted by
+:code:`kitten @ launch` and in session
 files. See :ref:`docked_windows` for details about scope, focus, lifetime and
 interaction with layouts.
 

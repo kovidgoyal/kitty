@@ -14,7 +14,7 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .constraints import FixedConstraintModel, LinearConstraintModel
+from .constraints import FixedConstraintModel, FixedSize, LinearConstraintModel
 
 
 class BorderLine(NamedTuple):
@@ -556,17 +556,21 @@ class Layout:
             self._dock_constraint_models[key] = ans = FixedConstraintModel()
         return ans
 
-    def _dock_thickness(self, group: WindowGroup) -> int:
+    def _dock_size(self, group: WindowGroup) -> FixedSize:
         dock = group.dock_data
         assert dock is not None
+        if dock.size_unit == 'percent':
+            return FixedSize(fraction=float(dock.size) / 100)
         if dock.edge in ('top', 'bottom'):
-            return dock.size * lgd.cell_height + group.decoration('top', is_single_window=True) + group.decoration('bottom', is_single_window=True)
-        return dock.size * lgd.cell_width + group.decoration('left', is_single_window=True) + group.decoration('right', is_single_window=True)
+            return FixedSize(
+                int(dock.size) * lgd.cell_height + group.decoration('top', is_single_window=True) + group.decoration('bottom', is_single_window=True)
+            )
+        return FixedSize(int(dock.size) * lgd.cell_width + group.decoration('left', is_single_window=True) + group.decoration('right', is_single_window=True))
 
     def _allocate_dock_regions(self, groups: Sequence[WindowGroup], area: Region, owner_group_id: int) -> tuple[Region, dict[int, Region]]:
         ans: dict[int, Region] = {}
         vertical = tuple(g for g in groups if g.dock_data and g.dock_data.edge in ('top', 'bottom'))
-        sizes, remaining_height = self._dock_constraint_model(owner_group_id, 'vertical')(area.height, tuple(map(self._dock_thickness, vertical)))
+        sizes, remaining_height = self._dock_constraint_model(owner_group_id, 'vertical')(area.height, tuple(map(self._dock_size, vertical)))
         top, bottom = area.top, area.top + area.height
         for group, size in zip(vertical, sizes):
             if group.dock_data and group.dock_data.edge == 'top':
@@ -578,7 +582,7 @@ class Layout:
         content = region(area.left, top, area.width, remaining_height)
 
         horizontal = tuple(g for g in groups if g.dock_data and g.dock_data.edge in ('left', 'right'))
-        sizes, remaining_width = self._dock_constraint_model(owner_group_id, 'horizontal')(content.width, tuple(map(self._dock_thickness, horizontal)))
+        sizes, remaining_width = self._dock_constraint_model(owner_group_id, 'horizontal')(content.width, tuple(map(self._dock_size, horizontal)))
         left, right = content.left, content.left + content.width
         for group, size in zip(horizontal, sizes):
             if group.dock_data and group.dock_data.edge == 'left':
