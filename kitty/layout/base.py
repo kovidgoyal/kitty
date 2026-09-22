@@ -550,6 +550,8 @@ class Layout:
                 window.set_visible_in_layout(is_visible and window.id == group.active_window_id)
 
     def _dock_constraint_model(self, owner_group_id: int, axis: str) -> FixedConstraintModel:
+        # Keep one model per tab/owner axis. Its size-specification signature
+        # handles dock changes, while viewport changes use its edit variable.
         key = owner_group_id, axis
         ans = self._dock_constraint_models.get(key)
         if ans is None:

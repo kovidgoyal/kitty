@@ -38,6 +38,8 @@ class Pair:
         self.between_borders: tuple[Sequence[BorderLine], Sequence[BorderLine]] | None = None
         self.first_extent = self.second_extent = Edges()  # not including between_borders
         self.border_width: int = 0
+        # The model lives with this topology node, so ordinary viewport resizes
+        # reuse it. Replacing a Pair naturally creates a fresh model.
         self._constraint_model = SplitConstraintModel()
 
     def serialize(self) -> SerializedPair:

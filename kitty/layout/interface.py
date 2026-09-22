@@ -23,6 +23,12 @@ KeyType = tuple[str, int, int, str]
 
 
 class CreateLayoutObjectFor:
+    """Cache layout instances, and their constraint models, for a tab's lifetime.
+
+    A distinct layout name/options combination gets its own instance. The
+    instances are evicted together when the tab is destroyed.
+    """
+
     cache: dict[KeyType, Layout] = {}
 
     def __call__(self, name: str, os_window_id: int, tab_id: int, layout_opts: str = '') -> Layout:

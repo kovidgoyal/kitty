@@ -25,7 +25,11 @@ class FixedSize(NamedTuple):
 
 
 class FixedConstraintModel:
-    """Reserve fixed-size regions, clipping later regions first on shortage."""
+    """Reserve dock regions, clipping later regions first on shortage.
+
+    Rebuild when the ordered size specifications change. Resizing only updates
+    the total-space edit variable, including for percentage sizes.
+    """
 
     def __init__(self) -> None:
         self.signature: tuple[FixedSize, ...] | None = None
@@ -71,7 +75,11 @@ class FixedConstraintModel:
 
 
 class SplitConstraintModel:
-    """Allocate the two children of a split while honoring soft minima."""
+    """Allocate the two children of a split while honoring soft minima.
+
+    Rebuild when the bias, border or either minimum changes. Resizing only
+    updates the available-space edit variable.
+    """
 
     def __init__(self) -> None:
         self.signature: tuple[float, int, int, int] | None = None
@@ -113,7 +121,11 @@ class SplitConstraintModel:
 
 
 class LinearConstraintModel:
-    """Allocate terminal cells along one axis using a persistent Amoeba solver."""
+    """Allocate terminal cells along one axis using a persistent Amoeba solver.
+
+    Rebuild when the kitty window count or effective bias shares change.
+    Resizing only updates the total-cell edit variable.
+    """
 
     def __init__(self) -> None:
         self.signature: tuple[float, ...] = ()
@@ -132,7 +144,7 @@ class LinearConstraintModel:
             self.solver.add_constraint(((size, 1.0),), '>=', 0.0)
             terms = ((size, 1.0), (self.total, -share))
             if i < len(self.sizes) - 1:
-                # Existing layouts assign all rounding residue to the last pane.
+                # Existing layouts assign all rounding residue to the last kitty window.
                 # Fix the preceding ideal sizes and let the sum constraint derive
                 # the final one so that quantization preserves that policy.
                 self.solver.add_constraint(terms, '==', 0.0)
