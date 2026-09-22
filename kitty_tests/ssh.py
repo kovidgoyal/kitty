@@ -167,10 +167,7 @@ env COLORTERM
                 # coreutils >= 9.12 has env(1) shell-quote values written to a terminal,
                 # so accept both the raw and the shell-quoted form of the value.
                 expected_tset = tset.replace('$A', 'AAA')
-                pty.wait_till(lambda: (
-                    f'TSET={expected_tset}' in pty.screen_contents()
-                    or f'TSET={shlex.quote(expected_tset)}' in pty.screen_contents()
-                ))
+                pty.wait_till(lambda: f'TSET={expected_tset}' in pty.screen_contents() or f'TSET={shlex.quote(expected_tset)}' in pty.screen_contents())
                 self.assertNotIn('COLORTERM', pty.screen_contents())
                 pty.wait_till(lambda: '/cwd' in pty.screen_contents())
                 self.assertTrue(pty.is_echo_on())

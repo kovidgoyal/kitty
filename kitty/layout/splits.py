@@ -335,9 +335,9 @@ class Pair:
             min_w2 = self.two.minimum_width(id_window_map) if isinstance(self.two, Pair) else lgd.cell_width
             w1 = max(min_w1, int(self.bias * width) - bw)
             w2 = width - w1 - bw2
-            if w2 < min_w2 and w1 >= min_w1 + bw2:
+            if w2 < min_w2 and width - min_w2 - bw2 >= min_w1:
                 w2 = min_w2
-                w1 = width - w2
+                w1 = width - w2 - bw2
             bleft = left + w1
             self.first_extent = Edges(left, top, left + w1, top + height)
             if isinstance(self.one, Pair):
@@ -373,9 +373,9 @@ class Pair:
             min_h2 = self.two.minimum_height(id_window_map) if isinstance(self.two, Pair) else lgd.cell_height
             h1 = max(min_h1, int(self.bias * height) - bw)
             h2 = height - h1 - bw2
-            if h2 < min_h2 and h1 >= min_h1 + bw2:
+            if h2 < min_h2 and height - min_h2 - bw2 >= min_h1:
                 h2 = min_h2
-                h1 = height - h2
+                h1 = height - h2 - bw2
             btop = top + h1
             self.first_extent = Edges(left, top, left + width, top + h1)
             if isinstance(self.one, Pair):
@@ -408,7 +408,12 @@ class Pair:
                 self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
 
     def move_divider(self, pixels: int) -> int:
-        """Resize adjacent same-axis units, keeping the other dividers in place."""
+        """Move this divider, keeping every other divider along the same axis in place.
+
+        Only the two units adjacent to this divider change size. A unit that is a
+        perpendicular subtree is resized as a whole, so dividers nested inside it
+        that happen to run along this axis do move, proportionally.
+        """
         if self.is_redundant or not pixels or self.width <= 0 or self.height <= 0:
             return 0
         horizontal = self.horizontal
@@ -1035,7 +1040,9 @@ class Splits(Layout):
     def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> float:
         self._set_dimensions(all_windows)
         for pair in self.pairs_root.self_and_descendants():
-            if id(pair) == window_id and pair.horizontal == is_horizontal:
+            if id(pair) == window_id:
+                if pair.horizontal != is_horizontal:
+                    break
                 cell = lgd.cell_width if is_horizontal else lgd.cell_height
                 return pair.move_divider(round(increment * cell)) / cell if cell > 0 else 0.0
         return 0.0

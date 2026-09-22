@@ -199,17 +199,15 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
-Unreleased
+0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Splits layout: Dragging a divider now resizes only its adjacent regions,
   consistently after rearranging windows. Fix nested dividers not tracking
   mouse movement correctly, including when returning from a minimum size.
 
-- Custom shaders: Fix starting a second kitty instance failing to build
-  shaders while another instance is building them, or after a previous
-  instance was killed while building them. Now instances wait for each other
-  to finish instead.
+- Splits layout: Fix windows in a nested split overlapping their neighbour by a
+  couple of pixels when the split is resized down to its minimum size.
 
 0.49.0 [2026-09-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

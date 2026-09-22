@@ -2782,12 +2782,6 @@ class Boss:
             if w is not None and tab is not None:
                 tab.new_special_window(self.create_special_window_for_show_error(title, msg, w.id), copy_colors_from=w)
 
-    def show_custom_shader_errors(self) -> None:
-        errors = load_shader_programs.custom_shader_errors
-        if errors:
-            load_shader_programs.custom_shader_errors = []
-            self.show_error(_('Failed to load custom shaders'), '\n\n'.join(errors))
-
     @ac('mk', 'Create a new marker')
     def create_marker(self) -> None:
         w = self.window_for_dispatch or self.active_window
@@ -2883,6 +2877,13 @@ class Boss:
         return False
 
     def drag_resize_update(self, x: float, y: float) -> None:
+        # Truncate towards zero rather than flooring, so that the pointer has to
+        # travel a full cell away from where the drag started before anything moves
+        # and coming back to the start always restores the original layout exactly.
+        # last_step_* counts the cells actually applied, which is not necessarily the
+        # number requested, since the layout stops at minimum sizes. Accumulating the
+        # applied amount keeps the divider locked to the pointer when it comes back
+        # out of a minimum, instead of leaving it lagging by however much was refused.
         if not (r := self.drag_resize_of_window) or not (tab := self.tab_for_id(r.tab_id)):
             return
         if (h := r.data.horizontal_id) is not None:
@@ -2890,14 +2891,14 @@ class Boss:
             step_x = int((x - r.initial_x) / r.cell_width) * mult
             dx = step_x - r.last_step_x
             if dx != 0:
-                if applied := tab.drag_resize_window(h, float(dx), True):
+                if applied := tab.drag_resize_window(h, dx, True):
                     self.drag_resize_of_window = r = r._replace(last_step_x=r.last_step_x + applied)
         if (v := r.data.vertical_id) is not None:
             mult = 1 if r.data.height_increases_downwards else -1
             step_y = int((y - r.initial_y) / r.cell_height) * mult
             dy = step_y - r.last_step_y
             if dy != 0:
-                if applied := tab.drag_resize_window(v, float(dy), False):
+                if applied := tab.drag_resize_window(v, dy, False):
                     self.drag_resize_of_window = r._replace(last_step_y=r.last_step_y + applied)
 
     def drag_resize_end(self) -> None:
@@ -3505,7 +3506,6 @@ class Boss:
                 w.report_color_scheme_preference_if_wanted()
             w.refresh(reload_all_gpu_data=True)
         load_shader_programs.recompile_if_needed()
-        self.show_custom_shader_errors()
 
     @ac(
         'misc',

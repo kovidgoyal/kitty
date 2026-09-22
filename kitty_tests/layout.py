@@ -883,25 +883,50 @@ class TestLayout(BaseTest):
         self.ae(d.height_increases_downwards, True)
 
 
-class TestSplitBorderResize(BaseTest):
+class BaseSplitGeometryTest(BaseTest):
+    # These tests stub out Layout._set_dimensions, so they have to put back the lgd
+    # singleton, which is global state shared with every other layout test.
     def setUp(self):
         super().setUp()
         self.set_options({'tab_bar_style': 'hidden'})
         saved = vars(lgd).copy()
         self.addCleanup(lambda: (vars(lgd).clear(), vars(lgd).update(saved)))
 
+    def stub_dimensions(self, layout, central, minimal=True):
+        def dimensions(all_windows):
+            lgd.central = central
+            lgd.cell_width, lgd.cell_height = 10, 20
+            lgd.draw_minimal_borders = minimal
+
+        layout._set_dimensions = dimensions
+
+    def check_extents_fit(self, layout):
+        # Every pair must divide its area exactly between its two halves and the
+        # borders between them, otherwise windows overlap their neighbours.
+        for p in layout.pairs_root.self_and_descendants():
+            if p.is_redundant:
+                continue
+            with self.subTest(pair=repr(p)):
+                if p.horizontal:
+                    one = p.first_extent.right - p.first_extent.left
+                    two = p.second_extent.right - p.second_extent.left
+                    self.ae(one + two + 2 * p.border_width, p.width)
+                    self.ae(p.second_extent.right, p.left + p.width)
+                else:
+                    one = p.first_extent.bottom - p.first_extent.top
+                    two = p.second_extent.bottom - p.second_extent.top
+                    self.ae(one + two + 2 * p.border_width, p.height)
+                    self.ae(p.second_extent.bottom, p.top + p.height)
+
+
+class TestSplitBorderResize(BaseSplitGeometryTest):
     def make_layout(self, shape):
         layout = create_layout(Splits)
         windows = create_windows(layout, num=0)
         for i in range(1, 5):
             layout.add_window(windows, Window(i))
         layout.pairs_root.unserialize(shape, lambda x: x)
-
-        def dimensions(all_windows):
-            lgd.central = Region((0, 0, 1499, 1099, 1500, 1100))
-            lgd.cell_width, lgd.cell_height = 10, 20
-
-        layout._set_dimensions = dimensions
+        self.stub_dimensions(layout, Region((0, 0, 1499, 1099, 1500, 1100)))
         layout(windows)
         return layout, windows
 
@@ -1007,29 +1032,17 @@ class TestSplitBorderResize(BaseTest):
         self.assertIsNone(data.vertical_id)
 
 
-class TestSplitDragGeometry(BaseTest):
-    def setUp(self):
-        super().setUp()
-        self.set_options({'tab_bar_style': 'hidden'})
-        saved = vars(lgd).copy()
-        self.addCleanup(lambda: (vars(lgd).clear(), vars(lgd).update(saved)))
-
-    def make_layout(self, shape, minimal=True):
+class TestSplitDragGeometry(BaseSplitGeometryTest):
+    def make_layout(self, shape, minimal=True, num=4):
         from types import SimpleNamespace
 
         from kitty.tabs import Tab as RealTab
 
         layout = create_layout(Splits)
         layout.layout_opts = SplitsLayoutOpts({'proportional': 'yes'})
-        windows = create_windows(layout, num=4)
+        windows = create_windows(layout, num=num)
         layout.pairs_root.unserialize(shape, lambda x: x)
-
-        def dimensions(all_windows):
-            lgd.central = Region((19, 47, 1518, 1146, 1500, 1100))
-            lgd.cell_width, lgd.cell_height = 10, 20
-            lgd.draw_minimal_borders = minimal
-
-        layout._set_dimensions = dimensions
+        self.stub_dimensions(layout, Region((19, 47, 1518, 1146, 1500, 1100)), minimal)
         tab = SimpleNamespace(current_layout=layout, windows=windows, relayout=lambda: layout(windows))
         tab.drag_resize_window = lambda *args: RealTab.drag_resize_window(tab, *args)
         tab.relayout()
@@ -1042,17 +1055,44 @@ class TestSplitDragGeometry(BaseTest):
             if not p.is_redundant
         }
 
+    def fixed_dividers(self, pair):
+        # The dividers move_divider() promises to leave alone: every divider outside
+        # the dragged pair's region, plus the same-axis dividers inside it. Same-axis
+        # dividers nested inside a perpendicular unit are excluded, that unit is
+        # resized as a whole so they scale with it.
+        inside = set()
+
+        def walk(p):
+            if not isinstance(p, Pair):
+                return
+            if p.is_redundant:
+                return walk(p.one or p.two)
+            if p.horizontal != pair.horizontal:
+                return
+            inside.add(id(p))
+            walk(p.one)
+            walk(p.two)
+
+        walk(pair)
+        descendants = {id(p) for p in pair.self_and_descendants()}
+        return lambda pid: pid not in descendants or pid in inside
+
     def check_drags(self, layout, tab):
         for pair in layout.pairs_root.self_and_descendants():
             if pair.is_redundant:
                 continue
             cell = lgd.cell_width if pair.horizontal else lgd.cell_height
+            is_fixed = self.fixed_dividers(pair)
             for steps in (3, -5, 2):
                 before = self.positions(layout)
                 self.assertTrue(tab.drag_resize_window(id(pair), steps, pair.horizontal))
                 after = self.positions(layout)
+                self.check_extents_fit(layout)
                 for pid, position in before.items():
-                    self.ae(after[pid] - position, steps * cell if pid == id(pair) else 0)
+                    if pid == id(pair):
+                        self.ae(after[pid] - position, steps * cell)
+                    elif is_fixed(pid):
+                        self.ae(after[pid], position)
 
     def test_split_drag_adjacent_geometry(self):
         shapes = (
@@ -1061,6 +1101,9 @@ class TestSplitDragGeometry(BaseTest):
             {'one': {'one': {'one': 1, 'two': 2}, 'two': 3}, 'two': 4},
             {'horizontal': False, 'bias': 0.35, 'one': 4, 'two': {'one': 1, 'two': {'one': 2, 'two': 3}}},
             {'one': 1, 'two': {'one': {'horizontal': False, 'one': 2, 'two': 3}, 'two': 4}},
+            # same-axis dividers nested inside a perpendicular unit
+            {'one': 1, 'two': {'horizontal': False, 'one': {'bias': 0.6, 'one': 2, 'two': 3}, 'two': 4}},
+            {'horizontal': False, 'bias': 0.5, 'one': {'one': {'horizontal': False, 'bias': 0.6, 'one': 1, 'two': 2}, 'two': 3}, 'two': 4},
         )
 
         def transpose(node):
@@ -1102,6 +1145,20 @@ class TestSplitDragGeometry(BaseTest):
         self.assertFalse(tab.drag_resize_window(id(root), 1, True))
         self.assertTrue(tab.drag_resize_window(id(root), -1, True))
         self.ae(self.positions(layout)[id(root)], after[id(root)] - lgd.cell_width)
+
+    def test_split_drag_nested_minimum_no_overlap(self):
+        # Dragging a divider until a nested perpendicular unit is squeezed to its
+        # minimum must not leave that unit's halves overflowing the area they were
+        # given, which would overlap them with the neighbouring window.
+        shape = {'horizontal': False, 'bias': 0.5, 'one': {'one': {'horizontal': False, 'bias': 0.6, 'one': 1, 'two': 2}, 'two': 3}, 'two': 4}
+        for minimal in (True, False):
+            with self.subTest(minimal=minimal):
+                layout, windows, tab = self.make_layout(shape, minimal)
+                root = layout.pairs_root
+                tab.drag_resize_window(id(root), -1000, False)
+                self.check_extents_fit(layout)
+                inner = root.one.one
+                self.ae(inner.second_extent.bottom, inner.top + inner.height)
 
     def test_split_drag_corner_and_subcell_motion(self):
         from types import SimpleNamespace
