@@ -149,7 +149,7 @@ class Tall(Layout):
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
         num = all_windows.num_main_groups - self.num_full_size_windows
-        bias = biased_map if num > 1 and biased_map else None
+        bias = biased_map if num > 1 else None
         return self.perp_axis_layout(
             all_windows.iter_main_groups(),
             bias=bias,

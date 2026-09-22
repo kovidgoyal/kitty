@@ -700,7 +700,7 @@ class TestLayout(BaseTest):
             sequence_biases = normalize_biases([float(i + 1) for i in range(num_windows)])
             biases: list[CellBias] = [None, sequence_biases]
             if num_windows > 1:
-                biases.append({0: 0.2, num_windows - 1: -0.1})
+                biases.extend(({}, {0: 0.2, num_windows - 1: -0.1}))
             cell_counts = (1, num_windows * 5, num_windows * 6, num_windows * 17 + 3, 257)
             for number_of_cells in cell_counts:
                 for bias in biases:

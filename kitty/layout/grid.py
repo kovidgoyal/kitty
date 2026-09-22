@@ -83,7 +83,7 @@ class Grid(Layout):
         )
 
     def variable_layout(self, layout_func: Callable[..., LayoutDimension], num_windows: int, biased_map: dict[int, float]) -> LayoutDimension:
-        return layout_func(num_windows, bias=biased_map if num_windows > 1 and biased_map else None)
+        return layout_func(num_windows, bias=biased_map if num_windows > 1 else None)
 
     def position_for_window_idx(self, idx: int, num_windows: int, ncols: int, nrows: int, special_rows: int, special_col: int) -> tuple[int, int]:
         row_num = col_num = 0

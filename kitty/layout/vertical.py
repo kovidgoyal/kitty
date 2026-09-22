@@ -75,7 +75,7 @@ class Vertical(Layout):
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
         num_windows = all_windows.num_main_groups
-        bias = biased_map if num_windows > 1 and biased_map else None
+        bias = biased_map if num_windows > 1 else None
         return self.main_axis_layout(all_windows.iter_main_groups(), bias=bias, cell_allocator=self._constraint_model)
 
     def fixed_layout(self, wg: WindowGroup) -> LayoutDimension:
