@@ -407,6 +407,53 @@ class Pair:
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
 
+    def move_divider(self, pixels: int) -> int:
+        """Resize adjacent same-axis units, keeping the other dividers in place."""
+        if self.is_redundant or not pixels or self.width <= 0 or self.height <= 0:
+            return 0
+        horizontal = self.horizontal
+        cell = lgd.cell_width if horizontal else lgd.cell_height
+
+        def minimum_size(child: Pair | int | None) -> int:
+            if not isinstance(child, Pair):
+                return cell if child is not None else 0
+            if child.is_redundant:
+                return minimum_size(child.one or child.two)
+            one, two = minimum_size(child.one), minimum_size(child.two)
+            return one + two + 2 * child.border_width if child.horizontal == horizontal else max(one, two)
+
+        def shrink_room(child: Pair | int | None, extent: Edges, trailing: bool) -> int:
+            # A perpendicular subtree is one unit in the enclosing splitter.
+            # Only the unit touching this divider may give up space.
+            while isinstance(child, Pair) and child.horizontal == horizontal and not child.is_redundant:
+                extent = child.second_extent if trailing else child.first_extent
+                child = child.two if trailing else child.one
+            size = extent.right - extent.left if horizontal else extent.bottom - extent.top
+            return max(0, size - minimum_size(child))
+
+        pixels = max(-shrink_room(self.one, self.first_extent, True), min(pixels, shrink_room(self.two, self.second_extent, False)))
+        if not pixels:
+            return 0
+
+        def update(pair: Pair, start: int, size: int) -> None:
+            divider = (pair.first_extent.right if horizontal else pair.first_extent.bottom) + pair.border_width
+            if pair is self:
+                divider += pixels
+            # layout_pair truncates to integer pixels. Use the middle of that
+            # pixel so floating-point rounding cannot shift a fixed divider.
+            pair.bias = (divider - start + 0.5) / size
+            for child, child_start, child_size in (
+                (pair.one, start, divider - start - pair.border_width),
+                (pair.two, divider + pair.border_width, start + size - divider - pair.border_width),
+            ):
+                if isinstance(child, Pair) and child.horizontal == horizontal and not child.is_redundant:
+                    old_start, old_size = (child.left, child.width) if horizontal else (child.top, child.height)
+                    if (child_start, child_size) != (old_start, old_size):
+                        update(child, child_start, child_size)
+
+        update(self, self.left if horizontal else self.top, self.width if horizontal else self.height)
+        return pixels
+
     def edge_border(self, which: int, id_group_map: dict[int, WindowGroup]) -> Iterator[tuple[int, int, int]]:
         mult = 1 if which & (RIGHT_EDGE | BOTTOM_EDGE) else -1
 
@@ -985,15 +1032,13 @@ class Splits(Layout):
 
         return None
 
-    def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
+    def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> float:
+        self._set_dimensions(all_windows)
         for pair in self.pairs_root.self_and_descendants():
-            if id(pair) == window_id:
-                new_bias = max(0, min(pair.bias + increment, 1))
-                if new_bias != pair.bias:
-                    pair.bias = new_bias
-                    return True
-                break
-        return False
+            if id(pair) == window_id and pair.horizontal == is_horizontal:
+                cell = lgd.cell_width if is_horizontal else lgd.cell_height
+                return pair.move_divider(round(increment * cell)) / cell if cell > 0 else 0.0
+        return 0.0
 
     def drag_resize_target_windows(
         self,

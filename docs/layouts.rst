@@ -227,6 +227,11 @@ proportional sizing for that new window. If ``equalize_on_window_close`` is also
 enabled, closing a window equalizes the layout instead of preserving its weights.
 The option is saved as part of a :doc:`session <sessions>`.
 
+Dragging a divider resizes only the two adjacent regions along its axis. Other
+dividers in the same row or column stay in place, including after repositioning
+windows. Nested dividers follow the mouse in character-cell steps relative to
+their own region, and stop when an adjacent region reaches its minimum size.
+
 ``split_axis`` controls whether new windows
 are placed into vertical or horizontal splits when a :option:`--location
 <launch --location>` is not specified. A value of ``horizontal`` (same as
