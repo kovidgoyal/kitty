@@ -714,6 +714,10 @@ class TestLayout(BaseTest):
         self.assertIs(model.solver, solver)
         model(None, 5, 101)
         self.assertIsNot(model.solver, solver)
+        model({}, 4, 100)
+        solver = model.solver
+        model({}, 4, 101)
+        self.assertIs(model.solver, solver)
 
         for num_windows in range(1, 17):
             decorations = tuple((i % 3, (i + 1) % 4) for i in range(num_windows))

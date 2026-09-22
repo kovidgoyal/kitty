@@ -152,14 +152,23 @@ class LinearConstraintModel:
                 self.solver.add_constraint(terms, '==', 0.0, MEDIUM_PREFERENCE)
 
     def __call__(self, bias: 'CellBias', number_of_windows: int, number_of_cells: int) -> list[int]:
+        legacy_empty_bias: Sequence[float] | None = None
         if isinstance(bias, dict):
             # Imported lazily to keep the constraint primitives independent of
             # the pixel/decorations layer in base.py.
             from .base import convert_bias_map
 
-            bias = convert_bias_map(cast(dict[int, float], bias), number_of_windows, number_of_cells)
+            converted = convert_bias_map(cast(dict[int, float], bias), number_of_windows, number_of_cells)
+            if bias:
+                bias = converted
+            else:
+                # An empty map means equal shares, so keep a resize-stable
+                # solver signature. Retain the converted values only for the
+                # legacy float-to-cell quantization below.
+                legacy_empty_bias, bias = converted, None
         cells_per_window = number_of_cells // number_of_windows
         has_usable_bias = bias is not None and number_of_windows > 1 and len(bias) == number_of_windows and cells_per_window > 5
+        has_usable_empty_bias = legacy_empty_bias is not None and number_of_windows > 1 and cells_per_window > 5
         shares = tuple(map(float, bias)) if has_usable_bias else (1.0 / number_of_windows,) * number_of_windows
         if shares != self.signature:
             self.rebuild(shares)
@@ -168,13 +177,18 @@ class LinearConstraintModel:
 
         # Cassowary is real-valued; terminal geometry is not. Round down first
         # and assign the remainder using kitty's existing deterministic policy.
-        solved_sizes = (self.solver.value(size) for size in self.sizes)
-        ideal_sizes = (share * number_of_cells for share in shares)
-        # Simplex row operations can move an exact integer by a few ulps. Snap
-        # those values back to the declared ideal before flooring so migration
-        # does not change kitty's existing float-to-cell rounding behavior.
-        cells_map = [max(0, floor(ideal if abs(solved - ideal) < 1e-9 else solved)) for solved, ideal in zip(solved_sizes, ideal_sizes)]
-        if has_usable_bias:
+        if has_usable_empty_bias:
+            # Preserve calculate_cells_map()'s historical rounding while the
+            # solver itself retains resize-stable equal-share constraints.
+            cells_map = [max(0, floor(share * number_of_cells)) for share in legacy_empty_bias]
+        else:
+            solved_sizes = (self.solver.value(size) for size in self.sizes)
+            ideal_sizes = (share * number_of_cells for share in shares)
+            # Simplex row operations can move an exact integer by a few ulps.
+            # Snap those values back to the declared ideal before flooring so
+            # migration does not change kitty's float-to-cell rounding.
+            cells_map = [max(0, floor(ideal if abs(solved - ideal) < 1e-9 else solved)) for solved, ideal in zip(solved_sizes, ideal_sizes)]
+        if has_usable_bias or has_usable_empty_bias:
             while min(cells_map) < 5:
                 maxi, mini = map(cells_map.index, (max(cells_map), min(cells_map)))
                 if maxi == mini:
