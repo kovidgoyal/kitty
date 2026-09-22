@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 from kitty.boss import Boss
 from kitty.layout.interface import Splits, Stack, Tall
+from kitty.tab_bar import TabBarData, WindowDropTarget
 from kitty.tabs import DragOverlayMode, Tab, TabManager
 
 from .base import BaseTest
@@ -297,6 +298,371 @@ class TestFileDrop(BossDropTest):
                 hidden.on_drop.assert_not_called()
 
 
+class TestTabInsertionPreview(BaseTest):
+    def make_tab(self, tab_id, os_window_id=7):
+        return SimpleNamespace(
+            id=tab_id,
+            os_window_id=os_window_id,
+            windows=SimpleNamespace(num_groups=2),
+            data_for_tab_bar=lambda active: TabBarData(title=f'tab {tab_id}', tab_id=tab_id, is_active=active),
+        )
+
+    def setUp(self):
+        super().setUp()
+        tabs = [self.make_tab(i) for i in (1, 2, 3, 4)]
+        self.source = self.make_tab(9, 8)
+        self.tm = tm = SimpleNamespace(
+            tabs=tabs,
+            tabs_to_be_shown_in_tab_bar=tabs,
+            active_tab=tabs[0],
+            os_window_id=7,
+            tab_bar=SimpleNamespace(
+                tab_drop_insert_before=None,
+                tab_insertion_target_at=Mock(return_value=2),
+                window_drop_target_at=Mock(return_value=WindowDropTarget(before_tab_id=2)),
+            ),
+            tab_being_dropped=None,
+            window_drag_target_tab_id=0,
+            window_drag_over_me=True,
+            window_drag_hover_delay=0.6,
+            tab_drag_hover_tab_id=0,
+            tab_drag_hover_source_id=0,
+            tab_drag_hover_timer=0,
+            tab_drag_hover_deadline=0,
+            tab_bar_should_be_visible=True,
+            tab_bar_hidden=False,
+            mark_tab_bar_dirty=Mock(),
+            layout_tab_bar=Mock(),
+            resize=Mock(),
+        )
+        for name in (
+            'tab_for_id',
+            'on_tab_drop_move',
+            'on_tab_drop',
+            'apply_tab_ordering',
+            '_set_drag_target_tab',
+            '_cancel_tab_drag_hover',
+            '_set_tab_drag_hover_target',
+            '_activate_tab_drag_hover',
+        ):
+            setattr(tm, name, partial(getattr(TabManager, name), tm))
+        tm._set_active_tab = Mock(side_effect=lambda idx, **kw: setattr(tm, 'active_tab', tm.tabs[idx]))
+        tm.set_active_tab = Mock(side_effect=lambda tab: setattr(tm, 'active_tab', tab))
+
+        def move(tab, os_window_id):
+            self.ae((tab.id, os_window_id), (9, 7))
+            moved = self.make_tab(99)
+            tm.tabs.append(moved)
+            tm.active_tab = moved
+            return moved
+
+        self.boss = SimpleNamespace(
+            tab_for_id=lambda tid: self.source if tid == 9 else tm.tab_for_id(tid),
+            active_tab=self.source,
+            _move_tab_to=Mock(side_effect=move),
+            _move_window_to=Mock(),
+        )
+        self.enterContext(patch('kitty.tabs.get_boss', return_value=self.boss))
+        self.enterContext(patch('kitty.tabs.is_tab_bar_visible', return_value=True))
+        self.enterContext(patch('kitty.tabs.set_tab_being_dragged'))
+        self.enterContext(patch('kitty.tabs.get_window_being_dragged', return_value=(0, False)))
+        self.drag = self.enterContext(patch('kitty.tabs.get_tab_being_dragged', return_value=(9, True, 0, 0)))
+        self.clock = self.enterContext(patch('kitty.tabs.monotonic', return_value=10.0))
+        self.add_timer = self.enterContext(patch('kitty.tabs.add_timer', side_effect=range(1, 100)))
+        self.remove_timer = self.enterContext(patch('kitty.tabs.remove_timer'))
+        self.enterContext(patch('kitty.tabs.get_options', return_value=SimpleNamespace(tab_bar_show_new_tab_button=False)))
+        self.reorder = self.enterContext(patch('kitty.tabs.reorder_tabs'))
+
+    def rendered_ids(self):
+        return [t.tab_id for t in TabManager.tab_bar_data.fget(self.tm)]
+
+    def test_cross_window_preview_keeps_existing_tabs_and_count(self):
+        for before, expected in ((1, [9, 1, 2, 3, 4]), (3, [1, 2, 9, 3, 4]), (0, [1, 2, 3, 4, 9])):
+            self.tm.tab_bar.tab_insertion_target_at.return_value = before
+            for _ in range(3):
+                self.tm.on_tab_drop_move(9, True, 200, 10)
+                self.ae(self.rendered_ids(), [1, 2, 3, 4])
+                self.ae([t.id for t in self.tm.tabs], [1, 2, 3, 4])
+                self.ae(self.tm.tab_being_dropped.tab_ids, expected)
+                self.ae(self.tm.tab_bar.tab_drop_insert_before, before)
+        self.boss._move_tab_to.assert_not_called()
+        self.reorder.assert_not_called()
+
+    def test_cross_window_drop_inserts_and_preserves_neighbors(self):
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.tm.on_tab_drop(200, 10)
+        self.ae([t.id for t in self.tm.tabs], [1, 99, 2, 3, 4])
+        self.boss._move_tab_to.assert_called_once_with(self.source, 7)
+        self.ae(self.tm.active_tab.id, 99)
+        self.assertIsNone(self.tm.tab_bar.tab_drop_insert_before)
+        self.assertIsNone(self.tm.tab_being_dropped)
+
+    def test_same_window_drop_inserts_instead_of_swapping(self):
+        self.tm.tab_bar.tab_insertion_target_at.return_value = 4
+        self.tm.on_tab_drop_move(1, True, 200, 10)
+        self.ae(self.rendered_ids(), [1, 2, 3, 4])
+        self.tm.on_tab_drop(200, 10)
+        self.ae([t.id for t in self.tm.tabs], [2, 3, 1, 4])
+        self.ae(self.tm.active_tab.id, 1)
+        self.boss._move_tab_to.assert_not_called()
+
+    def test_leaving_clears_marker_without_changing_order(self):
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.tm.on_tab_drop_move()
+        self.ae(self.rendered_ids(), [1, 2, 3, 4])
+        self.assertIsNone(self.tm.tab_bar.tab_drop_insert_before)
+        self.assertIsNone(self.tm.tab_being_dropped)
+        self.boss._move_tab_to.assert_not_called()
+
+    def test_pending_drop_finishes_at_previewed_boundary(self):
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.tm.tab_bar.tab_insertion_target_at.return_value = 0
+        self.tm.on_tab_drop(0, 0, bypass_move=True)
+        self.ae([t.id for t in self.tm.tabs], [1, 99, 2, 3, 4])
+
+    def test_closed_drag_source_clears_marker(self):
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.source = None
+        self.tm.on_tab_drop(200, 10)
+        self.assertIsNone(self.tm.tab_bar.tab_drop_insert_before)
+        self.assertIsNone(self.tm.tab_being_dropped)
+        self.ae(self.rendered_ids(), [1, 2, 3, 4])
+
+    def hover_single_pane(self, target_id=2):
+        self.source.windows.num_groups = 1
+        self.source.active_window = SimpleNamespace(id=90)
+        self.tm.tab_bar.window_drop_target_at.return_value = WindowDropTarget(tab_id=target_id)
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+
+    def test_single_pane_tab_hover_switches_without_moving(self):
+        self.hover_single_pane()
+        self.ae(self.rendered_ids(), [1, 2, 3, 4])
+        self.assertIsNone(self.tm.tab_bar.tab_drop_insert_before)
+        self.ae(self.tm.tab_being_dropped.target_tab_id, 2)
+        self.tm.set_active_tab.assert_not_called()
+        callback, interval, repeats = self.add_timer.call_args.args
+        self.ae((interval, repeats), (0.6, False))
+        callback(self.tm.tab_drag_hover_timer)
+        self.ae(self.tm.active_tab.id, 2)
+        self.boss._move_window_to.assert_not_called()
+        self.boss._move_tab_to.assert_not_called()
+
+    def test_single_pane_tab_periodic_hover_switches_at_deadline(self):
+        self.hover_single_pane()
+        self.clock.return_value = 10.59
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.tm.set_active_tab.assert_not_called()
+        self.clock.return_value = 10.6
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.ae(self.tm.active_tab.id, 2)
+        self.remove_timer.assert_called_once_with(1)
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.ae(self.add_timer.call_count, 1)
+
+    def test_single_pane_tab_edge_cancels_hover_and_keeps_insertion(self):
+        self.hover_single_pane()
+        callback = self.add_timer.call_args.args[0]
+        self.tm.tab_bar.window_drop_target_at.return_value = WindowDropTarget(before_tab_id=2)
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        callback(1)
+        self.tm.set_active_tab.assert_not_called()
+        self.ae(self.tm.tab_bar.tab_drop_insert_before, 2)
+        self.ae(self.tm.tab_drag_hover_timer, 0)
+        self.tm.on_tab_drop(200, 10)
+        self.ae([t.id for t in self.tm.tabs], [1, 99, 2, 3, 4])
+        self.boss._move_window_to.assert_not_called()
+
+    def test_single_pane_tab_leaving_cancels_hover(self):
+        self.hover_single_pane()
+        callback = self.add_timer.call_args.args[0]
+        self.tm.on_tab_drop_move()
+        callback(1)
+        self.tm.set_active_tab.assert_not_called()
+        self.ae(self.tm.tab_drag_hover_timer, 0)
+        self.ae(self.tm.window_drag_target_tab_id, 0)
+
+    def test_single_pane_tab_center_drop_moves_the_pane(self):
+        self.hover_single_pane()
+        self.tm.on_tab_drop(200, 10)
+        self.boss._move_window_to.assert_called_once_with(self.source.active_window, target_tab_id=2)
+        self.boss._move_tab_to.assert_not_called()
+        self.reorder.assert_not_called()
+        self.ae(self.tm.tab_drag_hover_timer, 0)
+
+    def test_multiple_pane_tab_does_not_hover_switch(self):
+        self.tm.tab_bar.window_drop_target_at.return_value = WindowDropTarget(tab_id=2)
+        self.tm.on_tab_drop_move(9, True, 200, 10)
+        self.ae(self.tm.tab_being_dropped.target_tab_id, 0)
+        self.ae(self.tm.tab_bar.tab_drop_insert_before, 2)
+        self.add_timer.assert_not_called()
+
+    def test_adding_a_pane_during_hover_prevents_merging(self):
+        self.hover_single_pane()
+        self.source.windows.num_groups = 2
+        self.add_timer.call_args.args[0](self.tm.tab_drag_hover_timer)
+        self.tm.set_active_tab.assert_not_called()
+        self.tm.on_tab_drop(200, 10, bypass_move=True)
+        self.boss._move_window_to.assert_not_called()
+        self.ae([t.id for t in self.tm.tabs], [1, 99, 2, 3, 4])
+
+    def test_finished_tab_drag_cannot_switch_later(self):
+        self.hover_single_pane()
+        self.drag.return_value = (0, False, 0, 0)
+        self.add_timer.call_args.args[0](self.tm.tab_drag_hover_timer)
+        self.tm.set_active_tab.assert_not_called()
+
+    def test_tab_hover_ignores_stale_timer_after_changing_target(self):
+        self.hover_single_pane()
+        callback = self.add_timer.call_args.args[0]
+        self.hover_single_pane(3)
+        callback(1)
+        self.tm.set_active_tab.assert_not_called()
+        callback(2)
+        self.ae(self.tm.active_tab.id, 3)
+
+
+class TestWindowDropTabs(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.tabs = [SimpleNamespace(id=i) for i in (1, 2, 3)]
+        self.tm = tm = SimpleNamespace(
+            tabs=self.tabs,
+            active_tab=self.tabs[0],
+            tab_bar=SimpleNamespace(window_drop_insert_before=None),
+            window_drag_target_tab_id=0,
+            window_drag_hover_tab_id=0,
+            window_drag_hover_window_id=0,
+            window_drag_hover_timer=0,
+            window_drag_hover_deadline=0,
+            window_drag_hover_delay=0.6,
+            window_drag_over_me=True,
+            os_window_id=7,
+            mark_tab_bar_dirty=Mock(),
+            set_drag_over_me=Mock(),
+            _clear_force_show_title_bars=Mock(),
+        )
+        for name in (
+            'tab_for_id',
+            '_set_drag_target_tab',
+            '_cancel_window_drag_hover',
+            '_activate_window_drag_hover_tab',
+            '_set_window_drop_tab_target',
+            'apply_tab_ordering',
+        ):
+            setattr(tm, name, partial(getattr(TabManager, name), tm))
+        tm.set_active_tab = Mock(side_effect=lambda tab: setattr(tm, 'active_tab', tab))
+        self.clock = self.enterContext(patch('kitty.tabs.monotonic', return_value=10.0))
+        self.drag = self.enterContext(patch('kitty.tabs.get_window_being_dragged', return_value=(10, True, 0, 0)))
+        self.add_timer = self.enterContext(patch('kitty.tabs.add_timer', side_effect=range(1, 100)))
+        self.remove_timer = self.enterContext(patch('kitty.tabs.remove_timer'))
+
+    def hover(self, tab_id=2):
+        self.tm._set_window_drop_tab_target(WindowDropTarget(tab_id=tab_id), 10)
+
+    def test_hover_timer_switches_without_moving_window(self):
+        self.hover()
+        self.tm.set_active_tab.assert_not_called()
+        callback, interval, repeats = self.add_timer.call_args.args
+        self.ae((interval, repeats), (0.6, False))
+        callback(1)
+        self.tm.set_active_tab.assert_called_once_with(self.tabs[1])
+        self.ae(self.tm.window_drag_hover_timer, 0)
+        self.remove_timer.assert_not_called()
+
+    def test_periodic_drag_updates_switch_at_deadline(self):
+        self.hover()
+        self.clock.return_value = 10.59
+        self.hover()
+        self.tm.set_active_tab.assert_not_called()
+        self.clock.return_value = 10.6
+        self.hover()
+        self.tm.set_active_tab.assert_called_once_with(self.tabs[1])
+        self.remove_timer.assert_called_once_with(1)
+        self.hover()
+        self.ae(self.add_timer.call_count, 1)
+
+    def test_changing_targets_restarts_hover_and_ignores_stale_timer(self):
+        self.hover()
+        first_callback = self.add_timer.call_args.args[0]
+        self.hover(3)
+        first_callback(1)
+        self.tm.set_active_tab.assert_not_called()
+        self.add_timer.call_args.args[0](2)
+        self.tm.set_active_tab.assert_called_once_with(self.tabs[2])
+
+    def test_clearing_or_inserting_cancels_hover(self):
+        for target in (None, WindowDropTarget(before_tab_id=2), WindowDropTarget(before_tab_id=0)):
+            with self.subTest(target=target):
+                self.hover()
+                callback = self.add_timer.call_args.args[0]
+                timer = self.tm.window_drag_hover_timer
+                self.tm._set_window_drop_tab_target(target)
+                callback(timer)
+                self.tm.set_active_tab.assert_not_called()
+                self.ae(self.tm.window_drag_hover_timer, 0)
+                self.ae(self.tm.tab_bar.window_drop_insert_before, target.before_tab_id if target else None)
+
+    def test_ended_drag_or_closed_target_cannot_switch(self):
+        for closed in (False, True):
+            self.hover()
+            timer = self.tm.window_drag_hover_timer
+            if closed:
+                self.tabs.remove(self.tabs[1])
+            else:
+                self.drag.return_value = (0, False, 0, 0)
+            self.add_timer.call_args.args[0](timer)
+            self.tm.set_active_tab.assert_not_called()
+            self.drag.return_value = (10, True, 0, 0)
+
+    def drop(self, target, remove_source=False):
+        tm = self.tm
+        tm.tab_bar.window_drop_target_at = Mock(return_value=target)
+        window = SimpleNamespace(id=10)
+
+        def move(w, target_tab_id):
+            self.assertIs(w, window)
+            self.assertIsNotNone(tm.tab_for_id(target_tab_id))
+            if remove_source:
+                tm.tabs.remove(tm.tab_for_id(1))
+
+        def new_tab(**kw):
+            self.ae(kw, {'empty_tab': True})
+            tab = SimpleNamespace(id=4)
+            tm.tabs.append(tab)
+            return tab
+
+        tm.new_tab = Mock(side_effect=new_tab)
+        boss = SimpleNamespace(window_id_map={10: window}, _move_window_to=Mock(side_effect=move))
+        with (
+            patch('kitty.tabs.get_boss', return_value=boss),
+            patch('kitty.tabs.set_window_being_dragged'),
+            patch('kitty.tabs.reorder_tabs') as reorder,
+            patch('kitty.fast_data_types.viewport_for_window', return_value=(region(0, 30, 1000, 800), region(0, 0, 1000, 30))),
+        ):
+            TabManager.on_window_drop(tm, 500, 10, 10)
+        return boss, reorder
+
+    def test_drop_inserts_at_requested_position_and_destination(self):
+        for before, expected in ((1, [4, 1, 2, 3]), (2, [1, 4, 2, 3]), (0, [1, 2, 3, 4])):
+            with self.subTest(before=before):
+                self.tm.tabs = self.tabs[:]
+                boss, reorder = self.drop(WindowDropTarget(before_tab_id=before))
+                self.ae([t.id for t in self.tm.tabs], expected)
+                reorder.assert_called_once_with(7, *expected)
+                boss._move_window_to.assert_called_once_with(boss.window_id_map[10], target_tab_id=4)
+                self.ae(self.tm.active_tab.id, 4)
+
+    def test_drop_preserves_order_when_source_tab_disappears(self):
+        self.drop(WindowDropTarget(before_tab_id=1), remove_source=True)
+        self.ae([t.id for t in self.tm.tabs], [4, 2, 3])
+
+    def test_center_drop_moves_to_existing_tab(self):
+        boss, reorder = self.drop(WindowDropTarget(tab_id=2))
+        boss._move_window_to.assert_called_once_with(boss.window_id_map[10], target_tab_id=2)
+        self.tm.new_tab.assert_not_called()
+        reorder.assert_not_called()
+
+
 class TestWindowDropTargets(BaseTest):
     "Drives the real TabManager drop handlers, whose hit testing is in OS Window coordinates"
 
@@ -326,6 +692,7 @@ class TestWindowDropTargets(BaseTest):
             window_drag_over_me=True,
             tab_bar_hidden=False,
             _set_drag_target_tab=Mock(),
+            _set_window_drop_tab_target=Mock(),
             _clear_force_show_title_bars=Mock(),
             mark_tab_bar_dirty=Mock(),
             layout_tab_bar=Mock(),
