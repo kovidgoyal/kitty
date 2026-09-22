@@ -41,13 +41,13 @@ tiling topology. This makes them useful for shells, logs, status bars and
 other tools that should keep a stable size while the rest of the tab is
 rearranged.
 
-Create a dock with :option:`launch --dock-type`. The value has the form
-``{scope}-{edge}-edge``. The scope is ``tab`` or ``window``, and the edge is
-``left``, ``top``, ``right`` or ``bottom``. For example, these mappings create
-a shell below the active window and another along the right edge of the tab::
+Create a dock with :option:`launch --type` set to ``window-dock`` or
+``tab-dock`` and choose its edge with :option:`launch --dock-edge`. For example,
+these mappings create a shell below the active window and another along the
+right edge of the tab::
 
-    map f2 launch --dock-type=window-bottom-edge --dock-size=10 --cwd=current
-    map f3 launch --dock-type=tab-right-edge --dock-size=30 --cwd=current
+    map f2 launch --type=window-dock --dock-edge=bottom --dock-size=10 --cwd=current
+    map f3 launch --type=tab-dock --dock-edge=right --dock-size=30 --cwd=current
 
 The :option:`launch --dock-size` is measured in rows for top and bottom docks
 and columns for left and right docks. It does not include window decorations.
@@ -78,10 +78,10 @@ is::
 
     map f4 toggle_dock_focus
 
-For a display-only dock, use :option:`launch --dock-no-focus`. Such a dock
+For a display-only dock, use :option:`launch --dock-skip-focus`. Such a dock
 cannot become active and is omitted from focus navigation::
 
-    map f5 launch --dock-type=tab-bottom-edge --dock-size=1 --dock-no-focus my-status-program
+    map f5 launch --type=tab-dock --dock-edge=bottom --dock-size=1 --dock-skip-focus my-status-program
 
 Docks cannot be resized, reordered or moved with normal layout actions. Close
 them as you would any other window. Their scope, edge, size, focus policy and
@@ -90,7 +90,7 @@ ownership are preserved when saving and restoring :doc:`sessions`.
 The same options can be used with remote control. This example attaches a
 dock to the window matching ID 42::
 
-    kitten @ launch --type=window --next-to=id:42 --dock-type=window-left-edge --dock-size=20
+    kitten @ launch --type=window-dock --next-to=id:42 --dock-edge=left --dock-size=20
 
 See :doc:`launch` for the full launch syntax and option reference.
 

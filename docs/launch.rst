@@ -53,17 +53,18 @@ There are many more powerful options, refer to the complete list below.
 Launching docked windows
 --------------------------
 
-The :option:`launch --dock-type` option creates a fixed-size window along an
-edge of either the current tab or a normal window. For example, to open a
-ten-line shell below the active window::
+Set :option:`launch --type` to ``window-dock`` or ``tab-dock`` to create a
+fixed-size window along an edge of a normal window or the current tab. Choose
+the edge with :option:`launch --dock-edge`. For example, to open a ten-line
+shell below the active window::
 
-    map f2 launch --dock-type=window-bottom-edge --dock-size=10 --cwd=current
+    map f2 launch --type=window-dock --dock-edge=bottom --dock-size=10 --cwd=current
 
-To instead reserve space along an edge of the entire tab, use a ``tab`` dock::
+To instead reserve space along an edge of the entire tab, use a ``tab-dock``::
 
-    map f3 launch --dock-type=tab-right-edge --dock-size=30 --cwd=current
+    map f3 launch --type=tab-dock --dock-edge=right --dock-size=30 --cwd=current
 
-Use :option:`launch --dock-no-focus` for display-only docks such as status
+Use :option:`launch --dock-skip-focus` for display-only docks such as status
 bars. Dock options are also accepted by :code:`kitten @ launch` and in session
 files. See :ref:`docked_windows` for details about scope, focus, lifetime and
 interaction with layouts.

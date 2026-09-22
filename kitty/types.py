@@ -57,10 +57,6 @@ class DockData(NamedTuple):
     owner_window_id: int = 0
     focusable: bool = True
 
-    @property
-    def type(self) -> str:
-        return f'{self.scope}-{self.edge}-edge'
-
     def serialize(self) -> dict[str, Any]:
         return self._asdict()
 

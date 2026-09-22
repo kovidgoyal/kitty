@@ -6,7 +6,7 @@ import os
 from typing import TYPE_CHECKING
 
 from kitty.cli_stub import LaunchCLIOptions
-from kitty.launch import dock_types, parse_launch_args
+from kitty.launch import dock_edges, parse_launch_args
 from kitty.launch import launch as do_launch
 from kitty.launch import options_spec as launch_options_spec
 from kitty.types import AsyncResponse
@@ -30,10 +30,10 @@ class Launch(RemoteCommand):
     var/list.str: List of user variables of the form NAME=VALUE
     os_panel/list.str: List of panel settings
     tab_title/str: Title for the new tab
-    type/choices.window.tab.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
-    dock_type/choices.{'.'.join(('none',) + dock_types)}: Create the window as a dock
+    type/choices.window.window-dock.tab.tab-dock.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
+    dock_edge/choices.{'.'.join(dock_edges)}: The edge at which to create a dock
     dock_size/int: The dock size in rows or columns
-    dock_no_focus/bool: Prevent the dock from receiving keyboard focus
+    dock_skip_focus/bool: Prevent the dock from receiving keyboard focus
     keep_focus/bool: Boolean indicating whether the current window should retain focus or not
     copy_colors/bool: Boolean indicating whether to copy the colors from the current window
     copy_cmdline/bool: Boolean indicating whether to copy the cmdline from the current window

@@ -27,16 +27,7 @@ class LaunchSpec(NamedTuple):
     args: list[str]
 
 
-dock_types = (
-    'tab-left-edge',
-    'tab-top-edge',
-    'tab-right-edge',
-    'tab-bottom-edge',
-    'window-left-edge',
-    'window-top-edge',
-    'window-right-edge',
-    'window-bottom-edge',
-)
+dock_edges = 'left', 'top', 'right', 'bottom'
 
 
 # Options definition {{{
@@ -95,15 +86,23 @@ of the active window in the tab is used as the tab title. The special value
 --type
 type=choices
 default=window
-choices=window,tab,os-window,os-panel,overlay,overlay-main,background,clipboard,primary
+choices=window,window-dock,tab,tab-dock,os-window,os-panel,overlay,overlay-main,background,clipboard,primary
 Where to launch the child process:
 
 :code:`window`
     A new :term:`kitty window <window>` in the current tab
 
+:code:`window-dock`
+    A fixed-size window attached to an edge of the active window. Use
+    :option:`--dock-edge` to select the edge.
+
 :code:`tab`
     A new :term:`tab` in the current OS window. Not available when the
     :doc:`launch <launch>` command is used in :ref:`startup sessions <sessions>`.
+
+:code:`tab-dock`
+    A fixed-size window attached to an edge of the current tab. Use
+    :option:`--dock-edge` to select the edge.
 
 :code:`os-window`
     A new :term:`operating system window <os_window>`.  Not available when the
@@ -138,13 +137,13 @@ Where to launch the child process:
 #placeholder_for_formatting#
 
 
---dock-type
+--dock-edge
 type=choices
-default=none
-choices=none,{','.join(dock_types)}
-Create the window as a fixed-size dock at an edge of the tab or of the active
-window. Only valid with :option:`--type=window`. Multiple docks can be created
-at each edge. Window docks are visible whenever their owner window is visible.
+default=bottom
+choices={','.join(dock_edges)}
+The edge at which to place a :code:`window-dock` or :code:`tab-dock`. Multiple
+docks can be created at each edge. Window docks are visible whenever their
+owner window is visible.
 
 
 --dock-size
@@ -154,7 +153,7 @@ The size of a dock in rows for top and bottom docks, or columns for left and
 right docks. The size does not include the dock window's decorations.
 
 
---dock-no-focus
+--dock-skip-focus
 type=bool-set
 Prevent the dock from receiving keyboard focus or participating in focus
 navigation. Useful for status bars and other display-only docks.
@@ -829,7 +828,7 @@ def _launch(
             if exe:
                 final_cmd[0] = exe
         kw['cmd'] = final_cmd
-    if force_window_launch and opts.type not in non_window_launch_types:
+    if force_window_launch and opts.type not in non_window_launch_types and opts.type not in ('window-dock', 'tab-dock'):
         opts.type = 'window'
     if next_to and opts.type in non_window_launch_types:
         next_to = None
@@ -864,11 +863,9 @@ def _launch(
         if child_death_callback is not None:
             child_death_callback(0, None)
     else:
-        if opts.dock_type != 'none':
-            if opts.type != 'window':
-                raise ValueError('--dock-type is only valid with --type=window')
-            if opts.dock_size < 1:
-                raise ValueError('--dock-size must be at least one')
+        dock_scope = opts.type[:-5] if opts.type in ('window-dock', 'tab-dock') else ''
+        if dock_scope and opts.dock_size < 1:
+            raise ValueError('--dock-size must be at least one')
         add_to_session = opts.add_to_session or ''
         match add_to_session:
             case '.':
@@ -883,10 +880,9 @@ def _launch(
             tab = target_tab
         else:
             tab = tab_for_window(boss, opts, target_tab, next_to, add_to_session)
-        if opts.dock_type != 'none':
-            scope, edge, _ = opts.dock_type.split('-', 2)
+        if dock_scope:
             owner_window_id = 0
-            if scope == 'window':
+            if dock_scope == 'window':
                 owner = next_to if next_to is not None and next_to in tab else tab.windows.active_main_window
                 owner_group = tab.windows.group_for_window(owner) if owner is not None else None
                 if owner_group is None or owner_group.dock_data is not None:
@@ -894,7 +890,7 @@ def _launch(
                 if owner_group is None:
                     raise ValueError('A window dock needs a normal window in the target tab')
                 owner_window_id = owner_group.active_window_id
-            kw['dock_data'] = DockData(cast(DockScope, scope), cast(DockEdge, edge), opts.dock_size, owner_window_id, not opts.dock_no_focus)
+            kw['dock_data'] = DockData(cast(DockScope, dock_scope), cast(DockEdge, opts.dock_edge), opts.dock_size, owner_window_id, not opts.dock_skip_focus)
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
             new_window: Window = tab.new_window(
