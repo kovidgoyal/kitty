@@ -5,6 +5,7 @@
 import glob
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -163,7 +164,13 @@ env TSET={tset}
 env COLORTERM
 """
                 pty = self.check_bootstrap(sh, tdir, test_script='env; pwd; exit 0', SHELL_INTEGRATION_VALUE='', conf=conf)
-                pty.wait_till(lambda: 'TSET={}'.format(tset.replace('$A', 'AAA')) in pty.screen_contents())
+                # coreutils >= 9.12 has env(1) shell-quote values written to a terminal,
+                # so accept both the raw and the shell-quoted form of the value.
+                expected_tset = tset.replace('$A', 'AAA')
+                pty.wait_till(lambda: (
+                    f'TSET={expected_tset}' in pty.screen_contents()
+                    or f'TSET={shlex.quote(expected_tset)}' in pty.screen_contents()
+                ))
                 self.assertNotIn('COLORTERM', pty.screen_contents())
                 pty.wait_till(lambda: '/cwd' in pty.screen_contents())
                 self.assertTrue(pty.is_echo_on())
