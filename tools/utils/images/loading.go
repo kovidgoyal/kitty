@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/go-parallel"
-	"github.com/kovidgoyal/go-shm"
+	shm "github.com/kovidgoyal/go-shm/v2"
 	"github.com/kovidgoyal/imaging/nrgb"
 
 	"github.com/kovidgoyal/imaging"
