@@ -193,6 +193,11 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
         # data['aborted'] to True will abort the quit in both cases.
         ...
 
+    def on_mouse_move(boss: Boss, window: Window, data: dict[str, Any]) -> None:
+        # called whenever the mouse moves over the window. Here data will
+        # contain x and y, the cell column/row under the mouse.
+        ...
+
 
 Every callback is passed a reference to the global ``Boss`` object as well as
 the ``Window`` object the action is occurring on. The ``data`` object is a dict
@@ -210,6 +215,58 @@ would pass to ``kitten @``. For example:
 
 Run, ``kitten @ --help`` in a kitty terminal, to see all the remote control
 commands available to you.
+
+
+Detecting application defined hyperlinks
+-------------------------------------------
+
+Combining ``on_mouse_move`` with ``screen.set_hyperlink_for_range()`` lets you
+turn application defined patterns in terminal output, such as the file
+references in a compiler or test runner's output, into real, clickable
+hyperlinks - without the program producing that output knowing anything about
+it. Once set, the affected cells behave exactly like a hyperlink created by
+the program itself via the OSC 8 escape code: underlined per
+:opt:`underline_hyperlinks`, and opened via :doc:`open_actions` /
+:opt:`open_url_with` when clicked.
+
+.. code-block:: python
+
+    # ~/.config/kitty/hyperlink_scanner.py
+    import re
+    from typing import Any
+
+    from kitty.boss import Boss
+    from kitty.window import Window
+
+    FILE_REF = re.compile(r'([\w./-]+\.\w+):(\d+)')
+    URL_PREFIX = 'hop://open/'
+
+    def on_mouse_move(boss: Boss, window: Window, data: dict[str, Any]) -> None:
+        screen = window.screen
+        for y in range(screen.lines):
+            line = screen.visual_line(y)
+            for m in FILE_REF.finditer(str(line)):
+                screen.set_hyperlink_for_range(y, m.start(), m.end() - 1, f'{URL_PREFIX}{m.group(0)}')
+
+Then in :file:`kitty.conf`::
+
+    watcher hyperlink_scanner.py
+
+kitty applies no throttling, debouncing or caching to ``on_mouse_move``, so
+do your own caching if scanning the whole viewport on every event is too
+expensive for your pattern. Pass ``url=None`` to
+``screen.set_hyperlink_for_range()`` to remove a hyperlink from a range of
+cells instead of setting one.
+
+.. note::
+    ``screen.visual_line()`` gives you one screen row at a time, so a
+    pattern that gets soft-wrapped across two rows will not match against
+    either row in isolation. ``line.last_char_has_wrapped_flag()`` tells
+    you when a row continues onto the next one, if you need to join rows
+    together before matching. A single hyperlink can still span multiple
+    rows though: call ``screen.set_hyperlink_for_range()`` once per row
+    with the same ``url`` and kitty's existing multi-row hyperlink handling
+    takes care of the rest.
 
 
 Finding executables

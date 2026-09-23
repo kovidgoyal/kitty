@@ -345,6 +345,7 @@ class Watchers:
     on_color_scheme_preference_change: list[Watcher]
     on_tab_bar_dirty: list[Watcher]
     on_quit: list[Watcher]
+    on_mouse_move: list[Watcher]
 
     def __init__(self) -> None:
         self.on_resize = []
@@ -356,6 +357,7 @@ class Watchers:
         self.on_color_scheme_preference_change = []
         self.on_tab_bar_dirty = []
         self.on_quit = []
+        self.on_mouse_move = []
 
     def add(self, others: 'Watchers') -> None:
         def merge(base: list[Watcher], other: list[Watcher]) -> None:
@@ -372,6 +374,7 @@ class Watchers:
         merge(self.on_color_scheme_preference_change, others.on_color_scheme_preference_change)
         merge(self.on_tab_bar_dirty, others.on_tab_bar_dirty)
         merge(self.on_quit, others.on_quit)
+        merge(self.on_mouse_move, others.on_mouse_move)
 
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
@@ -379,6 +382,7 @@ class Watchers:
         del self.on_color_scheme_preference_change[:]
         del self.on_tab_bar_dirty[:]
         del self.on_quit[:]
+        del self.on_mouse_move[:]
 
     def copy(self) -> 'Watchers':
         ans = Watchers()
@@ -391,6 +395,7 @@ class Watchers:
         ans.on_color_scheme_preference_change = self.on_color_scheme_preference_change[:]
         ans.on_tab_bar_dirty = self.on_tab_bar_dirty[:]
         ans.on_quit = self.on_quit[:]
+        ans.on_mouse_move = self.on_mouse_move[:]
         return ans
 
     @property
@@ -405,6 +410,7 @@ class Watchers:
             or self.on_cmd_startstop
             or self.on_tab_bar_dirty
             or self.on_quit
+            or self.on_mouse_move
         )
 
 
@@ -812,6 +818,7 @@ class Window:
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
         opts = get_options()
         self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
+        self.screen.set_has_mouse_move_watcher(bool(self.watchers.on_mouse_move))
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)
         self.remote_control_passwords = remote_control_passwords
@@ -1418,6 +1425,11 @@ class Window:
         if action is None:
             return False
         return get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
+
+    def dispatch_mouse_move_watchers(self, x: int, y: int) -> None:
+        if not self.watchers.on_mouse_move:
+            return
+        call_watchers(weakref.ref(self), 'on_mouse_move', {'x': x, 'y': y})
 
     def drag_thumbnails(self, label: str) -> tuple[tuple[bytes, int, int], ...]:
         # Render label as a single line of text, clipped to the width of this window

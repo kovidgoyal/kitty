@@ -577,6 +577,9 @@ def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
         w = m.get('on_quit')
         if callable(w):
             ans.on_quit.append(w)
+        w = m.get('on_mouse_move')
+        if callable(w):
+            ans.on_mouse_move.append(w)
     return ans
 
 

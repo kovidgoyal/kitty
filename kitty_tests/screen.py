@@ -1638,6 +1638,63 @@ class TestScreen(BaseTest):
         detect_url(self)
         detect_url(self, scale=2)
 
+    def test_set_hyperlink_for_range(self):
+        s = self.create_screen(cols=40)
+        s.draw('app/models/user.rb:42 blah blah')
+        line = s.line(0)
+        s.set_hyperlink_for_range(0, 0, 21, 'hop://open/app/models/user.rb:42')
+        ids = line.hyperlink_ids()
+        hid = ids[0]
+        self.ae(ids, (hid,) * 22 + (0,) * (s.columns - 22))
+        self.ae(s.hyperlink_for_id(hid), 'hop://open/app/models/user.rb:42')
+
+        # the same url on a different row interns to the same id, letting
+        # one hyperlink span multiple rows
+        s.set_hyperlink_for_range(1, 0, 3, 'hop://open/app/models/user.rb:42')
+        self.ae(s.line(1).hyperlink_ids()[:4], (hid,) * 4)
+        self.ae(s.hyperlink_at(0, 1), 'hop://open/app/models/user.rb:42')
+
+        # id= only affects interning, not the mechanics of the write: same
+        # url with a different id is a distinct hyperlink
+        s.set_hyperlink_for_range(2, 0, 3, 'hop://open/app/models/user.rb:42', 'x')
+        hid2 = s.line(2).hyperlink_ids()[0]
+        self.assertNotEqual(hid2, hid)
+        self.ae(s.hyperlink_for_id(hid2), 'hop://open/app/models/user.rb:42')
+
+        with self.assertRaises(ValueError):
+            s.set_hyperlink_for_range(s.lines, 0, 1, 'x://y')
+        with self.assertRaises(ValueError):
+            s.set_hyperlink_for_range(0, s.columns, s.columns, 'x://y')
+        with self.assertRaises(ValueError):
+            s.set_hyperlink_for_range(0, 5, 2, 'x://y')
+
+    def test_set_hyperlink_for_range_overwrites(self):
+        s = self.create_screen(cols=40)
+        s.draw('app/models/user.rb:42 blah blah')
+        line = s.line(0)
+        s.set_hyperlink_for_range(0, 0, 21, 'hop://open/app/models/user.rb:42')
+        hid = line.hyperlink_ids()[0]
+
+        # a second, disjoint range on the same line must not disturb the first
+        s.set_hyperlink_for_range(0, 27, 30, 'hop://open/other')
+        ids = line.hyperlink_ids()
+        hid2 = ids[27]
+        self.ae(ids, (hid,) * 22 + (0,) * 5 + (hid2,) * 4 + (0,) * (s.columns - 31))
+
+        # clearing only affects the given range
+        s.set_hyperlink_for_range(0, 0, 21, None)
+        ids = line.hyperlink_ids()
+        self.ae(ids, (0,) * 27 + (hid2,) * 4 + (0,) * (s.columns - 31))
+
+        # setting a range that already has a different, nonzero hyperlink id
+        # replaces it outright
+        s.set_hyperlink_for_range(0, 27, 30, 'hop://open/yet-another')
+        ids = line.hyperlink_ids()
+        hid3 = ids[27]
+        self.assertNotEqual(hid3, hid2)
+        self.ae(ids, (0,) * 27 + (hid3,) * 4 + (0,) * (s.columns - 31))
+        self.ae(s.hyperlink_for_id(hid3), 'hop://open/yet-another')
+
     def test_prompt_marking(self):
         # ]]]]]]]]]]]]]]]]}}}}}}}}}}}}}}}}))))))))))))))))))))))
 
