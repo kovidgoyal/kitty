@@ -199,7 +199,7 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
-0.50.0 [future]
+0.49.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Splits layout: Dragging a divider now resizes only its adjacent regions,
