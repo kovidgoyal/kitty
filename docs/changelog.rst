@@ -326,11 +326,11 @@ Detailed list of changes
 
 - Drag and drop protocol: Deny drag sources that send identically named symlink/dir entries with an appropriate error (:cve:`2026-80430`)
 
-- Drag and drop protocol: Fix a use-after-free when a drag source item is aborted mid-transfer, where the freed remote item was still read from and written to after the drag offer was torn down
+- Drag and drop protocol: Fix a use-after-free when a drag source item is aborted mid-transfer, where the freed remote item was still read from and written to after the drag offer was torn down (:cve:`2026-95834`)
 
 - Text sizing protocol: Fix a buffer overflow when a natural width text sizing escape code contains a grapheme cluster longer than four codepoints (:cve:`2026-80431`)
 
-- ssh kitten askpass: Verify owner and permissions of SHM memory used for askpass
+- ssh kitten askpass: Verify owner and permissions of SHM memory used for askpass (:cve:`2026-95835`)
 
 - Graphics protocol: Fix a crash when transmitting image data via a file or
   shared memory object (``t=f``, ``t=t`` or ``t=s``) and the client truncates
@@ -355,7 +355,7 @@ Detailed list of changes
 
 - Color control protocol: Report unknown fields as ``unknown=<base64 encoded
   field name>`` instead of echoing the field name back verbatim, which allowed
-  using the escape code to make the terminal emit arbitrary printable ASCII text
+  using the escape code to make the terminal emit arbitrary printable ASCII text (:cve:`2026-95832`)
 
 - macOS: Fix dropping files that are provided as file promises pasting paths to
   files that no longer exist. The dropped files are now kept alive for
