@@ -38,6 +38,7 @@ typedef struct Viewport {
 typedef enum { PROGRAM_UNIFORM, PROGRAM_ATTRIBUTE, PROGRAM_BLOCK, PROGRAM_ARRAY } ProgramMetadataKind;
 typedef struct ProgramMetadataEntry {
     ProgramMetadataKind kind;
+    bool missing_location_logged;
     union {
         GLint location;
         UniformBlock block;

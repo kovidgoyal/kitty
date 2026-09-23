@@ -538,7 +538,17 @@ init_custom_programs(void) {
                 set_optional_sampler("b", CUSTOM_END_TEXTURE_B_UNIT);
                 set_optional_sampler("persist", CUSTOM_END_TEXTURE_PERSIST_UNIT);
 #undef set_optional_sampler
-                glUniform1i(program_uniform_location(i, "group"), 0);
+                GLint group_loc = try_program_uniform_location(i, "group");
+                if (group_loc >= 0) glUniform1i(group_loc, 0);
+                else if (custom_shaders.end.num_groups > 1) {
+                    // Every group is dispatched by setting this uniform, so without it
+                    // all of them render as group zero, which for a multi pass pipeline
+                    // means the intermediate passes are drawn to the screen.
+                    log_error(
+                        "The custom shader pipeline has %zu groups but its group uniform was optimized away by the"
+                        " GPU driver. Every group will render as group zero.",
+                        custom_shaders.end.num_groups);
+                }
                 UniformBlock ubd = program_uniform_block(i, "KittyCustomShaderData");
                 glUniformBlockBinding(program_id(i), ubd.index, CUSTOM_END_DATA_BINDING_POINT);
                 if (custom_end_vao_idx == -1) {
@@ -1143,13 +1153,21 @@ set_cell_uniforms(bool force) {
             bind_program(i);
             glUniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
         }
+        // These are set for every cell program, but the background program draws no
+        // text and so does not have them.
+#define set_optional(setter, name, value)                  \
+    {                                                      \
+        GLint loc = try_program_uniform_location(i, name); \
+        if (loc >= 0) setter(loc, value);                  \
+    }
         for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
             bind_program(i);
-            glUniform1i(program_uniform_location(i, "sprites"), SPRITE_MAP_UNIT);
-            glUniform1i(program_uniform_location(i, "sprite_decorations_map"), SPRITE_DECORATIONS_MAP_UNIT);
-            glUniform1f(program_uniform_location(i, "text_contrast"), text_contrast);
-            glUniform1f(program_uniform_location(i, "text_gamma_adjustment"), text_gamma_adjustment);
+            set_optional(glUniform1i, "sprites", SPRITE_MAP_UNIT);
+            set_optional(glUniform1i, "sprite_decorations_map", SPRITE_DECORATIONS_MAP_UNIT);
+            set_optional(glUniform1f, "text_contrast", text_contrast);
+            set_optional(glUniform1f, "text_gamma_adjustment", text_gamma_adjustment);
         }
+#undef set_optional
         bind_program(BLIT_PROGRAM);
         glUniform1i(program_uniform_location(BLIT_PROGRAM, "image"), GRAPHICS_UNIT);
         bind_program(SCREENSHOT_PROGRAM);
@@ -2652,10 +2670,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
 
-    GLint group_loc = program_uniform_location(CUSTOM_END_PROGRAM, "group");
-    GLint viewport_loc = program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
-    GLint anim_progress_loc = program_uniform_location(CUSTOM_END_PROGRAM, "animation_progress");
-    GLint convert_to_srgb_loc = program_uniform_location(CUSTOM_END_PROGRAM, "convert_to_srgb");
+    // A custom shader need not reference any of these, in which case the driver
+    // drops them and glUniform*() on the resulting -1 location is a no-op.
+    GLint group_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "group");
+    GLint viewport_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
+    GLint anim_progress_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "animation_progress");
+    GLint convert_to_srgb_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "convert_to_srgb");
     const unsigned num_groups = (unsigned)custom_shaders.end.num_groups;
     const unsigned textures_mask = custom_shaders.end.textures;
     const int vw = os_window->viewport_width, vh = os_window->viewport_height;

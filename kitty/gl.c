@@ -442,7 +442,15 @@ set_program_layout(int program, PyObject *metadata) {
 
 GLint
 program_uniform_location(int program, const char *name) {
-    return program_metadata_entry(program, name, PROGRAM_UNIFORM)->location;
+    ProgramMetadataEntry *e = program_metadata_entry(program, name, PROGRAM_UNIFORM);
+    // glUniform*() on location -1 is a silent no-op, so a uniform the driver
+    // does not report as active leaves whatever value it was last set to,
+    // rendering incorrectly with no other indication that anything is wrong.
+    if (e->location < 0 && !e->missing_location_logged) {
+        e->missing_location_logged = true;
+        log_error("The uniform: %s is not active in the linked GPU program: %d. Setting it will have no effect and rendering may be incorrect.", name, program);
+    }
+    return e->location;
 }
 
 GLint
