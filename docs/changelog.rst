@@ -214,6 +214,9 @@ Detailed list of changes
   shared memory objects it created were missing the leading slash mandated by
   the graphics protocol (:iss:`10517`)
 
+- Fix a packaging bug that could cause pipeline files to be omitted from some
+  kitty builds
+
 0.49.0 [2026-09-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
