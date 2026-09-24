@@ -449,3 +449,50 @@ class TestTabBar(BaseTest):
         )
         line = tb.screen.line(0)
         self.ae({int(line.cursor_from(x).bg) for x in range(tb.screen.columns - 1)}, {active_bg})
+
+    def test_vertical_tab_bar_powerline_wrapped_titles(self) -> None:
+        separator = powerline_symbols['slanted'][0]
+        active_bg = as_rgb(color_as_int(Color(200, 0, 0)))
+        tab_bar_bg = as_rgb(color_as_int(Color(0, 0, 100)))
+
+        def lines(**opts: object) -> list[str]:
+            tb = self.vertical_tab_bar(
+                num_tabs=1,
+                height=200,
+                tab_bar_style='powerline',
+                tab_powerline_style='slanted',
+                active_tab_background=Color(200, 0, 0),
+                tab_bar_background=Color(0, 0, 100),
+                **opts,
+            )
+            s = tb.screen
+            ans = [str(s.line(i)) for i in range(s.lines)]
+            # Every row of the tab has the separator in the last column, blending
+            # into the tab bar background, with the tab background before it
+            for y, text in enumerate(ans):
+                if text:
+                    sep = s.line(y).cursor_from(s.columns - 1)
+                    self.ae((int(sep.fg), int(sep.bg)), (active_bg, tab_bar_bg))
+                    self.ae({int(s.line(y).cursor_from(x).bg) for x in range(s.columns - 1)}, {active_bg})
+            return [x for x in ans if x]
+
+        # wrapped text stays clear of the last column
+        self.ae(
+            lines(tab_title_max_lines=3, tab_title_wrap=-1, tab_title_template='{title} abcdefgh ijklmnopq rs'),
+            [f' t0 abcdefg{separator}', f'h ijklmnop {separator}', f'q rs       {separator}'],
+        )
+        # the last kept line is truncated with an ellipsis
+        self.ae(
+            lines(tab_title_max_lines=2, tab_title_wrap=-1, tab_title_template='{title} abcdefgh ijklmnopq rs'),
+            [f' t0 abcdefg{separator}', f'h ijklmno… {separator}'],
+        )
+        # an explicit wrap width narrower than the tab
+        self.ae(
+            lines(tab_title_max_lines=3, tab_title_wrap=4, tab_title_template='{title} abcdefgh'),
+            [f' t0 a      {separator}', f'bcde       {separator}', f'fgh        {separator}'],
+        )
+        # with wrapping disabled, over long lines are clipped by the separator
+        self.ae(
+            lines(tab_title_max_lines=3, tab_title_wrap=0, tab_title_template='{title}\\nabcdefghijklmnop\\nx'),
+            [f' t0        {separator}', f'abcdefghijk{separator}', f'x          {separator}'],
+        )

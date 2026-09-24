@@ -608,11 +608,17 @@ def draw_tab_with_powerline(
     separator_symbol, soft_separator_symbol = powerline_symbols.get(draw_data.powerline_style, ('', ''))
     min_title_length = 1 + 2
     start_draw = 2
+    is_vertical = draw_data.tab_bar_edge in ('left', 'right')
+    first_row = screen.cursor.y
 
     if screen.cursor.x == 0:
         screen.cursor.bg = tab_bg
         screen.draw(' ')
         start_draw = 1
+
+    if is_vertical and draw_data.wrap_width:
+        # Keep wrapped lines clear of the last column, which holds the separator.
+        draw_data = draw_data._replace(wrap_width=min(draw_data.wrap_width, max(1, screen.columns - 1 - screen.cursor.x)))
 
     screen.cursor.bg = tab_bg
     if min_title_length >= max_tab_length:
@@ -624,13 +630,18 @@ def draw_tab_with_powerline(
             screen.cursor.x -= extra + 1
             screen.draw('…')
 
-    if draw_data.tab_bar_edge in ('left', 'right'):
+    if is_vertical:
         # Clear anything left after a truncation ellipsis.
         screen.cursor.bg = tab_bg
         screen.draw(' ' * (screen.columns - 1 - screen.cursor.x))
+        # Draw the separator at the right edge of every row the title occupies,
+        # so that wrapped titles have a straight edge.
         screen.cursor.fg = tab_bg
         screen.cursor.bg = default_bg
-        screen.draw(separator_symbol)
+        for y in range(first_row, screen.cursor.y + 1):
+            screen.cursor.x = screen.columns - 1
+            screen.cursor.y = y
+            screen.draw(separator_symbol)
         return screen.cursor.x
 
     if not needs_soft_separator:
