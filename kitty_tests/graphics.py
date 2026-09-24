@@ -697,6 +697,17 @@ class TestGraphics(BaseTest):
         # while libpng still expects more compressed data.
         truncated = full[:-16]
         self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, truncated)
+        # Same, but with an embedded ICC profile so that lcms2 handles are
+        # allocated before libpng longjmps out, they must be freed in the
+        # error path (detected by LeakSanitizer in ASAN builds).
+        try:
+            from PIL import ImageCms
+        except ImportError:
+            return
+        icc = ImageCms.ImageCmsProfile(ImageCms.createProfile('sRGB')).tobytes()
+        buf = BytesIO()
+        Image.frombytes('RGBA', (w, h), byte_block(w * h * 4)).save(buf, 'PNG', icc_profile=icc)
+        self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, buf.getvalue()[:-16])
 
     def test_gr_operations_with_numbers(self):
         s = self.create_screen()

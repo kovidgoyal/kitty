@@ -205,6 +205,9 @@ Detailed list of changes
 - Fix an out-of-bounds memory access when drawing a multi-line text sized
   character with the cursor below the bottom margin of the scroll region
 
+- Fix a memory leak when loading a corrupt PNG image that has an embedded ICC
+  color profile
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

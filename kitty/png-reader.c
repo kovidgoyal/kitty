@@ -64,6 +64,10 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
     png_structp png = NULL;
     png_infop info = NULL;
     struct custom_error_handler eh = {.d = d};
+    // volatile because these are modified after setjmp() and read after a
+    // longjmp() in the error path, so they must not be cached in registers
+    cmsHPROFILE volatile input_profile = NULL;
+    cmsHTRANSFORM volatile colorspace_transform = NULL;
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, &eh, read_png_error_handler, read_png_warn_handler);
     if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
     info = png_create_info_struct(png);
@@ -82,8 +86,6 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
     bit_depth = png_get_bit_depth(png, info);
     double image_gamma;
     int intent;
-    cmsHPROFILE input_profile = NULL;
-    cmsHTRANSFORM colorspace_transform = NULL;
     if (png_get_sRGB(png, info, &intent)) {
         // do nothing since we output sRGB
     } else if (png_get_gAMA(png, info, &image_gamma)) {
@@ -132,12 +134,12 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
 
     if (colorspace_transform) {
         for (int i = 0; i < d->height; i++) { cmsDoTransform(colorspace_transform, d->row_pointers[i], d->row_pointers[i], d->width); }
-        cmsDeleteTransform(colorspace_transform);
     }
-    if (input_profile) cmsCloseProfile(input_profile);
 
     d->ok = true;
 err:
+    if (colorspace_transform) cmsDeleteTransform(colorspace_transform);
+    if (input_profile) cmsCloseProfile(input_profile);
     if (png) png_destroy_read_struct(&png, info ? &info : NULL, NULL);
     return;
 }
