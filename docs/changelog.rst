@@ -209,7 +209,7 @@ Detailed list of changes
   color profile
 
 - Custom shaders: The builtin :code:`dim-inactive-windows` shader no longer dims
-  the tab bar and the padding around the active window (:iss:`10524`)
+  the tab bar and the padding, border and margin around the active window (:iss:`10524`)
 
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

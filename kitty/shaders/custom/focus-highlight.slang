@@ -22,7 +22,7 @@ static const float INACTIVE_DIM = 0.3;
 static const float3 INACTIVE_DIM_COLOR = float3(0.0);
 // Keep the tab bar outside the effect when requested by a pipeline.
 static const bool DIM_CENTRAL_AREA_ONLY = false;
-// Include the active window's title bar and padding in its unchanged/highlighted area.
+// Include the active window's title bar, margin, border and padding in its unchanged/highlighted area.
 static const bool INCLUDE_WINDOW_PADDING = false;
 
 public float4

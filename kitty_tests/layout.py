@@ -1071,6 +1071,38 @@ class TestSplitBorderResize(BaseSplitGeometryTest):
         self.assertIsNone(data.vertical_id)
 
 
+class TestReservedSpaces(BaseSplitGeometryTest):
+    def test_reserved_spaces_do_not_overlap(self):
+        # Custom shaders treat the space a layout reserves around the active
+        # window (WindowGeometry.spaces) as part of it, so the reserved boxes
+        # of visible windows must fit in the central area without overlapping.
+        central = Region((19, 47, 1518, 1146, 1500, 1100))
+        for cls in (Tall, Grid, Horizontal, Stack, Splits):
+            for minimal in (True, False):
+                for num in (1, 2, 3, 5):
+                    layout = create_layout(cls)
+                    windows = create_windows(layout, num=num)
+                    self.stub_dimensions(layout, central, minimal)
+                    layout(windows)
+                    boxes = []
+                    for w in windows:
+                        if not w.is_visible_in_layout:
+                            continue
+                        g = w.geometry
+                        boxes.append((g.left - g.spaces.left, g.top - g.spaces.top, g.right + g.spaces.right, g.bottom + g.spaces.bottom))
+                    with self.subTest(layout=cls.name, minimal=minimal, num=num):
+                        self.assertTrue(boxes)
+                        for left, top, right, bottom in boxes:
+                            self.assertGreaterEqual(left, central.left)
+                            self.assertGreaterEqual(top, central.top)
+                            self.assertLessEqual(right, central.left + central.width)
+                            self.assertLessEqual(bottom, central.top + central.height)
+                        for i, a in enumerate(boxes):
+                            for b in boxes[i + 1 :]:
+                                overlaps = a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+                                self.assertFalse(overlaps, f'{a} overlaps {b}')
+
+
 class TestSplitDragGeometry(BaseSplitGeometryTest):
     def make_layout(self, shape, minimal=True, num=4):
         from types import SimpleNamespace
