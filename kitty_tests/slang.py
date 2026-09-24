@@ -20,6 +20,7 @@ from kitty.shaders.slang import (
     build_import_graph,
     clear_caches,
     custom_shader,
+    get_custom_pipeline_src,
     parse_pipeline_definition,
     parse_slang_text,
     parse_var_directive,
@@ -524,6 +525,19 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
 
         with open(_CACHE_FILE, 'w') as f:
             json.dump({'hash': current_hash}, f)
+
+    def test_builtin_pipelines_bundled(self) -> None:
+        # Packaging code filters files by extension, ensure builtin pipelines
+        # and the shaders they reference survive in all build types
+        pkg = ir.files('kitty.shaders.custom')
+        available = {entry.name for entry in pkg.iterdir()}
+        pipelines = sorted(x[: -len('.pipeline')] for x in available if x.endswith('.pipeline'))
+        self.assertIn('cursor-trail-default', pipelines)
+        for name in pipelines:
+            p = parse_pipeline_definition(get_custom_pipeline_src(name).decode().splitlines(), name)
+            for group in p['groups']:
+                for shader in group['shaders']:
+                    self.assertIn(f'{shader}.slang', available, f'Shader {shader} used by pipeline {name} is missing')
 
     def test_pipeline_absolute_path(self) -> None:
         pipeline_content = 'startgroup\n    shaders myshader\nendgroup\n'
