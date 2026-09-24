@@ -208,6 +208,9 @@ Detailed list of changes
 - Fix a memory leak when loading a corrupt PNG image that has an embedded ICC
   color profile
 
+- Custom shaders: The builtin :code:`dim-inactive-windows` shader no longer dims
+  the tab bar and the padding around the active window (:iss:`10524`)
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
