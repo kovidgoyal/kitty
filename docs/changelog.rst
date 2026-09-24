@@ -208,6 +208,8 @@ Detailed list of changes
 - Fix a memory leak when loading a corrupt PNG image that has an embedded ICC
   color profile
 
+- Vertical tabs: Improve rendering of tabs when using the ``powerline`` :opt:`tab_bar_style`
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
