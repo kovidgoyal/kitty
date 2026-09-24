@@ -199,7 +199,7 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
-0.49.1 [future]
+0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Splits layout: Dragging a divider now resizes only its adjacent regions,
@@ -213,7 +213,7 @@ Detailed list of changes
   equalizing a tab with only one window, or closing a window with
   :code:`equalize_on_window_close` enabled (:iss:`10522`)
 
-- icat: Fix :code:`--transfer-mode=memory` not displaying anything and
+- icat: Fix a regression in 0.49.0 :code:`--transfer-mode=memory` not displaying anything and
   :code:`--detect-support` reporting ``files``, because the names of the POSIX
   shared memory objects it created were missing the leading slash mandated by
   the graphics protocol (:iss:`10517`)
