@@ -217,6 +217,9 @@ Detailed list of changes
 - Fix a packaging bug that could cause pipeline files to be omitted from some
   kitty builds
 
+- :ac:`save_as_session`: Show an error instead of saving next to the directory
+  when the specified path is an existing directory (:iss:`10520`)
+
 0.49.0 [2026-09-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
