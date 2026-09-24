@@ -25,6 +25,21 @@ class TestMulticell(BaseTest):
             s.draw('好好')  # two 2-cell wide chars covering columns 0..3
             s.test_draw_overlay_line('xy', xstart, 0)  # would SIGSEGV without fix
 
+    def test_multicell_below_bottom_margin(self):
+        # Regression: with the cursor below the bottom margin, the available
+        # height computation underflowed and cells were written past the end
+        # of the line buffer.
+        s = self.create_screen(cols=10, lines=6)
+        s.set_margins(1, 3)  # 1-based indexing
+        s.cursor.x, s.cursor.y = 0, s.lines - 1
+        multicell(s, 'A', scale=2)
+        self.ae((s.cursor.x, s.cursor.y), (2, s.lines - 2))
+        for y in (s.lines - 2, s.lines - 1):
+            for x in range(2):
+                c = s.cpu_cells(y, x)
+                self.assertIsNotNone(c['mcd'])
+                self.ae((c['x'], c['y'], c['mcd']['scale']), (x, y - s.lines + 2, 2))
+
 
 def test_multicell(self: TestMulticell) -> None:
     from kitty.tab_bar import as_rgb

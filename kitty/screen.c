@@ -1568,11 +1568,19 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc)
     cell_set_chars(&mcd, self->text_cache, lc);
     move_cursor_past_multicell(self, width);
     if (height > 1) {
-        index_type available_height = self->margin_bottom - self->cursor->y + 1;
-        if (height > available_height) {
-            index_type extra_lines = height - available_height;
-            screen_scroll(self, extra_lines);
-            self->cursor->y -= extra_lines;
+        if (self->cursor->y <= self->margin_bottom) {
+            index_type available_height = self->margin_bottom - self->cursor->y + 1;
+            if (height > available_height) {
+                index_type extra_lines = height - available_height;
+                screen_scroll(self, extra_lines);
+                self->cursor->y -= extra_lines;
+            }
+        } else {
+            // Cursor is below the scroll region, which cannot be scrolled, so
+            // move the cursor up until the cell fits on screen. height <=
+            // max_height <= lines so this cannot underflow.
+            index_type available_height = self->lines - self->cursor->y;
+            if (height > available_height) self->cursor->y -= height - available_height;
         }
     }
     if (self->modes.mIRM) {
