@@ -624,6 +624,15 @@ def draw_tab_with_powerline(
             screen.cursor.x -= extra + 1
             screen.draw('…')
 
+    if draw_data.tab_bar_edge in ('left', 'right'):
+        # Clear anything left after a truncation ellipsis.
+        screen.cursor.bg = tab_bg
+        screen.draw(' ' * (screen.columns - 1 - screen.cursor.x))
+        screen.cursor.fg = tab_bg
+        screen.cursor.bg = default_bg
+        screen.draw(separator_symbol)
+        return screen.cursor.x
+
     if not needs_soft_separator:
         screen.draw(' ')
         screen.cursor.fg = tab_bg

@@ -211,6 +211,8 @@ Detailed list of changes
 - Custom shaders: The builtin :code:`dim-inactive-windows` shader no longer dims
   the tab bar and the padding, border and margin around the active window (:iss:`10524`)
 
+- Vertical tabs: Improve rendering of tabs when using the ``powerline`` :opt:`tab_bar_style`
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

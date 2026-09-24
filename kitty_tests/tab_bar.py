@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 from kitty.fast_data_types import LEFT_EDGE, Color, Region
 from kitty.options.utils import tab_title_wrap
-from kitty.tab_bar import CellRange, TabBar, TabBarData, truncate_line, wrap_title
+from kitty.tab_bar import CellRange, TabBar, TabBarData, as_rgb, powerline_symbols, truncate_line, wrap_title
+from kitty.utils import color_as_int
 
 from .base import BaseTest
 
@@ -413,3 +414,38 @@ class TestTabBar(BaseTest):
 
         # Issue 2: no background-coloured separator after the trailing fades.
         self.ae(bg(11), fade_bg)  # col 11, last trailing fade, must not be default_bg
+
+    def test_vertical_tab_bar_powerline_style(self) -> None:
+        tb = self.vertical_tab_bar(
+            num_tabs=3,
+            tab_bar_style='powerline',
+            tab_powerline_style='slanted',
+            active_tab_background=Color(200, 0, 0),
+            inactive_tab_background=Color(0, 200, 0),
+            tab_bar_background=Color(0, 0, 100),
+        )
+        s = tb.screen
+        separator, soft_separator = powerline_symbols['slanted']
+        active_bg = as_rgb(color_as_int(Color(200, 0, 0)))
+        inactive_bg = as_rgb(color_as_int(Color(0, 200, 0)))
+        tab_bar_bg = as_rgb(color_as_int(Color(0, 0, 100)))
+        for row, tab_bg in ((0, active_bg), (2, inactive_bg), (4, inactive_bg)):
+            line = s.line(row)
+            text = str(line)
+            self.assertNotIn(soft_separator, text)
+            self.ae(text.index(separator), s.columns - 1)
+            self.ae(int(line.cursor_from(3).bg), tab_bg)
+            sep = line.cursor_from(s.columns - 1)
+            self.ae((int(sep.fg), int(sep.bg)), (tab_bg, tab_bar_bg))
+
+        tb = self.vertical_tab_bar(num_tabs=1, tab_bar_style='powerline', tab_powerline_style='slanted', tab_title_template='{title}-a-long-title')
+        self.ae(str(tb.screen.line(0)), f' t0-a-lon… {separator}')
+
+        tb = self.vertical_tab_bar(num_tabs=1, tab_bar_style='powerline', tab_powerline_style='slanted', tab_title_template='abcdef', tab_title_max_length=3)
+        self.ae(str(tb.screen.line(0)), f' ab…       {separator}')
+
+        tb = self.vertical_tab_bar(
+            num_tabs=1, tab_bar_style='powerline', tab_title_template='{fmt.fg.red}{title}{fmt.reset}', active_tab_background=Color(200, 0, 0)
+        )
+        line = tb.screen.line(0)
+        self.ae({int(line.cursor_from(x).bg) for x in range(tb.screen.columns - 1)}, {active_bg})
