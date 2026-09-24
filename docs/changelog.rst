@@ -209,6 +209,10 @@ Detailed list of changes
 - Splits layout: Fix windows in a nested split overlapping their neighbour by a
   couple of pixels when the split is resized down to its minimum size.
 
+- Splits layout: Fix a split collapsing to a single line when the pair being
+  split still carried a bias from when it held only one window, for instance
+  after equalizing or closing back down to a single window (:iss:`10522`)
+
 - icat: Fix :code:`--transfer-mode=memory` not displaying anything and
   :code:`--detect-support` reporting ``files``, because the names of the POSIX
   shared memory objects it created were missing the leading slash mandated by

@@ -587,6 +587,36 @@ class TestLayout(BaseTest):
         self.assertAlmostEqual(root.bias, 0.5, places=5)  # w1 vs right column: 1:1
         self.assertAlmostEqual(inner1.bias, 0.5, places=5)  # w2 vs w3 top/bottom: 1:1
 
+    def test_splits_redundant_pair_bias_does_not_seed_next_split(self):
+        # A pair holding a single child has no geometry, so its bias is whatever was
+        # last written to it. split_and_add() reuses that pair for the next split, so a
+        # stale bias used to clamp the new window to its minimum size.
+        def split_after(setup):
+            q = create_layout(Splits)
+            all_windows = create_windows(q, num=0)
+            w1 = Window(1)
+            q.add_window(all_windows, w1)
+            setup(q, all_windows, w1)
+            q.add_window(all_windows, Window(2), location='vsplit')
+            return q.pairs_root.bias
+
+        def equalize(q, all_windows, w1):
+            self.assertTrue(q.layout_action('equalize', (), all_windows))
+
+        def set_bias(q, all_windows, w1):
+            q.layout_action('bias', ('100',), all_windows)
+
+        def close_back_to_one(q, all_windows, w1):
+            w2 = Window(3)
+            q.add_window(all_windows, w2, location='vsplit')
+            q.pairs_root.bias = 0.8
+            q.remove_windows(all_windows.group_for_window(w2).id)
+            all_windows.remove_window(w2)
+
+        for name, setup in (('equalize', equalize), ('bias action', set_bias), ('close', close_back_to_one)):
+            with self.subTest(name):
+                self.assertAlmostEqual(split_after(setup), 0.5, places=5)
+
     def test_splits_collapse_nested_empty_pairs(self):
         # Removing every window of a nested sub-tree in a single pass must not
         # leave an empty pair behind, still consuming its share of the space.

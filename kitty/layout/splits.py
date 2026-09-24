@@ -253,6 +253,9 @@ class Pair:
         if self.is_redundant:
             pair = self
             pair.horizontal = horizontal
+            # A redundant pair holds no geometry, so its bias is whatever was last
+            # written to it. Reset it or a stale value seeds this split.
+            pair.bias = 0.5
             self.one, self.two = q
             final_pair = pair
 
