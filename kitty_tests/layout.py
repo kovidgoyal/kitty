@@ -651,6 +651,45 @@ class TestLayout(BaseTest):
         self.assertFalse(result)
         self.assertAlmostEqual(q2.pairs_root.bias, 0.9, places=5)
 
+    def test_splits_equalize_redundant_pair(self):
+        # Equalizing must leave a pair holding a single window with an even bias,
+        # as that bias is used when the pair is split again, see #10522
+        def split_after(equalize_on_close: bool, bias: float) -> float:
+            q = create_layout(Splits)
+            q.layout_opts = SplitsLayoutOpts({})
+            q.layout_opts.equalize_on_close = equalize_on_close
+            all_windows = create_windows(q, num=0)
+            q.add_window(all_windows, Window(1))
+            w2 = Window(2)
+            q.add_window(all_windows, w2, location='vsplit')
+            q.pairs_root.bias = bias
+            q.remove_windows(all_windows.group_for_window(w2).id)
+            all_windows.remove_window(w2)
+            if equalize_on_close:
+                self.assertTrue(q.on_window_removed(all_windows))
+            else:
+                self.assertTrue(q.layout_action('equalize', (), all_windows))
+            q.add_window(all_windows, Window(3), location='hsplit')
+            return q.pairs_root.bias
+
+        for equalize_on_close in (False, True):
+            with self.subTest(equalize_on_close=equalize_on_close):
+                self.assertAlmostEqual(split_after(equalize_on_close, 0.5), 0.5, places=5)
+                self.assertAlmostEqual(split_after(equalize_on_close, 0.8), 0.5, places=5)
+
+        # Without an equalize, the bias of a closed split is preserved by design
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        q.add_window(all_windows, Window(1))
+        w2 = Window(2)
+        q.add_window(all_windows, w2, location='vsplit')
+        q.pairs_root.bias = 0.8
+        q.remove_windows(all_windows.group_for_window(w2).id)
+        all_windows.remove_window(w2)
+        self.assertFalse(q.on_window_removed(all_windows))
+        q.add_window(all_windows, Window(3), location='vsplit')
+        self.assertAlmostEqual(q.pairs_root.bias, 0.8, places=5)
+
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the
         # available space (e.g. after maximize sets a window to minimum width),

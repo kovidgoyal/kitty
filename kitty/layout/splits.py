@@ -846,6 +846,11 @@ class Splits(Layout):
 
     def equalize_biases(self) -> bool:
         for pair in self.pairs_root.self_and_descendants():
+            if pair.is_redundant:
+                # A redundant pair has no geometry, but its bias is retained for
+                # when it is split again, so make that split an even one.
+                pair.bias = 0.5
+                continue
             left = child_axis_units(pair.one, pair.horizontal)
             right = child_axis_units(pair.two, pair.horizontal)
             total = left + right
