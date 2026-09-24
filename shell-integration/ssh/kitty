@@ -23,6 +23,32 @@ exec_kitty() {
 }
 
 
+has_diskutil_image() {
+    # hdiutil is deprecated in macOS 27
+    macos_major=$(command sw_vers -productVersion 2> /dev/null)
+    macos_major="${macos_major%%.*}"
+    case "$macos_major" in
+        ''|*[!0-9]*) return 1;;
+    esac
+    [ "$macos_major" -ge 27 ]
+}
+
+mount_dmg() {
+    if has_diskutil_image; then
+        command diskutil image attach --readOnly --mountPoint "$2" "$1"
+    else
+        command hdiutil attach "$1" "-mountpoint" "$2"
+    fi
+}
+
+unmount_dmg() {
+    if has_diskutil_image; then
+        command diskutil eject "$1"
+    else
+        command hdiutil detach "$1"
+    fi
+}
+
 is_wrapped_kitten() {
     wrapped_kittens="clipboard icat hyperlinked_grep ask hints unicode_input ssh themes diff show_key transfer query_terminal choose-files command-palette resize_window broadcast remote_file"
     [ -n "$1" ] && {
@@ -121,10 +147,10 @@ else
     [ $? = 0 ] || die "Creating temp directory failed"
     fetch "$url" > "$tdir/kitty.dmg"
     command mkdir "$tdir/mp"
-    command hdiutil attach "$tdir/kitty.dmg" "-mountpoint" "$tdir/mp" || die "Failed to mount kitty.dmg"
+    mount_dmg "$tdir/kitty.dmg" "$tdir/mp" || die "Failed to mount kitty.dmg"
     command ditto -v "$tdir/mp/kitty.app" "$install_dir/kitty.app"
     rc="$?"
-    command hdiutil detach "$tdir/mp"
+    unmount_dmg "$tdir/mp"
     command rm -rf "$tdir"
     [ "$rc" != "0" ] && die "Failed to copy kitty.app from mounted dmg"
     command mkdir "$install_dir/bin"

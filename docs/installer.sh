@@ -144,13 +144,39 @@ linux_install() {
     command mv "$tdir/mp" "$dest" || die "Failed to move kitty.app to $dest"
 }
 
+has_diskutil_image() {
+    # hdiutil is deprecated in macOS 27
+    macos_major=$(command sw_vers -productVersion 2> /dev/null)
+    macos_major="${macos_major%%.*}"
+    case "$macos_major" in
+        ''|*[!0-9]*) return 1;;
+    esac
+    [ "$macos_major" -ge 27 ]
+}
+
+mount_dmg() {
+    if has_diskutil_image; then
+        command diskutil image attach --readOnly --mountPoint "$2" "$1"
+    else
+        command hdiutil attach "$1" "-mountpoint" "$2"
+    fi
+}
+
+unmount_dmg() {
+    if has_diskutil_image; then
+        command diskutil eject "$1"
+    else
+        command hdiutil detach "$1"
+    fi
+}
+
 macos_install() {
     command mkdir "$tdir/mp"
-    command hdiutil attach "$installer" "-mountpoint" "$tdir/mp" || die "Failed to mount kitty.dmg"
+    mount_dmg "$installer" "$tdir/mp" || die "Failed to mount kitty.dmg"
     ensure_dest
     command ditto -v "$tdir/mp/kitty.app" "$dest"
     rc="$?"
-    command hdiutil detach "$tdir/mp"
+    unmount_dmg "$tdir/mp"
     [ "$rc" != "0" ] && die "Failed to copy kitty.app from mounted dmg"
 }
 
