@@ -213,6 +213,9 @@ Detailed list of changes
 
 - Vertical tabs: Improve rendering of tabs when using the ``powerline`` :opt:`tab_bar_style`
 
+- themes and choose fonts kittens: Fix search freezing for many seconds when
+  typing a long query, such as the full name of a theme
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

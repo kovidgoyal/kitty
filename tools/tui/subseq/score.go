@@ -53,7 +53,8 @@ func level_factor_for(current_lcase, last_lcase, current_cased, last_cased rune,
 type workspace_type struct {
 	positions          [][]int // positions of each needle char in haystack
 	level_factors      []int
-	address            []int
+	best               []float64 // highest score of a match ending at each position of each needle char, flattened
+	prev               []int     // index into the positions of the previous needle char for that match
 	max_score_per_char float64
 }
 
@@ -75,62 +76,13 @@ func (w *workspace_type) initialize(haystack_sz, needle_sz int) {
 			w.positions[i] = w.positions[i][:0]
 		}
 	}
-	if cap(w.address) < needle_sz {
-		w.address = make([]int, needle_sz)
-	}
-	w.address = utils.Memset(w.address)
 }
 
-func (w *workspace_type) position(x int) int { // the position of xth needle char in the haystack for the current address
-	return w.positions[x][w.address[x]]
-}
-
-func (w *workspace_type) increment_address() bool {
-	pos := len(w.positions) - 1 // the last needle char
-	for {
-		w.address[pos]++
-		if w.address[pos] < len(w.positions[pos]) {
-			return true
-		}
-		if pos == 0 {
-			break
-		}
-		w.address[pos] = 0
-		pos--
+func (w *workspace_type) char_score(pos, distance int) float64 {
+	if w.level_factors[pos] > 0 {
+		return (100.0 * w.max_score_per_char) / float64(w.level_factors[pos]) // at a special location
 	}
-	return false
-}
-
-func (w *workspace_type) address_is_monotonic() bool {
-	// Check if the character positions pointed to by the current address are monotonic
-	for i := 1; i < len(w.positions); i++ {
-		if w.position(i) <= w.position(i-1) {
-			return false
-		}
-	}
-	return true
-}
-
-func (w *workspace_type) calc_score() (ans float64) {
-	distance, pos := 0, 0
-	for i := range len(w.positions) {
-		pos = w.position(i)
-		if i == 0 {
-			distance = pos + 1
-		} else {
-			distance = pos - w.position(i-1)
-			if distance < 2 {
-				ans += w.max_score_per_char // consecutive chars
-				continue
-			}
-		}
-		if w.level_factors[pos] > 0 {
-			ans += (100.0 * w.max_score_per_char) / float64(w.level_factors[pos]) // at a special location
-		} else {
-			ans += (0.75 * w.max_score_per_char) / float64(distance)
-		}
-	}
-	return
+	return (0.75 * w.max_score_per_char) / float64(distance)
 }
 
 func has_atleast_one_match(w *workspace_type) (found bool) {
@@ -177,21 +129,52 @@ func score_item(item string, idx int, needle []rune, opts *resolved_options_type
 	if !has_atleast_one_match(w) {
 		return ans
 	}
-	var score float64
-	for {
-		if w.address_is_monotonic() {
-			score = w.calc_score()
-			if score > ans.Score {
-				ans.Score = score
-				for i := range ans.Positions {
-					ans.Positions[i] = w.position(i)
+	// Find the highest scoring monotonic positions one needle char at a time
+	n := 0
+	for _, positions := range w.positions {
+		n += len(positions)
+	}
+	if cap(w.best) < n {
+		w.best, w.prev = make([]float64, 2*n), make([]int, 2*n)
+	}
+	for k, pos := range w.positions[0] {
+		w.best[k] = w.char_score(pos, pos+1)
+	}
+	off := 0 // offset of the entries for the previous needle char in best
+	for j := 1; j < len(w.positions); j++ {
+		prev_positions, next_off := w.positions[j-1], off+len(w.positions[j-1])
+		for k, pos := range w.positions[j] {
+			score, from := 0.0, 0
+			for i := 0; i < len(prev_positions) && prev_positions[i] < pos; i++ {
+				s := w.best[off+i]
+				if s == 0 { // no match ends here, all scores are > 0
+					continue
+				}
+				if distance := pos - prev_positions[i]; distance < 2 {
+					s += w.max_score_per_char // consecutive chars
+				} else {
+					s += w.char_score(pos, distance)
+				}
+				if s > score {
+					score, from = s, i
 				}
 			}
+			w.best[next_off+k], w.prev[next_off+k] = score, from
 		}
-		if !w.increment_address() {
-			break
+		off = next_off
+	}
+	last, k := len(w.positions)-1, 0
+	for i := range len(w.positions[last]) {
+		if w.best[off+i] > ans.Score {
+			ans.Score, k = w.best[off+i], i
 		}
 	}
+	for j := last; j > 0; j-- {
+		ans.Positions[j] = w.positions[j][k]
+		k = w.prev[off+k]
+		off -= len(w.positions[j-1])
+	}
+	ans.Positions[0] = w.positions[0][k]
 	if ans.Score > 0 {
 		adjust := utils.RuneOffsetsToByteOffsets(item)
 		for i := range ans.Positions {
