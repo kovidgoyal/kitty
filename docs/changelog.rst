@@ -213,6 +213,9 @@ Detailed list of changes
 
 - Vertical tabs: Improve rendering of tabs when using the ``powerline`` :opt:`tab_bar_style`
 
+- X11: Fix copy and paste targeting the wrong OS window when the keyboard focus
+  is set to PointerRoot or None
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

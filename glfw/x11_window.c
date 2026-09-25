@@ -2135,6 +2135,11 @@ processEvent(XEvent *event) {
                 // key chords and window dragging
                 return;
             }
+            if (event->xfocus.detail == NotifyPointer) {
+                // Ignore focus events for the window under the pointer when the
+                // focus is set to PointerRoot or None
+                return;
+            }
 
             if (window->cursorMode == GLFW_CURSOR_DISABLED) disableCursor(window);
 
@@ -2146,6 +2151,11 @@ processEvent(XEvent *event) {
             if (event->xfocus.mode == NotifyGrab || event->xfocus.mode == NotifyUngrab) {
                 // Ignore focus events from popup indicator windows, window menu
                 // key chords and window dragging
+                return;
+            }
+            if (event->xfocus.detail == NotifyPointer) {
+                // Ignore focus events for the window under the pointer when the
+                // focus is set to PointerRoot or None
                 return;
             }
 
