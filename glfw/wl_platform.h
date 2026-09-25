@@ -342,6 +342,18 @@ typedef struct _GLFWlibraryWayland {
     struct wl_seat *seat;
     struct wl_pointer *pointer;
     struct wl_keyboard *keyboard;
+    struct wl_touch *touch;
+    // The first finger down acts for the whole touch sequence: its id, the window
+    // it landed on (NULL while no finger is down), where it is, when it landed,
+    // whether it moved past the tap slop, which turns it from a click into a
+    // scroll, and whether it had been held still long enough to select instead
+    struct {
+        int32_t id;
+        _GLFWwindow *window;
+        double x, y;
+        uint32_t down_time;
+        bool moved, selecting;
+    } touch_state;
     struct wl_data_device_manager *dataDeviceManager;
     struct wl_data_device *dataDevice;
     struct xdg_wm_base *wmBase;

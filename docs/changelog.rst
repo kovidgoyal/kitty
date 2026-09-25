@@ -202,6 +202,9 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
+  with momentum, and a finger held still before it moves selects text (:iss:`5432`)
+
 - Fix an out-of-bounds memory access when drawing a multi-line text sized
   character with the cursor below the bottom margin of the scroll region
 

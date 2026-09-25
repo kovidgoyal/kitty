@@ -313,6 +313,145 @@ static const struct wl_pointer_listener pointerListener = {
 #endif
 };
 
+// A touchscreen drives the pointer paths. A finger that stays within the tap slop
+// is a left click at the place it lifts from, sent as a press and a release then,
+// so a finger that moves is never a click. A finger that moves at once is a
+// finger-based high resolution scroll, the same event a touchpad produces, so the
+// content follows it and, once it lifts, carries on under momentum scrolling. A
+// finger held still for TOUCH_SELECT_HOLD_MS before it moves is a left button
+// dragged from where it landed, which selects text as a mouse drag does
+#define TOUCH_TAP_SLOP 8.0
+#define TOUCH_SELECT_HOLD_MS 400
+#define touch (_glfw.wl.touch_state)
+
+static void
+touch_move_cursor(_GLFWwindow *window, double x, double y) {
+    window->wl.cursorPosX = window->wl.allCursorPosX = x;
+    window->wl.cursorPosY = window->wl.allCursorPosY = y;
+    _glfwInputCursorPos(window, x, y);
+}
+
+// The window a finger landed on may close before the finger lifts; it is looked up
+// in the window list rather than read through the stored pointer
+static bool
+touch_window_alive(const _GLFWwindow *window) {
+    for (const _GLFWwindow *w = _glfw.windowListHead; w; w = w->next)
+        if (w == window) return true;
+    return false;
+}
+
+static void
+touch_scroll(_GLFWwindow *window, double dx, double dy, bool stopped) {
+    const double scale = _glfwWaylandWindowScale(window);
+    GLFWScrollEvent ev = {
+        .keyboard_modifiers = _glfw.wl.xkb.states.modifiers,
+        .offset_type = GLFW_SCROLL_OFFEST_HIGHRES,
+        .unscaled = {.x = dx, .y = dy},
+        .x_offset = scale * dx,
+        .y_offset = scale * dy,
+    };
+    glfw_handle_scroll_event_for_momentum(window, &ev, stopped, true);
+}
+
+static void
+touchHandleDown(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, struct wl_surface *surface, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
+    if (touch.window) return;
+    _GLFWwindow *window = get_window_from_surface(surface);
+    // A touch on a client-side decoration is not handled here
+    if (!window || surface != window->wl.surface) return;
+    glfw_cancel_momentum_scroll();
+    _glfw.wl.serial = serial;
+    _glfw.wl.input_serial = serial;
+    touch.id = id;
+    touch.window = window;
+    touch.x = wl_fixed_to_double(sx);
+    touch.y = wl_fixed_to_double(sy);
+    touch.down_time = time;
+    touch.moved = false;
+    touch.selecting = false;
+}
+
+static void
+touchHandleMotion(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t time, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
+    if (!touch.window || id != touch.id || !touch_window_alive(touch.window)) return;
+    const double px = wl_fixed_to_double(sx), py = wl_fixed_to_double(sy);
+    if (!touch.moved) {
+        if (fabs(px - touch.x) <= TOUCH_TAP_SLOP && fabs(py - touch.y) <= TOUCH_TAP_SLOP) return;
+        touch.moved = true;
+        if (time - touch.down_time >= TOUCH_SELECT_HOLD_MS) {
+            touch.selecting = true;
+            touch_move_cursor(touch.window, touch.x, touch.y);
+            _glfwInputMouseClick(touch.window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, _glfw.wl.xkb.states.modifiers);
+        }
+    }
+    if (touch.selecting) {
+        touch.x = px;
+        touch.y = py;
+        touch_move_cursor(touch.window, px, py);
+        return;
+    }
+    const double dx = px - touch.x, dy = py - touch.y;
+    touch.x = px;
+    touch.y = py;
+    touch_scroll(touch.window, dx, dy, false);
+}
+
+static void
+touchHandleUp(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time UNUSED, int32_t id) {
+    if (!touch.window || id != touch.id) return;
+    _GLFWwindow *window = touch.window;
+    touch.window = NULL;
+    if (!touch_window_alive(window)) return;
+    _glfw.wl.serial = serial;
+    _glfw.wl.input_serial = serial;
+    const int mods = _glfw.wl.xkb.states.modifiers;
+    if (touch.selecting) {
+        _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, mods);
+        return;
+    }
+    if (touch.moved) {
+        touch_scroll(window, 0, 0, true);
+        return;
+    }
+    touch_move_cursor(window, touch.x, touch.y);
+    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods);
+    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, mods);
+}
+
+static void
+touchHandleFrame(void *data UNUSED, struct wl_touch *wl_touch UNUSED) {}
+
+// The compositor took the sequence over, for a gesture of its own: the finger is
+// neither a click nor a scroll any more
+static void
+touchHandleCancel(void *data UNUSED, struct wl_touch *wl_touch UNUSED) {
+    // A selection in progress lets its button go, so it is not left held down
+    if (touch.window && touch.selecting && touch_window_alive(touch.window))
+        _glfwInputMouseClick(touch.window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, _glfw.wl.xkb.states.modifiers);
+    touch.window = NULL;
+    touch.moved = false;
+    touch.selecting = false;
+    glfw_cancel_momentum_scroll();
+}
+
+static void
+touchHandleShape(void *data UNUSED, struct wl_touch *wl_touch UNUSED, int32_t id UNUSED, wl_fixed_t major UNUSED, wl_fixed_t minor UNUSED) {}
+
+static void
+touchHandleOrientation(void *data UNUSED, struct wl_touch *wl_touch UNUSED, int32_t id UNUSED, wl_fixed_t orientation UNUSED) {}
+
+#undef touch
+
+static const struct wl_touch_listener touchListener = {
+    .down = touchHandleDown,
+    .up = touchHandleUp,
+    .motion = touchHandleMotion,
+    .frame = touchHandleFrame,
+    .cancel = touchHandleCancel,
+    .shape = touchHandleShape,
+    .orientation = touchHandleOrientation,
+};
+
 static void
 keyboardHandleKeymap(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint32_t format, int fd, uint32_t size) {
     char *mapStr;
@@ -515,6 +654,15 @@ seatHandleCapabilities(void *data UNUSED, struct wl_seat *seat, enum wl_seat_cap
         wl_pointer_destroy(_glfw.wl.pointer);
         _glfw.wl.pointer = NULL;
         if (_glfw.wl.cursorAnimationTimer) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
+    }
+
+    if ((caps & WL_SEAT_CAPABILITY_TOUCH) && !_glfw.wl.touch) {
+        _glfw.wl.touch = wl_seat_get_touch(seat);
+        wl_touch_add_listener(_glfw.wl.touch, &touchListener, NULL);
+    } else if (!(caps & WL_SEAT_CAPABILITY_TOUCH) && _glfw.wl.touch) {
+        wl_touch_destroy(_glfw.wl.touch);
+        _glfw.wl.touch = NULL;
+        _glfw.wl.touch_state.window = NULL;
     }
 
     if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !_glfw.wl.keyboard) {
@@ -900,6 +1048,7 @@ _glfwPlatformTerminate(void) {
     if (_glfw.wl.virtual_keyboard_manager) zwp_virtual_keyboard_manager_v1_destroy(_glfw.wl.virtual_keyboard_manager);
     if (_glfw.wl.pointer) wl_pointer_destroy(_glfw.wl.pointer);
     if (_glfw.wl.keyboard) wl_keyboard_destroy(_glfw.wl.keyboard);
+    if (_glfw.wl.touch) wl_touch_destroy(_glfw.wl.touch);
     if (_glfw.wl.seat) wl_seat_destroy(_glfw.wl.seat);
     if (_glfw.wl.relativePointerManager) zwp_relative_pointer_manager_v1_destroy(_glfw.wl.relativePointerManager);
     if (_glfw.wl.pointerConstraints) zwp_pointer_constraints_v1_destroy(_glfw.wl.pointerConstraints);
