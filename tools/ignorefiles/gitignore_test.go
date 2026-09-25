@@ -25,6 +25,8 @@ func TestGitignore(t *testing.T) {
 		"/":          {skipped: true},
 		"//":         {skipped: true},
 		"# abc":      {skipped: true},
+		"!":          {skipped: true},
+		"! ":         {skipped: true},
 		`\!moose \ `: {parts: []string{`!moose  `}},
 		`\#m\oose  `: {parts: []string{`#m\oose`}},
 	} {
