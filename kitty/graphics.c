@@ -274,9 +274,18 @@ grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
     make_window_context_current(dest->window_id);
     free_all_images(dest);
     dest->render_data.count = 0;
+    dest->num_of_below_refs = 0;
+    dest->num_of_negative_refs = 0;
+    dest->num_of_positive_refs = 0;
     if (self == NULL) return;
     dest->window_id = self->window_id;
     dest->layers_dirty = true;
+    // Copy the visible ref counts so that the decision on whether to render in
+    // layers, which is made before the render data is rebuilt, is correct for
+    // the first paused frame. See https://github.com/kovidgoyal/kitty/issues/10538
+    dest->num_of_below_refs = self->num_of_below_refs;
+    dest->num_of_negative_refs = self->num_of_negative_refs;
+    dest->num_of_positive_refs = self->num_of_positive_refs;
     dest->last_scrolled_by = 0;
     dest->last_scroll_offset_lines = 0.0f;
 

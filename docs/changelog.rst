@@ -213,6 +213,8 @@ Detailed list of changes
 
 - Vertical tabs: Improve rendering of tabs when using the ``powerline`` :opt:`tab_bar_style`
 
+- Graphics: Fix images briefly disappearing for one frame the first time an image is replaced during a synchronized update (:iss:`10538`)
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
