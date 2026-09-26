@@ -202,6 +202,8 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Sessions: Expand launch option variables when an option value matches the command name
+
 - Preserve transparent background colors when applying unrelated launch color overrides
 
 - ssh kitten: Preserve SSH option values following a spaced :code:`--kitten` option

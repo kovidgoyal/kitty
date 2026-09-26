@@ -131,10 +131,7 @@ class Session:
         spec = parse_launch_args(cmd)
         if needs_expandvars:
             assert isinstance(cmd, list)
-            limit = len(cmd)
-            if len(spec.args):
-                with suppress(ValueError):
-                    limit = cmd.index(spec.args[0])
+            limit = len(cmd) - len(spec.args)
             cmd = [(expand(x) if i < limit else x) for i, x in enumerate(cmd)]
             spec = parse_launch_args(cmd)
 
