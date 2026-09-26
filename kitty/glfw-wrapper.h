@@ -306,6 +306,43 @@ typedef struct GLFWScrollEvent {
     int keyboard_modifiers;
 } GLFWScrollEvent;
 
+typedef enum GLFWTouchEventType {
+    // The first finger of a sequence touched the window
+    GLFW_TOUCH_BEGIN = 1,
+    // A finger touched, moved or lifted while others stay down
+    GLFW_TOUCH_UPDATE = 2,
+    // The last finger of the sequence lifted
+    GLFW_TOUCH_END = 3,
+    // The system took the sequence over, for example for a gesture of its own;
+    // the application must discard everything the sequence did so far
+    GLFW_TOUCH_CANCEL = 4,
+} GLFWTouchEventType;
+
+typedef enum GLFWTouchPointState {
+    GLFW_TOUCH_POINT_PRESSED = 1,
+    GLFW_TOUCH_POINT_MOVED = 2,
+    GLFW_TOUCH_POINT_STATIONARY = 3,
+    GLFW_TOUCH_POINT_RELEASED = 4,
+} GLFWTouchPointState;
+
+typedef struct GLFWTouchPoint {
+    // Unique among the points that are down at the same time; the system can
+    // reuse it after the point is released
+    int32_t id;
+    GLFWTouchPointState state;
+    // In window content coordinates, the same as the cursor position
+    double x, y;
+} GLFWTouchPoint;
+
+typedef struct GLFWTouchEvent {
+    GLFWTouchEventType type;
+    int keyboard_modifiers;
+    // Every point that is down on the window, and the points that were released
+    // in this event. The array is valid only during the callback
+    size_t num_points;
+    const GLFWTouchPoint *points;
+} GLFWTouchEvent;
+
 /*! @defgroup joysticks Joysticks
  *  @brief Joystick IDs.
  *
@@ -1520,6 +1557,25 @@ typedef void (*GLFWcursorenterfun)(GLFWwindow *, int);
  */
 typedef void (*GLFWscrollfun)(GLFWwindow *, const GLFWScrollEvent *);
 
+/*! @brief The function pointer type for touch callbacks.
+ *
+ *  This is the function pointer type for touch callbacks.  A touch callback
+ *  function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, const GLFWTouchEvent* event)
+ *  @endcode
+ *
+ *  @param[in] window The window that received the event.
+ *  @param[in] event The touch event. A sequence opens with @ref
+ *  GLFW_TOUCH_BEGIN and closes with either @ref GLFW_TOUCH_END or @ref
+ *  GLFW_TOUCH_CANCEL.
+ *
+ *  @sa @ref glfwSetTouchCallback
+ *
+ *  @ingroup input
+ */
+typedef void (*GLFWtouchfun)(GLFWwindow *, const GLFWTouchEvent *);
+
 /*! @brief The function pointer type for key callbacks.
  *
  *  This is the function pointer type for key callbacks.  A keyboard
@@ -2322,6 +2378,10 @@ GFW_EXTERN glfwSetCursorEnterCallback_func glfwSetCursorEnterCallback_impl;
 typedef GLFWscrollfun (*glfwSetScrollCallback_func)(GLFWwindow*, GLFWscrollfun);
 GFW_EXTERN glfwSetScrollCallback_func glfwSetScrollCallback_impl;
 #define glfwSetScrollCallback glfwSetScrollCallback_impl
+
+typedef GLFWtouchfun (*glfwSetTouchCallback_func)(GLFWwindow*, GLFWtouchfun);
+GFW_EXTERN glfwSetTouchCallback_func glfwSetTouchCallback_impl;
+#define glfwSetTouchCallback glfwSetTouchCallback_impl
 
 typedef GLFWliveresizefun (*glfwSetLiveResizeCallback_func)(GLFWwindow*, GLFWliveresizefun);
 GFW_EXTERN glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;

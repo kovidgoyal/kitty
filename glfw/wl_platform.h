@@ -331,6 +331,14 @@ typedef struct _GLFWWaylandDataOffer {
     size_t dd_capacity, dd_count;
 } _GLFWWaylandDataOffer;
 
+typedef struct _GLFWWaylandTouchPoint {
+    int32_t id;
+    GLFWid window_id;
+    GLFWTouchPointState state;
+    bool pressed_in_frame;
+    double x, y;
+} _GLFWWaylandTouchPoint;
+
 // Wayland-specific global data
 //
 typedef struct _GLFWlibraryWayland {
@@ -342,6 +350,14 @@ typedef struct _GLFWlibraryWayland {
     struct wl_seat *seat;
     struct wl_pointer *pointer;
     struct wl_keyboard *keyboard;
+    struct wl_touch *touch;
+    // The touch points that are down, each tied to the window it landed on.
+    // Changes collect here and are reported at the wl_touch frame event.
+    // pressed_in_frame marks a point the application has not heard of yet
+    struct {
+        _GLFWWaylandTouchPoint points[16];
+        size_t count;
+    } touch_state;
     struct wl_data_device_manager *dataDeviceManager;
     struct wl_data_device *dataDevice;
     struct xdg_wm_base *wmBase;

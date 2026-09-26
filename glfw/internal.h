@@ -470,6 +470,7 @@ struct _GLFWwindow {
         GLFWcursorposfun cursorPos;
         GLFWcursorenterfun cursorEnter;
         GLFWscrollfun scroll;
+        GLFWtouchfun touch;
         GLFWkeyboardfun keyboard;
         GLFWliveresizefun liveResize;
 
@@ -803,6 +804,7 @@ void _glfwInputWindowMonitor(_GLFWwindow *window, _GLFWmonitor *monitor);
 void _glfwInputKeyboard(_GLFWwindow *window, GLFWkeyevent *ev);
 void _glfwInputClipboardLost(GLFWClipboardType which);
 void _glfwInputScroll(_GLFWwindow *window, const GLFWScrollEvent *ev);
+void _glfwInputTouch(_GLFWwindow *window, const GLFWTouchEvent *ev);
 void _glfwInputMouseClick(_GLFWwindow *window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow *window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow *window, bool entered);
