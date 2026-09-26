@@ -351,8 +351,14 @@ class TestTabInsertionPreview(BaseTest):
             resize=Mock(),
         )
         tm.bind(
-            'tab_for_id', 'on_tab_drop_move', 'on_tab_drop', 'apply_tab_ordering', '_set_drag_target_tab',
-            '_cancel_drag_hover', '_update_drag_hover', '_activate_drag_hover',
+            'tab_for_id',
+            'on_tab_drop_move',
+            'on_tab_drop',
+            'apply_tab_ordering',
+            '_set_drag_target_tab',
+            '_cancel_drag_hover',
+            '_update_drag_hover',
+            '_activate_drag_hover',
         )
 
         def move(tab, os_window_id):
@@ -548,8 +554,14 @@ class TestWindowDropTabs(BaseTest):
             _clear_force_show_title_bars=Mock(),
         )
         tm.bind(
-            'tab_for_id', '_set_drag_target_tab', '_cancel_drag_hover', '_activate_drag_hover', '_update_drag_hover',
-            '_set_window_drop_tab_target', 'apply_tab_ordering', '_insert_window_as_tab',
+            'tab_for_id',
+            '_set_drag_target_tab',
+            '_cancel_drag_hover',
+            '_activate_drag_hover',
+            '_update_drag_hover',
+            '_set_window_drop_tab_target',
+            'apply_tab_ordering',
+            '_insert_window_as_tab',
         )
         self.clock = self.enterContext(patch('kitty.tabs.monotonic', return_value=10.0))
         self.drag = self.enterContext(patch('kitty.tabs.get_window_being_dragged', return_value=(10, True, 0, 0)))

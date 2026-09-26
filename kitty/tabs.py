@@ -1323,6 +1323,7 @@ class TabBeingDropped(NamedTuple):
 
 class DragHover(NamedTuple):
     "A tab to be switched to once the pointer has rested on it for a while during a drag"
+
     tab_id: int
     source_id: int  # The id of the window or tab being dragged
     source_is_window: bool
