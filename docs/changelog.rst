@@ -202,6 +202,8 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Preserve transparent background colors when applying unrelated launch color overrides
+
 - ssh kitten: Preserve SSH option values following a spaced :code:`--kitten` option
 
 - A new option :opt:`detect_url_regex` to detect arbitrary text, such as file

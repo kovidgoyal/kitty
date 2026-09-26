@@ -215,7 +215,7 @@ def parse_colors(
     colors: dict[str, Color | None | int] = {}
     nullable_color_map: dict[str, int | None] = {}
     special_color_map: dict[str, int] = {}
-    transparent_background_colors = ()
+    transparent_background_colors: TransparentBackgroundColors = ()
     allowed = all_color_related_conf_keys()
     for spec in args:
         conf: dict[str, Any] = {}
@@ -230,7 +230,7 @@ def parse_colors(
                     conf = parse_config(f)
         elif allow_reading_conf_files:
             conf = parse_config(spec)
-        transparent_background_colors = conf.pop('transparent_background_colors', ())
+        transparent_background_colors = conf.pop('transparent_background_colors', transparent_background_colors)
         if background_image_options is not None:
             bio: dict[str, Any] = cast(dict[str, Any], background_image_options)
             for key in BackgroundImageOptions.__optional_keys__:
