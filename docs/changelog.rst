@@ -224,6 +224,9 @@ Detailed list of changes
 - themes and choose fonts kittens: Fix search freezing for many seconds when
   typing a long query, such as the full name of a theme
 
+- macOS: Fix a custom dock icon reverting to the stock icon after a progress
+  bar is cleared (:iss:`10545`)
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

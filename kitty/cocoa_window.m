@@ -1145,6 +1145,8 @@ cocoa_set_app_icon(PyObject UNUSED *self, PyObject *args) {
     } // autoreleasepool
 }
 
+static NSImage *custom_dock_icon = nil;
+
 static PyObject *
 cocoa_set_dock_icon(PyObject UNUSED *self, PyObject *args) {
     @autoreleasepool {
@@ -1158,6 +1160,8 @@ cocoa_set_dock_icon(PyObject UNUSED *self, PyObject *args) {
         if ([[NSFileManager defaultManager] fileExistsAtPath:custom_icon_path]) {
             NSImage *icon_image = [[[NSImage alloc] initWithContentsOfFile:custom_icon_path] autorelease];
             [NSApplication sharedApplication].applicationIconImage = icon_image;
+            if (custom_dock_icon) [custom_dock_icon release];
+            custom_dock_icon = [icon_image retain];
             Py_RETURN_NONE;
         }
         return NULL;
@@ -1423,6 +1427,9 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
     [dock_pbar setFrameSize:NSMakeSize(dockTile.size.width - 20, 20)];
     [dock_pbar setFrameOrigin:NSMakePoint(10, -2)];
     [dockTile setContentView:percent < 0 ? nil : dock_content_view];
+    // On some macOS versions removing the content view causes the Dock to
+    // revert to the bundle icon, so re-apply the custom icon, if any
+    if (percent < 0 && custom_dock_icon != nil) NSApp.applicationIconImage = custom_dock_icon;
     [dockTile display];
     Py_RETURN_NONE;
 }
