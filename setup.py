@@ -1159,6 +1159,7 @@ def find_c_files() -> Tuple[List[str], List[str]]:
 
     # ringbuf
     ans.append('3rdparty/ringbuf/ringbuf.c')
+    headers.append('3rdparty/amoeba/amoeba.h')
     # base64
     ans.extend(glob.glob('3rdparty/base64/lib/arch/*/codec.c'))
     ans.append('3rdparty/base64/lib/tables/tables.c')

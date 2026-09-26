@@ -14,6 +14,8 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
+from .constraints import FixedConstraintModel, FixedSize, FrameConstraintModel, FrameSpec, LinearConstraintModel
+
 
 class BorderLine(NamedTuple):
     edges: Edges = Edges()
@@ -46,6 +48,13 @@ class LayoutData(NamedTuple):
 DecorationPairs = Sequence[tuple[int, int]]
 LayoutDimension = Generator[LayoutData, None, None]
 ListOfWindows = list[WindowType]
+CellBias = None | Sequence[float] | dict[int, float]
+CellAllocator = Callable[[CellBias, int, int], list[int]]
+
+
+def region(left: int, top: int, width: int, height: int) -> Region:
+    width, height = max(0, width), max(0, height)
+    return Region((left, top, left + width - 1, top + height - 1, width, height))
 
 
 class LayoutGlobalData:
@@ -93,7 +102,7 @@ def convert_bias_map(bias: dict[int, float], number_of_windows: int, number_of_c
     return distribute_indexed_bias(base_bias, bias)
 
 
-def calculate_cells_map(bias: None | Sequence[float] | dict[int, float], number_of_windows: int, number_of_cells: int) -> list[int]:
+def calculate_cells_map(bias: CellBias, number_of_windows: int, number_of_cells: int) -> list[int]:
     if isinstance(bias, dict):
         b: dict[int, float] = cast(dict[int, float], bias)
         bias = convert_bias_map(b, number_of_windows, number_of_cells)
@@ -115,7 +124,13 @@ def calculate_cells_map(bias: None | Sequence[float] | dict[int, float], number_
 
 
 def layout_dimension(
-    start_at: int, length: int, cell_length: int, decoration_pairs: DecorationPairs, alignment: int = 0, bias: None | Sequence[float] | dict[int, float] = None
+    start_at: int,
+    length: int,
+    cell_length: int,
+    decoration_pairs: DecorationPairs,
+    alignment: int = 0,
+    bias: CellBias = None,
+    cell_allocator: CellAllocator = calculate_cells_map,
 ) -> LayoutDimension:
     number_of_windows = len(decoration_pairs)
     number_of_cells = max(0, length // cell_length)
@@ -125,7 +140,7 @@ def layout_dimension(
     while extra < space_needed_for_decorations and number_of_cells > 0:
         number_of_cells -= 1
         extra = length - number_of_cells * cell_length
-    cells_map = calculate_cells_map(bias, number_of_windows, number_of_cells) if number_of_cells > 0 else [0] * number_of_windows
+    cells_map = cell_allocator(bias, number_of_windows, number_of_cells) if number_of_cells > 0 else [0] * number_of_windows
     assert sum(cells_map) == number_of_cells
 
     extra = length - number_of_cells * cell_length - space_needed_for_decorations
@@ -232,9 +247,11 @@ def layout_single_window(
     ydecoration_pairs: DecorationPairs,
     xalignment: int = 0,
     yalignment: int = 0,
+    x_cell_allocator: CellAllocator = calculate_cells_map,
+    y_cell_allocator: CellAllocator = calculate_cells_map,
 ) -> WindowGeometry:
-    x = next(layout_dimension(lgd.central.left, lgd.central.width, lgd.cell_width, xdecoration_pairs, alignment=xalignment))
-    y = next(layout_dimension(lgd.central.top, lgd.central.height, lgd.cell_height, ydecoration_pairs, alignment=yalignment))
+    x = next(layout_dimension(lgd.central.left, lgd.central.width, lgd.cell_width, xdecoration_pairs, alignment=xalignment, cell_allocator=x_cell_allocator))
+    y = next(layout_dimension(lgd.central.top, lgd.central.height, lgd.cell_height, ydecoration_pairs, alignment=yalignment, cell_allocator=y_cell_allocator))
     return window_geometry_from_layouts(x, y)
 
 
@@ -296,6 +313,13 @@ class Layout:
         assert self.name is not None
         self.full_name = f'{self.name}:{layout_opts}' if layout_opts else self.name
         self.remove_all_biases()
+        self._dock_constraint_models: dict[tuple[int, str], FixedConstraintModel] = {}
+        self._dock_x_constraint_model = LinearConstraintModel()
+        self._dock_y_constraint_model = LinearConstraintModel()
+        self._frame_constraint_model = FrameConstraintModel()
+        self._full_central = lgd.central
+        self._tab_dock_regions: dict[int, Region] = {}
+        self._pending_geometries: dict[int, tuple[WindowGroup, WindowGeometry]] | None = None
 
     def set_owner(self, os_window_id: int, tab_id: int) -> None:
         # Useful when moving a layout from one tab to another typically a detached tab being re-attached
@@ -309,8 +333,8 @@ class Layout:
 
     def calculate_bias_increment_for_a_single_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
         if is_horizontal:
-            return (lgd.cell_width + 1) / lgd.central.width
-        return (lgd.cell_height + 1) / lgd.central.height
+            return (lgd.cell_width + 1) / max(1, lgd.central.width)
+        return (lgd.cell_height + 1) / max(1, lgd.central.height)
 
     def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         return False
@@ -319,7 +343,7 @@ class Layout:
         return False
 
     def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
-        idx = all_windows.group_idx_for_window(window_id)
+        idx = all_windows.main_group_idx_for_window(window_id)
         if idx is None or not increment:
             return False
         return self.apply_bias(idx, increment, all_windows, is_horizontal)
@@ -348,7 +372,8 @@ class Layout:
         return all_windows.active_window_in_nth_group(num, clamp=True)
 
     def activate_nth_window(self, all_windows: WindowList, num: int) -> None:
-        all_windows.set_active_group_idx(num)
+        if window := all_windows.active_window_in_nth_group(num, clamp=True):
+            all_windows.set_active_window_group_for(window)
 
     def next_window(self, all_windows: WindowList, delta: int = 1) -> None:
         all_windows.activate_next_window_group(delta)
@@ -356,10 +381,68 @@ class Layout:
     def neighbors(self, all_windows: WindowList) -> NeighborsMap:
         w = all_windows.active_window
         assert w is not None
-        return self.neighbors_for_window(w, all_windows)
+        return self.neighbors_for_window_with_docks(w, all_windows)
+
+    def neighbors_for_window_with_docks(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
+        source_group = all_windows.group_for_window(window)
+        if source_group is None:
+            return {}
+        dock = source_group.dock_data
+        if dock is not None:
+            if not dock.focusable or not source_group.is_visible_in_layout:
+                return {}
+            return self._geometry_neighbors(window, all_windows)
+        if source_group.is_visible_in_layout and any(
+            group.dock_data and group.dock_data.focusable for group in all_windows.iter_dock_groups(only_visible=True)
+        ):
+            return self._geometry_neighbors(window, all_windows)
+        return self.neighbors_for_window(window, all_windows)
+
+    def _geometry_neighbors(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
+        source_group = all_windows.group_for_window(window)
+        if source_group is None or source_group.geometry is None:
+            return {}
+
+        def bounds(group: WindowGroup) -> tuple[int, int, int, int]:
+            geom = group.geometry
+            assert geom is not None
+            return (
+                geom.left - geom.spaces.left,
+                geom.top - geom.spaces.top,
+                geom.right + geom.spaces.right,
+                geom.bottom + geom.spaces.bottom,
+            )
+
+        left, top, right, bottom = bounds(source_group)
+        sx, sy = (left + right) / 2, (top + bottom) / 2
+        candidates: dict[str, list[tuple[float, float, int]]] = {'left': [], 'top': [], 'right': [], 'bottom': []}
+        for group in all_windows.iter_all_layoutable_groups(only_visible=True, include_docks=True):
+            dock = group.dock_data
+            if group is source_group or (dock is not None and not dock.focusable) or group.geometry is None:
+                continue
+            cleft, ctop, cright, cbottom = bounds(group)
+            cx, cy = (cleft + cright) / 2, (ctop + cbottom) / 2
+            if cright <= left:
+                candidates['left'].append((left - cright, abs(cy - sy), group.id))
+            if cbottom <= top:
+                candidates['top'].append((top - cbottom, abs(cx - sx), group.id))
+            if cleft >= right:
+                candidates['right'].append((cleft - right, abs(cy - sy), group.id))
+            if ctop >= bottom:
+                candidates['bottom'].append((ctop - bottom, abs(cx - sx), group.id))
+        ans: NeighborsMap = {}
+        if items := candidates['left']:
+            ans['left'] = [item[2] for item in sorted(items)]
+        if items := candidates['top']:
+            ans['top'] = [item[2] for item in sorted(items)]
+        if items := candidates['right']:
+            ans['right'] = [item[2] for item in sorted(items)]
+        if items := candidates['bottom']:
+            ans['bottom'] = [item[2] for item in sorted(items)]
+        return ans
 
     def move_window(self, all_windows: WindowList, delta: int = 1) -> bool:
-        if all_windows.num_groups < 2 or not delta:
+        if all_windows.num_main_groups < 2 or not delta or (all_windows.active_group and all_windows.active_group.dock_data):
             return False
 
         return all_windows.move_window_group(by=delta)
@@ -384,7 +467,7 @@ class Layout:
         """
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
-        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock_data or dest_wg.dock_data:
             return
         all_windows.set_active_window_group_for(window)
         if self.drag_overlay_mode in (DragOverlayMode.axis_x, DragOverlayMode.axis_y):
@@ -403,12 +486,18 @@ class Layout:
         bias: float | None = None,
         next_to: WindowType | None = None,
     ) -> WindowType | None:
-        if overlay_for is not None:
+        dock = getattr(window, 'dock_data', None)
+        if overlay_for is not None and dock is None:
             underlay = all_windows.id_map.get(overlay_for)
             if underlay is not None:
                 window.margin, window.padding = underlay.margin.copy(), underlay.padding.copy()
+                if group := all_windows.group_for_window(underlay):
+                    window.dock_data = group.dock_data
                 all_windows.add_window(window, group_of=overlay_for, head_of_group=put_overlay_behind)
                 return underlay
+        if dock is not None:
+            all_windows.add_window(window, make_active=dock.focusable)
+            return None
         if location == 'neighbor':
             location = 'after'
         self.add_non_overlay_window(all_windows, window, location, bias, next_to)
@@ -418,7 +507,8 @@ class Layout:
         self, all_windows: WindowList, window: WindowType, location: str | None, bias: float | None = None, next_to: WindowType | None = None
     ) -> None:
         before = False
-        next_to = next_to or all_windows.active_window
+        if next_to is None or all_windows.is_docked(next_to):
+            next_to = all_windows.active_main_window
         if location is not None:
             if location in ('after', 'vsplit', 'hsplit'):
                 pass
@@ -431,7 +521,7 @@ class Layout:
                 next_to = None
         all_windows.add_window(window, next_to=next_to, before=before)
         if bias is not None:
-            idx = all_windows.group_idx_for_window(window)
+            idx = all_windows.main_group_idx_for_window(window)
             if idx is not None:
                 self._set_dimensions(all_windows)
                 self._bias_slot(all_windows, idx, bias)
@@ -447,13 +537,257 @@ class Layout:
         return False
 
     def update_visibility(self, all_windows: WindowList) -> None:
-        active_window = all_windows.active_window
-        for window, is_group_leader in all_windows.iter_windows_with_visibility():
-            is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
-            window.set_visible_in_layout(is_visible)
+        active_main_window = all_windows.active_main_window
+        for group in all_windows.iter_main_groups():
+            for window in group:
+                is_visible = window is active_main_window or (window.id == group.active_window_id and not self.only_active_window_visible)
+                window.set_visible_in_layout(is_visible)
+        for group in all_windows.iter_dock_groups():
+            dock = group.dock_data
+            is_visible = bool(dock and dock.scope == 'tab')
+            if dock and dock.scope == 'window':
+                owner = all_windows.group_for_window(dock.owner_window_id)
+                is_visible = bool(owner and owner.is_visible_in_layout)
+            for window in group:
+                window.set_visible_in_layout(is_visible and window.id == group.active_window_id)
+
+    def _dock_constraint_model(self, owner_group_id: int, axis: str) -> FixedConstraintModel:
+        # Keep one model per tab/owner axis. Its size-specification signature
+        # handles dock changes, while viewport changes use its edit variable.
+        key = owner_group_id, axis
+        ans = self._dock_constraint_models.get(key)
+        if ans is None:
+            self._dock_constraint_models[key] = ans = FixedConstraintModel()
+        return ans
+
+    def _dock_size(self, group: WindowGroup) -> FixedSize:
+        dock = group.dock_data
+        assert dock is not None
+        if dock.size_unit == 'percent':
+            return FixedSize(fraction=float(dock.size) / 100)
+        if dock.edge in ('top', 'bottom'):
+            return FixedSize(
+                int(dock.size) * lgd.cell_height + group.decoration('top', is_single_window=True) + group.decoration('bottom', is_single_window=True)
+            )
+        return FixedSize(int(dock.size) * lgd.cell_width + group.decoration('left', is_single_window=True) + group.decoration('right', is_single_window=True))
+
+    def _allocate_dock_regions(self, groups: Sequence[WindowGroup], area: Region, owner_group_id: int) -> tuple[Region, dict[int, Region]]:
+        ans: dict[int, Region] = {}
+        vertical = tuple(g for g in groups if g.dock_data and g.dock_data.edge in ('top', 'bottom'))
+        sizes, remaining_height = self._dock_constraint_model(owner_group_id, 'vertical')(area.height, tuple(map(self._dock_size, vertical)))
+        top, bottom = area.top, area.top + area.height
+        for group, size in zip(vertical, sizes):
+            if group.dock_data and group.dock_data.edge == 'top':
+                ans[group.id] = region(area.left, top, area.width, size)
+                top += size
+            else:
+                bottom -= size
+                ans[group.id] = region(area.left, bottom, area.width, size)
+        content = region(area.left, top, area.width, remaining_height)
+
+        horizontal = tuple(g for g in groups if g.dock_data and g.dock_data.edge in ('left', 'right'))
+        sizes, remaining_width = self._dock_constraint_model(owner_group_id, 'horizontal')(content.width, tuple(map(self._dock_size, horizontal)))
+        left, right = content.left, content.left + content.width
+        for group, size in zip(horizontal, sizes):
+            if group.dock_data and group.dock_data.edge == 'left':
+                ans[group.id] = region(left, content.top, size, content.height)
+                left += size
+            else:
+                right -= size
+                ans[group.id] = region(right, content.top, size, content.height)
+        return region(left, content.top, remaining_width, content.height), ans
+
+    def _calculate_tab_dock_regions(self, all_windows: WindowList) -> Region:
+        groups = tuple(g for g in all_windows.iter_dock_groups() if g.dock_data and g.dock_data.scope == 'tab')
+        content, self._tab_dock_regions = self._allocate_dock_regions(groups, self._full_central, 0)
+        return content
+
+    def _layout_group_in_region(self, group: WindowGroup, area: Region) -> None:
+        xdecoration_pairs = ((group.decoration('left', is_single_window=True), group.decoration('right', is_single_window=True)),)
+        ydecoration_pairs = ((group.decoration('top', is_single_window=True), group.decoration('bottom', is_single_window=True)),)
+        x = next(
+            layout_dimension(
+                area.left,
+                area.width,
+                lgd.cell_width,
+                xdecoration_pairs,
+                alignment=lgd.alignment_x,
+                cell_allocator=self._dock_x_constraint_model,
+            )
+        )
+        y = next(
+            layout_dimension(
+                area.top,
+                area.height,
+                lgd.cell_height,
+                ydecoration_pairs,
+                alignment=lgd.alignment_y,
+                cell_allocator=self._dock_y_constraint_model,
+            )
+        )
+        self._set_group_geometry(group, window_geometry_from_layouts(x, y))
+
+    def _layout_tab_docks(self, all_windows: WindowList) -> None:
+        for group in all_windows.iter_dock_groups(only_visible=True):
+            if area := self._tab_dock_regions.get(group.id):
+                self._layout_group_in_region(group, area)
+
+    def _layout_window_docks(self, all_windows: WindowList) -> None:
+        visible_docks = tuple(all_windows.iter_dock_groups(only_visible=True))
+        for owner in all_windows.iter_main_groups(only_visible=True):
+            owner_docks = tuple(
+                group
+                for group in visible_docks
+                if (dock := group.dock_data) and dock.scope == 'window' and all_windows.group_for_window(dock.owner_window_id) is owner
+            )
+            geom = self._group_geometry(owner)
+            if not owner_docks or geom is None:
+                continue
+            area = region(
+                geom.left - geom.spaces.left,
+                geom.top - geom.spaces.top,
+                geom.right - geom.left + geom.spaces.left + geom.spaces.right,
+                geom.bottom - geom.top + geom.spaces.top + geom.spaces.bottom,
+            )
+            content, dock_regions = self._allocate_dock_regions(owner_docks, area, owner.id)
+            self._layout_group_in_region(owner, content)
+            for group in owner_docks:
+                self._layout_group_in_region(group, dock_regions[group.id])
+
+    def _set_group_geometry(self, group: WindowGroup, geometry: WindowGeometry) -> None:
+        if self._pending_geometries is None:
+            group.set_geometry(geometry)
+        else:
+            self._pending_geometries[group.id] = group, geometry
+
+    def _group_geometry(self, group: WindowGroup) -> WindowGeometry | None:
+        if self._pending_geometries is not None and (pending := self._pending_geometries.get(group.id)) is not None:
+            return pending[1]
+        return group.geometry
+
+    def _constrain_frame_geometry(self) -> None:
+        if lgd.draw_minimal_borders or self._pending_geometries is None or len(self._pending_geometries) < 2:
+            return
+        pending = tuple(self._pending_geometries.values())
+        groups = tuple(x[0] for x in pending)
+        geometries = tuple(x[1] for x in pending)
+        allocations = tuple(
+            Edges(
+                g.left - g.spaces.left,
+                g.top - g.spaces.top,
+                g.right + g.spaces.right,
+                g.bottom + g.spaces.bottom,
+            )
+            for g in geometries
+        )
+        specs = []
+        for group, geometry, allocation in zip(groups, geometries, allocations):
+            border = group.effective_border()
+            padding = Edges(*(group.effective_padding(edge) for edge in ('left', 'top', 'right', 'bottom')))
+            margins = Edges(*(group.effective_margin(edge) for edge in ('left', 'top', 'right', 'bottom')))
+            preferred = Edges(
+                geometry.left - padding.left - border,
+                geometry.top - padding.top - border,
+                geometry.right + padding.right + border,
+                geometry.bottom + padding.bottom + border,
+            )
+            minimum_width = min(
+                allocation.right - allocation.left,
+                2 * border + padding.left + padding.right + (lgd.cell_width if geometry.xnum else 0),
+            )
+            minimum_height = min(
+                allocation.bottom - allocation.top,
+                2 * border + padding.top + padding.bottom + (lgd.cell_height if geometry.ynum else 0),
+            )
+            specs.append(FrameSpec(allocation, preferred, margins, minimum_width, minimum_height))
+
+        horizontal_neighbors: list[tuple[int, int]] = []
+        vertical_neighbors: list[tuple[int, int]] = []
+        minimum_gaps = [0, 0]
+        preferred_gaps = [0, 0]
+        for i, first in enumerate(allocations):
+            for j in range(i + 1, len(allocations)):
+                second = allocations[j]
+                if min(first.bottom, second.bottom) > max(first.top, second.top):
+                    if first.right == second.left:
+                        before, after = i, j
+                    elif second.right == first.left:
+                        before, after = j, i
+                    else:
+                        before = after = -1
+                    if before >= 0:
+                        horizontal_neighbors.append((before, after))
+                        margins = max(specs[before].margins.right, specs[after].margins.left)
+                        residual = geometries[before].compensatory.right + geometries[after].compensatory.left
+                        minimum_gaps[0] = max(minimum_gaps[0], margins)
+                        preferred_gaps[0] = max(preferred_gaps[0], margins + residual)
+                if min(first.right, second.right) > max(first.left, second.left):
+                    if first.bottom == second.top:
+                        before, after = i, j
+                    elif second.bottom == first.top:
+                        before, after = j, i
+                    else:
+                        before = after = -1
+                    if before >= 0:
+                        vertical_neighbors.append((before, after))
+                        margins = max(specs[before].margins.bottom, specs[after].margins.top)
+                        residual = geometries[before].compensatory.bottom + geometries[after].compensatory.top
+                        minimum_gaps[1] = max(minimum_gaps[1], margins)
+                        preferred_gaps[1] = max(preferred_gaps[1], margins + residual)
+        if not horizontal_neighbors and not vertical_neighbors:
+            return
+        minimum_gap_pair = minimum_gaps[0], minimum_gaps[1]
+        preferred_gap_pair = preferred_gaps[0], preferred_gaps[1]
+        # A one-value margin produces the same minimum on both axes, so retain a
+        # common visual gutter. Directional margin values keep the axes separate.
+        unify_gaps = minimum_gap_pair[0] == minimum_gap_pair[1]
+        frames, _ = self._frame_constraint_model(
+            specs,
+            horizontal_neighbors,
+            vertical_neighbors,
+            minimum_gap_pair,
+            preferred_gap_pair,
+            unify_gaps=unify_gaps,
+        )
+
+        def axis_layout(
+            frame_before: int,
+            frame_after: int,
+            allocation_before: int,
+            allocation_after: int,
+            cell_length: int,
+            padding_before: int,
+            padding_after: int,
+            border: int,
+            alignment: int,
+        ) -> LayoutData:
+            available = max(0, frame_after - frame_before - 2 * border - padding_before - padding_after)
+            cells = available // cell_length
+            content_size = cells * cell_length
+            extra = available - content_size
+            compensatory_before = extra if alignment > 0 else extra // 2 if alignment == 0 else 0
+            compensatory_after = extra - compensatory_before
+            content_pos = frame_before + border + padding_before + compensatory_before
+            return LayoutData(
+                content_pos,
+                cells,
+                content_pos - allocation_before,
+                allocation_after - content_pos - content_size,
+                content_size,
+                compensatory_before,
+                compensatory_after,
+            )
+
+        for group, allocation, frame in zip(groups, allocations, frames):
+            border = group.effective_border()
+            left, top, right, bottom = (group.effective_padding(edge) for edge in ('left', 'top', 'right', 'bottom'))
+            x = axis_layout(frame.left, frame.right, allocation.left, allocation.right, lgd.cell_width, left, right, border, lgd.alignment_x)
+            y = axis_layout(frame.top, frame.bottom, allocation.top, allocation.bottom, lgd.cell_height, top, bottom, border, lgd.alignment_y)
+            self._pending_geometries[group.id] = group, window_geometry_from_layouts(x, y)
 
     def _set_dimensions(self, all_windows: WindowList) -> None:
-        lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
+        self._full_central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
+        lgd.central = self._calculate_tab_dock_regions(all_windows)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
         opts = get_options()
@@ -465,15 +799,35 @@ class Layout:
         self.blank_rects = []
         # Set show_title_bar flag on each visible window before layout
         min_windows = get_options().window_title_bar_min_windows
-        visible_groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
+        visible_groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True, include_docks=True))
         force_show = all_windows.force_show_title_bars
         show_title_bar = force_show or (min_windows > 0 and len(visible_groups) >= min_windows)
         for wg in visible_groups:
             for w in wg.windows:
                 w.show_title_bar = show_title_bar
-        self.do_layout(all_windows)
+        self._pending_geometries = {}
+        try:
+            if all_windows.num_main_groups:
+                self.do_layout(all_windows)
+            self._layout_tab_docks(all_windows)
+            self._layout_window_docks(all_windows)
+            self._constrain_frame_geometry()
+            pending = tuple(self._pending_geometries.values())
+        finally:
+            self._pending_geometries = None
+        for group, geometry in pending:
+            group.set_geometry(geometry)
+        self.blank_rects = []
+        for group, geometry in pending:
+            self.blank_rects.extend(blank_rects_for_window(geometry))
 
-    def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:
+    def layout_single_window_group(
+        self,
+        wg: WindowGroup,
+        add_blank_rects: bool = True,
+        x_cell_allocator: CellAllocator = calculate_cells_map,
+        y_cell_allocator: CellAllocator = calculate_cells_map,
+    ) -> None:
         bw = 1 if self.must_draw_borders else 0
         xdecoration_pairs = (
             (
@@ -487,19 +841,27 @@ class Layout:
                 wg.decoration('bottom', border_mult=bw, is_single_window=True),
             ),
         )
-        geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y)
-        wg.set_geometry(geom)
-        if add_blank_rects:
+        geom = layout_single_window(
+            xdecoration_pairs,
+            ydecoration_pairs,
+            xalignment=lgd.alignment_x,
+            yalignment=lgd.alignment_y,
+            x_cell_allocator=x_cell_allocator,
+            y_cell_allocator=y_cell_allocator,
+        )
+        self._set_group_geometry(wg, geom)
+        if add_blank_rects and self._pending_geometries is None:
             self.blank_rects.extend(blank_rects_for_window(geom))
 
     def xlayout(
         self,
         groups: Iterator[WindowGroup],
-        bias: None | Sequence[float] | dict[int, float] = None,
+        bias: CellBias = None,
         start: int | None = None,
         size: int | None = None,
         offset: int = 0,
         border_mult: int = 1,
+        cell_allocator: CellAllocator = calculate_cells_map,
     ) -> LayoutDimension:
         decoration_pairs = tuple(
             (g.decoration('left', border_mult=border_mult), g.decoration('right', border_mult=border_mult)) for i, g in enumerate(groups) if i >= offset
@@ -508,16 +870,17 @@ class Layout:
             start = lgd.central.left
         if size is None:
             size = lgd.central.width
-        return layout_dimension(start, size, lgd.cell_width, decoration_pairs, bias=bias, alignment=lgd.alignment_x)
+        return layout_dimension(start, size, lgd.cell_width, decoration_pairs, bias=bias, alignment=lgd.alignment_x, cell_allocator=cell_allocator)
 
     def ylayout(
         self,
         groups: Iterator[WindowGroup],
-        bias: None | Sequence[float] | dict[int, float] = None,
+        bias: CellBias = None,
         start: int | None = None,
         size: int | None = None,
         offset: int = 0,
         border_mult: int = 1,
+        cell_allocator: CellAllocator = calculate_cells_map,
     ) -> LayoutDimension:
         decoration_pairs = tuple(
             (g.decoration('top', border_mult=border_mult), g.decoration('bottom', border_mult=border_mult)) for i, g in enumerate(groups) if i >= offset
@@ -526,12 +889,13 @@ class Layout:
             start = lgd.central.top
         if size is None:
             size = lgd.central.height
-        return layout_dimension(start, size, lgd.cell_height, decoration_pairs, bias=bias, alignment=lgd.alignment_y)
+        return layout_dimension(start, size, lgd.cell_height, decoration_pairs, bias=bias, alignment=lgd.alignment_y, cell_allocator=cell_allocator)
 
     def set_window_group_geometry(self, wg: WindowGroup, xl: LayoutData, yl: LayoutData) -> WindowGeometry:
         geom = window_geometry_from_layouts(xl, yl)
-        wg.set_geometry(geom)
-        self.blank_rects.extend(blank_rects_for_window(geom))
+        self._set_group_geometry(wg, geom)
+        if self._pending_geometries is None:
+            self.blank_rects.extend(blank_rects_for_window(geom))
         return geom
 
     def do_layout(self, windows: WindowList) -> None:
@@ -546,6 +910,30 @@ class Layout:
     def get_minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         self._set_dimensions(windows)
         yield from self.minimal_borders(windows)
+        if not lgd.draw_minimal_borders:
+            return
+        active_group = windows.active_group
+        needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
+        for group in windows.iter_dock_groups(only_visible=True):
+            geom, dock = group.geometry, group.dock_data
+            if geom is None or dock is None or not (bw := group.effective_border()):
+                continue
+            left = geom.left - geom.spaces.left
+            top = geom.top - geom.spaces.top
+            right = geom.right + geom.spaces.right
+            bottom = geom.bottom + geom.spaces.bottom
+            if dock.edge == 'top':
+                edges, horizontal, window_id = Edges(left, bottom - bw, right, bottom), True, group.active_window_id
+            elif dock.edge == 'bottom':
+                edges, horizontal, window_id = Edges(left, top, right, top + bw), True, -group.active_window_id
+            elif dock.edge == 'left':
+                edges, horizontal, window_id = Edges(right - bw, top, right, bottom), False, group.active_window_id
+            else:
+                edges, horizontal, window_id = Edges(left, top, left + bw, bottom), False, -group.active_window_id
+            color = BorderColor.inactive
+            if needs_borders_map.get(group.id):
+                color = BorderColor.active if group is active_group else BorderColor.bell
+            yield BorderLine(edges, color, window_id, horizontal)
 
     def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         yield from ()

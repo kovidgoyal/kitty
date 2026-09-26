@@ -1,0 +1,16 @@
+This directory contains the single-header Amoeba C implementation of the
+Cassowary constraint-solving algorithm, vendored from commit
+c79cd288e515366dc1bf70339dc9db03cca12459:
+
+    https://github.com/starwing/amoeba
+
+Amoeba does not currently publish tagged releases. The vendored commit is
+therefore pinned explicitly. amoeba.h is unmodified; kitty's Python binding
+selects the library's supported double-precision mode with AM_USE_DOUBLE.
+
+To update Amoeba, replace amoeba.h and LICENSE from a reviewed upstream
+commit, record its commit ID above, and run the Amoeba binding, layout,
+sanitizer, and packaging tests. Keep an Amoeba update in its own commit so the
+vendored diff can be audited independently.
+
+Amoeba is distributed under the MIT License in LICENSE.

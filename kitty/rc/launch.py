@@ -6,9 +6,9 @@ import os
 from typing import TYPE_CHECKING
 
 from kitty.cli_stub import LaunchCLIOptions
+from kitty.launch import dock_edges, parse_launch_args
 from kitty.launch import launch as do_launch
 from kitty.launch import options_spec as launch_options_spec
-from kitty.launch import parse_launch_args
 from kitty.types import AsyncResponse
 
 from .base import MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class Launch(RemoteCommand):
-    protocol_spec = __doc__ = """
+    protocol_spec = __doc__ = f"""
     args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
     match/str: The tab to open the new window in
     next_to/str: The window next to which to create the new window or empty string to use active window
@@ -30,7 +30,10 @@ class Launch(RemoteCommand):
     var/list.str: List of user variables of the form NAME=VALUE
     os_panel/list.str: List of panel settings
     tab_title/str: Title for the new tab
-    type/choices.window.tab.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
+    type/choices.window.window-dock.tab.tab-dock.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
+    dock_edge/choices.{'.'.join(dock_edges)}: The edge at which to create a dock
+    dock_size/str: The dock size in rows, columns or as a percentage
+    dock_skip_focus/bool: Prevent the dock from receiving keyboard focus
     keep_focus/bool: Boolean indicating whether the current window should retain focus or not
     copy_colors/bool: Boolean indicating whether to copy the colors from the current window
     copy_cmdline/bool: Boolean indicating whether to copy the cmdline from the current window

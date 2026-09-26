@@ -75,7 +75,14 @@ class BossDropTest(BaseTest):
         self.viewport = Viewport(num_tabs=self.num_tabs_in_destination)
         self.viewports = {1: self.viewport}
         self.window = SimpleNamespace(id=10)
-        self.source = SimpleNamespace(id=1, os_window_id=1, windows=SimpleNamespace(num_groups=1), active_window=self.window)
+        self.dock_groups: list[SimpleNamespace] = []
+        windows = SimpleNamespace(
+            num_groups=1,
+            num_main_groups=1,
+            active_main_window=self.window,
+            iter_dock_groups=lambda: iter(self.dock_groups),
+        )
+        self.source = SimpleNamespace(id=1, os_window_id=1, windows=windows, active_window=self.window)
         self.destination = SimpleNamespace(id=2)
         self.tm = FakeTabManager(self.viewport, active_tab=self.destination)
         self.boss = SimpleNamespace(
@@ -136,13 +143,20 @@ class TestTabDropClassification(BossDropTest):
         self.ae(self.drop(600, 400), 'merge')
         self.tm.on_window_drop.assert_called_once_with(600, 400, 10)
 
+    def test_docks_follow_tab_merge_scope(self):
+        self.source.windows.num_groups = 2
+        self.dock_groups.append(SimpleNamespace(dock_data=SimpleNamespace(scope='window')))
+        self.ae(self.drag_move(600, 400)[0], (10, True, 600, 400))
+        self.dock_groups[0].dock_data.scope = 'tab'
+        self.ae(self.drag_move(600, 400)[0], (0, False, 600, 400))
+
     def test_tab_bar_drop_keeps_tab_behavior(self):
         self.ae(self.drag_move(600, 10), ((0, False, 600, 10), (1, True, 600, 10)))
         self.ae(self.drop(600, 10), 'tab_drop')
         self.tm.on_tab_drop.assert_called_once_with(600, 10)
 
     def test_multi_window_tab_keeps_tab_behavior(self):
-        self.source.windows.num_groups = 2
+        self.source.windows.num_groups = self.source.windows.num_main_groups = 2
         self.ae(self.drag_move(600, 400)[0], (0, False, 600, 400))
         self.ae(self.drop(600, 400), 'reorder')
         self.boss._move_tab_to.assert_called_once_with(self.source)
@@ -247,7 +261,7 @@ class TestWaylandDragFinish(BossDropTest):
         self.boss._insert_window_in_direction.assert_not_called()
 
     def test_multi_window_tab_is_not_merged(self):
-        self.source.windows.num_groups = 2
+        self.source.windows.num_groups = self.source.windows.num_main_groups = 2
         self.set_pending_target(1, 'left')
         self.finish()
         self.boss._insert_window_in_direction.assert_not_called()
@@ -533,8 +547,14 @@ class TestTabInsertionPreview(BaseTest):
 
 class TestWindowDropTabs(BaseTest):
     def make_tab(self, tab_id, num_windows=1, os_window_id=7):
-        tab = SimpleNamespace(id=tab_id, os_window_id=os_window_id, windows=SimpleNamespace(num_groups=num_windows))
-        tab.active_window = SimpleNamespace(id=tab_id * 10, tabref=lambda: tab)
+        windows = SimpleNamespace(
+            num_groups=num_windows,
+            num_main_groups=num_windows,
+            active_main_window=None,
+            iter_dock_groups=lambda: iter(()),
+        )
+        tab = SimpleNamespace(id=tab_id, os_window_id=os_window_id, windows=windows)
+        tab.active_window = windows.active_main_window = SimpleNamespace(id=tab_id * 10, tabref=lambda: tab)
         return tab
 
     def setUp(self):

@@ -44,8 +44,9 @@ def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup, radius
     geometry = wg.geometry
     if geometry is None:
         return
-    pl, pt = wg.effective_padding('left'), wg.effective_padding('top')
-    pr, pb = wg.effective_padding('right'), wg.effective_padding('bottom')
+    c = geometry.compensatory
+    pl, pt = wg.effective_padding('left') + c.left, wg.effective_padding('top') + c.top
+    pr, pb = wg.effective_padding('right') + c.right, wg.effective_padding('bottom') + c.bottom
     left = geometry.left - pl
     top = geometry.top - pt
     lr = geometry.right
@@ -91,7 +92,7 @@ class Borders:
             rects.append(Border(*br, BorderColor.default_bg))
         rects.extend(tab_bar_rects)
         bw = 0
-        groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
+        groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True, include_docks=True))
         if groups:
             bw = groups[0].effective_border()
         draw_borders = bw > 0 and draw_window_borders

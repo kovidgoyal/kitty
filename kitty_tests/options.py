@@ -32,6 +32,19 @@ class TestConfParsing(BaseTest):
     def test_launcher(self):
         launcher(self)
 
+    def test_launch_dock_options(self):
+        from kitty.launch import parse_launch_args
+        from kitty.types import parse_dock_size
+
+        opts, args = parse_launch_args(['--type=window-dock', '--dock-edge=bottom', '--dock-size=25%', '--dock-skip-focus', 'printf', 'ok'])
+        self.ae((opts.type, opts.dock_edge, opts.dock_size, opts.dock_skip_focus), ('window-dock', 'bottom', '25%', True))
+        self.ae(args, ['printf', 'ok'])
+        self.ae(parse_dock_size('3'), (3, 'cells'))
+        self.ae(parse_dock_size('12.5%'), (12.5, 'percent'))
+        for bad in ('0', '1.5', '0%', '101%', 'nan%', 'x'):
+            with self.assertRaises(ValueError):
+                parse_dock_size(bad)
+
     def test_cli_parsing(self):
         cli_parsing(self)
 
