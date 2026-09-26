@@ -161,6 +161,7 @@ typedef struct _GLFWwindowNS {
             bool was_set;
         } color;
         bool transparent;
+        bool needs_system_background;
     } last_applied_titlebar_settings;
 
     // The total sum of the distances the cursor has been warped
