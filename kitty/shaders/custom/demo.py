@@ -146,7 +146,11 @@ metadata: dict[str, dict[str, Any]] = {
     'pond-ripple': {'animate': pond_ripple, 'category': 'mouse', 'tagline': 'Clicking is like throwing stones in a pond.'},
     'spotlight': {'animate': spotlight, 'category': 'mouse', 'tagline': 'Spotlight your mouse pointer as it moves around.'},
     # Cursor trail
-    'cursor-trail-default': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'A smooth, antialiased cursor trail with temporal motion blur.'},
+    'cursor-trail-motion-blur': {
+        'animate': cursor_trail,
+        'category': 'cursor-trail',
+        'tagline': 'Make the cursor trail glide smoothly, like a fast moving object caught on camera.',
+    },
     'cursor-trail-blaze': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Set your cursor on fire as it moves around.'},
     'cursor-trail-lightning': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Make your cursor shoot lightning as it moves around.'},
     # Navigation

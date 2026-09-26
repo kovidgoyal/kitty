@@ -29,9 +29,13 @@ Cursor trails
 You must have enabled cursor trails with something like ``cursor_trail 1`` in :file:`kitty.conf` for
 these shaders to take effect.
 
-The bundled ``cursor-trail-default`` shader provides temporally supersampled motion
-blur and spatial antialiasing. Enable it with :code:`custom_shaders cursor-trail-default`;
-its compile-time rendering options are documented in the shader source.
+When the cursor moves quickly, the trail can appear to hop from place to place
+instead of gliding. The ``cursor-trail-motion-blur`` shader smooths this out
+the way a camera does, by blurring the trail slightly along the direction it
+is moving, and it also smooths the trail's jagged edges. Enable it with
+:code:`custom_shaders cursor-trail-motion-blur`. The options it supports are
+explained at the top of the :repo_file:`shader file
+<kitty/shaders/custom/cursor-trail-motion-blur.slang>`.
 
 .. include:: generated/custom-shaders-cursor-trails.rst
 

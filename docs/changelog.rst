@@ -214,6 +214,9 @@ Detailed list of changes
 - Custom shaders: The builtin :code:`dim-inactive-windows` shader no longer dims
   the tab bar and the padding, border and margin around the active window (:iss:`10524`)
 
+- Custom shaders: A new :code:`cursor-trail-motion-blur` shader that makes
+  the cursor trail glide smoothly during fast cursor movements
+
 - Vertical tabs: Improve rendering of tabs when using the ``powerline`` :opt:`tab_bar_style`
 
 - Graphics: Fix images briefly disappearing for one frame the first time an image is replaced during a synchronized update (:iss:`10538`)
