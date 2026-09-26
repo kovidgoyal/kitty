@@ -216,7 +216,7 @@ func CompileGitIgnoreLine(line string) (ans GitPattern, skipped_line bool) {
 	}
 
 	// Handle leading slash used to escape leading # or !
-	if line[0] == '\\' && len(line) > 1 && (line[1] == '#' || line[1] == '!') {
+	if strings.HasPrefix(line, `\#`) || strings.HasPrefix(line, `\!`) {
 		line = line[1:]
 	}
 	if strings.HasSuffix(line, "/") {
