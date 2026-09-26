@@ -202,6 +202,9 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new option :opt:`detect_url_regex` to detect arbitrary text, such as file
+  references in compiler output, as clickable URLs under the mouse (:iss:`10407`)
+
 - Fix an out-of-bounds memory access when drawing a multi-line text sized
   character with the cursor below the bottom margin of the scroll region
 

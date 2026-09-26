@@ -4710,6 +4710,117 @@ extend_url(
     }
 }
 
+// Detecting URLs using detect_url_regex {{{
+#define DETECT_URL_REGEX_MAX_WRAPPED_LINES 3
+
+typedef struct {
+    index_type x, y;
+} RegexCellPos;
+
+// The text of the line being matched as UTF-8 along with the cell each byte comes from
+static struct {
+    struct {
+        char *items;
+        size_t capacity;
+    } text;
+    struct {
+        RegexCellPos *items;
+        size_t capacity;
+    } positions;
+    size_t len;
+} regex_line = {0};
+
+static void add_url_range(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y, bool is_hyperlink);
+
+static void
+regex_line_append(const char *bytes, size_t num, index_type x, index_type y) {
+    ensure_space_for(&regex_line.text, items, char, regex_line.len + num + 1, capacity, 1024, false);
+    ensure_space_for(&regex_line.positions, items, RegexCellPos, regex_line.len + num, capacity, 1024, false);
+    for (size_t i = 0; i < num; i++) {
+        regex_line.text.items[regex_line.len] = bytes[i];
+        regex_line.positions.items[regex_line.len++] = (RegexCellPos){.x = x, .y = y};
+    }
+}
+
+static void
+regex_line_append_row(Line *line, index_type y, ListOfChars *lc) {
+    index_type limit = line->xnum;
+    // Ignore trailing empty cells, they are either unused space at the end of
+    // the line or space left over when a wide character is wrapped onto the next line
+    while (limit && !line->cpu_cells[limit - 1].ch_and_idx) limit--;
+    char utf8[8];
+    for (index_type x = 0; x < limit; x++) {
+        const CPUCell *c = line->cpu_cells + x;
+        if (c->is_multicell && (c->x || c->y)) continue;
+        text_in_cell(c, line->text_cache, lc);
+        if (!lc->count || !lc->chars[0]) {
+            regex_line_append(" ", 1, x, y);
+        } else if (lc->chars[0] == '\t') {
+            regex_line_append("\t", 1, x, y);
+            unsigned num_cells_to_skip_for_tab = lc->count > 1 ? lc->chars[1] : 0;
+            while (num_cells_to_skip_for_tab && x + 1 < limit && cell_is_char(line->cpu_cells + x + 1, ' ')) {
+                x++;
+                num_cells_to_skip_for_tab--;
+            }
+        } else {
+            for (unsigned i = 0; i < lc->count; i++) {
+                if (lc->chars[i]) regex_line_append(utf8, encode_utf8(lc->chars[i], utf8), x, y);
+            }
+        }
+    }
+}
+
+static bool
+detect_url_with_regex(Screen *self, index_type x, index_type y, TextCache *text_cache) {
+    // Match against the soft wrapped line containing y, looking only a limited number of lines above and below y
+    index_type top = y, bottom = y;
+    while (top > 0 && y - top < DETECT_URL_REGEX_MAX_WRAPPED_LINES && visual_line_is_continued(self, top)) top--;
+    while (bottom + 1 < self->lines && bottom - y < DETECT_URL_REGEX_MAX_WRAPPED_LINES && visual_line_is_continued(self, bottom + 1)) bottom++;
+    Line line = {.xnum = self->columns, .text_cache = text_cache};
+    regex_line.len = 0;
+    for (index_type r = top; r <= bottom; r++) {
+        visual_line(self, r, &line);
+        regex_line_append_row(&line, r, self->lc);
+    }
+    size_t mouse_start = regex_line.len, mouse_end = 0;
+    for (size_t i = 0; i < regex_line.len; i++) {
+        const RegexCellPos p = regex_line.positions.items[i];
+        if (p.x == x && p.y == y) {
+            if (i < mouse_start) mouse_start = i;
+            mouse_end = i + 1;
+        }
+    }
+    if (mouse_start >= mouse_end) return false;
+    const char *text = regex_line.text.items;
+    regex_line.text.items[regex_line.len] = 0;
+    for (size_t i = 0; i < OPT(detect_url_regex).count; i++) {
+        const regex_t *re = OPT(detect_url_regex).items + i;
+        size_t offset = 0;
+        int eflags = 0;
+        regmatch_t m;
+        while (offset < mouse_end && regexec(re, text + offset, 1, &m, eflags) == 0) {
+            const size_t start = offset + m.rm_so, end = offset + m.rm_eo;
+            if (start >= mouse_end) break;
+            if (end > mouse_start && end > start) {
+                RegexCellPos s = regex_line.positions.items[start], e = regex_line.positions.items[end - 1];
+                visual_line(self, e.y, &line);
+                const CPUCell *c = line.cpu_cells + e.x;
+                if (c->is_multicell) e.x = MIN(self->columns - 1, e.x + mcd_x_limit(c) - 1);
+                self->url_ranges.count = 0;
+                add_url_range(self, s.x, s.y, e.x, e.y, false);
+                return true;
+            }
+            offset = end > start ? end : start + 1;
+            // don't start matching in the middle of a UTF-8 encoded character
+            while (offset < regex_line.len && (text[offset] & 0xc0) == 0x80) offset++;
+            eflags = REG_NOTBOL;
+        }
+    }
+    return false;
+}
+#undef DETECT_URL_REGEX_MAX_WRAPPED_LINES
+// }}}
+
 int
 screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
     bool has_url = false;
@@ -4750,6 +4861,8 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
         index_type y_extended = y;
         extend_url(screen, line, &url_end, &y_extended, sentinel, newlines_allowed, last_hostname_char_pos, scale);
         screen_mark_url(screen, url_start, y, url_end, y_extended);
+    } else if (OPT(detect_url_regex).count && detect_url_with_regex(screen, x, y, line->text_cache)) {
+        has_url = true;
     } else {
         screen_mark_url(screen, 0, 0, 0, 0);
     }

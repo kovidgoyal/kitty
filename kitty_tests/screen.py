@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import tempfile
+
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
 from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
 from kitty.window import pagerhist
@@ -1637,6 +1640,90 @@ class TestScreen(BaseTest):
     def test_detect_url(self):
         detect_url(self)
         detect_url(self, scale=2)
+
+    def test_detect_url_regex(self):
+        file_ref = r'[[:alnum:]_./-]+\.[[:alnum:]]+:[0-9]+'
+
+        def screen(*patterns, cols=30, lines=5, scrollback=5):
+            return self.create_screen(cols=cols, lines=lines, scrollback=scrollback, options={'detect_url_regex': {p: p for p in patterns}})
+
+        def ae(s, expected, x, y=0):
+            s.detect_url(x, y)
+            self.ae(expected, ''.join(s.text_for_marked_url()))
+
+        s = screen(file_ref)
+        s.draw('see src/foo.py:42 here')
+        for x in range(4, 17):
+            ae(s, 'src/foo.py:42', x)
+        for x in (0, 3, 17, 20, 25):
+            ae(s, '', x)
+        ae(s, '', 5, 1)
+
+        # multiple expressions, the first one to match under the mouse wins
+        s = screen(r'[0-9]+', r'JIRA-[0-9]+', r'[A-Z]+-[0-9]+')
+        s.draw('fix ABC-12 and JIRA-7')
+        ae(s, 'ABC-12', 5)
+        ae(s, 'JIRA-7', 16)
+        ae(s, '12', 9)
+
+        # normal URLs take precedence
+        s = screen(file_ref)
+        s.draw('http://moo.com/x.py:1')
+        ae(s, 'http://moo.com/x.py:1', 16)
+
+        # wide characters before the match must not shift columns
+        s = screen(file_ref)
+        s.draw('世界 foo.py:1 x')
+        ae(s, '', 4)
+        ae(s, 'foo.py:1', 5)
+        ae(s, 'foo.py:1', 12)
+        ae(s, '', 13)
+
+        # matches in soft wrapped lines
+        s = screen(file_ref, cols=10)
+        s.draw('xx aaaa/bbbb/cccc.py:12 yy')
+        for x, y in ((3, 0), (9, 0), (0, 1), (9, 1), (2, 2)):
+            ae(s, 'aaaa/bbbb/cccc.py:12', x, y)
+        ae(s, '', 4, 2)
+        # a wide character wrapped onto the next line leaves an empty cell
+        s = screen('abcd世x', cols=5)
+        s.draw('abcd世x')
+        ae(s, 'abcd世x', 0)
+        ae(s, 'abcd世x', 2, 1)
+        # the number of wrapped lines scanned is limited
+        s = screen('a+', cols=5, lines=12)
+        s.draw('a' * 50)
+        ae(s, 'a' * 20, 0)
+        ae(s, 'a' * 35, 0, 5)
+        ae(s, 'a' * 20, 0, 9)
+        # hard line breaks are not joined
+        s = screen('a+', cols=5)
+        s.draw('aaaaa'), s.carriage_return(), s.linefeed(), s.draw('aa')
+        ae(s, 'aaaaa', 0)
+        ae(s, 'aa', 0, 1)
+
+        # matches in the scrollback when scrolled
+        s = screen(file_ref, lines=3)
+        s.draw('see src/foo.py:42')
+        for i in range(4):
+            s.carriage_return(), s.linefeed(), s.draw(f'line {i}')
+        s.scroll(2, True)
+        ae(s, 'src/foo.py:42', 6)
+        ae(s, '', 0, 1)
+
+        # invalid expressions are ignored, with an error logged to stderr by C code
+        with tempfile.TemporaryFile() as f:
+            orig_stderr = os.dup(2)
+            os.dup2(f.fileno(), 2)
+            try:
+                s = screen('(', 'foo')
+            finally:
+                os.dup2(orig_stderr, 2)
+                os.close(orig_stderr)
+            f.seek(0)
+            self.assertIn(b'Ignoring invalid detect_url_regex: (', f.read())
+        s.draw('a foo')
+        ae(s, 'foo', 2)
 
     def test_prompt_marking(self):
         # ]]]]]]]]]]]]]]]]}}}}}}}}}}}}}}}}))))))))))))))))))))))

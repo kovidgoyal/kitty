@@ -970,6 +970,10 @@ class Parser:
 
     choices_for_default_pointer_shape = frozenset(('arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'cell', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing'))
 
+    def detect_url_regex(self, val: str, ans: dict[str, typing.Any]) -> None:
+        for k, v in store_multiple(val, ans["detect_url_regex"]):
+            ans["detect_url_regex"][k] = v
+
     def detect_urls(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['detect_urls'] = to_bool(val)
 
@@ -1638,6 +1642,7 @@ class Parser:
 def create_result_dict() -> dict[str, typing.Any]:
     return {
         'action_alias': {},
+        'detect_url_regex': {},
         'env': {},
         'exe_search_path': {},
         'filter_notification': {},

@@ -477,6 +477,48 @@ url_prefixes(PyObject *up, Options *opts) {
 }
 
 static inline void
+free_detect_url_regex(Options *opts) {
+    for (size_t i = 0; i < opts->detect_url_regex.count; i++) regfree(opts->detect_url_regex.items + i);
+    free(opts->detect_url_regex.items);
+    opts->detect_url_regex.items = NULL;
+    opts->detect_url_regex.count = 0;
+}
+
+static inline void
+detect_url_regex(PyObject *src, Options *opts) {
+    if (!PyDict_Check(src)) {
+        PyErr_SetString(PyExc_TypeError, "detect_url_regex must be a dict");
+        return;
+    }
+    free_detect_url_regex(opts);
+    if (!PyDict_GET_SIZE(src)) return;
+    opts->detect_url_regex.items = calloc(PyDict_GET_SIZE(src), sizeof(regex_t));
+    if (!opts->detect_url_regex.items) {
+        PyErr_NoMemory();
+        return;
+    }
+    PyObject *key, *value;
+    Py_ssize_t pos = 0;
+    while (PyDict_Next(src, &pos, &key, &value)) {
+        if (!PyUnicode_Check(key)) {
+            PyErr_SetString(PyExc_TypeError, "detect_url_regex must be strings");
+            return;
+        }
+        const char *pattern = PyUnicode_AsUTF8(key);
+        if (!pattern) return;
+        regex_t *r = opts->detect_url_regex.items + opts->detect_url_regex.count;
+        int err = regcomp(r, pattern, REG_EXTENDED);
+        if (err) {
+            char msg[256];
+            regerror(err, r, msg, sizeof(msg));
+            log_error("Ignoring invalid detect_url_regex: %s with error: %s", pattern, msg);
+            continue;
+        }
+        opts->detect_url_regex.count++;
+    }
+}
+
+static inline void
 free_menu_map(Options *opts) {
     if (opts->global_menu.entries) {
         for (size_t i = 0; i < opts->global_menu.count; i++) {
@@ -699,6 +741,7 @@ static inline void
 free_allocs_in_options(Options *opts) {
     free_menu_map(opts);
     free_url_prefixes(opts);
+    free_detect_url_regex(opts);
     free_font_features(opts);
     free_background_images(opts);
 #define F(x)       \

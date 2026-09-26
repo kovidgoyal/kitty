@@ -14,6 +14,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <hb.h>
+#include <regex.h>
 #pragma GCC diagnostic pop
 
 #define OPT(name) global_state.opts.name
@@ -145,6 +146,10 @@ typedef struct Options {
     } url_prefixes;
     char_type *url_excluded_characters;
     bool detect_urls;
+    struct {
+        regex_t *items;
+        size_t count;
+    } detect_url_regex;
     bool tab_bar_hidden;
     double font_size;
     struct {
