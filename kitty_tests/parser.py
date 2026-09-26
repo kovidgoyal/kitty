@@ -1102,6 +1102,12 @@ class TestParser(BaseTest):
         c.clear()
         pb('\033P$qr\033\\', ('screen_request_capabilities', ord('$'), 'r'))
         self.ae(c.wtcbuf, f'\033P1$r{s.margin_top + 1};{s.margin_bottom + 1}r\033\\'.encode('ascii'))
+        c.clear()
+        # Invalid DECRQSS queries must not be echoed back (CVE-2008-2383)
+        malicious_query = 'm\033[6n'
+        pb(f'\033P$q{malicious_query}\033\\', ('screen_request_capabilities', ord('$'), malicious_query))
+        self.ae(c.wtcbuf, b'\033P0$r\033\\')
+        self.assertNotIn(malicious_query.encode('ascii'), c.wtcbuf)
         pb('\033P@kitty-cmd{abc\033\\', ('handle_remote_cmd', '{abc'))
         p = base64_encode('abcd').decode()
         pb(f'\033P@kitty-print|{p}\033\\', ('handle_remote_print', p))
