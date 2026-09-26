@@ -1978,6 +1978,28 @@ wayland_initial_size_callback(GLFWwindow *window UNUSED, float xscale, float ysc
     } else PyErr_Clear();
 }
 
+static void
+set_window_creation_error(bool is_panel) {
+    const char *desc = NULL;
+    glfwGetError(&desc);
+    if (is_panel) {
+        PyErr_Format(
+            PyExc_OSError,
+            "Failed to create panel window%s%s. This usually happens because the window manager/compositor does not support the features "
+            "needed for panels. See https://sw.kovidgoyal.net/kitty/kittens/panel/#compatibility-with-various-platforms",
+            desc ? " with error: " : "",
+            desc ? desc : "");
+    } else {
+        PyErr_Format(
+            PyExc_OSError,
+            "Failed to create GLFWwindow%s%s. This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL %d.%d drivers.",
+            desc ? " with error: " : "",
+            desc ? desc : "",
+            OPENGL_REQUIRED_VERSION_MAJOR,
+            OPENGL_REQUIRED_VERSION_MINOR);
+    }
+}
+
 static PyObject *
 create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     int x = INT_MIN, y = INT_MIN, window_state = WINDOW_NORMAL, disallow_override_title = 0;
@@ -2143,18 +2165,15 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #undef QUERY_MONITOR
         }
     } else {
-#define glfw_failure                                                                                                                                \
-    {                                                                                                                                               \
-        PyErr_Format(                                                                                                                               \
-            PyExc_OSError,                                                                                                                          \
-            "Failed to create GLFWwindow. This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL %d.%d drivers.", \
-            OPENGL_REQUIRED_VERSION_MAJOR,                                                                                                          \
-            OPENGL_REQUIRED_VERSION_MINOR);                                                                                                         \
-        return NULL;                                                                                                                                \
+#define glfw_failure(is_panel)               \
+    {                                        \
+        set_window_creation_error(is_panel); \
+        return NULL;                         \
     }
 
+        glfwGetError(NULL); // clear any stale error
         temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context, NULL);
-        if (temp_window == NULL) glfw_failure;
+        if (temp_window == NULL) glfw_failure(false);
         get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
     }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
@@ -2183,13 +2202,14 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwWaylandSetInitialWindowSizeCallback(wayland_initial_size_callback);
         initial_window_size_py_callback = get_window_size;
     }
+    glfwGetError(NULL); // clear any stale error
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context, lsc);
     initial_window_size_py_callback = NULL;
     if (temp_window) {
         glfwDestroyWindow(temp_window);
         temp_window = NULL;
     }
-    if (glfw_window == NULL) glfw_failure;
+    if (glfw_window == NULL) glfw_failure(lsc != NULL);
 #undef glfw_failure
     // Set titlebar-only mode before the window becomes visible
     if (global_state.is_wayland && (OPT(hide_window_decorations) & 2) && glfwWaylandSetTitlebarHidden) { glfwWaylandSetTitlebarHidden(glfw_window, true); }

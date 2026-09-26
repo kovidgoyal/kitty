@@ -125,6 +125,11 @@ Note that not all applications use portals, so if some particular application
 is failing to use the portal but others work, report the issue to that
 applications' developers.
 
+.. note::
+
+   File chooser integration requires your window manager to support
+   :ref:`panels <panel_compat>` so check the compatibility table.
+
 Configuration
 ------------------------
 
