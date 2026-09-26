@@ -93,6 +93,13 @@ def cursor_trail(window_id: str, geometry: tuple[int, int, int, int]) -> None:
     send_text('$')
 
 
+def cursor_trail_motion_blur(window_id: str, geometry: tuple[int, int, int, int]) -> None:
+    # Long, fast, diagonal jumps are where motion blur is most visible
+    for keys, delay in (('gg0', 0.3), ('L$', 0.45), ('H', 0.45), ('M^', 0.4), ('L0', 0.45), ('H$', 0.45), ('M', 0.4), ('gg0', 0.3)):
+        send_text(keys)
+        time.sleep(delay)
+
+
 def pond_ripple(window_id: str, geometry: tuple[int, int, int, int]) -> None:
     time.sleep(0.1)
     move_mouse(geometry, 100, 100)
@@ -147,7 +154,9 @@ metadata: dict[str, dict[str, Any]] = {
     'spotlight': {'animate': spotlight, 'category': 'mouse', 'tagline': 'Spotlight your mouse pointer as it moves around.'},
     # Cursor trail
     'cursor-trail-motion-blur': {
-        'animate': cursor_trail,
+        'animate': cursor_trail_motion_blur,
+        'duration': 4,
+        'initial_sleep': 4,
         'category': 'cursor-trail',
         'tagline': 'Make the cursor trail glide smoothly, like a fast moving object caught on camera.',
     },
@@ -245,7 +254,17 @@ def record_output(m: dict[str, Any], output_filename: str, wayland_env: dict[str
         time.sleep(duration_seconds)
         print('🛑 Stopping recording and saving file...')
         process.send_signal(signal.SIGINT)
-        process.wait(timeout=3)
+        # wf-recorder only exits after receiving a new frame, so generate
+        # screen damage until it does
+        for i in range(300):
+            try:
+                process.wait(timeout=0.1)
+                break
+            except subprocess.TimeoutExpired:
+                move_mouse((0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), i % 2, 0)
+        else:
+            process.kill()
+            raise SystemExit('❌ wf-recorder failed to exit')
         return output_filename
     except FileNotFoundError:
         raise SystemExit("❌ Error: 'wf-recorder' is not installed or not in your PATH.")
