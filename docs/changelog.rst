@@ -236,10 +236,11 @@ Detailed list of changes
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Dragging windows or single-window tabs: Hover over another tab to switch to it
-  and choose a split position. Drop a window at a tab edge or gap to create a new tab.
-  Reordering or moving whole tabs now shows an insertion marker without moving
-  the existing labels during the drag. See :doc:`overview` for details.
+- Drag and drop: Hover over a tab while dragging a window or a single window
+  tab to switch to it and choose a split position. Drop a window at a tab edge
+  or gap to put it into a new tab at that position. Dragging tabs now shows an
+  insertion marker rather than moving the other tabs during the drag. See
+  :doc:`overview` for details.
 
 - Splits layout: Dragging a divider now resizes only its adjacent regions,
   consistently after rearranging windows. Fix nested dividers not tracking

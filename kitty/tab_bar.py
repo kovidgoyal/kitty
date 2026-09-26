@@ -1175,20 +1175,25 @@ class TabBar:
         if before is None:
             return
         extents = tuple(te for te in self.tab_extents if te.tab_id > 0)
-        coordinate = 0
-        for te in extents:
-            cells = te.y if self.is_vertical else te.x
-            if te.tab_id == before:
-                coordinate = cells.start
-                break
-            coordinate = cells.end + 1
+        idx = next((i for i, te in enumerate(extents) if te.tab_id == before), len(extents))
         s = self.screen
         s.cursor.fg, s.cursor.bg = self.active_fg, self.active_bg
         s.cursor.bold, s.cursor.italic = False, False
         if self.is_vertical:
-            s.cursor.x, s.cursor.y = 0, min(s.lines - 1, coordinate)
-            s.draw('━' * s.columns)
+            prev_end = extents[idx - 1].y.end if idx else -1
+            next_start = extents[idx].y.start if idx < len(extents) else s.lines
+            # Prefer a blank line next to the insertion point, so no tab title is hidden
+            occupied = {y for te in self.tab_extents for y in range(te.y.start, te.y.end + 1)}
+            candidates = range(next_start - 1, prev_end, -1) if idx == 0 else range(prev_end + 1, next_start)
+            if (gap := next((y for y in candidates if y not in occupied and 0 <= y < s.lines), None)) is None:
+                # Crowded tab bar, mark just the first cell of the tab after the insertion point
+                s.cursor.x, s.cursor.y = 0, max(0, min(s.lines - 1, next_start if idx < len(extents) else prev_end + 1))
+                s.draw('▶')
+            else:
+                s.cursor.x, s.cursor.y = 0, gap
+                s.draw('━' * s.columns)
         else:
+            coordinate = extents[idx].x.start if idx < len(extents) else (extents[-1].x.end + 1 if extents else 0)
             s.cursor.x, s.cursor.y = min(s.columns - 1, coordinate), 0
             s.draw('┃')
         s.cursor.fg = s.cursor.bg = 0
@@ -1222,23 +1227,32 @@ class TabBar:
     def drag_axis_coordinate(self, x: int, y: int) -> int:
         return y if self.is_vertical else x
 
-    def tab_insertion_target_at(self, x: int, y: int) -> int:
-        "The tab after the nearest insertion boundary, or zero to append."
-        if not self.laid_out_once:
-            return 0
+    def _drop_spans(self, x: int, y: int) -> tuple[float, list[tuple[int, int, int]]]:
+        "The pointer position and the non-empty (tab_id, start, end) pixel spans of the tabs along the tab bar axis"
         g = self.window_geometry
         coordinate = y - g.top if self.is_vertical else x - g.left
         cell_size = self.cell_height if self.is_vertical else self.cell_width
         limit = self.screen.lines if self.is_vertical else self.screen.columns
-        extents = tuple(te for te in self.tab_extents if te.tab_id > 0)
-        for i, te in enumerate(extents):
-            cells = te.y if self.is_vertical else te.x
+        extents = tuple(te.y if self.is_vertical else te.x for te in self.tab_extents if te.tab_id > 0)
+        ids = tuple(te.tab_id for te in self.tab_extents if te.tab_id > 0)
+        spans = []
+        for i, cells in enumerate(extents):
             start, end = cells.start * cell_size, min(limit, cells.end + 1) * cell_size
+            # Some custom renderers include the next tab's first cell in their extent.
             if i + 1 < len(extents):
-                next_cells = extents[i + 1].y if self.is_vertical else extents[i + 1].x
-                end = min(end, next_cells.start * cell_size)
-            if end > start and coordinate < (start + end) / 2:
-                return te.tab_id
+                end = min(end, extents[i + 1].start * cell_size)
+            if end > start:
+                spans.append((ids[i], start, end))
+        return coordinate, spans
+
+    def tab_insertion_target_at(self, x: int, y: int) -> int:
+        "The tab after the nearest insertion boundary, or zero to append."
+        if not self.laid_out_once:
+            return 0
+        coordinate, spans = self._drop_spans(x, y)
+        for tab_id, start, end in spans:
+            if coordinate < (start + end) / 2:
+                return tab_id
         return 0
 
     def window_drop_target_at(self, x: int, y: int) -> WindowDropTarget:
@@ -1246,25 +1260,12 @@ class TabBar:
         Called only for points inside the tab bar viewport, including its blank margins."""
         if not self.laid_out_once:
             return WindowDropTarget(before_tab_id=0)
-        g = self.window_geometry
-        coordinate = y - g.top if self.is_vertical else x - g.left
-        cell_size = self.cell_height if self.is_vertical else self.cell_width
-        limit = self.screen.lines if self.is_vertical else self.screen.columns
-        extents = tuple(te for te in self.tab_extents if te.tab_id > 0)
-        for i, te in enumerate(extents):
-            cells = te.y if self.is_vertical else te.x
-            start, end = cells.start * cell_size, min(limit, cells.end + 1) * cell_size
-            # Some custom renderers include the next tab's first cell in their extent.
-            if i + 1 < len(extents):
-                next_cells = extents[i + 1].y if self.is_vertical else extents[i + 1].x
-                end = min(end, next_cells.start * cell_size)
-            if end <= start:
-                continue
+        coordinate, spans = self._drop_spans(x, y)
+        for i, (tab_id, start, end) in enumerate(spans):
             if coordinate < start + (end - start) * 0.1:
-                return WindowDropTarget(before_tab_id=te.tab_id)
+                return WindowDropTarget(before_tab_id=tab_id)
             if coordinate < end - (end - start) * 0.1:
-                return WindowDropTarget(tab_id=te.tab_id)
+                return WindowDropTarget(tab_id=tab_id)
             if coordinate < end:
-                before = extents[i + 1].tab_id if i + 1 < len(extents) else 0
-                return WindowDropTarget(before_tab_id=before)
+                return WindowDropTarget(before_tab_id=spans[i + 1][0] if i + 1 < len(spans) else 0)
         return WindowDropTarget(before_tab_id=0)

@@ -39,18 +39,34 @@ class TestTabBar(BaseTest):
                 x, y = (5, pos) if vertical else (pos, 5)
                 self.ae(tb.tab_insertion_target_at(x, y), before, (vertical, coordinate))
 
-    def test_tab_insertion_marker_does_not_replace_tabs(self):
-        tb = self.vertical_tab_bar()
-        data, extents, original = tb.last_laid_out_tabs, tb.tab_extents, self.screen_lines(tb)
-        with patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None), patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
-            tb.tab_drop_insert_before = 2
-            tb.update(data)
-            self.ae(tb.last_laid_out_tabs, data)
-            self.ae(tb.tab_extents, extents)
-            self.assertIn('━', self.screen_lines(tb)[extents[1].y.start])
-            tb.tab_drop_insert_before = None
-            tb.update(data)
-            self.ae(self.screen_lines(tb), original)
+    def test_vertical_insertion_marker_keeps_titles_visible(self):
+        def marked(num_tabs: int, attr: str, before: int) -> tuple[list[str], list[str]]:
+            tb = self.vertical_tab_bar(num_tabs)
+            data, extents, original = tb.last_laid_out_tabs, tb.tab_extents, self.screen_lines(tb)
+            with patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None), patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
+                setattr(tb, attr, before)
+                tb.update(data)
+                self.ae(tb.last_laid_out_tabs, data)
+                self.ae(tb.tab_extents, extents)
+                lines = self.screen_lines(tb)
+                setattr(tb, attr, None)
+                tb.update(data)
+                self.ae(self.screen_lines(tb), original)
+            return original, lines
+
+        line = '━' * 12
+        for attr in ('tab_drop_insert_before', 'window_drop_insert_before'):
+            # The marker uses the blank line between tabs, or after the last tab
+            original, lines = marked(2, attr, 2)
+            self.ae(original[:4], ['t0', '', 't1', ''])
+            self.ae(lines[:4], ['t0', line, 't1', ''])
+            self.ae(marked(2, attr, 0)[1][:4], ['t0', '', 't1', line])
+            # Without a blank line before the first tab only its first cell is used
+            self.ae(marked(2, attr, 1)[1][:3], ['▶0', '', 't1'])
+            # Crowded tab bars have no blank lines between tabs
+            original, lines = marked(8, attr, 3)
+            self.ae(original[:4], ['t0', 't1', 't2', 't3'])
+            self.ae(lines[:4], ['t0', 't1', '▶2', 't3'])
 
     def test_window_drop_tab_edges_and_gaps(self):
         tb = self.vertical_tab_bar()
@@ -103,20 +119,6 @@ class TestTabBar(BaseTest):
         tb.window_drop_insert_before = 0
         tb.draw_drop_insert_marker()
         self.ae(str(tb.screen.line(0))[-1], '┃')
-
-    def test_window_drop_marker_does_not_move_tabs(self):
-        tb = self.vertical_tab_bar()
-        data = tb.last_laid_out_tabs
-        extents, original = tb.tab_extents, self.screen_lines(tb)
-        with patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None), patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
-            tb.window_drop_insert_before = 2
-            tb.update(data)
-            self.ae(tb.tab_extents, extents)
-            self.assertIn('━', self.screen_lines(tb)[extents[1].y.start])
-            tb.window_drop_insert_before = None
-            tb.update(data)
-            self.ae(tb.tab_extents, extents)
-            self.ae(self.screen_lines(tb), original)
 
     def test_vertical_tab_bar_hit_testing(self) -> None:
         self.set_options(
