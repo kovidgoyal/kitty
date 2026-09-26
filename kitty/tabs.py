@@ -2098,7 +2098,10 @@ class TabManager:  # {{{
         tab_id = target.tab_id if target is not None else 0
         # Highlight the "+" button only when appending, elsewhere the insertion marker is enough
         self._set_drag_target_tab(-1 if before == 0 else tab_id)
-        self._update_drag_hover(tab_id, window_id, source_is_window=True)
+        # Tab drags clear the window preview before updating the tab preview on
+        # every drag event. Keep an existing tab hover timer across those events.
+        if tab_id or self.drag_hover is None or self.drag_hover.source_is_window:
+            self._update_drag_hover(tab_id, window_id, source_is_window=True)
 
     def _clear_force_show_title_bars(self) -> None:
         boss = get_boss()

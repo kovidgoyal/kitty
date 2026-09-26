@@ -593,6 +593,15 @@ class TestWindowDropTabs(BaseTest):
         self.hover()
         self.ae(self.add_timer.call_count, 1)
 
+    def test_clearing_window_preview_preserves_tab_hover(self):
+        self.tm._update_drag_hover(2, 9, source_is_window=False)
+        hover = self.tm.drag_hover
+        for _ in range(3):
+            self.tm._set_window_drop_tab_target()
+            self.assertIs(self.tm.drag_hover, hover)
+        self.add_timer.assert_called_once()
+        self.remove_timer.assert_not_called()
+
     def test_changing_targets_restarts_hover_and_ignores_stale_timer(self):
         self.hover()
         first_callback = self.add_timer.call_args.args[0]
