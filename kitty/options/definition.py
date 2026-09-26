@@ -459,6 +459,9 @@ for cursors that rapidly change their positions during UI updates in complex app
 See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_trail_start_threshold`
 to control when a cursor trail is started. You can also have different styles of trail by
 using the :opt:`custom_shaders` option, for example: :code:`custom_shaders cursor-trail-blaze`.
+The bundled :code:`cursor-trail-default` shader provides temporally supersampled motion blur
+and spatial antialiasing; enable it with :code:`custom_shaders cursor-trail-default` and see
+the shader source for its compile-time options.
 """,
 )
 

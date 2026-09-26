@@ -216,7 +216,7 @@ class LoadShaderPrograms:
             self(allow_recompile=True)
         else:
             opts = self.get_options()
-            if opts.custom_shaders != self.custom_shaders or self.force_recompile_of_custom_shaders:
+            if tuple(opts.custom_shaders) != self.custom_shaders or self.force_recompile_of_custom_shaders:
                 self.compile_custom_shaders(allow_recompile=True)
 
     def __call__(self, allow_recompile: bool = False) -> None:

@@ -2506,6 +2506,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float central_area[4];
         float cursor_trail_corners_x[4];
         float cursor_trail_corners_y[4];
+        float cursor_trail_prev_corners_x[4];
+        float cursor_trail_prev_corners_y[4];
         float cursor_trail_edge[4];
         float cursor_trail_prev_edge[4];
         float cursor_color[4];
@@ -2585,6 +2587,10 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             for (int i = 0; i < 4; i++) {
                 d->cursor_trail_corners_x[i] = NDC_TO_UV(ct->corner_x[i]);
                 d->cursor_trail_corners_y[i] = NDC_TO_UV(ct->corner_y[i]);
+                if (ct->has_previous_position) {
+                    d->cursor_trail_prev_corners_x[i] = NDC_TO_UV(ct->previous_corner_x[i]);
+                    d->cursor_trail_prev_corners_y[i] = NDC_TO_UV(ct->previous_corner_y[i]);
+                }
             }
             d->cursor_trail_edge[0] = NDC_TO_UV(ct->cursor_edge_x[0]); // left
             d->cursor_trail_edge[1] = NDC_TO_UV(ct->cursor_edge_x[1]); // right
