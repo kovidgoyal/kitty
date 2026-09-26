@@ -191,8 +191,8 @@ def run_go(packages: set[str], names: Sequence[str]) -> GoProc:
     go = go_exe()
     go_pkg_args = [f'github.com/kovidgoyal/kitty/{x}' for x in packages]
     cmd = [go, 'test', '--tags', 'testing', '-v', '-json']
-    for name in names:
-        cmd.extend(('-run', name))
+    if names:
+        cmd.extend(('-run', '^Test(?:' + '|'.join(re.escape(name) for name in names) + ')$'))
     cmd += go_pkg_args
     return GoProc(cmd)
 
