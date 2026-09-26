@@ -233,6 +233,9 @@ Detailed list of changes
 - macOS: Fix a custom dock icon reverting to the stock icon after a progress
   bar is cleared (:iss:`10545`)
 
+- hints kitten: Fix delays of many seconds when selecting paths or line
+  numbers on a screen with long lines that contain no spaces
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

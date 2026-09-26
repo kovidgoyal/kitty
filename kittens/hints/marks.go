@@ -490,9 +490,25 @@ func find_all_matches(re *regexp2.Regexp, text string) (ans []Match, err error) 
 	return
 }
 
-func mark(r *regexp2.Regexp, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc, text string, opts *Options) (ans []Mark) {
+func find_all_matches_stdlib(re *regexp.Regexp, text string) (ans []Match) {
+	names := re.SubexpNames()
+	for _, loc := range re.FindAllStringSubmatchIndex(text, -1) {
+		match := Match{Groups: make([]Group, len(names))}
+		for i, name := range names {
+			match.Groups[i] = Group{Name: name, IsNamed: name != ""}
+			if s, e := loc[2*i], loc[2*i+1]; s > -1 {
+				c := Capture{Text: text[s:e]}
+				c.Byte_Offsets.Start, c.Byte_Offsets.End = s, e
+				match.Groups[i].Captures = []Capture{c}
+			}
+		}
+		ans = append(ans, match)
+	}
+	return
+}
+
+func mark(all_matches []Match, post_processors []PostProcessorFunc, group_processors []GroupProcessorFunc, text string, opts *Options) (ans []Mark) {
 	sanitize_pat := regexp.MustCompile("[\r\n\x00]")
-	all_matches, _ := find_all_matches(r, text)
 	for i, m := range all_matches {
 		full_capture := m.Groups[0].LastCapture()
 		match_start, match_end := full_capture.Byte_Offsets.Start, full_capture.Byte_Offsets.End
@@ -654,11 +670,22 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 		if err != nil {
 			return err
 		}
-		r, err := regexp2.Compile(pattern, regexp2.RE2)
-		if err != nil {
-			return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
+		var matches []Match
+		// the builtin patterns dont need lookarounds, so use the linear time stdlib engine for them
+		if pattern != opts.Regex {
+			r, err := regexp.Compile(pattern)
+			if err != nil {
+				return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
+			}
+			matches = find_all_matches_stdlib(r, sanitized_text)
+		} else {
+			r, err := regexp2.Compile(pattern, regexp2.RE2)
+			if err != nil {
+				return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
+			}
+			matches, _ = find_all_matches(r, sanitized_text)
 		}
-		ans = mark(r, post_processors, group_processors, sanitized_text, opts)
+		ans = mark(matches, post_processors, group_processors, sanitized_text, opts)
 		used_pattern = pattern
 		return nil
 	}
