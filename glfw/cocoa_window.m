@@ -4094,10 +4094,22 @@ static void
 apply_titlebar_color_settings(_GLFWwindow *window) {
 #define tc window->ns.last_applied_titlebar_settings.color
     GLFWWindow *nsw = window->ns.object;
-    if (!window->ns.titlebar_hidden && window->decorated && tc.was_set && window->ns.last_applied_titlebar_settings.transparent) {
-        NSColor *titlebar_color = [NSColor colorWithSRGBRed:tc.red green:tc.green blue:tc.blue alpha:tc.alpha];
-        set_title_bar_background(nsw, titlebar_color);
-    } else clear_title_bar_background_views(nsw);
+    if (!window->ns.titlebar_hidden && window->decorated) {
+        if (tc.was_set && window->ns.last_applied_titlebar_settings.transparent) {
+            NSColor *titlebar_color = [NSColor colorWithSRGBRed:tc.red green:tc.green blue:tc.blue alpha:tc.alpha];
+            set_title_bar_background(nsw, titlebar_color);
+            return;
+        } else if (window->ns.last_applied_titlebar_settings.needs_system_background) {
+            // Newer AppKit linked-on behavior allows a system titlebar to sample the window background. The
+            // window background must remain clear for terminal transparency, so give the titlebar its own
+            // opaque system-color backing instead of letting the desktop show through it.
+            [nsw.effectiveAppearance performAsCurrentDrawingAppearance:^{
+              set_title_bar_background(nsw, [NSColor windowBackgroundColor]);
+            }];
+            return;
+        }
+    }
+    clear_title_bar_background_views(nsw);
 #undef tc
 }
 
@@ -4142,6 +4154,7 @@ glfwCocoaSetWindowChrome(
 #define tc window->ns.last_applied_titlebar_settings.color
         tc.was_set = false;
         window->ns.last_applied_titlebar_settings.transparent = false;
+        window->ns.last_applied_titlebar_settings.needs_system_background = use_system_color && background_opacity < 1.0;
         const NSWindowStyleMask current_style_mask = [nsw styleMask];
         const bool in_fullscreen = ((current_style_mask & NSWindowStyleMaskFullScreen) != 0) || window->ns.in_traditional_fullscreen;
         NSAppearance *light_appearance =
