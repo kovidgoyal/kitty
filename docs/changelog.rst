@@ -221,6 +221,9 @@ Detailed list of changes
 - diff kitten: Fix freezes and very high memory use when a very long line, such
   as in a minified file, is changed
 
+- themes and choose fonts kittens: Fix search freezing for many seconds when
+  typing a long query, such as the full name of a theme
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
