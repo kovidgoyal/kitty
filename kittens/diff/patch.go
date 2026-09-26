@@ -125,10 +125,20 @@ var word_regexp = sync.OnceValues(func() (*regexp.Regexp, error) {
 	return regexp.Compile(pattern)
 })
 
+// The LCS table in word_diff_center needs one cell per pair of words between
+// the first and last changed word, so lines where that span is longer than
+// this fall back to changed_center.
+const max_word_diff_words = 2048
+
 // word_diff_center computes highlighted regions for changed words between left and right.
 func word_diff_center(left, right string, re *regexp.Regexp) Center {
 	left_matches := re.FindAllStringIndex(left, -1)
 	right_matches := re.FindAllStringIndex(right, -1)
+	// Changed words are only highlighted when they pair up by position, which
+	// is impossible when the word counts differ, so skip the LCS in that case.
+	if len(left_matches) != len(right_matches) {
+		return changed_center(left, right)
+	}
 
 	type word struct {
 		text   string
@@ -158,10 +168,13 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 	rw := right_words[prefix : len(right_words)-suffix]
 
 	m, n := len(lw), len(rw)
+	if max(m, n) > max_word_diff_words {
+		return changed_center(left, right)
+	}
 	// LCS dynamic programming table
-	dp := make([][]int, m+1)
+	dp := make([][]int32, m+1)
 	for i := range dp {
-		dp[i] = make([]int, n+1)
+		dp[i] = make([]int32, n+1)
 	}
 	for i := 1; i <= m; i++ {
 		for j := 1; j <= n; j++ {

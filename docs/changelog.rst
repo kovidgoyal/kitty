@@ -218,6 +218,9 @@ Detailed list of changes
 - X11: Fix copy and paste targeting the wrong OS window when the keyboard focus
   is set to PointerRoot or None
 
+- diff kitten: Fix freezes and very high memory use when a very long line, such
+  as in a minified file, is changed
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
