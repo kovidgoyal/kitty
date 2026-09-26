@@ -9,7 +9,7 @@ from itertools import count
 from typing import Any, Deque, Union
 
 from .fast_data_types import Color, get_options
-from .types import OverlayType, WindowGeometry
+from .types import DockData, OverlayType, WindowGeometry
 from .typing_compat import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
@@ -164,6 +164,13 @@ class WindowGroup:
             return w.is_visible_in_layout
         return False
 
+    @property
+    def dock_data(self) -> DockData | None:
+        for window in self.windows:
+            if dock := getattr(window, 'dock_data', None):
+                return dock
+        return None
+
 
 class WindowList:
     force_show_title_bars: bool = False
@@ -189,11 +196,24 @@ class WindowList:
         q = window if isinstance(window, int) else window.id
         return q in self.id_map
 
+    def serialized_docks(self) -> list[dict[str, Any]]:
+        ans = []
+        for group in self.groups:
+            if dock := group.dock_data:
+                data = dock.serialize()
+                data['window_id'] = next(w.id for w in group if getattr(w, 'dock_data', None) is dock)
+                data['window_ids'] = [w.id for w in group]
+                if dock.scope == 'window' and (owner := self.group_for_window(dock.owner_window_id)) is not None:
+                    data['owner_window_ids'] = [w.id for w in owner]
+                ans.append(data)
+        return ans
+
     def serialize_state(self) -> dict[str, Any]:
         return {
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_state() for g in self.groups],
+            'docks': self.serialized_docks(),
         }
 
     def serialize_layout_state(self) -> dict[str, Any]:
@@ -201,6 +221,7 @@ class WindowList:
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_layout_state() for g in self.groups],
+            'docks': self.serialized_docks(),
         }
 
     def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int], apply: bool = True) -> dict[int, int] | None:
@@ -213,6 +234,23 @@ class WindowList:
             # some window in this collection does not correspond to a
             # serialized window
             return None
+        if apply:
+            for window in self.all_windows:
+                window.dock_data = None
+            for serialized in state.get('docks', ()):
+                old_window_ids = (serialized.get('window_id'), *(serialized.get('window_ids') or ()))
+                new_window_id = next((window_id_map[old_id] for old_id in old_window_ids if old_id in window_id_map), 0)
+                if (window := self.id_map.get(new_window_id)) is not None:
+                    data = dict(serialized)
+                    old_owner_window_ids = (data.get('owner_window_id'), *(data.get('owner_window_ids') or ()))
+                    data['owner_window_id'] = next((window_id_map[old_id] for old_id in old_owner_window_ids if old_id in window_id_map), 0)
+                    try:
+                        dock = DockData.from_dict(data)
+                    except (TypeError, ValueError):
+                        pass
+                    else:
+                        for group_window in self.windows_in_group_of(window):
+                            group_window.dock_data = dock
         ans = {}
         gmap = {g.id: g for g in self.groups}
         present_wids_map = {g.id: {w.id for w in g} for g in self.groups}
@@ -259,9 +297,9 @@ class WindowList:
                     self._active_group_idx = i
                     break
         history = []
-        for old_wid in state['active_group_history']:
-            if new_wid := window_id_map.get(old_wid):
-                history.append(new_wid)
+        for old_group_id in state['active_group_history']:
+            if new_group_id := ans.get(old_group_id):
+                history.append(new_group_id)
         self.active_group_history = deque(history, 64)
         return ans
 
@@ -294,6 +332,10 @@ class WindowList:
 
     def set_active_group_idx(self, i: int, notify: bool = True) -> bool:
         changed = False
+        if 0 <= i < len(self.groups):
+            dock = self.groups[i].dock_data
+            if dock is not None and not dock.focusable:
+                return False
         if i != self._active_group_idx and 0 <= i < len(self.groups):
             old_active_window = self.active_window
             g = self.active_group
@@ -324,21 +366,27 @@ class WindowList:
             for window in g:
                 yield window, window.id == aw
 
-    def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
-        return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
+    def iter_all_layoutable_groups(self, only_visible: bool = False, include_docks: bool = True) -> Iterator[WindowGroup]:
+        return iter(g for g in self.groups if (include_docks or g.dock_data is None) and (not only_visible or g.is_visible_in_layout))
+
+    def iter_main_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
+        return self.iter_all_layoutable_groups(only_visible=only_visible, include_docks=False)
+
+    def iter_dock_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
+        return iter(g for g in self.groups if g.dock_data is not None and (not only_visible or g.is_visible_in_layout))
 
     def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[tuple[int, WindowType]]:
-        for i, g in enumerate(self.groups):
-            if not only_visible or g.is_visible_in_layout:
-                aw = g.active_window_id
-                for window in g:
-                    if window.id == aw:
-                        yield i, window
-                        break
+        groups = (group for group in self.groups if (group.dock_data is None or group.dock_data.focusable) and (not only_visible or group.is_visible_in_layout))
+        for i, group in enumerate(groups):
+            active_window_id = group.active_window_id
+            for window in group:
+                if window.id == active_window_id:
+                    yield i, window
+                    break
 
     def make_previous_group_active(self, which: int = 1, notify: bool = True) -> None:
         which = max(1, which)
-        gid_map = {g.id: i for i, g in enumerate(self.groups)}
+        gid_map = {g.id: i for i, g in enumerate(self.groups) if g.dock_data is None or (g.dock_data.focusable and g.is_visible_in_layout)}
         num = len(self.active_group_history)
         for i in range(num):
             idx = num - i - 1
@@ -349,17 +397,42 @@ class WindowList:
                 if which < 1:
                     self.set_active_group_idx(x, notify=notify)
                     return
-        self.set_active_group_idx(len(self.groups) - 1, notify=notify)
+        fallback = next(reversed(gid_map.values()), -1)
+        if fallback < 0:
+            self._active_group_idx = -1
+        else:
+            self.set_active_group_idx(fallback, notify=notify)
 
     @property
     def num_groups(self) -> int:
         return len(self.groups)
 
+    @property
+    def num_main_groups(self) -> int:
+        return sum(1 for _ in self.iter_main_groups())
+
+    def is_docked(self, window: WindowOrId) -> bool:
+        group = self.group_for_window(window)
+        return bool(group and group.dock_data)
+
+    def main_group_idx_for_window(self, window: WindowOrId) -> int | None:
+        try:
+            q = self.id_map[window] if isinstance(window, int) else window
+        except KeyError:
+            return None
+        for i, group in enumerate(self.iter_main_groups()):
+            if q in group:
+                return i
+        return None
+
     def window_for_id(self, x: int) -> WindowType | None:
         return self.id_map.get(x)
 
     def group_for_window(self, x: WindowOrId) -> WindowGroup | None:
-        q = self.id_map[x] if isinstance(x, int) else x
+        try:
+            q = self.id_map[x] if isinstance(x, int) else x
+        except KeyError:
+            return None
         for g in self.groups:
             if q in g:
                 return g
@@ -372,7 +445,10 @@ class WindowList:
         return None
 
     def group_idx_for_window(self, x: WindowOrId) -> int | None:
-        q = self.id_map[x] if isinstance(x, int) else x
+        try:
+            q = self.id_map[x] if isinstance(x, int) else x
+        except KeyError:
+            return None
         for i, g in enumerate(self.groups):
             if q in g:
                 return i
@@ -399,20 +475,43 @@ class WindowList:
 
     @property
     def active_group(self) -> WindowGroup | None:
-        with suppress(Exception):
-            return self.groups[self.active_group_idx]
+        if self.active_group_idx >= 0:
+            with suppress(Exception):
+                return self.groups[self.active_group_idx]
         return None
 
     @property
     def active_window(self) -> WindowType | None:
-        with suppress(Exception):
-            return self.id_map[self.groups[self.active_group_idx].active_window_id]
+        if self.active_group_idx >= 0:
+            with suppress(Exception):
+                return self.id_map[self.groups[self.active_group_idx].active_window_id]
         return None
 
     @property
+    def active_main_group(self) -> WindowGroup | None:
+        group = self.active_group
+        if group is not None and (dock := group.dock_data) is not None:
+            if dock.scope == 'window':
+                owner = self.group_for_window(dock.owner_window_id)
+                if owner is not None and owner.dock_data is None:
+                    return owner
+            group_map = {g.id: g for g in self.iter_main_groups()}
+            for group_id in reversed(self.active_group_history):
+                if previous := group_map.get(group_id):
+                    return previous
+            return next(self.iter_main_groups(), None)
+        return group
+
+    @property
+    def active_main_window(self) -> WindowType | None:
+        group = self.active_main_group
+        return self.id_map.get(group.active_window_id) if group is not None else None
+
+    @property
     def active_group_main(self) -> WindowType | None:
-        with suppress(Exception):
-            return self.id_map[self.groups[self.active_group_idx].main_window_id]
+        if self.active_group_idx >= 0:
+            with suppress(Exception):
+                return self.id_map[self.groups[self.active_group_idx].main_window_id]
         return None
 
     def set_active_window_group_for(self, x: WindowOrId, for_keep_focus: WindowType | None = None) -> None:
@@ -498,10 +597,11 @@ class WindowList:
             self.notify_on_active_window_change(old_active_window, new_active_window)
 
     def active_window_in_nth_group(self, n: int, clamp: bool = False) -> WindowType | None:
+        groups = tuple(self.iter_main_groups())
         if clamp:
-            n = max(0, min(n, self.num_groups - 1))
-        if 0 <= n < self.num_groups:
-            return self.id_map.get(self.groups[n].active_window_id)
+            n = max(0, min(n, len(groups) - 1))
+        if 0 <= n < len(groups):
+            return self.id_map.get(groups[n].active_window_id)
         return None
 
     def active_window_in_group_id(self, group_id: int) -> WindowType | None:
@@ -511,26 +611,36 @@ class WindowList:
         return None
 
     def activate_next_window_group(self, delta: int) -> None:
-        self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))
+        indices = [i for i, group in enumerate(self.groups) if group.dock_data is None or (group.dock_data.focusable and group.is_visible_in_layout)]
+        if not indices:
+            return
+        try:
+            current = indices.index(self.active_group_idx)
+        except ValueError:
+            active_main = self.active_main_group
+            current = next((i for i, idx in enumerate(indices) if self.groups[idx] is active_main), 0)
+        self.set_active_group_idx(indices[wrap_increment(current, len(indices), delta)])
 
     def move_window_group(self, by: int | None = None, to_group: int | None = None) -> bool:
-        if self.active_group_idx < 0 or not self.groups:
+        active = self.active_group
+        if self.active_group_idx < 0 or active is None or active.dock_data:
             return False
-        target = -1
+        main_indices = [i for i, group in enumerate(self.groups) if group.dock_data is None]
+        try:
+            active_main_idx = main_indices.index(self.active_group_idx)
+        except ValueError:
+            return False
+        target_main_idx = -1
         if by is not None:
-            target = wrap_increment(self.active_group_idx, self.num_groups, by)
+            target_main_idx = wrap_increment(active_main_idx, len(main_indices), by)
         if to_group is not None:
-            for i, group in enumerate(self.groups):
-                if group.id == to_group:
-                    target = i
-                    break
-        if target > -1:
-            if target == self.active_group_idx:
-                return False
-            self.groups[self.active_group_idx], self.groups[target] = self.groups[target], self.groups[self.active_group_idx]
-            self.set_active_group_idx(target)
-            return True
-        return False
+            target_main_idx = next((i for i, group in enumerate(self.iter_main_groups()) if group.id == to_group), -1)
+        if target_main_idx < 0 or target_main_idx == active_main_idx:
+            return False
+        target = main_indices[target_main_idx]
+        self.groups[self.active_group_idx], self.groups[target] = self.groups[target], self.groups[self.active_group_idx]
+        self.set_active_group_idx(target)
+        return True
 
     def insert_window_group_next_to(self, target_group_id: int, after: bool) -> bool:
         """Move the active window group immediately before or after target_group_id.

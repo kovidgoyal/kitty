@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from unittest.mock import patch
+
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
-from kitty.layout.base import layout_dimension, lgd
-from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
+from kitty.layout.base import CellBias, calculate_cells_map, layout_dimension, lgd, normalize_biases
+from kitty.layout.constraints import FixedConstraintModel, FixedSize, LinearConstraintModel, SplitConstraintModel
+from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
-from kitty.types import WindowGeometry
+from kitty.types import DockData, WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
 
@@ -25,6 +28,7 @@ class Window:
         self.padding = EdgeWidths()
         self.margin = EdgeWidths()
         self.focused = False
+        self.dock_data = None
 
     def focus_changed(self, focused):
         self.focused = focused
@@ -689,6 +693,347 @@ class TestLayout(BaseTest):
         self.assertFalse(q.on_window_removed(all_windows))
         q.add_window(all_windows, Window(3), location='vsplit')
         self.assertAlmostEqual(q.pairs_root.bias, 0.8, places=5)
+
+    def test_linear_constraint_cell_allocation(self):
+        model = LinearConstraintModel()
+        for num_windows in range(1, 17):
+            sequence_biases = normalize_biases([float(i + 1) for i in range(num_windows)])
+            biases: list[CellBias] = [None, sequence_biases]
+            if num_windows > 1:
+                biases.extend(({}, {0: 0.2, num_windows - 1: -0.1}))
+            cell_counts = (1, num_windows * 5, num_windows * 6, num_windows * 17 + 3, 257)
+            for number_of_cells in cell_counts:
+                for bias in biases:
+                    with self.subTest(num_windows=num_windows, number_of_cells=number_of_cells, bias=bias):
+                        expected = calculate_cells_map(bias, num_windows, number_of_cells)
+                        self.ae(model(bias, num_windows, number_of_cells), expected)
+
+        model(None, 4, 100)
+        solver = model.solver
+        model(None, 4, 101)
+        self.assertIs(model.solver, solver)
+        model(None, 5, 101)
+        self.assertIsNot(model.solver, solver)
+        model({}, 4, 100)
+        solver = model.solver
+        model({}, 4, 101)
+        self.assertIs(model.solver, solver)
+
+        for num_windows in range(1, 17):
+            decorations = tuple((i % 3, (i + 1) % 4) for i in range(num_windows))
+            bias = normalize_biases([float(i + 1) for i in range(num_windows)])
+            for cell_length in (1, 7, 13):
+                for length in (0, num_windows * 2, num_windows * cell_length * 6 + sum(map(sum, decorations)), 511):
+                    for alignment in (0, 1, 2):
+                        args = (3, length, cell_length, decorations, alignment, bias)
+                        expected = tuple(layout_dimension(*args))
+                        actual = tuple(layout_dimension(*args, cell_allocator=model))
+                        self.ae(actual, expected)
+
+    def test_fixed_constraint_allocation(self):
+        model = FixedConstraintModel()
+        fixed = FixedSize
+        self.ae(model(40, ()), ([], 40))
+        self.ae(model(40, (fixed(10), fixed(20))), ([10, 20], 10))
+        self.ae(model(25, (fixed(10), fixed(20))), ([10, 15], 0))
+        self.ae(model(5, (fixed(10), fixed(20))), ([5, 0], 0))
+        self.ae(model(200, (fixed(fraction=0.25), fixed(fraction=0.5))), ([50, 100], 50))
+        self.ae(model(100, (fixed(fraction=0.75), fixed(fraction=0.75))), ([75, 25], 0))
+        self.ae(model(100, (fixed(10), fixed(fraction=0.25))), ([10, 25], 65))
+        model(40, (fixed(10), fixed(20)))
+        solver = model.solver
+        model(41, (fixed(10), fixed(20)))
+        self.assertIs(model.solver, solver)
+        model(200, (fixed(fraction=0.25),))
+        solver = model.solver
+        model(240, (fixed(fraction=0.25),))
+        self.assertIs(model.solver, solver)
+
+    def test_dock_metadata_serialization(self):
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 3)
+        owner, dock = windows.all_windows[0], windows.all_windows[2]
+        dock.dock_data = DockData('window', 'bottom', 2, owner.id, False)
+        state = layout.serialize(windows)
+
+        restored_layout = create_layout(Vertical)
+        restored = create_windows(restored_layout, 3)
+        for window in restored:
+            window.serialized_id = window.id
+        self.assertTrue(restored_layout.unserialize(state, restored))
+        self.ae(len(tuple(restored.iter_main_groups())), 2)
+        self.ae(len(tuple(restored.iter_dock_groups())), 1)
+        self.ae(restored.all_windows[2].dock_data, DockData('window', 'bottom', 2, restored.all_windows[0].id, False))
+
+        dock.dock_data = DockData('window', 'bottom', 25, owner.id, False, 'percent')
+        state = layout.serialize(windows)
+        restored_layout = create_layout(Vertical)
+        restored = create_windows(restored_layout, 3)
+        for window in restored:
+            window.serialized_id = window.id
+        self.assertTrue(restored_layout.unserialize(state, restored))
+        self.ae(restored.all_windows[2].dock_data, DockData('window', 'bottom', 25.0, restored.all_windows[0].id, False, 'percent'))
+
+    def test_dock_geometry(self):
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        tab_dock, window_dock = Window(2), Window(3)
+        tab_dock.dock_data = DockData('tab', 'top', 2)
+        window_dock.dock_data = DockData('window', 'right', 3, owner.id)
+        layout.add_window(windows, tab_dock)
+        layout.add_window(windows, window_dock)
+
+        lgd.cell_width = lgd.cell_height = 10
+        layout._full_central = Region((0, 0, 299, 199, 300, 200))
+        lgd.central = layout._calculate_tab_dock_regions(windows)
+        layout.update_visibility(windows)
+        layout.do_layout(windows)
+        layout._layout_tab_docks(windows)
+        layout._layout_window_docks(windows)
+
+        def outer(window):
+            geom = window.geometry
+            return (
+                geom.left - geom.spaces.left,
+                geom.top - geom.spaces.top,
+                geom.right + geom.spaces.right,
+                geom.bottom + geom.spaces.bottom,
+            )
+
+        self.ae(outer(tab_dock), (0, 0, 300, 26))
+        self.ae(tab_dock.geometry.ynum, 2)
+        self.ae(outer(owner), (0, 26, 264, 200))
+        self.ae(outer(window_dock), (264, 26, 300, 200))
+        self.ae(window_dock.geometry.xnum, 3)
+        owner_group = windows.group_for_window(owner)
+        dock_group = windows.group_for_window(window_dock)
+        windows.set_active_window_group_for(owner)
+        self.ae(layout.neighbors(windows)['right'][0], dock_group.id)
+        self.ae(layout.neighbors_for_window_with_docks(owner, windows)['right'][0], dock_group.id)
+        windows.set_active_window_group_for(window_dock)
+        self.ae(layout.neighbors(windows)['left'][0], owner_group.id)
+        self.ae(layout.neighbors_for_window_with_docks(window_dock, windows)['left'][0], owner_group.id)
+
+        tab_dock.dock_data = DockData('tab', 'top', 25, size_unit='percent')
+        window_dock.dock_data = DockData('window', 'right', 20, owner.id, size_unit='percent')
+        lgd.central = layout._calculate_tab_dock_regions(windows)
+        layout.update_visibility(windows)
+        layout.do_layout(windows)
+        layout._layout_tab_docks(windows)
+        layout._layout_window_docks(windows)
+        self.ae(outer(tab_dock), (0, 0, 300, 50))
+        self.ae(outer(owner), (0, 50, 240, 200))
+        self.ae(outer(window_dock), (240, 50, 300, 200))
+
+        from kitty.tabs import Tab as RealTab
+
+        class ListingTab:
+            active_window = owner
+            current_layout = layout
+
+            def __iter__(self):
+                return iter(windows)
+
+        listing_tab = ListingTab()
+        listing_tab.windows = windows
+        for window in windows:
+            window.os_window_id = 1
+            window.as_dict = lambda window=window, **kwargs: {'id': window.id, **kwargs}
+        with patch('kitty.tabs.current_focused_os_window_id', return_value=1):
+            listed = {item['id']: item for item in RealTab.list_windows(listing_tab)}
+        self.ae(listed[window_dock.id]['neighbors_map']['left'][0], owner_group.id)
+
+        tab_dock.dock_data = tab_dock.dock_data._replace(focusable=False)
+        window_dock.dock_data = window_dock.dock_data._replace(focusable=False)
+        self.ae(layout.neighbors_for_window_with_docks(window_dock, windows), {})
+
+    def test_overlay_preserves_dock_group(self):
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        dock = Window(2)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        overlay = Window(3, overlay_for=dock.id)
+        self.assertIs(layout.add_window(windows, overlay, overlay_for=dock.id), dock)
+        dock_group = windows.group_for_window(dock)
+        self.assertIs(dock_group, windows.group_for_window(overlay))
+        self.ae(overlay.dock_data, dock.dock_data)
+
+        for window in windows:
+            window.serialized_id = window.id
+        state = layout.serialize(windows)
+        restored_layout = create_layout(Vertical)
+        restored = create_windows(restored_layout, 0)
+        restored_owner, restored_dock, restored_overlay = Window(10), Window(20), Window(30, overlay_for=20)
+        for window, serialized_id in zip((restored_owner, restored_dock, restored_overlay), (1, 2, 3)):
+            window.serialized_id = serialized_id
+        restored.add_window(restored_owner)
+        restored.add_window(restored_dock)
+        restored.add_window(restored_overlay, group_of=restored_dock)
+        self.assertTrue(restored_layout.unserialize(state, restored))
+        self.ae(restored_dock.dock_data, restored_overlay.dock_data)
+        self.ae(restored_dock.dock_data.owner_window_id, restored_owner.id)
+
+        partial_layout = create_layout(Vertical)
+        partial = create_windows(partial_layout, 0)
+        partial_owner, partial_overlay = Window(100), Window(300)
+        partial_owner.serialized_id, partial_overlay.serialized_id = 1, 3
+        partial.add_window(partial_owner)
+        partial.add_window(partial_overlay)
+        self.assertTrue(partial_layout.unserialize(state, partial))
+        self.ae(partial_overlay.dock_data.owner_window_id, partial_owner.id)
+
+        windows.remove_window(dock)
+        self.assertIs(dock_group, windows.group_for_window(overlay))
+        self.ae(dock_group.dock_data, overlay.dock_data)
+        self.ae(len(tuple(windows.iter_dock_groups())), 1)
+        self.ae(len(tuple(windows.iter_main_groups())), 1)
+
+    def test_docks_stay_out_of_splits_topology(self):
+        layout = create_layout(Splits)
+        windows = create_windows(layout, 0)
+        for i in range(3):
+            layout.add_window(windows, Window(i + 1))
+        owner = windows.active_window
+        dock = Window(4)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        original_tree = layout.pairs_root.serialize()
+        layout.insert_window_next_to(windows, dock, owner, True, True)
+        self.ae(layout.pairs_root.serialize(), original_tree)
+        self.assertFalse(layout.layout_action('move_to_screen_edge', ['left'], windows))
+        self.ae(layout.pairs_root.serialize(), original_tree)
+
+        layout.add_window(windows, Window(5))
+        self.ae(set(layout.pairs_root.all_window_ids()), {group.id for group in windows.iter_main_groups()})
+
+    def test_window_dock_owner_lifetime(self):
+        from kitty.boss import Boss as RealBoss
+        from kitty.tabs import Tab as RealTab
+
+        class Boss:
+            marked = []
+
+            def mark_window_for_close(self, window):
+                self.marked.append(window)
+
+        layout = create_layout(Vertical)
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        dock = Window(2)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        windows.set_active_window_group_for(owner)
+        fake_tab = type('FakeTab', (), {'windows': windows})()
+        self.assertIs(RealBoss._sole_window_of_tab(None, fake_tab), owner)
+        tab = object.__new__(RealTab)
+        tab.windows, tab.os_window_id, tab.id = windows, 1, 1
+        boss = Boss()
+        with patch('kitty.tabs.remove_window'), patch('kitty.tabs.get_boss', return_value=boss):
+            RealTab.remove_window(tab, owner, do_post_removal_update=False)
+        self.assertIsNone(windows.active_window)
+        self.assertFalse(dock.is_visible_in_layout)
+        self.ae(boss.marked, [dock])
+
+        windows = create_windows(layout, 1)
+        owner = windows.active_window
+        overlay = Window(2, overlay_for=owner.id)
+        windows.add_window(overlay, group_of=owner)
+        dock = Window(3)
+        dock.dock_data = DockData('window', 'bottom', owner_window_id=owner.id)
+        layout.add_window(windows, dock)
+        tab.windows = windows
+        boss.marked = []
+        with patch('kitty.tabs.remove_window'), patch('kitty.tabs.get_boss', return_value=boss):
+            RealTab.remove_window(tab, owner, do_post_removal_update=False)
+        self.ae(dock.dock_data.owner_window_id, overlay.id)
+        self.ae(boss.marked, [])
+        self.ae(RealTab.detach_window(tab, dock), ())
+        self.assertIn(dock, windows)
+
+    def test_docks_gracefully_consume_undersized_viewport(self):
+        for layout_class in (Stack, Vertical, Horizontal, Tall, Grid, Splits):
+            with self.subTest(layout=layout_class.name):
+                layout = create_layout(layout_class)
+                windows = create_windows(layout, 2)
+                dock = Window(3)
+                dock.dock_data = DockData('tab', 'top', 20)
+                layout.add_window(windows, dock)
+                lgd.cell_width = lgd.cell_height = 10
+                layout._full_central = Region((0, 0, 19, 19, 20, 20))
+                lgd.central = layout._calculate_tab_dock_regions(windows)
+                layout.update_visibility(windows)
+                layout.do_layout(windows)
+                layout._layout_tab_docks(windows)
+                for window in windows:
+                    self.assertGreaterEqual(window.geometry.xnum, 0)
+                    self.assertGreaterEqual(window.geometry.ynum, 0)
+
+    def test_dock_visibility_and_focus(self):
+        empty_layout = create_layout(Stack)
+        empty_windows = create_windows(empty_layout, 0)
+        status_only = Window(1)
+        status_only.dock_data = DockData('tab', 'top', focusable=False)
+        empty_layout.add_window(empty_windows, status_only)
+        self.assertIsNone(empty_windows.active_window)
+
+        layout = create_layout(Stack)
+        windows = create_windows(layout, 2)
+        first, second = windows.all_windows
+        first_dock, second_dock, status = Window(3), Window(4), Window(5)
+        first_dock.dock_data = DockData('window', 'bottom', 1, first.id)
+        second_dock.dock_data = DockData('window', 'bottom', 1, second.id)
+        status.dock_data = DockData('tab', 'top', 1, focusable=False)
+        for dock in (first_dock, second_dock, status):
+            layout.add_window(windows, dock)
+
+        windows.set_active_window_group_for(first)
+        layout.update_visibility(windows)
+        self.assertTrue(first.is_visible_in_layout)
+        self.assertTrue(first_dock.is_visible_in_layout)
+        self.assertFalse(second.is_visible_in_layout)
+        self.assertFalse(second_dock.is_visible_in_layout)
+        self.assertTrue(status.is_visible_in_layout)
+
+        status_idx = windows.group_idx_for_window(status)
+        self.assertIsNotNone(status_idx)
+        self.assertFalse(windows.set_active_group_idx(status_idx))
+        self.assertIs(windows.active_window, first)
+        windows.activate_next_window_group(1)
+        self.assertIs(windows.active_window, second)
+        layout.update_visibility(windows)
+        windows.activate_next_window_group(1)
+        self.assertIs(windows.active_window, second_dock)
+        self.assertIs(windows.active_main_window, second)
+        self.ae([window.id for _, window in windows.iter_windows_with_number()], [second.id, second_dock.id])
+        self.ae(
+            [window.id for _, window in windows.iter_windows_with_number(only_visible=False)],
+            [first.id, second.id, first_dock.id, second_dock.id],
+        )
+
+    def test_split_constraint_allocation(self):
+        model = SplitConstraintModel()
+        self.ae(model(100, 0.5, 1, 10, 10), (49, 49))
+        self.ae(model(100, 0.01, 1, 10, 10), (10, 88))
+        self.ae(model(100, 0.99, 1, 10, 10), (88, 10))
+        for length in range(20, 200):
+            for bias in (0.1, 0.25, 0.5, 0.75, 0.9):
+                for border in (0, 1, 2):
+                    first = max(7, int(bias * length) - border)
+                    second = length - first - 2 * border
+                    if second >= 11:
+                        self.ae(model(length, bias, border, 7, 11), (first, second))
+        for length in range(20):
+            first, second = model(length, 0.5, 1, 10, 10)
+            self.assertGreaterEqual(first, 0)
+            self.assertGreaterEqual(second, 0)
+            self.ae(first + second, max(0, length - 2))
+        model(100, 0.5, 1, 10, 10)
+        solver = model.solver
+        model(101, 0.5, 1, 10, 10)
+        self.assertIs(model.solver, solver)
 
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the

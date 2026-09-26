@@ -91,7 +91,7 @@ class Borders:
             rects.append(Border(*br, BorderColor.default_bg))
         rects.extend(tab_bar_rects)
         bw = 0
-        groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
+        groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True, include_docks=True))
         if groups:
             bw = groups[0].effective_border()
         draw_borders = bw > 0 and draw_window_borders

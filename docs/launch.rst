@@ -50,6 +50,28 @@ There are many more powerful options, refer to the complete list below.
     windows working directory.
 
 
+Launching docked windows
+--------------------------
+
+Set :option:`launch --type` to ``window-dock`` or ``tab-dock`` to create an
+edge-docked kitty window attached to a normal kitty window or the current tab.
+Choose the edge with :option:`launch --dock-edge`. For example, to open a
+ten-line shell below the active kitty window::
+
+    map f2 launch --type=window-dock --dock-edge=bottom --dock-size=10 --cwd=current
+
+To instead reserve space along an edge of the entire tab, use a ``tab-dock``::
+
+    map f3 launch --type=tab-dock --dock-edge=right --dock-size=30 --cwd=current
+
+The :option:`launch --dock-size` can be a number of rows or columns, or a
+percentage such as ``25%``. Use :option:`launch --dock-skip-focus` for
+display-only docks such as status bars. Dock options are also accepted by
+:code:`kitten @ launch` and in session
+files. See :ref:`docked_windows` for details about scope, focus, lifetime and
+interaction with layouts.
+
+
 The piping environment
 --------------------------
 

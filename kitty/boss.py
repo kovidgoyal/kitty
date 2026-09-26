@@ -2156,8 +2156,10 @@ class Boss:
             q.set_drag_over_me(q is tm)
 
     def _sole_window_of_tab(self, tab: Tab) -> Window | None:
-        "The only window in tab, if tab has a single window group (overlays of that group are allowed)"
-        return tab.active_window if tab.windows.num_groups == 1 else None
+        "The only main window in a tab that has no tab-scoped docks"
+        if tab.windows.num_main_groups != 1 or any(group.dock_data and group.dock_data.scope == 'tab' for group in tab.windows.iter_dock_groups()):
+            return None
+        return tab.windows.active_main_window
 
     def _tab_merge_target(self, tab: Tab, tm: TabManager, x: int, y: int) -> Window | None:
         """The window of tab that is to be inserted into the layout of tm.active_tab, if tab is
@@ -3842,7 +3844,7 @@ class Boss:
         min_w = opts.window_title_bar_min_windows
         currently_forced = any(t.force_show_title_bars for t in tm)
         for t in tm:
-            visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True))
+            visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True, include_docks=True))
             naturally_visible = min_w > 0 and visible >= min_w
             if not naturally_visible:
                 t.force_show_title_bars = not currently_forced
