@@ -182,6 +182,7 @@ func ParseSSHArgs(args []string, extra_args ...string) (ssh_args []string, serve
 		if expecting_option_val {
 			if expecting_extra_val != "" {
 				found_extra_args = append(found_extra_args, expecting_extra_val, argument)
+				expecting_extra_val = ""
 			} else {
 				ssh_args = append(ssh_args, argument)
 			}
