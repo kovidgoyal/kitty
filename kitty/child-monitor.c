@@ -535,9 +535,7 @@ do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     self->parse_func(screen, &pd, flush);
     if (pd.input_read) {
         if (pd.write_space_created) wakeup_io_loop(self, false);
-        if (screen->paused_rendering.expires_at) {
-            set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
-        } else set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
+        if (screen->paused_rendering.expires_at) set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
     } else if (pd.has_pending_input) set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
     return pd.input_read;
 }
@@ -1813,7 +1811,7 @@ io_loop(void *data) {
     // The I/O thread loop
     size_t i;
     int ret;
-    bool has_more, data_received, has_pending_wakeups = false;
+    bool has_more, data_received, pending_input_is_interactive, has_pending_wakeups = false;
     monotonic_t last_main_loop_wakeup_at = -1, now = -1;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor *)data;
@@ -1825,6 +1823,7 @@ io_loop(void *data) {
         add_children(self);
         children_mutex(unlock);
         data_received = false;
+        pending_input_is_interactive = false;
         for (i = 0; i < self->count + EXTRA_FDS; i++) children_fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
@@ -1861,6 +1860,7 @@ io_loop(void *data) {
                 if (children_fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
                     data_received = true;
                     has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen);
+                    if (vt_parser_pending_input_is_interactive(children[i].screen->vt_parser)) pending_input_is_interactive = true;
                     if (!has_more) {
                         // child is dead
                         children_mutex(lock);
@@ -1903,9 +1903,9 @@ io_loop(void *data) {
         has_pending_wakeups = false;                                                         \
     }
         // we only wakeup the main loop after input_delay as wakeup is an expensive operation
-        // on some platforms, such as cocoa
+        // on some platforms, such as cocoa. interactive pending input wakes immediately.
         if (data_received) {
-            if ((now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay)) WAKEUP
+            if ((now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay) || pending_input_is_interactive) WAKEUP
             else has_pending_wakeups = true;
         } else {
             if (has_pending_wakeups && (now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay)) WAKEUP
