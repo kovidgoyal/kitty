@@ -90,6 +90,25 @@ class TestConfParsing(BaseTest):
                 {'work': seen_path, 'other': os.path.join(config_dir, 'other.kitty-session')},
             )
 
+    def test_launch_transparent_color_overrides(self) -> None:
+        from kitty.launch import apply_colors
+        from kitty.window import Window
+
+        cases = (
+            (('transparent_background_colors=#ffffff@0.5', 'foreground=red'), ((Color(255, 255, 255), 0.5),)),
+            (('foreground=red', 'transparent_background_colors=#ffffff@0.5'), ((Color(255, 255, 255), 0.5),)),
+            (('transparent_background_colors=#ffffff@0.5', 'foreground=red', 'transparent_background_colors='), ()),
+            (('transparent_background_colors=#ffffff@0.5', 'transparent_background_colors=#000000@0.25', 'foreground=red'), ((Color(0, 0, 0), 0.25),)),
+        )
+        for colors, expected in cases:
+            with self.subTest(colors=colors):
+                window = Window.__new__(Window)
+                window.screen = self.create_screen()
+                apply_colors(window, colors)
+                actual = window.screen.color_profile.as_dict()
+                self.ae(actual.get('transparent_background_colors', ()), expected)
+                self.ae(actual['foreground'], 0xFF0000)
+
 
 def cli_parsing(self):
     from kitty.cli import CLIOptions, Options, parse_cmdline, parse_option_spec
