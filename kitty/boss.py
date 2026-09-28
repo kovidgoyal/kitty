@@ -1553,6 +1553,10 @@ class Boss:
             tm.handle_tab_bar_mouse(x, y, button, modifiers, action)
 
     def start_tab_drag(self, os_window_id: int, window_id: int, pixels: bytes, width: int, height: int) -> None:
+        # A previous drag whose drop never reached _reset_drop_previews (failed transfer, dragged
+        # tab closed, etc.) can leave stale pre-hover focus behind, discard it.
+        for q in self.all_tab_managers:
+            q.finish_tab_drag_hover(restore_focus=False)
         if tm := self.os_window_map.get(os_window_id):
             tm.start_tab_drag(pixels, width, height)
 

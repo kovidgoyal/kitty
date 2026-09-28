@@ -144,6 +144,18 @@ class TestTabDropClassification(BossDropTest):
         self.tm.on_tab_drop.assert_called_once_with(600, 10)
         self.tm.finish_tab_drag_hover.assert_called_with(restore_focus=True)
 
+    def test_new_tab_drag_discards_stale_hover_focus(self):
+        # A failed drop never reaches _reset_drop_previews, so the saved focus must not survive
+        # into the next drag
+        self.boss.show_error = Mock()
+        Boss.on_drop(self.boss, 1, 5, True, 600, 10)
+        self.boss.show_error.assert_called_once()
+        self.tm.finish_tab_drag_hover.assert_not_called()
+        self.tm.start_tab_drag = Mock()
+        Boss.start_tab_drag(self.boss, 1, 0, b'', 0, 0)
+        self.tm.finish_tab_drag_hover.assert_called_once_with(restore_focus=False)
+        self.tm.start_tab_drag.assert_called_once_with(b'', 0, 0)
+
     def test_cross_window_tab_bar_drop_keeps_destination_focus(self):
         self.source.os_window_id = 9
         self.ae(self.drop(600, 10), 'tab_drop')
