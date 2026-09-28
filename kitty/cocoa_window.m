@@ -1404,15 +1404,21 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
     float percent = -100;
     if (!PyArg_ParseTuple(args, "|f", &percent)) return NULL;
     NSDockTile *dockTile = [NSApp dockTile];
+    const bool remove_pbar = percent < 0;
     if (!dock_content_view) {
+        if (remove_pbar) Py_RETURN_NONE; // nothing to remove, leave the dock tile alone
         dock_content_view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, dockTile.size.width, dockTile.size.height)];
+        dock_content_view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         dock_image_view = [NSImageView.alloc initWithFrame:dock_content_view.frame];
         dock_image_view.imageScaling = NSImageScaleProportionallyDown;
-        dock_image_view.image = NSApp.applicationIconImage;
+        dock_image_view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         [dock_content_view addSubview:dock_image_view];
         dock_pbar = [[RoundedRectangleView alloc] initWithFrame:NSMakeRect(0, 0, dockTile.size.width, dockTile.size.height / 4)];
+        dock_pbar.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
         [dock_content_view addSubview:dock_pbar];
     }
+    NSImage *icon_image = custom_dock_icon ? custom_dock_icon : NSApp.applicationIconImage;
+    if (dock_image_view.image != icon_image) dock_image_view.image = icon_image;
     [dock_content_view setFrameSize:dockTile.size];
     [dock_image_view setFrameSize:dockTile.size];
     if (percent >= 0 && percent <= 100) {
@@ -1423,13 +1429,19 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
             [dock_pbar setIndeterminate:YES];
             tick_dock_pbar();
         }
-    }
+    } else [dock_pbar setIndeterminate:NO]; // stops the animation timer, if running
     [dock_pbar setFrameSize:NSMakeSize(dockTile.size.width - 20, 20)];
     [dock_pbar setFrameOrigin:NSMakePoint(10, -2)];
-    [dockTile setContentView:percent < 0 ? nil : dock_content_view];
-    // On some macOS versions removing the content view causes the Dock to
-    // revert to the bundle icon, so re-apply the custom icon, if any
-    if (percent < 0 && custom_dock_icon != nil) NSApp.applicationIconImage = custom_dock_icon;
+    dock_pbar.hidden = remove_pbar;
+    // Re-apply the custom icon in case macOS has reverted it, so that the
+    // icon used outside the Dock (cmd+tab, notifications, etc.) is correct
+    if (custom_dock_icon != nil && NSApp.applicationIconImage != custom_dock_icon) NSApp.applicationIconImage = custom_dock_icon;
+    // On some macOS versions setting the content view to nil causes the Dock
+    // to redraw the tile with the bundle icon before the custom icon is
+    // restored, causing a flicker. So when there is a custom icon, keep the
+    // content view, which draws the custom icon itself, just without the
+    // progress bar.
+    [dockTile setContentView:(remove_pbar && custom_dock_icon == nil) ? nil : dock_content_view];
     [dockTile display];
     Py_RETURN_NONE;
 }
