@@ -202,6 +202,9 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new option :opt:`detect_url_regex` to detect arbitrary text, such as file
+  references in compiler output, as clickable URLs under the mouse (:iss:`10407`)
+
 - Reduce input latency by processing small amounts of program output, such as
   the echo of typed characters, immediately instead of waiting for
   :opt:`input_delay` (:pull:`10560`)
@@ -214,9 +217,6 @@ Detailed list of changes
 - Preserve transparent background colors when applying unrelated launch color overrides
 
 - ssh kitten: Preserve SSH option values following a spaced :code:`--kitten` option
-
-- A new option :opt:`detect_url_regex` to detect arbitrary text, such as file
-  references in compiler output, as clickable URLs under the mouse (:iss:`10407`)
 
 - Fix a memory leak when loading a corrupt PNG image that has an embedded ICC
   color profile
