@@ -1134,8 +1134,9 @@ schedule_timer(Timer *t) {
                                                   repeats:(t->repeats ? YES : NO)block:^(NSTimer *os_timer) {
                                                     for (size_t i = 0; i < num_timers; i++) {
                                                         if (timers[i].os_timer == os_timer) {
-                                                            timers[i].callback(timers[i].id, timers[i].callback_data);
-                                                            if (!timers[i].repeats) remove_timer_at(i);
+                                                            const Timer timer = timers[i];
+                                                            timer.callback(timer.id, timer.callback_data);
+                                                            if (!timer.repeats) _glfwPlatformRemoveTimer(timer.id);
                                                             break;
                                                         }
                                                     }
