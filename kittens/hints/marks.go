@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dlclark/regexp2"
+	"github.com/dlclark/regexp2/syntax"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 
 	"github.com/kovidgoyal/kitty"
@@ -490,13 +491,44 @@ func find_all_matches(re *regexp2.Regexp, text string) (ans []Match, err error) 
 	return
 }
 
-func find_all_matches_stdlib(re *regexp.Regexp, text string) (ans []Match) {
+// Go's regexp only considers ASCII characters when matching \b whereas regexp2
+// uses Unicode word characters. So replace every non-ASCII rune with a single
+// ASCII byte that is a word character iff the rune is one, and return the byte
+// offsets of the runes in text, to map match offsets back.
+func ascii_word_proxy(text string) (proxy string, byte_offsets []int) {
+	if !slices.ContainsFunc(utils.UnsafeStringToBytes(text), func(b byte) bool { return b >= utf8.RuneSelf }) {
+		return text, nil
+	}
+	buf := make([]byte, 0, len(text))
+	byte_offsets = make([]int, 0, len(text)+1)
+	for i, r := range text {
+		byte_offsets = append(byte_offsets, i)
+		switch {
+		case r < utf8.RuneSelf:
+			buf = append(buf, byte(r))
+		case syntax.IsWordChar(r):
+			buf = append(buf, '_')
+		default:
+			buf = append(buf, 0x7f)
+		}
+	}
+	return string(buf), append(byte_offsets, len(text))
+}
+
+func find_all_matches_stdlib(re *regexp.Regexp, text string, unicode_word_boundaries bool) (ans []Match) {
+	haystack, byte_offsets := text, []int(nil)
+	if unicode_word_boundaries {
+		haystack, byte_offsets = ascii_word_proxy(text)
+	}
 	names := re.SubexpNames()
-	for _, loc := range re.FindAllStringSubmatchIndex(text, -1) {
+	for _, loc := range re.FindAllStringSubmatchIndex(haystack, -1) {
 		match := Match{Groups: make([]Group, len(names))}
 		for i, name := range names {
 			match.Groups[i] = Group{Name: name, IsNamed: name != ""}
 			if s, e := loc[2*i], loc[2*i+1]; s > -1 {
+				if byte_offsets != nil {
+					s, e = byte_offsets[s], byte_offsets[e]
+				}
 				c := Capture{Text: text[s:e]}
 				c.Byte_Offsets.Start, c.Byte_Offsets.End = s, e
 				match.Groups[i].Captures = []Capture{c}
@@ -677,7 +709,8 @@ func find_marks(text string, opts *Options, cli_args ...string) (sanitized_text 
 			if err != nil {
 				return fmt.Errorf("Failed to compile the regex pattern: %#v with error: %w", pattern, err)
 			}
-			matches = find_all_matches_stdlib(r, sanitized_text)
+			// the proxy text is only valid for patterns that dont reference specific non-ASCII characters
+			matches = find_all_matches_stdlib(r, sanitized_text, opts.Type == "path" || opts.Type == "linenum")
 		} else {
 			r, err := regexp2.Compile(pattern, regexp2.RE2)
 			if err != nil {
