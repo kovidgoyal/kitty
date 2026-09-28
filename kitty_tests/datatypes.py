@@ -1001,12 +1001,21 @@ class TestDataTypes(BaseTest):
             r"$'\U0001F1E8'": ((0, '\U0001f1e8'),),
             r"$'\U1F1E8'": ((0, '\U0001f1e8'),),
             r"$'a\U1F1E8'b": ((0, 'a\U0001f1e8b'),),
+            "$'a''b'": ((0, 'ab'),),
+            "x$''''''''AAAA": ((0, 'xAAAA'),),
+            "$''''''''AAAA": ((0, 'AAAA'),),
+            """$""'x'""": ((0, '$x'),),
+            r"\$'x'": ((0, '$x'),),
+            r"$\''x'": ((0, "$'x"),),
         }.items():
             actual = tuple(shlex_split_with_positions(q, True))
             self.ae(expected, actual, f'Failed for text: {q!r}')
             actual = tuple(shlex_split(q, True))
             ex = tuple(x[1] for x in expected)
             self.ae(ex, actual, f'Failed for text: {q!r}')
+        for bad in ("$'''", "a$'''b"):
+            with self.assertRaises(ValueError, msg=f'Failed to raise exception for {bad!r}'):
+                tuple(shlex_split(bad, True))
 
     def test_split_into_graphemes(self):
         self.assertEqual(char_props_for('\ue000')['category'], 'Co')

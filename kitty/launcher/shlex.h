@@ -249,17 +249,27 @@ next_word(ShlexState *self) {
             case WORD:
                 switch (ch) {
                     case WHITESPACE:
+                        prev_word_ch = 0;
                         set_state(self, NORMAL);
                         if (self->buf_pos || self->allow_empty) return get_word(self);
                         break;
-                    case STRING_WITH_ESCAPES_DELIM: set_state(self, STRING_WITH_ESCAPES); break;
+                    case STRING_WITH_ESCAPES_DELIM:
+                        prev_word_ch = 0;
+                        set_state(self, STRING_WITH_ESCAPES);
+                        break;
                     case STRING_WITHOUT_ESCAPES_DELIM:
-                        if (self->support_ansi_c_quoting && prev_word_ch == '$') {
+                        // prev_word_ch is only '$' if the immediately preceding
+                        // character written to buf was an unquoted, unescaped '$'
+                        if (self->support_ansi_c_quoting && prev_word_ch == '$' && self->buf_pos > 0) {
                             self->buf_pos--;
                             set_state(self, ANSI_C_QUOTED);
                         } else set_state(self, STRING_WITHOUT_ESCAPES);
+                        prev_word_ch = 0;
                         break;
-                    case ESCAPE_CHAR: write_escaped_or_fail(); break;
+                    case ESCAPE_CHAR:
+                        prev_word_ch = 0;
+                        write_escaped_or_fail();
+                        break;
                     default:
                         write_ch(self, ch);
                         prev_word_ch = ch;
