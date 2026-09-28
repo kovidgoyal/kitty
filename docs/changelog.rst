@@ -241,6 +241,9 @@ Detailed list of changes
 
 - diff kitten: Fix search not finding matches at the end of a line
 
+- hints kitten: Fix delays of many seconds when selecting paths or line
+  numbers on a screen with long lines that contain no spaces
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
