@@ -34,8 +34,7 @@ void reset_vt_parser(Parser *);
 
 // The following are thread safe, using an internal lock
 uint8_t *vt_parser_create_write_buffer(Parser *, size_t *);
-void vt_parser_commit_write(Parser *, size_t);
+bool vt_parser_commit_write(Parser *, size_t);
 bool vt_parser_has_space_for_input(const Parser *);
-bool vt_parser_pending_input_is_interactive(const Parser *);
 void parse_worker(void *p, ParseData *data, bool flush);
 void parse_worker_dump(void *p, ParseData *data, bool flush);

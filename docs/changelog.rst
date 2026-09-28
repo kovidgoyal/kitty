@@ -202,6 +202,10 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Reduce input latency by processing small amounts of program output, such as
+  the echo of typed characters, immediately instead of waiting for
+  :opt:`input_delay` (:pull:`10560`)
+
 - Drag and drop: Restore the previously active tab after dropping a dragged tab
   on the same OS window's tab bar, even if it was reordered after a hover switch
 

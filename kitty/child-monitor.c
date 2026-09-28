@@ -1671,7 +1671,7 @@ remove_children(ChildMonitor *self) {
 
 
 static bool
-read_bytes(int fd, Screen *screen) {
+read_bytes(int fd, Screen *screen, bool *pending_input_is_small) {
     ssize_t len;
     size_t available_buffer_space;
 
@@ -1683,12 +1683,12 @@ read_bytes(int fd, Screen *screen) {
         if (len < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
             if (errno != EIO) perror("Call to read() from child fd failed");
-            vt_parser_commit_write(screen->vt_parser, 0);
+            *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, 0);
             return false;
         }
         break;
     }
-    vt_parser_commit_write(screen->vt_parser, len);
+    *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, len);
     return len != 0;
 }
 
@@ -1811,7 +1811,7 @@ io_loop(void *data) {
     // The I/O thread loop
     size_t i;
     int ret;
-    bool has_more, data_received, pending_input_is_interactive, has_pending_wakeups = false;
+    bool has_more, data_received, pending_input_is_small, has_pending_wakeups = false, last_wakeup_was_early = false;
     monotonic_t last_main_loop_wakeup_at = -1, now = -1;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor *)data;
@@ -1823,7 +1823,7 @@ io_loop(void *data) {
         add_children(self);
         children_mutex(unlock);
         data_received = false;
-        pending_input_is_interactive = false;
+        pending_input_is_small = false;
         for (i = 0; i < self->count + EXTRA_FDS; i++) children_fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
@@ -1859,8 +1859,9 @@ io_loop(void *data) {
             for (i = 0; i < self->count; i++) {
                 if (children_fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
                     data_received = true;
-                    has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen);
-                    if (vt_parser_pending_input_is_interactive(children[i].screen->vt_parser)) pending_input_is_interactive = true;
+                    bool is_small = false;
+                    has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen, &is_small);
+                    if (is_small) pending_input_is_small = true;
                     if (!has_more) {
                         // child is dead
                         children_mutex(lock);
@@ -1901,12 +1902,18 @@ io_loop(void *data) {
         } else wakeup_main_loop();                                                           \
         last_main_loop_wakeup_at = now;                                                      \
         has_pending_wakeups = false;                                                         \
+        last_wakeup_was_early = false;                                                       \
     }
         // we only wakeup the main loop after input_delay as wakeup is an expensive operation
-        // on some platforms, such as cocoa. interactive pending input wakes immediately.
+        // on some platforms, such as cocoa. Small pending input, typically the echo of typed
+        // characters, wakes immediately, but at most once per input_delay so that continuous
+        // streams of small writes are still coalesced.
         if (data_received) {
-            if ((now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay) || pending_input_is_interactive) WAKEUP
-            else has_pending_wakeups = true;
+            if ((now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay)) WAKEUP
+            else if (pending_input_is_small && !last_wakeup_was_early) {
+                WAKEUP;
+                last_wakeup_was_early = true;
+            } else has_pending_wakeups = true;
         } else {
             if (has_pending_wakeups && (now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay)) WAKEUP
         }

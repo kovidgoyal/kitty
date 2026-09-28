@@ -1481,8 +1481,10 @@ Delay before input from the program running in the terminal is processed (in
 milliseconds). Note that decreasing it will increase responsiveness, but also
 increase CPU usage and might cause flicker in full screen programs that redraw
 the entire screen on each loop, because kitty is so fast that partial screen
-updates will be drawn. This setting is ignored for interactive pending input
-and when the input buffer is almost full.
+updates will be drawn. This setting is ignored when the input buffer is almost
+full. It is also ignored when less than 1 KB of input is pending, such as when
+the program echoes typed characters, but at most once per delay period, so
+continuous streams of small writes are still coalesced.
 """,
 )
 
