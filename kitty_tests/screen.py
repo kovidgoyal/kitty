@@ -1470,6 +1470,14 @@ class TestScreen(BaseTest):
         self.ae('2', s.hyperlink_at(1, 3))
         self.ae(s.current_url_text(), 'Z Z')
 
+    def test_automatic_hyperlink_collection(self) -> None:
+        s = self.create_screen()
+        for i in range(1, 2 * 8192 + 3):
+            url = f'https://example.test/{i}'
+            parse_bytes(s, f'\r\x1b]8;;{url}\x1b\\L\x1b]8;;\x1b\\'.encode())
+            self.ae(s.hyperlink_at(0, 0), url)
+        self.assertLess(len(s.hyperlinks_as_set()), 8192)
+
     def test_text_cache_garbage_collection(self):
         # unique multi-codepoint cell texts, single width base + combining mark
         def unique_text(i):
