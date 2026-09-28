@@ -202,6 +202,8 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- macOS: Keep neighboring timers active when a timer removes itself in its callback
+
 - Reduce input latency by processing small amounts of program output, such as
   the echo of typed characters, immediately instead of waiting for
   :opt:`input_delay` (:pull:`10560`)
