@@ -202,6 +202,9 @@ Detailed list of changes
 0.49.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Drag and drop: Restore the previously active tab after dropping a dragged tab
+  on the same OS window's tab bar, even if it was reordered after a hover switch
+
 - Sessions: Expand launch option variables when an option value matches the command name
 
 - Preserve transparent background colors when applying unrelated launch color overrides
