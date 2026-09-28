@@ -54,7 +54,6 @@ CFArrayRef CGSCopySpacesForWindows(CGSConnectionID Connection, CGSSpaceSelector 
 
 static NSMenuItem *title_menu = NULL;
 static NSMenuItem *secure_input_title_menu = NULL;
-static bool application_has_finished_launching = false;
 
 
 static NSString *
@@ -920,9 +919,8 @@ cocoa_create_global_menu(void) {
 
 void
 cocoa_application_lifecycle_event(bool application_launch_finished) {
-    if (application_launch_finished) { // applicationDidFinishLaunching
-        application_has_finished_launching = true;
-    } else cocoa_create_global_menu(); // applicationWillFinishLaunching
+    if (!application_launch_finished)
+        cocoa_create_global_menu(); // applicationWillFinishLaunching
 }
 
 void
