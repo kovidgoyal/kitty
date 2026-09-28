@@ -138,6 +138,73 @@ class TestBuild(BaseTest):
             self.assertEqual(cp.returncode, 0, cp.stdout)
             self.assertIn('dictation forwarding probe passed', cp.stdout)
 
+    def test_macos_timer_self_removal(self) -> None:
+        from kitty.constants import glfw_path, is_macos
+
+        if not is_macos or not shutil.which('clang'):
+            self.skipTest('Cocoa timer test requires macOS and clang')
+        probe = textwrap.dedent("""\
+            #import <Foundation/Foundation.h>
+            #include <dlfcn.h>
+            #include <stdbool.h>
+            #include <stdint.h>
+            #include <stdio.h>
+            #include <stdlib.h>
+
+            typedef void (*Callback)(unsigned long long, void *);
+            static unsigned long long (*add_timer)(int64_t, bool, Callback, void *, Callback);
+            static void (*remove_timer)(unsigned long long);
+            static int first_calls, second_calls;
+
+            static void first(unsigned long long id, void *data) {
+                (void)data;
+                first_calls++;
+                remove_timer(id);
+            }
+
+            static void second(unsigned long long id, void *data) {
+                (void)id; (void)data;
+                second_calls++;
+            }
+
+            int main(void) {
+                @autoreleasepool {
+                    void *handle = dlopen(@@COCOA_MODULE@@, RTLD_NOW | RTLD_GLOBAL);
+                    if (!handle) { fprintf(stderr, "%s\\n", dlerror()); return 1; }
+                    add_timer = dlsym(handle, "glfwAddTimer");
+                    remove_timer = dlsym(handle, "glfwRemoveTimer");
+                    if (!add_timer || !remove_timer) return 2;
+                    for (int repeats = 0; repeats <= 1; repeats++) {
+                        first_calls = second_calls = 0;
+                        if (!add_timer(10000000, repeats, first, NULL, NULL)) return 3;
+                        unsigned long long sibling = add_timer(30000000, false, second, NULL, NULL);
+                        if (!sibling) return 4;
+                        NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:2];
+                        while (!second_calls && [deadline timeIntervalSinceNow] > 0) {
+                            [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
+                        }
+                        remove_timer(sibling);
+                        if (first_calls != 1 || second_calls != 1) {
+                            fprintf(stderr, "repeats=%d: first=%d second=%d\\n", repeats, first_calls, second_calls);
+                            return 5;
+                        }
+                    }
+                }
+                return 0;
+            }
+        """).replace('@@COCOA_MODULE@@', json.dumps(glfw_path('cocoa')))
+        with tempfile.TemporaryDirectory() as tdir:
+            source = os.path.join(tdir, 'timers.m')
+            exe = os.path.join(tdir, 'timers')
+            with open(source, 'w') as f:
+                f.write(probe)
+            nm = subprocess.run(['nm', '-g', glfw_path('cocoa')], capture_output=True, text=True, check=True)
+            sanitize = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if '__asan_init' in nm.stdout else []
+            result = subprocess.run(['clang', '-framework', 'Foundation', *sanitize, source, '-o', exe], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            result = subprocess.run([exe], capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_glfw_modules(self) -> None:
         from kitty.constants import glfw_path, is_macos
 
