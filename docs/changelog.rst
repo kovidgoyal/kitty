@@ -239,6 +239,8 @@ Detailed list of changes
 - macOS: Fix a custom dock icon reverting to the stock icon after a progress
   bar is cleared (:iss:`10545`)
 
+- diff kitten: Fix search not finding matches at the end of a line
+
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
