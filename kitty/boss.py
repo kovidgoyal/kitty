@@ -2142,12 +2142,13 @@ class Boss:
         if tm is not None:
             tm.update_tab_bar_data()
 
-    def _reset_drop_previews(self) -> None:
-        "Clear all drag and drop UI state, once a drag has ended"
+    def _reset_drop_previews(self, restore_tab_drag_focus_for: TabManager | None = None) -> None:
+        "Clear drag UI state and restore pre-hover focus after a same-window tab reorder"
         self._update_drag_over(None)
         for q in self.all_tab_managers:
             q.on_window_drop_move()
             q.on_tab_drop_move()
+            q.finish_tab_drag_hover(restore_focus=q is restore_tab_drag_focus_for)
             q.layout_tab_bar()  # ensure tab bar is fully updated
 
     def _update_drag_over(self, tm: TabManager | None) -> None:
@@ -2222,14 +2223,17 @@ class Boss:
         if (tidb := drop.get(f'application/net.kovidgoyal.kitty-tab-{os.getpid()}')) and (tab := self.tab_for_id(int(tidb))):
             tab_bar = viewport_for_window(os_window_id)[1]
             in_tab_bar = tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom
+            restore_tab_drag_focus_for = None
             if (merge_window := self._tab_merge_target(tab, tm, x, y)) is not None:
                 tm.on_window_drop(x, y, merge_window.id)
             elif in_tab_bar or tab.os_window_id != tm.os_window_id:
+                if in_tab_bar and tab.os_window_id == tm.os_window_id:
+                    restore_tab_drag_focus_for = tm
                 tm.on_tab_drop(x, y)
             else:
                 self._move_tab_to(tab)
             set_tab_being_dragged()
-            self._reset_drop_previews()
+            self._reset_drop_previews(restore_tab_drag_focus_for)
             return
         central, tab_bar = viewport_for_window(os_window_id)[:2]
         if central.left <= x < central.right and central.top <= y < central.bottom:
@@ -2308,7 +2312,9 @@ class Boss:
                         self._reset_drop_previews()
                         return
                     if tm.tab_being_dropped:
+                        restore_tab_drag_focus_for = tm if tab.os_window_id == tm.os_window_id else None
                         tm.on_tab_drop(0, 0, bypass_move=True)
+                        self._reset_drop_previews(restore_tab_drag_focus_for)
                         return
             set_tab_being_dragged()
             self._update_drag_over(None)
@@ -2317,6 +2323,11 @@ class Boss:
                 tm.on_tab_drop_move()
             if was_dropped and not was_canceled and tab is not None:  # detach tab into new OS Window
                 self._move_tab_to(tab)
+            # Cocoa can finish an internal drag before on_drop receives its data.
+            # Keep the saved focus until that callback classifies the actual drop.
+            if was_canceled or was_dropped or needs_toplevel_on_wayland:
+                for tm in self.all_tab_managers:
+                    tm.finish_tab_drag_hover(restore_focus=False)
 
     @ac(
         'win',

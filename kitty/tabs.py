@@ -1354,6 +1354,8 @@ class TabManager:  # {{{
     window_drag_over_me: bool = False
     drag_hover: DragHover | None = None
     drag_hover_delay: float = 0.6
+    tab_drag_focus_before_hover: int = 0
+    tab_drag_history_before_hover: tuple[int, ...] = ()
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
@@ -2054,6 +2056,18 @@ class TabManager:  # {{{
             if h.timer:
                 remove_timer(h.timer)
 
+    def finish_tab_drag_hover(self, restore_focus: bool = True) -> None:
+        """Discard a tab drag's hover selection, restoring the previous tab if needed."""
+        tab_id = self.tab_drag_focus_before_hover
+        history = self.tab_drag_history_before_hover
+        self.tab_drag_focus_before_hover = 0
+        self.tab_drag_history_before_hover = ()
+        if restore_focus and tab_id and (tab := self.tab_for_id(tab_id)) is not None:
+            if tab is not self.active_tab:
+                self.set_active_tab(tab)
+            self.active_tab_history.clear()
+            self.active_tab_history.extend(tid for tid in history if self.tab_for_id(tid) is not None)
+
     def _activate_drag_hover(self, timer_id: int | None = None) -> None:
         if (h := self.drag_hover) is None or (timer_id is not None and timer_id != h.timer):
             return
@@ -2073,6 +2087,9 @@ class TabManager:  # {{{
             if source is None or source.windows.num_groups != 1 or source.id == h.tab_id:
                 return
         if (tab := self.tab_for_id(h.tab_id)) is not None:
+            if not h.source_is_window and not self.tab_drag_focus_before_hover and self.active_tab is not None:
+                self.tab_drag_focus_before_hover = self.active_tab.id
+                self.tab_drag_history_before_hover = tuple(self.active_tab_history)
             self.set_active_tab(tab)
 
     def _update_drag_hover(self, tab_id: int, source_id: int, source_is_window: bool) -> None:
