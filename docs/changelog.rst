@@ -211,9 +211,6 @@ Detailed list of changes
 - A new option :opt:`detect_url_regex` to detect arbitrary text, such as file
   references in compiler output, as clickable URLs under the mouse (:iss:`10407`)
 
-- Fix an out-of-bounds memory access when drawing a multi-line text sized
-  character with the cursor below the bottom margin of the scroll region
-
 - Fix a memory leak when loading a corrupt PNG image that has an embedded ICC
   color profile
 
@@ -243,6 +240,14 @@ Detailed list of changes
 
 - hints kitten: Fix delays of many seconds when selecting paths or line
   numbers on a screen with long lines that contain no spaces
+
+- File transfer: Fix a security issue where a malicious program on the remote
+  machine could bypass the transfer confirmation prompt when no
+  :opt:`file_transfer_confirmation_bypass` password is set
+
+- Fix an out-of-bounds memory access when drawing a multi-line text sized
+  character with the cursor below the bottom margin of the scroll region
+
 
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

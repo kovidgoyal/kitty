@@ -573,6 +573,11 @@ class DestFile:
 
 
 def check_bypass(password: str, request_id: str, bypass_data: str) -> bool:
+    if not password:
+        # No bypass password configured, so bypassing confirmation is never allowed.
+        # Note that the remote side knows the request id and can perform ECDH using
+        # KITTY_PUBLIC_KEY, so an empty password provides no authentication at all.
+        return False
     protocol, sep, bypass_data = bypass_data.partition(':')
     if protocol == 'kitty-1':
         try:
@@ -592,7 +597,7 @@ def check_bypass(password: str, request_id: str, bypass_data: str) -> bool:
             log_error(f'Invalid file transmission bypass data received: {err}')
             return False
     elif protocol == 'sha256':
-        return hmac.compare_digest(encode_bypass(request_id, password), bypass_data) if password else False
+        return hmac.compare_digest(encode_bypass(request_id, password), f'{protocol}:{bypass_data}')
     else:
         log_error(f'Invalid file transmission bypass data received with protocol: {protocol}')
     return False

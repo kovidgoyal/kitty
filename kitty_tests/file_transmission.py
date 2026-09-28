@@ -409,6 +409,38 @@ class TestFileTransmission(BaseTest):
             received = b''.join(x['data'] for x in ft.test_responses)
             self.ae(received.decode('utf-8'), src)
 
+    def test_check_bypass(self):
+        import json
+        from base64 import b85encode
+        from time import time_ns
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from kitty.fast_data_types import AES256GCMEncrypt, EllipticCurveKey
+        from kitty.file_transmission import check_bypass, encode_bypass
+
+        from .crypto import is_rlimit_memlock_too_low
+
+        if is_rlimit_memlock_too_low():
+            self.skipTest('RLIMIT_MEMLOCK is too low')
+        kitty_key, remote_key = EllipticCurveKey(), EllipticCurveKey()
+
+        def kitty_1(request_id: str, password: str) -> str:
+            e = AES256GCMEncrypt(remote_key.derive_secret(kitty_key.public))
+            encrypted = e.add_data_to_be_encrypted(f'{time_ns()}:{request_id};{password}'.encode(), True)
+            return 'kitty-1:' + json.dumps(
+                {k: b85encode(v).decode() for k, v in {'pubkey': remote_key.public, 'iv': e.iv, 'tag': e.tag, 'encrypted': encrypted}.items()}
+            )
+
+        with patch('kitty.file_transmission.get_boss', return_value=SimpleNamespace(encryption_key=kitty_key)):
+            self.assertTrue(check_bypass('secret', 'rid', kitty_1('rid', 'secret')))
+            self.assertFalse(check_bypass('secret', 'rid', kitty_1('rid', 'wrong')))
+            self.assertFalse(check_bypass('secret', 'rid', kitty_1('other', 'secret')))
+            self.assertTrue(check_bypass('secret', 'rid', encode_bypass('rid', 'secret')))
+            # when no bypass password is configured, bypass must never succeed
+            self.assertFalse(check_bypass('', 'rid', kitty_1('rid', '')))
+            self.assertFalse(check_bypass('', 'rid', encode_bypass('rid', '')))
+
     def test_parse_ftc(self):
         def t(raw, *expected):
             a = []
