@@ -1950,7 +1950,10 @@ class TabManager:  # {{{
             if is_left_release and not drag_started:
                 set_tab_being_dragged()  # clear potential drag from a press on a tab
             if self.recent_tab_bar_mouse_events.click_count(GLFW_MOUSE_BUTTON_LEFT) == 1:
-                self.new_tab()
+                if get_options().tab_bar_new_tab_with_cwd:
+                    self.new_tab(cwd_from=CwdRequest(self.active_tab.active_window_for_cwd))
+                else:
+                    self.new_tab()
                 self.recent_tab_bar_mouse_events.clear()
             return
         if drag_started:

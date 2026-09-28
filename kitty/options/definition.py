@@ -2246,6 +2246,16 @@ the window in a new tab.
 """,
 )
 
+opt(
+    'tab_bar_new_tab_with_cwd',
+    'no',
+    option_type='to_bool',
+    long_text="""
+Open new tabs created with the tab bar button in the active window's working
+directory.
+""",
+)
+
 opt('tab_bar_min_tabs', '2', option_type='tab_bar_min_tabs', long_text='The minimum number of tabs that must exist before the tab bar is shown.')
 
 opt(

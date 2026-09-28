@@ -1404,6 +1404,9 @@ class Parser:
     def tab_bar_min_tabs(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_min_tabs'] = tab_bar_min_tabs(val)
 
+    def tab_bar_new_tab_with_cwd(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_bar_new_tab_with_cwd'] = to_bool(val)
+
     def tab_bar_show_new_tab_button(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_show_new_tab_button'] = to_bool(val)
 

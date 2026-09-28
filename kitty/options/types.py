@@ -474,6 +474,7 @@ option_names = (
     'tab_bar_margin_height',
     'tab_bar_margin_width',
     'tab_bar_min_tabs',
+    'tab_bar_new_tab_with_cwd',
     'tab_bar_show_new_tab_button',
     'tab_bar_style',
     'tab_fade',
@@ -689,6 +690,7 @@ class Options:
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2
+    tab_bar_new_tab_with_cwd: bool = False
     tab_bar_show_new_tab_button: bool = False
     tab_bar_style: choices_for_tab_bar_style = 'fade'
     tab_fade: tuple[float, ...] = (0.25, 0.5, 0.75, 1.0)
