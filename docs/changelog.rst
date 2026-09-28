@@ -236,6 +236,10 @@ Detailed list of changes
 - macOS: Fix a custom dock icon reverting to the stock icon after a progress
   bar is cleared (:iss:`10545`)
 
+- macOS: Fix a regression in the previous release causing
+  :opt:`background_opacity` less than one with no :opt:`background_blur` making
+  the titlebar transparent (:iss:`10540`)
+
 - diff kitten: Fix search not finding matches at the end of a line
 
 - hints kitten: Fix delays of many seconds when selecting paths or line
