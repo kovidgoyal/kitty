@@ -919,8 +919,7 @@ cocoa_create_global_menu(void) {
 
 void
 cocoa_application_lifecycle_event(bool application_launch_finished) {
-    if (!application_launch_finished)
-        cocoa_create_global_menu(); // applicationWillFinishLaunching
+    if (!application_launch_finished) cocoa_create_global_menu(); // applicationWillFinishLaunching
 }
 
 void
