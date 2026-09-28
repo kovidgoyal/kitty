@@ -7,9 +7,9 @@ toolchain go1.26.6
 require (
 	github.com/ALTree/bigfloat v0.3.0
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/bmatcuk/doublestar/v4 v4.10.2
 	github.com/dlclark/regexp2 v1.12.0
-	github.com/ebitengine/purego v0.11.0
+	github.com/ebitengine/purego v0.11.1
 	github.com/emmansun/base64 v0.10.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -23,7 +23,7 @@ require (
 	github.com/seancfoley/ipaddress-go v1.8.4
 	github.com/sgtdi/fswatcher v1.3.0
 	github.com/shirou/gopsutil/v4 v4.26.8
-	github.com/ulikunitz/xz v0.5.16
+	github.com/ulikunitz/xz v0.5.17
 	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.46.0
