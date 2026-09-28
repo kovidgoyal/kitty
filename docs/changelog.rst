@@ -240,6 +240,9 @@ Detailed list of changes
   :opt:`background_opacity` less than one with no :opt:`background_blur` making
   the titlebar transparent (:iss:`10540`)
 
+- macOS: Fix regression in 0.49 that caused rounded rect shader to not work on
+  ancient macs with AMD GPUs (:iss:`10549`)
+
 - diff kitten: Fix search not finding matches at the end of a line
 
 - hints kitten: Fix delays of many seconds when selecting paths or line
