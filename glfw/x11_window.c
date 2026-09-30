@@ -457,21 +457,24 @@ disableRawMouseMotion(_GLFWwindow *window UNUSED) {
     XISelectEvents(_glfw.x11.display, _glfw.x11.root, &em, 1);
 }
 
-// Enable XI2 smooth scrolling events on a window
+// Select XI2 button events and smooth scrolling events on a window
 //
 static void
-enableSmoothScrolling(_GLFWwindow *window) {
-    if (!_glfw.x11.xi.num_scroll_devices) return;
-    // Select XI_Motion events on the window
-    XIEventMask em;
-    unsigned char mask[XIMaskLen(XI_Motion)] = {0};
-
-    em.deviceid = XIAllDevices;
-    em.mask_len = sizeof(mask);
-    em.mask = mask;
-    XISetMask(mask, XI_Motion);
-
-    XISelectEvents(_glfw.x11.display, window->x11.handle, &em, 1);
+selectPointerEvents(_GLFWwindow *window) {
+    if (!_glfw.x11.xi.available) return;
+    unsigned char motion_mask[XIMaskLen(XI_Motion)] = {0};
+    unsigned char button_mask[XIMaskLen(XI_ButtonRelease)] = {0};
+    // Selecting XI2 button events can suppress core motion events. Select
+    // XI2 motion as well so pointer movement and drag selection continue to
+    // work on servers that expose XI2 but have no smooth-scroll devices.
+    XISetMask(motion_mask, XI_Motion);
+    XISetMask(button_mask, XI_ButtonPress);
+    XISetMask(button_mask, XI_ButtonRelease);
+    XIEventMask events[] = {
+        {.deviceid = XIAllDevices, .mask_len = sizeof(motion_mask), .mask = motion_mask},
+        {.deviceid = XIAllMasterDevices, .mask_len = sizeof(button_mask), .mask = button_mask},
+    };
+    XISelectEvents(_glfw.x11.display, window->x11.handle, events, arraysz(events));
 }
 
 static void
@@ -853,8 +856,7 @@ createNativeWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, Visual 
 
     if (_glfw.hints.window.blur_radius > 0) _glfwPlatformSetWindowBlur(window, _glfw.hints.window.blur_radius);
 
-    // Enable XI2 smooth scrolling if available
-    enableSmoothScrolling(window);
+    selectPointerEvents(window);
 
     return true;
 }
@@ -1272,6 +1274,35 @@ handle_mouse_move_event(_GLFWwindow *window, const int x, const int y) {
     window->x11.lastCursorPosY = y;
 }
 
+static void
+handle_button_event(_GLFWwindow *window, unsigned button, int action, int mods, Time time) {
+    if (action == GLFW_RELEASE && _glfw.x11.drag.active && button == Button1) {
+        handle_drag_button_release(time);
+        return;
+    }
+    if (button >= Button4 && button <= Button7) {
+        if (action == GLFW_PRESS) {
+            GLFWScrollEvent ev = {.keyboard_modifiers = mods};
+            if (button == Button4) ev.y_offset = ev.unscaled.y = 1;
+            else if (button == Button5) ev.y_offset = ev.unscaled.y = -1;
+            else if (button == Button6) ev.x_offset = ev.unscaled.x = 1;
+            else ev.x_offset = ev.unscaled.x = -1;
+            _glfwInputScroll(window, &ev);
+        }
+        return;
+    }
+    x11_cancel_momentum_scroll_timer();
+    glfw_cancel_momentum_scroll();
+    int mapped_button;
+    if (button == Button1) mapped_button = GLFW_MOUSE_BUTTON_LEFT;
+    else if (button == Button2) mapped_button = GLFW_MOUSE_BUTTON_MIDDLE;
+    else if (button == Button3) mapped_button = GLFW_MOUSE_BUTTON_RIGHT;
+    // Additional buttons after 7 are regular buttons; fill the gap left by
+    // scroll input in GLFW's button numbering.
+    else mapped_button = button - Button1 - 4;
+    _glfwInputMouseClick(window, mapped_button, action, mods);
+}
+
 static bool
 number_has_fractional_part(double x) {
     return fabs(x - round(x)) >= 1e-6;
@@ -1283,7 +1314,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     bool scroll_valuator_found = false;
     for (unsigned i = 0; i < _glfw.x11.xi.num_scroll_devices; i++) {
         XIScrollDevice *t = &_glfw.x11.xi.scroll_devices[i];
-        if (t->deviceid == de->deviceid && t->sourceid == de->sourceid) {
+        if (t->sourceid == de->sourceid && (t->deviceid == de->deviceid || de->deviceid == _glfw.x11.xi.master_pointer_id)) {
             d = t;
             break;
         }
@@ -1395,6 +1426,12 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     if (!scroll_valuator_found) {
         x11_cancel_momentum_scroll_timer();
         glfw_cancel_momentum_scroll();
+        if (_glfw.x11.drag.active) {
+            int root_x, root_y;
+            Window child;
+            XTranslateCoordinates(_glfw.x11.display, de->event, _glfw.x11.root, (int)de->event_x, (int)de->event_y, &root_x, &root_y, &child);
+            handle_drag_motion(root_x, root_y, de->time);
+        }
         handle_mouse_move_event(window, (int)de->event_x, (int)de->event_y);
     }
 }
@@ -1812,10 +1849,19 @@ processEvent(XEvent *event) {
                 // Handle XI_Motion for smooth scrolling
                 else if (event->xcookie.evtype == XI_Motion) {
                     XIDeviceEvent *de = (XIDeviceEvent *)event->xcookie.data;
-                    if (de->deviceid != _glfw.x11.xi.master_pointer_id) {
-                        // Find the window for this event
+                    // Find the window for this event
+                    _GLFWwindow *window = NULL;
+                    if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context, (XPointer *)&window) == 0) handle_xi_motion_event(window, de);
+                } else if (event->xcookie.evtype == XI_ButtonPress || event->xcookie.evtype == XI_ButtonRelease) {
+                    XIDeviceEvent *de = event->xcookie.data;
+                    const bool wheel = de->detail >= Button4 && de->detail <= Button7;
+                    // Ignore wheel buttons emulated from valuators; the XI2
+                    // motion event is the higher-resolution source in that case.
+                    if (!(wheel && (de->flags & XIPointerEmulated))) {
                         _GLFWwindow *window = NULL;
-                        if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context, (XPointer *)&window) == 0) handle_xi_motion_event(window, de);
+                        if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context, (XPointer *)&window) == 0)
+                            handle_button_event(
+                                window, de->detail, de->evtype == XI_ButtonPress ? GLFW_PRESS : GLFW_RELEASE, translateState(de->mods.effective), de->time);
                     }
                 }
                 // Handle XI_HierarchyChanged for device hotplug
@@ -1823,9 +1869,10 @@ processEvent(XEvent *event) {
                     XIHierarchyEvent *he = (XIHierarchyEvent *)event->xcookie.data;
                     // Check if any devices were added or removed
                     for (int i = 0; i < he->num_info; i++) {
-                        if (he->info[i].flags & (XISlaveAdded | XISlaveRemoved | XIMasterAdded | XIMasterRemoved)) {
+                        if (he->info[i].flags & (XISlaveAdded | XISlaveRemoved | XIMasterAdded | XIMasterRemoved | XIDeviceEnabled | XIDeviceDisabled)) {
                             // Re-read scroll devices when devices are added or removed
                             read_xi_scroll_devices();
+                            for (_GLFWwindow *w = _glfw.windowListHead; w; w = w->next) selectPointerEvents(w);
                             break;
                         }
                     }
@@ -1938,75 +1985,18 @@ processEvent(XEvent *event) {
             return;
         }
 
-        case ButtonPress: {
-            const int mods = translateState(event->xbutton.state);
-
-#define cancel_momentum()               \
-    x11_cancel_momentum_scroll_timer(); \
-    glfw_cancel_momentum_scroll()
-
-            if (event->xbutton.button == Button1) {
-                cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods);
-            } else if (event->xbutton.button == Button2) {
-                cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, mods);
-            } else if (event->xbutton.button == Button3) {
-                cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, mods);
-            }
-
-            // Modern X provides scroll events as mouse button presses
-            // Only use these if smooth scrolling is not available
-            else if (event->xbutton.button == Button4) {
-                if (!_glfw.x11.xi.num_scroll_devices) _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .y_offset = 1, .unscaled.y = 1});
-            } else if (event->xbutton.button == Button5) {
-                if (!_glfw.x11.xi.num_scroll_devices)
-                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .y_offset = -1, .unscaled.y = -1});
-            } else if (event->xbutton.button == Button6) {
-                if (!_glfw.x11.xi.num_scroll_devices) _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .x_offset = 1, .unscaled.x = 1});
-            } else if (event->xbutton.button == Button7) {
-                if (!_glfw.x11.xi.num_scroll_devices)
-                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .x_offset = -1, .unscaled.x = -1});
-            }
-
-            else {
-                cancel_momentum();
-                // Additional buttons after 7 are treated as regular buttons
-                // We subtract 4 to fill the gap left by scroll input above
-                _glfwInputMouseClick(window, event->xbutton.button - Button1 - 4, GLFW_PRESS, mods);
-            }
-
-            return;
-        }
-
+        case ButtonPress:
         case ButtonRelease: {
-            const int mods = translateState(event->xbutton.state);
-
-            // Handle drag drop on button release
-            if (_glfw.x11.drag.active && event->xbutton.button == Button1) {
-                handle_drag_button_release(event->xbutton.time);
-                return;
-            }
-
-            if (event->xbutton.button == Button1) {
-                cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, mods);
-            } else if (event->xbutton.button == Button2) {
-                cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, mods);
-            } else if (event->xbutton.button == Button3) {
-                cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, mods);
-            } else if (event->xbutton.button > Button7) {
-                cancel_momentum();
-                // Additional buttons after 7 are treated as regular buttons
-                // We subtract 4 to fill the gap left by scroll input above
-                _glfwInputMouseClick(window, event->xbutton.button - Button1 - 4, GLFW_RELEASE, mods);
-            }
-
+            // XI2 button events replace core button delivery. Keep core
+            // handling only for servers without XI2.
+            if (_glfw.x11.xi.available) return;
+            handle_button_event(
+                window,
+                event->xbutton.button,
+                event->type == ButtonPress ? GLFW_PRESS : GLFW_RELEASE,
+                translateState(event->xbutton.state),
+                event->xbutton.time);
             return;
-#undef cancel_momentum
         }
 
         case EnterNotify: {
