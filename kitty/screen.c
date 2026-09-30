@@ -5010,15 +5010,19 @@ screen_draw_overlay_line(Screen *self) {
     self->modes.mIRM = false;
     Cursor *orig_cursor = self->cursor;
     self->cursor = &(self->overlay_line.original_line.cursor);
-    // Mark the pre-edit text as distinct from committed text: italic, with a
-    // dashed underline in the highlight color. Underline rather than reverse
+    // The cursor holds the SGR attributes the application last selected, which
+    // are what it will write its next characters with, not a style for the
+    // pre-edit text: an editor that leaves its status line colors set would
+    // otherwise tint the pre-edit text with them. Start from the defaults.
+    //
+    // Then mark the pre-edit text as distinct from committed text: italic, with
+    // a dashed underline in the highlight color. Underline rather than reverse
     // video matches what other terminals do (VTE and foot both underline), and
     // dashed avoids colliding with the styles applications already use: curly
     // for spell checking and straight for hyperlinks. Saved and restored around
     // the draw, like the modes above.
-    const bool orig_italic = self->cursor->sgr.italic;
-    const uint8_t orig_decoration = self->cursor->sgr.decoration;
-    const color_type orig_decoration_fg = self->cursor->sgr.decoration_fg;
+    const __typeof__(self->cursor->sgr) orig_sgr = self->cursor->sgr;
+    cursor_reset_display_attrs(self->cursor);
     self->cursor->sgr.italic = true;
     self->cursor->sgr.decoration = 5; // dashed
     self->cursor->sgr.decoration_fg = ((colorprofile_to_color_with_fallback(
@@ -5081,9 +5085,7 @@ screen_draw_overlay_line(Screen *self) {
         self->overlay_line.xnum += len;
     }
     self->overlay_line.cursor_x = self->cursor->x;
-    self->cursor->sgr.italic = orig_italic;
-    self->cursor->sgr.decoration = orig_decoration;
-    self->cursor->sgr.decoration_fg = orig_decoration_fg;
+    self->cursor->sgr = orig_sgr;
     self->cursor = orig_cursor;
     self->modes.mDECAWM = orig_line_wrap_mode;
     self->modes.mDECTCEM = orig_cursor_enable_mode;
@@ -7059,6 +7061,9 @@ test_draw_overlay_line(Screen *self, PyObject *args) {
     self->overlay_line.xstart = xstart;
     self->overlay_line.ynum = ynum;
     self->overlay_line.is_active = true;
+    // As screen_update_overlay_text() does, so the pre-edit text is drawn from
+    // the application's cursor state.
+    cursor_copy_to(self->cursor, &(self->overlay_line.original_line.cursor));
     screen_draw_overlay_line(self);
     Py_RETURN_NONE;
 }

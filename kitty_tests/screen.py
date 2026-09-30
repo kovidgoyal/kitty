@@ -2314,6 +2314,28 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.decoration, before.decoration)
         self.ae(s.cursor.decoration_fg, before.decoration_fg)
 
+    def test_ime_preedit_ignores_sgr_attributes(self):
+        # Pre-edit text is drawn with a copy of the screen cursor, which holds
+        # whatever SGR attributes the application last selected. Those are what
+        # the application will write its next characters with, and must not
+        # color the pre-edit text: an editor that leaves its status line colors
+        # set would otherwise tint the pre-edit text with them.
+        s = self.create_screen(cols=10, lines=3)
+        parse_bytes(s, b'\x1b[1;7;36;41m')
+        pen = (s.cursor.fg, s.cursor.bg, s.cursor.bold, s.cursor.reverse)
+        s.test_draw_overlay_line('ab', 0, 0)
+        line = s.line(0)
+        for x in (0, 1):
+            c = line.cursor_from(x)
+            self.ae(c.fg, 0, f'pre-edit cell {x} took the foreground color of the pen')
+            self.ae(c.bg, 0, f'pre-edit cell {x} took the background color of the pen')
+            self.assertFalse(c.bold, f'pre-edit cell {x} is bold')
+            self.assertFalse(c.reverse, f'pre-edit cell {x} is in reverse video')
+            self.assertTrue(c.italic, f'pre-edit cell {x} is not italic')
+            self.ae(c.decoration, 5, f'pre-edit cell {x} is not dashed-underlined')
+        # the application's pen is left as it was
+        self.ae((s.cursor.fg, s.cursor.bg, s.cursor.bold, s.cursor.reverse), pen)
+
     def test_ime_text_around_cursor(self):
         # The text macOS input methods read to decide things like whether a
         # space is needed between Latin and CJK text. See :iss:`10492`.

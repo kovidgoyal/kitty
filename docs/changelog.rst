@@ -224,6 +224,10 @@ Detailed list of changes
 - Custom shaders: The builtin :code:`dim-inactive-windows` shader no longer dims
   the tab bar and the padding, border and margin around the active window (:iss:`10524`)
 
+- IME pre-edit text no longer takes its colors and other attributes from the
+  ones the program running in the terminal last selected, which made it change
+  color as full screen programs such as editors redrew their status line
+
 - Custom shaders: A new :code:`cursor-trail-motion-blur` shader that makes
   the cursor trail glide smoothly during fast cursor movements
 
