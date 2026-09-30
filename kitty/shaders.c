@@ -801,22 +801,45 @@ create_cell_vao(void) {
     (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || \
      (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
 
+static float
+cursor_color_luminance(color_type color) {
+    // Match color_to_vec() and contrast_ratio() in background.slang.
+    return 0.2126f * srgb_lut[(color >> 16) & 0xff] + 0.7152f * srgb_lut[(color >> 8) & 0xff] + 0.0722f * srgb_lut[color & 0xff];
+}
+
+static float
+cursor_color_contrast(color_type a, color_type b) {
+    const float la = cursor_color_luminance(a), lb = cursor_color_luminance(b);
+    return (MAX(la, lb) + 0.05f) / (MIN(la, lb) + 0.05f);
+}
+
 static void
 pick_cursor_color(color_type cell_fg, color_type cell_bg, color_type *cursor_fg, color_type *cursor_bg, color_type default_fg, color_type default_bg) {
-    ARGB32 fg, bg, dfg, dbg;
-    fg.rgb = cell_fg;
-    bg.rgb = cell_bg;
     *cursor_fg = cell_bg;
     *cursor_bg = cell_fg;
-    double cell_contrast = rgb_contrast(fg, bg);
+    const float cell_contrast = cursor_color_contrast(cell_fg, cell_bg);
     if (cell_contrast < 2.5) {
-        dfg.rgb = default_fg;
-        dbg.rgb = default_bg;
-        if (rgb_contrast(dfg, dbg) > cell_contrast) {
+        if (cursor_color_contrast(default_fg, default_bg) > cell_contrast) {
             *cursor_fg = default_bg;
             *cursor_bg = default_fg;
         }
     }
+}
+
+static uint8_t
+dimmed_color_component(uint8_t fg, uint8_t bg, float opacity) {
+    // DIM blends text with the cell background in linear color space.
+    const float linear = (1.f - opacity) * srgb_lut[bg] + opacity * srgb_lut[fg];
+    const float srgb = linear <= 0.0031308f ? 12.92f * linear : 1.055f * powf(linear, 1.f / 2.4f) - 0.055f;
+    return (uint8_t)lroundf(255.f * srgb);
+}
+
+static color_type
+dimmed_cursor_color(color_type fg, color_type bg, float opacity) {
+    if (opacity >= 1.f) return fg;
+    return ((color_type)dimmed_color_component((fg >> 16) & 0xff, (bg >> 16) & 0xff, opacity) << 16) |
+           ((color_type)dimmed_color_component((fg >> 8) & 0xff, (bg >> 8) & 0xff, opacity) << 8) |
+           (color_type)dimmed_color_component(fg & 0xff, bg & 0xff, opacity);
 }
 
 static bool
@@ -855,7 +878,7 @@ cell_update_uniform_block(
 
         GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
-        GLuint default_fg, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
+        GLuint default_fg, url_style, inverted, main_cursor_is_special, extra_cursor_fg, extra_cursor_bg;
 
         GLuint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
         GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -893,6 +916,7 @@ cell_update_uniform_block(
     rd->default_fg = COLOR(default_fg);
     rd->extra_cursor_fg = screen->extra_cursors.color.text.val;
     rd->extra_cursor_bg = screen->extra_cursors.color.cursor.val;
+    rd->main_cursor_is_special = IS_SPECIAL_COLOR(cursor_color);
     rd->bg_colors0 = COLOR(default_bg);
     rd->bg_opacities0 = bg_alpha;
     rd->fg_override_threshold = OPT(text_fg_override_threshold);
@@ -972,13 +996,11 @@ cell_update_uniform_block(
             }
         }
         // If you change the following algorithm remember to change it in the cell shader for extra cursors too
-        if (IS_SPECIAL_COLOR(cursor_color)) {
-            if (line_for_cursor) pick_cursor_color(cell_fg, cell_bg, &main_cursor_fg, &main_cursor_bg, rd->default_fg, rd->bg_colors0);
-            else {
-                main_cursor_fg = rd->bg_colors0;
-                main_cursor_bg = rd->default_fg;
-            }
-            if (cell_bg == cell_fg) {
+        if (rd->main_cursor_is_special) {
+            if (line_for_cursor && line_for_cursor->gpu_cells[cell_color_x].attrs.dim) {
+                cell_fg = dimmed_cursor_color(cell_fg, cell_bg, OPT(dim_opacity));
+                pick_cursor_color(cell_fg, cell_bg, &main_cursor_fg, &main_cursor_bg, rd->default_fg, rd->bg_colors0);
+            } else if (cell_bg == cell_fg) {
                 main_cursor_fg = rd->bg_colors0;
                 main_cursor_bg = rd->default_fg;
             } else {
