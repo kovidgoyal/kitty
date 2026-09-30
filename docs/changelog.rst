@@ -265,6 +265,10 @@ Detailed list of changes
 - Fix a heap buffer underflow when parsing ANSI-C quoted strings in
   the command line sent by shell integration via the OSC 133 escape code
 
+- macOS: Fix a regression in 0.49 that caused rendering issues after wake from
+  sleep or display re configuration under memory pressure due to a bug in
+  Apple's OpenGL drivers (:iss:`10571`)
+
 
 0.49.1 [2026-09-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

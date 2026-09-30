@@ -13,9 +13,24 @@ import utils;
 
 // Inputs {{{
 public struct CellRenderData {
+    // Colors that are the same for every cell in the draw, converted to linear
+    // space on the CPU so that the vertex shader does not have to do a gamma
+    // LUT lookup for them once per vertex. Only rgb is used, they are float4
+    // rather than float3 so that the C struct mirroring this one can use a
+    // plain float[4] for each: in std140 a float3 is 16 byte aligned but only
+    // 12 bytes in size, so a trailing one is not followed by any padding.
+    // They come first so that everything after them stays tightly packed.
+    public float4 default_fg_lin, default_bg_lin, highlight_fg_lin, highlight_bg_lin;
+    public float4 main_cursor_fg_lin, main_cursor_bg_lin, url_color_lin;
+    // The COLOR_IS_RGB/COLOR_IS_INDEX value for the extra cursor colors, zero
+    // for the other color types which do not use it.
+    public float4 extra_cursor_fg_lin, extra_cursor_bg_lin;
+
     public float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
-    public uint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
+    // default_fg and bg_colors0 are also needed as integers, to resolve cell
+    // colors and to detect cells using the default background.
+    public uint default_fg, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
 
     public uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     public uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -36,6 +51,9 @@ public struct ColorTable {
 public ConstantBuffer<ColorTable> ctb;
 #define color_table ctb.color_table
 
+// The gamma LUT is a compile time constant and, unlike every other block
+// here, it is emitted into the default uniform block for OpenGL rather than
+// into a UBO, see GLSL_LOOSE_UNIFORM_BLOCKS in slang.py for why.
 public struct GammaLUT {
     float gamma_lut[256];
 };
@@ -115,12 +133,15 @@ q_func(float type_val, uint which, float3 val) {
     return one_if_equal_zero_otherwise(type_val, float(which)) * val;
 }
 
+// resolved is color_to_vec() of c itself for COLOR_IS_RGB and of its color
+// table entry for COLOR_IS_INDEX, computed on the CPU since c is constant for
+// the whole draw. It is unused, and zero, for the other two color types.
 float3
-resolve_dynamic_color(uint c, float3 special_val, float3 defval) {
+resolve_dynamic_color(uint c, float3 resolved, float3 special_val, float3 defval) {
     float type_val = float((c >> 24) & BYTE_MASK);
     return (
-        q_func(type_val, COLOR_IS_RGB, color_to_vec(c)) + q_func(type_val, COLOR_IS_INDEX, color_to_vec(color_table[c & BYTE_MASK])) +
-        q_func(type_val, COLOR_IS_SPECIAL, special_val) + q_func(type_val, COLOR_NOT_SET, defval));
+        q_func(type_val, COLOR_IS_RGB, resolved) + q_func(type_val, COLOR_IS_INDEX, resolved) + q_func(type_val, COLOR_IS_SPECIAL, special_val) +
+        q_func(type_val, COLOR_NOT_SET, defval));
 }
 
 public float
@@ -155,7 +176,7 @@ if_one_then_pair(float condition, ColorPair thenval, ColorPair elseval) {
 ColorPair
 resolve_extra_cursor_colors_for_special_cursor(float3 cell_bg, float3 cell_fg) {
     ColorPair cell = ColorPair(cell_fg, cell_bg);
-    ColorPair base = ColorPair(color_to_vec(crd.default_fg), color_to_vec(crd.bg_colors0));
+    ColorPair base = ColorPair(crd.default_fg_lin.rgb, crd.default_bg_lin.rgb);
     float cr = contrast_ratio(cell);
     float br = contrast_ratio(base);
     ColorPair higher_contrast_pair = if_less_than_pair(cr, br, base, cell);
@@ -165,7 +186,8 @@ resolve_extra_cursor_colors_for_special_cursor(float3 cell_bg, float3 cell_fg) {
 ColorPair
 resolve_extra_cursor_colors(float3 cell_bg, float3 cell_fg, ColorPair main_cursor) {
     ColorPair ans = ColorPair(
-        resolve_dynamic_color(crd.extra_cursor_bg, main_cursor.bg, main_cursor.bg), resolve_dynamic_color(crd.extra_cursor_fg, cell_bg, main_cursor.fg));
+        resolve_dynamic_color(crd.extra_cursor_bg, crd.extra_cursor_bg_lin.rgb, main_cursor.bg, main_cursor.bg),
+        resolve_dynamic_color(crd.extra_cursor_fg, crd.extra_cursor_fg_lin.rgb, cell_bg, main_cursor.fg));
     ColorPair special = resolve_extra_cursor_colors_for_special_cursor(cell_bg, cell_fg);
     return if_one_then_pair(zero_or_one(abs(float(crd.extra_cursor_bg & BYTE_MASK) - float(COLOR_IS_SPECIAL))), ans, special);
 }
@@ -271,8 +293,8 @@ compute_background(uint3 colors, uint2 sprite_idx, uint is_selected, uint instan
     float is_block_cursor = has_cursor * one_if_equal_zero_otherwise(final_cursor_shape, 1.0);
 
     ColorPair main_cursor;
-    main_cursor.bg = color_to_vec(crd.main_cursor_bg);
-    main_cursor.fg = color_to_vec(crd.main_cursor_fg);
+    main_cursor.bg = crd.main_cursor_bg_lin.rgb;
+    main_cursor.fg = crd.main_cursor_fg_lin.rgb;
 
     ColorPair extra_cursor = resolve_extra_cursor_colors(cell_bg, foreground, main_cursor);
     ColorPair cursor = if_one_then_pair(has_main_cursor, main_cursor, extra_cursor);
@@ -299,7 +321,7 @@ compute_background(uint3 colors, uint2 sprite_idx, uint is_selected, uint instan
     bg_alpha = if_one_then(is_special_cell, 1.f, bg_alpha);
     // Selection and cursor
     bg_alpha = if_one_then(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
-    bg = if_one_then(float(is_selected & BIT_MASK), if_one_then(crd.use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(crd.highlight_bg)), bg);
+    bg = if_one_then(float(is_selected & BIT_MASK), if_one_then(crd.use_cell_for_selection_bg, color_to_vec(fg_as_uint), crd.highlight_bg_lin.rgb), bg);
     float3 background_rgb = if_one_then(cell_data.has_block_cursor, lerp(bg, cell_data.cursor.bg, crd.cursor_opacity), bg);
     // }}}
 

@@ -729,6 +729,7 @@ void draw_rounded_borders(BorderRects *, color_type, unsigned int, bool, OSWindo
 ssize_t create_cell_vao(void);
 ssize_t create_border_vao(void);
 void bind_shader_globals_to_current_context(void);
+void upload_gamma_lut(void);
 bool send_cell_data_to_gpu(ssize_t, Screen *, OSWindow *);
 void draw_cells(const WindowRenderData *, OSWindow *, bool, bool, bool, Window *, monotonic_t);
 bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);

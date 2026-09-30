@@ -163,9 +163,9 @@ vertex_main(
         float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK), has_blink = float((text_attrs >> BLINK_SHIFT) & BIT_MASK);
         vo.effective_text_alpha = crd.inactive_text_alpha * if_one_then(has_dim, crd.dim_opacity, 1.0) * if_one_then(has_blink, crd.blink_opacity, 1.0);
         float in_url = float((is_selected >> 1) & BIT_MASK);
-        vo.decoration_fg = if_one_then(in_url, color_to_vec(crd.url_color), to_color(colors[2], fg_as_uint));
+        vo.decoration_fg = if_one_then(in_url, crd.url_color_lin.rgb, to_color(colors[2], fg_as_uint));
         // Selection
-        float3 selection_color = if_one_then(crd.use_cell_bg_for_selection_fg, bo.bg, color_to_vec(crd.highlight_fg));
+        float3 selection_color = if_one_then(crd.use_cell_bg_for_selection_fg, bo.bg, crd.highlight_fg_lin.rgb);
         selection_color = if_one_then(crd.use_cell_fg_for_selection_fg, foreground, selection_color);
         foreground = if_one_then(float(is_selected & BIT_MASK), selection_color, foreground);
         vo.decoration_fg = if_one_then(float(is_selected & BIT_MASK), selection_color, vo.decoration_fg);

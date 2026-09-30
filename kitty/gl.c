@@ -404,6 +404,16 @@ set_program_layout(int program, PyObject *metadata) {
     pos = 0;
     while (PyDict_Next(loose_uniforms, &pos, &key, &val)) {
         const char *actual_name = PyUnicode_AsUTF8(val);
+        // The metadata records array uniforms with a [0] subscript to mark them
+        // as arrays, but init_uniforms() stores them under their bare name.
+        char without_subscript[256];
+        const char *bracket = strchr(actual_name, '[');
+        if (bracket) {
+            size_t n = MIN(sizeof(without_subscript) - 1, (size_t)(bracket - actual_name));
+            memcpy(without_subscript, actual_name, n);
+            without_subscript[n] = 0;
+            actual_name = without_subscript;
+        }
         ProgramMetadataEntry e = {.kind = PROGRAM_UNIFORM, .location = get_uniform_location(program, actual_name)};
         insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
     }

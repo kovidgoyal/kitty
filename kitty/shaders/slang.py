@@ -747,6 +747,18 @@ class GLSLMetadata:
         return ans
 
 
+# Uniform blocks that must be emitted as loose uniforms in the default uniform
+# block instead of as a UBO. Uniform values are part of program object state,
+# which the GL implementation is responsible for maintaining, whereas the data
+# store of a buffer object belongs to us and some drivers, notably the macOS
+# OpenGL on Metal layer waking from sleep, silently discard it. Anything we
+# upload to a buffer once and never again then stays corrupt forever. Only
+# suitable for blocks whose contents are compile time constants, since setting
+# a loose uniform costs a GL call per program rather than one buffer write.
+# See https://github.com/kovidgoyal/kitty/issues/10571
+GLSL_LOOSE_UNIFORM_BLOCKS = frozenset({'GammaLUT'})
+
+
 def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLMetadata | None) -> tuple[str, GLSLMetadata]:
     is_fragment_shader = existing_metadata is None
     shader_name += '.frag.glsl' if is_fragment_shader else '.vert.glsl'
@@ -843,13 +855,14 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
                 if 'uniform' in words and line.startswith('layout('):  # )
                     in_uniform_block = True
                     in_uniform_block_contents = False
-                    uniform_block_is_struct = line.startswith('layout(std140')  # )
+                    block_name = words[-1]
+                    slang_block_name = block_name[len('block_') :].rpartition('_')[0] if block_name.startswith('block_') else ''
+                    uniform_block_is_struct = line.startswith('layout(std140') and slang_block_name not in GLSL_LOOSE_UNIFORM_BLOCKS  # )
                     if uniform_block_is_struct:
-                        current_uniform_struct_name = words[-1]
-                        assert current_uniform_struct_name.startswith('block_')
-                        current_uniform_struct_name = current_uniform_struct_name[len('block_') :].rpartition('_')[0]
+                        current_uniform_struct_name = slang_block_name
+                        assert block_name.startswith('block_')
                         current_uniform_struct_members = {}
-                        uniform_struct_names[current_uniform_struct_name] = words[-1]
+                        uniform_struct_names[current_uniform_struct_name] = block_name
                     else:
                         line = '// ' + line
                 elif words[0] == 'uniform' and len(words) > 2 and words[1].removeprefix('u').removeprefix('i').startswith('sampler'):

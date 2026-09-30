@@ -15,6 +15,8 @@ import utils;
 #define TAB_BAR_EDGE_LEFT_COLOR 7
 #define TAB_BAR_EDGE_RIGHT_COLOR 8
 
+// Emitted into the default uniform block for OpenGL rather than into a UBO,
+// see GLSL_LOOSE_UNIFORM_BLOCKS in slang.py for why.
 struct GammaLUT {
     uniform float gamma_lut[256];
 };

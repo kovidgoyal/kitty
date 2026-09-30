@@ -102,6 +102,17 @@ color_vec4(GLint location, color_type color, GLfloat alpha) {
     glUniform4f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF], alpha);
 }
 
+// Write a color into a std140 float4 whose fourth component is unused. Uses
+// the same table as the shaders so the result is identical to converting the
+// color in the shader.
+static void
+linear_color_vec4(GLfloat *dest, color_type color) {
+    dest[0] = srgb_lut[(color >> 16) & 0xFF];
+    dest[1] = srgb_lut[(color >> 8) & 0xFF];
+    dest[2] = srgb_lut[color & 0xFF];
+    dest[3] = 0.f;
+}
+
 
 static void
 clear_current_framebuffer(void) {
@@ -377,11 +388,10 @@ draw_rounded_rect(
 enum {
     CELL_RENDER_DATA_BINDING_POINT = 0,
     COLOR_TABLE_BINDING_POINT = 1,
-    GAMMA_LUT_BINDING_POINT = 2,
-    BORDER_COLORS_BINDING_POINT = 3,
-    CUSTOM_END_DATA_BINDING_POINT = 4
+    BORDER_COLORS_BINDING_POINT = 2,
+    CUSTOM_END_DATA_BINDING_POINT = 3
 };
-enum { GAMMA_LUT_GLOBAL_BUFFER, BORDER_COLORS_GLOBAL_BUFFER };
+enum { BORDER_COLORS_GLOBAL_BUFFER };
 // VAOs used only to hold buffers for UBOs that are shared amongst programs/windows,
 // their vertex attribute/array facilities are unused.
 static ssize_t shader_globals_vao_idx = -1;
@@ -421,30 +431,44 @@ static struct {
 } custom_shaders;
 
 static void
-write_float_array_to_ubo(void *dest, const GLfloat *src, size_t count, const ArrayInformation *ai) {
-    GLint stride = MAX((GLint)sizeof(GLfloat), ai->stride);
-    uint8_t *buf = (uint8_t *)dest + ai->offset;
-    for (size_t i = 0; i < count; i++, buf += stride) memcpy(buf, src + i, sizeof(GLfloat));
-}
-
-static void
 write_uint_array_to_ubo(void *dest, const GLuint *src, size_t count, const ArrayInformation *ai) {
     GLint stride = MAX((GLint)sizeof(GLuint), ai->stride);
     uint8_t *buf = (uint8_t *)dest + ai->offset;
     for (size_t i = 0; i < count; i++, buf += stride) memcpy(buf, src + i, sizeof(GLuint));
 }
 
+// The gamma LUT is a compile time constant that lives in the default uniform
+// block of every program that needs it, rather than in a UBO shared between
+// them. Uniform values are part of program object state, which the GL
+// implementation must maintain, while the data store of a buffer object is
+// ours and some drivers silently discard it, notably macOS waking from sleep
+// or reconfiguring its displays. Every color in every affected program then
+// resolves to garbage with nothing to ever restore it. Uploading it costs a
+// single GL call per program, so this can simply be called again whenever we
+// have reason to believe GPU state was lost.
+// See https://github.com/kovidgoyal/kitty/issues/10571
+void
+upload_gamma_lut(void) {
+#define U(program)                                                                              \
+    {                                                                                           \
+        bind_program(program);                                                                  \
+        GLint loc = program_uniform_location(program, "gamma_lut");                             \
+        if (loc >= 0) glUniform1fv(loc, arraysz(srgb_lut), srgb_lut);                           \
+    }
+    for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) U(i);
+    U(BORDERS_PROGRAM);
+    U(PADDING_PROGRAM);
+#undef U
+    unbind_program();
+}
+
 static void
 init_cell_program(void) {
-    GLint gamma_lut_buf_size = 0;
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
         UniformBlock crd = program_uniform_block(i, "CellRenderData");
         glUniformBlockBinding(program_id(i), crd.index, CELL_RENDER_DATA_BINDING_POINT);
         UniformBlock ct = program_uniform_block(i, "ColorTable");
         glUniformBlockBinding(program_id(i), ct.index, COLOR_TABLE_BINDING_POINT);
-        UniformBlock glut = program_uniform_block(i, "GammaLUT");
-        glUniformBlockBinding(program_id(i), glut.index, GAMMA_LUT_BINDING_POINT);
-        gamma_lut_buf_size = MAX(gamma_lut_buf_size, glut.size);
     }
 
     // Sanity check to ensure the attribute location binding worked
@@ -462,8 +486,6 @@ init_cell_program(void) {
 #undef C
     UniformBlock border_colors = program_uniform_block(BORDERS_PROGRAM, "Colors");
     glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_colors.index, BORDER_COLORS_BINDING_POINT);
-    UniformBlock border_glut = program_uniform_block(BORDERS_PROGRAM, "GammaLUT");
-    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_glut.index, GAMMA_LUT_BINDING_POINT);
 
     // The padding program shares the cell background computation and so uses the
     // same uniform blocks bound to the same binding points as the cell programs.
@@ -472,8 +494,6 @@ init_cell_program(void) {
         glUniformBlockBinding(program_id(PADDING_PROGRAM), crd.index, CELL_RENDER_DATA_BINDING_POINT);
         UniformBlock ct = program_uniform_block(PADDING_PROGRAM, "ColorTable");
         glUniformBlockBinding(program_id(PADDING_PROGRAM), ct.index, COLOR_TABLE_BINDING_POINT);
-        UniformBlock glut = program_uniform_block(PADDING_PROGRAM, "GammaLUT");
-        glUniformBlockBinding(program_id(PADDING_PROGRAM), glut.index, GAMMA_LUT_BINDING_POINT);
     }
 #define C(name, expected)                                                                                                                     \
     {                                                                                                                                         \
@@ -485,19 +505,13 @@ init_cell_program(void) {
     C(is_selected, 2);
 #undef C
 
-    // The gamma LUT is a constant, shared amongst all the programs that use it via a single UBO.
     if (shader_globals_vao_idx == -1) {
         shader_globals_vao_idx = create_vao();
         add_buffer_to_vao(shader_globals_vao_idx, GL_UNIFORM_BUFFER);
-        add_buffer_to_vao(shader_globals_vao_idx, GL_UNIFORM_BUFFER);
-        gamma_lut_buf_size = MAX(gamma_lut_buf_size, border_glut.size);
-        void *gamma_lut_buf = alloc_and_map_vao_buffer(shader_globals_vao_idx, gamma_lut_buf_size, GAMMA_LUT_GLOBAL_BUFFER, false);
-        const ArrayInformation a = program_uniform_array(CELL_PROGRAM, "gamma_lut");
-        write_float_array_to_ubo(gamma_lut_buf, srgb_lut, arraysz(srgb_lut), &a);
-        unmap_vao_buffer(shader_globals_vao_idx, GAMMA_LUT_GLOBAL_BUFFER);
         // The border colors change on every draw, but are shared amongst all border VAOs (only one is ever drawn at a time)
         alloc_vao_buffer(shader_globals_vao_idx, border_colors.size, BORDER_COLORS_GLOBAL_BUFFER, GL_STREAM_DRAW);
     }
+    upload_gamma_lut();
     bind_shader_globals_to_current_context();
 }
 
@@ -754,7 +768,6 @@ custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState 
 void
 bind_shader_globals_to_current_context(void) {
     if (shader_globals_vao_idx == -1) return;
-    bind_vao_uniform_buffer(shader_globals_vao_idx, GAMMA_LUT_GLOBAL_BUFFER, GAMMA_LUT_BINDING_POINT);
     bind_vao_uniform_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, BORDER_COLORS_BINDING_POINT);
 }
 
@@ -816,6 +829,16 @@ has_bgimage(OSWindow *w) {
     return background_image_for_os_window(w) != NULL;
 }
 
+// The value resolve_dynamic_color() in background.slang needs for the color
+// types that are an actual color. The other two types resolve to colors that
+// are only known per-cell, so the shader ignores this value for them.
+static color_type
+dynamic_color_for_gpu(const ColorProfile *cp, color_type val) {
+    const DynamicColor dc = {.val = val}, zero = {0};
+    if (dc.type != COLOR_IS_RGB && dc.type != COLOR_IS_INDEX) return 0;
+    return colorprofile_to_color(cp, dc, zero).rgb;
+}
+
 static color_type
 cell_update_uniform_block(
     ssize_t vao_idx,
@@ -827,9 +850,17 @@ cell_update_uniform_block(
     float inactive_text_alpha,
     float bg_alpha) {
     struct GPUCellRenderData {
+        // Colors that are constant for the whole draw, pre-converted to linear
+        // space so the vertex shader does not do a gamma LUT lookup for them
+        // once per vertex. These must come first and the fourth component of
+        // each is unused padding, see CellRenderData in background.slang.
+        GLfloat default_fg_lin[4], default_bg_lin[4], highlight_fg_lin[4], highlight_bg_lin[4];
+        GLfloat main_cursor_fg_lin[4], main_cursor_bg_lin[4], url_color_lin[4];
+        GLfloat extra_cursor_fg_lin[4], extra_cursor_bg_lin[4];
+
         GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
-        GLuint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
+        GLuint default_fg, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
 
         GLuint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
         GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -847,12 +878,24 @@ cell_update_uniform_block(
         copy_color_table_to_buffer(cp, ct_buf, 0, ai.stride / sizeof(GLuint));
         unmap_vao_buffer(vao_idx, color_table_buf);
     }
-    struct GPUCellRenderData *rd =
-        (struct GPUCellRenderData *)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, program_uniform_block(CELL_PROGRAM, "CellRenderData").size);
+    // This struct is a hand written mirror of the std140 layout of
+    // CellRenderData in background.slang, a mismatch silently corrupts every
+    // color, so check it once.
+    const UniformBlock crd_block = program_uniform_block(CELL_PROGRAM, "CellRenderData");
+    static bool crd_block_size_checked = false;
+    if (!crd_block_size_checked) {
+        crd_block_size_checked = true;
+        if ((size_t)crd_block.size < sizeof(struct GPUCellRenderData))
+            fatal("The CellRenderData uniform block is %d bytes but the C struct mirroring it is %zu bytes", crd_block.size, sizeof(struct GPUCellRenderData));
+    }
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData *)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, crd_block.size);
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
+    // The shaders need these only in linear space, they are converted and
+    // written into rd just before the buffer is unmapped. The cursor colors
+    // are left as is when there is no cursor to render.
+    const color_type highlight_fg = COLOR(highlight_fg), highlight_bg = COLOR(highlight_bg);
+    color_type main_cursor_fg = 0, main_cursor_bg = 0;
     rd->default_fg = COLOR(default_fg);
-    rd->highlight_fg = COLOR(highlight_fg);
-    rd->highlight_bg = COLOR(highlight_bg);
     rd->extra_cursor_fg = screen->extra_cursors.color.text.val;
     rd->extra_cursor_bg = screen->extra_cursors.color.cursor.val;
     rd->bg_colors0 = COLOR(default_bg);
@@ -935,25 +978,25 @@ cell_update_uniform_block(
         }
         // If you change the following algorithm remember to change it in the cell shader for extra cursors too
         if (IS_SPECIAL_COLOR(cursor_color)) {
-            if (line_for_cursor) pick_cursor_color(cell_fg, cell_bg, &rd->main_cursor_fg, &rd->main_cursor_bg, rd->default_fg, rd->bg_colors0);
+            if (line_for_cursor) pick_cursor_color(cell_fg, cell_bg, &main_cursor_fg, &main_cursor_bg, rd->default_fg, rd->bg_colors0);
             else {
-                rd->main_cursor_fg = rd->bg_colors0;
-                rd->main_cursor_bg = rd->default_fg;
+                main_cursor_fg = rd->bg_colors0;
+                main_cursor_bg = rd->default_fg;
             }
             if (cell_bg == cell_fg) {
-                rd->main_cursor_fg = rd->bg_colors0;
-                rd->main_cursor_bg = rd->default_fg;
+                main_cursor_fg = rd->bg_colors0;
+                main_cursor_bg = rd->default_fg;
             } else {
-                rd->main_cursor_fg = cell_bg;
-                rd->main_cursor_bg = cell_fg;
+                main_cursor_fg = cell_bg;
+                main_cursor_bg = cell_fg;
             }
         } else {
-            rd->main_cursor_bg = COLOR(cursor_color);
-            if (IS_SPECIAL_COLOR(cursor_text_color)) rd->main_cursor_fg = cell_bg;
-            else rd->main_cursor_fg = COLOR(cursor_text_color);
+            main_cursor_bg = COLOR(cursor_color);
+            if (IS_SPECIAL_COLOR(cursor_text_color)) main_cursor_fg = cell_bg;
+            else main_cursor_fg = COLOR(cursor_text_color);
         }
         // store last rendered cursor color for trail rendering
-        screen->last_rendered.cursor_bg = rd->main_cursor_bg;
+        screen->last_rendered.cursor_bg = main_cursor_bg;
         if (!cursor->is_visible) {
             // Move the main cursor off screen so that only it is hidden, the
             // extra cursors keep their shape and colors.
@@ -984,8 +1027,16 @@ cell_update_uniform_block(
     rd->dim_opacity = OPT(dim_opacity);
 
 #undef COLOR
-    rd->url_color = OPT(url_color);
     rd->url_style = OPT(url_style);
+    linear_color_vec4(rd->default_fg_lin, rd->default_fg);
+    linear_color_vec4(rd->default_bg_lin, rd->bg_colors0);
+    linear_color_vec4(rd->highlight_fg_lin, highlight_fg);
+    linear_color_vec4(rd->highlight_bg_lin, highlight_bg);
+    linear_color_vec4(rd->main_cursor_fg_lin, main_cursor_fg);
+    linear_color_vec4(rd->main_cursor_bg_lin, main_cursor_bg);
+    linear_color_vec4(rd->url_color_lin, OPT(url_color));
+    linear_color_vec4(rd->extra_cursor_fg_lin, dynamic_color_for_gpu(cp, rd->extra_cursor_fg));
+    linear_color_vec4(rd->extra_cursor_bg_lin, dynamic_color_for_gpu(cp, rd->extra_cursor_bg));
     color_type default_bg = rd->bg_colors0;
     unmap_vao_buffer(vao_idx, uniform_buffer);
     rd = NULL;
