@@ -189,7 +189,7 @@ resolve_extra_cursor_colors(float3 cell_bg, float3 cell_fg, ColorPair main_curso
         resolve_dynamic_color(crd.extra_cursor_bg, crd.extra_cursor_bg_lin.rgb, main_cursor.bg, main_cursor.bg),
         resolve_dynamic_color(crd.extra_cursor_fg, crd.extra_cursor_fg_lin.rgb, cell_bg, main_cursor.fg));
     ColorPair special = resolve_extra_cursor_colors_for_special_cursor(cell_bg, cell_fg);
-    return if_one_then_pair(zero_or_one(abs(float(crd.extra_cursor_bg & BYTE_MASK) - float(COLOR_IS_SPECIAL))), ans, special);
+    return if_one_then_pair(zero_or_one(abs(float((crd.extra_cursor_bg >> 24) & BYTE_MASK) - float(COLOR_IS_SPECIAL))), ans, special);
 }
 
 uint
