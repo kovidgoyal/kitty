@@ -1277,6 +1277,12 @@ number_has_fractional_part(double x) {
     return fabs(x - round(x)) >= 1e-6;
 }
 
+// Server time of the last XI2 event carrying scroll valuators. Core Button4-7
+// events with the same timestamp are emulated from it and must be ignored;
+// others come from devices without scroll valuators (e.g. XTEST as used by
+// NoMachine/VNC/xdotool) and would otherwise be dropped entirely.
+static Time last_xi_scroll_time = 0;
+
 static void
 handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     XIScrollDevice *d = NULL;
@@ -1306,6 +1312,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             }
             if (!v) continue;
             scroll_valuator_found = true;
+            last_xi_scroll_time = de->time;
             if (!v->initialized) {
                 v->initialized = true;
                 if (!v->has_value) {
@@ -1959,14 +1966,14 @@ processEvent(XEvent *event) {
             // Modern X provides scroll events as mouse button presses
             // Only use these if smooth scrolling is not available
             else if (event->xbutton.button == Button4) {
-                if (!_glfw.x11.xi.num_scroll_devices) _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .y_offset = 1, .unscaled.y = 1});
+                if (!_glfw.x11.xi.num_scroll_devices || event->xbutton.time != last_xi_scroll_time) _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .y_offset = 1, .unscaled.y = 1});
             } else if (event->xbutton.button == Button5) {
-                if (!_glfw.x11.xi.num_scroll_devices)
+                if (!_glfw.x11.xi.num_scroll_devices || event->xbutton.time != last_xi_scroll_time)
                     _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .y_offset = -1, .unscaled.y = -1});
             } else if (event->xbutton.button == Button6) {
-                if (!_glfw.x11.xi.num_scroll_devices) _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .x_offset = 1, .unscaled.x = 1});
+                if (!_glfw.x11.xi.num_scroll_devices || event->xbutton.time != last_xi_scroll_time) _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .x_offset = 1, .unscaled.x = 1});
             } else if (event->xbutton.button == Button7) {
-                if (!_glfw.x11.xi.num_scroll_devices)
+                if (!_glfw.x11.xi.num_scroll_devices || event->xbutton.time != last_xi_scroll_time)
                     _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .x_offset = -1, .unscaled.x = -1});
             }
 
