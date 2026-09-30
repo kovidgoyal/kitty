@@ -121,6 +121,7 @@ func StringLiteral(val string) (string, error) {
 		case backslash:
 			switch ch {
 			case '\n':
+				state = normal
 			case '\\':
 				ans.WriteRune('\\')
 				state = normal
