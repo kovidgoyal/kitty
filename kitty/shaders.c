@@ -385,12 +385,7 @@ draw_rounded_rect(
 
 // Cell {{{
 
-enum {
-    CELL_RENDER_DATA_BINDING_POINT = 0,
-    COLOR_TABLE_BINDING_POINT = 1,
-    BORDER_COLORS_BINDING_POINT = 2,
-    CUSTOM_END_DATA_BINDING_POINT = 3
-};
+enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1, BORDER_COLORS_BINDING_POINT = 2, CUSTOM_END_DATA_BINDING_POINT = 3 };
 enum { BORDER_COLORS_GLOBAL_BUFFER };
 // VAOs used only to hold buffers for UBOs that are shared amongst programs/windows,
 // their vertex attribute/array facilities are unused.
@@ -449,11 +444,11 @@ write_uint_array_to_ubo(void *dest, const GLuint *src, size_t count, const Array
 // See https://github.com/kovidgoyal/kitty/issues/10571
 void
 upload_gamma_lut(void) {
-#define U(program)                                                                              \
-    {                                                                                           \
-        bind_program(program);                                                                  \
-        GLint loc = program_uniform_location(program, "gamma_lut");                             \
-        if (loc >= 0) glUniform1fv(loc, arraysz(srgb_lut), srgb_lut);                           \
+#define U(program)                                                    \
+    {                                                                 \
+        bind_program(program);                                        \
+        GLint loc = program_uniform_location(program, "gamma_lut");   \
+        if (loc >= 0) glUniform1fv(loc, arraysz(srgb_lut), srgb_lut); \
     }
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) U(i);
     U(BORDERS_PROGRAM);
