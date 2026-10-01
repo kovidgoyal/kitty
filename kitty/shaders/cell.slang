@@ -161,9 +161,11 @@ vertex_main(
         vo.colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 
         float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK), has_blink = float((text_attrs >> BLINK_SHIFT) & BIT_MASK);
-        float dim_under_reverse_cursor = has_dim * (1.0 - cell_data.has_block_cursor * cell_data.reverse_video_cursor);
+        // A reverse video block cursor already uses the dimmed foreground as its text color, so fade out
+        // the DIM alpha in step with the cursor opacity to avoid dimming twice without un-dimming a fading cursor
+        float undim = cell_data.has_block_cursor * cell_data.reverse_video_cursor * crd.cursor_opacity;
         vo.effective_text_alpha =
-            crd.inactive_text_alpha * if_one_then(dim_under_reverse_cursor, crd.dim_opacity, 1.0) * if_one_then(has_blink, crd.blink_opacity, 1.0);
+            crd.inactive_text_alpha * if_one_then(has_dim, lerp(crd.dim_opacity, 1.0, undim), 1.0) * if_one_then(has_blink, crd.blink_opacity, 1.0);
         float in_url = float((is_selected >> 1) & BIT_MASK);
         vo.decoration_fg = if_one_then(in_url, crd.url_color_lin.rgb, to_color(colors[2], fg_as_uint));
         // Selection
