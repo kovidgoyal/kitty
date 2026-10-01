@@ -493,6 +493,10 @@ typedef struct _GLFWlibraryX11 {
         PFN_XIGetProperty GetProperty;
         XIScrollDevice scroll_devices[16];
         unsigned num_scroll_devices;
+        // Server timestamp of the last XI_Motion event that carried scroll
+        // valuators. The X server stamps the wheel button events it emulates
+        // from those valuators with the same time.
+        Time last_smooth_scroll_time;
         int master_pointer_id;
         Atom LIBINPUT_SCROLL_METHOD_ENABLED, LIBINPUT_TAPPING;
     } xi;

@@ -221,6 +221,10 @@ Detailed list of changes
 - Fix the padding beside window title bars not being drawn when
   :opt:`padding_fill_strategy` is set to :code:`neighboring_cell`
 
+- X11: Fix mouse wheel events from sources without smooth scrolling, such as
+  x11vnc, being ignored when a smooth scrolling device is present. Also pick up
+  smooth scrolling devices that are added or enabled after kitty starts
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
