@@ -218,6 +218,9 @@ Detailed list of changes
 
 - Grid layout: Fix vertical :opt:`placement_strategy` values being ignored
 
+- Fix the padding beside window title bars not being drawn when
+  :opt:`padding_fill_strategy` is set to :code:`neighboring_cell`
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

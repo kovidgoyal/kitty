@@ -1914,7 +1914,7 @@ configure_padding_vao_attributes(ssize_t vao_idx) {
 }
 
 static void
-draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, bool for_final_output) {
+draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, unsigned int cr, unsigned int cb, ssize_t vao_idx, bool for_final_output) {
     // Color the compensatory padding strips (the innermost slice of the window
     // padding, arising from the window size not being an exact multiple of the
     // cell size) to match their neighboring cell. The strips lie outside the
@@ -1924,10 +1924,7 @@ draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, boo
     // and one the vertical pair (left+right). Each draw packs its strip cells into
     // a dedicated buffer so the VAO needs no per-strip reconfiguration. The shader
     // selects per-strip geometry and cell indices branch-free via lerp.
-    if (!window || OPT(padding_fill_strategy) != PADDING_FILL_NEIGHBORING_CELL) return;
-    const unsigned int cl = window->size_mismatch_padding.left, ct = window->size_mismatch_padding.top, cr = window->size_mismatch_padding.right,
-                       cb = window->size_mismatch_padding.bottom;
-    if (!(cl | ct | cr | cb)) return;
+    if (OPT(padding_fill_strategy) != PADDING_FILL_NEIGHBORING_CELL || !(cl | ct | cr | cb)) return;
     Screen *screen = ui->screen;
     const unsigned int columns = screen->columns, lines = screen->lines;
     if (!columns || !lines) return;
@@ -2132,7 +2129,15 @@ send_cell_data_to_gpu(ssize_t vao_idx, Screen *screen, OSWindow *os_window) {
 }
 
 void
-draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window, monotonic_t now) {
+draw_cells(
+    const WindowRenderData *srd,
+    OSWindow *os_window,
+    bool is_active_window,
+    bool is_tab_bar,
+    bool is_single_window,
+    Window *window,
+    const Window *title_bar_of,
+    monotonic_t now) {
     Screen *screen = srd->screen;
     CELL_BUFFERS;
     bind_vertex_array(srd->vao_idx);
@@ -2183,7 +2188,22 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
     restore_viewport();
     // The compensatory padding lies outside the per-window cell viewport, so it
     // is drawn after restoring the full framebuffer viewport.
-    draw_window_padding(&ui, window, srd->vao_idx, !ui.os_window->needs_layers);
+    if (window) {
+        draw_window_padding(
+            &ui,
+            window->size_mismatch_padding.left,
+            window->size_mismatch_padding.top,
+            window->size_mismatch_padding.right,
+            window->size_mismatch_padding.bottom,
+            srd->vao_idx,
+            !ui.os_window->needs_layers);
+    } else if (title_bar_of) {
+        // The left and right compensatory padding of a window extends alongside
+        // its title bar. The layout ensures there is no compensatory padding
+        // between the title bar and the window border.
+        draw_window_padding(
+            &ui, title_bar_of->size_mismatch_padding.left, 0, title_bar_of->size_mismatch_padding.right, 0, srd->vao_idx, !ui.os_window->needs_layers);
+    }
 }
 // }}}
 
