@@ -426,7 +426,7 @@ func docs(args []string) {
 	}
 	cmd := []string{target, "SPHINXBUILD=" + exe, "SPHINXAUTOBUILD=" + aexe}
 	if *failwarn {
-		cmd = append(cmd, "FAILWARN=1")
+		cmd = append(cmd, "FAIL_WARN=1")
 	}
 	c := exec.Command("make", cmd...)
 	c.Stdout = os.Stdout
