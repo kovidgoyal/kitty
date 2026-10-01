@@ -225,6 +225,9 @@ Detailed list of changes
   x11vnc, being ignored when a smooth scrolling device is present. Also pick up
   smooth scrolling devices that are added or enabled after kitty starts
 
+- macOS: Fix OS windows not staying on all spaces when kitty is assigned to
+  All Desktops via its Dock icon (:iss:`10581`)
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

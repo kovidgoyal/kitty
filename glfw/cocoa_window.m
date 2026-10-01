@@ -3089,6 +3089,13 @@ _glfwPlatformShowWindow(_GLFWwindow *window, bool move_to_active_screen) {
     }
     if (is_background) {
         [nw orderBack:nil];
+    } else if (!window->ns.layer_shell.is_active) {
+        // Normal windows are left on whatever space the window server has
+        // assigned them. In particular, touching the collection behavior or
+        // the space assignment of such a window discards any assignment the
+        // user has made via the Dock icon's Options->Assign To menu.
+        // See https://github.com/kovidgoyal/kitty/issues/10581
+        [nw orderFront:nil];
     } else {
         // Cocoa has a bug where when showing a hidden window after
         // fullscreening an application, the window does not get added
