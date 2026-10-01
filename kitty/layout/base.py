@@ -2,7 +2,6 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
-from contextlib import suppress
 from enum import Enum
 from functools import partial
 from itertools import repeat
@@ -12,8 +11,8 @@ from kitty.borders import BorderColor
 from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE, Region, get_options, set_active_window, viewport_for_window
 from kitty.options.types import Options
 from kitty.types import DockEdge, DockSpec, Edges, NeighborsMap, WindowGeometry, WindowMapper, WindowResizeDragData, dock_edges, opposite_dock_edge
-from kitty.typing_compat import WindowType
-from kitty.window_list import WindowGroup, WindowList
+from kitty.typing_compat import EdgeLiteral, WindowType
+from kitty.window_list import WindowGroup, WindowList, collapsed_margin
 
 
 class BorderLine(NamedTuple):
@@ -364,6 +363,8 @@ class Layout:
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects: list[Rect] = []
         self.tab_dock_placements: list[tuple[WindowGroup, Region]] = []
+        # The blank strips at the edges of the layout area when margins are collapsed
+        self.collapsed_margin_rects: list[Rect] = []
         self.layout_opts = self.parse_layout_opts(layout_opts)
         assert self.name is not None
         self.full_name = f'{self.name}:{layout_opts}' if layout_opts else self.name
@@ -591,17 +592,34 @@ class Layout:
 
     def _set_dimensions(self, all_windows: WindowList) -> None:
         full_area, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
+        opts = get_options()
+        self.collapsed_margin_rects = []
+        if opts.collapse_window_margins and (w := next(iter(all_windows), None)) is not None:
+            # Windows use only part of their margins, see collapsed_margin(),
+            # so supply the rest at the edges of the layout area
+            def inset(edge: EdgeLiteral) -> int:
+                m = w.default_margin(edge)
+                return m - collapsed_margin(m, edge)
+
+            ml, mt, mr, mb = inset('left'), inset('top'), inset('right'), inset('bottom')
+            left, top, right, bottom = full_area.left, full_area.top, full_area.left + full_area.width, full_area.top + full_area.height
+            full_area = region(left + ml, top + mt, full_area.width - ml - mr, full_area.height - mt - mb)
+            il, it = full_area.left, full_area.top
+            ir, ib = il + full_area.width, it + full_area.height
+            self.collapsed_margin_rects = [
+                r
+                for r in (Rect(left, top, right, it), Rect(left, ib, right, bottom), Rect(left, it, il, ib), Rect(ir, it, right, ib))
+                if r.right > r.left and r.bottom > r.top
+            ]
         # The tab docks reduce the area available to the layout
         lgd.central, self.tab_dock_placements = carve_docks(full_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
-        opts = get_options()
         lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, all_windows.has_more_than_one_visible_group)
 
     def __call__(self, all_windows: WindowList) -> None:
         self._set_dimensions(all_windows)
         self.update_visibility(all_windows)
-        self.blank_rects = []
         # Set show_title_bar flag on each visible window before layout
         min_windows = get_options().window_title_bar_min_windows
         visible_groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
@@ -616,6 +634,12 @@ class Layout:
         if all_windows.groups:
             self.do_layout(all_windows)
         self.layout_docks(all_windows)
+        # Computed from the final geometry of the windows, as it can differ
+        # from what the layout gave them, see WindowGroup.set_content_geometry()
+        self.blank_rects = list(self.collapsed_margin_rects)
+        for group in all_windows.iter_visible_groups():
+            if (geom := group.geometry) is not None:
+                self.blank_rects.extend(blank_rects_for_window(geom))
 
     def layout_docks(self, all_windows: WindowList) -> None:
         for dock, area in self.tab_dock_placements:
@@ -633,13 +657,7 @@ class Layout:
         s, c = geom.spaces, geom.compensatory
         x = next(layout_dimension(content.left, content.width, lgd.cell_width, ((s.left - c.left, s.right - c.right),), alignment=lgd.alignment_x))
         y = next(layout_dimension(content.top, content.height, lgd.cell_height, ((s.top - c.top, s.bottom - c.bottom),), alignment=lgd.alignment_y))
-        new_geom = window_geometry_from_layouts(x, y)
-        if owner.is_visible_in_layout:
-            for r in blank_rects_for_window(geom):
-                with suppress(ValueError):
-                    self.blank_rects.remove(r)
-            self.blank_rects.extend(blank_rects_for_window(new_geom))
-        owner.set_content_geometry(new_geom)
+        owner.set_content_geometry(window_geometry_from_layouts(x, y))
         for dock, area in placements:
             self.layout_docked_group(dock, area)
 
@@ -648,12 +666,9 @@ class Layout:
         ydecoration_pairs = ((dock.decoration('top'), dock.decoration('bottom')),)
         x = next(layout_dimension(area.left, area.width, lgd.cell_width, xdecoration_pairs, alignment=lgd.alignment_x))
         y = next(layout_dimension(area.top, area.height, lgd.cell_height, ydecoration_pairs, alignment=lgd.alignment_y))
-        geom = window_geometry_from_layouts(x, y)
-        dock.set_geometry(geom)
-        if dock.is_visible_in_layout:
-            self.blank_rects.extend(blank_rects_for_window(geom))
+        dock.set_geometry(window_geometry_from_layouts(x, y))
 
-    def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:
+    def layout_single_window_group(self, wg: WindowGroup) -> None:
         bw = 1 if self.must_draw_borders else 0
         xdecoration_pairs = (
             (
@@ -667,10 +682,7 @@ class Layout:
                 wg.decoration('bottom', border_mult=bw, is_single_window=True),
             ),
         )
-        geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y)
-        wg.set_geometry(geom)
-        if add_blank_rects:
-            self.blank_rects.extend(blank_rects_for_window(geom))
+        wg.set_geometry(layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y))
 
     def xlayout(
         self,
@@ -711,7 +723,6 @@ class Layout:
     def set_window_group_geometry(self, wg: WindowGroup, xl: LayoutData, yl: LayoutData) -> WindowGeometry:
         geom = window_geometry_from_layouts(xl, yl)
         wg.set_geometry(geom)
-        self.blank_rects.extend(blank_rects_for_window(geom))
         return geom
 
     def do_layout(self, windows: WindowList) -> None:

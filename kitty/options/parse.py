@@ -146,6 +146,9 @@ class Parser:
     def close_on_child_death(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['close_on_child_death'] = to_bool(val)
 
+    def collapse_window_margins(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['collapse_window_margins'] = to_bool(val)
+
     def color0(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color0'] = to_color(val)
 

@@ -14,9 +14,8 @@ class Stack(Layout):
     only_active_window_visible = True
 
     def do_layout(self, windows: WindowList) -> None:
-        active_group = windows.active_group
         for group in windows.iter_all_layoutable_groups():
-            self.layout_single_window_group(group, add_blank_rects=group is active_group)
+            self.layout_single_window_group(group)
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         wg = windows.group_for_window(window)

@@ -27,6 +27,35 @@ def wrap_increment(val: int, num: int, delta: int) -> int:
     return (val + num + delta) % num
 
 
+def collapsed_margin(margin: int, edge: EdgeLiteral) -> int:
+    """
+    The part of margin used by a window when margins are collapsed. Neighboring
+    windows contribute the halves of their margins to the gap between them, so
+    the gap equals the margin rather than twice the margin. The other half is
+    supplied at the edges of the layout area by the layout.
+    """
+    return (margin + 1) // 2 if edge in ('left', 'top') else margin // 2
+
+
+def compensatory_padding_away_from_title_bar(geom: WindowGeometry, title_bar_at_top: bool) -> WindowGeometry:
+    """
+    Move the compensatory padding from the title bar side of the window to the
+    other side, so that the title bar is always at the same distance from the
+    window border.
+    """
+    s, c = geom.spaces, geom.compensatory
+    if title_bar_at_top:
+        if not (d := c.top):
+            return geom
+        spaces, compensatory = s._replace(top=s.top - d, bottom=s.bottom + d), c._replace(top=0, bottom=c.bottom + d)
+        d = -d
+    else:
+        if not (d := c.bottom):
+            return geom
+        spaces, compensatory = s._replace(top=s.top + d, bottom=s.bottom - d), c._replace(top=c.top + d, bottom=0)
+    return geom._replace(top=geom.top + d, bottom=geom.bottom + d, spaces=spaces, compensatory=compensatory)
+
+
 class WindowGroup:
     def __init__(self, dock: DockSpec | None = None) -> None:
         self.windows: list[WindowType] = []
@@ -141,7 +170,10 @@ class WindowGroup:
         if not self.windows:
             return 0
         w = self.windows[0]
-        return w.effective_margin(which) + w.effective_border() * border_mult + w.effective_padding(which)
+        margin = w.effective_margin(which)
+        if get_options().collapse_window_margins:
+            margin = collapsed_margin(margin, which)
+        return margin + w.effective_border() * border_mult + w.effective_padding(which)
 
     def effective_padding(self, which: EdgeLiteral) -> int:
         if not self.windows:
@@ -162,6 +194,8 @@ class WindowGroup:
             self.set_content_geometry(geom)
 
     def set_content_geometry(self, geom: WindowGeometry) -> None:
+        if self.windows and self.windows[0].show_title_bar and geom.ynum > 1:
+            geom = compensatory_padding_away_from_title_bar(geom, get_options().window_title_bar == 'top')
         for w in self.windows:
             w.set_geometry(geom)
 

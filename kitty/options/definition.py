@@ -1788,6 +1788,20 @@ bottom and left.
 )
 
 opt(
+    'collapse_window_margins',
+    'no',
+    option_type='to_bool',
+    long_text="""
+Normally, the gap between two neighboring windows is the sum of their margins,
+so it is twice as large as the gap between a window and the edge of the
+layout area. When enabled, the margins of neighboring windows collapse into
+each other, so that the gap between two windows is the same size as the gap
+at the edges, as set by :opt:`window_margin_width`. Note that when neighboring
+windows have different margins, the gap is the average of the two.
+""",
+)
+
+opt(
     'window_padding_width',
     '0',
     option_type='edge_width',
@@ -1818,8 +1832,9 @@ opt(
     choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'),
     long_text="""
 When the window size is not an exact multiple of the cell size, the cell area of
-the terminal window will have some extra padding on the sides. You can control
-how that padding is distributed with this option. Using a value of
+the terminal window will have some extra padding on the sides. This padding is
+inside the window border, so that the borders of neighboring windows line up.
+You can control how that padding is distributed with this option. Using a value of
 :code:`center` means the cell area will be placed centrally. A value of
 :code:`top-left` means the padding will be only at the bottom and right edges.
 The value can be one of: :code:`top-left`, :code:`top`, :code:`top-right`,

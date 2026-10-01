@@ -4,8 +4,8 @@
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
-from kitty.layout.base import layout_dimension, lgd
-from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
+from kitty.layout.base import blank_rects_for_window, layout_dimension, lgd
+from kitty.layout.interface import Fat, Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.types import WindowGeometry
 from kitty.window import EdgeWidths
@@ -15,6 +15,8 @@ from .base import BaseTest
 
 
 class Window:
+    show_title_bar = False
+
     def __init__(self, win_id, overlay_for=None, overlay_window_id=None):
         self.id = win_id
         self.serialized_id = 0
@@ -36,6 +38,9 @@ class Window:
         return 1
 
     def effective_margin(self, edge):
+        return 1
+
+    def default_margin(self, edge):
         return 1
 
     def set_visible_in_layout(self, val):
@@ -67,14 +72,14 @@ class Tab:
         self.current_layout.update_visibility(self.windows)
 
 
-def create_windows(layout, num=5):
+def create_windows(layout, num=5, window_class=Window):
     t = Tab()
     t.current_layout = layout
     t.windows = ans = WindowList(t)
     ans.tab_mem = t
     reset_group_id_counter()
     for i in range(num):
-        ans.add_window(Window(i + 1))
+        ans.add_window(window_class(i + 1))
     ans.set_active_group_idx(0)
     return ans
 
@@ -1103,6 +1108,126 @@ class TestReservedSpaces(BaseSplitGeometryTest):
                             for b in boxes[i + 1 :]:
                                 overlaps = a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
                                 self.assertFalse(overlaps, f'{a} overlaps {b}')
+
+
+class WideMarginWindow(Window):
+    def effective_margin(self, edge):
+        return 5
+
+    def default_margin(self, edge):
+        return 5
+
+
+class TestFrameAlignment(BaseSplitGeometryTest):
+    # The cells never exactly fill these sizes, so windows get compensatory padding
+    central = Region((19, 47, 1021, 753, 1003, 707))
+    splits_shape = {
+        'bias': 0.37,
+        'one': {'horizontal': False, 'bias': 0.61, 'one': 1, 'two': 2},
+        'two': {'horizontal': False, 'bias': 0.29, 'one': 3, 'two': {'bias': 0.53, 'one': 4, 'two': 5}},
+    }
+
+    def layouts(self, window_class=Window):
+        for cls in (Tall, Fat, Grid, Vertical, Horizontal, Splits):
+            for num in (2, 3, 5):
+                layout = create_layout(cls)
+                windows = create_windows(layout, num=num, window_class=window_class)
+                if cls is Splits and num == 5:
+                    layout.pairs_root.unserialize(self.splits_shape, lambda x: x)
+                yield layout, windows
+
+    def frames(self, windows):
+        ans = []
+        for wg in windows.iter_all_layoutable_groups(only_visible=True):
+            rects = []
+            add_borders(rects, BorderColor.active, wg)
+            frame = min(r.left for r in rects), min(r.top for r in rects), max(r.right for r in rects), max(r.bottom for r in rects)
+            g = wg.geometry
+            allocation = g.left - g.spaces.left, g.top - g.spaces.top, g.right + g.spaces.right, g.bottom + g.spaces.bottom
+            ans.append((frame, allocation, g))
+        return ans
+
+    def check_frames(self, frames, margins, gap, area):
+        left, top, right, bottom = area.left, area.top, area.left + area.width, area.top + area.height
+        ml, mt, mr, mb = margins
+        neighbors = 0
+        for frame, allocation, g in frames:
+            # Each frame is exactly margin inside its allocation, whatever compensatory padding the window has
+            if allocation[0] == left:
+                self.ae(frame[0], left + ml)
+            if allocation[1] == top:
+                self.ae(frame[1], top + mt)
+            if allocation[2] == right:
+                self.ae(frame[2], right - mr)
+            if allocation[3] == bottom:
+                self.ae(frame[3], bottom - mb)
+        for i, (a, aa, _) in enumerate(frames):
+            for b, ba, _ in frames[i + 1 :]:
+                for (first, fa), (second, sa) in (((a, aa), (b, ba)), ((b, ba), (a, aa))):
+                    if fa[2] == sa[0] and min(fa[3], sa[3]) > max(fa[1], sa[1]):
+                        neighbors += 1
+                        self.ae(second[0] - first[2], gap)
+                    if fa[3] == sa[1] and min(fa[2], sa[2]) > max(fa[0], sa[0]):
+                        neighbors += 1
+                        self.ae(second[1] - first[3], gap)
+        self.assertGreater(neighbors, 0)
+
+    def test_frames_aligned_and_gaps_uniform(self):
+        for layout, windows in self.layouts():
+            self.stub_dimensions(layout, self.central, minimal=False)
+            layout(windows)
+            frames = self.frames(windows)
+            with self.subTest(layout=layout.name, num=len(frames)):
+                self.assertTrue(any(any(g.compensatory) for _, _, g in frames))
+                # margin 1, so the gap between neighbors is 2
+                self.check_frames(frames, (1, 1, 1, 1), 2, self.central)
+
+    def test_title_bar_has_no_compensatory_padding_before_it(self):
+        for position in ('top', 'bottom'):
+            self.set_options({'tab_bar_style': 'hidden', 'window_title_bar_min_windows': 1, 'window_title_bar': position})
+            for layout, windows in self.layouts():
+                self.stub_dimensions(layout, self.central, minimal=False)
+                layout(windows)
+                frames = self.frames(windows)
+                with self.subTest(layout=layout.name, num=len(frames), position=position):
+                    self.assertTrue(all(w.show_title_bar for w in windows))
+                    self.assertTrue(any(any(g.compensatory) for _, _, g in frames))
+                    for _, _, g in frames:
+                        self.ae(g.compensatory.top if position == 'top' else g.compensatory.bottom, 0)
+                    self.check_frames(frames, (1, 1, 1, 1), 2, self.central)
+                    self.ae(len(layout.blank_rects), sum(len(tuple(blank_rects_for_window(g))) for _, _, g in frames))
+
+    def test_collapse_window_margins(self):
+        from unittest.mock import patch
+
+        full = Region((19, 47, 1021, 753, 1003, 707))
+        viewport = full, Region((0, 0, 0, 0, 0, 0)), 1100, 800, 10, 20
+        for collapse in (False, True):
+            self.set_options({'tab_bar_style': 'hidden', 'collapse_window_margins': collapse, 'window_margin_width': 5, 'draw_minimal_borders': False})
+            for layout, windows in self.layouts(WideMarginWindow):
+                layout.set_active_window_in_os_window = lambda idx: None
+                del layout._set_dimensions  # remove the stub from create_layout
+                with patch('kitty.layout.base.viewport_for_window', return_value=viewport):
+                    layout(windows)
+                frames = self.frames(windows)
+                with self.subTest(layout=layout.name, num=len(frames), collapse=collapse):
+                    if collapse:
+                        # half the margin is supplied by the inset of the layout area, the
+                        # rest by the windows and the gap between windows equals the margin
+                        self.ae(lgd.central, Region((21, 49, 1018, 750, 998, 702)))
+                        self.ae(layout.collapsed_margin_rects, [(19, 47, 1022, 49), (19, 751, 1022, 754), (19, 49, 21, 751), (1019, 49, 1022, 751)])
+                        self.assertTrue(set(layout.collapsed_margin_rects).issubset(layout.blank_rects))
+                        # windows use 3 of their margin of 5 on the left and top and 2 on the right and bottom
+                        self.check_frames(frames, (3, 3, 2, 2), 5, lgd.central)
+                        for frame, _, _ in frames:
+                            self.assertGreaterEqual(frame[0] - full.left, 5)
+                            self.assertGreaterEqual(frame[1] - full.top, 5)
+                            self.assertGreaterEqual(full.left + full.width - frame[2], 5)
+                            self.assertGreaterEqual(full.top + full.height - frame[3], 5)
+                    else:
+                        self.ae(lgd.central, full)
+                        self.ae(layout.collapsed_margin_rects, [])
+                        self.check_frames(frames, (5, 5, 5, 5), 10, full)
 
 
 class TestSplitDragGeometry(BaseSplitGeometryTest):

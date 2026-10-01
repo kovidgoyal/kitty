@@ -846,6 +846,10 @@ class Window:
         q = getattr(self.margin, edge)
         if q is not None:
             return pt_to_px(q, self.os_window_id)
+        return self.default_margin(edge)
+
+    def default_margin(self, edge: EdgeLiteral) -> int:
+        "The margin from the options, ignoring any margin set for this window specifically"
         opts = get_options()
         tab = self.tabref()
         is_single_window = tab is not None and tab.has_single_window_visible()

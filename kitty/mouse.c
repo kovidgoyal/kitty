@@ -253,22 +253,22 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
 
 static unsigned int
 window_left(Window *w) {
-    return w->render_data.geometry.left - w->padding.left;
+    return w->render_data.geometry.left - w->padding.left - w->size_mismatch_padding.left;
 }
 
 static unsigned int
 window_right(Window *w) {
-    return w->render_data.geometry.right + w->padding.right;
+    return w->render_data.geometry.right + w->padding.right + w->size_mismatch_padding.right;
 }
 
 static unsigned int
 window_top(Window *w) {
-    return w->render_data.geometry.top - w->padding.top;
+    return w->render_data.geometry.top - w->padding.top - w->size_mismatch_padding.top;
 }
 
 static unsigned int
 window_bottom(Window *w) {
-    return w->render_data.geometry.bottom + w->padding.bottom;
+    return w->render_data.geometry.bottom + w->padding.bottom + w->size_mismatch_padding.bottom;
 }
 
 static bool

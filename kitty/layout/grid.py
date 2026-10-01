@@ -163,24 +163,27 @@ class Grid(Layout):
             size = ld.space_before + ld.space_after + ld.content_size
             return start, size
 
-        def layout(ld: LayoutData, cell_length: int, before_dec: int, after_dec: int) -> LayoutData:
+        def layout(ld: LayoutData, cell_length: int, before_dec: int, after_dec: int, alignment: int) -> LayoutData:
             start, size = extents(ld)
             space_needed_for_decorations = before_dec + after_dec
             content_size = size - space_needed_for_decorations
             number_of_cells = content_size // cell_length
             cell_area = number_of_cells * cell_length
             extra = content_size - cell_area
-            if lgd.alignment_x == 0:  # center
-                before_dec += extra // 2
-            elif lgd.alignment_x > 0:  # end
-                before_dec += extra
-            return LayoutData(start + before_dec, number_of_cells, before_dec, size - cell_area - before_dec, cell_area)
+            compensatory_before = 0
+            if alignment == 0:  # center
+                compensatory_before = extra // 2
+            elif alignment > 0:  # end
+                compensatory_before = extra
+            space_before = before_dec + compensatory_before
+            space_after = size - cell_area - space_before
+            return LayoutData(start + space_before, number_of_cells, space_before, space_after, cell_area, compensatory_before, space_after - after_dec)
 
         def position_window_in_grid_cell(window_idx: int, xl: LayoutData, yl: LayoutData) -> None:
             wg = groups[window_idx]
             edges = Edges(wg.decoration('left'), wg.decoration('top'), wg.decoration('right'), wg.decoration('bottom'))
-            xl = layout(xl, lgd.cell_width, edges.left, edges.right)
-            yl = layout(yl, lgd.cell_height, edges.top, edges.bottom)
+            xl = layout(xl, lgd.cell_width, edges.left, edges.right, lgd.alignment_x)
+            yl = layout(yl, lgd.cell_height, edges.top, edges.bottom, lgd.alignment_y)
             self.set_window_group_geometry(wg, xl, yl)
 
         for window_idx, xl, yl in self.layout_windows(n, nrows, ncols, special_rows, special_col, on_col_done):

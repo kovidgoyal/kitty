@@ -209,6 +209,15 @@ Detailed list of changes
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 
+- Layouts: Align the borders of neighboring windows and keep the gaps between
+  them uniform, by drawing the padding needed to fit whole cells inside the
+  window border (:pull:`10508`)
+
+- A new option :opt:`collapse_window_margins` to have the margins of
+  neighboring windows collapse into each other instead of adding up
+
+- Grid layout: Fix vertical :opt:`placement_strategy` values being ignored
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

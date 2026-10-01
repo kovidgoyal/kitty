@@ -78,6 +78,7 @@ option_names = (
     'clipboard_max_size',
     'clone_source_strategies',
     'close_on_child_death',
+    'collapse_window_margins',
     'color0',
     'color1',
     'color2',
@@ -562,6 +563,7 @@ class Options:
     clipboard_max_size: float = 512.0
     clone_source_strategies: frozenset[str] = frozenset({'conda', 'env_var', 'path', 'venv'})
     close_on_child_death: bool = False
+    collapse_window_margins: bool = False
     command_on_bell: list[str] = ['none']
     confirm_os_window_close: tuple[int, bool] = (-1, False)
     copy_on_select: str = ''

@@ -11,7 +11,7 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, blank_rects_for_window, lgd, window_geometry_from_layouts
+from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, lgd, window_geometry_from_layouts
 
 
 def child_axis_units(child: 'Pair | int | None', horizontal: bool) -> int:
@@ -269,9 +269,7 @@ class Pair:
         return final_pair
 
     def apply_window_geometry(self, window_id: int, window_geometry: WindowGeometry, id_window_map: dict[int, WindowGroup], layout_object: Layout) -> None:
-        wg = id_window_map[window_id]
-        wg.set_geometry(window_geometry)
-        layout_object.blank_rects.extend(blank_rects_for_window(window_geometry))
+        id_window_map[window_id].set_geometry(window_geometry)
 
     def effective_border(self, id_window_map: dict[int, WindowGroup]) -> int:
         for wid in self.all_window_ids():
