@@ -46,6 +46,58 @@ class FloatEdges(NamedTuple):
     bottom: float = 0
 
 
+DockEdge = Literal['left', 'top', 'right', 'bottom']
+dock_edges: tuple[DockEdge, ...] = ('left', 'top', 'right', 'bottom')
+opposite_dock_edge: dict[DockEdge, DockEdge] = {'left': 'right', 'right': 'left', 'top': 'bottom', 'bottom': 'top'}
+
+
+class DockSpec(NamedTuple):
+    edge: DockEdge = 'bottom'
+    # Either a number of cells or a percentage of the area being docked into
+    size: float = 1
+    size_is_percent: bool = False
+    focusable: bool = True
+
+    @property
+    def is_horizontal(self) -> bool:
+        "True if the dock is at the top or bottom edge, i.e. it spans the width of its area"
+        return self.edge in ('top', 'bottom')
+
+    @property
+    def size_as_string(self) -> str:
+        return f'{self.size:g}%' if self.size_is_percent else str(int(self.size))
+
+    def as_launch_args(self, scope: Literal['window', 'tab']) -> list[str]:
+        ans = [f'--type={scope}-dock', f'--dock-edge={self.edge}', f'--dock-size={self.size_as_string}']
+        if not self.focusable:
+            ans.append('--dock-skip-focus')
+        return ans
+
+    def as_dict(self) -> dict[str, Any]:
+        return {'edge': self.edge, 'size': self.size_as_string, 'focusable': self.focusable}
+
+
+def parse_dock_spec(edge: str, size: str, focusable: bool = True) -> DockSpec:
+    if edge not in dock_edges:
+        raise ValueError(f'{edge!r} is not a valid dock edge, must be one of: {", ".join(dock_edges)}')
+    raw = size.strip()
+    if raw.endswith('%'):
+        try:
+            percent = float(raw[:-1])
+        except ValueError:
+            raise ValueError(f'{size!r} is not a valid dock size') from None
+        if not 0 < percent <= 100:
+            raise ValueError(f'The dock size {size!r} must be a percentage greater than zero and no more than 100')
+        return DockSpec(edge, percent, True, focusable)
+    try:
+        cells = int(raw)
+    except ValueError:
+        raise ValueError(f'{size!r} is not a valid dock size, must be a number of cells or a percentage') from None
+    if cells < 1:
+        raise ValueError(f'The dock size {size!r} must be at least one cell')
+    return DockSpec(edge, cells, False, focusable)
+
+
 class WindowGeometry(NamedTuple):
     left: int
     top: int

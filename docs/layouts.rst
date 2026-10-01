@@ -303,6 +303,43 @@ All windows are shown one below the other. This layout has no options::
     └──────────────────────────────┘
 
 
+.. _docks:
+
+Docked windows
+------------------
+
+.. versionadded:: 0.50.0
+
+A kitty window can be *docked* to an edge of another kitty window or to an
+edge of the tab. Docked windows are placed outside the layout, which arranges
+the other windows in the space that remains. They are useful for things like
+status bars, file trees or a shell kept next to an editor. Create them with the
+:doc:`launch <launch>` action, for example::
+
+    # A one line status bar at the bottom of the tab that never gets keyboard focus
+    map f1 launch --type=tab-dock --dock-edge=bottom --dock-size=1 --dock-skip-focus my-status-bar
+    # A file tree using a quarter of the width of the active window, at its left
+    map f2 launch --type=window-dock --dock-edge=left --dock-size=25% yazi
+
+The size of a dock is a number of rows (for docks at the top or bottom edge) or
+columns (for docks at the left or right edge), or with a :code:`%` suffix, a
+percentage of the window or tab being docked to. When there are several docks
+at an edge, later docks are placed inside earlier ones. When there is not
+enough space for all the docks, the docks created last are made smaller first.
+
+A :code:`window-dock` belongs to the window it is docked to. It is shown
+whenever that window is shown, moves with it when it is moved to another tab
+and is closed when it is closed. A :code:`tab-dock` is closed when the last
+window in the tab that is not docked is closed.
+
+Docks can be focused like other windows, by clicking on them, with
+:ac:`neighboring_window` or :ac:`nth_window` with a negative number, unless they
+were created with :option:`launch --dock-skip-focus`. Docks are not part of the
+layout, so they are not affected by actions such as :ac:`move_window`,
+:ac:`next_window` or :ac:`layout_action`. Docks are saved in :doc:`sessions
+<sessions>`.
+
+
 .. _window_resizing:
 
 Resizing windows

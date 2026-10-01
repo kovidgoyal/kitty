@@ -809,6 +809,9 @@ class Splits(Layout):
         elif location in ('before', 'first'):
             after = False
         aw = next_to or all_windows.active_window
+        if aw is not None:
+            # New windows are never split off docked windows
+            aw = all_windows.main_window_for(aw)
         if bias:
             bias = max(0, min(abs(bias), 100)) / 100
         if aw is not None and (ag := all_windows.group_for_window(aw)) is not None:
@@ -921,7 +924,7 @@ class Splits(Layout):
         """Reposition an existing window as a split adjacent to next_to"""
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
-        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
             return
         # Remove from current position in pairs_root
         self.remove_windows(src_wg.id)

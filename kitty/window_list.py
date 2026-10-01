@@ -9,7 +9,7 @@ from itertools import count
 from typing import Any, Deque, Union
 
 from .fast_data_types import Color, get_options
-from .types import OverlayType, WindowGeometry
+from .types import DockSpec, OverlayType, WindowGeometry
 from .typing_compat import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
@@ -28,9 +28,15 @@ def wrap_increment(val: int, num: int, delta: int) -> int:
 
 
 class WindowGroup:
-    def __init__(self) -> None:
+    def __init__(self, dock: DockSpec | None = None) -> None:
         self.windows: list[WindowType] = []
         self.id = next(group_id_counter)
+        # Set when this group is itself docked to an edge of its owner group or tab
+        self.dock = dock
+        # The groups docked to the edges of this group, outermost first
+        self.docks: list[WindowGroup] = []
+        # The geometry the layout allocated to this group, includes the area of its docks
+        self.allocated_geometry: WindowGeometry | None = None
 
     def __repr__(self) -> str:
         return f'WindowGroup(id={self.id}, windows={", ".join(str(w.id) for w in self.windows)})'
@@ -96,10 +102,15 @@ class WindowGroup:
             self.windows.remove(window)
 
     def serialize_state(self) -> dict[str, Any]:
-        return {
+        ans: dict[str, Any] = {
             'id': self.id,
             'windows': tuple(w.serialize_state() for w in self.windows),
         }
+        if self.dock is not None:
+            ans['dock'] = self.dock.as_dict()
+        if self.docks:
+            ans['docks'] = [d.serialize_state() for d in self.docks]
+        return ans
 
     def serialize_layout_state(self) -> dict[str, Any]:
         return {
@@ -116,10 +127,15 @@ class WindowGroup:
         self.windows.sort(key=sort_key)
 
     def as_simple_dict(self) -> dict[str, Any]:
-        return {
+        ans: dict[str, Any] = {
             'id': self.id,
             'windows': [w.id for w in self.windows],
         }
+        if self.dock is not None:
+            ans['dock'] = self.dock.as_dict()
+        if self.docks:
+            ans['docks'] = [d.id for d in self.docks]
+        return ans
 
     def decoration(self, which: EdgeLiteral, border_mult: int = 1, is_single_window: bool = False) -> int:
         if not self.windows:
@@ -140,6 +156,12 @@ class WindowGroup:
         return w.effective_border()
 
     def set_geometry(self, geom: WindowGeometry) -> None:
+        "Called by layouts to allocate an area to this group. When the group has docks, the area is shared with them."
+        self.allocated_geometry = geom
+        if not self.docks:
+            self.set_content_geometry(geom)
+
+    def set_content_geometry(self, geom: WindowGeometry) -> None:
         for w in self.windows:
             w.set_geometry(geom)
 
@@ -171,8 +193,16 @@ class WindowList:
     def __init__(self, tab: TabType) -> None:
         self.all_windows: list[WindowType] = []
         self.id_map: dict[int, WindowType] = {}
+        # The normal window groups, these are the only groups layouts arrange
         self.groups: list[WindowGroup] = []
+        # Groups docked to the edges of the tab, outermost first
+        self.tab_docks: list[WindowGroup] = []
+        # Docks whose owner group has been removed, kept until their windows are closed
+        self.orphaned_docks: list[WindowGroup] = []
         self._active_group_idx: int = -1
+        # Non-zero when a docked group has the focus. In that case,
+        # _active_group_idx refers to the normal group that was last active.
+        self._active_dock_id: int = 0
         self.active_group_history: Deque[int] = deque((), 64)
         self.tabref = weakref.ref(tab)
 
@@ -194,6 +224,7 @@ class WindowList:
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_state() for g in self.groups],
+            'tab_docks': [g.serialize_state() for g in self.tab_docks],
         }
 
     def serialize_layout_state(self) -> dict[str, Any]:
@@ -209,7 +240,8 @@ class WindowList:
         map is computed but the window list is left unchanged, so that the state of
         several layouts can be restored while only one of them orders the windows.
         """
-        if set(window_id_map.values()) != set(self.id_map):
+        # Docked windows are not part of the layout state
+        if not {w.id for g in self.groups for w in g}.issubset(window_id_map.values()):
             # some window in this collection does not correspond to a
             # serialized window
             return None
@@ -251,7 +283,7 @@ class WindowList:
                     if new_window_id := window_id_map.get(old_window_id):
                         new_window_ids.append(new_window_id)
                 g.unserialize_layout_state(new_window_ids)
-        active_group = self.active_group
+        active_group = self.active_main_group
         self.groups = groups
         if active_group is not None:
             for i, g in enumerate(self.groups):
@@ -267,13 +299,14 @@ class WindowList:
 
     @property
     def active_group_idx(self) -> int:
+        "The index of the active normal group. When a dock has focus, this is the normal group that was last active."
         return self._active_group_idx
 
     @property
     def active_window_history(self) -> list[int]:
         ans = []
         seen = set()
-        gid_map = {g.id: g for g in self.groups}
+        gid_map = {g.id: g for g in self.iter_all_groups()}
         for gid in self.active_group_history:
             g = gid_map.get(gid)
             if g is not None:
@@ -292,16 +325,19 @@ class WindowList:
         if tab is not None:
             tab.active_window_changed()
 
+    def _push_to_history(self, g: WindowGroup | None) -> None:
+        if g is not None:
+            with suppress(ValueError):
+                self.active_group_history.remove(g.id)
+            self.active_group_history.append(g.id)
+
     def set_active_group_idx(self, i: int, notify: bool = True) -> bool:
         changed = False
-        if i != self._active_group_idx and 0 <= i < len(self.groups):
+        if 0 <= i < len(self.groups) and (i != self._active_group_idx or self._active_dock_id):
             old_active_window = self.active_window
-            g = self.active_group
-            if g is not None:
-                with suppress(ValueError):
-                    self.active_group_history.remove(g.id)
-                self.active_group_history.append(g.id)
+            self._push_to_history(self.active_group)
             self._active_group_idx = i
+            self._active_dock_id = 0
             new_active_window = self.active_window
             if old_active_window is not new_active_window:
                 if notify:
@@ -309,10 +345,34 @@ class WindowList:
                 changed = True
         return changed
 
+    def _set_active_dock(self, dock: WindowGroup, notify: bool = True) -> bool:
+        if dock.dock is None or not dock.dock.focusable or dock.id == self._active_dock_id:
+            return False
+        old_active_window = self.active_window
+        self._push_to_history(self.active_group)
+        self._active_dock_id = dock.id
+        # A docked group is part of its owner, so focusing it makes the owner
+        # the active normal group
+        if (owner := self.dock_owner(dock)) is not None:
+            self._active_group_idx = self.groups.index(owner)
+        new_active_window = self.active_window
+        if old_active_window is not new_active_window:
+            if notify:
+                self.notify_on_active_window_change(old_active_window, new_active_window)
+            return True
+        return False
+
+    def _set_active_group(self, g: WindowGroup, notify: bool = True) -> bool:
+        if g.dock is not None:
+            return self._set_active_dock(g, notify)
+        for i, q in enumerate(self.groups):
+            if q is g:
+                return self.set_active_group_idx(i, notify)
+        return False
+
     def set_active_group(self, group_id: int) -> bool:
-        for i, gr in enumerate(self.groups):
-            if gr.id == group_id:
-                return self.set_active_group_idx(i)
+        if (g := self.group_for_id(group_id)) is not None:
+            return self._set_active_group(g)
         return False
 
     def change_tab(self, tab: TabType) -> None:
@@ -327,6 +387,42 @@ class WindowList:
     def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
         return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
 
+    def iter_dock_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
+        "Iterate over the tab docks followed by the docks of every normal group"
+        for d in self.tab_docks:
+            if not only_visible or d.is_visible_in_layout:
+                yield d
+        for g in self.groups:
+            for d in g.docks:
+                if not only_visible or d.is_visible_in_layout:
+                    yield d
+
+    def iter_all_groups(self) -> Iterator[WindowGroup]:
+        yield from self.groups
+        yield from self.iter_dock_groups()
+        yield from self.orphaned_docks
+
+    def iter_visible_groups(self) -> Iterator[WindowGroup]:
+        "All visible groups, normal and docked"
+        yield from self.iter_all_layoutable_groups(only_visible=True)
+        yield from self.iter_dock_groups(only_visible=True)
+
+    def dock_owner(self, dock: WindowGroup) -> WindowGroup | None:
+        "The normal group a dock belongs to, or None for tab docks"
+        for g in self.groups:
+            for d in g.docks:
+                if d is dock:
+                    return g
+        return None
+
+    def main_window_for(self, window: WindowType) -> WindowType | None:
+        "The window itself if it is a normal window, otherwise the active window of the normal group nearest to the dock"
+        g = self.group_for_window(window)
+        if g is None or g.dock is None:
+            return window if g is not None else None
+        owner = self.dock_owner(g) or self.active_main_group
+        return None if owner is None else self.id_map.get(owner.active_window_id)
+
     def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[tuple[int, WindowType]]:
         for i, g in enumerate(self.groups):
             if not only_visible or g.is_visible_in_layout:
@@ -335,10 +431,27 @@ class WindowList:
                     if window.id == aw:
                         yield i, window
                         break
+        # Focusable docks are numbered after the normal groups
+        num = len(self.groups)
+        for g in self.iter_dock_groups():
+            if g.dock is not None and g.dock.focusable and (not only_visible or g.is_visible_in_layout):
+                if (w := self.id_map.get(g.active_window_id)) is not None:
+                    yield num, w
+                    num += 1
+
+    def _most_recent_main_group_idx(self) -> int:
+        gid_map = {g.id: i for i, g in enumerate(self.groups)}
+        for gid in reversed(self.active_group_history):
+            if (x := gid_map.get(gid)) is not None:
+                return x
+        return len(self.groups) - 1
 
     def make_previous_group_active(self, which: int = 1, notify: bool = True) -> None:
         which = max(1, which)
-        gid_map = {g.id: i for i, g in enumerate(self.groups)}
+        gid_map = {g.id: g for g in self.groups}
+        for d in self.iter_dock_groups():
+            if d.dock is not None and d.dock.focusable:
+                gid_map[d.id] = d
         num = len(self.active_group_history)
         for i in range(num):
             idx = num - i - 1
@@ -347,7 +460,7 @@ class WindowList:
             if x is not None:
                 which -= 1
                 if which < 1:
-                    self.set_active_group_idx(x, notify=notify)
+                    self._set_active_group(x, notify=notify)
                     return
         self.set_active_group_idx(len(self.groups) - 1, notify=notify)
 
@@ -360,18 +473,19 @@ class WindowList:
 
     def group_for_window(self, x: WindowOrId) -> WindowGroup | None:
         q = self.id_map[x] if isinstance(x, int) else x
-        for g in self.groups:
+        for g in self.iter_all_groups():
             if q in g:
                 return g
         return None
 
     def group_for_id(self, gid: int) -> WindowGroup | None:
-        for g in self.groups:
+        for g in self.iter_all_groups():
             if g.id == gid:
                 return g
         return None
 
     def group_idx_for_window(self, x: WindowOrId) -> int | None:
+        "The index of the normal group containing the window, None for docked windows"
         q = self.id_map[x] if isinstance(x, int) else x
         for i, g in enumerate(self.groups):
             if q in g:
@@ -398,36 +512,51 @@ class WindowList:
         return iter(())
 
     @property
-    def active_group(self) -> WindowGroup | None:
-        with suppress(Exception):
-            return self.groups[self.active_group_idx]
+    def active_dock(self) -> WindowGroup | None:
+        if self._active_dock_id:
+            for g in self.iter_dock_groups():
+                if g.id == self._active_dock_id:
+                    return g
         return None
+
+    @property
+    def active_main_group(self) -> WindowGroup | None:
+        "The active normal group, this is the owner of the active dock if a dock owned by a group has focus"
+        if 0 <= self._active_group_idx < len(self.groups):
+            return self.groups[self._active_group_idx]
+        return None
+
+    @property
+    def active_group(self) -> WindowGroup | None:
+        "The group that has focus, which may be a dock"
+        return self.active_dock or self.active_main_group
 
     @property
     def active_window(self) -> WindowType | None:
-        with suppress(Exception):
-            return self.id_map[self.groups[self.active_group_idx].active_window_id]
-        return None
+        g = self.active_group
+        return None if g is None else self.id_map.get(g.active_window_id)
+
+    @property
+    def active_main_window(self) -> WindowType | None:
+        g = self.active_main_group
+        return None if g is None else self.id_map.get(g.active_window_id)
 
     @property
     def active_group_main(self) -> WindowType | None:
-        with suppress(Exception):
-            return self.id_map[self.groups[self.active_group_idx].main_window_id]
-        return None
+        g = self.active_group
+        return None if g is None else self.id_map.get(g.main_window_id)
 
     def set_active_window_group_for(self, x: WindowOrId, for_keep_focus: WindowType | None = None) -> None:
         try:
             q = self.id_map[x] if isinstance(x, int) else x
         except KeyError:
             return
-        for i, group in enumerate(self.groups):
-            if q in group:
-                self.set_active_group_idx(i)
-                h = self.active_group_history
-                if for_keep_focus and len(h) > 2 and h[-2] == for_keep_focus.id and h[-1] != for_keep_focus.id:
-                    h.pop()
-                    h.pop()
-                break
+        if (group := self.group_for_window(q)) is not None:
+            self._set_active_group(group)
+            h = self.active_group_history
+            if for_keep_focus and len(h) > 2 and h[-2] == for_keep_focus.id and h[-1] != for_keep_focus.id:
+                h.pop()
+                h.pop()
 
     def add_window(
         self,
@@ -437,13 +566,25 @@ class WindowList:
         before: bool = False,
         make_active: bool = True,
         head_of_group: bool = False,
+        dock: DockSpec | None = None,
+        dock_owner: WindowGroup | None = None,
     ) -> WindowGroup:
+        "Add a window. When dock is specified a new docked group is created, at the edge of dock_owner if specified, otherwise at the edge of the tab."
         self.all_windows.append(window)
         self.id_map[window.id] = window
         target_group: WindowGroup | None = None
 
         if group_of is not None:
             target_group = self.group_for_window(group_of)
+        if target_group is None and dock is not None:
+            target_group = WindowGroup(dock)
+            if dock_owner is None:
+                self.tab_docks.append(target_group)
+            else:
+                if dock_owner.dock is not None or dock_owner not in self.groups:
+                    raise ValueError('Windows can only be docked to normal window groups present in this tab')
+                dock_owner.docks.append(target_group)
+            make_active = make_active and dock.focusable
         if target_group is None and next_to is not None:
             q = self.id_map[next_to] if isinstance(next_to, int) else next_to
             pos = -1
@@ -464,10 +605,7 @@ class WindowList:
         old_active_window = self.active_window
         target_group.add_window(window, head_of_group=head_of_group)
         if make_active:
-            for i, g in enumerate(self.groups):
-                if g is target_group:
-                    self.set_active_group_idx(i, notify=False)
-                    break
+            self._set_active_group(target_group, notify=False)
         new_active_window = self.active_window
         if new_active_window is not old_active_window:
             self.notify_on_active_window_change(old_active_window, new_active_window)
@@ -481,21 +619,50 @@ class WindowList:
         except ValueError:
             pass
         self.id_map.pop(q.id, None)
-        for i, g in enumerate(tuple(self.groups)):
-            g.remove_window(q)
-            if not g:
-                del self.groups[i]
-                if self.groups:
-                    if self.active_group_idx == i:
-                        self.make_previous_group_active(notify=False)
-                    elif self.active_group_idx >= len(self.groups):
-                        self._active_group_idx -= 1
+        group = self.group_for_window(q)
+        if group is not None:
+            group.remove_window(q)
+            if not group:
+                if group.dock is None:
+                    self._remove_main_group(group)
                 else:
-                    self._active_group_idx = -1
-                break
+                    self._remove_dock_group(group)
         new_active_window = self.active_window
         if old_active_window is not new_active_window:
             self.notify_on_active_window_change(old_active_window, new_active_window)
+
+    def _remove_dock_group(self, dock: WindowGroup) -> None:
+        for container in [self.tab_docks, self.orphaned_docks] + [g.docks for g in self.groups]:
+            if dock in container:
+                container.remove(dock)
+                break
+        if dock.id == self._active_dock_id:
+            # focus returns to the normal group that was active
+            self._active_dock_id = 0
+
+    def _remove_main_group(self, group: WindowGroup) -> None:
+        i = self.groups.index(group)
+        del self.groups[i]
+        if group.docks:
+            # The windows in these docks are closed by the tab
+            if any(d.id == self._active_dock_id for d in group.docks):
+                self._active_dock_id = 0
+            self.orphaned_docks.extend(group.docks)
+            group.docks = []
+        if self.groups:
+            if self.active_group_idx == i:
+                if self._active_dock_id:
+                    # A tab dock has focus, so just pick a new active normal group
+                    self._active_group_idx = self._most_recent_main_group_idx()
+                else:
+                    self.make_previous_group_active(notify=False)
+            elif self.active_group_idx >= len(self.groups):
+                self._active_group_idx -= 1
+            if (dock := self.active_dock) is not None and (owner := self.dock_owner(dock)) is not None:
+                # The active normal group must remain the owner of the active dock
+                self._active_group_idx = self.groups.index(owner)
+        else:
+            self._active_group_idx = -1
 
     def active_window_in_nth_group(self, n: int, clamp: bool = False) -> WindowType | None:
         if clamp:
@@ -505,16 +672,16 @@ class WindowList:
         return None
 
     def active_window_in_group_id(self, group_id: int) -> WindowType | None:
-        for g in self.groups:
-            if g.id == group_id:
-                return self.id_map.get(g.active_window_id)
+        if (g := self.group_for_id(group_id)) is not None:
+            return self.id_map.get(g.active_window_id)
         return None
 
     def activate_next_window_group(self, delta: int) -> None:
-        self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))
+        if self.groups:
+            self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))
 
     def move_window_group(self, by: int | None = None, to_group: int | None = None) -> bool:
-        if self.active_group_idx < 0 or not self.groups:
+        if self.active_group_idx < 0 or not self.groups or self._active_dock_id:
             return False
         target = -1
         if by is not None:
@@ -539,7 +706,7 @@ class WindowList:
         preserves the relative order of all other groups.
         """
         src_idx = self.active_group_idx
-        if src_idx < 0 or not self.groups:
+        if src_idx < 0 or not self.groups or self._active_dock_id:
             return False
         target_idx = next((i for i, g in enumerate(self.groups) if g.id == target_group_id), -1)
         if target_idx < 0 or src_idx == target_idx:
@@ -555,14 +722,13 @@ class WindowList:
 
     def compute_needs_borders_map(self, draw_active_borders: bool) -> dict[int, bool]:
         ag = self.active_group
-        return {gr.id: ((gr is ag and draw_active_borders) or gr.needs_attention) for gr in self.groups}
+        return {gr.id: ((gr is ag and draw_active_borders) or gr.needs_attention) for gr in self.iter_all_groups()}
 
     @property
     def has_more_than_one_visible_group(self) -> bool:
         ans = 0
-        for gr in self.groups:
-            if gr.is_visible_in_layout:
-                ans += 1
-                if ans > 1:
-                    return True
+        for gr in self.iter_visible_groups():
+            ans += 1
+            if ans > 1:
+                return True
         return False

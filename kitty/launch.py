@@ -17,9 +17,10 @@ from .constants import is_wayland
 from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
-from .types import LayerShellConfig, OverlayType, run_once
+from .types import DockSpec, LayerShellConfig, OverlayType, dock_edges, parse_dock_spec, run_once
 from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
+from .window_list import WindowGroup
 
 
 class LaunchSpec(NamedTuple):
@@ -83,11 +84,22 @@ of the active window in the tab is used as the tab title. The special value
 --type
 type=choices
 default=window
-choices=window,tab,os-window,os-panel,overlay,overlay-main,background,clipboard,primary
+choices=window,window-dock,tab,tab-dock,os-window,os-panel,overlay,overlay-main,background,clipboard,primary
 Where to launch the child process:
 
 :code:`window`
     A new :term:`kitty window <window>` in the current tab
+
+:code:`window-dock`
+    A new :term:`kitty window <window>` docked to an edge of the active window
+    in the current tab. It is shown whenever that window is shown and is closed
+    when that window is closed. Use :option:`launch --dock-edge` and
+    :option:`launch --dock-size` to control where it is placed. See :ref:`docks`.
+
+:code:`tab-dock`
+    A new :term:`kitty window <window>` docked to an edge of the current tab,
+    the layout arranges the other windows in the remaining space. It is closed
+    when the last non-docked window in the tab is closed. See :ref:`docks`.
 
 :code:`tab`
     A new :term:`tab` in the current OS window. Not available when the
@@ -124,6 +136,32 @@ Where to launch the child process:
     shell protocol. Use the :option:`kitten @ launch --os-panel` option to configure the panel.
 
 #placeholder_for_formatting#
+
+
+--dock-edge
+type=choices
+default=bottom
+choices={','.join(dock_edges)}
+The edge at which to place a :code:`window-dock` or :code:`tab-dock` window.
+When there are multiple docks at an edge, later docks are placed inside earlier
+ones.
+
+
+--dock-size
+default=1
+The size of a :code:`window-dock` or :code:`tab-dock` window. For docks at the
+top or bottom edge this is a number of rows, for docks at the left or right edge
+a number of columns. The space for the window's margin, border and padding is
+added to it. Alternately, add a :code:`%` suffix to specify the size as a
+percentage of the window or tab being docked to, including the window's
+decorations, for example: :code:`25%`.
+
+
+--dock-skip-focus
+type=bool-set
+Prevent a :code:`window-dock` or :code:`tab-dock` window from ever getting
+keyboard focus. Useful for docks that only display information, such as status
+bars.
 
 
 --keep-focus --dont-take-focus
@@ -592,6 +630,7 @@ class LaunchKwds(TypedDict):
     marker: str | None
     cmd: list[str] | None
     overlay_for: int | None
+    dock: DockSpec | None
     stdin: bytes | None
     hold: bool
     bias: float | None
@@ -632,6 +671,7 @@ class ForceWindowLaunch:
 
 force_window_launch = ForceWindowLaunch()
 non_window_launch_types = 'background', 'clipboard', 'primary'
+dock_launch_types = 'window-dock', 'tab-dock'
 
 
 def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequence[str]) -> dict[str, Sequence[str]] | None:
@@ -695,6 +735,7 @@ def _launch(
         'marker': opts.marker or None,
         'cmd': None,
         'overlay_for': None,
+        'dock': None,
         'stdin': None,
         'hold': False,
         'bias': None,
@@ -793,7 +834,7 @@ def _launch(
             if exe:
                 final_cmd[0] = exe
         kw['cmd'] = final_cmd
-    if force_window_launch and opts.type not in non_window_launch_types:
+    if force_window_launch and opts.type not in non_window_launch_types and opts.type not in dock_launch_types:
         opts.type = 'window'
     if next_to and opts.type in non_window_launch_types:
         next_to = None
@@ -838,10 +879,18 @@ def _launch(
                 if kw['cwd_from'] is not None and source_window:
                     add_to_session = source_window.created_in_session_name
         kw['hold'] = opts.hold
+        dock_owner: WindowGroup | None = None
+        if opts.type in dock_launch_types:
+            kw['dock'] = parse_dock_spec(opts.dock_edge, opts.dock_size, not opts.dock_skip_focus)
         if force_target_tab and target_tab is not None:
             tab = target_tab
         else:
             tab = tab_for_window(boss, opts, target_tab, next_to, add_to_session)
+        if opts.type == 'window-dock':
+            owner_window = tab.windows.main_window_for(next_to) if next_to is not None and next_to in tab else None
+            owner_window = owner_window or tab.windows.active_main_window
+            if owner_window is None or (dock_owner := tab.windows.group_for_window(owner_window)) is None:
+                raise ValueError('A window-dock can only be created in a tab that has a window to dock it to')
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
             new_window: Window = tab.new_window(
@@ -850,6 +899,7 @@ def _launch(
                 is_clone_launch=is_clone_launch,
                 next_to=next_to,
                 startup_command_via_shell_integration=startup_command_via_shell_integration,
+                dock_owner=dock_owner,
                 **kw,
             )
             new_window.created_in_session_name = add_to_session
