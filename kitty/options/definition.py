@@ -357,10 +357,11 @@ opt(
 Default text cursor color. If set to the special value :code:`none` the cursor will
 be rendered with a "reverse video" effect. Its color will be the color of the
 text in the cell it is over and the text will be rendered with the background
-color of the cell. Note that if the program running in the terminal sets a
-cursor color, this takes precedence. Also, the cursor colors are modified if
-the cell background and foreground colors have very low contrast. Note that some
-themes set this value, so if you want to override it, place your value after
+color of the cell, including its effective DIM/FAINT foreground color. Note
+that if the program running in the terminal sets a cursor color, this takes
+precedence. Also, the cursor colors are modified if the cell background and
+foreground colors have very low contrast. Note that some themes set this value, so if you want to
+override it, place your value after
 the lines where the theme file is included.
 """,
 )

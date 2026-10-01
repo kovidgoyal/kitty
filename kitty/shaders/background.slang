@@ -30,7 +30,7 @@ public struct CellRenderData {
 
     // default_fg and bg_colors0 are also needed as integers, to resolve cell
     // colors and to detect cells using the default background.
-    public uint default_fg, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
+    public uint default_fg, url_style, inverted, main_cursor_is_special, extra_cursor_fg, extra_cursor_bg;
 
     public uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     public uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -189,7 +189,7 @@ resolve_extra_cursor_colors(float3 cell_bg, float3 cell_fg, ColorPair main_curso
         resolve_dynamic_color(crd.extra_cursor_bg, crd.extra_cursor_bg_lin.rgb, main_cursor.bg, main_cursor.bg),
         resolve_dynamic_color(crd.extra_cursor_fg, crd.extra_cursor_fg_lin.rgb, cell_bg, main_cursor.fg));
     ColorPair special = resolve_extra_cursor_colors_for_special_cursor(cell_bg, cell_fg);
-    return if_one_then_pair(zero_or_one(abs(float(crd.extra_cursor_bg & BYTE_MASK) - float(COLOR_IS_SPECIAL))), ans, special);
+    return if_one_then_pair(zero_or_one(abs(float((crd.extra_cursor_bg >> 24) & BYTE_MASK) - float(COLOR_IS_SPECIAL))), ans, special);
 }
 
 uint
@@ -218,6 +218,7 @@ calc_background_opacity(uint bg) {
 public struct CellData {
     public float has_cursor;
     public float has_block_cursor;
+    public float reverse_video_cursor;
     public uint2 pos;
     public uint cursor_fg_sprite_idx;
     public ColorPair cursor;
@@ -296,12 +297,22 @@ compute_background(uint3 colors, uint2 sprite_idx, uint is_selected, uint instan
     main_cursor.bg = crd.main_cursor_bg_lin.rgb;
     main_cursor.fg = crd.main_cursor_fg_lin.rgb;
 
-    ColorPair extra_cursor = resolve_extra_cursor_colors(cell_bg, foreground, main_cursor);
+    float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK);
+    float3 displayed_foreground = if_one_then(has_dim, lerp(cell_bg, foreground, crd.dim_opacity), foreground);
+    ColorPair extra_cursor = resolve_extra_cursor_colors(cell_bg, displayed_foreground, main_cursor);
     ColorPair cursor = if_one_then_pair(has_main_cursor, main_cursor, extra_cursor);
+
+    uint extra_cursor_bg_type = (crd.extra_cursor_bg >> 24) & BYTE_MASK;
+    uint extra_cursor_fg_type = (crd.extra_cursor_fg >> 24) & BYTE_MASK;
+    float explicit_extra_reverse_video = float(one_if_equal_zero_otherwise(extra_cursor_bg_type, COLOR_IS_SPECIAL));
+    float inherited_reverse_video = float(crd.main_cursor_is_special) * float(one_if_equal_zero_otherwise(extra_cursor_bg_type, COLOR_NOT_SET)) *
+                                    float(one_if_equal_zero_otherwise(extra_cursor_fg_type, COLOR_NOT_SET));
 
     CellData cell_data;
     cell_data.has_cursor = has_cursor;
     cell_data.has_block_cursor = is_block_cursor;
+    cell_data.reverse_video_cursor =
+        if_one_then(has_main_cursor, float(crd.main_cursor_is_special), max(explicit_extra_reverse_video, inherited_reverse_video));
     cell_data.pos = pos;
     cell_data.cursor_fg_sprite_idx = cursor_shape_map[int(final_cursor_shape)];
     cell_data.cursor = cursor;

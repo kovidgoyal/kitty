@@ -224,6 +224,12 @@ Detailed list of changes
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Fix reverse-video extra cursors to use the color type encoded by the
+  multiple-cursors protocol.
+
+- Make reverse-video cursors follow dimmed text colors while keeping text under
+  block cursors legible.
+
 - A new option :opt:`detect_url_regex` to detect arbitrary text, such as file
   references in compiler output, as clickable URLs under the mouse (:iss:`10407`)
 
