@@ -656,7 +656,8 @@ class WindowList:
                     self._active_group_idx = self._most_recent_main_group_idx()
                 else:
                     self.make_previous_group_active(notify=False)
-            elif self.active_group_idx >= len(self.groups):
+            elif self.active_group_idx > i:
+                # The active group shifted down by one
                 self._active_group_idx -= 1
             if (dock := self.active_dock) is not None and (owner := self.dock_owner(dock)) is not None:
                 # The active normal group must remain the owner of the active dock

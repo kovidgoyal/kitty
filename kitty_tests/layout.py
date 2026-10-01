@@ -186,8 +186,10 @@ class TestLayout(BaseTest):
         windows.set_active_group_idx(0)
         to_remove = windows.active_window
         windows.set_active_group_idx(3)
+        prev_window = windows.active_window
         windows.remove_window(to_remove)
-        self.ae(windows.active_group_idx, 3)
+        self.ae(windows.active_group_idx, 2)
+        self.ae(windows.active_window, prev_window)
         check_visible()
         expect_ids(2, 3, 5, 6)
 
