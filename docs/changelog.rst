@@ -199,7 +199,7 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
-0.49.2 [future]
+0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new option :opt:`detect_url_regex` to detect arbitrary text, such as file
