@@ -204,7 +204,16 @@ func relocate_pkgconfig(path, old_prefix, new_prefix string) error {
 	if err != nil {
 		return err
 	}
-	nraw := bytes.ReplaceAll(raw, []byte(old_prefix), []byte(new_prefix))
+	replacement := new_prefix
+	if filepath.Ext(path) == ".pc" {
+		// pkg-config tokenizes Cflags/Libs on unescaped whitespace, so a
+		// prefix containing a space must have that space backslash-escaped,
+		// otherwise `pkg-config --cflags`/`--libs` silently truncates the
+		// path at the first space, breaking the build whenever the checkout
+		// lives under a directory with a space in its name.
+		replacement = strings.NewReplacer(`\`, `\\`, ` `, `\ `).Replace(new_prefix)
+	}
+	nraw := bytes.ReplaceAll(raw, []byte(old_prefix), []byte(replacement))
 	return os.WriteFile(path, nraw, 0o644)
 }
 
