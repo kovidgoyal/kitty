@@ -202,13 +202,13 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
-  with momentum, and a finger held still before it moves selects text
-  (:iss:`5432`, :pull:`10551`)
-
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
+
+- Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
+  with momentum, and a finger held still before it moves selects text
+  (:iss:`5432`, :pull:`10551`)
 
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
