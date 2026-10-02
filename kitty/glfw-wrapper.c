@@ -563,6 +563,12 @@ load_glfw(const char* path) {
     *(void **) (&glfwConfigureMomentumScroller_impl) = dlsym(handle, "glfwConfigureMomentumScroller");
     if (glfwConfigureMomentumScroller_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwFeedMomentumScroller_impl) = dlsym(handle, "glfwFeedMomentumScroller");
+    if (glfwFeedMomentumScroller_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwCancelMomentumScroll_impl) = dlsym(handle, "glfwCancelMomentumScroll");
+    if (glfwCancelMomentumScroll_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwDBusUserNotify_impl) = dlsym(handle, "glfwDBusUserNotify");
     if (glfwDBusUserNotify_impl == NULL) dlerror(); // clear error indicator
 

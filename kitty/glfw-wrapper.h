@@ -306,6 +306,11 @@ typedef struct GLFWScrollEvent {
     int keyboard_modifiers;
 } GLFWScrollEvent;
 
+// Touch events are reported only for direct touch devices, i.e. touchscreens,
+// where a touch has a position in the window. Indirect devices such as
+// touchpads are reported as pointer and scroll events instead. While touch
+// events are delivered for a window, the system does not also deliver
+// pointer events emulated from the same touches.
 typedef enum GLFWTouchEventType {
     // The first finger of a sequence touched the window
     GLFW_TOUCH_BEGIN = 1,
@@ -318,6 +323,11 @@ typedef enum GLFWTouchEventType {
     GLFW_TOUCH_CANCEL = 4,
 } GLFWTouchEventType;
 
+// Every point is reported as GLFW_TOUCH_POINT_PRESSED in exactly one event and
+// then, unless the sequence is canceled, as GLFW_TOUCH_POINT_RELEASED in a
+// later event. A point that is pressed and released at the same time is
+// reported in two events, one after the other. So a GLFW_TOUCH_BEGIN event
+// never contains a released point.
 typedef enum GLFWTouchPointState {
     GLFW_TOUCH_POINT_PRESSED = 1,
     GLFW_TOUCH_POINT_MOVED = 2,
@@ -337,8 +347,13 @@ typedef struct GLFWTouchPoint {
 typedef struct GLFWTouchEvent {
     GLFWTouchEventType type;
     int keyboard_modifiers;
+    // When the system generated the event, on the same clock as monotonic(). Events
+    // can be delivered in bursts, so use this rather than the time of delivery to
+    // measure taps, long presses and the velocity of flings
+    monotonic_t timestamp;
     // Every point that is down on the window, and the points that were released
-    // in this event. The array is valid only during the callback
+    // in this event. At most 16 points are tracked, further simultaneous points
+    // are ignored. The array is valid only during the callback
     size_t num_points;
     const GLFWTouchPoint *points;
 } GLFWTouchEvent;
@@ -2646,6 +2661,14 @@ GFW_EXTERN glfwGetWaylandCurrentMonitorFractionalScale_func glfwGetWaylandCurren
 typedef void (*glfwConfigureMomentumScroller_func)(double, double, double, unsigned);
 GFW_EXTERN glfwConfigureMomentumScroller_func glfwConfigureMomentumScroller_impl;
 #define glfwConfigureMomentumScroller glfwConfigureMomentumScroller_impl
+
+typedef void (*glfwFeedMomentumScroller_func)(GLFWwindow*, double, double, int, bool, monotonic_t);
+GFW_EXTERN glfwFeedMomentumScroller_func glfwFeedMomentumScroller_impl;
+#define glfwFeedMomentumScroller glfwFeedMomentumScroller_impl
+
+typedef void (*glfwCancelMomentumScroll_func)(void);
+GFW_EXTERN glfwCancelMomentumScroll_func glfwCancelMomentumScroll_impl;
+#define glfwCancelMomentumScroll glfwCancelMomentumScroll_impl
 
 typedef unsigned long long (*glfwDBusUserNotify_func)(const GLFWDBUSNotificationData*, GLFWDBusnotificationcreatedfun, void*);
 GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;

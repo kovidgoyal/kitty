@@ -357,6 +357,9 @@ typedef struct _GLFWlibraryWayland {
     struct {
         _GLFWWaylandTouchPoint points[16];
         size_t count;
+        // The time of the latest wl_touch event, in milliseconds of the compositor clock
+        uint32_t last_event_time;
+        bool has_event_time;
     } touch_state;
     struct wl_data_device_manager *dataDeviceManager;
     struct wl_data_device *dataDevice;

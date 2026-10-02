@@ -200,9 +200,8 @@ glfw_is_momentum_scroll_enabled(void) {
     return s.friction > 0;
 }
 
-void
-glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based) {
-    const bool is_synthetic_momentum_start_event = stopped && momentum_scroll_gesture_detection_timeout_ms;
+static void
+handle_scroll_event(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based, monotonic_t now, bool is_synthetic_momentum_start_event) {
     if (!w) {
         cancel_existing_scroll(true);
         return;
@@ -211,8 +210,6 @@ glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent *ev,
         if (ev->x_offset != 0 || ev->y_offset != 0) _glfwInputScroll(w, ev);
         return;
     }
-    monotonic_t now = monotonic();
-    if (is_synthetic_momentum_start_event) now -= ms_to_monotonic_t(momentum_scroll_gesture_detection_timeout_ms);
     if (s.state == PHYSICAL_EVENT_IN_PROGRESS) {
         s.physical_event.displacement.x += ev->unscaled.x;
         s.physical_event.displacement.y += ev->unscaled.y;
@@ -245,4 +242,42 @@ glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent *ev,
     }
     if (s.state == MOMENTUM_IN_PROGRESS) start_momentum_scroll(now);
     else _glfwInputScroll(w, ev);
+}
+
+void
+glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based) {
+    const bool is_synthetic_momentum_start_event = stopped && momentum_scroll_gesture_detection_timeout_ms;
+    monotonic_t now = monotonic();
+    if (is_synthetic_momentum_start_event) now -= ms_to_monotonic_t(momentum_scroll_gesture_detection_timeout_ms);
+    handle_scroll_event(w, ev, stopped, is_finger_based, now, is_synthetic_momentum_start_event);
+}
+
+// Scrolls window by a finger driven movement, such as a drag on a touchscreen,
+// through the same momentum scroller that touchpad scrolling uses. dx and dy are
+// in logical pixels, with the same sign as GLFWScrollEvent offsets, which is the
+// direction the finger moved, so a finger displacement can be passed as is. Pass
+// stopped=true when the finger lifts, the scroll then coasts if the finger was
+// moving fast enough. timestamp is when the movement happened, on the clock of
+// monotonic(), or zero for now. If momentum scrolling is disabled, this sends
+// plain high resolution scroll events.
+GLFWAPI void
+glfwFeedMomentumScroller(GLFWwindow *handle, double dx, double dy, int keyboard_modifiers, bool stopped, monotonic_t timestamp) {
+    _GLFWwindow *w = (_GLFWwindow *)handle;
+    if (!w) return;
+    float xscale = 1, yscale = 1;
+    _glfwPlatformGetWindowContentScale(w, &xscale, &yscale);
+    const GLFWScrollEvent ev = {
+        .offset_type = GLFW_SCROLL_OFFEST_HIGHRES,
+        .unscaled = {.x = dx, .y = dy},
+        .x_offset = dx * (xscale > 0 ? xscale : 1),
+        .y_offset = dy * (yscale > 0 ? yscale : 1),
+        .keyboard_modifiers = keyboard_modifiers,
+    };
+    handle_scroll_event(w, &ev, stopped, true, timestamp > 0 ? timestamp : monotonic(), false);
+}
+
+// Stops any momentum scroll that is coasting
+GLFWAPI void
+glfwCancelMomentumScroll(void) {
+    glfw_cancel_momentum_scroll();
 }
