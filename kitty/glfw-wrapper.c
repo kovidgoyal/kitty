@@ -362,6 +362,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetScrollCallback_impl) = dlsym(handle, "glfwSetScrollCallback");
     if (glfwSetScrollCallback_impl == NULL) fail("Failed to load glfw function glfwSetScrollCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetTouchCallback_impl) = dlsym(handle, "glfwSetTouchCallback");
+    if (glfwSetTouchCallback_impl == NULL) fail("Failed to load glfw function glfwSetTouchCallback with error: %s", dlerror());
+
     *(void **) (&glfwSetLiveResizeCallback_impl) = dlsym(handle, "glfwSetLiveResizeCallback");
     if (glfwSetLiveResizeCallback_impl == NULL) fail("Failed to load glfw function glfwSetLiveResizeCallback with error: %s", dlerror());
 
