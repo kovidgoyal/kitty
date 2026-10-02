@@ -150,11 +150,16 @@ load_glyph(Face *self, int glyph_index, int load_type) {
 }
 
 static unsigned int
+get_baseline(Face *self) {
+    return self->is_scalable ? font_units_to_pixels_y(self, self->metrics.ascender) : self->face->size->metrics.ascender / 64;
+}
+
+static unsigned int
 get_height_for_char(Face *self, char ch) {
     unsigned int ans = 0;
     int glyph_index = FT_Get_Char_Index(self->face, ch);
     if (load_glyph(self, glyph_index, FT_LOAD_DEFAULT)) {
-        unsigned int baseline = font_units_to_pixels_y(self, self->metrics.ascender);
+        unsigned int baseline = get_baseline(self);
         FT_GlyphSlotRec *glyph = self->face->glyph;
         FT_Bitmap *bm = &glyph->bitmap;
         if (glyph->bitmap_top <= 0 || (glyph->bitmap_top > 0 && (unsigned int)glyph->bitmap_top < baseline)) { ans = baseline - glyph->bitmap_top + bm->rows; }
@@ -164,7 +169,7 @@ get_height_for_char(Face *self, char ch) {
 
 static unsigned int
 calc_cell_height(Face *self, bool for_metrics) {
-    unsigned int ans = font_units_to_pixels_y(self, self->metrics.height);
+    unsigned int ans = self->is_scalable ? font_units_to_pixels_y(self, self->metrics.height) : self->face->size->metrics.height / 64;
     if (for_metrics) {
         unsigned int underscore_height = get_height_for_char(self, '_');
         if (underscore_height > ans) {
@@ -182,14 +187,11 @@ static bool
 set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, double xdpi_, double ydpi_, unsigned int desired_height, unsigned int cell_height) {
     FT_UInt xdpi = (FT_UInt)xdpi_, ydpi = (FT_UInt)ydpi_;
     int error = FT_Set_Char_Size(self->face, 0, char_height, xdpi, ydpi);
-    if (!error) {
-        self->char_width = char_width;
-        self->char_height = char_height;
-        self->xdpi = xdpi_;
-        self->ydpi = ydpi_;
-    } else {
+    if (error) {
         if (!self->is_scalable && self->face->num_fixed_sizes > 0) {
-            int32_t min_diff = INT32_MAX;
+            double min_diff = HUGE_VAL;
+            bool match_ppem = !self->has_color && !desired_height && !cell_height;
+            double target = (double)char_height * ydpi / 72.;
             if (desired_height == 0) desired_height = cell_height;
             if (desired_height == 0) {
                 desired_height = (unsigned int)ceil(((double)char_height / 64.) * (double)ydpi / 72.);
@@ -197,8 +199,8 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, double 
             }
             FT_Int strike_index = -1;
             for (FT_Int i = 0; i < self->face->num_fixed_sizes; i++) {
-                int h = self->face->available_sizes[i].height;
-                int32_t diff = h < (int32_t)desired_height ? (int32_t)desired_height - h : h - (int32_t)desired_height;
+                double diff =
+                    match_ppem ? fabs(self->face->available_sizes[i].y_ppem - target) : fabs(self->face->available_sizes[i].height - (double)desired_height);
                 if (diff < min_diff) {
                     min_diff = diff;
                     strike_index = i;
@@ -210,14 +212,17 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, double 
                     set_freetype_error("Failed to set char size for non-scalable font, with error:", error);
                     return false;
                 }
-                self->xdpi = xdpi_;
-                self->ydpi = ydpi_;
-                return true;
             }
         }
-        set_freetype_error("Failed to set char size, with error:", error);
-        return false;
+        if (error) {
+            set_freetype_error("Failed to set char size, with error:", error);
+            return false;
+        }
     }
+    self->char_width = char_width;
+    self->char_height = char_height;
+    self->xdpi = xdpi_;
+    self->ydpi = ydpi_;
     if (self->harfbuzz_font != NULL) hb_ft_font_changed(self->harfbuzz_font);
     return !error;
 }
@@ -571,14 +576,19 @@ cell_metrics(PyObject *s) {
     FontCellMetrics ans = {0};
     ans.cell_width = calc_cell_width(self);
     ans.cell_height = calc_cell_height(self, true);
-    ans.baseline = font_units_to_pixels_y(self, self->metrics.ascender);
+    ans.baseline = get_baseline(self);
     ans.underline_position =
         MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->metrics.ascender - self->metrics.underline_position)));
     ans.underline_thickness = MAX(1, font_units_to_pixels_y(self, self->metrics.underline_thickness));
+    if (!self->is_scalable) {
+        ans.underline_position = MIN(ans.cell_height - 1, ans.baseline - self->face->size->metrics.descender / 128);
+        ans.underline_thickness = 1;
+    }
 
     if (self->metrics.strikethrough_position != 0) {
-        ans.strikethrough_position =
-            MIN(ans.cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->metrics.ascender - self->metrics.strikethrough_position)));
+        int pos = self->is_scalable ? font_units_to_pixels_y(self, MAX(0, self->metrics.ascender - self->metrics.strikethrough_position))
+                                    : MAX(0, (int)ans.baseline - font_units_to_pixels_y(self, self->metrics.strikethrough_position));
+        ans.strikethrough_position = MIN(ans.cell_height - 1, (unsigned int)pos);
     } else {
         ans.strikethrough_position = (unsigned int)floor(ans.baseline * 0.65);
     }
@@ -1539,7 +1549,12 @@ render_codepoint(Face *self, PyObject *args) {
         FT_Load_Glyph(self->face, glyph_index, load_flags);
         FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL);
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
-        populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
+        if (bitmap->pixel_mode == FT_PIXEL_MODE_MONO) {
+            FT_Bitmap converted;
+            if (!freetype_convert_mono_bitmap(bitmap, &converted)) return NULL;
+            populate_processed_bitmap(self->face->glyph, &converted, &pbm, true);
+            FT_Bitmap_Done(library, &converted);
+        } else populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
     }
     const unsigned long canvas_width = pbm.width, canvas_height = pbm.rows;
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, sizeof(pixel) * canvas_height * canvas_width));

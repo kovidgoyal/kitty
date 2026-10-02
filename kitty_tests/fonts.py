@@ -44,6 +44,92 @@ def testing_font_data(name):
 
 
 class Selection(BaseTest):
+    @unittest.skipIf(is_macos, 'FreeType bitmap fonts are only supported on Linux')
+    def test_bitmap_metrics(self):
+        # A tiny BDF avoids depending on installed bitmap fonts for metrics and rendering.
+        bdf = """STARTFONT 2.1
+FONT -kitty-bitmap-medium-r-normal--16-160-72-72-c-80-iso10646-1
+SIZE 16 72 72
+FONTBOUNDINGBOX 8 16 0 -4
+STARTPROPERTIES 3
+FONT_ASCENT 12
+FONT_DESCENT 4
+DEFAULT_CHAR 65
+ENDPROPERTIES
+CHARS 1
+STARTCHAR A
+ENCODING 65
+SWIDTH 500 0
+DWIDTH 8 0
+BBX 8 16 0 -4
+BITMAP
+00
+18
+24
+42
+42
+7E
+42
+42
+42
+42
+00
+00
+00
+00
+00
+00
+ENDCHAR
+ENDFONT
+"""
+        with tempfile.NamedTemporaryFile(suffix='.bdf') as f:
+            f.write(bdf.encode('ascii'))
+            f.flush()
+            for size in (12, 20, 8, 12):
+                tc = setup_for_testing(size=size, dpi=96, main_face_path=f.name)
+                with tc as (sprites, width, height):
+                    self.ae((width, height, tc.baseline), (8, 16, 12))
+                    s = Screen(None, 1, 2)
+                    s.draw('AA')
+                    test_render_line(s.line(0))
+                    cells = [sprites[sprite_idx_to_pos(s.line(0).sprite_at(i), tc.xnum, tc.ynum)] for i in range(2)]
+                    self.ae(cells[0], cells[1])
+                    self.ae(set(cells[0][::4]), {0, 255})
+                    self.ae(
+                        bytes(cells[0][::4]),
+                        bytes(255 if int(row, 16) & (128 >> x) else 0 for row in bdf.split('BITMAP\n')[1].split('ENDCHAR')[0].split() for x in range(8)),
+                    )
+
+    @unittest.skipIf(is_macos, 'FreeType bitmap fonts are only supported on Linux')
+    def test_bitmap_strikes(self):
+        from kitty.fast_data_types import fc_list
+
+        candidates = [d for d in fc_list(allow_bitmapped_fonts=True) if d['family'] == 'Terminus' and d['style'] == 'Medium' and not d['scalable']]
+        if not candidates:
+            self.skipTest('bitmap Terminus not installed')
+        path = candidates[0]['path']
+        face = create_face(path)
+        if not path.endswith('.otb'):
+            self.skipTest('multi-strike OTB Terminus not installed')
+        for px in (12, 16, 24, 32):
+            face.set_size(px, 72, 72)
+            self.ae(face.render_codepoint(ord('M'))[2], px)
+        for px, expected in ((16, 16), (17.25, 18), (23, 22), (31, 32), (13, 12), (16, 16)):
+            for dpi in (72, 96, 144):
+                size = px * 72 / dpi
+                face.set_size(size, dpi, dpi)
+                self.ae(face.render_codepoint(ord('M'))[2], expected)
+                tc = setup_for_testing(size=size, dpi=dpi, main_face_path=path)
+                with tc as (sprites, width, height):
+                    self.ae(height, expected)
+                    self.assertGreater(tc.baseline, 0)
+                    self.assertLess(tc.baseline, height)
+                    strike = sprites[(5, 0, 0)][::4]
+                    rows = {i // width for i, v in enumerate(strike) if v}
+                    self.assertTrue(rows)
+                    self.assertGreater(min(rows), 0)
+                    self.assertLess(max(rows), tc.baseline)
+
     def test_font_selection(self):
         self.set_options({'font_features': {'LiberationMono': (ParsedFontFeature('-dlig'),)}})
         opts = Options()
