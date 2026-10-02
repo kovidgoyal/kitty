@@ -656,6 +656,16 @@ refresh_mouse_position_for_hit_test(GLFWwindow *w, OSWindow *window) {
 }
 
 static void
+dispatch_mouse_button(OSWindow *window, int button, int action, int mods) {
+    window->mouse_button_pressed[button] = action == GLFW_PRESS;
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        window->mouse_left_press_x = window->mouse_x;
+        window->mouse_left_press_y = window->mouse_y;
+    }
+    if (is_window_ready_for_callbacks()) mouse_event(button, mods, action);
+}
+
+static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
 #ifdef __APPLE__
@@ -678,12 +688,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
             }
             if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
         }
-        global_state.callback_os_window->mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
-        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-            window->mouse_left_press_x = window->mouse_x;
-            window->mouse_left_press_y = window->mouse_y;
-        }
-        if (is_window_ready_for_callbacks()) mouse_event(button, mods, action);
+        dispatch_mouse_button(window, button, action, mods);
     }
     request_tick_callback();
     global_state.callback_os_window = NULL;
@@ -722,6 +727,209 @@ scroll_callback(GLFWwindow *w, const GLFWScrollEvent *ev) {
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }
+
+// Touch {{{
+// A touchscreen is turned into mouse and scroll events. Only the first finger of a
+// sequence counts, the others are ignored. A finger that stays within
+// TOUCH_TAP_SLOP is a left click where it landed, sent when it lifts. A finger that
+// moves at once scrolls, through the momentum scroller, so the content follows it
+// and coasts once it lifts, as with a touchpad. A finger held still for
+// TOUCH_SELECT_HOLD before it moves drags the left button from where it landed,
+// which selects text as a mouse drag does.
+#define TOUCH_TAP_SLOP 8.0
+#define TOUCH_SELECT_HOLD ms_to_monotonic_t(400ll)
+
+typedef enum TouchGestureState { TOUCH_IDLE, TOUCH_PENDING, TOUCH_SCROLLING, TOUCH_SELECTING, TOUCH_IGNORED } TouchGestureState;
+
+static struct {
+    TouchGestureState state;
+    id_type os_window_id;
+    int32_t point_id;
+    double start_x, start_y, last_x, last_y;
+    monotonic_t down_at;
+} touch_gesture = {0};
+
+static const char *
+touch_event_type_name(GLFWTouchEventType t) {
+    switch (t) {
+        case GLFW_TOUCH_BEGIN: return "begin";
+        case GLFW_TOUCH_UPDATE: return "update";
+        case GLFW_TOUCH_END: return "end";
+        case GLFW_TOUCH_CANCEL: return "cancel";
+    }
+    return "unknown";
+}
+
+static const char *
+touch_point_state_name(GLFWTouchPointState t) {
+    switch (t) {
+        case GLFW_TOUCH_POINT_PRESSED: return "pressed";
+        case GLFW_TOUCH_POINT_MOVED: return "moved";
+        case GLFW_TOUCH_POINT_STATIONARY: return "stationary";
+        case GLFW_TOUCH_POINT_RELEASED: return "released";
+    }
+    return "unknown";
+}
+
+// Moves the mouse position kitty uses to the finger and reports the move, without
+// showing the mouse cursor, which is not where the finger is
+static void
+touch_move_mouse(OSWindow *osw, double x, double y, int mods) {
+    const monotonic_t now = monotonic();
+    osw->last_mouse_activity_at = now;
+    osw->cursor_blink_zero_time = now;
+    osw->user_is_idle = false;
+    osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
+    osw->mouse_x = x * osw->viewport_x_ratio;
+    osw->mouse_y = y * osw->viewport_y_ratio;
+    osw->has_received_cursor_pos_event = true;
+    if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
+}
+
+static void
+touch_press_left_button(OSWindow *osw, int action, int mods) {
+    global_state.mods_at_last_key_or_button_event = mods;
+    dispatch_mouse_button(osw, GLFW_MOUSE_BUTTON_LEFT, action, mods);
+}
+
+// The momentum scroller delivers its scroll events through scroll_callback() at
+// once, which clears global_state.callback_os_window, so it is restored afterwards
+static void
+touch_scroll(GLFWwindow *w, OSWindow *osw, double dx, double dy, bool stopped, int mods, monotonic_t timestamp) {
+    if (!glfwFeedMomentumScroller) return;
+    glfwFeedMomentumScroller(w, dx, dy, mods, stopped, timestamp);
+    global_state.callback_os_window = osw;
+}
+
+static void
+touch_gesture_reset(void) {
+    zero_at_ptr(&touch_gesture);
+}
+
+static void
+touch_gesture_cancel(OSWindow *osw, int mods) {
+    switch (touch_gesture.state) {
+        case TOUCH_SELECTING:
+            // The button is let go, so that it is not left held down
+            if (osw) touch_press_left_button(osw, GLFW_RELEASE, mods);
+            break;
+        case TOUCH_SCROLLING:
+            if (glfwCancelMomentumScroll) glfwCancelMomentumScroll();
+            break;
+        case TOUCH_IDLE:
+        case TOUCH_PENDING:
+        case TOUCH_IGNORED: break;
+    }
+    touch_gesture_reset();
+}
+
+static void
+touch_gesture_moved(GLFWwindow *w, OSWindow *osw, const GLFWTouchPoint *p, int mods, monotonic_t timestamp) {
+    switch (touch_gesture.state) {
+        case TOUCH_PENDING:
+            if (fabs(p->x - touch_gesture.start_x) <= TOUCH_TAP_SLOP && fabs(p->y - touch_gesture.start_y) <= TOUCH_TAP_SLOP) return;
+            if (timestamp - touch_gesture.down_at >= TOUCH_SELECT_HOLD) {
+                touch_gesture.state = TOUCH_SELECTING;
+                touch_move_mouse(osw, touch_gesture.start_x, touch_gesture.start_y, mods);
+                touch_press_left_button(osw, GLFW_PRESS, mods);
+                touch_move_mouse(osw, p->x, p->y, mods);
+            } else {
+                touch_gesture.state = TOUCH_SCROLLING;
+                // Scroll events go to the kitty window under the mouse position, and
+                // are reported at it to programs that track the mouse
+                touch_move_mouse(osw, touch_gesture.start_x, touch_gesture.start_y, mods);
+                touch_scroll(w, osw, p->x - touch_gesture.start_x, p->y - touch_gesture.start_y, false, mods, timestamp);
+            }
+            break;
+        case TOUCH_SELECTING: touch_move_mouse(osw, p->x, p->y, mods); break;
+        case TOUCH_SCROLLING: touch_scroll(w, osw, p->x - touch_gesture.last_x, p->y - touch_gesture.last_y, false, mods, timestamp); break;
+        case TOUCH_IDLE:
+        case TOUCH_IGNORED: break;
+    }
+    touch_gesture.last_x = p->x;
+    touch_gesture.last_y = p->y;
+}
+
+static void
+touch_gesture_released(GLFWwindow *w, OSWindow *osw, int mods, monotonic_t timestamp) {
+    switch (touch_gesture.state) {
+        case TOUCH_PENDING:
+            touch_move_mouse(osw, touch_gesture.start_x, touch_gesture.start_y, mods);
+            touch_press_left_button(osw, GLFW_PRESS, mods);
+            touch_press_left_button(osw, GLFW_RELEASE, mods);
+            break;
+        case TOUCH_SELECTING: touch_press_left_button(osw, GLFW_RELEASE, mods); break;
+        case TOUCH_SCROLLING: touch_scroll(w, osw, 0, 0, true, mods, timestamp); break;
+        case TOUCH_IDLE:
+        case TOUCH_IGNORED: break;
+    }
+    touch_gesture_reset();
+}
+
+static void
+touch_callback(GLFWwindow *w, const GLFWTouchEvent *ev) {
+    if (!set_callback_window(w)) return;
+    OSWindow *osw = global_state.callback_os_window;
+    if (OPT(debug_keyboard)) {
+        char points[1024];
+        size_t pos = 0;
+        points[0] = 0;
+        for (size_t i = 0; i < ev->num_points && pos < sizeof(points); i++) {
+            const GLFWTouchPoint *p = ev->points + i;
+            const int n = snprintf(points + pos, sizeof(points) - pos, " [%d %s %.1f,%.1f]", p->id, touch_point_state_name(p->state), p->x, p->y);
+            if (n < 0) break;
+            pos += (size_t)n;
+        }
+        timed_debug_print("\x1b[33mTouch\x1b[m %s modifiers: %s%s\n", touch_event_type_name(ev->type), format_mods(ev->keyboard_modifiers), points);
+    }
+    const int mods = ev->keyboard_modifiers;
+    // The OS window of a gesture can close before its fingers lift, and then it
+    // gets no more events
+    if (touch_gesture.state != TOUCH_IDLE && !os_window_for_id(touch_gesture.os_window_id)) touch_gesture_reset();
+    if (touch_gesture.state != TOUCH_IDLE && touch_gesture.os_window_id != osw->id) {
+        // A finger on another OS window: only the first finger of a sequence counts
+        global_state.callback_os_window = NULL;
+        return;
+    }
+    if (ev->type == GLFW_TOUCH_CANCEL) {
+        touch_gesture_cancel(osw, mods);
+        request_tick_callback();
+        global_state.callback_os_window = NULL;
+        return;
+    }
+    if (ev->type == GLFW_TOUCH_BEGIN) {
+        touch_gesture_cancel(osw, mods);
+        touch_gesture.os_window_id = osw->id;
+        if (ev->num_points == 1) {
+            const GLFWTouchPoint *p = ev->points;
+            touch_gesture.state = TOUCH_PENDING;
+            touch_gesture.point_id = p->id;
+            touch_gesture.start_x = touch_gesture.last_x = p->x;
+            touch_gesture.start_y = touch_gesture.last_y = p->y;
+            touch_gesture.down_at = ev->timestamp;
+        } else touch_gesture.state = TOUCH_IGNORED; // several fingers at once are not handled
+    }
+    for (size_t i = 0; i < ev->num_points && touch_gesture.state != TOUCH_IDLE; i++) {
+        const GLFWTouchPoint *p = ev->points + i;
+        if (p->id != touch_gesture.point_id) {
+            // A second finger before the first was recognised makes a gesture
+            // that is not handled
+            if (p->state == GLFW_TOUCH_POINT_PRESSED && touch_gesture.state == TOUCH_PENDING) touch_gesture.state = TOUCH_IGNORED;
+            continue;
+        }
+        switch (p->state) {
+            case GLFW_TOUCH_POINT_MOVED: touch_gesture_moved(w, osw, p, mods, ev->timestamp); break;
+            case GLFW_TOUCH_POINT_RELEASED: touch_gesture_released(w, osw, mods, ev->timestamp); break;
+            case GLFW_TOUCH_POINT_PRESSED:
+            case GLFW_TOUCH_POINT_STATIONARY: break;
+        }
+    }
+    // The sequence is over once every finger has lifted
+    if (ev->type == GLFW_TOUCH_END) touch_gesture_reset();
+    request_tick_callback();
+    global_state.callback_os_window = NULL;
+}
+// }}}
 
 static id_type focus_counter = 0;
 
@@ -2295,6 +2503,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetCursorPosCallback(glfw_window, cursor_pos_callback);
     glfwSetCursorEnterCallback(glfw_window, cursor_enter_callback);
     glfwSetScrollCallback(glfw_window, scroll_callback);
+    glfwSetTouchCallback(glfw_window, touch_callback);
     glfwSetKeyboardCallback(glfw_window, key_callback);
 
     glfwSetDragSourceCallback(glfw_window, drag_source_callback);

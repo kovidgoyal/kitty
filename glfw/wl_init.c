@@ -391,21 +391,13 @@ touch_send_to_window(GLFWid window_id, GLFWTouchEventType type, TouchReportMode 
         points[n++] = (GLFWTouchPoint){.id = p->id, .state = state, .x = p->x, .y = p->y};
     }
     if (!n) return;
-    GLFWTouchEvent ev = {
-        .type = type, .keyboard_modifiers = _glfw.wl.xkb.states.modifiers, .timestamp = timestamp, .num_points = n, .points = points};
+    GLFWTouchEvent ev = {.type = type, .keyboard_modifiers = _glfw.wl.xkb.states.modifiers, .timestamp = timestamp, .num_points = n, .points = points};
     _glfwInputTouch(window, &ev);
 }
 
 static void
 touchHandleDown(
-    void *data UNUSED,
-    struct wl_touch *wl_touch UNUSED,
-    uint32_t serial,
-    uint32_t time,
-    struct wl_surface *surface,
-    int32_t id,
-    wl_fixed_t sx,
-    wl_fixed_t sy) {
+    void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, struct wl_surface *surface, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
     // A finger landing stops any scroll that is coasting, as on every touch system
     glfw_cancel_momentum_scroll();
     _GLFWwindow *window = get_window_from_surface(surface);
