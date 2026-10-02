@@ -455,6 +455,14 @@ end:
     return NULL;
 }
 
+static bool
+is_fallback_font(FcPattern *pat) {
+    FcBool scalable = false, color = false;
+    FcPatternGetBool(pat, FC_SCALABLE, 0, &scalable);
+    FcPatternGetBool(pat, FC_COLOR, 0, &color);
+    return scalable || color;
+}
+
 static FallbackCandidates *
 candidates_for(const char *family, bool bold, bool italic, bool prefer_color) {
     FcConfig *config = FcConfigGetCurrent();
@@ -472,12 +480,20 @@ candidates_for(const char *family, bool bold, bool italic, bool prefer_color) {
     }
     FcConfigSubstitute(NULL, pat, FcMatchPattern);
     FcDefaultSubstitute(pat);
-    // trim must be false so that the candidate list contains every font
+    // trim must be false so that the candidate list contains every eligible font
     // FcFontMatch() would consider, in the order in which it prefers them
     FcCharSet *coverage = NULL;
     FcResult result;
     FcFontSet *fonts = FcFontSort(NULL, pat, FcFalse, &coverage, &result);
     FcPatternDestroy(pat);
+    if (fonts) {
+        int n = 0;
+        for (int i = 0; i < fonts->nfont; i++) {
+            if (is_fallback_font(fonts->fonts[i])) fonts->fonts[n++] = fonts->fonts[i];
+            else FcPatternDestroy(fonts->fonts[i]);
+        }
+        fonts->nfont = n;
+    }
     if (fonts && fonts->nfont < 1) {
         FcFontSetDestroy(fonts);
         fonts = NULL;
@@ -541,7 +557,7 @@ match_in_candidates(const FallbackCandidates *q, FcPattern *pat, const char_type
 
 // Returns the (render prepared) fontconfig pattern for the best font for the
 // specified chars, which the caller must destroy, or NULL with a Python
-// exception set. Set use_candidate_cache to false to use FcFontMatch() directly,
+// exception set. Set use_candidate_cache to false to score the entire font set,
 // this is used by the tests to check the two give equivalent results.
 static FcPattern *
 match_fallback_font(const char *family, bool bold, bool italic, bool prefer_color, const char_type *chars, size_t num_chars, bool use_candidate_cache) {
@@ -556,6 +572,15 @@ match_fallback_font(const char *family, bool bold, bool italic, bool prefer_colo
     FcDefaultSubstitute(pat);
     if (use_candidate_cache) q = candidates_for(family, bold, italic, prefer_color);
     ans = (q && q->fonts) ? match_in_candidates(q, pat, chars, num_chars, &result) : FcFontMatch(NULL, pat, &result);
+    if (ans && !is_fallback_font(ans)) {
+        FcPatternDestroy(ans);
+        ans = NULL;
+        if (!q) q = candidates_for(family, bold, italic, prefer_color);
+        if (q && q->fonts) {
+            FcFontSet *sets[] = {q->fonts};
+            ans = FcFontSetMatch(NULL, sets, 1, pat, &result);
+        }
+    }
     if (ans == NULL) PyErr_SetString(PyExc_KeyError, "Failed to find any font matching the specified pattern");
 end:
     FcPatternDestroy(pat);
@@ -650,6 +675,20 @@ fc_match(PyObject UNUSED *self, PyObject *args) {
     if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
     ans = _fc_match(pat);
+    if (!allow_bitmapped_fonts && ans && PyDict_GetItemString(ans, "scalable") == Py_False && PyDict_GetItemString(ans, "color") != Py_True) {
+        Py_CLEAR(ans);
+        const FallbackCandidates *q = candidates_for(family, bold, italic, false);
+        if (q && q->fonts) {
+            FcFontSet *sets[] = {q->fonts};
+            FcResult result;
+            FcPattern *match = FcFontSetMatch(NULL, sets, 1, pat, &result);
+            if (match) {
+                ans = pattern_as_dict(match);
+                FcPatternDestroy(match);
+            }
+        }
+        if (!ans && !PyErr_Occurred()) PyErr_SetString(PyExc_KeyError, "No scalable font found");
+    }
 
 end:
     if (pat != NULL) FcPatternDestroy(pat);

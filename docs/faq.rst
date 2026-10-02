@@ -212,8 +212,8 @@ since every cell in the grid has to be the same size. On Linux, you can explicit
 select a bitmap font by its exact family name, for example
 ``font_family family="Terminus"``. Bitmap fonts use native fixed sizes, so font
 size changes select the nearest available size in pixels, taking DPI into account,
-instead of scaling the glyphs. This does not add bitmap fonts to automatic font
-selection or fallback.
+instead of scaling the glyphs. Bitmap text fonts are excluded from automatic font
+selection and fallback; bitmap color emoji fonts remain available for fallback.
 
 .. note::
    If you are trying to use a font patched with `Nerd Fonts

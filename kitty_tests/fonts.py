@@ -95,6 +95,10 @@ class Selection(BaseTest):
                 )
             for name in ('monospace', 'Unknown Bitmap Test', 'Scalable Test'):
                 self.assertTrue(fc.find_best_match(name)['scalable'])
+            faces[:] = [bitmap]
+            fc.clear_caches()
+            opts.font_family = parse_font_spec('family="Bitmap Test"')
+            self.ae({d['path'] for d in get_font_files(opts).values()}, {'bitmap-regular'})
             # An exact scalable match retains precedence over a bitmap family.
             scalable['family'] = bitmap['family']
             fc.clear_caches()
@@ -104,6 +108,8 @@ class Selection(BaseTest):
     def test_bitmap_file_selection(self):
         # Two generated single-strike files exercise file switching without a binary fixture.
         with tempfile.TemporaryDirectory() as tdir:
+            with open(os.path.join(tdir, 'LiberationMono-Regular.ttf'), 'wb') as f:
+                f.write(testing_font_data('LiberationMono-Regular.ttf'))
             for height in (12, 24):
                 data = (
                     f"""STARTFONT 2.1
@@ -131,15 +137,28 @@ BITMAP
                     f.write(data)
             config = os.path.join(tdir, 'fonts.conf')
             with open(config, 'w') as f:
-                f.write(f'<fontconfig><dir>{tdir}</dir><cachedir>{tdir}/cache</cachedir></fontconfig>')
+                f.write(
+                    f'<fontconfig><dir>{tdir}</dir><cachedir>{tdir}/cache</cachedir>'
+                    '<alias><family>monospace</family><prefer><family>Kitty Bitmap Test</family></prefer></alias></fontconfig>'
+                )
             code = """
 import os
-from kitty.fast_data_types import fc_list, specialize_font_descriptor, current_fonts, create_test_font_group, Screen, test_render_line, sprite_idx_to_pos
+from kitty.fast_data_types import (
+    fc_list, fc_match, fc_match_fallback, specialize_font_descriptor,
+    current_fonts, create_test_font_group, Screen, test_render_line, sprite_idx_to_pos,
+)
 from kitty.fonts.common import get_font_files
+from kitty.fonts.fontconfig import find_best_match
 from kitty.fonts.render import setup_for_testing
 from kitty.options.types import Options
 from kitty.fonts import FontSpec
-assert not fc_list()
+assert fc_list() and all(d['scalable'] for d in fc_list())
+assert not fc_match('monospace', False, False, 0, True)['scalable']
+for cached in (True, False):
+    d = fc_match_fallback('A', use_candidate_cache=cached)
+    assert d['scalable'], d
+assert get_font_files(Options())['medium']['scalable']
+assert find_best_match('')['scalable']
 opts = Options()
 opts.font_family = FontSpec.from_setting('family="Kitty Bitmap Test"')
 base = get_font_files(opts)['medium']
@@ -158,6 +177,28 @@ with setup_for_testing('family="Kitty Bitmap Test"', size=12, dpi=72) as (sprite
         for i in range(2):
             pixels = sprites[sprite_idx_to_pos(s.line(0).sprite_at(i), setup_for_testing.xnum, setup_for_testing.ynum)]
             assert pixels == b'\\xff' * (8 * height * 4)
+"""
+            cp = subprocess.run(self.cmd_to_run_python_code(code), env={**os.environ, 'FONTCONFIG_FILE': config}, capture_output=True)
+            self.ae(cp.returncode, 0, cp.stderr.decode())
+            # A system with only bitmap text faces still requires an explicit request.
+            with open(config, 'w') as f:
+                f.write(
+                    f'<fontconfig><dir>{tdir}</dir><cachedir>{tdir}/cache</cachedir><selectfont>'
+                    f'<rejectfont><glob>{tdir}/*.ttf</glob></rejectfont></selectfont>'
+                    '<alias><family>Bitmap Alias</family><prefer><family>Kitty Bitmap Test</family></prefer></alias></fontconfig>'
+                )
+            code = """
+from kitty.fast_data_types import fc_list, fc_match
+from kitty.fonts.fontconfig import font_for_family
+assert not fc_list()
+try:
+    fc_match('monospace')
+except KeyError:
+    pass
+else:
+    raise AssertionError('generic monospace matched a bitmap text font')
+assert not fc_match('Kitty Bitmap Test', False, False, 0, True)['scalable']
+assert font_for_family('Bitmap Alias')[0]['family'] == 'Kitty Bitmap Test'
 """
             cp = subprocess.run(self.cmd_to_run_python_code(code), env={**os.environ, 'FONTCONFIG_FILE': config}, capture_output=True)
             self.ae(cp.returncode, 0, cp.stderr.decode())

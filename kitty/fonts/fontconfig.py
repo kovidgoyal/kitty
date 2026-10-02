@@ -71,7 +71,7 @@ def font_map_for_family(family: str, monospaced: bool = True) -> FontMap:
     font_map = all_fonts_map(monospaced)
     q = family_name_to_key(family)
     groups: tuple[FontCollectionMapType, ...] = ('ps_map', 'full_map', 'family_map')
-    if monospaced and q != 'monospace' and not any(q in font_map[g] for g in groups):
+    if monospaced and q and q != 'monospace' and not any(q in font_map[g] for g in groups):
         # Only exact requests can opt into bitmap fonts, never aliases or fallback.
         bitmap_map = all_fonts_map(False)
         for g in groups:
@@ -108,8 +108,8 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
 
 
 @lru_cache
-def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> FontConfigPattern:
-    return fc_match_impl(family, bold, italic, spacing)
+def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO, allow_bitmapped_fonts: bool = False) -> FontConfigPattern:
+    return fc_match_impl(family, bold, italic, spacing, allow_bitmapped_fonts)
 
 
 class WeightRange(NamedTuple):
@@ -221,16 +221,16 @@ def find_best_match(
         if cq:
             if which == 'full_map' and cq[0]['family'] == cq[0]['full_name']:
                 continue  # IBM Plex Mono has fullname of regular face == family_name under fontconfig
-            exact_match = find_best_match_in_candidates(cq, scorer, is_medium_face, ignore_face=ignore_face)
+            exact_match = find_best_match_in_candidates(cq, scorer, is_medium_face, ignore_face=ignore_face if cq[0]['scalable'] else None)
             if exact_match:
                 return exact_match
 
     # Use fc-match to see if we can find a monospaced font that matches family
     # When aliases are defined, spacing can cause the incorrect font to be
     # returned, so check with and without spacing and use the one that matches.
-    mono_possibility = fc_match(family, False, False, FC_MONO)
-    dual_possibility = fc_match(family, False, False, FC_DUAL)
-    any_possibility = fc_match(family, False, False, 0)
+    mono_possibility = fc_match(family, False, False, FC_MONO, not monospaced)
+    dual_possibility = fc_match(family, False, False, FC_DUAL, not monospaced)
+    any_possibility = fc_match(family, False, False, 0, not monospaced)
     tries = (dual_possibility, mono_possibility) if any_possibility == dual_possibility else (mono_possibility, dual_possibility)
     for possibility in tries:
         for key, map_key in (('postscript_name', 'ps_map'), ('full_name', 'full_map'), ('family', 'family_map')):
