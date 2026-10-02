@@ -461,7 +461,9 @@ See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_tr
 to control when a cursor trail is started. You can also have different styles of trail by
 using the :opt:`custom_shaders` option, for example: :code:`custom_shaders cursor-trail-blaze`.
 To make fast cursor movements look smoother, use :code:`custom_shaders cursor-trail-motion-blur`,
-which blurs the trail slightly along the direction it is moving.
+which blurs the trail slightly along the direction it is moving. For particles
+that fly off the cursor as it moves, use :code:`cursor-trail-railgun`,
+:code:`cursor-trail-torpedo` or :code:`cursor-trail-pixiedust`.
 """,
 )
 

@@ -519,6 +519,16 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
                 if not frag_src:
                     failures.append(f'{name}: empty fragment GLSL')
             clear_caches()
+            # Builtin pipelines can override constants with var and chain
+            # shaders, so compile them as well
+            pipeline_names = sorted(entry.name[: -len('.pipeline')] for entry in pkg.iterdir() if entry.name.endswith('.pipeline'))
+            for name in pipeline_names:
+                try:
+                    pipeline = parse_pipeline_definition(get_custom_pipeline_src(name).decode().splitlines(), name)
+                    build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
+                except Exception as e:
+                    failures.append(f'{name}.pipeline: {e}')
+            clear_caches()
 
         if failures:
             self.fail('Custom shader compilation failures:\n' + '\n'.join(failures))

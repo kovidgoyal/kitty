@@ -37,6 +37,12 @@ is moving, and it also smooths the trail's jagged edges. Enable it with
 explained at the top of the :repo_file:`shader file
 <kitty/shaders/custom/cursor-trail-motion-blur.slang>`.
 
+The ``cursor-trail-railgun``, ``cursor-trail-torpedo`` and
+``cursor-trail-pixiedust`` shaders make particles fly off the cursor as it
+moves, in the style of `neovide <https://neovide.dev>`__. You can change the
+size, speed, color, lifetime, etc. of the particles, as explained at the top of
+the :repo_file:`shader file <kitty/shaders/custom/cursor-trail-particles.slang>`.
+
 .. include:: generated/custom-shaders-cursor-trails.rst
 
 Animated backgrounds

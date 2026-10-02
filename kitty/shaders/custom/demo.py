@@ -162,6 +162,9 @@ metadata: dict[str, dict[str, Any]] = {
     },
     'cursor-trail-blaze': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Set your cursor on fire as it moves around.'},
     'cursor-trail-lightning': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Make your cursor shoot lightning as it moves around.'},
+    'cursor-trail-railgun': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Fire a spiral of particles as your cursor moves around.'},
+    'cursor-trail-torpedo': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Leave a wake of particles behind your cursor as it moves.'},
+    'cursor-trail-pixiedust': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Sprinkle glittering pixie dust as your cursor moves around.'},
     # Navigation
     'dim-inactive-windows': {
         'animate': window_focus,

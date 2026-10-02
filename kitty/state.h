@@ -430,6 +430,14 @@ typedef struct BorderRects {
     ssize_t vao_idx;
 } BorderRects;
 
+#define CURSOR_TRAIL_HISTORY_SIZE 8
+
+typedef struct CursorMove {
+    float from_x[2], from_y[2]; // cursor edges (NDC) before the move
+    float to_x[2], to_y[2];     // cursor edges (NDC) after the move
+    monotonic_t at;             // zero for an unused entry
+} CursorMove;
+
 typedef struct CursorTrail {
     bool needs_render;
     bool target_updated;  // set when cursor moves to a new cell; consumed by child-monitor to fire shader events
@@ -443,8 +451,9 @@ typedef struct CursorTrail {
     float previous_corner_y[4]; // corner_y as of the previous frame
     float cursor_edge_x[2];
     float cursor_edge_y[2];
-    float prev_cursor_edge_x[2]; // cursor_edge_x before the most recent cursor move
-    float prev_cursor_edge_y[2]; // cursor_edge_y before the most recent cursor move
+    float prev_cursor_edge_x[2];                   // cursor_edge_x before the most recent cursor move
+    float prev_cursor_edge_y[2];                   // cursor_edge_y before the most recent cursor move
+    CursorMove history[CURSOR_TRAIL_HISTORY_SIZE]; // recent cursor moves that started a trail, most recent first
 } CursorTrail;
 
 typedef struct Tab {

@@ -228,6 +228,10 @@ Detailed list of changes
 - macOS: Fix OS windows not staying on all spaces when kitty is assigned to
   All Desktops via its Dock icon (:iss:`10581`)
 
+- Custom shaders: New :code:`cursor-trail-railgun`, :code:`cursor-trail-torpedo`
+  and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
+  cursor as it moves, in the style of neovide (:iss:`10587`)
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

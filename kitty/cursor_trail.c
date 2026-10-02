@@ -57,6 +57,17 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
     }
 }
 
+static void
+record_cursor_move(CursorTrail *ct, monotonic_t now) {
+    memmove(ct->history + 1, ct->history, sizeof(ct->history) - sizeof(ct->history[0]));
+    CursorMove *m = ct->history;
+    memcpy(m->from_x, ct->prev_cursor_edge_x, sizeof(m->from_x));
+    memcpy(m->from_y, ct->prev_cursor_edge_y, sizeof(m->from_y));
+    memcpy(m->to_x, ct->cursor_edge_x, sizeof(m->to_x));
+    memcpy(m->to_y, ct->cursor_edge_y, sizeof(m->to_y));
+    m->at = now;
+}
+
 static bool
 should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_window, Window *w) {
     if (os_window->live_resize.in_progress) { return true; }
@@ -177,6 +188,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     if (ct->target_updated && had_prev_edge) ct->cursor_changed_at = now;
 
     update_cursor_trail_corners(ct, g, now, os_window, w);
+    // update_cursor_trail_corners() clears target_updated for moves too small to start a trail
+    if (ct->target_updated && had_prev_edge) record_cursor_move(ct, now);
     update_cursor_trail_opacity(ct, w, now);
 
     bool needs_render_prev = ct->needs_render;

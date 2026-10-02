@@ -62,6 +62,17 @@ public struct KittyCustomShaderData {
     // .rgb = trail color (falls back to cursor_color.rgb when cursor_trail_color option is "none").
     // .a = trail opacity (0..1); zero when the trail is inactive.
     public float4 cursor_trail_color;
+    // The most recent cursor moves that started a cursor trail, most recent
+    // first. Unlike the other cursor_trail_* fields these remain valid after
+    // the trail has finished, so effects started by a move can outlive the
+    // trail and effects from several moves can overlap.
+    // .x=left, .y=right, .z=top, .w=bottom UV edges of the cursor rectangle
+    // before (from) and after (to) the move.
+    public float4 cursor_trail_history_from[8];
+    public float4 cursor_trail_history_to[8];
+    // Time of each move (same epoch as `timestamp`), move i is in
+    // cursor_trail_history_time[i / 4][i % 4]. Zero for unused entries.
+    public float4 cursor_trail_history_time[2];
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
     // You can use t.viewport to derive the actual size and position of the

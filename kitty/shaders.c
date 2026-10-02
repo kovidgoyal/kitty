@@ -2600,6 +2600,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float cursor_trail_prev_edge[4];
         float cursor_color[4];
         float cursor_trail_color[4];
+        float cursor_trail_history_from[CURSOR_TRAIL_HISTORY_SIZE][4];
+        float cursor_trail_history_to[CURSOR_TRAIL_HISTORY_SIZE][4];
+        float cursor_trail_history_time[CURSOR_TRAIL_HISTORY_SIZE / 4][4];
         uint32_t viewport_size_pixels[2];
         float mouse_pointer_hidden;
         float cursor_trail_state;
@@ -2607,8 +2610,19 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         uint32_t frame_counter;
         float cursor_trail_change_time;
     };
-    struct GPUCustomEndData *d = (struct GPUCustomEndData *)map_vao_buffer_for_write_only(
-        custom_end_vao_idx, 0, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").size);
+    // This struct is a hand written mirror of the std140 layout of
+    // KittyCustomShaderData in types.slang, so check that they match once.
+    const UniformBlock data_block = program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData");
+    static bool data_block_size_checked = false;
+    if (!data_block_size_checked) {
+        data_block_size_checked = true;
+        if ((size_t)data_block.size < sizeof(struct GPUCustomEndData))
+            fatal(
+                "The KittyCustomShaderData uniform block is %d bytes but the C struct mirroring it is %zu bytes",
+                data_block.size,
+                sizeof(struct GPUCustomEndData));
+    }
+    struct GPUCustomEndData *d = (struct GPUCustomEndData *)map_vao_buffer_for_write_only(custom_end_vao_idx, 0, 0, data_block.size);
     memset(d, 0, sizeof(struct GPUCustomEndData));
     d->src_rect[1] = sy;
     d->src_rect[2] = sx;
@@ -2664,14 +2678,26 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     }
     FILL_COLOR(d->active_window_background, active_bg);
 #undef FILL_COLOR
+#define NDC_TO_UV(v) (((v) + 1.0f) * 0.5f)
     {
         CursorTrail *ct = NULL;
         if (OPT(cursor_trail) && os_window->num_tabs > 0) {
             CursorTrail *candidate = &os_window->tabs[os_window->active_tab].cursor_trail;
             if (candidate->needs_render) ct = candidate;
+            // The history outlives the trail so that effects started by a move can finish
+            for (int i = 0; i < CURSOR_TRAIL_HISTORY_SIZE; i++) {
+                const CursorMove *m = candidate->history + i;
+                if (!m->at) break;
+                for (int k = 0; k < 2; k++) {
+                    d->cursor_trail_history_from[i][k] = NDC_TO_UV(m->from_x[k]);
+                    d->cursor_trail_history_from[i][k + 2] = NDC_TO_UV(m->from_y[k]);
+                    d->cursor_trail_history_to[i][k] = NDC_TO_UV(m->to_x[k]);
+                    d->cursor_trail_history_to[i][k + 2] = NDC_TO_UV(m->to_y[k]);
+                }
+                d->cursor_trail_history_time[i / 4][i % 4] = ((float)monotonic_t_to_ms(m->at)) / 1e3f;
+            }
         }
         if (ct) {
-#define NDC_TO_UV(v) (((v) + 1.0f) * 0.5f)
             for (int i = 0; i < 4; i++) {
                 d->cursor_trail_corners_x[i] = NDC_TO_UV(ct->corner_x[i]);
                 d->cursor_trail_corners_y[i] = NDC_TO_UV(ct->corner_y[i]);
@@ -2688,12 +2714,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
                 d->cursor_trail_prev_edge[2] = NDC_TO_UV(ct->prev_cursor_edge_y[0]); // top
                 d->cursor_trail_prev_edge[3] = NDC_TO_UV(ct->prev_cursor_edge_y[1]); // bottom
             }
-#undef NDC_TO_UV
             d->cursor_trail_color[3] = ct->opacity;
             d->cursor_trail_state = 1.0f;
             d->cursor_trail_change_time = ((float)monotonic_t_to_ms(ct->cursor_changed_at)) / 1e3f;
         }
     }
+#undef NDC_TO_UV
 #define FILL_COLOR3(dst, c)                        \
     do {                                           \
         (dst)[0] = srgb_color(((c) >> 16) & 0xFF); \
