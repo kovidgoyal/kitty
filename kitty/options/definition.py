@@ -1226,10 +1226,18 @@ Mouse buttons can be mapped to perform arbitrary actions. The syntax is:
     mouse_map button-name event-type modes action
 
 Where :code:`button-name` is one of :code:`left`, :code:`middle`, :code:`right`,
-:code:`b1` ... :code:`b8` with added keyboard modifiers. For example:
-:code:`ctrl+shift+left` refers to holding the :kbd:`Ctrl+Shift` keys while
-clicking with the left mouse button. The value :code:`b1` ... :code:`b8` can be
-used to refer to up to eight buttons on a mouse.
+:code:`b1` ... :code:`b8`, :code:`wheel_up`, :code:`wheel_down` with added
+keyboard modifiers. For example: :code:`ctrl+shift+left` refers to holding the
+:kbd:`Ctrl+Shift` keys while clicking with the left mouse button. The value
+:code:`b1` ... :code:`b8` can be used to refer to up to eight buttons on a
+mouse. :code:`wheel_up` and :code:`wheel_down` refer to scrolling the mouse
+wheel (or touchpad) vertically and only support the :code:`press` event type,
+which is triggered once per wheel step. Mapping them replaces the normal scroll
+behavior for that combination of modifiers and mode. For example, to change
+the font size with :kbd:`Ctrl` and the mouse wheel::
+
+    mouse_map ctrl+wheel_up press ungrabbed,grabbed change_font_size all +2
+    mouse_map ctrl+wheel_down press ungrabbed,grabbed change_font_size all -2
 
 :code:`event-type` is one of :code:`press`, :code:`release`,
 :code:`doublepress`, :code:`triplepress`, :code:`click`, :code:`doubleclick`.
