@@ -289,6 +289,7 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2026-17084',  # idna encoding, unused
     'CVE-2026-15806',  # HTTPPasswordMgr unused
     'CVE-2026-15310',  # DoS in unzip
+    'CVE-2026-87910',  # tarfile extract on systems without links irrelevant
     # github.com/nwaples/rardecode/v2
     'CVE-2025-11579',  # rardecode is version 2.2.1, not vulnerable
 ]
