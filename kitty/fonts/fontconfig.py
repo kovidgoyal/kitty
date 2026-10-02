@@ -64,7 +64,23 @@ def all_fonts_map(monospaced: bool = True) -> FontMap:
 
 
 def is_monospace(descriptor: FontConfigPattern) -> bool:
-    return descriptor['spacing'] in ('MONO', 'DUAL')
+    return descriptor['spacing'] in ('MONO', 'DUAL', 'CHARCELL')
+
+
+def font_map_for_family(family: str, monospaced: bool = True) -> FontMap:
+    font_map = all_fonts_map(monospaced)
+    q = family_name_to_key(family)
+    groups: tuple[FontCollectionMapType, ...] = ('ps_map', 'full_map', 'family_map')
+    if monospaced and q != 'monospace' and not any(q in font_map[g] for g in groups):
+        # Only exact requests can opt into bitmap fonts, never aliases or fallback.
+        bitmap_map = all_fonts_map(False)
+        for g in groups:
+            candidates = bitmap_map[g].get(q, ())
+            candidates = [d for d in candidates if not d['scalable'] and is_monospace(d)]
+            if candidates:
+                extra = create_font_map(tuple(candidates))
+                return {g: {**font_map[g], **extra[g]} for g in font_map}
+    return font_map
 
 
 def is_variable(descriptor: FontConfigPattern) -> bool:
@@ -194,7 +210,7 @@ def find_best_match(
     from .common import find_best_match_in_candidates
 
     q = family_name_to_key(family)
-    font_map = all_fonts_map(monospaced)
+    font_map = font_map_for_family(family, monospaced)
     scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
     is_medium_face = not bold and not italic
     # First look for an exact match

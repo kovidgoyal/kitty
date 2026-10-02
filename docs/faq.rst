@@ -208,8 +208,12 @@ kitty is not able to use my favorite font?
 |kitty| achieves its stellar performance by caching alpha masks of each rendered
 character on the GPU, and rendering them all in parallel. This means it is a
 strictly character cell based display. As such it can use only monospace fonts,
-since every cell in the grid has to be the same size. Furthermore, it needs
-fonts to be freely resizable, so it does not support bitmapped fonts.
+since every cell in the grid has to be the same size. On Linux, you can explicitly
+select a bitmap font by its exact family name, for example
+``font_family family="Terminus"``. Bitmap fonts use native fixed sizes, so font
+size changes select the nearest available size in pixels, taking DPI into account,
+instead of scaling the glyphs. This does not add bitmap fonts to automatic font
+selection or fallback.
 
 .. note::
    If you are trying to use a font patched with `Nerd Fonts

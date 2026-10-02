@@ -3,6 +3,7 @@
 
 import array
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -44,6 +45,123 @@ def testing_font_data(name):
 
 
 class Selection(BaseTest):
+    @unittest.skipIf(is_macos, 'Fontconfig is only used on Linux')
+    def test_explicit_bitmap_selection(self):
+        from unittest.mock import patch
+
+        from kitty.fonts import fontconfig as fc
+
+        scalable = fc.fc_match('monospace', False, False).copy()
+        scalable.update(family='Scalable Test', full_name='Scalable Test Regular', postscript_name='ScalableTest')
+        bitmap = scalable.copy()
+        bitmap.update(
+            family='Bitmap Test',
+            full_name='Bitmap Test Regular',
+            postscript_name='BitmapTest',
+            path='bitmap-regular',
+            scalable=False,
+            outline=False,
+            variable=False,
+            spacing='CHARCELL',
+            weight=80,
+            slant=0,
+        )
+        faces = [bitmap]
+        for style, weight, slant in (('Bold', 200, 0), ('Italic', 80, 100), ('Bold Italic', 200, 100)):
+            d = bitmap.copy()
+            d.update(
+                style=style,
+                weight=weight,
+                slant=slant,
+                full_name='Bitmap Test ' + style,
+                postscript_name='BitmapTest' + style.replace(' ', ''),
+                path='bitmap-' + style,
+            )
+            faces.append(d)
+
+        def enumerate_fonts(spacing=-1, allow_bitmapped_fonts=False):
+            return tuple([scalable] + faces) if allow_bitmapped_fonts else (scalable,)
+
+        fc.clear_caches()
+        self.addCleanup(fc.clear_caches)
+        with patch.object(fc, 'fc_list', side_effect=enumerate_fonts):
+            self.assertNotIn('bitmap test', fc.all_fonts_map(True)['family_map'])
+            for spec in ('family="Bitmap Test"', 'Bitmap Test', 'family="BITMAP  Test"', 'postscript_name=BitmapTest', 'full_name="Bitmap Test Regular"'):
+                opts = Options()
+                opts.font_family = parse_font_spec(spec)
+                ff = get_font_files(opts)
+                self.ae(
+                    tuple(ff[k]['path'] for k in ('medium', 'bold', 'italic', 'bi')), ('bitmap-regular', 'bitmap-Bold', 'bitmap-Italic', 'bitmap-Bold Italic')
+                )
+            for name in ('monospace', 'Unknown Bitmap Test', 'Scalable Test'):
+                self.assertTrue(fc.find_best_match(name)['scalable'])
+            # An exact scalable match retains precedence over a bitmap family.
+            scalable['family'] = bitmap['family']
+            fc.clear_caches()
+            self.ae(fc.find_best_match('Bitmap Test')['path'], scalable['path'])
+
+    @unittest.skipIf(is_macos, 'Fontconfig is only used on Linux')
+    def test_bitmap_file_selection(self):
+        # Two generated single-strike files exercise file switching without a binary fixture.
+        with tempfile.TemporaryDirectory() as tdir:
+            for height in (12, 24):
+                data = (
+                    f"""STARTFONT 2.1
+FONT -kitty-bitmap-medium-r-normal--{height}-{height * 10}-72-72-c-80-iso10646-1
+SIZE {height} 72 72
+FONTBOUNDINGBOX 8 {height} 0 -4
+STARTPROPERTIES 4
+FONT_ASCENT {height - 4}
+FONT_DESCENT 4
+FAMILY_NAME "Kitty Bitmap Test"
+DEFAULT_CHAR 65
+ENDPROPERTIES
+CHARS 1
+STARTCHAR A
+ENCODING 65
+SWIDTH 500 0
+DWIDTH 8 0
+BBX 8 {height} 0 -4
+BITMAP
+"""
+                    + 'FF\n' * height
+                    + 'ENDCHAR\nENDFONT\n'
+                )
+                with open(os.path.join(tdir, f'{height}.bdf'), 'w') as f:
+                    f.write(data)
+            config = os.path.join(tdir, 'fonts.conf')
+            with open(config, 'w') as f:
+                f.write(f'<fontconfig><dir>{tdir}</dir><cachedir>{tdir}/cache</cachedir></fontconfig>')
+            code = """
+import os
+from kitty.fast_data_types import fc_list, specialize_font_descriptor, current_fonts, create_test_font_group, Screen, test_render_line, sprite_idx_to_pos
+from kitty.fonts.common import get_font_files
+from kitty.fonts.render import setup_for_testing
+from kitty.options.types import Options
+from kitty.fonts import FontSpec
+assert not fc_list()
+opts = Options()
+opts.font_family = FontSpec.from_setting('family="Kitty Bitmap Test"')
+base = get_font_files(opts)['medium']
+assert base['family'] == 'Kitty Bitmap Test' and not base['scalable']
+with setup_for_testing('family="Kitty Bitmap Test"', size=12, dpi=72) as (sprites, _, _):
+    for size, dpi_x, dpi_y, height in ((12, 72, 72, 12), (18, 96, 96, 24), (6, 144, 144, 12),
+                                     (12, 72, 144, 24), (10.619, 122, 122, 24), (13.49, 96.9, 96.9, 12),
+                                     (24, 72, 72, 24), (12, 72, 72, 12)) * 2:
+        d = specialize_font_descriptor(base, size, dpi_x, dpi_y)
+        assert os.path.basename(d['path']) == f'{height}.bdf', d
+        assert create_test_font_group(size, dpi_x, dpi_y) == (8, height, height - 4)
+        assert os.path.basename(current_fonts()['medium'].path) == f'{height}.bdf'
+        s = Screen(None, 1, 2)
+        s.draw('AA')
+        test_render_line(s.line(0))
+        for i in range(2):
+            pixels = sprites[sprite_idx_to_pos(s.line(0).sprite_at(i), setup_for_testing.xnum, setup_for_testing.ynum)]
+            assert pixels == b'\\xff' * (8 * height * 4)
+"""
+            cp = subprocess.run(self.cmd_to_run_python_code(code), env={**os.environ, 'FONTCONFIG_FILE': config}, capture_output=True)
+            self.ae(cp.returncode, 0, cp.stderr.decode())
+
     @unittest.skipIf(is_macos, 'FreeType bitmap fonts are only supported on Linux')
     def test_bitmap_metrics(self):
         # A tiny BDF avoids depending on installed bitmap fonts for metrics and rendering.
@@ -85,6 +203,13 @@ ENDFONT
         with tempfile.NamedTemporaryFile(suffix='.bdf') as f:
             f.write(bdf.encode('ascii'))
             f.flush()
+            face = create_face(f.name)
+            self.assertIn(f.name, face.identify_for_debug())
+            face.set_size(12, 96, 96)
+            pixels, width, height = face.render_codepoint(ord('A'))
+            self.ae((width, height, set(pixels[3::4])), (8, 16, {0, 255}))
+            pixels, width, height = face.render_sample_text('A', 8, 16)
+            self.ae((width, height, set(pixels[3::4])), (8, 16, {0, 255}))
             for size in (12, 20, 8, 12):
                 tc = setup_for_testing(size=size, dpi=96, main_face_path=f.name)
                 with tc as (sprites, width, height):

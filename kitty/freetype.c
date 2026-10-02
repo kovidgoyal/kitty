@@ -764,7 +764,7 @@ render_bitmap(
     // Embedded bitmap glyph?
     if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_MONO) {
         FT_Bitmap bitmap;
-        freetype_convert_mono_bitmap(&self->face->glyph->bitmap, &bitmap);
+        if (!freetype_convert_mono_bitmap(&self->face->glyph->bitmap, &bitmap)) return false;
         populate_processed_bitmap(self->face->glyph, &bitmap, ans, true);
         FT_Bitmap_Done(library, &bitmap);
     } else {
@@ -1299,7 +1299,7 @@ identify_for_debug(PyObject *s, PyObject *a UNUSED) {
         if (!f) return NULL;
         PyTuple_SET_ITEM(features, i, f);
     }
-    return PyUnicode_FromFormat("%s: %V:%d\nFeatures: %S", FT_Get_Postscript_Name(self->face), self->path, "[path]", instance.val, features);
+    return PyUnicode_FromFormat("%s: %V:%d\nFeatures: %S", postscript_name_for_face(s), self->path, "[path]", instance.val, features);
 }
 
 static PyObject *
@@ -1624,7 +1624,12 @@ render_sample_text(Face *self, PyObject *args) {
         if ((error = FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL))) continue;
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
         ProcessedBitmap pbm = EMPTY_PBM;
-        populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
+        if (bitmap->pixel_mode == FT_PIXEL_MODE_MONO) {
+            FT_Bitmap converted;
+            if (!freetype_convert_mono_bitmap(bitmap, &converted)) return NULL;
+            populate_processed_bitmap(self->face->glyph, &converted, &pbm, true);
+            FT_Bitmap_Done(library, &converted);
+        } else populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
         place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, x, 0, fcm.baseline, 99999, fg, 0, y);
         free_processed_bitmap(&pbm);
     }

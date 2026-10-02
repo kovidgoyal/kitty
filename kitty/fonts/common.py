@@ -275,6 +275,15 @@ def get_fine_grained_font(
     match_is_more_specific_than_family: Event = Event(),
 ) -> Descriptor:
     font_map = all_fonts_map(monospaced)
+    if not is_macos:
+        from .fontconfig import font_map_for_family
+
+        for name in (spec.postscript_name, spec.full_name, spec.family):
+            if name:
+                m = font_map_for_family(name, monospaced)
+                if m is not font_map:
+                    font_map = cast('FontMap', m)
+                    break
     is_medium_face = resolved_medium_font is None
     scorer = create_scorer(bold, italic, monospaced)
     if spec.postscript_name:

@@ -10,6 +10,7 @@
 #include "fonts.h"
 #include <fontconfig/fontconfig.h>
 #include <dlfcn.h>
+#include <math.h>
 #include "freetype_render_ui_text.h"
 #ifndef FC_COLOR
 #define FC_COLOR "color"
@@ -702,10 +703,28 @@ specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts, dou
     if (!features) return NULL;
     RAII_PyObject(final_features, NULL);
     RAII_PyObject(ans, NULL);
-    AP(FcPatternAddString, FC_FILE, (const FcChar8 *)PyUnicode_AsUTF8(p), "path");
-    AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
+    bool bitmap = PyDict_GetItemString(base_descriptor, "scalable") == Py_False && PyDict_GetItemString(base_descriptor, "color") != Py_True;
+    if (bitmap) {
+        // Single-strike bitmap families can have a different file for each size.
+        font_sz_in_pts = ceil(font_sz_in_pts * 64.) / 64.;
+        dpi_y = (unsigned int)dpi_y;
+        PyObject *family = PyDict_GetItemString(base_descriptor, "family"), *style = PyDict_GetItemString(base_descriptor, "style");
+        PyObject *weight = PyDict_GetItemString(base_descriptor, "weight"), *slant = PyDict_GetItemString(base_descriptor, "slant");
+        if (!family || !style || !weight || !slant) {
+            PyErr_SetString(PyExc_ValueError, "Bitmap descriptor has no family, style, weight or slant");
+            goto end;
+        }
+        AP(FcPatternAddString, FC_FAMILY, (const FcChar8 *)PyUnicode_AsUTF8(family), "family");
+        AP(FcPatternAddString, FC_STYLE, (const FcChar8 *)PyUnicode_AsUTF8(style), "style");
+        AP(FcPatternAddInteger, FC_WEIGHT, PyLong_AsLong(weight), "weight");
+        AP(FcPatternAddInteger, FC_SLANT, PyLong_AsLong(slant), "slant");
+        AP(FcPatternAddBool, FC_SCALABLE, false, "scalable");
+    } else {
+        AP(FcPatternAddString, FC_FILE, (const FcChar8 *)PyUnicode_AsUTF8(p), "path");
+        AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
+    }
     AP(FcPatternAddDouble, FC_SIZE, font_sz_in_pts, "size");
-    AP(FcPatternAddDouble, FC_DPI, (dpi_x + dpi_y) / 2.0, "dpi");
+    AP(FcPatternAddDouble, FC_DPI, bitmap ? dpi_y : (dpi_x + dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
     FcPatternDestroy(pat);
     pat = NULL;
@@ -714,13 +733,17 @@ specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts, dou
     // points to a font that fontconfig hasnt indexed, for example the built-in
     // NERD font
     PyObject *new_path = PyDict_GetItemString(ans, "path");
-    if (!new_path || PyObject_RichCompareBool(p, new_path, Py_EQ) != 1) {
+    bool same_font = bitmap ? PyDict_GetItemString(ans, "scalable") == Py_False &&
+                                  PyObject_RichCompareBool(PyDict_GetItemString(base_descriptor, "family"), PyDict_GetItemString(ans, "family"), Py_EQ) == 1 &&
+                                  PyObject_RichCompareBool(PyDict_GetItemString(base_descriptor, "style"), PyDict_GetItemString(ans, "style"), Py_EQ) == 1
+                            : new_path && PyObject_RichCompareBool(p, new_path, Py_EQ) == 1;
+    if (!same_font) {
         Py_CLEAR(ans);
         ans = PyDict_Copy(base_descriptor);
         if (!ans) return NULL;
     }
 
-    if (face_idx > 0) {
+    if (!bitmap && face_idx > 0) {
         // For some reason FcFontMatch sets the index to zero, so manually restore it.
         if (PyDict_SetItemString(ans, "index", idx) != 0) return NULL;
     }
