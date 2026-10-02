@@ -49,6 +49,8 @@ from .fast_data_types import (
     GLFW_PRESS,
     GLFW_RELEASE,
     GLFW_REPEAT,
+    MOUSE_WHEEL_DOWN,
+    MOUSE_WHEEL_UP,
     NO_CURSOR_SHAPE,
     NULL_COLOR_VALUE,
     SCROLL_FULL,
@@ -1416,11 +1418,18 @@ class Window:
 
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
+        is_wheel = event['button'] in (MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN)
+        if is_wheel:  # repeat_count is the number of wheel steps, possibly zero
+            steps, event['repeat_count'] = event['repeat_count'], 1
         ev = MouseEvent(**event)
         self.current_mouse_event_button = ev.button
         action = get_options().mousemap.get(ev)
         if action is None:
             return False
+        if is_wheel:
+            for _ in range(steps):
+                get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
+            return True
         return get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
 
     def drag_thumbnails(self, label: str) -> tuple[tuple[bytes, int, int], ...]:

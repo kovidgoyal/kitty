@@ -203,6 +203,11 @@ set_currently_hovered_window(id_type window_id, int modifiers, bool focus_follow
     }
 }
 
+// Pseudo buttons so that the scroll wheel can be mapped with mouse_map. For
+// these, count is the number of wheel steps, which can be zero.
+#define MOUSE_WHEEL_UP (GLFW_MOUSE_BUTTON_LAST + 1)
+#define MOUSE_WHEEL_DOWN (GLFW_MOUSE_BUTTON_LAST + 2)
+
 static bool
 dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
     bool handled = false;
@@ -226,7 +231,8 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
         }
         if (OPT(debug_keyboard)) {
             const char *evname = "move";
-            switch (count) {
+            if (button > GLFW_MOUSE_BUTTON_LAST) evname = count ? "press" : "partial press";
+            else switch (count) {
                 case -3: evname = "doubleclick"; break;
                 case -2: evname = "click"; break;
                 case -1: evname = "release"; break;
@@ -244,6 +250,8 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
                 case GLFW_MOUSE_BUTTON_6: bname = "b6"; break;
                 case GLFW_MOUSE_BUTTON_7: bname = "b7"; break;
                 case GLFW_MOUSE_BUTTON_8: bname = "b8"; break;
+                case MOUSE_WHEEL_UP: bname = "wheel_up"; break;
+                case MOUSE_WHEEL_DOWN: bname = "wheel_down"; break;
             }
             debug("\x1b[33mon_mouse_input\x1b[m: %s button: %s %sgrabbed: %d handled_in_kitty: %d\n", evname, bname, format_mods(modifiers), grabbed, handled);
         }
@@ -1629,6 +1637,20 @@ scroll_event(const GLFWScrollEvent *ev) {
         case GLFW_MOMENTUM_PHASE_CANCELED: window_for_momentum_scroll = 0; break;
         case GLFW_MOMENTUM_PHASE_MAY_BEGIN: break;
     }
+    if (ev->y_offset != 0.0) {
+        // Steps for mouse_map are counted as for a grabbed mouse, one per wheel
+        // detent. Events that do not complete a step are consumed too, when
+        // mapped, so the screen does not also scroll.
+        double pending = osw->scroll.mapped_pending_pixels_y;
+        int last_dir = osw->scroll.mapped_last_v120_dir_y;
+        int steps = scale_scroll(ANY_MODE, ev->y_offset, ev->offset_type, &pending, osw->fonts_data->fcm.cell_height, &last_dir);
+        int button = (steps ? steps : pending) > 0 ? MOUSE_WHEEL_UP : MOUSE_WHEEL_DOWN;
+        if (dispatch_mouse_event(w, button, abs(steps), ev->keyboard_modifiers, screen->modes.mouse_tracking_mode != NO_TRACKING)) {
+            osw->scroll.mapped_pending_pixels_y = pending;
+            osw->scroll.mapped_last_v120_dir_y = last_dir;
+            return;
+        }
+    }
     finish_scroll_animation(screen);
     if (ev->y_offset != 0.0) {
         if (screen->modes.mouse_tracking_mode == NO_TRACKING && pixel_scroll_enabled_for_screen(screen) &&
@@ -1846,6 +1868,8 @@ init_mouse(PyObject *module) {
     PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_MOVE_END);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_UPTO_SURROUNDING_WHITESPACE);
+    PyModule_AddIntMacro(module, MOUSE_WHEEL_UP);
+    PyModule_AddIntMacro(module, MOUSE_WHEEL_DOWN);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }
