@@ -482,7 +482,7 @@ choices=normal,fullscreen,maximized,minimized,hidden
 Control how the initial kitty OS window is created. Note that
 this is applies to all OS Windows if you use the :option:`{appname} --session`
 option to create multiple OS Windows. Any OS Windows state
-specified in the session file gets overriden.
+specified in the session file gets overridden.
 
 
 --position
