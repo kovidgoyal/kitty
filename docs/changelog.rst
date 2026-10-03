@@ -236,6 +236,9 @@ Detailed list of changes
   and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
   cursor as it moves, in the style of neovide (:iss:`10587`)
 
+- Cursor trail: Always show the trail when focus moves to a different window,
+  regardless of :opt:`cursor_trail_start_threshold` (:iss:`10591`)
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

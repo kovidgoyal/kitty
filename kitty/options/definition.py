@@ -496,7 +496,8 @@ values are specified, the first sets the x (horizontal) threshold and the
 second sets the y (vertical) threshold. The values represent the minimum
 number of cells the cursor must move in each dimension before the trail is
 started. When the cursor moves less than the threshold in both dimensions,
-the trail is skipped, reducing unnecessary cursor trail animation.
+the trail is skipped, reducing unnecessary cursor trail animation. The
+threshold does not apply when the cursor moves to a different window.
 """,
 )
 

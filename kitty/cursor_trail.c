@@ -42,6 +42,8 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
     if (left != FLT_MAX) {
         if (EDGE(x, 0) != left || EDGE(x, 1) != right || EDGE(y, 0) != top || EDGE(y, 1) != bottom) {
             ct->target_updated = true;
+            ct->window_changed = ct->window_id && ct->window_id != w->id;
+            ct->window_id = w->id;
             if (ct->prev_edge_valid) {
                 ct->prev_cursor_edge_x[0] = EDGE(x, 0);
                 ct->prev_cursor_edge_x[1] = EDGE(x, 1);
@@ -74,7 +76,8 @@ should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_wind
 
     if (!WD.screen->modes.mDECTCEM && ct->opacity <= 0.0f) { return true; }
 
-    if ((OPT(cursor_trail_start_threshold_x) > 0 || OPT(cursor_trail_start_threshold_y) > 0) && !ct->needs_render) {
+    // moving to a different window is a change of context, so always show the trail for it
+    if ((OPT(cursor_trail_start_threshold_x) > 0 || OPT(cursor_trail_start_threshold_y) > 0) && !ct->needs_render && !ct->window_changed) {
         int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / g.dx);
         int dy = (int)round((ct->corner_y[0] - EDGE(y, 0)) / g.dy);
         if (abs(dx) <= OPT(cursor_trail_start_threshold_x) && abs(dy) <= OPT(cursor_trail_start_threshold_y)) { return true; }
@@ -135,6 +138,7 @@ update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWi
             ct->corner_y[i] += dy[i] * step;
         }
     }
+    ct->window_changed = false;
 }
 
 static void
