@@ -456,7 +456,7 @@ smoothCutoff(float value, float floor_, float ceiling) {
 public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
-    float timestamp = fmod(d.timestamp, 86400.0f) * TIME_SCALE;
+    float timestamp = d.wrapped_time(86400u) * TIME_SCALE;
 
     float2 uv = t.pos;
     float aspect = pixelDims.x / max(pixelDims.y, 1.0f);

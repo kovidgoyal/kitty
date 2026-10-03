@@ -113,7 +113,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float3 col = float3(0.1f, 0.1f, 0.2f);
     col += 0.1f * uv.y; // subtle sky gradient
 
-    float time = d.timestamp;
+    float time = d.wrapped_time(3600u);
     col += drawFireworks(time, uv, float3(1.0f, 0.1f, 0.1f), 1.0f);
     col += drawFireworks(time - 2.0f, uv, float3(0.0f, 1.0f, 0.5f), 2.0f);
     col += drawFireworks(time - 4.0f, uv, float3(1.0f, 1.0f, 0.1f), 3.0f);

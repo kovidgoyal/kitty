@@ -103,10 +103,10 @@ drag_distance(float t) {
     return DRAG > 0.0 ? (1.0 - exp(-DRAG * t)) / DRAG : t;
 }
 
-// The time of move i, zero if there is no such move.
+// Seconds since move i, negative if there is no such move.
 static float
-move_time(KittyCustomShaderData d, int i) {
-    return d.cursor_trail_history_time[i / 4][i % 4];
+move_age(KittyCustomShaderData d, int i) {
+    return d.cursor_trail_history_age[i / 4][i % 4];
 }
 
 // Center and size of a cursor rectangle given in UV edges, in pixels.
@@ -172,12 +172,9 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
 
     float coverage = 0.0;
     for (int i = 0; i < 8; i++) {
-        float when = move_time(d, i);
-        if (when <= 0.0) break;
-        float age = d.timestamp - when;
-        // Moves are most recent first, so all remaining ones are older still
-        if (age >= LIFETIME + EMIT_DURATION) break;
-        if (age < 0.0) continue;
+        float age = move_age(d, i);
+        // Moves are most recent first, so all remaining ones are unused or older still
+        if (age < 0.0 || age >= LIFETIME + EMIT_DURATION) break;
         float4 from = rect_center_and_size(d.cursor_trail_history_from[i], pixelDims);
         float4 to = rect_center_and_size(d.cursor_trail_history_to[i], pixelDims);
         // The width of a beam cursor and the height of an underline cursor
@@ -186,7 +183,9 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
         float reach = reachPerScale * scale + 1.0;
         if (any(px < min(from.xy, to.xy) - reach) || any(px > max(from.xy, to.xy) + reach)) continue;
         float lines = length(to.xy - from.xy) / scale;
-        coverage = max(coverage, move_particles(px, from.xy, to.xy, scale, lines, age, frac(when * 0.731) * 1000.0));
+        // The seed only needs to be stable over the lifetime of the move, so derive it from the end points of the move
+        float seed = frac(dot(to.xy - from.xy, float2(0.1371, 0.2113)) + dot(to.xy, float2(0.0173, 0.0291))) * 1000.0;
+        coverage = max(coverage, move_particles(px, from.xy, to.xy, scale, lines, age, seed));
     }
     coverage *= OPACITY;
     if (coverage <= 0.0) return color;

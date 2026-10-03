@@ -70,9 +70,9 @@ public struct KittyCustomShaderData {
     // before (from) and after (to) the move.
     public float4 cursor_trail_history_from[8];
     public float4 cursor_trail_history_to[8];
-    // Time of each move (same epoch as `timestamp`), move i is in
-    // cursor_trail_history_time[i / 4][i % 4]. Zero for unused entries.
-    public float4 cursor_trail_history_time[2];
+    // Seconds since each move, move i is in cursor_trail_history_age[i / 4][i % 4].
+    // Negative for unused entries.
+    public float4 cursor_trail_history_age[2];
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
     // You can use t.viewport to derive the actual size and position of the
@@ -82,12 +82,37 @@ public struct KittyCustomShaderData {
     public float mouse_pointer_hidden; // 1.0 if the mouse pointer is currently hidden, 0.0 if visible
     public float cursor_trail_state;   // 1.0 if the cursor trail is actively animating, 0.0 otherwise
 
-    public float timestamp;        // time in seconds since kitty was started (millisecond precision)
-    public float last_rendered_at; // time of previous render in seconds since kitty was started (millisecond precision)
+    // Time in seconds since kitty was started. Note that this loses precision
+    // the longer kitty runs: it is accurate to 1ms only for the first ~4.7 hours
+    // and to ~64ms after a week. So for animations use wrapped_time() below,
+    // and for the time elapsed since an event, use the various *_age fields.
+    public float timestamp;
+    public float last_rendered_at; // time of previous render, same epoch and precision as timestamp
     public uint frame_counter;     // cumulative frame counter increments by one every time a frame is fully rendered, first frame is zero
-    // Time (same epoch as `timestamp`) of the most recent cursor position change that triggered a trail.
+    // Time (same epoch and precision as `timestamp`) of the most recent cursor position change that triggered a trail.
     // Zero until the cursor has moved at least twice. Pair with cursor_trail_prev_edge.
+    // Use cursor_trail_age instead to find how long ago this was.
     public float cursor_trail_change_time;
+
+    // timestamp split into whole seconds and the fraction of the current
+    // second, which together are exact however long kitty runs. Usually you
+    // want to use wrapped_time() below instead of these.
+    public uint timestamp_seconds;
+    public float timestamp_fraction; // in [0, 1)
+    // Seconds between the previous render and this one, zero for the first render.
+    public float time_since_last_render;
+    // Seconds since cursor_trail_change_time, negative when cursor_trail_change_time is zero.
+    public float cursor_trail_age;
+
+    // Seconds since kitty was started, wrapped to [0, period_seconds). Unlike
+    // timestamp, this keeps sub-millisecond precision however long kitty runs,
+    // as long as period_seconds is at most an hour or so. The value jumps back
+    // to zero once every period, so either use a period over which your
+    // animation repeats seamlessly, or a long one so that the jump is rare.
+    public float
+    wrapped_time(uint period_seconds) {
+        return float(timestamp_seconds % period_seconds) + timestamp_fraction;
+    }
 }
 
 // A texture kitty renders into, addressed in the same UV co-ordinate space as

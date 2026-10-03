@@ -2602,13 +2602,17 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float cursor_trail_color[4];
         float cursor_trail_history_from[CURSOR_TRAIL_HISTORY_SIZE][4];
         float cursor_trail_history_to[CURSOR_TRAIL_HISTORY_SIZE][4];
-        float cursor_trail_history_time[CURSOR_TRAIL_HISTORY_SIZE / 4][4];
+        float cursor_trail_history_age[CURSOR_TRAIL_HISTORY_SIZE / 4][4];
         uint32_t viewport_size_pixels[2];
         float mouse_pointer_hidden;
         float cursor_trail_state;
         float timestamp, last_rendered_at;
         uint32_t frame_counter;
         float cursor_trail_change_time;
+        uint32_t timestamp_seconds;
+        float timestamp_fraction;
+        float time_since_last_render;
+        float cursor_trail_age;
     };
     // This struct is a hand written mirror of the std140 layout of
     // KittyCustomShaderData in types.slang, so check that they match once.
@@ -2679,8 +2683,13 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     FILL_COLOR(d->active_window_background, active_bg);
 #undef FILL_COLOR
 #define NDC_TO_UV(v) (((v) + 1.0f) * 0.5f)
+    // Convert to seconds via double, as float32 cannot represent times since
+    // kitty started precisely once kitty has been running for a few hours.
+#define SECONDS(t) ((float)monotonic_t_to_s_double(t))
     {
         CursorTrail *ct = NULL;
+        d->cursor_trail_age = -1.f;
+        for (int i = 0; i < CURSOR_TRAIL_HISTORY_SIZE; i++) d->cursor_trail_history_age[i / 4][i % 4] = -1.f;
         if (OPT(cursor_trail) && os_window->num_tabs > 0) {
             CursorTrail *candidate = &os_window->tabs[os_window->active_tab].cursor_trail;
             if (candidate->needs_render) ct = candidate;
@@ -2694,7 +2703,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
                     d->cursor_trail_history_to[i][k] = NDC_TO_UV(m->to_x[k]);
                     d->cursor_trail_history_to[i][k + 2] = NDC_TO_UV(m->to_y[k]);
                 }
-                d->cursor_trail_history_time[i / 4][i % 4] = ((float)monotonic_t_to_ms(m->at)) / 1e3f;
+                d->cursor_trail_history_age[i / 4][i % 4] = SECONDS(now - m->at);
             }
         }
         if (ct) {
@@ -2716,7 +2725,10 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             }
             d->cursor_trail_color[3] = ct->opacity;
             d->cursor_trail_state = 1.0f;
-            d->cursor_trail_change_time = ((float)monotonic_t_to_ms(ct->cursor_changed_at)) / 1e3f;
+            if (ct->cursor_changed_at) {
+                d->cursor_trail_change_time = SECONDS(ct->cursor_changed_at);
+                d->cursor_trail_age = SECONDS(now - ct->cursor_changed_at);
+            }
         }
     }
 #undef NDC_TO_UV
@@ -2748,8 +2760,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     d->mouse_button_pressed[2] = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_MIDDLE];
     d->mouse_button_pressed[3] = os_window->mouse_button_pressed[3];
     d->mouse_pointer_hidden = is_mouse_hidden(os_window) ? 1.f : 0.f;
-    d->timestamp = ((float)monotonic_t_to_ms(now)) / 1e3f;
-    d->last_rendered_at = ((float)monotonic_t_to_ms(os_window->last_rendered_at)) / 1e3f;
+    d->timestamp = SECONDS(now);
+    d->last_rendered_at = SECONDS(os_window->last_rendered_at);
+    d->timestamp_seconds = (uint32_t)(now / MONOTONIC_T_1e9);
+    d->timestamp_fraction = (float)monotonic_t_to_s_double(now % MONOTONIC_T_1e9);
+    if (os_window->last_rendered_at) d->time_since_last_render = SECONDS(now - os_window->last_rendered_at);
+#undef SECONDS
     d->frame_counter = os_window->frame_counter;
     if (vpw > 0 && vph > 0 && active_win_geom.right > active_win_geom.left) {
         d->active_window_geometry[0] = (float)active_win_geom.left / vpw;

@@ -229,7 +229,7 @@ smoothstep1(float x) {
 public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float2 uv = t.pos;
-    float time = fmod(d.timestamp, 300.0f) * SPEED;
+    float time = d.wrapped_time(300u) * SPEED;
 
     const float turn_rad = 0.25f / BLOCKS_BEFORE_TURN;
     const float turn_abs_time = (PI * 0.5f * turn_rad) * 1.5f;

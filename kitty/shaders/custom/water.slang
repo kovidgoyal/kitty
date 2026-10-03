@@ -14,7 +14,7 @@ static const float UV_DISPLACEMENT = 0.04;               // UV warp magnitude fr
 
 public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
-    float wtime = d.timestamp * 0.5 + 23.0;
+    float wtime = d.wrapped_time(3600u) * 0.5 + 23.0;
     float2 uv = t.pos;
 
     float2 p = fmod(uv * TAU, TAU) - 250.0;

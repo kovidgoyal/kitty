@@ -60,7 +60,7 @@ rayStrength(float2 raySource, float2 rayRefDir, float2 coord, float seedA, float
 public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float2 iResolution = float2(d.viewport_size_pixels) * t.viewport.zw;
-    float iTime = d.timestamp;
+    float iTime = d.wrapped_time(3600u);
 
     // Convert kitty UV (y=0 at bottom) to a top-left-origin pixel coordinate,
     // matching the original shader's internal coordinate system.

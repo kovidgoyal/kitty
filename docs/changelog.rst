@@ -239,6 +239,10 @@ Detailed list of changes
 - Cursor trail: Always show the trail when focus moves to a different window,
   regardless of :opt:`cursor_trail_start_threshold` (:iss:`10591`)
 
+- Custom shaders: Fix animations becoming jerky after kitty has been running
+  for a few hours. New fields and a :code:`wrapped_time()` method are available
+  to shaders, providing precise times however long kitty runs (:iss:`10595`)
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
