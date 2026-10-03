@@ -96,7 +96,7 @@ def run_parsing_benchmark(
         columns, rows = 80, 25
     child_pid, master_fd = fork()
     is_child = child_pid == CHILD
-    # we add render as we arent rendering anyway and it means the synchronized
+    # we add render as we aren't rendering anyway and it means the synchronized
     # escape codes are no longer needed.
     argv = [kitten_exe(), '__benchmark__', '--render']
     if with_scrollback:
