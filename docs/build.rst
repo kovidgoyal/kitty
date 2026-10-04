@@ -25,7 +25,7 @@ That's it, kitty will be built from source, magically. You can run it as
 This works, because the :code:`./dev.sh build` command downloads all the major
 dependencies of kitty as pre-built binaries for your platform and builds kitty
 to use these rather than system libraries. The few required system libraries
-are X11 and DBUS on Linux.
+are X11 (if you use X server) and DBUS on Linux.
 
 If you make changes to kitty code, simply re-run :code:`./dev.sh build`
 to build kitty with your changes.
@@ -97,6 +97,8 @@ Run-time dependencies:
 * ``libcanberra`` (not needed on macOS)
 * ``libsystemd`` (optional, not needed on non systemd systems)
 * ``ImageMagick`` (optional, needed to display uncommon image formats in the terminal)
+* ``X11 libraries`` (optional, needed if you use X11 on Linux)
+* ``Wayland libraries`` (optional, needed if you use Wayland on Linux)
 
 
 Build-time dependencies:
