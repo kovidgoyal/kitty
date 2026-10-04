@@ -1023,7 +1023,7 @@ class Boss:
             if data['args'][0] == 'panel':
                 from kittens.panel.main import handle_single_instance_command
 
-                handle_single_instance_command(self, data['args'], data['environ'], data.get('notify_on_os_window_death', ''))
+                handle_single_instance_command(self, data['args'], data['environ'], data.get('notify_on_os_window_death', ''), data.get('cwd', ''))
                 return None
             from .cli_stub import CLIOptions
 

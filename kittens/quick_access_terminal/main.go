@@ -99,11 +99,20 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 		if dl, err := filepath.Abs(opts.DetachedLog); err != nil {
 			return 1, err
 		} else {
-			argv = append(argv, dl)
+			argv = append(argv, fmt.Sprintf("--detached-log=%s", dl))
 		}
 	}
 	if opts.InstanceGroup != "" {
 		argv = append(argv, fmt.Sprintf("--instance-group=%s", opts.InstanceGroup))
+	}
+	if opts.IfRunning != "" && opts.IfRunning != "ignore" {
+		argv = append(argv, fmt.Sprintf("--if-running=%s", opts.IfRunning))
+	}
+	if opts.Hold {
+		argv = append(argv, `--hold`)
+	}
+	if opts.ListenOn != "" {
+		argv = append(argv, fmt.Sprintf("--listen-on=%s", opts.ListenOn))
 	}
 
 	argv = append(argv, args...)

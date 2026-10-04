@@ -206,6 +206,15 @@ Detailed list of changes
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
+- quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
+  option to run a program in a new tab or window of an already running quick
+  access terminal and a new :option:`kitty +kitten quick_access_terminal --listen-on` option
+  to specify a fixed remote control socket address. Also a new
+  :option:`kitty +kitten quick_access_terminal --hold` option to keep the
+  terminal open after the program exits (:iss:`10603`)
+
+- quick-access-terminal kitten: Fix :option:`kitty +kitten quick_access_terminal --detached-log` not working
+
 - Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
   with momentum, and a finger held still before it moves selects text
   (:iss:`5432`, :pull:`10551`)
