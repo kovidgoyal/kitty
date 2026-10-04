@@ -11,6 +11,7 @@ permissions:
 
 jobs:
     linux:
+        if: github.repository == 'kovidgoyal/kitty'
         name: Linux (python=${{ matrix.pyver }} cc=${{ matrix.cc }} sanitize=${{ matrix.sanitize }})
         runs-on: ubuntu-latest
         env:
@@ -67,6 +68,7 @@ jobs:
             run: python .github/workflows/ci.py test
 
     linux-package:
+        if: github.repository == 'kovidgoyal/kitty'
         name: Linux package
         runs-on: ubuntu-latest
         env:
@@ -127,6 +129,7 @@ jobs:
             run: python setup.py build-static-binaries
 
     bundle:
+        if: github.repository == 'kovidgoyal/kitty'
         name: Bundle test (${{ matrix.os }})
         runs-on: ${{ matrix.os }}
         strategy:
@@ -154,6 +157,7 @@ jobs:
             run: python3 .github/workflows/ci.py test
 
     brew:
+        if: github.repository == 'kovidgoyal/kitty'
         name: macOS Brew
         runs-on: macos-latest
         steps:
@@ -183,6 +187,7 @@ jobs:
             run: ./benchmark.py
 
     linux-dev:
+        if: github.repository == 'kovidgoyal/kitty'
         name: Test ./dev.sh and benchmark
         runs-on: ubuntu-latest
         steps:

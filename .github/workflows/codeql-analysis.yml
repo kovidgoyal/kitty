@@ -11,6 +11,7 @@ on:
 
 jobs:
     CodeQL-Build:
+        if: github.repository == 'kovidgoyal/kitty'
 
         permissions:
             contents: read # to fetch code (actions/checkout)

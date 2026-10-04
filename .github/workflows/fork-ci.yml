@@ -1,0 +1,60 @@
+name: Fork CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-ci-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Linux build and tests
+    if: github.repository == 'uniblab/kitty'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      CC: gcc
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+      SLANGC: /tmp/slang/bin/slangc
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Install build and test dependencies
+        run: |
+          python3 - <<'PY'
+          import runpy
+          runpy.run_path('.github/workflows/ci.py')['install_deps']()
+          PY
+          echo "LD_LIBRARY_PATH=${pythonLocation}/lib:/tmp/slang/lib" >> "$GITHUB_ENV"
+
+      - name: Build Kitty
+        run: make debug
+
+      - name: Check executables
+        run: |
+          kitty/launcher/kitty --version
+          kitty/launcher/kitten --version
+
+      - name: Run Python and Go tests
+        run: ./test.py

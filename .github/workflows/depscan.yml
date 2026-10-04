@@ -16,6 +16,7 @@ permissions:
 
 jobs:
     dependecy-scanner:
+        if: github.repository == 'kovidgoyal/kitty'
         name: Scan dependencies for vulnerabilities
         runs-on: ubuntu-latest
         env:
