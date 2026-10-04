@@ -1288,6 +1288,22 @@ create_layer_shell_surface(_GLFWwindow *window) {
     return true;
 }
 
+static void
+set_toplevel_properties(_GLFWwindow *window) {
+    // These are reset by the compositor whenever the toplevel is unmapped, so
+    // they must be re-sent before every map, not just the first one.
+    if (window->wl.appId[0]) xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
+    if (window->wl.windowTag[0] && _glfw.wl.xdg_toplevel_tag_manager_v1)
+        xdg_toplevel_tag_manager_v1_set_toplevel_tag(_glfw.wl.xdg_toplevel_tag_manager_v1, window->wl.xdg.toplevel, window->wl.windowTag);
+
+    if (window->wl.title) xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
+
+    if (window->minwidth != GLFW_DONT_CARE && window->minheight != GLFW_DONT_CARE)
+        xdg_toplevel_set_min_size(window->wl.xdg.toplevel, window->minwidth, window->minheight);
+    if (window->maxwidth != GLFW_DONT_CARE && window->maxheight != GLFW_DONT_CARE)
+        xdg_toplevel_set_max_size(window->wl.xdg.toplevel, window->maxwidth, window->maxheight);
+}
+
 static bool
 create_window_desktop_surface(_GLFWwindow *window) {
     if (is_layer_shell(window)) return create_layer_shell_surface(window);
@@ -1320,16 +1336,7 @@ create_window_desktop_surface(_GLFWwindow *window) {
         zxdg_toplevel_decoration_v1_add_listener(window->wl.xdg.decoration, &xdgDecorationListener, window);
     }
 
-    if (window->wl.appId[0]) xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
-    if (window->wl.windowTag[0] && _glfw.wl.xdg_toplevel_tag_manager_v1)
-        xdg_toplevel_tag_manager_v1_set_toplevel_tag(_glfw.wl.xdg_toplevel_tag_manager_v1, window->wl.xdg.toplevel, window->wl.windowTag);
-
-    if (window->wl.title) xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
-
-    if (window->minwidth != GLFW_DONT_CARE && window->minheight != GLFW_DONT_CARE)
-        xdg_toplevel_set_min_size(window->wl.xdg.toplevel, window->minwidth, window->minheight);
-    if (window->maxwidth != GLFW_DONT_CARE && window->maxheight != GLFW_DONT_CARE)
-        xdg_toplevel_set_max_size(window->wl.xdg.toplevel, window->maxwidth, window->maxheight);
+    set_toplevel_properties(window);
 
     if (window->monitor) {
         if (window->wl.wm_capabilities.fullscreen) xdg_toplevel_set_fullscreen(window->wl.xdg.toplevel, window->monitor->wl.output);
@@ -1838,6 +1845,14 @@ _glfwPlatformShowWindow(_GLFWwindow *window, bool move_to_active_screen UNUSED) 
         } else {
             // workaround for kwin layer shell bug: https://bugs.kde.org/show_bug.cgi?id=503121
             if (is_layer_shell(window)) layer_set_properties(window, false, window->wl.width, window->wl.height);
+            else if (window->wl.xdg.toplevel) {
+                // Unmapping an xdg_toplevel resets all its state, so restore it
+                set_toplevel_properties(window);
+                const WaylandWindowState states = window->wl.current.toplevel_states;
+                if (states & TOPLEVEL_STATE_FULLSCREEN) setFullscreen(window, NULL, true);
+                else if ((states & TOPLEVEL_STATE_MAXIMIZED) && window->wl.wm_capabilities.maximize) xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
+                setXdgDecorations(window);
+            }
             window->wl.visible = true;
             commit_window_surface(window);
         }

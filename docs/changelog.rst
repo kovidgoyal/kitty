@@ -250,6 +250,9 @@ Detailed list of changes
   animation frame data when the continuation chunks specify :code:`a=f`
   (:iss:`10599`)
 
+- Wayland: Fix the window class (app_id) and title being lost when an OS window
+  is hidden and then shown again (:iss:`10602`)
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
