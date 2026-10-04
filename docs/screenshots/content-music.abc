@@ -1,0 +1,6 @@
+X:1
+M:4/4
+L:1/8
+%%stretchlast true
+K:D clef=treble
+!mf!(3DEF (G>A) {c}B !trill!^A !fermata!d2 |]
