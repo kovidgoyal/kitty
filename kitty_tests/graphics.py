@@ -1652,6 +1652,33 @@ class TestGraphics(BaseTest):
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
 
+    def test_animation_frame_chunked_loading_with_action(self):
+        # The documented continuation form repeats a=f but omits the image identity.
+        for quiet in (0, 1, 2):
+            for repeat_identity in (False, True):
+                with self.subTest(quiet=quiet, repeat_identity=repeat_identity):
+                    s = self.create_screen()
+                    self.assertEqual(parse_full_response(send_command(s, 'a=t,i=1,f=24,s=2,v=1', b'123456')).code, 'OK')
+                    expected = Response(image_id=1, frame_number=2)
+                    final_command = 'a=f,i=1,m=0' if repeat_identity else 'a=f,m=0'
+                    for frame_number, payload in ((0, b'abcdef'), (2, b'ghijkl')):
+                        command = f'a=f,i=1,f=24,s=2,v=1,m=1,q={quiet}'
+                        if frame_number:
+                            command += f',r={frame_number}'
+                        self.assertFalse(send_command(s, command, payload[:3]))
+                        response = parse_full_response(send_command(s, final_command, payload[3:]))
+                        img = s.grman.image_for_client_id(1)
+                        self.assertEqual(img['data'], b'123456')
+                        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 2, 'data': payload},))
+                        self.assertEqual(response, None if quiet else expected)
+                    # q=1 suppresses success replies but must still report a failed load.
+                    self.assertFalse(send_command(s, f'a=f,i=1,f=24,s=2,v=1,m=1,q={quiet}', b'abc'))
+                    response = parse_full_response(send_command(s, final_command))
+                    if quiet == 2:
+                        self.assertIsNone(response)
+                    else:
+                        self.assertEqual((response.code, response.image_id), ('ENODATA', 1))
+
     def test_graphics_quota_enforcement(self):
         s = self.create_screen()
         g = s.grman

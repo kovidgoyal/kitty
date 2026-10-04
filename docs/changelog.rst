@@ -246,6 +246,9 @@ Detailed list of changes
 - Wayland GNOME: Fix kitty being disconnected by the compositor when showing a window
   that was covered by other windows for a long time (:iss:`10597`)
 
+- Graphics protocol: Fix missing acknowledgements for chunked animation frames
+  whose continuation chunks specify :code:`a=f` without an image ID (:iss:`10599`)
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

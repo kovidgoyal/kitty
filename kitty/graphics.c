@@ -2676,9 +2676,9 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             } else {
                 GraphicsCommand ag = *g;
                 if (action == 'f') {
-                    if (!ag.action) {
+                    ag.action = action;
+                    if (!ag.id && !ag.image_number) {
                         // continuation chunk, the response must identify the image from the start command
-                        ag.action = action;
                         ag.id = self->currently_loading.start_command.id;
                         ag.image_number = self->currently_loading.start_command.image_number;
                     }
