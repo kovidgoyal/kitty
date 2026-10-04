@@ -1634,10 +1634,10 @@ class TestGraphics(BaseTest):
         li = make_send_command(s)
         self.assertEqual(li(a='t').code, 'OK')
 
-        def chunked(payload, last_payload, **kw):
+        def chunked(payload, last_payload, cont='', **kw):
             self.assertIsNone(li(payload=payload, m=1, **kw))
-            self.assertFalse(send_command(s, 'm=1', payload))
-            return parse_full_response(send_command(s, 'm=0', last_payload))
+            self.assertFalse(send_command(s, cont + 'm=1', payload))
+            return parse_full_response(send_command(s, cont + 'm=0', last_payload))
 
         # create a new frame with continuation chunks
         res = chunked('2' * 12, '2' * 12, z=77)
@@ -1651,6 +1651,26 @@ class TestGraphics(BaseTest):
         self.assertEqual((res.code, res.image_id, res.frame_number), ('OK', 1, 2))
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
+        # the documented form of continuation chunks for frame data, a=f
+        # without an image id, must also get a response identifying the image
+        res = chunked('4' * 12, '4' * 12, cont='a=f,')
+        self.assertEqual((res.code, res.image_id, res.frame_number), ('OK', 1, 3))
+        res = chunked('5' * 12, '5' * 12, cont='a=f,', r=3)
+        self.assertEqual((res.code, res.image_id, res.frame_number), ('OK', 1, 3))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], b'abcdefghijkl' * 3)
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36}, {'gap': 40, 'id': 3, 'data': b'5' * 36}))
+        # repeating the image id in continuation chunks works as well
+        res = chunked('6' * 12, '6' * 12, cont='a=f,i=1,', r=3)
+        self.assertEqual((res.code, res.image_id, res.frame_number), ('OK', 1, 3))
+        # with q=1 success is not reported but failure is
+        self.assertIsNone(chunked('7' * 12, '7' * 12, cont='a=f,', q=1))
+        self.assertIsNone(li(payload='8' * 12, m=1, q=1))
+        res = parse_full_response(send_command(s, 'a=f,m=0'))
+        self.assertEqual((res.code, res.image_id), ('ENODATA', 1))
+        # with q=2 failure is not reported either
+        self.assertIsNone(li(payload='8' * 12, m=1, q=2))
+        self.assertIsNone(parse_full_response(send_command(s, 'a=f,m=0')))
 
     def test_graphics_quota_enforcement(self):
         s = self.create_screen()
