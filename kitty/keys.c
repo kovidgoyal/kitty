@@ -293,7 +293,11 @@ on_key_input(const GLFWkeyevent *ev) {
             return;
         case GLFW_IME_COMMIT_TEXT:
             if (*text) {
-                schedule_write_to_child(w->id, 1, text, strlen(text));
+                if (screen->modes.mBRACKETED_PASTE) {
+                    schedule_write_to_child(w->id, 3, "\x1b[200~", 6, text, strlen(text), "\x1b[201~", 6);
+                } else {
+                    schedule_write_to_child(w->id, 1, text, strlen(text));
+                }
                 debug("committed pre-edit text: %s sent to child as text.\n", text);
             } else debug("committed pre-edit text: (null)\n");
             screen_update_overlay_text(screen, NULL);
