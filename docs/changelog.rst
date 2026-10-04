@@ -243,6 +243,9 @@ Detailed list of changes
   for a few hours. New fields and a :code:`wrapped_time()` method are available
   to shaders, providing precise times however long kitty runs (:iss:`10595`)
 
+- Wayland: Fix kitty being disconnected by the compositor when showing a window
+  that was covered by other windows for a long time (:iss:`10597`)
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

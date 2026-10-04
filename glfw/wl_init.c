@@ -878,9 +878,14 @@ registryHandleGlobalRemove(void *data UNUSED, struct wl_registry *registry UNUSE
         monitor = _glfw.monitors[i];
         if (monitor->wl.name == name) {
             for (_GLFWwindow *window = _glfw.windowListHead; window; window = window->next) {
+                bool was_on_monitor = false;
                 for (int m = window->wl.monitorsCount - 1; m >= 0; m--) {
-                    if (window->wl.monitors[m] == monitor) { remove_i_from_array(window->wl.monitors, m, window->wl.monitorsCount); }
+                    if (window->wl.monitors[m] == monitor) {
+                        remove_i_from_array(window->wl.monitors, m, window->wl.monitorsCount);
+                        was_on_monitor = true;
+                    }
                 }
+                if (was_on_monitor) _glfwWaylandSurfaceOutputsChanged(window);
             }
             _glfwInputMonitor(monitor, GLFW_DISCONNECTED, 0);
             return;

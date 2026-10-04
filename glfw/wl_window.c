@@ -561,6 +561,22 @@ static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener =
     xdgDecorationHandleConfigure,
 };
 
+void
+_glfwWaylandSurfaceOutputsChanged(_GLFWwindow *window) {
+    // A pending frame callback may never be answered when the output the
+    // surface was on goes away, see https://github.com/kovidgoyal/kitty/issues/10329
+    // so treat output changes as a frame event, the client will request a new
+    // frame callback after it next renders. This must not be done on a timer
+    // since compositors legitimately withhold frame callbacks for occluded
+    // windows and destroying the proxy does not cancel the callback in the
+    // compositor, so repeated requests accumulate till the compositor
+    // disconnects us. See https://github.com/kovidgoyal/kitty/issues/10597
+    if (!window->wl.frameCallbackData.current_wl_callback) return;
+    wl_callback_destroy(window->wl.frameCallbackData.current_wl_callback);
+    window->wl.frameCallbackData.current_wl_callback = NULL;
+    if (window->wl.frameCallbackData.callback) window->wl.frameCallbackData.callback(window->wl.frameCallbackData.id);
+}
+
 static void
 surfaceHandleEnter(void *data, struct wl_surface *surface UNUSED, struct wl_output *output) {
     _GLFWwindow *window = data;
@@ -580,6 +596,7 @@ surfaceHandleEnter(void *data, struct wl_surface *surface UNUSED, struct wl_outp
     }
 
     window->wl.monitors[window->wl.monitorsCount++] = monitor;
+    _glfwWaylandSurfaceOutputsChanged(window);
 
     if (checkScaleChange(window)) {
         debug("Scale changed to %.3f for window %llu in surfaceHandleEnter\n", _glfwWaylandWindowScale(window), window->id);
@@ -601,6 +618,7 @@ surfaceHandleLeave(void *data, struct wl_surface *surface UNUSED, struct wl_outp
     for (int i = window->wl.monitorsCount - 1; i >= 0; i--) {
         if (window->wl.monitors[i] == monitor) { remove_i_from_array(window->wl.monitors, i, window->wl.monitorsCount); }
     }
+    _glfwWaylandSurfaceOutputsChanged(window);
 
     if (checkScaleChange(window)) {
         debug("Scale changed to %.3f for window %llu in surfaceHandleLeave\n", _glfwWaylandWindowScale(window), window->id);

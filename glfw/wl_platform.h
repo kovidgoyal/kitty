@@ -538,6 +538,7 @@ void _glfwAddOutputWayland(uint32_t name, uint32_t version);
 void _glfwCreateXdgOutputWayland(_GLFWmonitor *monitor);
 void _glfwWaylandBeforeBufferSwap(_GLFWwindow *window);
 void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
+void _glfwWaylandSurfaceOutputsChanged(_GLFWwindow *window);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 double _glfwWaylandWindowScale(_GLFWwindow *);
