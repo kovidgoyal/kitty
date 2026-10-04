@@ -1659,26 +1659,52 @@ remove_children(ChildMonitor *self) {
 }
 
 
+// The kernel hands out pty data in chunks of at most PTY_READ_CHUNK bytes. A
+// full chunk means the writer is producing data faster than we drain it, so
+// instead of paying for a poll() per chunk, keep reading (spinning briefly on
+// EAGAIN, which is cheaper than a context switch) until the writer pauses or
+// GATHER_MAX bytes are batched for the parser. A short read is committed
+// immediately to preserve latency for interactive use.
+#define PTY_READ_CHUNK 1024u
+#define GATHER_MAX (64u * 1024u)
+#define GATHER_SPIN_TIMEOUT (20 * MONOTONIC_T_1e3)
+
 static bool
 read_bytes(int fd, Screen *screen, bool *pending_input_is_small) {
-    ssize_t len;
-    size_t available_buffer_space;
+    size_t available_buffer_space, total = 0;
+    bool alive = true;
+    monotonic_t spin_until = 0;
 
     uint8_t *buf = vt_parser_create_write_buffer(screen->vt_parser, &available_buffer_space);
     if (!available_buffer_space) return true;
+    const size_t limit = MIN(available_buffer_space, GATHER_MAX);
 
-    while (true) {
-        len = read(fd, buf, available_buffer_space);
-        if (len < 0) {
-            if (errno == EINTR || errno == EAGAIN) continue;
+    while (total < limit) {
+        ssize_t len = read(fd, buf + total, limit - total);
+        if (len > 0) {
+            total += len;
+            if ((size_t)len < PTY_READ_CHUNK) break;
+            spin_until = 0;
+        } else if (len == 0) {
+            alive = false;
+            break;
+        } else if (errno == EINTR) {
+            continue;
+        } else if (errno == EAGAIN) {
+            if (!total) continue;
+            monotonic_t now = monotonic();
+            if (!spin_until) spin_until = now + GATHER_SPIN_TIMEOUT;
+            else if (now >= spin_until) break;
+        } else {
             if (errno != EIO) perror("Call to read() from child fd failed");
-            *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, 0);
-            return false;
+            alive = false;
+            break;
         }
-        break;
     }
-    *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, len);
-    return len != 0;
+    *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, total);
+    // If data arrived before EOF/error, report the child alive so the data is
+    // parsed; the next poll() will see the hangup again.
+    return alive || total;
 }
 
 
