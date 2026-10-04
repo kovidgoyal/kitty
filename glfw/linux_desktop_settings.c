@@ -152,7 +152,7 @@ process_gnome_setting(const char *key, DBusMessageIter *value) {
         if (dbus_message_iter_get_arg_type(value) == DBUS_TYPE_STRING) {
             const char *name;
             dbus_message_iter_get_basic(value, &name);
-            if (name) {
+            if (name && strncmp(theme_name, name, sizeof(theme_name) - 1) != 0) {
                 strncpy(theme_name, name, sizeof(theme_name) - 1);
                 cursor_theme_changed = true;
             }

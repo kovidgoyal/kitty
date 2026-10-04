@@ -2999,6 +2999,15 @@ frame_handle_redraw(void *data, struct wl_callback *callback, uint32_t time UNUS
 void
 _glfwPlatformChangeCursorTheme(void) {
     glfw_wlc_destroy();
+    // All standard cursors point into the now destroyed themes, so invalidate
+    // them, they will be lazily re-loaded when next used.
+    for (_GLFWcursor *c = _glfw.cursorListHead; c; c = c->next) {
+        if (c->wl.scale >= 0) {
+            c->wl.cursor = NULL;
+            c->wl.scale = 0;
+            c->wl.currentImage = 0;
+        }
+    }
     _GLFWwindow *w = _glfw.windowListHead;
     while (w) {
         setCursorImage(w, true);
