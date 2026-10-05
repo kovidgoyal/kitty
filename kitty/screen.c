@@ -4079,7 +4079,8 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
                 linebuf_init_line(linebuf, y);
                 if (linebuf->line->attrs.has_dirty_text) {
                     render_line(fonts_data, linebuf->line, y, &self->paused_rendering.cursor, self->disable_ligatures, self->lc);
-                    screen_render_line_graphics(self, linebuf->line, y);
+                    // No screen_render_line_graphics() here: it writes to the live grman, but paused frames draw
+                    // paused_rendering.grman, so the refs would only outlive the pause over rows that no longer hold placeholders.
                     if (linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, linebuf->line, &self->as_ansi_buf);
                     linebuf_mark_line_clean(linebuf, y);
                 }
