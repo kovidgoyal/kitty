@@ -219,6 +219,9 @@ Detailed list of changes
   with momentum, and a finger held still before it moves selects text
   (:iss:`5432`, :pull:`10551`)
 
+- Fix a space immediately after a tab stop being dropped when the screen
+  contents are copied or sent to the scrollback pager (:iss:`10609`)
+
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 

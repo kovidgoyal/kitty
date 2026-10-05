@@ -2368,7 +2368,8 @@ screen_tab(Screen *self) {
                 else {
                     self->lc->count = 2;
                     self->lc->chars[0] = '\t';
-                    self->lc->chars[1] = diff;
+                    // number of blank cells after the tab cell that the tab covers
+                    self->lc->chars[1] = diff - 1;
                     idx = tc_get_or_insert_chars(self->text_cache, self->lc);
                     if (diff < arraysz(self->tab_cache.idx_plus_1)) self->tab_cache.idx_plus_1[diff] = idx + 1;
                 }
