@@ -297,6 +297,10 @@ Detailed list of changes
 - Custom shaders: The builtin :code:`dim-inactive-windows` shader no longer dims
   the tab bar and the padding, border and margin around the active window (:iss:`10524`)
 
+- Custom shaders: The builtin :code:`northern-lights` shader is now about twice
+  as fast. Its :code:`MARCH_STEPS` setting can now be lowered to trade a little
+  quality for even more speed on slower GPUs
+
 - Custom shaders: A new :code:`cursor-trail-motion-blur` shader that makes
   the cursor trail glide smoothly during fast cursor movements
 

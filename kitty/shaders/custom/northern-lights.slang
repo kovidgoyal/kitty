@@ -15,6 +15,7 @@
 //   STAR_FIELD_ROTATIONS_SPEED                   - star field rotation speed
 //   RESEED_INTERVAL                              - every RESEED_INTERVAL seconds the aurora is randomized again
 //   DEBUG_MOUSE_OVERLAY                          - 1.0f enables debugging for mouse press location/effect
+//   MARCH_STEPS                                  - A value of 50 for highest quality and lower for greater speed
 
 import kitty_custom_shader_types;
 
@@ -33,12 +34,13 @@ static const float AURORA_INTENSITY = 0.2f;
 static const float AURORA_ALTITUDE = 0.6f;
 static const float AURORA_SCALE = 1.0f;
 static const float WAVE_SPEED = 0.55f;
-static const float MARCH_STEPS = 50.0f;
+static const float MARCH_STEPS = 35.0f; // number of samples through the aurora, lower is faster but coarser
 static const float CURTAIN_SHARPNESS = 39.0f;
 static const float CURTAIN_SOFTNESS = 1.3f;
 static const float COLOR_VARIATION = 0.28f;
 static const float VERTICAL_FADE = 25.0f;
 static const float CAMERA_DISTANCE = 9.7f;
+static const float AURORA_DEPTH = 50.0f; // vertical extent of the aurora in units of the default march step
 
 // === PERSISTENCE & DECAY CONTROLS ===
 static const float ACCUMULATION_DECAY = 0.03f;     // Decay per frame: 0.0 = infinite, 0.005 = slow fade
@@ -106,6 +108,13 @@ static const int STAGE = 0; // internal use only
 
 // === TRIANGLE WAVE NOISE ===
 
+float2x2
+rotation2d(float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return float2x2(c, s, -s, c);
+}
+
 float
 triWave(float x) {
     return clamp(abs(frac(x) - 0.5f), 0.01f, 0.49f);
@@ -116,8 +125,9 @@ triWave2(float2 p) {
     return float2(triWave(p.x) + triWave(p.y), triWave(p.y + triWave(p.x)));
 }
 
+// timeRot is the rotation by timestamp * speed, it is loop invariant so passed in by the caller
 float
-triNoise2d(float2 p, float spd, float timestamp, float sharpness) {
+triNoise2d(float2 p, float2x2 timeRot, float sharpness) {
     float z = 1.8f;
     float z2 = 2.5f;
     float rz = 0.0f;
@@ -130,10 +140,7 @@ triNoise2d(float2 p, float spd, float timestamp, float sharpness) {
 
     [ForceUnroll]
     for (int i = 0; i < 5; i++) {
-        float2 dg = triWave2(bp * 1.85f) * 0.75f;
-        float tc = cos(timestamp * spd);
-        float ts = sin(timestamp * spd);
-        dg = mul(float2x2(tc, ts, -ts, tc), dg);
+        float2 dg = mul(timeRot, triWave2(bp * 1.85f) * 0.75f);
         p -= dg / z2;
 
         bp *= 1.3f;
@@ -394,6 +401,8 @@ rayMarchAurora(
     float genStrength,
     float persistentTrail) {
     float stepCount = MARCH_STEPS;
+    // Sample the same volume regardless of stepCount, with each sample standing in for stepScale slices
+    float stepScale = AURORA_DEPTH / stepCount;
 
     float effSpeed = WAVE_SPEED * rp.waveSpeedMul;
     float effSharpness = CURTAIN_SHARPNESS * rp.sharpMul;
@@ -402,25 +411,32 @@ rayMarchAurora(
     float3 accColor = float3(0.0f);
     float accAlpha = 0.0f;
 
-    [ForceUnroll]
-    for (int i = 0; i < 60; i++) {
-        if (float(i) >= stepCount) break;
+    float2x2 densityRot = rotation2d(noiseTime * effSpeed);
+    float2x2 trailRot = rotation2d(noiseTime * effSpeed * 1.5f);
+    float jitter = 0.006f * hash21(fragCoord);
 
-        float of = 0.006f * hash21(fragCoord) * smoothstep(0.0f, 15.0f, float(i));
-        float pt = ((AURORA_ALTITUDE + pow(float(i), 1.4f) * 0.002f) - ro.y) / (rd.y * 2.0f + 0.4f);
+    // Do not unroll this loop, doing so makes the shader too large to fit in the GPU instruction cache
+    for (int i = 0; i < int(stepCount); i++) {
+        float slice = float(i) * stepScale;
+
+        float of = jitter * smoothstep(0.0f, 15.0f, slice);
+        float pt = ((AURORA_ALTITUDE + pow(slice, 1.4f) * 0.002f) - ro.y) / (rd.y * 2.0f + 0.4f);
         pt -= of;
 
         if (pt < 0.0f) continue;
 
         float3 bpos = ro + pt * rd;
         float2 p = bpos.zx * effScale + rp.startOffset;
-        float density = triNoise2d(p, effSpeed, noiseTime, effSharpness);
+        float density = triNoise2d(p, densityRot, effSharpness);
 
         float trailField = mouseTrailField(bpos, mouseWorld, mouseValid, genStrength) + persistentTrail;
-        float trailNoise = triNoise2d(p * MOUSE_TRAIL_NOISE_SCALE + mouseWorld * 0.5f, effSpeed * 1.5f, noiseTime, effSharpness * 0.8f);
-        density = saturate(density + trailField * (trailNoise + 0.6f));
+        // The trail noise is as expensive as the density noise, so only evaluate it where there is a trail
+        if (trailField > 0.0f) {
+            float trailNoise = triNoise2d(p * MOUSE_TRAIL_NOISE_SCALE + mouseWorld * 0.5f, trailRot, effSharpness * 0.8f);
+            density = saturate(density + trailField * (trailNoise + 0.6f));
+        }
 
-        float h = float(i) / MARCH_STEPS;
+        float h = slice / AURORA_DEPTH;
         float3 colLow = float3(0.1f, 0.95f, 0.4f);
         float3 colMid = float3(0.1f, 0.85f, 0.85f);
         float3 colHigh = float3(0.65f, 0.25f, 0.95f);
@@ -433,6 +449,7 @@ rayMarchAurora(
         float3 mouseCol = float3(0.15f, 0.75f, 1.0f);
         float3 stepColor = lerp(baseCol, mouseCol, saturate(trailField * 1.5f));
 
+        density *= stepScale;
         float absorption = exp(-accAlpha * 2.0f);
         accColor += stepColor * density * absorption;
         accAlpha += density * 0.05f;
