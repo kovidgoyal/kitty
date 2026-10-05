@@ -11,6 +11,40 @@ is_macos = 'darwin' in _plat
 
 
 class TestGLFW(BaseTest):
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'Linux momentum scrolling')
+    def test_momentum_scroll_scale(self) -> None:
+        import os
+        import shlex
+        import shutil
+        import subprocess
+        import tempfile
+
+        from kitty.constants import kitty_base_dir
+
+        if not os.path.exists(os.path.join(kitty_base_dir, 'glfw', 'momentum-scroll.c')):
+            self.skipTest('Momentum regression test requires a source checkout')
+        compiler = shlex.split(os.environ.get('CC') or 'cc')
+        pkgconfig = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
+        if not shutil.which(compiler[0]) or not shutil.which(pkgconfig):
+            self.skipTest('C compiler and pkg-config are required')
+        flags = subprocess.run(
+            [pkgconfig, '--cflags', 'x11', 'xrandr', 'xinerama', 'xcursor', 'xkbcommon', 'xkbcommon-x11', 'x11-xcb', 'dbus-1'],
+            capture_output=True,
+            text=True,
+        )
+        if flags.returncode:
+            self.skipTest('X11 development headers are required')
+        with tempfile.TemporaryDirectory() as directory:
+            exe = os.path.join(directory, 'momentum')
+            cmd = compiler + ['-std=gnu11', '-D_GLFW_X11', '-UNDEBUG', '-Werror=implicit-function-declaration'] + shlex.split(flags.stdout)
+            if os.environ.get('KITTY_SANITIZE') == '1':
+                cmd += ['-fsanitize=address,undefined', '-fno-omit-frame-pointer']
+            cmd += ['kitty_tests/momentum_scroll.c', 'glfw/momentum-scroll.c', '-lm', '-o', exe]
+            compiled = subprocess.run(cmd, cwd=kitty_base_dir, capture_output=True, text=True)
+            self.ae(compiled.returncode, 0, compiled.stderr)
+            ran = subprocess.run([exe], capture_output=True, text=True, timeout=10)
+            self.ae(ran.returncode, 0, ran.stderr)
+
     def test_os_window_size_calculation(self):
         from kitty.utils import get_new_os_window_size
 

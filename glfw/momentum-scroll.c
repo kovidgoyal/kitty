@@ -221,8 +221,8 @@ handle_scroll_event(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, boo
         memset(&s.physical_event, 0, sizeof(s.physical_event));
         s.physical_event.start = now;
     }
-    if (ev->unscaled.y > 0) s.scale = ev->y_offset / ev->unscaled.y;
-    else if (ev->unscaled.x > 0) s.scale = ev->x_offset / ev->unscaled.x;
+    if (ev->unscaled.y != 0) s.scale = ev->y_offset / ev->unscaled.y;
+    else if (ev->unscaled.x != 0) s.scale = ev->x_offset / ev->unscaled.x;
     if (s.window_id && s.window_id != w->id) cancel_existing_scroll(true);
     if (s.state != PHYSICAL_EVENT_IN_PROGRESS) cancel_existing_scroll(false);
     if (!is_synthetic_momentum_start_event) {
