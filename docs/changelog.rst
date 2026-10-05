@@ -269,6 +269,10 @@ Detailed list of changes
 - Wayland: Fix the window class (app_id) and title being lost when an OS window
   is hidden and then shown again (:iss:`10602`)
 
+- Linux: Fix momentum scrolling not coasting when scrolling up or left, until
+  the first scroll down or right (:pull:`10610`)
+
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
