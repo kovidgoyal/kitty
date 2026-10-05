@@ -219,6 +219,10 @@ Detailed list of changes
   with momentum, and a finger held still before it moves selects text
   (:iss:`5432`, :pull:`10551`)
 
+- :ref:`mouse_map <conf-kitty-mouse.mousemap>` can now map the scroll wheel, via the :code:`wheel_up` and
+  :code:`wheel_down` buttons, for example, to change the font size with
+  :kbd:`Ctrl+scroll`
+
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 
