@@ -318,7 +318,9 @@ text_blink_set(Cursor *self, PyObject *value, void UNUSED *closure) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
         return -1;
     }
-    self->sgr.blink = PyObject_IsTrue(value) ? false : true;
+    int blink = PyObject_IsTrue(value);
+    if (blink < 0) return -1;
+    self->sgr.blink = blink;
     return 0;
 }
 

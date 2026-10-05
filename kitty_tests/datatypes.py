@@ -65,6 +65,25 @@ def create_lbuf(*lines):
 
 
 class TestDataTypes(BaseTest):
+    def test_cursor_text_blink(self) -> None:
+        cursor = C()
+        buffer = LineBuf(1, 1)
+        line = buffer.line(0)
+        for blink in (True, False):
+            cursor.text_blink = blink
+            line.set_char(0, 'x', 1, cursor)
+            self.ae(cursor.text_blink, blink)
+            self.ae(line.cursor_from(0).text_blink, blink)
+            self.ae(line.as_ansi(), '\x1b[5mx' if blink else 'x')
+
+        class InvalidTruthValue:
+            def __bool__(self) -> bool:
+                raise ValueError('invalid blink setting')
+
+        with self.assertRaisesRegex(ValueError, 'invalid blink setting'):
+            setattr(cursor, 'text_blink', InvalidTruthValue())
+        self.assertFalse(cursor.text_blink)
+
     def test_replace_c0_codes(self):
         def t(x: str, expected: str):
             q = replace_c0_codes_except_nl_space_tab(x)
