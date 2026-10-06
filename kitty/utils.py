@@ -140,7 +140,7 @@ def log_error(*a: Any, **k: str) -> None:
 
 
 @contextmanager
-def suppress_error_logging() -> Iterator[None]:
+def suppress_error_logging() -> Generator[None, None, None]:
     before = getattr(log_error, 'redirect', suppress_error_logging)
     setattr(log_error, 'redirect', lambda *a: None)
     try:
@@ -504,7 +504,7 @@ def set_echo(fd: int = -1, on: bool = False) -> tuple[int, list[int | list[bytes
 
 
 @contextmanager
-def no_echo(fd: int = -1) -> Iterator[None]:
+def no_echo(fd: int = -1) -> Generator[None, None, None]:
     import termios
 
     fd, old = set_echo(fd)
@@ -1238,7 +1238,7 @@ def unlock_file(f: IO[bytes] | IO[str]) -> None:
 
 
 @contextmanager
-def lock_with_file(path: str) -> Iterator[None]:
+def lock_with_file(path: str) -> Generator[None, None, None]:
     """Take an exclusive advisory lock on path, waiting for it to become available.
 
     The lock file is created if needed and left in place, since unlinking it

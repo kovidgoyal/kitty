@@ -12,7 +12,7 @@ import struct
 import subprocess
 import sys
 import tarfile
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from itertools import chain
@@ -742,7 +742,7 @@ const NoPreferenceThemeFileName = "{ThemeFile.no_preference.value}"
 
 
 @contextmanager
-def replace_if_needed(path: str, show_diff: bool = False) -> Iterator[io.StringIO]:
+def replace_if_needed(path: str, show_diff: bool = False) -> Generator[io.StringIO, None, None]:
     buf = io.StringIO()
     origb = sys.stdout
     sys.stdout = buf
