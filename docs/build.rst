@@ -198,7 +198,7 @@ the kitty program expects to find them there.
    :file:`ncurses`. Also, if you are building from a git checkout instead of the
    released source code tarball, you will need to install the dependencies from
    :file:`docs/requirements.txt` to build the kitty documentation. They can be
-   installed most easily with ``python -m pip -r docs/requirements.txt``.
+   installed most easily with ``python -m pip install -r docs/requirements.txt``.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 Homebrew or MacPorts as well.
