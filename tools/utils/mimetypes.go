@@ -71,6 +71,12 @@ func GuessMimeType(filename string) string {
 	ext := filepath.Ext(filename)
 	mime_with_parameters := UserMimeMap()[ext]
 	if mime_with_parameters == "" {
+		mime_with_parameters = MimeTypeFromCache(filename)
+	}
+	// The stdlib database is loaded from the same shared-mime-info data as
+	// the cache, but slowly, by parsing text files, so avoid it if the cache
+	// is available.
+	if mime_with_parameters == "" && !HaveMimeCache() {
 		mime_with_parameters = mime.TypeByExtension(ext)
 	}
 	if mime_with_parameters == "" {

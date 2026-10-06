@@ -13,7 +13,7 @@ from urllib.parse import ParseResult, unquote, urlparse
 from .conf.utils import KeyAction, to_cmdline_implementation
 from .constants import config_dir
 from .fast_data_types import get_options
-from .guess_mime_type import guess_type
+from .guess_mime_type import guess_type, mime_types_for_matching
 from .options.utils import ActionAlias, MapType, resolve_aliases_and_parse_actions
 from .types import run_once
 from .typing_compat import MatchType
@@ -95,11 +95,11 @@ def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc:
         mt = guess_type(unquoted_path, allow_filesystem_access=purl.scheme in ('', 'file'))
         if not mt:
             return False
-        mt = mt.lower()
+        mts = {x.lower() for x in mime_types_for_matching(unquoted_path, mt)}
         for mpat in mc.value.split(','):
             mpat = mpat.strip()
             with suppress(Exception):
-                if fnmatch.fnmatchcase(mt, mpat):
+                if any(fnmatch.fnmatchcase(x, mpat) for x in mts):
                     return True
         return False
 

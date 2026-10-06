@@ -219,6 +219,14 @@ Detailed list of changes
   with momentum, and a finger held still before it moves selects text
   (:iss:`5432`, :pull:`10551`)
 
+- Linux/BSD: Detect MIME types for :doc:`open actions <open_actions>` and
+  kittens using the fast binary shared-mime-info cache
+  (:file:`mime/mime.cache`), matching the MIME types used by the rest of the
+  desktop. Lookups are faster and also match file names without an extension,
+  such as :file:`Makefile`, and case-sensitive patterns. MIME types in open
+  actions and the choose-files kitten also match the aliases of the detected
+  MIME type, for example, ``text/x-sh`` matches shell scripts (:iss:`3056`)
+
 - Fix a space immediately after a tab stop being dropped when the screen
   contents are copied or sent to the scrollback pager (:iss:`10609`)
 

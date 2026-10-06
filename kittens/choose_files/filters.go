@@ -45,8 +45,12 @@ func NewFilter(spec string) (*Filter, error) {
 				if mime == "" {
 					return false
 				}
-				m, _ := filepath.Match(ans.Pattern, mime)
-				return m
+				for _, q := range utils.MimeTypeAliases(mime) {
+					if m, _ := filepath.Match(ans.Pattern, q); m {
+						return true
+					}
+				}
+				return false
 			}
 		default:
 			return nil, fmt.Errorf("%#v is not a valid filter type", ans.Type)
