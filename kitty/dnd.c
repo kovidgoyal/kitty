@@ -1917,10 +1917,11 @@ request_file_promise(Window *w, size_t idx_in_uri_list, const char *url, int *er
     for (size_t i = 0; i < w->drag_source.file_promises_count; i++) {
         if (w->drag_source.file_promises[i].uri_item_idx == idx_in_uri_list) {
             const DragRemoteItem *ri = &w->drag_source.file_promises[i].ri;
-            if (ri->completed) {
-                notify_drag_data_received(w, idx_in_uri_list, ri->dir_entry_name, ri->type);
-                *err_code = 0;
-            }
+            // When completed, notify_drag_data_received() synchronously hands the
+            // file to the platform backend which ends the transfer itself, so
+            // we must still return EAGAIN as returning 0 with no data would
+            // cause the backend to end the transfer a second time.
+            if (ri->completed) notify_drag_data_received(w, idx_in_uri_list, ri->dir_entry_name, ri->type);
             *err_code = EAGAIN;
             return NULL;
         }
