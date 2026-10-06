@@ -1659,26 +1659,54 @@ remove_children(ChildMonitor *self) {
 }
 
 
+#ifdef __APPLE__
+// The macOS pty driver hands out data in chunks of at most 1024 bytes, so with
+// a single read per poll() a child producing bulk output costs us a poll() and
+// a wakeup of the I/O thread per kilobyte. Instead, when a read returns a full
+// chunk, which means the child might have more data for us, keep reading until it runs
+// out or PTY_GATHER_MAX bytes have been read. Each read is handed to the parser
+// as soon as it completes, so the parser thread runs in parallel with the
+// gathering and interactive latency is unchanged. The cap keeps a single busy
+// child from monopolising the I/O thread, and must be small enough that the
+// main loop is still woken often enough to keep the parser fed.
+#define PTY_READ_CHUNK 1024u
+#define PTY_GATHER_MAX (64u * 1024u)
+#define pty_has_more_data(total, len) ((total) < PTY_GATHER_MAX && (size_t)(len) >= PTY_READ_CHUNK)
+#else
+// Other platforms return more data in a single read() so this is unlikely to help and may harm instead.
+#define pty_has_more_data(total, len) (false)
+#endif
+
 static bool
 read_bytes(int fd, Screen *screen, bool *pending_input_is_small) {
-    ssize_t len;
-    size_t available_buffer_space;
+    size_t total = 0;
+    bool child_alive = true, read_more = true;
 
-    uint8_t *buf = vt_parser_create_write_buffer(screen->vt_parser, &available_buffer_space);
-    if (!available_buffer_space) return true;
-
-    while (true) {
-        len = read(fd, buf, available_buffer_space);
-        if (len < 0) {
-            if (errno == EINTR || errno == EAGAIN) continue;
-            if (errno != EIO) perror("Call to read() from child fd failed");
-            *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, 0);
-            return false;
+    while (read_more) {
+        size_t available_buffer_space;
+        uint8_t *buf = vt_parser_create_write_buffer(screen->vt_parser, &available_buffer_space);
+        if (!available_buffer_space) break;
+        ssize_t len;
+        while ((len = read(fd, buf, available_buffer_space)) < 0) {
+            if (errno == EINTR) continue;
+            // poll() told us data was ready, so wait for it, but only before anything has been read
+            if (errno == EAGAIN && !total) continue;
+            if (errno != EAGAIN && errno != EIO) perror("Call to read() from child fd failed");
+            if (errno != EAGAIN) child_alive = false;
+            break;
         }
-        break;
+        if (len > 0) {
+            total += len;
+            // a short read means the child has no more data queued for us
+            read_more = pty_has_more_data(total, len);
+        } else {
+            if (len == 0) child_alive = false; // EOF
+            len = 0;                           // the write buffer must be committed even when nothing was read
+            read_more = false;
+        }
+        *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, len);
     }
-    *pending_input_is_small = vt_parser_commit_write(screen->vt_parser, len);
-    return len != 0;
+    return child_alive;
 }
 
 
