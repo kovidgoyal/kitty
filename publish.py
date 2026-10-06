@@ -98,6 +98,7 @@ def run_build(args: Any) -> None:
     run_with_retry(
         f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{vcs_rev}"',
         retry_cmd='python ../bypy macos shutdown',
+        timeout=60 * 60,  # notarization can be slow
     )
     call('python ../bypy macos shutdown', echo=True)
     call('make debug')
