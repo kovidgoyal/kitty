@@ -2462,8 +2462,10 @@ toplevel_data_for_drag(
         if (fd < 0) abrt(errno, "failed to open directory for drag source item");
         ri->top_level_parent_dir_fd_plus_one = fd + 1;
         if (!ds.file_promises) {
+            char *new_url = as_file_url(ds.base_dir_for_remote_items, path, ri->dir_entry_name);
+            if (!new_url) abrt(ENOMEM, "failed to generate file URL for drag source item");
             free(mi.uri_list[uri_item_idx]);
-            mi.uri_list[uri_item_idx] = as_file_url(ds.base_dir_for_remote_items, path, ri->dir_entry_name);
+            mi.uri_list[uri_item_idx] = new_url;
         }
     }
     return add_payload(w, ri, has_more, payload, payload_sz, ri->top_level_parent_dir_fd_plus_one - 1);
