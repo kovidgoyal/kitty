@@ -227,10 +227,12 @@ def env_vars(**kw: str) -> Iterator[None]:
 
 def path_for_python_tests() -> str:
     """The PATH used by tests: the built launcher dir followed by all entries not under the real home dir."""
+    from kitty.constants import kitty_exe
+
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
-    launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
+    launcher_dir = os.path.dirname(kitty_exe())
     return f'{launcher_dir}{os.pathsep}{path}'
 
 
