@@ -48,7 +48,10 @@ wait_for_pending_connect(int socket_fd) {
             struct timespec now;
             if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return -1;
             int64_t remaining = deadline - ((int64_t)now.tv_sec * 1000000000ll + now.tv_nsec);
-            if (remaining <= 0) { errno = ETIMEDOUT; return -1; }
+            if (remaining <= 0) {
+                errno = ETIMEDOUT;
+                return -1;
+            }
             remaining = (remaining + 999999ll) / 1000000ll;
             timeout_ms = remaining > INT_MAX ? INT_MAX : (int)remaining;
         }
@@ -59,7 +62,10 @@ wait_for_pending_connect(int socket_fd) {
     int err = 0;
     socklen_t errlen = sizeof(err);
     if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &err, &errlen) < 0) return -1;
-    if (err != 0) { errno = err; return -1; }
+    if (err != 0) {
+        errno = err;
+        return -1;
+    }
     return 0;
 }
 
@@ -187,8 +193,12 @@ safe_write_all(int fd, const void *buf, size_t nbyte) {
     while (nbyte > 0) {
         ssize_t ret = safe_write(fd, p, nbyte);
         if (ret < 0) return -1;
-        if (ret == 0) { errno = EIO; return -1; }
-        p += ret; nbyte -= (size_t)ret;
+        if (ret == 0) {
+            errno = EIO;
+            return -1;
+        }
+        p += ret;
+        nbyte -= (size_t)ret;
     }
     return 0;
 }
