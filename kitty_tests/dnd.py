@@ -2486,6 +2486,22 @@ class TestDnDProtocol(BaseTest):
             self._assert_no_output(cap)
             self.assert_drag_data_complete(cap)
 
+    def test_remote_drag_uri_list_parsing(self) -> None:
+        """URI list without trailing newline, with comments, blank lines and trailing whitespace."""
+        for uri_list in (
+            b'file:///home/user/a.txt',
+            b'# comment\r\n\r\nfile:///home/user/a.txt \t\n\nfile:///home/user/b.txt',
+            b'\r\n\n#c\nfile:///home/user/a.txt\r\nfile:///home/user/b.txt\t\r\n\r\n',
+        ):
+            with self.subTest(uri_list=uri_list), dnd_test_window() as (screen, cap):
+                self._setup_remote_drag(screen, cap, uri_list)
+                num_uris = uri_list.count(b'file://')
+                for i in range(1, num_uris + 1):
+                    parse_bytes(screen, client_remote_file(i, standard_b64encode(b'x').decode(), item_type=0))
+                    parse_bytes(screen, client_remote_file(i, '', item_type=0))
+                    self._assert_no_output(cap)
+                self.assert_drag_data_complete(cap)
+
     def test_remote_drag_chunked_file(self) -> None:
         """File data can be sent in multiple chunks with m=1."""
         uri_list = b'file:///home/user/big.bin\r\n'

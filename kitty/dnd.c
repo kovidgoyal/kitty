@@ -1692,25 +1692,25 @@ expand_png_data(Window *w, size_t idx) {
 static size_t last_total_image_size = 0;
 
 static char **
-parse_uri_list(Window *w, char *data, const ssize_t sz, size_t *num_uris_out) {
+parse_uri_list(Window *w, const char *data, const size_t sz, size_t *num_uris_out) {
+    // data is not NUL terminated, so all scanning must be bounded by sz
     *num_uris_out = 0;
+    const char *limit = data + sz;
+#define next_line(p, line_start, line_end)                                                         \
+    {                                                                                              \
+        while (p < limit && (*p == '\r' || *p == '\n')) p++;                                       \
+        line_start = p;                                                                            \
+        while (p < limit && *p != '\r' && *p != '\n') p++;                                         \
+        line_end = p;                                                                              \
+        while (line_end > line_start && (line_end[-1] == ' ' || line_end[-1] == '\t')) line_end--; \
+    }
+#define is_uri_line (line_end > line_start && *line_start != '#')
     // First pass: count non-comment, non-empty lines
     size_t count = 0;
-    char *p = data;
-    while (p - data < sz) {
-        char *eol = p + strcspn(p, "\r\n");
-        char saved = *eol;
-        *eol = '\0';
-        char *end = eol;
-        while (end > p && (end[-1] == ' ' || end[-1] == '\t')) end--;
-        char saved_end = *end;
-        *end = '\0';
-        if (*p && *p != '#') count++;
-        *end = saved_end;
-        *eol = saved;
-        if (saved == '\0') break;
-        p = eol + 1;
-        while (*p == '\r' || *p == '\n') p++;
+    const char *line_start, *line_end;
+    for (const char *p = data; p < limit;) {
+        next_line(p, line_start, line_end);
+        if (is_uri_line) count++;
     }
 
     char **result = calloc((count + 1), sizeof(const char *));
@@ -1719,18 +1719,12 @@ parse_uri_list(Window *w, char *data, const ssize_t sz, size_t *num_uris_out) {
         return NULL;
     }
 
-    // Second pass: fill in decoded URI strings
+    // Second pass: fill in URI strings
     size_t idx = 0;
-    p = data;
-    while (p - data < sz && idx < count) {
-        char *eol = p + strcspn(p, "\r\n");
-        char saved = *eol;
-        *eol = '\0';
-        char *end = eol;
-        while (end > p && (end[-1] == ' ' || end[-1] == '\t')) end--;
-        *end = '\0';
-        if (*p && *p != '#') {
-            char *decoded = strdup(p);
+    for (const char *p = data; p < limit && idx < count;) {
+        next_line(p, line_start, line_end);
+        if (is_uri_line) {
+            char *decoded = strndup(line_start, line_end - line_start);
             if (!decoded) {
                 for (size_t k = 0; k < idx; k++) free((char *)result[k]);
                 free(result);
@@ -1739,11 +1733,9 @@ parse_uri_list(Window *w, char *data, const ssize_t sz, size_t *num_uris_out) {
             }
             result[idx++] = decoded;
         }
-        *eol = saved;
-        if (saved == '\0') break;
-        p = eol + 1;
-        while (*p == '\r' || *p == '\n') p++;
     }
+#undef is_uri_line
+#undef next_line
     *num_uris_out = idx;
     return result;
 }

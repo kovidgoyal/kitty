@@ -300,6 +300,9 @@ Detailed list of changes
 - Drag and drop: Restore the previously active tab after dropping a dragged tab
   on the same OS window's tab bar, even if it was reordered after a hover switch
 
+- Drag and drop: Fix an out of bounds memory access when parsing a URI list sent
+  by a remote client that does not end with a newline (:iss:`10618`)
+
 - Sessions: Expand launch option variables when an option value matches the command name
 
 - Preserve transparent background colors when applying unrelated launch color overrides
