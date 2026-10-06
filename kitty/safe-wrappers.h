@@ -6,10 +6,15 @@
 
 #pragma once
 #include "data-types.h"
+#include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -24,18 +29,33 @@ safe_lockf(int fd, int function, off_t size) {
 
 static inline int
 safe_connect(int socket_fd, struct sockaddr *addr, socklen_t addrlen) {
-    while (true) {
-        int ret = connect(socket_fd, addr, addrlen);
-        if (ret < 0 && (errno == EINTR || errno == EAGAIN)) continue;
-        return ret;
+    /* If connect() is interrupted by EINTR on a stream socket, the connection
+     * continues asynchronously in the background. Retrying connect() directly
+     * fails with EISCONN or EALREADY. Instead, wait for writability with poll()
+     * and query SO_ERROR to obtain the final connection outcome. */
+    int ret = connect(socket_fd, addr, addrlen);
+    if (ret < 0 && errno == EINTR) {
+        struct pollfd pfd = {.fd = socket_fd, .events = POLLOUT};
+        while (poll(&pfd, 1, -1) < 0) {
+            if (errno != EINTR) return -1;
+        }
+        int err = 0;
+        socklen_t errlen = sizeof(err);
+        if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &err, &errlen) < 0) return -1;
+        if (err != 0) {
+            errno = err;
+            return -1;
+        }
+        return 0;
     }
+    return ret;
 }
 
 static inline int
 safe_bind(int socket_fd, struct sockaddr *addr, socklen_t addrlen) {
     while (true) {
         int ret = bind(socket_fd, addr, addrlen);
-        if (ret < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+        if (ret < 0 && errno == EINTR) continue;
         return ret;
     }
 }
@@ -44,20 +64,39 @@ static inline int
 safe_accept(int socket_fd, struct sockaddr *addr, socklen_t *addrlen) {
     while (true) {
         int ret = accept(socket_fd, addr, addrlen);
-        if (ret < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+        if (ret < 0 && errno == EINTR) continue;
         return ret;
     }
 }
 
 static inline int
 safe_mkstemp(char *template) {
+    /* mkstemp and mkostemp modify the template buffer in place. Preserve a copy
+     * of the original template so it can be restored if interrupted by EINTR. */
+    size_t len = strlen(template);
+    char saved[PATH_MAX];
+    if (len >= sizeof(saved)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+    memcpy(saved, template, len + 1);
+
     while (true) {
+#if defined(__linux__) || defined(_GNU_SOURCE) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+        int fd = mkostemp(template, O_CLOEXEC);
+#else
         int fd = mkstemp(template);
-        if (fd == -1 && errno == EINTR) continue;
+#endif
+        if (fd == -1 && errno == EINTR) {
+            memcpy(template, saved, len + 1);
+            continue;
+        }
+#if !defined(__linux__) && !defined(_GNU_SOURCE) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__NetBSD__)
         if (fd > -1) {
             int flags = fcntl(fd, F_GETFD);
             if (flags > -1) fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
         }
+#endif
         return fd;
     }
 }
@@ -80,7 +119,6 @@ safe_openat(int dirfd, const char *path, int flags, mode_t mode) {
     }
 }
 
-
 static inline FILE *
 safe_fopen(const char *path, const char *mode) {
     while (true) {
@@ -89,7 +127,6 @@ safe_fopen(const char *path, const char *mode) {
         return f;
     }
 }
-
 
 static inline int
 safe_shm_open(const char *path, int flags, mode_t mode) {
@@ -100,13 +137,16 @@ safe_shm_open(const char *path, int flags, mode_t mode) {
     }
 }
 
-
 static inline void
 safe_close(int fd, const char *file UNUSED, const int line UNUSED) {
 #if 0
     printf("Closing fd: %d from file: %s line: %d\n", fd, file, line);
 #endif
-    while (close(fd) != 0 && errno == EINTR);
+    /* On Linux, macOS, FreeBSD, and OpenBSD, the file descriptor table entry is
+     * released before handling signal interruptions. Retrying close() when
+     * interrupted by EINTR is hazardous in multithreaded applications because
+     * it can inadvertently close a descriptor reallocated by another thread. */
+    (void)close(fd);
 }
 
 static inline int
@@ -119,7 +159,7 @@ safe_ftruncate(int fd, off_t length) {
 static inline ssize_t
 safe_write(int fd, const void *buf, size_t nbyte) {
     ssize_t ret;
-    while ((ret = write(fd, buf, nbyte)) != 0 && errno == EINTR);
+    while ((ret = write(fd, buf, nbyte)) < 0 && errno == EINTR);
     return ret;
 }
 
