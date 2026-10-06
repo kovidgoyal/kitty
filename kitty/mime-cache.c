@@ -264,10 +264,19 @@ canonical_mime_type(const MimeCache *c, const char *mime) {
     return NULL;
 }
 
+// Corrupt cache files can contain strings that are not valid UTF-8. These are
+// treated as missing: NULL is returned without setting an exception.
+static PyObject *
+string_from_cache(const char *val) {
+    PyObject *ans = PyUnicode_DecodeUTF8(val, (Py_ssize_t)strlen(val), NULL);
+    if (!ans && PyErr_ExceptionMatches(PyExc_UnicodeDecodeError)) PyErr_Clear();
+    return ans;
+}
+
 static bool
 add_unique_string(PyObject *list, const char *val) {
-    RAII_PyObject(s, PyUnicode_FromString(val));
-    if (!s) return false;
+    RAII_PyObject(s, string_from_cache(val));
+    if (!s) return !PyErr_Occurred();
     int ret = PySequence_Contains(list, s);
     if (ret < 0) return false;
     return ret == 1 || PyList_Append(list, s) == 0;
@@ -307,6 +316,14 @@ cache_changed(const MimeCache *c) {
            st.st_mtim.tv_nsec != c->mtime.tv_nsec;
 }
 
+// Note for security reviews: if a mapped cache file is truncated in place,
+// accessing the mapped pages beyond the new end of file raises SIGBUS. This
+// is deliberately not handled. update-mime-database replaces cache files
+// atomically via rename(), so the mapped data stays valid, and truncating them
+// in place requires write access to the XDG data directories. GLib (xdgmime)
+// and Qt (QMimeBinaryProvider) mmap these files in exactly the same way,
+// without handling SIGBUS. All reads from the mapped data are bounds checked,
+// so corrupt or malicious cache file contents are safe.
 static void
 map_cache(MimeCache *c) {
     unmap_cache(c);
@@ -443,8 +460,14 @@ ensure_caches_loaded(void) {
 static bool
 filename_from_python(PyObject *name, FileName *ans, PyObject **utf8_holder, Py_UCS4 **ucs4_holder) {
     // Use surrogateescape so that file names that are not valid UTF-8 round trip to their original bytes
+    // Lone surrogates outside the surrogateescape range cannot be encoded and
+    // cannot come from a real file name, so they are treated as not matching:
+    // false is returned without setting an exception.
     *utf8_holder = PyUnicode_AsEncodedString(name, "utf-8", "surrogateescape");
-    if (!*utf8_holder) return false;
+    if (!*utf8_holder) {
+        if (PyErr_ExceptionMatches(PyExc_UnicodeEncodeError)) PyErr_Clear();
+        return false;
+    }
     *ucs4_holder = PyUnicode_AsUCS4Copy(name);
     if (!*ucs4_holder) return false;
     ans->utf8 = PyBytes_AS_STRING(*utf8_holder);
@@ -485,10 +508,15 @@ mime_type_for_filename(PyObject *self UNUSED, PyObject *path) {
     RAII_UCS4(ucs4);
     RAII_UCS4(lucs4);
     FileName fname, lname;
-    if (!filename_from_python(name, &fname, &utf8, &ucs4) || !filename_from_python(lowercased, &lname, &lutf8, &lucs4)) return NULL;
+    if (!filename_from_python(name, &fname, &utf8, &ucs4) || !filename_from_python(lowercased, &lname, &lutf8, &lucs4)) {
+        if (PyErr_Occurred()) return NULL;
+        Py_RETURN_NONE;
+    }
     const char *ans = lookup(&fname, &lname);
     if (!ans) Py_RETURN_NONE;
-    return PyUnicode_FromString(ans);
+    PyObject *ret = string_from_cache(ans);
+    if (!ret && !PyErr_Occurred()) Py_RETURN_NONE;
+    return ret;
 }
 
 static PyObject *
@@ -498,7 +526,12 @@ mime_type_aliases(PyObject *self UNUSED, PyObject *mime) {
         return NULL;
     }
     const char *q = PyUnicode_AsUTF8(mime);
-    if (!q) return NULL;
+    if (!q) {
+        // Lone surrogates cannot be encoded and so cannot match anything in the cache
+        if (!PyErr_ExceptionMatches(PyExc_UnicodeEncodeError)) return NULL;
+        PyErr_Clear();
+        return PyTuple_Pack(1, mime);
+    }
     if (!ensure_caches_loaded()) return NULL;
     const char *canonical = NULL;
     for (size_t i = 0; i < caches.count && !canonical; i++) {

@@ -127,6 +127,28 @@ action json
                 with patch_env(XDG_DATA_HOME=truncated, XDG_DATA_DIRS=f'{tdir}/missing'):
                     clear_mime_cache_data()
                     self.assertIsNone(mime_type_for_filename('a.kext'))
+
+                # strings in the cache that are not valid UTF-8 are ignored
+                invalid = os.path.join(tdir, 'invalid')
+                os.makedirs(os.path.join(invalid, 'mime'))
+                with open(os.path.join(system, 'mime', 'mime.cache'), 'rb') as src, open(os.path.join(invalid, 'mime', 'mime.cache'), 'wb') as dest:
+                    data = src.read()
+                    self.assertIn(b'text/x-kt-ext\0', data)
+                    dest.write(data.replace(b'text/x-kt-ext\0', b'text/x-kt-\xffxt\0'))
+                with patch_env(XDG_DATA_HOME=invalid, XDG_DATA_DIRS=f'{tdir}/missing'):
+                    clear_mime_cache_data()
+                    self.assertIsNone(mime_type_for_filename('a.kext'))
+                    self.ae(mime_type_for_filename('a.kjson'), 'application/json')
+                    self.ae(mime_type_aliases('text/x-kt-old'), ('application/x-kt-older', 'text/x-kt-old'))
+                    guess_type('/a/b.kext')
+
+                # lone surrogates cannot be encoded and so do not match
+                with patch_env(XDG_DATA_HOME=user, XDG_DATA_DIRS=system):
+                    clear_mime_cache_data()
+                    self.assertIsNone(mime_type_for_filename('a\ud800.kext'))
+                    self.ae(mime_type_for_filename('a\udcff.kext'), 'text/x-kt-ext')
+                    self.ae(mime_type_aliases('text/\ud800'), ('text/\ud800',))
+                    guess_type('/a/b\ud800.kext')
             finally:
                 clear_mime_cache_data()
 

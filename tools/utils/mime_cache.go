@@ -379,6 +379,13 @@ func load_mime_cache(path string) (*mime_cache, error) {
 	// The mapping is never unmapped as it is used for the lifetime of the
 	// process. update-mime-database replaces the cache file atomically so the
 	// mapped data remains valid.
+	// Note for security reviews: if the file is truncated in place, accessing
+	// the mapped pages beyond the new end of file raises SIGBUS. This is
+	// deliberately not handled, as truncating the file in place requires write
+	// access to the XDG data directories and GLib (xdgmime) and Qt
+	// (QMimeBinaryProvider) mmap these files in exactly the same way, without
+	// handling SIGBUS. All reads from the mapped data are bounds checked, so
+	// corrupt or malicious cache file contents are safe.
 	data, err := unix.Mmap(int(f.Fd()), 0, int(st.Size()), unix.PROT_READ, unix.MAP_PRIVATE)
 	is_mmapped := err == nil
 	if !is_mmapped {
