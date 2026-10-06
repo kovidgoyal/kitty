@@ -2120,6 +2120,7 @@ class Window:
         self.clipboard_request_manager.close()
         del self.kitten_result_processors
         if hasattr(self, 'screen'):
+            self.finish_scroll_animation()
             if self.is_active and self.os_window_id == current_focused_os_window_id():
                 # Cancel IME composition when window is destroyed
                 update_ime_position_for_window(self.id, False, -1)
