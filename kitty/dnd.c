@@ -2182,18 +2182,6 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
     }
 }
 
-static int
-write_all(int fd, const void *buf, size_t sz) {
-    size_t pos = 0;
-    const char *p = buf;
-    while (pos < sz) {
-        ssize_t ret = safe_write(fd, p + pos, sz - pos);
-        if (ret < 0) return ret;
-        pos += ret;
-    }
-    return 0;
-}
-
 static void
 finish_remote_data(Window *w, size_t item_idx) {
     if (!ds.items[item_idx].fd_plus_one) {
@@ -2207,12 +2195,12 @@ finish_remote_data(Window *w, size_t item_idx) {
     if (lseek(fd, 0, SEEK_SET) == -1) abrt(errno, "error updating uri list after all remote data received");
     size_t new_size = 0;
     for (size_t i = 0; i < ds.items[item_idx].num_uris; i++) {
-        int ret = write_all(fd, ds.items[item_idx].uri_list[i], strlen(ds.items[item_idx].uri_list[i]));
+        int ret = safe_write_all(fd, ds.items[item_idx].uri_list[i], strlen(ds.items[item_idx].uri_list[i])) ? errno : 0;
         new_size += strlen(ds.items[item_idx].uri_list[i]);
         free((char *)ds.items[item_idx].uri_list[i]);
         ds.items[item_idx].uri_list[i] = NULL;
         if (ret) abrt(ret, "error updating uri list after all remote data received");
-        if ((ret = write_all(fd, "\r\n", 2))) abrt(ret, "error updating uri list after all remote data received");
+        if (safe_write_all(fd, "\r\n", 2)) abrt(errno, "error updating uri list after all remote data received");
         new_size += 2;
     }
     free(ds.items[item_idx].uri_list);
@@ -2351,7 +2339,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 size_t outlen = sizeof(buf);
                 if (!base64_decode_stream(&ri->base64_state, payload, payload_sz, buf, &outlen)) abrt(EINVAL, "could not base64 decode drag source item data");
                 ds.total_remote_data_size += outlen;
-                if (outlen && write_all(ri->fd_plus_one - 1, buf, outlen) < 0) abrt(errno, "could not write drag source item data to file");
+                if (outlen && safe_write_all(ri->fd_plus_one - 1, buf, outlen) < 0) abrt(errno, "could not write drag source item data to file");
             } break;
             default: {
                 if (ri->data_sz + payload_sz > ri->data_capacity) {

@@ -381,17 +381,7 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     // Check the identity of the listening process before sending it our
     // environment, cwd and session data.
     if (!peer_is_same_user(s)) do_exit(1);
-    size_t pos = 0;
-    while (pos < output.used) {
-        errno = 0;
-        ssize_t nbytes = write(s, output.data + pos, output.used - pos);
-        if (nbytes <= 0) {
-            if (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK) continue;
-            break;
-        }
-        pos += nbytes;
-    }
-    if (pos < output.used) fail_on_errno("Failed to write message to single instance socket");
+    if (safe_write_all(s, output.data, output.used) != 0) fail_on_errno("Failed to write message to single instance socket");
     shutdown(s, SHUT_RDWR);
     safe_close(s, __FILE__, __LINE__);
     cleanup_entries.si.close_fd1 = false;

@@ -160,10 +160,7 @@ open_cache_file_without_tmpfile(const char *cache_path) {
         return -1;
     }
     snprintf(buf, sz - 1, template, cache_path);
-    while (fd < 0) {
-        fd = mkostemp(buf, O_CLOEXEC);
-        if (fd > -1 || errno != EINTR) break;
-    }
+    fd = safe_mkstemp(buf);
     if (fd > -1) unlink(buf);
     return fd;
 }
