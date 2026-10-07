@@ -1176,6 +1176,40 @@ class TestGraphics(BaseTest):
         self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125 * 7, 'right': 1.0, 'bottom': 0.125 * 8})
         self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25 * 7)
 
+    def test_unicode_placeholders_reverse_scroll(self):
+        # A cell image pushed off the bottom of the screen by a reverse scroll
+        # must not come back when the screen is scrolled forward again.
+        cw, ch = 5, 10
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, lines=4)
+        put_image(s, 5, 10, num_cols=1, num_lines=1, unicode_placeholder=1, id=42)
+        s.apply_sgr('38;5;42')
+        s.cursor_position(4, 1)
+        s.draw('\U0010eeee̅')
+        s.update_only_line_graphics_data()
+        self.ae(len(layers(s)), 1)
+        s.cursor_position(1, 1)
+        s.reverse_index()
+        s.update_only_line_graphics_data()
+        self.ae(len(layers(s)), 0)
+        s.cursor_position(4, 1)
+        s.index()
+        s.update_only_line_graphics_data()
+        self.ae(len(layers(s)), 0)
+        # Same via CSI T
+        s.reset()
+        s.apply_sgr('38;5;42')
+        s.cursor_position(4, 1)
+        s.draw('\U0010eeee̅')
+        s.update_only_line_graphics_data()
+        self.ae(len(layers(s)), 1)
+        s.reverse_scroll(2)
+        s.update_only_line_graphics_data()
+        self.ae(len(layers(s)), 0)
+        s.cursor_position(4, 1)
+        s.index(), s.index()
+        s.update_only_line_graphics_data()
+        self.ae(len(layers(s)), 0)
+
     def test_gr_scroll(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)

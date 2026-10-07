@@ -227,6 +227,10 @@ Detailed list of changes
   actions and the choose-files kitten also match the aliases of the detected
   MIME type, for example, ``text/x-sh`` matches shell scripts (:iss:`3056`)
 
+- Graphics protocol: Fix a fragment of a Unicode placeholder image
+  sometimes reappearing over unrelated text on the bottom line after the screen
+  is scrolled down with reverse index and then scrolled up again
+
 - Fix a space immediately after a tab stop being dropped when the screen
   contents are copied or sent to the scrollback pager (:iss:`10609`)
 

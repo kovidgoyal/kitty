@@ -2310,6 +2310,10 @@ scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixel
     if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData *)data;
     ref->start_row += d->amt;
+    // A cell image is tied to the placeholders on its line, which are lost when
+    // the line is scrolled off the bottom, so the ref must not come back on a
+    // later forward scroll.
+    if (is_cell_image(ref) && ref->start_row > (int32_t)d->margin_bottom) return true;
     return ref->start_row + (int32_t)ref->effective_num_rows <= d->limit;
 }
 
