@@ -3965,8 +3965,11 @@ color_to_id(color_type c) {
 // reserved for image placement.
 static void
 screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
-    // If there are no image placeholders now, no need to rescan the line.
-    if (!line->attrs.has_image_placeholders) return;
+    if (!line->attrs.has_image_placeholders) {
+        // A cell image is drawn only over its placeholder: drop a ref whose row lost them.
+        if (grman_has_any_images(self->grman)) grman_remove_cell_images(self->grman, row, row);
+        return;
+    }
     // Remove existing images.
     grman_remove_cell_images(self->grman, row, row);
     // The placeholders might be erased. We will update the attribute.
@@ -4123,7 +4126,8 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
                 if (linep->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, linep, &self->as_ansi_buf);
                 if (is_overlay_active && lnum == self->overlay_line.ynum) render_overlay_line(self, linep, fonts_data);
                 linebuf_mark_line_clean(self->linebuf, lnum);
-            }
+            } else if (!linep->attrs.has_image_placeholders && grman_has_any_images(self->grman))
+                grman_remove_cell_images(self->grman, virtual_y - (int)self->scrolled_by, virtual_y - (int)self->scrolled_by);
         }
         update_line_data(linep, render_row, address);
     }
