@@ -150,7 +150,7 @@ typedef struct {
     uint8_t drag_overlay_quadrant;     // 1=left 2=right 3=top 4=bottom 0=none
 
     uint8_t *write_buf;
-    size_t write_buf_sz, write_buf_used;
+    size_t write_buf_sz, write_buf_used, write_buf_start;
     pthread_mutex_t write_buf_lock;
 
     CursorRenderInfo cursor_render_info;
