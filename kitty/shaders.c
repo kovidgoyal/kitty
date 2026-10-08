@@ -153,6 +153,29 @@ free_sprite_data(FONTS_DATA_HANDLE fg) {
 }
 
 
+static bool
+copy_texture_via_framebuffer(GLuint old_texture, GLuint new_texture, GLenum texture_type, GLint width, GLint height, GLint layers) {
+    GLint prev_read_fbo;
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prev_read_fbo);
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    bool ok = true;
+    for (GLint z = 0; z < layers && ok; z++) {
+        if (texture_type == GL_TEXTURE_2D_ARRAY) glFramebufferTextureLayer(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, old_texture, 0, z);
+        else glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, old_texture, 0);
+        ok = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+        if (!ok) break;
+        glBindTexture(texture_type, new_texture);
+        if (texture_type == GL_TEXTURE_2D_ARRAY) glCopyTexSubImage3D(texture_type, 0, 0, 0, z, 0, 0, width, height);
+        else glCopyTexSubImage2D(texture_type, 0, 0, 0, 0, 0, width, height);
+    }
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, prev_read_fbo);
+    glDeleteFramebuffers(1, &fbo);
+    if (!ok) glBindTexture(texture_type, old_texture);
+    return ok;
+}
+
 static void
 copy_32bit_texture(GLuint old_texture, GLuint new_texture, GLenum texture_type) {
     // requires new texture to be at least as big as old texture. Assumes textures are 32bits per pixel
@@ -165,6 +188,7 @@ copy_32bit_texture(GLuint old_texture, GLuint new_texture, GLenum texture_type) 
         glCopyImageSubData(old_texture, texture_type, 0, 0, 0, 0, new_texture, texture_type, 0, 0, 0, 0, width, height, layers);
         return;
     }
+    if (copy_texture_via_framebuffer(old_texture, new_texture, texture_type, width, height, layers)) return;
 
     static bool copy_image_warned = false;
     // ARB_copy_image not available, do a slow roundtrip copy
