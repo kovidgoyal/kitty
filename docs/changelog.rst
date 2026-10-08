@@ -284,6 +284,9 @@ Detailed list of changes
 - Linux: Fix momentum scrolling not coasting when scrolling up or left, until
   the first scroll down or right (:pull:`10610`)
 
+- Linux: Fix desktop notifications showing a blank button in notification
+  daemons such as xfce4-notifyd and LXQt (:iss:`10625`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

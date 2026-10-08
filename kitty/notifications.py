@@ -794,7 +794,7 @@ class FreeDesktopIntegration(DesktopIntegration):
         replaces_dbus_id = 0
         if existing_desktop_notification_id:
             replaces_dbus_id = self.get_dbus_notification_id(existing_desktop_notification_id, 'notify') or 0
-        actions = {'default': ' '}  # dbus requires string to not be empty
+        actions = {'default': ''}
         for i, b in enumerate(nc.buttons):
             actions[str(i + 1)] = b
         desktop_notification_id = dbus_send_notification(

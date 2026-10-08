@@ -3545,8 +3545,8 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             PyErr_SetString(PyExc_TypeError, "actions must be strings");
             return NULL;
         }
-        if (PyUnicode_GET_LENGTH(key) == 0 || PyUnicode_GET_LENGTH(value) == 0) {
-            PyErr_SetString(PyExc_TypeError, "actions must be non-empty strings");
+        if (PyUnicode_GET_LENGTH(key) == 0) {
+            PyErr_SetString(PyExc_TypeError, "action names must be non-empty strings");
             return NULL;
         }
         aclist[d.num_actions] = PyUnicode_AsUTF8(key);
