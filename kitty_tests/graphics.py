@@ -1610,6 +1610,89 @@ class TestGraphics(BaseTest):
         delete('I', i=iid + 1)
         self.ae(s.grman.image_count, 1)
 
+    def test_animation_frame_delete_dependents(self):
+        s = self.create_screen()
+        g = s.grman
+        li = make_send_command(s)
+
+        def t(**kw):
+            self.assertEqual(li(**kw).code, 'OK')
+
+        def load_frames():
+            t(a='t')
+            for i in '234':
+                t(payload=i * 36)
+
+        # Preserve the successor display
+        load_frames()
+        self.assertIsNone(li(a='a', i=1, c=3))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['displayed_frame_id'], img['extra_frames'][1]['id'])
+        successor = img['extra_frames'][2]['id']
+        self.assertIsNone(li(a='d', d='f', i=1, r=3))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 2)
+        self.assertEqual(img['displayed_frame_id'], successor)
+        self.assertEqual([f['data'] for f in img['extra_frames']], [b'2' * 36, b'4' * 36])
+        s.reset()
+
+        # Preserve the root successor display
+        load_frames()
+        successor = g.image_for_client_id(1)['extra_frames'][0]['id']
+        self.assertIsNone(li(a='a', i=1, c=1))
+        self.assertIsNone(li(a='d', d='f', i=1, r=1))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 0)
+        self.assertEqual(img['displayed_frame_id'], successor)
+        s.reset()
+
+        # Preserve the last frame display
+        load_frames()
+        self.assertIsNone(li(a='a', i=1, c=4))
+        self.assertIsNone(li(a='d', d='f', i=1, r=4))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 2)
+        self.assertEqual(img['displayed_frame_id'], img['extra_frames'][1]['id'])
+        s.reset()
+
+        # Preserve dependent pixels
+        t(a='t')
+        t(payload='2' * 36)
+        t(payload='4' * 12, c=2, s=2, v=2)
+        expected = b'444444222222444444222222222222222222'
+        self.assertEqual(g.image_for_client_id(1)['extra_frames'][1]['data'], expected)
+        self.assertIsNone(li(a='d', d='f', i=1, r=2))
+        img = g.image_for_client_id(1)
+        self.assertEqual(len(img['extra_frames']), 1)
+        self.assertEqual(img['extra_frames'][0]['data'], expected)
+        s.reset()
+
+        # Preserve root dependents
+        t(a='t')
+        t(payload='4' * 12, c=1, s=2, v=2)
+        expected = g.image_for_client_id(1)['extra_frames'][0]['data']
+        self.assertIsNone(li(a='d', d='f', i=1, r=1))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], expected)
+        self.assertFalse(img['extra_frames'])
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
+
+        # Respect the cache quota
+        g.storage_limit = 36 * 2
+        t(a='t')
+        for i in range(10):
+            t(payload='4' * 12, c=1, s=2, v=2)
+        before = g.image_for_client_id(1)
+        size = g.disk_cache.total_size
+        self.assertIsNone(li(a='d', d='f', i=1, r=1))
+        after = g.image_for_client_id(1)
+        self.assertEqual(g.disk_cache.total_size, size)
+        self.assertEqual(after['data'], before['data'])
+        self.assertEqual([f['data'] for f in after['extra_frames']], [f['data'] for f in before['extra_frames']])
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
+
     def test_animation_frame_loading(self):
         s = self.create_screen()
         g = s.grman
