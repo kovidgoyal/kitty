@@ -8,7 +8,7 @@ import tempfile
 
 from kitty.constants import kitty_exe
 from kitty.fast_data_types import Color, test_cursor_blink_easing_function
-from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, to_color
+from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, build_action_aliases, to_color
 from kitty.utils import log_error, shlex_split
 
 from .base import BaseTest
@@ -470,6 +470,11 @@ def conf_parsing(self):
 
     opts = p('clear_all_shortcuts y', 'action_alias ss kitten "space 1"', 'map f1 ss "space 2"')
     self.ae(ac().args, ('space 1', 'space 2'))
+
+    am = build_action_aliases({'la': 'launch --moo'})
+    self.ae(am.resolve_aliases('la XXX')[0].args, ('--moo', 'XXX'))
+    am.update(build_action_aliases({'la': 'launch --baa'}))
+    self.ae(am.resolve_aliases('la XXX')[0].args, ('--baa', 'XXX'))
 
     opts = p('kitty_mod alt')
     self.ae(opts.kitty_mod, to_modifiers('alt'))

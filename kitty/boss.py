@@ -139,7 +139,7 @@ from .keys import Mappings
 from .layout.base import set_layout_options
 from .notifications import NotificationManager
 from .options.types import Options, nullable_colors
-from .options.utils import KeyboardMode, KeyDefinition, clamp_font_size
+from .options.utils import KeyboardMode, KeyDefinition, MapType, clamp_font_size
 from .os_window_size import initial_window_size_func
 from .session import (
     Session,
@@ -2095,7 +2095,7 @@ class Boss:
         consumed = False
         if action_definition:
             try:
-                actions = get_options().alias_map.resolve_aliases(action_definition, 'map' if dispatch_type == 'KeyPress' else 'mouse_map')
+                actions = get_options().alias_map.resolve_aliases(action_definition, MapType.MAP if dispatch_type == 'KeyPress' else MapType.MOUSE_MAP)
             except Exception as e:
                 self.show_error('Failed to parse action', f'{action_definition}\n{e}')
                 return True

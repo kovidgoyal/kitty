@@ -9,7 +9,6 @@ from collections import defaultdict
 from collections.abc import Callable, Container, Iterable, Iterator, Sequence
 from contextlib import suppress
 from dataclasses import dataclass, fields
-from functools import lru_cache
 from typing import (
     Any,
     Generic,
@@ -1278,16 +1277,23 @@ class ActionAlias(NamedTuple):
 class AliasMap:
     def __init__(self) -> None:
         self.aliases: dict[str, list[ActionAlias]] = {}
+        self.resolved: dict[tuple[str, MapType], tuple[KeyAction, ...]] = {}
 
     def append(self, name: str, aa: ActionAlias) -> None:
         self.aliases.setdefault(name, []).append(aa)
+        self.resolved.clear()
 
     def update(self, aa: 'AliasMap') -> None:
         self.aliases.update(aa.aliases)
+        self.resolved.clear()
 
-    @lru_cache(maxsize=256)
     def resolve_aliases(self, definition: str, map_type: MapType = MapType.MAP) -> tuple[KeyAction, ...]:
-        return tuple(resolve_aliases_and_parse_actions(definition, self.aliases, map_type))
+        key = definition, map_type
+        if (ans := self.resolved.get(key)) is None:
+            if len(self.resolved) >= 256:
+                self.resolved.clear()
+            ans = self.resolved[key] = tuple(resolve_aliases_and_parse_actions(definition, self.aliases, map_type))
+        return ans
 
 
 def build_action_aliases(raw: dict[str, str], first_arg_replacement: str = '') -> AliasMap:
