@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -111,8 +110,7 @@ func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byt
 }
 
 func has_da1_response(s string) bool {
-	pat := regexp.MustCompile("\x1b\\[\\?[0-9:;]+c")
-	return pat.FindString(s) != ""
+	return utils.MustCompile("\x1b\\[\\?[0-9:;]+c").FindString(s) != ""
 }
 
 func do_roundtrip_to_terminal(term *tty.Term, timeout time.Duration) {
@@ -126,7 +124,7 @@ func do_roundtrip_to_terminal(term *tty.Term, timeout time.Duration) {
 	}
 	s := strings.Builder{}
 	s.Grow(256)
-	received := make(chan error)
+	received := make(chan error, 1)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -146,6 +144,7 @@ func do_roundtrip_to_terminal(term *tty.Term, timeout time.Duration) {
 			}
 			if err != nil {
 				received <- err
+				return
 			}
 		}
 	}()

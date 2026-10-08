@@ -259,7 +259,7 @@ allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
         line->cpu_cells = PyMem_Calloc(line->xnum, sizeof(CPUCell));
         line->gpu_cells = PyMem_Calloc(line->xnum, sizeof(GPUCell));
-        if (line->cpu_cells == NULL || line->gpu_cells) {
+        if (line->cpu_cells == NULL || line->gpu_cells == NULL) {
             PyErr_NoMemory();
             return false;
         }
