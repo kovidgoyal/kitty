@@ -331,6 +331,22 @@ class FontBaseTest(BaseTest):
 
 
 class Rendering(FontBaseTest):
+    def test_decorations_map_growth(self):
+        from kitty.fast_data_types import decorations_map_new_size as size
+        m = 4096
+        self.ae(size(0, 0, m), (4096, 1))
+        self.ae(size(5000, 4096, m), (4096, 2))
+        cap, reallocs = 0, 0
+        for count in range(100000):
+            if count >= cap:
+                w, h = size(count, cap, m)
+                cap, reallocs = w * h, reallocs + 1
+        self.assertLess(reallocs, 10)
+        full = m * m
+        self.ae(size(m * (m - 1), m * (m - 1), m), (m, m))
+        self.ae(size(full - 1, full // 2, m), (m, m))
+        self.assertIsNone(size(full, full, m))
+
     def test_sprite_map(self):
         sprite_map_set_limits(10, 3)
         sprite_map_set_layout(5, 4)  # 4 because of underline_exclusion row

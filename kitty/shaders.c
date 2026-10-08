@@ -233,19 +233,31 @@ setup_new_sprites_texture(GLenum texture_type) {
     return tex;
 }
 
+static bool
+decorations_map_new_size(size_t count, size_t current_capacity, size_t max_size, GLint *width, GLint *height) {
+    const size_t max_capacity = max_size * max_size;
+    if (count >= max_capacity) return false;
+    size_t capacity = MAX(MAX(count + 256, current_capacity * 2), (size_t)4096);
+    capacity = MIN(capacity, max_capacity);
+    if (capacity <= max_size) {
+        *width = capacity;
+        *height = 1;
+    } else {
+        *width = max_size;
+        *height = (capacity + max_size - 1) / max_size;
+    }
+    return true;
+}
+
 static void
 realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
 #define dm (sm->decorations_map)
     SpriteMap *sm = (SpriteMap *)fg->sprite_map;
     size_t current_capacity = (size_t)dm.width * dm.height;
     if (dm.count < current_capacity && dm.texture_id) return;
-    GLint new_capacity = dm.count + 256;
-    GLint width = new_capacity, height = 1;
-    if (new_capacity > sm->max_texture_size) {
-        width = sm->max_texture_size;
-        height = 1 + new_capacity / width;
-    }
-    if (height > sm->max_texture_size) fatal("Max texture size too small for sprite decorations map, maybe switch to using a GL_TEXTURE_2D_ARRAY");
+    GLint width, height;
+    if (!decorations_map_new_size(dm.count, current_capacity, sm->max_texture_size, &width, &height))
+        fatal("Max texture size too small for sprite decorations map, maybe switch to using a GL_TEXTURE_2D_ARRAY");
     const GLenum texture_type = GL_TEXTURE_2D;
     GLuint tex = setup_new_sprites_texture(texture_type);
     glTexImage2D(texture_type, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
@@ -3372,6 +3384,16 @@ sprite_map_set_limits(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+// test only wrapper for decorations_map_new_size
+static PyObject *
+pydecorations_map_new_size(PyObject *self UNUSED, PyObject *args) {
+    unsigned long count, current_capacity, max_size;
+    if (!PyArg_ParseTuple(args, "kkk", &count, &current_capacity, &max_size)) return NULL;
+    GLint w, h;
+    if (!decorations_map_new_size(count, current_capacity, max_size, &w, &h)) Py_RETURN_NONE;
+    return Py_BuildValue("ii", (int)w, (int)h);
+}
+
 // Test only. Wraps custom_shader_needs_render() so the redraw decision can be
 // exercised from the Python test suite without a GPU context. Each state is a
 // (has_active_shaders, min_step, next_end_at) tuple.
@@ -3434,6 +3456,7 @@ static PyMethodDef module_methods[] = {
     MW(bind_program, METH_O),
     MW(unbind_program, METH_NOARGS),
     MW(custom_shader_needs_render, METH_VARARGS),
+    MW(decorations_map_new_size, METH_VARARGS),
     MW(simulate_custom_shader_render_ticks, METH_VARARGS),
 
     {NULL, NULL, 0, NULL} /* Sentinel */
