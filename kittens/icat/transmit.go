@@ -220,33 +220,38 @@ func next_random() (ans uint32) {
 
 func write_unicode_placeholder(imgd *image_data) {
 	prefix := ""
-	foreground := fmt.Sprintf("\033[38:2:%d:%d:%dm", (imgd.image_id>>16)&255, (imgd.image_id>>8)&255, imgd.image_id&255)
-	os.Stdout.WriteString(foreground)
+	buf := strings.Builder{}
+	buf.Grow(imgd.height_cells * (imgd.width_cells*16 + 16))
+	fmt.Fprintf(&buf, "\033[38:2:%d:%d:%dm", (imgd.image_id>>16)&255, (imgd.image_id>>8)&255, imgd.image_id&255)
 	restore := "\033[39m"
 	if imgd.move_to.y > 0 {
-		os.Stdout.WriteString(loop.SAVE_CURSOR)
+		buf.WriteString(loop.SAVE_CURSOR)
 		restore += loop.RESTORE_CURSOR
 	} else if imgd.move_x_by > 0 {
 		prefix = strings.Repeat(" ", imgd.move_x_by)
 	}
-	defer func() { os.Stdout.WriteString(restore) }()
 	if imgd.move_to.y > 0 {
-		fmt.Printf(loop.MoveCursorToTemplate, imgd.move_to.y, 0)
+		fmt.Fprintf(&buf, loop.MoveCursorToTemplate, imgd.move_to.y, 0)
 	}
-	id_char := string(images.NumberToDiacritic[(imgd.image_id>>24)&255])
+	id_char := images.NumberToDiacritic[(imgd.image_id>>24)&255]
 	for r := 0; r < imgd.height_cells; r++ {
 		if imgd.move_to.x > 0 {
-			fmt.Printf("\x1b[%dC", imgd.move_to.x-1)
+			fmt.Fprintf(&buf, "\x1b[%dC", imgd.move_to.x-1)
 		} else {
-			os.Stdout.WriteString(prefix)
+			buf.WriteString(prefix)
 		}
 		for c := 0; c < imgd.width_cells; c++ {
-			os.Stdout.WriteString(string(kitty.ImagePlaceholderChar) + string(images.NumberToDiacritic[r]) + string(images.NumberToDiacritic[c]) + id_char)
+			buf.WriteRune(kitty.ImagePlaceholderChar)
+			buf.WriteRune(images.NumberToDiacritic[r])
+			buf.WriteRune(images.NumberToDiacritic[c])
+			buf.WriteRune(id_char)
 		}
 		if r < imgd.height_cells-1 {
-			os.Stdout.WriteString("\n\r")
+			buf.WriteString("\n\r")
 		}
 	}
+	buf.WriteString(restore)
+	os.Stdout.WriteString(buf.String())
 }
 
 var seen_image_ids *utils.Set[uint32]
