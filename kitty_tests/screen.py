@@ -295,6 +295,29 @@ class TestScreen(BaseTest):
         for i in range(s.lines):
             self.ae(str(s.line(i)).strip(), '')
 
+    def test_fractional_scroll(self):
+        s = self.create_screen(cols=5, lines=5, scrollback=10, cell_height=20, options={'pixel_scroll': True})
+        for i in range(15):
+            s.draw(str(i))
+            parse_bytes(s, b'\r\n')
+        self.assertGreaterEqual(s.historybuf.count, 4)
+        s.fractional_scroll(-0.75)
+        s.fractional_scroll(-0.75)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (1, 10))
+        s.fractional_scroll(0.5)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (1, 0))
+        s.scroll_to_absolute(0.0)
+        total = 0
+        for i in range(4):
+            s.fractional_scroll(-0.75)
+            total += 15
+            self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (total // 20, total % 20))
+        for i in range(4):
+            s.fractional_scroll(0.75)
+            total -= 15
+            self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (total // 20, total % 20))
+        self.ae(total, 0)
+
     def test_emoji_skin_tone_modifiers(self):
         s = self.create_screen()
         q = chr(0x1F469) + chr(0x1F3FD)

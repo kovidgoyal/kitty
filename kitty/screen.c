@@ -6018,10 +6018,8 @@ screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by) {
     }
 }
 
-bool
-screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
-    if (!pixel_scroll_enabled(self)) return false;
-    if (!self->historybuf->count) return false;
+static bool
+scroll_by_pixels(Screen *self, double delta_pixels) {
     const double cell_height = (double)self->cell_size.height;
     if (cell_height <= 0.0 || delta_pixels == 0.0) return false;
 
@@ -6043,6 +6041,13 @@ screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
     }
     if (changed) dirty_scroll(self);
     return changed;
+}
+
+bool
+screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
+    if (!pixel_scroll_enabled(self)) return false;
+    if (!self->historybuf->count) return false;
+    return scroll_by_pixels(self, delta_pixels);
 }
 
 bool
@@ -6070,42 +6075,12 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
 static bool
 screen_fractional_scroll(Screen *self, double amt) {
     if (amt == 0) return false;
-    index_type before_scrolled_by = self->scrolled_by;
-    double before_pixels = self->pixel_scroll_offset_y;
     double integral_part, fractional_part = modf(amt, &integral_part);
-    int lines = (int)integral_part;
-    int pixels = (int)(fractional_part * self->cell_size.height);
-    if (amt > 0) { // downwards
-        if (fractional_part != 0) pixels = MAX(1, pixels);
-        if (lines > (int)self->scrolled_by) {
-            self->scrolled_by = 0;
-            self->pixel_scroll_offset_y = 0;
-        } else {
-            self->scrolled_by -= lines;
-            if (pixels <= (int)self->pixel_scroll_offset_y) self->pixel_scroll_offset_y -= pixels;
-            else {
-                self->pixel_scroll_offset_y = 0;
-                if (self->scrolled_by) {
-                    self->scrolled_by--;
-                    self->pixel_scroll_offset_y = self->cell_size.height - pixels;
-                }
-            }
-        }
-    } else {
-        if (fractional_part != 0) pixels = MIN(-1, pixels);
-        self->pixel_scroll_offset_y -= pixels; // pixels is negative
-        if (self->pixel_scroll_offset_y >= self->cell_size.height) {
-            self->pixel_scroll_offset_y = 0;
-            self->scrolled_by++;
-        }
-        self->scrolled_by = MIN(self->scrolled_by - lines, self->historybuf->count);
-        if (self->scrolled_by >= self->historybuf->count) self->pixel_scroll_offset_y = 0;
-    }
-    if (self->scrolled_by != before_scrolled_by || self->pixel_scroll_offset_y != before_pixels) {
-        dirty_scroll(self);
-        return true;
-    }
-    return false;
+    double pixels = trunc(fractional_part * self->cell_size.height);
+    if (fractional_part > 0) pixels = MAX(1, pixels);
+    else if (fractional_part < 0) pixels = MIN(-1, pixels);
+    // positive amt scrolls towards the bottom
+    return scroll_by_pixels(self, -(integral_part * self->cell_size.height + pixels));
 }
 
 static PyObject *
@@ -7263,6 +7238,7 @@ static PyMemberDef members[] = {
     {"main_linebuf", T_OBJECT_EX, offsetof(Screen, main_linebuf), READONLY, "main_linebuf"},
     {"historybuf", T_OBJECT_EX, offsetof(Screen, historybuf), READONLY, "historybuf"},
     {"scrolled_by", T_UINT, offsetof(Screen, scrolled_by), READONLY, "scrolled_by"},
+    {"pixel_scroll_offset_y", T_UINT, offsetof(Screen, pixel_scroll_offset_y), READONLY, "pixel_scroll_offset_y"},
     {"lines", T_UINT, offsetof(Screen, lines), READONLY, "lines"},
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
