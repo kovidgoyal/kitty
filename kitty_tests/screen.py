@@ -2259,6 +2259,18 @@ class TestScreen(BaseTest):
             sc(2, 1, 2, 3, slot=slot)
             sc(5, 13, slot=slot)
 
+    def test_activity_tracking(self):
+        s = self.create_screen()
+        calls = []
+        s.callbacks.on_activity_since_last_focus = lambda: calls.append(1) or False
+        s.focus_changed(False)
+        s.track_activity = False
+        parse_bytes(s, b'\x1b[31ma\x1b[mb')
+        self.ae(len(calls), 0)
+        s.track_activity = True
+        parse_bytes(s, b'\x1b[31ma\x1b[mb')
+        self.ae(len(calls), 2)
+
     def test_soft_reset(self):
         SOFT_RESET = b'\x1b[!p'  # DECSTR sequence
 

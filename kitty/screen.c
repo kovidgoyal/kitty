@@ -161,6 +161,7 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         reset_vt_parser(self->vt_parser);
         self->callbacks = callbacks;
         Py_INCREF(callbacks);
+        self->track_activity = true;
         self->test_child = test_child;
         Py_INCREF(test_child);
         self->cursor = alloc_cursor();
@@ -1241,7 +1242,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
 
 static void
 screen_on_input(Screen *self) {
-    if (!self->has_activity_since_last_focus && !self->has_focus && self->callbacks != Py_None) {
+    if (self->track_activity && !self->has_activity_since_last_focus && !self->has_focus && self->callbacks != Py_None) {
         PyObject *ret = PyObject_CallMethod(self->callbacks, "on_activity_since_last_focus", NULL);
         if (ret == NULL) PyErr_Print();
         else {
@@ -7235,6 +7236,7 @@ static PyGetSetDef getsetters[] = {
 
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
+    {"track_activity", T_BOOL, offsetof(Screen, track_activity), 0, "track_activity"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
     {"vt_parser", T_OBJECT_EX, offsetof(Screen, vt_parser), READONLY, "vt_parser"},
     {"last_reported_cwd", T_OBJECT, offsetof(Screen, last_reported_cwd), READONLY, "last_reported_cwd"},
