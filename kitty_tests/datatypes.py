@@ -18,8 +18,10 @@ from kitty.fast_data_types import (
     expand_ansi_c_escapes,
     expanduser,
     get_config_dir,
+    load_png_data,
     makedirs,
     parse_input_from_terminal,
+    png_from_32bit_rgba_data,
     read_file,
     replace_c0_codes_except_nl_space_tab,
     split_into_graphemes,
@@ -95,6 +97,18 @@ class TestDataTypes(BaseTest):
         t('a\0\x01b\x03\x04\t\rc', 'a\u2400\u2401b\u2403\u2404\t\u240dc')
         t('a\0\x01😸\x03\x04\t\rc', 'a\u2400\u2401😸\u2403\u2404\t\u240dc')
         t('a\nb\tc d', 'a\nb\tc d')
+
+    def test_png_from_32bit_rgba_data(self):
+        rgba = bytes(range(16))
+        png = png_from_32bit_rgba_data(rgba, 2, 2)
+        self.assertTrue(png.startswith(b'\x89PNG\r\n\x1a\n'))
+        self.ae(load_png_data(png), (rgba, 2, 2))
+        for args in (
+            (b'', 0, 0), (rgba, 0, 2), (rgba, 2, 0), (rgba[:-1], 2, 2), (rgba + b'\0', 2, 2),
+            (rgba, 4, 4), (rgba, 65537, 65537), (rgba, 2**32 - 1, 2**32 - 1), (rgba, 2**31, 2),
+        ):
+            with self.assertRaises(ValueError, msg=repr(args[1:])):
+                png_from_32bit_rgba_data(*args)
 
     def test_to_color(self):
         for x in 'xxx #12 #1234 rgb:a/b'.split():
