@@ -53,14 +53,18 @@ keys_are_equal(CacheKey a, CacheKey b) {
 }
 #define CMPR_FN keys_are_equal
 static void
-free_cache_value(CacheValue *cv) {
+secure_zero(void *p, size_t sz) {
 #ifdef __APPLE__
-    memset_s(cv->encryption_key, sizeof(cv->encryption_key), 0, sizeof(cv->encryption_key));
+    memset_s(p, sz, 0, sz);
 #elif defined(__NetBSD__)
-    explicit_memset(cv->encryption_key, 0, sizeof(cv->encryption_key));
+    explicit_memset(p, 0, sz);
 #else
-    explicit_bzero(cv->encryption_key, sizeof(cv->encryption_key));
+    explicit_bzero(p, sz);
 #endif
+}
+static void
+free_cache_value(CacheValue *cv) {
+    secure_zero(cv->encryption_key, sizeof(cv->encryption_key));
     free(cv->data);
     cv->data = NULL;
     free(cv);
@@ -120,8 +124,10 @@ typedef struct {
     bool thread_started, lock_inited, loop_data_inited, shutting_down, fully_initialized;
     LoopData loop_data;
     struct {
-        CacheValue val;
+        CacheValue val; // val.data is always plaintext
         CacheKey key;
+        uint8_t enc_key[64];
+        bool encrypted;
     } currently_writing;
     cache_map map;
     Holes holes;
@@ -423,6 +429,12 @@ remove_from_disk(DiskCache *self, CacheValue *s) {
     }
 }
 
+static void
+clear_enc_key(DiskCache *self) {
+    secure_zero(self->currently_writing.enc_key, sizeof(self->currently_writing.enc_key));
+    self->currently_writing.encrypted = false;
+}
+
 static bool
 find_cache_entry_to_write(DiskCache *self) {
     if (needs_defrag(self)) defrag(self);
@@ -430,17 +442,13 @@ find_cache_entry_to_write(DiskCache *self) {
         CacheValue *s = i.data->val;
         if (!s->written_to_disk) {
             if (s->data) {
+                clear_enc_key(self);
                 if (self->currently_writing.val.data) free(self->currently_writing.val.data);
                 self->currently_writing.val.data = s->data;
                 s->data = NULL;
                 self->currently_writing.val.data_sz = s->data_sz;
                 self->currently_writing.val.generation = s->generation;
                 self->currently_writing.val.pos_in_cache_file = -1;
-                s->uses_encryption = false;
-                if (self->needs_encryption && secure_random_bytes(s->encryption_key, sizeof(s->encryption_key))) {
-                    xor_data64(s->encryption_key, self->currently_writing.val.data, s->data_sz);
-                    s->uses_encryption = true;
-                }
                 self->currently_writing.key.hash_keylen = MIN(i.data->key.hash_keylen, MAX_KEY_SIZE);
                 memcpy(self->currently_writing.key.hash_key, i.data->key.hash_key, self->currently_writing.key.hash_keylen);
                 find_hole_to_use(self, self->currently_writing.val.data_sz);
@@ -455,9 +463,30 @@ find_cache_entry_to_write(DiskCache *self) {
 }
 
 static bool
+write_all(DiskCache *self, const uint8_t *p, size_t left, off_t *offset) {
+    while (left > 0) {
+        ssize_t n = pwrite(self->cache_file_fd, p, left, *offset);
+        if (n < 0) {
+            if (errno == EINTR || errno == EAGAIN) continue;
+            perror("Failed to write to disk-cache file");
+            return false;
+        }
+        if (n == 0) {
+            fprintf(stderr, "Failed to write to disk-cache file with zero return\n");
+            return false;
+        }
+        left -= n;
+        p += n;
+        *offset += n;
+        self->end_of_data_offset = MAX(self->end_of_data_offset, *offset);
+    }
+    return true;
+}
+
+static bool
 write_dirty_entry(DiskCache *self) {
-    size_t left = self->currently_writing.val.data_sz;
-    uint8_t *p = self->currently_writing.val.data;
+    const uint8_t *data = self->currently_writing.val.data;
+    const size_t sz = self->currently_writing.val.data_sz;
     if (self->currently_writing.val.pos_in_cache_file < 0) {
         self->currently_writing.val.pos_in_cache_file = self->end_of_data_offset;
         if (self->currently_writing.val.pos_in_cache_file < 0) {
@@ -466,25 +495,19 @@ write_dirty_entry(DiskCache *self) {
         }
     }
     off_t offset = self->currently_writing.val.pos_in_cache_file;
-    while (left > 0) {
-        ssize_t n = pwrite(self->cache_file_fd, p, left, offset);
-        if (n < 0) {
-            if (errno == EINTR || errno == EAGAIN) continue;
-            perror("Failed to write to disk-cache file");
-            self->currently_writing.val.pos_in_cache_file = -1;
-            return false;
+    bool ok = true;
+    if (self->currently_writing.encrypted) {
+        // chunk size must be a multiple of the key size
+        uint8_t buf[16 * 1024];
+        for (size_t done = 0; ok && done < sz; done += sizeof(buf)) {
+            const size_t n = MIN(sz - done, sizeof(buf));
+            memcpy(buf, data + done, n);
+            xor_data64(self->currently_writing.enc_key, buf, n);
+            ok = write_all(self, buf, n, &offset);
         }
-        if (n == 0) {
-            fprintf(stderr, "Failed to write to disk-cache file with zero return\n");
-            self->currently_writing.val.pos_in_cache_file = -1;
-            return false;
-        }
-        left -= n;
-        p += n;
-        offset += n;
-        self->end_of_data_offset = MAX(self->end_of_data_offset, offset);
-    }
-    return true;
+    } else ok = write_all(self, data, sz, &offset);
+    if (!ok) self->currently_writing.val.pos_in_cache_file = -1;
+    return ok;
 }
 
 static void
@@ -496,11 +519,15 @@ retire_currently_writing(DiskCache *self) {
     // used by the now stale data we just wrote has to be reclaimed.
     cache_map_itr i = vt_get(&self->map, self->currently_writing.key);
     if (!vt_is_end(i) && i.data->val->generation == self->currently_writing.val.generation) {
-        i.data->val->written_to_disk = true;
-        i.data->val->pos_in_cache_file = self->currently_writing.val.pos_in_cache_file;
+        CacheValue *s = i.data->val;
+        s->uses_encryption = self->currently_writing.encrypted;
+        if (s->uses_encryption) memcpy(s->encryption_key, self->currently_writing.enc_key, sizeof(s->encryption_key));
+        s->written_to_disk = true;
+        s->pos_in_cache_file = self->currently_writing.val.pos_in_cache_file;
     } else if (self->currently_writing.val.pos_in_cache_file > -1 && self->currently_writing.val.data_sz) {
         add_hole(self, self->currently_writing.val.pos_in_cache_file, self->currently_writing.val.data_sz);
     }
+    clear_enc_key(self);
     free(self->currently_writing.val.data);
     self->currently_writing.val.data = NULL;
     self->currently_writing.val.data_sz = 0;
@@ -546,8 +573,10 @@ write_loop(void *data) {
         mutex(lock);
         found_dirty_entry = find_cache_entry_to_write(self);
         size_t count = vt_size(&self->map);
+        const bool encrypt = self->needs_encryption;
         mutex(unlock);
         if (found_dirty_entry) {
+            if (encrypt) self->currently_writing.encrypted = secure_random_bytes(self->currently_writing.enc_key, sizeof(self->currently_writing.enc_key));
             write_dirty_entry(self);
             mutex(lock);
             wait_while_writes_paused(self);
@@ -669,6 +698,7 @@ dealloc(DiskCache *self) {
         safe_close(self->cache_file_fd, __FILE__, __LINE__);
         self->cache_file_fd = -1;
     }
+    clear_enc_key(self);
     if (self->currently_writing.val.data) free(self->currently_writing.val.data);
     free(self->cache_dir);
     self->cache_dir = NULL;
@@ -865,9 +895,10 @@ read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void *(all
 
     if (s->data) {
         memcpy(data, s->data, s->data_sz);
-    } else if (self->currently_writing.val.data && self->currently_writing.key.hash_key && keys_are_equal(self->currently_writing.key, k)) {
+    } else if (
+        self->currently_writing.val.data && self->currently_writing.key.hash_key && keys_are_equal(self->currently_writing.key, k) &&
+        s->generation == self->currently_writing.val.generation) {
         memcpy(data, self->currently_writing.val.data, s->data_sz);
-        if (s->uses_encryption) xor_data64(s->encryption_key, data, s->data_sz);
     } else {
         read_from_cache_entry(self, s, data);
         if (s->uses_encryption) xor_data64(s->encryption_key, data, s->data_sz);
@@ -990,6 +1021,18 @@ pause_writes(PyObject *self_, PyObject *args UNUSED) {
     if (!ensure_state(self)) return NULL;
     mutex(lock);
     self->pause_writes.requested = true;
+    mutex(unlock);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+set_needs_encryption(PyObject *self_, PyObject *val) {
+    DiskCache *self = (DiskCache *)self_;
+    if (!ensure_state(self)) return NULL;
+    int b = PyObject_IsTrue(val);
+    if (b < 0) return NULL;
+    mutex(lock);
+    self->needs_encryption = b;
     mutex(unlock);
     Py_RETURN_NONE;
 }
@@ -1146,6 +1189,7 @@ static PyMethodDef methods[] = {
     {"get", get, METH_VARARGS, NULL},
     {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
     {"pause_writes", pause_writes, METH_NOARGS, NULL},
+    {"set_needs_encryption", set_needs_encryption, METH_O, NULL}, // testing only
     {"resume_writes", resume_writes, METH_VARARGS, NULL},
     {"wait_until_writes_paused", wait_until_writes_paused, METH_VARARGS, NULL},
     {"end_of_data_offset", end_of_data_offset, METH_NOARGS, NULL},

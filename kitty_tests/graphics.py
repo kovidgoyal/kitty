@@ -437,6 +437,31 @@ class TestGraphics(BaseTest):
         for k, v in data.items():
             self.assertEqual(dc.get(k), v)
 
+    def test_disk_cache_encryption_while_being_written(self):
+        s = self.create_screen()
+        dc = s.grman.disk_cache
+        dc.set_needs_encryption(True)
+        data = bytes(range(256)) * 1000 + b'xyz'
+
+        # Reads while writing return plaintext
+        dc.pause_writes()
+        dc.add(b'k1', data)
+        self.assertTrue(dc.wait_until_writes_paused())
+        self.assertEqual(dc.get(b'k1'), data)
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        self.assertEqual(dc.num_cached_in_ram(), 0)
+        self.assertEqual(dc.get(b'k1'), data)
+
+        dc.pause_writes()
+        dc.add(b'k2', data)
+        self.assertTrue(dc.wait_until_writes_paused())
+        dc.add(b'k2', data[::-1])
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        self.assertEqual(dc.get(b'k2'), data[::-1])
+        self.assertEqual(dc.get(b'k1'), data)
+
     def test_suppressing_gr_command_responses(self):
         s, g, pl, sl = load_helpers(self)
         self.ae(pl('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
