@@ -188,7 +188,11 @@ typedef struct {
     CacheKey key;
     off_t old_offset, new_offset;
     size_t data_sz;
+    unsigned long long generation;
 } DefragEntry;
+
+static void wait_while_writes_paused(DiskCache *self);
+static void add_hole(DiskCache *self, const off_t pos, const off_t size);
 
 static CacheKey
 keydup(CacheKey k) {
@@ -211,6 +215,8 @@ defrag(DiskCache *self) {
     RAII_ALLOC(DefragEntry, defrag_entries, NULL);
     RAII_FreeFastFileCopyBuffer(fcb);
     bool lock_released = false, ok = false;
+    size_t num_entries_to_defrag = 0;
+    off_t current_pos = 0;
 
     off_t size_on_disk = self->end_of_data_offset;
     if (size_on_disk <= 0) goto cleanup;
@@ -224,7 +230,7 @@ defrag(DiskCache *self) {
     }
     defrag_entries = calloc(num_entries, sizeof(DefragEntry));
     if (!defrag_entries) goto cleanup;
-    size_t total_data_size = 0, num_entries_to_defrag = 0;
+    size_t total_data_size = 0;
     cache_map_for_loop(i) {
         CacheValue *s = i.data->val;
         if (s->pos_in_cache_file > -1 && s->data_sz) {
@@ -232,6 +238,7 @@ defrag(DiskCache *self) {
             DefragEntry *e = defrag_entries + num_entries_to_defrag++;
             e->old_offset = s->pos_in_cache_file;
             e->data_sz = s->data_sz;
+            e->generation = s->generation;
             e->key = keydup(i.data->key); // have to dup the key as we release the mutex and another thread might free the underlying key.
             if (!e->key.hash_key) {
                 fprintf(stderr, "Failed to allocate space for keydup in defrag\n");
@@ -245,10 +252,10 @@ defrag(DiskCache *self) {
     }
     lseek(new_cache_file, 0, SEEK_SET);
 
+    wait_while_writes_paused(self); // testing only
     mutex(unlock);
     lock_released = true;
 
-    off_t current_pos = 0;
     for (size_t i = 0; i < num_entries_to_defrag; i++) {
         DefragEntry *e = defrag_entries + i;
         if (!copy_between_files(self->cache_file_fd, new_cache_file, e->old_offset, e->data_sz, &fcb)) {
@@ -269,12 +276,18 @@ cleanup:
         new_cache_file = -1;
         for (size_t i = 0; i < num_entries_to_defrag; i++) {
             DefragEntry *e = defrag_entries + i;
-            cache_map_itr i = vt_get(&self->map, e->key);
-            if (!vt_is_end(i)) i.data->val->pos_in_cache_file = e->new_offset;
-            free(e->key.hash_key);
+            CacheValue *cv = NULL;
+            cache_map_itr itr = vt_get(&self->map, e->key);
+            if (!vt_is_end(itr)) cv = itr.data->val;
+            if (cv && cv->generation == e->generation && cv->written_to_disk && cv->pos_in_cache_file == e->old_offset) cv->pos_in_cache_file = e->new_offset;
+            else add_hole(self, e->new_offset, e->data_sz);
         }
-        self->end_of_data_offset = lseek(self->cache_file_fd, 0, SEEK_CUR);
+        self->end_of_data_offset = current_pos;
         self->needs_encryption = !opened_securely;
+    }
+    for (size_t i = 0; i < num_entries_to_defrag; i++) {
+        free(defrag_entries[i].key.hash_key);
+        defrag_entries[i].key.hash_key = NULL;
     }
     if (new_cache_file > -1) safe_close(new_cache_file, __FILE__, __LINE__);
 }
@@ -1047,8 +1060,9 @@ static PyObject *
 add(PyObject *self, PyObject *args) {
     const char *key, *data;
     Py_ssize_t keylen, datalen;
-    PA("y#y#", &key, &keylen, &data, &datalen);
-    if (!add_to_disk_cache(self, key, keylen, data, datalen, false)) return NULL;
+    int memory_only = 0;
+    PA("y#y#|p", &key, &keylen, &data, &datalen, &memory_only);
+    if (!add_to_disk_cache(self, key, keylen, data, datalen, memory_only)) return NULL;
     Py_RETURN_NONE;
 }
 
