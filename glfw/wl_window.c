@@ -3389,7 +3389,7 @@ send_drag_data(_GLFWwindow *window, size_t i) {
             }
         }
     } else if (has_preset_data) {
-        do { ret = write(dr.fd, _glfw.drag.items[item_idx].optional_data, _glfw.drag.items[item_idx].data_size); } while (ret < 0 && errno == EINTR);
+        ret = write_as_much_as_possible(dr.fd, _glfw.drag.items[item_idx].optional_data, _glfw.drag.items[item_idx].data_size);
         if (ret < 0) {
             on_fail;
         } else {
@@ -3404,6 +3404,7 @@ send_drag_data(_GLFWwindow *window, size_t i) {
                     dr.pending_data = pending;
                     dr.sz = _glfw.drag.items[item_idx].data_size - ret;
                     dr.offset = 0;
+                    memcpy(pending, _glfw.drag.items[item_idx].optional_data + ret, dr.sz);
                 }
             }
         }
@@ -3489,7 +3490,7 @@ _glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {
 int
 _glfwPlatformDragDataReady(const char *mime_type, const char *data UNUSED, size_t sz UNUSED, int type UNUSED) {
     for (size_t i = 0; i < _glfw.wl.drag.count; i++) {
-        if (strcmp(dr.mime_type, mime_type) == 0) {
+        if (dr.mime_type && dr.fd > -1 && strcmp(dr.mime_type, mime_type) == 0) {
             if (!dr.watch_id) dr.watch_id = add_drag_watch(dr.fd);
         }
     }
@@ -3505,6 +3506,8 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
     cancel_drag(GLFW_DRAG_CANCELLED); \
     return
     if (!window) { abort(); }
+    int flags = fcntl(fd, F_GETFL);
+    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) { abort(); }
     mime_type = _glfw_strdup(mime_type);
     if (!mime_type) { abort(); }
     if (!_glfw.wl.drag.data_requests || _glfw.wl.drag.capacity <= _glfw.wl.drag.count + 1) {
