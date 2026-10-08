@@ -35,7 +35,7 @@ typedef struct TextCache {
     chars_map map;
     unsigned refcnt;
     CharsMonotonicArena arena;
-    unsigned adds_since_last_gc;
+    unsigned adds_since_last_gc, adds_between_gcs;
 } TextCache;
 static uint64_t
 hash_chars(Chars k) {
@@ -188,7 +188,7 @@ tc_num_entries(const TextCache *self) {
 
 bool
 tc_should_gc(const TextCache *self) {
-    return self->adds_since_last_gc > TEXT_CACHE_ADDS_BETWEEN_GCS;
+    return self->adds_since_last_gc > MAX(TEXT_CACHE_ADDS_BETWEEN_GCS, self->adds_between_gcs);
 }
 
 struct TextCacheGCData {
@@ -239,6 +239,8 @@ tc_gc_map_index(TextCache *self, TextCacheGCData *gc, char_type old_idx, char_ty
 void
 tc_gc_end(TextCache *self, TextCacheGCData *gc) {
     self->adds_since_last_gc = 0;
+    // scale with the live set so remapping cost stays amortized
+    self->adds_between_gcs = self->array.count;
     free(gc->map);
     free(gc->old_items);
     Chars_free_all(&gc->old_arena);
