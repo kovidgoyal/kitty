@@ -186,7 +186,7 @@ index_of(HistoryBuf *self, index_type lnum) {
 
 static bool
 hb_line_is_continued(HistoryBuf *self, index_type num) {
-    if (num == 0) {
+    if (num == self->start_of_data) {
         size_t sz;
         if (self->pagerhist && self->pagerhist->ringbuf && (sz = ringbuf_bytes_used(self->pagerhist->ringbuf)) > 0) {
             size_t pos = ringbuf_findchr(self->pagerhist->ringbuf, '\n', sz - 1);
@@ -194,7 +194,7 @@ hb_line_is_continued(HistoryBuf *self, index_type num) {
         }
         return false;
     }
-    return cpu_lineptr(self, num - 1)[self->xnum - 1].next_char_was_wrapped;
+    return cpu_lineptr(self, (num + self->ynum - 1) % self->ynum)[self->xnum - 1].next_char_was_wrapped;
 }
 
 static void
