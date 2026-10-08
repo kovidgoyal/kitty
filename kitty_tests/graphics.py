@@ -1210,6 +1210,61 @@ class TestGraphics(BaseTest):
         s.update_only_line_graphics_data()
         self.ae(len(layers(s)), 0)
 
+    def test_unicode_placeholders_history_margins(self):
+        # Lines scrolled out of a region at the top of the screen (as tmux does for
+        # a pane above its status line) enter the history, and the cell images
+        # rendered for them while the view was scrolled back must move with them.
+        cw, ch = 5, 10
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, lines=6)
+        put_image(s, 5, 20, num_cols=1, num_lines=2, unicode_placeholder=1, id=42)
+
+        def draw_placeholders():
+            s.apply_sgr('38;5;42')
+            s.cursor_position(3, 1)
+            s.draw('\U0010eeee\u0305')
+            s.cursor_position(4, 1)
+            s.draw('\U0010eeee\u030d')
+            s.apply_sgr('39')
+
+        def index_lines(row, n):
+            s.cursor_position(row, 1)
+            for i in range(n):
+                s.draw('plain')
+                s.index()
+                s.carriage_return()
+            s.update_only_line_graphics_data()
+
+        def scroll_view(amt, up):
+            s.scroll(amt, up)
+            s.update_only_line_graphics_data()
+            return layers(s, s.scrolled_by)
+
+        for region in (True, False):
+            s.reset()
+            if region:
+                s.set_margins(1, s.lines - 1)
+            bottom = s.lines - 1 if region else s.lines
+            draw_placeholders()
+            index_lines(bottom, 8)
+            self.ae(len(scroll_view(6, True)), 2)
+            scroll_view(6, False)
+            index_lines(bottom, 3)
+            self.ae(len(scroll_view(9, True)), 0, f'region={region}')
+            scroll_view(9, False)
+
+        # A reverse index must not move the refs of lines in the history
+        s.reset()
+        draw_placeholders()
+        index_lines(s.lines, 5)
+        before = scroll_view(6, True)
+        self.ae(len(before), 2)
+        scroll_view(6, False)
+        s.cursor_position(1, 1)
+        s.reverse_index()
+        s.update_only_line_graphics_data()
+        after = scroll_view(6, True)
+        self.ae(len(after), len(before))
+
     def test_gr_scroll(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)

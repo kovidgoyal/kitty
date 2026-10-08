@@ -2309,6 +2309,8 @@ static bool
 scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData *)data;
+    // A reverse scroll moves screen lines down but leaves the history in place.
+    if (d->amt > 0 && is_cell_image(ref) && ref->start_row + (int32_t)ref->effective_num_rows <= 0) return false;
     ref->start_row += d->amt;
     // A cell image is tied to the placeholders on its line, which are lost when
     // the line is scrolled off the bottom, so the ref must not come back on a
@@ -2345,6 +2347,12 @@ static bool
 scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
     if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData *)data;
+    // A line scrolled out of a region at the top of the screen still enters the history,
+    // so a cell image whose line is already in the history moves with it.
+    if (d->add_to_history && is_cell_image(ref) && ref->start_row + (int32_t)ref->effective_num_rows <= (int32_t)d->margin_top) {
+        ref->start_row += d->amt;
+        return ref->start_row + (int32_t)ref->effective_num_rows <= d->limit;
+    }
     if (ref_within_region(ref, d->margin_top, d->margin_bottom)) {
         ref->start_row += d->amt;
         if (ref_outside_region(ref, d->margin_top, d->margin_bottom)) return true;

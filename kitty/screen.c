@@ -427,12 +427,13 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
 }
 
 
-#define INDEX_GRAPHICS(amtv)                                                                 \
+#define INDEX_GRAPHICS(amtv, histv)                                                          \
     {                                                                                        \
         if (UNLIKELY(grman_has_any_images(self->grman))) {                                   \
             bool is_main = self->linebuf == self->main_linebuf;                              \
             static ScrollData s;                                                             \
             s.amt = amtv;                                                                    \
+            s.add_to_history = histv;                                                        \
             s.limit = is_main ? -self->historybuf->ynum : 0;                                 \
             s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
             s.margin_top = top;                                                              \
@@ -450,7 +451,7 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
         else if (self->last_visited_prompt.y < self->lines - 1) self->last_visited_prompt.y++;          \
         else self->last_visited_prompt.is_set = false;                                                  \
     }                                                                                                   \
-    INDEX_GRAPHICS(1)                                                                                   \
+    INDEX_GRAPHICS(1, false)                                                                            \
     self->is_dirty = true;                                                                              \
     if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, false, top, bottom); \
     if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
@@ -2493,7 +2494,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 
 #define INDEX_UP(add_to_history)                                                                                          \
     linebuf_index(self->linebuf, top, bottom);                                                                            \
-    INDEX_GRAPHICS(-1)                                                                                                    \
+    INDEX_GRAPHICS(-1, add_to_history)                                                                                    \
     if (add_to_history) {                                                                                                 \
         /* Only add to history when no top margin has been set */                                                         \
         linebuf_init_line(self->linebuf, bottom);                                                                         \

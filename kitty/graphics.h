@@ -180,6 +180,7 @@ typedef struct {
     int32_t amt, limit;
     index_type margin_top, margin_bottom;
     bool has_margins;
+    bool add_to_history;
 } ScrollData;
 
 
