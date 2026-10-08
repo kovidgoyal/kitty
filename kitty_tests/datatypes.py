@@ -641,8 +641,8 @@ class TestDataTypes(BaseTest):
 
         self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
-        def tp(*data, leftover='', text='', csi='', apc='', ibp=False):
-            text_r, csi_r, apc_r, rest = [], [], [], []
+        def tp(*data, leftover='', text='', csi='', apc='', osc='', ibp=False):
+            text_r, csi_r, apc_r, osc_r, rest = [], [], [], [], []
             left = ''
             in_bp = ibp
 
@@ -655,11 +655,12 @@ class TestDataTypes(BaseTest):
                 csi_r.append(x)
 
             for d in data:
-                left = parse_input_from_terminal(text_r.append, rest.append, on_csi, rest.append, rest.append, apc_r.append, left + d, in_bp)
+                left = parse_input_from_terminal(text_r.append, rest.append, on_csi, osc_r.append, rest.append, apc_r.append, left + d, in_bp)
             self.ae(left, leftover)
             self.ae(text, ' '.join(text_r))
             self.ae(csi, ' '.join(csi_r))
             self.ae(apc, ' '.join(apc_r))
+            self.ae(osc, ' '.join(osc_r))
             self.assertFalse(rest)
 
         tp('a\033[200~\033[32mxy\033[201~\033[33ma', text='a \033[32m xy a', csi='200~ 201~ 33m')
@@ -670,6 +671,49 @@ class TestDataTypes(BaseTest):
         tp('a\033[', 'mb', text='a b', csi='m')
         tp('a\033', '_', 'x\033', '\\b', text='a b', apc='x')
         tp('a\033_', 'x', '\033', '\\', 'b', text='a b', apc='x')
+        tp('a\033bc', text='a bc')
+        tp('\033OAx', text='OAx')
+        tp('\033a', text='a')
+        tp('\033\033[Ab', text='b', csi='A')
+        tp('\033', leftover='\033')
+        tp('\033]ab\033xcd\033\\z', text='z', osc='ab\033xcd')
+        tp('\033]ab\033\033\\z', text='z', osc='ab\033')
+        tp('a\033]0;t\007b', text='a b', osc='0;t')
+        tp('a\033]0;t', leftover='\033]0;t', text='a')
+        tp('a\033_x\007y\033\\b', text='a b', apc='x\007y')
+        tp('\033]x\033\007z', text='z', osc='x\033')
+        tp('\033]x\033', '\007z', text='z', osc='x\033')
+        tp('\033]x', '\033', '\007', 'z', text='z', osc='x\033')
+        tp('\033]x\033\007', osc='x\033')
+        tp('\033]0;t\033\\', text='\033]0;t\033\\', ibp=True)
+        tp('\033]0;t\007', text='\033]0;t\007', ibp=True)
+        tp('\033_x\033\\', text='\033_x\033\\', ibp=True)
+        import random
+        rnd = random.Random(0)
+        whole = 'a\033bc\033OAx\033[1mq\033]0;t\007w\033]1;\033x\033\\e\033_a\033\033\\r\033\033[Ab\033P1\007\033\\z\033]2\033\007y'
+
+        def events(parts):
+            ev, left = [], ''
+            cbs = [lambda x, n=n: ev.append((n, x)) for n in 'tdcopa']
+            for part in parts:
+                left = parse_input_from_terminal(*cbs, left + part, False)
+            ans = []
+            for n, x in ev:
+                if ans and n == 't' and ans[-1][0] == 't':
+                    ans[-1] = ('t', ans[-1][1] + x)
+                else:
+                    ans.append((n, x))
+            return ans, left
+        shared = []
+        scb = shared.append
+        self.ae(parse_input_from_terminal(scb, scb, scb, scb, scb, scb, '\033P1\007x\033\\z\033_a\007b\033\\', False), '')
+        self.ae(shared, ['1\007x', 'z', 'a\007b'])
+        expected = events([whole])
+        self.ae(expected[1], '')
+        for _ in range(300):
+            cuts = sorted(rnd.sample(range(1, len(whole)), rnd.randint(1, 6)))
+            parts = [whole[a:b] for a, b in zip([0] + cuts, cuts + [len(whole)])]
+            self.ae(events(parts), expected, parts)
 
         for prefix in ('/tmp', tempfile.gettempdir()):
             for path in ('a.png', 'x/b.jpg', 'y/../c.jpg'):

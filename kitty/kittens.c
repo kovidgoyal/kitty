@@ -116,7 +116,8 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     PyObject *uo, *text_callback, *dcs_callback, *csi_callback, *osc_callback, *pm_callback, *apc_callback, *callback;
     int inbp = 0;
     if (!PyArg_ParseTuple(args, "OOOOOOUp", &text_callback, &dcs_callback, &csi_callback, &osc_callback, &pm_callback, &apc_callback, &uo, &inbp)) return NULL;
-    Py_ssize_t sz = PyUnicode_GET_LENGTH(uo), pos = 0, start = 0, count = 0, consumed = 0;
+    Py_ssize_t sz = PyUnicode_GET_LENGTH(uo), pos = 0, start = 0, count = 0, consumed = 0, term_len = 0;
+    bool is_osc = false;
     callback = text_callback;
     int kind = PyUnicode_KIND(uo);
     void *data = PyUnicode_DATA(uo);
@@ -127,7 +128,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
         Py_ssize_t s = s_, num = num_;                                                            \
         if (in_bracketed_paste_mode && fcb != text_callback) {                                    \
             fcb = text_callback;                                                                  \
-            num += 2;                                                                             \
+            num += 2 + term_len;                                                                  \
             s -= 2;                                                                               \
         }                                                                                         \
         if (num > 0) {                                                                            \
@@ -136,6 +137,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
             Py_DECREF(ret);                                                                       \
         }                                                                                         \
         consumed = s_ + num_;                                                                     \
+        term_len = 0;                                                                             \
         count = 0;                                                                                \
     }
     START_ALLOW_CASE_RANGE;
@@ -152,6 +154,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
             case ESC:
                 start = pos;
                 count = 0;
+                is_osc = false;
                 switch (ch) {
                     case 'P':
                         state = ST;
@@ -164,6 +167,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                     case ']':
                         state = ST;
                         callback = osc_callback;
+                        is_osc = true;
                         break;
                     case '^':
                         state = ST;
@@ -173,7 +177,11 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                         state = ST;
                         callback = apc_callback;
                         break;
-                    default: state = NORMAL; break;
+                    case 0x1b: break;
+                    default:
+                        state = NORMAL;
+                        count = 1;
+                        break;
                 }
                 break;
             case CSI:
@@ -200,15 +208,33 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                 break;
             case ESC_ST:
                 if (ch == '\\') {
+                    term_len = 2;
                     CALL(callback, start + 1, count);
                     state = NORMAL;
                     start = pos + 1;
                     consumed += 2;
-                } else count += 2;
+                } else if (ch == 0x1b) count++;
+                else if (ch == 0x07 && is_osc) {
+                    count++;
+                    term_len = 1;
+                    CALL(callback, start + 1, count);
+                    state = NORMAL;
+                    start = pos + 1;
+                    consumed++;
+                } else {
+                    count += 2;
+                    state = ST;
+                }
                 break;
             case ST:
                 if (ch == 0x1b) {
                     state = ESC_ST;
+                } else if (ch == 0x07 && is_osc) {
+                    term_len = 1;
+                    CALL(callback, start + 1, count);
+                    state = NORMAL;
+                    start = pos + 1;
+                    consumed++;
                 } else count++;
                 break;
         }
