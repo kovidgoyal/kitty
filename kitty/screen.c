@@ -2871,7 +2871,7 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
         default: break;
     }
     if (n > 0) {
-        nuke_multicell_char_intersecting_with(self, s, n, self->cursor->y, self->cursor->y + 1, false);
+        nuke_multicell_char_intersecting_with(self, s, s + n, self->cursor->y, self->cursor->y + 1, false);
         screen_dirty_line_graphics(self, self->cursor->y, self->cursor->y, self->linebuf == self->main_linebuf);
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (private) {
@@ -2932,6 +2932,22 @@ screen_move_into_scrollback(Screen *self) {
     }
 }
 
+static void
+nuke_multiline_chars_split_by_erase(Screen *self, unsigned int how, index_type a, index_type b) {
+    // remove chars crossing the erase boundary
+    for (int top = 1; top >= 0; top--) {
+        if (top ? how == 3 : how != 1) continue;
+        CPUCell *cp;
+        GPUCell *gp;
+        index_type y = top ? a : b - 1;
+        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        for (index_type x = 0; x < self->columns; x++) {
+            if (!cp[x].is_multicell) continue;
+            if (top ? cp[x].y > 0 : cp[x].y + 1 < cp[x].scale) nuke_multicell_char_at(self, x, y, false);
+        }
+    }
+}
+
 void
 screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
@@ -2950,7 +2966,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         :param bool private: when ``True`` character attributes are left unchanged
     */
     unsigned int a, b;
-    bool nuke_multicell_chars = true;
     switch (how) {
         case 0:
             a = self->cursor->y + 1;
@@ -2962,7 +2977,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             break;
         case 22:
             screen_move_into_scrollback(self);
-            nuke_multicell_chars = false; // they have been moved into scrollback and we would get double deletions
             how = 2;
             /* fallthrough */
         case 2:
@@ -2974,11 +2988,11 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             grman_clear(self->grman, how == 3, self->cell_size);
             a = 0;
             b = self->lines;
-            nuke_multicell_chars = false;
             break;
         default: return;
     }
     if (b > a) {
+        if (how < 3) nuke_multiline_chars_split_by_erase(self, how, a, b);
         if (how != 3) screen_dirty_line_graphics(self, a, b, self->linebuf == self->main_linebuf);
         if (private) {
             for (unsigned int i = a; i < b; i++) {
@@ -2988,7 +3002,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
                 linebuf_clear_attrs_and_dirty(self->linebuf, i);
             }
         } else linebuf_clear_lines(self->linebuf, self->cursor, a, b);
-        if (nuke_multicell_chars) nuke_multicell_char_intersecting_with(self, 0, self->columns, a, b, false);
         self->is_dirty = true;
         if (selection_intersects_screen_lines(&self->selections, a, b)) clear_selection(&self->selections);
         if (selection_intersects_screen_lines(&self->url_ranges, a, b)) clear_selection(&self->url_ranges);
