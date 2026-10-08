@@ -287,6 +287,10 @@ Detailed list of changes
 - Linux: Fix desktop notifications showing a blank button in notification
   daemons such as xfce4-notifyd and LXQt (:iss:`10625`)
 
+- macOS: Fix dropping an item that is offered twice as a file promise, such as
+  a message dragged from Apple Mail, inserting a second path that does not
+  exist (:iss:`10628`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

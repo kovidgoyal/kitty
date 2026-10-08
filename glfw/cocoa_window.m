@@ -1693,6 +1693,9 @@ build_uri_list(_GLFWDropData *d) {
     for (unsigned i = 0;; i++) {
         id x = path_map[[NSString stringWithFormat:@"kitty-internal/uri-list-item-%u", i]];
         if (x == nil) break;
+        // A promise that was fulfilled without error but produced no file is
+        // recorded as NSNull, see the reader block in performDragOperation:
+        if (x == [NSNull null]) continue;
         if ([x isKindOfClass:[NSError class]]) {
             d->in_progress_drop.data_map[@"text/uri-list"] = x;
             return;
@@ -1797,14 +1800,29 @@ build_uri_list(_GLFWDropData *d) {
                                                 options:@{}
                                          operationQueue:workQueue
                                                  reader:^(NSURL *_Nonnull fileURL, NSError *_Nullable error) {
-                                                   // A promise of a file contributes its path to the uri-list
+                                                   // Some applications advertise the same file twice, once
+                                                   // via the legacy promise pasteboard types and once via
+                                                   // NSFilePromiseProvider, which yields two receivers for a
+                                                   // single file. Fulfilling the second one reports success
+                                                   // with a de-duplicated name, such as "message 2.eml", but
+                                                   // nothing is ever written there. Ignore such phantom
+                                                   // files, Apple Mail does this, see
+                                                   // https://github.com/kovidgoyal/kitty/issues/10628
+                                                   const bool missing = !error && ![[NSFileManager defaultManager] fileExistsAtPath:[fileURL path]];
+                                                   // A promise of a file contributes its path to the
+                                                   // uri-list. A phantom is recorded as NSNull rather than
+                                                   // left out, so that the promises fulfilled after it keep
+                                                   // their positions in the uri-list.
                                                    if (is_for_a_file)
                                                        results[[NSString stringWithFormat:@"kitty-internal/uri-list-item-%u", url_list_idx]] =
-                                                           error ? (id)error : (id)fileURL;
-                                                   // and the contents are made available under the MIME types of the promised data
+                                                           error ? (id)error : (missing ? (id)[NSNull null] : (id)fileURL);
+                                                   // and the contents are made available under the MIME types
+                                                   // of the promised data. Nothing is claimed for a phantom,
+                                                   // the receiver that actually produced the file supplies
+                                                   // the contents, and the two can be fulfilled in any order.
                                                    for (NSString *type in types) {
                                                        const char *mime = uti_to_mime(type);
-                                                       if (!mime || !mime[0] || results[@(mime)] != nil) continue;
+                                                       if (missing || !mime || !mime[0] || results[@(mime)] != nil) continue;
                                                        id result = error;
                                                        if (!result) {
                                                            NSInputStream *s = [NSInputStream inputStreamWithURL:fileURL];
