@@ -1208,8 +1208,8 @@ as8bit(double f) {
 static bool
 parse_single_intensity(const char *s, unsigned char *out) {
     double f;
-    if (!parse_double(s, &f)) return false;
-    *out = as8bit(f);
+    if (!parse_double(s, &f) || isnan(f)) return false;
+    *out = as8bit(MAX(0, MIN(f, 1)));
     return true;
 }
 
@@ -1532,7 +1532,7 @@ parse_color(PyTypeObject *type UNUSED, PyObject *pspec) {
             switch (spec[3]) {
                 case ':': return parse_rgb(spec + 4, len - 4);
                 case 'i':
-                    if (spec[4] == 'i' && spec[5] == ':') return parse_rgbi(spec + 5, len - 5);
+                    if (spec[4] == ':') return parse_rgbi(spec + 5, len - 5);
             }
             Py_RETURN_NONE;
         case 'o': return parse_oklch(spec + 1, len - 1);

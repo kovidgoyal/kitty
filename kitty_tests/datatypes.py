@@ -125,6 +125,11 @@ class TestDataTypes(BaseTest):
         c('rgb:e/e/e # comment', 0xEE, 0xEE, 0xEE)
         c('rgB:23/45/67', 0x23, 0x45, 0x67)
         c('rgb:abc/abc/def', 0xAB, 0xAB, 0xDE)
+        c('rgbi:1/0/0', 255, 0, 0)
+        c('rgbI:0.5/0.5/0.5', 128, 128, 128)
+        c('rgbi:2/-1/0', 255, 0, 0)
+        for x in 'rgbi:1/0 rgbi:x/0/0 rgbi:nan/0/0 rgbii:1/0/0'.split():
+            self.assertIsNone(to_color(x), x)
         c('rEd', 0xFF, 0, 0)
         c('aLice blUe # comment', 240, 248, 255)
         c('oklch(1,0,0)', 255, 255, 255)
