@@ -327,7 +327,10 @@ do_increment(FontGroup *fg) {
     if (fg->sprite_tracker.x >= fg->sprite_tracker.xnum) {
         fg->sprite_tracker.x = 0;
         fg->sprite_tracker.y++;
-        fg->sprite_tracker.ynum = MIN(MAX(fg->sprite_tracker.ynum, fg->sprite_tracker.y + 1), fg->sprite_tracker.max_y);
+        if (fg->sprite_tracker.y + 1 > fg->sprite_tracker.ynum) {
+            // texture reallocation copies all sprites
+            fg->sprite_tracker.ynum = MIN(fg->sprite_tracker.max_y, MAX(fg->sprite_tracker.y + 1, fg->sprite_tracker.ynum * 2));
+        }
         if (fg->sprite_tracker.y >= fg->sprite_tracker.max_y) {
             fg->sprite_tracker.y = 0;
             fg->sprite_tracker.z++;
@@ -2532,6 +2535,15 @@ test_sprite_position_increment(PyObject UNUSED *self, PyObject *args UNUSED) {
 }
 
 static PyObject *
+test_sprite_tracker_ynum(PyObject UNUSED *self, PyObject *args UNUSED) {
+    if (!num_font_groups) {
+        PyErr_SetString(PyExc_RuntimeError, "must create font group first");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong(font_groups->sprite_tracker.ynum);
+}
+
+static PyObject *
 set_send_sprite_to_gpu(PyObject UNUSED *self, PyObject *func) {
     Py_CLEAR(python_send_to_gpu_impl);
     if (func != Py_None) {
@@ -2854,6 +2866,7 @@ static PyMethodDef module_methods[] = {
     METHODB(create_test_font_group, METH_VARARGS),
     METHODB(sprite_map_set_layout, METH_VARARGS),
     METHODB(test_sprite_position_increment, METH_NOARGS),
+    METHODB(test_sprite_tracker_ynum, METH_NOARGS),
     METHODB(concat_cells, METH_VARARGS),
     METHODB(render_decoration, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),

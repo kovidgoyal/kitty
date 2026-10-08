@@ -24,6 +24,7 @@ from kitty.fast_data_types import (
     test_render_line,
     test_shape,
     test_sprite_position_increment,
+    test_sprite_tracker_ynum,
     wcwidth,
 )
 from kitty.fonts import family_name_to_key
@@ -343,6 +344,19 @@ class Rendering(FontBaseTest):
         self.ae(test_sprite_position_increment(), (1, 1, 1))
         self.ae(test_sprite_position_increment(), (0, 0, 2))
         self.ae(test_sprite_position_increment(), (1, 0, 2))
+
+    def test_sprite_map_ynum_growth(self):
+        sprite_map_set_limits(10, 3)
+        sprite_map_set_layout(1, 1)
+        self.ae(test_sprite_tracker_ynum(), 1)
+        seen = [1]
+        for i in range(10 * 5 * 2 + 3):
+            self.ae(test_sprite_position_increment(), (i % 10, (i // 10) % 5, i // 50))
+            ynum = test_sprite_tracker_ynum()
+            self.assertLessEqual(ynum, 5)
+            if ynum != seen[-1]:
+                seen.append(ynum)
+        self.ae(seen, [1, 2, 4, 5])
 
     def test_box_drawing(self):
         s = self.create_screen(cols=len(box_chars) + 1, lines=1, scrollback=0)
