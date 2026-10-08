@@ -1854,7 +1854,7 @@ io_loop(void *data) {
         if (has_pending_wakeups) {
             now = monotonic();
             monotonic_t time_delta = OPT(input_delay) - (now - last_main_loop_wakeup_at);
-            if (time_delta >= 0) ret = poll(children_fds, self->count + EXTRA_FDS, monotonic_t_to_ms(time_delta));
+            if (time_delta >= 0) ret = poll(children_fds, self->count + EXTRA_FDS, monotonic_t_to_ms_ceil(time_delta));
             else ret = 0;
         } else {
             ret = poll(children_fds, self->count + EXTRA_FDS, -1);
@@ -2032,7 +2032,9 @@ accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer, bool
             return true;
         }
     }
+    talk_mutex(lock);
     add_peer(peer, is_remote_control_peer);
+    talk_mutex(unlock);
     return true;
 }
 
