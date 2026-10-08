@@ -2777,7 +2777,7 @@ parsed_font_feature_repr(PyObject *self_) {
 
 static PyObject *
 parsed_font_feature_cmp(PyObject *self, PyObject *other, int op) {
-    if (op != Py_EQ && op != Py_NE) return Py_NotImplemented;
+    if (op != Py_EQ && op != Py_NE) Py_RETURN_NOTIMPLEMENTED;
     if (!PyObject_TypeCheck(other, &ParsedFontFeature_Type)) {
         if (op == Py_EQ) Py_RETURN_FALSE;
         Py_RETURN_TRUE;
