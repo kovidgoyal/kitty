@@ -794,6 +794,7 @@ bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_image
 void update_mouse_pointer_shape(void);
 void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height);
 void dispatch_buffered_keys(Window *w);
+void free_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow *, Tab *, Window *, bool, monotonic_t);
 monotonic_t update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window);

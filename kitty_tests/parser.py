@@ -1020,6 +1020,15 @@ class TestParser(BaseTest):
         parse_bytes(s, b'\033[?:m\033[31m')
         self.ae(s.cursor.fg, 1 << 8 | 1)  # red (ANSI color 1)
 
+    def test_csi_separator_after_max_params(self):
+        # A ':' or ';' immediately after the last allowed CSI parameter must
+        # not write past the end of is_sub_param
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        too_many = ('CSI escape code has too many parameters, ignoring it',)
+        pb('\033[' + '1;' * 255 + '1:2m\033[31m', too_many, ('select_graphic_rendition', '31'))
+        pb('\033[' + '1;' * 256 + 'm\033[31m', ('select_graphic_rendition', ';'.join('1' * 256)), ('select_graphic_rendition', '31'))
+
     def test_csi_code_rep(self):
         s = self.create_screen(8)
         pb = partial(self.parse_bytes_dump, s)

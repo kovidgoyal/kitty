@@ -244,6 +244,14 @@ dispatch_buffered_keys(Window *w) {
         debug("Sending previously buffered key ");
         send_key_to_child(w->id, w->render_data.screen, keys + i);
     }
+    free_buffered_keys(w);
+}
+
+void
+free_buffered_keys(Window *w) {
+    GLFWkeyevent *keys = w->buffered_keys.key_data;
+    // the text of buffered events is owned by us, see on_key_input()
+    for (size_t i = 0; i < w->buffered_keys.count; i++) free((char *)keys[i].text);
     free(w->buffered_keys.key_data);
     zero_at_ptr(&w->buffered_keys);
 }
@@ -351,8 +359,10 @@ on_key_input(const GLFWkeyevent *ev) {
             if (!new) fatal("Out of memory");
             w->buffered_keys.key_data = new;
         }
-        GLFWkeyevent *k = w->buffered_keys.key_data;
-        k[w->buffered_keys.count++] = *ev;
+        GLFWkeyevent *k = (GLFWkeyevent *)w->buffered_keys.key_data + w->buffered_keys.count++;
+        *k = *ev;
+        // ev->text is only valid for the duration of this call
+        if (ev->text && !(k->text = strdup(ev->text))) fatal("Out of memory");
         debug("buffering key until child is ready\n");
     } else send_key_to_child(w->id, screen, ev);
 #undef dispatch_key_event

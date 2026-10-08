@@ -432,8 +432,7 @@ destroy_window(Window *w) {
     drag_free_offer(w, true);
     free(w->pending_clicks.clicks);
     zero_at_ptr(&w->pending_clicks);
-    free(w->buffered_keys.key_data);
-    zero_at_ptr(&w->buffered_keys);
+    free_buffered_keys(w);
     Py_CLEAR(w->render_data.screen);
     Py_CLEAR(w->title);
     Py_CLEAR(w->title_bar_data.last_drawn_title_object_id);

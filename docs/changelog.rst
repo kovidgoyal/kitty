@@ -291,6 +291,9 @@ Detailed list of changes
   a message dragged from Apple Mail, inserting a second path that does not
   exist (:iss:`10628`)
 
+- Fix text typed into a new window before the program in it is ready sometimes
+  being garbled
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
