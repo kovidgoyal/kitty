@@ -483,7 +483,7 @@ unicode_in_range(
         lc.capacity = buf->capacity - buf->len;
         while (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) {
             size_t ns = MAX(initial_cap, 2 * buf->capacity);
-            char_type *np = realloc(buf->buf, ns);
+            char_type *np = realloc(buf->buf, ns * sizeof(buf->buf[0]));
             if (!np) return false;
             buf->capacity = ns;
             buf->buf = np;

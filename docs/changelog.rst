@@ -294,6 +294,9 @@ Detailed list of changes
 - Fix text typed into a new window before the program in it is ready sometimes
   being garbled
 
+- Fix a heap buffer overflow when getting the text of lines that contain a very
+  large number of combining characters
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

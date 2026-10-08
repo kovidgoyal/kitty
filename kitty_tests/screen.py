@@ -325,6 +325,16 @@ class TestScreen(BaseTest):
             self.ae(q, str(s.line(0)))
             self.ae(s.cursor.x, 2)
 
+    def test_unicode_in_range_buffer_growth(self):
+        # Enough combining chars to force the text buffer to grow past its initial capacity
+        s = self.create_screen(cols=300, lines=2)
+        q = 300 * ('e' + 23 * '\u0301')  # 23 is the max number of combining chars per cell
+        s.draw(q)
+        self.ae(q, str(s.line(0)))
+        s.start_selection(0, 0)
+        s.update_selection(299, 0)
+        self.ae(q, ''.join(s.text_for_selection()))
+
     def test_char_manipulation(self):
         s = self.create_screen()
 
