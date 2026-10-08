@@ -924,12 +924,12 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         return true;
                     case ':':
                         if (!commit_csi_param(self, csi)) return true;
-                        csi->is_sub_param[csi->num_params] = true;
+                        if (csi->num_params < MAX_CSI_PARAMS) csi->is_sub_param[csi->num_params] = true;
                         break;
                     case ';':
                         if (!csi->num_digits) csi->num_digits++; // Empty means zero
                         if (!commit_csi_param(self, csi)) return true;
-                        csi->is_sub_param[csi->num_params] = false;
+                        if (csi->num_params < MAX_CSI_PARAMS) csi->is_sub_param[csi->num_params] = false;
                         break;
                     case DIGIT:
                         csi_add_digit(csi, ch);
