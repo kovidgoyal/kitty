@@ -1256,14 +1256,86 @@ class TestGraphics(BaseTest):
         s.reset()
         draw_placeholders()
         index_lines(s.lines, 5)
-        before = scroll_view(6, True)
-        self.ae(len(before), 2)
+
+        def ref_rows(refs):
+            return sorted(round((1 - r['dest_rect']['top']) / dy) - s.scrolled_by for r in refs)
+
+        before = ref_rows(scroll_view(6, True))
+        self.ae(before, [-3, -2])
         scroll_view(6, False)
         s.cursor_position(1, 1)
         s.reverse_index()
         s.update_only_line_graphics_data()
-        after = scroll_view(6, True)
-        self.ae(len(after), len(before))
+        self.ae(ref_rows(scroll_view(6, True)), before)
+
+    def test_unicode_placeholders_history_fill(self):
+        # Lines popped back from the history (CSI + T, or enlarging the window with
+        # scrollback_fill_enlarged_window) move the history down, so cell images
+        # rendered for lines in the history must move with them.
+        cw, ch = 5, 10
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, lines=6)
+        put_image(s, 5, 10, num_cols=1, num_lines=1, unicode_placeholder=1, id=42)
+
+        def ref_rows(scrolled_by=0):
+            s.update_only_line_graphics_data()
+            return sorted(round((1 - r['dest_rect']['top']) / dy) - scrolled_by for r in layers(s, scrolled_by))
+
+        def rows_in_history():
+            # Render the history lines as when the view is scrolled back
+            n = s.historybuf.count
+            s.scroll(n, True)
+            ans = [r for r in ref_rows(n) if r < 0]
+            s.scroll(n, False)
+            s.update_only_line_graphics_data()
+            return ans
+
+        def setup(region):
+            # Push 'plain' and then a placeholder line into the history
+            s.reset()
+            if region:
+                s.set_margins(1, s.lines - 1)
+            s.draw('plain')
+            s.carriage_return(), s.linefeed()
+            s.apply_sgr('38;5;42')
+            s.draw('\U0010eeee\u0305')
+            s.apply_sgr('39')
+            s.cursor_position(s.lines - 1 if region else s.lines, 1)
+            s.index(), s.index()
+            self.ae(str(s.historybuf.line(0)), '\U0010eeee\u0305')
+            self.ae(rows_in_history(), [-1])
+
+        for region in (False, True):
+            setup(region)
+            s.reverse_scroll(1, True)
+            self.ae(str(s.line(0)), '\U0010eeee\u0305')
+            self.ae(rows_in_history(), [], f'region={region}')
+            self.ae(ref_rows(), [0], f'region={region}')
+
+        def classic_in_history():
+            nonlocal s, dy, layers
+            s, _, dy, put_image, _, layers, _ = put_helpers(self, cw, ch, lines=6)
+            put_image(s, cw, ch)  # a one cell image at (0, 0)
+            s.draw('img')
+            s.cursor_position(s.lines, 1)
+            s.index()
+            self.ae(ref_rows(1), [-1])
+
+        # A reverse index that does not pull lines from the history leaves classic
+        # placements in the history in place
+        classic_in_history()
+        s.cursor_position(1, 1)
+        s.reverse_index()
+        self.ae(ref_rows(), [])
+        self.ae(ref_rows(1), [-1])
+
+        # Enlarging the window pulls lines back from the history (cell images are
+        # removed on resize, so only classic placements are left to move)
+        classic_in_history()
+        self.set_options({'scrollback_fill_enlarged_window': True})
+        s.cursor_position(2, 1)
+        s.resize(s.lines + 1, s.columns)
+        self.ae(str(s.line(0)), ' img')
+        self.ae(ref_rows(), [0])
 
     def test_gr_scroll(self):
         cw, ch = 10, 20

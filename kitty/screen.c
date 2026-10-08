@@ -433,7 +433,7 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
             bool is_main = self->linebuf == self->main_linebuf;                              \
             static ScrollData s;                                                             \
             s.amt = amtv;                                                                    \
-            s.add_to_history = histv;                                                        \
+            s.scroll_history = histv;                                                        \
             s.limit = is_main ? -self->historybuf->ynum : 0;                                 \
             s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
             s.margin_top = top;                                                              \
@@ -443,7 +443,7 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
     }
 
 
-#define INDEX_DOWN                                                                                      \
+#define INDEX_DOWN(scroll_history)                                                                      \
     linebuf_reverse_index(self->linebuf, top, bottom);                                                  \
     linebuf_clear_line(self->linebuf, top, true);                                                       \
     if (self->linebuf == self->main_linebuf && self->last_visited_prompt.is_set) {                      \
@@ -451,7 +451,7 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
         else if (self->last_visited_prompt.y < self->lines - 1) self->last_visited_prompt.y++;          \
         else self->last_visited_prompt.is_set = false;                                                  \
     }                                                                                                   \
-    INDEX_GRAPHICS(1, false)                                                                            \
+    INDEX_GRAPHICS(1, scroll_history)                                                                   \
     self->is_dirty = true;                                                                              \
     if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, false, top, bottom); \
     if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
@@ -724,7 +724,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         Savepoint *sp = is_main ? &self->main_savepoint : &self->alt_savepoint;
         while (self->cursor->y + 1 < self->lines && self->lines - self->cursor->y > lines_after_cursor_before_resize) {
             if (!historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) break;
-            INDEX_DOWN;
+            INDEX_DOWN(true);
             linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
             self->cursor->y++;
             sp->cursor.y = MIN(sp->cursor.y + 1, self->lines - 1);
@@ -2551,7 +2551,7 @@ screen_reverse_index(Screen *self) {
     // Move cursor up one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == top) {
-        INDEX_DOWN;
+        INDEX_DOWN(false);
     } else screen_cursor_up(self, 1, false, -1);
 }
 
@@ -2567,7 +2567,7 @@ _reverse_scroll(Screen *self, unsigned int count, bool fill_from_scrollback) {
     while (count-- > 0) {
         bool copied = false;
         if (fill_from_scrollback) copied = historybuf_pop_line(self->historybuf, self->alt_linebuf->line);
-        INDEX_DOWN;
+        INDEX_DOWN(copied);
         if (copied) linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
     }
 }

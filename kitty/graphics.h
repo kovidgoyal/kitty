@@ -180,7 +180,8 @@ typedef struct {
     int32_t amt, limit;
     index_type margin_top, margin_bottom;
     bool has_margins;
-    bool add_to_history;
+    // The history scrolls with the screen: lines move into it (amt < 0) or are popped back from it (amt > 0)
+    bool scroll_history;
 } ScrollData;
 
 
