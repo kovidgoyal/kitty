@@ -711,10 +711,9 @@ historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line
     index_type idx = historybuf_push(self, as_ansi_buf, &needs_clear);
     *attrptr(self, idx) = src_line->attrs;
     init_line(self, idx, dest_line);
-    if (needs_clear) {
-        zero_at_ptr_count(dest_line->cpu_cells, dest_line->xnum);
-        zero_at_ptr_count(dest_line->gpu_cells, dest_line->xnum);
-    }
+    // the slot may hold a stale line from stolen segments
+    zero_at_ptr_count(dest_line->cpu_cells, dest_line->xnum);
+    zero_at_ptr_count(dest_line->gpu_cells, dest_line->xnum);
     return dest_y + 1;
 }
 
@@ -739,14 +738,13 @@ historybuf_finish_rewrap(HistoryBuf *dest, HistoryBuf *src) {
 }
 
 void
-historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src) {
-    for (index_type i = 0; i < src->num_segments; i++) {
-        memcpy(dest->segments[i].cpu_cells, src->segments[i].cpu_cells, SEGMENT_SIZE * src->xnum * sizeof(CPUCell));
-        memcpy(dest->segments[i].gpu_cells, src->segments[i].gpu_cells, SEGMENT_SIZE * src->xnum * sizeof(GPUCell));
-        memcpy(dest->segments[i].line_attrs, src->segments[i].line_attrs, SEGMENT_SIZE * sizeof(LineAttrs));
-    }
-    dest->count = src->count;
+historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src, index_type count) {
+    SWAP(dest->segments, src->segments);
+    SWAP(dest->num_segments, src->num_segments);
+    dest->count = MIN(count, src->count);
     dest->start_of_data = src->start_of_data;
+    src->count = 0;
+    src->start_of_data = 0;
 }
 
 
@@ -760,7 +758,11 @@ rewrap(HistoryBuf *self, PyObject *args) {
     RAII_PyObject(cleanup, (PyObject *)dummy);
     (void)cleanup;
     TrackCursor cursors[1] = {{.is_sentinel = true}};
+    // self must keep its segments
+    bool orig = resize_disable_history_reuse;
+    resize_disable_history_reuse = true;
     ResizeResult r = resize_screen_buffers(dummy, self, 8, xnum, &as_ansi_buf, cursors);
+    resize_disable_history_reuse = orig;
     free(as_ansi_buf.buf);
     if (!r.ok) return PyErr_NoMemory();
     Py_CLEAR(r.lb);

@@ -310,21 +310,7 @@ rewrap(
     bool main_is_active) {
     TrackCursor cursors[3];
     cursors[2].is_sentinel = true;
-    cursors[0] = (TrackCursor){.x = main_saved_cursor->before.x, .y = main_saved_cursor->before.y};
-    if (main_is_active) cursors[1] = (TrackCursor){.x = cursor->before.x, .y = cursor->before.y};
-    else cursors[1].is_sentinel = true;
-    ResizeResult mr = resize_screen_buffers(screen->main_linebuf, screen->historybuf, lines, columns, &screen->as_ansi_buf, cursors);
-    if (!mr.ok) {
-        PyErr_NoMemory();
-        return false;
-    }
-    main_saved_cursor->temp.x = cursors[0].dest_x;
-    main_saved_cursor->temp.y = cursors[0].dest_y;
-    if (main_is_active) {
-        cursor->temp.x = cursors[1].dest_x;
-        cursor->temp.y = cursors[1].dest_y;
-    }
-
+    // alt first to keep history intact on failure
     cursors[0] = (TrackCursor){.x = alt_saved_cursor->before.x, .y = alt_saved_cursor->before.y};
     if (!main_is_active) cursors[1] = (TrackCursor){.x = cursor->before.x, .y = cursor->before.y};
     else cursors[1].is_sentinel = true;
@@ -337,6 +323,22 @@ rewrap(
     alt_saved_cursor->temp.x = cursors[0].dest_x;
     alt_saved_cursor->temp.y = cursors[0].dest_y;
     if (!main_is_active) {
+        cursor->temp.x = cursors[1].dest_x;
+        cursor->temp.y = cursors[1].dest_y;
+    }
+
+    cursors[0] = (TrackCursor){.x = main_saved_cursor->before.x, .y = main_saved_cursor->before.y};
+    if (main_is_active) cursors[1] = (TrackCursor){.x = cursor->before.x, .y = cursor->before.y};
+    else cursors[1].is_sentinel = true;
+    ResizeResult mr = resize_screen_buffers(screen->main_linebuf, screen->historybuf, lines, columns, &screen->as_ansi_buf, cursors);
+    if (!mr.ok) {
+        Py_DecRef((PyObject *)ar.lb);
+        PyErr_NoMemory();
+        return false;
+    }
+    main_saved_cursor->temp.x = cursors[0].dest_x;
+    main_saved_cursor->temp.y = cursors[0].dest_y;
+    if (main_is_active) {
         cursor->temp.x = cursors[1].dest_x;
         cursor->temp.y = cursors[1].dest_y;
     }
@@ -7265,10 +7267,17 @@ PyTypeObject Screen_Type = {
     .tp_getset = getsetters,
 };
 
+static PyObject *
+test_set_history_reuse(PyObject *self UNUSED, PyObject *val) {
+    resize_disable_history_reuse = !PyObject_IsTrue(val);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     {"is_emoji_presentation_base", (PyCFunction)screen_is_emoji_presentation_base, METH_O, ""},
     {"truncate_point_for_length", (PyCFunction)screen_truncate_point_for_length, METH_VARARGS, ""},
     {"test_ch_and_idx", test_ch_and_idx, METH_O, ""},
+    {"test_set_history_reuse", test_set_history_reuse, METH_O, ""},
     {NULL} /* Sentinel */
 };
 
