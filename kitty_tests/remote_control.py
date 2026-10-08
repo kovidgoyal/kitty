@@ -80,7 +80,35 @@ os._exit(0)
 """
 
 
+TALK_THREAD_STALLED_PEER = """
+import os, socket
+from kitty.fast_data_types import ChildMonitor, send_data_to_peer
+cm = ChildMonitor(lambda *a: None, None)
+a, a_remote = socket.socketpair()
+b, b_remote = socket.socketpair()
+big = os.urandom(8 * 1024 * 1024)
+pa = cm.inject_peer(os.dup(a.fileno()))
+send_data_to_peer(pa, big)
+pb = cm.inject_peer(os.dup(b.fileno()))
+send_data_to_peer(pb, b'hello')
+b_remote.settimeout(10)
+assert b_remote.recv(16) == b'hello'
+a_remote.settimeout(10)
+got = bytearray()
+while len(got) < len(big):
+    got += a_remote.recv(1024 * 1024)
+assert got == big, 'stalled peer response corrupted'
+print('ok', flush=True)
+os._exit(0)
+"""
+
+
 class TestTalkThread(BaseTest):
+
+    def test_talk_thread_not_blocked_by_stalled_peer(self):
+        p = subprocess.run([kitty_exe(), '+runpy', TALK_THREAD_STALLED_PEER], capture_output=True, text=True, timeout=30)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn('ok', p.stdout, p.stderr)
 
     def test_talk_thread_survives_accept_errors(self):
         with tempfile.TemporaryDirectory() as tdir:

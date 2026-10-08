@@ -1997,6 +1997,9 @@ add_peer(int peer, bool is_remote_control_peer) {
         Peer *p = talk_data.peers + talk_data.num_peers++;
         memset(p, 0, sizeof(Peer));
         p->fd = peer;
+        // MSG_DONTWAIT still blocks on macOS
+        int flags = fcntl(peer, F_GETFL);
+        if (flags != -1) fcntl(peer, F_SETFL, flags | O_NONBLOCK);
         p->id = ++peer_id_counter;
         if (!p->id) p->id = ++peer_id_counter;
         ans = p->id;
@@ -2172,7 +2175,7 @@ read_from_peer(ChildMonitor *self, Peer *peer) {
         peer->read.used = 0;
         peer->read.capacity = 0;
     } else if (n < 0) {
-        if (errno != EINTR) failed(strerror(errno));
+        if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) failed(strerror(errno));
     } else {
         peer->read.used += n;
         while (has_complete_peer_command(peer)) dispatch_peer_command(self, peer);
@@ -2189,7 +2192,7 @@ write_to_peer(Peer *peer) {
         peer->write.used = 0;
         peer->write.failed = true;
     } else if (n < 0) {
-        if (errno != EINTR) {
+        if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
             log_error("write() to peer socket failed with error: %s", strerror(errno));
             peer->write.used = 0;
             peer->write.failed = true;
