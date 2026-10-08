@@ -959,14 +959,14 @@ create_single_color_buffer(int width, int height, pixel color) {
         return NULL;
     }
     uint32_t *shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (color.value)
-        for (size_t i = 0; i < size / 4; i++) shm_data[i] = color.value;
-    else memset(shm_data, 0, size);
-    if (!shm_data) {
+    if (shm_data == MAP_FAILED) {
         close(fd);
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to mmap anonymous file");
         return NULL;
     }
+    if (color.value)
+        for (size_t i = 0; i < size / 4; i++) shm_data[i] = color.value;
+    else memset(shm_data, 0, size);
     struct wl_shm_pool *pool = wl_shm_create_pool(_glfw.wl.shm, fd, size);
     if (!pool) {
         close(fd);
@@ -2677,7 +2677,8 @@ request_drop_data(_GLFWWaylandDataOffer *offer, const char *mime) {
         return ENOMEM;
     }
     if (!offer->requested_drop_data || offer->dd_count + 1 >= offer->dd_capacity) {
-        void *p = realloc(offer->requested_drop_data, sizeof(offer->requested_drop_data[0]) * (offer->dd_capacity + 8));
+        const size_t newcap = offer->dd_capacity + 64;
+        void *p = realloc(offer->requested_drop_data, sizeof(offer->requested_drop_data[0]) * newcap);
         if (!p) {
             safe_close(pipefd[0]);
             removeWatch(&_glfw.wl.eventLoopData, watch_id);
@@ -2685,7 +2686,7 @@ request_drop_data(_GLFWWaylandDataOffer *offer, const char *mime) {
             return ENOMEM;
         }
         offer->requested_drop_data = p;
-        offer->dd_capacity += 64;
+        offer->dd_capacity = newcap;
     }
     offer->requested_drop_data[offer->dd_count].mime = mt;
     offer->requested_drop_data[offer->dd_count].watch_id = watch_id;
