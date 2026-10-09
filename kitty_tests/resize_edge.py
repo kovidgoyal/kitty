@@ -17,6 +17,7 @@ from . import layout as geometry_tests
 class TestResizeEntry(geometry_tests.BaseTest):
     def test_reenter_resize_reuses_existing_overlay(self):
         from kitty.boss import Boss
+
         resize = SimpleNamespace(is_resize_overlay=True)
         shell = SimpleNamespace(is_resize_overlay=False)
         # Another overlay can temporarily cover the resize UI.
@@ -33,6 +34,7 @@ class TestResizeEntry(geometry_tests.BaseTest):
 
     def test_resize_reentry_is_scoped_to_kitten_and_pane(self):
         from kitty.boss import Boss
+
         shell = SimpleNamespace(is_resize_overlay=False)
         resize = SimpleNamespace(is_resize_overlay=True)
         group = SimpleNamespace(windows=[shell])

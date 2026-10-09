@@ -63,8 +63,14 @@ Resize the window this command is run in, rather than the active window.
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         self.validate_fraction(opts.fraction)
-        return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self,
-                'fraction': opts.fraction, 'restore_entry_layout': opts.restore_entry_layout}
+        return {
+            'match': opts.match,
+            'increment': opts.increment,
+            'axis': opts.axis,
+            'self': opts.self,
+            'fraction': opts.fraction,
+            'restore_entry_layout': opts.restore_entry_layout,
+        }
 
     @staticmethod
     def validate_fraction(fraction: float) -> None:
