@@ -178,32 +178,44 @@ png_flush_memory(png_structp png_ptr) {
 static const char *
 create_png_from_data(const char *data, size_t width, size_t height, size_t stride, size_t *out_size, bool flip_vertically, int color_type) {
     *out_size = 0;
-    png_memory_write_state state = {.capacity = width * height * sizeof(uint32_t)};
-    state.buffer = malloc(state.capacity);
-    if (!state.buffer) return "Out of memory";
+    // on the heap as the write callback changes it after setjmp
+    png_memory_write_state *state = calloc(1, sizeof(*state));
+    if (!state) return "Out of memory";
+    state->capacity = width * height * sizeof(uint32_t);
+    state->buffer = malloc(state->capacity);
+    if (!state->buffer) {
+        free(state);
+        return "Out of memory";
+    }
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png_ptr) {
-        free(state.buffer);
+        free(state->buffer);
+        free(state);
         return "Failed to create PNG write struct";
     }
     png_infop info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
-        free(state.buffer);
+        free(state->buffer);
+        free(state);
         png_destroy_write_struct(&png_ptr, NULL);
         return "Failed to create PNG info struct";
     }
+    png_bytep *volatile row_pointers = NULL;
     if (setjmp(png_jmpbuf(png_ptr))) {
         png_destroy_write_struct(&png_ptr, &info_ptr);
-        free(state.buffer);
+        free(state->buffer);
+        free(state);
+        free(row_pointers);
         return ("Error during PNG creation\n");
     }
-    png_set_write_fn(png_ptr, &state, png_write_to_memory, png_flush_memory);
+    png_set_write_fn(png_ptr, state, png_write_to_memory, png_flush_memory);
     png_set_IHDR(png_ptr, info_ptr, width, height, 8, color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     // Allocate memory for row pointers
-    png_bytep *row_pointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
+    row_pointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
     if (!row_pointers) {
         png_destroy_write_struct(&png_ptr, &info_ptr);
-        free(state.buffer);
+        free(state->buffer);
+        free(state);
         return ("Failed to allocate memory for row pointers");
     }
     if (flip_vertically)
@@ -215,8 +227,10 @@ create_png_from_data(const char *data, size_t width, size_t height, size_t strid
     png_write_end(png_ptr, NULL);
     png_destroy_write_struct(&png_ptr, &info_ptr);
     free(row_pointers);
-    *out_size = state.size;
-    return (char *)state.buffer;
+    char *ans = (char *)state->buffer;
+    *out_size = state->size;
+    free(state);
+    return ans;
 }
 
 const char *
@@ -231,8 +245,20 @@ png_from_32bit_rgba_data(PyObject *self UNUSED, PyObject *args) {
     Py_ssize_t len;
     unsigned width, height;
     if (!PyArg_ParseTuple(args, "y#II|p", &data, &len, &width, &height, &flip_vertically)) return NULL;
+    if (!width || !height) {
+        PyErr_SetString(PyExc_ValueError, "width and height must be non-zero");
+        return NULL;
+    }
+    if (width > (size_t)PY_SSIZE_T_MAX / 4 / height || (size_t)width * height * 4 != (size_t)len) {
+        PyErr_SetString(PyExc_ValueError, "data length does not match 4 * width * height");
+        return NULL;
+    }
     size_t out_size;
-    const char *out = create_png_from_data(data, width, height, 4 * width, &out_size, flip_vertically, PNG_COLOR_TYPE_RGBA);
+    const char *out = create_png_from_data(data, width, height, (size_t)4 * width, &out_size, flip_vertically, PNG_COLOR_TYPE_RGBA);
+    if (!out_size) {
+        PyErr_SetString(PyExc_RuntimeError, out);
+        return NULL;
+    }
     PyObject *ans = PyBytes_FromStringAndSize(out, out_size);
     free((void *)out);
     return ans;
@@ -259,7 +285,7 @@ load_png_data(PyObject *self UNUSED, PyObject *args) {
     inflate_png_inner(&d, (const uint8_t *)data, sz, 10000);
     PyObject *ans = NULL;
     if (d.ok && !PyErr_Occurred()) {
-        ans = Py_BuildValue("y#ii", d.decompressed, (int)d.sz, d.width, d.height);
+        ans = Py_BuildValue("y#ii", d.decompressed, (Py_ssize_t)d.sz, d.width, d.height);
     } else {
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "Unknown error while reading PNG data");
     }

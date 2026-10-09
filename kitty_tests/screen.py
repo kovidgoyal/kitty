@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 import tempfile
 
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
@@ -293,6 +294,29 @@ class TestScreen(BaseTest):
         parse_bytes(s, b'\x1b[2147483647S')  # INT_MAX scroll up
         for i in range(s.lines):
             self.ae(str(s.line(i)).strip(), '')
+
+    def test_fractional_scroll(self):
+        s = self.create_screen(cols=5, lines=5, scrollback=10, cell_height=20, options={'pixel_scroll': True})
+        for i in range(15):
+            s.draw(str(i))
+            parse_bytes(s, b'\r\n')
+        self.assertGreaterEqual(s.historybuf.count, 4)
+        s.fractional_scroll(-0.75)
+        s.fractional_scroll(-0.75)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (1, 10))
+        s.fractional_scroll(0.5)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (1, 0))
+        s.scroll_to_absolute(0.0)
+        total = 0
+        for i in range(4):
+            s.fractional_scroll(-0.75)
+            total += 15
+            self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (total // 20, total % 20))
+        for i in range(4):
+            s.fractional_scroll(0.75)
+            total -= 15
+            self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (total // 20, total % 20))
+        self.ae(total, 0)
 
     def test_emoji_skin_tone_modifiers(self):
         s = self.create_screen()
@@ -2212,6 +2236,55 @@ class TestScreen(BaseTest):
         t('<', '0')
         t('=left_ptr', 'default')
         t('=fleur', 'move')
+
+        names = 'alias cell copy crosshair help move wait text pointer progress zoom-in zoom-out e-resize n-resize s-resize w-resize'.split()
+        for which_screen in (0, 1):
+            s.reset()
+            if which_screen:
+                s.toggle_alt_screen()
+            for n in names:
+                s.change_pointer_shape('>', n)
+            for n in reversed(names):
+                self.ae(send('?__current__'), n)
+                s.change_pointer_shape('<', '')
+            self.ae(send('?__current__'), '0')
+            for n in names + ['ne-resize']:
+                s.change_pointer_shape('>', n)
+            for n in reversed(names[1:] + ['ne-resize']):
+                self.ae(send('?__current__'), n)
+                s.change_pointer_shape('<', '')
+            self.ae(send('?__current__'), '0')
+            if which_screen:
+                s.toggle_alt_screen()
+
+    def test_decoration_sgr_round_trip(self):
+        for code, extra, expected in (
+            (1, '', '4'), (2, '', '4:2'), (3, '', '4:3'), (4, '', '4:4'), (5, '', '4:5'),
+            (4, ';3;31', '3;31;4:4'), (5, ';3;31', '3;31;4:5'),
+        ):
+            s = self.create_screen(cols=5, lines=2)
+            parse_bytes(s, f'\x1b[4:{code}{extra}mx'.encode())
+            ansi = s.line(0).as_ansi()
+            self.ae(ansi, f'\x1b[{expected}mx')
+            s2 = self.create_screen(cols=5, lines=2)
+            parse_bytes(s2, ansi.encode())
+            self.ae(s2.line(0).as_ansi(), ansi)
+
+    def test_dump_lines_continued(self):
+        s = self.create_screen(cols=5, lines=3, scrollback=5)
+        s.draw('abcdefgh')
+        s.carriage_return(), s.linefeed()
+        s.draw('xy')
+        for which_screen in (0, 1):
+            accum = []
+            s.dump_lines_with_attrs(accum.append, which_screen)
+            lines = re.sub(r'\x1b\[[\d;]*m', '', ''.join(accum)).splitlines()
+            rows = [x for x in lines if re.match(r'-?\d+: ', x)]
+            if which_screen == 0:
+                self.ae(len(rows), 3)
+                self.assertIn('continued', rows[1])
+            for i, row in enumerate(rows):
+                self.assertEqual('continued' in row, which_screen == 0 and i == 1, row)
 
     def test_color_profile(self):
         from kitty.fast_data_types import patch_color_profiles

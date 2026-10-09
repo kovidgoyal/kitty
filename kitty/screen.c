@@ -1719,10 +1719,13 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_
         } else {
             index_type x, num;
             if (region.top == region.bottom) {
-                linebuf_init_line(self->linebuf, region.top);
-                x = MIN(region.left, self->columns - 1);
-                num = MIN(self->columns - x, region.right - x + 1);
-                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
+                if (region.top < self->lines) {
+                    linebuf_init_line(self->linebuf, region.top);
+                    x = MIN(region.left, self->columns - 1);
+                    num = region.right >= x ? region.right - x + 1 : 0;
+                    num = MIN(self->columns - x, num);
+                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
+                }
             } else {
                 for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
                     if (y == region.top) {
@@ -2230,12 +2233,15 @@ change_pointer_shape(Screen *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ss", &b, &css_name)) return NULL;
     op = b[0];
     uint8_t *count, *stack;
+    size_t stack_sz;
     if (self->main_linebuf == self->linebuf) {
         count = &self->main_pointer_shape_stack.count;
         stack = self->main_pointer_shape_stack.stack;
+        stack_sz = arraysz(self->main_pointer_shape_stack.stack);
     } else {
         count = &self->alternate_pointer_shape_stack.count;
         stack = self->alternate_pointer_shape_stack.stack;
+        stack_sz = arraysz(self->alternate_pointer_shape_stack.stack);
     }
     if (op == '<') {
         if (*count) *count -= 1;
@@ -2328,7 +2334,7 @@ change_pointer_shape(Screen *self, PyObject *args) {
             if (!*count) *count += 1;
             stack[*count - 1] = s;
         } else if (op == '>') {
-            if ((*count + 1u) >= arraysz(self->main_pointer_shape_stack.stack)) { remove_i_from_array(stack, 0, *count); }
+            if (*count >= stack_sz) { remove_i_from_array(stack, 0, *count); }
             *count += 1;
             stack[*count - 1] = s;
         } else {
@@ -2884,7 +2890,7 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
         default: break;
     }
     if (n > 0) {
-        nuke_multicell_char_intersecting_with(self, s, n, self->cursor->y, self->cursor->y + 1, false);
+        nuke_multicell_char_intersecting_with(self, s, s + n, self->cursor->y, self->cursor->y + 1, false);
         screen_dirty_line_graphics(self, self->cursor->y, self->cursor->y, self->linebuf == self->main_linebuf);
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (private) {
@@ -2945,6 +2951,22 @@ screen_move_into_scrollback(Screen *self) {
     }
 }
 
+static void
+nuke_multiline_chars_split_by_erase(Screen *self, unsigned int how, index_type a, index_type b) {
+    // remove chars crossing the erase boundary
+    for (int top = 1; top >= 0; top--) {
+        if (top ? how == 3 : how != 1) continue;
+        CPUCell *cp;
+        GPUCell *gp;
+        index_type y = top ? a : b - 1;
+        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        for (index_type x = 0; x < self->columns; x++) {
+            if (!cp[x].is_multicell) continue;
+            if (top ? cp[x].y > 0 : cp[x].y + 1 < cp[x].scale) nuke_multicell_char_at(self, x, y, false);
+        }
+    }
+}
+
 void
 screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
@@ -2963,7 +2985,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         :param bool private: when ``True`` character attributes are left unchanged
     */
     unsigned int a, b;
-    bool nuke_multicell_chars = true;
     switch (how) {
         case 0:
             a = self->cursor->y + 1;
@@ -2975,7 +2996,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             break;
         case 22:
             screen_move_into_scrollback(self);
-            nuke_multicell_chars = false; // they have been moved into scrollback and we would get double deletions
             how = 2;
             /* fallthrough */
         case 2:
@@ -2987,11 +3007,11 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             grman_clear(self->grman, how == 3, self->cell_size);
             a = 0;
             b = self->lines;
-            nuke_multicell_chars = false;
             break;
         default: return;
     }
     if (b > a) {
+        if (how < 3) nuke_multiline_chars_split_by_erase(self, how, a, b);
         if (how != 3) screen_dirty_line_graphics(self, a, b, self->linebuf == self->main_linebuf);
         if (private) {
             for (unsigned int i = a; i < b; i++) {
@@ -3001,7 +3021,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
                 linebuf_clear_attrs_and_dirty(self->linebuf, i);
             }
         } else linebuf_clear_lines(self->linebuf, self->cursor, a, b);
-        if (nuke_multicell_chars) nuke_multicell_char_intersecting_with(self, 0, self->columns, a, b, false);
         self->is_dirty = true;
         if (selection_intersects_screen_lines(&self->selections, a, b)) clear_selection(&self->selections);
         if (selection_intersects_screen_lines(&self->url_ranges, a, b)) clear_selection(&self->url_ranges);
@@ -6012,10 +6031,8 @@ screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by) {
     }
 }
 
-bool
-screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
-    if (!pixel_scroll_enabled(self)) return false;
-    if (!self->historybuf->count) return false;
+static bool
+scroll_by_pixels(Screen *self, double delta_pixels) {
     const double cell_height = (double)self->cell_size.height;
     if (cell_height <= 0.0 || delta_pixels == 0.0) return false;
 
@@ -6037,6 +6054,13 @@ screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
     }
     if (changed) dirty_scroll(self);
     return changed;
+}
+
+bool
+screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
+    if (!pixel_scroll_enabled(self)) return false;
+    if (!self->historybuf->count) return false;
+    return scroll_by_pixels(self, delta_pixels);
 }
 
 bool
@@ -6064,42 +6088,12 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
 static bool
 screen_fractional_scroll(Screen *self, double amt) {
     if (amt == 0) return false;
-    index_type before_scrolled_by = self->scrolled_by;
-    double before_pixels = self->pixel_scroll_offset_y;
     double integral_part, fractional_part = modf(amt, &integral_part);
-    int lines = (int)integral_part;
-    int pixels = (int)(fractional_part * self->cell_size.height);
-    if (amt > 0) { // downwards
-        if (fractional_part != 0) pixels = MAX(1, pixels);
-        if (lines > (int)self->scrolled_by) {
-            self->scrolled_by = 0;
-            self->pixel_scroll_offset_y = 0;
-        } else {
-            self->scrolled_by -= lines;
-            if (pixels <= (int)self->pixel_scroll_offset_y) self->pixel_scroll_offset_y -= pixels;
-            else {
-                self->pixel_scroll_offset_y = 0;
-                if (self->scrolled_by) {
-                    self->scrolled_by--;
-                    self->pixel_scroll_offset_y = self->cell_size.height - pixels;
-                }
-            }
-        }
-    } else {
-        if (fractional_part != 0) pixels = MIN(-1, pixels);
-        self->pixel_scroll_offset_y -= pixels; // pixels is negative
-        if (self->pixel_scroll_offset_y >= self->cell_size.height) {
-            self->pixel_scroll_offset_y = 0;
-            self->scrolled_by++;
-        }
-        self->scrolled_by = MIN(self->scrolled_by - lines, self->historybuf->count);
-        if (self->scrolled_by >= self->historybuf->count) self->pixel_scroll_offset_y = 0;
-    }
-    if (self->scrolled_by != before_scrolled_by || self->pixel_scroll_offset_y != before_pixels) {
-        dirty_scroll(self);
-        return true;
-    }
-    return false;
+    double pixels = trunc(fractional_part * self->cell_size.height);
+    if (fractional_part > 0) pixels = MAX(1, pixels);
+    else if (fractional_part < 0) pixels = MIN(-1, pixels);
+    // positive amt scrolls towards the bottom
+    return scroll_by_pixels(self, -(integral_part * self->cell_size.height + pixels));
 }
 
 static PyObject *
@@ -6967,7 +6961,7 @@ scroll_prompt_to_bottom(Screen *self, PyObject *args UNUSED) {
 static void
 dump_line_with_attrs(Screen *self, int y, PyObject *accum) {
     Line *line = range_line_(self, y);
-    RAII_PyObject(u, PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y++));
+    RAII_PyObject(u, PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y));
     if (!u) return;
     RAII_PyObject(r1, PyObject_CallOneArg(accum, u));
     if (!r1) return;
@@ -7258,6 +7252,7 @@ static PyMemberDef members[] = {
     {"main_linebuf", T_OBJECT_EX, offsetof(Screen, main_linebuf), READONLY, "main_linebuf"},
     {"historybuf", T_OBJECT_EX, offsetof(Screen, historybuf), READONLY, "historybuf"},
     {"scrolled_by", T_UINT, offsetof(Screen, scrolled_by), READONLY, "scrolled_by"},
+    {"pixel_scroll_offset_y", T_UINT, offsetof(Screen, pixel_scroll_offset_y), READONLY, "pixel_scroll_offset_y"},
     {"lines", T_UINT, offsetof(Screen, lines), READONLY, "lines"},
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},

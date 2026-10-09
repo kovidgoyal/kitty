@@ -463,6 +463,24 @@ def test_multicell(self: TestMulticell) -> None:
     s.clear_scrollback()
     assert_line('\0\0\0\0\0\0')
 
+    # Erase in line with cursor in the right half
+    s.reset()
+    s.cursor.x = 4
+    multicell(s, 'b', width=2)
+    s.cursor.x = 5
+    s.erase_in_line(0)
+    for x in range(s.columns):
+        self.assertIsNone(s.cpu_cells(0, x)['mcd'])
+    for cx in (3, 4, 5):
+        s.reset()
+        s.cursor.x = cx - 1
+        multicell(s, 'b', scale=2)
+        s.cursor.x = cx
+        s.erase_in_line(0)
+        for y in (0, 1):
+            for x in range(s.columns):
+                self.assertIsNone(s.cpu_cells(y, x)['mcd'], f'{cx} {y} {x}')
+
     # Erase in display
     for x in (1, 2):
         s.reset(), s.draw('a'), multicell(s, 'b', scale=2), s.draw('c')
@@ -482,6 +500,42 @@ def test_multicell(self: TestMulticell) -> None:
     assert_line('\0__\0\0\0', -1)
     self.ae(s.historybuf.line(1).as_ansi(), f'a\x1b]{TEXT_SIZE_CODE};s=2;b\x07c')
     self.ae(s.historybuf.line(0).as_ansi(), ' ')
+
+    # Erase in display splitting a multiline char
+    def no_mcd(*rows):
+        for y in rows:
+            for x in range(s.columns):
+                self.assertIsNone(s.cpu_cells(y, x)['mcd'], f'{y} {x}')
+
+    for private in (False, True):
+        s.reset()
+        s.cursor.x, s.cursor.y = 2, 1
+        multicell(s, 'a', scale=2)
+        s.cursor.x, s.cursor.y = 4, 1
+        s.erase_in_display(0, private)
+        no_mcd(0, 1, 2)
+        s.reset()
+        s.cursor.x, s.cursor.y = 2, 1
+        multicell(s, 'a', scale=2)
+        s.cursor.x, s.cursor.y = 0, 2
+        s.erase_in_display(1, private)
+        no_mcd(0, 1, 2)
+
+    # char split between history and screen
+    for how, y in ((1, 2), (2, 0)):
+        for private in (False, True):
+            s.reset()
+            s.cursor.x, s.cursor.y = 2, s.lines - 2
+            multicell(s, 'a', scale=2)
+            s.cursor.y = s.lines - 1
+            for i in range(s.lines - 1):
+                s.index()
+            self.ae(s.historybuf.count, s.lines - 1)
+            self.assertIsNotNone(s.cpu_cells(0, 2)['mcd'])
+            s.cursor.x, s.cursor.y = 0, y
+            s.erase_in_display(how, private)
+            no_mcd(0)
+            self.assertNotIn(str(TEXT_SIZE_CODE), s.historybuf.line(0).as_ansi())
 
     # Insert lines
     s.reset()

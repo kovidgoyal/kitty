@@ -1227,3 +1227,16 @@ class TestParser(BaseTest):
             line = s.line(y)
             for x in range(s.columns):
                 self.ae(line.cursor_from(x).fg, (10 << 8 | 1) if x < 1 or x > 2 else (4 << 8) | 1)
+        # out of range or inverted single line regions must not touch anything
+        before = [[s.line(y).cursor_from(x).bold for x in range(s.columns)] for y in range(s.lines)]
+        for seq in ('\033[100;1;100;5;22$r', '\033[99999999;1;99999999;5;22$r', '\033[10;20;10;2;22$r', '\033[3;4;3;2;22$r'):
+            parse_bytes(s, seq.encode())
+            after = [[s.line(y).cursor_from(x).bold for x in range(s.columns)] for y in range(s.lines)]
+            self.ae(before, after, seq)
+
+    def test_cht_large_count(self):
+        s = self.create_screen(cols=80)
+        parse_bytes(s, b'\033[3I')
+        self.ae(s.cursor.x, 24)
+        parse_bytes(s, b'\033[2147483647I')
+        self.ae(s.cursor.x, s.columns - 1)

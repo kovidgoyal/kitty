@@ -959,14 +959,14 @@ create_single_color_buffer(int width, int height, pixel color) {
         return NULL;
     }
     uint32_t *shm_data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (color.value)
-        for (size_t i = 0; i < size / 4; i++) shm_data[i] = color.value;
-    else memset(shm_data, 0, size);
-    if (!shm_data) {
+    if (shm_data == MAP_FAILED) {
         close(fd);
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to mmap anonymous file");
         return NULL;
     }
+    if (color.value)
+        for (size_t i = 0; i < size / 4; i++) shm_data[i] = color.value;
+    else memset(shm_data, 0, size);
     struct wl_shm_pool *pool = wl_shm_create_pool(_glfw.wl.shm, fd, size);
     if (!pool) {
         close(fd);
@@ -2677,7 +2677,8 @@ request_drop_data(_GLFWWaylandDataOffer *offer, const char *mime) {
         return ENOMEM;
     }
     if (!offer->requested_drop_data || offer->dd_count + 1 >= offer->dd_capacity) {
-        void *p = realloc(offer->requested_drop_data, sizeof(offer->requested_drop_data[0]) * (offer->dd_capacity + 8));
+        const size_t newcap = offer->dd_capacity + 64;
+        void *p = realloc(offer->requested_drop_data, sizeof(offer->requested_drop_data[0]) * newcap);
         if (!p) {
             safe_close(pipefd[0]);
             removeWatch(&_glfw.wl.eventLoopData, watch_id);
@@ -2685,7 +2686,7 @@ request_drop_data(_GLFWWaylandDataOffer *offer, const char *mime) {
             return ENOMEM;
         }
         offer->requested_drop_data = p;
-        offer->dd_capacity += 64;
+        offer->dd_capacity = newcap;
     }
     offer->requested_drop_data[offer->dd_count].mime = mt;
     offer->requested_drop_data[offer->dd_count].watch_id = watch_id;
@@ -3384,11 +3385,11 @@ send_drag_data(_GLFWwindow *window, size_t i) {
                 dr.pending_data = NULL;
                 dr.sz = 0;
                 dr.offset = 0;
-                finish_drag_write(i);
+                if (has_preset_data) finish_drag_write(i);
             }
         }
     } else if (has_preset_data) {
-        do { ret = write(dr.fd, _glfw.drag.items[item_idx].optional_data, _glfw.drag.items[item_idx].data_size); } while (ret < 0 && errno == EINTR);
+        ret = write_as_much_as_possible(dr.fd, _glfw.drag.items[item_idx].optional_data, _glfw.drag.items[item_idx].data_size);
         if (ret < 0) {
             on_fail;
         } else {
@@ -3403,6 +3404,7 @@ send_drag_data(_GLFWwindow *window, size_t i) {
                     dr.pending_data = pending;
                     dr.sz = _glfw.drag.items[item_idx].data_size - ret;
                     dr.offset = 0;
+                    memcpy(pending, _glfw.drag.items[item_idx].optional_data + ret, dr.sz);
                 }
             }
         }
@@ -3432,11 +3434,7 @@ send_drag_data(_GLFWwindow *window, size_t i) {
                     }
                 }
                 _glfwInputDragSourceRequest(window, &ev);
-                if (ret < 0) {
-                    on_fail;
-                } else if ((size_t)ret >= ev.data_sz) {
-                    finish_drag_write(i);
-                }
+                if (ret < 0) { on_fail; }
             } else finish_drag_write(i);
         }
     }
@@ -3488,7 +3486,7 @@ _glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {
 int
 _glfwPlatformDragDataReady(const char *mime_type, const char *data UNUSED, size_t sz UNUSED, int type UNUSED) {
     for (size_t i = 0; i < _glfw.wl.drag.count; i++) {
-        if (strcmp(dr.mime_type, mime_type) == 0) {
+        if (dr.mime_type && dr.fd > -1 && strcmp(dr.mime_type, mime_type) == 0) {
             if (!dr.watch_id) dr.watch_id = add_drag_watch(dr.fd);
         }
     }
@@ -3504,6 +3502,8 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
     cancel_drag(GLFW_DRAG_CANCELLED); \
     return
     if (!window) { abort(); }
+    int flags = fcntl(fd, F_GETFL);
+    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) { abort(); }
     mime_type = _glfw_strdup(mime_type);
     if (!mime_type) { abort(); }
     if (!_glfw.wl.drag.data_requests || _glfw.wl.drag.capacity <= _glfw.wl.drag.count + 1) {

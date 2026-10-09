@@ -685,11 +685,11 @@ class EdgeWidths:
         if self.left is not None:
             yield f'--spacing={prefix}-left={self.left}'
         if self.right is not None:
-            yield f'--spacing={prefix}-left={self.right}'
+            yield f'--spacing={prefix}-right={self.right}'
         if self.top is not None:
-            yield f'--spacing={prefix}-left={self.top}'
+            yield f'--spacing={prefix}-top={self.top}'
         if self.bottom is not None:
-            yield f'--spacing={prefix}-left={self.bottom}'
+            yield f'--spacing={prefix}-bottom={self.bottom}'
 
 
 class GlobalWatchers:
@@ -699,16 +699,17 @@ class GlobalWatchers:
         self.extra = ''
 
     def __call__(self) -> Watchers:
-        spec = get_options().watcher
-        if spec == self.options_spec:
+        raw_spec = get_options().watcher
+        if raw_spec == self.options_spec:
             return self.ans
         from .launch import load_watch_modules
 
+        spec = raw_spec.copy()
         if self.extra:
-            spec = spec.copy()
             spec[self.extra] = self.extra
-        self.ans = load_watch_modules(spec.keys()) or self.ans
-        self.options_spec = spec.copy()
+        ans = load_watch_modules(spec.keys())
+        self.ans = Watchers() if ans is None else ans
+        self.options_spec = raw_spec.copy()
         return self.ans
 
     def set_extra(self, extra: str) -> None:

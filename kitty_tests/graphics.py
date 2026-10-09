@@ -392,6 +392,76 @@ class TestGraphics(BaseTest):
         # The untouched entry must be unaffected throughout
         self.assertEqual(dc.get(b'k1'), b'b' * 200)
 
+    def test_disk_cache_entries_changed_during_defrag(self):
+        # Stale copies become holes
+        s = self.create_screen()
+        dc = s.grman.disk_cache
+        dc.small_hole_threshold = 0
+        dc.defrag_factor = 1000
+        data = {}
+        for i in range(20):
+            key = f'k{i}'.encode()
+            data[key] = bytes([65 + i]) * 100
+            dc.add(key, data[key])
+        self.assertTrue(dc.wait_for_write())
+        for i in range(12):
+            dc.remove(f'k{i}'.encode())
+            del data[f'k{i}'.encode()]
+        self.assertEqual(dc.end_of_data_offset(), 2000)
+        dc.pause_writes()
+        dc.defrag_factor = 2
+        data[b'trigger'] = b'T' * 10
+        dc.add(b'trigger', data[b'trigger'])
+        self.assertTrue(dc.wait_until_writes_paused())
+        dc.defrag_factor = 1000
+        for i in range(12, 16):
+            dc.remove(f'k{i}'.encode())
+            del data[f'k{i}'.encode()]
+        data[b'k16'] = b'r' * 60
+        dc.add(b'k16', data[b'k16'])
+        data[b'k17'] = b'm' * 70
+        dc.add(b'k17', data[b'k17'], True)
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        for k, v in data.items():
+            self.assertEqual(dc.get(k), v)
+        holes = sorted(dc.holes())
+        for (p1, s1), (p2, s2) in zip(holes, holes[1:]):
+            self.assertLessEqual(p1 + s1, p2)
+        on_disk = sum(len(v) for k, v in data.items() if k != b'k17')
+        self.assertEqual(sum(x[1] for x in holes) + on_disk, dc.end_of_data_offset())
+        # Memory only entries own no disk space
+        dc.remove(b'k17')
+        del data[b'k17']
+        self.assertEqual(sorted(dc.holes()), holes)
+        for k, v in data.items():
+            self.assertEqual(dc.get(k), v)
+
+    def test_disk_cache_encryption_while_being_written(self):
+        s = self.create_screen()
+        dc = s.grman.disk_cache
+        dc.set_needs_encryption(True)
+        data = bytes(range(256)) * 1000 + b'xyz'
+
+        # Reads while writing return plaintext
+        dc.pause_writes()
+        dc.add(b'k1', data)
+        self.assertTrue(dc.wait_until_writes_paused())
+        self.assertEqual(dc.get(b'k1'), data)
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        self.assertEqual(dc.num_cached_in_ram(), 0)
+        self.assertEqual(dc.get(b'k1'), data)
+
+        dc.pause_writes()
+        dc.add(b'k2', data)
+        self.assertTrue(dc.wait_until_writes_paused())
+        dc.add(b'k2', data[::-1])
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        self.assertEqual(dc.get(b'k2'), data[::-1])
+        self.assertEqual(dc.get(b'k1'), data)
+
     def test_suppressing_gr_command_responses(self):
         s, g, pl, sl = load_helpers(self)
         self.ae(pl('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
@@ -1539,6 +1609,89 @@ class TestGraphics(BaseTest):
         self.ae(s.grman.image_count, 2)
         delete('I', i=iid + 1)
         self.ae(s.grman.image_count, 1)
+
+    def test_animation_frame_delete_dependents(self):
+        s = self.create_screen()
+        g = s.grman
+        li = make_send_command(s)
+
+        def t(**kw):
+            self.assertEqual(li(**kw).code, 'OK')
+
+        def load_frames():
+            t(a='t')
+            for i in '234':
+                t(payload=i * 36)
+
+        # Preserve the successor display
+        load_frames()
+        self.assertIsNone(li(a='a', i=1, c=3))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['displayed_frame_id'], img['extra_frames'][1]['id'])
+        successor = img['extra_frames'][2]['id']
+        self.assertIsNone(li(a='d', d='f', i=1, r=3))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 2)
+        self.assertEqual(img['displayed_frame_id'], successor)
+        self.assertEqual([f['data'] for f in img['extra_frames']], [b'2' * 36, b'4' * 36])
+        s.reset()
+
+        # Preserve the root successor display
+        load_frames()
+        successor = g.image_for_client_id(1)['extra_frames'][0]['id']
+        self.assertIsNone(li(a='a', i=1, c=1))
+        self.assertIsNone(li(a='d', d='f', i=1, r=1))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 0)
+        self.assertEqual(img['displayed_frame_id'], successor)
+        s.reset()
+
+        # Preserve the last frame display
+        load_frames()
+        self.assertIsNone(li(a='a', i=1, c=4))
+        self.assertIsNone(li(a='d', d='f', i=1, r=4))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 2)
+        self.assertEqual(img['displayed_frame_id'], img['extra_frames'][1]['id'])
+        s.reset()
+
+        # Preserve dependent pixels
+        t(a='t')
+        t(payload='2' * 36)
+        t(payload='4' * 12, c=2, s=2, v=2)
+        expected = b'444444222222444444222222222222222222'
+        self.assertEqual(g.image_for_client_id(1)['extra_frames'][1]['data'], expected)
+        self.assertIsNone(li(a='d', d='f', i=1, r=2))
+        img = g.image_for_client_id(1)
+        self.assertEqual(len(img['extra_frames']), 1)
+        self.assertEqual(img['extra_frames'][0]['data'], expected)
+        s.reset()
+
+        # Preserve root dependents
+        t(a='t')
+        t(payload='4' * 12, c=1, s=2, v=2)
+        expected = g.image_for_client_id(1)['extra_frames'][0]['data']
+        self.assertIsNone(li(a='d', d='f', i=1, r=1))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], expected)
+        self.assertFalse(img['extra_frames'])
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
+
+        # Respect the cache quota
+        g.storage_limit = 36 * 2
+        t(a='t')
+        for i in range(10):
+            t(payload='4' * 12, c=1, s=2, v=2)
+        before = g.image_for_client_id(1)
+        size = g.disk_cache.total_size
+        self.assertIsNone(li(a='d', d='f', i=1, r=1))
+        after = g.image_for_client_id(1)
+        self.assertEqual(g.disk_cache.total_size, size)
+        self.assertEqual(after['data'], before['data'])
+        self.assertEqual([f['data'] for f in after['extra_frames']], [f['data'] for f in before['extra_frames']])
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
 
     def test_animation_frame_loading(self):
         s = self.create_screen()

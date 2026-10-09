@@ -327,7 +327,10 @@ do_increment(FontGroup *fg) {
     if (fg->sprite_tracker.x >= fg->sprite_tracker.xnum) {
         fg->sprite_tracker.x = 0;
         fg->sprite_tracker.y++;
-        fg->sprite_tracker.ynum = MIN(MAX(fg->sprite_tracker.ynum, fg->sprite_tracker.y + 1), fg->sprite_tracker.max_y);
+        if (fg->sprite_tracker.y + 1 > fg->sprite_tracker.ynum) {
+            // texture reallocation copies all sprites
+            fg->sprite_tracker.ynum = MIN(fg->sprite_tracker.max_y, MAX(fg->sprite_tracker.y + 1, fg->sprite_tracker.ynum * 2));
+        }
         if (fg->sprite_tracker.y >= fg->sprite_tracker.max_y) {
             fg->sprite_tracker.y = 0;
             fg->sprite_tracker.z++;
@@ -371,7 +374,7 @@ sprite_tracker_current_layout(FONTS_DATA_HANDLE data, unsigned int *x, unsigned 
 static void
 sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_width, unsigned int cell_height) {
     sprite_tracker->xnum = MIN(MAX(1u, max_texture_size / cell_width), (size_t)UINT16_MAX);
-    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / cell_height), (size_t)UINT16_MAX);
+    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / (cell_height + 1)), (size_t)UINT16_MAX);
     sprite_tracker->ynum = 1;
     sprite_tracker->x = 0;
     sprite_tracker->y = 0;
@@ -2532,6 +2535,15 @@ test_sprite_position_increment(PyObject UNUSED *self, PyObject *args UNUSED) {
 }
 
 static PyObject *
+test_sprite_tracker_ynum(PyObject UNUSED *self, PyObject *args UNUSED) {
+    if (!num_font_groups) {
+        PyErr_SetString(PyExc_RuntimeError, "must create font group first");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong(font_groups->sprite_tracker.ynum);
+}
+
+static PyObject *
 set_send_sprite_to_gpu(PyObject UNUSED *self, PyObject *func) {
     Py_CLEAR(python_send_to_gpu_impl);
     if (func != Py_None) {
@@ -2578,8 +2590,8 @@ render_decoration(PyObject *self UNUSED, PyObject *args) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)fcm.cell_width * fcm.cell_height);
     if (!ans) return NULL;
     memset(PyBytes_AS_STRING(ans), 0, PyBytes_GET_SIZE(ans));
-#define u(x) \
-    if (strcmp(which, #x) == 0) add_##x##_underline((uint8_t *)PyBytes_AS_STRING(ans), fcm)
+#define u(x) else if (strcmp(which, #x) == 0) add_##x##_underline((uint8_t *)PyBytes_AS_STRING(ans), fcm)
+    if (0) {}
     u(curl);
     u(dashed);
     u(dotted);
@@ -2735,7 +2747,7 @@ parse_font_feature(const char *spec) {
     ParsedFontFeature *self = (ParsedFontFeature *)ParsedFontFeature_Type.tp_alloc(&ParsedFontFeature_Type, 0);
     if (self != NULL) {
         if (!hb_feature_from_string(spec, -1, &self->feature)) {
-            PyErr_Format(PyExc_ValueError, "%s is not a valid font feature", self);
+            PyErr_Format(PyExc_ValueError, "%s is not a valid font feature", spec);
             Py_CLEAR(self);
         }
     }
@@ -2765,7 +2777,7 @@ parsed_font_feature_repr(PyObject *self_) {
 
 static PyObject *
 parsed_font_feature_cmp(PyObject *self, PyObject *other, int op) {
-    if (op != Py_EQ && op != Py_NE) return Py_NotImplemented;
+    if (op != Py_EQ && op != Py_NE) Py_RETURN_NOTIMPLEMENTED;
     if (!PyObject_TypeCheck(other, &ParsedFontFeature_Type)) {
         if (op == Py_EQ) Py_RETURN_FALSE;
         Py_RETURN_TRUE;
@@ -2854,6 +2866,7 @@ static PyMethodDef module_methods[] = {
     METHODB(create_test_font_group, METH_VARARGS),
     METHODB(sprite_map_set_layout, METH_VARARGS),
     METHODB(test_sprite_position_increment, METH_NOARGS),
+    METHODB(test_sprite_tracker_ynum, METH_NOARGS),
     METHODB(concat_cells, METH_VARARGS),
     METHODB(render_decoration, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),

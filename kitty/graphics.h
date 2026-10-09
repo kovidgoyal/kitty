@@ -114,7 +114,7 @@ typedef struct {
     bool root_frame_data_loaded;
     id_type ref_id_counter;
     Frame *extra_frames, root_frame;
-    uint32_t current_frame_index, frame_id_counter;
+    uint32_t current_frame_index, frame_id_counter, displayed_frame_id;
     uint64_t animation_duration;
     size_t extra_framecnt;
     monotonic_t atime;
