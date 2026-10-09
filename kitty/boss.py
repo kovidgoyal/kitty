@@ -2590,6 +2590,15 @@ class Boss:
         else:
             w = window
             tab = w.tabref() if w else None
+        if w is not None and tab is not None and resolved_kitten(kitten) == 'resize_window':
+            group = tab.windows.group_for_window(w)
+            if group is not None:
+                for overlay in reversed(group.windows):
+                    if overlay.is_resize_overlay:
+                        # Re-enter the same session rather than stack resize UIs
+                        # and replace its original-size snapshot.
+                        tab.set_active_window(overlay)
+                        return overlay
         args = list(args)
         if w is not None and '@selection' in args and (sel := self.data_for_at(which='@selection', window=w)):
             args = [sel if xa == '@selection' else xa for xa in args]
@@ -2677,6 +2686,10 @@ class Boss:
                 # The resize kitten sends commands over the overlay's terminal.
                 # Also allow it when launched directly with configurable options.
                 overlay_window.allow_remote_control = True
+                overlay_window.is_resize_overlay = True
+                from .rc.resize_window_edge import resize_window_edge
+
+                resize_window_edge.start_session(overlay_window, tab.current_layout)
             if action_on_removal is not None:
 
                 def callback_wrapper(*a: Any) -> None:

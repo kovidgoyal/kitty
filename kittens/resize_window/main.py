@@ -30,7 +30,10 @@ type=choices
 choices=window,edge
 default=window
 Choose the initial resize strategy. Window changes pane width or height;
-edge selects a specific pane edge when an edge implementation is available.
+edge selects an internal pane edge with H/J/K/L or arrow keys, then moves its
+divider along that axis. A sole available edge is selected automatically.
+In the edge strategy, R restores the divider proportions saved when resize
+mode opened. Window retains its usual reset behavior.
 When omitted, uses the strategy saved from the resize page. Inside the page,
 1 and 2 choose a strategy, M switches its Alt/Shift modifier, and F changes
 its fraction. Each strategy's settings are saved separately.

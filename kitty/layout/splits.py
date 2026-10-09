@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Collection, Generator, Iterator, Sequence
+from copy import deepcopy
 from math import ceil, isfinite
 from typing import Any, Optional, TypedDict, Union
 
@@ -880,6 +881,38 @@ class Splits(Layout):
         steps = fractional_resize_steps(remaining, fraction)
         pair.bias = max(low, min(current + steps * delta, high))
         return True
+
+    def pair_for_window_edge(self, all_windows: WindowList, window_id: int, edge: str) -> Pair | None:
+        if edge not in ('left', 'right', 'top', 'bottom') or window_id not in all_windows.id_map:
+            return None
+        group = all_windows.group_for_window(window_id)
+        if group is None:
+            return None
+        path = self.pairs_root.find_window_in_tree(group.id)
+        horizontal = edge in ('left', 'right')
+        trailing = edge in ('right', 'bottom')
+        for pair, in_one in reversed(path or ()):
+            if not pair.is_redundant and pair.horizontal == horizontal and in_one == trailing:
+                return pair
+        # Outside edges have no divider. Never fall back to another edge.
+        return None
+
+    def modify_size_of_window_edge(self, all_windows: WindowList, window_id: int, edge: str, increment: int, fraction: float = 0) -> bool:
+        self._set_dimensions(all_windows)
+        pair = self.pair_for_window_edge(all_windows, window_id, edge)
+        if pair is None or not increment or not isfinite(fraction) or not 0 <= fraction <= 1:
+            return False
+        cell = lgd.cell_width if pair.horizontal else lgd.cell_height
+        pixels = increment * cell
+        if not pixels:
+            return False
+        if fraction:
+            size = pair.width if pair.horizontal else pair.height
+            sign = 1 if pixels > 0 else -1
+            room = abs(deepcopy(pair).move_divider(sign * size))
+            remaining = ceil(room / abs(pixels))
+            pixels *= fractional_resize_steps(remaining, fraction)
+        return bool(pair.move_divider(pixels))
 
     def remove_all_biases(self) -> bool:
         for pair in self.pairs_root.self_and_descendants():

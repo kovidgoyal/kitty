@@ -360,17 +360,58 @@ window wider/narrower, but not taller/shorter. Note that what you are resizing
 is actually not a window, but a row/column in the layout, all windows in that
 row/column will be resized.
 
-Hold :kbd:`Alt` with :kbd:`W`, :kbd:`N`, :kbd:`T`, or :kbd:`S` to take a fraction
+By default, hold :kbd:`Alt` with :kbd:`W`, :kbd:`N`, :kbd:`T`, or :kbd:`S` to take a fraction
 of the remaining resize steps in that direction. The default is one third,
 rounded up: five remaining steps become two, and one remaining step becomes
 one. Resizing stops at the layout's size limit. Ordinary letters (including
-uppercase letters) keep their normal step size, and :kbd:`Ctrl` doubles it.
+uppercase letters) keep their normal step size unless Shift is selected as
+the fractional modifier, and :kbd:`Ctrl` doubles it.
 To choose a different fraction, pass :code:`--fraction`
 to the resize kitten, for example::
 
    map kitty_mod+r kitten resize_window --fraction=1/4
    # macOS
    map cmd+r kitten resize_window --fraction=1/3
+
+Inside the resize page, :kbd:`1` selects the Window strategy and :kbd:`2`
+selects the Edge strategy. :kbd:`M` switches the fractional modifier between
+Alt and Shift, and :kbd:`F` opens fraction presets or a custom ratio/decimal.
+Each strategy's modifier and fraction are saved independently, together with
+the selected strategy. Explicit :code:`--strategy` and :code:`--fraction`
+options override saved values for that invocation.
+
+.. figure:: screenshots/resize-fraction-settings.png
+    :alt: Fraction presets and a custom fraction option for the Edge resize strategy
+    :align: center
+    :width: 100%
+
+    F opens fraction settings for the active strategy; C accepts a custom
+    ratio or decimal. The other strategy's saved settings are kept separately.
+
+To move a specific divider in the *Splits* layout, select the edge strategy::
+
+   map kitty_mod+r kitten resize_window --strategy=edge --fraction=1/3
+   # macOS, with a different fractional step
+   map cmd+r kitten resize_window --strategy=edge --fraction=1/4
+
+First press :kbd:`H`, :kbd:`J`, :kbd:`K`, or :kbd:`L` to select the left,
+bottom, top, or right edge of the current pane. Arrow keys also work.
+This first key only selects the edge. Outside edges have no internal divider
+and cannot be selected. If there is exactly one internal edge, it is selected
+automatically on entering this strategy. Then use :kbd:`H`/:kbd:`L` for a left or right edge,
+or :kbd:`J`/:kbd:`K` for a top or bottom edge, to move the selected divider
+in the direction of the key. Neighboring parallel dividers stay in place;
+perpendicular subtrees resize as units.
+
+The chosen Alt/Shift modifier takes the configured fraction of the remaining
+steps; :kbd:`Ctrl` doubles the normal step. The other modifier retains the
+normal step size. :kbd:`Esc` returns to edge selection; press it again to exit.
+:kbd:`Enter` or :kbd:`Q` exits immediately.
+
+In the edge strategy, :kbd:`R` restores the divider proportions saved when
+resize mode opened, rather than equalizing the layout. If the split structure
+has changed since then, restoration is refused. The initial default
+:code:`--strategy=window` retains the usual width/height controls and reset.
 
 You can also define shortcuts in :file:`kitty.conf` to make the active window
 wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`

@@ -27,3 +27,22 @@ func resize_command_escape_code(increment int, axis string, fraction float64) (s
 	}
 	return "\x1bP@kitty-cmd" + string(data) + "\x1b\\", nil
 }
+
+func edge_command_escape_code(operation, edge, divider string, increment int, fraction float64) (string, error) {
+	rc := utils.RemoteControlCmd{
+		Cmd: "resize-window-edge", Version: at.ProtocolVersion,
+		Payload: struct {
+			Operation string  `json:"operation"`
+			Edge      string  `json:"edge"`
+			Divider   string  `json:"divider,omitempty"`
+			Increment int     `json:"increment"`
+			Fraction  float64 `json:"fraction,omitempty"`
+			Self      bool    `json:"self"`
+		}{operation, edge, divider, increment, fraction, true},
+	}
+	data, err := json.Marshal(rc)
+	if err != nil {
+		return "", err
+	}
+	return "\x1bP@kitty-cmd" + string(data) + "\x1b\\", nil
+}

@@ -9,6 +9,35 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Choose an edge when resizing [unreleased]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The resize page now offers two strategies: Window retains the usual
+width/height controls, while Edge lets you choose an internal pane edge in
+the Splits layout and move its divider in a physical direction.
+
+.. figure:: screenshots/resize-edge-select.png
+    :alt: Resize mode showing a middle pane's selectable left and right edges
+    :align: center
+    :width: 100%
+
+    Press H to select the middle pane's left edge. Gray edges are outside
+    the layout and cannot be selected.
+
+.. figure:: screenshots/resize-edge-move.png
+    :alt: The selected left divider moved left while the right divider stays in place
+    :align: center
+    :width: 100%
+
+    After selecting H, Alt+H moves the left divider by one third of the
+    remaining resize steps. The right divider stays in place.
+
+Switch strategies with 1/2 inside the page. Each strategy remembers its own
+Alt/Shift modifier and fraction, configurable with M and F. A sole internal
+edge is selected automatically. In the Edge strategy, R restores the
+proportions saved when resize mode opened. See :ref:`window_resizing` for
+the controls and configuration options.
+
 Custom shaders [0.49]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -201,6 +230,12 @@ Detailed list of changes
 
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Window resizing: Add an :code:`--strategy=edge` mode to select and move a
+  specific internal divider in the Splits layout. A sole internal edge is
+  selected automatically; R restores the sizes saved when resize mode opened.
+  Switch strategies and configure their Alt/Shift modifier and fraction
+  independently from the resize page.
 
 - Window resizing: Hold Alt with a resize letter to take a fraction of the
   remaining resize steps. Configure the fraction with the resize-window

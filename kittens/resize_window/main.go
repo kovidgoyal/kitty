@@ -32,6 +32,11 @@ type handler struct {
 	page           string
 	fraction_input string
 	status         string
+	saved_timer    loop.IdType
+	edge_state     edge_state
+	edge_pending   bool
+	edge_ready     bool
+	edge_queue     []edge_input
 }
 
 func parse_fraction(value string) (float64, error) {
@@ -134,12 +139,12 @@ func (h *handler) on_rc_response(raw []byte) error {
 		h.lp.Quit(1)
 		return nil
 	}
-	if json_is_truthy(response.Data) {
-		if hooks := h.active_hooks(); hooks != nil && hooks.OnResponse != nil {
-			if handled, err := hooks.OnResponse(h, response); err != nil || handled {
-				return err
-			}
+	if edge_strategy != nil && edge_strategy.OnResponse != nil {
+		if handled, err := edge_strategy.OnResponse(h, response); err != nil || handled {
+			return err
 		}
+	}
+	if json_is_truthy(response.Data) {
 		h.lp.Beep()
 	}
 	return nil
@@ -182,6 +187,10 @@ func (h *handler) window_on_key(e *loop.KeyEvent) error {
 }
 
 func (h *handler) draw_screen() {
+	if h.page == "" && h.active_strategy() == "edge" && edge_strategy != nil {
+		h.draw_edge_screen()
+		return
+	}
 	lp, ctx := h.lp, h.ctx
 	lp.StartAtomicUpdate()
 	defer lp.EndAtomicUpdate()
@@ -246,15 +255,7 @@ func run_loop(opts *Options, seen map[string]bool) (rc int, err error) {
 		return 1, err
 	}
 	path := filepath.Join(utils.ConfigDir(), "resize-window.json")
-	settings, load_err := load_settings(path)
-	if seen["Strategy"] {
-		settings.Strategy = opts.Strategy
-	}
-	if seen["Fraction"] {
-		p := settings.preferences(settings.Strategy)
-		p.Fraction = opts.Fraction
-		settings.Strategies[settings.Strategy] = p
-	}
+	settings, load_err := settings_for_invocation(path, opts, seen)
 	h := &handler{lp: lp, opts: opts, settings: settings, settings_path: path, ctx: markup.New(true)}
 	if load_err != nil {
 		h.status = "Could not load settings: " + load_err.Error()

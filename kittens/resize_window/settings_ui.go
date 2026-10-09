@@ -5,11 +5,43 @@ package resize_window
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var fraction_presets = []string{"1/2", "1/3", "1/4", "1/5", "1/10", "1"}
+
+func (h *handler) clear_saved_status() bool {
+	if h.status != "Saved" {
+		return false
+	}
+	h.status = ""
+	if h.saved_timer != 0 {
+		h.lp.RemoveTimer(h.saved_timer)
+		h.saved_timer = 0
+	}
+	return true
+}
+
+func (h *handler) show_saved_status() error {
+	if h.saved_timer != 0 {
+		h.lp.RemoveTimer(h.saved_timer)
+	}
+	h.status = "Saved"
+	id, err := h.lp.AddTimer(2*time.Second, false, func(id loop.IdType) error {
+		if h.saved_timer == id {
+			h.saved_timer = 0
+			if h.status == "Saved" {
+				h.status = ""
+				h.draw_screen()
+			}
+		}
+		return nil
+	})
+	h.saved_timer = id
+	return err
+}
 
 func (h *handler) sync_preferences() error {
 	p := h.active_preferences()
@@ -55,7 +87,10 @@ func (h *handler) change_setting(field, value string) error {
 	if err := h.sync_preferences(); err != nil {
 		return err
 	}
-	h.page, h.status = "", "Saved"
+	h.page = ""
+	if err := h.show_saved_status(); err != nil {
+		return err
+	}
 	if field == "strategy" {
 		if hooks := h.active_hooks(); hooks != nil && hooks.OnActivate != nil {
 			if err := hooks.OnActivate(h); err != nil {
@@ -68,6 +103,9 @@ func (h *handler) change_setting(field, value string) error {
 }
 
 func (h *handler) on_text(text string) error {
+	if h.clear_saved_status() {
+		h.draw_screen()
+	}
 	if h.page == "edit-fraction" {
 		if len(h.fraction_input)+len(text) <= 32 && strings.Trim(text, "0123456789./eE+- ") == "" {
 			h.fraction_input += text
@@ -99,6 +137,9 @@ func (h *handler) on_text(text string) error {
 		}
 		return h.change_setting("modifier", modifier)
 	case "f":
+		if hooks := h.active_hooks(); hooks != nil && hooks.OnSettings != nil {
+			hooks.OnSettings(h)
+		}
 		h.page, h.status = "fraction", ""
 		h.draw_screen()
 		return nil
@@ -116,6 +157,9 @@ func (h *handler) on_key(e *loop.KeyEvent) error {
 	if e.Type == loop.RELEASE {
 		e.Handled = true
 		return nil
+	}
+	if h.clear_saved_status() {
+		h.draw_screen()
 	}
 	if h.page != "" {
 		if e.MatchesPressOrRepeat("esc") {

@@ -11,6 +11,7 @@ import "github.com/kovidgoyal/kitty/tools/tui/loop"
 type strategy_hooks struct {
 	OnActivate   func(*handler) error
 	OnDeactivate func(*handler) error
+	OnSettings   func(*handler)
 	OnKey        func(*handler, *loop.KeyEvent) error
 	OnText       func(*handler, string) error
 	OnResponse   func(*handler, rc_response) (bool, error)

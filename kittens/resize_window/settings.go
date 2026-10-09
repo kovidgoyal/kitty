@@ -29,7 +29,7 @@ type resize_settings struct {
 func default_settings() resize_settings {
 	return resize_settings{Version: 1, Strategy: "window", Strategies: map[string]strategy_settings{
 		"window": {Modifier: "alt", Fraction: "1/3"},
-		"edge":   {Modifier: "shift", Fraction: "1/3"},
+		"edge":   {Modifier: "alt", Fraction: "1/3"},
 	}}
 }
 
@@ -93,6 +93,19 @@ func load_settings(path string) (resize_settings, error) {
 		return default_settings(), err
 	}
 	return s, nil
+}
+
+func settings_for_invocation(path string, opts *Options, seen map[string]bool) (resize_settings, error) {
+	s, err := load_settings(path)
+	if seen["Strategy"] {
+		s.Strategy = opts.Strategy
+	}
+	if seen["Fraction"] {
+		p := s.preferences(s.Strategy)
+		p.Fraction = opts.Fraction
+		s.Strategies[s.Strategy] = p
+	}
+	return s, err
 }
 
 // Merge one changed field with the latest saved settings. Separate resize
