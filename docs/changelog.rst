@@ -202,6 +202,10 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Window resizing: Hold Alt with a resize letter to take a fraction of the
+  remaining resize steps. Configure the fraction with the resize-window
+  kitten's :code:`--fraction` option.
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

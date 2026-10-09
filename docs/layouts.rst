@@ -360,6 +360,18 @@ window wider/narrower, but not taller/shorter. Note that what you are resizing
 is actually not a window, but a row/column in the layout, all windows in that
 row/column will be resized.
 
+Hold :kbd:`Alt` with :kbd:`W`, :kbd:`N`, :kbd:`T`, or :kbd:`S` to take a fraction
+of the remaining resize steps in that direction. The default is one third,
+rounded up: five remaining steps become two, and one remaining step becomes
+one. Resizing stops at the layout's size limit. Ordinary letters (including
+uppercase letters) keep their normal step size, and :kbd:`Ctrl` doubles it.
+To choose a different fraction, pass :code:`--fraction`
+to the resize kitten, for example::
+
+   map kitty_mod+r kitten resize_window --fraction=1/4
+   # macOS
+   map cmd+r kitten resize_window --fraction=1/3
+
 You can also define shortcuts in :file:`kitty.conf` to make the active window
 wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`
 action, for example::

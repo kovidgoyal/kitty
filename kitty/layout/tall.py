@@ -180,6 +180,19 @@ class Tall(Layout):
         self.biased_map = candidate
         return before != after
 
+    def apply_fractional_bias(self, window_idx: int, increment: float, all_windows: WindowList, is_horizontal: bool) -> bool:
+        # Main-axis biases can keep changing after the visible size stops
+        # changing. Do not count those changes as remaining resize steps.
+        layout = self.simple_layout if all_windows.num_groups <= self.num_full_size_windows + 1 else self.full_layout
+        before_layout = tuple((x, y) for _, x, y, _ in layout(all_windows))
+        before_bias, before_map = self.main_bias, self.biased_map
+        if not self.apply_bias(window_idx, increment, all_windows, is_horizontal):
+            return False
+        if before_layout == tuple((x, y) for _, x, y, _ in layout(all_windows)):
+            self.main_bias, self.biased_map = before_bias, before_map
+            return False
+        return True
+
     def simple_layout(self, all_windows: WindowList) -> Generator[tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
         num = all_windows.num_groups
         is_fat = not self.main_is_horizontal

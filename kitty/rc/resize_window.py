@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+from math import isfinite
 from typing import TYPE_CHECKING
 
 from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
@@ -14,6 +15,7 @@ class ResizeWindow(RemoteCommand):
     match/str: Which window to resize
     self/bool: Boolean indicating whether to resize the window the command is run in
     increment/int: Integer specifying the resize increment
+    fraction/float: Fraction of the remaining resize steps to take, or zero for ordinary resizing
     axis/choices.horizontal.vertical.reset: One of :code:`horizontal, vertical` or :code:`reset`
     """
 
@@ -26,6 +28,13 @@ class ResizeWindow(RemoteCommand):
 type=int
 default=2
 The number of cells to change the size by, can be negative to decrease the size.
+
+
+--fraction
+type=float
+default=0
+Take this fraction of the remaining resize steps, rounding up. Must be between
+zero and one. Zero uses ordinary resizing. The increment sets the base step size.
 
 
 --axis -a
@@ -46,14 +55,26 @@ Resize the window this command is run in, rather than the active window.
     string_return_is_error = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self}
+        self.validate_fraction(opts.fraction)
+        return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self, 'fraction': opts.fraction}
+
+    @staticmethod
+    def validate_fraction(fraction: float) -> None:
+        if not isfinite(fraction) or not 0 <= fraction <= 1:
+            raise ValueError('Resize fraction must be between zero and one')
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_match_payload(boss, window, payload_get)
+        fraction = payload_get('fraction', missing=0)
+        self.validate_fraction(fraction)
         resized: bool | None | str = False
         if windows and windows[0]:
             resized = boss.resize_layout_window(
-                windows[0], increment=payload_get('increment'), is_horizontal=payload_get('axis') == 'horizontal', reset=payload_get('axis') == 'reset'
+                windows[0],
+                increment=payload_get('increment'),
+                is_horizontal=payload_get('axis') == 'horizontal',
+                reset=payload_get('axis') == 'reset',
+                fraction=fraction,
             )
         return resized
 

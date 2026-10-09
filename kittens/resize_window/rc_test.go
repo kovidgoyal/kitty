@@ -9,7 +9,7 @@ import (
 )
 
 func TestResizeCommandEscapeCode(t *testing.T) {
-	ec, err := resize_command_escape_code(-4, "vertical")
+	ec, err := resize_command_escape_code(-4, "vertical", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

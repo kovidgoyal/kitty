@@ -125,6 +125,22 @@ class Grid(Layout):
         setattr(self, attr, candidate)
         return True
 
+    def apply_fractional_bias(self, window_idx: int, increment: float, all_windows: WindowList, is_horizontal: bool) -> bool:
+        num = all_windows.num_groups
+        ncols, nrows, special_rows, special_col = calc_grid_size(num)
+
+        def geometry() -> tuple[tuple[LayoutData, LayoutData], ...]:
+            return tuple((x, y) for _, x, y in self.layout_windows(num, nrows, ncols, special_rows, special_col))
+
+        before = geometry()
+        before_rows, before_cols = self.biased_rows, self.biased_cols
+        if not self.apply_bias(window_idx, increment, all_windows, is_horizontal):
+            return False
+        if geometry() == before:
+            self.biased_rows, self.biased_cols = before_rows, before_cols
+            return False
+        return True
+
     def layout_windows(
         self, num_windows: int, nrows: int, ncols: int, special_rows: int, special_col: int, on_col_done: Callable[[list[int]], None] = lambda col_windows: None
     ) -> Generator[tuple[int, LayoutData, LayoutData], None, None]:

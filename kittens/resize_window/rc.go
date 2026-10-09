@@ -10,15 +10,16 @@ import (
 )
 
 type resize_payload struct {
-	Increment int    `json:"increment"`
-	Axis      string `json:"axis"`
-	Self      bool   `json:"self"`
+	Increment int     `json:"increment"`
+	Axis      string  `json:"axis"`
+	Self      bool    `json:"self"`
+	Fraction  float64 `json:"fraction,omitempty"`
 }
 
-func resize_command_escape_code(increment int, axis string) (string, error) {
+func resize_command_escape_code(increment int, axis string, fraction float64) (string, error) {
 	rc := utils.RemoteControlCmd{
 		Cmd: "resize-window", Version: at.ProtocolVersion,
-		Payload: resize_payload{Increment: increment, Axis: axis, Self: true},
+		Payload: resize_payload{Increment: increment, Axis: axis, Self: true, Fraction: fraction},
 	}
 	data, err := json.Marshal(rc)
 	if err != nil {

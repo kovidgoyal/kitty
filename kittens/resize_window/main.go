@@ -5,7 +5,9 @@ package resize_window
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -22,6 +24,30 @@ type handler struct {
 	ctx           *markup.Context
 	original_size loop.ScreenSize
 	print_on_fail string
+	fraction      float64
+}
+
+func parse_fraction(value string) (float64, error) {
+	parts := strings.Split(value, "/")
+	if len(parts) > 2 {
+		return 0, fmt.Errorf("invalid fraction: %q", value)
+	}
+	n, err := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	if err == nil && len(parts) == 2 {
+		var d float64
+		d, err = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		if err == nil {
+			if d <= 0 || math.IsNaN(d) || math.IsInf(d, 0) {
+				err = fmt.Errorf("invalid denominator")
+			} else {
+				n /= d
+			}
+		}
+	}
+	if err != nil || math.IsNaN(n) || math.IsInf(n, 0) || n <= 0 || n > 1 {
+		return 0, fmt.Errorf("--fraction must be greater than zero and at most one, got %q", value)
+	}
+	return n, nil
 }
 
 type rc_response struct {
@@ -31,7 +57,7 @@ type rc_response struct {
 	Data  json.RawMessage `json:"data"`
 }
 
-func (h *handler) do_window_resize(is_decrease, is_horizontal, reset bool, multiplier int) error {
+func (h *handler) do_window_resize(is_decrease, is_horizontal, reset bool, multiplier int, fraction float64) error {
 	increment := h.opts.HorizontalIncrement
 	if !is_horizontal {
 		increment = h.opts.VerticalIncrement
@@ -48,7 +74,7 @@ func (h *handler) do_window_resize(is_decrease, is_horizontal, reset bool, multi
 			axis = "vertical"
 		}
 	}
-	ec, err := resize_command_escape_code(increment, axis)
+	ec, err := resize_command_escape_code(increment, axis, fraction)
 	if err != nil {
 		return err
 	}
@@ -111,7 +137,7 @@ func (h *handler) on_text(text string) error {
 	text = strings.ToUpper(text)
 	switch text {
 	case "W", "N", "T", "S", "R":
-		return h.do_window_resize(text == "N" || text == "S", text == "W" || text == "N", text == "R", 1)
+		return h.do_window_resize(text == "N" || text == "S", text == "W" || text == "N", text == "R", 1, 0)
 	case "Q":
 		h.lp.Quit(0)
 	}
@@ -119,15 +145,33 @@ func (h *handler) on_text(text string) error {
 }
 
 func (h *handler) on_key(e *loop.KeyEvent) error {
+	if e.Type == loop.RELEASE {
+		e.Handled = true
+		return nil
+	}
 	if e.MatchesPressOrRepeat("esc") {
 		e.Handled = true
 		h.lp.Quit(0)
 		return nil
 	}
 	for _, k := range []string{"w", "n", "t", "s"} {
+		if e.MatchesPressOrRepeat("alt+" + k) {
+			e.Handled = true
+			return h.do_window_resize(k == "n" || k == "s", k == "w" || k == "n", false, 1, h.fraction)
+		}
 		if e.MatchesPressOrRepeat("ctrl+" + k) {
 			e.Handled = true
-			return h.do_window_resize(k == "n" || k == "s", k == "w" || k == "n", false, 2)
+			return h.do_window_resize(k == "n" || k == "s", k == "w" || k == "n", false, 2, 0)
+		}
+		if e.MatchesPressOrRepeat(k) || e.MatchesPressOrRepeat("shift+"+k) {
+			e.Handled = true
+			return h.on_text(k)
+		}
+	}
+	for _, k := range []string{"r", "q"} {
+		if e.MatchesPressOrRepeat(k) || e.MatchesPressOrRepeat("shift+"+k) {
+			e.Handled = true
+			return h.on_text(k)
 		}
 	}
 	return nil
@@ -149,6 +193,7 @@ func (h *handler) draw_screen() {
 	lp.Println()
 	lp.Println("Press " + lp.SprintStyled("italic", "Esc") + " to quit resize mode")
 	lp.Println("Hold down " + lp.SprintStyled("italic", "Ctrl") + " to double step size")
+	lp.Println("Hold down " + lp.SprintStyled("italic", "Alt") + " to take " + h.opts.Fraction + " of the remaining steps")
 	lp.Println()
 	lp.Println(lp.SprintStyled("bold fg=white", "Sizes"))
 	lp.Printf("Original: %d rows %d cols\r\n", h.original_size.HeightCells, h.original_size.WidthCells)
@@ -159,11 +204,15 @@ func (h *handler) draw_screen() {
 }
 
 func run_loop(opts *Options) (rc int, err error) {
+	fraction, err := parse_fraction(opts.Fraction)
+	if err != nil {
+		return 1, err
+	}
 	lp, err := loop.New(loop.FullKeyboardProtocol)
 	if err != nil {
 		return 1, err
 	}
-	h := &handler{lp: lp, opts: opts, ctx: markup.New(true)}
+	h := &handler{lp: lp, opts: opts, fraction: fraction, ctx: markup.New(true)}
 	lp.OnInitialize = func() (string, error) {
 		sz, err := lp.ScreenSize()
 		if err != nil {
@@ -176,7 +225,12 @@ func run_loop(opts *Options) (rc int, err error) {
 		return "", nil
 	}
 	lp.OnResize = func(old, new loop.ScreenSize) error { h.draw_screen(); return nil }
-	lp.OnText = func(text string, from_key_event, in_bracketed_paste bool) error { return h.on_text(text) }
+	lp.OnText = func(text string, from_key_event, in_bracketed_paste bool) error {
+		if in_bracketed_paste {
+			return nil
+		}
+		return h.on_text(text)
+	}
 	lp.OnKeyEvent = h.on_key
 	lp.OnRCResponse = h.on_rc_response
 	err = lp.Run()

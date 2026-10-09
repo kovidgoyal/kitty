@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Collection, Generator, Iterator, Sequence
+from math import ceil, isfinite
 from typing import Any, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
@@ -11,7 +12,7 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, lgd, window_geometry_from_layouts
+from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, fractional_resize_steps, lgd, window_geometry_from_layouts
 
 
 def child_axis_units(child: 'Pair | int | None', horizontal: bool) -> int:
@@ -839,6 +840,46 @@ class Splits(Layout):
             return False
         which = 1 if pair.one == grp.id else 2
         return pair.modify_size_of_child(which, increment, is_horizontal, self)
+
+    def modify_size_of_window_by_fraction(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool, fraction: float) -> bool:
+        if window_id not in all_windows.id_map:
+            return False
+        group = all_windows.group_for_window(window_id)
+        if group is None or not increment or not isfinite(increment) or not 0 < fraction <= 1:
+            return False
+        path = self.pairs_root.find_window_in_tree(group.id)
+        if not path:
+            return False
+        for pair, in_one in reversed(path):
+            if not pair.is_redundant and pair.horizontal == is_horizontal:
+                break
+        else:
+            return False
+        size = pair.width if is_horizontal else pair.height
+        if size <= 0:
+            return False
+        groups = {g.id: g for g in all_windows.iter_all_layoutable_groups()}
+
+        def minimum(child: Pair | int | None) -> int:
+            if isinstance(child, Pair):
+                return child.minimum_width(groups) if is_horizontal else child.minimum_height(groups)
+            return lgd.cell_width if is_horizontal else lgd.cell_height
+
+        # Match layout_pair's limits, including nested children and borders.
+        # Pixel midpoints avoid instability from integer truncation at a limit.
+        low = (minimum(pair.one) + pair.border_width + 0.5) / size
+        high = (size - minimum(pair.two) - pair.border_width + 0.5) / size
+        if high <= low:
+            return False
+        current = max(low, min(pair.bias, high))
+        delta = increment if in_one else -increment
+        room = high - current if delta > 0 else current - low
+        if room * size < 0.5:
+            return False
+        remaining = ceil(room / abs(delta) - 1e-9)
+        steps = fractional_resize_steps(remaining, fraction)
+        pair.bias = max(low, min(current + steps * delta, high))
+        return True
 
     def remove_all_biases(self) -> bool:
         for pair in self.pairs_root.self_and_descendants():

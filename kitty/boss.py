@@ -1995,14 +1995,14 @@ class Boss:
         if overlay_window is not None:
             overlay_window.allow_remote_control = True
 
-    def resize_layout_window(self, window: Window, increment: float, is_horizontal: bool, reset: bool = False) -> bool | None | str:
+    def resize_layout_window(self, window: Window, increment: float, is_horizontal: bool, reset: bool = False, fraction: float = 0) -> bool | None | str:
         tab = window.tabref()
         if tab is None or not increment:
             return False
         if reset:
             tab.reset_window_sizes()
             return None
-        return tab.resize_window_by(window.id, increment, is_horizontal)
+        return tab.resize_window_by(window.id, increment, is_horizontal, fraction)
 
     def resize_os_window(self, os_window_id: int, width: int, height: int, unit: str, incremental: bool = False, metrics: 'None | OSWindowSize' = None) -> None:
         if not incremental and (width < 0 or height < 0):
@@ -2581,7 +2581,7 @@ class Boss:
         action_on_removal: Callable[[int, 'Boss'], None] | None = None,
         default_data: dict[str, Any] | None = None,
     ) -> Any:
-        from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler
+        from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler, resolved_kitten
 
         is_wrapped = kitten in wrapped_kitten_names()
         if window is None:
@@ -2673,6 +2673,10 @@ class Boss:
             wid = w.id
             overlay_window.actions_on_close.append(partial(self.on_kitten_finish, wid, custom_callback or end_kitten.handle_result, default_data=default_data))
             overlay_window.open_url_handler = end_kitten.open_url_handler
+            if resolved_kitten(kitten) == 'resize_window':
+                # The resize kitten sends commands over the overlay's terminal.
+                # Also allow it when launched directly with configurable options.
+                overlay_window.allow_remote_control = True
             if action_on_removal is not None:
 
                 def callback_wrapper(*a: Any) -> None:

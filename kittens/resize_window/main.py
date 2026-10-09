@@ -14,6 +14,14 @@ The base horizontal increment.
 default=2
 type=int
 The base vertical increment.
+
+
+--fraction
+default=1/3
+The fraction of the remaining resize steps to take when holding Alt.
+Can be a decimal or a ratio such as :code:`1/3`, and must be greater than zero
+and at most one. The step count is rounded up, with at least one step when
+space remains.
 """.format
 help_text = 'Resize the current window'
 usage = ''
