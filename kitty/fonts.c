@@ -371,7 +371,7 @@ sprite_tracker_current_layout(FONTS_DATA_HANDLE data, unsigned int *x, unsigned 
 static void
 sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_width, unsigned int cell_height) {
     sprite_tracker->xnum = MIN(MAX(1u, max_texture_size / cell_width), (size_t)UINT16_MAX);
-    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / cell_height), (size_t)UINT16_MAX);
+    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / (cell_height + 1)), (size_t)UINT16_MAX);
     sprite_tracker->ynum = 1;
     sprite_tracker->x = 0;
     sprite_tracker->y = 0;
