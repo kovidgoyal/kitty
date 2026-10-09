@@ -418,12 +418,13 @@ add_data_to_be_encrypted(AES256GCMEncrypt *self, PyObject *args) {
             Py_CLEAR(ciphertext);
             return NULL;
         }
-        Py_CLEAR(self->tag);
-        self->tag = tag;
-        if (1 != EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_AEAD_GET_TAG, PyBytes_GET_SIZE(self->tag), PyBytes_AS_STRING(tag))) {
+        if (1 != EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_AEAD_GET_TAG, PyBytes_GET_SIZE(tag), PyBytes_AS_STRING(tag))) {
+            Py_CLEAR(tag);
             Py_CLEAR(ciphertext);
             return set_error_from_openssl("Failed to get the tag");
         }
+        Py_CLEAR(self->tag);
+        self->tag = tag;
     }
     if (offset != PyBytes_GET_SIZE(ciphertext)) {
         _PyBytes_Resize(&ciphertext, offset);

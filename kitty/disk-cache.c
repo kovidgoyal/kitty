@@ -239,7 +239,7 @@ defrag(DiskCache *self) {
     size_t total_data_size = 0;
     cache_map_for_loop(i) {
         CacheValue *s = i.data->val;
-        if (s->pos_in_cache_file > -1 && s->data_sz) {
+        if (s->written_to_disk && s->pos_in_cache_file > -1 && s->data_sz) {
             total_data_size += s->data_sz;
             DefragEntry *e = defrag_entries + num_entries_to_defrag++;
             e->old_offset = s->pos_in_cache_file;
@@ -452,8 +452,9 @@ find_cache_entry_to_write(DiskCache *self) {
                 find_hole_to_use(self, self->currently_writing.val.data_sz);
                 return true;
             }
+            // empty entries occupy no space in the cache file
             s->written_to_disk = true;
-            s->pos_in_cache_file = 0;
+            s->pos_in_cache_file = -1;
             s->data_sz = 0;
         }
     }
@@ -868,6 +869,7 @@ read_from_cache_file(const DiskCache *self, off_t pos, size_t sz, void *dest) {
 static void
 read_from_cache_entry(const DiskCache *self, const CacheValue *s, void *dest) {
     size_t sz = s->data_sz;
+    if (!sz) return;
     off_t pos = s->pos_in_cache_file;
     if (pos < 0) {
         PyErr_SetString(PyExc_OSError, "Cache entry was not written, could not read from it");

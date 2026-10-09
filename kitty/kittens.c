@@ -116,32 +116,44 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     PyObject *uo, *text_callback, *dcs_callback, *csi_callback, *osc_callback, *pm_callback, *apc_callback, *callback;
     int inbp = 0;
     if (!PyArg_ParseTuple(args, "OOOOOOUp", &text_callback, &dcs_callback, &csi_callback, &osc_callback, &pm_callback, &apc_callback, &uo, &inbp)) return NULL;
-    Py_ssize_t sz = PyUnicode_GET_LENGTH(uo), pos = 0, start = 0, count = 0, consumed = 0, term_len = 0;
+    Py_ssize_t sz = PyUnicode_GET_LENGTH(uo), pos = 0, start = 0, count = 0, consumed = 0;
     bool is_osc = false;
     callback = text_callback;
     int kind = PyUnicode_KIND(uo);
     void *data = PyUnicode_DATA(uo);
     bool in_bracketed_paste_mode = inbp != 0;
-#define CALL(cb, s_, num_)                                                                        \
-    {                                                                                             \
-        PyObject *fcb = cb;                                                                       \
-        Py_ssize_t s = s_, num = num_;                                                            \
-        if (in_bracketed_paste_mode && fcb != text_callback) {                                    \
-            fcb = text_callback;                                                                  \
-            num += 2 + term_len;                                                                  \
-            s -= 2;                                                                               \
-        }                                                                                         \
-        if (num > 0) {                                                                            \
-            PyObject *ret = PyObject_CallFunction(fcb, "N", PyUnicode_Substring(uo, s, s + num)); \
-            if (ret == NULL) return NULL;                                                         \
-            Py_DECREF(ret);                                                                       \
-        }                                                                                         \
-        consumed = s_ + num_;                                                                     \
-        term_len = 0;                                                                             \
-        count = 0;                                                                                \
+#define CALL(cb, s_, num_)                                                                       \
+    {                                                                                            \
+        Py_ssize_t s = s_, num = num_;                                                           \
+        if (num > 0) {                                                                           \
+            PyObject *ret = PyObject_CallFunction(cb, "N", PyUnicode_Substring(uo, s, s + num)); \
+            if (ret == NULL) return NULL;                                                        \
+            Py_DECREF(ret);                                                                      \
+        }                                                                                        \
+        consumed = s + num;                                                                      \
+        count = 0;                                                                               \
     }
     START_ALLOW_CASE_RANGE;
     while (pos < sz) {
+        if (in_bracketed_paste_mode && state == NORMAL) {
+            // Inside a bracketed paste everything up to the end of paste
+            // marker is text, so look only for the marker
+            static const char eop[] = "\x1b[201~";
+            const Py_ssize_t eop_sz = sizeof(eop) - 1;
+            Py_ssize_t i = pos, m = 0;
+            for (; i < sz; i++) {
+                if (PyUnicode_READ(kind, data, i) != 0x1b) continue;
+                for (m = 1; m < eop_sz && i + m < sz && PyUnicode_READ(kind, data, i + m) == (Py_UCS4)eop[m]; m++);
+                if (m == eop_sz || i + m >= sz) break;
+            }
+            CALL(text_callback, start, i - start);
+            // no marker or a partial marker at the end, which is left for the next call
+            if (m < eop_sz) return PyUnicode_Substring(uo, consumed, sz);
+            in_bracketed_paste_mode = false;
+            CALL(csi_callback, i + 2, eop_sz - 2);
+            pos = start = i + eop_sz;
+            continue;
+        }
         Py_UCS4 ch = PyUnicode_READ(kind, data, pos);
         switch (state) {
             case NORMAL:
@@ -185,11 +197,6 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                 }
                 break;
             case CSI:
-                if (ch == 0x1b && in_bracketed_paste_mode) {
-                    CALL(callback, start + 1, count);
-                    state = ESC;
-                    break;
-                }
                 count++;
                 switch (ch) {
                     case 'a' ... 'z':
@@ -213,30 +220,13 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                 break;
             case ESC_ST:
                 if (ch == '\\') {
-                    term_len = 2;
                     CALL(callback, start + 1, count);
                     state = NORMAL;
                     start = pos + 1;
                     consumed += 2;
                 } else if (ch == 0x1b) count++;
-                else if (ch == '[' && in_bracketed_paste_mode) {
-                    // the end of paste marker ends the paste even inside a string
-                    static const char eop[] = "201~";
-                    Py_ssize_t i = 0;
-                    while (i < 4 && pos + 1 + i < sz && PyUnicode_READ(kind, data, pos + 1 + i) == (Py_UCS4)eop[i]) i++;
-                    if (i == 4) {
-                        CALL(callback, start + 1, count);
-                        state = CSI;
-                        callback = csi_callback;
-                        start = pos;
-                    } else if (pos + 1 + i >= sz) return PyUnicode_Substring(uo, consumed, sz);
-                    else {
-                        count += 2;
-                        state = ST;
-                    }
-                } else if (ch == 0x07 && is_osc) {
+                else if (ch == 0x07 && is_osc) {
                     count++;
-                    term_len = 1;
                     CALL(callback, start + 1, count);
                     state = NORMAL;
                     start = pos + 1;
@@ -250,7 +240,6 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                 if (ch == 0x1b) {
                     state = ESC_ST;
                 } else if (ch == 0x07 && is_osc) {
-                    term_len = 1;
                     CALL(callback, start + 1, count);
                     state = NORMAL;
                     start = pos + 1;

@@ -13,6 +13,7 @@
 
 static PyObject *RsyncError = NULL;
 static const size_t default_block_size = 6 * 1024;
+static const size_t max_block_size = 1024 * 1024; // sqrt of 1TB
 static const size_t signature_block_size = 20;
 void
 log_error(const char *fmt, ...) {
@@ -609,8 +610,17 @@ parse_signature_header(Differ *self) {
         return;
     }
     p += 2;
+    const uint32_t block_size = le32dec(p);
+    if (!block_size) {
+        PyErr_SetString(RsyncError, "Signature header has zero block size");
+        return;
+    }
+    if (block_size > max_block_size) {
+        PyErr_Format(RsyncError, "Signature header has too large block size %u > %zu", block_size, max_block_size);
+        return;
+    }
     free_rsync(&self->rsync);
-    const char *err = init_rsync(&self->rsync, le32dec(p), 0, 0);
+    const char *err = init_rsync(&self->rsync, block_size, 0, 0);
     if (err != NULL) {
         PyErr_SetString(RsyncError, err);
         return;

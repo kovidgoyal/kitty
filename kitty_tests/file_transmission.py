@@ -226,6 +226,14 @@ class TestFileTransmission(BaseTest):
     def test_rsync_roundtrip(self):
         test_rsync_roundtrip(self)
 
+    def test_rsync_invalid_block_size(self):
+        from kittens.transfer.rsync import RsyncError
+
+        for block_size in (0, 1024 * 1024 + 1):
+            d = Differ()
+            with self.assertRaises(RsyncError):
+                d.add_signature_data(bytes(8) + block_size.to_bytes(4, 'little'))
+
     def test_file_put_differential(self):
         from kitty.file_transmission import PatchFile
 

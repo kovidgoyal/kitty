@@ -6018,7 +6018,9 @@ screen_selection_range_for_word(
 
 void
 screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by) {
-    if (self->linebuf != self->main_linebuf) return;
+    if (self->linebuf != self->main_linebuf || isnan(target_scrolled_by)) return;
+    if (target_scrolled_by < 0) target_scrolled_by = 0;
+    if (target_scrolled_by > self->historybuf->count) target_scrolled_by = self->historybuf->count;
     index_type target_scrolled_by_line = (index_type)target_scrolled_by;
     unsigned pixel_scroll_offset_y = (unsigned)((target_scrolled_by - target_scrolled_by_line) * self->cell_size.height);
     if (!OPT(pixel_scroll)) pixel_scroll_offset_y = 0;
@@ -6034,7 +6036,7 @@ screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by) {
 static bool
 scroll_by_pixels(Screen *self, double delta_pixels) {
     const double cell_height = (double)self->cell_size.height;
-    if (cell_height <= 0.0 || delta_pixels == 0.0) return false;
+    if (cell_height <= 0.0 || delta_pixels == 0.0 || isnan(delta_pixels)) return false;
 
     double total = self->pixel_scroll_offset_y + (double)self->scrolled_by * cell_height + delta_pixels;
     const double max_total = (double)self->historybuf->count * cell_height;
@@ -6087,7 +6089,7 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
 
 static bool
 screen_fractional_scroll(Screen *self, double amt) {
-    if (amt == 0 || !isfinite(amt)) return false;
+    if (amt == 0 || isnan(amt)) return false;
     double integral_part, fractional_part = modf(amt, &integral_part);
     double pixels = trunc(fractional_part * self->cell_size.height);
     if (fractional_part > 0) pixels = MAX(1, pixels);
@@ -6100,8 +6102,10 @@ static PyObject *
 fractional_scroll(Screen *self, PyObject *amt) {
     double y;
     if (PyFloat_Check(amt)) y = PyFloat_AS_DOUBLE(amt);
-    else if (PyLong_Check(amt)) y = PyLong_AsDouble(amt);
-    else {
+    else if (PyLong_Check(amt)) {
+        y = PyLong_AsDouble(amt);
+        if (y == -1.0 && PyErr_Occurred()) return NULL;
+    } else {
         PyErr_SetString(PyExc_TypeError, "amt must be a float");
         return NULL;
     }
@@ -6112,8 +6116,10 @@ static PyObject *
 scroll_to_absolute(Screen *self, PyObject *amt) {
     double y;
     if (PyFloat_Check(amt)) y = PyFloat_AS_DOUBLE(amt);
-    else if (PyLong_Check(amt)) y = PyLong_AsDouble(amt);
-    else {
+    else if (PyLong_Check(amt)) {
+        y = PyLong_AsDouble(amt);
+        if (y == -1.0 && PyErr_Occurred()) return NULL;
+    } else {
         PyErr_SetString(PyExc_TypeError, "amt must be a number");
         return NULL;
     }
