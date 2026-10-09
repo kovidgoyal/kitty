@@ -17,6 +17,7 @@ from kitty.fast_data_types import (
     ParsedFontFeature,
     Screen,
     get_fallback_font,
+    render_decoration,
     set_allow_use_of_box_fonts,
     sprite_idx_to_pos,
     sprite_map_set_layout,
@@ -186,6 +187,18 @@ class Selection(BaseTest):
         with self.assertRaises(ValueError) as cm:
             ParsedFontFeature('!!bad!!')
         self.assertIn('!!bad!!', str(cm.exception))
+
+    def test_render_decoration(self):
+        w, h = 10, 20
+        for which in ('curl', 'dashed', 'dotted', 'double', 'straight', 'strikethrough'):
+            data = render_decoration(which, w, h, 15, 2)
+            self.assertIsInstance(data, bytes)
+            self.ae(len(data), w * h)
+            # Strikethrough metrics default to zero
+            if which != 'strikethrough':
+                self.assertTrue(any(data), f'{which} decoration is empty')
+        with self.assertRaises(KeyError):
+            render_decoration('nonexistent', w, h, 15, 2)
 
     def test_synthetic_italic_matrix(self):
         # A roman-only font that find_best_match finds (e.g. Fira Code, which ships

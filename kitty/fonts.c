@@ -2590,8 +2590,8 @@ render_decoration(PyObject *self UNUSED, PyObject *args) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)fcm.cell_width * fcm.cell_height);
     if (!ans) return NULL;
     memset(PyBytes_AS_STRING(ans), 0, PyBytes_GET_SIZE(ans));
-#define u(x) \
-    if (strcmp(which, #x) == 0) add_##x##_underline((uint8_t *)PyBytes_AS_STRING(ans), fcm)
+#define u(x) else if (strcmp(which, #x) == 0) add_##x##_underline((uint8_t *)PyBytes_AS_STRING(ans), fcm)
+    if (0) {}
     u(curl);
     u(dashed);
     u(dotted);
