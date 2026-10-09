@@ -2129,6 +2129,26 @@ class TestScreen(BaseTest):
         t('=left_ptr', 'default')
         t('=fleur', 'move')
 
+        names = 'alias cell copy crosshair help move wait text pointer progress zoom-in zoom-out e-resize n-resize s-resize w-resize'.split()
+        for which_screen in (0, 1):
+            s.reset()
+            if which_screen:
+                s.toggle_alt_screen()
+            for n in names:
+                s.change_pointer_shape('>', n)
+            for n in reversed(names):
+                self.ae(send('?__current__'), n)
+                s.change_pointer_shape('<', '')
+            self.ae(send('?__current__'), '0')
+            for n in names + ['ne-resize']:
+                s.change_pointer_shape('>', n)
+            for n in reversed(names[1:] + ['ne-resize']):
+                self.ae(send('?__current__'), n)
+                s.change_pointer_shape('<', '')
+            self.ae(send('?__current__'), '0')
+            if which_screen:
+                s.toggle_alt_screen()
+
     def test_decoration_sgr_round_trip(self):
         for code, extra, expected in (
             (1, '', '4'), (2, '', '4:2'), (3, '', '4:3'), (4, '', '4:4'), (5, '', '4:5'),

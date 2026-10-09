@@ -2220,12 +2220,15 @@ change_pointer_shape(Screen *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ss", &b, &css_name)) return NULL;
     op = b[0];
     uint8_t *count, *stack;
+    size_t stack_sz;
     if (self->main_linebuf == self->linebuf) {
         count = &self->main_pointer_shape_stack.count;
         stack = self->main_pointer_shape_stack.stack;
+        stack_sz = arraysz(self->main_pointer_shape_stack.stack);
     } else {
         count = &self->alternate_pointer_shape_stack.count;
         stack = self->alternate_pointer_shape_stack.stack;
+        stack_sz = arraysz(self->alternate_pointer_shape_stack.stack);
     }
     if (op == '<') {
         if (*count) *count -= 1;
@@ -2318,7 +2321,7 @@ change_pointer_shape(Screen *self, PyObject *args) {
             if (!*count) *count += 1;
             stack[*count - 1] = s;
         } else if (op == '>') {
-            if ((*count + 1u) >= arraysz(self->main_pointer_shape_stack.stack)) { remove_i_from_array(stack, 0, *count); }
+            if (*count >= stack_sz) { remove_i_from_array(stack, 0, *count); }
             *count += 1;
             stack[*count - 1] = s;
         } else {
