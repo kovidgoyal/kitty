@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
@@ -9,7 +12,7 @@ from kitty.layout.interface import Fat, Grid, Horizontal, Splits, Stack, Tall, V
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.rc.set_spacing import parse_spacing_settings
 from kitty.types import WindowGeometry
-from kitty.window import EdgeWidths
+from kitty.window import EdgeWidths, GlobalWatchers, Watchers
 from kitty.window_list import WindowList, reset_group_id_counter
 
 from .base import BaseTest
@@ -1577,3 +1580,28 @@ class TestWindowHelpers(BaseTest):
             self.ae(len(set(args)), 4)
             self.ae(parse_spacing_settings(a.partition('=')[2] for a in args), {
                 f'{prefix}-left': 1, f'{prefix}-right': 2, f'{prefix}-top': 3, f'{prefix}-bottom': 4})
+
+    def test_global_watchers(self):
+        opts = SimpleNamespace(watcher={})
+        w1 = Watchers()
+        calls = []
+
+        def load(paths):
+            paths = tuple(paths)
+            calls.append(paths)
+            return w1 if paths else None
+
+        with patch('kitty.window.get_options', lambda: opts), patch('kitty.launch.load_watch_modules', load):
+            g = GlobalWatchers()
+            g.set_extra('x.py')
+            self.assertIs(g(), w1)
+            self.assertIs(g(), w1)
+            self.ae(calls, [('x.py',)])
+            g = GlobalWatchers()
+            opts.watcher = {'a.py': 'a.py'}
+            self.assertIs(g(), w1)
+            opts.watcher = {}
+            ans = g()
+            self.assertIsNot(ans, w1)
+            self.assertIsInstance(ans, Watchers)
+            self.ae(calls[-1], ())
