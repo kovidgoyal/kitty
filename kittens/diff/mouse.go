@@ -125,17 +125,18 @@ func (self *Handler) update_mouse_selection(ev *loop.MouseEvent) {
 		self.mouse_selection.DragScroll(ev, self.lp, self.drag_scroll_tick)
 		return
 	}
-	self.do_update_mouse_selection(ev)
+	if self.do_update_mouse_selection(ev) {
+		self.draw_screen()
+	}
 }
 
-func (self *Handler) do_update_mouse_selection(ev *loop.MouseEvent) {
+func (self *Handler) do_update_mouse_selection(ev *loop.MouseEvent) (changed bool) {
 	pos := self.scroll_pos
 	y := ev.Cell.Y
 	y = utils.Max(0, utils.Min(y, self.screen_size.num_lines-1))
 	self.logical_lines.IncrementScrollPosBy(&pos, y)
 	x := self.mouse_selection.StartLine().MinX()
-	self.mouse_selection.Update(ev, self.line_pos_from_pos(x, pos))
-	self.draw_screen()
+	return self.mouse_selection.Update(ev, self.line_pos_from_pos(x, pos))
 }
 
 func (self *Handler) clear_mouse_selection() {

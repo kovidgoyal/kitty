@@ -53,10 +53,24 @@ func writestring_ignoring_temporary_errors(f *tty.Term, buf string) (int, error)
 	return n, err
 }
 
+// Remove the first n entries from pending_writes. This must not copy the
+// remaining entries, as when there are lots of small writes queued up (for
+// example when redrawing the screen in response to a flood of mouse events) that
+// becomes quadratic, see https://github.com/kovidgoyal/kitty/issues/10634
+func (self *Loop) discard_sent_pending_writes(n int) {
+	clear(self.pending_writes[:n])
+	if n >= len(self.pending_writes) {
+		// reuse the underlying array
+		self.pending_writes = self.pending_writes[:0]
+	} else {
+		self.pending_writes = self.pending_writes[n:]
+	}
+}
+
 func (self *Loop) flush_pending_writes(tty_write_channel chan<- write_msg) (num_sent int) {
 	defer func() {
 		if num_sent > 0 {
-			self.pending_writes = utils.ShiftLeft(self.pending_writes, num_sent)
+			self.discard_sent_pending_writes(num_sent)
 		}
 	}()
 	for len(self.pending_writes) > num_sent {
@@ -74,7 +88,7 @@ func (self *Loop) wait_for_write_to_complete(sentinel IdType, tty_write_channel 
 	num_sent := 0
 	defer func() {
 		if num_sent > 0 {
-			self.pending_writes = utils.ShiftLeft(self.pending_writes, num_sent)
+			self.discard_sent_pending_writes(num_sent)
 		}
 	}()
 

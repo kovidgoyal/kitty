@@ -78,14 +78,18 @@ func (ms *MouseSelection) StartNewSelection(ev *loop.MouseEvent, line LinePos, m
 	ms.is_active = true
 }
 
-func (ms *MouseSelection) Update(ev *loop.MouseEvent, line LinePos) {
+// Update the end of the selection, returning true if it changed
+func (ms *MouseSelection) Update(ev *loop.MouseEvent, line LinePos) (changed bool) {
 	ms.drag_scroll.timer_id = 0
 	if ms.is_active {
+		prev := ms.end
 		ms.end.x = max(line.MinX(), min(ev.Cell.X, line.MaxX()))
 		cell_start := ms.cell_width * ms.end.x
 		ms.end.in_first_half_of_cell = ev.Pixel.X <= cell_start+ms.cell_width/2
 		ms.end.line = line
+		changed = !prev.Equal(ms.end)
 	}
+	return
 }
 
 func (ms *MouseSelection) LineBounds(line_pos LinePos) (start_x, end_x int) {

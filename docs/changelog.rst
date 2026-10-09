@@ -234,6 +234,9 @@ Detailed list of changes
 - Fix a space immediately after a tab stop being dropped when the screen
   contents are copied or sent to the scrollback pager (:iss:`10609`)
 
+- diff kitten: Fix selecting text with the mouse lagging badly when using a
+  mouse with a high polling rate (:iss:`10634`)
+
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 
