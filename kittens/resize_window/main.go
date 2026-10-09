@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -14,17 +15,23 @@ import (
 	"github.com/kovidgoyal/kitty/tools/cli/markup"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
 
 type handler struct {
-	lp            *loop.Loop
-	opts          *Options
-	ctx           *markup.Context
-	original_size loop.ScreenSize
-	print_on_fail string
-	fraction      float64
+	lp             *loop.Loop
+	opts           *Options
+	ctx            *markup.Context
+	original_size  loop.ScreenSize
+	print_on_fail  string
+	fraction       float64
+	settings       resize_settings
+	settings_path  string
+	page           string
+	fraction_input string
+	status         string
 }
 
 func parse_fraction(value string) (float64, error) {
@@ -128,50 +135,47 @@ func (h *handler) on_rc_response(raw []byte) error {
 		return nil
 	}
 	if json_is_truthy(response.Data) {
+		if hooks := h.active_hooks(); hooks != nil && hooks.OnResponse != nil {
+			if handled, err := hooks.OnResponse(h, response); err != nil || handled {
+				return err
+			}
+		}
 		h.lp.Beep()
 	}
 	return nil
 }
 
-func (h *handler) on_text(text string) error {
+func (h *handler) window_on_text(text string) error {
+	modifier := loop.KeyModifiers(0)
+	if text != strings.ToLower(text) {
+		modifier = loop.SHIFT
+	}
 	text = strings.ToUpper(text)
 	switch text {
 	case "W", "N", "T", "S", "R":
-		return h.do_window_resize(text == "N" || text == "S", text == "W" || text == "N", text == "R", 1, 0)
+		multiplier, fraction := h.resize_step(modifier)
+		if text == "R" {
+			multiplier, fraction = 1, 0
+		}
+		return h.do_window_resize(text == "N" || text == "S", text == "W" || text == "N", text == "R", multiplier, fraction)
 	case "Q":
 		h.lp.Quit(0)
 	}
 	return nil
 }
 
-func (h *handler) on_key(e *loop.KeyEvent) error {
-	if e.Type == loop.RELEASE {
-		e.Handled = true
-		return nil
-	}
-	if e.MatchesPressOrRepeat("esc") {
-		e.Handled = true
-		h.lp.Quit(0)
-		return nil
-	}
+func (h *handler) window_on_key(e *loop.KeyEvent) error {
 	for _, k := range []string{"w", "n", "t", "s"} {
-		if e.MatchesPressOrRepeat("alt+" + k) {
+		if e.MatchesPressOrRepeat(k) || e.MatchesPressOrRepeat("shift+"+k) || e.MatchesPressOrRepeat("alt+"+k) || e.MatchesPressOrRepeat("ctrl+"+k) {
 			e.Handled = true
-			return h.do_window_resize(k == "n" || k == "s", k == "w" || k == "n", false, 1, h.fraction)
-		}
-		if e.MatchesPressOrRepeat("ctrl+" + k) {
-			e.Handled = true
-			return h.do_window_resize(k == "n" || k == "s", k == "w" || k == "n", false, 2, 0)
-		}
-		if e.MatchesPressOrRepeat(k) || e.MatchesPressOrRepeat("shift+"+k) {
-			e.Handled = true
-			return h.on_text(k)
+			multiplier, fraction := h.resize_step(e.Mods)
+			return h.do_window_resize(k == "n" || k == "s", k == "w" || k == "n", false, multiplier, fraction)
 		}
 	}
 	for _, k := range []string{"r", "q"} {
 		if e.MatchesPressOrRepeat(k) || e.MatchesPressOrRepeat("shift+"+k) {
 			e.Handled = true
-			return h.on_text(k)
+			return h.window_on_text(k)
 		}
 	}
 	return nil
@@ -182,19 +186,48 @@ func (h *handler) draw_screen() {
 	lp.StartAtomicUpdate()
 	defer lp.EndAtomicUpdate()
 	lp.ClearScreen()
-	lp.Println(lp.SprintStyled("bold fg=white", "Resize this window"))
+	if h.page != "" {
+		h.draw_settings_page()
+		return
+	}
+	title := "Resize this window"
+	if h.active_strategy() == "edge" {
+		title = "Resize an edge"
+	}
+	lp.Println(lp.SprintStyled("bold fg=white", title))
+	window, edge := "1: Window", "2: Edge"
+	if h.active_strategy() == "window" {
+		window = ctx.Green(window)
+	} else {
+		edge = ctx.Green(edge)
+	}
+	lp.Println("Strategy: " + window + "  " + edge)
+	p := h.active_preferences()
+	modifier := "Alt"
+	if p.Modifier == "shift" {
+		modifier = "Shift"
+	}
+	lp.Println(ctx.Green("M") + ": " + modifier + "    " + ctx.Green("F") + ": " + p.Fraction + " (change settings)")
 	lp.Println()
-	lp.Println("Press one of the following keys:")
-	lp.Println("  " + ctx.Green("W") + "ider")
-	lp.Println("  " + ctx.Green("N") + "arrower")
-	lp.Println("  " + ctx.Green("T") + "aller")
-	lp.Println("  " + ctx.Green("S") + "horter")
-	lp.Println("  " + ctx.Red("R") + "eset")
-	lp.Println()
-	lp.Println("Press " + lp.SprintStyled("italic", "Esc") + " to quit resize mode")
-	lp.Println("Hold down " + lp.SprintStyled("italic", "Ctrl") + " to double step size")
-	lp.Println("Hold down " + lp.SprintStyled("italic", "Alt") + " to take " + h.opts.Fraction + " of the remaining steps")
-	lp.Println()
+	if h.active_strategy() == "window" {
+		lp.Println("  " + ctx.Green("W") + "ider")
+		lp.Println("  " + ctx.Green("N") + "arrower")
+		lp.Println("  " + ctx.Green("T") + "aller")
+		lp.Println("  " + ctx.Green("S") + "horter")
+		lp.Println("  " + ctx.Red("R") + "eset")
+	} else if hooks := h.active_hooks(); hooks != nil && hooks.Draw != nil {
+		hooks.Draw(h)
+	} else {
+		lp.Println("Edge strategy is not available yet.")
+		lp.Println("Its modifier and fraction can still be saved.")
+	}
+	lp.Println(lp.SprintStyled("italic", "Esc") + ": quit    " + lp.SprintStyled("italic", "Ctrl") + ": double step size")
+	lp.Println(lp.SprintStyled("italic", modifier) + ": " + p.Fraction + " of the remaining steps")
+	status := "Settings saved automatically"
+	if h.status != "" {
+		status = h.status
+	}
+	lp.Println(status)
 	lp.Println(lp.SprintStyled("bold fg=white", "Sizes"))
 	lp.Printf("Original: %d rows %d cols\r\n", h.original_size.HeightCells, h.original_size.WidthCells)
 	if sz, err := lp.ScreenSize(); err == nil {
@@ -203,8 +236,8 @@ func (h *handler) draw_screen() {
 	}
 }
 
-func run_loop(opts *Options) (rc int, err error) {
-	fraction, err := parse_fraction(opts.Fraction)
+func run_loop(opts *Options, seen map[string]bool) (rc int, err error) {
+	_, err = parse_fraction(opts.Fraction)
 	if err != nil {
 		return 1, err
 	}
@@ -212,7 +245,23 @@ func run_loop(opts *Options) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	h := &handler{lp: lp, opts: opts, fraction: fraction, ctx: markup.New(true)}
+	path := filepath.Join(utils.ConfigDir(), "resize-window.json")
+	settings, load_err := load_settings(path)
+	if seen["Strategy"] {
+		settings.Strategy = opts.Strategy
+	}
+	if seen["Fraction"] {
+		p := settings.preferences(settings.Strategy)
+		p.Fraction = opts.Fraction
+		settings.Strategies[settings.Strategy] = p
+	}
+	h := &handler{lp: lp, opts: opts, settings: settings, settings_path: path, ctx: markup.New(true)}
+	if load_err != nil {
+		h.status = "Could not load settings: " + load_err.Error()
+	}
+	if err := h.sync_preferences(); err != nil {
+		return 1, err
+	}
 	lp.OnInitialize = func() (string, error) {
 		sz, err := lp.ScreenSize()
 		if err != nil {
@@ -222,11 +271,16 @@ func run_loop(opts *Options) (rc int, err error) {
 		lp.SetCursorVisible(false)
 		lp.AllowLineWrapping(false)
 		h.draw_screen()
+		if hooks := h.active_hooks(); hooks != nil && hooks.OnActivate != nil {
+			if err := hooks.OnActivate(h); err != nil {
+				return "", err
+			}
+		}
 		return "", nil
 	}
 	lp.OnResize = func(old, new loop.ScreenSize) error { h.draw_screen(); return nil }
 	lp.OnText = func(text string, from_key_event, in_bracketed_paste bool) error {
-		if in_bracketed_paste {
+		if in_bracketed_paste && h.page != "edit-fraction" {
 			return nil
 		}
 		return h.on_text(text)
@@ -246,7 +300,7 @@ func run_loop(opts *Options) (rc int, err error) {
 }
 
 func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
-	return run_loop(opts)
+	return run_loop(opts, cmd.OptionsSeenOnCommandLine())
 }
 
 func EntryPoint(parent *cli.Command) {
