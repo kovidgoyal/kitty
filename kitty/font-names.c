@@ -232,6 +232,7 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     uint16_t elided_fallback_name_id = 0;
     RAII_PyObject(design_axes, PyTuple_New(0));
     RAII_PyObject(multi_axis_styles, PyTuple_New(0));
+    RAII_PyObject(efn, NULL);
     if (!design_axes || !multi_axis_styles) return false;
     if (table_len < 20) goto ok;
     const uint16_t *p = (uint16_t *)table;
@@ -342,10 +343,9 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
 ok:
     if (PyDict_SetItemString(output, "design_axes", design_axes) != 0) return false;
     if (PyDict_SetItemString(output, "multi_axis_styles", multi_axis_styles) != 0) return false;
-    if (PyDict_SetItemString(
-            output, "elided_fallback_name", elided_fallback_name_id ? get_best_name(name_lookup_table, elided_fallback_name_id) : PyUnicode_FromString("")) !=
-        0)
-        return false;
+    efn = elided_fallback_name_id ? get_best_name(name_lookup_table, elided_fallback_name_id) : PyUnicode_FromString("");
+    if (!efn) return false;
+    if (PyDict_SetItemString(output, "elided_fallback_name", efn) != 0) return false;
     return true;
 }
 
@@ -355,6 +355,7 @@ read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     if (!named_styles) return false;
     RAII_PyObject(axes, PyTuple_New(0));
     if (!axes) return false;
+    RAII_PyObject(vpp, NULL);
 
     if (!table || table_len < 14 * sizeof(uint16_t)) goto ok;
 
@@ -434,7 +435,9 @@ read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     }
     if (_PyTuple_Resize(&named_styles, i) == -1) return NULL;
 ok:
-    if (PyDict_SetItemString(output, "variations_postscript_name_prefix", get_best_name(name_lookup_table, 25)) != 0) return false;
+    vpp = get_best_name(name_lookup_table, 25);
+    if (!vpp) return false;
+    if (PyDict_SetItemString(output, "variations_postscript_name_prefix", vpp) != 0) return false;
     if (PyDict_SetItemString(output, "axes", axes) != 0) return false;
     if (PyDict_SetItemString(output, "named_styles", named_styles) != 0) return false;
     return true;
