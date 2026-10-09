@@ -2590,15 +2590,21 @@ class Boss:
         else:
             w = window
             tab = w.tabref() if w else None
+        resize_session = None
         if w is not None and tab is not None and resolved_kitten(kitten) == 'resize_window':
             group = tab.windows.group_for_window(w)
             if group is not None:
-                for overlay in reversed(group.windows):
-                    if overlay.is_resize_overlay:
-                        # Re-enter the same session rather than stack resize UIs
-                        # and replace its original-size snapshot.
-                        tab.set_active_window(overlay)
-                        return overlay
+                for i, overlay in enumerate(group.windows):
+                    if i and overlay.is_resize_overlay:
+                        # Replace the existing resize UI so that the options for
+                        # this invocation take effect, but keep its snapshot of
+                        # the sizes from when resize mode was first opened.
+                        from .rc.resize_window_edge import resize_window_edge
+
+                        resize_session = resize_window_edge.sessions.pop(overlay, None)
+                        w = group.windows[i - 1]
+                        self.mark_window_for_close(overlay)
+                        break
         args = list(args)
         if w is not None and '@selection' in args and (sel := self.data_for_at(which='@selection', window=w)):
             args = [sel if xa == '@selection' else xa for xa in args]
@@ -2689,7 +2695,7 @@ class Boss:
                 overlay_window.is_resize_overlay = True
                 from .rc.resize_window_edge import resize_window_edge
 
-                resize_window_edge.start_session(overlay_window, tab.current_layout)
+                resize_window_edge.start_session(overlay_window, tab.current_layout, resize_session)
             if action_on_removal is not None:
 
                 def callback_wrapper(*a: Any) -> None:

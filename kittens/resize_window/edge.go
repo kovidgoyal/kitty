@@ -15,6 +15,7 @@ type edge_state struct {
 	Selected string   `json:"selected"`
 	Divider  string   `json:"divider"`
 	Status   string   `json:"status"`
+	Failed   bool     `json:"failed"`
 }
 
 type edge_input struct {
@@ -158,6 +159,13 @@ func (h *handler) on_edge_response(raw json.RawMessage) error {
 	}
 	h.edge_state = state
 	h.edge_pending, h.edge_ready = false, true
+	if state.Status != "" {
+		// Newer than any local message, which would otherwise hide it
+		h.status = ""
+	}
+	if state.Failed {
+		h.lp.Beep()
+	}
 	h.draw_screen()
 	if h.active_strategy() != "edge" || h.page != "" {
 		h.edge_queue = nil

@@ -411,8 +411,10 @@ normal step size. :kbd:`Esc` returns to edge selection; press it again to exit.
 In Splits, either strategy uses :kbd:`R` to restore the divider proportions saved when
 resize mode opened, rather than equalizing the layout. If the split structure
 has changed since then, restoration is refused. The initial default
-:code:`--strategy=window` retains the usual width/height controls. Other layouts
-keep Window's default-size reset behavior.
+:code:`--strategy=window` retains the usual width/height controls. Other layouts,
+and Splits when resize mode was opened in a different layout, keep Window's
+default-size reset behavior. Starting the resize kitten again while its page is
+open replaces the page, applying the new options and keeping the saved sizes.
 
 You can also define shortcuts in :file:`kitty.conf` to make the active window
 wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`

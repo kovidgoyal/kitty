@@ -145,3 +145,29 @@ func TestEdgeResizePayload(t *testing.T) {
 		t.Fatalf("unexpected edge command: %+v", cmd)
 	}
 }
+
+func TestEdgeStatusReplacesOlderLocalStatus(t *testing.T) {
+	lp, err := loop.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := default_settings()
+	settings.Strategy = "edge"
+	h := &handler{lp: lp, ctx: markup.New(true), opts: &Options{}, settings: settings, edge_pending: true, status: "Could not load settings: bad"}
+	state, _ := json.Marshal(edge_state{Edges: []string{"right"}})
+	if err := h.on_edge_response(must_marshal(t, string(state))); err != nil || h.status == "" {
+		t.Fatalf("a reply without a status cleared the local status: %v", err)
+	}
+	state, _ = json.Marshal(edge_state{Edges: []string{"right"}, Selected: "right", Status: "At size limit; move the other way", Failed: true})
+	if err := h.on_edge_response(must_marshal(t, string(state))); err != nil || h.status != "" || !h.edge_state.Failed {
+		t.Fatalf("a newer edge status was hidden by an older local status: %q %v", h.status, err)
+	}
+}
+
+func must_marshal(t *testing.T, v any) json.RawMessage {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}

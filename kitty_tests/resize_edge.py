@@ -15,22 +15,37 @@ from . import layout as geometry_tests
 
 
 class TestResizeEntry(geometry_tests.BaseTest):
-    def test_reenter_resize_reuses_existing_overlay(self):
+    def test_reenter_resize_replaces_existing_overlay(self):
         from kitty.boss import Boss
 
-        resize = SimpleNamespace(is_resize_overlay=True)
-        shell = SimpleNamespace(is_resize_overlay=False)
-        # Another overlay can temporarily cover the resize UI.
-        group = SimpleNamespace(windows=[shell, resize, shell])
-        tab = SimpleNamespace(windows=SimpleNamespace(group_for_window=lambda w: group), set_active_window=Mock())
-        window = SimpleNamespace(tabref=lambda: tab)
-        boss = SimpleNamespace(active_window=window, active_tab=tab)
-        with patch('kittens.runner.create_kitten_handler', side_effect=AssertionError('Created another resize UI')):
-            for name in ('resize_window', 'resize-window'):
-                self.assertIs(Boss.run_kitten_with_metadata(boss, name, args=['--strategy=edge']), resize)
-                self.assertIs(Boss.run_kitten_with_metadata(boss, name, window=window), resize)
-        self.ae(tab.set_active_window.call_count, 4)
-        tab.set_active_window.assert_called_with(resize)
+        launched = []
+
+        def create_kitten_handler(kitten, args):
+            launched.append(args)
+            raise AssertionError('Launched')
+
+        for name in ('resize_window', 'resize-window'):
+            cmd = ResizeWindowEdge()
+            base = Mock(is_resize_overlay=False)
+            resize = Mock(is_resize_overlay=True)
+            # Another overlay can temporarily cover the resize UI.
+            other = Mock(is_resize_overlay=False)
+            group = SimpleNamespace(windows=[base, resize, other])
+            tab = SimpleNamespace(windows=SimpleNamespace(group_for_window=lambda w: group), set_active_window=Mock())
+            base.tabref = other.tabref = lambda: tab
+            session = cmd.start_session(resize, None)
+            boss = SimpleNamespace(active_window=other, active_tab=tab, mark_window_for_close=Mock())
+            with patch('kitty.rc.resize_window_edge.resize_window_edge', cmd), patch('kittens.runner.create_kitten_handler', create_kitten_handler):
+                with self.assertRaisesRegex(AssertionError, 'Launched'):
+                    Boss.run_kitten_with_metadata(boss, name, args=['--strategy=edge'])
+            # The new options are used, the old UI is closed and its snapshot is handed over
+            self.ae(launched.pop(), ['--strategy=edge'])
+            boss.mark_window_for_close.assert_called_once_with(resize)
+            self.assertNotIn(resize, cmd.sessions)
+            new_overlay = Mock()
+            self.assertIs(cmd.start_session(new_overlay, None, session), session)
+            self.assertIs(cmd.sessions[new_overlay], session)
+            tab.set_active_window.assert_not_called()
 
     def test_resize_reentry_is_scoped_to_kitten_and_pane(self):
         from kitty.boss import Boss
@@ -40,7 +55,7 @@ class TestResizeEntry(geometry_tests.BaseTest):
         group = SimpleNamespace(windows=[shell])
         tab = SimpleNamespace(windows=SimpleNamespace(group_for_window=lambda w: group), set_active_window=Mock())
         window = SimpleNamespace(tabref=lambda: tab)
-        boss = SimpleNamespace(active_window=window, active_tab=tab)
+        boss = SimpleNamespace(active_window=window, active_tab=tab, mark_window_for_close=Mock())
         with patch('kittens.runner.create_kitten_handler', side_effect=AssertionError('Normal launch')):
             with self.assertRaisesRegex(AssertionError, 'Normal launch'):
                 Boss.run_kitten_with_metadata(boss, 'resize_window')
@@ -48,6 +63,7 @@ class TestResizeEntry(geometry_tests.BaseTest):
             with self.assertRaisesRegex(AssertionError, 'Normal launch'):
                 Boss.run_kitten_with_metadata(boss, 'hints')
         tab.set_active_window.assert_not_called()
+        boss.mark_window_for_close.assert_not_called()
 
 
 class TestEdgeResize(geometry_tests.BaseSplitGeometryTest):
@@ -253,6 +269,59 @@ class TestEdgeResize(geometry_tests.BaseSplitGeometryTest):
             result = resize_window.response_from_kitty(boss, window, payload)
             self.assertIn('structure changed', result)
             self.ae(self.positions(layout), changed)
+
+    def test_reset_after_leaving_entry_layout_uses_default_reset(self):
+        layout, windows, tab = self.make_layout({'bias': 0.3, 'one': 1, 'two': 2}, num=2)
+        window = windows.id_map[1]
+        window.tabref = lambda: tab
+        cmd = ResizeWindowEdge()
+        cmd.start_session(window, layout)
+        boss = SimpleNamespace(active_window=window, resize_layout_window=Mock(return_value=None))
+        payload = PayloadGetter(resize_window, {'self': True, 'axis': 'reset', 'increment': 2, 'restore_entry_layout': True})
+        with patch('kitty.rc.resize_window_edge.resize_window_edge', cmd):
+            tab.current_layout = geometry_tests.create_layout(geometry_tests.Tall)
+            self.assertIsNone(resize_window.response_from_kitty(boss, window, payload))
+            self.assertTrue(boss.resize_layout_window.call_args.kwargs['reset'])
+            # Returning to the entry layout restores its snapshot again
+            tab.current_layout = layout
+            layout.pairs_root.bias = 0.6
+            boss.resize_layout_window.reset_mock()
+            self.assertIsNone(resize_window.response_from_kitty(boss, window, payload))
+            boss.resize_layout_window.assert_not_called()
+            self.ae(layout.pairs_root.bias, 0.3)
+
+    def test_no_snapshot_when_entered_in_other_layout(self):
+        layout, windows, tab = self.make_layout({'bias': 0.3, 'one': 1, 'two': 2}, num=2)
+        window = windows.id_map[1]
+        window.tabref = lambda: tab
+        tab.reset_window_sizes = Mock()
+        cmd = ResizeWindowEdge()
+        cmd.start_session(window, geometry_tests.create_layout(geometry_tests.Tall))
+        layout.pairs_root.bias = 0.6
+        started = self.command(cmd, tab, 1, 'start')
+        self.assertTrue(started['divider'])
+        moved = self.command(cmd, tab, 1, 'move', edge='right', increment=2, divider=started['divider'])
+        self.ae(moved['status'], '')
+        self.assertFalse(moved['failed'])
+        # Sizes changed after entry must not be treated as the original sizes
+        reset = self.command(cmd, tab, 1, 'reset')
+        tab.reset_window_sizes.assert_called_once_with()
+        self.assertNotIn('Restored', reset['status'])
+        self.assertFalse(reset['failed'])
+
+    def test_failure_flag(self):
+        layout, windows, tab = self.make_layout({'one': 1, 'two': 2}, num=2)
+        cmd = ResizeWindowEdge()
+        self.command(cmd, tab, 1, 'start')
+        self.assertTrue(self.command(cmd, tab, 1, 'select', edge='left')['failed'])
+        selected = self.command(cmd, tab, 1, 'select', edge='right')
+        self.assertFalse(selected['failed'])
+        while not (moved := self.command(cmd, tab, 1, 'move', edge='right', increment=2, divider=selected['divider']))['failed']:
+            pass
+        self.assertIn('size limit', moved['status'])
+        restored = self.command(cmd, tab, 1, 'reset')
+        self.assertIn('Restored', restored['status'])
+        self.assertFalse(restored['failed'])
 
     def test_window_reset_without_session_keeps_default_behavior(self):
         layout, windows, tab = self.make_layout({'one': 1, 'two': 2}, num=2)

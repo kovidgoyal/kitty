@@ -54,6 +54,24 @@ func (h *handler) sync_preferences() error {
 	return err
 }
 
+// A command-line override remains active for this invocation until the user
+// changes that field. Save operations merge against disk, not stale UI state.
+func (h *handler) apply_saved_setting(strategy, field string, saved resize_settings) error {
+	if field == "strategy" {
+		// Keep the in-memory preferences, which include any command-line override
+		h.settings.Strategy = saved.Strategy
+	} else {
+		p := h.active_preferences()
+		if field == "modifier" {
+			p.Modifier = saved.preferences(strategy).Modifier
+		} else {
+			p.Fraction = saved.preferences(strategy).Fraction
+		}
+		h.settings.Strategies[strategy] = p
+	}
+	return h.sync_preferences()
+}
+
 func (h *handler) change_setting(field, value string) error {
 	strategy := h.active_strategy()
 	if field == "strategy" {
@@ -65,26 +83,14 @@ func (h *handler) change_setting(field, value string) error {
 		h.draw_screen()
 		return nil
 	}
-	// A command-line override remains active for this invocation until the user
-	// changes that field. Save operations merge against disk, not stale UI state.
 	if field == "strategy" {
 		if hooks := h.active_hooks(); hooks != nil && hooks.OnDeactivate != nil {
 			if err := hooks.OnDeactivate(h); err != nil {
 				return err
 			}
 		}
-		h.settings.Strategy = saved.Strategy
-		h.settings.Strategies[strategy] = saved.preferences(strategy)
-	} else {
-		p := h.active_preferences()
-		if field == "modifier" {
-			p.Modifier = saved.preferences(strategy).Modifier
-		} else {
-			p.Fraction = saved.preferences(strategy).Fraction
-		}
-		h.settings.Strategies[strategy] = p
 	}
-	if err := h.sync_preferences(); err != nil {
+	if err := h.apply_saved_setting(strategy, field, saved); err != nil {
 		return err
 	}
 	h.page = ""

@@ -86,9 +86,9 @@ Resize the window this command is run in, rather than the active window.
             if payload_get('axis') == 'reset' and payload_get('restore_entry_layout', missing=False):
                 from .resize_window_edge import resize_window_edge
 
-                handled, status = resize_window_edge.restore_session(windows[0])
-                if handled:
-                    return None if status.startswith('Restored') else status
+                err = resize_window_edge.restore_session(windows[0])
+                if err is not None:
+                    return err or None
             resized = boss.resize_layout_window(
                 windows[0],
                 increment=payload_get('increment'),

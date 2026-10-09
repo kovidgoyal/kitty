@@ -2,7 +2,6 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Collection, Generator, Iterator, Sequence
-from copy import deepcopy
 from math import ceil, isfinite
 from typing import Any, Optional, TypedDict, Union
 
@@ -407,15 +406,11 @@ class Pair:
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
 
-    def move_divider(self, pixels: int) -> int:
-        """Move this divider, keeping every other divider along the same axis in place.
-
-        Only the two units adjacent to this divider change size. A unit that is a
-        perpendicular subtree is resized as a whole, so dividers nested inside it
-        that happen to run along this axis do move, proportionally.
-        """
-        if self.is_redundant or not pixels or self.width <= 0 or self.height <= 0:
-            return 0
+    def divider_room(self) -> tuple[int, int]:
+        """The number of pixels this divider can move backwards and forwards
+        respectively, keeping every other divider along the same axis in place."""
+        if self.is_redundant or self.width <= 0 or self.height <= 0:
+            return 0, 0
         horizontal = self.horizontal
         cell = lgd.cell_width if horizontal else lgd.cell_height
 
@@ -436,9 +431,22 @@ class Pair:
             size = extent.right - extent.left if horizontal else extent.bottom - extent.top
             return max(0, size - minimum_size(child))
 
-        pixels = max(-shrink_room(self.one, self.first_extent, True), min(pixels, shrink_room(self.two, self.second_extent, False)))
+        return shrink_room(self.one, self.first_extent, True), shrink_room(self.two, self.second_extent, False)
+
+    def move_divider(self, pixels: int) -> int:
+        """Move this divider, keeping every other divider along the same axis in place.
+
+        Only the two units adjacent to this divider change size. A unit that is a
+        perpendicular subtree is resized as a whole, so dividers nested inside it
+        that happen to run along this axis do move, proportionally.
+        """
         if not pixels:
             return 0
+        backward, forward = self.divider_room()
+        pixels = max(-backward, min(pixels, forward))
+        if not pixels:
+            return 0
+        horizontal = self.horizontal
 
         def update(pair: Pair, start: int, size: int) -> None:
             divider = (pair.first_extent.right if horizontal else pair.first_extent.bottom) + pair.border_width
@@ -907,10 +915,8 @@ class Splits(Layout):
         if not pixels:
             return False
         if fraction:
-            size = pair.width if pair.horizontal else pair.height
-            sign = 1 if pixels > 0 else -1
-            room = abs(deepcopy(pair).move_divider(sign * size))
-            remaining = ceil(room / abs(pixels))
+            backward, forward = pair.divider_room()
+            remaining = ceil((forward if pixels > 0 else backward) / abs(pixels))
             pixels *= fractional_resize_steps(remaining, fraction)
         return bool(pair.move_divider(pixels))
 

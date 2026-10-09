@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class EdgeResizeSession:
-    layout: Splits
+    # None when resize mode opened in a layout other than Splits
+    layout: Splits | None
     biases: tuple[tuple[Pair, float], ...]
     topology: tuple[tuple[int, bool, int, int], ...]
     selected: str = ''
@@ -102,27 +103,33 @@ Use the window this command is run in, rather than the active window.
         resize_window.validate_fraction(opts.fraction)
         return {name: getattr(opts, name) for name in ('match', 'self', 'operation', 'edge', 'increment', 'fraction', 'divider')}
 
-    def start_session(self, window: Window, layout: object) -> EdgeResizeSession | None:
-        if not isinstance(layout, Splits):
-            return None
-        session = EdgeResizeSession(layout, tuple((p, p.bias) for p in layout.pairs_root.self_and_descendants()), topology(layout))
+    def start_session(self, window: Window, layout: object, existing: EdgeResizeSession | None = None) -> EdgeResizeSession:
+        if existing is not None:
+            session = existing
+            session.selected, session.divider = '', None
+        elif isinstance(layout, Splits):
+            session = EdgeResizeSession(layout, tuple((p, p.bias) for p in layout.pairs_root.self_and_descendants()), topology(layout))
+        else:
+            # Record that there is no snapshot, so that one is not taken later
+            # from sizes that may already have been changed.
+            session = EdgeResizeSession(None, (), ())
         self.sessions[window] = session
         return session
 
-    def restore_session(self, window: Window) -> tuple[bool, str]:
+    def restore_session(self, window: Window) -> str | None:
+        """Restore the sizes from when resize mode opened, returning an error message, empty on success.
+        Returns None when there is no snapshot for the current layout."""
         session = self.sessions.get(window)
-        if session is None:
-            return False, ''
         tab = window.tabref()
-        if tab is None or tab.current_layout is not session.layout or topology(session.layout) != session.topology:
-            status = 'Split structure changed; original sizes cannot be restored'
-        else:
-            for pair, bias in session.biases:
-                pair.bias = bias
-            tab.relayout()
-            status = 'Restored sizes from when resize mode opened'
+        if session is None or session.layout is None or tab is None or tab.current_layout is not session.layout:
+            return None
         session.selected, session.divider = '', None
-        return True, status
+        if topology(session.layout) != session.topology:
+            return 'Split structure changed; original sizes cannot be restored'
+        for pair, bias in session.biases:
+            pair.bias = bias
+        tab.relayout()
+        return ''
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_match_payload(boss, window, payload_get)
@@ -137,14 +144,21 @@ Use the window this command is run in, rather than the active window.
             raise ValueError('Invalid edge resize operation')
         layout = tab.current_layout
         if not isinstance(layout, Splits):
-            return json.dumps({'edges': [], 'selected': '', 'divider': '', 'status': 'Edge resizing requires the Splits layout'})
+            return json.dumps({'edges': [], 'selected': '', 'divider': '', 'status': 'Edge resizing requires the Splits layout', 'failed': True})
         session = self.sessions.get(window)
         if session is None:
+            # Used directly rather than from a resize overlay
             session = self.start_session(window, layout)
-            assert session is not None
-        status = ''
+        status, failed = '', True
         if operation == 'reset':
-            _, status = self.restore_session(window)
+            err = self.restore_session(window)
+            if err is None:
+                # No snapshot from when resize mode opened in this layout
+                tab.reset_window_sizes()
+                session.selected, session.divider = '', None
+                status, failed = 'Reset to default sizes', False
+            else:
+                status, failed = (err, True) if err else ('Restored sizes from when resize mode opened', False)
         elif operation == 'state':
             session.selected, session.divider = '', None
         elif operation in ('select', 'move'):
@@ -155,9 +169,7 @@ Use the window this command is run in, rather than the active window.
             elif operation == 'select':
                 session.selected, session.divider = edge, pair
                 session.horizontal = pair.horizontal
-            elif (token := payload_get('divider')) and (
-                token != str(id(pair)) or session.divider is not pair or layout is not session.layout or session.horizontal != pair.horizontal
-            ):
+            elif (token := payload_get('divider')) and (token != str(id(pair)) or session.divider is not pair or session.horizontal != pair.horizontal):
                 session.selected, session.divider = '', None
                 status = 'Layout changed; choose an edge again'
             else:
@@ -176,7 +188,13 @@ Use the window this command is run in, rather than the active window.
                 assert session.divider is not None
                 session.horizontal = session.divider.horizontal
         return json.dumps(
-            {'edges': edges, 'selected': session.selected, 'divider': str(id(session.divider)) if session.divider is not None else '', 'status': status}
+            {
+                'edges': edges,
+                'selected': session.selected,
+                'divider': str(id(session.divider)) if session.divider is not None else '',
+                'status': status,
+                'failed': failed and bool(status),
+            }
         )
 
 

@@ -175,3 +175,32 @@ func TestResizeStrategyHooks(t *testing.T) {
 		t.Fatalf("registered text hook not used: %v", err)
 	}
 }
+
+func TestResizeStrategySwitchKeepsCommandLineOverride(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "resize-window.json")
+	opts := &Options{Fraction: "1/4", Strategy: "window"}
+	s, err := settings_for_invocation(path, opts, map[string]bool{"Fraction": true, "Strategy": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := &handler{opts: opts, settings: s, settings_path: path}
+	if err := h.sync_preferences(); err != nil {
+		t.Fatal(err)
+	}
+	for _, strategy := range []string{"edge", "window"} {
+		saved, err := update_settings(path, strategy, "strategy", strategy)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := h.apply_saved_setting(strategy, "strategy", saved); err != nil || h.active_strategy() != strategy {
+			t.Fatalf("did not switch to %s: %v", strategy, err)
+		}
+	}
+	if h.active_preferences().Fraction != "1/4" || h.fraction != 0.25 {
+		t.Fatalf("switching strategy discarded the --fraction override: %+v", h.active_preferences())
+	}
+	saved, err := load_settings(path)
+	if err != nil || saved.preferences("window").Fraction != "1/3" {
+		t.Fatalf("the --fraction override was saved: %+v, %v", saved, err)
+	}
+}

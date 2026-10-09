@@ -419,17 +419,21 @@ class Layout:
         state['opts'] = self.layout_opts.serialized()
         if not probe.set_layout_state(state, lambda group_id: group_id):
             return False
-        remaining = 0
+        # The state after each step, so that the chosen number of steps can be
+        # adopted without repeating them.
+        states: list[dict[str, Any]] = []
         # Biases span at most one unit; allow two for clamping/normalization.
         # The bound also prevents future layout implementations from looping.
         for _ in range(max(1, ceil(2 / abs(increment)))):
             if not probe.apply_fractional_bias(idx, increment, all_windows, is_horizontal):
                 break
-            remaining += 1
-        steps = fractional_resize_steps(remaining, fraction)
-        for _ in range(steps):
-            self.apply_fractional_bias(idx, increment, all_windows, is_horizontal)
-        return bool(steps)
+            states.append(deepcopy(probe.layout_state()))
+        steps = fractional_resize_steps(len(states), fraction)
+        if not steps:
+            return False
+        state = states[steps - 1]
+        state['opts'] = self.layout_opts.serialized()
+        return self.set_layout_state(state, lambda group_id: group_id)
 
     def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> float:
         """Resize by a number of cells, returning the number of cells actually applied.
