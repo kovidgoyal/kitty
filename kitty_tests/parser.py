@@ -1233,3 +1233,10 @@ class TestParser(BaseTest):
             parse_bytes(s, seq.encode())
             after = [[s.line(y).cursor_from(x).bold for x in range(s.columns)] for y in range(s.lines)]
             self.ae(before, after, seq)
+
+    def test_cht_large_count(self):
+        s = self.create_screen(cols=80)
+        parse_bytes(s, b'\033[3I')
+        self.ae(s.cursor.x, 24)
+        parse_bytes(s, b'\033[2147483647I')
+        self.ae(s.cursor.x, s.columns - 1)

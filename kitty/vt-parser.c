@@ -1131,7 +1131,11 @@ screen_cursor_back1(Screen *s, unsigned int count) {
 }
 static void
 screen_tabn(Screen *s, unsigned int count) {
-    for (index_type i = 0; i < MAX(1u, count); i++) screen_tab(s);
+    for (index_type i = 0; i < MAX(1u, count); i++) {
+        index_type x = s->cursor->x;
+        screen_tab(s);
+        if (s->cursor->x == x) break;
+    }
 }
 
 static const char *
