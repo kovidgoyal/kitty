@@ -6087,7 +6087,7 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
 
 static bool
 screen_fractional_scroll(Screen *self, double amt) {
-    if (amt == 0) return false;
+    if (amt == 0 || !isfinite(amt)) return false;
     double integral_part, fractional_part = modf(amt, &integral_part);
     double pixels = trunc(fractional_part * self->cell_size.height);
     if (fractional_part > 0) pixels = MAX(1, pixels);
