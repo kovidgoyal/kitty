@@ -695,6 +695,16 @@ class TestDataTypes(BaseTest):
         tp('\033]0;t\033\\', text='\033]0;t\033\\', ibp=True)
         tp('\033]0;t\007', text='\033]0;t\007', ibp=True)
         tp('\033_x\033\\', text='\033_x\033\\', ibp=True)
+        tp('\033[200~a\033]0;t\033[201~b', text='a \033]0;t b', csi='200~ 201~')
+        tp('\033P1\033[201~b', text='\033P1 b', csi='201~', ibp=True)
+        tp('\033^x\033\033[201~', text='\033^x\033', csi='201~', ibp=True)
+        tp('\033_x\033', '[2', '01~b', text='\033_x b', csi='201~', ibp=True)
+        tp('\033]0;t\033[2', '0x\033\\', text='\033]0;t\033[20x\033\\', ibp=True)
+        tp('\033]0;t\033[1m\033\\b', text='\033]0;t\033[1m\033\\ b', ibp=True)
+        tp('\033]0;t\033[20', leftover='\033]0;t\033[20', ibp=True)
+        tp('\033]a\033[201~b\033\\', osc='a\033[201~b')
+        tp('\033[200~a\033[1;2\033[201~b', text='a \033[1;2 b', csi='200~ 201~')
+        tp('\033[1', '\033[201~b', text='\033[1 b', csi='201~', ibp=True)
         import random
 
         rnd = random.Random(0)

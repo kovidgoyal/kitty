@@ -185,6 +185,11 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                 }
                 break;
             case CSI:
+                if (ch == 0x1b && in_bracketed_paste_mode) {
+                    CALL(callback, start + 1, count);
+                    state = ESC;
+                    break;
+                }
                 count++;
                 switch (ch) {
                     case 'a' ... 'z':
@@ -214,7 +219,22 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                     start = pos + 1;
                     consumed += 2;
                 } else if (ch == 0x1b) count++;
-                else if (ch == 0x07 && is_osc) {
+                else if (ch == '[' && in_bracketed_paste_mode) {
+                    // the end of paste marker ends the paste even inside a string
+                    static const char eop[] = "201~";
+                    Py_ssize_t i = 0;
+                    while (i < 4 && pos + 1 + i < sz && PyUnicode_READ(kind, data, pos + 1 + i) == (Py_UCS4)eop[i]) i++;
+                    if (i == 4) {
+                        CALL(callback, start + 1, count);
+                        state = CSI;
+                        callback = csi_callback;
+                        start = pos;
+                    } else if (pos + 1 + i >= sz) return PyUnicode_Substring(uo, consumed, sz);
+                    else {
+                        count += 2;
+                        state = ST;
+                    }
+                } else if (ch == 0x07 && is_osc) {
                     count++;
                     term_len = 1;
                     CALL(callback, start + 1, count);
