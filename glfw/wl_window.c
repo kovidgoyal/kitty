@@ -3385,7 +3385,7 @@ send_drag_data(_GLFWwindow *window, size_t i) {
                 dr.pending_data = NULL;
                 dr.sz = 0;
                 dr.offset = 0;
-                finish_drag_write(i);
+                if (has_preset_data) finish_drag_write(i);
             }
         }
     } else if (has_preset_data) {
@@ -3434,11 +3434,7 @@ send_drag_data(_GLFWwindow *window, size_t i) {
                     }
                 }
                 _glfwInputDragSourceRequest(window, &ev);
-                if (ret < 0) {
-                    on_fail;
-                } else if ((size_t)ret >= ev.data_sz) {
-                    finish_drag_write(i);
-                }
+                if (ret < 0) { on_fail; }
             } else finish_drag_write(i);
         }
     }
