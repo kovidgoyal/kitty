@@ -113,9 +113,13 @@ class TestDataTypes(BaseTest):
             (rgba, 65537, 65537),
             (rgba, 2**32 - 1, 2**32 - 1),
             (rgba, 2**31, 2),
+            (rgba, 2**32 + 2, 2),
+            (rgba, -2, -2),
         ):
             with self.assertRaises(ValueError, msg=repr(args[1:])):
                 png_from_32bit_rgba_data(*args)
+        with self.assertRaises(OverflowError):
+            png_from_32bit_rgba_data(rgba, 2, 2**64 + 2)
 
     def test_to_color(self):
         for x in 'xxx #12 #1234 rgb:a/b'.split():
