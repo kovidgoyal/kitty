@@ -144,23 +144,24 @@ func TestResizeSettingsModifiers(t *testing.T) {
 	}
 }
 
-func TestResizeStrategyPlaceholderAndHooks(t *testing.T) {
+func TestResizeStrategyHooks(t *testing.T) {
 	old := edge_strategy
 	t.Cleanup(func() { edge_strategy = old })
-	edge_strategy = nil
+	if edge_strategy == nil || edge_strategy.OnKey == nil || edge_strategy.OnText == nil || edge_strategy.Draw == nil {
+		t.Fatal("Edge strategy is missing its interaction handlers")
+	}
 	s := default_settings()
 	s.Strategy = "edge"
-	// No loop: falling back to window resizing would panic instead of quietly
-	// leaving the pane alone when an implementation is unavailable.
-	h := &handler{settings: s, opts: &Options{}}
+	// No loop: accidentally routing Window keys to a resize would panic.
+	h := &handler{settings: s, opts: &Options{}, edge_ready: true}
 	for _, text := range []string{"w", "W", "n", "t", "s"} {
 		if err := h.on_text(text); err != nil {
 			t.Fatal(err)
 		}
 	}
-	e := &loop.KeyEvent{Key: "w", Mods: loop.ALT, Type: loop.PRESS}
+	e := &loop.KeyEvent{Key: "w", Type: loop.PRESS}
 	if err := h.on_key(e); err != nil || e.Handled {
-		t.Fatalf("placeholder handled a resize: %v", err)
+		t.Fatalf("Edge handled a Window resize key: %v", err)
 	}
 	keys, texts := 0, 0
 	edge_strategy = &strategy_hooks{

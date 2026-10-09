@@ -192,8 +192,8 @@ func (h *handler) window_on_key(e *loop.KeyEvent) error {
 }
 
 func (h *handler) draw_screen() {
-	if h.page == "" && h.active_strategy() == "edge" && edge_strategy != nil {
-		h.draw_edge_screen()
+	if h.page == "" && h.active_strategy() == "edge" {
+		h.active_hooks().Draw(h)
 		return
 	}
 	lp, ctx := h.lp, h.ctx
@@ -204,18 +204,8 @@ func (h *handler) draw_screen() {
 		h.draw_settings_page()
 		return
 	}
-	title := "Resize this window"
-	if h.active_strategy() == "edge" {
-		title = "Resize an edge"
-	}
-	lp.Println(lp.SprintStyled("bold fg=white", title))
-	window, edge := "1: Window", "2: Edge"
-	if h.active_strategy() == "window" {
-		window = ctx.Green(window)
-	} else {
-		edge = ctx.Green(edge)
-	}
-	lp.Println("Strategy: " + window + "  " + edge)
+	lp.Println(lp.SprintStyled("bold fg=white", "Resize this window"))
+	lp.Println("Strategy: " + ctx.Green("1: Window") + "  2: Edge")
 	p := h.active_preferences()
 	modifier := "Alt"
 	if p.Modifier == "shift" {
@@ -223,18 +213,11 @@ func (h *handler) draw_screen() {
 	}
 	lp.Println(ctx.Green("M") + ": " + modifier + "    " + ctx.Green("F") + ": " + p.Fraction + " (change settings)")
 	lp.Println()
-	if h.active_strategy() == "window" {
-		lp.Println("  " + ctx.Green("W") + "ider")
-		lp.Println("  " + ctx.Green("N") + "arrower")
-		lp.Println("  " + ctx.Green("T") + "aller")
-		lp.Println("  " + ctx.Green("S") + "horter")
-		lp.Println("  " + ctx.Red("R") + "eset")
-	} else if hooks := h.active_hooks(); hooks != nil && hooks.Draw != nil {
-		hooks.Draw(h)
-	} else {
-		lp.Println("Edge strategy is not available yet.")
-		lp.Println("Its modifier and fraction can still be saved.")
-	}
+	lp.Println("  " + ctx.Green("W") + "ider")
+	lp.Println("  " + ctx.Green("N") + "arrower")
+	lp.Println("  " + ctx.Green("T") + "aller")
+	lp.Println("  " + ctx.Green("S") + "horter")
+	lp.Println("  " + ctx.Red("R") + "eset")
 	lp.Println(lp.SprintStyled("italic", "Esc") + ": quit    " + lp.SprintStyled("italic", "Ctrl") + ": double step size")
 	lp.Println(lp.SprintStyled("italic", modifier) + ": " + p.Fraction + " of the remaining steps")
 	status := "Settings saved automatically"

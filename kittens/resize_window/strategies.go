@@ -4,10 +4,8 @@ package resize_window
 
 import "github.com/kovidgoyal/kitty/tools/tui/loop"
 
-// The edge implementation can register these hooks from its own file's init().
-// Settings keys and persistence are shared; all edge operations stay in that
-// implementation. A nil registration is an unavailable strategy, never a
-// fallback to resizing the whole window.
+// Edge interaction uses these hooks while settings keys and persistence are
+// shared with Window resizing.
 type strategy_hooks struct {
 	OnActivate   func(*handler) error
 	OnDeactivate func(*handler) error

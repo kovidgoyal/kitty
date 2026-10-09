@@ -33,8 +33,8 @@ Choose the initial resize strategy. Window changes pane width or height;
 edge selects an internal pane edge with H/J/K/L or arrow keys, then moves its
 divider along that axis. A sole available edge is selected automatically.
 In Splits, either strategy uses R to restore the proportions saved when resize
-mode opened. Switching strategies preserves this snapshot. Edge resizing is
-currently limited to Splits; other layouts retain Window's usual reset behavior.
+mode opened. Switching strategies preserves this snapshot. Edge resizing uses
+the Splits layout; other layouts retain Window's usual reset behavior.
 When omitted, uses the strategy saved from the resize page. Inside the page,
 1 and 2 choose a strategy, M switches its Alt/Shift modifier, and F changes
 its fraction. Each strategy's settings are saved separately.
