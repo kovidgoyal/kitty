@@ -182,6 +182,11 @@ class Selection(BaseTest):
             self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
             self.ae(face_from_descriptor(ff['bold']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
+    def test_invalid_font_feature(self):
+        with self.assertRaises(ValueError) as cm:
+            ParsedFontFeature('!!bad!!')
+        self.assertIn('!!bad!!', str(cm.exception))
+
     def test_synthetic_italic_matrix(self):
         # A roman-only font that find_best_match finds (e.g. Fira Code, which ships
         # no italic face) must get fontconfig's synthetic-italic FC_MATRIX

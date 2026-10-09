@@ -2747,7 +2747,7 @@ parse_font_feature(const char *spec) {
     ParsedFontFeature *self = (ParsedFontFeature *)ParsedFontFeature_Type.tp_alloc(&ParsedFontFeature_Type, 0);
     if (self != NULL) {
         if (!hb_feature_from_string(spec, -1, &self->feature)) {
-            PyErr_Format(PyExc_ValueError, "%s is not a valid font feature", self);
+            PyErr_Format(PyExc_ValueError, "%s is not a valid font feature", spec);
             Py_CLEAR(self);
         }
     }
