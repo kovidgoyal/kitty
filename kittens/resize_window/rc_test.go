@@ -36,3 +36,22 @@ func TestResizeCommandEscapeCode(t *testing.T) {
 		t.Fatal("version not set")
 	}
 }
+
+func TestResizeResetUsesEntrySnapshotOnlyWhenRequested(t *testing.T) {
+	for _, axis := range []string{"restore", "reset"} {
+		ec, err := resize_command_escape_code(2, axis, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cmd struct {
+			Payload resize_payload `json:"payload"`
+		}
+		body := strings.TrimSuffix(strings.TrimPrefix(ec, "\x1bP@kitty-cmd"), "\x1b\\")
+		if err := json.Unmarshal([]byte(body), &cmd); err != nil {
+			t.Fatal(err)
+		}
+		if cmd.Payload.Axis != "reset" || cmd.Payload.Restore != (axis == "restore") {
+			t.Fatalf("reset source was not preserved: %+v", cmd.Payload)
+		}
+	}
+}

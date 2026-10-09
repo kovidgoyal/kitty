@@ -408,10 +408,11 @@ steps; :kbd:`Ctrl` doubles the normal step. The other modifier retains the
 normal step size. :kbd:`Esc` returns to edge selection; press it again to exit.
 :kbd:`Enter` or :kbd:`Q` exits immediately.
 
-In the edge strategy, :kbd:`R` restores the divider proportions saved when
+In Splits, either strategy uses :kbd:`R` to restore the divider proportions saved when
 resize mode opened, rather than equalizing the layout. If the split structure
 has changed since then, restoration is refused. The initial default
-:code:`--strategy=window` retains the usual width/height controls and reset.
+:code:`--strategy=window` retains the usual width/height controls. Other layouts
+keep Window's default-size reset behavior.
 
 You can also define shortcuts in :file:`kitty.conf` to make the active window
 wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`

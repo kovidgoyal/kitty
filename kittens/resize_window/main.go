@@ -78,7 +78,7 @@ func (h *handler) do_window_resize(is_decrease, is_horizontal, reset bool, multi
 	if is_decrease {
 		increment = -increment
 	}
-	axis := "reset"
+	axis := "restore"
 	if !reset {
 		if is_horizontal {
 			axis = "horizontal"
@@ -145,6 +145,11 @@ func (h *handler) on_rc_response(raw []byte) error {
 		}
 	}
 	if json_is_truthy(response.Data) {
+		var message string
+		if json.Unmarshal(response.Data, &message) == nil && message != "" {
+			h.status = message
+			h.draw_screen()
+		}
 		h.lp.Beep()
 	}
 	return nil

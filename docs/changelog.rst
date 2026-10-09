@@ -34,8 +34,8 @@ the Splits layout and move its divider in a physical direction.
 
 Switch strategies with 1/2 inside the page. Each strategy remembers its own
 Alt/Shift modifier and fraction, configurable with M and F. A sole internal
-edge is selected automatically. In the Edge strategy, R restores the
-proportions saved when resize mode opened. See :ref:`window_resizing` for
+edge is selected automatically. In Splits, either strategy uses R to restore
+the proportions saved when resize mode opened. See :ref:`window_resizing` for
 the controls and configuration options.
 
 Custom shaders [0.49]

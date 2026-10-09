@@ -109,6 +109,21 @@ Use the window this command is run in, rather than the active window.
         self.sessions[window] = session
         return session
 
+    def restore_session(self, window: Window) -> tuple[bool, str]:
+        session = self.sessions.get(window)
+        if session is None:
+            return False, ''
+        tab = window.tabref()
+        if tab is None or tab.current_layout is not session.layout or topology(session.layout) != session.topology:
+            status = 'Split structure changed; original sizes cannot be restored'
+        else:
+            for pair, bias in session.biases:
+                pair.bias = bias
+            tab.relayout()
+            status = 'Restored sizes from when resize mode opened'
+        session.selected, session.divider = '', None
+        return True, status
+
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_match_payload(boss, window, payload_get)
         window = windows[0] if windows else None
@@ -129,14 +144,7 @@ Use the window this command is run in, rather than the active window.
             assert session is not None
         status = ''
         if operation == 'reset':
-            if layout is not session.layout or topology(layout) != session.topology:
-                status = 'Split structure changed; original sizes cannot be restored'
-            else:
-                for pair, bias in session.biases:
-                    pair.bias = bias
-                tab.relayout()
-                status = 'Restored sizes from when resize mode opened'
-            session.selected, session.divider = '', None
+            _, status = self.restore_session(window)
         elif operation == 'state':
             session.selected, session.divider = '', None
         elif operation in ('select', 'move'):

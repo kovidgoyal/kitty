@@ -17,6 +17,7 @@ class ResizeWindow(RemoteCommand):
     increment/int: Integer specifying the resize increment
     fraction/float: Fraction of the remaining resize steps to take, or zero for ordinary resizing
     axis/choices.horizontal.vertical.reset: One of :code:`horizontal, vertical` or :code:`reset`
+    restore_entry_layout/bool: Restore an existing interactive Splits resize session on reset
     """
 
     short_desc = 'Resize the specified windows'
@@ -47,6 +48,12 @@ If :code:`vertical`, it will make the window taller or shorter by the specified 
 The special value :code:`reset` will reset the layout to its default configuration.
 
 
+--restore-entry-layout
+type=bool-set
+With :code:`--axis=reset`, restore the proportions saved by the interactive
+resize page in Splits. When there is no such session, keep the default reset.
+
+
 --self
 type=bool-set
 Resize the window this command is run in, rather than the active window.
@@ -56,7 +63,8 @@ Resize the window this command is run in, rather than the active window.
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         self.validate_fraction(opts.fraction)
-        return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self, 'fraction': opts.fraction}
+        return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self,
+                'fraction': opts.fraction, 'restore_entry_layout': opts.restore_entry_layout}
 
     @staticmethod
     def validate_fraction(fraction: float) -> None:
@@ -69,6 +77,12 @@ Resize the window this command is run in, rather than the active window.
         self.validate_fraction(fraction)
         resized: bool | None | str = False
         if windows and windows[0]:
+            if payload_get('axis') == 'reset' and payload_get('restore_entry_layout', missing=False):
+                from .resize_window_edge import resize_window_edge
+
+                handled, status = resize_window_edge.restore_session(windows[0])
+                if handled:
+                    return None if status.startswith('Restored') else status
             resized = boss.resize_layout_window(
                 windows[0],
                 increment=payload_get('increment'),

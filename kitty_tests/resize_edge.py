@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 
 from kitty.layout.base import lgd
 from kitty.rc.base import PayloadGetter
+from kitty.rc.resize_window import resize_window
 from kitty.rc.resize_window_edge import ResizeWindowEdge
 
 from . import layout as geometry_tests
@@ -228,6 +229,46 @@ class TestEdgeResize(geometry_tests.BaseSplitGeometryTest):
         refused = self.command(cmd, tab, 1, 'reset')
         self.assertIn('structure changed', refused['status'])
         self.ae(self.positions(layout), changed)
+
+    def test_window_reset_restores_same_entry_snapshot(self):
+        layout, windows, tab = self.make_layout({'bias': 0.31, 'one': 1, 'two': {'bias': 0.43, 'one': 2, 'two': 3}}, num=3)
+        window = windows.id_map[2]
+        window.tabref = lambda: tab
+        cmd = ResizeWindowEdge()
+        cmd.start_session(window, layout)
+        before = self.positions(layout)
+        boss = SimpleNamespace(active_window=window, resize_layout_window=Mock())
+        payload = PayloadGetter(resize_window, {'self': True, 'axis': 'reset', 'restore_entry_layout': True})
+        with patch('kitty.rc.resize_window_edge.resize_window_edge', cmd):
+            self.assertTrue(self.resize(tab, 2, 'left', 3))
+            self.assertTrue(self.resize(tab, 2, 'right', -2))
+            self.assertIsNone(resize_window.response_from_kitty(boss, window, payload))
+            self.ae(self.positions(layout), before)
+            boss.resize_layout_window.assert_not_called()
+            layout.pairs_root.horizontal = False
+            tab.relayout()
+            changed = self.positions(layout)
+            result = resize_window.response_from_kitty(boss, window, payload)
+            self.assertIn('structure changed', result)
+            self.ae(self.positions(layout), changed)
+
+    def test_window_reset_without_session_keeps_default_behavior(self):
+        layout, windows, tab = self.make_layout({'one': 1, 'two': 2}, num=2)
+        window = windows.id_map[1]
+        window.tabref = lambda: tab
+        boss = SimpleNamespace(active_window=window, resize_layout_window=Mock(return_value=None))
+        cmd = ResizeWindowEdge()
+        with patch('kitty.rc.resize_window_edge.resize_window_edge', cmd):
+            for restore in (False, True):
+                payload = PayloadGetter(resize_window, {'self': True, 'axis': 'reset', 'increment': 2, 'restore_entry_layout': restore})
+                self.assertIsNone(resize_window.response_from_kitty(boss, window, payload))
+                self.assertTrue(boss.resize_layout_window.call_args.kwargs['reset'])
+            cmd.start_session(window, layout)
+            before = boss.resize_layout_window.call_count
+            # An ordinary remote-control reset always retains default-size reset.
+            payload = PayloadGetter(resize_window, {'self': True, 'axis': 'reset', 'increment': 2})
+            resize_window.response_from_kitty(boss, window, payload)
+            self.ae(boss.resize_layout_window.call_count, before + 1)
         for fraction in (-1, 1.1, float('nan'), float('inf')):
             with self.assertRaises(ValueError):
                 self.command(cmd, tab, 1, 'move', edge='bottom', fraction=fraction)
