@@ -120,19 +120,26 @@ clear_current_framebuffer(void) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
+// Must be called as soon as there is a current OpenGL context, see
+// initialize_gpu(). Font groups are created before that happens and size their
+// sprite layout using these limits, so the sooner they are known the better.
+static void
+query_gpu_texture_limits(void) {
+    if (max_texture_size) return;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(max_texture_size));
+    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
+#ifdef __APPLE__
+    // Since on Apple we could have multiple GPUs, with different capabilities,
+    // upper bound the values according to the data from https://developer.apple.com/graphicsimaging/opengl/capabilities/
+    max_texture_size = MIN(8192, max_texture_size);
+    max_array_texture_layers = MIN(512, max_array_texture_layers);
+#endif
+    sprite_tracker_set_limits(max_texture_size, max_array_texture_layers);
+}
+
 SPRITE_MAP_HANDLE
 alloc_sprite_map(void) {
-    if (!max_texture_size) {
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(max_texture_size));
-        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
-#ifdef __APPLE__
-        // Since on Apple we could have multiple GPUs, with different capabilities,
-        // upper bound the values according to the data from https://developer.apple.com/graphicsimaging/opengl/capabilities/
-        max_texture_size = MIN(8192, max_texture_size);
-        max_array_texture_layers = MIN(512, max_array_texture_layers);
-#endif
-        sprite_tracker_set_limits(max_texture_size, max_array_texture_layers);
-    }
+    query_gpu_texture_limits();
     SpriteMap *ans = calloc(1, sizeof(SpriteMap));
     if (!ans) fatal("Out of memory allocating a sprite map");
     *ans = NEW_SPRITE_MAP;
@@ -153,10 +160,19 @@ free_sprite_data(FONTS_DATA_HANDLE fg) {
 }
 
 
+static void
+discard_pending_gl_errors(void) {
+    // glad's error checking callback is installed only with --debug-rendering,
+    // so in normal runs errors queue up silently. Drain the queue so that a
+    // subsequent glGetError() reports only what we are interested in.
+    for (unsigned i = 0; i < 16 && glGetError() != GL_NO_ERROR; i++);
+}
+
 static bool
 copy_texture_via_framebuffer(GLuint old_texture, GLuint new_texture, GLenum texture_type, GLint width, GLint height, GLint layers) {
     GLint prev_read_fbo;
     glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prev_read_fbo);
+    discard_pending_gl_errors();
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
@@ -169,6 +185,11 @@ copy_texture_via_framebuffer(GLuint old_texture, GLuint new_texture, GLenum text
         glBindTexture(texture_type, new_texture);
         if (texture_type == GL_TEXTURE_2D_ARRAY) glCopyTexSubImage3D(texture_type, 0, 0, 0, z, 0, 0, width, height);
         else glCopyTexSubImage2D(texture_type, 0, 0, 0, 0, 0, width, height);
+        // A complete framebuffer does not mean the copy itself was accepted,
+        // for instance if the two internal formats are not copy compatible.
+        // Without this check we would claim success and leave the new texture
+        // blank, losing every already rendered sprite.
+        ok = glGetError() == GL_NO_ERROR;
     }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, prev_read_fbo);
     glDeleteFramebuffers(1, &fbo);
@@ -191,10 +212,10 @@ copy_32bit_texture(GLuint old_texture, GLuint new_texture, GLenum texture_type) 
     if (copy_texture_via_framebuffer(old_texture, new_texture, texture_type, width, height, layers)) return;
 
     static bool copy_image_warned = false;
-    // ARB_copy_image not available, do a slow roundtrip copy
+    // Neither ARB_copy_image nor a framebuffer copy is usable, do a slow roundtrip copy
     if (!copy_image_warned) {
         copy_image_warned = true;
-        log_error("WARNING: Your system's OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation");
+        log_error("WARNING: Your system's OpenGL implementation cannot copy between textures on the GPU, falling back to a slower implementation");
     }
 
     GLint internal_format;
@@ -3489,6 +3510,7 @@ static PyMethodDef module_methods[] = {
 void
 initialize_gpu(void) {
     gl_init();
+    query_gpu_texture_limits();
 }
 
 void

@@ -315,10 +315,23 @@ font_group_for(double font_sz_in_pts, double logical_dpi_x, double logical_dpi_y
 
 // Sprites {{{
 
+static void sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_width, unsigned int cell_height);
+
 void
 sprite_tracker_set_limits(size_t max_texture_size_, size_t max_array_len_) {
     max_texture_size = max_texture_size_;
     max_array_len = MIN(0xfffu, max_array_len_);
+    // Font groups are created before there is an OpenGL context, so they size
+    // their sprite layout using the conservative defaults above. Redo the
+    // layout now that the real limits are known. Only safe while no sprite has
+    // been allocated yet, since changing xnum/ynum changes what texture
+    // position an already handed out sprite index maps to.
+    for (size_t i = 0; i < num_font_groups; i++) {
+        FontGroup *fg = font_groups + i;
+        GPUSpriteTracker *st = &fg->sprite_tracker;
+        if (!st->x && !st->y && !st->z && st->ynum <= 1 && fg->fcm.cell_width && fg->fcm.cell_height)
+            sprite_tracker_set_layout(st, fg->fcm.cell_width, fg->fcm.cell_height);
+    }
 }
 
 static bool
