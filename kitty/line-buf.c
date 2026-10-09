@@ -628,7 +628,7 @@ rewrap(LineBuf *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "II", &lines, &columns)) return NULL;
     TrackCursor cursors[1] = {{.is_sentinel = true}};
     ANSIBuf as_ansi_buf = {0};
-    ResizeResult r = resize_screen_buffers(self, NULL, lines, columns, &as_ansi_buf, cursors);
+    ResizeResult r = resize_screen_buffers(self, NULL, HISTORY_PRESERVE, lines, columns, &as_ansi_buf, cursors);
     free(as_ansi_buf.buf);
     if (!r.ok) return PyErr_NoMemory();
     return Py_BuildValue("NII", r.lb, r.num_content_lines_before, r.num_content_lines_after);

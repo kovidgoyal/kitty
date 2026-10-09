@@ -738,13 +738,22 @@ historybuf_finish_rewrap(HistoryBuf *dest, HistoryBuf *src) {
 }
 
 void
-historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src, index_type count) {
-    SWAP(dest->segments, src->segments);
-    SWAP(dest->num_segments, src->num_segments);
+historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src, index_type count, bool steal) {
+    // dest must have been created by historybuf_alloc_for_rewrap() with the same width as src
     dest->count = MIN(count, src->count);
     dest->start_of_data = src->start_of_data;
-    src->count = 0;
-    src->start_of_data = 0;
+    if (steal) {
+        SWAP(dest->segments, src->segments);
+        SWAP(dest->num_segments, src->num_segments);
+        src->count = 0;
+        src->start_of_data = 0;
+    } else {
+        for (index_type i = 0; i < src->num_segments; i++) {
+            memcpy(dest->segments[i].cpu_cells, src->segments[i].cpu_cells, SEGMENT_SIZE * src->xnum * sizeof(CPUCell));
+            memcpy(dest->segments[i].gpu_cells, src->segments[i].gpu_cells, SEGMENT_SIZE * src->xnum * sizeof(GPUCell));
+            memcpy(dest->segments[i].line_attrs, src->segments[i].line_attrs, SEGMENT_SIZE * sizeof(LineAttrs));
+        }
+    }
 }
 
 
@@ -758,11 +767,7 @@ rewrap(HistoryBuf *self, PyObject *args) {
     RAII_PyObject(cleanup, (PyObject *)dummy);
     (void)cleanup;
     TrackCursor cursors[1] = {{.is_sentinel = true}};
-    // self must keep its segments
-    bool orig = resize_disable_history_reuse;
-    resize_disable_history_reuse = true;
-    ResizeResult r = resize_screen_buffers(dummy, self, 8, xnum, &as_ansi_buf, cursors);
-    resize_disable_history_reuse = orig;
+    ResizeResult r = resize_screen_buffers(dummy, self, HISTORY_PRESERVE, 8, xnum, &as_ansi_buf, cursors);
     free(as_ansi_buf.buf);
     if (!r.ok) return PyErr_NoMemory();
     Py_CLEAR(r.lb);

@@ -297,6 +297,8 @@ typedef struct CursorTrack {
     } temp;
 } CursorTrack;
 
+static bool history_reuse_disabled_for_tests = false;
+
 static bool
 rewrap(
     Screen *screen,
@@ -310,7 +312,8 @@ rewrap(
     bool main_is_active) {
     TrackCursor cursors[3];
     cursors[2].is_sentinel = true;
-    // alt first to keep history intact on failure
+    // alt first as resizing main consumes the history buffer, so it must be
+    // the last step that can fail
     cursors[0] = (TrackCursor){.x = alt_saved_cursor->before.x, .y = alt_saved_cursor->before.y};
     if (!main_is_active) cursors[1] = (TrackCursor){.x = cursor->before.x, .y = cursor->before.y};
     else cursors[1].is_sentinel = true;
@@ -330,7 +333,14 @@ rewrap(
     cursors[0] = (TrackCursor){.x = main_saved_cursor->before.x, .y = main_saved_cursor->before.y};
     if (main_is_active) cursors[1] = (TrackCursor){.x = cursor->before.x, .y = cursor->before.y};
     else cursors[1].is_sentinel = true;
-    ResizeResult mr = resize_screen_buffers(screen->main_linebuf, screen->historybuf, lines, columns, &screen->as_ansi_buf, cursors);
+    ResizeResult mr = resize_screen_buffers(
+        screen->main_linebuf,
+        screen->historybuf,
+        history_reuse_disabled_for_tests ? HISTORY_CONSUME_NO_REUSE : HISTORY_CONSUME,
+        lines,
+        columns,
+        &screen->as_ansi_buf,
+        cursors);
     if (!mr.ok) {
         Py_DecRef((PyObject *)ar.lb);
         PyErr_NoMemory();
@@ -7269,7 +7279,7 @@ PyTypeObject Screen_Type = {
 
 static PyObject *
 test_set_history_reuse(PyObject *self UNUSED, PyObject *val) {
-    resize_disable_history_reuse = !PyObject_IsTrue(val);
+    history_reuse_disabled_for_tests = !PyObject_IsTrue(val);
     Py_RETURN_NONE;
 }
 

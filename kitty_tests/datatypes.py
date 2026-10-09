@@ -867,6 +867,7 @@ class TestDataTypes(BaseTest):
 
         hb = filled_history_buf(5, 5)
         hb2 = hb.rewrap(hb.xnum)
+        self.ae((hb.count, hb2.count), (hb.ynum, hb.ynum))
         for i in range(hb.ynum):
             self.ae(hb2.line(i), hb.line(i))
         hb = filled_history_buf(5, 5)
