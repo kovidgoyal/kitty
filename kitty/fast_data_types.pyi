@@ -1073,6 +1073,7 @@ class Screen:
     color_preference_notification: bool
     cursor_visible: bool
     scrolled_by: int
+    pixel_scroll_offset_y: int
     cursor: Cursor
     disable_ligatures: int
     cursor_key_mode: bool

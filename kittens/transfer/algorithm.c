@@ -609,6 +609,7 @@ parse_signature_header(Differ *self) {
         return;
     }
     p += 2;
+    free_rsync(&self->rsync);
     const char *err = init_rsync(&self->rsync, le32dec(p), 0, 0);
     if (err != NULL) {
         PyErr_SetString(RsyncError, err);

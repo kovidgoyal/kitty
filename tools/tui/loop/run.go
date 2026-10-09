@@ -83,9 +83,18 @@ func (self *Loop) update_screen_size() error {
 	s.updated = true
 	s.HeightCells, s.WidthCells = uint(ws.Row), uint(ws.Col)
 	s.HeightPx, s.WidthPx = uint(ws.Ypixel), uint(ws.Xpixel)
-	s.CellWidth = s.WidthPx / s.WidthCells
-	s.CellHeight = s.HeightPx / s.HeightCells
+	s.update_cell_size()
 	return nil
+}
+
+func (s *ScreenSize) update_cell_size() {
+	s.CellWidth, s.CellHeight = 0, 0
+	if s.WidthCells > 0 {
+		s.CellWidth = s.WidthPx / s.WidthCells
+	}
+	if s.HeightCells > 0 {
+		s.CellHeight = s.HeightPx / s.HeightCells
+	}
 }
 
 func (self *Loop) handle_csi(raw []byte) (err error) {
@@ -113,8 +122,7 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 					s.updated = true
 					s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
 					s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[3])
-					s.CellWidth = s.WidthPx / s.WidthCells
-					s.CellHeight = s.HeightPx / s.HeightCells
+					s.update_cell_size()
 					if self.OnResize != nil {
 						return self.OnResize(old_size, self.screen_size)
 					}

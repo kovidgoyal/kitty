@@ -422,10 +422,8 @@ static void
 remove_from_disk(DiskCache *self, CacheValue *s) {
     if (s->written_to_disk) {
         s->written_to_disk = false;
-        if (s->data_sz && s->pos_in_cache_file > -1) {
-            add_hole(self, s->pos_in_cache_file, s->data_sz);
-            s->pos_in_cache_file = -1;
-        }
+        if (s->data_sz && s->pos_in_cache_file > -1) add_hole(self, s->pos_in_cache_file, s->data_sz);
+        s->pos_in_cache_file = -1;
     }
 }
 

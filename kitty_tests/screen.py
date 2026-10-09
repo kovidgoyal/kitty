@@ -317,6 +317,10 @@ class TestScreen(BaseTest):
             total -= 15
             self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (total // 20, total % 20))
         self.ae(total, 0)
+        s.scroll_to_absolute(5.0)
+        for amt in (float('nan'), float('inf'), float('-inf')):
+            self.assertFalse(s.fractional_scroll(amt))
+            self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (5, 0))
 
     def test_emoji_skin_tone_modifiers(self):
         s = self.create_screen()

@@ -1080,7 +1080,7 @@ sharp_get(Color *self, void *closure UNUSED) {
 
 static PyObject *
 color_cmp(PyObject *self, PyObject *other, int op) {
-    if (op != Py_EQ && op != Py_NE) return Py_NotImplemented;
+    if (op != Py_EQ && op != Py_NE) Py_RETURN_NOTIMPLEMENTED;
     if (!PyObject_TypeCheck(other, &Color_Type)) {
         if (op == Py_EQ) Py_RETURN_FALSE;
         Py_RETURN_TRUE;
@@ -1095,7 +1095,7 @@ color_cmp(PyObject *self, PyObject *other, int op) {
             if (a->color.val != b->color.val) { Py_RETURN_TRUE; }
             Py_RETURN_FALSE;
         }
-        default: return Py_NotImplemented;
+        default: Py_RETURN_NOTIMPLEMENTED;
     }
 }
 

@@ -422,7 +422,7 @@ add_data_to_be_encrypted(AES256GCMEncrypt *self, PyObject *args) {
         self->tag = tag;
         if (1 != EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_AEAD_GET_TAG, PyBytes_GET_SIZE(self->tag), PyBytes_AS_STRING(tag))) {
             Py_CLEAR(ciphertext);
-            return NULL;
+            return set_error_from_openssl("Failed to get the tag");
         }
     }
     if (offset != PyBytes_GET_SIZE(ciphertext)) {
@@ -496,6 +496,7 @@ new_aes256gcmdecrypt(PyTypeObject *type, PyObject *args, PyObject *kwds UNUSED) 
     // Ensure tag length is 16 because the OpenSSL verification routines will happily pass even if you set a truncated tag.
     if (tag_len < cipher_ctx_tag_length(self->ctx)) {
         PyErr_Format(PyExc_ValueError, "Tag length for AES 256 GCM must be at least %d", cipher_ctx_tag_length(self->ctx));
+        Py_CLEAR(self);
         return NULL;
     }
     if (!EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, tag)) {

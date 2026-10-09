@@ -243,13 +243,13 @@ png_from_32bit_rgba_data(PyObject *self UNUSED, PyObject *args) {
     int flip_vertically = 0;
     const char *data;
     Py_ssize_t len;
-    unsigned width, height;
-    if (!PyArg_ParseTuple(args, "y#II|p", &data, &len, &width, &height, &flip_vertically)) return NULL;
-    if (!width || !height) {
-        PyErr_SetString(PyExc_ValueError, "width and height must be non-zero");
+    Py_ssize_t width, height;
+    if (!PyArg_ParseTuple(args, "y#nn|p", &data, &len, &width, &height, &flip_vertically)) return NULL;
+    if (width <= 0 || height <= 0) {
+        PyErr_SetString(PyExc_ValueError, "width and height must be positive");
         return NULL;
     }
-    if (width > (size_t)PY_SSIZE_T_MAX / 4 / height || (size_t)width * height * 4 != (size_t)len) {
+    if (width > PY_SSIZE_T_MAX / 4 / height || (size_t)width * height * 4 != (size_t)len) {
         PyErr_SetString(PyExc_ValueError, "data length does not match 4 * width * height");
         return NULL;
     }

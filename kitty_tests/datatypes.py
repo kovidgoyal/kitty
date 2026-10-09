@@ -113,9 +113,13 @@ class TestDataTypes(BaseTest):
             (rgba, 65537, 65537),
             (rgba, 2**32 - 1, 2**32 - 1),
             (rgba, 2**31, 2),
+            (rgba, 2**32 + 2, 2),
+            (rgba, -2, -2),
         ):
             with self.assertRaises(ValueError, msg=repr(args[1:])):
                 png_from_32bit_rgba_data(*args)
+        with self.assertRaises(OverflowError):
+            png_from_32bit_rgba_data(rgba, 2, 2**64 + 2)
 
     def test_to_color(self):
         for x in 'xxx #12 #1234 rgb:a/b'.split():
@@ -695,6 +699,16 @@ class TestDataTypes(BaseTest):
         tp('\033]0;t\033\\', text='\033]0;t\033\\', ibp=True)
         tp('\033]0;t\007', text='\033]0;t\007', ibp=True)
         tp('\033_x\033\\', text='\033_x\033\\', ibp=True)
+        tp('\033[200~a\033]0;t\033[201~b', text='a \033]0;t b', csi='200~ 201~')
+        tp('\033P1\033[201~b', text='\033P1 b', csi='201~', ibp=True)
+        tp('\033^x\033\033[201~', text='\033^x\033', csi='201~', ibp=True)
+        tp('\033_x\033', '[2', '01~b', text='\033_x b', csi='201~', ibp=True)
+        tp('\033]0;t\033[2', '0x\033\\', text='\033]0;t\033[20x\033\\', ibp=True)
+        tp('\033]0;t\033[1m\033\\b', text='\033]0;t\033[1m\033\\ b', ibp=True)
+        tp('\033]0;t\033[20', leftover='\033]0;t\033[20', ibp=True)
+        tp('\033]a\033[201~b\033\\', osc='a\033[201~b')
+        tp('\033[200~a\033[1;2\033[201~b', text='a \033[1;2 b', csi='200~ 201~')
+        tp('\033[1', '\033[201~b', text='\033[1 b', csi='201~', ibp=True)
         import random
 
         rnd = random.Random(0)

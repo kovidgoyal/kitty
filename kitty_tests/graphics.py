@@ -437,6 +437,28 @@ class TestGraphics(BaseTest):
         for k, v in data.items():
             self.assertEqual(dc.get(k), v)
 
+    def test_disk_cache_empty_entry_replaced(self):
+        dc = self.create_screen().grman.disk_cache
+        dc.small_hole_threshold = 0
+        dc.defrag_factor = 1000
+        dc.add(b'a', b'A' * 1000)
+        self.assertTrue(dc.wait_for_write())
+        dc.add(b'z', b'')
+        self.assertTrue(dc.wait_for_write())
+        dc.remove(b'a')
+        dc.add(b'c', b'C' * 100)
+        self.assertTrue(dc.wait_for_write())
+        dc.pause_writes()
+        dc.defrag_factor = 2
+        dc.add(b'z', b'Z' * 50)
+        self.assertTrue(dc.wait_until_writes_paused())
+        dc.defrag_factor = 1000
+        self.assertTrue(dc.resume_writes())
+        self.assertTrue(dc.wait_for_write())
+        self.assertEqual(dc.end_of_data_offset(), 150)
+        self.assertEqual(dc.get(b'z'), b'Z' * 50)
+        self.assertEqual(dc.get(b'c'), b'C' * 100)
+
     def test_disk_cache_encryption_while_being_written(self):
         s = self.create_screen()
         dc = s.grman.disk_cache
