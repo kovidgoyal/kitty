@@ -1032,8 +1032,8 @@ class TabBar:
         ideal_tab_lengths = [i for i in range(len(data))]
         default_max_tab_length = max(1, (s.columns // max(1, len(data))) - 1)
         max_tab_lengths = [default_max_tab_length for _ in range(len(data))]
+        overhangs = [0 for _ in range(len(data))]
         active_idx = 0
-        extra = 0
         ed.for_layout = True
         for i, t in enumerate(data):
             s.cursor.x = 0
@@ -1043,19 +1043,32 @@ class TabBar:
                 active_idx = i
             if tl < default_max_tab_length:
                 max_tab_lengths[i] = tl
-                extra += default_max_tab_length - tl
-        if extra > 0:
+            elif tl > default_max_tab_length:
+                # A truncated tab can be drawn wider than its max length, for
+                # example by a separator after the title, so measure by how
+                # much. Only the first tab starts at column zero, where the
+                # powerline style draws an extra space.
+                s.cursor.x = start = min(i, 1)
+                draw_tab(i, t, [], default_max_tab_length)
+                overhangs[i] = max(0, s.cursor.x - start - default_max_tab_length)
+
+        def space_left() -> int:
+            return s.columns - sum(min(tl, ml + oh) for tl, ml, oh in zip(ideal_tab_lengths, max_tab_lengths, overhangs))
+
+        extra = space_left()
+        if data and extra > 0:
             if ideal_tab_lengths[active_idx] > max_tab_lengths[active_idx]:
                 d = min(extra, ideal_tab_lengths[active_idx] - max_tab_lengths[active_idx])
                 max_tab_lengths[active_idx] += d
-                extra -= d
-            if extra > 0:
+            # Hand out the remaining space evenly, repeating as a tab may need
+            # less than its share, leaving more for the others
+            while (extra := space_left()) > 0:
                 over_achievers = tuple(i for i in range(len(data)) if ideal_tab_lengths[i] > max_tab_lengths[i])
-                if over_achievers:
-                    amt_per_over_achiever = extra // len(over_achievers)
-                    if amt_per_over_achiever > 0:
-                        for i in over_achievers:
-                            max_tab_lengths[i] += amt_per_over_achiever
+                if not over_achievers:
+                    break
+                amt, rem = divmod(extra, len(over_achievers))
+                for n, i in enumerate(over_achievers):
+                    max_tab_lengths[i] = min(ideal_tab_lengths[i], max_tab_lengths[i] + amt + (n < rem))
 
         s.cursor.x = 0
         s.erase_in_line(2, False)
