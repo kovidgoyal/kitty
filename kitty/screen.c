@@ -1706,10 +1706,13 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_
         } else {
             index_type x, num;
             if (region.top == region.bottom) {
-                linebuf_init_line(self->linebuf, region.top);
-                x = MIN(region.left, self->columns - 1);
-                num = MIN(self->columns - x, region.right - x + 1);
-                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
+                if (region.top < self->lines) {
+                    linebuf_init_line(self->linebuf, region.top);
+                    x = MIN(region.left, self->columns - 1);
+                    num = region.right >= x ? region.right - x + 1 : 0;
+                    num = MIN(self->columns - x, num);
+                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
+                }
             } else {
                 for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
                     if (y == region.top) {
