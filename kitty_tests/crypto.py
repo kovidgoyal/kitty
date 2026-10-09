@@ -3,6 +3,7 @@
 
 
 import os
+import sys
 
 from .base import BaseTest
 
@@ -61,3 +62,21 @@ class TestCrypto(BaseTest):
         d = AES256GCMDecrypt(bob_secret, e.iv, e.tag)
         d.add_data_to_be_authenticated_but_not_decrypted(auth_data)
         self.assertRaises(CryptoError, d.add_data_to_be_decrypted, corrupt_data(ciphertext), True)
+
+    def test_short_tag_does_not_leak(self):
+        if is_rlimit_memlock_too_low():
+            self.skipTest('RLIMIT_MEMLOCK is too low')
+        from kitty.fast_data_types import AES256GCMDecrypt, EllipticCurveKey
+
+        secret = EllipticCurveKey().derive_secret(EllipticCurveKey().public)
+        iv = os.urandom(12)
+
+        def attempt():
+            with self.assertRaises(ValueError):
+                AES256GCMDecrypt(secret, iv, b'short')
+
+        attempt()
+        before = sys.getallocatedblocks()
+        for i in range(10000):
+            attempt()
+        self.assertLess(sys.getallocatedblocks() - before, 1000)

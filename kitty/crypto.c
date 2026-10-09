@@ -496,6 +496,7 @@ new_aes256gcmdecrypt(PyTypeObject *type, PyObject *args, PyObject *kwds UNUSED) 
     // Ensure tag length is 16 because the OpenSSL verification routines will happily pass even if you set a truncated tag.
     if (tag_len < cipher_ctx_tag_length(self->ctx)) {
         PyErr_Format(PyExc_ValueError, "Tag length for AES 256 GCM must be at least %d", cipher_ctx_tag_length(self->ctx));
+        Py_CLEAR(self);
         return NULL;
     }
     if (!EVP_CIPHER_CTX_ctrl(self->ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, tag)) {
