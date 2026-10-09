@@ -590,6 +590,8 @@ destroy_os_window_item(OSWindow *w) {
     if (w->indirect_output.fbo_b_id) free_framebuffer(&w->indirect_output.fbo_b_id);
     if (w->persist_texture_id) free_texture(&w->persist_texture_id);
     if (w->persist_fbo_id) free_framebuffer(&w->persist_fbo_id);
+    free(w->pointer_map.data);
+    zero_at_ptr(&w->pointer_map);
 }
 
 bool

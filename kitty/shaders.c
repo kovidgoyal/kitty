@@ -475,12 +475,18 @@ typedef struct CustomShaderPipeline {
     bool active;
     bool bypass_builtin_trail;           // true when any group subscribes to cursor-trail-move
     unsigned all_animation_start_events; // union of animation_start_events across all groups
+    bool has_pointer_map;                // true when a shader defines pointer_map() to move pointer events
 } CustomShaderPipeline;
 
 static struct {
     CustomShaderPipeline end;
     size_t count;
+    unsigned generation; // incremented every time the end pipeline changes
 } custom_shaders;
+
+static struct {
+    GLuint texture_id, framebuffer_id;
+} pointer_map_target;
 
 static void
 write_uint_array_to_ubo(void *dest, const GLuint *src, size_t count, const ArrayInformation *ai) {
@@ -2634,6 +2640,83 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
     }
 }
 
+// Bilinear lookup of the position u, v (viewport UV, clamped to [0, 1]) in a
+// pointer map, replacing it with the position of the content shown there
+static void
+sample_pointer_map(const float *data, double *u, double *v) {
+    const double last = POINTER_MAP_SIZE - 1;
+    const double fx = MAX(0., MIN(*u, 1.)) * last, fy = MAX(0., MIN(*v, 1.)) * last;
+    const unsigned x0 = MIN((unsigned)fx, POINTER_MAP_SIZE - 2), y0 = MIN((unsigned)fy, POINTER_MAP_SIZE - 2);
+    const double tx = fx - x0, ty = fy - y0;
+#define P(x, y, c) ((double)data[2 * ((y) * POINTER_MAP_SIZE + (x)) + (c)])
+#define L(c) ((P(x0, y0, c) * (1 - tx) + P(x0 + 1, y0, c) * tx) * (1 - ty) + (P(x0, y0 + 1, c) * (1 - tx) + P(x0 + 1, y0 + 1, c) * tx) * ty)
+    *u = L(0);
+    *v = L(1);
+#undef L
+#undef P
+}
+
+// Moves a pointer position, in viewport pixels with the origin at the top left,
+// to the position of the content that custom shaders such as crt actually show
+// there, so that clicks and selections land on what the user sees.
+void
+map_pointer_position(const OSWindow *os_window, double *x, double *y) {
+    const float *data = os_window->pointer_map.data;
+    if (!data || !custom_shaders.end.has_pointer_map || os_window->pointer_map.pipeline_generation != custom_shaders.generation) return;
+    const double width = os_window->viewport_width, height = os_window->viewport_height;
+    if (width <= 0 || height <= 0) return;
+    const double u = *x / width, v = 1. - *y / height;
+    const double cu = MAX(0., MIN(u, 1.)), cv = MAX(0., MIN(v, 1.));
+    double mu = cu, mv = cv;
+    sample_pointer_map(data, &mu, &mv);
+    // Positions outside the viewport, such as when drag selecting past its
+    // edge, move along with the nearest edge
+    *x = (mu + u - cu) * width;
+    *y = (1. - (mv + v - cv)) * height;
+}
+
+// Renders the pointer_map() functions of the pipeline into a small texture
+// and reads it back so that pointer events can be mapped without the GPU. A
+// pointer map can depend only on the pipeline and the viewport size, so this
+// is done only when those change.
+static void
+update_pointer_map(OSWindow *os_window, GLint group_loc) {
+    if (os_window->pointer_map.data && os_window->pointer_map.pipeline_generation == custom_shaders.generation) {
+        if (os_window->live_resize.in_progress) return; // avoid a GPU sync on every frame of a live resize
+        if (os_window->pointer_map.viewport_width == os_window->viewport_width && os_window->pointer_map.viewport_height == os_window->viewport_height) return;
+    }
+    if (!os_window->pointer_map.data && !(os_window->pointer_map.data = malloc(sizeof(float) * 2 * POINTER_MAP_SIZE * POINTER_MAP_SIZE))) return;
+    if (!pointer_map_target.framebuffer_id)
+        setup_texture_as_render_target(POINTER_MAP_SIZE, POINTER_MAP_SIZE, &pointer_map_target.texture_id, &pointer_map_target.framebuffer_id);
+    // The pointer map does not sample any textures, but every sampler must be bound to a valid one
+    static const int units[] = {GRAPHICS_UNIT, CUSTOM_END_TEXTURE_A_UNIT, CUSTOM_END_TEXTURE_B_UNIT, CUSTOM_END_TEXTURE_PERSIST_UNIT};
+    for (size_t i = 0; i < arraysz(units); i++) {
+        glActiveTexture(GL_TEXTURE0 + units[i]);
+        glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
+    }
+    bind_framebuffer_for_output(pointer_map_target.framebuffer_id);
+    glViewport(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE);
+    glUniform1i(group_loc, -1);
+    draw_quad(false, 0);
+    static uint8_t pixels[POINTER_MAP_SIZE * POINTER_MAP_SIZE * 4];
+    glReadPixels(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    // See encode_pointer_map() in pipeline.slang
+    for (size_t i = 0; i < POINTER_MAP_SIZE * POINTER_MAP_SIZE; i++) {
+        const uint8_t *p = pixels + 4 * i;
+        os_window->pointer_map.data[2 * i] = (float)(p[0] * 256 + p[2]) / 65535.f;
+        os_window->pointer_map.data[2 * i + 1] = (float)(p[1] * 256 + p[3]) / 65535.f;
+    }
+    os_window->pointer_map.viewport_width = os_window->viewport_width;
+    os_window->pointer_map.viewport_height = os_window->viewport_height;
+    os_window->pointer_map.pipeline_generation = custom_shaders.generation;
+}
+
+static void
+free_pointer_map_target(void) {
+    if (pointer_map_target.texture_id) free_texture(&pointer_map_target.texture_id);
+    if (pointer_map_target.framebuffer_id) free_framebuffer(&pointer_map_target.framebuffer_id);
+}
+
 static void
 run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) {
     bind_program(CUSTOM_END_PROGRAM);
@@ -2871,6 +2954,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     GLint viewport_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
     GLint anim_progress_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "animation_progress");
     GLint convert_to_srgb_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "convert_to_srgb");
+    if (custom_shaders.end.has_pointer_map && group_loc >= 0) update_pointer_map(os_window, group_loc);
     const unsigned num_groups = (unsigned)custom_shaders.end.num_groups;
     const unsigned textures_mask = custom_shaders.end.textures;
     const int vw = os_window->viewport_width, vh = os_window->viewport_height;
@@ -3332,6 +3416,8 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         if (which == CUSTOM_END_PROGRAM) {
             free_custom_shader_pipeline(&custom_shaders.end);
             zero_at_ptr(&custom_shaders.end);
+            custom_shaders.generation++;
+            free_pointer_map_target();
         }
         if (program->id != 0) {
             glDeleteProgram(program->id);
@@ -3376,6 +3462,9 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
             return NULL;
         }
         custom_shaders.end.active = true;
+        PyObject *has_pointer_map = PyDict_GetItemString(metadata, "has_pointer_map");
+        custom_shaders.end.has_pointer_map = has_pointer_map && PyObject_IsTrue(has_pointer_map) == 1;
+        custom_shaders.generation++;
     }
     init_uniforms(which);
     set_program_layout(which, metadata);
@@ -3488,6 +3577,23 @@ pysimulate_custom_shader_render_ticks(PyObject *self UNUSED, PyObject *args) {
     return Py_NewRef(ans);
 }
 
+// Test only. Looks up a position in a pointer map given as the bytes of
+// POINTER_MAP_SIZE x POINTER_MAP_SIZE (x, y) float pairs.
+static PyObject *
+pysample_pointer_map(PyObject *self UNUSED, PyObject *args) {
+    Py_buffer data;
+    double u, v;
+    if (!PyArg_ParseTuple(args, "y*dd", &data, &u, &v)) return NULL;
+    if ((size_t)data.len != sizeof(float) * 2 * POINTER_MAP_SIZE * POINTER_MAP_SIZE) {
+        PyBuffer_Release(&data);
+        PyErr_SetString(PyExc_ValueError, "pointer map has the wrong size");
+        return NULL;
+    }
+    sample_pointer_map(data.buf, &u, &v);
+    PyBuffer_Release(&data);
+    return Py_BuildValue("dd", u, v);
+}
+
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
@@ -3503,6 +3609,7 @@ static PyMethodDef module_methods[] = {
     MW(custom_shader_needs_render, METH_VARARGS),
     MW(decorations_map_new_size, METH_VARARGS),
     MW(simulate_custom_shader_render_ticks, METH_VARARGS),
+    MW(sample_pointer_map, METH_VARARGS),
 
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
@@ -3520,6 +3627,7 @@ free_vao(ssize_t vao_idx) {
 
 void
 cleanup_shader_resources_on_terminate(void) {
+    free_pointer_map_target();
     if (shader_globals_vao_idx != -1) {
         remove_vao(shader_globals_vao_idx);
         shader_globals_vao_idx = -1;
@@ -3556,6 +3664,7 @@ init_shaders(PyObject *module) {
     C(PADDING_PROGRAM);
     C(CUSTOM_END_PROGRAM);
     C(MAX_CUSTOM_SHADER_GROUPS);
+    C(POINTER_MAP_SIZE);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

@@ -61,6 +61,29 @@ linear2srgb(float3 x) { // vector
 
 uniform Sampler2D backbuffer, a, b, persist;
 
+// Must match POINTER_MAP_SIZE in state.h
+static const float POINTER_MAP_SIZE = 64;
+
+// Where the content visible at pos actually is, as decided by the pointer_map()
+// functions of the shaders that move content around
+float2
+pipeline_pointer_map(float2 pos) {
+    // POINTER_MAP
+    return pos;
+}
+
+// Rendered when group is negative, to compute the pointer map. Each coordinate
+// is split over two 8 bit channels so that it is precise even on GPU drivers
+// that cannot render to 16 bit textures.
+float4
+encode_pointer_map(float2 texel_pos) {
+    // Spread the texels so that the first and last ones land exactly on the edges
+    float2 pos = (texel_pos * POINTER_MAP_SIZE - 0.5f) / (POINTER_MAP_SIZE - 1.f);
+    float2 q = round(saturate(pipeline_pointer_map(pos)) * 65535.f);
+    float2 hi = floor(q / 256.f);
+    return float4(hi / 255.f, (q - hi * 256.f) / 255.f);
+}
+
 public float4
 pipeline_fragment_main(float2 backbuffer_pos, int group, float4 viewport, float animation_progress, bool convert_to_srgb) {
     float4 color = backbuffer.Sample(backbuffer_pos); // pre multiplied linear RGB
@@ -72,6 +95,7 @@ pipeline_fragment_main(float2 backbuffer_pos, int group, float4 viewport, float 
     // shaders can address them in that same space, regardless of the size of the shared texture.
     float2 src_scale = float2(max(1e-6, csd.src_rect[right]), max(1e-6, csd.src_rect[top]));
     float2 viewport_pos = backbuffer_pos / src_scale;
+    if (group < 0) return encode_pointer_map(viewport_pos);
     // Half a texel inset, in viewport UV, so that clamped samples do not bilinearly blend in the
     // stale texels that lie just outside the viewport region of the shared texture.
     float2 max_pos = 1.f - 0.5f / max(float2(csd.viewport_size_pixels), float2(1.f));

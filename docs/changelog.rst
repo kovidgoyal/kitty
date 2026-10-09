@@ -379,6 +379,10 @@ Detailed list of changes
 - Speed up growing the GPU sprite cache, particularly on macOS
   (:pull:`10632`)
 
+- Custom shaders: Shaders that move content around can define a
+  :code:`pointer_map()` function so that clicks and selections land on the text
+  shown under the mouse. The :code:`crt` shader uses it so that its curved
+  screen no longer misplaces clicks, see :ref:`custom_shader_pointer_map`
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
