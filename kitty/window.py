@@ -685,11 +685,11 @@ class EdgeWidths:
         if self.left is not None:
             yield f'--spacing={prefix}-left={self.left}'
         if self.right is not None:
-            yield f'--spacing={prefix}-left={self.right}'
+            yield f'--spacing={prefix}-right={self.right}'
         if self.top is not None:
-            yield f'--spacing={prefix}-left={self.top}'
+            yield f'--spacing={prefix}-top={self.top}'
         if self.bottom is not None:
-            yield f'--spacing={prefix}-left={self.bottom}'
+            yield f'--spacing={prefix}-bottom={self.bottom}'
 
 
 class GlobalWatchers:
