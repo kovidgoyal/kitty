@@ -1,0 +1,617 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:07.240
+Hello, I am Kovid Goyal, the creator of Kitty. In this video, I will give you a brief tour
+
+2
+00:00:07.240 --> 00:00:13.640
+of Kitty's productivity enhancing features. Kitty started as a personal project to enhance
+
+3
+00:00:13.640 --> 00:00:18.520
+my own terminal experience, but has since grown into something used by thousands of people
+
+4
+00:00:18.520 --> 00:00:25.640
+the world over. Kitty is designed for terminal power users, people who, like me, prefer to
+
+5
+00:00:25.640 --> 00:00:31.520
+spend the entire day in the terminal and use the terminal for every task imaginable. Kitty has
+
+6
+00:00:31.520 --> 00:00:37.800
+many features and niceties that make this kind of workflow both more productive and more fun.
+
+7
+00:00:37.800 --> 00:00:45.440
+Let's start with something simple. Often, when running commands in the terminal, it so happens
+
+8
+00:00:45.440 --> 00:00:51.960
+that a command produces lots of output and takes a long time to run. You might find yourself
+
+9
+00:00:51.960 --> 00:00:58.040
+wanting to examine that output in more detail. You can, of course, scroll up and just look at the
+
+10
+00:00:58.040 --> 00:01:03.880
+output, but sometimes it's useful to open it in an editor or a pager and say search through it
+
+11
+00:01:03.880 --> 00:01:10.360
+or filter it. Kitty has a built-in feature wherein if you press the Control Shift and G key,
+
+12
+00:01:10.360 --> 00:01:16.120
+the output from the last command opens in the pager. As you can see here, the output from the
+
+13
+00:01:16.120 --> 00:01:23.480
+ls command is opened in a pager: less, in my case. This is not limited to just the last command. You
+
+14
+00:01:23.480 --> 00:01:29.800
+can actually scroll up and here you can see a compile output from building Kitty to examine the
+
+15
+00:01:29.800 --> 00:01:33.880
+output of any previous command. You hold the Control Shift key and right click on the output
+
+16
+00:01:35.160 --> 00:01:41.400
+and there you go. It opens in the pager as before. I can now search through it or refer to it
+
+17
+00:01:41.480 --> 00:01:48.760
+to my heart's content. You can even use Kitty's multiple windows feature to have the pager window
+
+18
+00:01:48.760 --> 00:01:56.520
+pop up as a separate window. You can see here there are now two windows. One has the original shell
+
+19
+00:01:57.320 --> 00:02:05.640
+and one has the output from the clicked command open in a pager. I can scroll through this
+
+20
+00:02:05.640 --> 00:02:10.760
+output and refer to it while typing future commands. I find this facility extremely handy and
+
+21
+00:02:10.760 --> 00:02:17.160
+use it several times every day. Note that this feature is implemented in Kitty by means of
+
+22
+00:02:17.160 --> 00:02:22.680
+shell integration. Shell integration means that Kitty works with common shells such as bash,
+
+23
+00:02:22.680 --> 00:02:29.080
+Z shell, fish etc. to enable this and other niceties. For example, you will notice that the current
+
+24
+00:02:29.080 --> 00:02:34.600
+working directory is shown in the window title bar. If I change to some other directory,
+
+25
+00:02:34.680 --> 00:02:40.760
+the window title bar changes. Similarly, if I run a command, say for example, sleep,
+
+26
+00:02:41.400 --> 00:02:47.160
+the name of the command shows up in the window title bar while it's running. Once the sleep is over,
+
+27
+00:02:47.160 --> 00:02:53.800
+the title bar goes back to the working directory. This is a small example of some of Kitty's
+
+28
+00:02:53.800 --> 00:03:01.160
+productivity features that make working the terminal all day much more fun and productive.
+
+29
+00:03:01.480 --> 00:03:08.840
+Now, let's try something a little more fancy. Consider that most quotidian of terminal
+
+30
+00:03:08.840 --> 00:03:13.800
+experiences listing files. So here we go. Let's list some files.
+
+31
+00:03:15.640 --> 00:03:21.080
+Looks pretty standard so far. A rather colorful list of files and a couple of directories.
+
+32
+00:03:21.960 --> 00:03:27.720
+The fun starts when you click on one of these files. So for example, let's see how Kitty is
+
+33
+00:03:27.720 --> 00:03:33.480
+launched. Holding down the control shift keys, I click on it. And as you can see,
+
+34
+00:03:34.440 --> 00:03:40.280
+the launcher.c file has opened up in my editor of choice, which is vim. And I can edit it to do
+
+35
+00:03:40.280 --> 00:03:46.520
+whatever. Simply by clicking on the file. And that's not all. You can even click on an image.
+
+36
+00:03:46.520 --> 00:03:56.200
+For example, let's click on the Kitty logo. And there we go. It opens in the terminal. You can view
+
+37
+00:03:56.200 --> 00:04:03.160
+the image. So as you can see, simply clicking on files on the listing, you can open them.
+
+38
+00:04:03.800 --> 00:04:09.240
+And of course, Kitty is meant for power users, which means that you don't have to use the mouse.
+
+39
+00:04:09.880 --> 00:04:18.200
+You can instead press control shift P and Y. And it lists all the files with a number
+
+40
+00:04:18.200 --> 00:04:23.960
+next to their names. So for example, if I press six, once again, the Kitty logo opens up.
+
+41
+00:04:26.680 --> 00:04:34.600
+These features are powered by two things. The first is the ls command has a
+
+42
+00:04:36.120 --> 00:04:39.400
+facility to output hyperlinks. So let's see
+
+43
+00:04:42.920 --> 00:04:50.440
+here the ls command on my computer. As you can see here, as the hyperlink auto flag
+
+44
+00:04:50.440 --> 00:04:58.600
+added to it, this means that every file that ls lists is actually a hyperlink. You can see
+
+45
+00:04:58.600 --> 00:05:04.280
+that it gets underlined when you move the mouse over it. The second thing that makes this possible
+
+46
+00:05:05.320 --> 00:05:14.040
+is a piece of configuration in Kitty called open-actions.conf. In this file, you can tell Kitty
+
+47
+00:05:14.040 --> 00:05:21.800
+what to do when you open a file, for example, by clicking on it. So here, you can see that this
+
+48
+00:05:21.800 --> 00:05:30.840
+entry on this line tells Kitty that for files of my type text, open it in the editor in an overlay
+
+49
+00:05:30.840 --> 00:05:37.240
+window, which means a window overlayed on the current window. Similarly, image files are opened
+
+50
+00:05:37.320 --> 00:05:48.280
+in Kitty itself using the icat kitten and so on. This entry here is of particular interest. It uses
+
+51
+00:05:48.280 --> 00:05:56.600
+another kitten, which is a small program that's part of Kitty, to allow you to directly click on
+
+52
+00:05:56.600 --> 00:06:03.720
+search results from a grep tool and open them in an editor. So let's see that in action.
+
+53
+00:06:04.680 --> 00:06:13.240
+Here we go. Let me run my grep tool, which, and search for say, hyperlink.
+
+54
+00:06:15.000 --> 00:06:21.320
+Here you can see a bunch of results. So moving the mouse over these results, they get underlined,
+
+55
+00:06:21.320 --> 00:06:27.800
+indicating they're clickable. So let's open this one and there you see it has opened in the editor
+
+56
+00:06:27.960 --> 00:06:34.600
+right on the click line. This is extremely convenient to inserting through files in the terminal.
+
+57
+00:06:35.960 --> 00:06:49.160
+This in turn is powered by, let's see here what we have and the kitten. Now kittens are small
+
+58
+00:06:49.160 --> 00:06:53.880
+kitty programs that enhance its functionality. So here the kitten is the hyperlinked grep kitten.
+
+59
+00:06:54.760 --> 00:07:00.040
+So what that does is it takes the output from a grep program and adds hyperlinks to it so that
+
+60
+00:07:00.600 --> 00:07:07.560
+they become clickable when displayed in Kitty. So as you can see here, these simple features that
+
+61
+00:07:07.560 --> 00:07:14.280
+are designed in a composable and modular way allow you to greatly enhance the experience of
+
+62
+00:07:14.280 --> 00:07:23.080
+using a terminal. Since we have been talking of hyperlinks, let's note that the usefulness
+
+63
+00:07:23.080 --> 00:07:29.000
+is not limited only to the local machine. You can even use them over SSH connections to remote
+
+64
+00:07:29.000 --> 00:07:39.880
+servers. So for example, let me SSH into one of my servers and do an ls hyperlink auto.
+
+65
+00:07:41.320 --> 00:07:48.200
+You can see some files have been listed. One of them is an image. Let's click on this image and
+
+66
+00:07:48.200 --> 00:07:54.440
+see what happens. As you can see it opens up in a kitty kitten. This is the remote file kitten
+
+67
+00:07:54.440 --> 00:07:59.400
+and it gives you some options for what you want to do with the image. You can edit it. You can
+
+68
+00:07:59.400 --> 00:08:04.520
+open it. You can save it to your local computer. So let's choose to open it to view the file locally.
+
+69
+00:08:10.520 --> 00:08:16.200
+There we go. The remote file kitten seamlessly downloads the image in the background and opens it
+
+70
+00:08:16.200 --> 00:08:24.920
+locally on the local computer. This is useful if particularly for viewing a complicated file such as
+
+71
+00:08:24.920 --> 00:08:33.160
+images, videos, etc. that the remote server may not be able to handle. But the remote file kitten
+
+72
+00:08:33.160 --> 00:08:38.600
+is not limited simply to opening. You can also edit files. So for example, here we have a simple
+
+73
+00:08:39.240 --> 00:08:48.360
+text file. Let's click on it and once again the remote file kitten opens.
+
+74
+00:08:50.120 --> 00:08:53.960
+It gives you the option to edit the file. So let's choose that option by pressing the E key.
+
+75
+00:08:56.360 --> 00:09:02.600
+You can see that the kitten downloads the file and let's make some changes to it.
+
+76
+00:09:03.160 --> 00:09:10.200
+Notice that this is running in vim on my local machine with all the customization and
+
+77
+00:09:12.200 --> 00:09:19.400
+facilities available. Let me save and quit vim. The remote file kitten automatically
+
+78
+00:09:19.400 --> 00:09:26.360
+updates the file on the server. Let's cat it again. And you see that the file has been edited
+
+79
+00:09:27.240 --> 00:09:32.600
+as expected. This is really useful if you tend to spend a lot of time SSH
+
+80
+00:09:32.600 --> 00:09:38.840
+into servers and you need to edit, make a one off edit using a fancy editor or similar.
+
+81
+00:09:40.760 --> 00:09:47.000
+I should note that as far as it comes to images, you can actually view images directly over
+
+82
+00:09:47.000 --> 00:09:53.960
+SSH connections thanks to yet another kitten, the icat image viewing kitten in kitty. We'll discuss
+
+83
+00:09:53.960 --> 00:09:58.840
+that and some more fancy kittens in the following segment.
+
+84
+00:10:01.080 --> 00:10:06.200
+Now it's time to have some fun with images. I know terminals are text devices but sometimes
+
+85
+00:10:06.200 --> 00:10:10.120
+it's cool to be able to display images and even useful if you're SSH into a remote computer.
+
+86
+00:10:10.120 --> 00:10:14.680
+I need to quickly look at a graph or a report that's available as an image.
+
+87
+00:10:15.800 --> 00:10:22.520
+So without further ado, let's see how we do that. We use the icat kitten which is a
+
+88
+00:10:24.120 --> 00:10:29.000
+small program written that's distributed as part of kitty that can display images within kitty.
+
+89
+00:10:30.440 --> 00:10:34.440
+Here I'll display the kitty logo as you can see shows up as an image in the right there in the
+
+90
+00:10:34.440 --> 00:10:41.400
+terminal itself. The icat kitten can also download images from the internet and display them.
+
+91
+00:10:41.400 --> 00:10:47.640
+Here we'll see it doing that with an animated gif of a Rubik's cube. I have icat
+
+92
+00:10:48.120 --> 00:10:50.680
+aliased as just the icat command on my computer.
+
+93
+00:10:53.800 --> 00:10:57.880
+So here you see it downloaded the Rubik's cube and it's displaying the animation. The animation
+
+94
+00:10:57.880 --> 00:11:05.640
+will continue playing even while you type other commands. The kitty graphics protocol that powers
+
+95
+00:11:05.640 --> 00:11:10.920
+the icat kitten is integrated with many other programs. For example, the Ranger file manager.
+
+96
+00:11:11.400 --> 00:11:17.800
+Here you see we've opened a folder full of images. And as you scroll through the files,
+
+97
+00:11:17.800 --> 00:11:23.400
+Ranger displays thumbnails of the images using the kitty graphics protocol right there in the
+
+98
+00:11:23.400 --> 00:11:30.200
+terminal. Another cool feature of the kitty graphics protocol is that it works over SSH. So if I
+
+99
+00:11:30.200 --> 00:11:45.000
+SSH into one of my servers and run icat Athenaum.jpg, you see that the image is displayed directly
+
+100
+00:11:45.000 --> 00:11:51.880
+in the terminal even though it's on a remote server. The image data is sent over the TTY pipe
+
+101
+00:11:52.920 --> 00:11:58.120
+over SSH. When running locally, the graphics protocol is smart enough to avoid the overhead of
+
+102
+00:11:58.120 --> 00:12:06.280
+doing this and to use the local file system to display images. Another cool kitten that kitty has
+
+103
+00:12:06.280 --> 00:12:12.600
+is the unicode input kitten, which you can use to input arbitrary unicode symbols, emoji, etc.
+
+104
+00:12:12.600 --> 00:12:18.440
+into your terminal. Just press control shift U and then type the name of the symbol you want. So
+
+105
+00:12:18.440 --> 00:12:25.720
+for example, here we have a cat. We can insert a cat face with tears of joy into our terminal
+
+106
+00:12:26.440 --> 00:12:33.240
+and there you have it right there at the prompt. You can search for all sorts of symbols. Here we have
+
+107
+00:12:33.240 --> 00:12:43.800
+some beer. Let's celebrate this great kitten right here. So this is useful. If you find yourself
+
+108
+00:12:43.800 --> 00:12:49.160
+doing a lot of chatting using terminal chat programs such as WeChat and you want to send your
+
+109
+00:12:49.160 --> 00:12:57.240
+buddies emoji or other other symbols. We have talked a fair bit about kittens and how they can
+
+110
+00:12:57.240 --> 00:13:02.520
+be used to enhance the terminal experience. Now let's discuss something more basic window management.
+
+111
+00:13:03.160 --> 00:13:08.360
+Kitty has the ability to tile multiple windows next to each other and manage them using flexible
+
+112
+00:13:08.360 --> 00:13:14.120
+layouts. You can also create multiple tabs. So let's create some windows by pressing control shift
+
+113
+00:13:14.120 --> 00:13:19.880
+enter. You see we have three windows tiles next to each other. We can create some new tabs as well.
+
+114
+00:13:20.600 --> 00:13:25.080
+The tabs are displayed at the bottom. The tab titles show the current working directory
+
+115
+00:13:25.720 --> 00:13:32.840
+or actually whatever title the program running in the shell sets. So let's close these tabs.
+
+116
+00:13:32.840 --> 00:13:39.480
+Get back to the windows. As you can see these windows are tiled next to each other. You can press
+
+117
+00:13:39.480 --> 00:13:45.800
+control shift and the window number to switch to a window. So one for the first two for the second
+
+118
+00:13:45.800 --> 00:13:52.520
+three for the third and so on. You can even visually shift by pressing control shift F7 and simply
+
+119
+00:13:52.520 --> 00:14:00.040
+typing the number of the window you want to shift to. Now while we are discussing multiple windows
+
+120
+00:14:00.040 --> 00:14:05.160
+let's look at a cool feature whereby we can type in one window and have the text appear in all
+
+121
+00:14:05.160 --> 00:14:11.800
+the windows simultaneously. This is useful if you want to do a poor man's automation of multiple
+
+122
+00:14:11.800 --> 00:14:18.280
+servers for example. To do this let's open the kitty shell which we can do by pressing control shift
+
+123
+00:14:18.280 --> 00:14:23.800
+escape. The kitty shell is a shell where you can issue commands to kitty itself to make it do things.
+
+124
+00:14:24.840 --> 00:14:31.560
+So here let's first change the layout to grid which works better with four windows
+
+125
+00:14:32.040 --> 00:14:42.520
+and now to actually broadcast the text we need to launch the broadcast kitten which we can do
+
+126
+00:14:42.520 --> 00:14:56.920
+like this. And we see that we have a broadcast window available at which we can type. Let me type
+
+127
+00:14:57.000 --> 00:15:03.080
+the command ls. You see that ls has been typed in every single window. You can backspace and it works
+
+128
+00:15:03.080 --> 00:15:09.080
+as expected. Let's execute the ls command and we see that the ls has been executed in every window
+
+129
+00:15:09.080 --> 00:15:16.360
+showing different outputs. Let's clear out these outputs and end the broadcast session.
+
+130
+00:15:18.280 --> 00:15:23.560
+So as you can see here the kitty shell is quite a powerful tool.
+
+131
+00:15:24.440 --> 00:15:31.000
+A note that the shell is powered by something called the kitty remote control protocol.
+
+132
+00:15:31.000 --> 00:15:36.840
+This allows you to control kitty from other shells, other terminals, programs running on your
+
+133
+00:15:36.840 --> 00:15:42.120
+computer etc. And this is very powerful. Anything you can do in the shell you can also do
+
+134
+00:15:42.120 --> 00:15:48.360
+via the remote control facility. Let's have a quick look at it. Change the layout to stack so we
+
+135
+00:15:48.920 --> 00:15:54.360
+focused on the shell window. Let's see some commands. So here you can see a list of commands
+
+136
+00:15:54.360 --> 00:15:59.400
+available in the shell. You can do things like create new windows, set window titles, set window
+
+137
+00:15:59.400 --> 00:16:08.760
+logos, send text to windows, set change the opacity, select windows, all sorts of things resize them,
+
+138
+00:16:09.800 --> 00:16:15.240
+send signals to children running in windows etc. You can change the colors, you can run kittens,
+
+139
+00:16:16.200 --> 00:16:23.560
+and on and on and on. So this forms a general scripting ability for kitty and allows you to
+
+140
+00:16:23.560 --> 00:16:30.840
+control kitty and automate various tasks in it. Your imagination is the limit when it comes to
+
+141
+00:16:30.840 --> 00:16:38.920
+use cases. Since this is supposed to be a brief tour I think I'll end here but before I go
+
+142
+00:16:39.560 --> 00:16:44.680
+let's see how to bling-up the kitty terminal a bit by changing its colors. Kitty actually has
+
+143
+00:16:44.680 --> 00:16:52.440
+a themes kitten that has a large collection of themes downloaded from a central repository.
+
+144
+00:16:52.440 --> 00:16:57.720
+Let's run it and see what happens. So here you can see there are literally hundreds of themes
+
+145
+00:16:59.560 --> 00:17:06.680
+organized by dark and light colors. You can choose a theme you want. So for example I like
+
+146
+00:17:06.680 --> 00:17:15.640
+Belafonte. So let's change to that by pressing the Enter key and then the M key to tell the kitten
+
+147
+00:17:15.640 --> 00:17:21.880
+to modify kitty.com to make the change permanent and you see that kitty now uses the Belafonte theme.
+
+148
+00:17:22.760 --> 00:17:28.120
+Note that the kitten can actually be run non interactively as well. So for example if you specify
+
+149
+00:17:28.120 --> 00:17:35.000
+the theme name on the command line it will change the theme directly without running interactively.
+
+150
+00:17:35.800 --> 00:17:41.960
+You can actually choose where all to change the colors either in the current terminal or
+
+151
+00:17:41.960 --> 00:17:47.880
+all running terminals on your system. So as you can see the themes kitten is a nice way to
+
+152
+00:17:49.240 --> 00:17:55.080
+make your terminal experience a little more colorful. I personally use it to adjust the colors
+
+153
+00:17:55.080 --> 00:18:03.720
+to the time of day so that the screen ambient brightness is the best match for my eyes.
+
+154
+00:18:03.720 --> 00:18:12.440
+And I think with that I'll say goodbye and thank you and hope you enjoy using kitty.
