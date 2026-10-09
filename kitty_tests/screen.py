@@ -2259,8 +2259,13 @@ class TestScreen(BaseTest):
 
     def test_decoration_sgr_round_trip(self):
         for code, extra, expected in (
-            (1, '', '4'), (2, '', '4:2'), (3, '', '4:3'), (4, '', '4:4'), (5, '', '4:5'),
-            (4, ';3;31', '3;31;4:4'), (5, ';3;31', '3;31;4:5'),
+            (1, '', '4'),
+            (2, '', '4:2'),
+            (3, '', '4:3'),
+            (4, '', '4:4'),
+            (5, '', '4:5'),
+            (4, ';3;31', '3;31;4:4'),
+            (5, ';3;31', '3;31;4:5'),
         ):
             s = self.create_screen(cols=5, lines=2)
             parse_bytes(s, f'\x1b[4:{code}{extra}mx'.encode())

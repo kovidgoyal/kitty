@@ -713,7 +713,9 @@ class GlobalWatchers:
         return self.ans
 
     def set_extra(self, extra: str) -> None:
-        self.extra = extra
+        if extra != self.extra:
+            self.extra = extra
+            self.options_spec = None
 
 
 global_watchers = GlobalWatchers()

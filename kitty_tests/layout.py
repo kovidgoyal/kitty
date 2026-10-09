@@ -1578,8 +1578,10 @@ class TestWindowHelpers(BaseTest):
         for prefix in ('padding', 'margin'):
             args = list(ew.as_launch_args(prefix))
             self.ae(len(set(args)), 4)
-            self.ae(parse_spacing_settings(a.partition('=')[2] for a in args), {
-                f'{prefix}-left': 1, f'{prefix}-right': 2, f'{prefix}-top': 3, f'{prefix}-bottom': 4})
+            self.ae(
+                parse_spacing_settings(a.partition('=')[2] for a in args),
+                {f'{prefix}-left': 1, f'{prefix}-right': 2, f'{prefix}-top': 3, f'{prefix}-bottom': 4},
+            )
 
     def test_global_watchers(self):
         opts = SimpleNamespace(watcher={})
@@ -1605,3 +1607,7 @@ class TestWindowHelpers(BaseTest):
             self.assertIsNot(ans, w1)
             self.assertIsInstance(ans, Watchers)
             self.ae(calls[-1], ())
+            # changing the extra watcher after first use must take effect
+            g.set_extra('y.py')
+            self.assertIs(g(), w1)
+            self.ae(calls[-1], ('y.py',))

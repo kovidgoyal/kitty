@@ -351,6 +351,7 @@ class FontBaseTest(BaseTest):
 class Rendering(FontBaseTest):
     def test_decorations_map_growth(self):
         from kitty.fast_data_types import decorations_map_new_size as size
+
         m = 4096
         self.ae(size(0, 0, m), (4096, 1))
         self.ae(size(5000, 4096, m), (4096, 2))

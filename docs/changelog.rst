@@ -297,6 +297,43 @@ Detailed list of changes
 - Fix a heap buffer overflow when getting the text of lines that contain a very
   large number of combining characters
 
+- Fix :code:`rgbi:` color specifications not being recognized (:pull:`10632`)
+
+- Fix dotted and dashed underlines being merged with the next SGR code when
+  lines are serialized as ANSI escape codes, for example in the scrollback
+  pager (:pull:`10632`)
+
+- Fix erase in line and erase in display leaving behind halves of multicell
+  characters that cross the erased area (:pull:`10632`)
+
+- Fix the CHT escape code with a very large count hanging kitty (:pull:`10632`)
+
+- Fix an out of bounds write when changing attributes in a single line
+  rectangular area with an out of range line number (:pull:`10632`)
+
+- Allow the pointer shape stack to hold 16 entries, the minimum required by the
+  specification (:pull:`10632`)
+
+- Fix fractional scrolling losing sub-line pixel amounts so that repeated
+  small scrolls drift (:pull:`10632`)
+
+- Graphics protocol: Fix deleting an animation frame corrupting frames that
+  are built on top of it and changing the displayed frame (:pull:`10632`)
+
+- Wayland: Fix dragging data that is generated lazily being cut off after the
+  first chunk, partial writes of drag data and a buffer overflow when
+  receiving drops with many MIME types (:pull:`10632`)
+
+- Remote control: Fix a single unresponsive peer blocking all remote control
+  communication and the remote control listener stopping after transient
+  errors such as running out of file descriptors (:pull:`10632`)
+
+- Fix :opt:`watcher` entries removed from :file:`kitty.conf` remaining active
+  after a config reload (:pull:`10632`)
+
+- Speed up growing the GPU sprite cache, particularly on macOS
+  (:pull:`10632`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

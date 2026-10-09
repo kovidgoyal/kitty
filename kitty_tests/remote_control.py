@@ -104,7 +104,6 @@ os._exit(0)
 
 
 class TestTalkThread(BaseTest):
-
     def test_talk_thread_not_blocked_by_stalled_peer(self):
         p = subprocess.run([kitty_exe(), '+runpy', TALK_THREAD_STALLED_PEER], capture_output=True, text=True, timeout=30)
         self.assertEqual(p.returncode, 0, p.stderr)
@@ -112,9 +111,7 @@ class TestTalkThread(BaseTest):
 
     def test_talk_thread_survives_accept_errors(self):
         with tempfile.TemporaryDirectory() as tdir:
-            p = subprocess.run(
-                [kitty_exe(), '+runpy', TALK_THREAD_SURVIVES_ACCEPT_ERROR, os.path.join(tdir, 's')],
-                capture_output=True, text=True, timeout=30)
+            p = subprocess.run([kitty_exe(), '+runpy', TALK_THREAD_SURVIVES_ACCEPT_ERROR, os.path.join(tdir, 's')], capture_output=True, text=True, timeout=30)
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn('ok', p.stdout, p.stderr)
         self.assertEqual(p.stderr.count('accept() on talk socket failed'), 1, p.stderr)

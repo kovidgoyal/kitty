@@ -497,10 +497,19 @@ write_dirty_entry(DiskCache *self) {
     off_t offset = self->currently_writing.val.pos_in_cache_file;
     bool ok = true;
     if (self->currently_writing.encrypted) {
-        // chunk size must be a multiple of the key size
-        uint8_t buf[16 * 1024];
-        for (size_t done = 0; ok && done < sz; done += sizeof(buf)) {
-            const size_t n = MIN(sz - done, sizeof(buf));
+        // chunk sizes must be multiples of the key size. Use large chunks to
+        // keep the number of write syscalls low, falling back to a small stack
+        // buffer if allocation fails.
+        uint8_t stack_buf[16 * 1024];
+        size_t chunk_sz = MIN(sz, (size_t)1024 * 1024);
+        RAII_ALLOC(uint8_t, heap_buf, chunk_sz > sizeof(stack_buf) ? malloc(chunk_sz) : NULL);
+        uint8_t *buf = heap_buf;
+        if (!buf) {
+            buf = stack_buf;
+            chunk_sz = sizeof(stack_buf);
+        }
+        for (size_t done = 0; ok && done < sz; done += chunk_sz) {
+            const size_t n = MIN(sz - done, chunk_sz);
             memcpy(buf, data + done, n);
             xor_data64(self->currently_writing.enc_key, buf, n);
             ok = write_all(self, buf, n, &offset);

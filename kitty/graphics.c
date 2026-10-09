@@ -45,7 +45,7 @@ cache_key(const ImageAndFrame x, char *key) {
 // Transfers ownership of *data (a malloc() allocated pointer) to the cache,
 // setting it to NULL, on success. This avoids copying what are often many
 // megabytes of image data. Note that *data must not be used afterwards, the
-// cache write thread can modify it (encryption is done in-place) at any time.
+// cache write thread can free it at any time.
 static bool
 add_to_cache(GraphicsManager *self, const ImageAndFrame x, void **data, const size_t sz, bool memory_only) {
     char key[CACHE_KEY_BUFFER_SIZE];

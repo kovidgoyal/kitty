@@ -104,8 +104,15 @@ class TestDataTypes(BaseTest):
         self.assertTrue(png.startswith(b'\x89PNG\r\n\x1a\n'))
         self.ae(load_png_data(png), (rgba, 2, 2))
         for args in (
-            (b'', 0, 0), (rgba, 0, 2), (rgba, 2, 0), (rgba[:-1], 2, 2), (rgba + b'\0', 2, 2),
-            (rgba, 4, 4), (rgba, 65537, 65537), (rgba, 2**32 - 1, 2**32 - 1), (rgba, 2**31, 2),
+            (b'', 0, 0),
+            (rgba, 0, 2),
+            (rgba, 2, 0),
+            (rgba[:-1], 2, 2),
+            (rgba + b'\0', 2, 2),
+            (rgba, 4, 4),
+            (rgba, 65537, 65537),
+            (rgba, 2**32 - 1, 2**32 - 1),
+            (rgba, 2**31, 2),
         ):
             with self.assertRaises(ValueError, msg=repr(args[1:])):
                 png_from_32bit_rgba_data(*args)
@@ -689,6 +696,7 @@ class TestDataTypes(BaseTest):
         tp('\033]0;t\007', text='\033]0;t\007', ibp=True)
         tp('\033_x\033\\', text='\033_x\033\\', ibp=True)
         import random
+
         rnd = random.Random(0)
         whole = 'a\033bc\033OAx\033[1mq\033]0;t\007w\033]1;\033x\033\\e\033_a\033\033\\r\033\033[Ab\033P1\007\033\\z\033]2\033\007y'
 
@@ -704,6 +712,7 @@ class TestDataTypes(BaseTest):
                 else:
                     ans.append((n, x))
             return ans, left
+
         shared = []
         scb = shared.append
         self.ae(parse_input_from_terminal(scb, scb, scb, scb, scb, scb, '\033P1\007x\033\\z\033_a\007b\033\\', False), '')

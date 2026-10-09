@@ -19,6 +19,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <signal.h>
+#include <stdatomic.h>
+#include <limits.h>
 extern PyTypeObject Screen_Type;
 
 #if defined(__APPLE__) || defined(__OpenBSD__)
@@ -2020,7 +2022,7 @@ add_peer(int peer, bool is_remote_control_peer) {
     return ans;
 }
 
-static int injected_accept_failures = 0;
+static atomic_int injected_accept_failures = 0; // testing only
 static bool accept_error_logged = false;
 
 static PyObject *
@@ -2028,22 +2030,17 @@ fail_next_accepts(PyObject *s UNUSED, PyObject *a) {
 #define fail_next_accepts_doc "fail_next_accepts(n) -> make the next n talk thread accepts fail for testing"
     long n = PyLong_AsLong(a);
     if (n == -1 && PyErr_Occurred()) return NULL;
-    talk_mutex(lock);
-    int prev = injected_accept_failures;
-    if (n >= 0) injected_accept_failures = (int)n;
-    talk_mutex(unlock);
+    if (n > INT_MAX) n = INT_MAX;
+    const int prev = n >= 0 ? atomic_exchange(&injected_accept_failures, (int)n) : atomic_load(&injected_accept_failures);
     return PyLong_FromLong(prev);
 }
 
 static bool
 accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer, bool verify_peer_uid) {
     int peer = -1, err = 0;
-    talk_mutex(lock);
-    if (injected_accept_failures > 0) {
-        injected_accept_failures--;
-        err = EMFILE;
-    }
-    talk_mutex(unlock);
+    int injected = atomic_load_explicit(&injected_accept_failures, memory_order_relaxed);
+    while (UNLIKELY(injected > 0) && !atomic_compare_exchange_weak(&injected_accept_failures, &injected, injected - 1));
+    if (UNLIKELY(injected > 0)) err = EMFILE;
     if (!err) {
         peer = accept(listen_fd, NULL, NULL);
         if (peer == -1) err = errno;
@@ -2053,8 +2050,8 @@ accept_peer(int listen_fd, bool shutting_down, bool is_remote_control_peer, bool
         if (shutting_down || err == EBADF || err == EINVAL || err == ENOTSOCK) return false;
         if (!accept_error_logged) log_error("accept() on talk socket failed with error: %s", strerror(err));
         accept_error_logged = true;
-        if (err == EMFILE || err == ENFILE || err == ENOBUFS || err == ENOMEM) {
-            // avoid spinning on a readable listener
+        if (err != ECONNABORTED && err != EAGAIN && err != EWOULDBLOCK) {
+            // the pending connection was not consumed, avoid spinning on a readable listener
             struct timespec ts = {.tv_nsec = 50 * 1000000};
             nanosleep(&ts, NULL);
         }
