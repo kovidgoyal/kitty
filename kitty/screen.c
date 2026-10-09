@@ -6973,7 +6973,7 @@ scroll_prompt_to_bottom(Screen *self, PyObject *args UNUSED) {
 static void
 dump_line_with_attrs(Screen *self, int y, PyObject *accum) {
     Line *line = range_line_(self, y);
-    RAII_PyObject(u, PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y++));
+    RAII_PyObject(u, PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y));
     if (!u) return;
     RAII_PyObject(r1, PyObject_CallOneArg(accum, u));
     if (!r1) return;

@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 import tempfile
 
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
@@ -2161,6 +2162,22 @@ class TestScreen(BaseTest):
             s2 = self.create_screen(cols=5, lines=2)
             parse_bytes(s2, ansi.encode())
             self.ae(s2.line(0).as_ansi(), ansi)
+
+    def test_dump_lines_continued(self):
+        s = self.create_screen(cols=5, lines=3, scrollback=5)
+        s.draw('abcdefgh')
+        s.carriage_return(), s.linefeed()
+        s.draw('xy')
+        for which_screen in (0, 1):
+            accum = []
+            s.dump_lines_with_attrs(accum.append, which_screen)
+            lines = re.sub(r'\x1b\[[\d;]*m', '', ''.join(accum)).splitlines()
+            rows = [x for x in lines if re.match(r'-?\d+: ', x)]
+            if which_screen == 0:
+                self.ae(len(rows), 3)
+                self.assertIn('continued', rows[1])
+            for i, row in enumerate(rows):
+                self.assertEqual('continued' in row, which_screen == 0 and i == 1, row)
 
     def test_color_profile(self):
         from kitty.fast_data_types import patch_color_profiles
