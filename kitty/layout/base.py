@@ -2,9 +2,11 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
+from copy import copy, deepcopy
 from enum import Enum
 from functools import partial
 from itertools import repeat
+from math import ceil, isfinite
 from typing import Any, ClassVar, NamedTuple, cast
 
 from kitty.borders import BorderColor
@@ -61,6 +63,10 @@ class LayoutGlobalData:
 
 
 lgd = LayoutGlobalData()
+
+
+def fractional_resize_steps(remaining: int, fraction: float) -> int:
+    return max(1, ceil(remaining * fraction - 1e-9)) if remaining > 0 else 0
 
 
 def idx_for_id(win_id: int, windows: Iterable[WindowType]) -> int | None:
@@ -396,6 +402,34 @@ class Layout:
         if idx is None or not increment:
             return False
         return self.apply_bias(idx, increment, all_windows, is_horizontal)
+
+    def apply_fractional_bias(self, window_idx: int, increment: float, all_windows: WindowList, is_horizontal: bool) -> bool:
+        return self.apply_bias(window_idx, increment, all_windows, is_horizontal)
+
+    def modify_size_of_window_by_fraction(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool, fraction: float) -> bool:
+        if window_id not in all_windows.id_map:
+            return False
+        idx = all_windows.group_idx_for_window(window_id)
+        if idx is None or all_windows.num_groups < 2 or not increment or not isfinite(increment) or not 0 < fraction <= 1:
+            return False
+        # Probe private layout state, without changing windows or rendering every
+        # intermediate step. This follows each layout's ordinary resize rules.
+        probe = copy(self)
+        state = deepcopy(self.layout_state())
+        state['opts'] = self.layout_opts.serialized()
+        if not probe.set_layout_state(state, lambda group_id: group_id):
+            return False
+        remaining = 0
+        # Biases span at most one unit; allow two for clamping/normalization.
+        # The bound also prevents future layout implementations from looping.
+        for _ in range(max(1, ceil(2 / abs(increment)))):
+            if not probe.apply_fractional_bias(idx, increment, all_windows, is_horizontal):
+                break
+            remaining += 1
+        steps = fractional_resize_steps(remaining, fraction)
+        for _ in range(steps):
+            self.apply_fractional_bias(idx, increment, all_windows, is_horizontal)
+        return bool(steps)
 
     def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> float:
         """Resize by a number of cells, returning the number of cells actually applied.

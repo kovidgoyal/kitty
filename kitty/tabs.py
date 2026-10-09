@@ -702,9 +702,13 @@ class Tab:  # {{{
         else:
             self.goto_layout(layout_name)
 
-    def resize_window_by(self, window_id: int, increment: float, is_horizontal: bool) -> str | None:
+    def resize_window_by(self, window_id: int, increment: float, is_horizontal: bool, fraction: float = 0) -> str | None:
         increment_as_percent = self.current_layout.bias_increment_for_cell(self.windows, is_horizontal) * increment
-        if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal):
+        if fraction:
+            changed = self.current_layout.modify_size_of_window_by_fraction(self.windows, window_id, increment_as_percent, is_horizontal, fraction)
+        else:
+            changed = self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal)
+        if changed:
             self.relayout()
             return None
         return 'Could not resize'
