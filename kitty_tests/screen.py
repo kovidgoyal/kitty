@@ -2129,6 +2129,19 @@ class TestScreen(BaseTest):
         t('=left_ptr', 'default')
         t('=fleur', 'move')
 
+    def test_decoration_sgr_round_trip(self):
+        for code, extra, expected in (
+            (1, '', '4'), (2, '', '4:2'), (3, '', '4:3'), (4, '', '4:4'), (5, '', '4:5'),
+            (4, ';3;31', '3;31;4:4'), (5, ';3;31', '3;31;4:5'),
+        ):
+            s = self.create_screen(cols=5, lines=2)
+            parse_bytes(s, f'\x1b[4:{code}{extra}mx'.encode())
+            ansi = s.line(0).as_ansi()
+            self.ae(ansi, f'\x1b[{expected}mx')
+            s2 = self.create_screen(cols=5, lines=2)
+            parse_bytes(s2, ansi.encode())
+            self.ae(s2.line(0).as_ansi(), ansi)
+
     def test_color_profile(self):
         from kitty.fast_data_types import patch_color_profiles
 
