@@ -231,6 +231,21 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Allow docking kitty windows to the edges of other windows or of the tab, for
+  status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
+  or :code:`launch --type=tab-dock`, see :ref:`docks`
+
+- quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
+  option to run a program in a new tab or window of an already running quick
+  access terminal and a new :option:`kitty +kitten quick_access_terminal --listen-on` option
+  to specify a fixed remote control socket address. Also a new
+  :option:`kitty +kitten quick_access_terminal --hold` option to keep the
+  terminal open after the program exits (:iss:`10603`)
+
+- Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
+  with momentum, and a finger held still before it moves selects text
+  (:iss:`5432`, :pull:`10551`)
+
 - Window resizing: Add an :code:`--strategy=edge` mode to select and move a
   specific internal divider in the Splits layout. A sole internal edge is
   selected automatically; R restores the sizes saved when resize mode opened.
@@ -244,22 +259,7 @@ Detailed list of changes
 - Add English and Spanish subtitles to the intro video shown at the top of the
   documentation
 
-- Allow docking kitty windows to the edges of other windows or of the tab, for
-  status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
-  or :code:`launch --type=tab-dock`, see :ref:`docks`
-
-- quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
-  option to run a program in a new tab or window of an already running quick
-  access terminal and a new :option:`kitty +kitten quick_access_terminal --listen-on` option
-  to specify a fixed remote control socket address. Also a new
-  :option:`kitty +kitten quick_access_terminal --hold` option to keep the
-  terminal open after the program exits (:iss:`10603`)
-
 - quick-access-terminal kitten: Fix :option:`kitty +kitten quick_access_terminal --detached-log` not working
-
-- Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
-  with momentum, and a finger held still before it moves selects text
-  (:iss:`5432`, :pull:`10551`)
 
 - Linux/BSD: Detect MIME types for :doc:`open actions <open_actions>` and
   kittens using the fast binary shared-mime-info cache
