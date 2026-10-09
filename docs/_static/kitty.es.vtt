@@ -2,11 +2,11 @@ WEBVTT
 
 1
 00:00:00.000 --> 00:00:07.240
-Hola, soy Kovid Goyal, el creador de Kitty. En este video, les daré un breve recorrido
+Hola, soy Kovid Goyal, el creador de kitty. En este video, les daré un breve recorrido
 
 2
 00:00:07.240 --> 00:00:13.640
-por las funciones de Kitty diseñadas para mejorar la productividad. Kitty comenzó como un proyecto personal para mejorar
+por las funciones de kitty diseñadas para mejorar la productividad. kitty comenzó como un proyecto personal para mejorar
 
 3
 00:00:13.640 --> 00:00:18.520
@@ -14,11 +14,11 @@ mi propia experiencia en la terminal, pero desde entonces ha crecido hasta ser u
 
 4
 00:00:18.520 --> 00:00:25.640
-en todo el mundo. Kitty está diseñado para usuarios avanzados de la terminal, personas que, como yo, prefieren
+en todo el mundo. kitty está diseñado para usuarios avanzados de la terminal, personas que, como yo, prefieren
 
 5
 00:00:25.640 --> 00:00:31.520
-pasar todo el día en la terminal y la usan para cualquier tarea imaginable. Kitty tiene
+pasar todo el día en la terminal y la usan para cualquier tarea imaginable. kitty tiene
 
 6
 00:00:31.520 --> 00:00:37.800
@@ -42,7 +42,7 @@ salida, pero a veces es útil abrirla en un editor o un paginador y, por ejemplo
 
 11
 00:01:03.880 --> 00:01:10.360
-o filtrarla. Kitty tiene una función integrada en la que si presionas las teclas Control, Mayús y G,
+o filtrarla. kitty tiene una función integrada en la que si presionas las teclas Control, Mayús y G,
 
 12
 00:01:10.360 --> 00:01:16.120
@@ -54,7 +54,7 @@ comando ls se abre en un paginador: less, en mi caso. Esto no se limita solo al 
 
 14
 00:01:23.480 --> 00:01:29.800
-De hecho, puedes desplazarte hacia arriba y aquí puedes ver la salida de compilación al construir Kitty para examinar la
+De hecho, puedes desplazarte hacia arriba y aquí puedes ver la salida de compilación al construir kitty para examinar la
 
 15
 00:01:29.800 --> 00:01:33.880
@@ -66,7 +66,7 @@ y listo. Se abre en el paginador como antes. Ahora puedo buscar en ella o consul
 
 17
 00:01:41.480 --> 00:01:48.760
-tanto como quiera. Incluso puedes usar la función de múltiples ventanas de Kitty para que la ventana del paginador
+tanto como quiera. Incluso puedes usar la función de múltiples ventanas de kitty para que la ventana del paginador
 
 18
 00:01:48.760 --> 00:01:56.520
@@ -82,11 +82,11 @@ salida y consultarla mientras escribo futuros comandos. Encuentro esta función 
 
 21
 00:02:10.760 --> 00:02:17.160
-la uso varias veces al día. Ten en cuenta que esta función está implementada en Kitty mediante la
+la uso varias veces al día. Ten en cuenta que esta función está implementada en kitty mediante la
 
 22
 00:02:17.160 --> 00:02:22.680
-integración con la shell. La integración con la shell significa que Kitty funciona con shells comunes como bash,
+integración con la shell. La integración con la shell significa que kitty funciona con shells comunes como bash,
 
 23
 00:02:22.680 --> 00:02:29.080
@@ -110,7 +110,7 @@ la barra de título vuelve al directorio de trabajo. Este es un pequeño ejemplo
 
 28
 00:02:53.800 --> 00:03:01.160
-productividad de Kitty que hacen que trabajar todo el día en la terminal sea mucho más divertido y productivo.
+productividad de kitty que hacen que trabajar todo el día en la terminal sea mucho más divertido y productivo.
 
 29
 00:03:01.480 --> 00:03:08.840
@@ -130,7 +130,7 @@ Lo divertido empieza cuando haces clic en uno de estos archivos. Por ejemplo, ve
 
 33
 00:03:27.720 --> 00:03:33.480
-Kitty. Manteniendo presionadas las teclas Control y Mayús, hago clic en él. Y como puedes ver,
+kitty. Manteniendo presionadas las teclas Control y Mayús, hago clic en él. Y como puedes ver,
 
 34
 00:03:34.440 --> 00:03:40.280
@@ -142,7 +142,7 @@ lo que sea. Simplemente haciendo clic en el archivo. Y eso no es todo. Incluso p
 
 36
 00:03:46.520 --> 00:03:56.200
-Por ejemplo, hagamos clic en el logo de Kitty. Y ahí lo tenemos. Se abre en la terminal. Puedes ver
+Por ejemplo, hagamos clic en el logo de kitty. Y ahí lo tenemos. Se abre en la terminal. Puedes ver
 
 37
 00:03:56.200 --> 00:04:03.160
@@ -150,7 +150,7 @@ la imagen. Así que, como puedes ver, simplemente haciendo clic en los archivos 
 
 38
 00:04:03.800 --> 00:04:09.240
-Y, por supuesto, Kitty está pensado para usuarios avanzados, lo que significa que no tienes que usar el ratón.
+Y, por supuesto, kitty está pensado para usuarios avanzados, lo que significa que no tienes que usar el ratón.
 
 39
 00:04:09.880 --> 00:04:18.200
@@ -158,7 +158,7 @@ En su lugar, puedes presionar Control, Mayús, P e Y. Y lista todos los archivos
 
 40
 00:04:18.200 --> 00:04:23.960
-al lado de sus nombres. Así que, por ejemplo, si presiono seis, una vez más, el logo de Kitty se abre.
+al lado de sus nombres. Así que, por ejemplo, si presiono seis, una vez más, el logo de kitty se abre.
 
 41
 00:04:26.680 --> 00:04:34.600
@@ -182,7 +182,7 @@ que se subraya cuando pasas el ratón sobre él. La segunda cosa que hace esto p
 
 46
 00:05:05.320 --> 00:05:14.040
-es un archivo de configuración en Kitty llamado open-actions.conf. En este archivo, puedes decirle a Kitty
+es un archivo de configuración en kitty llamado open-actions.conf. En este archivo, puedes decirle a kitty
 
 47
 00:05:14.040 --> 00:05:21.800
@@ -190,7 +190,7 @@ qué hacer cuando abres un archivo, por ejemplo, al hacer clic en él. Aquí pue
 
 48
 00:05:21.800 --> 00:05:30.840
-entrada en esta línea le dice a Kitty que para archivos de tipo texto, los abra en el editor en una ventana
+entrada en esta línea le dice a kitty que para archivos de tipo texto, los abra en el editor en una ventana
 
 49
 00:05:30.840 --> 00:05:37.240
@@ -198,11 +198,11 @@ superpuesta (overlay), lo que significa una ventana superpuesta sobre la ventana
 
 50
 00:05:37.320 --> 00:05:48.280
-en el propio Kitty usando el kitten icat, y así sucesivamente. Esta entrada de aquí es de particular interés. Utiliza
+en el propio kitty usando el kitten icat, y así sucesivamente. Esta entrada de aquí es de particular interés. Utiliza
 
 51
 00:05:48.280 --> 00:05:56.600
-otro kitten, que es un pequeño programa que forma parte de Kitty, para permitirte hacer clic directamente en
+otro kitten, que es un pequeño programa que forma parte de kitty, para permitirte hacer clic directamente en
 
 52
 00:05:56.600 --> 00:06:03.720
@@ -230,7 +230,7 @@ Esto, a su vez, funciona gracias a... veamos qué tenemos aquí y el kitten. Aho
 
 58
 00:06:49.160 --> 00:06:53.880
-programas de Kitty que mejoran su funcionalidad. Aquí el kitten es el hyperlinked grep.
+programas de kitty que mejoran su funcionalidad. Aquí el kitten es el hyperlinked grep.
 
 59
 00:06:54.760 --> 00:07:00.040
@@ -238,7 +238,7 @@ Lo que hace es tomar la salida de un programa grep y añadirle hipervínculos pa
 
 60
 00:07:00.600 --> 00:07:07.560
-sean cliqueables cuando se muestran en Kitty. Como pueden ver aquí, estas funciones simples que
+sean cliqueables cuando se muestran en kitty. Como pueden ver aquí, estas funciones simples que
 
 61
 00:07:07.560 --> 00:07:14.280
@@ -262,7 +262,7 @@ Pueden ver que se han listado algunos archivos. Uno de ellos es una imagen. Haga
 
 66
 00:07:48.200 --> 00:07:54.440
-veamos qué pasa. Como pueden ver, se abre en un kitten de Kitty. Este es el kitten de archivos remotos
+veamos qué pasa. Como pueden ver, se abre en un kitten de kitty. Este es el kitten de archivos remotos
 
 67
 00:07:54.440 --> 00:07:59.400
@@ -326,7 +326,7 @@ Debo señalar que, en lo que respecta a imágenes, de hecho puedes ver imágenes
 
 82
 00:09:47.000 --> 00:09:53.960
-conexiones SSH gracias a otro kitten, el kitten de visualización de imágenes icat en Kitty. Discutiremos
+conexiones SSH gracias a otro kitten, el kitten de visualización de imágenes icat en kitty. Discutiremos
 
 83
 00:09:53.960 --> 00:09:58.840
@@ -350,11 +350,11 @@ Así que sin más preámbulos, veamos cómo hacemos eso. Usamos el kitten icat, 
 
 88
 00:10:24.120 --> 00:10:29.000
-pequeño programa escrito que se distribuye como parte de Kitty y que puede mostrar imágenes dentro de Kitty.
+pequeño programa escrito que se distribuye como parte de kitty y que puede mostrar imágenes dentro de kitty.
 
 89
 00:10:30.440 --> 00:10:34.440
-Aquí mostraré el logo de Kitty; como pueden ver, aparece como una imagen justo ahí en la
+Aquí mostraré el logo de kitty; como pueden ver, aparece como una imagen justo ahí en la
 
 90
 00:10:34.440 --> 00:10:41.400
@@ -374,7 +374,7 @@ Aquí ven que descargó el cubo de Rubik y está mostrando la animación. La ani
 
 94
 00:10:57.880 --> 00:11:05.640
-continuará reproduciéndose incluso mientras escribes otros comandos. El protocolo de gráficos de Kitty que impulsa
+continuará reproduciéndose incluso mientras escribes otros comandos. El protocolo de gráficos de kitty que impulsa
 
 95
 00:11:05.640 --> 00:11:10.920
@@ -386,11 +386,11 @@ Aquí ven que hemos abierto una carpeta llena de imágenes. Y a medida que te de
 
 97
 00:11:17.800 --> 00:11:23.400
-Ranger muestra miniaturas de las imágenes usando el protocolo de gráficos de Kitty ahí mismo en la
+Ranger muestra miniaturas de las imágenes usando el protocolo de gráficos de kitty ahí mismo en la
 
 98
 00:11:23.400 --> 00:11:30.200
-terminal. Otra función genial del protocolo de gráficos de Kitty es que funciona sobre SSH. Así que si me
+terminal. Otra función genial del protocolo de gráficos de kitty es que funciona sobre SSH. Así que si me
 
 99
 00:11:30.200 --> 00:11:45.000
@@ -406,7 +406,7 @@ sobre SSH. Al ejecutarse localmente, el protocolo de gráficos es lo suficientem
 
 102
 00:11:58.120 --> 00:12:06.280
-hacer esto y usar el sistema de archivos local para mostrar las imágenes. Otro kitten genial que tiene Kitty
+hacer esto y usar el sistema de archivos local para mostrar las imágenes. Otro kitten genial que tiene kitty
 
 103
 00:12:06.280 --> 00:12:12.600
@@ -430,7 +430,7 @@ algo de cerveza. Celebremos este gran kitten justo aquí. Esto es útil si te en
 
 108
 00:12:43.800 --> 00:12:49.160
-chateando mucho usando programas de chat de terminal como WeChat y quieres enviar a tus
+chateando mucho usando programas de chat de terminal como WeeChat y quieres enviar a tus
 
 109
 00:12:49.160 --> 00:12:57.240
@@ -442,7 +442,7 @@ usar para mejorar la experiencia de la terminal. Ahora hablemos de algo más bá
 
 111
 00:13:03.160 --> 00:13:08.360
-Kitty tiene la capacidad de organizar varias ventanas en mosaico, una al lado de la otra, y gestionarlas usando diseños flexibles.
+kitty tiene la capacidad de organizar varias ventanas en mosaico, una al lado de la otra, y gestionarlas usando diseños flexibles.
 
 112
 00:13:08.360 --> 00:13:14.120
@@ -486,11 +486,11 @@ las ventanas simultáneamente. Esto es útil si quieres hacer una automatizació
 
 122
 00:14:11.800 --> 00:14:18.280
-servidores, por ejemplo. Para hacer esto, abramos la shell de Kitty, lo cual podemos hacer presionando Control, Mayús y Escape.
+servidores, por ejemplo. Para hacer esto, abramos la shell de kitty, lo cual podemos hacer presionando Control, Mayús y Escape.
 
 123
 00:14:18.280 --> 00:14:23.800
-La shell de Kitty es una consola donde puedes emitir comandos a la propia Kitty para hacer que ejecute cosas.
+La shell de kitty es una consola donde puedes emitir comandos a la propia kitty para hacer que ejecute cosas.
 
 124
 00:14:24.840 --> 00:14:31.560
@@ -518,15 +518,15 @@ mostrando diferentes salidas. Limpiemos estas salidas y terminemos la sesión de
 
 130
 00:15:18.280 --> 00:15:23.560
-Como pueden ver aquí, la shell de Kitty es una herramienta bastante potente.
+Como pueden ver aquí, la shell de kitty es una herramienta bastante potente.
 
 131
 00:15:24.440 --> 00:15:31.000
-Tengan en cuenta que la shell funciona mediante algo llamado protocolo de control remoto de Kitty.
+Tengan en cuenta que la shell funciona mediante algo llamado protocolo de control remoto de kitty.
 
 132
 00:15:31.000 --> 00:15:36.840
-Esto te permite controlar Kitty desde otras shells, otras terminales, programas que se ejecutan en tu
+Esto te permite controlar kitty desde otras shells, otras terminales, programas que se ejecutan en tu
 
 133
 00:15:36.840 --> 00:15:42.120
@@ -554,11 +554,11 @@ enviar señales a procesos hijos que se ejecutan en ventanas, etc. Puedes cambia
 
 139
 00:16:16.200 --> 00:16:23.560
-y mucho, mucho más. Así que esto forma una capacidad de scripting general para Kitty y te permite
+y mucho, mucho más. Así que esto forma una capacidad de scripting general para kitty y te permite
 
 140
 00:16:23.560 --> 00:16:30.840
-controlar Kitty y automatizar varias tareas en ella. Tu imaginación es el límite cuando se trata de
+controlar kitty y automatizar varias tareas en ella. Tu imaginación es el límite cuando se trata de
 
 141
 00:16:30.840 --> 00:16:38.920
@@ -566,7 +566,7 @@ casos de uso. Dado que se supone que este es un recorrido breve, creo que termin
 
 142
 00:16:39.560 --> 00:16:44.680
-veamos cómo darle un toque de estilo a la terminal Kitty cambiando sus colores. De hecho, Kitty tiene
+veamos cómo darle un toque de estilo a la terminal kitty cambiando sus colores. De hecho, kitty tiene
 
 143
 00:16:44.680 --> 00:16:52.440
@@ -586,7 +586,7 @@ Belafonte. Así que cambiemos a ese presionando la tecla Enter y luego la tecla 
 
 147
 00:17:15.640 --> 00:17:21.880
-que modifique kitty.conf para hacer el cambio permanente, y ven que Kitty ahora usa el tema Belafonte.
+que modifique kitty.conf para hacer el cambio permanente, y ven que kitty ahora usa el tema Belafonte.
 
 148
 00:17:22.760 --> 00:17:28.120
@@ -614,4 +614,4 @@ según la hora del día, para que el brillo ambiental de la pantalla se adapte l
 
 154
 00:18:03.720 --> 00:18:12.440
-Y creo que con eso me despediré. Gracias y espero que disfruten usando Kitty.
+Y creo que con eso me despediré. Gracias y espero que disfruten usando kitty.
