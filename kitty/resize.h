@@ -22,5 +22,6 @@ typedef struct ResizeResult {
     index_type num_content_lines_before, num_content_lines_after;
 } ResizeResult;
 
+extern bool resize_disable_history_reuse;
 ResizeResult resize_screen_buffers(LineBuf *lb, HistoryBuf *hb, index_type lines, index_type columns, ANSIBuf *as_ansi_buf, TrackCursor *cursors);
 ResizeResult resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type columns, TrackCursor *cursors);

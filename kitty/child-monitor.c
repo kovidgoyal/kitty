@@ -345,6 +345,24 @@ add_child(ChildMonitor *self, PyObject *args) {
 
 static const unsigned write_buf_limit = 100 * 1024 * 1024;
 
+static bool
+ensure_write_buf_space(Screen *screen, size_t sz, size_t limit) {
+    if (screen->write_buf_sz - screen->write_buf_used >= sz) return true;
+    const size_t pending = screen->write_buf_used - screen->write_buf_start;
+    if (pending + sz > limit) return false;
+    if (screen->write_buf_start) {
+        memmove(screen->write_buf, screen->write_buf + screen->write_buf_start, pending);
+        screen->write_buf_start = 0;
+        screen->write_buf_used = pending;
+    }
+    if (screen->write_buf_sz - pending < sz) {
+        screen->write_buf_sz = pending + sz;
+        screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
+        if (screen->write_buf == NULL) { fatal("Out of memory."); }
+    }
+    return true;
+}
+
 #define schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end, found, too_much_data) \
     ChildMonitor *self = the_monitor;                                                                  \
     const char *data;                                                                                  \
@@ -360,16 +378,10 @@ static const unsigned write_buf_limit = 100 * 1024 * 1024;
         if (children[i].id == id) {                                                                    \
             Screen *screen = children[i].screen;                                                       \
             screen_mutex(lock, write);                                                                 \
-            size_t space_left = screen->write_buf_sz - screen->write_buf_used;                         \
-            if (space_left < sz) {                                                                     \
-                if (screen->write_buf_used + sz > write_buf_limit) {                                   \
-                    too_much_data = true;                                                              \
-                    screen_mutex(unlock, write);                                                       \
-                    break;                                                                             \
-                }                                                                                      \
-                screen->write_buf_sz = screen->write_buf_used + sz;                                    \
-                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);         \
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }                            \
+            if (!ensure_write_buf_space(screen, sz, write_buf_limit)) {                                \
+                too_much_data = true;                                                                  \
+                screen_mutex(unlock, write);                                                           \
+                break;                                                                                 \
             }                                                                                          \
             found = true;                                                                              \
             va_start(ap, num);                                                                         \
@@ -402,16 +414,10 @@ schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, boo
         if (children[i].id == id) {
             Screen *screen = children[i].screen;
             screen_mutex(lock, write);
-            size_t space_left = screen->write_buf_sz - screen->write_buf_used;
-            if (space_left < sz) {
-                if (screen->write_buf_used + sz > limit) {
-                    *too_much_data = true;
-                    screen_mutex(unlock, write);
-                    break;
-                }
-                screen->write_buf_sz = screen->write_buf_used + sz;
-                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+            if (!ensure_write_buf_space(screen, sz, limit)) {
+                *too_much_data = true;
+                screen_mutex(unlock, write);
+                break;
             }
             *found = true;
             memcpy(screen->write_buf + screen->write_buf_used, data, sz);
@@ -1790,19 +1796,18 @@ print_text(const unsigned char *text, ssize_t sz) {
 
 static void
 write_to_child(int fd, Screen *screen) {
-    size_t written = 0;
     ssize_t ret = 0;
     screen_mutex(lock, write);
-    while (written < screen->write_buf_used) {
-        ret = write(fd, screen->write_buf + written, screen->write_buf_used - written);
+    while (screen->write_buf_start < screen->write_buf_used) {
+        ret = write(fd, screen->write_buf + screen->write_buf_start, screen->write_buf_used - screen->write_buf_start);
 #ifdef KITTY_PRINT_BYTES_SENT_TO_CHILD
         fprintf(stderr, "Wrote: %zd bytes: ", ret);
 #endif
         if (ret > 0) {
 #ifdef KITTY_PRINT_BYTES_SENT_TO_CHILD
-            print_text(screen->write_buf + written, ret);
+            print_text(screen->write_buf + screen->write_buf_start, ret);
 #endif
-            written += ret;
+            screen->write_buf_start += ret;
         } else if (ret == 0) {
             // could mean anything, ignore
             break;
@@ -1810,15 +1815,19 @@ write_to_child(int fd, Screen *screen) {
             if (errno == EINTR) continue;
             if (errno == EWOULDBLOCK || errno == EAGAIN) break;
             perror("Call to write() to child fd failed, discarding data.");
-            written = screen->write_buf_used;
+            screen->write_buf_start = screen->write_buf_used;
         }
 #ifdef KITTY_PRINT_BYTES_SENT_TO_CHILD
         fprintf(stderr, "\n");
 #endif
     }
-    if (written) {
-        screen->write_buf_used -= written;
-        if (screen->write_buf_used) { memmove(screen->write_buf, screen->write_buf + written, screen->write_buf_used); }
+    const size_t pending = screen->write_buf_used - screen->write_buf_start;
+    if (!pending) screen->write_buf_start = screen->write_buf_used = 0;
+    else if (screen->write_buf_start > pending) {
+        // compact lazily to keep large pastes linear
+        memmove(screen->write_buf, screen->write_buf + screen->write_buf_start, pending);
+        screen->write_buf_start = 0;
+        screen->write_buf_used = pending;
     }
     screen_mutex(unlock, write);
 }

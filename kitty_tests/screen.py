@@ -710,6 +710,90 @@ class TestScreen(BaseTest):
         s.resize(s.lines + 2, s.columns)
         assert_lines('xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'abcde', '>')
 
+    def test_height_resize_reuses_history(self):
+        import random
+
+        from kitty.fast_data_types import test_set_history_reuse
+
+        def ops_for(seed, cols):
+            rng = random.Random(seed)
+            chars = 'abc 日😀' if seed % 2 else 'abcdef '
+            ops = []
+            for i in range(rng.randint(20, 80)):
+                r = rng.random()
+                if r < 0.35:
+                    ops.append(('draw', ''.join(rng.choice(chars) for _ in range(rng.randint(0, (3 if seed % 3 else 1) * cols)))))
+                elif r < 0.45:
+                    ops.append(('bytes', f'\x1b[4{rng.randint(1, 7)}m{rng.choice("xyz")}\x1b[K\x1b[m'.encode()))
+                elif r < 0.5:
+                    if seed % 4 == 0:
+                        ops.append(('mc', rng.choice('AB日'), rng.randint(2, 3)))
+                elif r < 0.55:
+                    ops.append(('bytes', rng.choice((b'\x1b]133;A\x07', b'\x1b]133;A;k=s\x07', b'\x1b]133;C\x07'))))
+                elif r < 0.6:
+                    ops.append(('bytes', b'\x1b7'))
+                elif r < 0.65:
+                    ops.append(('bytes', f'\x1b[{rng.randint(1, 3)}C'.encode()))
+                else:
+                    ops.append(('nl',))
+            if rng.random() < 0.5:
+                ops.append(('draw', 'x' * rng.randint(0, cols)))
+            return ops
+
+        def build(ops, cols, lines, scrollback, options):
+            s = self.create_screen(cols=cols, lines=lines, scrollback=scrollback, options=options)
+            for op in ops:
+                if op[0] == 'draw':
+                    s.draw(op[1])
+                elif op[0] == 'bytes':
+                    parse_bytes(s, op[1])
+                elif op[0] == 'mc':
+                    draw_multicell(s, op[1], scale=op[2])
+                else:
+                    s.carriage_return(), s.linefeed()
+            return s
+
+        def compare(a, b, msg):
+            self.ae((a.lines, a.columns, a.cursor.x, a.cursor.y), (b.lines, b.columns, b.cursor.x, b.cursor.y), msg)
+            self.ae(a.historybuf.count, b.historybuf.count, msg)
+            for i in range(a.historybuf.count):
+                self.assertTrue(a.historybuf.line(i) == b.historybuf.line(i), f'{msg} history line {i}')
+                self.ae(a.historybuf.line(i).as_ansi(), b.historybuf.line(i).as_ansi(), f'{msg} history line {i}')
+                self.ae(a.historybuf.is_continued(i), b.historybuf.is_continued(i), f'{msg} history line {i}')
+            for i in range(a.lines):
+                self.assertTrue(a.linebuf.line(i) == b.linebuf.line(i), f'{msg} line {i}')
+                self.ae(a.linebuf.line(i).as_ansi(), b.linebuf.line(i).as_ansi(), f'{msg} line {i}')
+                self.ae(a.linebuf.is_continued(i), b.linebuf.is_continued(i), f'{msg} line {i}')
+            self.ae(a.linebuf.dirty_lines(), b.linebuf.dirty_lines(), msg)
+            self.ae(a.historybuf.pagerhist_as_text(), b.historybuf.pagerhist_as_text(), msg)
+            parse_bytes(a, b'\x1b8'), parse_bytes(b, b'\x1b8')
+            self.ae((a.cursor.x, a.cursor.y), (b.cursor.x, b.cursor.y), f'{msg} saved cursor')
+
+        try:
+            for seed in range(300):
+                rng = random.Random(seed)
+                cols, lines = rng.randint(3, 12), rng.randint(2, 8)
+                scrollback = rng.choice((4, 8, 30, 200))
+                options = {
+                    'scrollback_fill_enlarged_window': rng.random() < 0.5,
+                    'scrollback_pager_history_size': rng.choice((0, 1024)),
+                }
+                ops = ops_for(seed, cols)
+                heights = [rng.randint(1, 12) for _ in range(4)]
+                test_set_history_reuse(True)
+                a = build(ops, cols, lines, scrollback, options)
+                test_set_history_reuse(False)
+                b = build(ops, cols, lines, scrollback, options)
+                for h in heights:
+                    msg = f'seed={seed} height={h}'
+                    test_set_history_reuse(True)
+                    a.resize(h, cols)
+                    test_set_history_reuse(False)
+                    b.resize(h, cols)
+                    compare(a, b, msg)
+        finally:
+            test_set_history_reuse(True)
+
     def test_tab_stops(self):
         # Taken from vttest/main.c
         s = self.create_screen(cols=80, lines=2)
@@ -2258,6 +2342,18 @@ class TestScreen(BaseTest):
             sc(1, slot=slot)
             sc(2, 1, 2, 3, slot=slot)
             sc(5, 13, slot=slot)
+
+    def test_activity_tracking(self):
+        s = self.create_screen()
+        calls = []
+        s.callbacks.on_activity_since_last_focus = lambda: calls.append(1) or False
+        s.focus_changed(False)
+        s.track_activity = False
+        parse_bytes(s, b'\x1b[31ma\x1b[mb')
+        self.ae(len(calls), 0)
+        s.track_activity = True
+        parse_bytes(s, b'\x1b[31ma\x1b[mb')
+        self.ae(len(calls), 2)
 
     def test_soft_reset(self):
         SOFT_RESET = b'\x1b[!p'  # DECSTR sequence
