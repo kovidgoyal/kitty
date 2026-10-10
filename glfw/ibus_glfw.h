@@ -32,10 +32,16 @@
 #include <xkbcommon/xkbcommon.h>
 
 typedef struct {
+    int x, y, w, h;
+    bool valid;
+} _GLFWIBUSCursorGeometry;
+
+typedef struct {
     bool ok, inited, name_owner_changed;
     time_t address_file_mtime;
     DBusConnection *conn;
     const char *input_ctx_path, *address_file_name, *address;
+    _GLFWIBUSCursorGeometry last_cursor_geometry;
 } _GLFWIBUSData;
 
 typedef struct {

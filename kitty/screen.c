@@ -5024,6 +5024,14 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
     }
 }
 
+index_type
+screen_overlay_line_start(const Screen *self) {
+    // Right-align the overlay to ensure that the pre-edit text just entered is visible when the cursor is near the end of the line.
+    const OverlayLine *ol = &self->overlay_line;
+    index_type xstart = ol->text_len <= self->columns ? self->columns - ol->text_len : 0;
+    return MIN(ol->xstart, xstart);
+}
+
 static void
 screen_draw_overlay_line(Screen *self) {
     if (!self->overlay_line.overlay_text) return;
@@ -5032,9 +5040,7 @@ screen_draw_overlay_line(Screen *self) {
     // Line instead). Without this, line->cpu_cells can be NULL or stale,
     // crashing the cell loops below.
     linebuf_init_line(self->linebuf, self->overlay_line.ynum);
-    // Right-align the overlay to ensure that the pre-edit text just entered is visible when the cursor is near the end of the line.
-    index_type xstart = self->overlay_line.text_len <= self->columns ? self->columns - self->overlay_line.text_len : 0;
-    if (self->overlay_line.xstart < xstart) xstart = self->overlay_line.xstart;
+    const index_type xstart = screen_overlay_line_start(self);
     index_type columns_exceeded = self->overlay_line.text_len <= self->columns ? 0 : self->overlay_line.text_len - self->columns;
     bool orig_line_wrap_mode = self->modes.mDECAWM;
     bool orig_cursor_enable_mode = self->modes.mDECTCEM;
@@ -5155,12 +5161,10 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
     line_save_cells(line, 0, line->xnum, ol.gpu_cells, ol.cpu_cells);
     line_reset_cells(line, 0, line->xnum, ol.original_line.gpu_cells, ol.original_line.cpu_cells);
     ol.is_dirty = false;
-    const index_type y = MIN(ol.ynum + self->scrolled_by, self->lines - 1);
-    // Track the start of the pre-edit text, not its end, so IME position
-    // updates are not sent as the pre-edit grows, which would make the IME
-    // candidate window jump horizontally while typing.
-    if (ol.last_ime_pos.x != ol.xstart || ol.last_ime_pos.y != y) {
-        ol.last_ime_pos.x = ol.xstart;
+    const index_type x = screen_overlay_line_start(self), y = MIN(ol.ynum + self->scrolled_by, self->lines - 1);
+    // The IME is anchored at the start of the pre-edit text, see prepare_ime_position_update_event()
+    if (ol.last_ime_pos.x != x || ol.last_ime_pos.y != y) {
+        ol.last_ime_pos.x = x;
         ol.last_ime_pos.y = y;
         update_ime_position_for_window(self->window_id, false, 0);
     }
@@ -7062,6 +7066,11 @@ test_create_write_buffer(Screen *screen UNUSED, PyObject *args UNUSED) {
 }
 
 static PyObject *
+overlay_line_start(Screen *self, PyObject *a UNUSED) {
+    return PyLong_FromUnsignedLong(screen_overlay_line_start(self));
+}
+
+static PyObject *
 test_draw_overlay_line(Screen *self, PyObject *args) {
     PyObject *text;
     unsigned int xstart, ynum;
@@ -7201,8 +7210,9 @@ static PyMethodDef methods[] = {
     METHODB(test_commit_write_buffer, METH_VARARGS),
     METHODB(test_parse_written_data, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
-    MND(line_edge_colors, METH_NOARGS) MND(ime_text_around_cursor, METH_NOARGS) MND(line, METH_O) MND(dump_lines_with_attrs, METH_VARARGS)
-        MND(cpu_cells, METH_VARARGS) MND(cursor_at_prompt, METH_NOARGS){"visual_line", (PyCFunction)pyvisual_line, METH_VARARGS, ""},
+    MND(overlay_line_start, METH_NOARGS) MND(line_edge_colors, METH_NOARGS) MND(ime_text_around_cursor, METH_NOARGS) MND(line, METH_O)
+        MND(dump_lines_with_attrs, METH_VARARGS) MND(cpu_cells, METH_VARARGS)
+            MND(cursor_at_prompt, METH_NOARGS){"visual_line", (PyCFunction)pyvisual_line, METH_VARARGS, ""},
     MND(current_url_text, METH_NOARGS) MND(draw, METH_O) MND(apply_sgr, METH_O) MND(cursor_position, METH_VARARGS) MND(erase_last_command, METH_NOARGS)
         MND(set_window_char, METH_VARARGS) MND(set_progress, METH_VARARGS) MND(set_mode, METH_VARARGS) MND(reset_mode, METH_VARARGS) MND(reset, METH_VARARGS)
             MND(reset_dirty, METH_NOARGS) MND(is_using_alternate_linebuf, METH_NOARGS) MND(is_main_linebuf, METH_NOARGS) MND(cursor_move, METH_VARARGS)

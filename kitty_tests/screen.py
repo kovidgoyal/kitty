@@ -2523,6 +2523,20 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.decoration, before.decoration)
         self.ae(s.cursor.decoration_fg, before.decoration_fg)
 
+    def test_ime_overlay_line_start(self):
+        # The IME is anchored at the start of the pre-edit text as drawn,
+        # which is shifted left when it would otherwise not fit on the line
+        s = self.create_screen(cols=10, lines=3)
+        s.test_draw_overlay_line('ab', 3, 0)
+        self.ae(s.overlay_line_start(), 3)
+        self.ae(str(s.line(0)), '   ab')
+        s.test_draw_overlay_line('abcd', 8, 1)
+        self.ae(s.overlay_line_start(), 6)
+        self.ae(str(s.line(1)), '      abcd')
+        s.test_draw_overlay_line('abcdefghijkl', 8, 2)
+        self.ae(s.overlay_line_start(), 0)
+        self.ae(str(s.line(2)), 'cdefghijkl')
+
     def test_ime_text_around_cursor(self):
         # The text macOS input methods read to decide things like whether a
         # space is needed between Latin and CJK text. See :iss:`10492`.

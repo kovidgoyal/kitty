@@ -381,6 +381,7 @@ input_context_created(DBusMessage *msg, const DBusError *err, void *data) {
     free((void *)ibus->input_ctx_path);
     ibus->input_ctx_path = _glfw_strdup(path);
     if (!ibus->input_ctx_path) return;
+    ibus->last_cursor_geometry.valid = false;
     dbus_bus_add_match(ibus->conn, "type='signal',interface='org.freedesktop.DBus', member='NameOwnerChanged'", NULL);
     dbus_connection_add_filter(ibus->conn, ibus_on_owner_change, ibus, free);
     dbus_bus_add_match(ibus->conn, "type='signal',interface='org.freedesktop.IBus.InputContext'", NULL);
@@ -414,6 +415,7 @@ setup_connection(_GLFWIBUSData *ibus) {
     if (!ibus->conn) return false;
     free((void *)ibus->input_ctx_path);
     ibus->input_ctx_path = NULL;
+    ibus->last_cursor_geometry.valid = false;
     if (!glfw_dbus_call_method_with_reply(
             ibus->conn,
             IBUS_SERVICE,
@@ -495,30 +497,25 @@ glfw_ibus_set_focused(_GLFWIBUSData *ibus, bool focused) {
 void
 glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
     // Skip duplicate updates (e.g. pre-edit text changes while the anchor
-    // cell is unchanged) so the IME candidate window is not needlessly
-    // repositioned. Mirrors the dedup in wl_text_input.c.
-    static int last_x = INT_MIN, last_y = INT_MIN, last_w = INT_MIN, last_h = INT_MIN;
-    if (x == last_x && y == last_y && w == last_w && h == last_h) return;
-    last_x = x;
-    last_y = y;
-    last_w = w;
-    last_h = h;
-    if (check_connection(ibus)) {
-        glfw_dbus_call_method_no_reply(
-            ibus->conn,
-            IBUS_SERVICE,
-            ibus->input_ctx_path,
-            IBUS_INPUT_INTERFACE,
-            "SetCursorLocation",
-            DBUS_TYPE_INT32,
-            &x,
-            DBUS_TYPE_INT32,
-            &y,
-            DBUS_TYPE_INT32,
-            &w,
-            DBUS_TYPE_INT32,
-            &h,
-            DBUS_TYPE_INVALID);
+    // cell is unchanged) so the IME candidate window is not needlessly repositioned.
+    _GLFWIBUSCursorGeometry *g = &ibus->last_cursor_geometry;
+    if (g->valid && g->x == x && g->y == y && g->w == w && g->h == h) return;
+    if (check_connection(ibus) && glfw_dbus_call_method_no_reply(
+                                      ibus->conn,
+                                      IBUS_SERVICE,
+                                      ibus->input_ctx_path,
+                                      IBUS_INPUT_INTERFACE,
+                                      "SetCursorLocation",
+                                      DBUS_TYPE_INT32,
+                                      &x,
+                                      DBUS_TYPE_INT32,
+                                      &y,
+                                      DBUS_TYPE_INT32,
+                                      &w,
+                                      DBUS_TYPE_INT32,
+                                      &h,
+                                      DBUS_TYPE_INVALID)) {
+        *g = (_GLFWIBUSCursorGeometry){.x = x, .y = y, .w = w, .h = h, .valid = true};
     }
 }
 

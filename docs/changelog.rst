@@ -291,6 +291,10 @@ Detailed list of changes
   fall back to copying when the local filesystem does not support hardlinks
   (:pull:`10641`)
 
+- IME: Anchor the candidate window at the start of the pre-edit text instead of
+  its end, so that it no longer jumps horizontally while composing text
+  (:pull:`10642`)
+
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 
