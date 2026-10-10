@@ -319,6 +319,12 @@ Detailed list of changes
   for a few hours. New fields and a :code:`wrapped_time()` method are available
   to shaders, providing precise times however long kitty runs (:iss:`10595`)
 
+- Custom shaders: Shaders that move content around can define a
+  :code:`pointer_map()` function so that clicks and selections land on the text
+  shown under the mouse. The :code:`crt` shader uses it so that its curved
+  screen no longer misplaces clicks, see :ref:`custom_shader_pointer_map`
+  (:pull:`10639`)
+
 - Wayland GNOME: Fix kitty being disconnected by the compositor when showing a window
   that was covered by other windows for a long time (:iss:`10597`)
 
@@ -388,12 +394,6 @@ Detailed list of changes
 
 - Tab bar: Fix long tab titles being truncated while there is still unused
   space at the end of the tab bar (:pull:`10640`)
-
-- Custom shaders: Shaders that move content around can define a
-  :code:`pointer_map()` function so that clicks and selections land on the text
-  shown under the mouse. The :code:`crt` shader uses it so that its curved
-  screen no longer misplaces clicks, see :ref:`custom_shader_pointer_map`
-  (:pull:`10639`)
 
 - Custom shaders: Fix pipeline :code:`var` directives being silently ignored
   when the shader declares the variable over multiple lines or with a
