@@ -494,6 +494,15 @@ glfw_ibus_set_focused(_GLFWIBUSData *ibus, bool focused) {
 
 void
 glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
+    // Skip duplicate updates (e.g. pre-edit text changes while the anchor
+    // cell is unchanged) so the IME candidate window is not needlessly
+    // repositioned. Mirrors the dedup in wl_text_input.c.
+    static int last_x = INT_MIN, last_y = INT_MIN, last_w = INT_MIN, last_h = INT_MIN;
+    if (x == last_x && y == last_y && w == last_w && h == last_h) return;
+    last_x = x;
+    last_y = y;
+    last_w = w;
+    last_h = h;
     if (check_connection(ibus)) {
         glfw_dbus_call_method_no_reply(
             ibus->conn,
