@@ -3,9 +3,9 @@
 
 from unittest.mock import patch
 
-from kitty.fast_data_types import LEFT_EDGE, Color, Region
+from kitty.fast_data_types import LEFT_EDGE, Color, Region, Screen
 from kitty.options.utils import tab_title_wrap
-from kitty.tab_bar import CellRange, TabBar, TabBarData, TabExtent, WindowDropTarget, as_rgb, powerline_symbols, truncate_line, wrap_title
+from kitty.tab_bar import CellRange, DrawData, ExtraData, TabBar, TabBarData, TabExtent, WindowDropTarget, as_rgb, powerline_symbols, truncate_line, wrap_title
 from kitty.utils import color_as_int
 
 from .base import BaseTest
@@ -593,27 +593,30 @@ class TestTabBar(BaseTest):
             [f' t0        {separator}', f'abcdefghijk{separator}', f'x          {separator}'],
         )
 
-    def test_horizontal_tab_bar_uses_free_space(self) -> None:
-        def line(titles: list[str], columns: int, **opts: str) -> str:
-            self.set_options({'tab_title_template': '{title}', **opts})
-            central = region(0, 0, columns * 10, 180)
-            tab_bar = region(0, 180, columns * 10, 200)
-            with (
-                patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
-                patch('kitty.tab_bar.viewport_for_window', return_value=(central, tab_bar, columns * 10, 200, 10, 20)),
-                patch('kitty.tab_bar.set_tab_bar_render_data'),
-                patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None),
-                patch('kitty.tab_bar.get_boss', return_value=DummyBoss()),
-            ):
-                tb = TabBar(1)
-                tb.layout()
-                tb.update(tuple(TabBarData(title=t, tab_id=i + 1, is_active=i == 0) for i, t in enumerate(titles)))
-            return str(tb.screen.line(0)).rstrip()
+    def horizontal_tab_bar_line(self, titles: list[str], columns: int, **opts: object) -> str:
+        self.set_options({'tab_title_template': '{title}', **opts})
+        central = region(0, 0, columns * 10, 180)
+        tab_bar = region(0, 180, columns * 10, 200)
+        with (
+            patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
+            patch('kitty.tab_bar.viewport_for_window', return_value=(central, tab_bar, columns * 10, 200, 10, 20)),
+            patch('kitty.tab_bar.set_tab_bar_render_data'),
+            patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None),
+            patch('kitty.tab_bar.get_boss', return_value=DummyBoss()),
+        ):
+            tb = TabBar(1)
+            tb.layout()
+            tb.update(tuple(TabBarData(title=t, tab_id=i + 1, is_active=i == 0) for i, t in enumerate(titles)))
+        return str(tb.screen.line(0)).rstrip()
 
+    def test_horizontal_tab_bar_uses_free_space(self) -> None:
+        line = self.horizontal_tab_bar_line
         # space not needed by short tabs goes to the long ones, instead of
         # being left unused at the end of the tab bar
         long_title = 'abcdefghijklmn'
         for style, columns, titles in (
+            ('fade', 25, ['1', long_title]),
+            ('fade', 35, ['1'] * 2 + [long_title]),
             ('separator', 60, ['1'] * 8 + [long_title] * 2),
             ('powerline', 80, ['1'] * 5 + [long_title] * 3),
             ('slant', 126, ['1'] * 9 + [long_title] * 4),
@@ -634,3 +637,24 @@ class TestTabBar(BaseTest):
 
         # no tabs
         self.ae(line([], 60, tab_bar_style='separator'), '')
+
+    def test_horizontal_tab_bar_custom_draw_func_margin(self) -> None:
+        # a custom draw function may draw a wider overhang when given more
+        # space than the default max length it is measured at, so it is left
+        # some slack, rather than the last tab being replaced by the overflow marker
+        def draw_tab(
+            draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_tab_length: int, index: int, is_last: bool, extra_data: ExtraData
+        ) -> int:
+            screen.draw(tab.title[:max_tab_length])
+            if len(tab.title) > max_tab_length and max_tab_length >= 8:
+                screen.draw('»')
+            end: int = screen.cursor.x
+            if not is_last:
+                screen.draw('|')
+            return end
+
+        with patch('kitty.tab_bar.load_custom_draw_tab', return_value=draw_tab):
+            for columns in (15, 16, 17):
+                text = self.horizontal_tab_bar_line(['x' * 30] * 2, columns, tab_bar_style='custom')
+                self.assertFalse(text.endswith(' …'), (columns, text))
+                self.ae(text.count('|'), 1, text)

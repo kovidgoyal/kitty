@@ -821,6 +821,7 @@ class TabBar:
             self.os_window_id,
         )
         ts = opts.tab_bar_style
+        self.draw_func_is_custom = ts == 'custom'
         if ts == 'separator':
             self.draw_func: DrawTabFunc = draw_tab_with_separator
         elif ts == 'powerline':
@@ -1032,8 +1033,8 @@ class TabBar:
         ideal_tab_lengths = [i for i in range(len(data))]
         default_max_tab_length = max(1, (s.columns // max(1, len(data))) - 1)
         max_tab_lengths = [default_max_tab_length for _ in range(len(data))]
-        overhangs = [0 for _ in range(len(data))]
-        active_idx = 0
+        overhangs = [0] * len(data)
+        active_idx = num_truncated = 0
         ed.for_layout = True
         for i, t in enumerate(data):
             s.cursor.x = 0
@@ -1046,14 +1047,23 @@ class TabBar:
             elif tl > default_max_tab_length:
                 # A truncated tab can be drawn wider than its max length, for
                 # example by a separator after the title, so measure by how
-                # much. Only the first tab starts at column zero, where the
-                # powerline style draws an extra space.
+                # much. Draw it at a column like the one it will actually
+                # start at, as styles may draw differently at column zero.
                 s.cursor.x = start = min(i, 1)
                 draw_tab(i, t, [], default_max_tab_length)
                 overhangs[i] = max(0, s.cursor.x - start - default_max_tab_length)
+                num_truncated += 1
+
+        def tab_width(i: int) -> int:
+            return min(ideal_tab_lengths[i], max_tab_lengths[i] + overhangs[i])
+
+        # The overhang is measured at the default max length, the built-in
+        # styles draw the same overhang at any length, but custom ones might
+        # not, so leave them a cell of slack per truncated tab
+        margin = num_truncated if self.draw_func_is_custom else 0
 
         def space_left() -> int:
-            return s.columns - sum(min(tl, ml + oh) for tl, ml, oh in zip(ideal_tab_lengths, max_tab_lengths, overhangs))
+            return s.columns - margin - sum(tab_width(i) for i in range(len(data)))
 
         extra = space_left()
         if data and extra > 0:
@@ -1061,7 +1071,9 @@ class TabBar:
                 d = min(extra, ideal_tab_lengths[active_idx] - max_tab_lengths[active_idx])
                 max_tab_lengths[active_idx] += d
             # Hand out the remaining space evenly, repeating as a tab may need
-            # less than its share, leaving more for the others
+            # less than its share, leaving more for the others. A tab whose
+            # overhang already covers its ideal length stays an over achiever,
+            # raising its max length is harmless as it does not change its width.
             while (extra := space_left()) > 0:
                 over_achievers = tuple(i for i in range(len(data)) if ideal_tab_lengths[i] > max_tab_lengths[i])
                 if not over_achievers:
