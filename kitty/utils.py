@@ -514,15 +514,13 @@ def no_echo(fd: int = -1) -> Generator[None, None, None]:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
+def natsort_key(text: str, case_sensitive: bool = True) -> tuple[tuple[int, str], ...]:
+    # re.split() with a capturing group puts the digit runs at the odd indices
+    return tuple((int(x), x) if i % 2 else (0, x if case_sensitive else x.casefold()) for i, x in enumerate(re.split(r'(\d+)', text)))
+
+
 def natsort_ints(iterable: Iterable[str]) -> list[str]:
-
-    def convert(text: str) -> int | str:
-        return int(text) if text.isdigit() else text
-
-    def alphanum_key(key: str) -> tuple[int | str, ...]:
-        return tuple(map(convert, re.split(r'(\d+)', key)))
-
-    return sorted(iterable, key=alphanum_key)
+    return sorted(iterable, key=natsort_key)
 
 
 def get_hostname(fallback: str = '') -> str:

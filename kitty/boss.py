@@ -3694,7 +3694,14 @@ class Boss:
         pd = cast(dict[str, Any], payload if isinstance(payload, dict) else {})
         c.response_from_kitty(self, self.window_for_dispatch or self.active_window, PayloadGetter(c, pd))
 
-    def _move_window_to(self, window: Window | None = None, target_tab_id: str | int | None = None, target_os_window_id: str | int | None = None) -> None:
+    def _move_window_to(
+        self,
+        window: Window | None = None,
+        target_tab_id: str | int | None = None,
+        target_os_window_id: str | int | None = None,
+        new_tab_title: str = '',
+        new_tab_location: str = '',
+    ) -> None:
         window = window or self.active_window
         if not window:
             return
@@ -3705,7 +3712,7 @@ class Boss:
             if target_os_window_id == 'new':
                 target_os_window_id = self.add_os_window()
                 tm = self.os_window_map[target_os_window_id]
-                target_tab = tm.new_tab(empty_tab=True)
+                target_tab = tm.new_tab(empty_tab=True, title=new_tab_title)
             else:
                 target_os_window_id = target_os_window_id or current_os_window()
                 if isinstance(target_tab_id, str):
@@ -3717,7 +3724,7 @@ class Boss:
                         tm = self.os_window_map[target_os_window_id]
                     if target_tab_id.startswith('new'):
                         # valid values for target_tab_id are 'new', 'new_after' and 'new_before'
-                        target_tab = tm.new_tab(empty_tab=True, location=(target_tab_id[4:] or 'last'))
+                        target_tab = tm.new_tab(empty_tab=True, location=(new_tab_location or target_tab_id[4:] or 'last'), title=new_tab_title)
                     else:
                         target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True)
                 else:
@@ -3895,6 +3902,8 @@ class Boss:
         """,
     )
     def detach_window(self, *args: str) -> None:
+        if args and args[0].startswith('-'):
+            return self.remote_control('detach-window', *args)
         if not args or args[0] == 'new':
             return self._move_window_to(target_os_window_id='new')
         if args[0] in ('new-tab', 'tab-prev', 'tab-left', 'tab-right', 'new-tab-left', 'new-tab-right'):

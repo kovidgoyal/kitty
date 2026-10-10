@@ -110,6 +110,16 @@ or another OS window::
     # asks which tab to move the window into
     map ctrl+f4 detach_window ask
 
+The :ac:`detach_window` action also accepts the options of :program:`kitten @ detach-window`,
+which can be combined with :option:`launch --focus-existing` to use tabs like
+named workspaces, switching to a tab, or sending the current window to it,
+creating the tab if it does not exist::
+
+    # switch to the tab named 1, creating it if needed
+    map ctrl+1 launch --type=tab --tab-title=1 --location=by-title --focus-existing=@title
+    # move the current window to the tab named 1, creating it if needed
+    map ctrl+shift+1 detach_window --target-tab=@title --tab-title=1 --location=by-title --create-if-missing
+
 Similarly, you can detach the current tab, with::
 
     # moves the tab into a new OS window

@@ -242,6 +242,13 @@ Detailed list of changes
   :option:`kitty +kitten quick_access_terminal --hold` option to keep the
   terminal open after the program exits (:iss:`10603`)
 
+- Allow using tabs like named workspaces: A new :option:`launch --focus-existing`
+  option to focus an existing window or tab instead of creating a new one, a
+  new :code:`by-title` value for :option:`launch --location` to keep tabs in
+  alphabetical order and new options for :option:`kitten @ detach-window` and
+  the :ac:`detach_window` action to send windows to a named tab, creating it
+  if needed (:iss:`10627`)
+
 - Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
   with momentum, and a finger held still before it moves selects text
   (:iss:`5432`, :pull:`10551`)
