@@ -61,7 +61,7 @@ from .progress import ProgressState
 from .tab_bar import TabBar, TabBarData, WindowDropTarget, apply_title_template
 from .types import DockSpec, ac
 from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
-from .utils import cmdline_for_hold, color_as_int, log_error, platform_window_id, resolved_shell, shlex_split, which
+from .utils import cmdline_for_hold, color_as_int, log_error, natsort_key, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowCreationSpec, WindowDict, global_watchers
 from .window_list import WindowGroup, WindowList
 
@@ -180,6 +180,31 @@ def add_active_id_to_history(items: Deque[int], item_id: int, maxlen: int = 64) 
     items.append(item_id)
     if len(items) > maxlen:
         items.popleft()
+
+
+def tab_title_sort_key(title: str) -> tuple[tuple[tuple[int, str], ...], str]:
+    # natural, case insensitive ordering, so that tab 10 comes after tab 9, ties broken by the exact title
+    return natsort_key(title, case_sensitive=False), title
+
+
+def index_for_new_tab(existing_titles: Sequence[str], active_idx: int, location: str, title: str = '') -> int:
+    """Return the position, among the existing tabs, at which to insert a new tab.
+    A return value of len(existing_titles) means the new tab is appended."""
+    n = len(existing_titles)
+    match location:
+        case 'first':
+            return 0
+        case 'before':
+            return min(active_idx, n)
+        case 'after' | 'neighbor':
+            return min(active_idx + 1, n)
+        case 'by-title':
+            if title:
+                key = tab_title_sort_key(title)
+                for i, q in enumerate(existing_titles):
+                    if tab_title_sort_key(q) > key:
+                        return i
+    return n
 
 
 class DetachedGroup(NamedTuple):
@@ -1785,12 +1810,16 @@ class TabManager:  # {{{
         as_neighbor: bool = False,
         empty_tab: bool = False,
         location: str = 'last',
+        title: str = '',
     ) -> Tab:
         idx = len(self.tabs)
         tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         orig_active_tab_idx = 0
         with suppress(ValueError):
             orig_active_tab_idx = tabs.index(self.active_tab)
+        if as_neighbor:
+            location = 'after'
+        insert_at = index_for_new_tab(tuple(x.effective_title for x in tabs), orig_active_tab_idx, location, title)
         session_name = ''
         if cwd_from is not None and (sw := cwd_from.window):
             session_name = sw.created_in_session_name
@@ -1804,20 +1833,11 @@ class TabManager:  # {{{
         if not empty_tab and session_name:
             for w in t:
                 w.created_in_session_name = session_name
+        if title:
+            t.set_title(title)
         self.tabs.append(t)
-        tabs = tabs + (t,)
-        if as_neighbor:
-            location = 'after'
-        if location == 'neighbor':
-            location = 'after'
-        if location == 'default':
-            location = 'last'
-        if len(tabs) > 1 and location != 'last':
-            if location == 'first':
-                desired_idx = 0
-            else:
-                desired_idx = orig_active_tab_idx + (0 if location == 'before' else 1)
-            desired_idx = self.tabs.index(tabs[desired_idx])
+        if insert_at < len(tabs):
+            desired_idx = self.tabs.index(tabs[insert_at])
             if idx != desired_idx:
                 for i in range(idx, desired_idx, -1):
                     self.swap_tabs(i, i - 1)

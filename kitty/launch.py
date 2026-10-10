@@ -170,6 +170,27 @@ Keep the focus on the currently active window instead of switching to the newly
 opened window.
 
 
+--focus-existing
+A match expression to select an existing window or tab. If a match is found,
+it is focused and nothing new is launched, otherwise the launch proceeds as
+normal. When :option:`--type <launch --type>` is :code:`tab` the expression
+selects tabs, otherwise it selects windows, in all OS Windows. See :ref:`search_syntax` for the
+syntax for specifying windows and tabs. The special value :code:`@title` matches
+the tab whose title is exactly the value of :option:`--tab-title <launch --tab-title>`
+or, for other types, the window whose title is exactly the value of
+:option:`--window-title <launch --window-title>`. Unlike a match expression,
+:code:`@title` only considers the tabs shown in the tab bar of the OS Window in
+which the new tab/window would be created, so tabs hidden by :opt:`tab_bar_filter`
+are ignored. For the :code:`os-window` and :code:`os-panel` types, it considers
+windows in all OS Windows. If :option:`--keep-focus <launch --keep-focus>`
+is also specified, the matched window/tab is not focused. Has no effect for the
+:code:`background`, :code:`clipboard` and :code:`primary` types and in
+:ref:`startup sessions <sessions>`. Useful for mapping a key to switch to a
+window or tab, creating it if it does not exist, for example::
+
+    map ctrl+1 launch --type=tab --tab-title=1 --location=by-title --focus-existing=@title
+
+
 --cwd
 completion=type:directory kwds:current,oldest,last_reported,root
 The working directory for the newly launched child. Use the special value
@@ -242,13 +263,16 @@ or the kitty remote control feature with :option:`kitten @ launch --copy-env`.
 --location
 type=choices
 default=default
-choices=first,after,before,neighbor,last,vsplit,hsplit,split,default
+choices=first,after,before,neighbor,last,vsplit,hsplit,split,by-title,default
 Where to place the newly created window when it is added to a tab which already
 has existing windows in it. :code:`after` and :code:`before` place the new
 window before or after the active window. :code:`neighbor` is a synonym for
 :code:`after`. Also applies to creating a new tab, where the value of
 :code:`after` will cause the new tab to be placed next to the current tab
-instead of at the end. The values of :code:`vsplit`, :code:`hsplit` and
+instead of at the end. The value :code:`by-title` applies only to new tabs,
+it places the new tab before the first tab whose title sorts after the title
+of the new tab, as specified by :option:`--tab-title <launch --tab-title>`. This
+keeps tabs in alphabetical order, if they already are. The values of :code:`vsplit`, :code:`hsplit` and
 :code:`split` are only used by the :code:`splits` layout and control if the new
 window is placed in a vertical, horizontal or automatic split with the currently
 active window. The default is to place the window in a layout dependent manner,
@@ -527,9 +551,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, n
                     y=y,
                 )
             tm = boss.os_window_map[oswid]
-        tab = tm.new_tab(empty_tab=True, location=opts.location)
-        if opts.tab_title:
-            tab.set_title(opts.tab_title)
+        tab = tm.new_tab(empty_tab=True, location=opts.location, title=opts.tab_title or '')
         tab.created_in_session_name = add_to_session
         return tab
 
@@ -686,6 +708,27 @@ def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequen
     return remote_control_restrictions
 
 
+def find_existing(boss: Boss, opts: LaunchCLIOptions, rc_from_window: Window | None = None, tm: TabManager | None = None) -> Window | Tab | None:
+    # @title only considers the tabs visible in the tab bar of tm, the OS Window the
+    # new tab/window would be created in, so that it respects tab_bar_filter
+    q = opts.focus_existing
+    if not q:
+        return None
+    visible_tabs: tuple[Tab, ...] = tuple(tm.tabs_to_be_shown_in_tab_bar) if tm is not None else ()
+    if opts.type == 'tab':
+        if q == '@title':
+            if not opts.tab_title:
+                raise ValueError('--focus-existing=@title requires --tab-title to also be specified')
+            return next((t for t in visible_tabs if t.effective_title == opts.tab_title), None)
+        return next(boss.match_tabs(q), None)
+    if q == '@title':
+        if not opts.window_title:
+            raise ValueError('--focus-existing=@title requires --window-title to also be specified')
+        candidates: Iterable[Window] = boss.all_windows if opts.type in ('os-window', 'os-panel') else (w for t in visible_tabs for w in t)
+        return next((w for w in candidates if w.title == opts.window_title), None)
+    return next(boss.match_windows(q, rc_from_window), None)
+
+
 def _launch(
     boss: Boss,
     opts: LaunchCLIOptions,
@@ -723,6 +766,21 @@ def _launch(
         if source_window and (qt := source_window.tabref()) and (qr := qt.tab_manager_ref()):
             tm = qr
         opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
+    if opts.focus_existing and not force_target_tab and opts.type not in non_window_launch_types:
+        scope_tm = boss.active_tab_manager
+        if target_tab is not None:
+            scope_tm = target_tab.tab_manager_ref() or scope_tm
+        elif next_to is not None and (nt := next_to.tabref()) is not None:
+            scope_tm = nt.tab_manager_ref() or scope_tm
+        if (existing := find_existing(boss, opts, rc_from_window, scope_tm)) is not None:
+            if not opts.keep_focus:
+                if isinstance(existing, Window):
+                    boss.set_active_window(existing, switch_os_window_if_needed=True)
+                elif (aw := existing.active_window) is not None:
+                    boss.set_active_window(aw, switch_os_window_if_needed=True)
+                elif (etm := existing.tab_manager_ref()) is not None:
+                    etm.set_active_tab(existing)
+            return existing if isinstance(existing, Window) else existing.active_window
     env = get_env(opts, source_child, base_env)
     kw: LaunchKwds = {
         'allow_remote_control': opts.allow_remote_control,
@@ -768,7 +826,7 @@ def _launch(
             raise ValueError('--hold-after-ssh can only be supplied if --cwd=current or similar is also supplied')
         kw['hold_after_ssh'] = True
 
-    if opts.location != 'default':
+    if opts.location not in ('default', 'by-title'):
         kw['location'] = opts.location
     if opts.copy_colors and source_window:
         kw['copy_colors_from'] = source_window
