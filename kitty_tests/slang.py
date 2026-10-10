@@ -25,6 +25,7 @@ from kitty.shaders.slang import (
     parse_slang_text,
     parse_var_directive,
     pipeline_definition,
+    pointer_map_shaders,
     slangc_version,
     topological_layers,
     topological_sort,
@@ -392,6 +393,47 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
         self.assertRaises(ValueError, parse_var_directive, ['var', 'uint', '123bad', '=', '1'])
         self.assertRaises(ValueError, parse_var_directive, ['var', 'uint'])
 
+    def test_pointer_map_shaders(self):
+        def pms(src: str) -> tuple[tuple[int, int], ...]:
+            return pointer_map_shaders(parse_pipeline_definition(src.splitlines(), 'test'))
+
+        self.ae(pms('startgroup\nshaders crt\nendgroup'), ((0, 0),))
+        self.ae(pms('startgroup\nshaders sample\nendgroup'), ())
+        # The last shader to run is applied first
+        self.ae(pms('startgroup\nshaders crt sample crt\nendgroup\nstartgroup\nshaders crt\nendgroup'), ((1, 0), (0, 2), (0, 0)))
+        # Transient effects and passes that do not draw to the screen do not move pointer events
+        self.ae(pms('startgroup\nanimation_start tab-change\nshaders crt\nendgroup'), ())
+        self.ae(pms('startgroup\nshaders sample\nendgroup\nstartgroup\nattach\nshaders crt\nendgroup'), ())
+        self.ae(pms('textures a\nstartgroup\nshaders crt\noutput_texture a\nendgroup\nstartgroup\nshaders sample\nendgroup'), ())
+
+    def test_sample_pointer_map(self):
+        import struct
+
+        from kitty.fast_data_types import POINTER_MAP_SIZE, sample_pointer_map
+
+        def grid(f) -> bytes:
+            last = POINTER_MAP_SIZE - 1
+            vals = []
+            for y in range(POINTER_MAP_SIZE):
+                for x in range(POINTER_MAP_SIZE):
+                    vals.extend(f(x / last, y / last))
+            return struct.pack(f'{len(vals)}f', *vals)
+
+        def ae(a, b):
+            for x, y in zip(a, b):
+                self.assertAlmostEqual(x, y, places=5)
+
+        identity = grid(lambda u, v: (u, v))
+        for pos in ((0, 0), (1, 1), (0.5, 0.25), (0.123, 0.987), (1, 0)):
+            ae(sample_pointer_map(identity, *pos), pos)
+        # Positions outside the viewport are clamped to its edges
+        ae(sample_pointer_map(identity, -0.5, 1.5), (0, 1))
+        # Linear maps are reproduced exactly between grid points
+        shrink = grid(lambda u, v: (0.1 + 0.8 * u, 1 - v))
+        for u, v in ((0, 0), (0.3, 0.6), (1, 1)):
+            ae(sample_pointer_map(shrink, u, v), (0.1 + 0.8 * u, 1 - v))
+        self.assertRaises(ValueError, sample_pointer_map, b'', 0, 0)
+
     def test_parse_pipeline_definition_vars(self):
         p = parse_pipeline_definition(
             """
@@ -441,6 +483,7 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
         self.assertTrue(len(vert_src) > 0, 'vertex GLSL is empty')
         self.assertTrue(len(frag_src) > 0, 'fragment GLSL is empty')
         self.assertIsInstance(metadata, dict)
+        self.assertFalse(metadata['has_pointer_map'])
         self.assertFalse(invocation_tracker)
 
         if not shutil.which('glslangValidator'):

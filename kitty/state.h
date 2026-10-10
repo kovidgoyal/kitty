@@ -501,6 +501,8 @@ typedef struct BackgroundImageRenderSettings {
 } BackgroundImageRenderSettings;
 
 #define MAX_CUSTOM_SHADER_GROUPS 16
+// Must match POINTER_MAP_SIZE in pipeline.slang
+#define POINTER_MAP_SIZE 64
 
 // Summary of the custom shader animation state machine, cached once per frame
 // so the renderer can decide whether a new frame is needed without walking the
@@ -605,6 +607,12 @@ typedef struct OSWindow {
         monotonic_t started_at;
     } shader_group_anim[MAX_CUSTOM_SHADER_GROUPS];
     ShaderAnimState shader_anim;
+    struct {
+        // POINTER_MAP_SIZE x POINTER_MAP_SIZE (x, y) pairs, rows from the bottom up, in viewport UV
+        float *data;
+        int viewport_width, viewport_height;
+        unsigned pipeline_generation;
+    } pointer_map;
 } OSWindow;
 
 static inline float
@@ -800,6 +808,7 @@ void setup_os_window_for_rendering(OSWindow *, Tab *, Window *, bool, monotonic_
 monotonic_t update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window);
 void init_shader_animation_state(OSWindow *os_window);
 bool custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, unsigned event_mask, monotonic_t now);
+void map_pointer_position(const OSWindow *os_window, double *x, double *y);
 void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling);
 bool current_framebuffer_is_ok(void);

@@ -1430,6 +1430,27 @@ def merge_pipelines(pipelines: list[Pipeline]) -> Pipeline:
     }
 
 
+@run_once
+def pointer_map_pat() -> re.Pattern[bytes]:
+    return re.compile(rb'\bfloat2\s+pointer_map\s*\(')
+
+
+def pointer_map_shaders(pipeline: Pipeline) -> tuple[tuple[int, int], ...]:
+    """The (group, shader) indices of the shaders whose pointer_map() decides
+    where pointer events land, in the order they must be applied. Only groups
+    that are always active and draw to the screen move content permanently, so
+    only they count. The last shader to run decides what is visible at a given
+    position, so it is applied first."""
+    ans: list[tuple[int, int]] = []
+    for g_idx, group in enumerate(pipeline['groups']):
+        if group['animation_start'] or group['attached'] or group['output_texture'] is not NamedTexture.default:
+            continue
+        for s_idx, name in enumerate(group['shaders']):
+            if pointer_map_pat().search(custom_shader(name, group['pipeline_dir'])[2]) is not None:
+                ans.append((g_idx, s_idx))
+    return tuple(reversed(ans))
+
+
 def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocation_tracker: set[tuple[str, ...]]) -> tuple[tuple[str, ...], str]:
     slot = pipeline['slot']
     slot_module_name = f'{slot.replace("-", "_")}'
@@ -1446,8 +1467,8 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     mtime = 0
     types_rebuilt = False
 
-    def entry_point(g_idx: int, s_idx: int) -> str:
-        return f'fragment_main_{g_idx}_{s_idx}'
+    def entry_point(g_idx: int, s_idx: int, name: str = 'fragment_main') -> str:
+        return f'{name}_{g_idx}_{s_idx}'
 
     j = partial(os.path.join, libdir)
     with suppress(FileNotFoundError), open(j('ct.key'), 'rb') as f:
@@ -1495,7 +1516,8 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
             imports.append(modname)
             module_file = j(f'{modname}.slang-module')
             inc = ['-I', import_dir] if import_dir else []
-            cmd = bc + inc + [f'-Dfragment_main={entry_point(g_idx, s_idx)}', '-module-name', modname, '-o', module_file, '--', '-']
+            defines = [f'-D{func}={entry_point(g_idx, s_idx, func)}' for func in ('fragment_main', 'pointer_map')]
+            cmd = bc + inc + defines + ['-module-name', modname, '-o', module_file, '--', '-']
             invocation_tracker.add(tuple(cmd))
             cp = subprocess.run(cmd, input=src, capture_output=True)
             if cp.returncode != 0:
@@ -1517,6 +1539,8 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     mod_src = get_custom_shader_src('pipeline').decode()
     mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'import {imp};' for imp in imports), 1)
     mod_src = mod_src.replace('// PIPELINE', pipeline_code, 1)
+    pointer_map_code = '\n    '.join(f'pos = {entry_point(g, s, "pointer_map")}(pos, csd);' for g, s in pointer_map_shaders(pipeline))
+    mod_src = mod_src.replace('// POINTER_MAP', pointer_map_code, 1)
     # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
 
     with tempfile.TemporaryDirectory() as tdir:
@@ -1626,6 +1650,7 @@ def build_custom_shader_pipeline_glsl(
         with open(vertex) as vf, open(fragment) as ff:
             m = glsl_metadata_for_shader(metadata)
             m['pipeline'] = pipeline
+            m['has_pointer_map'] = bool(pointer_map_shaders(pipeline))
             return vf.read(), ff.read(), m
 
 

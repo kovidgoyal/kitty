@@ -1592,6 +1592,7 @@ scroll_event(const GLFWScrollEvent *ev) {
         glfwGetCursorPos((GLFWwindow *)osw->handle, &mouse_x, &mouse_y);
         osw->mouse_x = mouse_x * osw->viewport_x_ratio;
         osw->mouse_y = mouse_y * osw->viewport_y_ratio;
+        map_pointer_position(osw, &osw->mouse_x, &osw->mouse_y);
     }
     MouseRegion r = mouse_region(false, true);
     Window *w = r.window;
