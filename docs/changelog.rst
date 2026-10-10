@@ -287,7 +287,9 @@ Detailed list of changes
   mouse with a high polling rate (:iss:`10634`)
 
 - diff kitten: Fix fetching remote directories containing hardlinks in
-  subdirectories
+  subdirectories, hardlinks to symlinks or the same path more than once, and
+  fall back to copying when the local filesystem does not support hardlinks
+  (:pull:`10641`)
 
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
