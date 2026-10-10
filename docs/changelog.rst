@@ -286,6 +286,9 @@ Detailed list of changes
 - diff kitten: Fix selecting text with the mouse lagging badly when using a
   mouse with a high polling rate (:iss:`10634`)
 
+- diff kitten: Fix fetching remote directories containing hardlinks in
+  subdirectories
+
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 

@@ -77,3 +77,77 @@ func TestTarExtract(t *testing.T) {
 		t.Fatalf("Directory contents not as expected: %s", diff)
 	}
 }
+
+func TestTarExtractHardlinks(t *testing.T) {
+	for _, tc := range []struct {
+		name, target, link string
+	}{
+		{"root", "target.txt", "link.txt"},
+		{"same_directory", "dir/target.txt", "dir/link.txt"},
+		{"cross_directory", "one/target.txt", "two/link.txt"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			tw := tar.NewWriter(&buf)
+			for _, hdr := range []tar.Header{
+				{Name: tc.target, Mode: 0600},
+				{Name: tc.link, Mode: 0600, Typeflag: tar.TypeLink, Linkname: tc.target},
+			} {
+				if err := tw.WriteHeader(&hdr); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := tw.Close(); err != nil {
+				t.Fatal(err)
+			}
+			dest := t.TempDir()
+			count, err := ExtractAllFromTar(tar.NewReader(&buf), dest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if count != 2 {
+				t.Fatalf("Expected two extracted files, got %d", count)
+			}
+			target, err := os.Stat(filepath.Join(dest, tc.target))
+			if err != nil {
+				t.Fatal(err)
+			}
+			link, err := os.Stat(filepath.Join(dest, tc.link))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !os.SameFile(target, link) {
+				t.Fatal("Extracted files are not hardlinks")
+			}
+		})
+	}
+
+	t.Run("outside_destination", func(t *testing.T) {
+		parent := t.TempDir()
+		dest := filepath.Join(parent, "dest")
+		if err := os.Mkdir(dest, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(parent, "outside.txt"), []byte("outside"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+		if err := tw.WriteHeader(&tar.Header{Name: "link.txt", Mode: 0600, Typeflag: tar.TypeLink, Linkname: "../outside.txt"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := tw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		count, err := ExtractAllFromTar(tar.NewReader(&buf), dest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Fatalf("Expected external hardlink target to be skipped, got %d extracted files", count)
+		}
+		if _, err := os.Lstat(filepath.Join(dest, "link.txt")); !os.IsNotExist(err) {
+			t.Fatalf("External hardlink target was not skipped: %v", err)
+		}
+	})
+}
