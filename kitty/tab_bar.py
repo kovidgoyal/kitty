@@ -3,7 +3,8 @@
 
 import os
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
+from contextlib import contextmanager
 from functools import lru_cache, partial, wraps
 from string import Formatter as StringFormatter
 from typing import (
@@ -317,7 +318,48 @@ safe_builtins = {
 }
 
 
+@lru_cache(maxsize=16)
+def template_uses_max_title_length(template: str) -> bool:
+    # Conservative, as the length can be used anywhere in an expression, or by
+    # a custom draw_title() function
+    return 'max_title_length' in template or 'custom' in template
+
+
+# Laying out the tab bar draws each tab several times, each of which evaluates
+# its title template, so cache the titles for the duration of a single update.
+# Not across updates, as templates can use state not in TabBarData, such as
+# the progress of the windows in the tab.
+title_cache: dict[tuple[DrawData, TabBarData, int, int], str] | None = None
+
+
+@contextmanager
+def caching_titles() -> Generator[None, None, None]:
+    global title_cache
+    title_cache = {}
+    try:
+        yield
+    finally:
+        title_cache = None
+
+
 def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_title_length: int = 0) -> str:
+    if title_cache is None:
+        return evaluate_title_template(draw_data, tab, index, max_title_length)
+    template = draw_data.title_template
+    if tab.is_active and draw_data.active_title_template is not None:
+        template = draw_data.active_title_template
+    key_length = -1  # the title does not depend on the length
+    if template_uses_max_title_length(template):
+        key_length = max_title_length
+        if draw_data.max_tab_title_length > 0:
+            key_length = min(key_length, draw_data.max_tab_title_length)
+    key = draw_data, tab, index, key_length
+    if (title := title_cache.get(key)) is None:
+        title = title_cache[key] = evaluate_title_template(draw_data, tab, index, max_title_length)
+    return title
+
+
+def evaluate_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_title_length: int = 0) -> str:
     if tab.tab_id < 0:
         return tab.title  # synthetic tab — render title literally, skip user template
     ta = TabAccessor(tab.tab_id)
@@ -1003,9 +1045,12 @@ class TabBar:
     def update(self, data: Sequence[TabBarData]) -> bool:
         if not self.laid_out_once:
             return False
-        if self.is_vertical:
-            return self.update_vertical(data)
+        with caching_titles():
+            if self.is_vertical:
+                return self.update_vertical(data)
+            return self.update_horizontal(data)
 
+    def update_horizontal(self, data: Sequence[TabBarData]) -> bool:
         s = self.screen
         last_tab = data[-1] if data else None
         ed = ExtraData()
@@ -1034,7 +1079,8 @@ class TabBar:
         default_max_tab_length = max(1, (s.columns // max(1, len(data))) - 1)
         max_tab_lengths = [default_max_tab_length for _ in range(len(data))]
         overhangs = [0] * len(data)
-        active_idx = num_truncated = 0
+        truncated: list[int] = []
+        active_idx = 0
         ed.for_layout = True
         for i, t in enumerate(data):
             s.cursor.x = 0
@@ -1045,14 +1091,7 @@ class TabBar:
             if tl < default_max_tab_length:
                 max_tab_lengths[i] = tl
             elif tl > default_max_tab_length:
-                # A truncated tab can be drawn wider than its max length, for
-                # example by a separator after the title, so measure by how
-                # much. Draw it at a column like the one it will actually
-                # start at, as styles may draw differently at column zero.
-                s.cursor.x = start = min(i, 1)
-                draw_tab(i, t, [], default_max_tab_length)
-                overhangs[i] = max(0, s.cursor.x - start - default_max_tab_length)
-                num_truncated += 1
+                truncated.append(i)
 
         def tab_width(i: int) -> int:
             return min(ideal_tab_lengths[i], max_tab_lengths[i] + overhangs[i])
@@ -1060,7 +1099,22 @@ class TabBar:
         # The overhang is measured at the default max length, the built-in
         # styles draw the same overhang at any length, but custom ones might
         # not, so leave them a cell of slack per truncated tab
-        margin = num_truncated if self.draw_func_is_custom else 0
+        margin = len(truncated) if self.draw_func_is_custom else 0
+
+        # A truncated tab can be drawn wider than its max length, for example
+        # by a separator after the title, so measure by how much. Draw it at a
+        # column like the one it will actually start at, as styles may draw
+        # differently at column zero. Overhangs only use up free space, so once
+        # there is none left, the remaining ones cannot change the layout and
+        # measuring them, which means drawing the tab again, can be skipped.
+        free = s.columns - margin - sum(min(tl, ml) for tl, ml in zip(ideal_tab_lengths, max_tab_lengths))
+        for i in truncated:
+            if free <= 0:
+                break
+            s.cursor.x = start = min(i, 1)
+            draw_tab(i, data[i], [], default_max_tab_length)
+            overhangs[i] = max(0, s.cursor.x - start - default_max_tab_length)
+            free -= min(overhangs[i], ideal_tab_lengths[i] - max_tab_lengths[i])
 
         def space_left() -> int:
             return s.columns - margin - sum(tab_width(i) for i in range(len(data)))
