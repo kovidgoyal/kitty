@@ -1848,10 +1848,10 @@ write_to_child(int fd, Screen *screen) {
 }
 
 static ParserInputWake
-pending_input_wake_info(ChildMonitor *self) {
+pending_input_wake_info(ChildMonitor *self, monotonic_t now) {
     ParserInputWake info = {0};
     for (size_t i = 0; i < self->count; i++) {
-        ParserInputWake one = vt_parser_input_wake(children[i].screen->vt_parser);
+        ParserInputWake one = vt_parser_input_wake(children[i].screen->vt_parser, now);
         if (one.small_pending) info.small_pending = true;
         // The main thread clears input_at only when it finishes this chunk.
         if (one.large_ready && one.input_at != children[i].woken_for_input_at) info.large_ready = true;
@@ -1861,9 +1861,9 @@ pending_input_wake_info(ChildMonitor *self) {
 }
 
 static void
-remember_woken_large_input(ChildMonitor *self) {
+remember_woken_large_input(ChildMonitor *self, monotonic_t now) {
     for (size_t i = 0; i < self->count; i++) {
-        ParserInputWake one = vt_parser_input_wake(children[i].screen->vt_parser);
+        ParserInputWake one = vt_parser_input_wake(children[i].screen->vt_parser, now);
         if (!(one.large_ready && one.input_at)) continue;
         children_mutex(lock);
         children[i].woken_for_input_at = one.input_at;
@@ -1893,7 +1893,7 @@ io_loop(void *data) {
         has_pending_wakeups = false;                                                         \
         last_wakeup_was_early = false;                                                       \
         signal_pending = false;                                                              \
-        remember_woken_large_input(self);                                                    \
+        remember_woken_large_input(self, now);                                               \
     }
 
     while (LIKELY(!self->shutting_down)) {
@@ -1985,7 +1985,7 @@ io_loop(void *data) {
         // streams of small writes are still coalesced.
         if (child_data_received || signal_pending || has_pending_wakeups) {
             now = monotonic();
-            ParserInputWake pending = pending_input_wake_info(self);
+            ParserInputWake pending = pending_input_wake_info(self, now);
             // rate_open is the gap since the previous wakeup. A large chunk the
             // parser will accept now (large_ready) wakes inside that gap. A large
             // chunk still inside input_delay waits until new_input_at + input_delay,

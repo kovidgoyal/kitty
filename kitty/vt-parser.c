@@ -1653,7 +1653,8 @@ vt_parser_commit_write(Parser *p, size_t sz) {
     with_lock {
         size_t off = self->read.sz + self->write.pending;
         // 0 means no unparsed input is waiting. monotonic() can return 0 at startup.
-        if (self->new_input_at == 0) {
+        // A zero-length commit must not start the clock before any byte arrives.
+        if (sz && self->new_input_at == 0) {
             monotonic_t stamp = monotonic();
             self->new_input_at = stamp ? stamp : 1;
             self->fresh_input_at = off;
@@ -1675,7 +1676,7 @@ vt_parser_has_space_for_input(const Parser *p) {
 }
 
 ParserInputWake
-vt_parser_input_wake(const Parser *p) {
+vt_parser_input_wake(const Parser *p, monotonic_t now) {
     PS *self = (PS *)p->state;
     ParserInputWake ans = {0};
     with_lock {
@@ -1689,7 +1690,7 @@ vt_parser_input_wake(const Parser *p) {
             else if (fresh < SMALL_PENDING_INPUT_THRESHOLD) ans.small_pending = true;
             else {
                 monotonic_t ready_at = self->new_input_at + OPT(input_delay);
-                if (ready_at <= monotonic()) ans.large_ready = true;
+                if (ready_at <= now) ans.large_ready = true;
                 else ans.large_held_until = ready_at;
             }
         }
