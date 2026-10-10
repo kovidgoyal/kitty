@@ -1382,7 +1382,7 @@ abortOnFatalError(int last_error) {
     if (!abort_called) {
         abort_called = true;
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: fatal display error: %s", strerror(last_error));
-        if (_glfw.callbacks.application_close) _glfw.callbacks.application_close(1);
+        if (_glfw.callbacks.application_close) _glfw.callbacks.application_close(GLFW_APPLICATION_CLOSE_FATAL_ERROR);
         else {
             _GLFWwindow *window = _glfw.windowListHead;
             while (window) {

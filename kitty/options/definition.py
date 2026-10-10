@@ -3136,6 +3136,23 @@ arguments specifying a command to run, this option is ignored.
 )
 
 opt(
+    'restore_session_after_logout',
+    'no',
+    option_type='to_bool',
+    long_text="""
+If enabled, when you log out, restart or shut down the computer while kitty is running,
+kitty saves its current state as a :ref:`session <sessions>`, including the size, position
+and state of every :term:`OS Window <os_window>` and the scrollback of every window. The next
+time kitty is started, it restores that session, instead of using :opt:`startup_session`.
+If several kitty instances were running, all of them are restored.
+The saved session is used only once, and only when kitty is started without
+:option:`kitty --session` or a command to run. The saved scrollback is readable only by you
+and is deleted once it has been restored or when this option is disabled. Currently, this
+works only on macOS.
+""",
+)
+
+opt(
     'clipboard_control',
     'write-clipboard write-primary read-clipboard-ask read-primary-ask',
     option_type='clipboard_control',

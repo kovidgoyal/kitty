@@ -5,7 +5,9 @@ import json
 import os
 import re
 import shlex
+import shutil
 import sys
+import time
 from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from contextlib import suppress
 from functools import partial
@@ -13,8 +15,8 @@ from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from .cli_stub import CLIOptions, GotoSessionOptions, SaveAsSessionOptions
-from .constants import config_dir, unserialize_launch_flag
-from .fast_data_types import get_options
+from .constants import cache_dir, config_dir, unserialize_launch_flag
+from .fast_data_types import Screen, get_options, monotonic
 from .layout.interface import all_layouts
 from .options.types import Options
 from .options.utils import MapType, resize_window, to_layout_names, window_size
@@ -52,6 +54,7 @@ class WindowSpec:
         self.is_background_process = False
         self.serialized_id = serialized_id
         self.run_command_at_shell_startup = run_command_at_shell_startup
+        self.restored_scrollback = b''
         if hasattr(launch_spec, 'opts'):  # LaunchSpec
             from .launch import LaunchSpec
 
@@ -722,6 +725,120 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str,
     atomic_save(session.encode(), path)
     if not opts.save_only:
         boss.edit_file(path)
+
+
+def saved_at_logout_dir() -> str:
+    return os.path.join(cache_dir(), 'saved-at-logout')
+
+
+def scrollback_dir_for(session_path: str) -> str:
+    return os.path.splitext(session_path)[0] + '-scrollback'
+
+
+def remove_sessions_saved_at_logout() -> None:
+    shutil.rmtree(saved_at_logout_dir(), ignore_errors=True)
+
+
+def remove_path(path: str) -> None:
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path, ignore_errors=True)
+    else:
+        with suppress(FileNotFoundError):
+            os.remove(path)
+
+
+def scrollback_for_restore(screen: Screen) -> bytes:
+    # The output in the main screen and its scrollback, formatted, ready to be parsed by a new screen. The current shell prompt,
+    # if any, is not included, as the restored shell will show a new one, and neither are trailing blank lines.
+    from .utils import kitty_ansi_sanitizer_pat
+    from .window import as_text
+
+    # With wrap markers, every line ends with \r, so the lines of the screen are the ones before the last \r
+    lines = as_text(screen, as_ansi=True, add_history=True, add_wrap_markers=True, alternate_screen=screen.is_using_alternate_linebuf()).split('\r')
+    if (prompt_line := screen.cursor_prompt_line()) > -1:
+        del lines[len(lines) - 1 - (screen.lines - prompt_line) : -1]
+    lines = ''.join(lines).split('\n')
+    pat = kitty_ansi_sanitizer_pat()
+    while lines and not pat.sub('', lines[-1]).strip():
+        lines.pop()
+    return '\r\n'.join(lines).encode()
+
+
+def save_session_at_logout(boss: BossType) -> None:
+    from .config import atomic_save
+    from .utils import lock_with_file
+
+    opts = default_save_as_session_opts()
+    opts.os_window_geometry = True
+    base = saved_at_logout_dir()
+    # Every kitty instance saves its own session, so that they are all restored
+    path = os.path.join(base, f'{os.getpid()}.kitty-session')
+    session = '\n'.join(boss.serialize_state_as_session(path, opts))
+    with lock_with_file(base + '.lock'):
+        os.makedirs(base, mode=0o700, exist_ok=True)
+        # Sessions saved before this instance was started are from an earlier logout and were never restored,
+        # all kitty instances running at that logout quit, so every running instance was started after it.
+        started_at = time.time() - monotonic()
+        with os.scandir(base) as entries:
+            for entry in entries:
+                if entry.stat(follow_symlinks=False).st_mtime < started_at:
+                    remove_path(entry.path)
+        if not session:
+            return
+        serialized_ids = {w.serialized_id for s in parse_session(session, get_options()) for t in s.tabs for w in t.windows}
+        scrollback_dir = scrollback_dir_for(path)
+        try:
+            remove_path(scrollback_dir)
+            os.makedirs(scrollback_dir, mode=0o700)
+            for window in boss.all_windows:
+                if window.id in serialized_ids and (scrollback := scrollback_for_restore(window.screen)):
+                    atomic_save(scrollback, os.path.join(scrollback_dir, str(window.id)))
+            atomic_save(session.encode(), path)
+        except Exception:
+            remove_path(path)
+            remove_path(scrollback_dir)
+            raise
+
+
+def read_session_saved_at_logout(path: str, opts: Options) -> tuple[Session, ...]:
+    with open(path, encoding='utf-8') as f:
+        raw = f.read()
+        saved_at = time.localtime(os.fstat(f.fileno()).st_mtime)
+    sessions = tuple(parse_session(raw, opts))
+    marker = ('\r\n\x1b[7m ' + _('Restored from {}').format(time.strftime('%c', saved_at)) + ' \x1b[m\r\n').encode()
+    scrollback_dir = scrollback_dir_for(path)
+    for session in sessions:
+        for tab in session.tabs:
+            for window in tab.windows:
+                with suppress(FileNotFoundError), open(os.path.join(scrollback_dir, str(window.serialized_id)), 'rb') as f:
+                    window.restored_scrollback = f.read() + marker
+    return sessions
+
+
+def sessions_saved_at_logout(opts: Options) -> tuple[Session, ...]:
+    from .utils import lock_with_file
+
+    base = saved_at_logout_dir()
+    ans: list[Session] = []
+    try:
+        # The saved sessions of all kitty instances are restored only once, so they are always deleted after reading,
+        # holding the lock so that kitty instances started at the same time do not both restore them
+        with lock_with_file(base + '.lock'):
+            try:
+                with os.scandir(base) as entries:
+                    paths = sorted((e.path for e in entries if e.name.endswith('.kitty-session')), key=os.path.getmtime)
+                for path in paths:
+                    try:
+                        ans.extend(read_session_saved_at_logout(path, opts))
+                    except Exception as e:
+                        log_error(f'Failed to restore the session saved at logout in {path}, ignoring. Error: {e}')
+            except FileNotFoundError:
+                pass
+            finally:
+                remove_sessions_saved_at_logout()
+    except OSError as e:
+        log_error(f'Failed to restore the sessions saved at logout, ignoring. Error: {e}')
+    return tuple(ans)
 
 
 def parse_save_as_options_spec_args(args: list[str]) -> tuple[SaveAsSessionOptions, list[str]]:

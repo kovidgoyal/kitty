@@ -788,6 +788,7 @@ class Window:
         self.current_marker_spec: tuple[str, str | tuple[tuple[int, str], ...]] | None = None
         self.kitten_result_processors: list[Callable[['Window', Any], None]] = []
         self.child_is_launched = False
+        self.restored_scrollback = b''
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self.needs_attention = False
@@ -1060,6 +1061,16 @@ class Window:
         self.notify_child_of_resize()
         update_ime_position = False
         if not self.child_is_launched:
+            if self.restored_scrollback:
+                # The screen now has its actual size, so lines wrap as they did originally, and the child
+                # cannot produce any output until it is marked as ready, so the restored output comes first.
+                data, self.restored_scrollback = self.restored_scrollback, b''
+                try:
+                    self.screen.parse_child_output(data)
+                except Exception:
+                    import traceback
+
+                    log_error('Failed to restore the scrollback with error:\n' + traceback.format_exc())
             self.child.mark_terminal_ready()
             self.child_is_launched = True
             update_ime_position = True
@@ -1999,6 +2010,8 @@ class Window:
                 raise ValueError(f'Unknown action in option `notify_on_cmd_finish`: {action}')
 
     def cmd_output_marking(self, is_start: bool | None, cmdline: str = '') -> None:
+        if not self.child_is_launched:
+            return  # the prompt marks are from restored scrollback, not from commands run in this window
         if is_start:
             start_time = monotonic()
             self.last_cmd_output_start_time = start_time

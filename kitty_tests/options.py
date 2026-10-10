@@ -95,6 +95,190 @@ class TestConfParsing(BaseTest):
         ser_opts.os_window_geometry = True
         self.ae(TabManager.serialize_state_as_session(tm, '', None, ser_opts, is_first=True)[:3], geometry)
 
+    def test_sessions_saved_at_logout(self) -> None:
+        import json
+        import shlex
+        import threading
+        import time
+        from types import SimpleNamespace
+        from typing import Any, cast
+        from unittest.mock import patch
+
+        from kitty.boss import Boss
+        from kitty.constants import unserialize_launch_flag
+        from kitty.session import remove_sessions_saved_at_logout, save_session_at_logout, sessions_saved_at_logout
+        from kitty.utils import lock_with_file
+        from kitty.window import as_text
+
+        from .base import parse_bytes
+
+        opts = self.set_options()
+        geometry = ['os_window_size 1180 760', 'os_window_position -1200x80', 'os_window_state maximized']
+        # Every kitty instance saves its own session at logout, with geometry and scrollback, and they are all restored only once
+        base = os.path.join(self.tdir, 'saved-at-logout')
+        launch_line = shlex.join(['launch', unserialize_launch_flag + json.dumps({'id': 7})])
+
+        def serialize(session_path, ser_opts):
+            return iter((geometry if ser_opts.os_window_geometry else []) + [launch_line])
+
+        def save(pid, *lines):
+            screen = self.create_screen(cols=10, lines=3, scrollback=20)
+            parse_bytes(screen, '\r\n'.join(lines).encode())
+            windows = [SimpleNamespace(id=7, screen=screen), SimpleNamespace(id=8, screen=screen)]  # window 8 is not in the session
+            with patch('kitty.session.os.getpid', return_value=pid):
+                save_session_at_logout(cast(Boss, SimpleNamespace(serialize_state_as_session=serialize, all_windows=windows)))
+
+        def restored_text(session):
+            screen = self.create_screen(cols=10, lines=3, scrollback=20)
+            screen.parse_child_output(session.tabs[0].windows[0].restored_scrollback)
+            return as_text(screen, add_history=True).splitlines()
+
+        with patch('kitty.session.saved_at_logout_dir', return_value=base):
+            # A session saved at an earlier logout that was never restored is deleted when saving
+            save(100, 'stale')
+            day_ago = time.time() - 86400
+            for x in os.listdir(base):
+                os.utime(os.path.join(base, x), (day_ago, day_ago))
+            save(111, 'one', 'two')
+            save(222, 'three')
+            self.ae(sorted(os.listdir(base)), ['111-scrollback', '111.kitty-session', '222-scrollback', '222.kitty-session'])
+            self.ae(os.listdir(os.path.join(base, '111-scrollback')), ['7'])
+            sessions = sessions_saved_at_logout(opts)
+            self.ae({(s.os_window_position, s.os_window_state) for s in sessions}, {((-1200, 80), 'maximized')})
+            texts = sorted(restored_text(s) for s in sessions)
+            self.ae([t[:-1] for t in texts], [['one', 'two'], ['three']])
+            self.assertTrue(all(t[-1].strip().startswith('Restored from ') for t in texts))
+            self.assertFalse(os.path.exists(base))
+            self.ae(sessions_saved_at_logout(opts), ())
+            # Restoring waits for the lock, so that kitty instances started at the same time do not both restore the sessions
+            save(111, 'one')
+            results: list[tuple[Any, ...]] = []
+            with lock_with_file(base + '.lock'):
+                t = threading.Thread(target=lambda: results.append(sessions_saved_at_logout(opts)))
+                t.start()
+                time.sleep(0.2)
+                self.assertTrue(t.is_alive())
+                self.assertTrue(os.path.exists(base))
+            t.join()
+            self.ae((len(results[0]), os.path.exists(base)), (1, False))
+            # Nothing is saved when there are no OS Windows, but sessions from an earlier logout are still deleted
+            save(100, 'stale')
+            for x in os.listdir(base):
+                os.utime(os.path.join(base, x), (day_ago, day_ago))
+            save_session_at_logout(cast(Boss, SimpleNamespace(serialize_state_as_session=lambda *a: iter(()), all_windows=[])))
+            self.ae(os.listdir(base), [])
+            self.ae(sessions_saved_at_logout(opts), ())
+            # A broken saved session is ignored, without affecting the others, and deleted
+            save(111, 'one')
+            with open(os.path.join(base, '222.kitty-session'), 'wb') as f:
+                f.write(b'\xff\xfe launch')
+            self.ae(len(sessions_saved_at_logout(opts)), 1)
+            self.assertTrue(self.error_messages)
+            self.assertFalse(os.path.exists(base))
+            # Leftovers are deleted when the option is disabled
+            save(111, 'one')
+            remove_sessions_saved_at_logout()
+            self.assertFalse(os.path.exists(base))
+            # Errors when restoring do not prevent kitty from starting
+            open(base, 'w').close()
+            del self.error_messages[:]
+            self.ae(sessions_saved_at_logout(opts), ())
+            self.assertTrue(self.error_messages)
+            os.remove(base)
+
+    def test_scrollback_for_restore(self) -> None:
+        from kitty.session import scrollback_for_restore
+        from kitty.window import as_text
+
+        from .base import parse_bytes
+
+        screen = self.create_screen(cols=10, lines=4, scrollback=20)
+        parse_bytes(
+            screen, b''.join(b'line %d\r\n' % i for i in range(8)) + b'\x1b[31mred\x1b[m 0123456789abcdef\r\n\x1b]8;;https://x.org\x1b\\link\x1b]8;;\x1b\\'
+        )
+        expected = as_text(screen, add_history=True).rstrip('\n')
+        expected_ansi = as_text(screen, as_ansi=True, add_history=True)
+        # Output on the alternate screen, such as from a full screen program, is not restored
+        parse_bytes(screen, b'\x1b[?1049hfull screen program')
+        data = scrollback_for_restore(screen)
+        self.assertNotIn(b'full screen program', data)
+        self.assertFalse(data.endswith(b'\r\n'))
+
+        same_width = self.create_screen(cols=10, lines=4, scrollback=20)
+        same_width.parse_child_output(data)
+        self.ae(as_text(same_width, add_history=True), expected)
+        self.ae(as_text(same_width, as_ansi=True, add_history=True), expected_ansi.rstrip('\n'))
+        # Wrapped lines are re-wrapped to the width of the new screen
+        wider = self.create_screen(cols=30, lines=4, scrollback=20)
+        wider.parse_child_output(data)
+        self.ae(as_text(wider, add_history=True).splitlines()[-2:], ['red 0123456789abcdef', 'link'])
+        self.assertTrue(any(url.endswith('https://x.org') for url, hyperlink_id in wider.hyperlinks_as_set()))
+        # Restored output is parsed when the window gets its actual size, before the child is allowed to run, so wide
+        # lines are not wrapped at a smaller size, which would lose lines that do not fit in the scrollback
+        from types import SimpleNamespace
+        from typing import Any, cast
+        from unittest.mock import patch
+
+        from kitty.window import Window
+
+        src = self.create_screen(cols=200, lines=50, scrollback=2000)
+        parse_bytes(src, b''.join(b'%04d %s\r\n' % (i, b'x' * 145) for i in range(1900)))
+        screen = self.create_screen(cols=80, lines=24, scrollback=2000)
+        screen.resize(50, 200)
+        lines_when_child_ready = []
+        child = SimpleNamespace(mark_terminal_ready=lambda: lines_when_child_ready.append(len(as_text(screen, add_history=True).splitlines())))
+        w = SimpleNamespace(
+            id=1, screen=screen, child=child, child_is_launched=False, restored_scrollback=scrollback_for_restore(src), notify_child_of_resize=lambda: None
+        )
+        boss = SimpleNamespace(child_monitor=SimpleNamespace(resize_pty=lambda *a: None), args=SimpleNamespace(debug_rendering=False))
+        with patch('kitty.window.get_boss', return_value=boss):
+            Window.resize_child(cast(Window, w), (50, 200, 2000, 1000))
+        restored = as_text(screen, add_history=True).splitlines()
+        self.ae((len(restored), restored[0][:4], w.restored_scrollback), (1900, '0000', b''))
+        self.ae(lines_when_child_ready, [1900])
+
+        # Failing to parse the restored output does not prevent the child from running
+        def fail(data: bytes) -> None:
+            raise RuntimeError('failed')
+
+        w.child_is_launched, w.restored_scrollback, w.screen = False, b'x', SimpleNamespace(parse_child_output=fail)
+        del self.error_messages[:]
+        with patch('kitty.window.get_boss', return_value=boss):
+            Window.resize_child(cast(Window, w), (50, 200, 2000, 1000))
+        self.ae((w.child_is_launched, w.restored_scrollback, len(lines_when_child_ready)), (True, b'', 2))
+        self.assertIn('RuntimeError: failed', ''.join(self.error_messages))
+
+        # Prompt marks in restored output are not reported as commands being run in the window
+        calls: list[Any] = []
+        w = SimpleNamespace(child_is_launched=False, last_cmd_cmdline='', handle_cmd_end=lambda *a: calls.append(a))
+        Window.cmd_output_marking(cast(Window, w), True, 'ls')
+        Window.cmd_output_marking(cast(Window, w), False)
+        self.ae((calls, w.last_cmd_cmdline), ([], ''))
+        w.child_is_launched = True
+        Window.cmd_output_marking(cast(Window, w), False)
+        self.ae(calls, [('',)])
+
+        # The shell prompt the cursor is at is not restored, since the restored shell shows a new one
+        def restored_lines(data: bytes, lines: int = 6) -> list[str]:
+            src = self.create_screen(cols=20, lines=lines, scrollback=50)
+            parse_bytes(src, data)
+            dest = self.create_screen(cols=20, lines=lines, scrollback=50)
+            dest.parse_child_output(scrollback_for_restore(src))
+            return as_text(dest, add_history=True).rstrip('\n').splitlines()
+
+        prompt, output = b'\x1b]133;A\x07', b'\x1b]133;C\x07'
+        self.ae(restored_lines(prompt + b'$ ls\r\n' + output + b'a\r\nb\r\n' + prompt + b'$ partial'), ['$ ls', 'a', 'b'])
+        two_line_prompt = prompt + b'~/project on main\r\n$ '
+        self.ae(restored_lines(two_line_prompt + b'ls\r\n' + output + b'a\r\n' + two_line_prompt), ['~/project on main', '$ ls', 'a'])
+        many = b''.join(b'%d\r\n' % i for i in range(10))
+        self.ae(restored_lines(prompt + b'$ seq\r\n' + output + many + prompt + b'$ ', lines=4), ['$ seq'] + [str(i) for i in range(10)])
+        # A running command is restored with all its output
+        self.ae(restored_lines(prompt + b'$ tail -f log\r\n' + output + b'a\r\nb'), ['$ tail -f log', 'a', 'b'])
+        # Output larger than the parser buffer
+        big = self.create_screen(cols=80, lines=4, scrollback=50000)
+        big.parse_child_output(b''.join(b'%05d %s\r\n' % (i, b'x' * 70) for i in range(40000)))
+        self.ae(as_text(big, add_history=True).splitlines()[-1], '39999 ' + 'x' * 70)
+
     def test_session_discovery(self):
         from unittest.mock import patch
 

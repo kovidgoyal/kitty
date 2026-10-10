@@ -7025,6 +7025,11 @@ cursor_at_prompt(Screen *self, PyObject *args UNUSED) {
 }
 
 static PyObject *
+cursor_prompt_line(Screen *self, PyObject *args UNUSED) {
+    return PyLong_FromLong(screen_cursor_at_a_shell_prompt(self));
+}
+
+static PyObject *
 ime_text_around_cursor(Screen *self, PyObject *a UNUSED) {
     char *before, *after;
     if (!screen_ime_text_around_cursor(self, &before, &after)) return PyErr_NoMemory();
@@ -7107,6 +7112,33 @@ test_parse_written_data(Screen *screen, PyObject *args) {
     if (!PyArg_ParseTuple(args, "|O", &pd.dump_callback)) return NULL;
     if (pd.dump_callback && pd.dump_callback != Py_None) parse_worker_dump(screen, &pd, true);
     else parse_worker(screen, &pd, true);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+parse_child_output(Screen *self, PyObject *data) {
+    // Parse data as though it was output by the child, used to restore saved scrollback. Must only be called before the child
+    // is marked as ready to run, as the I/O thread does not allow anyone else to write to the parser buffer while there is output
+    // from the child.
+    RAII_PY_BUFFER(buf);
+    if (PyObject_GetBuffer(data, &buf, PyBUF_SIMPLE) != 0) return NULL;
+    const uint8_t *src = buf.buf;
+    size_t remaining = buf.len;
+    ParseData pd = {.now = monotonic()};
+    while (remaining) {
+        size_t space;
+        uint8_t *dest = vt_parser_create_write_buffer(self->vt_parser, &space);
+        const size_t sz = MIN(space, remaining);
+        if (sz) memcpy(dest, src, sz);
+        vt_parser_commit_write(self->vt_parser, sz);
+        if (!sz) {
+            PyErr_SetString(PyExc_RuntimeError, "No space in the parser buffer");
+            return NULL;
+        }
+        src += sz;
+        remaining -= sz;
+        parse_worker(self, &pd, true);
+    }
     Py_RETURN_NONE;
 }
 
@@ -7210,6 +7242,8 @@ static PyMethodDef methods[] = {
     METHODB(test_commit_write_buffer, METH_VARARGS),
     METHODB(test_parse_written_data, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
+    METHODB(parse_child_output, METH_O),
+    METHODB(cursor_prompt_line, METH_NOARGS),
     MND(overlay_line_start, METH_NOARGS) MND(line_edge_colors, METH_NOARGS) MND(ime_text_around_cursor, METH_NOARGS) MND(line, METH_O)
         MND(dump_lines_with_attrs, METH_VARARGS) MND(cpu_cells, METH_VARARGS)
             MND(cursor_at_prompt, METH_NOARGS){"visual_line", (PyCFunction)pyvisual_line, METH_VARARGS, ""},

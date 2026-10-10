@@ -57,7 +57,7 @@ from .fonts.render import dump_font_debug, set_font_family
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
-from .session import create_sessions, get_os_window_sizing_data
+from .session import Session, create_sessions, get_os_window_sizing_data, remove_sessions_saved_at_logout, sessions_saved_at_logout
 from .shaders.slang import load_shader_programs
 from .types import LayerShellConfig
 from .utils import (
@@ -299,13 +299,20 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         grab_keyboard(True)
     with cached_values_for(run_app.cached_values_name) as cached_values:
         startup_session_error: tuple[Exception, str] | None = None
-        try:
-            startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
-        except Exception as e:
-            startup_session_error = (e, (getattr(args, 'session', '') or opts.startup_session or ''))
-            if getattr(args, 'session', ''):
-                args.session = ''
-            startup_sessions = tuple(create_sessions(opts, args))
+        startup_sessions: tuple[Session, ...] = ()
+        if not _is_panel_kitten:
+            if not opts.restore_session_after_logout:
+                remove_sessions_saved_at_logout()
+            elif not args.session and not args.args and not getattr(sys, 'cmdline_args_for_open', None):
+                startup_sessions = sessions_saved_at_logout(opts)
+        if not startup_sessions:
+            try:
+                startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
+            except Exception as e:
+                startup_session_error = (e, (getattr(args, 'session', '') or opts.startup_session or ''))
+                if getattr(args, 'session', ''):
+                    args.session = ''
+                startup_sessions = tuple(create_sessions(opts, args))
         if not _is_panel_kitten and not is_wayland():
             if opts.remember_window_position:
                 cached_workarea = tuple(tuple(x) for x in cached_values.get('monitor-workarea', ()))

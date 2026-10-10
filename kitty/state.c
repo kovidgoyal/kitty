@@ -1234,12 +1234,15 @@ PYWRAP1(set_application_quit_request) {
     CloseRequest cr = IMPERATIVE_CLOSE_REQUESTED;
     PA("|i", &cr);
     global_state.quit_request = cr;
+    if (cr == NO_CLOSE_REQUESTED) global_state.quit_requested_for_logout = false;
     global_state.has_pending_closes = true;
     request_tick_callback();
     Py_RETURN_NONE;
 }
 
 PYWRAP0(current_application_quit_request) { return Py_BuildValue("i", global_state.quit_request); }
+
+PYWRAP0(application_quit_requested_for_logout) { return PyBool_FromLong(global_state.quit_requested_for_logout); }
 
 PYWRAP1(focus_os_window) {
     id_type os_window_id;
@@ -2085,6 +2088,7 @@ static PyMethodDef module_methods[] = {
     MW(mark_os_window_for_close, METH_VARARGS),
     MW(set_application_quit_request, METH_VARARGS),
     MW(current_application_quit_request, METH_NOARGS),
+    MW(application_quit_requested_for_logout, METH_NOARGS),
     MW(set_os_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_VARARGS),

@@ -378,7 +378,9 @@ class Tab:  # {{{
                     target_tab=target_tab,
                     force_target_tab=True,
                     startup_command_via_shell_integration=window.run_command_at_shell_startup,
+                    restored_scrollback=window.restored_scrollback,
                 )
+                window.restored_scrollback = b''  # no longer needed, so free the memory
                 if launched_window is not None:
                     launched_window.serialized_id = window.serialized_id
             if launched_window is not None:
@@ -910,6 +912,7 @@ class Tab:  # {{{
         startup_command_via_shell_integration: Sequence[str] | str = (),
         dock: DockSpec | None = None,
         dock_owner: WindowGroup | None = None,
+        restored_scrollback: bytes = b'',
     ) -> Window:
         "Create a new window. When dock is specified, the window is docked to dock_owner or to the tab if dock_owner is None."
         cs = WindowCreationSpec(
@@ -958,6 +961,7 @@ class Tab:  # {{{
             remote_control_passwords=remote_control_passwords,
         )
         window.creation_spec = cs
+        window.restored_scrollback = restored_scrollback
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self._add_window(

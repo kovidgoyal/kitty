@@ -844,6 +844,9 @@ def set_application_quit_request(cr_type: int = 2) -> None:
 def current_application_quit_request() -> int:
     pass
 
+def application_quit_requested_for_logout() -> bool:
+    pass
+
 def global_font_size(val: float = -1.0) -> float:
     pass
 
@@ -1116,6 +1119,9 @@ class Screen:
     def cursor_at_prompt(self) -> bool:
         pass
 
+    def cursor_prompt_line(self) -> int:
+        pass
+
     def ignore_bells_for(self, duration: float = 1) -> None:
         pass
 
@@ -1132,6 +1138,9 @@ class Screen:
         pass
 
     def draw(self, text: str) -> None:
+        pass
+
+    def parse_child_output(self, data: bytes) -> None:
         pass
 
     def dump_lines_with_attrs(self, acc: Callable[[str], None], which_screen: int = -1) -> None:

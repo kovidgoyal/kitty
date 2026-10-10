@@ -79,6 +79,7 @@ from .fast_data_types import (
     KeyEvent,
     SingleKey,
     add_timer,
+    application_quit_requested_for_logout,
     apply_options_update,
     background_opacity_of,
     change_background_opacity,
@@ -150,6 +151,7 @@ from .session import (
     goto_session,
     most_recent_session,
     save_as_session,
+    save_session_at_logout,
 )
 from .shaders.slang import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
@@ -2480,7 +2482,9 @@ class Boss:
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
             if not self._call_on_quit_watchers({'confirmed': True}):
+                set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
+            self.save_session_if_logging_out()
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
@@ -2496,6 +2500,7 @@ class Boss:
                         return
             return
         if not self._call_on_quit_watchers({'confirmed': False}):
+            set_application_quit_request(NO_CLOSE_REQUESTED)
             return
         msg = msg or _('It has {} windows.').format(num)
         w = self.confirm(_('Are you sure you want to quit kitty?') + ' ' + msg, self.handle_quit_confirmation, window=active_window, title=_('Quit kitty?'))
@@ -2508,7 +2513,19 @@ class Boss:
             if not self._call_on_quit_watchers({'confirmed': True}):
                 set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
+            self.save_session_if_logging_out()
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
+
+    def save_session_if_logging_out(self) -> None:
+        from .main import is_panel_kitten
+
+        if get_options().restore_session_after_logout and application_quit_requested_for_logout() and not is_panel_kitten():
+            try:
+                save_session_at_logout(self)
+            except Exception:
+                import traceback
+
+                log_error('Failed to save the session at logout with error:\n' + traceback.format_exc())
 
     def notify_on_os_window_death(self, address: str) -> None:
         import socket
