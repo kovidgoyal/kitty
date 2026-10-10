@@ -61,8 +61,8 @@ linear2srgb(float3 x) { // vector
 
 uniform Sampler2D backbuffer, a, b, persist;
 
-// Must match POINTER_MAP_SIZE in state.h
-static const float POINTER_MAP_SIZE = 64;
+// The size of the pointer map grid, POINTER_MAP_SIZE is defined by kitty from state.h when compiling
+static const float pointer_map_size = POINTER_MAP_SIZE;
 
 // Where the content visible at pos actually is, as decided by the pointer_map()
 // functions of the shaders that move content around
@@ -78,7 +78,7 @@ pipeline_pointer_map(float2 pos) {
 float4
 encode_pointer_map(float2 texel_pos) {
     // Spread the texels so that the first and last ones land exactly on the edges
-    float2 pos = (texel_pos * POINTER_MAP_SIZE - 0.5f) / (POINTER_MAP_SIZE - 1.f);
+    float2 pos = (texel_pos * pointer_map_size - 0.5f) / (pointer_map_size - 1.f);
     float2 q = round(saturate(pipeline_pointer_map(pos)) * 65535.f);
     float2 hi = floor(q / 256.f);
     return float4(hi / 255.f, (q - hi * 256.f) / 255.f);

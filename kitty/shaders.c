@@ -3417,7 +3417,6 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
             free_custom_shader_pipeline(&custom_shaders.end);
             zero_at_ptr(&custom_shaders.end);
             custom_shaders.generation++;
-            free_pointer_map_target();
         }
         if (program->id != 0) {
             glDeleteProgram(program->id);

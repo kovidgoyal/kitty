@@ -395,6 +395,10 @@ Detailed list of changes
   screen no longer misplaces clicks, see :ref:`custom_shader_pointer_map`
   (:pull:`10639`)
 
+- Custom shaders: Fix pipeline :code:`var` directives being silently ignored
+  when the shader declares the variable over multiple lines or with a
+  different type
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -501,7 +501,7 @@ typedef struct BackgroundImageRenderSettings {
 } BackgroundImageRenderSettings;
 
 #define MAX_CUSTOM_SHADER_GROUPS 16
-// Must match POINTER_MAP_SIZE in pipeline.slang
+// Passed to the custom shader pipeline as a preprocessor define by slang.py
 #define POINTER_MAP_SIZE 64
 
 // Summary of the custom shader animation state machine, cached once per frame
@@ -809,6 +809,7 @@ monotonic_t update_custom_shader_animations(unsigned event_mask, monotonic_t now
 void init_shader_animation_state(OSWindow *os_window);
 bool custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, unsigned event_mask, monotonic_t now);
 void map_pointer_position(const OSWindow *os_window, double *x, double *y);
+void set_os_window_mouse_position(OSWindow *window, double x, double y);
 void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling);
 bool current_framebuffer_is_ok(void);

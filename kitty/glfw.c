@@ -609,8 +609,8 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
 
 // Sets the mouse position from window co-ordinates, converting to viewport
 // pixels and then to where custom shaders actually show the content under it
-static void
-set_mouse_position(OSWindow *window, double x, double y) {
+void
+set_os_window_mouse_position(OSWindow *window, double x, double y) {
     window->mouse_x = x * window->viewport_x_ratio;
     window->mouse_y = y * window->viewport_y_ratio;
     map_pointer_position(window, &window->mouse_x, &window->mouse_y);
@@ -624,7 +624,7 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
     monotonic_t now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     const double old_mouse_x = global_state.callback_os_window->mouse_x, old_mouse_y = global_state.callback_os_window->mouse_y;
-    set_mouse_position(global_state.callback_os_window, x, y);
+    set_os_window_mouse_position(global_state.callback_os_window, x, y);
     // focus_follows_mouse should react to the mouse moving, not to a window
     // appearing under a stationary cursor (such as when returning to this
     // desktop/space). Detect genuine motion by comparing against the last
@@ -651,7 +651,7 @@ refresh_mouse_position_for_hit_test(GLFWwindow *w, OSWindow *window) {
         // Query the current position for discrete pointer events without emitting a move event.
         double x, y;
         glfwGetCursorPos(w, &x, &y);
-        set_mouse_position(window, x, y);
+        set_os_window_mouse_position(window, x, y);
         return true;
     }
 #else
@@ -689,7 +689,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
             if (!position_was_refreshed) {
                 double x, y;
                 glfwGetCursorPos(w, &x, &y);
-                set_mouse_position(window, x, y);
+                set_os_window_mouse_position(window, x, y);
             }
             if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
         }
@@ -707,7 +707,7 @@ on_mouse_position_update(double x, double y) {
     global_state.callback_os_window->cursor_blink_zero_time = now;
     global_state.callback_os_window->user_is_idle = false;
     global_state.callback_os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
-    set_mouse_position(global_state.callback_os_window, x, y);
+    set_os_window_mouse_position(global_state.callback_os_window, x, y);
     global_state.callback_os_window->has_received_cursor_pos_event = true;
     if (is_window_ready_for_callbacks()) mouse_event(-1, global_state.mods_at_last_key_or_button_event, -1);
     request_tick_callback();
@@ -784,7 +784,7 @@ touch_move_mouse(OSWindow *osw, double x, double y, int mods) {
     osw->cursor_blink_zero_time = now;
     osw->user_is_idle = false;
     osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
-    set_mouse_position(osw, x, y);
+    set_os_window_mouse_position(osw, x, y);
     osw->has_received_cursor_pos_event = true;
     if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
 }
@@ -1155,11 +1155,9 @@ drop_dest_callback(GLFWwindow *window, GLFWDropEvent *ev) {
         case GLFW_DROP_MOVE:
             global_state.drop_dest.drop_has_happened = false;
             global_state.drop_dest.os_window_id = os_window->id;
-            double drag_x = ev->xpos * os_window->viewport_x_ratio, drag_y = ev->ypos * os_window->viewport_y_ratio;
-            map_pointer_position(os_window, &drag_x, &drag_y);
-            os_window->last_drag_event.x = (int)drag_x;
-            os_window->last_drag_event.y = (int)drag_y;
             on_mouse_position_update(ev->xpos, ev->ypos);
+            os_window->last_drag_event.x = (int)os_window->mouse_x;
+            os_window->last_drag_event.y = (int)os_window->mouse_y;
             // Re-evaluate which kitty window is now under the cursor after the
             // position update, so that drag enter/leave events are sent to the
             // correct kitty window when the drag crosses a kitty window boundary

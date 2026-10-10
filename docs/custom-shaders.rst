@@ -191,13 +191,19 @@ content shown at a given position actually is::
     }
 
 ``pos`` and the return value are in the same UV co-ordinates as ``t.pos``.
-kitty evaluates the function on a grid when the pipeline is loaded and when the
-OS Window is resized, and uses it to move all pointer events, so it must not
-depend on time or on the mouse position. Only shaders in groups that draw to
-the screen and are always active, that is, without ``animation_start``,
-``attach`` or ``output_texture``, are used, since only they move content
-permanently. When several shaders define it, they are applied starting from the
-last one to run. Note that :code:`d.mouse_pos` contains the mapped position.
+The function must be ``public`` and return ``float2``. kitty evaluates it on a
+grid only when the pipeline is loaded and when the OS Window is resized, and
+uses it to move all pointer events, so the only field of ``d`` it may use is
+``d.viewport_size_pixels``. Only shaders in groups that draw to the whole
+screen and are always active, that is, without ``animation_start``,
+``attach``, ``output_texture``, ``viewport_pos`` or ``viewport_size``, are
+used, since only they move content permanently. When several shaders define
+it, they are applied starting from the last one to run.
+
+Note that :code:`d.mouse_pos` then contains the mapped position, that is, the
+position of the content under the mouse before it was moved. Effects that draw
+at the mouse position line up with the pointer when they run before the shader
+that moves content, not after it.
 
 .. _custom_shader_pipeline:
 

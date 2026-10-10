@@ -48,6 +48,7 @@ from kitty.fast_data_types import (
     MARK_MASK,
     MAX_CUSTOM_SHADER_GROUPS,
     PADDING_PROGRAM,
+    POINTER_MAP_SIZE,
     REVERSE,
     ROUNDED_RECT_PROGRAM,
     SCREENSHOT_PROGRAM,
@@ -334,6 +335,326 @@ class LoadShaderPrograms:
 load_shader_programs = LoadShaderPrograms()
 
 
+# Querying shader source {{{
+# A lexer and a parser for just the top level declarations of Slang source, so
+# that questions such as "does this shader define a function" are not fooled by
+# comments, strings, formatting or the contents of function bodies.
+
+
+class TokenType(StrEnum):
+    identifier = auto()
+    number = auto()
+    string = auto()
+    punctuation = auto()
+    directive = auto()
+    comment = auto()
+
+
+class Token(NamedTuple):
+    type: TokenType
+    text: str
+    start: int  # offsets into the source
+    end: int
+
+
+@run_once
+def slang_token_pat() -> re.Pattern[str]:
+    return re.compile(
+        r"""
+          (?P<ws>\s+)
+        | (?P<comment>//[^\n]*|/\*[\s\S]*?(?:\*/|\Z))
+        | (?P<directive>\#(?:\\\r?\n|[^\n])*)
+        | (?P<string>"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')
+        | (?P<number>(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?[A-Za-z0-9_]*)
+        | (?P<identifier>[A-Za-z_][A-Za-z0-9_]*)
+        | (?P<punctuation>::|->|.)
+        """,
+        re.VERBOSE,
+    )
+
+
+def tokenize_slang(src: str) -> Iterator[Token]:
+    for m in slang_token_pat().finditer(src):
+        kind = m.lastgroup
+        if kind == 'ws':
+            continue
+        start, end = m.span()
+        if kind == 'directive' and src[src.rfind('\n', 0, start) + 1 : start].strip():
+            # A # that is not the first thing on its line is not a directive
+            end = start + 1
+            yield Token(TokenType.punctuation, '#', start, end)
+            # Lex the rest of the line normally
+            for t in tokenize_slang(src[end : m.end()]):
+                yield t._replace(start=t.start + end, end=t.end + end)
+            continue
+        yield Token(TokenType(kind), src[start:end], start, end)
+
+
+# Keywords that can precede the type in a declaration
+DECLARATION_MODIFIERS = frozenset(
+    (
+        'public',
+        'private',
+        'internal',
+        'static',
+        'const',
+        'extern',
+        'export',
+        'inline',
+        'uniform',
+        'groupshared',
+        'precise',
+        'nointerpolation',
+        'in',
+        'out',
+        'inout',
+    )
+)
+# Declarations whose body is not code
+NON_CODE_DECLARATIONS = frozenset(('struct', 'class', 'enum', 'interface', 'extension', 'namespace', 'cbuffer', 'typedef', 'typealias', 'using', '__generic'))
+CLOSING_BRACKETS = {'(': ')', '[': ']', '{': '}'}
+
+
+class SlangAttribute(NamedTuple):
+    name: str  # for example: shader
+    args: tuple[str, ...]  # for example: ('vertex',) with string quotes removed
+
+
+class SlangFunction(NamedTuple):
+    name: str
+    return_type: str  # without whitespace, for example: vector<float,2>
+    modifiers: frozenset[str]
+    attributes: tuple[SlangAttribute, ...]
+    has_body: bool
+
+    def returns(self, *types: str) -> bool:
+        return self.return_type in types
+
+
+class SlangVariable(NamedTuple):
+    name: str
+    type: str  # without whitespace
+    modifiers: frozenset[str]
+    declaration: str  # the source of the whole declaration
+    type_start: int  # offset of the type in the source
+    end: int  # offset of the terminating semi-colon in the source, or the end of the declaration if there is none
+
+
+class SlangDeclarations(NamedTuple):
+    module: str = ''
+    imports: tuple[str, ...] = ()
+    functions: tuple[SlangFunction, ...] = ()
+    variables: tuple[SlangVariable, ...] = ()
+    comments: tuple[str, ...] = ()
+
+    def function(self, name: str) -> SlangFunction | None:
+        for f in self.functions:
+            if f.name == name and f.has_body:
+                return f
+        for f in self.functions:
+            if f.name == name:
+                return f
+        return None
+
+    def variable(self, name: str) -> SlangVariable | None:
+        for v in self.variables:
+            if v.name == name:
+                return v
+        return None
+
+
+class _Item(NamedTuple):
+    # A single token or a bracketed group of tokens at the top level of a declaration
+    first: Token
+    last: Token
+
+    @property
+    def text(self) -> str:
+        return self.first.text
+
+    @property
+    def is_group(self) -> bool:
+        return self.first is not self.last
+
+
+def parse_slang_declarations(src: str) -> SlangDeclarations:
+    """Parse the top level declarations in Slang source. Preprocessor directives
+    are ignored, use SlangShaderQuery to see the source as the compiler does."""
+    tokens: list[Token] = []
+    comments: list[str] = []
+    for t in tokenize_slang(src):
+        if t.type is TokenType.comment:
+            comments.append(t.text)
+        elif t.type is not TokenType.directive:
+            tokens.append(t)
+    module = ''
+    imports: list[str] = []
+    functions: list[SlangFunction] = []
+    variables: list[SlangVariable] = []
+
+    def group_end(i: int) -> int:
+        # Index of the token closing the bracket at i, or of the last token if unbalanced
+        stack = [CLOSING_BRACKETS[tokens[i].text]]
+        for j in range(i + 1, len(tokens)):
+            text = tokens[j].text
+            if tokens[j].type is TokenType.punctuation:
+                if text in CLOSING_BRACKETS:
+                    stack.append(CLOSING_BRACKETS[text])
+                elif text == stack[-1]:
+                    stack.pop()
+                    if not stack:
+                        return j
+        return len(tokens) - 1
+
+    def joined(items: Iterable[_Item]) -> str:
+        return ''.join(''.join(src[it.first.start : it.last.end].split()) for it in items)
+
+    def parse_attribute(start: int, end: int) -> SlangAttribute:
+        inner = tokens[start + 1 : end]
+        name = inner[0].text if inner and inner[0].type is TokenType.identifier else ''
+        args = tuple(t.text[1:-1] if t.type is TokenType.string else t.text for t in inner[1:] if t.type is not TokenType.punctuation)
+        return SlangAttribute(name, args)
+
+    def finish(items: list[_Item], attributes: list[SlangAttribute], terminator: Token | None) -> None:
+        nonlocal module
+        if not items:
+            return
+        head = items[0].text
+        if head == 'module':
+            module = joined(items[1:])
+            return
+        if head in ('import', '__import'):
+            imports.append(joined(items[1:]))
+            return
+        if head in NON_CODE_DECLARATIONS:
+            return
+        eq = next((i for i, it in enumerate(items) if not it.is_group and it.text == '='), len(items))
+        paren = next((i for i, it in enumerate(items[:eq]) if it.is_group and it.text == '('), -1)
+        if paren > 0:
+            name_idx = paren - 1
+            if items[name_idx].text == '>':  # generic function: name<T>(...)
+                depth = 0
+                while name_idx >= 0:
+                    depth += {'>': 1, '<': -1}.get(items[name_idx].text, 0)
+                    if depth == 0:
+                        break
+                    name_idx -= 1
+                name_idx -= 1
+            if name_idx < 0 or items[name_idx].first.type is not TokenType.identifier:
+                return
+            before = items[:name_idx]
+            functions.append(
+                SlangFunction(
+                    items[name_idx].text,
+                    joined(it for it in before if it.text not in DECLARATION_MODIFIERS),
+                    frozenset(it.text for it in before if it.text in DECLARATION_MODIFIERS),
+                    tuple(attributes),
+                    any(it.is_group and it.text == '{' for it in items[paren + 1 :]),
+                )
+            )
+            return
+        name_idx = next((i for i in range(eq - 1, -1, -1) if items[i].first.type is TokenType.identifier), -1)
+        if name_idx < 0:
+            return
+        type_items = [it for it in items[:name_idx] if it.text not in DECLARATION_MODIFIERS]
+        if not type_items:
+            return
+        end = terminator.start if terminator else items[-1].last.end
+        variables.append(
+            SlangVariable(
+                items[name_idx].text,
+                joined(type_items),
+                frozenset(it.text for it in items[:name_idx] if it.text in DECLARATION_MODIFIERS),
+                src[items[0].first.start : terminator.end if terminator else end],
+                type_items[0].first.start,
+                end,
+            )
+        )
+
+    items: list[_Item] = []
+    attributes: list[SlangAttribute] = []
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t.type is TokenType.punctuation:
+            if t.text == ';':
+                finish(items, attributes, t)
+                items, attributes = [], []
+                i += 1
+                continue
+            if t.text in CLOSING_BRACKETS:
+                j = group_end(i)
+                if t.text == '[' and not items:
+                    attributes.append(parse_attribute(i, j))
+                else:
+                    items.append(_Item(t, tokens[j]))
+                i = j + 1
+                if t.text == '{' and not any(not it.is_group and it.text == '=' for it in items):
+                    # The end of a function or struct definition, as opposed to an initializer list
+                    finish(items, attributes, None)
+                    items, attributes = [], []
+                    if i < len(tokens) and tokens[i].text == ';':
+                        i += 1
+                continue
+            if t.text in (')', ']', '}'):  # unbalanced, ignore
+                i += 1
+                continue
+        items.append(_Item(t, t))
+        i += 1
+    finish(items, attributes, None)
+    return SlangDeclarations(module, tuple(imports), tuple(functions), tuple(variables), tuple(comments))
+
+
+class SlangShaderQuery:
+    """Answers questions about the declarations in a shader as the compiler sees
+    them, that is, after preprocessing. Running the preprocessor needs slangc
+    and so is done only when the answer could depend on it."""
+
+    def __init__(self, src: bytes, name: str = '', include_dirs: Iterable[str] = (), invocation_tracker: set[tuple[str, ...]] | None = None):
+        self.src, self.name, self.include_dirs, self.invocation_tracker = src, name, tuple(include_dirs), invocation_tracker
+        self._identifiers: frozenset[str] | None = None
+        self._preprocessed: SlangDeclarations | None = None
+
+    @property
+    def identifiers(self) -> frozenset[str]:
+        "All identifiers in the source outside comments, including those in preprocessor directives"
+        if self._identifiers is None:
+            ans: set[str] = set()
+            q = [self.src.decode()]
+            while q:
+                for t in tokenize_slang(q.pop()):
+                    if t.type is TokenType.identifier:
+                        ans.add(t.text)
+                    elif t.type is TokenType.directive:
+                        q.append(t.text[1:])
+            self._identifiers = frozenset(ans)
+        return self._identifiers
+
+    @property
+    def preprocessed(self) -> SlangDeclarations:
+        if self._preprocessed is None:
+            cmd = list(slangc()) + ['-lang', 'slang', '-E']
+            for x in self.include_dirs:
+                cmd += ['-I', x]
+            cmd += ['--', '-']
+            if self.invocation_tracker is not None:
+                self.invocation_tracker.add(tuple(cmd))
+            cp = subprocess.run(cmd, input=self.src, capture_output=True)
+            if cp.returncode != 0:
+                raise SlangFailed(self.name or 'shader', cp)
+            self._preprocessed = parse_slang_declarations(cp.stdout.decode())
+        return self._preprocessed
+
+    def function(self, name: str) -> SlangFunction | None:
+        "The function with the specified name defined at the top level of the shader, if any"
+        if name not in self.identifiers:  # avoid running the preprocessor
+            return None
+        return self.preprocessed.function(name)
+
+
+# }}}
+
+
 class SlangFile(NamedTuple):
     path: str = ''
     text: str = ''
@@ -414,52 +735,30 @@ class SlangFile(NamedTuple):
 
 
 def parse_slang_text(src_code: str, path: str = '') -> SlangFile:
-    text = re.sub(r'/\*[\s\S]*?\*/', '', src_code)
-    entry_points, imports = [], set()
-    module = ''
-    found_entry_point = ''
-    specializable_variables = {}
+    decls = parse_slang_declarations(src_code)
+    entry_points = []
+    for func in decls.functions:
+        for attr in func.attributes:
+            if attr.name == 'shader' and attr.args:
+                match attr.args[0]:
+                    case 'vertex':
+                        entry_points.append(EntryPoint(Stage.vertex, func.name))
+                    case 'fragment' | 'pixel':
+                        entry_points.append(EntryPoint(Stage.fragment, func.name))
+    specializable_variables = {v.name: v.declaration for v in decls.variables if {'extern', 'static', 'const'} <= v.modifiers}
     disable_warnings = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith('//'):
-            if line.startswith('// warnings-disable: '):
-                words = line.split()
-                for word in words[2:]:
-                    for w in word.split(','):
-                        disable_warnings.append(w)
-            continue
-        words = line.split()
-        if found_entry_point:
-            if words[0].startswith('['):  # ]
-                continue
-            for q in words:
-                if '(' in q:
-                    name = q.partition('(')[0]  # ))
-                    match found_entry_point:
-                        case 'vertex':
-                            entry_points.append(EntryPoint(Stage.vertex, name))
-                        case 'fragment' | 'pixel':
-                            entry_points.append(EntryPoint(Stage.fragment, name))
-                    found_entry_point = ''
-                    break
-        else:
-            match words[0]:
-                case 'module':
-                    module = words[1].removesuffix(';')
-                case 'import':
-                    imports.add(words[1].removesuffix(';'))
-                case 'extern':
-                    if len(words) > 3 and words[1:3] == ['static', 'const']:
-                        specializable_variables[line.partition('=')[0].split()[-1].rstrip(';')] = line
-                case _:
-                    if words[0].startswith('[shader('):  # ])
-                        text = words[0].partition('(')[2].partition(')')[0].strip()
-                        found_entry_point = text[1:-1]
+    for comment in decls.comments:
+        if comment.startswith('// warnings-disable: '):
+            for word in comment.split()[2:]:
+                disable_warnings.extend(word.split(','))
     return SlangFile(
-        path, src_code, frozenset(imports), frozenset(entry_points), module, MappingProxyType(specializable_variables), frozenset(disable_warnings)
+        path,
+        src_code,
+        frozenset(decls.imports),
+        frozenset(entry_points),
+        decls.module,
+        MappingProxyType(specializable_variables),
+        frozenset(disable_warnings),
     )
 
 
@@ -1241,11 +1540,18 @@ def parse_var_directive(parts: list[str]) -> tuple[str, str, str]:
 
 
 def apply_pipeline_specializations(src: bytes, merged_vars: dict[str, tuple[str, str]]) -> bytes:
-    for var_name, (var_type, value) in merged_vars.items():
-        # Replace: static const <any_type> <name> = <default>; → static const <type> <name> = <value>;
-        pattern = rf'(?m)^(\s*)static\s+const\s+{re.escape(var_type)}\s+{re.escape(var_name)}\s*=.+'
-        src = re.sub(pattern.encode(), rf'\g<1>static const {var_type} {var_name} = {value};'.encode(), src)
-    return src
+    if not merged_vars:
+        return src
+    text = src.decode()
+    # Replace: static const <any_type> <name> = <default>; → static const <type> <name> = <value>;
+    replacements = sorted(
+        (v.type_start, v.end, f'{merged_vars[v.name][0]} {v.name} = {merged_vars[v.name][1]}')
+        for v in parse_slang_declarations(text).variables
+        if v.name in merged_vars and {'static', 'const'} <= v.modifiers and 'extern' not in v.modifiers
+    )
+    for start, end, replacement in reversed(replacements):
+        text = text[:start] + replacement + text[end:]
+    return text.encode()
 
 
 class Group(TypedDict):
@@ -1430,28 +1736,48 @@ def merge_pipelines(pipelines: list[Pipeline]) -> Pipeline:
     }
 
 
-@run_once
-def pointer_map_pat() -> re.Pattern[bytes]:
-    return re.compile(rb'\bfloat2\s+pointer_map\s*\(')
+def group_moves_content(group: Group) -> bool:
+    "Whether whatever the shaders in a group do to the content is visible on the whole screen at all times"
+    return (
+        not group['animation_start']
+        and not group['attached']
+        and group['output_texture'] is NamedTexture.default
+        and group['viewport_pos'] == (0, 0)
+        and group['viewport_size'] == (1, 1)
+    )
 
 
-def pointer_map_shaders(pipeline: Pipeline) -> tuple[tuple[int, int], ...]:
+def pointer_map_shaders(pipeline: Pipeline, defines_pointer_map: Callable[[int, int], bool]) -> tuple[tuple[int, int], ...]:
     """The (group, shader) indices of the shaders whose pointer_map() decides
     where pointer events land, in the order they must be applied. Only groups
-    that are always active and draw to the screen move content permanently, so
-    only they count. The last shader to run decides what is visible at a given
-    position, so it is applied first."""
+    that draw to the whole screen and are always active move content
+    permanently, so only they count. The last shader to run decides what is
+    visible at a given position, so it is applied first. defines_pointer_map()
+    is called with the (group, shader) indices of the shaders that count."""
     ans: list[tuple[int, int]] = []
     for g_idx, group in enumerate(pipeline['groups']):
-        if group['animation_start'] or group['attached'] or group['output_texture'] is not NamedTexture.default:
-            continue
-        for s_idx, name in enumerate(group['shaders']):
-            if pointer_map_pat().search(custom_shader(name, group['pipeline_dir'])[2]) is not None:
-                ans.append((g_idx, s_idx))
+        if group_moves_content(group):
+            ans.extend((g_idx, s_idx) for s_idx in range(len(group['shaders'])) if defines_pointer_map(g_idx, s_idx))
     return tuple(reversed(ans))
 
 
-def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocation_tracker: set[tuple[str, ...]]) -> tuple[tuple[str, ...], str]:
+def defines_pointer_map(query: SlangShaderQuery) -> bool:
+    if (func := query.function('pointer_map')) is None or not func.has_body:
+        return False
+    if 'public' not in func.modifiers:
+        raise ValueError(f'The pointer_map() function in the shader {query.name} must be declared public')
+    if not func.returns('float2', 'vector<float,2>'):
+        raise ValueError(f'The pointer_map() function in the shader {query.name} must return float2 not {func.return_type}')
+    return True
+
+
+class PipelineIR(NamedTuple):
+    import_dirs: tuple[str, ...]
+    module_path: str
+    pointer_map_shaders: tuple[tuple[int, int], ...]
+
+
+def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocation_tracker: set[tuple[str, ...]]) -> PipelineIR:
     slot = pipeline['slot']
     slot_module_name = f'{slot.replace("-", "_")}'
     cache_dir = os.path.join(cache_dir, 'c')
@@ -1486,7 +1812,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         mtime = max(mtime, os.stat(ct_key_path).st_mtime_ns)
         types_rebuilt = True
 
-    slot_key_parts: list[str | bytes] = [json.dumps(pipeline, sort_keys=True), get_custom_shader_src('pipeline')]
+    slot_key_parts: list[str | bytes] = [json.dumps(pipeline, sort_keys=True), get_custom_shader_src('pipeline'), str(POINTER_MAP_SIZE)]
 
     for group in pipeline['groups']:
         for name in group['shaders']:
@@ -1496,14 +1822,20 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
             slot_key_parts.append(content_key)
     slot_key = key(*slot_key_parts)
     slot_key_file = os.path.join(slot_dir, 'inputs.key')
+    # What was learned about the shaders when building, needed to use the module
+    slot_info_file = os.path.join(slot_dir, 'info.json')
     ans = os.path.join(slot_dir, f'{slot}.slang-module')
     if not types_rebuilt:
         with suppress(FileNotFoundError), open(slot_key_file, 'rb') as f:
             if f.read() == slot_key:
-                return tuple(import_dirs), ans
+                with suppress(OSError, ValueError, KeyError, TypeError), open(slot_info_file) as f:
+                    info = json.load(f)
+                    pm = tuple((int(g), int(s)) for g, s in info['pointer_map_shaders'])
+                    return PipelineIR(tuple(import_dirs), ans, pm)
 
     j = partial(os.path.join, slot_dir)
     imports = []
+    queries: dict[tuple[int, int], SlangShaderQuery] = {}
     for g_idx, group in enumerate(pipeline['groups']):
         merged_vars = pipeline['vars'].copy()
         merged_vars.update(group['vars'])
@@ -1512,6 +1844,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
             if import_dir and import_dir not in import_dirs:
                 import_dirs.append(import_dir)
             src = apply_pipeline_specializations(src, merged_vars)
+            queries[(g_idx, s_idx)] = SlangShaderQuery(src, name, (import_dir,) if import_dir else (), invocation_tracker)
             modname = f'm_{g_idx}_{s_idx}'
             imports.append(modname)
             module_file = j(f'{modname}.slang-module')
@@ -1539,22 +1872,25 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     mod_src = get_custom_shader_src('pipeline').decode()
     mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'import {imp};' for imp in imports), 1)
     mod_src = mod_src.replace('// PIPELINE', pipeline_code, 1)
-    pointer_map_code = '\n    '.join(f'pos = {entry_point(g, s, "pointer_map")}(pos, csd);' for g, s in pointer_map_shaders(pipeline))
+    pm = pointer_map_shaders(pipeline, lambda g, s: defines_pointer_map(queries[(g, s)]))
+    pointer_map_code = '\n    '.join(f'pos = {entry_point(g, s, "pointer_map")}(pos, csd);' for g, s in pm)
     mod_src = mod_src.replace('// POINTER_MAP', pointer_map_code, 1)
     # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
 
     with tempfile.TemporaryDirectory() as tdir:
         for x in import_dirs:
             inc.extend(('-I', x))
-        cmd = bc + inc + ['-module-name', slot_module_name, '-o', ans, '--', '-']
+        cmd = bc + inc + [f'-DPOINTER_MAP_SIZE={POINTER_MAP_SIZE}', '-module-name', slot_module_name, '-o', ans, '--', '-']
         invocation_tracker.add(tuple(cmd))
         cp = subprocess.run(cmd, cwd=tdir, capture_output=True, input=mod_src.encode())
         if cp.returncode != 0:
             raise SlangFailed(f'{slot}.slang', cp)
 
+    with open(slot_info_file, 'w') as f:
+        json.dump({'pointer_map_shaders': pm}, f)
     with open(slot_key_file, 'wb') as f:
         f.write(slot_key)
-    return tuple(import_dirs), ans
+    return PipelineIR(tuple(import_dirs), ans, pm)
 
 
 def module_wrapper_for_slot(slot: str) -> bytes:
@@ -1599,7 +1935,8 @@ def build_custom_shader_pipeline_glsl(
     with lock_with_file(
         os.path.join(cache_dir, 'lock'),
     ):
-        import_dirs, slang_module_path = build_custom_shader_pipeline_ir(pipeline, cache_dir, invocation_tracker)
+        pipeline_ir = build_custom_shader_pipeline_ir(pipeline, cache_dir, invocation_tracker)
+        import_dirs, slang_module_path = pipeline_ir.import_dirs, pipeline_ir.module_path
         glsl_dir = os.path.join(os.path.dirname(os.path.dirname(slang_module_path)), 'glsl')
         os.makedirs(glsl_dir, exist_ok=True)
         module_mtime = safe_mtime(slang_module_path)
@@ -1650,7 +1987,7 @@ def build_custom_shader_pipeline_glsl(
         with open(vertex) as vf, open(fragment) as ff:
             m = glsl_metadata_for_shader(metadata)
             m['pipeline'] = pipeline
-            m['has_pointer_map'] = bool(pointer_map_shaders(pipeline))
+            m['has_pointer_map'] = bool(pipeline_ir.pointer_map_shaders)
             return vf.read(), ff.read(), m
 
 
