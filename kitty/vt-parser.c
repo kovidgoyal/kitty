@@ -23,6 +23,9 @@
 // Pending input smaller than this, typically the echo of typed characters, is
 // parsed without waiting for input_delay
 #define SMALL_PENDING_INPUT_THRESHOLD 1024u
+// A chunk this close to the end of the buffer is parsed immediately so a fast
+// producer cannot fill the buffer and block while input_delay is waiting.
+#define INPUT_PARSE_FORCE_MARGIN (16u * 1024u)
 
 
 // Macros {{{
@@ -1595,7 +1598,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
         pd->has_pending_input = self->read.pos < self->read.sz;
         if (pd->has_pending_input) {
             pd->time_since_new_input = pd->now - self->new_input_at;
-            if (flush || pending_input_is_small(self) || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + 16 * 1024 > BUF_SZ) {
+            if (flush || pending_input_is_small(self) || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) {
                 pd->input_read = true;
                 self->dump_callback = pd->dump_callback;
                 self->now = pd->now;
@@ -1650,7 +1653,11 @@ vt_parser_commit_write(Parser *p, size_t sz) {
     bool pending_is_small;
     with_lock {
         size_t off = self->read.sz + self->write.pending;
-        if (self->new_input_at == 0) self->new_input_at = monotonic();
+        // 0 means no unparsed input is waiting. monotonic() can return 0 at startup.
+        if (self->new_input_at == 0) {
+            monotonic_t stamp = monotonic();
+            self->new_input_at = stamp ? stamp : 1;
+        }
         if (self->write.offset > off) memmove(self->buf + off, self->buf + self->write.offset, sz);
         self->write.pending += sz;
         self->write.sz = 0;
@@ -1665,6 +1672,28 @@ vt_parser_has_space_for_input(const Parser *p) {
     PS *self = (PS *)p->state;
     bool ans;
     with_lock { ans = self->read.sz + self->write.pending < BUF_SZ; }
+    end_with_lock;
+    return ans;
+}
+
+ParserInputWake
+vt_parser_input_wake(const Parser *p) {
+    PS *self = (PS *)p->state;
+    ParserInputWake ans = {0};
+    with_lock {
+        size_t pending = self->read.sz + self->write.pending;
+        // A cleared timestamp is a scanned tail the parser left in the buffer.
+        // It is not input waiting out input_delay.
+        if (pending && self->new_input_at) {
+            if (pending < SMALL_PENDING_INPUT_THRESHOLD) ans.small_pending = true;
+            else if (pending + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) ans.large_ready = true;
+            else {
+                monotonic_t ready_at = self->new_input_at + OPT(input_delay);
+                if (ready_at <= monotonic()) ans.large_ready = true;
+                else ans.large_held_until = ready_at;
+            }
+        }
+    }
     end_with_lock;
     return ans;
 }
