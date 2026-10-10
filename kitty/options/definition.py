@@ -1232,8 +1232,11 @@ keyboard modifiers. For example: :code:`ctrl+shift+left` refers to holding the
 :code:`b1` ... :code:`b8` can be used to refer to up to eight buttons on a
 mouse. :code:`wheel_up` and :code:`wheel_down` refer to scrolling the mouse
 wheel (or touchpad) vertically and only support the :code:`press` event type,
-which is triggered once per wheel step. Mapping them replaces the normal scroll
-behavior for that combination of modifiers and mode. For example, to change
+which is triggered once per wheel step. A step is one click of a classic wheel,
+one notch of a high resolution wheel or 100 pixels of touchpad travel (scaled by
+:opt:`touch_scroll_multiplier`). Inertial (momentum) scrolling does not trigger
+them. Mapping them replaces the normal scroll behavior for that combination of
+modifiers and mode. For example, to change
 the font size with :kbd:`Ctrl` and the mouse wheel::
 
     mouse_map ctrl+wheel_up press ungrabbed,grabbed change_font_size all +2

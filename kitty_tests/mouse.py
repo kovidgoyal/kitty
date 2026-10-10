@@ -455,3 +455,20 @@ class TestMouse(BaseTest):
 
         # A fragment too small to be a detent does not scroll.
         self.ae(0, sum(run(8)))
+
+    def test_mapped_scroll_steps(self):
+        from kitty.fast_data_types import test_mapped_scroll_steps as steps
+
+        LINES, V120, HIGHRES = 0, 1, 2  # GLFWOffsetType
+        self.set_options()
+        # Classic wheel: one step per click, whatever wheel_scroll_multiplier is
+        self.ae(steps(LINES, [1.0, 1.0, -1.0]), [1, 1, -1])
+        # High resolution wheel: one step per 120 units, however they are split
+        self.ae(sum(steps(V120, [15.0] * 16)), 2)
+        # Touchpad: one step per 100 logical pixels, independent of the font size
+        self.ae(steps(HIGHRES, [30.0] * 10), [0, 0, 0, 1, 0, 0, 1, 0, 0, 1])
+        # Reversing direction starts a fresh step instead of first cancelling the remainder
+        self.ae(steps(HIGHRES, [150.0, -60.0, -40.0]), [1, 0, -1])
+        # touch_scroll_multiplier scales touchpad steps and its sign flips them
+        self.set_options({'touch_scroll_multiplier': -2.0})
+        self.ae(steps(HIGHRES, [30.0, 30.0]), [0, -1])
