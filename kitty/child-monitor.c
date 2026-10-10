@@ -1876,7 +1876,7 @@ io_loop(void *data) {
     // The I/O thread loop
     size_t i;
     int ret;
-    bool has_more, child_data_received, child_closed, has_pending_wakeups = false, last_wakeup_was_early = false;
+    bool has_more, child_data_received, has_pending_wakeups = false, last_wakeup_was_early = false;
     // Latched until WAKEUP. signalfd is drained on receipt, so a later poll cannot see it again.
     bool signal_pending = false;
     monotonic_t last_main_loop_wakeup_at = -1, now = -1, pending_wake_at = 0;
@@ -1911,7 +1911,6 @@ io_loop(void *data) {
             WAKEUP;
         }
         child_data_received = false;
-        child_closed = false;
         for (i = 0; i < self->count + EXTRA_FDS; i++) children_fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
@@ -1949,8 +1948,7 @@ io_loop(void *data) {
                     child_data_received = true;
                     has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen);
                     if (!has_more) {
-                        child_closed = true;
-                        // child is dead
+                        // child is dead. The next iteration queues it and wakes the main thread.
                         children_mutex(lock);
                         children[i].needs_removal = true;
                         children_mutex(unlock);
@@ -1985,7 +1983,7 @@ io_loop(void *data) {
         // on some platforms, such as cocoa. Small pending input, typically the echo of typed
         // characters, wakes immediately, but at most once per input_delay so that continuous
         // streams of small writes are still coalesced.
-        if (child_data_received || signal_pending || child_closed || has_pending_wakeups) {
+        if (child_data_received || signal_pending || has_pending_wakeups) {
             now = monotonic();
             ParserInputWake pending = pending_input_wake_info(self);
             // rate_open is the gap since the previous wakeup. A large chunk the
@@ -1995,6 +1993,7 @@ io_loop(void *data) {
             bool rate_open = now - last_main_loop_wakeup_at > OPT(input_delay);
             bool wake_now = pending.large_ready;
             bool early_small = false;
+            bool need_rate_slot = false;
             monotonic_t wait_until = pending.large_held_until > now ? pending.large_held_until : 0;
             if (pending.small_pending) {
                 if (rate_open) wake_now = true;
@@ -2003,21 +2002,16 @@ io_loop(void *data) {
                     // This wake is the one early small wake unless a large chunk
                     // was ready anyway. Marking that would swallow the next echo.
                     early_small = !pending.large_ready;
-                } else {
-                    // The early wake was already used. Take whichever comes first,
-                    // the coalesce slot or a large chunk's own deadline.
-                    monotonic_t rate_at = last_main_loop_wakeup_at + OPT(input_delay);
-                    if (!wait_until || rate_at < wait_until) wait_until = rate_at;
-                }
+                } else need_rate_slot = true;
             }
-            // A signal, or a child that exited with nothing left to hold, uses the
-            // same rate limit as a small write. The queued child is woken separately.
-            if (signal_pending || (child_closed && !pending.large_held_until)) {
+            // A signal uses the same rate limit as a small write that already woke early.
+            if (signal_pending) {
                 if (rate_open) wake_now = true;
-                else {
-                    monotonic_t rate_at = last_main_loop_wakeup_at + OPT(input_delay);
-                    if (!wait_until || rate_at < wait_until) wait_until = rate_at;
-                }
+                else need_rate_slot = true;
+            }
+            if (need_rate_slot) {
+                monotonic_t rate_at = last_main_loop_wakeup_at + OPT(input_delay);
+                if (!wait_until || rate_at < wait_until) wait_until = rate_at;
             }
             if (wake_now) {
                 WAKEUP;

@@ -1647,13 +1647,9 @@ vt_parser_create_write_buffer(Parser *p, size_t *sz) {
     return ans;
 }
 
-bool
+void
 vt_parser_commit_write(Parser *p, size_t sz) {
-    // Returns true if the pending input is small. Only uses fields modified
-    // with the lock held, so it overestimates while a parse is in progress,
-    // since read.sz includes input that is being parsed.
     PS *self = (PS *)p->state;
-    bool pending_is_small;
     with_lock {
         size_t off = self->read.sz + self->write.pending;
         // 0 means no unparsed input is waiting. monotonic() can return 0 at startup.
@@ -1665,10 +1661,8 @@ vt_parser_commit_write(Parser *p, size_t sz) {
         if (self->write.offset > off) memmove(self->buf + off, self->buf + self->write.offset, sz);
         self->write.pending += sz;
         self->write.sz = 0;
-        pending_is_small = self->read.sz + self->write.pending < SMALL_PENDING_INPUT_THRESHOLD;
     }
     end_with_lock;
-    return pending_is_small;
 }
 
 bool
