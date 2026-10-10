@@ -231,6 +231,16 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Sessions: A new ``os_window_position`` keyword and a new
+  ``--os-window-geometry`` option for :ac:`save_as_session` to save the size,
+  position and state of OS Windows in session files
+
+- Sessions: Fix the OS Window size specified in a session being ignored when
+  :opt:`remember_window_size` is enabled
+
+- Ignore initial OS Window positions that are not on any connected monitor, for
+  example, because the monitor was disconnected
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

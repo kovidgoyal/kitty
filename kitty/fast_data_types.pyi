@@ -880,6 +880,16 @@ def cocoa_set_menubar_title(title: str) -> None:
 def change_os_window_state(state: int, os_window_id: Optional[int] = 0) -> None:
     pass
 
+class OSWindowGeometry(TypedDict):
+    x: int
+    y: int
+    width: int
+    height: int
+    state: int
+
+def get_os_window_geometry(os_window_id: int) -> Optional[OSWindowGeometry]:
+    pass
+
 def change_background_opacity(os_window_id: int, opacity: float) -> bool:
     pass
 

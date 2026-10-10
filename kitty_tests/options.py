@@ -56,6 +56,45 @@ class TestConfParsing(BaseTest):
                 self.ae(spec.opts.cwd, '/tmp/session')
                 self.ae(spec.args, ['bash', '$COMMAND_ARG'])
 
+    def test_session_os_window_geometry(self) -> None:
+        from types import SimpleNamespace
+        from typing import cast
+        from unittest.mock import patch
+
+        from kitty.fast_data_types import WINDOW_MAXIMIZED
+        from kitty.os_window_size import initial_window_size_func
+        from kitty.session import default_save_as_session_opts, get_os_window_sizing_data, parse_session
+        from kitty.tabs import TabManager
+
+        opts = self.set_options({'remember_window_size': True})
+        first, second = parse_session('os_window_size 1180 760\nos_window_position -1200x80\nlaunch\nnew_os_window\nlaunch', opts)
+        self.ae(first.os_window_position, (-1200, 80))
+        self.ae(second.os_window_position, (None, None))
+        # A size specified in the session takes precedence over the remembered size
+        remembered = {'window-size': (900, 600)}
+        self.ae(initial_window_size_func(get_os_window_sizing_data(opts, first), remembered)(10, 20, 72, 72, 1, 1), (1180, 760))
+        self.ae(initial_window_size_func(get_os_window_sizing_data(opts, second), remembered)(10, 20, 72, 72, 1, 1), (900, 600))
+
+        tm = cast(TabManager, SimpleNamespace(os_window_id=1))
+        g = {'x': -1200, 'y': 80, 'width': 1180, 'height': 760, 'state': WINDOW_MAXIMIZED}
+        with patch('kitty.tabs.get_os_window_geometry', return_value=g), patch('kitty.tabs.is_wayland', return_value=False):
+            geometry = TabManager.serialize_geometry_as_session(tm)
+        self.ae(geometry, ['os_window_size 1180 760', 'os_window_position -1200x80', 'os_window_state maximized'])
+        with patch('kitty.tabs.get_os_window_geometry', return_value=g), patch('kitty.tabs.is_wayland', return_value=True):
+            self.assertNotIn(geometry[1], TabManager.serialize_geometry_as_session(tm))
+        with patch('kitty.tabs.get_os_window_geometry', return_value=None):  # panels and closed OS Windows
+            self.ae(TabManager.serialize_geometry_as_session(tm), [])
+        (s,) = parse_session('\n'.join(geometry), opts)
+        self.ae((s.os_window_size, s.os_window_position, s.os_window_state), (first.os_window_size, (-1200, 80), 'maximized'))
+
+        # Geometry is saved only when requested
+        tab = SimpleNamespace(serialize_state_as_session=lambda *a: ['', 'new_tab', 'launch'])
+        tm = cast(TabManager, SimpleNamespace(tabs=[tab], active_tab=tab, wm_class='', wm_name='', serialize_geometry_as_session=lambda: geometry))
+        ser_opts = default_save_as_session_opts()
+        self.assertNotIn(geometry[0], TabManager.serialize_state_as_session(tm, '', None, ser_opts, is_first=True))
+        ser_opts.os_window_geometry = True
+        self.ae(TabManager.serialize_state_as_session(tm, '', None, ser_opts, is_first=True)[:3], geometry)
+
     def test_session_discovery(self):
         from unittest.mock import patch
 

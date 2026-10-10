@@ -28,12 +28,14 @@ if TYPE_CHECKING:
 
 
 def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
+    remember_window_size = opts.remember_window_size
     if session is None or session.os_window_size is None:
         sizes = WindowSizes(WindowSize(*opts.initial_window_width), WindowSize(*opts.initial_window_height))
     else:
         sizes = session.os_window_size
+        remember_window_size = False  # a size specified in the session takes precedence over the remembered size
     return WindowSizeData(
-        sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.single_window_padding_width, opts.window_padding_width
+        sizes, remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.single_window_padding_width, opts.window_padding_width
     )
 
 
@@ -88,6 +90,7 @@ class Session:
         self.focus_tab_spec: str | None = None
         self.default_title = default_title
         self.os_window_size: WindowSizes | None = None
+        self.os_window_position: tuple[int | None, int | None] = (None, None)
         self.os_window_class: str | None = None
         self.os_window_name: str | None = None
         self.os_window_state: str | None = None
@@ -276,6 +279,10 @@ def parse_session(
             elif cmd == 'os_window_size':
                 w, h = map(window_size, rest.split(maxsplit=1))
                 ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
+            elif cmd == 'os_window_position':
+                from .launch import parse_os_window_position
+
+                ans.os_window_position = parse_os_window_position(rest)
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
             elif cmd == 'os_window_name':
@@ -686,6 +693,13 @@ working directory. This is useful when kitty is launched from locations where th
 is not your home directory, such as from system-wide shortcuts. Note that :code:`--relocatable` is
 typically not used with :code:`--base-dir`, since relocatable is meant for session files that are
 co-located with their project directories.
+
+
+--os-window-geometry
+type=bool-set
+Save the size, position and state (maximized, fullscreen, etc.) of OS Windows, so that they
+are restored exactly as they are now when the session is loaded. Note that positions are not
+saved on Wayland as it does not allow applications to position their windows.
 """
 
 

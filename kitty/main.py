@@ -298,15 +298,6 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
     if args.grab_keyboard:
         grab_keyboard(True)
     with cached_values_for(run_app.cached_values_name) as cached_values:
-        if not _is_panel_kitten and not is_wayland():
-            if opts.remember_window_position:
-                cached_workarea = tuple(tuple(x) for x in cached_values.get('monitor-workarea', ()))
-                if cached_workarea and glfw_get_monitor_workarea() == tuple(cached_workarea):
-                    pos_x, pos_y = cached_values.get('window-pos', (None, None))
-            if args.position:
-                from .launch import parse_os_window_position
-
-                pos_x, pos_y = parse_os_window_position(args.position)
         startup_session_error: tuple[Exception, str] | None = None
         try:
             startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
@@ -315,13 +306,24 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
             if getattr(args, 'session', ''):
                 args.session = ''
             startup_sessions = tuple(create_sessions(opts, args))
+        if not _is_panel_kitten and not is_wayland():
+            if opts.remember_window_position:
+                cached_workarea = tuple(tuple(x) for x in cached_values.get('monitor-workarea', ()))
+                if cached_workarea and glfw_get_monitor_workarea() == tuple(cached_workarea):
+                    pos_x, pos_y = cached_values.get('window-pos', (None, None))
+            if startup_sessions and None not in startup_sessions[0].os_window_position:
+                pos_x, pos_y = startup_sessions[0].os_window_position
+            if args.position:
+                from .launch import parse_os_window_position
+
+                pos_x, pos_y = parse_os_window_position(args.position)
         wincls = (startup_sessions[0].os_window_class if startup_sessions else '') or args.cls or appname
         winname = (startup_sessions[0].os_window_name if startup_sessions else '') or args.name or wincls or appname
         window_state = (args.start_as if args.start_as and args.start_as != 'normal' else None) or (  # ty: ignore[redundant-condition]
             getattr(startup_sessions[0], 'os_window_state', None) if startup_sessions else None
         )
-        # Remember the maximized state from the previous session, if enabled.
-        if window_state is None and opts.remember_window_size:
+        # Remember the maximized state from the previous session, if enabled and no size is specified in the session.
+        if window_state is None and opts.remember_window_size and not (startup_sessions and startup_sessions[0].os_window_size):
             window_state = cached_values.get('window-state') or None
         wstate = parse_os_window_state(window_state) if window_state is not None else None
 

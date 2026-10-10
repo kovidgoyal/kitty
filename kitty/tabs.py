@@ -17,12 +17,15 @@ from typing import Any, Concatenate, Deque, Literal, NamedTuple, Optional, Param
 from .borders import Border, Borders
 from .child import Child
 from .cli_stub import CLIOptions, SaveAsSessionOptions
-from .constants import appname
+from .constants import appname, is_wayland
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_MIDDLE,
     GLFW_PRESS,
     GLFW_RELEASE,
+    WINDOW_FULLSCREEN,
+    WINDOW_MAXIMIZED,
+    WINDOW_MINIMIZED,
     add_tab,
     add_timer,
     attach_window,
@@ -33,6 +36,7 @@ from .fast_data_types import (
     get_boss,
     get_click_interval,
     get_options,
+    get_os_window_geometry,
     get_tab_being_dragged,
     get_window_being_dragged,
     is_tab_bar_visible,
@@ -1763,11 +1767,24 @@ class TabManager:  # {{{
                 prefix.append(f'os_window_class {self.wm_class}')
             if self.wm_name and self.wm_name != appname:
                 prefix.append(f'os_window_name {self.wm_name}')
+            if ser_opts.os_window_geometry:
+                prefix.extend(self.serialize_geometry_as_session())
             ans = prefix + ans
             # Add focus_tab command to preserve the active tab
             if active_tab_index >= 0:
                 ans.append('')
                 ans.append(f'focus_tab {active_tab_index}')
+        return ans
+
+    def serialize_geometry_as_session(self) -> list[str]:
+        g = get_os_window_geometry(self.os_window_id)
+        if g is None:
+            return []
+        ans = [f'os_window_size {g["width"]} {g["height"]}']
+        if not is_wayland():
+            ans.append(f'os_window_position {g["x"]}x{g["y"]}')
+        state = {WINDOW_FULLSCREEN: 'fullscreen', WINDOW_MAXIMIZED: 'maximized', WINDOW_MINIMIZED: 'minimized'}.get(g['state'], 'normal')
+        ans.append(f'os_window_state {state}')
         return ans
 
     @property

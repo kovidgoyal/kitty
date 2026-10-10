@@ -157,6 +157,8 @@ all the major keywords you can use in kitty session files:
     new_os_window
     # Set new window size to 80x24 cells
     os_window_size 80c 24c
+    # Place the new window at x=100, y=50 on the screen
+    os_window_position 100x50
     # Set the --title for the new OS window
     os_window_title my fancy os window
     # Set the --class for the new OS window
@@ -350,6 +352,12 @@ documentation for them.
 
 ``os_window_name``
     Set the name part of WM_CLASS or Wayland Window tag for the current OS Window
+
+``os_window_position``
+    Set the position of the current OS Window on the screen. For example:
+    ``100x50``. This may or may not work depending on the policies of the
+    desktop environment/window manager. It never works on Wayland. If the
+    position is not on any connected monitor, it is ignored.
 
 ``os_window_size``
     Set the size of the current OS Window, can be specified in pixels or cells.
