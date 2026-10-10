@@ -253,7 +253,7 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			}
 			link_target := hdr.Linkname
 			if !filepath.IsAbs(link_target) {
-				link_target = filepath.Join(filepath.Dir(dest), link_target)
+				link_target = filepath.Join(dest_path, link_target)
 			}
 			if link_target, err = EvalSymlinksThatExist(link_target); err != nil {
 				return
