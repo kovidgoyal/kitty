@@ -150,7 +150,9 @@ prepare_ime_position_update_event(OSWindow *osw, Window *w, Screen *screen, GLFW
     unsigned int cell_width = osw->fonts_data->fcm.cell_width, cell_height = osw->fonts_data->fcm.cell_height;
     unsigned int left = w->render_data.geometry.left, top = w->render_data.geometry.top;
     if (screen_is_overlay_active(screen)) {
-        left += screen->overlay_line.cursor_x * cell_width;
+        // Anchor to the start of the pre-edit text rather than its end, so the
+        // IME candidate window does not jump horizontally as the pre-edit grows.
+        left += screen->overlay_line.xstart * cell_width;
         top += MIN(screen->overlay_line.ynum + screen->scrolled_by, screen->lines - 1) * cell_height;
     } else {
         left += screen->cursor->x * cell_width;

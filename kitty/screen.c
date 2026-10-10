@@ -5156,8 +5156,11 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
     line_reset_cells(line, 0, line->xnum, ol.original_line.gpu_cells, ol.original_line.cpu_cells);
     ol.is_dirty = false;
     const index_type y = MIN(ol.ynum + self->scrolled_by, self->lines - 1);
-    if (ol.last_ime_pos.x != ol.cursor_x || ol.last_ime_pos.y != y) {
-        ol.last_ime_pos.x = ol.cursor_x;
+    // Track the start of the pre-edit text, not its end, so IME position
+    // updates are not sent as the pre-edit grows, which would make the IME
+    // candidate window jump horizontally while typing.
+    if (ol.last_ime_pos.x != ol.xstart || ol.last_ime_pos.y != y) {
+        ol.last_ime_pos.x = ol.xstart;
         ol.last_ime_pos.y = y;
         update_ime_position_for_window(self->window_id, false, 0);
     }
