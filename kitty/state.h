@@ -556,7 +556,7 @@ typedef struct OSWindow {
     } indirect_output;
     uint32_t persist_texture_id, persist_fbo_id, persist_texture_generation;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
-    bool focused_at_last_render, needs_render, needs_layers;
+    bool focused_at_last_render, needs_render, needs_layers, input_held;
     unsigned keep_rendering_till_swap;
     WindowRenderData tab_bar_render_data;
     struct {

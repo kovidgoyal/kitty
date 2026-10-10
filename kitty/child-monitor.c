@@ -530,17 +530,17 @@ set_wakeup_fd(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static bool parse_input(ChildMonitor *self, bool *input_held);
+static bool parse_input(ChildMonitor *self);
 
 static PyObject *
 parse_input_once(ChildMonitor *self, PyObject *a UNUSED) {
 #define parse_input_once_doc "parse_input_once() -> Call parse_input once. Returns True if any input was consumed."
-    if (parse_input(self, NULL)) { Py_RETURN_TRUE; }
+    if (parse_input(self)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
 static bool
-do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush, bool *input_held) {
+do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     ParseData pd = {.dump_callback = self->dump_callback, .now = now};
     self->parse_func(screen, &pd, flush);
     if (pd.input_read) {
@@ -548,16 +548,17 @@ do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush, bool *
         if (screen->paused_rendering.expires_at) set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
     } else if (pd.has_pending_input) {
         set_maximum_wait(OPT(input_delay) - pd.time_since_new_input);
-        if (input_held) *input_held = true;
+        OSWindow *w = os_window_for_kitty_window(screen->window_id);
+        if (w) w->input_held = true;
     }
     return pd.input_read;
 }
 
 static bool
-parse_input(ChildMonitor *self, bool *input_held) {
+parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
-    // input_held is set when a child has bytes the parser refused until input_delay elapses.
     size_t count = 0, remove_count = 0;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) global_state.os_windows[i].input_held = false;
     bool input_read = false, reload_config_called = false;
     monotonic_t now = monotonic();
     children_mutex(lock);
@@ -633,7 +634,7 @@ parse_input(ChildMonitor *self, bool *input_held) {
         // must be done while no locks are held, since the locks are non-recursive and
         // the python function could call into other functions in this module
         remove_count--;
-        if (remove_notify[remove_count].screen && do_parse(self, remove_notify[remove_count].screen, now, true, NULL)) input_read = true;
+        if (remove_notify[remove_count].screen && do_parse(self, remove_notify[remove_count].screen, now, true)) input_read = true;
         PyObject *t = PyObject_CallFunction(
             self->death_notify,
             "kOi",
@@ -647,7 +648,7 @@ parse_input(ChildMonitor *self, bool *input_held) {
 
     for (size_t i = 0; i < count; i++) {
         if (!scratch[i].needs_removal) {
-            if (do_parse(self, scratch[i].screen, now, false, input_held)) input_read = true;
+            if (do_parse(self, scratch[i].screen, now, false)) input_read = true;
         }
         DECREF_CHILD(scratch[i]);
     }
@@ -1137,12 +1138,9 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
 }
 
 static void
-render(monotonic_t now, bool input_read, bool input_held) {
+render(monotonic_t now, bool input_read) {
     EVDBG("input_read: %d, check_for_active_animated_images: %d\n", input_read, global_state.check_for_active_animated_images);
     static monotonic_t last_render_at = MONOTONIC_T_MIN;
-    // Held bytes are not on screen yet. Painting now draws the old frame, and the
-    // turn that parses them paints again because it ignores repaint_delay.
-    if (!input_read && input_held && !global_state.thumbnail_callback.os_window) return;
     monotonic_t time_since_last_render = last_render_at == MONOTONIC_T_MIN ? OPT(repaint_delay) : now - last_render_at;
     if (!input_read && time_since_last_render < OPT(repaint_delay) && !global_state.thumbnail_callback.os_window) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
@@ -1159,6 +1157,12 @@ render(monotonic_t now, bool input_read, bool input_held) {
         // rendering is done in cocoa_os_window_resized()
         if (w->live_resize.in_progress) continue;
 #endif
+        // Held bytes are not on this window yet. Painting it draws the old frame, and the
+        // turn that parses them paints again because it ignores repaint_delay.
+        if (w->input_held && w->id != global_state.thumbnail_callback.os_window) {
+            if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
+            continue;
+        }
         if (!render_os_window(w, now, scan_for_animated_images)) {
             // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
             if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
@@ -1572,15 +1576,15 @@ process_global_state(void *data) {
     ChildMonitor *self = data;
     maximum_wait = -1;
     bool state_check_timer_enabled = false;
-    bool input_read = false, input_held = false;
+    bool input_read = false;
 
     monotonic_t now = monotonic();
     if (global_state.has_pending_resizes) {
         process_pending_resizes(now);
         input_read = true;
     }
-    if (parse_input(self, &input_held)) input_read = true;
-    render(now, input_read, input_held);
+    if (parse_input(self)) input_read = true;
+    render(now, input_read);
 #ifdef __APPLE__
     if (has_cocoa_pending_actions) {
         process_cocoa_pending_actions();
