@@ -379,6 +379,9 @@ Detailed list of changes
 - Speed up growing the GPU sprite cache, particularly on macOS
   (:pull:`10632`)
 
+- Tab bar: Fix long tab titles being truncated while there is still unused
+  space at the end of the tab bar (:pull:`10640`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

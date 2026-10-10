@@ -592,3 +592,45 @@ class TestTabBar(BaseTest):
             lines(tab_title_max_lines=3, tab_title_wrap=0, tab_title_template='{title}\\nabcdefghijklmnop\\nx'),
             [f' t0        {separator}', f'abcdefghijk{separator}', f'x          {separator}'],
         )
+
+    def test_horizontal_tab_bar_uses_free_space(self) -> None:
+        def line(titles: list[str], columns: int, **opts: str) -> str:
+            self.set_options({'tab_title_template': '{title}', **opts})
+            central = region(0, 0, columns * 10, 180)
+            tab_bar = region(0, 180, columns * 10, 200)
+            with (
+                patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
+                patch('kitty.tab_bar.viewport_for_window', return_value=(central, tab_bar, columns * 10, 200, 10, 20)),
+                patch('kitty.tab_bar.set_tab_bar_render_data'),
+                patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None),
+                patch('kitty.tab_bar.get_boss', return_value=DummyBoss()),
+            ):
+                tb = TabBar(1)
+                tb.layout()
+                tb.update(tuple(TabBarData(title=t, tab_id=i + 1, is_active=i == 0) for i, t in enumerate(titles)))
+            return str(tb.screen.line(0)).rstrip()
+
+        # space not needed by short tabs goes to the long ones, instead of
+        # being left unused at the end of the tab bar
+        long_title = 'abcdefghijklmn'
+        for style, columns, titles in (
+            ('separator', 60, ['1'] * 8 + [long_title] * 2),
+            ('powerline', 80, ['1'] * 5 + [long_title] * 3),
+            ('slant', 126, ['1'] * 9 + [long_title] * 4),
+        ):
+            text = line(titles, columns, tab_bar_style=style)
+            self.ae(text.count(long_title), titles.count(long_title), (style, text))
+            self.assertNotIn('…', text)
+
+        # tabs drawn more than one cell wider than their max length, by a wide
+        # separator or the leading space of the powerline style, must still
+        # fit, rather than the last one being replaced by the overflow marker
+        for columns, titles, opts in (
+            (10, ['x' * 10] * 3, {'tab_bar_style': 'separator', 'tab_separator': ' ||'}),
+            (15, ['x' * 10, '~'], {'tab_bar_style': 'powerline'}),
+        ):
+            text = line(titles, columns, **opts)
+            self.assertFalse(text.endswith(' …'), (opts, text))
+
+        # no tabs
+        self.ae(line([], 60, tab_bar_style='separator'), '')
