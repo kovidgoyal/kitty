@@ -242,6 +242,8 @@ typedef struct PS {
     PyObject *dump_callback;
     Screen *screen;
     monotonic_t now, new_input_at;
+    // Buffer size when new_input_at was set. Bytes before this are a scanned tail.
+    size_t fresh_input_at;
     pthread_mutex_t lock;
 
     // The buffer
@@ -1615,6 +1617,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
                     self->write.pending = 0;
                 } while (self->read.pos < self->read.sz);
                 self->new_input_at = 0;
+                self->fresh_input_at = 0;
                 if (self->read.consumed) {
                     pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
@@ -1657,6 +1660,7 @@ vt_parser_commit_write(Parser *p, size_t sz) {
         if (self->new_input_at == 0) {
             monotonic_t stamp = monotonic();
             self->new_input_at = stamp ? stamp : 1;
+            self->fresh_input_at = off;
         }
         if (self->write.offset > off) memmove(self->buf + off, self->buf + self->write.offset, sz);
         self->write.pending += sz;
@@ -1682,11 +1686,13 @@ vt_parser_input_wake(const Parser *p) {
     ParserInputWake ans = {0};
     with_lock {
         size_t pending = self->read.sz + self->write.pending;
+        size_t fresh = pending > self->fresh_input_at ? pending - self->fresh_input_at : 0;
         // A cleared timestamp is a scanned tail the parser left in the buffer.
-        // It is not input waiting out input_delay.
-        if (pending && self->new_input_at) {
-            if (pending < SMALL_PENDING_INPUT_THRESHOLD) ans.small_pending = true;
-            else if (pending + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) ans.large_ready = true;
+        // fresh excludes that tail, matching pending_input_is_small().
+        if (fresh && self->new_input_at) {
+            ans.input_at = self->new_input_at;
+            if (pending + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) ans.large_ready = true;
+            else if (fresh < SMALL_PENDING_INPUT_THRESHOLD) ans.small_pending = true;
             else {
                 monotonic_t ready_at = self->new_input_at + OPT(input_delay);
                 if (ready_at <= monotonic()) ans.large_ready = true;

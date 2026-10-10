@@ -75,6 +75,8 @@ typedef struct {
     unsigned long id;
     pid_t pid;
     int exit_status;
+    // new_input_at last woken for. A later read of the same chunk must not wake again.
+    monotonic_t woken_for_input_at;
 } Child;
 
 static const Child EMPTY_CHILD = {0};
@@ -1847,10 +1849,22 @@ pending_input_wake_info(ChildMonitor *self) {
     for (size_t i = 0; i < self->count; i++) {
         ParserInputWake one = vt_parser_input_wake(children[i].screen->vt_parser);
         if (one.small_pending) info.small_pending = true;
-        if (one.large_ready) info.large_ready = true;
+        // The main thread clears input_at only when it finishes this chunk.
+        if (one.large_ready && one.input_at != children[i].woken_for_input_at) info.large_ready = true;
         if (one.large_held_until && (!info.large_held_until || one.large_held_until < info.large_held_until)) info.large_held_until = one.large_held_until;
     }
     return info;
+}
+
+static void
+remember_woken_large_input(ChildMonitor *self) {
+    for (size_t i = 0; i < self->count; i++) {
+        ParserInputWake one = vt_parser_input_wake(children[i].screen->vt_parser);
+        if (!(one.large_ready && one.input_at)) continue;
+        children_mutex(lock);
+        children[i].woken_for_input_at = one.input_at;
+        children_mutex(unlock);
+    }
 }
 
 static void *
@@ -1875,6 +1889,7 @@ io_loop(void *data) {
         has_pending_wakeups = false;                                                         \
         last_wakeup_was_early = false;                                                       \
         signal_pending = false;                                                              \
+        remember_woken_large_input(self);                                                    \
     }
 
     while (LIKELY(!self->shutting_down)) {
