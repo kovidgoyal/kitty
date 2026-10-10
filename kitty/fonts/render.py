@@ -178,7 +178,7 @@ def dump_font_debug() -> None:
     cf = current_fonts()
     log_error('Text fonts:')
     for key, text in {'medium': 'Normal', 'bold': 'Bold', 'italic': 'Italic', 'bi': 'Bold-Italic'}.items():
-        log_error(f'  {text}:', cf[key].identify_for_debug())  # type: ignore
+        log_error(f'  {text}:', cf[key].identify_for_debug())
     ss = cf['symbol']
     if ss:
         log_error('Symbol map fonts:')
