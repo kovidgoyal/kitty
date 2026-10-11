@@ -13,6 +13,7 @@ import background;
 
 extern static const uint FG_OVERRIDE_ALGO;
 extern static const bool TEXT_NEW_GAMMA;
+extern static const bool TEXT_CONTRAST_IDENTITY;
 extern static const uint RENDER_MODE;
 
 static const bool ONLY_FOREGROUND = RENDER_MODE == 2;
@@ -39,6 +40,9 @@ struct VertexOutput {
     float3 cursor_pos;
     float3 strike_pos;
     nointerpolation uint underline_exclusion_pos;
+    // 1 when the glyph, decorations, and cursor sprite are all 0. The block
+    // cursor is sprite 0 and its color is already in the background.
+    nointerpolation uint skip_text;
     float3 cell_foreground;
     float4 cursor_color_premult;
     float3 decoration_fg;
@@ -153,6 +157,7 @@ vertex_main(
     uint fg_as_uint = bo.fg_as_uint;
     uint text_attrs = bo.text_attrs;
     CellData cell_data = bo.cell_data;
+    uint skip_text = 1u;
 
     // Foreground {{{
     if (!ONLY_BACKGROUND) { // background does not depend on foreground
@@ -184,9 +189,14 @@ vertex_main(
         float3 final_cursor_text_color = lerp(foreground, cell_data.cursor.fg, crd.cursor_opacity);
         foreground = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, foreground);
         vo.decoration_fg = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, vo.decoration_fg);
-        vo.cursor_pos = to_sprite_pos(cell_data.pos, cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor));
+        uint cursor_sprite = cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor);
+        vo.cursor_pos = to_sprite_pos(cell_data.pos, cursor_sprite);
+        uint glyph = sprite_idx[0] & SPRITE_INDEX_MASK;
+        if (glyph == 0u && decs[0] == 0u && decs[1] == 0u && cursor_sprite == 0u) skip_text = 1u;
+        else skip_text = 0u;
     }
     // }}}
+    vo.skip_text = skip_text;
 
     vo.background = background_rgb;
 
@@ -222,6 +232,7 @@ clamp_to_unit_float(float x) {
 
 float4
 foreground_contrast_new(float4 over, float3 under, float text_contrast, float text_gamma_adjustment) {
+    if (TEXT_CONTRAST_IDENTITY) return over;
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
@@ -303,7 +314,7 @@ fragment_main(VertexOutput vo, uniform float text_contrast, uniform float text_g
     float4 ans_premul = 0;
     if (!ONLY_FOREGROUND) ans_premul = vo.effective_background_premul;
 
-    if (!ONLY_BACKGROUND) {
+    if (!ONLY_BACKGROUND && vo.skip_text == 0u) {
         // blend in the foreground color
         float4 text_fg = load_text_foreground_color(vo.sprite_pos, vo.colored_sprite, vo.cell_foreground);
         text_fg = adjust_foreground_contrast_with_background(text_fg, vo.background, text_contrast, text_gamma_adjustment);
