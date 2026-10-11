@@ -71,7 +71,9 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 		return
 	}
 	ans := &DiskCache{Path: path, MaxSize: max_size}
-	ans.lock()
+	if err = ans.lock(); err != nil {
+		return
+	}
 	defer ans.unlock()
 	if err = ans.ensure_entries(); err != nil {
 		return
@@ -112,10 +114,11 @@ func key_for_path(path string) (key string, err error) {
 
 func (dc *DiskCache) lock() (err error) {
 	dc.lock_mutex.Lock()
-	defer dc.lock_mutex.Unlock()
-	if dc.lock_file != nil {
-		return
-	}
+	defer func() {
+		if err != nil {
+			dc.unlock()
+		}
+	}()
 	if dc.lock_file, err = os.OpenFile(filepath.Join(dc.Path, "lockfile"), os.O_RDWR|os.O_CREATE, 0o600); err != nil {
 		return
 	}
@@ -123,7 +126,6 @@ func (dc *DiskCache) lock() (err error) {
 }
 
 func (dc *DiskCache) unlock() {
-	dc.lock_mutex.Lock()
 	defer dc.lock_mutex.Unlock()
 	if dc.lock_file != nil {
 		utils.UnlockFile(dc.lock_file)
