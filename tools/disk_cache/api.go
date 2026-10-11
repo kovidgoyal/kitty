@@ -44,13 +44,17 @@ func (dc *DiskCache) ResultsDir() string {
 }
 
 func (dc *DiskCache) Get(key string, items ...string) (map[string]string, error) {
-	dc.lock()
+	if err := dc.lock(); err != nil {
+		return nil, err
+	}
 	defer dc.unlock()
 	return dc.get(key, items)
 }
 
 func (dc *DiskCache) GetPath(path string, items ...string) (string, map[string]string, error) {
-	dc.lock()
+	if err := dc.lock(); err != nil {
+		return "", nil, err
+	}
 	defer dc.unlock()
 	key, err := key_for_path(path)
 	if err != nil {
@@ -61,26 +65,34 @@ func (dc *DiskCache) GetPath(path string, items ...string) (string, map[string]s
 }
 
 func (dc *DiskCache) Remove(key string) (err error) {
-	dc.lock()
+	if err = dc.lock(); err != nil {
+		return
+	}
 	defer dc.unlock()
 	return dc.remove(key)
 }
 
 func (dc *DiskCache) Clear() (err error) {
-	dc.lock()
+	if err = dc.lock(); err != nil {
+		return
+	}
 	defer dc.unlock()
 	return dc.clear()
 }
 
 func (dc *DiskCache) AddPath(path, key string, items map[string][]byte) (ans map[string]string, err error) {
-	dc.lock()
+	if err = dc.lock(); err != nil {
+		return
+	}
 	defer dc.unlock()
 	ans, err = dc.add_path(path, key, items)
 	return
 }
 
 func (dc *DiskCache) Add(key string, items map[string][]byte) (ans map[string]string, err error) {
-	dc.lock()
+	if err = dc.lock(); err != nil {
+		return
+	}
 	defer dc.unlock()
 	return dc.add(key, items)
 }

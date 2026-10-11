@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -148,4 +149,118 @@ func TestDiskCache(t *testing.T) {
 		t.Fatalf("unexpected entries: %s", entries_after)
 	}
 	arc(4, 8) // dc.AddPath() causes dc2 to read
+}
+
+func TestDiskCacheLock(t *testing.T) {
+	dc, err := NewDiskCache(t.TempDir(), 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = dc.lock(); err != nil {
+		t.Fatal(err)
+	}
+	defer dc.unlock()
+	if dc.lock_mutex.TryLock() {
+		dc.lock_mutex.Unlock()
+		t.Fatal("cache mutex released before the cache operation finished")
+	}
+}
+
+func TestDiskCacheConcurrentGet(t *testing.T) {
+	dc, err := NewDiskCache(t.TempDir(), 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = dc.Add("sharedkey", map[string][]byte{"data": []byte("cached")}); err != nil {
+		t.Fatal(err)
+	}
+	var workers sync.WaitGroup
+	start := make(chan struct{})
+	for range 6 {
+		workers.Go(func() {
+			<-start
+			for range 8 {
+				paths, err := dc.Get("sharedkey", "data")
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				if paths["data"] == "" {
+					t.Error("concurrent Get lost cached data")
+					return
+				}
+			}
+		})
+	}
+	close(start)
+	workers.Wait()
+}
+
+func TestDiskCacheLockErrors(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "source")
+	if err := os.WriteFile(source, []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		run  func(*DiskCache) error
+	}{
+		{"Get", func(dc *DiskCache) error {
+			_, err := dc.Get("key", "data")
+			return err
+		}},
+		{"GetPath", func(dc *DiskCache) error {
+			_, _, err := dc.GetPath(source, "data")
+			return err
+		}},
+		{"Remove", func(dc *DiskCache) error { return dc.Remove("key") }},
+		{"Clear", func(dc *DiskCache) error { return dc.Clear() }},
+		{"AddPath", func(dc *DiskCache) error {
+			_, err := dc.AddPath(source, "key", map[string][]byte{"data": []byte("updated")})
+			return err
+		}},
+		{"Add", func(dc *DiskCache) error {
+			_, err := dc.Add("key", map[string][]byte{"data": []byte("updated")})
+			return err
+		}},
+		{"NewDiskCache", func(dc *DiskCache) error {
+			_, err := NewDiskCache(dc.Path, dc.MaxSize)
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dc, err := NewDiskCache(t.TempDir(), 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = dc.Add("key", map[string][]byte{"data": []byte("cached")}); err != nil {
+				t.Fatal(err)
+			}
+			lock_path := filepath.Join(dc.Path, "lockfile")
+			if err = os.Remove(lock_path); err != nil {
+				t.Fatal(err)
+			}
+			if err = os.Mkdir(lock_path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err = tc.run(dc); err == nil {
+				t.Error("cache operation ignored failure to acquire the lock")
+			}
+			if !dc.lock_mutex.TryLock() {
+				t.Fatal("failed lock attempt did not release the mutex")
+			}
+			dc.lock_mutex.Unlock()
+			if err = os.Remove(lock_path); err != nil {
+				t.Fatal(err)
+			}
+			paths, err := dc.Get("key", "data")
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(paths["data"])
+			if err != nil || string(data) != "cached" {
+				t.Fatalf("cache data changed after a failed lock attempt: %q, %v", data, err)
+			}
+		})
+	}
 }

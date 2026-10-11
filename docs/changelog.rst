@@ -268,6 +268,8 @@ Detailed list of changes
 
 - quick-access-terminal kitten: Fix :option:`kitty +kitten quick_access_terminal --detached-log` not working
 
+- choose-files kitten: Fix concurrent access to its disk cache
+
 - Fix a non-zero :opt:`input_delay` painting once before delayed program output is parsed and again when it is parsed, so it could use more CPU than :opt:`input_delay` ``0``
 
 - Linux/BSD: Detect MIME types for :doc:`open actions <open_actions>` and
