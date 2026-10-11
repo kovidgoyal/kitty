@@ -174,17 +174,18 @@ func (p *ImagePreview) Render(h *Handler, x, y, width, height int) {
 }
 
 func (p *ImagePreview) start_rendering() {
+	channel := p.render_channel
 	defer func() {
 		if r := recover(); r != nil {
-			p.render_channel <- render_data{err: parallel.Format_stacktrace_on_panic(r, 1)}
+			channel <- render_data{err: parallel.Format_stacktrace_on_panic(r, 1)}
 		}
-		close(p.render_channel)
+		close(channel)
 		p.ready.Store(true)
 		p.WakeupMainThread()
 	}()
 	key, ans, err := p.disk_cache.GetPath(p.abspath)
 	if err != nil {
-		p.render_channel <- render_data{err: err}
+		channel <- render_data{err: err}
 		return
 	}
 	if len(ans) > 0 {
@@ -200,19 +201,19 @@ func (p *ImagePreview) start_rendering() {
 			}
 		}
 		if mi.custom != nil || mi.image != nil {
-			p.render_channel <- render_data{cached_data: ans, metadata: mi}
+			channel <- render_data{cached_data: ans, metadata: mi}
 			return
 		}
 	}
 	rdata, metadata, img, err := p.renderer.Render(p.abspath)
 	if err != nil {
-		p.render_channel <- render_data{err: err}
+		channel <- render_data{err: err}
 	} else {
 		ans, err = p.disk_cache.AddPath(p.abspath, key, rdata)
 		if err == nil {
-			p.render_channel <- render_data{cached_data: ans, metadata: metadata, img: img}
+			channel <- render_data{cached_data: ans, metadata: metadata, img: img}
 		} else {
-			p.render_channel <- render_data{err: err}
+			channel <- render_data{err: err}
 		}
 	}
 }
