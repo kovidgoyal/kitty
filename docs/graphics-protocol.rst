@@ -473,6 +473,8 @@ the protocol, if you get back a response to the device attributes query without
 a response to the graphics query, it does not.
 
 
+.. _graphics_display_images:
+
 Display images on screen
 -----------------------------
 
@@ -1168,6 +1170,8 @@ Key      Value                 Default    Description
          )``.
 =======  ====================  =========  =================
 
+
+.. _graphics_interaction:
 
 Interaction with other terminal actions
 --------------------------------------------
