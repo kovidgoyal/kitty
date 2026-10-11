@@ -97,6 +97,7 @@ init_overlay_line(Screen *self, index_type columns, bool keep_active) {
     self->overlay_line.cursor_x = 0;
     self->overlay_line.last_ime_pos.x = 0;
     self->overlay_line.last_ime_pos.y = 0;
+    self->overlay_line.last_ime_activity_at = 0;
 
     return true;
 }
@@ -4998,6 +4999,7 @@ deactivate_overlay_line(Screen *self) {
 
 void
 screen_update_overlay_text(Screen *self, const char *utf8_text) {
+    self->overlay_line.last_ime_activity_at = monotonic();
     if (screen_is_overlay_active(self)) deactivate_overlay_line(self);
     if (!utf8_text || !utf8_text[0]) return;
     PyObject *text = PyUnicode_FromString(utf8_text);
