@@ -297,6 +297,10 @@ Detailed list of changes
   its end, so that it no longer jumps horizontally while composing text
   (:pull:`10642`)
 
+- IME: Keep the candidate window anchored at the cursor when program output
+  moves it, so it no longer briefly appears at the previous position at the
+  start of the next composition (:pull:`10644`)
+
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 

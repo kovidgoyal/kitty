@@ -868,6 +868,29 @@ change_menubar_title(PyObject *title UNUSED) {
 #endif
 }
 
+static void
+sync_ime_position_with_cursor(OSWindow *os_window, Window *w) {
+    // Key presses update the IME position but cursor motion caused by child
+    // output, such as the echo of text committed by the IME, does not. Without
+    // this the next composition starts with a stale anchor and its candidate
+    // window flashes at the old position before jumping to the cursor.
+    Screen *screen = w->render_data.screen;
+    OverlayLine *ol = &screen->overlay_line;
+    if (screen_is_overlay_active(screen)) {
+        // During a composition the IME is anchored to the pre-edit text, see
+        // render_overlay_line(), so resync with the cursor once it ends.
+        ol->last_ime_cursor.valid = false;
+        return;
+    }
+    const index_type x = screen->cursor->x, y = screen->cursor->y;
+    if (ol->last_ime_cursor.valid && ol->last_ime_cursor.x == x && ol->last_ime_cursor.y == y) return;
+    ol->last_ime_cursor.x = x;
+    ol->last_ime_cursor.y = y;
+    ol->last_ime_cursor.valid = true;
+    // Redundant updates are dropped by the platform backends
+    update_ime_state_in_os_window(os_window, w, 0);
+}
+
 static bool
 prepare_to_render_os_window(
     OSWindow *os_window,
@@ -934,6 +957,7 @@ prepare_to_render_os_window(
                 *active_window_id = w->id;
                 if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
                 WD.screen->cursor_render_info.is_focused = os_window->is_focused;
+                if (global_state.ime_used && os_window->is_focused) sync_ime_position_with_cursor(os_window, w);
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
                 if (OPT(cursor_trail)) {

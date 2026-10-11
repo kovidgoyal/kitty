@@ -902,6 +902,15 @@ dispatch_pending_clicks(id_type timer_id UNUSED, void *data UNUSED) {
     } while (dispatched);
 }
 
+void
+update_ime_state_in_os_window(OSWindow *osw, Window *window, int update_focus) {
+    OSWindow *orig = global_state.callback_os_window;
+    global_state.callback_os_window = osw;
+    if (update_focus) update_ime_focus(osw, update_focus > 0);
+    if (update_focus >= 0 && window->render_data.screen) { update_ime_position(window, window->render_data.screen); }
+    global_state.callback_os_window = orig;
+}
+
 bool
 update_ime_position_for_window(id_type window_id, bool force, int update_focus) {
     for (size_t o = 0; o < global_state.num_os_windows; o++) {
@@ -913,11 +922,7 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
                 if (window->id == window_id) {
                     // The screen may not be ready after the new window is created and focused, and still needs to enable IME.
                     if ((window->render_data.screen && (force || osw->is_focused)) || update_focus > 0) {
-                        OSWindow *orig = global_state.callback_os_window;
-                        global_state.callback_os_window = osw;
-                        if (update_focus) update_ime_focus(osw, update_focus > 0);
-                        if (update_focus >= 0 && window->render_data.screen) { update_ime_position(window, window->render_data.screen); }
-                        global_state.callback_os_window = orig;
+                        update_ime_state_in_os_window(osw, window, update_focus);
                         return true;
                     }
                     return false;

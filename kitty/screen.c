@@ -97,6 +97,7 @@ init_overlay_line(Screen *self, index_type columns, bool keep_active) {
     self->overlay_line.cursor_x = 0;
     self->overlay_line.last_ime_pos.x = 0;
     self->overlay_line.last_ime_pos.y = 0;
+    self->overlay_line.last_ime_cursor.valid = false;
 
     return true;
 }

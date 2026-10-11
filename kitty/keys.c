@@ -297,6 +297,8 @@ on_key_input(const GLFWkeyevent *ev) {
             debug("handled wayland IME done event\n");
             return;
         case GLFW_IME_PREEDIT_CHANGED:
+            // Empty pre-edit events are also sent without an IME, for example on focus loss
+            if (*text) global_state.ime_used = true;
             screen_update_overlay_text(screen, text);
             update_ime_position(w, screen);
             debug("updated pre-edit text: '%s'\n", text);

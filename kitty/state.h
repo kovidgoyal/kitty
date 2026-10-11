@@ -646,6 +646,8 @@ typedef struct GlobalState {
     int mods_at_last_key_or_button_event;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
+    // Set once an IME composition has been seen, see sync_ime_position_with_cursor()
+    bool ime_used;
     WindowLogoTable *all_window_logos;
     int gl_version;
     bool supports_framebuffer_srgb;
@@ -794,6 +796,7 @@ bool is_os_window_fullscreen(OSWindow *);
 void update_ime_focus(OSWindow *osw, bool focused);
 void update_ime_position(Window *w, Screen *screen);
 bool update_ime_position_for_window(id_type window_id, bool force, int update_focus);
+void update_ime_state_in_os_window(OSWindow *osw, Window *window, int update_focus);
 void set_ignore_os_keyboard_processing(bool enabled);
 void push_modifier_remap_to_glfw(void);
 void update_menu_bar_title(PyObject *title UNUSED);

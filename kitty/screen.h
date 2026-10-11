@@ -101,6 +101,11 @@ typedef struct {
     struct {
         index_type x, y;
     } last_ime_pos;
+    // The cursor position last sent as the IME anchor outside of a composition, see sync_ime_position_with_cursor()
+    struct {
+        index_type x, y;
+        bool valid;
+    } last_ime_cursor;
 } OverlayLine;
 
 typedef struct ExtraCursor {
