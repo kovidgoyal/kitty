@@ -23,6 +23,9 @@
 // Pending input smaller than this, typically the echo of typed characters, is
 // parsed without waiting for input_delay
 #define SMALL_PENDING_INPUT_THRESHOLD 1024u
+// A chunk this close to the end of the buffer is parsed immediately so a fast
+// producer cannot fill the buffer and block while input_delay is waiting.
+#define INPUT_PARSE_FORCE_MARGIN (16u * 1024u)
 
 
 // Macros {{{
@@ -239,6 +242,8 @@ typedef struct PS {
     PyObject *dump_callback;
     Screen *screen;
     monotonic_t now, new_input_at;
+    // Buffer size when new_input_at was set. Bytes before this are a scanned tail.
+    size_t fresh_input_at;
     pthread_mutex_t lock;
 
     // The buffer
@@ -1595,7 +1600,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
         pd->has_pending_input = self->read.pos < self->read.sz;
         if (pd->has_pending_input) {
             pd->time_since_new_input = pd->now - self->new_input_at;
-            if (flush || pending_input_is_small(self) || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + 16 * 1024 > BUF_SZ) {
+            if (flush || pending_input_is_small(self) || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) {
                 pd->input_read = true;
                 self->dump_callback = pd->dump_callback;
                 self->now = pd->now;
@@ -1612,6 +1617,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
                     self->write.pending = 0;
                 } while (self->read.pos < self->read.sz);
                 self->new_input_at = 0;
+                self->fresh_input_at = 0;
                 if (self->read.consumed) {
                     pd->write_space_created = self->read.sz >= BUF_SZ;
                     self->read.pos -= MIN(self->read.pos, self->read.consumed);
@@ -1641,23 +1647,23 @@ vt_parser_create_write_buffer(Parser *p, size_t *sz) {
     return ans;
 }
 
-bool
+void
 vt_parser_commit_write(Parser *p, size_t sz) {
-    // Returns true if the pending input is small. Only uses fields modified
-    // with the lock held, so it overestimates while a parse is in progress,
-    // since read.sz includes input that is being parsed.
     PS *self = (PS *)p->state;
-    bool pending_is_small;
     with_lock {
         size_t off = self->read.sz + self->write.pending;
-        if (self->new_input_at == 0) self->new_input_at = monotonic();
+        // 0 means no unparsed input is waiting. monotonic() can return 0 at startup.
+        // A zero-length commit must not start the clock before any byte arrives.
+        if (sz && self->new_input_at == 0) {
+            monotonic_t stamp = monotonic();
+            self->new_input_at = stamp ? stamp : 1;
+            self->fresh_input_at = off;
+        }
         if (self->write.offset > off) memmove(self->buf + off, self->buf + self->write.offset, sz);
         self->write.pending += sz;
         self->write.sz = 0;
-        pending_is_small = self->read.sz + self->write.pending < SMALL_PENDING_INPUT_THRESHOLD;
     }
     end_with_lock;
-    return pending_is_small;
 }
 
 bool
@@ -1665,6 +1671,30 @@ vt_parser_has_space_for_input(const Parser *p) {
     PS *self = (PS *)p->state;
     bool ans;
     with_lock { ans = self->read.sz + self->write.pending < BUF_SZ; }
+    end_with_lock;
+    return ans;
+}
+
+ParserInputWake
+vt_parser_input_wake(const Parser *p, monotonic_t now) {
+    PS *self = (PS *)p->state;
+    ParserInputWake ans = {0};
+    with_lock {
+        size_t pending = self->read.sz + self->write.pending;
+        size_t fresh = pending > self->fresh_input_at ? pending - self->fresh_input_at : 0;
+        // A cleared timestamp is a scanned tail the parser left in the buffer.
+        // fresh excludes that tail, matching pending_input_is_small().
+        if (fresh && self->new_input_at) {
+            ans.input_at = self->new_input_at;
+            if (pending + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) ans.large_ready = true;
+            else if (fresh < SMALL_PENDING_INPUT_THRESHOLD) ans.small_pending = true;
+            else {
+                monotonic_t ready_at = self->new_input_at + OPT(input_delay);
+                if (ready_at <= now) ans.large_ready = true;
+                else ans.large_held_until = ready_at;
+            }
+        }
+    }
     end_with_lock;
     return ans;
 }
