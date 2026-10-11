@@ -916,6 +916,19 @@ prepare_to_render_os_window(
                     if (tab->cursor_trail.target_updated) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE);
                     if (was_rendering && !tab->cursor_trail.needs_render) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP);
                 }
+                if (os_window->is_focused && !screen_is_overlay_active(WD.screen) && screen_is_cursor_visible(WD.screen) &&
+                    now - WD.screen->overlay_line.last_ime_activity_at <= s_double_to_monotonic_t(1)) {
+                    // Follow the cursor for 1s after IME activity so that output echoing committed text,
+                    // which arrives after the commit, syncs the anchor before the next composition starts.
+                    if (WD.screen->overlay_line.last_ime_pos.x != WD.screen->cursor->x || WD.screen->overlay_line.last_ime_pos.y != WD.screen->cursor->y) {
+                        WD.screen->overlay_line.last_ime_pos.x = WD.screen->cursor->x;
+                        WD.screen->overlay_line.last_ime_pos.y = WD.screen->cursor->y;
+                        OSWindow *orig_callback_os_window = global_state.callback_os_window;
+                        global_state.callback_os_window = os_window;
+                        update_ime_position(w, WD.screen);
+                        global_state.callback_os_window = orig_callback_os_window;
+                    }
+                }
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;

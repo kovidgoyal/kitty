@@ -97,6 +97,7 @@ init_overlay_line(Screen *self, index_type columns, bool keep_active) {
     self->overlay_line.cursor_x = 0;
     self->overlay_line.last_ime_pos.x = 0;
     self->overlay_line.last_ime_pos.y = 0;
+    self->overlay_line.last_ime_activity_at = 0;
 
     return true;
 }
@@ -4103,23 +4104,6 @@ screen_update_only_line_graphics_data(Screen *self) {
     }
 }
 
-static bool
-is_active_window_screen(Screen *self) {
-    // The IME anchor is shared, so only the active kitty window may move it.
-    // In particular, cursor motion caused by child output in background
-    // windows must not reposition it.
-    for (size_t o = 0; o < global_state.num_os_windows; o++) {
-        OSWindow *osw = global_state.os_windows + o;
-        for (size_t t = 0; t < osw->num_tabs; t++) {
-            Tab *tab = osw->tabs + t;
-            for (size_t w = 0; w < tab->num_windows; w++) {
-                if (tab->windows[w].id == self->window_id) return t == osw->active_tab && w == tab->active_window;
-            }
-        }
-    }
-    return false;
-}
-
 void
 screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool cursor_has_moved) {
     if (self->paused_rendering.expires_at) {
@@ -4183,18 +4167,6 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
             render_overlay_line(self, self->linebuf->line, fonts_data);
         }
         update_overlay_line_data(self, address);
-    }
-    if (!is_overlay_active && (self->overlay_line.last_ime_pos.x != self->cursor->x || self->overlay_line.last_ime_pos.y != self->cursor->y) &&
-        is_active_window_screen(self)) {
-        // Keep the IME anchor following the cursor when it moves because of child
-        // output, such as echoing committed text. Otherwise the next composition
-        // starts with a stale anchor and its candidate window first flashes at
-        // the old position before jumping to the cursor. Raw cursor coordinates
-        // are used, matching prepare_ime_position_update_event() and deliberately
-        // excluding scrolled_by, so scrolling through history sends no updates.
-        self->overlay_line.last_ime_pos.x = self->cursor->x;
-        self->overlay_line.last_ime_pos.y = self->cursor->y;
-        update_ime_position_for_window(self->window_id, false, 0);
     }
 }
 
@@ -5027,6 +4999,7 @@ deactivate_overlay_line(Screen *self) {
 
 void
 screen_update_overlay_text(Screen *self, const char *utf8_text) {
+    self->overlay_line.last_ime_activity_at = monotonic();
     if (screen_is_overlay_active(self)) deactivate_overlay_line(self);
     if (!utf8_text || !utf8_text[0]) return;
     PyObject *text = PyUnicode_FromString(utf8_text);

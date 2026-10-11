@@ -101,6 +101,7 @@ typedef struct {
     struct {
         index_type x, y;
     } last_ime_pos;
+    monotonic_t last_ime_activity_at;
 } OverlayLine;
 
 typedef struct ExtraCursor {
