@@ -414,6 +414,16 @@ Integrate kitty with an LLM to convert plain language prompts into shell
 commands.
 
 
+.. _tool_show_your_work:
+
+`show-your-work <https://github.com/iamumeransari/claude-show-your-work>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Lets Claude Code show screenshots and play videos inline in the conversation
+using kitty's graphics protocol, including recordings of the app it built and
+before/after runs played side by side for QA.
+
+
 Miscellaneous
 ------------------
 
