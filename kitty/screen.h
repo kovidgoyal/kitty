@@ -222,6 +222,9 @@ typedef struct {
         char_type idx_plus_1[16];
     } tab_cache;
     monotonic_t parsing_at;
+    // Set by the main thread on every parse: input_held when bytes are waiting out
+    // input_delay, input_parsed when new input was parsed
+    bool input_held, input_parsed;
     ExtraCursors extra_cursors;
     struct {
         bool active;

@@ -23,8 +23,7 @@
 // Pending input smaller than this, typically the echo of typed characters, is
 // parsed without waiting for input_delay
 #define SMALL_PENDING_INPUT_THRESHOLD 1024u
-// A chunk this close to the end of the buffer is parsed immediately so a fast
-// producer cannot fill the buffer and block while input_delay is waiting.
+// See classify_pending_input()
 #define INPUT_PARSE_FORCE_MARGIN (16u * 1024u)
 
 
@@ -244,6 +243,9 @@ typedef struct PS {
     monotonic_t now, new_input_at;
     // Buffer size when new_input_at was set. Bytes before this are a scanned tail.
     size_t fresh_input_at;
+    // input_chunk identifies the bytes stamped by new_input_at. accepted_chunk is a chunk
+    // the I/O thread woke the main loop for as small input, parsed even if it has grown since.
+    uint64_t input_chunk, accepted_chunk;
     pthread_mutex_t lock;
 
     // The buffer
@@ -1581,12 +1583,20 @@ consume_input(PS *self, PyObject *dump_callback UNUSED, id_type window_id UNUSED
 #define with_lock pthread_mutex_lock(&self->lock);
 #define end_with_lock pthread_mutex_unlock(&self->lock);
 
-static bool
-pending_input_is_small(const PS *self) {
-    // must only be called from the parser thread as read.pos is modified without the lock
-    size_t pending = self->write.pending;
-    if (self->read.sz > self->read.pos) pending += self->read.sz - self->read.pos;
-    return pending < SMALL_PENDING_INPUT_THRESHOLD;
+typedef enum { PENDING_INPUT_NONE, PENDING_INPUT_SMALL, PENDING_INPUT_READY, PENDING_INPUT_HELD } PendingInput;
+
+static PendingInput
+classify_pending_input(const PS *self, monotonic_t now) {
+    // Must be called with the lock held. Both the parser and the I/O thread use this,
+    // so the I/O thread wakes the main loop exactly when the parser will accept the input.
+    size_t pending = self->read.sz + self->write.pending;
+    // A cleared timestamp or bytes before fresh_input_at are a scanned tail the parser left in the buffer
+    if (!self->new_input_at || pending <= self->fresh_input_at) return PENDING_INPUT_NONE;
+    // A chunk this close to the end of the buffer is parsed immediately so a fast
+    // producer cannot fill the buffer and block while input_delay is waiting.
+    if (pending + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) return PENDING_INPUT_READY;
+    if (pending - self->fresh_input_at < SMALL_PENDING_INPUT_THRESHOLD || self->input_chunk == self->accepted_chunk) return PENDING_INPUT_SMALL;
+    return now - self->new_input_at >= OPT(input_delay) ? PENDING_INPUT_READY : PENDING_INPUT_HELD;
 }
 
 static void
@@ -1599,8 +1609,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
         self->write.pending = 0;
         pd->has_pending_input = self->read.pos < self->read.sz;
         if (pd->has_pending_input) {
-            pd->time_since_new_input = pd->now - self->new_input_at;
-            if (flush || pending_input_is_small(self) || pd->time_since_new_input >= OPT(input_delay) || self->read.sz + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) {
+            if (flush || classify_pending_input(self, pd->now) != PENDING_INPUT_HELD) {
                 pd->input_read = true;
                 self->dump_callback = pd->dump_callback;
                 self->now = pd->now;
@@ -1658,6 +1667,7 @@ vt_parser_commit_write(Parser *p, size_t sz) {
             monotonic_t stamp = monotonic();
             self->new_input_at = stamp ? stamp : 1;
             self->fresh_input_at = off;
+            self->input_chunk++;
         }
         if (self->write.offset > off) memmove(self->buf + off, self->buf + self->write.offset, sz);
         self->write.pending += sz;
@@ -1680,23 +1690,26 @@ vt_parser_input_wake(const Parser *p, monotonic_t now) {
     PS *self = (PS *)p->state;
     ParserInputWake ans = {0};
     with_lock {
-        size_t pending = self->read.sz + self->write.pending;
-        size_t fresh = pending > self->fresh_input_at ? pending - self->fresh_input_at : 0;
-        // A cleared timestamp is a scanned tail the parser left in the buffer.
-        // fresh excludes that tail, matching pending_input_is_small().
-        if (fresh && self->new_input_at) {
-            ans.input_at = self->new_input_at;
-            if (pending + INPUT_PARSE_FORCE_MARGIN > BUF_SZ) ans.large_ready = true;
-            else if (fresh < SMALL_PENDING_INPUT_THRESHOLD) ans.small_pending = true;
-            else {
-                monotonic_t ready_at = self->new_input_at + OPT(input_delay);
-                if (ready_at <= now) ans.large_ready = true;
-                else ans.large_held_until = ready_at;
-            }
+        switch (classify_pending_input(self, now)) {
+            case PENDING_INPUT_NONE: break;
+            case PENDING_INPUT_SMALL: ans.small_pending = true; break;
+            case PENDING_INPUT_READY: ans.large_ready = true; break;
+            case PENDING_INPUT_HELD: ans.large_held_until = self->new_input_at + OPT(input_delay); break;
         }
+        if (ans.small_pending || ans.large_ready || ans.large_held_until) ans.chunk = self->input_chunk;
     }
     end_with_lock;
     return ans;
+}
+
+void
+vt_parser_accept_input(Parser *p, uint64_t chunk) {
+    PS *self = (PS *)p->state;
+    with_lock {
+        // The chunk may have been parsed already, in which case a later chunk must not be accepted early
+        if (self->new_input_at && self->input_chunk == chunk) self->accepted_chunk = chunk;
+    }
+    end_with_lock;
 }
 #endif
 
