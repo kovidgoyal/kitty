@@ -1656,8 +1656,8 @@ dispatch_mapped_scroll_axis(OSWindow *osw, Window *w, const GLFWScrollEvent *ev,
 // whole event is consumed.
 static bool
 dispatch_mapped_scroll(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, int mods, bool grabbed) {
-    // A partial step does not carry over to a different window or modifiers
-    if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != mods)
+    // A partial step does not carry over to a different window, modifiers or mouse mode
+    if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != mods || osw->scroll.mapped_grabbed != grabbed)
         osw->scroll.mapped_pending_pixels_x = osw->scroll.mapped_pending_pixels_y = 0;
     // Both axes are always dispatched, so that a diagonal gesture can fire both
     const bool consumed_y = ev->y_offset != 0.0 && dispatch_mapped_scroll_axis(osw, w, ev, true, mods, grabbed);
@@ -1665,16 +1665,29 @@ dispatch_mapped_scroll(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, int 
     if (!consumed_x && !consumed_y) return false;
     osw->scroll.mapped_window_id = w->id;
     osw->scroll.mapped_modifiers = mods;
+    osw->scroll.mapped_grabbed = grabbed;
+    osw->scroll.mapped_last_event_at = monotonic();
     return true;
 }
 
-// An unmapped event continues a mapped gesture only if it is in the same window
-// with the same modifiers and only scrolls along axes that have no mappings at
-// all, for example, horizontal jitter during a vertical gesture. Otherwise the
-// momentum of a following, unmapped gesture would be swallowed.
+// The longest gap between two scroll events that can belong to the same
+// gesture. Touchpads report at least at display refresh rate while the fingers
+// move, so this only has to outlast a dropped frame or two.
+#define MAPPED_GESTURE_MAX_GAP_MS 200ll
+
+// An unmapped event continues a mapped gesture only if it belongs to the same
+// gesture, that is, it arrives promptly after the previous event of that
+// gesture, in the same window and mouse mode with the same modifiers, and only
+// scrolls along axes that have no mappings at all, for example, horizontal
+// jitter during a vertical gesture. Otherwise the momentum of a following,
+// unmapped gesture would be swallowed. Both the mouse mode and the elapsed time
+// have to be checked because the set of mapped wheel buttons changes with the
+// mode and a classic wheel has no end-of-gesture event, so without them an
+// unmapped direction would stay swallowed indefinitely.
 static bool
 continues_mapped_gesture(const OSWindow *osw, const Window *w, const GLFWScrollEvent *ev, int mods, bool grabbed) {
-    if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != mods) return false;
+    if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != mods || osw->scroll.mapped_grabbed != grabbed) return false;
+    if (monotonic() - osw->scroll.mapped_last_event_at > ms_to_monotonic_t(MAPPED_GESTURE_MAX_GAP_MS)) return false;
     if (ev->y_offset != 0.0 && (wheel_is_mapped(MOUSE_WHEEL_UP, grabbed, mods) || wheel_is_mapped(MOUSE_WHEEL_DOWN, grabbed, mods))) return false;
     if (ev->x_offset != 0.0 && (wheel_is_mapped(MOUSE_WHEEL_LEFT, grabbed, mods) || wheel_is_mapped(MOUSE_WHEEL_RIGHT, grabbed, mods))) return false;
     return true;
@@ -1735,11 +1748,20 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
         const bool grabbed = screen->modes.mouse_tracking_mode != NO_TRACKING;
         const int mods = ev->keyboard_modifiers & WHEEL_MAPPING_MODS_MASK;
         if (dispatch_mapped_scroll(osw, w, ev, mods, grabbed)) osw->scroll.mapped_gesture = true;
-        else if (osw->scroll.mapped_gesture) osw->scroll.mapped_gesture = continues_mapped_gesture(osw, w, ev, mods, grabbed);
+        else if (osw->scroll.mapped_gesture) {
+            osw->scroll.mapped_gesture = continues_mapped_gesture(osw, w, ev, mods, grabbed);
+            // The gesture now extends to this event, so the next one is timed from here
+            if (osw->scroll.mapped_gesture) osw->scroll.mapped_last_event_at = monotonic();
+        }
         if (osw->scroll.mapped_gesture) return;
     } else if (osw->scroll.mapped_gesture) {
         // Inertial scrolling after a mapped gesture neither fires the mappings nor scrolls
         osw->scroll.mapped_pending_pixels_x = osw->scroll.mapped_pending_pixels_y = 0;
+        osw->scroll.mapped_last_event_at = monotonic();
+        // Once the momentum is spent the gesture is over, so a later unmapped
+        // event in the same window with the same modifiers scrolls normally
+        if (ev->momentum_type == GLFW_MOMENTUM_PHASE_ENDED || ev->momentum_type == GLFW_MOMENTUM_PHASE_CANCELED)
+            osw->scroll.mapped_gesture = false;
         return;
     }
     finish_scroll_animation(screen);

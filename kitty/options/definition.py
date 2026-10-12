@@ -1252,6 +1252,15 @@ Or to switch tabs by scrolling horizontally with :kbd:`Ctrl`::
     mouse_map ctrl+wheel_left press ungrabbed,grabbed previous_tab
     mouse_map ctrl+wheel_right press ungrabbed,grabbed next_tab
 
+.. note::
+    On macOS, holding :kbd:`Shift` while turning a classic mouse wheel is
+    translated by the operating system into horizontal scrolling, so such a
+    gesture triggers :code:`shift+wheel_left` and :code:`shift+wheel_right`
+    rather than :code:`shift+wheel_up` and :code:`shift+wheel_down`. Touchpads
+    are unaffected, so the same mapping can be reached by two different buttons
+    depending on the device. Prefer a modifier other than :kbd:`Shift` for
+    vertical wheel mappings that have to work with both.
+
 :code:`event-type` is one of :code:`press`, :code:`release`,
 :code:`doublepress`, :code:`triplepress`, :code:`click`, :code:`doubleclick`.
 :code:`modes` indicates whether the action is performed when the mouse is

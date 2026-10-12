@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import partial
+from time import sleep
 
 from kitty.fast_data_types import (
     GLFW_MOD_ALT,
@@ -484,7 +485,7 @@ class TestMouse(BaseTest):
         from kitty.config import load_config
 
         LINES, HIGHRES = 0, 2  # GLFWOffsetType
-        MOMENTUM_BEGAN, MOMENTUM_ACTIVE = 1, 3  # GLFWMomentumType
+        MOMENTUM_BEGAN, MOMENTUM_ACTIVE, MOMENTUM_ENDED = 1, 3, 4  # GLFWMomentumType
         s = self.create_screen(lines=5, scrollback=50)
         errors = []
         opts = load_config(
@@ -586,3 +587,54 @@ class TestMouse(BaseTest):
         scroll(0, GLFW_MOD_CONTROL, HIGHRES, x=-10)
         scroll(-20, GLFW_MOD_CONTROL, HIGHRES, MOMENTUM_BEGAN)
         ac(['+'], 1)
+        # Spent momentum ends the gesture, so a later unmapped event in the same
+        # window with the same modifiers scrolls instead of being swallowed.
+        # shift is mapped horizontally only, so vertical scrolling is unmapped.
+        scroll(0, GLFW_MOD_SHIFT, HIGHRES, x=100)
+        scroll(0, GLFW_MOD_SHIFT, HIGHRES, MOMENTUM_BEGAN, x=-200)
+        scroll(0, GLFW_MOD_SHIFT, HIGHRES, MOMENTUM_ENDED, x=-100)
+        ac(['left'], 1)
+        scroll(1, GLFW_MOD_SHIFT)
+        ac([], 2)
+
+        # A classic wheel has no end-of-gesture event, so a gesture is also
+        # bounded by the time between its events and by the mouse mode, which
+        # changes the set of mapped wheel buttons. Without that, an unmapped
+        # direction would stay swallowed indefinitely. Reload the mappings so
+        # that ctrl is mapped horizontally only, as in the mouse_map docs.
+        opts = load_config(
+            overrides=(
+                'pixel_scroll no',
+                'wheel_scroll_multiplier 1',
+                'mouse_map ctrl+wheel_left press ungrabbed,grabbed previous_tab',
+                'mouse_map ctrl+wheel_right press ungrabbed,grabbed next_tab',
+                'mouse_map alt+wheel_up press ungrabbed change_font_size all +1',
+            ),
+            accumulate_bad_lines=errors,
+        )
+        self.ae(errors, [])
+        set_options(opts)
+        # Vertical is unmapped for ctrl now, so it scrolls
+        scroll(1, GLFW_MOD_CONTROL)
+        ac([], 3)
+        # A mapped horizontal event starts a gesture, during which off-axis
+        # jitter is still swallowed
+        scroll(0, GLFW_MOD_CONTROL, x=1)
+        ac(['left'], 3)
+        scroll(1, GLFW_MOD_CONTROL)
+        ac([], 3)
+        # But once the gesture times out, vertical scrolling works again
+        sleep(0.3)
+        scroll(1, GLFW_MOD_CONTROL)
+        ac([], 4)
+        # Changing the mouse mode ends the gesture too. alt+wheel_up is mapped
+        # only when ungrabbed, so once grabbed the wheel goes to the program
+        # instead of being swallowed as a continuation of the mapped gesture.
+        scroll(1, GLFW_MOD_ALT)
+        ac(['+'], 4)
+        parse_bytes(s, b'\x1b[?1000h')
+        s.callbacks.wtcbuf = b''
+        scroll(1, GLFW_MOD_ALT)
+        ac([], 4)
+        self.assertTrue(s.callbacks.wtcbuf, 'the wheel event was not reported to the program')
+        parse_bytes(s, b'\x1b[?1000l')

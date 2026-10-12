@@ -603,13 +603,16 @@ typedef struct OSWindow {
     struct {
         double pending_pixels_x, pending_pixels_y;
         int last_v120_dir_x, last_v120_dir_y;
-        // mouse_map wheel state: the partial steps and the window and
-        // modifiers they belong to, and whether the current gesture fired a
-        // mapping, so that its momentum is swallowed
+        // mouse_map wheel state: the partial steps and the window, modifiers
+        // and mouse mode they belong to, and whether the current gesture fired
+        // a mapping, so that its momentum is swallowed. mapped_last_event_at
+        // bounds the gesture in time, as there is no end-of-gesture event for a
+        // classic wheel.
         double mapped_pending_pixels_x, mapped_pending_pixels_y;
         id_type mapped_window_id;
         int mapped_modifiers;
-        bool mapped_gesture;
+        monotonic_t mapped_last_event_at;
+        bool mapped_gesture, mapped_grabbed;
     } scroll;
     unsigned shader_anim_event_registry;
     id_type last_bell_window_id; // ID of the most recent window that received a bell event
