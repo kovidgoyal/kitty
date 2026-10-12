@@ -632,11 +632,13 @@ init_custom_programs(void) {
         }
     }
     // Free global named textures that are no longer declared in the pipeline
-    if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_A))) {
+    const bool drop_a = !(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_A));
+    const bool drop_b = !(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_B));
+    if (drop_a) {
         if (global_state.layers_render_texture.texture_a_id) free_texture(&global_state.layers_render_texture.texture_a_id);
         if (global_state.layers_render_texture.texture_a_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_a_fbo_id);
     }
-    if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_B))) {
+    if (drop_b) {
         if (global_state.layers_render_texture.texture_b_id) free_texture(&global_state.layers_render_texture.texture_b_id);
         if (global_state.layers_render_texture.texture_b_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_b_fbo_id);
     }
@@ -645,8 +647,8 @@ init_custom_programs(void) {
         OSWindow *osw = global_state.os_windows + w;
         // Per window framebuffers must be attached afresh to the textures that
         // replace the ones freed above, should a later pipeline declare them again
-        if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_A))) osw->indirect_output.fbo_a_generation = 0;
-        if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_B))) osw->indirect_output.fbo_b_generation = 0;
+        if (drop_a) osw->indirect_output.fbo_a_generation = 0;
+        if (drop_b) osw->indirect_output.fbo_b_generation = 0;
         init_shader_animation_state(osw);
         // Synthesize focus events for windows that already have focus so that
         // animations triggered by os-window-focus-in start on the first render
@@ -2633,9 +2635,11 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
                 os_window->persist_texture_generation = global_state.layers_render_texture.texture_generation;
             }
         } else {
-            if (os_window->persist_texture_id) free_texture(&os_window->persist_texture_id);
+            if (os_window->persist_texture_id) {
+                free_texture(&os_window->persist_texture_id);
+                os_window->persist_texture_generation = 0;
+            }
             if (os_window->persist_fbo_id) free_framebuffer(&os_window->persist_fbo_id);
-            os_window->persist_texture_generation = 0;
         }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
