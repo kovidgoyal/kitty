@@ -331,6 +331,14 @@ typedef struct _GLFWWaylandDataOffer {
     size_t dd_capacity, dd_count;
 } _GLFWWaylandDataOffer;
 
+typedef struct _GLFWWaylandTouchPoint {
+    int32_t id;
+    GLFWid window_id;
+    GLFWTouchPointState state;
+    bool pressed_in_frame;
+    double x, y;
+} _GLFWWaylandTouchPoint;
+
 // Wayland-specific global data
 //
 typedef struct _GLFWlibraryWayland {
@@ -342,6 +350,17 @@ typedef struct _GLFWlibraryWayland {
     struct wl_seat *seat;
     struct wl_pointer *pointer;
     struct wl_keyboard *keyboard;
+    struct wl_touch *touch;
+    // The touch points that are down, each tied to the window it landed on.
+    // Changes collect here and are reported at the wl_touch frame event.
+    // pressed_in_frame marks a point the application has not heard of yet
+    struct {
+        _GLFWWaylandTouchPoint points[16];
+        size_t count;
+        // The time of the latest wl_touch event, in milliseconds of the compositor clock
+        uint32_t last_event_time;
+        bool has_event_time;
+    } touch_state;
     struct wl_data_device_manager *dataDeviceManager;
     struct wl_data_device *dataDevice;
     struct xdg_wm_base *wmBase;
@@ -519,6 +538,7 @@ void _glfwAddOutputWayland(uint32_t name, uint32_t version);
 void _glfwCreateXdgOutputWayland(_GLFWmonitor *monitor);
 void _glfwWaylandBeforeBufferSwap(_GLFWwindow *window);
 void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
+void _glfwWaylandSurfaceOutputsChanged(_GLFWwindow *window);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 double _glfwWaylandWindowScale(_GLFWwindow *);

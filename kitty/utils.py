@@ -140,7 +140,7 @@ def log_error(*a: Any, **k: str) -> None:
 
 
 @contextmanager
-def suppress_error_logging() -> Iterator[None]:
+def suppress_error_logging() -> Generator[None, None, None]:
     before = getattr(log_error, 'redirect', suppress_error_logging)
     setattr(log_error, 'redirect', lambda *a: None)
     try:
@@ -504,7 +504,7 @@ def set_echo(fd: int = -1, on: bool = False) -> tuple[int, list[int | list[bytes
 
 
 @contextmanager
-def no_echo(fd: int = -1) -> Iterator[None]:
+def no_echo(fd: int = -1) -> Generator[None, None, None]:
     import termios
 
     fd, old = set_echo(fd)
@@ -514,15 +514,13 @@ def no_echo(fd: int = -1) -> Iterator[None]:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
+def natsort_key(text: str, case_sensitive: bool = True) -> tuple[tuple[int, str], ...]:
+    # re.split() with a capturing group puts the digit runs at the odd indices
+    return tuple((int(x), x) if i % 2 else (0, x if case_sensitive else x.casefold()) for i, x in enumerate(re.split(r'(\d+)', text)))
+
+
 def natsort_ints(iterable: Iterable[str]) -> list[str]:
-
-    def convert(text: str) -> int | str:
-        return int(text) if text.isdigit() else text
-
-    def alphanum_key(key: str) -> tuple[int | str, ...]:
-        return tuple(map(convert, re.split(r'(\d+)', key)))
-
-    return sorted(iterable, key=alphanum_key)
+    return sorted(iterable, key=natsort_key)
 
 
 def get_hostname(fallback: str = '') -> str:
@@ -1238,12 +1236,21 @@ def unlock_file(f: IO[bytes] | IO[str]) -> None:
 
 
 @contextmanager
-def lock_with_file(path: str) -> Iterator[None]:
-    os.close(os.open(path, os.O_CREAT | os.O_WRONLY | os.O_EXCL | os.O_CLOEXEC))
+def lock_with_file(path: str) -> Generator[None, None, None]:
+    """Take an exclusive advisory lock on path, waiting for it to become available.
+
+    The lock file is created if needed and left in place, since unlinking it
+    would allow a second process to create and lock a different file with the
+    same name while the lock is still held. The kernel drops the lock when the
+    file descriptor is closed, including on abnormal process exit, so stale lock
+    files are harmless.
+    """
+    fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_CLOEXEC, 0o600)
     try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
         yield
     finally:
-        os.remove(path)
+        os.close(fd)
 
 
 def rmtree_best_effort(relpath: str, dir_fd: int) -> None:

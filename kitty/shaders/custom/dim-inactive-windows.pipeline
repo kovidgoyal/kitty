@@ -3,5 +3,9 @@ startgroup
     animation_step 0
     var float HIGHLIGHT_INTENSITY = 0
     var float BORDER_WIDTH = 0
+    # do not dim the tab bar and treat the padding/title bar of the active
+    # window as part of it, so it is not surrounded by a dimmed frame
+    var bool DIM_CENTRAL_AREA_ONLY = true
+    var bool INCLUDE_WINDOW_PADDING = true
     shaders focus-highlight
 endgroup

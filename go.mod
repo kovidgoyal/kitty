@@ -2,28 +2,28 @@ module github.com/kovidgoyal/kitty
 
 go 1.26.0
 
-toolchain go1.26.6
+toolchain go1.26.9
 
 require (
 	github.com/ALTree/bigfloat v0.3.0
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/bmatcuk/doublestar/v4 v4.10.2
 	github.com/dlclark/regexp2 v1.12.0
-	github.com/ebitengine/purego v0.11.0
+	github.com/ebitengine/purego v0.11.1
 	github.com/emmansun/base64 v0.10.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
-	github.com/klauspost/compress v1.20.0
+	github.com/klauspost/compress v1.20.1
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
-	github.com/kovidgoyal/go-shm v1.0.0
+	github.com/kovidgoyal/go-shm/v2 v2.0.1
 	github.com/kovidgoyal/imaging v1.8.23
-	github.com/nwaples/rardecode/v2 v2.4.1
-	github.com/seancfoley/ipaddress-go v1.8.3
+	github.com/nwaples/rardecode/v2 v2.4.2
+	github.com/seancfoley/ipaddress-go v1.8.4
 	github.com/sgtdi/fswatcher v1.3.0
-	github.com/shirou/gopsutil/v4 v4.26.8
-	github.com/ulikunitz/xz v0.5.16
+	github.com/shirou/gopsutil/v4 v4.26.9
+	github.com/ulikunitz/xz v0.5.17
 	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.46.0
@@ -42,11 +42,12 @@ require (
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
+	github.com/kovidgoyal/go-shm v1.0.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
-	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
+	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd // indirect
 	github.com/seancfoley/bintree v1.4.0 // indirect
-	github.com/tklauser/go-sysconf v0.3.16 // indirect
-	github.com/tklauser/numcpus v0.11.0 // indirect
+	github.com/tklauser/go-sysconf v0.4.0 // indirect
+	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 )

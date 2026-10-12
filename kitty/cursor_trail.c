@@ -42,6 +42,8 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
     if (left != FLT_MAX) {
         if (EDGE(x, 0) != left || EDGE(x, 1) != right || EDGE(y, 0) != top || EDGE(y, 1) != bottom) {
             ct->target_updated = true;
+            ct->window_changed = ct->window_id && ct->window_id != w->id;
+            ct->window_id = w->id;
             if (ct->prev_edge_valid) {
                 ct->prev_cursor_edge_x[0] = EDGE(x, 0);
                 ct->prev_cursor_edge_x[1] = EDGE(x, 1);
@@ -57,13 +59,25 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
     }
 }
 
+static void
+record_cursor_move(CursorTrail *ct, monotonic_t now) {
+    memmove(ct->history + 1, ct->history, sizeof(ct->history) - sizeof(ct->history[0]));
+    CursorMove *m = ct->history;
+    memcpy(m->from_x, ct->prev_cursor_edge_x, sizeof(m->from_x));
+    memcpy(m->from_y, ct->prev_cursor_edge_y, sizeof(m->from_y));
+    memcpy(m->to_x, ct->cursor_edge_x, sizeof(m->to_x));
+    memcpy(m->to_y, ct->cursor_edge_y, sizeof(m->to_y));
+    m->at = now;
+}
+
 static bool
 should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_window, Window *w) {
     if (os_window->live_resize.in_progress) { return true; }
 
     if (!WD.screen->modes.mDECTCEM && ct->opacity <= 0.0f) { return true; }
 
-    if ((OPT(cursor_trail_start_threshold_x) > 0 || OPT(cursor_trail_start_threshold_y) > 0) && !ct->needs_render) {
+    // moving to a different window is a change of context, so always show the trail for it
+    if ((OPT(cursor_trail_start_threshold_x) > 0 || OPT(cursor_trail_start_threshold_y) > 0) && !ct->needs_render && !ct->window_changed) {
         int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / g.dx);
         int dy = (int)round((ct->corner_y[0] - EDGE(y, 0)) / g.dy);
         if (abs(dx) <= OPT(cursor_trail_start_threshold_x) && abs(dy) <= OPT(cursor_trail_start_threshold_y)) { return true; }
@@ -124,6 +138,7 @@ update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWi
             ct->corner_y[i] += dy[i] * step;
         }
     }
+    ct->window_changed = false;
 }
 
 static void
@@ -160,6 +175,9 @@ update_cursor_trail_needs_render(CursorTrail *ct, Window *w, ndc_coords g) {
 
 bool
 update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+    // remember where the trail was drawn in the previous frame, for shaders that do motion blur
+    memcpy(ct->previous_corner_x, ct->corner_x, sizeof(ct->previous_corner_x));
+    memcpy(ct->previous_corner_y, ct->corner_y, sizeof(ct->previous_corner_y));
     ct->target_updated = false;
     ndc_coords g = {
         .xstart = gl_pos_x(w->render_data.geometry.left, os_window->viewport_width),
@@ -174,6 +192,8 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     if (ct->target_updated && had_prev_edge) ct->cursor_changed_at = now;
 
     update_cursor_trail_corners(ct, g, now, os_window, w);
+    // update_cursor_trail_corners() clears target_updated for moves too small to start a trail
+    if (ct->target_updated && had_prev_edge) record_cursor_move(ct, now);
     update_cursor_trail_opacity(ct, w, now);
 
     bool needs_render_prev = ct->needs_render;

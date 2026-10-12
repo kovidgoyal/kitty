@@ -159,7 +159,7 @@ class CurrentlyParsing:
         return CurrentlyParsing(self.line, self.number, self.file)
 
     @contextmanager
-    def set_line(self, line: str, number: int) -> Iterator['CurrentlyParsing']:
+    def set_line(self, line: str, number: int) -> Generator['CurrentlyParsing', None, None]:
         orig = self.line, self.number
         self.line = line
         self.number = number
@@ -169,7 +169,7 @@ class CurrentlyParsing:
             self.line, self.number = orig
 
     @contextmanager
-    def set_file(self, file: str) -> Iterator['CurrentlyParsing']:
+    def set_file(self, file: str) -> Generator['CurrentlyParsing', None, None]:
         orig = self.file
         self.file = file
         try:

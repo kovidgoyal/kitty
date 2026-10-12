@@ -83,9 +83,18 @@ func (self *Loop) update_screen_size() error {
 	s.updated = true
 	s.HeightCells, s.WidthCells = uint(ws.Row), uint(ws.Col)
 	s.HeightPx, s.WidthPx = uint(ws.Ypixel), uint(ws.Xpixel)
-	s.CellWidth = s.WidthPx / s.WidthCells
-	s.CellHeight = s.HeightPx / s.HeightCells
+	s.update_cell_size()
 	return nil
+}
+
+func (s *ScreenSize) update_cell_size() {
+	s.CellWidth, s.CellHeight = 0, 0
+	if s.WidthCells > 0 {
+		s.CellWidth = s.WidthPx / s.WidthCells
+	}
+	if s.HeightCells > 0 {
+		s.CellHeight = s.HeightPx / s.HeightCells
+	}
 }
 
 func (self *Loop) handle_csi(raw []byte) (err error) {
@@ -95,26 +104,27 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 	csi := string(raw)
 	switch raw[len(raw)-1] {
 	case 't':
-		if strings.HasSuffix(csi, "t") {
-			if parts := strings.Split(csi[3:len(csi)-1], ";"); len(parts) > 3 {
-				var parsed [4]int
+		if rest, found := strings.CutPrefix(csi, "48;"); found {
+			if parts := strings.Split(rest[:len(rest)-1], ";"); len(parts) >= 4 {
+				var parsed [4]uint
 				ok := true
-				for i, x := range parts {
-					x, _, _ = strings.Cut(x, ":")
-					if parsed[i], err = strconv.Atoi(x); err != nil {
+				for i := range parsed {
+					x, _, _ := strings.Cut(parts[i], ":")
+					n, perr := strconv.ParseUint(x, 10, 0)
+					if perr != nil {
 						ok = false
 						break
 					}
+					parsed[i] = uint(n)
 				}
 				if ok {
 					self.seen_inband_resize = true
 					old_size := self.screen_size
 					s := &self.screen_size
 					s.updated = true
-					s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
-					s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[3])
-					s.CellWidth = s.WidthPx / s.WidthCells
-					s.CellHeight = s.HeightPx / s.HeightCells
+					s.HeightCells, s.WidthCells = parsed[0], parsed[1]
+					s.HeightPx, s.WidthPx = parsed[2], parsed[3]
+					s.update_cell_size()
 					if self.OnResize != nil {
 						return self.OnResize(old_size, self.screen_size)
 					}

@@ -52,10 +52,15 @@ func fish_output_serializer(completions []*Completions, shell_state map[string]s
 	n := completions[0].Delegate.NumToRemove
 	fm := markup.New(false) // fish freaks out if there are escape codes in the description strings
 	legacy_completion := shell_state["_legacy_completion"]
+	// fish splits the output of the completion function on newlines, so a description
+	// spanning multiple lines adds its continuation lines as spurious candidates.
+	candidate := func(m *Match) string {
+		return strings.ReplaceAll(m.Word+"\t"+fm.Prettify(m.Description), "\n", " ")
+	}
 	if legacy_completion == "fish2" {
 		for _, mg := range completions[0].Groups {
 			for _, m := range mg.Matches {
-				f("%s", strings.ReplaceAll(m.Word+"\t"+fm.Prettify(m.Description), "\n", " "))
+				f("%s", candidate(m))
 			}
 		}
 	} else if n > 0 {
@@ -72,7 +77,7 @@ func fish_output_serializer(completions []*Completions, shell_state map[string]s
 	} else {
 		for _, mg := range completions[0].Groups {
 			for _, m := range mg.Matches {
-				f("echo -- %s", utils.QuoteStringForFish(m.Word+"\t"+fm.Prettify(m.Description)))
+				f("echo -- %s", utils.QuoteStringForFish(candidate(m)))
 			}
 		}
 	}

@@ -115,7 +115,7 @@ typedef struct {
     bool root_frame_data_loaded;
     id_type ref_id_counter;
     Frame *extra_frames, root_frame;
-    uint32_t current_frame_index, frame_id_counter;
+    uint32_t current_frame_index, frame_id_counter, displayed_frame_id;
     uint64_t animation_duration;
     size_t extra_framecnt;
     monotonic_t atime;
@@ -181,6 +181,8 @@ typedef struct {
     int32_t amt, limit;
     index_type margin_top, margin_bottom;
     bool has_margins;
+    // The history scrolls with the screen: lines move into it (amt < 0) or are popped back from it (amt > 0)
+    bool scroll_history;
 } ScrollData;
 
 

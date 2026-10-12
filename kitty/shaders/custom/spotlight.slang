@@ -31,7 +31,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float aspectRatio = pixelDims.x / pixelDims.y;
 
     // Random oscillating center (different frequencies and phases on each axis)
-    float time = d.timestamp * SPOTLIGHT_SPEED;
+    float time = d.wrapped_time(3600u) * SPOTLIGHT_SPEED;
     float2 randomCenter = float2(0.5 + 0.4 * sin(time), 0.5 + 0.4 * sin(time * 1.3 + 3.14159));
 
     // Mouse is valid only when both coords are inside the OS window [0, 1]

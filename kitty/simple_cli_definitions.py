@@ -482,7 +482,7 @@ choices=normal,fullscreen,maximized,minimized,hidden
 Control how the initial kitty OS window is created. Note that
 this is applies to all OS Windows if you use the :option:`{appname} --session`
 option to create multiple OS Windows. Any OS Windows state
-specified in the session file gets overriden.
+specified in the session file gets overridden.
 
 
 --position
@@ -769,6 +769,22 @@ type=bool-set
 default={toggle_visibility}
 When set and using :option:`--single-instance` will toggle the visibility of the
 existing panel rather than creating a new one.
+
+
+--if-running
+choices=ignore,new-tab,new-window
+default=ignore
+When using :option:`--toggle-visibility` and a program to run is specified
+on the command line, controls what happens if the panel is already running.
+The default, :code:`ignore`, ignores the program and just toggles the visibility of the panel.
+:code:`new-tab` runs the program in a new tab in the existing panel and
+:code:`new-window` runs it in a new window in the active tab of the existing panel.
+In both these cases, the panel is made visible, if hidden.
+
+
+--hold
+type=bool-set
+Remain open, at a shell prompt, after the program run in the panel exits.
 
 
 --move-to-active-monitor

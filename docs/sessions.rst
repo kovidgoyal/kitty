@@ -276,6 +276,14 @@ session as well tabs that do not belong to any session. Furthermore, when you
 are in a window or tab that does not belong to any session, the tab bar will
 show the tabs from the most recent active session, to maintain context.
 
+If you use :option:`launch --focus-existing` with the special value :code:`@title`
+to switch to named tabs, only the tabs visible in the tab bar are considered, so
+you won't jump into a tab from another session. Add :option:`launch --add-to-session`
+to give each session its own set of named tabs, otherwise the created tabs belong to
+no session and are shown in all sessions::
+
+    map ctrl+1 launch --type=tab --tab-title=1 --location=by-title --focus-existing=@title --add-to-session=.
+
 Keyword reference
 ---------------------
 

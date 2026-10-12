@@ -432,8 +432,7 @@ destroy_window(Window *w) {
     drag_free_offer(w, true);
     free(w->pending_clicks.clicks);
     zero_at_ptr(&w->pending_clicks);
-    free(w->buffered_keys.key_data);
-    zero_at_ptr(&w->buffered_keys);
+    free_buffered_keys(w);
     Py_CLEAR(w->render_data.screen);
     Py_CLEAR(w->title);
     Py_CLEAR(w->title_bar_data.last_drawn_title_object_id);
@@ -591,6 +590,8 @@ destroy_os_window_item(OSWindow *w) {
     if (w->indirect_output.fbo_b_id) free_framebuffer(&w->indirect_output.fbo_b_id);
     if (w->persist_texture_id) free_texture(&w->persist_texture_id);
     if (w->persist_fbo_id) free_framebuffer(&w->persist_fbo_id);
+    free(w->pointer_map.data);
+    zero_at_ptr(&w->pointer_map);
 }
 
 bool
@@ -901,6 +902,15 @@ dispatch_pending_clicks(id_type timer_id UNUSED, void *data UNUSED) {
     } while (dispatched);
 }
 
+void
+update_ime_state_in_os_window(OSWindow *osw, Window *window, int update_focus) {
+    OSWindow *orig = global_state.callback_os_window;
+    global_state.callback_os_window = osw;
+    if (update_focus) update_ime_focus(osw, update_focus > 0);
+    if (update_focus >= 0 && window->render_data.screen) { update_ime_position(window, window->render_data.screen); }
+    global_state.callback_os_window = orig;
+}
+
 bool
 update_ime_position_for_window(id_type window_id, bool force, int update_focus) {
     for (size_t o = 0; o < global_state.num_os_windows; o++) {
@@ -912,11 +922,7 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
                 if (window->id == window_id) {
                     // The screen may not be ready after the new window is created and focused, and still needs to enable IME.
                     if ((window->render_data.screen && (force || osw->is_focused)) || update_focus > 0) {
-                        OSWindow *orig = global_state.callback_os_window;
-                        global_state.callback_os_window = osw;
-                        if (update_focus) update_ime_focus(osw, update_focus > 0);
-                        if (update_focus >= 0 && window->render_data.screen) { update_ime_position(window, window->render_data.screen); }
-                        global_state.callback_os_window = orig;
+                        update_ime_state_in_os_window(osw, window, update_focus);
                         return true;
                     }
                     return false;
@@ -1099,6 +1105,7 @@ PYWRAP1(set_options) {
     global_state.debug_rendering = debug_rendering ? true : false;
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
     if (!convert_opts_from_python_opts(opts, &global_state.opts)) return NULL;
+    if (!set_wheel_mappings(opts, &global_state.opts)) return NULL;
     push_modifier_remap_to_glfw();
     Py_XDECREF(global_state.options_object);
     global_state.options_object = Py_NewRef(opts);

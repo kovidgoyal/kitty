@@ -101,6 +101,7 @@ from .fast_data_types import (
 from .keys import keyboard_mode_name, mod_mask
 from .notifications import NotificationManager
 from .options.types import Options
+from .options.utils import mouse_wheel_buttons
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
@@ -685,11 +686,11 @@ class EdgeWidths:
         if self.left is not None:
             yield f'--spacing={prefix}-left={self.left}'
         if self.right is not None:
-            yield f'--spacing={prefix}-left={self.right}'
+            yield f'--spacing={prefix}-right={self.right}'
         if self.top is not None:
-            yield f'--spacing={prefix}-left={self.top}'
+            yield f'--spacing={prefix}-top={self.top}'
         if self.bottom is not None:
-            yield f'--spacing={prefix}-left={self.bottom}'
+            yield f'--spacing={prefix}-bottom={self.bottom}'
 
 
 class GlobalWatchers:
@@ -699,20 +700,23 @@ class GlobalWatchers:
         self.extra = ''
 
     def __call__(self) -> Watchers:
-        spec = get_options().watcher
-        if spec == self.options_spec:
+        raw_spec = get_options().watcher
+        if raw_spec == self.options_spec:
             return self.ans
         from .launch import load_watch_modules
 
+        spec = raw_spec.copy()
         if self.extra:
-            spec = spec.copy()
             spec[self.extra] = self.extra
-        self.ans = load_watch_modules(spec.keys()) or self.ans
-        self.options_spec = spec.copy()
+        ans = load_watch_modules(spec.keys())
+        self.ans = Watchers() if ans is None else ans
+        self.options_spec = raw_spec.copy()
         return self.ans
 
     def set_extra(self, extra: str) -> None:
-        self.extra = extra
+        if extra != self.extra:
+            self.extra = extra
+            self.options_spec = None
 
 
 global_watchers = GlobalWatchers()
@@ -720,6 +724,7 @@ global_watchers = GlobalWatchers()
 
 class Window:
     window_custom_type: str = ''
+    is_resize_overlay: bool = False
     overlay_type = OverlayType.transient
     initial_ignore_focus_changes: bool = False
     initial_ignore_focus_changes_context_manager_in_operation: bool = False
@@ -812,6 +817,7 @@ class Window:
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
         opts = get_options()
         self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
+        self.screen.track_activity = bool(opts.tab_activity_symbol)
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)
         self.remote_control_passwords = remote_control_passwords
@@ -846,6 +852,10 @@ class Window:
         q = getattr(self.margin, edge)
         if q is not None:
             return pt_to_px(q, self.os_window_id)
+        return self.default_margin(edge)
+
+    def default_margin(self, edge: EdgeLiteral) -> int:
+        "The margin from the options, ignoring any margin set for this window specifically"
         opts = get_options()
         tab = self.tabref()
         is_single_window = tab is not None and tab.has_single_window_visible()
@@ -897,6 +907,7 @@ class Window:
 
     def apply_options(self, is_active: bool) -> None:
         self.update_effective_padding()
+        self.screen.track_activity = bool(get_options().tab_activity_symbol)
         self.screen.color_profile.reload_from_opts()
 
     @property
@@ -1412,12 +1423,18 @@ class Window:
 
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
+        steps = 1
+        if event['button'] in mouse_wheel_buttons:  # repeat_count is the number of wheel steps
+            steps, event['repeat_count'] = event['repeat_count'], 1
         ev = MouseEvent(**event)
         self.current_mouse_event_button = ev.button
         action = get_options().mousemap.get(ev)
         if action is None:
             return False
-        return get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
+        handled = False
+        for _step in range(steps):
+            handled = get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent') or handled
+        return handled
 
     def drag_thumbnails(self, label: str) -> tuple[tuple[bytes, int, int], ...]:
         # Render label as a single line of text, clipped to the width of this window
@@ -2116,6 +2133,7 @@ class Window:
         self.clipboard_request_manager.close()
         del self.kitten_result_processors
         if hasattr(self, 'screen'):
+            self.finish_scroll_animation()
             if self.is_active and self.os_window_id == current_focused_os_window_id():
                 # Cancel IME composition when window is destroyed
                 update_ime_position_for_window(self.id, False, -1)
@@ -2399,7 +2417,7 @@ class Window:
             cwd = path_from_osc7_url(self.screen.last_reported_cwd) or cwd
         return cwd
 
-    def as_launch_command(self, ser_opts: SaveAsSessionOptions, cwd: str, is_overlay: bool = False) -> list[str]:
+    def as_launch_command(self, ser_opts: SaveAsSessionOptions, cwd: str, is_overlay: bool = False, extra_launch_args: Sequence[str] = ()) -> list[str]:
         "Return a launch command that can be used to serialize this window. Empty list indicates not serializable."
         if self.actions_on_close or self.actions_on_focus_change or self.actions_on_removal:
             # such windows are typically UI kittens. The actions are not
@@ -2450,6 +2468,7 @@ class Window:
         if is_overlay:
             t = 'overlay-main' if self.overlay_type is OverlayType.main else 'overlay'
             ans.append(f'--type={t}')
+        ans.extend(extra_launch_args)
 
         from kittens.ssh.utils import is_kitten_cmdline as is_ssh_kitten_cmdline
         from kittens.ssh.utils import remove_env_var_from_cmdline, set_cwd_in_cmdline, set_single_env_var_in_cmdline

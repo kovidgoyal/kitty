@@ -232,6 +232,7 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     uint16_t elided_fallback_name_id = 0;
     RAII_PyObject(design_axes, PyTuple_New(0));
     RAII_PyObject(multi_axis_styles, PyTuple_New(0));
+    RAII_PyObject(efn, NULL);
     if (!design_axes || !multi_axis_styles) return false;
     if (table_len < 20) goto ok;
     const uint16_t *p = (uint16_t *)table;
@@ -248,13 +249,25 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     const uint8_t *table_limit = table + table_len;
     size_t count = 0;
     if (_PyTuple_Resize(&design_axes, count_of_design_axis_entries) == -1) return false;
-    for (const uint8_t *pos = table + offset_to_start_of_design_axes_entries;
-         pos + size_of_design_axis_entry <= table_limit && count < count_of_design_axis_entries;
+    // Bound the loop by the actual size of the tuple being filled rather than
+    // by count_of_design_axis_entries, so that the index passed to
+    // PyTuple_SET_ITEM() below cannot run past the end of the tuple.
+    const size_t num_design_axes = (size_t)PyTuple_GET_SIZE(design_axes);
+    for (const uint8_t *pos = table + offset_to_start_of_design_axes_entries; pos + size_of_design_axis_entry <= table_limit && count < num_design_axes;
          pos += size_of_design_axis_entry, count++) {
         p = (uint16_t *)(pos + 4);
         uint16_t name_id = next, ordering = next;
         PyObject *rec = Py_BuildValue(
-            "{ss# sN sH sN}", "tag", (char *)pos, 4, "name", get_best_name(name_lookup_table, name_id), "ordering", ordering, "values", PyList_New(0));
+            "{ss# sN sH sN}",
+            "tag",
+            (char *)pos,
+            (Py_ssize_t)4,
+            "name",
+            get_best_name(name_lookup_table, name_id),
+            "ordering",
+            ordering,
+            "values",
+            PyList_New(0));
         if (!rec) return false;
         PyTuple_SET_ITEM(design_axes, count, rec);
     }
@@ -330,10 +343,9 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
 ok:
     if (PyDict_SetItemString(output, "design_axes", design_axes) != 0) return false;
     if (PyDict_SetItemString(output, "multi_axis_styles", multi_axis_styles) != 0) return false;
-    if (PyDict_SetItemString(
-            output, "elided_fallback_name", elided_fallback_name_id ? get_best_name(name_lookup_table, elided_fallback_name_id) : PyUnicode_FromString("")) !=
-        0)
-        return false;
+    efn = elided_fallback_name_id ? get_best_name(name_lookup_table, elided_fallback_name_id) : PyUnicode_FromString("");
+    if (!efn) return false;
+    if (PyDict_SetItemString(output, "elided_fallback_name", efn) != 0) return false;
     return true;
 }
 
@@ -343,6 +355,7 @@ read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     if (!named_styles) return false;
     RAII_PyObject(axes, PyTuple_New(0));
     if (!axes) return false;
+    RAII_PyObject(vpp, NULL);
 
     if (!table || table_len < 14 * sizeof(uint16_t)) goto ok;
 
@@ -422,7 +435,9 @@ read_fvar_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     }
     if (_PyTuple_Resize(&named_styles, i) == -1) return NULL;
 ok:
-    if (PyDict_SetItemString(output, "variations_postscript_name_prefix", get_best_name(name_lookup_table, 25)) != 0) return false;
+    vpp = get_best_name(name_lookup_table, 25);
+    if (!vpp) return false;
+    if (PyDict_SetItemString(output, "variations_postscript_name_prefix", vpp) != 0) return false;
     if (PyDict_SetItemString(output, "axes", axes) != 0) return false;
     if (PyDict_SetItemString(output, "named_styles", named_styles) != 0) return false;
     return true;

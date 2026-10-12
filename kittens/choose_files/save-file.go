@@ -68,7 +68,7 @@ func FilePromptCompleter(getcwd func() string) func(string, string) *cli.Complet
 		for _, e := range entries {
 			word := e.Name()
 			if leading == "" || strings.HasPrefix(word, leading) {
-				collection := utils.IfElse(e.Type().IsDir(), dirs, files)
+				collection := utils.IfElse(is_directory(resolve_symlink_to_dir(filepath.Join(dir, e.Name()), e.Type())), dirs, files)
 				if prefix != "" {
 					word = prefix + word
 				}

@@ -13,6 +13,7 @@ import background;
 
 extern static const uint FG_OVERRIDE_ALGO;
 extern static const bool TEXT_NEW_GAMMA;
+extern static const bool TEXT_CONTRAST_IDENTITY;
 extern static const uint RENDER_MODE;
 
 static const bool ONLY_FOREGROUND = RENDER_MODE == 2;
@@ -27,6 +28,10 @@ uniform Sampler2D<uint4> sprite_decorations_map;
 static const uint SPRITE_INDEX_MASK = 0x7fffffff;
 static const uint SPRITE_COLORED_MASK = 0x80000000;
 static const uint SPRITE_COLORED_SHIFT = 31u;
+// Set in underline_exclusion_pos when the glyph, decorations, and cursor sprite
+// are all 0. The block cursor is sprite 0 and its color is already in the
+// background. Packed into an existing flat varying to not use another slot.
+static const uint SKIP_TEXT_FLAG = 0x80000000u;
 
 struct VertexOutput {
     float4 position : SV_Position;
@@ -38,7 +43,7 @@ struct VertexOutput {
     float3 underline_pos;
     float3 cursor_pos;
     float3 strike_pos;
-    nointerpolation uint underline_exclusion_pos;
+    nointerpolation uint underline_exclusion_pos; // has SKIP_TEXT_FLAG set for blank cells
     float3 cell_foreground;
     float4 cursor_color_premult;
     float3 decoration_fg;
@@ -161,11 +166,15 @@ vertex_main(
         vo.colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 
         float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK), has_blink = float((text_attrs >> BLINK_SHIFT) & BIT_MASK);
-        vo.effective_text_alpha = crd.inactive_text_alpha * if_one_then(has_dim, crd.dim_opacity, 1.0) * if_one_then(has_blink, crd.blink_opacity, 1.0);
+        // A reverse video block cursor already uses the dimmed foreground as its text color, so fade out
+        // the DIM alpha in step with the cursor opacity to avoid dimming twice without un-dimming a fading cursor
+        float undim = cell_data.has_block_cursor * cell_data.reverse_video_cursor * crd.cursor_opacity;
+        vo.effective_text_alpha =
+            crd.inactive_text_alpha * if_one_then(has_dim, lerp(crd.dim_opacity, 1.0, undim), 1.0) * if_one_then(has_blink, crd.blink_opacity, 1.0);
         float in_url = float((is_selected >> 1) & BIT_MASK);
-        vo.decoration_fg = if_one_then(in_url, color_to_vec(crd.url_color), to_color(colors[2], fg_as_uint));
+        vo.decoration_fg = if_one_then(in_url, crd.url_color_lin.rgb, to_color(colors[2], fg_as_uint));
         // Selection
-        float3 selection_color = if_one_then(crd.use_cell_bg_for_selection_fg, bo.bg, color_to_vec(crd.highlight_fg));
+        float3 selection_color = if_one_then(crd.use_cell_bg_for_selection_fg, bo.bg, crd.highlight_fg_lin.rgb);
         selection_color = if_one_then(crd.use_cell_fg_for_selection_fg, foreground, selection_color);
         foreground = if_one_then(float(is_selected & BIT_MASK), selection_color, foreground);
         vo.decoration_fg = if_one_then(float(is_selected & BIT_MASK), selection_color, vo.decoration_fg);
@@ -173,14 +182,16 @@ vertex_main(
         uint2 decs = get_decorations_indices(sprite_idx, uint(in_url), text_attrs);
         vo.strike_pos = to_sprite_pos(cell_data.pos, decs[0]);
         vo.underline_pos = to_sprite_pos(cell_data.pos, decs[1]);
-        vo.underline_exclusion_pos = to_underline_exclusion_pos(sprite_idx);
 
         // Cursor
         vo.cursor_color_premult = float4(cell_data.cursor.bg * crd.cursor_opacity, crd.cursor_opacity);
         float3 final_cursor_text_color = lerp(foreground, cell_data.cursor.fg, crd.cursor_opacity);
         foreground = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, foreground);
         vo.decoration_fg = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, vo.decoration_fg);
-        vo.cursor_pos = to_sprite_pos(cell_data.pos, cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor));
+        uint cursor_sprite = cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor);
+        vo.cursor_pos = to_sprite_pos(cell_data.pos, cursor_sprite);
+        uint skip_text = uint((sprite_idx[0] & SPRITE_INDEX_MASK) == 0u && decs[0] == 0u && decs[1] == 0u && cursor_sprite == 0u);
+        vo.underline_exclusion_pos = to_underline_exclusion_pos(sprite_idx) | (skip_text * SKIP_TEXT_FLAG);
     }
     // }}}
 
@@ -218,6 +229,7 @@ clamp_to_unit_float(float x) {
 
 float4
 foreground_contrast_new(float4 over, float3 under, float text_contrast, float text_gamma_adjustment) {
+    if (TEXT_CONTRAST_IDENTITY) return over;
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
@@ -252,7 +264,7 @@ float4
 load_text_foreground_color(float3 sprite_pos, float colored_sprite, float3 cell_foreground) {
     // For colored sprites use the color from the sprite rather than the text foreground
     // Return non-premultiplied foreground color
-    float4 text_fg = sprites.Sample(sprite_pos);
+    float4 text_fg = sprites.SampleLevel(sprite_pos, 0);
     return float4(lerp(cell_foreground, text_fg.xyz, colored_sprite), text_fg.w);
 }
 
@@ -272,13 +284,13 @@ calculate_premul_foreground_from_sprites(
     sprites.GetDimensions(width, height, layer);
     float3 sz = float3(float(width), float(height), float(layer));
 
-    float underline_alpha = sprites.Sample(underline_pos).w;
+    float underline_alpha = sprites.SampleLevel(underline_pos, 0).w;
     int3 fetch_coord = int3(int(sprite_pos.x * sz.x), int(underline_exclusion_pos), int(sprite_pos.z));
     float underline_exclusion = sprites[fetch_coord].w;
 
     underline_alpha *= 1.0 - underline_exclusion;
-    float strike_alpha = sprites.Sample(strike_pos).w;
-    float cursor_alpha = sprites.Sample(cursor_pos).w;
+    float strike_alpha = sprites.SampleLevel(strike_pos, 0).w;
+    float cursor_alpha = sprites.SampleLevel(cursor_pos, 0).w;
 
     float combined_alpha = min(text_fg.w + strike_alpha, 1.0);
 
@@ -299,7 +311,10 @@ fragment_main(VertexOutput vo, uniform float text_contrast, uniform float text_g
     float4 ans_premul = 0;
     if (!ONLY_FOREGROUND) ans_premul = vo.effective_background_premul;
 
-    if (!ONLY_BACKGROUND) {
+    // The sprite samples below use SampleLevel() as this branch is not uniform
+    // across a 2x2 pixel quad at cell boundaries, so implicit derivatives would
+    // be undefined. The sprites texture has no mipmaps, so LOD 0 is identical.
+    if (!ONLY_BACKGROUND && (vo.underline_exclusion_pos & SKIP_TEXT_FLAG) == 0u) {
         // blend in the foreground color
         float4 text_fg = load_text_foreground_color(vo.sprite_pos, vo.colored_sprite, vo.cell_foreground);
         text_fg = adjust_foreground_contrast_with_background(text_fg, vo.background, text_contrast, text_gamma_adjustment);

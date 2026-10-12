@@ -62,6 +62,7 @@ def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> d
         pubkey = pcmd.get('pubkey', '')
         if not pubkey:
             log_error('Ignoring encrypted rc command without a public key')
+            return {}
         d = AES256GCMDecrypt(encryption_key.derive_secret(base64.b85decode(pubkey)), base64.b85decode(pcmd['iv']), base64.b85decode(pcmd['tag']))
         data = d.add_data_to_be_decrypted(base64.b85decode(pcmd['encrypted']), True)
         pcmd = json.loads(data)

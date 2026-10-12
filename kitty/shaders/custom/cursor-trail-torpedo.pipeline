@@ -1,0 +1,7 @@
+startgroup
+    animation_start cursor-trail-move
+    animation_stop 1000
+    animation_step 16
+    var int MODE 1
+    shaders cursor-trail-default cursor-trail-particles
+endgroup

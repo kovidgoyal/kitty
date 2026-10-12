@@ -49,7 +49,7 @@ class SetBackgroundImage(RemoteCommand):
         f' Supported image formats are: {", ".join(SUPPORTED_IMAGE_FORMATS)}'
         '\n\n'
         'You can also specify an index to change the background image to one of the pre-configured set of background images.'
-        ' The index is either a number, or a number preceeded by the plus or minus sign which acts as an increment.'
+        ' The index is either a number, or a number preceded by the plus or minus sign which acts as an increment.'
         ' If the index falls outside the range of configured images, the first configured image is used.'
         ' For example: set-background -- -1 or set-background 3'
     )

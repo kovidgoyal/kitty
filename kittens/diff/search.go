@@ -57,7 +57,7 @@ func (self *Search) find_matches_in_lines(clean_lines []string, origin int, send
 		}
 		start_line := find_pos(start)
 		if start_line > -1 {
-			end_line := find_pos(end)
+			end_line := find_pos(end - 1)
 			if end_line > -1 {
 				for i := start_line; i <= end_line; i++ {
 					cell_start := 0

@@ -29,6 +29,7 @@ typedef struct Rewrap {
     index_type num_content_lines_before, src_x_limit;
     bool prev_src_line_ended_with_wrap, current_src_line_has_multline_cells, current_dest_line_has_multiline_cells;
     bool dest_line_from_linebuf, src_is_in_linebuf;
+    bool consume_src_hb;
 
 } Rewrap;
 
@@ -275,7 +276,7 @@ rewrap(Rewrap *r) {
         memcpy(r->dest.lb->cpu_cell_buf, r->src.lb->cpu_cell_buf, (size_t)r->src.lb->xnum * r->src.lb->ynum * sizeof(CPUCell));
         memcpy(r->dest.lb->gpu_cell_buf, r->src.lb->gpu_cell_buf, (size_t)r->src.lb->xnum * r->src.lb->ynum * sizeof(GPUCell));
         r->num_content_lines_before = r->src.lb->ynum;
-        if (r->dest.hb && r->src.hb) historybuf_fast_rewrap(r->dest.hb, r->src.hb);
+        if (r->dest.hb && r->src.hb) historybuf_fast_rewrap(r->dest.hb, r->src.hb, r->src.hb->count, r->consume_src_hb);
         r->dest.y = r->src.lb->ynum - 1;
         return;
     }
@@ -297,29 +298,89 @@ rewrap(Rewrap *r) {
     }
 }
 
+static index_type
+reusable_history_lines(HistoryBuf *hb) {
+    // count of oldest lines that rewrap to themselves at the same width
+    index_type xnum = hb->xnum, ans = 0;
+    bool prev_wrapped = false, prev_full = false;
+    Line l = {.xnum = xnum, .text_cache = hb->text_cache};
+    for (index_type y = 0; y + 1 < hb->count; y++) {
+        historybuf_init_line(hb, hb->count - y - 1, &l);
+        CPUCell *c = l.cpu_cells;
+        index_type limit = xnum;
+        while (limit && c[limit - 1].ch_and_idx == BLANK_CHAR) limit--;
+        if (prev_wrapped && (!prev_full || !limit)) return ans;
+        if (limit && c[limit - 1].is_multicell && c[limit - 1].x != mcd_x_limit(c + limit - 1) - 1) return ans;
+        for (index_type x = 0; x < limit; x++)
+            if (c[x].is_multicell && c[x].scale > 1) return ans;
+        prev_wrapped = c[xnum - 1].next_char_was_wrapped;
+        prev_full = limit == xnum;
+        if (!prev_wrapped) ans = y + 1;
+    }
+    return ans;
+}
+
+static void
+clear_trailing_blanks(HistoryBuf *hb, index_type count) {
+    Line l = {.xnum = hb->xnum, .text_cache = hb->text_cache};
+    for (index_type y = 0; y < count; y++) {
+        historybuf_init_line(hb, hb->count - y - 1, &l);
+        index_type limit = l.xnum;
+        while (limit && l.cpu_cells[limit - 1].ch_and_idx == BLANK_CHAR) limit--;
+        zero_at_ptr_count(l.cpu_cells + limit, l.xnum - limit);
+        zero_at_ptr_count(l.gpu_cells + limit, l.xnum - limit);
+    }
+}
+
 ResizeResult
-resize_screen_buffers(LineBuf *lb, HistoryBuf *hb, index_type lines, index_type columns, ANSIBuf *as_ansi_buf, TrackCursor *cursors) {
+resize_screen_buffers(
+    LineBuf *lb, HistoryBuf *hb, HistoryResizeMode hb_mode, index_type lines, index_type columns, ANSIBuf *as_ansi_buf, TrackCursor *cursors) {
     ResizeResult ans = {0};
     ans.lb = alloc_linebuf(lines, columns, lb->text_cache);
     if (!ans.lb) return ans;
     RAII_PyObject(raii_nlb, (PyObject *)ans.lb);
     (void)raii_nlb;
+    LineBuf *sb = alloc_linebuf(SCALE_BITS << 1, columns, lb->text_cache);
+    if (!sb) return ans;
+    RAII_PyObject(scratch, (PyObject *)sb);
+    (void)scratch;
+    HistoryBuf *src_hb = hb;
+    index_type reused = 0;
+    RAII_PyObject(raii_tail, NULL);
     if (hb) {
+        if (hb_mode == HISTORY_CONSUME && columns == lb->xnum && lines != lb->ynum) reused = reusable_history_lines(hb);
+        // copying a long tail would cost more than a plain rewrap
+        if (reused < hb->count - reused) reused = 0;
+        if (reused) {
+            src_hb = alloc_historybuf(hb->count - reused, columns, 0, hb->text_cache);
+            if (!src_hb) return ans;
+            raii_tail = (PyObject *)src_hb;
+            Line l = {.xnum = columns, .text_cache = hb->text_cache};
+            for (index_type y = reused; y < hb->count; y++) {
+                historybuf_init_line(hb, hb->count - y - 1, &l);
+                historybuf_add_line(src_hb, &l, as_ansi_buf);
+            }
+        }
         ans.hb = historybuf_alloc_for_rewrap(columns, hb);
         if (!ans.hb) return ans;
+    }
+    // Nothing below this point may fail, as hb is modified and, with
+    // HISTORY_CONSUME, its storage is moved into ans.hb, both here and in the
+    // fast path of rewrap(). All allocations must be done above.
+    if (reused) {
+        clear_trailing_blanks(hb, reused);
+        historybuf_fast_rewrap(ans.hb, hb, reused, true);
     }
     RAII_PyObject(raii_nhb, (PyObject *)ans.hb);
     (void)raii_nhb;
     Rewrap r = {
-        .src = {.lb = lb, .hb = hb},
-        .dest = {.lb = ans.lb, .hb = ans.hb},
+        .src = {.lb = lb, .hb = src_hb},
+        .dest = {.lb = ans.lb, .hb = ans.hb, .y = reused},
         .as_ansi_buf = as_ansi_buf,
         .cursors = cursors,
+        .sb = sb,
+        .consume_src_hb = hb_mode != HISTORY_PRESERVE,
     };
-    r.sb = alloc_linebuf(SCALE_BITS << 1, columns, lb->text_cache);
-    if (!r.sb) return ans;
-    RAII_PyObject(scratch, (PyObject *)r.sb);
-    (void)scratch;
     for (TrackCursor *t = cursors; !t->is_sentinel; t++) {
         t->dest_x = t->x;
         t->dest_y = t->y;

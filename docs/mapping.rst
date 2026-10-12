@@ -58,7 +58,7 @@ executable. In the script file you run remote control commands by running the
    #!/bin/sh
 
    kitten @ set-spacing margin=30
-   kitten @ new_window
+   kitten @ launch
    ...
 
 The script can perform arbitrarily complex logic and actions, limited only by

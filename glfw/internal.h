@@ -470,6 +470,7 @@ struct _GLFWwindow {
         GLFWcursorposfun cursorPos;
         GLFWcursorenterfun cursorEnter;
         GLFWscrollfun scroll;
+        GLFWtouchfun touch;
         GLFWkeyboardfun keyboard;
         GLFWliveresizefun liveResize;
 
@@ -641,6 +642,7 @@ struct _GLFWlibrary {
         GLFWcurrentselectionfun get_current_selection;
         GLFWhascurrentselectionfun has_current_selection;
         GLFWimecursorpositionfun get_ime_cursor_position;
+        GLFWimetextaroundcursorfun get_ime_text_around_cursor;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -802,6 +804,7 @@ void _glfwInputWindowMonitor(_GLFWwindow *window, _GLFWmonitor *monitor);
 void _glfwInputKeyboard(_GLFWwindow *window, GLFWkeyevent *ev);
 void _glfwInputClipboardLost(GLFWClipboardType which);
 void _glfwInputScroll(_GLFWwindow *window, const GLFWScrollEvent *ev);
+void _glfwInputTouch(_GLFWwindow *window, const GLFWTouchEvent *ev);
 void _glfwInputMouseClick(_GLFWwindow *window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow *window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow *window, bool entered);

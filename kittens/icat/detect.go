@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/kovidgoyal/go-shm"
+	shm "github.com/kovidgoyal/go-shm/v2"
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"

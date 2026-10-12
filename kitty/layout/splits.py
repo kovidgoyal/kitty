@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Collection, Generator, Iterator, Sequence
+from math import ceil, isfinite
 from typing import Any, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
@@ -11,7 +12,7 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, blank_rects_for_window, lgd, window_geometry_from_layouts
+from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, fractional_resize_steps, lgd, window_geometry_from_layouts
 
 
 def child_axis_units(child: 'Pair | int | None', horizontal: bool) -> int:
@@ -269,9 +270,7 @@ class Pair:
         return final_pair
 
     def apply_window_geometry(self, window_id: int, window_geometry: WindowGeometry, id_window_map: dict[int, WindowGroup], layout_object: Layout) -> None:
-        wg = id_window_map[window_id]
-        wg.set_geometry(window_geometry)
-        layout_object.blank_rects.extend(blank_rects_for_window(window_geometry))
+        id_window_map[window_id].set_geometry(window_geometry)
 
     def effective_border(self, id_window_map: dict[int, WindowGroup]) -> int:
         for wid in self.all_window_ids():
@@ -335,9 +334,9 @@ class Pair:
             min_w2 = self.two.minimum_width(id_window_map) if isinstance(self.two, Pair) else lgd.cell_width
             w1 = max(min_w1, int(self.bias * width) - bw)
             w2 = width - w1 - bw2
-            if w2 < min_w2 and w1 >= min_w1 + bw2:
+            if w2 < min_w2 and width - min_w2 - bw2 >= min_w1:
                 w2 = min_w2
-                w1 = width - w2
+                w1 = width - w2 - bw2
             bleft = left + w1
             self.first_extent = Edges(left, top, left + w1, top + height)
             if isinstance(self.one, Pair):
@@ -373,9 +372,9 @@ class Pair:
             min_h2 = self.two.minimum_height(id_window_map) if isinstance(self.two, Pair) else lgd.cell_height
             h1 = max(min_h1, int(self.bias * height) - bw)
             h2 = height - h1 - bw2
-            if h2 < min_h2 and h1 >= min_h1 + bw2:
+            if h2 < min_h2 and height - min_h2 - bw2 >= min_h1:
                 h2 = min_h2
-                h1 = height - h2
+                h1 = height - h2 - bw2
             btop = top + h1
             self.first_extent = Edges(left, top, left + width, top + h1)
             if isinstance(self.one, Pair):
@@ -406,6 +405,67 @@ class Pair:
                 yl = next(layout_object.ylayout(iter((wg,)), start=top, size=h2, border_mult=border_mult))
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
+
+    def divider_room(self) -> tuple[int, int]:
+        """The number of pixels this divider can move backwards and forwards
+        respectively, keeping every other divider along the same axis in place."""
+        if self.is_redundant or self.width <= 0 or self.height <= 0:
+            return 0, 0
+        horizontal = self.horizontal
+        cell = lgd.cell_width if horizontal else lgd.cell_height
+
+        def minimum_size(child: Pair | int | None) -> int:
+            if not isinstance(child, Pair):
+                return cell if child is not None else 0
+            if child.is_redundant:
+                return minimum_size(child.one or child.two)
+            one, two = minimum_size(child.one), minimum_size(child.two)
+            return one + two + 2 * child.border_width if child.horizontal == horizontal else max(one, two)
+
+        def shrink_room(child: Pair | int | None, extent: Edges, trailing: bool) -> int:
+            # A perpendicular subtree is one unit in the enclosing splitter.
+            # Only the unit touching this divider may give up space.
+            while isinstance(child, Pair) and child.horizontal == horizontal and not child.is_redundant:
+                extent = child.second_extent if trailing else child.first_extent
+                child = child.two if trailing else child.one
+            size = extent.right - extent.left if horizontal else extent.bottom - extent.top
+            return max(0, size - minimum_size(child))
+
+        return shrink_room(self.one, self.first_extent, True), shrink_room(self.two, self.second_extent, False)
+
+    def move_divider(self, pixels: int) -> int:
+        """Move this divider, keeping every other divider along the same axis in place.
+
+        Only the two units adjacent to this divider change size. A unit that is a
+        perpendicular subtree is resized as a whole, so dividers nested inside it
+        that happen to run along this axis do move, proportionally.
+        """
+        if not pixels:
+            return 0
+        backward, forward = self.divider_room()
+        pixels = max(-backward, min(pixels, forward))
+        if not pixels:
+            return 0
+        horizontal = self.horizontal
+
+        def update(pair: Pair, start: int, size: int) -> None:
+            divider = (pair.first_extent.right if horizontal else pair.first_extent.bottom) + pair.border_width
+            if pair is self:
+                divider += pixels
+            # layout_pair truncates to integer pixels. Use the middle of that
+            # pixel so floating-point rounding cannot shift a fixed divider.
+            pair.bias = (divider - start + 0.5) / size
+            for child, child_start, child_size in (
+                (pair.one, start, divider - start - pair.border_width),
+                (pair.two, divider + pair.border_width, start + size - divider - pair.border_width),
+            ):
+                if isinstance(child, Pair) and child.horizontal == horizontal and not child.is_redundant:
+                    old_start, old_size = (child.left, child.width) if horizontal else (child.top, child.height)
+                    if (child_start, child_size) != (old_start, old_size):
+                        update(child, child_start, child_size)
+
+        update(self, self.left if horizontal else self.top, self.width if horizontal else self.height)
+        return pixels
 
     def edge_border(self, which: int, id_group_map: dict[int, WindowGroup]) -> Iterator[tuple[int, int, int]]:
         mult = 1 if which & (RIGHT_EDGE | BOTTOM_EDGE) else -1
@@ -757,6 +817,9 @@ class Splits(Layout):
         elif location in ('before', 'first'):
             after = False
         aw = next_to or all_windows.active_window
+        if aw is not None:
+            # New windows are never split off docked windows
+            aw = all_windows.main_window_for(aw)
         if bias:
             bias = max(0, min(abs(bias), 100)) / 100
         if aw is not None and (ag := all_windows.group_for_window(aw)) is not None:
@@ -787,6 +850,76 @@ class Splits(Layout):
         which = 1 if pair.one == grp.id else 2
         return pair.modify_size_of_child(which, increment, is_horizontal, self)
 
+    def modify_size_of_window_by_fraction(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool, fraction: float) -> bool:
+        if window_id not in all_windows.id_map:
+            return False
+        group = all_windows.group_for_window(window_id)
+        if group is None or not increment or not isfinite(increment) or not 0 < fraction <= 1:
+            return False
+        path = self.pairs_root.find_window_in_tree(group.id)
+        if not path:
+            return False
+        for pair, in_one in reversed(path):
+            if not pair.is_redundant and pair.horizontal == is_horizontal:
+                break
+        else:
+            return False
+        size = pair.width if is_horizontal else pair.height
+        if size <= 0:
+            return False
+        groups = {g.id: g for g in all_windows.iter_all_layoutable_groups()}
+
+        def minimum(child: Pair | int | None) -> int:
+            if isinstance(child, Pair):
+                return child.minimum_width(groups) if is_horizontal else child.minimum_height(groups)
+            return lgd.cell_width if is_horizontal else lgd.cell_height
+
+        # Match layout_pair's limits, including nested children and borders.
+        # Pixel midpoints avoid instability from integer truncation at a limit.
+        low = (minimum(pair.one) + pair.border_width + 0.5) / size
+        high = (size - minimum(pair.two) - pair.border_width + 0.5) / size
+        if high <= low:
+            return False
+        current = max(low, min(pair.bias, high))
+        delta = increment if in_one else -increment
+        room = high - current if delta > 0 else current - low
+        if room * size < 0.5:
+            return False
+        remaining = ceil(room / abs(delta) - 1e-9)
+        steps = fractional_resize_steps(remaining, fraction)
+        pair.bias = max(low, min(current + steps * delta, high))
+        return True
+
+    def pair_for_window_edge(self, all_windows: WindowList, window_id: int, edge: str) -> Pair | None:
+        if edge not in ('left', 'right', 'top', 'bottom') or window_id not in all_windows.id_map:
+            return None
+        group = all_windows.group_for_window(window_id)
+        if group is None:
+            return None
+        path = self.pairs_root.find_window_in_tree(group.id)
+        horizontal = edge in ('left', 'right')
+        trailing = edge in ('right', 'bottom')
+        for pair, in_one in reversed(path or ()):
+            if not pair.is_redundant and pair.horizontal == horizontal and in_one == trailing:
+                return pair
+        # Outside edges have no divider. Never fall back to another edge.
+        return None
+
+    def modify_size_of_window_edge(self, all_windows: WindowList, window_id: int, edge: str, increment: int, fraction: float = 0) -> bool:
+        self._set_dimensions(all_windows)
+        pair = self.pair_for_window_edge(all_windows, window_id, edge)
+        if pair is None or not increment or not isfinite(fraction) or not 0 <= fraction <= 1:
+            return False
+        cell = lgd.cell_width if pair.horizontal else lgd.cell_height
+        pixels = increment * cell
+        if not pixels:
+            return False
+        if fraction:
+            backward, forward = pair.divider_room()
+            remaining = ceil((forward if pixels > 0 else backward) / abs(pixels))
+            pixels *= fractional_resize_steps(remaining, fraction)
+        return bool(pair.move_divider(pixels))
+
     def remove_all_biases(self) -> bool:
         for pair in self.pairs_root.self_and_descendants():
             pair.bias = 0.5
@@ -794,6 +927,11 @@ class Splits(Layout):
 
     def equalize_biases(self) -> bool:
         for pair in self.pairs_root.self_and_descendants():
+            if pair.is_redundant:
+                # A redundant pair has no geometry, but its bias is retained for
+                # when it is split again, so make that split an even one.
+                pair.bias = 0.5
+                continue
             left = child_axis_units(pair.one, pair.horizontal)
             right = child_axis_units(pair.two, pair.horizontal)
             total = left + right
@@ -864,7 +1002,7 @@ class Splits(Layout):
         """Reposition an existing window as a split adjacent to next_to"""
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
-        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
             return
         # Remove from current position in pairs_root
         self.remove_windows(src_wg.id)
@@ -985,15 +1123,15 @@ class Splits(Layout):
 
         return None
 
-    def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
+    def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> float:
+        self._set_dimensions(all_windows)
         for pair in self.pairs_root.self_and_descendants():
             if id(pair) == window_id:
-                new_bias = max(0, min(pair.bias + increment, 1))
-                if new_bias != pair.bias:
-                    pair.bias = new_bias
-                    return True
-                break
-        return False
+                if pair.horizontal != is_horizontal:
+                    break
+                cell = lgd.cell_width if is_horizontal else lgd.cell_height
+                return pair.move_divider(round(increment * cell)) / cell if cell > 0 else 0.0
+        return 0.0
 
     def drag_resize_target_windows(
         self,

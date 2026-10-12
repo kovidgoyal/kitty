@@ -71,7 +71,8 @@ func (self *Lexer) write_escaped_ch() bool {
 	ch, count := utf8.DecodeRuneInString(self.src[self.src_pos:])
 	if count > 0 {
 		self.src_pos += count
-		if ch != utf8.RuneError {
+		// Invalid UTF-8 always decodes as (RuneError, 1), so a larger size means a real U+FFFD.
+		if ch != utf8.RuneError || count > 1 {
 			self.buf.WriteRune(ch)
 		}
 		return true

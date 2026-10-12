@@ -37,6 +37,7 @@
 #include "wayland-pointer-gestures-unstable-v1-client-protocol.h"
 
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -313,6 +314,212 @@ static const struct wl_pointer_listener pointerListener = {
 #endif
 };
 
+#define touch (_glfw.wl.touch_state)
+
+static ssize_t
+touch_point_index(int32_t id) {
+    for (size_t i = 0; i < touch.count; i++)
+        if (touch.points[i].id == id) return i;
+    return -1;
+}
+
+static void
+touch_record_time(uint32_t time) {
+    touch.last_event_time = time;
+    touch.has_event_time = true;
+}
+
+// Converts the time of the last wl_touch event to monotonic() time. The base of
+// Wayland event times is unspecified and they wrap, so only the age of the event
+// is used, which is measured against CLOCK_MONOTONIC, the clock compositors use
+static monotonic_t
+touch_event_timestamp(void) {
+    const monotonic_t now = monotonic();
+    if (!touch.has_event_time) return now;
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return now;
+    const uint32_t now_ms = (uint32_t)((uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u);
+    const uint32_t age_ms = now_ms - touch.last_event_time;
+    // An implausible age means the compositor uses some other clock
+    if (age_ms > 1000) return now;
+    return now - ms_to_monotonic_t(age_ms);
+}
+
+static bool
+touch_point_is_tap(const _GLFWWaylandTouchPoint *p) {
+    return p->pressed_in_frame && p->state == GLFW_TOUCH_POINT_RELEASED;
+}
+
+typedef enum TouchReportMode {
+    // Every point in its own state
+    TOUCH_REPORT_OWN_STATE,
+    // The points that were pressed and released in this frame as pressed, the
+    // rest in their own state
+    TOUCH_REPORT_TAPS_AS_PRESSED,
+    // The points that were pressed and released in this frame as released, the
+    // rest as stationary, as they were reported by TOUCH_REPORT_TAPS_AS_PRESSED
+    TOUCH_REPORT_TAPS_AS_RELEASED,
+    // Only the points the window has heard of, all as released
+    TOUCH_REPORT_CANCELED,
+} TouchReportMode;
+
+// Sends one window the points it owns, in the given event type, with their
+// states decided by mode
+static void
+touch_send_to_window(GLFWid window_id, GLFWTouchEventType type, TouchReportMode mode, monotonic_t timestamp) {
+    _GLFWwindow *window = _glfwWindowForId(window_id);
+    if (!window) return;
+    GLFWTouchPoint points[arraysz(touch.points)];
+    size_t n = 0;
+    for (size_t i = 0; i < touch.count; i++) {
+        const _GLFWWaylandTouchPoint *p = touch.points + i;
+        if (p->window_id != window_id) continue;
+        GLFWTouchPointState state = p->state;
+        switch (mode) {
+            case TOUCH_REPORT_OWN_STATE: break;
+            case TOUCH_REPORT_TAPS_AS_PRESSED:
+                if (touch_point_is_tap(p)) state = GLFW_TOUCH_POINT_PRESSED;
+                break;
+            case TOUCH_REPORT_TAPS_AS_RELEASED:
+                if (!touch_point_is_tap(p)) state = GLFW_TOUCH_POINT_STATIONARY;
+                break;
+            case TOUCH_REPORT_CANCELED:
+                if (p->pressed_in_frame) continue;
+                state = GLFW_TOUCH_POINT_RELEASED;
+                break;
+        }
+        points[n++] = (GLFWTouchPoint){.id = p->id, .state = state, .x = p->x, .y = p->y};
+    }
+    if (!n) return;
+    GLFWTouchEvent ev = {.type = type, .keyboard_modifiers = _glfw.wl.xkb.states.modifiers, .timestamp = timestamp, .num_points = n, .points = points};
+    _glfwInputTouch(window, &ev);
+}
+
+static void
+touchHandleDown(
+    void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, struct wl_surface *surface, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
+    // A finger landing stops any scroll that is coasting, as on every touch system
+    glfw_cancel_momentum_scroll();
+    _GLFWwindow *window = get_window_from_surface(surface);
+    // A touch on a client-side decoration is not reported
+    if (!window || surface != window->wl.surface) return;
+    if (touch.count >= arraysz(touch.points) || touch_point_index(id) > -1) return;
+    _glfw.wl.serial = serial;
+    _glfw.wl.input_serial = serial;
+    // Requests such as setting the primary selection need the serial of the
+    // latest input event, which can come from touch as well as the pointer
+    _glfw.wl.pointer_serial = serial;
+    touch_record_time(time);
+    touch.points[touch.count++] = (_GLFWWaylandTouchPoint){
+        .id = id,
+        .window_id = window->id,
+        .state = GLFW_TOUCH_POINT_PRESSED,
+        .pressed_in_frame = true,
+        .x = wl_fixed_to_double(sx),
+        .y = wl_fixed_to_double(sy),
+    };
+}
+
+static void
+touchHandleUp(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, int32_t id) {
+    const ssize_t i = touch_point_index(id);
+    if (i < 0) return;
+    _glfw.wl.serial = serial;
+    _glfw.wl.input_serial = serial;
+    _glfw.wl.pointer_serial = serial;
+    touch_record_time(time);
+    touch.points[i].state = GLFW_TOUCH_POINT_RELEASED;
+}
+
+static void
+touchHandleMotion(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t time, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
+    const ssize_t i = touch_point_index(id);
+    if (i < 0) return;
+    touch_record_time(time);
+    touch.points[i].x = wl_fixed_to_double(sx);
+    touch.points[i].y = wl_fixed_to_double(sy);
+    if (touch.points[i].state == GLFW_TOUCH_POINT_STATIONARY) touch.points[i].state = GLFW_TOUCH_POINT_MOVED;
+}
+
+// A frame ends a group of events that happened at the same time. Each window with a
+// changed point gets one event holding all of its points. A point that was pressed
+// and released within the frame is first reported as pressed in an event of its
+// own, so that every point is reported pressed before it is reported released
+static void
+touchHandleFrame(void *data UNUSED, struct wl_touch *wl_touch UNUSED) {
+    const monotonic_t timestamp = touch_event_timestamp();
+    GLFWid done[arraysz(touch.points)];
+    size_t num_done = 0;
+    for (size_t i = 0; i < touch.count; i++) {
+        const GLFWid window_id = touch.points[i].window_id;
+        bool changed = false, seen = false, has_taps = false;
+        for (size_t d = 0; d < num_done && !seen; d++) seen = done[d] == window_id;
+        if (seen) continue;
+        done[num_done++] = window_id;
+        size_t down_before = 0, down_after = 0;
+        for (size_t j = i; j < touch.count; j++) {
+            const _GLFWWaylandTouchPoint *p = touch.points + j;
+            if (p->window_id != window_id) continue;
+            if (p->state != GLFW_TOUCH_POINT_STATIONARY) changed = true;
+            if (touch_point_is_tap(p)) has_taps = true;
+            if (!p->pressed_in_frame) down_before++;
+            if (p->state != GLFW_TOUCH_POINT_RELEASED) down_after++;
+        }
+        if (!changed) continue;
+        const GLFWTouchEventType opening = down_before ? GLFW_TOUCH_UPDATE : GLFW_TOUCH_BEGIN;
+        const GLFWTouchEventType closing = down_after ? GLFW_TOUCH_UPDATE : GLFW_TOUCH_END;
+        if (has_taps) {
+            touch_send_to_window(window_id, opening, TOUCH_REPORT_TAPS_AS_PRESSED, timestamp);
+            touch_send_to_window(window_id, closing, TOUCH_REPORT_TAPS_AS_RELEASED, timestamp);
+        } else touch_send_to_window(window_id, !down_before ? GLFW_TOUCH_BEGIN : closing, TOUCH_REPORT_OWN_STATE, timestamp);
+    }
+    size_t kept = 0;
+    for (size_t i = 0; i < touch.count; i++) {
+        if (touch.points[i].state == GLFW_TOUCH_POINT_RELEASED) continue;
+        touch.points[kept] = touch.points[i];
+        touch.points[kept].state = GLFW_TOUCH_POINT_STATIONARY;
+        touch.points[kept].pressed_in_frame = false;
+        kept++;
+    }
+    touch.count = kept;
+}
+
+// The compositor took every active sequence over, for a gesture of its own. A
+// window hears of it only if it was told the sequence began
+static void
+touchHandleCancel(void *data UNUSED, struct wl_touch *wl_touch UNUSED) {
+    const monotonic_t timestamp = monotonic();
+    GLFWid done[arraysz(touch.points)];
+    size_t num_done = 0;
+    for (size_t i = 0; i < touch.count; i++) {
+        const GLFWid window_id = touch.points[i].window_id;
+        bool seen = false;
+        for (size_t d = 0; d < num_done && !seen; d++) seen = done[d] == window_id;
+        if (seen) continue;
+        done[num_done++] = window_id;
+        touch_send_to_window(window_id, GLFW_TOUCH_CANCEL, TOUCH_REPORT_CANCELED, timestamp);
+    }
+    touch.count = 0;
+}
+
+static void
+touchHandleShape(void *data UNUSED, struct wl_touch *wl_touch UNUSED, int32_t id UNUSED, wl_fixed_t major UNUSED, wl_fixed_t minor UNUSED) {}
+
+static void
+touchHandleOrientation(void *data UNUSED, struct wl_touch *wl_touch UNUSED, int32_t id UNUSED, wl_fixed_t orientation UNUSED) {}
+
+#undef touch
+
+static const struct wl_touch_listener touchListener = {
+    .down = touchHandleDown,
+    .up = touchHandleUp,
+    .motion = touchHandleMotion,
+    .frame = touchHandleFrame,
+    .cancel = touchHandleCancel,
+    .shape = touchHandleShape,
+    .orientation = touchHandleOrientation,
+};
+
 static void
 keyboardHandleKeymap(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint32_t format, int fd, uint32_t size) {
     char *mapStr;
@@ -517,6 +724,15 @@ seatHandleCapabilities(void *data UNUSED, struct wl_seat *seat, enum wl_seat_cap
         if (_glfw.wl.cursorAnimationTimer) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
     }
 
+    if ((caps & WL_SEAT_CAPABILITY_TOUCH) && !_glfw.wl.touch) {
+        _glfw.wl.touch = wl_seat_get_touch(seat);
+        wl_touch_add_listener(_glfw.wl.touch, &touchListener, NULL);
+    } else if (!(caps & WL_SEAT_CAPABILITY_TOUCH) && _glfw.wl.touch) {
+        touchHandleCancel(NULL, _glfw.wl.touch);
+        wl_touch_destroy(_glfw.wl.touch);
+        _glfw.wl.touch = NULL;
+    }
+
     if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !_glfw.wl.keyboard) {
         _glfw.wl.keyboard = wl_seat_get_keyboard(seat);
         wl_keyboard_add_listener(_glfw.wl.keyboard, &keyboardListener, NULL);
@@ -662,9 +878,14 @@ registryHandleGlobalRemove(void *data UNUSED, struct wl_registry *registry UNUSE
         monitor = _glfw.monitors[i];
         if (monitor->wl.name == name) {
             for (_GLFWwindow *window = _glfw.windowListHead; window; window = window->next) {
+                bool was_on_monitor = false;
                 for (int m = window->wl.monitorsCount - 1; m >= 0; m--) {
-                    if (window->wl.monitors[m] == monitor) { remove_i_from_array(window->wl.monitors, m, window->wl.monitorsCount); }
+                    if (window->wl.monitors[m] == monitor) {
+                        remove_i_from_array(window->wl.monitors, m, window->wl.monitorsCount);
+                        was_on_monitor = true;
+                    }
                 }
+                if (was_on_monitor) _glfwWaylandSurfaceOutputsChanged(window);
             }
             _glfwInputMonitor(monitor, GLFW_DISCONNECTED, 0);
             return;
@@ -900,6 +1121,7 @@ _glfwPlatformTerminate(void) {
     if (_glfw.wl.virtual_keyboard_manager) zwp_virtual_keyboard_manager_v1_destroy(_glfw.wl.virtual_keyboard_manager);
     if (_glfw.wl.pointer) wl_pointer_destroy(_glfw.wl.pointer);
     if (_glfw.wl.keyboard) wl_keyboard_destroy(_glfw.wl.keyboard);
+    if (_glfw.wl.touch) wl_touch_destroy(_glfw.wl.touch);
     if (_glfw.wl.seat) wl_seat_destroy(_glfw.wl.seat);
     if (_glfw.wl.relativePointerManager) zwp_relative_pointer_manager_v1_destroy(_glfw.wl.relativePointerManager);
     if (_glfw.wl.pointerConstraints) zwp_pointer_constraints_v1_destroy(_glfw.wl.pointerConstraints);

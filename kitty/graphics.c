@@ -45,7 +45,7 @@ cache_key(const ImageAndFrame x, char *key) {
 // Transfers ownership of *data (a malloc() allocated pointer) to the cache,
 // setting it to NULL, on success. This avoids copying what are often many
 // megabytes of image data. Note that *data must not be used afterwards, the
-// cache write thread can modify it (encryption is done in-place) at any time.
+// cache write thread can free it at any time.
 static bool
 add_to_cache(GraphicsManager *self, const ImageAndFrame x, void **data, const size_t sz, bool memory_only) {
     char key[CACHE_KEY_BUFFER_SIZE];
@@ -274,9 +274,18 @@ grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
     make_window_context_current(dest->window_id);
     free_all_images(dest);
     dest->render_data.count = 0;
+    dest->num_of_below_refs = 0;
+    dest->num_of_negative_refs = 0;
+    dest->num_of_positive_refs = 0;
     if (self == NULL) return;
     dest->window_id = self->window_id;
     dest->layers_dirty = true;
+    // Copy the visible ref counts so that the decision on whether to render in
+    // layers, which is made before the render data is rebuilt, is correct for
+    // the first paused frame. See https://github.com/kovidgoyal/kitty/issues/10538
+    dest->num_of_below_refs = self->num_of_below_refs;
+    dest->num_of_negative_refs = self->num_of_negative_refs;
+    dest->num_of_positive_refs = self->num_of_positive_refs;
     dest->last_scrolled_by = 0;
     dest->last_scroll_offset_lines = 0.0f;
 
@@ -1835,6 +1844,7 @@ update_current_frame(GraphicsManager *self, Image *img, const CoalescedFrameData
         data = &cfd;
     }
     upload_to_gpu(self, img, data->is_opaque, data->is_4byte_aligned, data->buf);
+    img->displayed_frame_id = current_frame(img)->id;
     if (needs_load) free(data->buf);
     img->current_frame_shown_at = monotonic();
 }
@@ -2023,6 +2033,51 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
 
 #undef ABRT
 
+static bool
+promote_dependents_to_keyframes(GraphicsManager *self, Image *img, const uint32_t base_id) {
+    for (unsigned i = 0; i < img->extra_framecnt; i++) {
+        Frame *f = img->extra_frames + i;
+        if (f->base_frame_id != base_id) continue;
+        CoalescedFrameData cfd = get_coalesced_frame_data(self, img, f);
+        if (!cfd.buf) return false;
+        const ImageAndFrame key = {.image_id = img->internal_id, .frame_id = f->id};
+        void *frame_data = cfd.buf;
+        const bool transient = f->transient || cfd.transient;
+        bool added = add_to_cache(self, key, &frame_data, (size_t)(cfd.is_opaque ? 3 : 4) * img->width * img->height, transient);
+        free(frame_data); // NULL if ownership was transferred to the cache
+        if (!added) return false;
+        f->transient = transient;
+        f->alpha_blend = false;
+        f->base_frame_id = 0;
+        f->bgcolor = 0;
+        f->is_opaque = cfd.is_opaque;
+        f->is_4byte_aligned = cfd.is_4byte_aligned;
+        f->x = 0;
+        f->y = 0;
+        f->width = img->width;
+        f->height = img->height;
+    }
+    return true;
+}
+
+static bool
+dependents_fit_in_cache(GraphicsManager *self, Image *img, const uint32_t base_id, const size_t victim_sz) {
+    const size_t full = (size_t)4 * img->width * img->height;
+    size_t growth = 0;
+    for (unsigned i = 0; i < img->extra_framecnt; i++) {
+        const Frame *f = img->extra_frames + i;
+        if (f->base_frame_id != base_id) continue;
+        const size_t cur = (size_t)(f->is_opaque ? 3 : 4) * f->width * f->height;
+        if (full > cur) growth += full - cur;
+    }
+    if (growth <= victim_sz) return true;
+    growth -= victim_sz;
+    const size_t limit = self->storage_limit * 5;
+    if (cache_size(self) + growth <= limit) return true;
+    remove_images(self, trim_predicate, img->internal_id);
+    return cache_size(self) + growth <= limit;
+}
+
 static Image *
 handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, bool *is_dirty) {
     if (!g->id && !g->image_number) {
@@ -2041,6 +2096,14 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
     ImageAndFrame key = {.image_id = img->internal_id};
     bool remove_root = frame_number == 1;
     uint32_t removed_gap = 0;
+    const uint32_t victim_id = remove_root ? img->root_frame.id : img->extra_frames[frame_number - 2].id;
+    const Frame *victim = remove_root ? &img->root_frame : img->extra_frames + frame_number - 2;
+    const size_t victim_sz = (size_t)(victim->is_opaque ? 3 : 4) * victim->width * victim->height;
+    if (!dependents_fit_in_cache(self, img, victim_id, victim_sz) || !promote_dependents_to_keyframes(self, img, victim_id)) {
+        if (PyErr_Occurred()) PyErr_Print();
+        REPORT_ERROR("Failed to preserve frames that depend on deleted frame: %u", frame_number);
+        return NULL;
+    }
     if (remove_root) {
         key.frame_id = img->root_frame.id;
         remove_from_cache(self, key);
@@ -2064,8 +2127,9 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
         update_current_frame(self, img, NULL);
         return NULL;
     }
-    if (removed_idx == img->current_frame_index) update_current_frame(self, img, NULL);
-    else if (removed_idx < img->current_frame_index) img->current_frame_index--;
+    const unsigned removed_index = remove_root ? 0 : removed_idx + 1;
+    if (img->current_frame_index > removed_index) img->current_frame_index--;
+    else if (img->current_frame_index == removed_index) update_current_frame(self, img, NULL);
     return NULL;
 }
 
@@ -2314,7 +2378,13 @@ static bool
 scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData *)data;
+    // A reverse scroll that does not pull lines back from the history leaves the history in place
+    if (d->amt > 0 && !d->scroll_history && ref->start_row + (int32_t)ref->effective_num_rows <= 0) return false;
     ref->start_row += d->amt;
+    // A cell image is tied to the placeholders on its line, which are lost when
+    // the line is scrolled off the bottom, so the ref must not come back on a
+    // later forward scroll.
+    if (is_cell_image(ref) && ref->start_row > (int32_t)d->margin_bottom) return true;
     return ref->start_row + (int32_t)ref->effective_num_rows <= d->limit;
 }
 
@@ -2346,6 +2416,13 @@ static bool
 scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
     if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData *)data;
+    // Lines scrolled out of a region at the top of the screen still enter the history and
+    // lines popped from the history move it down, so a cell image whose line is in the
+    // history moves with it.
+    if (d->scroll_history && is_cell_image(ref) && ref->start_row + (int32_t)ref->effective_num_rows <= 0) {
+        ref->start_row += d->amt;
+        return ref->start_row + (int32_t)ref->effective_num_rows <= d->limit;
+    }
     if (ref_within_region(ref, d->margin_top, d->margin_bottom)) {
         ref->start_row += d->amt;
         if (ref_outside_region(ref, d->margin_top, d->margin_bottom)) return true;
@@ -2681,9 +2758,11 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             } else {
                 GraphicsCommand ag = *g;
                 if (action == 'f') {
-                    if (!ag.action) {
-                        // continuation chunk, the response must identify the image from the start command
-                        ag.action = action;
+                    ag.action = action;
+                    if (!ag.id && !ag.image_number) {
+                        // continuation chunk, which carries either no action
+                        // key or a=f, the response must identify the image
+                        // from the start command
                         ag.id = self->currently_loading.start_command.id;
                         ag.image_number = self->currently_loading.start_command.image_number;
                     }
@@ -2770,7 +2849,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
         "{sI sI sI sI sI sI sI "
         "sO sI sO "
         "sI sI sI "
-        "sI sy# sN}",
+        "sI sI sy# sN}",
         "texture_id",
         texture_id_for_img(img),
         U(client_id),
@@ -2792,6 +2871,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
         U(current_frame_index),
 
         U(animation_duration),
+        U(displayed_frame_id),
         "data",
         cfd.buf,
         (Py_ssize_t)((cfd.is_opaque ? 3 : 4) * img->width * img->height),

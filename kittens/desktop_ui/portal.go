@@ -67,6 +67,8 @@ type Portal struct {
 	opts                        *Config
 	server_options              *ServerOptions
 	file_chooser_first_instance *exec.Cmd
+	// closed when file_chooser_first_instance exits
+	file_chooser_first_instance_exited chan struct{}
 }
 
 func to_color(spec string) (v dbus.Variant, err error) {
@@ -712,18 +714,14 @@ func (self *Portal) Cleanup() {
 	defer self.lock.Unlock()
 	if self.file_chooser_first_instance != nil {
 		self.file_chooser_first_instance.Process.Signal(unix.SIGTERM)
-		ch := make(chan int)
-		go func() {
-			self.file_chooser_first_instance.Wait()
-			ch <- 0
-		}()
 		select {
-		case <-ch:
+		case <-self.file_chooser_first_instance_exited:
 		case <-time.After(time.Second):
 			self.file_chooser_first_instance.Process.Kill()
-			self.file_chooser_first_instance.Wait()
+			<-self.file_chooser_first_instance_exited
 		}
 		self.file_chooser_first_instance = nil
+		self.file_chooser_first_instance_exited = nil
 	}
 }
 
@@ -798,6 +796,15 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 		for _, x := range self.opts.File_chooser_kitty_override {
 			args = append(args, `-o`, x)
 		}
+		if self.file_chooser_first_instance != nil {
+			select {
+			case <-self.file_chooser_first_instance_exited:
+				log.Println("file chooser panel process exited, restarting it")
+				self.file_chooser_first_instance = nil
+				self.file_chooser_first_instance_exited = nil
+			default:
+			}
+		}
 		if self.file_chooser_first_instance == nil {
 			fifo_path := filepath.Join(tdir, "fifo")
 			if err := unix.Mkfifo(fifo_path, 0600); err != nil {
@@ -809,21 +816,46 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 			cmd := exec.Command(utils.KittyExe(), fa...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			cmd.Start()
-			ch := make(chan int)
+			if err := cmd.Start(); err != nil {
+				log.Println("cannot run file chooser as failed to start kitty panel with error: ", err)
+				return nil
+			}
+			exited := make(chan struct{})
+			go func() {
+				_ = cmd.Wait()
+				close(exited)
+			}()
+			fifo_written := make(chan struct{})
 			go func() {
 				f, err := os.OpenFile(fifo_path, os.O_RDONLY, os.ModeNamedPipe)
 				if err != nil {
 					log.Println("cannot run file chooser as failed to open fifo for read with error: ", err)
+					return
 				}
+				defer f.Close()
 				b := []byte{'a', 'b', 'c', 'd'}
-				f.Read(b)
-				ch <- 0
+				if n, _ := f.Read(b); n > 0 {
+					close(fifo_written)
+				}
 			}()
+			// unblocks the reader goroutine if the panel never writes to the fifo
+			unblock_reader := func() {
+				if fd, err := unix.Open(fifo_path, unix.O_WRONLY|unix.O_NONBLOCK|unix.O_CLOEXEC, 0); err == nil {
+					unix.Close(fd)
+				}
+			}
 			select {
-			case <-ch:
+			case <-fifo_written:
 				self.file_chooser_first_instance = cmd
+				self.file_chooser_first_instance_exited = exited
+			case <-exited:
+				unblock_reader()
+				log.Printf("cannot run file chooser as the kitty panel process exited with %s, check its output above for errors. "+
+					"Note that the file chooser requires the window manager/compositor to support panels, see "+
+					"https://sw.kovidgoyal.net/kitty/kittens/panel/#compatibility-with-various-platforms", cmd.ProcessState)
+				return nil
 			case <-time.After(5 * time.Second):
+				unblock_reader()
 				log.Println("cannot run file chooser as panel script timed out writing to fifo")
 				return nil
 			}

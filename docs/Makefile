@@ -5,6 +5,16 @@ ifdef FAIL_WARN
 override FAIL_WARN=-W
 endif
 
+# Ignore these variables if they come from the environment, users can have
+# unrelated environment variables with these short names, for example, colors
+# set by shell themes. They can still be set on the make command line.
+ifeq ($(origin O),environment)
+override O=
+endif
+ifeq ($(origin OPTS),environment)
+override OPTS=
+endif
+
 # You can set these variables from the command line.
 SPHINXOPTS    = -n -q -j auto -T $(FAIL_WARN) $(OPTS)
 SPHINXBUILD   = sphinx-build

@@ -46,6 +46,11 @@ static struct {
 #define FcPatternGetMatrix dynamically_loaded_fc_symbol.PatternGetMatrix
 #define FcPatternAddCharSet dynamically_loaded_fc_symbol.PatternAddCharSet
 #define FcConfigAppFontAddFile dynamically_loaded_fc_symbol.ConfigAppFontAddFile
+#define FcFontSort dynamically_loaded_fc_symbol.FontSort
+#define FcFontSetMatch dynamically_loaded_fc_symbol.FontSetMatch
+#define FcPatternGetCharSet dynamically_loaded_fc_symbol.PatternGetCharSet
+#define FcCharSetHasChar dynamically_loaded_fc_symbol.CharSetHasChar
+#define FcConfigGetCurrent dynamically_loaded_fc_symbol.ConfigGetCurrent
 
 static struct {
     FcBool (*Init)(void);
@@ -72,6 +77,11 @@ static struct {
     FcResult (*PatternGetMatrix)(const FcPattern *p, const char *object, int n, FcMatrix **m);
     FcBool (*PatternAddCharSet)(FcPattern *p, const char *object, const FcCharSet *c);
     FcBool (*ConfigAppFontAddFile)(FcConfig *config, const FcChar8 *file);
+    FcFontSet *(*FontSort)(FcConfig *config, FcPattern *p, FcBool trim, FcCharSet **csp, FcResult *result);
+    FcPattern *(*FontSetMatch)(FcConfig *config, FcFontSet **sets, int nsets, FcPattern *p, FcResult *result);
+    FcResult (*PatternGetCharSet)(const FcPattern *p, const char *object, int n, FcCharSet **c);
+    FcBool (*CharSetHasChar)(const FcCharSet *fcs, FcChar32 ucs4);
+    FcConfig *(*ConfigGetCurrent)(void);
 } dynamically_loaded_fc_symbol = {0};
 #define LOAD_FUNC(name)                                                                           \
     {                                                                                             \
@@ -124,6 +134,11 @@ load_fontconfig_lib(void) {
     LOAD_FUNC(PatternGetMatrix);
     LOAD_FUNC(PatternAddCharSet);
     LOAD_FUNC(ConfigAppFontAddFile);
+    LOAD_FUNC(FontSort);
+    LOAD_FUNC(FontSetMatch);
+    LOAD_FUNC(PatternGetCharSet);
+    LOAD_FUNC(CharSetHasChar);
+    LOAD_FUNC(ConfigGetCurrent);
 }
 #undef LOAD_FUNC
 
@@ -136,11 +151,14 @@ ensure_initialized(void) {
     }
 }
 
+static void clear_fallback_candidates(void);
+
 static void
 finalize(void) {
     if (initialized) {
         Py_CLEAR(builtin_nerd_font.face);
         Py_CLEAR(builtin_nerd_font.descriptor);
+        clear_fallback_candidates();
         FcFini();
         dlclose(libfontconfig_handle);
         libfontconfig_handle = NULL;
@@ -353,45 +371,204 @@ end:
 
 static char_type char_buf[1024];
 
-static void
-add_charset(FcPattern *pat, size_t num) {
-    FcCharSet *charset = NULL;
-    if (num) {
-        charset = FcCharSetCreate();
-        if (charset == NULL) {
-            PyErr_NoMemory();
-            goto end;
-        }
-        for (size_t i = 0; i < num; i++) {
-            if (!FcCharSetAddChar(charset, char_buf[i])) {
-                PyErr_SetString(PyExc_RuntimeError, "Failed to add character to fontconfig charset");
-                goto end;
-            }
-        }
-        AP(FcPatternAddCharSet, FC_CHARSET, charset, "charset");
-    }
-end:
-    if (charset != NULL) FcCharSetDestroy(charset);
-}
-
 static bool
-_native_fc_match(FcPattern *pat, FontConfigFace *ans) {
+add_charset(FcPattern *pat, const char_type *chars, size_t num) {
     bool ok = false;
-    FcPattern *match = NULL;
-    FcResult result;
-    FcConfigSubstitute(NULL, pat, FcMatchPattern);
-    FcDefaultSubstitute(pat);
-    /* printf("fc_match = %s\n", FcNameUnparse(pat)); */
-    match = FcFontMatch(NULL, pat, &result);
-    if (match == NULL) {
-        PyErr_SetString(PyExc_KeyError, "FcFontMatch() failed");
+    FcCharSet *charset = NULL;
+    if (!num) return true;
+    charset = FcCharSetCreate();
+    if (charset == NULL) {
+        PyErr_NoMemory();
         goto end;
     }
+    for (size_t i = 0; i < num; i++) {
+        if (!FcCharSetAddChar(charset, chars[i])) {
+            PyErr_SetString(PyExc_RuntimeError, "Failed to add character to fontconfig charset");
+            goto end;
+        }
+    }
+    AP(FcPatternAddCharSet, FC_CHARSET, charset, "charset");
+    ok = true;
+end:
+    if (charset != NULL) FcCharSetDestroy(charset);
+    return ok;
+}
+
+// Fallback font matching {{{
+// Asking fontconfig for the font to use for a codepoint the main font does not
+// cover means calling FcFontMatch(), which scores the entire system font
+// database. Cells that need a fallback font are memoized by fallback_font() in
+// fonts.c, but a screen containing many *distinct* uncovered codepoints (for
+// instance Nerd Font Private Use Area icons with no Nerd Font installed) still
+// needs one full database scan per distinct cell, which stalls the main thread
+// for tens to hundreds of milliseconds. See
+// https://github.com/kovidgoyal/kitty/issues/10496
+//
+// Instead, cache the list of candidate fonts, sorted by closeness to the
+// requested family and style, once per (family, style, color) combination. A
+// lookup then walks that in-memory list using the candidates' charsets, narrows
+// the field down to a handful of fonts and has fontconfig score only those.
+
+typedef struct FallbackCandidates {
+    char *family; // NULL means no family was requested
+    bool bold, italic, prefer_color;
+    FcFontSet *fonts;    // all candidate fonts, closest match first
+    FcCharSet *coverage; // union of the charsets of all candidates
+} FallbackCandidates;
+
+static struct {
+    FallbackCandidates *entries;
+    size_t count, capacity;
+    FcPattern **scratch; // scratch space used to build the narrowed down font set
+    size_t scratch_capacity;
+    FcConfig *config; // the fontconfig configuration entries were built against
+} fallback_candidates = {0};
+
+static void
+clear_fallback_candidates(void) {
+    for (size_t i = 0; i < fallback_candidates.count; i++) {
+        FallbackCandidates *q = fallback_candidates.entries + i;
+        free(q->family);
+        if (q->fonts) FcFontSetDestroy(q->fonts);
+        if (q->coverage) FcCharSetDestroy(q->coverage);
+    }
+    free(fallback_candidates.entries);
+    free(fallback_candidates.scratch);
+    memset(&fallback_candidates, 0, sizeof(fallback_candidates));
+}
+
+static FcPattern *
+create_fallback_pattern(const char *family, bool bold, bool italic, bool prefer_color) {
+    FcPattern *pat = FcPatternCreate();
+    if (pat == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (family) AP(FcPatternAddString, FC_FAMILY, (const FcChar8 *)family, "family");
+    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    if (prefer_color) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
+    return pat;
+end:
+    FcPatternDestroy(pat);
+    return NULL;
+}
+
+static FallbackCandidates *
+candidates_for(const char *family, bool bold, bool italic, bool prefer_color) {
+    FcConfig *config = FcConfigGetCurrent();
+    if (config != fallback_candidates.config) clear_fallback_candidates();
+    for (size_t i = 0; i < fallback_candidates.count; i++) {
+        FallbackCandidates *q = fallback_candidates.entries + i;
+        if (q->bold == bold && q->italic == italic && q->prefer_color == prefer_color &&
+            (q->family == NULL ? family == NULL : (family != NULL && strcmp(q->family, family) == 0)))
+            return q;
+    }
+    FcPattern *pat = create_fallback_pattern(family, bold, italic, prefer_color);
+    if (!pat) {
+        PyErr_Clear(); // fall back to FcFontMatch()
+        return NULL;
+    }
+    FcConfigSubstitute(NULL, pat, FcMatchPattern);
+    FcDefaultSubstitute(pat);
+    // trim must be false so that the candidate list contains every font
+    // FcFontMatch() would consider, in the order in which it prefers them
+    FcCharSet *coverage = NULL;
+    FcResult result;
+    FcFontSet *fonts = FcFontSort(NULL, pat, FcFalse, &coverage, &result);
+    FcPatternDestroy(pat);
+    if (fonts && fonts->nfont < 1) {
+        FcFontSetDestroy(fonts);
+        fonts = NULL;
+    }
+    if (!fonts && coverage) {
+        FcCharSetDestroy(coverage);
+        coverage = NULL;
+    }
+    ensure_space_for(&fallback_candidates, entries, FallbackCandidates, fallback_candidates.count + 1, capacity, 8, true);
+    if (fonts) ensure_space_for(&fallback_candidates, scratch, FcPattern *, (size_t)fonts->nfont, scratch_capacity, 64, false);
+    FallbackCandidates *ans = fallback_candidates.entries + fallback_candidates.count++;
+    *ans = (FallbackCandidates){.bold = bold, .italic = italic, .prefer_color = prefer_color, .fonts = fonts, .coverage = coverage};
+    if (family) {
+        ans->family = strdup(family);
+        if (!ans->family) fatal("Out of memory allocating fallback font candidate key");
+    }
+    fallback_candidates.config = config;
+    // fonts is NULL if FcFontSort() failed, cached so that it is not retried
+    // for every lookup, match_fallback_font() then uses FcFontMatch()
+    return ans;
+}
+
+static FcPattern *
+match_in_candidates(const FallbackCandidates *q, FcPattern *pat, const char_type *chars, size_t num_chars, FcResult *result) {
+    // Chars that no font at all covers cannot change which font fontconfig
+    // prefers, since every candidate is missing them equally.
+    char_type relevant[arraysz(char_buf)];
+    size_t num_relevant = 0;
+    for (size_t i = 0; i < num_chars; i++) {
+        if (!q->coverage || FcCharSetHasChar(q->coverage, chars[i])) relevant[num_relevant++] = chars[i];
+    }
+    FcPattern **narrow = fallback_candidates.scratch;
+    int num_narrow = 1;
+    // The closest candidate ignoring coverage altogether always has to be
+    // considered: it is the answer when no font covers any of the chars and it
+    // can also win on higher priority criteria such as FC_COLOR, which
+    // fontconfig ranks above coverage.
+    narrow[0] = q->fonts->fonts[0];
+    for (int i = 0; i < q->fonts->nfont && num_relevant; i++) {
+        FcPattern *f = q->fonts->fonts[i];
+        FcCharSet *cs = NULL;
+        if (FcPatternGetCharSet(f, FC_CHARSET, 0, &cs) != FcResultMatch || !cs) continue;
+        size_t covered = 0;
+        for (size_t c = 0; c < num_relevant; c++) {
+            if (FcCharSetHasChar(cs, relevant[c])) covered++;
+        }
+        if (!covered) continue;
+        if (f != narrow[0]) narrow[num_narrow++] = f;
+        // Once a font covering every char has been found, no font later in the
+        // candidate list can score better, since fontconfig prefers closer
+        // candidates and full coverage is the best possible coverage score.
+        // Earlier candidates with only partial coverage are kept, as they can
+        // still win on criteria fontconfig ranks above coverage, such as
+        // FC_COLOR.
+        if (covered == num_relevant) break;
+    }
+    FcFontSet set = {.nfont = num_narrow, .sfont = num_narrow, .fonts = narrow};
+    FcFontSet *sets[1] = {&set};
+    return FcFontSetMatch(NULL, sets, 1, pat, result);
+}
+
+// Returns the (render prepared) fontconfig pattern for the best font for the
+// specified chars, which the caller must destroy, or NULL with a Python
+// exception set. Set use_candidate_cache to false to use FcFontMatch() directly,
+// this is used by the tests to check the two give equivalent results.
+static FcPattern *
+match_fallback_font(const char *family, bool bold, bool italic, bool prefer_color, const char_type *chars, size_t num_chars, bool use_candidate_cache) {
+    if (family && !family[0]) family = NULL;
+    if (num_chars > arraysz(char_buf)) num_chars = arraysz(char_buf);
+    FcResult result;
+    const FallbackCandidates *q = NULL;
+    FcPattern *ans = NULL, *pat = create_fallback_pattern(family, bold, italic, prefer_color);
+    if (!pat) return NULL;
+    if (!add_charset(pat, chars, num_chars)) goto end;
+    FcConfigSubstitute(NULL, pat, FcMatchPattern);
+    FcDefaultSubstitute(pat);
+    if (use_candidate_cache) q = candidates_for(family, bold, italic, prefer_color);
+    ans = (q && q->fonts) ? match_in_candidates(q, pat, chars, num_chars, &result) : FcFontMatch(NULL, pat, &result);
+    if (ans == NULL) PyErr_SetString(PyExc_KeyError, "Failed to find any font matching the specified pattern");
+end:
+    FcPatternDestroy(pat);
+    return ans;
+}
+// }}}
+
+static bool
+extract_face_from_pattern(FcPattern *match, FontConfigFace *ans) {
     FcChar8 *out;
 #define g(func, prop, output)                                                               \
     if (func(match, prop, 0, &output) != FcResultMatch) {                                   \
         PyErr_SetString(PyExc_ValueError, "No " #prop " found in fontconfig match result"); \
-        goto end;                                                                           \
+        return false;                                                                       \
     }
     g(FcPatternGetString, FC_FILE, out);
     if (FcPatternGetInteger(match, FC_INDEX, 0, &ans->index) != FcResultMatch) ans->index = 0; // ignore missing index assume it is zero
@@ -401,11 +578,24 @@ _native_fc_match(FcPattern *pat, FontConfigFace *ans) {
     ans->path = strdup((char *)out);
     if (!ans->path) {
         PyErr_NoMemory();
-        goto end;
+        return false;
     }
-    ok = true;
-end:
-    if (match != NULL) FcPatternDestroy(match);
+    return true;
+}
+
+static bool
+_native_fc_match(FcPattern *pat, FontConfigFace *ans) {
+    FcResult result;
+    FcConfigSubstitute(NULL, pat, FcMatchPattern);
+    FcDefaultSubstitute(pat);
+    /* printf("fc_match = %s\n", FcNameUnparse(pat)); */
+    FcPattern *match = FcFontMatch(NULL, pat, &result);
+    if (match == NULL) {
+        PyErr_SetString(PyExc_KeyError, "FcFontMatch() failed");
+        return false;
+    }
+    bool ok = extract_face_from_pattern(match, ans);
+    FcPatternDestroy(match);
     return ok;
 }
 
@@ -578,20 +768,11 @@ fallback_font(char_type ch, const char *family, bool bold, bool italic, bool pre
     ensure_initialized();
     memset(ans, 0, sizeof(FontConfigFace));
     bool ok = false;
-    FcPattern *pat = FcPatternCreate();
-    if (pat == NULL) {
-        PyErr_NoMemory();
-        return ok;
+    FcPattern *match = match_fallback_font(family, bold, italic, prefer_color, &ch, 1, true);
+    if (match) {
+        ok = extract_face_from_pattern(match, ans);
+        FcPatternDestroy(match);
     }
-    if (family) AP(FcPatternAddString, FC_FAMILY, (const FcChar8 *)family, "family");
-    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
-    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
-    if (prefer_color) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
-    char_buf[0] = ch;
-    add_charset(pat, 1);
-    ok = _native_fc_match(pat, ans);
-end:
-    if (pat != NULL) FcPatternDestroy(pat);
     if (!ok && builtin_nerd_font.face && builtin_nerd_font.descriptor && glyph_id_for_codepoint(builtin_nerd_font.face, ch) > 0) {
         PyObject *pypath = PyDict_GetItemString(builtin_nerd_font.descriptor, "path");
         PyObject *pyindex = PyDict_GetItemString(builtin_nerd_font.descriptor, "index");
@@ -624,16 +805,14 @@ create_fallback_face(PyObject UNUSED *base_face, const ListOfChars *lc, bool bol
     ensure_initialized();
     PyObject *ans = NULL;
     RAII_PyObject(d, NULL);
-    FcPattern *pat = FcPatternCreate();
-    if (pat == NULL) return PyErr_NoMemory();
     bool glyph_found = false;
-    AP(FcPatternAddString, FC_FAMILY, (const FcChar8 *)(emoji_presentation ? "emoji" : "monospace"), "family");
-    if (!emoji_presentation && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
-    if (!emoji_presentation && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
-    if (emoji_presentation) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
     size_t num = cell_as_unicode_for_fallback(lc, char_buf, arraysz(char_buf));
-    add_charset(pat, num);
-    d = _fc_match(pat);
+    FcPattern *match = match_fallback_font(
+        emoji_presentation ? "emoji" : "monospace", !emoji_presentation && bold, !emoji_presentation && italic, emoji_presentation, char_buf, num, true);
+    if (match) {
+        d = pattern_as_dict(match);
+        FcPatternDestroy(match);
+    }
 face_from_descriptor:
     if (d) {
         ssize_t idx = -1;
@@ -650,10 +829,6 @@ face_from_descriptor:
     }
 end:
     Py_CLEAR(d);
-    if (pat != NULL) {
-        FcPatternDestroy(pat);
-        pat = NULL;
-    }
     if (!glyph_found && !PyErr_Occurred()) {
         if (builtin_nerd_font.face && has_cell_text(face_has_codepoint, builtin_nerd_font.face, false, lc)) {
             Py_CLEAR(ans);
@@ -723,8 +898,39 @@ add_font_file(PyObject UNUSED *self, PyObject *args) {
     ensure_initialized();
     const char *path = NULL;
     if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
-    if (FcConfigAppFontAddFile(NULL, (const unsigned char *)path)) Py_RETURN_TRUE;
+    if (FcConfigAppFontAddFile(NULL, (const unsigned char *)path)) {
+        clear_fallback_candidates(); // the newly added font must be considered for fallback
+        Py_RETURN_TRUE;
+    }
     Py_RETURN_FALSE;
+}
+
+static PyObject *
+clear_fallback_font_cache(PyObject UNUSED *self, PyObject UNUSED *args) {
+    clear_fallback_candidates();
+    Py_RETURN_NONE;
+}
+
+// Used by the tests to verify that the cached candidate list based matching is
+// equivalent to asking fontconfig to score the entire font database.
+static PyObject *
+fc_match_fallback(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
+    ensure_initialized();
+    PyObject *text;
+    int bold = 0, italic = 0, prefer_color = 0, use_candidate_cache = 1;
+    static char *kwds[] = {"text", "bold", "italic", "prefer_color", "use_candidate_cache", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "U|pppp", kwds, &text, &bold, &italic, &prefer_color, &use_candidate_cache)) return NULL;
+    const Py_ssize_t count = PyUnicode_GET_LENGTH(text);
+    if (count < 1 || count > (Py_ssize_t)arraysz(char_buf)) {
+        PyErr_Format(PyExc_ValueError, "text must have between 1 and %zu characters", arraysz(char_buf));
+        return NULL;
+    }
+    for (Py_ssize_t i = 0; i < count; i++) char_buf[i] = PyUnicode_READ_CHAR(text, i);
+    FcPattern *match = match_fallback_font(prefer_color ? "emoji" : "monospace", bold, italic, prefer_color, char_buf, count, use_candidate_cache);
+    if (!match) return NULL;
+    PyObject *ans = pattern_as_dict(match);
+    FcPatternDestroy(match);
+    return ans;
 }
 
 
@@ -735,6 +941,8 @@ static PyMethodDef module_methods[] = {
     METHODB(fc_match, METH_VARARGS),
     METHODB(fc_match_postscript_name, METH_VARARGS),
     METHODB(add_font_file, METH_VARARGS),
+    METHODB(clear_fallback_font_cache, METH_NOARGS),
+    {"fc_match_fallback", (PyCFunction)(void (*)(void))(fc_match_fallback), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_builtin_nerd_font, METH_O),
     {NULL, NULL, 0, NULL} /* Sentinel */
 };

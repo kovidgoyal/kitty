@@ -101,6 +101,11 @@ typedef struct {
     struct {
         index_type x, y;
     } last_ime_pos;
+    // The cursor position last sent as the IME anchor outside of a composition, see sync_ime_position_with_cursor()
+    struct {
+        index_type x, y;
+        bool valid;
+    } last_ime_cursor;
 } OverlayLine;
 
 typedef struct ExtraCursor {
@@ -150,7 +155,7 @@ typedef struct {
     uint8_t drag_overlay_quadrant;     // 1=left 2=right 3=top 4=bottom 0=none
 
     uint8_t *write_buf;
-    size_t write_buf_sz, write_buf_used;
+    size_t write_buf_sz, write_buf_used, write_buf_start;
     pthread_mutex_t write_buf_lock;
 
     CursorRenderInfo cursor_render_info;
@@ -160,6 +165,7 @@ typedef struct {
     bool has_focus;
     uint8_t visibility_state; // 0 = unknown, 1 = potentially visible, 2 = not visible
     bool has_activity_since_last_focus;
+    bool track_activity;
     hyperlink_id_type active_hyperlink_id;
     HYPERLINK_POOL_HANDLE hyperlink_pool;
     ANSIBuf as_ansi_buf;
@@ -221,6 +227,9 @@ typedef struct {
         char_type idx_plus_1[16];
     } tab_cache;
     monotonic_t parsing_at;
+    // Set by the main thread on every parse: input_held when bytes are waiting out
+    // input_delay, input_parsed when new input was parsed
+    bool input_held, input_parsed;
     ExtraCursors extra_cursors;
     struct {
         bool active;
@@ -339,7 +348,9 @@ void screen_rescale_images(Screen *self);
 void screen_report_size(Screen *, unsigned which, unsigned modifier);
 void screen_manipulate_title_stack(Screen *, unsigned int op, unsigned int which);
 bool screen_is_overlay_active(Screen *self);
+index_type screen_overlay_line_start(const Screen *self);
 void screen_update_overlay_text(Screen *self, const char *utf8_text);
+bool screen_ime_text_around_cursor(Screen *self, char **before, char **after);
 void screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how);
 void screen_push_key_encoding_flags(Screen *self, uint32_t val);
 void screen_pop_key_encoding_flags(Screen *self, uint32_t num);

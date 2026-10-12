@@ -3,9 +3,10 @@
 
 from unittest.mock import patch
 
-from kitty.fast_data_types import LEFT_EDGE, Color, Region
+from kitty.fast_data_types import LEFT_EDGE, Color, Region, Screen
 from kitty.options.utils import tab_title_wrap
-from kitty.tab_bar import CellRange, TabBar, TabBarData, truncate_line, wrap_title
+from kitty.tab_bar import CellRange, DrawData, ExtraData, TabBar, TabBarData, TabExtent, WindowDropTarget, as_rgb, powerline_symbols, truncate_line, wrap_title
+from kitty.utils import color_as_int
 
 from .base import BaseTest
 
@@ -23,6 +24,102 @@ class DummyBoss:
 
 
 class TestTabBar(BaseTest):
+    def test_tab_insertion_uses_nearest_boundary(self):
+        tb = self.vertical_tab_bar()
+        for vertical in (False, True):
+            tb.is_vertical = vertical
+            tb.screen.resize(50, 100)
+            tb.cell_width, tb.cell_height = 10, 20
+            tb.tab_extents = tuple(
+                TabExtent(tid, CellRange(start, end), CellRange(start, end)) for tid, start, end in ((1, 2, 11), (2, 14, 23), (3, 26, 35), (-1, 38, 40))
+            )
+            cell_size = tb.cell_height if vertical else tb.cell_width
+            for coordinate, before in ((0, 1), (6.99, 1), (7, 2), (13, 2), (18.99, 2), (19, 3), (31, 0), (40, 0)):
+                pos = int(coordinate * cell_size)
+                x, y = (5, pos) if vertical else (pos, 5)
+                self.ae(tb.tab_insertion_target_at(x, y), before, (vertical, coordinate))
+
+    def test_vertical_insertion_marker_keeps_titles_visible(self):
+        def marked(num_tabs: int, attr: str, before: int) -> tuple[list[str], list[str]]:
+            tb = self.vertical_tab_bar(num_tabs)
+            data, extents, original = tb.last_laid_out_tabs, tb.tab_extents, self.screen_lines(tb)
+            with patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None), patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
+                setattr(tb, attr, before)
+                tb.update(data)
+                self.ae(tb.last_laid_out_tabs, data)
+                self.ae(tb.tab_extents, extents)
+                lines = self.screen_lines(tb)
+                setattr(tb, attr, None)
+                tb.update(data)
+                self.ae(self.screen_lines(tb), original)
+            return original, lines
+
+        line = '━' * 12
+        for attr in ('tab_drop_insert_before', 'window_drop_insert_before'):
+            # The marker uses the blank line between tabs, or after the last tab
+            original, lines = marked(2, attr, 2)
+            self.ae(original[:4], ['t0', '', 't1', ''])
+            self.ae(lines[:4], ['t0', line, 't1', ''])
+            self.ae(marked(2, attr, 0)[1][:4], ['t0', '', 't1', line])
+            # Without a blank line before the first tab only its first cell is used
+            self.ae(marked(2, attr, 1)[1][:3], ['▶0', '', 't1'])
+            # Crowded tab bars have no blank lines between tabs
+            original, lines = marked(8, attr, 3)
+            self.ae(original[:4], ['t0', 't1', 't2', 't3'])
+            self.ae(lines[:4], ['t0', 't1', '▶2', 't3'])
+
+    def test_window_drop_tab_edges_and_gaps(self):
+        tb = self.vertical_tab_bar()
+        for vertical in (False, True):
+            with self.subTest(vertical=vertical):
+                tb.is_vertical = vertical
+                tb.screen.resize(50, 100)
+                tb.cell_width, tb.cell_height = 10, 20
+                tb.tab_extents = tuple(
+                    TabExtent(tid, CellRange(start, end), CellRange(start, end)) for tid, start, end in ((1, 2, 11), (2, 14, 23), (-1, 26, 28))
+                )
+                cell_size = tb.cell_height if vertical else tb.cell_width
+                for coordinate, target in (
+                    (0, WindowDropTarget(before_tab_id=1)),
+                    (2.99, WindowDropTarget(before_tab_id=1)),
+                    (3, WindowDropTarget(tab_id=1)),
+                    (10.99, WindowDropTarget(tab_id=1)),
+                    (11, WindowDropTarget(before_tab_id=2)),
+                    (13, WindowDropTarget(before_tab_id=2)),
+                    (14.99, WindowDropTarget(before_tab_id=2)),
+                    (15, WindowDropTarget(tab_id=2)),
+                    (23, WindowDropTarget(before_tab_id=0)),
+                    (27, WindowDropTarget(before_tab_id=0)),
+                    (40, WindowDropTarget(before_tab_id=0)),
+                ):
+                    pos = int(coordinate * cell_size)
+                    x, y = (tb.window_geometry.left + 5, tb.window_geometry.top + pos) if vertical else (pos, 5)
+                    self.ae(tb.window_drop_target_at(x, y), target, (vertical, coordinate))
+
+    def test_window_drop_custom_full_width_tabs(self):
+        tb = self.vertical_tab_bar()
+        tb.is_vertical = False
+        tb.screen.resize(1, 100)
+        tb.cell_width = 10
+        # A full-width custom renderer returns the cell after each tab, including the
+        # first cell of its neighbor. The synthetic '+' is entirely off screen.
+        tb.tab_extents = tuple(TabExtent(tid, CellRange(start, end)) for tid, start, end in ((1, 0, 50), (2, 50, 100), (-1, 100, 150)))
+        for x, target in (
+            (49, WindowDropTarget(before_tab_id=1)),
+            (50, WindowDropTarget(tab_id=1)),
+            (449, WindowDropTarget(tab_id=1)),
+            (450, WindowDropTarget(before_tab_id=2)),
+            (549, WindowDropTarget(before_tab_id=2)),
+            (550, WindowDropTarget(tab_id=2)),
+            (949, WindowDropTarget(tab_id=2)),
+            (950, WindowDropTarget(before_tab_id=0)),
+            (999, WindowDropTarget(before_tab_id=0)),
+        ):
+            self.ae(tb.window_drop_target_at(x, 5), target, x)
+        tb.window_drop_insert_before = 0
+        tb.draw_drop_insert_marker()
+        self.ae(str(tb.screen.line(0))[-1], '┃')
+
     def test_vertical_tab_bar_hit_testing(self) -> None:
         self.set_options(
             {
@@ -413,3 +510,176 @@ class TestTabBar(BaseTest):
 
         # Issue 2: no background-coloured separator after the trailing fades.
         self.ae(bg(11), fade_bg)  # col 11, last trailing fade, must not be default_bg
+
+    def test_vertical_tab_bar_powerline_style(self) -> None:
+        tb = self.vertical_tab_bar(
+            num_tabs=3,
+            tab_bar_style='powerline',
+            tab_powerline_style='slanted',
+            active_tab_background=Color(200, 0, 0),
+            inactive_tab_background=Color(0, 200, 0),
+            tab_bar_background=Color(0, 0, 100),
+        )
+        s = tb.screen
+        separator, soft_separator = powerline_symbols['slanted']
+        active_bg = as_rgb(color_as_int(Color(200, 0, 0)))
+        inactive_bg = as_rgb(color_as_int(Color(0, 200, 0)))
+        tab_bar_bg = as_rgb(color_as_int(Color(0, 0, 100)))
+        for row, tab_bg in ((0, active_bg), (2, inactive_bg), (4, inactive_bg)):
+            line = s.line(row)
+            text = str(line)
+            self.assertNotIn(soft_separator, text)
+            self.ae(text.index(separator), s.columns - 1)
+            self.ae(int(line.cursor_from(3).bg), tab_bg)
+            sep = line.cursor_from(s.columns - 1)
+            self.ae((int(sep.fg), int(sep.bg)), (tab_bg, tab_bar_bg))
+
+        tb = self.vertical_tab_bar(num_tabs=1, tab_bar_style='powerline', tab_powerline_style='slanted', tab_title_template='{title}-a-long-title')
+        self.ae(str(tb.screen.line(0)), f' t0-a-lon… {separator}')
+
+        tb = self.vertical_tab_bar(num_tabs=1, tab_bar_style='powerline', tab_powerline_style='slanted', tab_title_template='abcdef', tab_title_max_length=3)
+        self.ae(str(tb.screen.line(0)), f' ab…       {separator}')
+
+        tb = self.vertical_tab_bar(
+            num_tabs=1, tab_bar_style='powerline', tab_title_template='{fmt.fg.red}{title}{fmt.reset}', active_tab_background=Color(200, 0, 0)
+        )
+        line = tb.screen.line(0)
+        self.ae({int(line.cursor_from(x).bg) for x in range(tb.screen.columns - 1)}, {active_bg})
+
+    def test_vertical_tab_bar_powerline_wrapped_titles(self) -> None:
+        separator = powerline_symbols['slanted'][0]
+        active_bg = as_rgb(color_as_int(Color(200, 0, 0)))
+        tab_bar_bg = as_rgb(color_as_int(Color(0, 0, 100)))
+
+        def lines(**opts: object) -> list[str]:
+            tb = self.vertical_tab_bar(
+                num_tabs=1,
+                height=200,
+                tab_bar_style='powerline',
+                tab_powerline_style='slanted',
+                active_tab_background=Color(200, 0, 0),
+                tab_bar_background=Color(0, 0, 100),
+                **opts,
+            )
+            s = tb.screen
+            ans = [str(s.line(i)) for i in range(s.lines)]
+            # Every row of the tab has the separator in the last column, blending
+            # into the tab bar background, with the tab background before it
+            for y, text in enumerate(ans):
+                if text:
+                    sep = s.line(y).cursor_from(s.columns - 1)
+                    self.ae((int(sep.fg), int(sep.bg)), (active_bg, tab_bar_bg))
+                    self.ae({int(s.line(y).cursor_from(x).bg) for x in range(s.columns - 1)}, {active_bg})
+            return [x for x in ans if x]
+
+        # wrapped text stays clear of the last column
+        self.ae(
+            lines(tab_title_max_lines=3, tab_title_wrap=-1, tab_title_template='{title} abcdefgh ijklmnopq rs'),
+            [f' t0 abcdefg{separator}', f'h ijklmnop {separator}', f'q rs       {separator}'],
+        )
+        # the last kept line is truncated with an ellipsis
+        self.ae(
+            lines(tab_title_max_lines=2, tab_title_wrap=-1, tab_title_template='{title} abcdefgh ijklmnopq rs'),
+            [f' t0 abcdefg{separator}', f'h ijklmno… {separator}'],
+        )
+        # an explicit wrap width narrower than the tab
+        self.ae(
+            lines(tab_title_max_lines=3, tab_title_wrap=4, tab_title_template='{title} abcdefgh'),
+            [f' t0 a      {separator}', f'bcde       {separator}', f'fgh        {separator}'],
+        )
+        # with wrapping disabled, over long lines are clipped by the separator
+        self.ae(
+            lines(tab_title_max_lines=3, tab_title_wrap=0, tab_title_template='{title}\\nabcdefghijklmnop\\nx'),
+            [f' t0        {separator}', f'abcdefghijk{separator}', f'x          {separator}'],
+        )
+
+    def horizontal_tab_bar_line(self, titles: list[str], columns: int, **opts: object) -> str:
+        self.set_options({'tab_title_template': '{title}', **opts})
+        central = region(0, 0, columns * 10, 180)
+        tab_bar = region(0, 180, columns * 10, 200)
+        with (
+            patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
+            patch('kitty.tab_bar.viewport_for_window', return_value=(central, tab_bar, columns * 10, 200, 10, 20)),
+            patch('kitty.tab_bar.set_tab_bar_render_data'),
+            patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None),
+            patch('kitty.tab_bar.get_boss', return_value=DummyBoss()),
+        ):
+            tb = TabBar(1)
+            tb.layout()
+            tb.update(tuple(TabBarData(title=t, tab_id=i + 1, is_active=i == 0) for i, t in enumerate(titles)))
+        return str(tb.screen.line(0)).rstrip()
+
+    def test_horizontal_tab_bar_uses_free_space(self) -> None:
+        line = self.horizontal_tab_bar_line
+        # space not needed by short tabs goes to the long ones, instead of
+        # being left unused at the end of the tab bar
+        long_title = 'abcdefghijklmn'
+        for style, columns, titles in (
+            ('fade', 25, ['1', long_title]),
+            ('fade', 35, ['1'] * 2 + [long_title]),
+            ('separator', 60, ['1'] * 8 + [long_title] * 2),
+            ('powerline', 80, ['1'] * 5 + [long_title] * 3),
+            ('slant', 126, ['1'] * 9 + [long_title] * 4),
+        ):
+            text = line(titles, columns, tab_bar_style=style)
+            self.ae(text.count(long_title), titles.count(long_title), (style, text))
+            self.assertNotIn('…', text)
+
+        # tabs drawn more than one cell wider than their max length, by a wide
+        # separator or the leading space of the powerline style, must still
+        # fit, rather than the last one being replaced by the overflow marker
+        for columns, titles, opts in (
+            (10, ['x' * 10] * 3, {'tab_bar_style': 'separator', 'tab_separator': ' ||'}),
+            (15, ['x' * 10, '~'], {'tab_bar_style': 'powerline'}),
+        ):
+            text = line(titles, columns, **opts)
+            self.assertFalse(text.endswith(' …'), (opts, text))
+
+        # no tabs
+        self.ae(line([], 60, tab_bar_style='separator'), '')
+
+    def test_horizontal_tab_bar_custom_draw_func_margin(self) -> None:
+        # a custom draw function may draw a wider overhang when given more
+        # space than the default max length it is measured at, so it is left
+        # some slack, rather than the last tab being replaced by the overflow marker
+        def draw_tab(
+            draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_tab_length: int, index: int, is_last: bool, extra_data: ExtraData
+        ) -> int:
+            screen.draw(tab.title[:max_tab_length])
+            if len(tab.title) > max_tab_length and max_tab_length >= 8:
+                screen.draw('»')
+            end: int = screen.cursor.x
+            if not is_last:
+                screen.draw('|')
+            return end
+
+        with patch('kitty.tab_bar.load_custom_draw_tab', return_value=draw_tab):
+            for columns in (15, 16, 17):
+                text = self.horizontal_tab_bar_line(['x' * 30] * 2, columns, tab_bar_style='custom')
+                self.assertFalse(text.endswith(' …'), (columns, text))
+                self.ae(text.count('|'), 1, text)
+
+    def test_tab_bar_title_cache(self) -> None:
+        from contextlib import nullcontext
+
+        import kitty.tab_bar as tab_bar
+
+        titles = ['~', 'abcdefghijklmnopqrstuvwx'] * 4
+        evaluate = tab_bar.evaluate_title_template
+        for style in ('fade', 'separator', 'powerline', 'slant'):
+            # titles are evaluated just once per tab in an update, though
+            # laying out the tab bar draws them several times
+            with patch('kitty.tab_bar.evaluate_title_template', wraps=evaluate) as ev:
+                cached = self.horizontal_tab_bar_line(titles, 60, tab_bar_style=style)
+            self.ae(ev.call_count, len(titles), style)
+            self.assertIsNone(tab_bar.title_cache)
+            with patch('kitty.tab_bar.caching_titles', nullcontext):
+                self.ae(self.horizontal_tab_bar_line(titles, 60, tab_bar_style=style), cached, style)
+
+        # unless the title depends on the space available for it
+        for template in ('{title[:max_title_length // 2]}', '{custom}'):
+            with patch('kitty.tab_bar.evaluate_title_template', wraps=evaluate) as ev:
+                cached = self.horizontal_tab_bar_line(titles, 60, tab_bar_style='separator', tab_title_template=template)
+            with patch('kitty.tab_bar.caching_titles', nullcontext):
+                self.ae(self.horizontal_tab_bar_line(titles, 60, tab_bar_style='separator', tab_title_template=template), cached, template)
+            self.assertGreater(ev.call_count, len(titles), template)

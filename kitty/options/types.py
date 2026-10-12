@@ -78,6 +78,7 @@ option_names = (
     'clipboard_max_size',
     'clone_source_strategies',
     'close_on_child_death',
+    'collapse_window_margins',
     'color0',
     'color1',
     'color2',
@@ -351,6 +352,7 @@ option_names = (
     'cursor_underline_thickness',
     'custom_shaders',
     'default_pointer_shape',
+    'detect_url_regex',
     'detect_urls',
     'dim_opacity',
     'disable_ligatures',
@@ -561,6 +563,7 @@ class Options:
     clipboard_max_size: float = 512.0
     clone_source_strategies: frozenset[str] = frozenset({'conda', 'env_var', 'path', 'venv'})
     close_on_child_death: bool = False
+    collapse_window_margins: bool = False
     command_on_bell: list[str] = ['none']
     confirm_os_window_close: tuple[int, bool] = (-1, False)
     copy_on_select: str = ''
@@ -740,6 +743,7 @@ class Options:
     window_title_bar_min_windows: int = 0
     window_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}'
     action_alias: dict[str, str] = {}
+    detect_url_regex: dict[str, str] = {}
     env: dict[str, str] = {}
     exe_search_path: dict[str, str] = {}
     filter_notification: dict[str, str] = {}
@@ -869,6 +873,7 @@ class Options:
 defaults = Options()
 
 defaults.action_alias = {}
+defaults.detect_url_regex = {}
 defaults.env = {}
 defaults.exe_search_path = {}
 defaults.filter_notification = {}

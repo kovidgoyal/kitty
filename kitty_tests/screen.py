@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import re
+import tempfile
+
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
 from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
 from kitty.window import pagerhist
@@ -194,6 +198,15 @@ class TestScreen(BaseTest):
         s.draw('a\tb')
         self.ae((s.cursor.x, s.cursor.y), (40, 0))
         self.ae(s.line(0).as_ansi(), 'a\tb')
+        # spaces immediately after a tab stop must not be swallowed (issue #10609)
+        s = self.create_screen(cols=20)
+        s.draw('x\t y')
+        s.carriage_return(), s.linefeed()
+        s.draw('x\t\t  z')
+        self.ae(s.line(0).as_ansi(), 'x\t y')
+        self.ae(str(s.line(0)), 'x\t y')
+        self.ae(s.line(1).as_ansi(), 'x\t\t  z')
+        self.ae(str(s.line(1)), 'x\t\t  z')
 
     def test_draw_char(self):
         # Test in line-wrap, non-insert mode
@@ -282,6 +295,45 @@ class TestScreen(BaseTest):
         for i in range(s.lines):
             self.ae(str(s.line(i)).strip(), '')
 
+    def test_fractional_scroll(self):
+        s = self.create_screen(cols=5, lines=5, scrollback=10, cell_height=20, options={'pixel_scroll': True})
+        for i in range(15):
+            s.draw(str(i))
+            parse_bytes(s, b'\r\n')
+        self.assertGreaterEqual(s.historybuf.count, 4)
+        s.fractional_scroll(-0.75)
+        s.fractional_scroll(-0.75)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (1, 10))
+        s.fractional_scroll(0.5)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (1, 0))
+        s.scroll_to_absolute(0.0)
+        total = 0
+        for i in range(4):
+            s.fractional_scroll(-0.75)
+            total += 15
+            self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (total // 20, total % 20))
+        for i in range(4):
+            s.fractional_scroll(0.75)
+            total -= 15
+            self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (total // 20, total % 20))
+        self.ae(total, 0)
+        s.scroll_to_absolute(5.0)
+        self.assertFalse(s.fractional_scroll(float('nan')))
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (5, 0))
+        s.scroll_to_absolute(float('nan'))
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (5, 0))
+        self.assertRaises(OverflowError, s.fractional_scroll, 10**400)
+        self.assertRaises(OverflowError, s.scroll_to_absolute, 10**400)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (5, 0))
+        self.assertTrue(s.fractional_scroll(float('-inf')))
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (s.historybuf.count, 0))
+        self.assertTrue(s.fractional_scroll(float('inf')))
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (0, 0))
+        s.scroll_to_absolute(-3.5)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (0, 0))
+        s.scroll_to_absolute(float('inf'))
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (s.historybuf.count, 0))
+
     def test_emoji_skin_tone_modifiers(self):
         s = self.create_screen()
         q = chr(0x1F469) + chr(0x1F3FD)
@@ -312,6 +364,16 @@ class TestScreen(BaseTest):
             s.draw(q)
             self.ae(q, str(s.line(0)))
             self.ae(s.cursor.x, 2)
+
+    def test_unicode_in_range_buffer_growth(self):
+        # Enough combining chars to force the text buffer to grow past its initial capacity
+        s = self.create_screen(cols=300, lines=2)
+        q = 300 * ('e' + 23 * '\u0301')  # 23 is the max number of combining chars per cell
+        s.draw(q)
+        self.ae(q, str(s.line(0)))
+        s.start_selection(0, 0)
+        s.update_selection(299, 0)
+        self.ae(q, ''.join(s.text_for_selection()))
 
     def test_char_manipulation(self):
         s = self.create_screen()
@@ -546,13 +608,13 @@ class TestScreen(BaseTest):
         self.ae(str(s.linebuf), '88\n88\n89\n99\n99')
         s = self.create_screen()
         s.draw('a' * s.columns)
-        s.linefeed(), s.carriage_return()
+        s.carriage_return(), s.linefeed()
         s.draw('bb')
         s.resize(s.lines, s.columns - 2)
         self.ae(str(s.linebuf), 'aaa\naa\nbb\n\n')
         s.cursor.y = s.cursor.x = 0
         s.draw('x' * len(str(s.line(0))))
-        s.linefeed(), s.carriage_return()
+        s.carriage_return(), s.linefeed()
         s.draw('x' * len(str(s.line(1))))
         s.resize(s.lines, s.columns + 4)
         self.ae(str(s.linebuf), 'xxx\nxx\nbb\n\n')
@@ -687,6 +749,90 @@ class TestScreen(BaseTest):
         assert_lines('xxxxx', 'xxxxx', 'xxxxx', 'abcde', '>')
         s.resize(s.lines + 2, s.columns)
         assert_lines('xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'abcde', '>')
+
+    def test_height_resize_reuses_history(self):
+        import random
+
+        from kitty.fast_data_types import test_set_history_reuse
+
+        def ops_for(seed, cols):
+            rng = random.Random(seed)
+            chars = 'abc 日😀' if seed % 2 else 'abcdef '
+            ops = []
+            for i in range(rng.randint(20, 80)):
+                r = rng.random()
+                if r < 0.35:
+                    ops.append(('draw', ''.join(rng.choice(chars) for _ in range(rng.randint(0, (3 if seed % 3 else 1) * cols)))))
+                elif r < 0.45:
+                    ops.append(('bytes', f'\x1b[4{rng.randint(1, 7)}m{rng.choice("xyz")}\x1b[K\x1b[m'.encode()))
+                elif r < 0.5:
+                    if seed % 4 == 0:
+                        ops.append(('mc', rng.choice('AB日'), rng.randint(2, 3)))
+                elif r < 0.55:
+                    ops.append(('bytes', rng.choice((b'\x1b]133;A\x07', b'\x1b]133;A;k=s\x07', b'\x1b]133;C\x07'))))
+                elif r < 0.6:
+                    ops.append(('bytes', b'\x1b7'))
+                elif r < 0.65:
+                    ops.append(('bytes', f'\x1b[{rng.randint(1, 3)}C'.encode()))
+                else:
+                    ops.append(('nl',))
+            if rng.random() < 0.5:
+                ops.append(('draw', 'x' * rng.randint(0, cols)))
+            return ops
+
+        def build(ops, cols, lines, scrollback, options):
+            s = self.create_screen(cols=cols, lines=lines, scrollback=scrollback, options=options)
+            for op in ops:
+                if op[0] == 'draw':
+                    s.draw(op[1])
+                elif op[0] == 'bytes':
+                    parse_bytes(s, op[1])
+                elif op[0] == 'mc':
+                    draw_multicell(s, op[1], scale=op[2])
+                else:
+                    s.carriage_return(), s.linefeed()
+            return s
+
+        def compare(a, b, msg):
+            self.ae((a.lines, a.columns, a.cursor.x, a.cursor.y), (b.lines, b.columns, b.cursor.x, b.cursor.y), msg)
+            self.ae(a.historybuf.count, b.historybuf.count, msg)
+            for i in range(a.historybuf.count):
+                self.assertTrue(a.historybuf.line(i) == b.historybuf.line(i), f'{msg} history line {i}')
+                self.ae(a.historybuf.line(i).as_ansi(), b.historybuf.line(i).as_ansi(), f'{msg} history line {i}')
+                self.ae(a.historybuf.is_continued(i), b.historybuf.is_continued(i), f'{msg} history line {i}')
+            for i in range(a.lines):
+                self.assertTrue(a.linebuf.line(i) == b.linebuf.line(i), f'{msg} line {i}')
+                self.ae(a.linebuf.line(i).as_ansi(), b.linebuf.line(i).as_ansi(), f'{msg} line {i}')
+                self.ae(a.linebuf.is_continued(i), b.linebuf.is_continued(i), f'{msg} line {i}')
+            self.ae(a.linebuf.dirty_lines(), b.linebuf.dirty_lines(), msg)
+            self.ae(a.historybuf.pagerhist_as_text(), b.historybuf.pagerhist_as_text(), msg)
+            parse_bytes(a, b'\x1b8'), parse_bytes(b, b'\x1b8')
+            self.ae((a.cursor.x, a.cursor.y), (b.cursor.x, b.cursor.y), f'{msg} saved cursor')
+
+        try:
+            for seed in range(300):
+                rng = random.Random(seed)
+                cols, lines = rng.randint(3, 12), rng.randint(2, 8)
+                scrollback = rng.choice((4, 8, 30, 200))
+                options = {
+                    'scrollback_fill_enlarged_window': rng.random() < 0.5,
+                    'scrollback_pager_history_size': rng.choice((0, 1024)),
+                }
+                ops = ops_for(seed, cols)
+                heights = [rng.randint(1, 12) for _ in range(4)]
+                test_set_history_reuse(True)
+                a = build(ops, cols, lines, scrollback, options)
+                test_set_history_reuse(False)
+                b = build(ops, cols, lines, scrollback, options)
+                for h in heights:
+                    msg = f'seed={seed} height={h}'
+                    test_set_history_reuse(True)
+                    a.resize(h, cols)
+                    test_set_history_reuse(False)
+                    b.resize(h, cols)
+                    compare(a, b, msg)
+        finally:
+            test_set_history_reuse(True)
 
     def test_tab_stops(self):
         # Taken from vttest/main.c
@@ -1067,6 +1213,77 @@ class TestScreen(BaseTest):
         s.reset()
         s.draw('\N{HEAVY EXCLAMATION MARK SYMBOL}' + 4500 * '\N{VARIATION SELECTOR-16}')
 
+    def test_explicit_width_is_not_changed_by_combining_chars(self):
+        # A width set explicitly via the text sizing protocol wins over the implicit
+        # re-sizing done by the variation selectors and Thai/Lao SARA AM
+        def mcd(text, width, follow):
+            s = self.create_screen(cols=8)
+            draw_multicell(s, text, width=width)
+            before = s.cpu_cells(0, 0)['mcd']
+            self.ae(before['width'], width)
+            self.assertFalse(before['natural_width'])
+            s.draw(follow)
+            return s, s.cpu_cells(0, 0)['mcd']
+
+        # VS15 must not narrow an explicitly widened cell
+        s, c = mcd('\u25b6', 2, '\ufe0e')
+        self.ae(c['width'], 2)
+        self.ae(s.cursor.x, 2)
+        # VS16 must not widen an explicitly narrowed cell
+        s, c = mcd('\u26d4', 1, '\ufe0f')
+        self.ae(c['width'], 1)
+        self.ae(s.cursor.x, 1)
+        # SARA AM must not widen an explicitly narrowed cell
+        s, c = mcd('\u0e08', 1, '\u0e33')
+        self.ae(c['width'], 1)
+        self.ae(s.cursor.x, 1)
+
+        # and the natural width cases still re-size, so the tests above are meaningful
+        s = self.create_screen(cols=8)
+        s.draw('\U0001f610')
+        self.ae(s.cursor.x, 2)
+        self.assertTrue(s.cpu_cells(0, 0)['mcd']['natural_width'])
+        s.draw('\ufe0e')
+        self.ae(s.cursor.x, 1)
+        self.ae(s.cpu_cells(0, 0)['mcd']['width'], 1)
+        s = self.create_screen(cols=8)
+        s.draw('\u26d4')
+        self.ae(s.cursor.x, 2)
+        s.draw('\u0e08\u0e33')
+        self.ae(s.cursor.x, 4)
+
+    def test_spacing_mark_widens_narrow_cell(self):
+        # Thai SARA AM and Lao AM are SpacingMarks with width 1 that widen the cell they combine into
+        s = self.create_screen(cols=5)
+        s.draw('จำ')
+        self.ae(s.cursor.x, 2)
+        self.assertTrue(str(s.line(0)).startswith('จำ'))
+        c = s.cpu_cells(0, 0)
+        self.assertTrue(c['mcd'])
+        self.ae(c['mcd']['width'], 2)
+        self.ae(c['x'], 0)
+        self.ae(s.cpu_cells(0, 1)['x'], 1)
+        s.reset()
+        s.draw('จ')
+        self.ae(s.cursor.x, 1)
+        s.draw('ำ')
+        self.ae(s.cursor.x, 2)
+        s.reset()
+        s.draw('จำำ')
+        self.ae(s.cursor.x, 2)
+        s.reset()
+        s.draw('ກຳ')
+        self.ae(s.cursor.x, 2)
+        s.reset()
+        s.draw('กิ')
+        self.ae(s.cursor.x, 1)
+        # widened char on the last column wraps onto the next line
+        s = self.create_screen(cols=2)
+        s.draw('aจำ')
+        self.ae((s.cursor.x, s.cursor.y), (2, 1))
+        self.ae(str(s.line(0)), 'a')
+        self.ae(str(s.line(1)), 'จำ')
+
     def test_writing_with_cursor_on_trailer_of_wide_character(self):
         s = self.create_screen()
 
@@ -1379,12 +1596,12 @@ class TestScreen(BaseTest):
 
         s = self.create_screen()
         set_link('1'), s.draw('12'), set_link(), s.draw('X'), set_link('1'), s.draw('3')
-        s.linefeed(), s.carriage_return()
+        s.carriage_return(), s.linefeed()
         s.draw('abc')
-        s.linefeed(), s.carriage_return()
+        s.carriage_return(), s.linefeed()
         set_link(), s.draw('Z ')
         set_link('1'), s.draw('xyz')
-        s.linefeed(), s.carriage_return()
+        s.carriage_return(), s.linefeed()
         set_link('2'), s.draw('Z Z')
         self.assertIsNone(s.current_url_text())
         self.assertIsNone(s.hyperlink_at(0, 4))
@@ -1395,6 +1612,14 @@ class TestScreen(BaseTest):
         self.ae(s.current_url_text(), '123abcxyz')
         self.ae('2', s.hyperlink_at(1, 3))
         self.ae(s.current_url_text(), 'Z Z')
+
+    def test_automatic_hyperlink_collection(self) -> None:
+        s = self.create_screen()
+        for i in range(1, 2 * 8192 + 3):
+            url = f'https://example.test/{i}'
+            parse_bytes(s, f'\r\x1b]8;;{url}\x1b\\L\x1b]8;;\x1b\\'.encode())
+            self.ae(s.hyperlink_at(0, 0), url)
+        self.assertLess(len(s.hyperlinks_as_set()), 8192)
 
     def test_text_cache_garbage_collection(self):
         # unique multi-codepoint cell texts, single width base + combining mark
@@ -1566,6 +1791,90 @@ class TestScreen(BaseTest):
     def test_detect_url(self):
         detect_url(self)
         detect_url(self, scale=2)
+
+    def test_detect_url_regex(self):
+        file_ref = r'[[:alnum:]_./-]+\.[[:alnum:]]+:[0-9]+'
+
+        def screen(*patterns, cols=30, lines=5, scrollback=5):
+            return self.create_screen(cols=cols, lines=lines, scrollback=scrollback, options={'detect_url_regex': {p: p for p in patterns}})
+
+        def ae(s, expected, x, y=0):
+            s.detect_url(x, y)
+            self.ae(expected, ''.join(s.text_for_marked_url()))
+
+        s = screen(file_ref)
+        s.draw('see src/foo.py:42 here')
+        for x in range(4, 17):
+            ae(s, 'src/foo.py:42', x)
+        for x in (0, 3, 17, 20, 25):
+            ae(s, '', x)
+        ae(s, '', 5, 1)
+
+        # multiple expressions, the first one to match under the mouse wins
+        s = screen(r'[0-9]+', r'JIRA-[0-9]+', r'[A-Z]+-[0-9]+')
+        s.draw('fix ABC-12 and JIRA-7')
+        ae(s, 'ABC-12', 5)
+        ae(s, 'JIRA-7', 16)
+        ae(s, '12', 9)
+
+        # normal URLs take precedence
+        s = screen(file_ref)
+        s.draw('http://moo.com/x.py:1')
+        ae(s, 'http://moo.com/x.py:1', 16)
+
+        # wide characters before the match must not shift columns
+        s = screen(file_ref)
+        s.draw('世界 foo.py:1 x')
+        ae(s, '', 4)
+        ae(s, 'foo.py:1', 5)
+        ae(s, 'foo.py:1', 12)
+        ae(s, '', 13)
+
+        # matches in soft wrapped lines
+        s = screen(file_ref, cols=10)
+        s.draw('xx aaaa/bbbb/cccc.py:12 yy')
+        for x, y in ((3, 0), (9, 0), (0, 1), (9, 1), (2, 2)):
+            ae(s, 'aaaa/bbbb/cccc.py:12', x, y)
+        ae(s, '', 4, 2)
+        # a wide character wrapped onto the next line leaves an empty cell
+        s = screen('abcd世x', cols=5)
+        s.draw('abcd世x')
+        ae(s, 'abcd世x', 0)
+        ae(s, 'abcd世x', 2, 1)
+        # the number of wrapped lines scanned is limited
+        s = screen('a+', cols=5, lines=12)
+        s.draw('a' * 50)
+        ae(s, 'a' * 20, 0)
+        ae(s, 'a' * 35, 0, 5)
+        ae(s, 'a' * 20, 0, 9)
+        # hard line breaks are not joined
+        s = screen('a+', cols=5)
+        s.draw('aaaaa'), s.carriage_return(), s.linefeed(), s.draw('aa')
+        ae(s, 'aaaaa', 0)
+        ae(s, 'aa', 0, 1)
+
+        # matches in the scrollback when scrolled
+        s = screen(file_ref, lines=3)
+        s.draw('see src/foo.py:42')
+        for i in range(4):
+            s.carriage_return(), s.linefeed(), s.draw(f'line {i}')
+        s.scroll(2, True)
+        ae(s, 'src/foo.py:42', 6)
+        ae(s, '', 0, 1)
+
+        # invalid expressions are ignored, with an error logged to stderr by C code
+        with tempfile.TemporaryFile() as f:
+            orig_stderr = os.dup(2)
+            os.dup2(f.fileno(), 2)
+            try:
+                s = screen('(', 'foo')
+            finally:
+                os.dup2(orig_stderr, 2)
+                os.close(orig_stderr)
+            f.seek(0)
+            self.assertIn(b'Ignoring invalid detect_url_regex: (', f.read())
+        s.draw('a foo')
+        ae(s, 'foo', 2)
 
     def test_prompt_marking(self):
         # ]]]]]]]]]]]]]]]]}}}}}}}}}}}}}}}}))))))))))))))))))))))
@@ -1944,6 +2253,60 @@ class TestScreen(BaseTest):
         t('=left_ptr', 'default')
         t('=fleur', 'move')
 
+        names = 'alias cell copy crosshair help move wait text pointer progress zoom-in zoom-out e-resize n-resize s-resize w-resize'.split()
+        for which_screen in (0, 1):
+            s.reset()
+            if which_screen:
+                s.toggle_alt_screen()
+            for n in names:
+                s.change_pointer_shape('>', n)
+            for n in reversed(names):
+                self.ae(send('?__current__'), n)
+                s.change_pointer_shape('<', '')
+            self.ae(send('?__current__'), '0')
+            for n in names + ['ne-resize']:
+                s.change_pointer_shape('>', n)
+            for n in reversed(names[1:] + ['ne-resize']):
+                self.ae(send('?__current__'), n)
+                s.change_pointer_shape('<', '')
+            self.ae(send('?__current__'), '0')
+            if which_screen:
+                s.toggle_alt_screen()
+
+    def test_decoration_sgr_round_trip(self):
+        for code, extra, expected in (
+            (1, '', '4'),
+            (2, '', '4:2'),
+            (3, '', '4:3'),
+            (4, '', '4:4'),
+            (5, '', '4:5'),
+            (4, ';3;31', '3;31;4:4'),
+            (5, ';3;31', '3;31;4:5'),
+        ):
+            s = self.create_screen(cols=5, lines=2)
+            parse_bytes(s, f'\x1b[4:{code}{extra}mx'.encode())
+            ansi = s.line(0).as_ansi()
+            self.ae(ansi, f'\x1b[{expected}mx')
+            s2 = self.create_screen(cols=5, lines=2)
+            parse_bytes(s2, ansi.encode())
+            self.ae(s2.line(0).as_ansi(), ansi)
+
+    def test_dump_lines_continued(self):
+        s = self.create_screen(cols=5, lines=3, scrollback=5)
+        s.draw('abcdefgh')
+        s.carriage_return(), s.linefeed()
+        s.draw('xy')
+        for which_screen in (0, 1):
+            accum = []
+            s.dump_lines_with_attrs(accum.append, which_screen)
+            lines = re.sub(r'\x1b\[[\d;]*m', '', ''.join(accum)).splitlines()
+            rows = [x for x in lines if re.match(r'-?\d+: ', x)]
+            if which_screen == 0:
+                self.ae(len(rows), 3)
+                self.assertIn('continued', rows[1])
+            for i, row in enumerate(rows):
+                self.assertEqual('continued' in row, which_screen == 0 and i == 1, row)
+
     def test_color_profile(self):
         from kitty.fast_data_types import patch_color_profiles
 
@@ -2074,6 +2437,18 @@ class TestScreen(BaseTest):
             sc(2, 1, 2, 3, slot=slot)
             sc(5, 13, slot=slot)
 
+    def test_activity_tracking(self):
+        s = self.create_screen()
+        calls = []
+        s.callbacks.on_activity_since_last_focus = lambda: calls.append(1) or False
+        s.focus_changed(False)
+        s.track_activity = False
+        parse_bytes(s, b'\x1b[31ma\x1b[mb')
+        self.ae(len(calls), 0)
+        s.track_activity = True
+        parse_bytes(s, b'\x1b[31ma\x1b[mb')
+        self.ae(len(calls), 2)
+
     def test_soft_reset(self):
         SOFT_RESET = b'\x1b[!p'  # DECSTR sequence
 
@@ -2147,6 +2522,72 @@ class TestScreen(BaseTest):
         self.assertFalse(s.cursor.italic)
         self.ae(s.cursor.decoration, before.decoration)
         self.ae(s.cursor.decoration_fg, before.decoration_fg)
+
+    def test_ime_overlay_line_start(self):
+        # The IME is anchored at the start of the pre-edit text as drawn,
+        # which is shifted left when it would otherwise not fit on the line
+        s = self.create_screen(cols=10, lines=3)
+        s.test_draw_overlay_line('ab', 3, 0)
+        self.ae(s.overlay_line_start(), 3)
+        self.ae(str(s.line(0)), '   ab')
+        s.test_draw_overlay_line('abcd', 8, 1)
+        self.ae(s.overlay_line_start(), 6)
+        self.ae(str(s.line(1)), '      abcd')
+        s.test_draw_overlay_line('abcdefghijkl', 8, 2)
+        self.ae(s.overlay_line_start(), 0)
+        self.ae(str(s.line(2)), 'cdefghijkl')
+
+    def test_ime_text_around_cursor(self):
+        # The text macOS input methods read to decide things like whether a
+        # space is needed between Latin and CJK text. See :iss:`10492`.
+        s = self.create_screen(cols=8, lines=3)
+        self.ae(s.ime_text_around_cursor(), ('', ''))
+
+        s.draw('abcd')
+        self.ae(s.ime_text_around_cursor(), ('abcd', ''))
+        s.cursor.x = 2
+        self.ae(s.ime_text_around_cursor(), ('ab', 'cd'))
+        s.cursor.x = 0
+        self.ae(s.ime_text_around_cursor(), ('', 'abcd'))
+        # trailing unwritten cells are trimmed, but written blanks are not
+        s.cursor.x = 4
+        s.draw('  ')
+        s.cursor.x = 4
+        self.ae(s.ime_text_around_cursor(), ('abcd', '  '))
+
+        # a cursor sitting past the last cell, with the wrap still deferred
+        s = self.create_screen(cols=4, lines=3)
+        s.draw('abcd')
+        self.ae(s.cursor.x, 4)
+        self.ae(s.ime_text_around_cursor(), ('abcd', ''))
+
+        # wide characters occupy two cells but contribute one character
+        s = self.create_screen(cols=8, lines=3)
+        s.draw('你好ab')
+        self.ae(s.ime_text_around_cursor(), ('你好ab', ''))
+        s.cursor.x = 4
+        self.ae(s.ime_text_around_cursor(), ('你好', 'ab'))
+        s.cursor.x = 2
+        self.ae(s.ime_text_around_cursor(), ('你', '好ab'))
+
+        # the unit is the logical line, not the row: without this an input
+        # method sees nothing before a cursor at the start of a wrapped row
+        s = self.create_screen(cols=4, lines=3)
+        s.draw('abcdefg')
+        self.ae((s.cursor.x, s.cursor.y), (3, 1))
+        self.ae(s.ime_text_around_cursor(), ('abcdefg', ''))
+        s.cursor.x, s.cursor.y = 0, 1
+        self.ae(s.ime_text_around_cursor(), ('abcd', 'efg'))
+        s.cursor.x, s.cursor.y = 2, 0
+        self.ae(s.ime_text_around_cursor(), ('ab', 'cdefg'))
+
+        # a hard line break ends the logical line
+        s = self.create_screen(cols=4, lines=3)
+        s.draw('ab')
+        s.carriage_return(), s.linefeed()
+        s.draw('cd')
+        s.cursor.x = 1
+        self.ae(s.ime_text_around_cursor(), ('c', 'd'))
 
 
 def detect_url(self, scale=1):

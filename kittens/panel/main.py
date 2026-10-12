@@ -27,6 +27,7 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_OVERLAY,
     GLFW_LAYER_SHELL_PANEL,
     GLFW_LAYER_SHELL_TOP,
+    current_focused_os_window_id,
     layer_shell_config_for_os_window,
     set_layer_shell_config,
     toggle_os_window_visibility,
@@ -162,7 +163,22 @@ def have_config_files_been_updated(config_files: Iterable[str]) -> bool:
     return ans
 
 
-def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
+def run_in_existing_panel(boss: BossType, cmd: list[str], environ: Mapping[str, str], cwd: str) -> None:
+    from kitty.tabs import SpecialWindow
+
+    tm = boss.os_window_map.get(current_focused_os_window_id()) or next(iter(boss.os_window_map.values()))
+    sw = SpecialWindow(cmd=cmd, env=dict(environ), cwd=cwd or None, hold=args.hold)
+    tab = tm.active_tab
+    if args.if_running == 'new-window' and tab is not None:
+        tab.new_special_window(sw)
+    else:
+        tm.new_tab(sw)
+    boss.focus_os_window(tm.os_window_id)
+
+
+def handle_single_instance_command(
+    boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '', cwd: str = ''
+) -> None:
     global args
     from kitty.cli import parse_override
     from kitty.tabs import SpecialWindow
@@ -178,19 +194,25 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
     if config_changed:
         boss.load_config_file(*args.config, overrides=tuple(map(parse_override, new_args.override)))
     if args.toggle_visibility and boss.os_window_map:
+        run_in_existing = bool(items) and args.if_running != 'ignore'
         for os_window_id in boss.os_window_map:
             existing = layer_shell_config_for_os_window(os_window_id)
             layer_shell_config_changed = not existing or any(f for f in lsc._fields if getattr(lsc, f) != existing.get(f))
-            toggle_os_window_visibility(os_window_id, move_to_active_screen=args.move_to_active_monitor)
+            if run_in_existing:
+                toggle_os_window_visibility(os_window_id, visible=True, move_to_active_screen=args.move_to_active_monitor)
+            else:
+                toggle_os_window_visibility(os_window_id, move_to_active_screen=args.move_to_active_monitor)
             if layer_shell_config_changed:
                 set_layer_shell_config(os_window_id, lsc)
+        if run_in_existing:
+            run_in_existing_panel(boss, items, environ, cwd)
         return
     items = items or [kitten_exe(), 'run-shell']
     os_window_id = boss.add_os_panel(lsc, args.cls, args.name)
     if notify_on_os_window_death:
         boss.os_window_death_actions[os_window_id] = partial(boss.notify_on_os_window_death, notify_on_os_window_death)
     tm = boss.os_window_map[os_window_id]
-    tm.new_tab(SpecialWindow(cmd=items, env=dict(environ)))
+    tm.new_tab(SpecialWindow(cmd=items, env=dict(environ), hold=args.hold))
 
 
 def main(sys_args: list[str]) -> None:
@@ -234,6 +256,8 @@ def actual_main(sys_args: list[str]) -> None:
         sys.argv.append(f'--instance-group={args.instance_group}')
     if args.listen_on:
         sys.argv.append(f'--listen-on={args.listen_on}')
+    if args.hold:
+        sys.argv.append('--hold')
 
     sys.argv.extend(items)
     from kitty.main import main as real_main

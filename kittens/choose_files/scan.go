@@ -164,6 +164,26 @@ type sortable_dir_entry struct {
 
 const SymlinkToDir = 1
 
+// SymlinkToDir shares its bit with the other-execute permission bit, so it is
+// only meaningful when combined with fs.ModeSymlink
+func is_symlink_to_dir(ftype fs.FileMode) bool {
+	return ftype&fs.ModeSymlink != 0 && ftype&SymlinkToDir != 0
+}
+
+func is_directory(ftype fs.FileMode) bool {
+	return ftype.IsDir() || is_symlink_to_dir(ftype)
+}
+
+// Mark ftype with SymlinkToDir if it is a symlink pointing to a directory
+func resolve_symlink_to_dir(path string, ftype fs.FileMode) fs.FileMode {
+	if ftype&fs.ModeSymlink != 0 {
+		if st, err := os.Stat(path); err == nil && st.IsDir() {
+			ftype |= SymlinkToDir
+		}
+	}
+	return ftype
+}
+
 // lowercase a string into a pre-existing byte buffer with speedups for ASCII
 func as_lower(s string, output []byte) int {
 	limit := min(len(s), len(output))
@@ -301,7 +321,11 @@ func (fss *FileSystemScanner) worker() {
 		for i, e := range entries {
 			name := e.Name()
 			ftype := e.Type()
-			is_dir := ftype&fs.ModeDir != 0
+			// avoid stat() on hidden entries that will be skipped anyway
+			if fss.show_hidden || name[0] != '.' || name == dot_git {
+				ftype = resolve_symlink_to_dir(dir+name, ftype)
+			}
+			is_dir := is_directory(ftype)
 			if !is_dir {
 				switch name {
 				case ".ignore":
@@ -321,11 +345,6 @@ func (fss *FileSystemScanner) worker() {
 				continue
 			}
 			arena[i].name = name
-			if ftype&fs.ModeSymlink != 0 {
-				if st, serr := os.Stat(dir + arena[i].name); serr == nil && st.IsDir() {
-					ftype |= SymlinkToDir
-				}
-			}
 			arena[i].ftype = ftype
 			if is_dir {
 				arena[i].buf[0] = '0'
@@ -550,7 +569,7 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 		if fss.only_dirs {
 			rp = make([]*ResultItem, 0, len(results))
 			for i, r := range results {
-				if r.ftype.IsDir() {
+				if is_directory(r.ftype) {
 					rp = append(rp, &results[i])
 				}
 			}
@@ -563,7 +582,7 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 			} else {
 				rp = make([]*ResultItem, 0, len(results))
 				for i, r := range results {
-					if r.ftype.IsDir() || fss.filter.Match(filepath.Base(r.text)) {
+					if is_directory(r.ftype) || fss.filter.Match(filepath.Base(r.text)) {
 						rp = append(rp, &results[i])
 					}
 				}

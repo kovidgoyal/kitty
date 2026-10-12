@@ -412,7 +412,12 @@ For each decoded code point:
 
 #. If there is no boundary, the current code point is added to the previous
    cell and processing of the code point is finished. See the :ref:`var_select`
-   section below for handling of Unicode Variation selectors.
+   section below for handling of Unicode Variation selectors. If the code point has
+   ``Grapheme_Cluster_Break=SpacingMark`` and a non-zero width and the previous
+   cell is a single, unscaled cell whose width was not set explicitly using the
+   ``w`` key of this protocol, the previous cell becomes two cells wide. This
+   affects only :code:`U+0E33 THAI CHARACTER SARA AM` and
+   :code:`U+0EB3 LAO VOWEL SIGN AM`.
 
 #. If there is a boundary, but the width of the current code point is zero,
    it is added to the previous cell and processing is finished.
@@ -466,16 +471,22 @@ by changing their presentation between ``Emoji_Presentation`` and ``Text_Present
 When adding a code point to the previous cell these have to be handled specially.
 
 ``U+FE0E`` - Variation Selector 15
-  When the previous cell has width two and the last code point in the previous
+  When the previous cell is two cells wide, its width was not set explicitly using
+  the ``w`` key of this protocol, and the last code point in the previous
   cell is one of the ``Basic_Emoji`` code points from the *Wide emoji* rule above
   that is *not* followed by ``FEOF`` then the width of the previous cell is
   decreased to one.
 
 ``U+FE0F`` - Variation Selector 16
-  When the previous cell has width one and the last code point in the previous
-  cell is one of the ``Basic_Emoji`` code points from the *Wide emoji* rule above
-  that is followed by ``FEOF`` then the width of the
+  When the previous cell is a single, unscaled cell whose width was not set
+  explicitly using the ``w`` key of this protocol, and the last code point in the
+  previous cell is one of the ``Basic_Emoji`` code points from the *Wide emoji*
+  rule above that is followed by ``FEOF`` then the width of the
   previous cell is increased to two.
+
+In all three of these cases the width the application requested with the ``w`` key
+wins: a cell whose width was set explicitly is never re-sized by a variation
+selector or a spacing mark.
 
 Note that the rule for ``U+FE0E`` is particularly problematic for terminals as
 it means that the width of a string cannot be determined without knowing the

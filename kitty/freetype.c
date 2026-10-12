@@ -354,6 +354,18 @@ face_equals_descriptor(PyObject *face_, PyObject *descriptor) {
 
 static char *get_variation_as_string(Face *self);
 
+static PyObject *
+has_codepoint(Face *self, PyObject *cp) {
+    unsigned long ch = PyLong_AsUnsignedLong(cp);
+    if (PyErr_Occurred()) return NULL;
+    if (ch > 0x10ffff) {
+        PyErr_SetString(PyExc_ValueError, "Not a valid unicode codepoint");
+        return NULL;
+    }
+    if (glyph_id_for_codepoint((PyObject *)self, ch) > 0) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 PyObject *
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
 #define D(key, conv, missing_ok)                                                              \
@@ -471,10 +483,14 @@ face_from_path(const char *path, int index, FONTS_DATA_HANDLE fg) {
     error = FT_New_Face(library, path, index, &ans->face);
     if (error) {
         ans->face = NULL;
+        Py_CLEAR(ans);
         return set_load_error(path, error);
     }
     RAII_PyObject(pypath, PyUnicode_FromString(path));
-    if (!pypath) return NULL;
+    if (!pypath) {
+        Py_CLEAR(ans);
+        return NULL;
+    }
     if (!init_ft_face(ans, pypath, true, 3, index, fg)) {
         Py_CLEAR(ans);
         return NULL;
@@ -1463,7 +1479,9 @@ get_variable_data(Face *self, PyObject *a UNUSED) {
             PyTuple_SET_ITEM(axes, i, s);
         }
     }
-    if (PyDict_SetItemString(output, "variations_postscript_name_prefix", _get_best_name(self, 25)) != 0) return NULL;
+    RAII_PyObject(vpp, _get_best_name(self, 25));
+    if (!vpp) return NULL;
+    if (PyDict_SetItemString(output, "variations_postscript_name_prefix", vpp) != 0) return NULL;
     if (PyDict_SetItemString(output, "axes", axes) != 0) return NULL;
     if (PyDict_SetItemString(output, "named_styles", named_styles) != 0) return NULL;
     Py_INCREF(output);
@@ -1642,6 +1660,7 @@ static PyMemberDef members[] = {
 };
 
 static PyMethodDef methods[] = {
+    METHODB(has_codepoint, METH_O),
     METHODB(postscript_name, METH_NOARGS),
     METHODB(identify_for_debug, METH_NOARGS),
     METHODB(extra_data, METH_NOARGS),

@@ -483,7 +483,7 @@ unicode_in_range(
         lc.capacity = buf->capacity - buf->len;
         while (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) {
             size_t ns = MAX(initial_cap, 2 * buf->capacity);
-            char_type *np = realloc(buf->buf, ns);
+            char_type *np = realloc(buf->buf, ns * sizeof(buf->buf[0]));
             if (!np) return false;
             buf->capacity = ns;
             buf->buf = np;
@@ -968,8 +968,8 @@ decoration_as_sgr(uint8_t decoration) {
         case 1: return "4;";
         case 2: return "4:2;";
         case 3: return "4:3;";
-        case 4: return "4:4";
-        case 5: return "4:5";
+        case 4: return "4:4;";
+        case 5: return "4:5;";
         default: return "24;";
     }
 }

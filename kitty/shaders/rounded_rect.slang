@@ -4,21 +4,23 @@
 
 import alpha_blend;
 
-#define left 0
-#define top 1
-#define right 2
-#define bottom 3
-
-static const int2 vertex_pos_map[4] = { int2(right, top), int2(right, bottom), int2(left, bottom), int2(left, top) };
-
-static const float4 dest_rect = float4(-1, 1, 1, -1);
+// The four corners of the full viewport quad in NDC, in triangle fan order:
+// top-right, bottom-right, bottom-left, top-left.
+// Note: deliberately a table of ready made positions rather than a dynamic
+// index into a rect vector. slangc inlines a static const vector into the
+// generated GLSL as an anonymous vec4() constructor, and on the macOS AMD
+// driver (GL_RENDERER 4.1 ATI-5.5.20) dynamically indexing that temporary
+// produced 0 for the right and bottom components, collapsing this quad to its
+// top left quadrant so only half of each rounded border/scrollbar was drawn.
+// Indexing a *named* vector dynamically is fine there, borders.slang does it.
+// See https://github.com/kovidgoyal/kitty/issues/10549
+static const float2 vertex_pos_map[4] = { float2(1, 1), float2(1, -1), float2(-1, -1), float2(-1, 1) };
 
 [shader("vertex")]
 float4
 vertex_main(uint vertex_id: SV_VertexID)
     : SV_Position {
-    int2 pos = vertex_pos_map[vertex_id];
-    return float4(dest_rect[pos.x], dest_rect[pos.y], 0, 1);
+    return float4(vertex_pos_map[vertex_id], 0, 1);
 }
 
 // Signed distance function for a rounded rectangle

@@ -65,9 +65,20 @@ various kitty settings, just for the quick access window.
    This kitten uses the :doc:`panel kitten </kittens/panel>` under the
    hood. You can use the :ref:`techniques described there <remote_control_panel>`
    for remote controlling the quick access window, remember to add
-   ``kitty_override allow_remote_control=socket-only`` and ``kitty_override
-   listen_on=unix:/tmp/whatever`` to
-   :file:`quick-access-terminal.conf`.
+   ``kitty_override allow_remote_control=socket-only`` to
+   :file:`quick-access-terminal.conf` and run the kitten with
+   :option:`--listen-on <kitty +kitten quick_access_terminal --listen-on>`:code:`=unix:/tmp/whatever`
+   to get a fixed socket address.
+
+.. tip::
+
+   To run programs in the already running quick access terminal, use
+   :option:`--if-running <kitty +kitten quick_access_terminal --if-running>`, for example::
+
+       kitten quick-access-terminal --if-running=new-tab htop
+
+   This will open :program:`htop` in a new tab and show the quick access
+   terminal if it is hidden.
 
 See below for the supported configuration directives:
 

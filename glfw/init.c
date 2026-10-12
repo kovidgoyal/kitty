@@ -373,3 +373,10 @@ glfwSetIMECursorPositionCallback(GLFWimecursorpositionfun cbfun) {
     _GLFW_SWAP_POINTERS(_glfw.callbacks.get_ime_cursor_position, cbfun);
     return cbfun;
 }
+
+GLFWAPI GLFWimetextaroundcursorfun
+glfwSetIMETextAroundCursorCallback(GLFWimetextaroundcursorfun cbfun) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.get_ime_text_around_cursor, cbfun);
+    return cbfun;
+}

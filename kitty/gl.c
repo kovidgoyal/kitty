@@ -404,6 +404,16 @@ set_program_layout(int program, PyObject *metadata) {
     pos = 0;
     while (PyDict_Next(loose_uniforms, &pos, &key, &val)) {
         const char *actual_name = PyUnicode_AsUTF8(val);
+        // The metadata records array uniforms with a [0] subscript to mark them
+        // as arrays, but init_uniforms() stores them under their bare name.
+        char without_subscript[256];
+        const char *bracket = strchr(actual_name, '[');
+        if (bracket) {
+            size_t n = MIN(sizeof(without_subscript) - 1, (size_t)(bracket - actual_name));
+            memcpy(without_subscript, actual_name, n);
+            without_subscript[n] = 0;
+            actual_name = without_subscript;
+        }
         ProgramMetadataEntry e = {.kind = PROGRAM_UNIFORM, .location = get_uniform_location(program, actual_name)};
         insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
     }
@@ -442,7 +452,15 @@ set_program_layout(int program, PyObject *metadata) {
 
 GLint
 program_uniform_location(int program, const char *name) {
-    return program_metadata_entry(program, name, PROGRAM_UNIFORM)->location;
+    ProgramMetadataEntry *e = program_metadata_entry(program, name, PROGRAM_UNIFORM);
+    // glUniform*() on location -1 is a silent no-op, so a uniform the driver
+    // does not report as active leaves whatever value it was last set to,
+    // rendering incorrectly with no other indication that anything is wrong.
+    if (e->location < 0 && !e->missing_location_logged) {
+        e->missing_location_logged = true;
+        log_error("The uniform: %s is not active in the linked GPU program: %d. Setting it will have no effect and rendering may be incorrect.", name, program);
+    }
+    return e->location;
 }
 
 GLint
@@ -673,9 +691,19 @@ map_vao_buffer_for_write_only(ssize_t vao_idx, size_t bufnum, int offset, unsign
 }
 
 void *
-alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, bool frequently_updated) {
-    ssize_t buf_idx = alloc_vao_buffer(vao_idx, size, bufnum, frequently_updated ? GL_STREAM_DRAW : GL_STATIC_DRAW);
+alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum) {
+    ssize_t buf_idx = alloc_vao_buffer(vao_idx, size, bufnum, GL_STATIC_DRAW);
     return map_buffer(buf_idx, GL_WRITE_ONLY);
+}
+
+void *
+alloc_and_map_vao_buffer_for_full_rewrite(ssize_t vao_idx, GLsizeiptr size, size_t bufnum) {
+    // The previous contents are discarded so the driver can hand out fresh
+    // storage instead of waiting for the GPU to finish reading the old data.
+    // The caller MUST write every byte of the mapped range, any byte not
+    // written is undefined.
+    ssize_t buf_idx = alloc_vao_buffer(vao_idx, size, bufnum, GL_STREAM_DRAW);
+    return map_buffer_range(buf_idx, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT, 0, (unsigned)size);
 }
 
 void

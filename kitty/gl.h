@@ -38,6 +38,7 @@ typedef struct Viewport {
 typedef enum { PROGRAM_UNIFORM, PROGRAM_ATTRIBUTE, PROGRAM_BLOCK, PROGRAM_ARRAY } ProgramMetadataKind;
 typedef struct ProgramMetadataEntry {
     ProgramMetadataKind kind;
+    bool missing_location_logged;
     union {
         GLint location;
         UniformBlock block;
@@ -75,7 +76,9 @@ size_t add_buffer_to_vao(ssize_t vao_idx, GLenum usage);
 void add_attribute_to_vao(ssize_t vao_idx, int location, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor);
 void set_vao_attribute(ssize_t vao_idx, size_t buffer_idx, int location, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor);
 ssize_t alloc_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, GLenum usage);
-void *alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, bool frequently_updated);
+void *alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum);
+// Discards the old contents, the caller must write every byte of the buffer
+void *alloc_and_map_vao_buffer_for_full_rewrite(ssize_t vao_idx, GLsizeiptr size, size_t bufnum);
 void unmap_vao_buffer(ssize_t vao_idx, size_t bufnum);
 void *map_vao_buffer(ssize_t vao_idx, size_t bufnum, GLenum access);
 void *map_vao_buffer_for_write_only(ssize_t vao_idx, size_t bufnum, int offset, unsigned size);

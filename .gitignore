@@ -25,6 +25,7 @@ __pycache__/
 /docs/generated/
 /tools/simdstring/simdstring.test
 /.ruff_cache
+/.claude
 .DS_Store
 .cache
 bypy/b

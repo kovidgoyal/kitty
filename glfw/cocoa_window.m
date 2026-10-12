@@ -905,6 +905,7 @@ static void _glfwUpdateNotchCover(_GLFWwindow *);
     NSTrackingArea *trackingArea;
     GLFWTextInputContext *input_context;
     NSMutableAttributedString *markedText;
+    NSRange markedTextSelectedRange;
     NSRect markedRect;
     bool marked_text_cleared_by_insert;
     int in_key_handler;
@@ -927,6 +928,7 @@ static void _glfwUpdateNotchCover(_GLFWwindow *);
         input_context = [[GLFWTextInputContext alloc] initWithClient:self];
         dragging_source = [[GLFWDraggingSource alloc] init];
         markedText = [[NSMutableAttributedString alloc] init];
+        markedTextSelectedRange = kEmptyRange;
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
         input_source_at_last_key_event = nil;
         in_key_handler = 0;
@@ -1691,6 +1693,9 @@ build_uri_list(_GLFWDropData *d) {
     for (unsigned i = 0;; i++) {
         id x = path_map[[NSString stringWithFormat:@"kitty-internal/uri-list-item-%u", i]];
         if (x == nil) break;
+        // A promise that was fulfilled without error but produced no file is
+        // recorded as NSNull, see the reader block in performDragOperation:
+        if (x == [NSNull null]) continue;
         if ([x isKindOfClass:[NSError class]]) {
             d->in_progress_drop.data_map[@"text/uri-list"] = x;
             return;
@@ -1795,14 +1800,29 @@ build_uri_list(_GLFWDropData *d) {
                                                 options:@{}
                                          operationQueue:workQueue
                                                  reader:^(NSURL *_Nonnull fileURL, NSError *_Nullable error) {
-                                                   // A promise of a file contributes its path to the uri-list
+                                                   // Some applications advertise the same file twice, once
+                                                   // via the legacy promise pasteboard types and once via
+                                                   // NSFilePromiseProvider, which yields two receivers for a
+                                                   // single file. Fulfilling the second one reports success
+                                                   // with a de-duplicated name, such as "message 2.eml", but
+                                                   // nothing is ever written there. Ignore such phantom
+                                                   // files, Apple Mail does this, see
+                                                   // https://github.com/kovidgoyal/kitty/issues/10628
+                                                   const bool missing = !error && ![[NSFileManager defaultManager] fileExistsAtPath:[fileURL path]];
+                                                   // A promise of a file contributes its path to the
+                                                   // uri-list. A phantom is recorded as NSNull rather than
+                                                   // left out, so that the promises fulfilled after it keep
+                                                   // their positions in the uri-list.
                                                    if (is_for_a_file)
                                                        results[[NSString stringWithFormat:@"kitty-internal/uri-list-item-%u", url_list_idx]] =
-                                                           error ? (id)error : (id)fileURL;
-                                                   // and the contents are made available under the MIME types of the promised data
+                                                           error ? (id)error : (missing ? (id)[NSNull null] : (id)fileURL);
+                                                   // and the contents are made available under the MIME types
+                                                   // of the promised data. Nothing is claimed for a phantom,
+                                                   // the receiver that actually produced the file supplies
+                                                   // the contents, and the two can be fulfilled in any order.
                                                    for (NSString *type in types) {
                                                        const char *mime = uti_to_mime(type);
-                                                       if (!mime || !mime[0] || results[@(mime)] != nil) continue;
+                                                       if (missing || !mime || !mime[0] || results[@(mime)] != nil) continue;
                                                        id result = error;
                                                        if (!result) {
                                                            NSInputStream *s = [NSInputStream inputStreamWithURL:fileURL];
@@ -1976,17 +1996,59 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
     return [markedText length] > 0;
 }
 
+// The text of the logical line the cursor is on, with any IME pre-edit text
+// spliced in at the insertion point, which is returned in insertion_point as a
+// UTF-16 offset into the returned string. Input methods and accessibility
+// clients read this to find out what surrounds the point at which text will be
+// inserted. Without it, an input method that inserts a space between Latin and
+// CJK text has nothing to base that decision on and so inserts nothing.
+// See https://github.com/kovidgoyal/kitty/issues/10492
+- (NSString *)documentAroundCursor:(NSUInteger *)insertion_point {
+    NSString *before = @"", *after = @"";
+    GLFWIMETextAroundCursor t = {0};
+    if (window && _glfw.callbacks.get_ime_text_around_cursor && _glfw.callbacks.get_ime_text_around_cursor((GLFWwindow *)window, &t)) {
+        if (t.before) {
+            NSString *s = [NSString stringWithUTF8String:t.before];
+            if (s) before = s;
+            free(t.before);
+        }
+        if (t.after) {
+            NSString *s = [NSString stringWithUTF8String:t.after];
+            if (s) after = s;
+            free(t.after);
+        }
+    }
+    *insertion_point = [before length];
+    NSString *marked = [markedText string];
+    if ([marked length] > 0) return [NSString stringWithFormat:@"%@%@%@", before, marked, after];
+    return [before stringByAppendingString:after];
+}
+
 - (NSRange)markedRange {
-    if ([markedText length] > 0) return NSMakeRange(0, [markedText length] - 1);
-    else return kEmptyRange;
+    if ([markedText length] == 0) return kEmptyRange;
+    NSUInteger insertion_point;
+    [self documentAroundCursor:&insertion_point];
+    return NSMakeRange(insertion_point, [markedText length]);
 }
 
 - (NSRange)selectedRange {
-    // Return position 0 with no selection to indicate text can be inserted.
-    // This is required for macOS dictation to work - returning kEmptyRange
-    // (NSNotFound, 0) causes dictation to fail because the system doesn't
-    // know where to insert text. See https://github.com/kovidgoyal/kitty/issues/3732
-    return NSMakeRange(0, 0);
+    // Never return kEmptyRange (NSNotFound, 0) from here: macOS dictation
+    // fails if it cannot tell where text is to be inserted.
+    // See https://github.com/kovidgoyal/kitty/issues/3732
+    NSUInteger insertion_point;
+    [self documentAroundCursor:&insertion_point];
+    const NSUInteger marked_len = [markedText length];
+    if (marked_len == 0) {
+        debug_input("\n\tselectedRange: (%lu, 0)\n", (unsigned long)insertion_point);
+        return NSMakeRange(insertion_point, 0);
+    }
+    // The selection reported by the input method in setMarkedText: is relative
+    // to the pre-edit text, so rebase it onto the document.
+    NSRange sel = markedTextSelectedRange;
+    if (sel.location == NSNotFound || sel.location > marked_len) sel = NSMakeRange(marked_len, 0);
+    sel.length = MIN(sel.length, marked_len - sel.location);
+    debug_input("\n\tselectedRange: (%lu, %lu)\n", (unsigned long)(insertion_point + sel.location), (unsigned long)sel.length);
+    return NSMakeRange(insertion_point + sel.location, sel.length);
 }
 
 - (void)setMarkedText:(id)string selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange {
@@ -2016,6 +2078,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
         }
         [markedText release];
         markedText = [[NSMutableAttributedString alloc] initWithAttributedString:string];
+        markedTextSelectedRange = selectedRange;
     } else {
         if (((NSString *)string).length == 0) {
             [self unmarkText];
@@ -2023,6 +2086,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
         }
         [markedText release];
         markedText = [[NSMutableAttributedString alloc] initWithString:string];
+        markedTextSelectedRange = selectedRange;
     }
     if (!in_key_handler || in_key_handler == 2) {
         debug_input("Updating IME text in kitty from setMarkedText called from %s: %s\n", in_key_handler ? "flagsChanged" : "event loop", _glfw.ns.text);
@@ -2034,6 +2098,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
 
 - (void)unmarkText {
     [[markedText mutableString] setString:@""];
+    markedTextSelectedRange = kEmptyRange;
 }
 
 void
@@ -2059,9 +2124,28 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 - (NSAttributedString *)attributedSubstringForProposedRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
-    (void)range;
-    (void)actualRange;
-    return nil;
+    NSUInteger insertion_point;
+    NSString *doc = [self documentAroundCursor:&insertion_point];
+    const NSUInteger doc_len = [doc length];
+    // Input methods ask for ranges of unbounded length, so clamp rather than
+    // using NSIntersectionRange(), whose NSMaxRange() would overflow.
+    if (range.location == NSNotFound || range.location > doc_len) {
+        debug_input("\n\tattributedSubstringForProposedRange: (%lu, %lu) -> out of range\n", (unsigned long)range.location, (unsigned long)range.length);
+        if (actualRange) *actualRange = kEmptyRange;
+        return nil;
+    }
+    const NSRange r = NSMakeRange(range.location, MIN(range.length, doc_len - range.location));
+    if (actualRange) *actualRange = r;
+    NSString *ans = [doc substringWithRange:r];
+    debug_input(
+        "\n\tattributedSubstringForProposedRange: (%lu, %lu) -> (%lu, %lu) %s\n",
+        (unsigned long)range.location,
+        (unsigned long)range.length,
+        (unsigned long)r.location,
+        (unsigned long)r.length,
+        [ans UTF8String]);
+    if (r.length == 0) return nil;
+    return [[[NSAttributedString alloc] initWithString:ans] autorelease];
 }
 
 - (NSUInteger)characterIndexForPoint:(NSPoint)point {
@@ -2157,7 +2241,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     // See https://github.com/kovidgoyal/kitty/issues/3732
     if (selector == @selector(accessibilityRole) || selector == @selector(accessibilitySelectedText) || selector == @selector(accessibilitySelectedTextRange) ||
         selector == @selector(accessibilityNumberOfCharacters) || selector == @selector(accessibilityInsertionPointLineNumber) ||
-        selector == @selector(accessibilityValue) || selector == @selector(setAccessibilityValue:))
+        selector == @selector(accessibilityValue) || selector == @selector(setAccessibilityValue:) || selector == @selector(accessibilityStringForRange:))
         return YES;
 
     // Allow accessibility selectors needed for external window management tools
@@ -2194,13 +2278,12 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 // See https://github.com/kovidgoyal/kitty/issues/3732
 
 - (NSRange)accessibilitySelectedTextRange {
-    // Return position 0 with no selection for dictation support
-    return NSMakeRange(0, 0);
+    return [self selectedRange];
 }
 
 - (NSInteger)accessibilityNumberOfCharacters {
-    // Terminal doesn't have a fixed text buffer, return 0
-    return 0;
+    NSUInteger insertion_point;
+    return (NSInteger)[[self documentAroundCursor:&insertion_point] length];
 }
 
 - (NSInteger)accessibilityInsertionPointLineNumber {
@@ -2209,8 +2292,18 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 - (NSString *)accessibilityValue {
-    // Terminal doesn't expose its buffer as an accessibility value
-    return @"";
+    NSUInteger insertion_point;
+    return [self documentAroundCursor:&insertion_point];
+}
+
+- (NSString *)accessibilityStringForRange:(NSRange)range {
+    NSUInteger insertion_point;
+    NSString *doc = [self documentAroundCursor:&insertion_point];
+    const NSUInteger doc_len = [doc length];
+    if (range.location == NSNotFound || range.location > doc_len) return nil;
+    NSString *ans = [doc substringWithRange:NSMakeRange(range.location, MIN(range.length, doc_len - range.location))];
+    debug_input("\n\taccessibilityStringForRange: (%lu, %lu) -> %s\n", (unsigned long)range.location, (unsigned long)range.length, [ans UTF8String]);
+    return ans;
 }
 
 - (void)setAccessibilityValue:(NSString *)value {
@@ -3014,6 +3107,13 @@ _glfwPlatformShowWindow(_GLFWwindow *window, bool move_to_active_screen) {
     }
     if (is_background) {
         [nw orderBack:nil];
+    } else if (!window->ns.layer_shell.is_active) {
+        // Normal windows are left on whatever space the window server has
+        // assigned them. In particular, touching the collection behavior or
+        // the space assignment of such a window discards any assignment the
+        // user has made via the Dock icon's Options->Assign To menu.
+        // See https://github.com/kovidgoyal/kitty/issues/10581
+        [nw orderFront:nil];
     } else {
         // Cocoa has a bug where when showing a hidden window after
         // fullscreening an application, the window does not get added
@@ -4059,9 +4159,12 @@ glfwCocoaSetWindowChrome(
         }
         NSColor *window_background = [NSColor windowBackgroundColor];
         if (background_opacity < 1.0) {
-            // use a clear color (fully transparent) so that the final color is just the color from the surface.
-            // prevent blurring of shadows at window corners with desktop background by setting a low alpha background
-            window_background = background_blur > 0 ? [NSColor colorWithWhite:0 alpha:0.001f] : [NSColor clearColor];
+            // Use an almost fully transparent color so that the final color is effectively just the color from
+            // the surface. An actual clear color cannot be used because:
+            // 1) macOS special cases a clear window background by not drawing the system titlebar background
+            //    either, making the titlebar fully transparent. See https://github.com/kovidgoyal/kitty/issues/10540
+            // 2) it causes blurring of shadows at window corners with the desktop background
+            window_background = [NSColor colorWithWhite:0 alpha:0.001f];
         }
         NSAppearance *appearance = nil;
 #define tc window->ns.last_applied_titlebar_settings.color

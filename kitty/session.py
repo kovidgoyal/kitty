@@ -17,7 +17,7 @@ from .constants import config_dir, unserialize_launch_flag
 from .fast_data_types import get_options
 from .layout.interface import all_layouts
 from .options.types import Options
-from .options.utils import resize_window, to_layout_names, window_size
+from .options.utils import MapType, resize_window, to_layout_names, window_size
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing_compat import BossType, SpecialWindowInstance, WindowType
 from .utils import expandvars, log_error, resolve_custom_file, resolved_shell, shlex_split
@@ -131,10 +131,7 @@ class Session:
         spec = parse_launch_args(cmd)
         if needs_expandvars:
             assert isinstance(cmd, list)
-            limit = len(cmd)
-            if len(spec.args):
-                with suppress(ValueError):
-                    limit = cmd.index(spec.args[0])
+            limit = len(cmd) - len(spec.args)
             cmd = [(expand(x) if i < limit else x) for i, x in enumerate(cmd)]
             spec = parse_launch_args(cmd)
 
@@ -448,7 +445,7 @@ def get_all_known_sessions() -> dict[str, str]:
     for km in opts.keyboard_modes.values():
         for kdefs in km.keymap.values():
             for kd in kdefs:
-                for key_action in opts.alias_map.resolve_aliases(kd.definition, 'map'):
+                for key_action in opts.alias_map.resolve_aliases(kd.definition, MapType.MAP):
                     if key_action.func == 'goto_session':
                         cmdline: list[str] = []
                         for arg in key_action.args:
@@ -701,6 +698,9 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str,
         base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
         path = os.path.join(base_dir, path)
     path = os.path.abspath(os.path.expanduser(path))
+    if os.path.isdir(path):
+        boss.show_error(_('Invalid session path'), _('{} is a directory, specify a file name for the session').format(path))
+        return
     if path_input_by_user and '.' not in os.path.basename(path):
         path += '.kitty-session'
     session = '\n'.join(boss.serialize_state_as_session(path, opts))

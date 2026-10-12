@@ -130,7 +130,7 @@ func icon_for(path string, x os.FileMode) string {
 		return ans
 	}
 	var ans string
-	if x&fs.ModeSymlink != 0 && x&SymlinkToDir != 0 {
+	if is_symlink_to_dir(x) {
 		ans = string(icons.SYMLINK_TO_DIR)
 	} else {
 		ans = icons.IconForFileWithMode(path, x, true)

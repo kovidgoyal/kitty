@@ -27,6 +27,11 @@ To open the new window in a new tab::
 
     map f1 launch --type=tab
 
+To open a window docked to the bottom of the active window, using ten lines,
+see :ref:`docks`::
+
+    map f1 launch --type=window-dock --dock-edge=bottom --dock-size=10
+
 To run multiple commands in a shell, use::
 
     map f1 launch sh -c "ls && exec zsh"

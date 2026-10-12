@@ -146,6 +146,33 @@ default=quick-access
 The unique name of this quick access terminal Use a different name if you want multiple such terminals.
 
 
+--if-running
+choices=ignore,new-tab,new-window
+default=ignore
+What to do when a program to run is specified on the command line and the
+quick access terminal is already running. The default, :code:`ignore`,
+ignores the program and just toggles the visibility of the quick access terminal.
+:code:`new-tab` runs the program in a new tab and :code:`new-window` runs it in a
+new window in the active tab. In both these cases, the quick access terminal is
+made visible, if hidden.
+
+
+--hold
+type=bool-set
+Remain open, at a shell prompt, after the program run in the quick access
+terminal exits, instead of closing the tab or window.
+
+
+--listen-on
+completion=type:special group:complete_kitty_listen_on
+Listen on the specified socket address for remote control messages. For example,
+:code:`unix:@quick-access` or :code:`unix:/tmp/quick-access`. Unlike the
+:opt:`listen_on` option in :file:`kitty.conf`, the process id of kitty
+is not appended to the address. Note that this will be ignored unless
+:opt:`allow_remote_control` is enabled, which you can do via
+:opt:`kitty_override <kitten-quick_access_terminal.kitty_override>`.
+
+
 --debug-rendering
 type=bool-set
 For debugging interactions with the compositor/window manager.

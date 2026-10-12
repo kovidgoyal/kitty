@@ -47,6 +47,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetIMECursorPositionCallback_impl) = dlsym(handle, "glfwSetIMECursorPositionCallback");
     if (glfwSetIMECursorPositionCallback_impl == NULL) fail("Failed to load glfw function glfwSetIMECursorPositionCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetIMETextAroundCursorCallback_impl) = dlsym(handle, "glfwSetIMETextAroundCursorCallback");
+    if (glfwSetIMETextAroundCursorCallback_impl == NULL) fail("Failed to load glfw function glfwSetIMETextAroundCursorCallback with error: %s", dlerror());
+
     *(void **) (&glfwIsLayerShellSupported_impl) = dlsym(handle, "glfwIsLayerShellSupported");
     if (glfwIsLayerShellSupported_impl == NULL) fail("Failed to load glfw function glfwIsLayerShellSupported with error: %s", dlerror());
 
@@ -359,6 +362,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetScrollCallback_impl) = dlsym(handle, "glfwSetScrollCallback");
     if (glfwSetScrollCallback_impl == NULL) fail("Failed to load glfw function glfwSetScrollCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetTouchCallback_impl) = dlsym(handle, "glfwSetTouchCallback");
+    if (glfwSetTouchCallback_impl == NULL) fail("Failed to load glfw function glfwSetTouchCallback with error: %s", dlerror());
+
     *(void **) (&glfwSetLiveResizeCallback_impl) = dlsym(handle, "glfwSetLiveResizeCallback");
     if (glfwSetLiveResizeCallback_impl == NULL) fail("Failed to load glfw function glfwSetLiveResizeCallback with error: %s", dlerror());
 
@@ -556,6 +562,12 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwConfigureMomentumScroller_impl) = dlsym(handle, "glfwConfigureMomentumScroller");
     if (glfwConfigureMomentumScroller_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwFeedMomentumScroller_impl) = dlsym(handle, "glfwFeedMomentumScroller");
+    if (glfwFeedMomentumScroller_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwCancelMomentumScroll_impl) = dlsym(handle, "glfwCancelMomentumScroll");
+    if (glfwCancelMomentumScroll_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwDBusUserNotify_impl) = dlsym(handle, "glfwDBusUserNotify");
     if (glfwDBusUserNotify_impl == NULL) dlerror(); // clear error indicator

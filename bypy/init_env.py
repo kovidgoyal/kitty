@@ -85,7 +85,7 @@ def build_frozen_tools(kitty_exe) -> None:
 
 def sanitize_source_folder(path: str) -> None:
     for q in walk(path):
-        if os.path.splitext(q)[1] not in ('.py', '.glsl', '.slang', '.ttf', '.otf', '.json'):
+        if os.path.splitext(q)[1] not in ('.py', '.glsl', '.slang', '.pipeline', '.ttf', '.otf', '.json'):
             os.unlink(q)
 
 

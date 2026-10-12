@@ -90,7 +90,8 @@ forkDist(float2 p, float2 a, float2 b, float seed) {
 
 public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
-    float age = clamp((d.timestamp - d.cursor_trail_change_time) / DURATION, 0.0, 1.0);
+    if (d.cursor_trail_age < 0.0) return color;
+    float age = clamp(d.cursor_trail_age / DURATION, 0.0, 1.0);
     if (age >= 1.0) return color;
 
     float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
@@ -104,8 +105,10 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
 
     float2 px = t.pos * pixelDims;
 
-    // Quantise the event time for a stable bolt shape across the bolt's lifetime.
-    float seed = floor(d.cursor_trail_change_time * 1000.0) * 0.013;
+    // Derive the seed from the cursor positions for a stable bolt shape across
+    // the bolt's lifetime, the event time is too imprecise once kitty has been
+    // running for a while.
+    float seed = dot(floor(prevCenter), float2(0.013, 0.0171)) + dot(floor(curCenter), float2(0.0037, 0.029));
 
     float mainD = mainBoltDist(px, prevCenter, curCenter, seed);
     float forkD = forkDist(px, prevCenter, curCenter, seed);

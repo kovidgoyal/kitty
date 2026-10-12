@@ -1,20 +1,26 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
-from kitty.layout.base import layout_dimension, lgd
-from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
+from kitty.layout.base import blank_rects_for_window, layout_dimension, lgd
+from kitty.layout.interface import Fat, Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
+from kitty.rc.set_spacing import parse_spacing_settings
 from kitty.types import WindowGeometry
-from kitty.window import EdgeWidths
+from kitty.window import EdgeWidths, GlobalWatchers, Watchers
 from kitty.window_list import WindowList, reset_group_id_counter
 
 from .base import BaseTest
 
 
 class Window:
+    show_title_bar = False
+
     def __init__(self, win_id, overlay_for=None, overlay_window_id=None):
         self.id = win_id
         self.serialized_id = 0
@@ -36,6 +42,9 @@ class Window:
         return 1
 
     def effective_margin(self, edge):
+        return 1
+
+    def default_margin(self, edge):
         return 1
 
     def set_visible_in_layout(self, val):
@@ -67,14 +76,14 @@ class Tab:
         self.current_layout.update_visibility(self.windows)
 
 
-def create_windows(layout, num=5):
+def create_windows(layout, num=5, window_class=Window):
     t = Tab()
     t.current_layout = layout
     t.windows = ans = WindowList(t)
     ans.tab_mem = t
     reset_group_id_counter()
     for i in range(num):
-        ans.add_window(Window(i + 1))
+        ans.add_window(window_class(i + 1))
     ans.set_active_group_idx(0)
     return ans
 
@@ -186,8 +195,10 @@ class TestLayout(BaseTest):
         windows.set_active_group_idx(0)
         to_remove = windows.active_window
         windows.set_active_group_idx(3)
+        prev_window = windows.active_window
         windows.remove_window(to_remove)
-        self.ae(windows.active_group_idx, 3)
+        self.ae(windows.active_group_idx, 2)
+        self.ae(windows.active_window, prev_window)
         check_visible()
         expect_ids(2, 3, 5, 6)
 
@@ -651,6 +662,45 @@ class TestLayout(BaseTest):
         self.assertFalse(result)
         self.assertAlmostEqual(q2.pairs_root.bias, 0.9, places=5)
 
+    def test_splits_equalize_redundant_pair(self):
+        # Equalizing must leave a pair holding a single window with an even bias,
+        # as that bias is used when the pair is split again, see #10522
+        def split_after(equalize_on_close: bool, bias: float) -> float:
+            q = create_layout(Splits)
+            q.layout_opts = SplitsLayoutOpts({})
+            q.layout_opts.equalize_on_close = equalize_on_close
+            all_windows = create_windows(q, num=0)
+            q.add_window(all_windows, Window(1))
+            w2 = Window(2)
+            q.add_window(all_windows, w2, location='vsplit')
+            q.pairs_root.bias = bias
+            q.remove_windows(all_windows.group_for_window(w2).id)
+            all_windows.remove_window(w2)
+            if equalize_on_close:
+                self.assertTrue(q.on_window_removed(all_windows))
+            else:
+                self.assertTrue(q.layout_action('equalize', (), all_windows))
+            q.add_window(all_windows, Window(3), location='hsplit')
+            return q.pairs_root.bias
+
+        for equalize_on_close in (False, True):
+            with self.subTest(equalize_on_close=equalize_on_close):
+                self.assertAlmostEqual(split_after(equalize_on_close, 0.5), 0.5, places=5)
+                self.assertAlmostEqual(split_after(equalize_on_close, 0.8), 0.5, places=5)
+
+        # Without an equalize, the bias of a closed split is preserved by design
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        q.add_window(all_windows, Window(1))
+        w2 = Window(2)
+        q.add_window(all_windows, w2, location='vsplit')
+        q.pairs_root.bias = 0.8
+        q.remove_windows(all_windows.group_for_window(w2).id)
+        all_windows.remove_window(w2)
+        self.assertFalse(q.on_window_removed(all_windows))
+        q.add_window(all_windows, Window(3), location='vsplit')
+        self.assertAlmostEqual(q.pairs_root.bias, 0.8, places=5)
+
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the
         # available space (e.g. after maximize sets a window to minimum width),
@@ -883,17 +933,50 @@ class TestLayout(BaseTest):
         self.ae(d.height_increases_downwards, True)
 
 
-class TestSplitBorderResize(BaseTest):
+class BaseSplitGeometryTest(BaseTest):
+    # These tests stub out Layout._set_dimensions, so they have to put back the lgd
+    # singleton, which is global state shared with every other layout test.
     def setUp(self):
         super().setUp()
         self.set_options({'tab_bar_style': 'hidden'})
+        saved = vars(lgd).copy()
+        self.addCleanup(lambda: (vars(lgd).clear(), vars(lgd).update(saved)))
 
+    def stub_dimensions(self, layout, central, minimal=True):
+        def dimensions(all_windows):
+            lgd.central = central
+            lgd.cell_width, lgd.cell_height = 10, 20
+            lgd.draw_minimal_borders = minimal
+
+        layout._set_dimensions = dimensions
+
+    def check_extents_fit(self, layout):
+        # Every pair must divide its area exactly between its two halves and the
+        # borders between them, otherwise windows overlap their neighbours.
+        for p in layout.pairs_root.self_and_descendants():
+            if p.is_redundant:
+                continue
+            with self.subTest(pair=repr(p)):
+                if p.horizontal:
+                    one = p.first_extent.right - p.first_extent.left
+                    two = p.second_extent.right - p.second_extent.left
+                    self.ae(one + two + 2 * p.border_width, p.width)
+                    self.ae(p.second_extent.right, p.left + p.width)
+                else:
+                    one = p.first_extent.bottom - p.first_extent.top
+                    two = p.second_extent.bottom - p.second_extent.top
+                    self.ae(one + two + 2 * p.border_width, p.height)
+                    self.ae(p.second_extent.bottom, p.top + p.height)
+
+
+class TestSplitBorderResize(BaseSplitGeometryTest):
     def make_layout(self, shape):
         layout = create_layout(Splits)
         windows = create_windows(layout, num=0)
         for i in range(1, 5):
             layout.add_window(windows, Window(i))
         layout.pairs_root.unserialize(shape, lambda x: x)
+        self.stub_dimensions(layout, Region((0, 0, 1499, 1099, 1500, 1100)))
         layout(windows)
         return layout, windows
 
@@ -922,7 +1005,7 @@ class TestSplitBorderResize(BaseTest):
                 (2, BOTTOM_EDGE, center),
                 (3, TOP_EDGE, center),
             ):
-                for increment in (0.04, -0.03):
+                for increment in (3, -3):
                     with self.subTest(wid=wid, edge=edge, increment=increment):
                         data = layout.drag_resize_target_windows(ws[wid], 0, 0, edge, windows)
                         horizontal = bool(edge & (LEFT_EDGE | RIGHT_EDGE))
@@ -930,14 +1013,16 @@ class TestSplitBorderResize(BaseTest):
                         forwards = data.width_increases_rightwards if horizontal else data.height_increases_downwards
                         self.assertEqual(target, id(expected))
                         self.assertTrue(forwards)
-                        before = {id(p): p.bias for p in root.self_and_descendants()}
+
+                        def positions():
+                            return {id(p): p.first_extent.right if p.horizontal else p.first_extent.bottom for p in root.self_and_descendants()}
+
+                        before = positions()
                         self.assertTrue(layout.drag_resize_window(windows, target, increment, horizontal))
                         layout(windows)
-                        for p in root.self_and_descendants():
-                            self.assertAlmostEqual(
-                                p.bias,
-                                before[id(p)] + (increment if p is expected else 0),
-                            )
+                        cell = lgd.cell_width if horizontal else lgd.cell_height
+                        for pid, position in positions().items():
+                            self.ae(position - before[pid], increment * cell if pid == target else 0)
 
     def test_all_rendered_internal_borders(self):
         # All 5 binary tree shapes with 4 leaves, with every combination of
@@ -995,6 +1080,323 @@ class TestSplitBorderResize(BaseTest):
         data = layout.drag_resize_target_windows(ws[1], 0, 0, LEFT_EDGE | TOP_EDGE, windows)
         self.assertIsNone(data.horizontal_id)
         self.assertIsNone(data.vertical_id)
+
+
+class TestReservedSpaces(BaseSplitGeometryTest):
+    def test_reserved_spaces_do_not_overlap(self):
+        # Custom shaders treat the space a layout reserves around the active
+        # window (WindowGeometry.spaces) as part of it, so the reserved boxes
+        # of visible windows must fit in the central area without overlapping.
+        central = Region((19, 47, 1518, 1146, 1500, 1100))
+        for cls in (Tall, Grid, Horizontal, Stack, Splits):
+            for minimal in (True, False):
+                for num in (1, 2, 3, 5):
+                    layout = create_layout(cls)
+                    windows = create_windows(layout, num=num)
+                    self.stub_dimensions(layout, central, minimal)
+                    layout(windows)
+                    boxes = []
+                    for w in windows:
+                        if not w.is_visible_in_layout:
+                            continue
+                        g = w.geometry
+                        boxes.append((g.left - g.spaces.left, g.top - g.spaces.top, g.right + g.spaces.right, g.bottom + g.spaces.bottom))
+                    with self.subTest(layout=cls.name, minimal=minimal, num=num):
+                        self.assertTrue(boxes)
+                        for left, top, right, bottom in boxes:
+                            self.assertGreaterEqual(left, central.left)
+                            self.assertGreaterEqual(top, central.top)
+                            self.assertLessEqual(right, central.left + central.width)
+                            self.assertLessEqual(bottom, central.top + central.height)
+                        for i, a in enumerate(boxes):
+                            for b in boxes[i + 1 :]:
+                                overlaps = a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+                                self.assertFalse(overlaps, f'{a} overlaps {b}')
+
+
+class WideMarginWindow(Window):
+    def effective_margin(self, edge):
+        return 5
+
+    def default_margin(self, edge):
+        return 5
+
+
+class TestFrameAlignment(BaseSplitGeometryTest):
+    # The cells never exactly fill these sizes, so windows get compensatory padding
+    central = Region((19, 47, 1021, 753, 1003, 707))
+    splits_shape = {
+        'bias': 0.37,
+        'one': {'horizontal': False, 'bias': 0.61, 'one': 1, 'two': 2},
+        'two': {'horizontal': False, 'bias': 0.29, 'one': 3, 'two': {'bias': 0.53, 'one': 4, 'two': 5}},
+    }
+
+    def layouts(self, window_class=Window):
+        for cls in (Tall, Fat, Grid, Vertical, Horizontal, Splits):
+            for num in (2, 3, 5):
+                layout = create_layout(cls)
+                windows = create_windows(layout, num=num, window_class=window_class)
+                if cls is Splits and num == 5:
+                    layout.pairs_root.unserialize(self.splits_shape, lambda x: x)
+                yield layout, windows
+
+    def frames(self, windows):
+        ans = []
+        for wg in windows.iter_all_layoutable_groups(only_visible=True):
+            rects = []
+            add_borders(rects, BorderColor.active, wg)
+            frame = min(r.left for r in rects), min(r.top for r in rects), max(r.right for r in rects), max(r.bottom for r in rects)
+            g = wg.geometry
+            allocation = g.left - g.spaces.left, g.top - g.spaces.top, g.right + g.spaces.right, g.bottom + g.spaces.bottom
+            ans.append((frame, allocation, g))
+        return ans
+
+    def check_frames(self, frames, margins, gap, area):
+        left, top, right, bottom = area.left, area.top, area.left + area.width, area.top + area.height
+        ml, mt, mr, mb = margins
+        neighbors = 0
+        for frame, allocation, g in frames:
+            # Each frame is exactly margin inside its allocation, whatever compensatory padding the window has
+            if allocation[0] == left:
+                self.ae(frame[0], left + ml)
+            if allocation[1] == top:
+                self.ae(frame[1], top + mt)
+            if allocation[2] == right:
+                self.ae(frame[2], right - mr)
+            if allocation[3] == bottom:
+                self.ae(frame[3], bottom - mb)
+        for i, (a, aa, _) in enumerate(frames):
+            for b, ba, _ in frames[i + 1 :]:
+                for (first, fa), (second, sa) in (((a, aa), (b, ba)), ((b, ba), (a, aa))):
+                    if fa[2] == sa[0] and min(fa[3], sa[3]) > max(fa[1], sa[1]):
+                        neighbors += 1
+                        self.ae(second[0] - first[2], gap)
+                    if fa[3] == sa[1] and min(fa[2], sa[2]) > max(fa[0], sa[0]):
+                        neighbors += 1
+                        self.ae(second[1] - first[3], gap)
+        self.assertGreater(neighbors, 0)
+
+    def test_frames_aligned_and_gaps_uniform(self):
+        for layout, windows in self.layouts():
+            self.stub_dimensions(layout, self.central, minimal=False)
+            layout(windows)
+            frames = self.frames(windows)
+            with self.subTest(layout=layout.name, num=len(frames)):
+                self.assertTrue(any(any(g.compensatory) for _, _, g in frames))
+                # margin 1, so the gap between neighbors is 2
+                self.check_frames(frames, (1, 1, 1, 1), 2, self.central)
+
+    def test_title_bar_has_no_compensatory_padding_before_it(self):
+        for position in ('top', 'bottom'):
+            self.set_options({'tab_bar_style': 'hidden', 'window_title_bar_min_windows': 1, 'window_title_bar': position})
+            for layout, windows in self.layouts():
+                self.stub_dimensions(layout, self.central, minimal=False)
+                layout(windows)
+                frames = self.frames(windows)
+                with self.subTest(layout=layout.name, num=len(frames), position=position):
+                    self.assertTrue(all(w.show_title_bar for w in windows))
+                    self.assertTrue(any(any(g.compensatory) for _, _, g in frames))
+                    for _, _, g in frames:
+                        self.ae(g.compensatory.top if position == 'top' else g.compensatory.bottom, 0)
+                    self.check_frames(frames, (1, 1, 1, 1), 2, self.central)
+                    self.ae(len(layout.blank_rects), sum(len(tuple(blank_rects_for_window(g))) for _, _, g in frames))
+
+    def test_collapse_window_margins(self):
+        from unittest.mock import patch
+
+        full = Region((19, 47, 1021, 753, 1003, 707))
+        viewport = full, Region((0, 0, 0, 0, 0, 0)), 1100, 800, 10, 20
+        for collapse in (False, True):
+            self.set_options({'tab_bar_style': 'hidden', 'collapse_window_margins': collapse, 'window_margin_width': 5, 'draw_minimal_borders': False})
+            for layout, windows in self.layouts(WideMarginWindow):
+                layout.set_active_window_in_os_window = lambda idx: None
+                del layout._set_dimensions  # remove the stub from create_layout
+                with patch('kitty.layout.base.viewport_for_window', return_value=viewport):
+                    layout(windows)
+                frames = self.frames(windows)
+                with self.subTest(layout=layout.name, num=len(frames), collapse=collapse):
+                    if collapse:
+                        # half the margin is supplied by the inset of the layout area, the
+                        # rest by the windows and the gap between windows equals the margin
+                        self.ae(lgd.central, Region((21, 49, 1018, 750, 998, 702)))
+                        self.ae(layout.collapsed_margin_rects, [(19, 47, 1022, 49), (19, 751, 1022, 754), (19, 49, 21, 751), (1019, 49, 1022, 751)])
+                        self.assertTrue(set(layout.collapsed_margin_rects).issubset(layout.blank_rects))
+                        # windows use 3 of their margin of 5 on the left and top and 2 on the right and bottom
+                        self.check_frames(frames, (3, 3, 2, 2), 5, lgd.central)
+                        for frame, _, _ in frames:
+                            self.assertGreaterEqual(frame[0] - full.left, 5)
+                            self.assertGreaterEqual(frame[1] - full.top, 5)
+                            self.assertGreaterEqual(full.left + full.width - frame[2], 5)
+                            self.assertGreaterEqual(full.top + full.height - frame[3], 5)
+                    else:
+                        self.ae(lgd.central, full)
+                        self.ae(layout.collapsed_margin_rects, [])
+                        self.check_frames(frames, (5, 5, 5, 5), 10, full)
+
+
+class TestSplitDragGeometry(BaseSplitGeometryTest):
+    def make_layout(self, shape, minimal=True, num=4):
+        from types import SimpleNamespace
+
+        from kitty.tabs import Tab as RealTab
+
+        layout = create_layout(Splits)
+        layout.layout_opts = SplitsLayoutOpts({'proportional': 'yes'})
+        windows = create_windows(layout, num=num)
+        layout.pairs_root.unserialize(shape, lambda x: x)
+        self.stub_dimensions(layout, Region((19, 47, 1518, 1146, 1500, 1100)), minimal)
+        tab = SimpleNamespace(current_layout=layout, windows=windows, relayout=lambda: layout(windows))
+        tab.drag_resize_window = lambda *args: RealTab.drag_resize_window(tab, *args)
+        tab.relayout()
+        return layout, windows, tab
+
+    def positions(self, layout):
+        return {
+            id(p): (p.first_extent.right if p.horizontal else p.first_extent.bottom) + p.border_width
+            for p in layout.pairs_root.self_and_descendants()
+            if not p.is_redundant
+        }
+
+    def fixed_dividers(self, pair):
+        # The dividers move_divider() promises to leave alone: every divider outside
+        # the dragged pair's region, plus the same-axis dividers inside it. Same-axis
+        # dividers nested inside a perpendicular unit are excluded, that unit is
+        # resized as a whole so they scale with it.
+        inside = set()
+
+        def walk(p):
+            if not isinstance(p, Pair):
+                return
+            if p.is_redundant:
+                return walk(p.one or p.two)
+            if p.horizontal != pair.horizontal:
+                return
+            inside.add(id(p))
+            walk(p.one)
+            walk(p.two)
+
+        walk(pair)
+        descendants = {id(p) for p in pair.self_and_descendants()}
+        return lambda pid: pid not in descendants or pid in inside
+
+    def check_drags(self, layout, tab):
+        for pair in layout.pairs_root.self_and_descendants():
+            if pair.is_redundant:
+                continue
+            cell = lgd.cell_width if pair.horizontal else lgd.cell_height
+            is_fixed = self.fixed_dividers(pair)
+            for steps in (3, -5, 2):
+                before = self.positions(layout)
+                self.assertTrue(tab.drag_resize_window(id(pair), steps, pair.horizontal))
+                after = self.positions(layout)
+                self.check_extents_fit(layout)
+                for pid, position in before.items():
+                    if pid == id(pair):
+                        self.ae(after[pid] - position, steps * cell)
+                    elif is_fixed(pid):
+                        self.ae(after[pid], position)
+
+    def test_split_drag_adjacent_geometry(self):
+        shapes = (
+            {'bias': 0.3, 'one': 1, 'two': {'bias': 0.4, 'one': 2, 'two': {'one': 3, 'two': 4}}},
+            {'one': {'bias': 0.6, 'one': 1, 'two': 2}, 'two': {'one': 3, 'two': 4}},
+            {'one': {'one': {'one': 1, 'two': 2}, 'two': 3}, 'two': 4},
+            {'horizontal': False, 'bias': 0.35, 'one': 4, 'two': {'one': 1, 'two': {'one': 2, 'two': 3}}},
+            {'one': 1, 'two': {'one': {'horizontal': False, 'one': 2, 'two': 3}, 'two': 4}},
+            # same-axis dividers nested inside a perpendicular unit
+            {'one': 1, 'two': {'horizontal': False, 'one': {'bias': 0.6, 'one': 2, 'two': 3}, 'two': 4}},
+            {'horizontal': False, 'bias': 0.5, 'one': {'one': {'horizontal': False, 'bias': 0.6, 'one': 1, 'two': 2}, 'two': 3}, 'two': 4},
+        )
+
+        def transpose(node):
+            if isinstance(node, int):
+                return node
+            return {**node, 'horizontal': not node.get('horizontal', True), 'one': transpose(node['one']), 'two': transpose(node['two'])}
+
+        for shape in shapes:
+            for oriented in (shape, transpose(shape)):
+                for minimal in (True, False):
+                    with self.subTest(shape=oriented, minimal=minimal):
+                        layout, windows, tab = self.make_layout(oriented, minimal)
+                        self.check_drags(layout, tab)
+
+    def test_split_drag_after_reposition_and_restore(self):
+        shape = {'horizontal': False, 'one': 4, 'two': {'bias': 0.3, 'one': 1, 'two': {'bias': 0.6, 'one': 2, 'two': 3}}}
+        layout, windows, tab = self.make_layout(shape)
+        ws = {w.id: w for w in windows}
+        self.check_drags(layout, tab)
+        layout.insert_window_next_to(windows, ws[3], ws[1], True, False)
+        tab.relayout()
+        self.ae(list(layout.pairs_root.two.all_window_ids()), [3, 1, 2])
+        self.check_drags(layout, tab)
+        saved = {**layout.layout_state(), 'opts': layout.layout_opts.serialized()}
+        self.assertTrue(layout.set_layout_state(saved, lambda x: x))
+        tab.relayout()
+        self.check_drags(layout, tab)
+
+    def test_split_drag_minimum_size(self):
+        layout, windows, tab = self.make_layout({'one': 1, 'two': {'one': 2, 'two': {'one': 3, 'two': 4}}})
+        root = layout.pairs_root
+        before = self.positions(layout)
+        self.assertTrue(tab.drag_resize_window(id(root), 10000, True))
+        after = self.positions(layout)
+        for pid in before:
+            if pid != id(root):
+                self.ae(after[pid], before[pid])
+        self.assertGreaterEqual(root.two.first_extent.right - root.two.first_extent.left, lgd.cell_width)
+        self.assertFalse(tab.drag_resize_window(id(root), 1, True))
+        self.assertTrue(tab.drag_resize_window(id(root), -1, True))
+        self.ae(self.positions(layout)[id(root)], after[id(root)] - lgd.cell_width)
+
+    def test_split_drag_nested_minimum_no_overlap(self):
+        # Dragging a divider until a nested perpendicular unit is squeezed to its
+        # minimum must not leave that unit's halves overflowing the area they were
+        # given, which would overlap them with the neighbouring window.
+        shape = {'horizontal': False, 'bias': 0.5, 'one': {'one': {'horizontal': False, 'bias': 0.6, 'one': 1, 'two': 2}, 'two': 3}, 'two': 4}
+        for minimal in (True, False):
+            with self.subTest(minimal=minimal):
+                layout, windows, tab = self.make_layout(shape, minimal)
+                root = layout.pairs_root
+                tab.drag_resize_window(id(root), -1000, False)
+                self.check_extents_fit(layout)
+                inner = root.one.one
+                self.ae(inner.second_extent.bottom, inner.top + inner.height)
+
+    def test_split_drag_corner_and_subcell_motion(self):
+        from types import SimpleNamespace
+
+        from kitty.boss import Boss
+        from kitty.types import WindowResizeDrag, WindowResizeDragData
+
+        layout, windows, tab = self.make_layout({'one': 1, 'two': {'one': {'horizontal': False, 'one': 2, 'two': 3}, 'two': 4}})
+        root = layout.pairs_root
+        data = WindowResizeDragData(id(root), True, id(root.two.one), True)
+        state = WindowResizeDrag(is_active=True, cell_width=10, cell_height=20, initial_x=300, initial_y=400, data=data)
+        boss = SimpleNamespace(drag_resize_of_window=state, tab_for_id=lambda _: tab)
+        before = self.positions(layout)
+        for x, y in ((301, 401), (299, 399), (300, 400)):
+            Boss.drag_resize_update(boss, x, y)
+            self.ae(self.positions(layout), before)
+        Boss.drag_resize_update(boss, 330, 440)
+        moved = self.positions(layout)
+        self.ae(moved[id(root)] - before[id(root)], 30)
+        self.ae(moved[id(root.two.one)] - before[id(root.two.one)], 40)
+        Boss.drag_resize_update(boss, 330, 440)
+        self.ae(self.positions(layout), moved)
+        Boss.drag_resize_update(boss, 300, 400)
+        self.ae(self.positions(layout), before)
+
+        # Overshooting a minimum size must not detach the divider from the
+        # pointer when the pointer comes back into the allowed region.
+        boss.drag_resize_of_window = state._replace(data=data._replace(vertical_id=None))
+        Boss.drag_resize_update(boss, 10300, 400)
+        limited = self.positions(layout)
+        Boss.drag_resize_update(boss, 9300, 400)
+        self.ae(self.positions(layout), limited)
+        Boss.drag_resize_update(boss, 330, 400)
+        self.ae(self.positions(layout)[id(root)], before[id(root)] + 30)
+        Boss.drag_resize_update(boss, 300, 400)
+        self.ae(self.positions(layout), before)
 
 
 class TestProportionalSplits(BaseTest):
@@ -1168,3 +1570,44 @@ class TestProportionalSplits(BaseTest):
         self.check_weights(q, dict.fromkeys((1, 2, 3), 1 / 3))
         self.ae(q.balanced_add_window(4).horizontal, q.pairs_root.horizontal)
         self.check_weights(q, dict.fromkeys((1, 2, 3, 4), 0.25))
+
+
+class TestWindowHelpers(BaseTest):
+    def test_edge_widths_launch_args(self):
+        ew = EdgeWidths({'left': 1, 'right': 2, 'top': 3, 'bottom': 4})
+        for prefix in ('padding', 'margin'):
+            args = list(ew.as_launch_args(prefix))
+            self.ae(len(set(args)), 4)
+            self.ae(
+                parse_spacing_settings(a.partition('=')[2] for a in args),
+                {f'{prefix}-left': 1, f'{prefix}-right': 2, f'{prefix}-top': 3, f'{prefix}-bottom': 4},
+            )
+
+    def test_global_watchers(self):
+        opts = SimpleNamespace(watcher={})
+        w1 = Watchers()
+        calls = []
+
+        def load(paths):
+            paths = tuple(paths)
+            calls.append(paths)
+            return w1 if paths else None
+
+        with patch('kitty.window.get_options', lambda: opts), patch('kitty.launch.load_watch_modules', load):
+            g = GlobalWatchers()
+            g.set_extra('x.py')
+            self.assertIs(g(), w1)
+            self.assertIs(g(), w1)
+            self.ae(calls, [('x.py',)])
+            g = GlobalWatchers()
+            opts.watcher = {'a.py': 'a.py'}
+            self.assertIs(g(), w1)
+            opts.watcher = {}
+            ans = g()
+            self.assertIsNot(ans, w1)
+            self.assertIsInstance(ans, Watchers)
+            self.ae(calls[-1], ())
+            # changing the extra watcher after first use must take effect
+            g.set_extra('y.py')
+            self.assertIs(g(), w1)
+            self.ae(calls[-1], ('y.py',))

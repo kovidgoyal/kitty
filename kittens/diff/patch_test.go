@@ -4,6 +4,7 @@ package diff
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -14,6 +15,8 @@ var region_eq = cmpopts.EquateComparable(Region{})
 
 func TestWordDiffCenter(t *testing.T) {
 	re := regexp.MustCompile(`\S+`)
+	many_words := strings.Repeat("a ", 100000)
+	too_many_words := strings.Repeat("a ", max_word_diff_words)
 	type tc struct {
 		left, right   string
 		left_regions  []Region
@@ -92,6 +95,27 @@ func TestWordDiffCenter(t *testing.T) {
 			left: "aaa bbb ccc", right: "aaa bbb ccc ddd",
 			left_regions:  nil,
 			right_regions: []Region{{11, 4}},
+		},
+		{
+			// very long line, word counts differ → changed_center without
+			// running the LCS over 100000 words
+			left: many_words, right: "x " + many_words + "y",
+			left_regions:  []Region{{0, len(many_words)}},
+			right_regions: []Region{{0, len(many_words) + 3}},
+		},
+		{
+			// word counts equal, but more than max_word_diff_words words
+			// between the first and last changed word → changed_center
+			left: "x " + too_many_words + "y", right: "X " + too_many_words + "Y",
+			left_regions:  []Region{{0, len(too_many_words) + 3}},
+			right_regions: []Region{{0, len(too_many_words) + 3}},
+		},
+		{
+			// more than max_word_diff_words words, but the changed ones are
+			// close together → still diffed by word
+			left: too_many_words + "x a y", right: too_many_words + "X a Y",
+			left_regions:  []Region{{len(too_many_words), 1}, {len(too_many_words) + 4, 1}},
+			right_regions: []Region{{len(too_many_words), 1}, {len(too_many_words) + 4, 1}},
 		},
 	}
 	for _, tc := range tests {

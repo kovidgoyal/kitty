@@ -388,6 +388,10 @@ init_simd(void *x) {
         has_avx2 = strcmp(simd_env, "256") == 0;
         has_avx512 = strcmp(simd_env, "512") == 0;
     }
+#if !(defined(__x86_64__) || defined(__amd64__)) || defined(KITTY_NO_SIMD)
+    // The AVX-512 implementations are x86-64 only, elsewhere they are stubs that call fatal()
+    has_avx512 = false;
+#endif
 
 #undef do_check
     if (has_avx512) {

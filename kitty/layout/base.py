@@ -2,17 +2,19 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
+from copy import copy, deepcopy
 from enum import Enum
 from functools import partial
 from itertools import repeat
+from math import ceil, isfinite
 from typing import Any, ClassVar, NamedTuple, cast
 
 from kitty.borders import BorderColor
 from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE, Region, get_options, set_active_window, viewport_for_window
 from kitty.options.types import Options
-from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, WindowResizeDragData
-from kitty.typing_compat import WindowType
-from kitty.window_list import WindowGroup, WindowList
+from kitty.types import DockEdge, DockSpec, Edges, NeighborsMap, WindowGeometry, WindowMapper, WindowResizeDragData, dock_edges, opposite_dock_edge
+from kitty.typing_compat import EdgeLiteral, WindowType
+from kitty.window_list import WindowGroup, WindowList, collapsed_margin
 
 
 class BorderLine(NamedTuple):
@@ -61,6 +63,10 @@ class LayoutGlobalData:
 
 
 lgd = LayoutGlobalData()
+
+
+def fractional_resize_steps(remaining: int, fraction: float) -> int:
+    return max(1, ceil(remaining * fraction - 1e-9)) if remaining > 0 else 0
 
 
 def idx_for_id(win_id: int, windows: Iterable[WindowType]) -> int | None:
@@ -238,6 +244,52 @@ def layout_single_window(
     return window_geometry_from_layouts(x, y)
 
 
+def region(left: int, top: int, width: int, height: int) -> Region:
+    width, height = max(0, width), max(0, height)
+    return Region((left, top, left + width - 1, top + height - 1, width, height))
+
+
+def outer_region_of(geom: WindowGeometry) -> Region:
+    "The region occupied by a window including its decorations"
+    s = geom.spaces
+    return region(geom.left - s.left, geom.top - s.top, geom.right - geom.left + s.left + s.right, geom.bottom - geom.top + s.top + s.bottom)
+
+
+def carve_docks(area: Region, docks: Iterable[WindowGroup], cell_width: int, cell_height: int) -> tuple[Region, list[tuple[WindowGroup, Region]]]:
+    """
+    Give each docked group a slice of area at its edge, in order, so earlier
+    docks are further out and span the full extent of whatever area remains when
+    they are placed. Returns the area left over for the content and the regions of
+    the docks. When space runs out, later docks are shrunk first.
+    """
+    left, top, right, bottom = area.left, area.top, area.left + area.width, area.top + area.height
+    placements: list[tuple[WindowGroup, Region]] = []
+    for g in docks:
+        d = g.dock
+        if d is None:
+            continue
+        if d.is_horizontal:
+            total, available, cell, dec = area.height, bottom - top, cell_height, g.decoration('top') + g.decoration('bottom')
+        else:
+            total, available, cell, dec = area.width, right - left, cell_width, g.decoration('left') + g.decoration('right')
+        wanted = int(total * d.size / 100) if d.size_is_percent else int(d.size) * cell + dec
+        size = max(0, min(wanted, available))
+        match d.edge:
+            case 'top':
+                placements.append((g, region(left, top, right - left, size)))
+                top += size
+            case 'bottom':
+                bottom -= size
+                placements.append((g, region(left, bottom, right - left, size)))
+            case 'left':
+                placements.append((g, region(left, top, size, bottom - top)))
+                left += size
+            case 'right':
+                right -= size
+                placements.append((g, region(right, top, size, bottom - top)))
+    return region(left, top, right - left, bottom - top), placements
+
+
 def safe_increment_bias(old_val: float, increment: float = 0) -> float:
     return max(0.1, min(old_val + increment, 0.9))
 
@@ -260,6 +312,30 @@ def distribute_indexed_bias(base_bias: Sequence[float], index_bias_map: dict[int
         other_increment = -increment / (limit - 1)
         ans = [safe_increment_bias(b, increment if i == row else other_increment) for i, b in enumerate(ans)]
     return normalize_biases(ans)
+
+
+def is_focusable_dock(g: WindowGroup) -> bool:
+    return g.dock is not None and g.dock.focusable and g.is_visible_in_layout
+
+
+def innermost_focusable_dock(docks: Sequence[WindowGroup], edge: DockEdge) -> WindowGroup | None:
+    for d in reversed(docks):
+        if d.dock is not None and d.dock.edge == edge and is_focusable_dock(d):
+            return d
+    return None
+
+
+def set_neighbors(ans: NeighborsMap, edge: DockEdge, val: list[int]) -> None:
+    # NeighborsMap is a TypedDict so it cannot be indexed by a variable
+    match edge:
+        case 'left':
+            ans['left'] = val
+        case 'top':
+            ans['top'] = val
+        case 'right':
+            ans['right'] = val
+        case 'bottom':
+            ans['bottom'] = val
 
 
 def create_window_id_map_for_unserialize(all_windows: WindowList) -> dict[int, int]:
@@ -292,6 +368,9 @@ class Layout:
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects: list[Rect] = []
+        self.tab_dock_placements: list[tuple[WindowGroup, Region]] = []
+        # The blank strips at the edges of the layout area when margins are collapsed
+        self.collapsed_margin_rects: list[Rect] = []
         self.layout_opts = self.parse_layout_opts(layout_opts)
         assert self.name is not None
         self.full_name = f'{self.name}:{layout_opts}' if layout_opts else self.name
@@ -324,7 +403,48 @@ class Layout:
             return False
         return self.apply_bias(idx, increment, all_windows, is_horizontal)
 
-    drag_resize_window = modify_size_of_window
+    def apply_fractional_bias(self, window_idx: int, increment: float, all_windows: WindowList, is_horizontal: bool) -> bool:
+        return self.apply_bias(window_idx, increment, all_windows, is_horizontal)
+
+    def modify_size_of_window_by_fraction(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool, fraction: float) -> bool:
+        if window_id not in all_windows.id_map:
+            return False
+        idx = all_windows.group_idx_for_window(window_id)
+        if idx is None or all_windows.num_groups < 2 or not increment or not isfinite(increment) or not 0 < fraction <= 1:
+            return False
+        # Probe private layout state, without changing windows or rendering every
+        # intermediate step. This follows each layout's ordinary resize rules.
+        probe = copy(self)
+        state = deepcopy(self.layout_state())
+        state['opts'] = self.layout_opts.serialized()
+        if not probe.set_layout_state(state, lambda group_id: group_id):
+            return False
+        # The state after each step, so that the chosen number of steps can be
+        # adopted without repeating them.
+        states: list[dict[str, Any]] = []
+        # Biases span at most one unit; allow two for clamping/normalization.
+        # The bound also prevents future layout implementations from looping.
+        for _ in range(max(1, ceil(2 / abs(increment)))):
+            if not probe.apply_fractional_bias(idx, increment, all_windows, is_horizontal):
+                break
+            states.append(deepcopy(probe.layout_state()))
+        steps = fractional_resize_steps(len(states), fraction)
+        if not steps:
+            return False
+        state = states[steps - 1]
+        state['opts'] = self.layout_opts.serialized()
+        return self.set_layout_state(state, lambda group_id: group_id)
+
+    def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> float:
+        """Resize by a number of cells, returning the number of cells actually applied.
+
+        Layouts that can apply an increment only partially should override this and
+        report what they really did, so that the caller can keep the dragged divider
+        locked to the pointer. This generic implementation has no way to tell how much
+        apply_bias() clamped, so it reports all or nothing.
+        """
+        increment_as_percent = self.bias_increment_for_cell(all_windows, is_horizontal) * increment
+        return increment if self.modify_size_of_window(all_windows, window_id, increment_as_percent, is_horizontal) else 0.0
 
     def parse_layout_opts(self, layout_opts: str | None = None) -> LayoutOpts:
         data: dict[str, str] = {}
@@ -347,10 +467,55 @@ class Layout:
     def neighbors(self, all_windows: WindowList) -> NeighborsMap:
         w = all_windows.active_window
         assert w is not None
-        return self.neighbors_for_window(w, all_windows)
+        return self.neighbors_for_any_window(w, all_windows)
+
+    def neighbors_for_any_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
+        """
+        Like neighbors_for_window() but also works for docked windows and takes
+        docks into account. A docked group is a neighbor of the group it is
+        docked to and of the docks next to it at the same edge.
+        """
+        group = all_windows.group_for_window(window)
+        if group is None:
+            return {}
+        if group.dock is None:
+            return self._neighbors_with_docks(window, group, all_windows)
+        owner = all_windows.dock_owner(group)
+        siblings = [d for d in (all_windows.tab_docks if owner is None else owner.docks) if d.dock is not None and d.dock.edge == group.dock.edge]
+        idx = siblings.index(group)
+        outer = [d for d in siblings[:idx] if is_focusable_dock(d)]
+        inner = [d for d in siblings[idx + 1 :] if is_focusable_dock(d)]
+        ans: NeighborsMap = {}
+        if owner is not None and (w := all_windows.id_map.get(owner.active_window_id)) is not None:
+            # The rest of the neighbors are those of the owner
+            ans = self._neighbors_with_docks(w, owner, all_windows, skip_own_docks=True)
+        inwards: list[int] = []
+        if inner:
+            inwards = [inner[0].id]
+        elif owner is not None:
+            inwards = [owner.id]
+        elif (mg := all_windows.active_main_group) is not None:
+            inwards = [mg.id]
+        set_neighbors(ans, opposite_dock_edge[group.dock.edge], inwards)
+        if outer:
+            set_neighbors(ans, group.dock.edge, [outer[-1].id])
+        return ans
+
+    def _neighbors_with_docks(self, window: WindowType, group: WindowGroup, all_windows: WindowList, skip_own_docks: bool = False) -> NeighborsMap:
+        ans: NeighborsMap = {}
+        ans.update(self.neighbors_for_window(window, all_windows))
+        for edge in dock_edges:
+            # The innermost dock at an edge is next to the group, so it takes
+            # precedence. The tab docks are next to whichever groups have no
+            # neighbors in that direction.
+            if not skip_own_docks and (d := innermost_focusable_dock(group.docks, edge)) is not None:
+                set_neighbors(ans, edge, [d.id])
+            elif not ans.get(edge) and (d := innermost_focusable_dock(all_windows.tab_docks, edge)) is not None:
+                set_neighbors(ans, edge, [d.id])
+        return ans
 
     def move_window(self, all_windows: WindowList, delta: int = 1) -> bool:
-        if all_windows.num_groups < 2 or not delta:
+        if all_windows.num_groups < 2 or not delta or all_windows.active_dock is not None:
             return False
 
         return all_windows.move_window_group(by=delta)
@@ -375,7 +540,7 @@ class Layout:
         """
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
-        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
             return
         all_windows.set_active_window_group_for(window)
         if self.drag_overlay_mode in (DragOverlayMode.axis_x, DragOverlayMode.axis_y):
@@ -393,7 +558,12 @@ class Layout:
         put_overlay_behind: bool = False,
         bias: float | None = None,
         next_to: WindowType | None = None,
+        dock: DockSpec | None = None,
+        dock_owner: WindowGroup | None = None,
     ) -> WindowType | None:
+        if dock is not None:
+            all_windows.add_window(window, dock=dock, dock_owner=dock_owner)
+            return None
         if overlay_for is not None:
             underlay = all_windows.id_map.get(overlay_for)
             if underlay is not None:
@@ -410,6 +580,9 @@ class Layout:
     ) -> None:
         before = False
         next_to = next_to or all_windows.active_window
+        if next_to is not None:
+            # New windows are never placed next to docked windows
+            next_to = all_windows.main_window_for(next_to)
         if location is not None:
             if location in ('after', 'vsplit', 'hsplit'):
                 pass
@@ -438,22 +611,53 @@ class Layout:
         return False
 
     def update_visibility(self, all_windows: WindowList) -> None:
-        active_window = all_windows.active_window
+        active_window = all_windows.active_main_window
         for window, is_group_leader in all_windows.iter_windows_with_visibility():
             is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
             window.set_visible_in_layout(is_visible)
+        # Docked groups are visible when their owner is, tab docks are always visible
+        for dock in all_windows.tab_docks:
+            for window in dock:
+                window.set_visible_in_layout(window.id == dock.active_window_id)
+        for group in all_windows.groups:
+            owner_is_visible = group.is_visible_in_layout
+            for dock in group.docks:
+                for window in dock:
+                    window.set_visible_in_layout(owner_is_visible and window.id == dock.active_window_id)
+        for dock in all_windows.orphaned_docks:
+            for window in dock:
+                window.set_visible_in_layout(False)
 
     def _set_dimensions(self, all_windows: WindowList) -> None:
-        lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
+        full_area, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
+        opts = get_options()
+        self.collapsed_margin_rects = []
+        if opts.collapse_window_margins and (w := next(iter(all_windows), None)) is not None:
+            # Windows use only part of their margins, see collapsed_margin(),
+            # so supply the rest at the edges of the layout area
+            def inset(edge: EdgeLiteral) -> int:
+                m = w.default_margin(edge)
+                return m - collapsed_margin(m, edge)
+
+            ml, mt, mr, mb = inset('left'), inset('top'), inset('right'), inset('bottom')
+            left, top, right, bottom = full_area.left, full_area.top, full_area.left + full_area.width, full_area.top + full_area.height
+            full_area = region(left + ml, top + mt, full_area.width - ml - mr, full_area.height - mt - mb)
+            il, it = full_area.left, full_area.top
+            ir, ib = il + full_area.width, it + full_area.height
+            self.collapsed_margin_rects = [
+                r
+                for r in (Rect(left, top, right, it), Rect(left, ib, right, bottom), Rect(left, it, il, ib), Rect(ir, it, right, ib))
+                if r.right > r.left and r.bottom > r.top
+            ]
+        # The tab docks reduce the area available to the layout
+        lgd.central, self.tab_dock_placements = carve_docks(full_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
-        opts = get_options()
         lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, all_windows.has_more_than_one_visible_group)
 
     def __call__(self, all_windows: WindowList) -> None:
         self._set_dimensions(all_windows)
         self.update_visibility(all_windows)
-        self.blank_rects = []
         # Set show_title_bar flag on each visible window before layout
         min_windows = get_options().window_title_bar_min_windows
         visible_groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
@@ -462,9 +666,47 @@ class Layout:
         for wg in visible_groups:
             for w in wg.windows:
                 w.show_title_bar = show_title_bar
-        self.do_layout(all_windows)
+        for wg in all_windows.iter_dock_groups():
+            for w in wg.windows:
+                w.show_title_bar = False
+        if all_windows.groups:
+            self.do_layout(all_windows)
+        self.layout_docks(all_windows)
+        # Computed from the final geometry of the windows, as it can differ
+        # from what the layout gave them, see WindowGroup.set_content_geometry()
+        self.blank_rects = list(self.collapsed_margin_rects)
+        for group in all_windows.iter_visible_groups():
+            if (geom := group.geometry) is not None:
+                self.blank_rects.extend(blank_rects_for_window(geom))
 
-    def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:
+    def layout_docks(self, all_windows: WindowList) -> None:
+        for dock, area in self.tab_dock_placements:
+            self.layout_docked_group(dock, area)
+        for group in all_windows.groups:
+            if group.docks and (geom := group.allocated_geometry) is not None:
+                self.dock_into_group(group, geom)
+
+    def dock_into_group(self, owner: WindowGroup, geom: WindowGeometry) -> None:
+        """
+        Make room for the docks of owner within the area the layout gave it. The
+        decorations the layout chose for owner are preserved.
+        """
+        content, placements = carve_docks(outer_region_of(geom), owner.docks, lgd.cell_width, lgd.cell_height)
+        s, c = geom.spaces, geom.compensatory
+        x = next(layout_dimension(content.left, content.width, lgd.cell_width, ((s.left - c.left, s.right - c.right),), alignment=lgd.alignment_x))
+        y = next(layout_dimension(content.top, content.height, lgd.cell_height, ((s.top - c.top, s.bottom - c.bottom),), alignment=lgd.alignment_y))
+        owner.set_content_geometry(window_geometry_from_layouts(x, y))
+        for dock, area in placements:
+            self.layout_docked_group(dock, area)
+
+    def layout_docked_group(self, dock: WindowGroup, area: Region) -> None:
+        xdecoration_pairs = ((dock.decoration('left'), dock.decoration('right')),)
+        ydecoration_pairs = ((dock.decoration('top'), dock.decoration('bottom')),)
+        x = next(layout_dimension(area.left, area.width, lgd.cell_width, xdecoration_pairs, alignment=lgd.alignment_x))
+        y = next(layout_dimension(area.top, area.height, lgd.cell_height, ydecoration_pairs, alignment=lgd.alignment_y))
+        dock.set_geometry(window_geometry_from_layouts(x, y))
+
+    def layout_single_window_group(self, wg: WindowGroup) -> None:
         bw = 1 if self.must_draw_borders else 0
         xdecoration_pairs = (
             (
@@ -478,10 +720,7 @@ class Layout:
                 wg.decoration('bottom', border_mult=bw, is_single_window=True),
             ),
         )
-        geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y)
-        wg.set_geometry(geom)
-        if add_blank_rects:
-            self.blank_rects.extend(blank_rects_for_window(geom))
+        wg.set_geometry(layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y))
 
     def xlayout(
         self,
@@ -522,7 +761,6 @@ class Layout:
     def set_window_group_geometry(self, wg: WindowGroup, xl: LayoutData, yl: LayoutData) -> WindowGeometry:
         geom = window_geometry_from_layouts(xl, yl)
         wg.set_geometry(geom)
-        self.blank_rects.extend(blank_rects_for_window(geom))
         return geom
 
     def do_layout(self, windows: WindowList) -> None:
@@ -537,6 +775,35 @@ class Layout:
     def get_minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         self._set_dimensions(windows)
         yield from self.minimal_borders(windows)
+        if lgd.draw_minimal_borders:
+            yield from self.dock_borders(windows)
+
+    def dock_borders(self, windows: WindowList) -> Iterator[BorderLine]:
+        "Borders on the inner edges of docked groups, separating them from the content they are docked to"
+        needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
+        active_group = windows.active_group
+        for g in windows.iter_dock_groups(only_visible=True):
+            if g.dock is None or (geom := g.geometry) is None or not (bw := g.effective_border()):
+                continue
+            outer = outer_region_of(geom)
+            left, top, right, bottom = outer.left, outer.top, outer.left + outer.width, outer.top + outer.height
+            edge = opposite_dock_edge[g.dock.edge]
+            margin = max(0, g.decoration(edge) - bw - g.effective_padding(edge))
+            wid = g.active_window_id
+            # A positive window id means the border is on the right or bottom of the window
+            match edge:
+                case 'bottom':
+                    edges, horizontal = Edges(left, bottom - margin - bw, right, bottom - margin), True
+                case 'top':
+                    edges, horizontal, wid = Edges(left, top + margin, right, top + margin + bw), True, -wid
+                case 'right':
+                    edges, horizontal = Edges(right - margin - bw, top, right - margin, bottom), False
+                case _:
+                    edges, horizontal, wid = Edges(left + margin, top, left + margin + bw, bottom), False, -wid
+            color = BorderColor.inactive
+            if needs_borders_map.get(g.id):
+                color = BorderColor.active if g is active_group else BorderColor.bell
+            yield BorderLine(edges, color, wid, horizontal)
 
     def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         yield from ()

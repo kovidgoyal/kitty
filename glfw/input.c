@@ -314,6 +314,13 @@ _glfwInputScroll(_GLFWwindow *window, const GLFWScrollEvent *ev) {
     if (window->callbacks.scroll) window->callbacks.scroll((GLFWwindow *)window, ev);
 }
 
+// Notifies shared code of a touch event
+//
+void
+_glfwInputTouch(_GLFWwindow *window, const GLFWTouchEvent *ev) {
+    if (window->callbacks.touch) window->callbacks.touch((GLFWwindow *)window, ev);
+}
+
 // Notifies shared code of a mouse button click event
 //
 void
@@ -1087,6 +1094,16 @@ glfwSetScrollCallback(GLFWwindow *handle, GLFWscrollfun cbfun) {
 
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     _GLFW_SWAP_POINTERS(window->callbacks.scroll, cbfun);
+    return cbfun;
+}
+
+GLFWAPI GLFWtouchfun
+glfwSetTouchCallback(GLFWwindow *handle, GLFWtouchfun cbfun) {
+    _GLFWwindow *window = (_GLFWwindow *)handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(window->callbacks.touch, cbfun);
     return cbfun;
 }
 

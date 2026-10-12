@@ -227,6 +227,11 @@ proportional sizing for that new window. If ``equalize_on_window_close`` is also
 enabled, closing a window equalizes the layout instead of preserving its weights.
 The option is saved as part of a :doc:`session <sessions>`.
 
+Dragging a divider resizes only the two adjacent regions along its axis. Other
+dividers in the same row or column stay in place, including after repositioning
+windows. Nested dividers follow the mouse in character-cell steps relative to
+their own region, and stop when an adjacent region reaches its minimum size.
+
 ``split_axis`` controls whether new windows
 are placed into vertical or horizontal splits when a :option:`--location
 <launch --location>` is not specified. A value of ``horizontal`` (same as
@@ -298,6 +303,43 @@ All windows are shown one below the other. This layout has no options::
     └──────────────────────────────┘
 
 
+.. _docks:
+
+Docked windows
+------------------
+
+.. versionadded:: 0.50.0
+
+A kitty window can be *docked* to an edge of another kitty window or to an
+edge of the tab. Docked windows are placed outside the layout, which arranges
+the other windows in the space that remains. They are useful for things like
+status bars, file trees or a shell kept next to an editor. Create them with the
+:doc:`launch <launch>` action, for example::
+
+    # A one line status bar at the bottom of the tab that never gets keyboard focus
+    map f1 launch --type=tab-dock --dock-edge=bottom --dock-size=1 --dock-skip-focus my-status-bar
+    # A file tree using a quarter of the width of the active window, at its left
+    map f2 launch --type=window-dock --dock-edge=left --dock-size=25% yazi
+
+The size of a dock is a number of rows (for docks at the top or bottom edge) or
+columns (for docks at the left or right edge), or with a :code:`%` suffix, a
+percentage of the window or tab being docked to. When there are several docks
+at an edge, later docks are placed inside earlier ones. When there is not
+enough space for all the docks, the docks created last are made smaller first.
+
+A :code:`window-dock` belongs to the window it is docked to. It is shown
+whenever that window is shown, moves with it when it is moved to another tab
+and is closed when it is closed. A :code:`tab-dock` is closed when the last
+window in the tab that is not docked is closed.
+
+Docks can be focused like other windows, by clicking on them, with
+:ac:`neighboring_window` or :ac:`nth_window` with a negative number, unless they
+were created with :option:`launch --dock-skip-focus`. Docks are not part of the
+layout, so they are not affected by actions such as :ac:`move_window`,
+:ac:`next_window` or :ac:`layout_action`. Docks are saved in :doc:`sessions
+<sessions>`.
+
+
 .. _window_resizing:
 
 Resizing windows
@@ -317,6 +359,62 @@ a particular window. For example, in the *Tall* layout you can make the first
 window wider/narrower, but not taller/shorter. Note that what you are resizing
 is actually not a window, but a row/column in the layout, all windows in that
 row/column will be resized.
+
+By default, hold :kbd:`Alt` with :kbd:`W`, :kbd:`N`, :kbd:`T`, or :kbd:`S` to take a fraction
+of the remaining resize steps in that direction. The default is one third,
+rounded up: five remaining steps become two, and one remaining step becomes
+one. Resizing stops at the layout's size limit. Ordinary letters (including
+uppercase letters) keep their normal step size unless Shift is selected as
+the fractional modifier, and :kbd:`Ctrl` doubles it.
+To choose a different fraction, pass :code:`--fraction`
+to the resize kitten, for example::
+
+   map kitty_mod+r kitten resize_window --fraction=1/4
+   # macOS
+   map cmd+r kitten resize_window --fraction=1/3
+
+Inside the resize page, :kbd:`1` selects the Window strategy and :kbd:`2`
+selects the Edge strategy. :kbd:`M` switches the fractional modifier between
+Alt and Shift, and :kbd:`F` opens fraction presets or a custom ratio/decimal.
+Each strategy's modifier and fraction are saved independently, together with
+the selected strategy. Explicit :code:`--strategy` and :code:`--fraction`
+options override saved values for that invocation.
+
+.. figure:: screenshots/resize-fraction-settings.png
+    :alt: Fraction presets and a custom fraction option for the Edge resize strategy
+    :align: center
+    :width: 100%
+
+    F opens fraction settings for the active strategy; C accepts a custom
+    ratio or decimal. The other strategy's saved settings are kept separately.
+
+To move a specific divider in the *Splits* layout, select the edge strategy::
+
+   map kitty_mod+r kitten resize_window --strategy=edge --fraction=1/3
+   # macOS, with a different fractional step
+   map cmd+r kitten resize_window --strategy=edge --fraction=1/4
+
+First press :kbd:`H`, :kbd:`J`, :kbd:`K`, or :kbd:`L` to select the left,
+bottom, top, or right edge of the current pane. Arrow keys also work.
+This first key only selects the edge. Outside edges have no internal divider
+and cannot be selected. If there is exactly one internal edge, it is selected
+automatically on entering this strategy. Then use :kbd:`H`/:kbd:`L` for a left or right edge,
+or :kbd:`J`/:kbd:`K` for a top or bottom edge, to move the selected divider
+in the direction of the key. Neighboring parallel dividers stay in place;
+perpendicular subtrees resize as units.
+
+The chosen Alt/Shift modifier takes the configured fraction of the remaining
+steps; :kbd:`Ctrl` doubles the normal step. The other modifier retains the
+normal step size. :kbd:`Esc` returns to edge selection; press it again to exit.
+:kbd:`Enter` or :kbd:`Q` exits immediately.
+
+In Splits, either strategy uses :kbd:`R` to restore the divider proportions saved when
+resize mode opened, rather than equalizing the layout. If the split structure
+has changed since then, restoration is refused. The initial default
+:code:`--strategy=window` retains the usual width/height controls. Other layouts,
+and Splits when resize mode was opened in a different layout, keep Window's
+default-size reset behavior. Starting the resize kitten again while its page is
+open replaces the page, applying the new options and keeping the saved sizes.
 
 You can also define shortcuts in :file:`kitty.conf` to make the active window
 wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`

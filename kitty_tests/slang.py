@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from unittest.mock import patch
 
@@ -15,18 +16,28 @@ from kitty.shaders.slang import (
     EntryPoint,
     LoadShaderPrograms,
     SlangFile,
+    SlangShaderQuery,
     Stage,
+    apply_pipeline_specializations,
     build_custom_shader_pipeline_glsl,
     build_import_graph,
+    cell_variant,
+    cell_variations,
     clear_caches,
     custom_shader,
+    defines_pointer_map,
+    get_custom_pipeline_src,
     parse_pipeline_definition,
+    parse_slang_declarations,
     parse_slang_text,
     parse_var_directive,
     pipeline_definition,
+    pointer_map_shaders,
     slangc_version,
+    text_contrast_is_identity,
     topological_layers,
     topological_sort,
+    variant_name,
 )
 
 from .base import BaseTest
@@ -391,6 +402,162 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
         self.assertRaises(ValueError, parse_var_directive, ['var', 'uint', '123bad', '=', '1'])
         self.assertRaises(ValueError, parse_var_directive, ['var', 'uint'])
 
+    def test_pointer_map_shaders(self):
+        def pms(src: str) -> tuple[tuple[int, int], ...]:
+            p = parse_pipeline_definition(src.splitlines(), 'test')
+            return pointer_map_shaders(p, lambda g, s: p['groups'][g]['shaders'][s] == 'crt')
+
+        self.ae(pms('startgroup\nshaders crt\nendgroup'), ((0, 0),))
+        self.ae(pms('startgroup\nshaders sample\nendgroup'), ())
+        # The last shader to run is applied first
+        self.ae(pms('startgroup\nshaders crt sample crt\nendgroup\nstartgroup\nshaders crt\nendgroup'), ((1, 0), (0, 2), (0, 0)))
+        # Transient effects and passes that do not draw to the screen do not move pointer events
+        self.ae(pms('startgroup\nanimation_start tab-change\nshaders crt\nendgroup'), ())
+        self.ae(pms('startgroup\nshaders sample\nendgroup\nstartgroup\nattach\nshaders crt\nendgroup'), ())
+        self.ae(pms('textures a\nstartgroup\nshaders crt\noutput_texture a\nendgroup\nstartgroup\nshaders sample\nendgroup'), ())
+        # Groups that draw only part of the screen do not move pointer events everywhere
+        self.ae(pms('startgroup\nshaders crt\nviewport_size 0.5 1\nendgroup\nstartgroup\nshaders sample\nendgroup'), ())
+        self.ae(pms('startgroup\nshaders crt\nviewport_pos 0.5 0\nendgroup\nstartgroup\nshaders sample\nendgroup'), ())
+
+    def test_slang_declarations(self):
+        d = parse_slang_declarations("""
+#language slang 2026
+module m;
+import a.b;
+// float2 commented_out(float2 pos) { return pos; }
+/* float2 also_commented_out(float2 pos) */
+static const float4 TINT = float4(0, 0.8, // the tint
+    0.6, 1);
+static const float ARR[2] = {1, 2};
+extern static const bool FLAG;
+struct S { float2 not_top_level(float2 p) { return p; } };
+public float2
+pointer_map(
+    float2 pos, KittyCustomShaderData d) : SV_Target {
+    static const float local = 1;
+    return pos;
+}
+vector<float, 2> generic<T>(T x) { return float2(0); }
+float2 prototype(float2 p);
+[shader("fragment")] [numthreads(1, 1, 1)]
+float4 frag() { string s = "float2 in_string(float2 p) {}"; return float4(0); }
+""")
+        self.ae(d.module, 'm')
+        self.ae(d.imports, ('a.b',))
+        self.ae([f.name for f in d.functions], ['pointer_map', 'generic', 'prototype', 'frag'])
+        f = d.function('pointer_map')
+        assert f is not None
+        self.ae((f.return_type, f.modifiers, f.has_body), ('float2', frozenset({'public'}), True))
+        self.ae(d.function('generic').return_type, 'vector<float,2>')
+        self.assertFalse(d.function('prototype').has_body)
+        self.ae(d.function('frag').attributes, (('shader', ('fragment',)), ('numthreads', ('1', '1', '1'))))
+        self.ae(
+            [(v.name, v.type, v.modifiers) for v in d.variables],
+            [
+                ('TINT', 'float4', frozenset({'static', 'const'})),
+                ('ARR', 'float', frozenset({'static', 'const'})),
+                ('FLAG', 'bool', frozenset({'extern', 'static', 'const'})),
+            ],
+        )
+        self.ae(d.variable('FLAG').declaration, 'extern static const bool FLAG;')
+        # # not at the start of a line is not a directive
+        self.ae([f.name for f in parse_slang_declarations('float a = 1; # float2 f(float2 p) { return p; }').functions], ['f'])
+
+    def test_cell_contrast_variants(self):
+        self.assertFalse(text_contrast_is_identity('legacy'))
+        self.assertTrue(text_contrast_is_identity('1'))
+        self.assertTrue(text_contrast_is_identity('1.0 0'))
+        self.assertFalse(text_contrast_is_identity('1.7 30'))
+        self.assertFalse(text_contrast_is_identity('2 0'))
+        self.ae(text_contrast_is_identity('platform'), sys.platform != 'darwin')
+        variants = cell_variations()
+        self.ae(len(variants), 27)
+        self.ae(sum(v['TEXT_NEW_GAMMA'] == 'false' for v in variants), 9)
+        self.ae(sum(v['TEXT_CONTRAST_IDENTITY'] == 'true' for v in variants), 9)
+        for v in variants:
+            if v['TEXT_NEW_GAMMA'] == 'false':
+                self.ae(v['TEXT_CONTRAST_IDENTITY'], 'false')
+        default = cell_variant()
+        names = [variant_name(dict(v), default) for v in variants]
+        self.ae(len(names), len(set(names)))
+        self.assertIn('', names)
+
+    def test_apply_pipeline_specializations(self):
+        src = b"""static const float4 TINT = float4(0, 0.8,
+    0.6, 1);  // keep me
+// static const float SCAN = 0.5;
+static const float SCAN = 0.5; static const float  WARP=1;
+extern static const bool FLAG = false;
+float f() { static const float SCAN = 2; return SCAN; }
+"""
+        self.ae(apply_pipeline_specializations(src, {}), src)
+        merged_vars = {'TINT': ('float3', '0.1'), 'SCAN': ('float', '1'), 'WARP': ('float', '2'), 'FLAG': ('bool', 'true')}
+        self.ae(
+            apply_pipeline_specializations(src, merged_vars).decode(),
+            """static const float3 TINT = 0.1;  // keep me
+// static const float SCAN = 0.5;
+static const float SCAN = 1; static const float WARP = 2;
+extern static const bool FLAG = false;
+float f() { static const float SCAN = 2; return SCAN; }
+""",
+        )
+
+    def test_shader_query(self):
+        if not shutil.which(slangc()[0]):
+            self.skipTest(f'slangc ({slangc()[0]}) not found in PATH')
+
+        def q(src: str) -> SlangShaderQuery:
+            return SlangShaderQuery(src.encode(), 'test')
+
+        def has_pm(src: str) -> bool:
+            return defines_pointer_map(q(src))
+
+        self.assertTrue(has_pm(custom_shader('crt')[2].decode()))
+        self.assertFalse(has_pm(custom_shader('sample')[2].decode()))
+        self.assertTrue(has_pm('public float2\npointer_map(float2 pos, KittyCustomShaderData d) { return pos; }'))
+        self.assertTrue(has_pm('public vector<float, 2> pointer_map(float2 pos, KittyCustomShaderData d) { return pos; }'))
+        # Comments, disabled code and strings do not count
+        self.assertFalse(has_pm('// public float2 pointer_map(float2 pos, KittyCustomShaderData d) { return pos; }'))
+        self.assertFalse(has_pm('#if 0\npublic float2 pointer_map(float2 pos, KittyCustomShaderData d) { return pos; }\n#endif'))
+        self.assertFalse(has_pm('float2 f(float2 pos) { return pointer_map(pos); }'))
+        # The preprocessor is applied
+        self.assertTrue(has_pm('#define PM pointer_map\npublic float2 PM(float2 pos, KittyCustomShaderData d) { return pos; }'))
+        # Mistakes are reported rather than ignored
+        self.assertRaises(ValueError, has_pm, 'float2 pointer_map(float2 pos, KittyCustomShaderData d) { return pos; }')
+        self.assertRaises(ValueError, has_pm, 'public float3 pointer_map(float2 pos, KittyCustomShaderData d) { return float3(pos, 0); }')
+        # The preprocessor is run only when the answer could depend on it
+        tracker: set[tuple[str, ...]] = set()
+        self.assertIsNone(SlangShaderQuery(b'float4 f() { return float4(0); }', '', (), tracker).function('pointer_map'))
+        self.assertFalse(tracker)
+
+    def test_sample_pointer_map(self):
+        import struct
+
+        from kitty.fast_data_types import POINTER_MAP_SIZE, sample_pointer_map
+
+        def grid(f) -> bytes:
+            last = POINTER_MAP_SIZE - 1
+            vals = []
+            for y in range(POINTER_MAP_SIZE):
+                for x in range(POINTER_MAP_SIZE):
+                    vals.extend(f(x / last, y / last))
+            return struct.pack(f'{len(vals)}f', *vals)
+
+        def ae(a, b):
+            for x, y in zip(a, b):
+                self.assertAlmostEqual(x, y, places=5)
+
+        identity = grid(lambda u, v: (u, v))
+        for pos in ((0, 0), (1, 1), (0.5, 0.25), (0.123, 0.987), (1, 0)):
+            ae(sample_pointer_map(identity, *pos), pos)
+        # Positions outside the viewport are clamped to its edges
+        ae(sample_pointer_map(identity, -0.5, 1.5), (0, 1))
+        # Linear maps are reproduced exactly between grid points
+        shrink = grid(lambda u, v: (0.1 + 0.8 * u, 1 - v))
+        for u, v in ((0, 0), (0.3, 0.6), (1, 1)):
+            ae(sample_pointer_map(shrink, u, v), (0.1 + 0.8 * u, 1 - v))
+        self.assertRaises(ValueError, sample_pointer_map, b'', 0, 0)
+
     def test_parse_pipeline_definition_vars(self):
         p = parse_pipeline_definition(
             """
@@ -440,6 +607,7 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
         self.assertTrue(len(vert_src) > 0, 'vertex GLSL is empty')
         self.assertTrue(len(frag_src) > 0, 'fragment GLSL is empty')
         self.assertIsInstance(metadata, dict)
+        self.assertFalse(metadata['has_pointer_map'])
         self.assertFalse(invocation_tracker)
 
         if not shutil.which('glslangValidator'):
@@ -518,12 +686,35 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
                 if not frag_src:
                     failures.append(f'{name}: empty fragment GLSL')
             clear_caches()
+            # Builtin pipelines can override constants with var and chain
+            # shaders, so compile them as well
+            pipeline_names = sorted(entry.name[: -len('.pipeline')] for entry in pkg.iterdir() if entry.name.endswith('.pipeline'))
+            for name in pipeline_names:
+                try:
+                    pipeline = parse_pipeline_definition(get_custom_pipeline_src(name).decode().splitlines(), name)
+                    build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
+                except Exception as e:
+                    failures.append(f'{name}.pipeline: {e}')
+            clear_caches()
 
         if failures:
             self.fail('Custom shader compilation failures:\n' + '\n'.join(failures))
 
         with open(_CACHE_FILE, 'w') as f:
             json.dump({'hash': current_hash}, f)
+
+    def test_builtin_pipelines_bundled(self) -> None:
+        # Packaging code filters files by extension, ensure builtin pipelines
+        # and the shaders they reference survive in all build types
+        pkg = ir.files('kitty.shaders.custom')
+        available = {entry.name for entry in pkg.iterdir()}
+        pipelines = sorted(x[: -len('.pipeline')] for x in available if x.endswith('.pipeline'))
+        self.assertIn('cursor-trail-default', pipelines)
+        for name in pipelines:
+            p = parse_pipeline_definition(get_custom_pipeline_src(name).decode().splitlines(), name)
+            for group in p['groups']:
+                for shader in group['shaders']:
+                    self.assertIn(f'{shader}.slang', available, f'Shader {shader} used by pipeline {name} is missing')
 
     def test_pipeline_absolute_path(self) -> None:
         pipeline_content = 'startgroup\n    shaders myshader\nendgroup\n'

@@ -202,20 +202,30 @@ def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_
     return opts
 
 
-def store_effective_config() -> str:
+def store_effective_config() -> tuple[str, str]:
     import os
     import stat
     import tempfile
 
-    dest = os.path.join(cache_dir(), 'effective-config')
-    os.makedirs(dest, exist_ok=True)
-    raw = '\n'.join(effective_config_lines)
-    with suppress(FileNotFoundError), tempfile.NamedTemporaryFile('w', dir=dest) as tf:
-        os.chmod(tf.name, stat.S_IRUSR | stat.S_IWUSR)
-        print(raw, file=tf)
-        path = os.path.join(dest, f'{os.getpid()}')
-        os.replace(tf.name, path)
-    return path
+    path = ''
+    try:
+        dest = os.path.join(cache_dir(), 'effective-config')
+        os.makedirs(dest, exist_ok=True)
+        raw = '\n'.join(effective_config_lines)
+        with suppress(FileNotFoundError), tempfile.NamedTemporaryFile('w', dir=dest) as tf:
+            os.chmod(tf.name, stat.S_IRUSR | stat.S_IWUSR)
+            print(raw, file=tf)
+            path = os.path.join(dest, f'{os.getpid()}')
+            os.replace(tf.name, path)
+    except OSError as err:
+        # effective config is used by some kittens to read the config of the
+        # current kitty instance. If missing they fallback to parsing
+        # kitty.conf so ignore the error which would prevent kitty from
+        # starting.
+        msg = f'Failed to store effective config with error: {err}'
+        log_error(msg)
+        return '', msg
+    return path, ''
 
 
 class KittyCommonOpts(TypedDict):

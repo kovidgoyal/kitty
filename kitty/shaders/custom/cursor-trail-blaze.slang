@@ -79,7 +79,8 @@ public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     if (d.cursor_trail_color.a <= 0.0) return color;
 
-    float age = clamp((d.timestamp - d.cursor_trail_change_time) / DURATION, 0.0, 1.0);
+    if (d.cursor_trail_age < 0.0) return color;
+    float age = clamp(d.cursor_trail_age / DURATION, 0.0, 1.0);
     if (age >= 1.0) return color;
 
     float easedProgress = ease_out10(blend_smooth(age));

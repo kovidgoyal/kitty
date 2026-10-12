@@ -18,6 +18,8 @@ func TestStringLiteralParsing(t *testing.T) {
 		`abc`:                    `abc`,
 		`a\nb\M`:                 "a\nb\\M",
 		`a\x20\x1\u1234\123\12|`: "a \\x1\u1234\123\x0a|",
+		"a\\\nnb":                "anb",
+		"a\\\n\\tb":              "a\tb",
 	} {
 		actual, err := StringLiteral(q)
 		if err != nil {

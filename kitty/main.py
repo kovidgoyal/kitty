@@ -346,6 +346,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         if bad_lines or boss.misc_config_errors:
             boss.show_bad_config_lines(bad_lines, boss.misc_config_errors)
             boss.misc_config_errors = []
+        # load_all_shaders() runs as a create_os_window() callback, before the
+        # Boss exists, so any custom shader failures are reported only now.
+        boss.show_custom_shader_errors()
         if startup_session_error:
             boss.show_error(
                 _('The startup session was invalid'),

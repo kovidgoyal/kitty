@@ -71,8 +71,10 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 		return
 	}
 	ans := &DiskCache{Path: path, MaxSize: max_size}
-	ans.lock()
-	defer ans.unlock()
+	if err = ans.lock(); err != nil {
+		return
+	}
+	defer ans.unlock_and_set_err(&err)
 	if err = ans.ensure_entries(); err != nil {
 		return
 	}
@@ -110,26 +112,32 @@ func key_for_path(path string) (key string, err error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// lock() and unlock() must be paired: unlock() must only be called after a
+// successful lock(). lock() is not re-entrant, so it must not be called while
+// the lock is already held, that will deadlock.
 func (dc *DiskCache) lock() (err error) {
 	dc.lock_mutex.Lock()
-	defer dc.lock_mutex.Unlock()
-	if dc.lock_file != nil {
-		return
-	}
+	defer func() {
+		if err != nil {
+			_ = dc.unlock()
+		}
+	}()
 	if dc.lock_file, err = os.OpenFile(filepath.Join(dc.Path, "lockfile"), os.O_RDWR|os.O_CREATE, 0o600); err != nil {
 		return
 	}
 	return utils.LockFileExclusive(dc.lock_file)
 }
 
-func (dc *DiskCache) unlock() {
-	dc.lock_mutex.Lock()
+func (dc *DiskCache) unlock() (err error) {
 	defer dc.lock_mutex.Unlock()
 	if dc.lock_file != nil {
-		utils.UnlockFile(dc.lock_file)
-		dc.lock_file.Close()
+		err = utils.UnlockFile(dc.lock_file)
+		if ce := dc.lock_file.Close(); ce != nil && err == nil {
+			err = ce
+		}
 		dc.lock_file = nil
 	}
+	return
 }
 
 const ENTRIES_NAME = "entries.json"
@@ -275,14 +283,30 @@ func (dc *DiskCache) folder_for_key(key string) (ans string) {
 
 func (dc *DiskCache) export_to_get_dir(key, path string) (string, error) {
 	dest := filepath.Join(dc.get_dir, key+"-"+filepath.Base(path))
-	if err := os.Link(path, dest); err != nil {
-		os.Remove(dest)
-		if err := os.Link(path, dest); err != nil {
-			return "", err
-		}
+	if err := os.Link(path, dest); err == nil {
+		return dest, nil
+	} else if !os.IsExist(err) {
+		return "", err
+	}
+	src_info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	if dest_info, err := os.Stat(dest); err == nil && os.SameFile(src_info, dest_info) {
+		return dest, nil
+	}
+	// Replace dest atomically so that a path previously returned to a
+	// caller is never missing, even momentarily.
+	temp := dest + ".temp"
+	_ = os.Remove(temp)
+	if err := os.Link(path, temp); err != nil {
+		return "", err
+	}
+	if err := os.Rename(temp, dest); err != nil {
+		_ = os.Remove(temp)
+		return "", err
 	}
 	return dest, nil
-
 }
 
 func (dc *DiskCache) get(key string, items []string) (map[string]string, error) {
@@ -392,10 +416,18 @@ func (dc *DiskCache) prune() (bool, error) {
 
 func (dc *DiskCache) update_timestamp(key string) {
 	t := dc.entry_map[key]
+	if t == nil {
+		// the folder for key exists but is not in the metadata, can happen
+		// if entries.json was written by an older, racy version
+		return
+	}
 	t.LastUsed = time.Now()
-	idx := slices.Index(dc.entries.SortedEntries, t)
-	copy(dc.entries.SortedEntries[idx:], dc.entries.SortedEntries[idx+1:])
-	dc.entries.SortedEntries[len(dc.entries.SortedEntries)-1] = t
+	if idx := slices.Index(dc.entries.SortedEntries, t); idx < 0 {
+		dc.entries.SortedEntries = append(dc.entries.SortedEntries, t)
+	} else {
+		copy(dc.entries.SortedEntries[idx:], dc.entries.SortedEntries[idx+1:])
+		dc.entries.SortedEntries[len(dc.entries.SortedEntries)-1] = t
+	}
 	dc.entries_dirty = true
 }
 

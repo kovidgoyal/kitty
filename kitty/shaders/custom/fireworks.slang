@@ -77,7 +77,7 @@ public float4
 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
     float aspect = pixelDims.x / pixelDims.y;
-    float time = fmod(d.timestamp, 3600.0f) * TIME_SCALE;
+    float time = d.wrapped_time(3600u) * TIME_SCALE;
 
     // Aspect-corrected UV with y=0 at top so gravity points downward
     float2 uv = t.pos;
@@ -98,7 +98,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
         p.x *= 1.6f;
         c += explosion(uv, p, id, et);
     }
-    c = rainbow(c, d.timestamp);
+    c = rainbow(c, d.wrapped_time(3600u));
 
     float4 terminalColor = t.backbuffer.Sample(t.pos);
     float alpha = step(length(terminalColor.rgb), BLACK_BLEND_THRESHOLD);

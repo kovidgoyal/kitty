@@ -30,13 +30,17 @@ class Launch(RemoteCommand):
     var/list.str: List of user variables of the form NAME=VALUE
     os_panel/list.str: List of panel settings
     tab_title/str: Title for the new tab
-    type/choices.window.tab.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
+    type/choices.window.window-dock.tab.tab-dock.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
+    dock_edge/choices.left.top.right.bottom: The edge at which to place a docked window
+    dock_size/str: The size of a docked window as a number of cells or a percentage
+    dock_skip_focus/bool: Boolean indicating whether the docked window should never get keyboard focus
     keep_focus/bool: Boolean indicating whether the current window should retain focus or not
+    focus_existing/str: Match expression for an existing window/tab to focus instead of launching
     copy_colors/bool: Boolean indicating whether to copy the colors from the current window
     copy_cmdline/bool: Boolean indicating whether to copy the cmdline from the current window
     copy_env/list.str=copy_local_env: List of strings representing the local env vars
     hold/bool: Boolean indicating whether to keep window open after cmd exits
-    location/choices.first.after.before.neighbor.last.vsplit.hsplit.split.default: Where in the tab to open the new window
+    location/choices.first.after.before.neighbor.last.vsplit.hsplit.split.by-title.default: Where in the tab to open the new window
     allow_remote_control/bool: Boolean indicating whether to allow remote control from the new window
     remote_control_password/list.str: A list of remote control passwords
     stdin_source/choices.none.@selection.@screen.@screen_scrollback.@alternate.@alternate_scrollback.\

@@ -143,6 +143,8 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     key[keylen] = 0;
     hyperlink_map_itr itr = vt_get(&pool->map, key);
     if (!vt_is_end(itr)) return itr.data->val;
+    // Collect before inserting the new hyperlink, which has no cell references yet.
+    if (++pool->adds_since_last_gc > 8192) screen_garbage_collect_hyperlink_pool(screen);
     if (pool->array.count >= HYPERLINK_MAX_NUMBER - 1) {
         screen_garbage_collect_hyperlink_pool(screen);
         if (pool->array.count >= HYPERLINK_MAX_NUMBER - 128) {
@@ -159,9 +161,6 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     hyperlink_id_type new_id = pool->array.count++;
     pool->array.items[new_id] = dupstr(key, keylen);
     if (vt_is_end(vt_insert(&pool->map, pool->array.items[new_id], new_id))) fatal("Out of memory");
-    // If there have been a lot of hyperlink adds do a garbage collect so as
-    // not to leak too much memory over unused hyperlinks
-    if (++pool->adds_since_last_gc > 8192) screen_garbage_collect_hyperlink_pool(screen);
     return new_id;
 }
 

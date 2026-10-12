@@ -191,8 +191,8 @@ def run_go(packages: set[str], names: Sequence[str]) -> GoProc:
     go = go_exe()
     go_pkg_args = [f'github.com/kovidgoyal/kitty/{x}' for x in packages]
     cmd = [go, 'test', '--tags', 'testing', '-v', '-json']
-    for name in names:
-        cmd.extend(('-run', name))
+    if names:
+        cmd.extend(('-run', '^Test(?:' + '|'.join(re.escape(name) for name in names) + ')$'))
     cmd += go_pkg_args
     return GoProc(cmd)
 
@@ -227,10 +227,12 @@ def env_vars(**kw: str) -> Iterator[None]:
 
 def path_for_python_tests() -> str:
     """The PATH used by tests: the built launcher dir followed by all entries not under the real home dir."""
+    from kitty.constants import kitty_exe
+
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
-    launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
+    launcher_dir = os.path.dirname(kitty_exe())
     return f'{launcher_dir}{os.pathsep}{path}'
 
 
@@ -476,6 +478,7 @@ def collect_worker_results(
     go_failures: list[tuple[str, str]] = []
     go_test_output: dict[str, list[str]] = {}
     go_pkg_output: dict[str, list[str]] = {}
+    go_other_output: list[str] = []
 
     # (elapsed_seconds, label) for every completed test in both suites
     all_timings: list[tuple[float, str]] = []
@@ -519,6 +522,8 @@ def collect_worker_results(
                 except OSError:
                     chunk = b''
                 if not chunk:
+                    if go_buffer:
+                        go_other_output.append(go_buffer.decode('utf-8', errors='replace'))
                     go_active = False
                     go_proc.finish()
                     show_progress(force=True)
@@ -531,6 +536,7 @@ def collect_worker_results(
                     try:
                         evt: dict[str, Any] = json.loads(raw)
                     except json.JSONDecodeError:
+                        go_other_output.append(raw.decode('utf-8', errors='replace') + '\n')
                         continue
                     action = evt.get('Action', '')
                     test_name = evt.get('Test', '')
@@ -652,6 +658,13 @@ def collect_worker_results(
         print(sep2)
         if go_output:
             print(go_output, end='' if go_output.endswith('\n') else '\n')
+
+    if go_proc is not None and go_proc.returncode != 0 and go_other_output:
+        print(sep1)
+        print(c(_RED + _BOLD, 'GO ERROR'))
+        print(sep2)
+        output = ''.join(go_other_output)
+        print(output, end='' if output.endswith('\n') else '\n')
 
     if py_unexpected_successes:
         print(sep1)

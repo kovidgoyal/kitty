@@ -30,7 +30,7 @@ import (
 	"github.com/emmansun/base64"
 	"golang.org/x/sys/unix"
 
-	"github.com/kovidgoyal/go-shm"
+	shm "github.com/kovidgoyal/go-shm/v2"
 	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/themes"

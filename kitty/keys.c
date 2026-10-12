@@ -150,7 +150,9 @@ prepare_ime_position_update_event(OSWindow *osw, Window *w, Screen *screen, GLFW
     unsigned int cell_width = osw->fonts_data->fcm.cell_width, cell_height = osw->fonts_data->fcm.cell_height;
     unsigned int left = w->render_data.geometry.left, top = w->render_data.geometry.top;
     if (screen_is_overlay_active(screen)) {
-        left += screen->overlay_line.cursor_x * cell_width;
+        // Anchor to the start of the pre-edit text rather than its end, so the
+        // IME candidate window does not jump horizontally as the pre-edit grows.
+        left += screen_overlay_line_start(screen) * cell_width;
         top += MIN(screen->overlay_line.ynum + screen->scrolled_by, screen->lines - 1) * cell_height;
     } else {
         left += screen->cursor->x * cell_width;
@@ -244,6 +246,14 @@ dispatch_buffered_keys(Window *w) {
         debug("Sending previously buffered key ");
         send_key_to_child(w->id, w->render_data.screen, keys + i);
     }
+    free_buffered_keys(w);
+}
+
+void
+free_buffered_keys(Window *w) {
+    GLFWkeyevent *keys = w->buffered_keys.key_data;
+    // the text of buffered events is owned by us, see on_key_input()
+    for (size_t i = 0; i < w->buffered_keys.count; i++) free((char *)keys[i].text);
     free(w->buffered_keys.key_data);
     zero_at_ptr(&w->buffered_keys);
 }
@@ -287,6 +297,8 @@ on_key_input(const GLFWkeyevent *ev) {
             debug("handled wayland IME done event\n");
             return;
         case GLFW_IME_PREEDIT_CHANGED:
+            // Empty pre-edit events are also sent without an IME, for example on focus loss
+            if (*text) global_state.ime_used = true;
             screen_update_overlay_text(screen, text);
             update_ime_position(w, screen);
             debug("updated pre-edit text: '%s'\n", text);
@@ -347,13 +359,14 @@ on_key_input(const GLFWkeyevent *ev) {
     if (w->buffered_keys.enabled) {
         if (w->buffered_keys.capacity < w->buffered_keys.count + 1) {
             w->buffered_keys.capacity = MAX(16u, w->buffered_keys.capacity + 8);
-            GLFWkeyevent *new = malloc(w->buffered_keys.capacity * sizeof(GLFWkeyevent));
+            GLFWkeyevent *new = realloc(w->buffered_keys.key_data, w->buffered_keys.capacity * sizeof(GLFWkeyevent));
             if (!new) fatal("Out of memory");
-            memcpy(new, w->buffered_keys.key_data, w->buffered_keys.count * sizeof(new[0]));
             w->buffered_keys.key_data = new;
         }
-        GLFWkeyevent *k = w->buffered_keys.key_data;
-        k[w->buffered_keys.count++] = *ev;
+        GLFWkeyevent *k = (GLFWkeyevent *)w->buffered_keys.key_data + w->buffered_keys.count++;
+        *k = *ev;
+        // ev->text is only valid for the duration of this call
+        if (ev->text && !(k->text = strdup(ev->text))) fatal("Out of memory");
         debug("buffering key until child is ready\n");
     } else send_key_to_child(w->id, screen, ev);
 #undef dispatch_key_event

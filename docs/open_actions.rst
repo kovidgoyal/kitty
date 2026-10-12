@@ -113,8 +113,9 @@ lines. The various available criteria are:
     Useful if your system MIME database does not have definitions you need. This
     file is in the standard format of one definition per line, like:
     ``text/plain rst md``. Note that the MIME type for directories is
-    ``inode/directory``. MIME types are detected based on file extension, not
-    file contents.
+    ``inode/directory``. MIME types are detected based on file name, not
+    file contents. On Linux and BSD the system shared-mime-info database
+    (:file:`mime/mime.cache` in the XDG data directories) is used.
 
 ``ext``
     A comma separated list of file extensions, for example: ``jpeg, tar.gz``

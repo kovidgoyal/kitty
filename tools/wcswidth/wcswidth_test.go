@@ -8,6 +8,26 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func TestNonZeroWidthSpacingMarks(t *testing.T) {
+	// The cell a SpacingMark with non-zero width combines into is widened, both here and
+	// in kitty's C code. Only U+0E33 and U+0EB3 have that combination of properties, which
+	// docs/text-sizing-protocol.rst specifies, so guard against a Unicode data refresh
+	// silently changing the set.
+	expected := map[rune]bool{0x0e33: true, 0x0eb3: true}
+	for r := rune(0); r <= MAX_UNICODE; r++ {
+		cp := CharPropsFor(r)
+		if cp.Grapheme_break() == uint8(GBP_SpacingMark) && cp.Width() > 0 {
+			if !expected[r] {
+				t.Fatalf("U+%04X is an unexpected non-zero width SpacingMark of width: %d", r, cp.Width())
+			}
+			delete(expected, r)
+		}
+	}
+	for r := range expected {
+		t.Fatalf("U+%04X is no longer a non-zero width SpacingMark", r)
+	}
+}
+
 func TestWCSWidth(t *testing.T) {
 
 	wcswidth := func(text string, expected int) {
@@ -36,6 +56,12 @@ func TestWCSWidth(t *testing.T) {
 	wcswidth("\U0001F1E6\U0001F1E8a", 3)
 	wcswidth("\U0001F1E6\U0001F1E8\U0001F1E6", 4)
 	wcswidth("a\u00adb", 2)
+	// Thai/Lao SARA AM is a SpacingMark with width 1, it widens the cell it combines into
+	wcswidth("จำ", 2)
+	wcswidth("ำ", 1)
+	wcswidth("กิ", 1)
+	wcswidth("จำำ", 2)
+	wcswidth("ກຳ", 2)
 	wcswidth("a\x1b[22bcd", 25)
 	// Flags individually and together
 	wcwidth("\U0001f1ee\U0001f1f3", 2, 2)

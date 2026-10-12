@@ -113,6 +113,8 @@ def generate_wrappers(glfw_header: str) -> None:
     pid_t glfwWaylandCompositorPID(void)
     double glfwGetWaylandCurrentMonitorFractionalScale(void)
     void glfwConfigureMomentumScroller(double friction, double min_velocity, double max_velocity, unsigned timer_interval)
+    void glfwFeedMomentumScroller(GLFWwindow *window, double dx, double dy, int keyboard_modifiers, bool stopped, monotonic_t timestamp)
+    void glfwCancelMomentumScroll(void)
     unsigned long long glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
     int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)

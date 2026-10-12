@@ -566,6 +566,58 @@ typedef struct GLFWScrollEvent {
     int keyboard_modifiers;
 } GLFWScrollEvent;
 
+// Touch events are reported only for direct touch devices, i.e. touchscreens,
+// where a touch has a position in the window. Indirect devices such as
+// touchpads are reported as pointer and scroll events instead. While touch
+// events are delivered for a window, the system does not also deliver
+// pointer events emulated from the same touches.
+typedef enum GLFWTouchEventType {
+    // The first finger of a sequence touched the window
+    GLFW_TOUCH_BEGIN = 1,
+    // A finger touched, moved or lifted while others stay down
+    GLFW_TOUCH_UPDATE = 2,
+    // The last finger of the sequence lifted
+    GLFW_TOUCH_END = 3,
+    // The system took the sequence over, for example for a gesture of its own;
+    // the application must discard everything the sequence did so far
+    GLFW_TOUCH_CANCEL = 4,
+} GLFWTouchEventType;
+
+// Every point is reported as GLFW_TOUCH_POINT_PRESSED in exactly one event and
+// then, unless the sequence is canceled, as GLFW_TOUCH_POINT_RELEASED in a
+// later event. A point that is pressed and released at the same time is
+// reported in two events, one after the other. So a GLFW_TOUCH_BEGIN event
+// never contains a released point.
+typedef enum GLFWTouchPointState {
+    GLFW_TOUCH_POINT_PRESSED = 1,
+    GLFW_TOUCH_POINT_MOVED = 2,
+    GLFW_TOUCH_POINT_STATIONARY = 3,
+    GLFW_TOUCH_POINT_RELEASED = 4,
+} GLFWTouchPointState;
+
+typedef struct GLFWTouchPoint {
+    // Unique among the points that are down at the same time; the system can
+    // reuse it after the point is released
+    int32_t id;
+    GLFWTouchPointState state;
+    // In window content coordinates, the same as the cursor position
+    double x, y;
+} GLFWTouchPoint;
+
+typedef struct GLFWTouchEvent {
+    GLFWTouchEventType type;
+    int keyboard_modifiers;
+    // When the system generated the event, on the same clock as monotonic(). Events
+    // can be delivered in bursts, so use this rather than the time of delivery to
+    // measure taps, long presses and the velocity of flings
+    monotonic_t timestamp;
+    // Every point that is down on the window, and the points that were released
+    // in this event. At most 16 points are tracked, further simultaneous points
+    // are ignored. The array is valid only during the callback
+    size_t num_points;
+    const GLFWTouchPoint *points;
+} GLFWTouchEvent;
+
 /*! @defgroup joysticks Joysticks
  *  @brief Joystick IDs.
  *
@@ -1780,6 +1832,25 @@ typedef void (*GLFWcursorenterfun)(GLFWwindow *, int);
  */
 typedef void (*GLFWscrollfun)(GLFWwindow *, const GLFWScrollEvent *);
 
+/*! @brief The function pointer type for touch callbacks.
+ *
+ *  This is the function pointer type for touch callbacks.  A touch callback
+ *  function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, const GLFWTouchEvent* event)
+ *  @endcode
+ *
+ *  @param[in] window The window that received the event.
+ *  @param[in] event The touch event. A sequence opens with @ref
+ *  GLFW_TOUCH_BEGIN and closes with either @ref GLFW_TOUCH_END or @ref
+ *  GLFW_TOUCH_CANCEL.
+ *
+ *  @sa @ref glfwSetTouchCallback
+ *
+ *  @ingroup input
+ */
+typedef void (*GLFWtouchfun)(GLFWwindow *, const GLFWTouchEvent *);
+
 /*! @brief The function pointer type for key callbacks.
  *
  *  This is the function pointer type for key callbacks.  A keyboard
@@ -1958,6 +2029,13 @@ typedef enum { GLFW_CLIPBOARD, GLFW_PRIMARY_SELECTION } GLFWClipboardType;
 typedef GLFWDataChunk (*GLFWclipboarditerfun)(const char *mime_type, void *iter, GLFWClipboardType ctype);
 typedef bool (*GLFWclipboardwritedatafun)(void *object, const char *data, size_t sz);
 typedef bool (*GLFWimecursorpositionfun)(GLFWwindow *window, GLFWIMEUpdateEvent *ev);
+// The text on either side of the text cursor, used by input methods to decide
+// things like whether a space is needed between Latin and CJK text. Both are
+// UTF-8, allocated with malloc() and must be freed by the caller. Either can be NULL.
+typedef struct GLFWIMETextAroundCursor {
+    char *before, *after;
+} GLFWIMETextAroundCursor;
+typedef bool (*GLFWimetextaroundcursorfun)(GLFWwindow *window, GLFWIMETextAroundCursor *output);
 typedef void (*GLFWclipboardlostfun)(GLFWClipboardType);
 
 /*! @brief Video mode type.
@@ -2115,6 +2193,7 @@ GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun function);
 GLFWAPI GLFWcurrentselectionfun glfwSetCurrentSelectionCallback(GLFWcurrentselectionfun callback);
 GLFWAPI GLFWhascurrentselectionfun glfwSetHasCurrentSelectionCallback(GLFWhascurrentselectionfun callback);
 GLFWAPI GLFWimecursorpositionfun glfwSetIMECursorPositionCallback(GLFWimecursorpositionfun callback);
+GLFWAPI GLFWimetextaroundcursorfun glfwSetIMETextAroundCursorCallback(GLFWimetextaroundcursorfun callback);
 GLFWAPI bool glfwIsLayerShellSupported(void);
 
 /*! @brief Terminates the GLFW library.
@@ -4984,6 +5063,44 @@ GLFWAPI GLFWcursorenterfun glfwSetCursorEnterCallback(GLFWwindow *window, GLFWcu
  *  @ingroup input
  */
 GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow *window, GLFWscrollfun callback);
+
+/*! @brief Sets the touch callback.
+ *
+ *  This function sets the touch callback of the specified window, which is
+ *  called when fingers touch the window content on a touchscreen. The events
+ *  are not converted to mouse events: that is left to the application.
+ *
+ *  A touch point belongs to the window it first touched and is reported to
+ *  that window alone until it is released.
+ *
+ *  Only direct touch devices (touchscreens) are reported. Touchpads, including
+ *  the macOS trackpad, are reported as pointer and scroll events. When a finger
+ *  touches the screen, any momentum scroll in progress is canceled. To scroll
+ *  in response to touches with the same momentum as touchpad scrolling, feed
+ *  the finger movement to glfwFeedMomentumScroller().
+ *
+ *  Only the Wayland backend reports touch events at the moment.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] callback The new touch callback, or `NULL` to remove the
+ *  currently set callback.
+ *  @return The previously set callback, or `NULL` if no callback was set or the
+ *  library had not been [initialized](@ref intro_init).
+ *
+ *  @callback_signature
+ *  @code
+ *  void function_name(GLFWwindow* window, const GLFWTouchEvent* event)
+ *  @endcode
+ *  For more information about the callback parameters, see the
+ *  [function pointer type](@ref GLFWtouchfun).
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @ingroup input
+ */
+GLFWAPI GLFWtouchfun glfwSetTouchCallback(GLFWwindow *window, GLFWtouchfun callback);
 
 GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow *window, GLFWliveresizefun callback);
 

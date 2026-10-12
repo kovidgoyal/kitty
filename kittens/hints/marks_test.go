@@ -98,6 +98,17 @@ func TestHintMarking(t *testing.T) {
 	r("file.epub.", "file.epub")
 	r("(file.epub)", "file.epub")
 	r("some/path", "some/path")
+	// long lines without spaces must not cause quadratic backtracking
+	long_line := strings.Repeat("1,", 20000)
+	r(long_line)
+	r("漢字 "+long_line+" some/path", "some/path")
+	r("漢字"+long_line+"a.txt", "漢字"+long_line+"a.txt")
+	// \b must use Unicode word characters, like regexp2
+	r("config.yaml文件")
+	r("a.txt文 é/b.c", "a.txt文", "é/b.c")
+	opts.Type = "linenum"
+	r(long_line)
+	m(long_line+" a/file.c:23", "a/file.c", 23)
 
 	reset()
 	cols = 60

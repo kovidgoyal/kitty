@@ -44,6 +44,11 @@ monotonic_t_to_ms(monotonic_t time) {
 }
 
 static inline int
+monotonic_t_to_ms_ceil(monotonic_t time) {
+    return (int)((time + MONOTONIC_T_1e6 - 1) / MONOTONIC_T_1e6);
+}
+
+static inline int
 monotonic_t_to_us(monotonic_t time) {
     return (int)(time / MONOTONIC_T_1e3);
 }

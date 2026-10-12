@@ -9,7 +9,6 @@ from collections import defaultdict
 from collections.abc import Callable, Container, Iterable, Iterator, Sequence
 from contextlib import suppress
 from dataclasses import dataclass, fields
-from functools import lru_cache
 from typing import (
     Any,
     Generic,
@@ -80,6 +79,13 @@ for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
 sequence_sep = '>'
 mouse_button_map = {'left': 'b1', 'middle': 'b3', 'right': 'b2'}
+mouse_wheel_map = {
+    'wheel_up': defines.MOUSE_WHEEL_UP,
+    'wheel_down': defines.MOUSE_WHEEL_DOWN,
+    'wheel_left': defines.MOUSE_WHEEL_LEFT,
+    'wheel_right': defines.MOUSE_WHEEL_RIGHT,
+}
+mouse_wheel_buttons = frozenset(mouse_wheel_map.values())
 mouse_trigger_count_map = {'doubleclick': -3, 'click': -2, 'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}
 FuncArgsType = tuple[str, Sequence[Any]]
 func_with_args = KeyFuncWrapper[FuncArgsType]()
@@ -187,6 +193,8 @@ def goto_tab_parse(func: str, rest: str) -> FuncArgsType:
 
 @func_with_args('detach_window')
 def detach_window_parse(func: str, rest: str) -> FuncArgsType:
+    if rest.startswith('-'):
+        return shlex_parse(func, rest)
     if rest not in ('new', 'new-tab', 'new-tab-left', 'new-tab-right', 'ask', 'tab-prev', 'tab-left', 'tab-right'):
         log_error(f'Ignoring invalid detach_window argument: {rest}')
         rest = 'new'
@@ -1278,16 +1286,23 @@ class ActionAlias(NamedTuple):
 class AliasMap:
     def __init__(self) -> None:
         self.aliases: dict[str, list[ActionAlias]] = {}
+        self.resolved: dict[tuple[str, MapType], tuple[KeyAction, ...]] = {}
 
     def append(self, name: str, aa: ActionAlias) -> None:
         self.aliases.setdefault(name, []).append(aa)
+        self.resolved.clear()
 
     def update(self, aa: 'AliasMap') -> None:
         self.aliases.update(aa.aliases)
+        self.resolved.clear()
 
-    @lru_cache(maxsize=256)
     def resolve_aliases(self, definition: str, map_type: MapType = MapType.MAP) -> tuple[KeyAction, ...]:
-        return tuple(resolve_aliases_and_parse_actions(definition, self.aliases, map_type))
+        key = definition, map_type
+        if (ans := self.resolved.get(key)) is None:
+            if len(self.resolved) >= 256:
+                self.resolved.clear()
+            ans = self.resolved[key] = tuple(resolve_aliases_and_parse_actions(definition, self.aliases, map_type))
+        return ans
 
 
 def build_action_aliases(raw: dict[str, str], first_arg_replacement: str = '') -> AliasMap:
@@ -1621,8 +1636,11 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         obutton = parts[0].lower()
         mods = 0
     try:
-        b = mouse_button_map.get(obutton, obutton)[1:]
-        button = getattr(defines, f'GLFW_MOUSE_BUTTON_{b}')
+        if obutton in mouse_wheel_map:
+            button = mouse_wheel_map[obutton]
+        else:
+            b = mouse_button_map.get(obutton, obutton)[1:]
+            button = getattr(defines, f'GLFW_MOUSE_BUTTON_{b}')
     except Exception:
         log_error(f'Mouse button: {xbutton} not recognized, ignoring')
         return
@@ -1630,6 +1648,9 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         count = mouse_trigger_count_map[event.lower()]
     except KeyError:
         log_error(f'Mouse event type: {event} not recognized, ignoring')
+        return
+    if obutton in mouse_wheel_map and count != 1:
+        log_error(f'Mouse event type for {obutton} must be press, ignoring: {val}')
         return
     specified_modes = frozenset(modes.lower().split(','))
     if specified_modes - {'grabbed', 'ungrabbed'}:

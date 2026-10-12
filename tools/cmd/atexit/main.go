@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/kovidgoyal/go-shm"
+	shm "github.com/kovidgoyal/go-shm/v2"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
