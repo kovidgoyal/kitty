@@ -164,8 +164,24 @@ type sortable_dir_entry struct {
 
 const SymlinkToDir = 1
 
+// SymlinkToDir shares its bit with the other-execute permission bit, so it is
+// only meaningful when combined with fs.ModeSymlink
+func is_symlink_to_dir(ftype fs.FileMode) bool {
+	return ftype&fs.ModeSymlink != 0 && ftype&SymlinkToDir != 0
+}
+
 func is_directory(ftype fs.FileMode) bool {
-	return ftype.IsDir() || ftype&SymlinkToDir != 0
+	return ftype.IsDir() || is_symlink_to_dir(ftype)
+}
+
+// Mark ftype with SymlinkToDir if it is a symlink pointing to a directory
+func resolve_symlink_to_dir(path string, ftype fs.FileMode) fs.FileMode {
+	if ftype&fs.ModeSymlink != 0 {
+		if st, err := os.Stat(path); err == nil && st.IsDir() {
+			ftype |= SymlinkToDir
+		}
+	}
+	return ftype
 }
 
 // lowercase a string into a pre-existing byte buffer with speedups for ASCII
@@ -305,10 +321,9 @@ func (fss *FileSystemScanner) worker() {
 		for i, e := range entries {
 			name := e.Name()
 			ftype := e.Type()
-			if ftype&fs.ModeSymlink != 0 {
-				if st, serr := os.Stat(dir + name); serr == nil && st.IsDir() {
-					ftype |= SymlinkToDir
-				}
+			// avoid stat() on hidden entries that will be skipped anyway
+			if fss.show_hidden || name[0] != '.' || name == dot_git {
+				ftype = resolve_symlink_to_dir(dir+name, ftype)
 			}
 			is_dir := is_directory(ftype)
 			if !is_dir {

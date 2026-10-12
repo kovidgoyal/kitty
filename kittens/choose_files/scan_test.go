@@ -315,6 +315,36 @@ func TestChooseFilesDirectorySymlinks(t *testing.T) {
 	}
 }
 
+func TestIsDirectory(t *testing.T) {
+	for _, tc := range []struct {
+		ftype    fs.FileMode
+		expected bool
+	}{
+		{0, false},
+		{0o755, false},
+		{fs.ModeDir, true},
+		{fs.ModeSymlink, false},
+		{fs.ModeSymlink | SymlinkToDir, true},
+	} {
+		if actual := is_directory(tc.ftype); actual != tc.expected {
+			t.Fatalf("is_directory(%s) = %v, expected %v", tc.ftype, actual, tc.expected)
+		}
+	}
+	tdir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(tdir, "dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("dir", filepath.Join(tdir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if ftype := resolve_symlink_to_dir(filepath.Join(tdir, "link"), fs.ModeSymlink); !is_symlink_to_dir(ftype) {
+		t.Fatalf("symlink to directory not resolved: %s", ftype)
+	}
+	if ftype := resolve_symlink_to_dir(filepath.Join(tdir, "missing"), fs.ModeSymlink); is_directory(ftype) {
+		t.Fatalf("dangling symlink resolved as directory: %s", ftype)
+	}
+}
+
 func TestSortedResults(t *testing.T) {
 	r := NewSortedResults()
 	idx := CollectionIndex{}
