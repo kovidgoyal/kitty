@@ -79,7 +79,13 @@ for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
 sequence_sep = '>'
 mouse_button_map = {'left': 'b1', 'middle': 'b3', 'right': 'b2'}
-mouse_wheel_map = {'wheel_up': defines.MOUSE_WHEEL_UP, 'wheel_down': defines.MOUSE_WHEEL_DOWN}
+mouse_wheel_map = {
+    'wheel_up': defines.MOUSE_WHEEL_UP,
+    'wheel_down': defines.MOUSE_WHEEL_DOWN,
+    'wheel_left': defines.MOUSE_WHEEL_LEFT,
+    'wheel_right': defines.MOUSE_WHEEL_RIGHT,
+}
+mouse_wheel_buttons = frozenset(mouse_wheel_map.values())
 mouse_trigger_count_map = {'doubleclick': -3, 'click': -2, 'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}
 FuncArgsType = tuple[str, Sequence[Any]]
 func_with_args = KeyFuncWrapper[FuncArgsType]()

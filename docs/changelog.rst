@@ -306,8 +306,9 @@ Detailed list of changes
   moves it, so it no longer briefly appears at the previous position at the
   start of the next composition (:pull:`10644`)
 
-- :ref:`mouse_map <conf-kitty-mouse.mousemap>` can now map the scroll wheel, via the :code:`wheel_up` and
-  :code:`wheel_down` buttons, for example, to change the font size with
+- :ref:`mouse_map <conf-kitty-mouse.mousemap>` can now map the scroll wheel, via
+  the :code:`wheel_up`, :code:`wheel_down`, :code:`wheel_left` and
+  :code:`wheel_right` buttons, for example, to change the font size with
   :kbd:`Ctrl+scroll`
 
 - Fix closing an unfocused window that comes before the focused window in the

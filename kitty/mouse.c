@@ -207,6 +207,8 @@ set_currently_hovered_window(id_type window_id, int modifiers, bool focus_follow
 // these, count is the number of wheel steps, which is always positive.
 #define MOUSE_WHEEL_UP (GLFW_MOUSE_BUTTON_LAST + 1)
 #define MOUSE_WHEEL_DOWN (GLFW_MOUSE_BUTTON_LAST + 2)
+#define MOUSE_WHEEL_LEFT (GLFW_MOUSE_BUTTON_LAST + 3)
+#define MOUSE_WHEEL_RIGHT (GLFW_MOUSE_BUTTON_LAST + 4)
 
 static bool
 dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
@@ -233,13 +235,13 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
             const char *evname = "move";
             if (button > GLFW_MOUSE_BUTTON_LAST) evname = "press";
             else switch (count) {
-                case -3: evname = "doubleclick"; break;
-                case -2: evname = "click"; break;
-                case -1: evname = "release"; break;
-                case 1: evname = "press"; break;
-                case 2: evname = "doublepress"; break;
-                case 3: evname = "triplepress"; break;
-            }
+                    case -3: evname = "doubleclick"; break;
+                    case -2: evname = "click"; break;
+                    case -1: evname = "release"; break;
+                    case 1: evname = "press"; break;
+                    case 2: evname = "doublepress"; break;
+                    case 3: evname = "triplepress"; break;
+                }
             const char *bname = "unknown";
             switch (button) {
                 case GLFW_MOUSE_BUTTON_LEFT: bname = "left"; break;
@@ -252,6 +254,8 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
                 case GLFW_MOUSE_BUTTON_8: bname = "b8"; break;
                 case MOUSE_WHEEL_UP: bname = "wheel_up"; break;
                 case MOUSE_WHEEL_DOWN: bname = "wheel_down"; break;
+                case MOUSE_WHEEL_LEFT: bname = "wheel_left"; break;
+                case MOUSE_WHEEL_RIGHT: bname = "wheel_right"; break;
             }
             debug("\x1b[33mon_mouse_input\x1b[m: %s button: %s %sgrabbed: %d handled_in_kitty: %d\n", evname, bname, format_mods(modifiers), grabbed, handled);
         }
@@ -1582,14 +1586,14 @@ mapped_scroll_steps(GLFWOffsetType offset_type, double offset, double *pending, 
         const int s = (int)round(offset);
         return s ? s : *direction;
     }
-    if (*pending * offset < 0) *pending = 0;  // direction reversed, start a fresh step
+    if (*pending * offset < 0) *pending = 0; // direction reversed, start a fresh step
     *pending += offset;
     const int s = (int)(*pending / step_size);
     *pending -= s * step_size;
     return s;
 }
 
-// Bit i of wheel_mappings[direction][grabbed] is set when the wheel is mapped
+// Bit i of wheel_mappings[button - MOUSE_WHEEL_UP][grabbed] is set when the wheel is mapped
 // with the modifiers i, so that unmapped scrolling never calls into Python.
 #define WHEEL_MAPPING_MODS_MASK (GLFW_MOD_SHIFT | GLFW_MOD_ALT | GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META)
 static_assert(WHEEL_MAPPING_MODS_MASK < 64, "wheel mapping modifiers must fit in a uint64_t bitmap");
@@ -1614,35 +1618,65 @@ set_wheel_mappings(PyObject *py_opts, Options *opts) {
         const long button = PyLong_AsLong(PyTuple_GET_ITEM(key, 0)), mods = PyLong_AsLong(PyTuple_GET_ITEM(key, 1));
         if (PyErr_Occurred()) return false;
         // modifiers outside the mask are stripped from events, so such a mapping can never match
-        if ((button != MOUSE_WHEEL_UP && button != MOUSE_WHEEL_DOWN) || (mods & ~WHEEL_MAPPING_MODS_MASK)) continue;
+        if (button < MOUSE_WHEEL_UP || button > MOUSE_WHEEL_RIGHT || (mods & ~WHEEL_MAPPING_MODS_MASK)) continue;
         const int grabbed = PyObject_IsTrue(PyTuple_GET_ITEM(key, 3));
         if (grabbed < 0) return false;
-        opts->wheel_mappings[button == MOUSE_WHEEL_UP ? 0 : 1][grabbed] |= 1ull << mods;
+        opts->wheel_mappings[button - MOUSE_WHEEL_UP][grabbed] |= 1ull << mods;
     }
     return true;
 }
 
-// Fires the wheel_up/wheel_down mouse_map actions for vertical scrolling.
-// Returns true if the wheel is mapped for this event, in which case the event
-// is consumed even if it does not complete a step, so the screen does not
-// also scroll.
 static bool
-dispatch_mapped_scroll(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
-    const bool grabbed = w->render_data.screen->modes.mouse_tracking_mode != NO_TRACKING;
-    const int mods = ev->keyboard_modifiers & WHEEL_MAPPING_MODS_MASK;
-    // A partial step does not carry over to a different window or mapping
-    double pending = osw->scroll.mapped_window_id == w->id && osw->scroll.mapped_modifiers == mods ? osw->scroll.mapped_pending_pixels_y : 0;
+wheel_is_mapped(int button, bool grabbed, int mods) {
+    return OPT(wheel_mappings)[button - MOUSE_WHEEL_UP][grabbed] & (1ull << mods);
+}
+
+// Fires the wheel mouse_map actions for one axis of a scroll event. Returns
+// true if the wheel is mapped for it, in which case the event is consumed even
+// if it does not complete a step, so the screen does not also scroll.
+static bool
+dispatch_mapped_scroll_axis(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, bool vertical, int mods, bool grabbed) {
+    double *pending = vertical ? &osw->scroll.mapped_pending_pixels_y : &osw->scroll.mapped_pending_pixels_x;
+    double p = *pending;
     int direction;
-    // unscaled is in logical pixels for touchpads and equal to y_offset otherwise
-    const int steps = mapped_scroll_steps(ev->offset_type, ev->unscaled.y, &pending, &direction);
-    if (!direction || !(OPT(wheel_mappings)[direction > 0 ? 0 : 1][grabbed] & (1ull << mods))) {
-        osw->scroll.mapped_pending_pixels_y = 0;
+    // unscaled is in logical pixels for touchpads and equal to the offset otherwise
+    const int steps = mapped_scroll_steps(ev->offset_type, vertical ? ev->unscaled.y : ev->unscaled.x, &p, &direction);
+    // positive offsets are upwards and leftwards
+    const int button = vertical ? (direction > 0 ? MOUSE_WHEEL_UP : MOUSE_WHEEL_DOWN) : (direction > 0 ? MOUSE_WHEEL_LEFT : MOUSE_WHEEL_RIGHT);
+    if (!direction || !wheel_is_mapped(button, grabbed, mods)) {
+        *pending = 0;
         return false;
     }
-    osw->scroll.mapped_pending_pixels_y = pending;
+    *pending = p;
+    if (steps) dispatch_mouse_event(w, button, abs(steps), ev->keyboard_modifiers, grabbed);
+    return true;
+}
+
+// Returns true if either axis of the scroll event is mapped, in which case the
+// whole event is consumed.
+static bool
+dispatch_mapped_scroll(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, int mods, bool grabbed) {
+    // A partial step does not carry over to a different window or modifiers
+    if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != mods)
+        osw->scroll.mapped_pending_pixels_x = osw->scroll.mapped_pending_pixels_y = 0;
+    // Both axes are always dispatched, so that a diagonal gesture can fire both
+    const bool consumed_y = ev->y_offset != 0.0 && dispatch_mapped_scroll_axis(osw, w, ev, true, mods, grabbed);
+    const bool consumed_x = ev->x_offset != 0.0 && dispatch_mapped_scroll_axis(osw, w, ev, false, mods, grabbed);
+    if (!consumed_x && !consumed_y) return false;
     osw->scroll.mapped_window_id = w->id;
     osw->scroll.mapped_modifiers = mods;
-    if (steps) dispatch_mouse_event(w, direction > 0 ? MOUSE_WHEEL_UP : MOUSE_WHEEL_DOWN, abs(steps), ev->keyboard_modifiers, grabbed);
+    return true;
+}
+
+// An unmapped event continues a mapped gesture only if it is in the same window
+// with the same modifiers and only scrolls along axes that have no mappings at
+// all, for example, horizontal jitter during a vertical gesture. Otherwise the
+// momentum of a following, unmapped gesture would be swallowed.
+static bool
+continues_mapped_gesture(const OSWindow *osw, const Window *w, const GLFWScrollEvent *ev, int mods, bool grabbed) {
+    if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != mods) return false;
+    if (ev->y_offset != 0.0 && (wheel_is_mapped(MOUSE_WHEEL_UP, grabbed, mods) || wheel_is_mapped(MOUSE_WHEEL_DOWN, grabbed, mods))) return false;
+    if (ev->x_offset != 0.0 && (wheel_is_mapped(MOUSE_WHEEL_LEFT, grabbed, mods) || wheel_is_mapped(MOUSE_WHEEL_RIGHT, grabbed, mods))) return false;
     return true;
 }
 
@@ -1698,16 +1732,14 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
         case GLFW_MOMENTUM_PHASE_MAY_BEGIN: break;
     }
     if (ev->momentum_type == GLFW_NO_MOMENTUM_DATA) {
-        if (ev->y_offset != 0.0) osw->scroll.mapped_gesture = dispatch_mapped_scroll(osw, w, ev);
-        // Horizontal only events continue a mapped gesture, but not one in a
-        // different window or with different modifiers, so that its momentum
-        // is not swallowed
-        else if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != (ev->keyboard_modifiers & WHEEL_MAPPING_MODS_MASK))
-            osw->scroll.mapped_gesture = false;
+        const bool grabbed = screen->modes.mouse_tracking_mode != NO_TRACKING;
+        const int mods = ev->keyboard_modifiers & WHEEL_MAPPING_MODS_MASK;
+        if (dispatch_mapped_scroll(osw, w, ev, mods, grabbed)) osw->scroll.mapped_gesture = true;
+        else if (osw->scroll.mapped_gesture) osw->scroll.mapped_gesture = continues_mapped_gesture(osw, w, ev, mods, grabbed);
         if (osw->scroll.mapped_gesture) return;
     } else if (osw->scroll.mapped_gesture) {
-        // Inertial scrolling after a mapped gesture neither fires the mapping nor scrolls
-        osw->scroll.mapped_pending_pixels_y = 0;
+        // Inertial scrolling after a mapped gesture neither fires the mappings nor scrolls
+        osw->scroll.mapped_pending_pixels_x = osw->scroll.mapped_pending_pixels_y = 0;
         return;
     }
     finish_scroll_animation(screen);
@@ -1725,12 +1757,7 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
             if (screen_apply_pixel_scroll(screen, delta_pixels) && screen->selections.in_progress) update_drag(w);
         } else {
             int s = scale_scroll(
-                screen->modes.mouse_tracking_mode,
-                ev->y_offset,
-                ev->offset_type,
-                &osw->scroll.pending_pixels_y,
-                cell_height,
-                &osw->scroll.last_v120_dir_y);
+                screen->modes.mouse_tracking_mode, ev->y_offset, ev->offset_type, &osw->scroll.pending_pixels_y, cell_height, &osw->scroll.last_v120_dir_y);
             if (s) {
                 bool upwards = s > 0;
                 if (screen->modes.mouse_tracking_mode) {
@@ -1750,12 +1777,7 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
     }
     if (ev->x_offset != 0.0) {
         int s = scale_scroll(
-            screen->modes.mouse_tracking_mode,
-            ev->x_offset,
-            ev->offset_type,
-            &osw->scroll.pending_pixels_x,
-            cell_width,
-            &osw->scroll.last_v120_dir_x);
+            screen->modes.mouse_tracking_mode, ev->x_offset, ev->offset_type, &osw->scroll.pending_pixels_x, cell_width, &osw->scroll.last_v120_dir_x);
         if (s) {
             if (screen->modes.mouse_tracking_mode) {
                 int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, ev->keyboard_modifiers);
@@ -1968,8 +1990,7 @@ send_mock_scroll_event_to_window(PyObject *self UNUSED, PyObject *args) {
     PyObject *capsule;
     GLFWScrollEvent ev = {0};
     int offset_type, momentum_type = GLFW_NO_MOMENTUM_DATA;
-    if (!PyArg_ParseTuple(
-            args, "O!iddi|i", &PyCapsule_Type, &capsule, &offset_type, &ev.x_offset, &ev.y_offset, &ev.keyboard_modifiers, &momentum_type))
+    if (!PyArg_ParseTuple(args, "O!iddi|i", &PyCapsule_Type, &capsule, &offset_type, &ev.x_offset, &ev.y_offset, &ev.keyboard_modifiers, &momentum_type))
         return NULL;
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (!w) return NULL;
@@ -2013,6 +2034,8 @@ init_mouse(PyObject *module) {
     PyModule_AddIntMacro(module, MOUSE_SELECTION_UPTO_SURROUNDING_WHITESPACE);
     PyModule_AddIntMacro(module, MOUSE_WHEEL_UP);
     PyModule_AddIntMacro(module, MOUSE_WHEEL_DOWN);
+    PyModule_AddIntMacro(module, MOUSE_WHEEL_LEFT);
+    PyModule_AddIntMacro(module, MOUSE_WHEEL_RIGHT);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

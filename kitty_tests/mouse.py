@@ -6,6 +6,7 @@ from functools import partial
 from kitty.fast_data_types import (
     GLFW_MOD_ALT,
     GLFW_MOD_CONTROL,
+    GLFW_MOD_SHIFT,
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_RIGHT,
     MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
@@ -493,6 +494,9 @@ class TestMouse(BaseTest):
                 'mouse_map ctrl+wheel_up press ungrabbed change_font_size all +1',
                 'mouse_map ctrl+wheel_down press ungrabbed change_font_size all -1',
                 'mouse_map alt+wheel_up press ungrabbed mouse_selection normal',
+                'mouse_map ctrl+wheel_left press ungrabbed previous_tab',
+                'mouse_map shift+wheel_left press ungrabbed previous_tab',
+                'mouse_map shift+wheel_right press ungrabbed next_tab',
             ),
             accumulate_bad_lines=errors,
         )
@@ -506,6 +510,8 @@ class TestMouse(BaseTest):
         calls = []
         s.callbacks.change_font_size = lambda *a: calls.append(a[1])
         s.callbacks.mouse_selection = lambda code: mock_mouse_selection(w, s.callbacks.current_mouse_button, code)
+        s.callbacks.previous_tab = lambda: calls.append('left')
+        s.callbacks.next_tab = lambda: calls.append('right')
 
         def scroll(y, mods=0, offset_type=LINES, momentum=0, x=0.0):
             send_mock_scroll_event_to_window(w, offset_type, x, float(y), mods, momentum)
@@ -556,3 +562,27 @@ class TestMouse(BaseTest):
         scroll(1, GLFW_MOD_ALT)
         self.assertFalse(s.has_selection())
         ac([], 2)
+        # Horizontal scrolling, positive offsets are leftwards
+        scroll(0, GLFW_MOD_SHIFT, x=1)
+        ac(['left'], 2)
+        scroll(0, GLFW_MOD_SHIFT, x=-2)
+        ac(['right'] * 2, 2)
+        scroll(0, GLFW_MOD_SHIFT, HIGHRES, x=60)
+        ac([], 2)
+        scroll(0, GLFW_MOD_SHIFT, HIGHRES, x=40)
+        ac(['left'], 2)
+        # A diagonal event fires the mappings of both axes
+        scroll(1, GLFW_MOD_CONTROL, x=1)
+        ac(['+', 'left'], 2)
+        # Horizontal jitter, without horizontal mappings, continues a mapped
+        # vertical gesture, so its momentum is still swallowed
+        scroll(100, GLFW_MOD_ALT, HIGHRES)
+        scroll(0, GLFW_MOD_ALT, HIGHRES, x=10)
+        scroll(-200, GLFW_MOD_ALT, HIGHRES, MOMENTUM_BEGAN)
+        ac([], 2)
+        # But horizontal scrolling in an unmapped direction, with horizontal
+        # mappings, ends the gesture, so its momentum scrolls
+        scroll(100, GLFW_MOD_CONTROL, HIGHRES)
+        scroll(0, GLFW_MOD_CONTROL, HIGHRES, x=-10)
+        scroll(-20, GLFW_MOD_CONTROL, HIGHRES, MOMENTUM_BEGAN)
+        ac(['+'], 1)

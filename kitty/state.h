@@ -130,9 +130,10 @@ typedef struct Options {
     // all remapped source bits, used as a fast path.
     int modifier_remap[8];
     int modifier_remap_mask;
-    // Bit i of wheel_mappings[0 for wheel_up, 1 for wheel_down][grabbed] is set
-    // when mouse_map maps the wheel with the modifiers i
-    uint64_t wheel_mappings[2][2];
+    // Bit i of wheel_mappings[button][grabbed] is set when mouse_map maps the
+    // wheel with the modifiers i, button is 0 for wheel_up, 1 for wheel_down,
+    // 2 for wheel_left and 3 for wheel_right
+    uint64_t wheel_mappings[4][2];
     bool window_alert_on_bell;
     bool macos_dock_badge_on_bell;
     bool debug_keyboard;
@@ -602,10 +603,10 @@ typedef struct OSWindow {
     struct {
         double pending_pixels_x, pending_pixels_y;
         int last_v120_dir_x, last_v120_dir_y;
-        // wheel_up/wheel_down mouse_map state: the partial step and the
-        // window and modifiers it belongs to, and whether the current gesture
-        // fired a mapping, so that its momentum is swallowed
-        double mapped_pending_pixels_y;
+        // mouse_map wheel state: the partial steps and the window and
+        // modifiers they belong to, and whether the current gesture fired a
+        // mapping, so that its momentum is swallowed
+        double mapped_pending_pixels_x, mapped_pending_pixels_y;
         id_type mapped_window_id;
         int mapped_modifiers;
         bool mapped_gesture;

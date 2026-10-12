@@ -18,9 +18,10 @@ from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
-from kitty.fast_data_types import MOUSE_WHEEL_DOWN, MOUSE_WHEEL_UP, TEXT_SIZE_CODE, Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
+from kitty.fast_data_types import TEXT_SIZE_CODE, Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
+from kitty.options.utils import mouse_wheel_buttons
 from kitty.rgb import to_color
 from kitty.types import MouseEvent
 from kitty.utils import read_screen_size
@@ -176,7 +177,7 @@ class Callbacks:
 
     def on_mouse_event(self, event):
         steps = 1
-        if event['button'] in (MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN):  # repeat_count is the number of wheel steps
+        if event['button'] in mouse_wheel_buttons:  # repeat_count is the number of wheel steps
             steps, event['repeat_count'] = event['repeat_count'], 1
         ev = MouseEvent(**event)
         opts = get_options()

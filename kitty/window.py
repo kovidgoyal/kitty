@@ -49,8 +49,6 @@ from .fast_data_types import (
     GLFW_PRESS,
     GLFW_RELEASE,
     GLFW_REPEAT,
-    MOUSE_WHEEL_DOWN,
-    MOUSE_WHEEL_UP,
     NO_CURSOR_SHAPE,
     NULL_COLOR_VALUE,
     SCROLL_FULL,
@@ -103,6 +101,7 @@ from .fast_data_types import (
 from .keys import keyboard_mode_name, mod_mask
 from .notifications import NotificationManager
 from .options.types import Options
+from .options.utils import mouse_wheel_buttons
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
@@ -1425,7 +1424,7 @@ class Window:
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
         steps = 1
-        if event['button'] in (MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN):  # repeat_count is the number of wheel steps
+        if event['button'] in mouse_wheel_buttons:  # repeat_count is the number of wheel steps
             steps, event['repeat_count'] = event['repeat_count'], 1
         ev = MouseEvent(**event)
         self.current_mouse_event_button = ev.button
