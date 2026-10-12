@@ -177,9 +177,12 @@ class MouseEvent(NamedTuple):
     grabbed: bool = False
 
     def human_repr(self, kitty_mod: int = 0) -> str:
-        from .options.utils import mouse_button_map, mouse_trigger_count_map
+        from .options.utils import mouse_button_map, mouse_trigger_count_map, mouse_wheel_map
 
         def mouse_button_num_to_name(num: int) -> str:
+            for k, v in mouse_wheel_map.items():
+                if v == num:
+                    return k
             button_map = {v: k for k, v in mouse_button_map.items()}
             name = f'b{num + 1}'
             return button_map.get(name, name)

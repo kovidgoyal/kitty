@@ -599,6 +599,9 @@ typedef struct OSWindow {
     struct {
         double pending_pixels_x, pending_pixels_y;
         int last_v120_dir_x, last_v120_dir_y;
+        double mapped_pending_pixels_y;
+        int mapped_last_v120_dir_y;
+        bool mapped_gesture;
     } scroll;
     unsigned shader_anim_event_registry;
     id_type last_bell_window_id; // ID of the most recent window that received a bell event

@@ -403,6 +403,8 @@ def conf_parsing(self):
     self.ae(len(opts.keyboard_modes[''].keymap), 1)
     opts = p('clear_all_mouse_actions y', 'mouse_map left click ungrabbed mouse_click_url_or_select')
     self.ae(len(opts.mousemap), 1)
+    opts = p('clear_all_mouse_actions y', 'mouse_map ctrl+wheel_up press ungrabbed,grabbed change_font_size all +1')
+    self.ae({k.human_repr() for k in opts.mousemap}, {'ctrl+wheel_up press ungrabbed', 'ctrl+wheel_up press grabbed'})
     opts = p('strip_trailing_spaces always')
     self.ae(opts.strip_trailing_spaces, 'always')
     self.assertFalse(bad_lines)
