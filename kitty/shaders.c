@@ -1141,7 +1141,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     {                                                                                                  \
         const unsigned int render_lines = render_lines_for_screen(screen);                             \
         sz = sizeof(GPUCell) * render_lines * screen->columns;                                         \
-        address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, cell_data_buffer);           \
+        address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, cell_data_buffer);            \
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
         unmap_vao_buffer(vao_idx, cell_data_buffer);                                                   \
         address = NULL;                                                                                \
@@ -1153,15 +1153,15 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     } else if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || (disable_ligatures && cursor_pos_changed))
         update_cell_data;
 
-#define update_selection_data                                                    \
-    {                                                                            \
-        const unsigned int render_lines = render_lines_for_screen(screen);       \
-        sz = (size_t)render_lines * screen->columns;                             \
+#define update_selection_data                                                               \
+    {                                                                                       \
+        const unsigned int render_lines = render_lines_for_screen(screen);                  \
+        sz = (size_t)render_lines * screen->columns;                                        \
         address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, selection_buffer); \
-        screen_apply_selection(screen, address, sz);                             \
-        unmap_vao_buffer(vao_idx, selection_buffer);                             \
-        address = NULL;                                                          \
-        changed = true;                                                          \
+        screen_apply_selection(screen, address, sz);                                        \
+        unmap_vao_buffer(vao_idx, selection_buffer);                                        \
+        address = NULL;                                                                     \
+        changed = true;                                                                     \
     }
 
 #define update_graphics_data(grman)             \
