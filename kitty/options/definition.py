@@ -2455,6 +2455,11 @@ use :code:`{sup.index}`. All data available is:
 :code:`tab.progress_percent`
     If a command running in a window reports the progress for a task, show this progress as a percentage
     from all windows in the tab, averaged. Empty string is no progress is reported.
+:code:`tab.program_status`
+    If a program running in a window reports its status using the
+    :ref:`program status protocol <program_status>`, a short symbol for the most urgent
+    status of all windows in the tab: blocked on the user, failed, finished or working
+    (with percentage, if reported). Empty string if no program reports a status.
 :code:`tab.children_mem_usage`
     The current memory usage of all child process of the tab and their descendants
 :code:`custom`

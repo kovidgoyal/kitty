@@ -666,6 +666,10 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             START_DISPATCH
             DISPATCH_OSC(osc_context);
             END_DISPATCH
+        case 7501:
+            START_DISPATCH
+            DISPATCH_OSC(program_status_report);
+            END_DISPATCH
         case 7704: REPORT_ERROR("Ignoring OSC 7704, used by mintty for ANSI colors"); break;
         case 7750: REPORT_ERROR("Ignoring OSC 7750, used by mintty for Emoji style"); break;
         case 7770: REPORT_ERROR("Ignoring OSC 7770, used by mintty for font size"); break;
