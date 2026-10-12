@@ -17,11 +17,6 @@ struct VSOutput {
 };
 
 float4
-opaque(uint color) {
-    return float4(color_to_vec(color), 1.0);
-}
-
-float4
 transparent() {
     return float4(0.0);
 }
@@ -29,25 +24,25 @@ transparent() {
 float4
 get_termscheme(uint i) {
     if(i == 0) {
-        return opaque(crd.bg_colors0);
+        return float4(crd.default_bg_lin.rgb, 1.0);
     }
     if(i == 1) {
-        return opaque(crd.default_fg);
+        return float4(crd.default_fg_lin.rgb, 1.0);
     }
     if(i == 2) {
-        return opaque(crd.highlight_bg);
+        return float4(crd.highlight_bg_lin.rgb, 1.0);
     }
     if(i == 3) {
-        return opaque(crd.highlight_fg);
+        return float4(crd.highlight_fg_lin.rgb, 1.0);
     }
     if(i == 4) {
-        return opaque(crd.main_cursor_bg);
+        return float4(crd.main_cursor_bg_lin.rgb, 1.0);
     }
     if(i == 5) {
-        return opaque(crd.main_cursor_fg);
+        return float4(crd.main_cursor_fg_lin.rgb, 1.0);
     }
     if(i < 22) {
-        return opaque(ctb.color_table[i-5]);
+        return float4(color_to_vec(ctb.color_table[i-5]), 1.0);
     }
     if(i == 22) {
         return transparent();

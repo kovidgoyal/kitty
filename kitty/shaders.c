@@ -524,6 +524,7 @@ upload_gamma_lut(void) {
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) U(i);
     U(BORDERS_PROGRAM);
     U(PADDING_PROGRAM);
+    U(GRAPHICS_PROGRAM);
 #undef U
     unbind_program();
 }
@@ -576,8 +577,6 @@ init_cell_program(void) {
         glUniformBlockBinding(program_id(GRAPHICS_PROGRAM), crd.index, CELL_RENDER_DATA_BINDING_POINT);
         UniformBlock ct = program_uniform_block(GRAPHICS_PROGRAM, "ColorTable");
         glUniformBlockBinding(program_id(GRAPHICS_PROGRAM), ct.index, COLOR_TABLE_BINDING_POINT);
-        UniformBlock glut = program_uniform_block(GRAPHICS_PROGRAM, "GammaLUT");
-        glUniformBlockBinding(program_id(GRAPHICS_PROGRAM), glut.index, GAMMA_LUT_BINDING_POINT);
     }
 
     if (shader_globals_vao_idx == -1) {
