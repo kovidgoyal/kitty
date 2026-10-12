@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"math/rand"
 	"os"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -239,6 +241,78 @@ func TestChooseFilesScoring(t *testing.T) {
 	af("mime:image/png:A", "x", "y", "c.png", "x/s")
 	af("mime:image/*:A", "x", "y", "c.png", "x/s")
 	af("glob:*:All", "x", "y", "a", "b", "c.png", "x/s", "x/1", "x/2", "x/3", "y/3", "y/4", "y/5", "x/s/m", "x/s/n")
+}
+
+func TestChooseFilesDirectorySymlinks(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "real-dir"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"file.txt", "real-dir/nested.txt"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("data"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, target := range map[string]string{"linked-dir": "real-dir", "linked-file.txt": "file.txt"} {
+		if err := os.Symlink(target, filepath.Join(root, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	filter, err := NewFilter("glob:*.txt:Text files")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name           string
+		mode           Mode
+		filter         Filter
+		want, selected []string
+	}{
+		{"directories", SELECT_SINGLE_DIR, Filter{},
+			[]string{"linked-dir", "real-dir"}, []string{"linked-dir", "real-dir"}},
+		{"file filter", SELECT_SINGLE_FILE, *filter,
+			[]string{"file.txt", "linked-dir", "linked-file.txt", "real-dir", "real-dir/nested.txt"},
+			[]string{"file.txt", "linked-file.txt", "real-dir/nested.txt"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			done := make(chan struct{})
+			var scan_err error
+			s := NewFileSystemScorer(root, "", tc.filter, tc.mode.OnlyDirs(), func(err error, complete bool) {
+				if err != nil {
+					scan_err = err
+				}
+				if complete {
+					close(done)
+				}
+			})
+			s.Start()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("file scan did not finish")
+			}
+			if scan_err != nil {
+				t.Fatal(scan_err)
+			}
+			results, _ := s.Results()
+			state := State{mode: tc.mode}
+			var actual, selected []string
+			for _, item := range results.RenderedMatches(CollectionIndex{}, -1) {
+				actual = append(actual, item.text)
+				if state.CanSelect(item) {
+					selected = append(selected, item.text)
+				}
+			}
+			slices.Sort(actual)
+			slices.Sort(selected)
+			if diff := cmp.Diff(tc.want, actual); diff != "" {
+				t.Errorf("wrong choices:\n%s", diff)
+			}
+			if diff := cmp.Diff(tc.selected, selected); diff != "" {
+				t.Errorf("wrong selectable choices:\n%s", diff)
+			}
+		})
+	}
 }
 
 func TestSortedResults(t *testing.T) {
