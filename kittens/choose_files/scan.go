@@ -164,6 +164,10 @@ type sortable_dir_entry struct {
 
 const SymlinkToDir = 1
 
+func is_directory(ftype fs.FileMode) bool {
+	return ftype.IsDir() || ftype&SymlinkToDir != 0
+}
+
 // lowercase a string into a pre-existing byte buffer with speedups for ASCII
 func as_lower(s string, output []byte) int {
 	limit := min(len(s), len(output))
@@ -301,7 +305,12 @@ func (fss *FileSystemScanner) worker() {
 		for i, e := range entries {
 			name := e.Name()
 			ftype := e.Type()
-			is_dir := ftype&fs.ModeDir != 0
+			if ftype&fs.ModeSymlink != 0 {
+				if st, serr := os.Stat(dir + name); serr == nil && st.IsDir() {
+					ftype |= SymlinkToDir
+				}
+			}
+			is_dir := is_directory(ftype)
 			if !is_dir {
 				switch name {
 				case ".ignore":
@@ -321,11 +330,6 @@ func (fss *FileSystemScanner) worker() {
 				continue
 			}
 			arena[i].name = name
-			if ftype&fs.ModeSymlink != 0 {
-				if st, serr := os.Stat(dir + arena[i].name); serr == nil && st.IsDir() {
-					ftype |= SymlinkToDir
-				}
-			}
 			arena[i].ftype = ftype
 			if is_dir {
 				arena[i].buf[0] = '0'
@@ -550,7 +554,7 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 		if fss.only_dirs {
 			rp = make([]*ResultItem, 0, len(results))
 			for i, r := range results {
-				if r.ftype.IsDir() {
+				if is_directory(r.ftype) {
 					rp = append(rp, &results[i])
 				}
 			}
@@ -563,7 +567,7 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 			} else {
 				rp = make([]*ResultItem, 0, len(results))
 				for i, r := range results {
-					if r.ftype.IsDir() || fss.filter.Match(filepath.Base(r.text)) {
+					if is_directory(r.ftype) || fss.filter.Match(filepath.Base(r.text)) {
 						rp = append(rp, &results[i])
 					}
 				}

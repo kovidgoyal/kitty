@@ -400,7 +400,8 @@ func (s *State) CanSelect(r *ResultItem) bool {
 	if s.mode == SELECT_ANY {
 		return true
 	}
-	return utils.IfElse(s.OnlyDirs(), r.ftype.IsDir(), !r.ftype.IsDir())
+	is_dir := is_directory(r.ftype)
+	return utils.IfElse(s.OnlyDirs(), is_dir, !is_dir)
 }
 
 func (h *Handler) toggle_selection_at(idx CollectionIndex) bool {
