@@ -290,6 +290,15 @@ class TabAccessor:
         return f'{p}% '
 
     @property
+    def program_status(self) -> str:
+        from .program_status import most_urgent, status_symbol
+
+        tab = get_boss().tab_for_id(self.tab_id)
+        if not tab:
+            return ''
+        return status_symbol(most_urgent(r for w in tab if (r := w.program_status.most_urgent()) is not None))
+
+    @property
     def children_mem_usage(self) -> str:
         from kittens.tui.utils import human_size
 

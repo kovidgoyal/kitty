@@ -1087,6 +1087,10 @@ class TestParser(BaseTest):
         pb('\033]52;p;xyz\x07', ('clipboard_control', 52, 'p;xyz'))
         c.clear()
         pb('\033]22;?__current__\x07', ('set_dynamic_color', 22, '?__current__'))
+        c.clear()
+        pb('\033]7501;?\033\\', ('program_status_report', '?'))
+        pb('\033]7501;state=working:progress=40\x07', ('program_status_report', 'state=working:progress=40'))
+        self.ae(c.program_status_reports, ['?', 'state=working:progress=40'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

@@ -231,6 +231,12 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Support the `Program Status Protocol (OSC 7501)
+  <https://www.superlogical.com/rex/docs/build/program-status>`__ that lets
+  programs report whether they are working, finished, failed or blocked waiting
+  on the user. Shown in the tab bar via a new :code:`tab.program_status` field
+  for :opt:`tab_title_template`, see :ref:`program_status`
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

@@ -173,6 +173,13 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
         # data will contain is_start, cmdline and time.
         ...
 
+    def on_program_status_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
+        # called when the program status (OSC 7501) records of the window
+        # change. Here data will contain program_status, the list of current
+        # records, each a dict with keys: id, state, kind, progress, app,
+        # title and msg.
+        ...
+
     def on_color_scheme_preference_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
         # called when the color scheme preference of this window changes from
         # light to dark or vice versa. data contains is_dark and via_escape_code
