@@ -1760,8 +1760,7 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
         osw->scroll.mapped_last_event_at = monotonic();
         // Once the momentum is spent the gesture is over, so a later unmapped
         // event in the same window with the same modifiers scrolls normally
-        if (ev->momentum_type == GLFW_MOMENTUM_PHASE_ENDED || ev->momentum_type == GLFW_MOMENTUM_PHASE_CANCELED)
-            osw->scroll.mapped_gesture = false;
+        if (ev->momentum_type == GLFW_MOMENTUM_PHASE_ENDED || ev->momentum_type == GLFW_MOMENTUM_PHASE_CANCELED) osw->scroll.mapped_gesture = false;
         return;
     }
     finish_scroll_animation(screen);
