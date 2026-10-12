@@ -5,6 +5,7 @@
 import blit_common;
 import alpha_blend;
 import utils;
+import background;
 
 extern static const bool is_alpha_mask = false;
 extern static const bool texture_is_not_premultiplied = true;
@@ -15,6 +16,44 @@ struct VSOutput {
     float4 position : SV_Position;
 };
 
+float4
+opaque(uint color) {
+    return float4(color_to_vec(color), 1.0);
+}
+
+float4
+transparent() {
+    return float4(0.0);
+}
+
+float4
+get_termscheme(uint i) {
+    if(i == 0) {
+        return opaque(crd.bg_colors0);
+    }
+    if(i == 1) {
+        return opaque(crd.default_fg);
+    }
+    if(i == 2) {
+        return opaque(crd.highlight_bg);
+    }
+    if(i == 3) {
+        return opaque(crd.highlight_fg);
+    }
+    if(i == 4) {
+        return opaque(crd.main_cursor_bg);
+    }
+    if(i == 5) {
+        return opaque(crd.main_cursor_fg);
+    }
+    if(i < 22) {
+        return opaque(ctb.color_table[i-5]);
+    }
+    if(i == 22) {
+        return transparent();
+    }
+    return transparent();
+}
 
 [shader("vertex")]
 VSOutput
@@ -24,12 +63,21 @@ vertex_main(uint vertex_id: SV_VertexID, uniform float4 src_rect, uniform float4
 }
 
 uniform Sampler2D image;
+uniform Sampler2D<uint> paletted_image;
 
 [shader("fragment")]
 float4
-fragment_main(float2 texcoord: TEXCOORD, uniform float3 amask_fg, uniform float4 amask_bg_premult, uniform float extra_alpha)
+fragment_main(float2 texcoord: TEXCOORD, uniform float3 amask_fg, uniform float4 amask_bg_premult, uniform float extra_alpha, uniform bool is_colorscheme)
     : SV_Target {
-    float4 color = image.Sample(texcoord);
+    float4 color;
+
+    if(is_colorscheme) {
+        uint color_index = paletted_image.Sample(texcoord);
+        color = get_termscheme(color_index);
+    } else {
+        color = image.Sample(texcoord);
+    }
+
     if (is_alpha_mask) {
         color = float4(amask_fg, color.r);
         color = vec4_premul(color);

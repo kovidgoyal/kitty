@@ -683,7 +683,7 @@ get_free_client_id(const GraphicsManager *self) {
     }
 
 #define MAX_DATA_SZ (4u * 100000000u)
-enum FORMATS { RGB = 24, RGBA = 32, PNG = 100 };
+enum FORMATS { RGB = 24, RGBA = 32, PNG = 100, COLORSCHEME = 110};
 
 static bool
 is_file_transmission(const unsigned char transmission_type) {
@@ -882,20 +882,29 @@ initialize_load_data(
     self->currently_loading.start_command = *g;
     self->currently_loading.width = g->data_width;
     self->currently_loading.height = g->data_height;
+    self->currently_loading.format = data_fmt;
+    self->currently_loading.is_opaque = (data_fmt == RGB);
     switch (data_fmt) {
         case PNG:
             if (g->data_sz > MAX_DATA_SZ) ABRT("EINVAL", "PNG data size too large");
             self->currently_loading.is_4byte_aligned = true;
-            self->currently_loading.is_opaque = false;
+            self->currently_loading.pixel_size = 4;
             self->currently_loading.data_sz = g->data_sz ? g->data_sz : 1024 * 100;
             break;
         case RGB:
         case RGBA:
+            self->currently_loading.pixel_size = data_fmt / 8;
             self->currently_loading.data_sz = (size_t)g->data_width * g->data_height * (data_fmt / 8);
             if (!self->currently_loading.data_sz) ABRT("EINVAL", "Zero width/height not allowed");
             self->currently_loading.is_4byte_aligned = data_fmt == RGBA || (self->currently_loading.width % 4 == 0);
-            self->currently_loading.is_opaque = data_fmt == RGB;
             break;
+        case COLORSCHEME:
+            self->currently_loading.pixel_size = 1;
+            self->currently_loading.data_sz = (size_t)g->data_width * g->data_height;
+            if (!self->currently_loading.data_sz) ABRT("EINVAL", "Zero width/height not allowed");
+            self->currently_loading.is_4byte_aligned = (self->currently_loading.width % 4 == 0);
+            break;
+
         default: ABRT("EINVAL", "Unknown image format: %u", data_fmt);
     }
     self->currently_loading.loading_for.image_id = img->internal_id;
@@ -929,7 +938,9 @@ upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const boo
         if (!make_window_context_current(self->window_id)) return;
         self->context_made_current_for_this_command = true;
     }
-    if (img->texture) { send_image_to_gpu(&img->texture->id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP); }
+    bool is_colorscheme = (self->currently_loading.format == COLORSCHEME);
+    bool linear = !is_colorscheme;
+    if (img->texture) { send_image_to_gpu(&img->texture->id, data, img->width, img->height, is_opaque, is_4byte_aligned, is_colorscheme, linear, REPEAT_CLAMP); }
 }
 
 static Image *
@@ -945,6 +956,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             ABRT("EINVAL", "Image too large, width or height greater than %u", MAX_IMAGE_DIMENSION);
         remove_images(self, add_trim_predicate, 0);
         img = find_or_create_image(self, iid, &existing);
+        img->format = fmt;
         if (existing) {
             free_image_resources(self, img);
             img->texture = new_texture_ref();
@@ -984,7 +996,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     self->currently_loading.loading_for = (const ImageAndFrame){0};
     img = process_image_data(self, img, g, fmt);
     if (!img) return NULL;
-    size_t required_sz = (size_t)(self->currently_loading.is_opaque ? 3 : 4) * self->currently_loading.width * self->currently_loading.height;
+    LoadData *load_data = &self->currently_loading;
+    size_t required_sz = load_data->width * load_data->height * load_data->pixel_size;
     if (self->currently_loading.data_sz != required_sz)
         ABRT(
             "EINVAL",
@@ -1566,6 +1579,7 @@ grman_update_layers(
             rd->image_id = img->internal_id;
             rd->ref_id = ref->internal_id;
             rd->texture_id = texture_id_for_img(img);
+            rd->is_colorscheme = (img->format == COLORSCHEME);
             img->is_drawn = true;
             refitr = vt_next(refitr);
         }
@@ -1874,7 +1888,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     img = process_image_data(self, img, g, fmt);
     if (!img || !load_data->loading_completed_successfully) return img;
 
-    const unsigned long bytes_per_pixel = load_data->is_opaque ? 3 : 4;
+    const unsigned long bytes_per_pixel = load_data->pixel_size;
     if (load_data->data_sz < bytes_per_pixel * load_data->width * load_data->height)
         ABRT("ENODATA", "Insufficient image data %zu < %zu", load_data->data_sz, bytes_per_pixel * g->data_width * g->data_height);
     if (load_data->width > img->width) ABRT("EINVAL", "Frame width %u larger than image width: %u", load_data->width, img->width);

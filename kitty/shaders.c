@@ -313,7 +313,7 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
 }
 
 void
-send_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned, bool linear, RepeatStrategy repeat) {
+send_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned, bool is_colorscheme, bool linear, RepeatStrategy repeat) {
     if (!(*tex_id)) { glGenTextures(1, tex_id); }
     glBindTexture(GL_TEXTURE_2D, *tex_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1);
@@ -332,7 +332,15 @@ send_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei heigh
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, r);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, r);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
+    GLint internal_format, format;
+    if(is_colorscheme) {
+        internal_format = GL_R8UI;
+        format = GL_RED_INTEGER;
+    } else {
+        internal_format = GL_SRGB_ALPHA;
+        format = is_opaque ? GL_RGB : GL_RGBA;
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 }
 
 // }}}
@@ -484,6 +492,15 @@ init_cell_program(void) {
     C(sprite_idx, 1);
     C(is_selected, 2);
 #undef C
+    // Same for the graphics progam.
+    {
+        UniformBlock crd = program_uniform_block(GRAPHICS_PROGRAM, "CellRenderData");
+        glUniformBlockBinding(program_id(GRAPHICS_PROGRAM), crd.index, CELL_RENDER_DATA_BINDING_POINT);
+        UniformBlock ct = program_uniform_block(GRAPHICS_PROGRAM, "ColorTable");
+        glUniformBlockBinding(program_id(GRAPHICS_PROGRAM), ct.index, COLOR_TABLE_BINDING_POINT);
+        UniformBlock glut = program_uniform_block(GRAPHICS_PROGRAM, "GammaLUT");
+        glUniformBlockBinding(program_id(GRAPHICS_PROGRAM), glut.index, GAMMA_LUT_BINDING_POINT);
+    }
 
     // The gamma LUT is a constant, shared amongst all the programs that use it via a single UBO.
     if (shader_globals_vao_idx == -1) {
@@ -1064,6 +1081,7 @@ draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, fl
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     GLint src_rect_loc = program_uniform_location(program, "src_rect");
     GLint dest_rect_loc = program_uniform_location(program, "dest_rect");
+    GLint is_colorscheme_loc = program_uniform_location(program, "is_colorscheme");
     for (GLuint i = 0; i < count;) {
         ImageRenderData *group = data + start + i;
         glBindTexture(GL_TEXTURE_2D, group->texture_id);
@@ -1075,6 +1093,7 @@ draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, fl
             ImageRenderData *rd = data + start + i;
             glUniform4f(src_rect_loc, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
             glUniform4f(dest_rect_loc, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
+            glUniform1i(is_colorscheme_loc, rd->is_colorscheme ? GL_TRUE : GL_FALSE);
             draw_quad(true, 0);
         }
     }
@@ -1142,6 +1161,7 @@ set_cell_uniforms(bool force) {
         for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_ALPHA_MASK_PROGRAM; i++) {
             bind_program(i);
             glUniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
+            glUniform1i(program_uniform_location(i, "paletted_image"), GRAPHICS_UNIT);
         }
         for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
             bind_program(i);

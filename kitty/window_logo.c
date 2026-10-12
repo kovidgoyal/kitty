@@ -57,7 +57,7 @@ free_window_logo(WindowLogoItem **itemref) {
 static void
 send_logo_to_gpu(WindowLogo *s) {
     size_t off = s->mmap_size ? s->mmap_size - ((size_t)4) * s->width * s->height : 0;
-    send_image_to_gpu(&s->texture_id, s->bitmap + off, s->width, s->height, false, true, true, REPEAT_CLAMP);
+    send_image_to_gpu(&s->texture_id, s->bitmap + off, s->width, s->height, false, true, false, true, REPEAT_CLAMP);
     free_window_logo_bitmap(s);
 }
 

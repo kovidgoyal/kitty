@@ -51,6 +51,7 @@ typedef struct {
 typedef struct {
     ImageRect src_rect, dest_rect;
     uint32_t texture_id, group_count;
+    bool is_colorscheme;
     int z_index;
     id_type image_id, ref_id;
 } ImageRenderData;
@@ -107,7 +108,7 @@ typedef struct TextureRef {
 #include "kitty-verstable.h"
 
 typedef struct {
-    uint32_t client_id, client_number, width, height;
+    uint32_t client_id, client_number, width, height, format;
     TextureRef *texture;
     id_type internal_id;
 
@@ -139,7 +140,7 @@ typedef struct {
     uint8_t *data;
     bool is_4byte_aligned;
     bool is_opaque, loading_completed_successfully;
-    uint32_t width, height;
+    uint32_t width, height, format, pixel_size;
     GraphicsCommand start_command;
     ImageAndFrame loading_for;
 } LoadData;
