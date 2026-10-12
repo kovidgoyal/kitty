@@ -134,6 +134,26 @@ class Specialization(NamedTuple):
         return f'.{self.name}' if self.name else '.default-specialization'
 
 
+def text_contrast_is_identity(strategy: str) -> bool:
+    # Same numbers as text_composition_strategy() in kitty/options/to-c.h.
+    # set_cell_uniforms() turns gamma 1 and contrast 0 into pow(alpha, 1) * 1.
+    if strategy == 'legacy':
+        return False
+    if strategy == 'platform':
+        return sys.platform != 'darwin'
+    parts = strategy.split()
+    if not parts or len(parts) > 2:
+        return False
+    try:
+        gamma = float(parts[0])
+        contrast = float(parts[1]) if len(parts) == 2 else 0.0
+    except ValueError:
+        return False
+    gamma = max(gamma, 0.01)
+    contrast = min(max(contrast, 0.0), 100.0)
+    return gamma == 1.0 and contrast == 0.0
+
+
 def cell_variant(opts: Options = defaults, program: int = CELL_PROGRAM) -> dict[str, str]:
     text_fg_override_threshold: float = opts.text_fg_override_threshold[0]
     algo = '0'
@@ -150,6 +170,7 @@ def cell_variant(opts: Options = defaults, program: int = CELL_PROGRAM) -> dict[
     return {
         'FG_OVERRIDE_ALGO': algo,
         'TEXT_NEW_GAMMA': 'false' if opts.text_composition_strategy == 'legacy' else 'true',
+        'TEXT_CONTRAST_IDENTITY': 'true' if text_contrast_is_identity(opts.text_composition_strategy) else 'false',
         'RENDER_MODE': str(render_mode),
     }
 
@@ -158,8 +179,18 @@ def cell_variant(opts: Options = defaults, program: int = CELL_PROGRAM) -> dict[
 def cell_variations() -> tuple[MappingProxyType[str, str], ...]:
     variations = {'FG_OVERRIDE_ALGO': ('0', '1', '2'), 'RENDER_MODE': ('0', '1', '2')}
     bool_variations = 'false', 'true'
-    variants_dict = {k: variations.get(k, bool_variations) for k in cell_variant()}
-    return tuple(MappingProxyType(dict(zip(variants_dict.keys(), comb))) for comb in product(*variants_dict.values()))
+    # TEXT_CONTRAST_IDENTITY is only read when TEXT_NEW_GAMMA is true.
+    base_keys = [k for k in cell_variant() if k != 'TEXT_CONTRAST_IDENTITY']
+    variants_dict = {k: variations.get(k, bool_variations) for k in base_keys}
+    ans: list[MappingProxyType[str, str]] = []
+    for comb in product(*variants_dict.values()):
+        variant = dict(zip(variants_dict.keys(), comb))
+        if variant['TEXT_NEW_GAMMA'] == 'true':
+            for identity in bool_variations:
+                ans.append(MappingProxyType({**variant, 'TEXT_CONTRAST_IDENTITY': identity}))
+        else:
+            ans.append(MappingProxyType({**variant, 'TEXT_CONTRAST_IDENTITY': 'false'}))
+    return tuple(ans)
 
 
 def variant_name(variant: dict[str, str], default: dict[str, str]) -> str:
@@ -183,6 +214,7 @@ def glsl_shaders(name: str, variant_name: str = '') -> tuple[str, str]:
 class LoadShaderPrograms:
     text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
     text_old_gamma: bool = False
+    text_contrast_identity: bool = text_contrast_is_identity('platform')
     custom_shaders: tuple[str, ...] = ()
     force_recompile_of_custom_shaders: bool = False
 
@@ -210,6 +242,7 @@ class LoadShaderPrograms:
             bool(opts.text_fg_override_threshold[0]) != bool(self.text_fg_override_threshold[0])
             or opts.text_fg_override_threshold[1] != self.text_fg_override_threshold[1]
             or (opts.text_composition_strategy == 'legacy') != self.text_old_gamma
+            or text_contrast_is_identity(opts.text_composition_strategy) != self.text_contrast_identity
         )
 
     def recompile_if_needed(self) -> None:
@@ -224,6 +257,7 @@ class LoadShaderPrograms:
         default_cell_variant = cell_variant()
         opts = self.get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
+        self.text_contrast_identity = text_contrast_is_identity(opts.text_composition_strategy)
         self.text_fg_override_threshold = opts.text_fg_override_threshold
         metadata = load_glsl_metadata()
 
