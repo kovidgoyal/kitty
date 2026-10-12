@@ -291,12 +291,10 @@ class TabAccessor:
 
     @property
     def program_status(self) -> str:
-        from .program_status import most_urgent, status_symbol
+        from .program_status import combined_status_symbol
 
         tab = get_boss().tab_for_id(self.tab_id)
-        if not tab:
-            return ''
-        return status_symbol(most_urgent(r for w in tab if (r := w.program_status.most_urgent()) is not None))
+        return combined_status_symbol(w.program_status for w in tab) if tab else ''
 
     @property
     def children_mem_usage(self) -> str:
