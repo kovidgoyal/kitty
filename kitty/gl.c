@@ -691,11 +691,19 @@ map_vao_buffer_for_write_only(ssize_t vao_idx, size_t bufnum, int offset, unsign
 }
 
 void *
-alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, bool frequently_updated) {
-    ssize_t buf_idx = alloc_vao_buffer(vao_idx, size, bufnum, frequently_updated ? GL_STREAM_DRAW : GL_STATIC_DRAW);
-    // The whole buffer is discarded. Callers rewrite every byte.
-    if (frequently_updated) return map_buffer_range(buf_idx, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT, 0, (unsigned)size);
+alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum) {
+    ssize_t buf_idx = alloc_vao_buffer(vao_idx, size, bufnum, GL_STATIC_DRAW);
     return map_buffer(buf_idx, GL_WRITE_ONLY);
+}
+
+void *
+alloc_and_map_vao_buffer_for_full_rewrite(ssize_t vao_idx, GLsizeiptr size, size_t bufnum) {
+    // The previous contents are discarded so the driver can hand out fresh
+    // storage instead of waiting for the GPU to finish reading the old data.
+    // The caller MUST write every byte of the mapped range, any byte not
+    // written is undefined.
+    ssize_t buf_idx = alloc_vao_buffer(vao_idx, size, bufnum, GL_STREAM_DRAW);
+    return map_buffer_range(buf_idx, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT, 0, (unsigned)size);
 }
 
 void

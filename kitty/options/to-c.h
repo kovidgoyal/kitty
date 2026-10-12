@@ -625,6 +625,8 @@ remap_modifiers(PyObject *val, Options *opts) {
     }
 }
 
+// Keep in sync with text_contrast_is_identity() in kitty/shaders/slang.py,
+// which selects a cell shader specialized for gamma 1 and contrast 0.
 static inline void
 text_composition_strategy(PyObject *val, Options *opts) {
     if (!PyUnicode_Check(val)) {
