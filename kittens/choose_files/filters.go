@@ -20,7 +20,7 @@ func (f Filter) String() string {
 }
 
 func (f Filter) Equal(other Filter) bool {
-	return f.Type == other.Type && f.Pattern == other.Pattern
+	return f.Name == other.Name && f.Type == other.Type && f.Pattern == other.Pattern
 }
 
 func NewFilter(spec string) (*Filter, error) {

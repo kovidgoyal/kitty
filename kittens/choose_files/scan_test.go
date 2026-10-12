@@ -243,6 +243,59 @@ func TestChooseFilesScoring(t *testing.T) {
 	af("glob:*:All", "x", "y", "a", "b", "c.png", "x/s", "x/1", "x/2", "x/3", "y/3", "y/4", "y/5", "x/s/m", "x/s/n")
 }
 
+func TestChooseFilesCombinedFilters(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"a.txt", "b.jpg", "c.png"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("data"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	combined := func(name string, patterns ...string) Filter {
+		var filters []Filter
+		for _, pattern := range patterns {
+			f, err := NewFilter("glob:" + pattern + ":" + name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			filters = append(filters, *f)
+		}
+		return CombinedFilter(filters...)
+	}
+	first := combined("First", "*.txt", "*.jpg")
+	second := combined("Second", "*.txt", "*.png")
+	var scan_err error
+	s := NewFileSystemScorer(root, "", first, false, func(err error, complete bool) {
+		if err != nil {
+			scan_err = err
+		}
+	})
+	h := Handler{state: State{
+		current_dir: root, current_filter: "First", filter_map: map[string]Filter{"First": first, "Second": second},
+	}}
+	h.result_manager = &ResultManager{settings: &h.state, scorer: s}
+	check := func(expected ...string) {
+		s.current_worker_wait.Wait()
+		if scan_err != nil {
+			t.Fatal(scan_err)
+		}
+		results, _ := s.Results()
+		var actual []string
+		for _, item := range results.RenderedMatches(CollectionIndex{}, -1) {
+			actual = append(actual, item.text)
+		}
+		slices.Sort(actual)
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Fatalf("incorrect results for filter %s:\n%s", h.state.current_filter, diff)
+		}
+	}
+	s.Start()
+	check("a.txt", "b.jpg")
+	h.set_filter("Second")
+	check("a.txt", "c.png")
+	h.set_filter("First")
+	check("a.txt", "b.jpg")
+}
+
 func TestChooseFilesDirectorySymlinks(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, "real-dir"), 0o700); err != nil {
