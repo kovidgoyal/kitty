@@ -1235,10 +1235,13 @@ mouse. :code:`wheel_up` and :code:`wheel_down` refer to scrolling the mouse
 wheel (or touchpad) vertically and only support the :code:`press` event type,
 which is triggered once per wheel step. A step is one click of a classic wheel,
 one notch of a high resolution wheel or 100 pixels of touchpad travel (scaled by
-:opt:`touch_scroll_multiplier`). Inertial (momentum) scrolling does not trigger
-them. Mapping them replaces the normal scroll behavior for that combination of
-modifiers and mode. For example, to change
-the font size with :kbd:`Ctrl` and the mouse wheel::
+:opt:`touch_scroll_multiplier`). The direction follows the scroll direction of
+kitty, so a negative :opt:`wheel_scroll_multiplier` or
+:opt:`touch_scroll_multiplier` swaps them. Inertial (momentum) scrolling does
+not trigger them. Mapping them replaces the normal scroll behavior for that
+combination of modifiers and mode. They cannot start a selection with
+:ac:`mouse_selection`. For example, to change the font size with :kbd:`Ctrl` and
+the mouse wheel::
 
     mouse_map ctrl+wheel_up press ungrabbed,grabbed change_font_size all +2
     mouse_map ctrl+wheel_down press ungrabbed,grabbed change_font_size all -2

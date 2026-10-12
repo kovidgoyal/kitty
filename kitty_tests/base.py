@@ -18,7 +18,7 @@ from pty import CHILD, STDIN_FILENO, STDOUT_FILENO, fork
 from unittest import TestCase
 
 from kitty.config import finalize_keys, finalize_mouse_mappings
-from kitty.fast_data_types import TEXT_SIZE_CODE, Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
+from kitty.fast_data_types import MOUSE_WHEEL_DOWN, MOUSE_WHEEL_UP, TEXT_SIZE_CODE, Cursor, HistoryBuf, LineBuf, Screen, get_options, monotonic, set_options
 from kitty.options.parse import merge_result_dicts
 from kitty.options.types import Options, defaults
 from kitty.rgb import to_color
@@ -175,14 +175,18 @@ class Callbacks:
         pass
 
     def on_mouse_event(self, event):
+        steps = 1
+        if event['button'] in (MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN):  # repeat_count is the number of wheel steps
+            steps, event['repeat_count'] = event['repeat_count'], 1
         ev = MouseEvent(**event)
         opts = get_options()
         action_def = opts.mousemap.get(ev)
         if not action_def:
             return False
         self.current_mouse_button = ev.button
-        for action in opts.alias_map.resolve_aliases(action_def, 'mouse_map'):
-            getattr(self, action.func)(*action.args)
+        for _ in range(steps):
+            for action in opts.alias_map.resolve_aliases(action_def, 'mouse_map'):
+                getattr(self, action.func)(*action.args)
         self.current_mouse_button = 0
         return True
 

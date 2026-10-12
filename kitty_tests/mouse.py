@@ -12,9 +12,11 @@ from kitty.fast_data_types import (
     create_mock_window,
     mock_mouse_selection,
     send_mock_mouse_event_to_window,
+    send_mock_scroll_event_to_window,
+    set_options,
 )
 
-from .base import BaseTest
+from .base import BaseTest, parse_bytes
 
 
 def send_mouse_event(
@@ -472,3 +474,85 @@ class TestMouse(BaseTest):
         # touch_scroll_multiplier scales touchpad steps and its sign flips them
         self.set_options({'touch_scroll_multiplier': -2.0})
         self.ae(steps(HIGHRES, [30.0, 30.0]), [0, -1])
+        # Wheels only take the sign of wheel_scroll_multiplier and every click is a step
+        self.set_options({'wheel_scroll_multiplier': -3.0})
+        self.ae(steps(LINES, [1.0, 0.1]), [-1, -1])
+        self.ae(steps(V120, [120.0, 240.0]), [-1, -2])
+
+    def test_mapped_scroll(self):
+        from kitty.config import load_config
+
+        LINES, HIGHRES = 0, 2  # GLFWOffsetType
+        MOMENTUM_BEGAN, MOMENTUM_ACTIVE = 1, 3  # GLFWMomentumType
+        s = self.create_screen(lines=5, scrollback=50)
+        errors = []
+        opts = load_config(
+            overrides=(
+                'pixel_scroll no',
+                'wheel_scroll_multiplier 1',
+                'mouse_map ctrl+wheel_up press ungrabbed change_font_size all +1',
+                'mouse_map ctrl+wheel_down press ungrabbed change_font_size all -1',
+                'mouse_map alt+wheel_up press ungrabbed mouse_selection normal',
+            ),
+            accumulate_bad_lines=errors,
+        )
+        self.ae(errors, [])
+        set_options(opts)
+        w = create_mock_window(s)
+        for i in range(50):
+            s.draw(f'{i}')
+            s.carriage_return()
+            s.linefeed()
+        calls = []
+        s.callbacks.change_font_size = lambda *a: calls.append(a[1])
+        s.callbacks.mouse_selection = lambda code: mock_mouse_selection(w, s.callbacks.current_mouse_button, code)
+
+        def scroll(y, mods=0, offset_type=LINES, momentum=0, x=0.0):
+            send_mock_scroll_event_to_window(w, offset_type, x, float(y), mods, momentum)
+
+        def ac(expected_calls, scrolled_by):
+            self.ae(calls, expected_calls)
+            self.ae(s.scrolled_by, scrolled_by)
+            del calls[:]
+
+        # Unmapped scrolling still scrolls the screen
+        scroll(2)
+        ac([], 2)
+        # Mapped scrolling fires the action once per step instead
+        scroll(1, GLFW_MOD_CONTROL)
+        ac(['+'], 2)
+        scroll(3, GLFW_MOD_CONTROL)
+        ac(['+'] * 3, 2)
+        scroll(-1, GLFW_MOD_CONTROL)
+        ac(['-'], 2)
+        # Touchpad events that do not complete a step are consumed
+        scroll(60, GLFW_MOD_CONTROL, HIGHRES)
+        ac([], 2)
+        scroll(40, GLFW_MOD_CONTROL, HIGHRES)
+        ac(['+'], 2)
+        # A partial step does not survive unmapped scrolling in between
+        scroll(60, GLFW_MOD_CONTROL, HIGHRES)
+        scroll(1)
+        ac([], 3)
+        scroll(40, GLFW_MOD_CONTROL, HIGHRES)
+        ac([], 3)
+        # Momentum after a mapped gesture neither fires the action nor scrolls
+        scroll(100, GLFW_MOD_CONTROL, HIGHRES)
+        scroll(200, GLFW_MOD_CONTROL, HIGHRES, MOMENTUM_BEGAN)
+        scroll(200, GLFW_MOD_CONTROL, HIGHRES, MOMENTUM_ACTIVE)
+        ac(['+'], 3)
+        # A horizontal unmapped gesture ends the mapped gesture, so its momentum scrolls
+        scroll(0, x=10, offset_type=HIGHRES)
+        scroll(-40, 0, HIGHRES, MOMENTUM_BEGAN)
+        ac([], 1)
+        # Modifiers or modes without a mapping scroll normally
+        scroll(1, GLFW_MOD_ALT | GLFW_MOD_CONTROL)
+        ac([], 2)
+        parse_bytes(s, b'\x1b[?1000h')  # grab the mouse
+        scroll(1, GLFW_MOD_CONTROL)
+        ac([], 2)
+        parse_bytes(s, b'\x1b[?1000l')
+        # The wheel cannot start a selection, it never releases
+        scroll(1, GLFW_MOD_ALT)
+        self.assertFalse(s.has_selection())
+        ac([], 2)

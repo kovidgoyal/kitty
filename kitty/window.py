@@ -1424,19 +1424,18 @@ class Window:
 
     def on_mouse_event(self, event: dict[str, Any]) -> bool:
         event['mods'] = event.get('mods', 0) & mod_mask
-        is_wheel = event['button'] in (MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN)
-        if is_wheel:  # repeat_count is the number of wheel steps, possibly zero
+        steps = 1
+        if event['button'] in (MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN):  # repeat_count is the number of wheel steps
             steps, event['repeat_count'] = event['repeat_count'], 1
         ev = MouseEvent(**event)
         self.current_mouse_event_button = ev.button
         action = get_options().mousemap.get(ev)
         if action is None:
             return False
-        if is_wheel:
-            for _ in range(steps):
-                get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
-            return True
-        return get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
+        handled = False
+        for _step in range(steps):
+            handled = get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent') or handled
+        return handled
 
     def drag_thumbnails(self, label: str) -> tuple[tuple[bytes, int, int], ...]:
         # Render label as a single line of text, clipped to the width of this window
