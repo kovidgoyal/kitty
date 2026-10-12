@@ -424,6 +424,10 @@ Detailed list of changes
   when the shader declares the variable over multiple lines or with a
   different type
 
+- Custom shaders: Fix the screen going blank, except for parts drawn only by
+  the shader, when switching from a pipeline that does not use the named
+  textures to one that does
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -643,6 +643,10 @@ init_custom_programs(void) {
     // persist is per-window and freed lazily in start_os_window_rendering
     for (size_t w = 0; w < global_state.num_os_windows; w++) {
         OSWindow *osw = global_state.os_windows + w;
+        // Per window framebuffers must be attached afresh to the textures that
+        // replace the ones freed above, should a later pipeline declare them again
+        if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_A))) osw->indirect_output.fbo_a_generation = 0;
+        if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_B))) osw->indirect_output.fbo_b_generation = 0;
         init_shader_animation_state(osw);
         // Synthesize focus events for windows that already have focus so that
         // animations triggered by os-window-focus-in start on the first render
@@ -2631,6 +2635,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
         } else {
             if (os_window->persist_texture_id) free_texture(&os_window->persist_texture_id);
             if (os_window->persist_fbo_id) free_framebuffer(&os_window->persist_fbo_id);
+            os_window->persist_texture_generation = 0;
         }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
