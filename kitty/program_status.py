@@ -9,6 +9,7 @@ import re
 from collections import OrderedDict
 from collections.abc import Iterable, Iterator
 from enum import Enum
+from itertools import count
 from typing import Any, NamedTuple
 
 OSC_CODE = 7501
@@ -52,6 +53,10 @@ TRANSIENT_STATES = frozenset((State.working, State.blocked, State.idle))
 UNSEEN_STATES = frozenset((State.done, State.error))
 # Higher is more urgent, used to pick the record to show for several records
 URGENCY = {State.idle: 0, State.working: 1, State.done: 2, State.error: 3, State.blocked: 4}
+
+
+# Orders updates across all windows, to find the most recently updated record
+update_counter = count()
 
 
 class InvalidReport(ValueError):
@@ -168,6 +173,7 @@ class ProgramStatus:
 
     def __init__(self) -> None:
         self.records: OrderedDict[str, Record] = OrderedDict()
+        self.update_seq: dict[str, int] = {}
 
     def __bool__(self) -> bool:
         return bool(self.records)
@@ -179,24 +185,26 @@ class ProgramStatus:
         "Apply a report, returns True if the records changed"
         if isinstance(report, Clear):
             return self.remove(lambda r: is_descendant_or_self(r.id, report.id))
+        self.update_seq[report.id] = next(update_counter)
         if self.records.get(report.id) == report:
             self.records.move_to_end(report.id)
             return False
         self.records[report.id] = report
         self.records.move_to_end(report.id)
         while len(self.records) > MAX_RECORDS:  # drop the least recently updated record
-            self.records.popitem(last=False)
+            del self.update_seq[self.records.popitem(last=False)[0]]
         return True
 
     def remove(self, predicate: Any) -> bool:
         remove = tuple(rid for rid, r in self.records.items() if predicate(r))
         for rid in remove:
-            del self.records[rid]
+            del self.records[rid], self.update_seq[rid]
         return bool(remove)
 
     def clear(self) -> bool:
         ans = bool(self.records)
         self.records.clear()
+        self.update_seq.clear()
         return ans
 
     def on_process_exit_or_prompt(self) -> bool:
@@ -217,7 +225,11 @@ class ProgramStatus:
         return ''
 
     def most_urgent(self) -> Record | None:
-        return most_urgent(reversed(self.records.values()))  # prefer the most recently updated
+        ans: Record | None = None
+        for r in reversed(self.records.values()):  # prefer the most recently updated
+            if ans is None or URGENCY[r.state] > URGENCY[ans.state]:
+                ans = r
+        return ans
 
     def as_list(self) -> list[dict[str, Any]]:
         ans = []
@@ -228,24 +240,31 @@ class ProgramStatus:
         return ans
 
 
-def most_urgent(records: Iterable[Record]) -> Record | None:
-    ans: Record | None = None
-    for r in records:
-        if ans is None or URGENCY[r.state] > URGENCY[ans.state]:
-            ans = r
-    return ans
-
-
-def status_symbol(record: Record | None) -> str:
-    "A short indicator for use in tab and window titles"
+def status_symbol(record: Record | None, num: int = 1) -> str:
+    "A short indicator for use in tab and window titles, num is the number of windows in this state"
     if record is None or record.state is State.idle:
         return ''
     if record.state is State.blocked:
-        return '  '
-    if record.state is State.error:
-        return '  '
-    if record.state is State.done:
-        return '  '
-    if record.progress is not None:
-        return f'  {record.progress}% '
-    return '  '
+        sym = '\uf071'
+    elif record.state is State.error:
+        sym = '\ue654'
+    elif record.state is State.done:
+        sym = '\uf00c'
+    else:
+        sym = '\uf110'
+    ans = f'{sym}  {num} ' if num > 1 else f'{sym}  '
+    if record.state is State.working and record.progress is not None:
+        ans += f'{record.progress}% '
+    return ans
+
+
+def combined_status_symbol(statuses: Iterable[ProgramStatus]) -> str:
+    """
+    The most urgent status of several windows, along with the number of
+    windows in that status. Ties are broken by the most recently updated record.
+    """
+    items = [(r, ps.update_seq[r.id]) for ps in statuses if (r := ps.most_urgent()) is not None]
+    if not items:
+        return ''
+    best = max(items, key=lambda x: (URGENCY[x[0].state], x[1]))[0]
+    return status_symbol(best, sum(1 for r, _ in items if r.state is best.state))

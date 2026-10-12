@@ -12,6 +12,7 @@ from kitty.program_status import (
     ProgramStatus,
     Record,
     State,
+    combined_status_symbol,
     parse_report,
     status_symbol,
 )
@@ -127,6 +128,30 @@ class TestProgramStatus(BaseTest):
     def test_program_status_symbol(self):
         self.ae(status_symbol(None), '')
         self.ae(status_symbol(Record(state=State.idle)), '')
-        self.assertIn('40%', status_symbol(Record(state=State.working, progress=40)))
+        self.ae(status_symbol(Record(state=State.working, progress=40)), '\uf110  40% ')
+        self.ae(status_symbol(Record(state=State.working, progress=40), 2), '\uf110  2 40% ')
+        self.ae(status_symbol(Record(state=State.blocked), 3), '\uf071  3 ')
         syms = {status_symbol(Record(state=s)) for s in State if s is not State.idle}
         self.ae(len(syms), 4)
+
+        def window(*bodies: str) -> ProgramStatus:
+            ps = ProgramStatus()
+            for b in bodies:
+                ps.apply(parse_report(b))
+            return ps
+
+        self.ae(combined_status_symbol([]), '')
+        self.ae(combined_status_symbol([ProgramStatus(), window('state=idle')]), '')
+        # the most urgent state wins and the windows in it are counted
+        a, b, c = window('state=blocked'), window('state=working'), window('state=idle')
+        self.ae(combined_status_symbol([a, b, c]), '\uf071  ')
+        b.apply(parse_report('state=blocked:kind=auth'))
+        self.ae(combined_status_symbol([a, b, c]), '\uf071  2 ')
+        # several records in one window count as one window
+        self.ae(combined_status_symbol([window('state=blocked', 'state=blocked:id=x'), c]), '\uf071  ')
+        # ties are broken by the most recently updated record, across windows
+        a, b = window('state=working:progress=10'), window('state=working:progress=20')
+        self.ae(combined_status_symbol([a, b]), '\uf110  2 20% ')
+        a.apply(parse_report('state=working:progress=30'))
+        self.ae(combined_status_symbol([a, b]), '\uf110  2 30% ')
+        self.ae(combined_status_symbol([b, a]), '\uf110  2 30% ')
