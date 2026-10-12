@@ -4109,6 +4109,8 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     if (self->paused_rendering.expires_at) {
         if (!self->paused_rendering.cell_data_updated) {
             LineBuf *linebuf = self->paused_rendering.linebuf;
+            // The GPU buffer was invalidated so every row must be written. Pixel
+            // scrolling is off while paused, so lines == render_lines_for_screen().
             for (index_type y = 0; y < self->lines; y++) {
                 linebuf_init_line(linebuf, y);
                 if (linebuf->line->attrs.has_dirty_text) {
