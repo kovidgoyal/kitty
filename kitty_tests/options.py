@@ -91,6 +91,7 @@ class TestConfParsing(BaseTest):
         tab = SimpleNamespace(serialize_state_as_session=lambda *a: ['', 'new_tab', 'launch'])
         tm = cast(TabManager, SimpleNamespace(tabs=[tab], active_tab=tab, wm_class='', wm_name='', serialize_geometry_as_session=lambda: geometry))
         ser_opts = default_save_as_session_opts()
+        self.assertFalse(ser_opts.relaunch_full_screen_programs)
         self.assertNotIn(geometry[0], TabManager.serialize_state_as_session(tm, '', None, ser_opts, is_first=True))
         ser_opts.os_window_geometry = True
         self.ae(TabManager.serialize_state_as_session(tm, '', None, ser_opts, is_first=True)[:3], geometry)
@@ -119,6 +120,8 @@ class TestConfParsing(BaseTest):
         launch_line = shlex.join(['launch', unserialize_launch_flag + json.dumps({'id': 7})])
 
         def serialize(session_path, ser_opts):
+            # Full screen programs are started again, other programs are not
+            self.assertTrue(ser_opts.relaunch_full_screen_programs and not ser_opts.use_foreground_process)
             return iter((geometry if ser_opts.os_window_geometry else []) + [launch_line])
 
         def save(pid, *lines):

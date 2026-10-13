@@ -278,7 +278,9 @@ Currently, this works only on macOS. The state is saved as a session file,
 including the size, position and state of every OS Window. If several kitty
 instances are running, all of them are saved and restored together. The
 scrollback of every window is restored as well, followed by a line showing when
-it was saved, before the shell starts. To save OS Window geometry in your own
+it was saved, before the shell starts. Full screen programs, such as editors,
+that were running in a window are started again, other programs are not, since
+they could have been run for their effects, like :file:`rm`. To save OS Window geometry in your own
 session files, use the ``--os-window-geometry`` option of :ac:`save_as_session`.
 
 If your session is not restored, any errors are written to the system log,

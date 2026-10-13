@@ -676,6 +676,13 @@ the session is executed if you use this option. Note that this option requires :
 to work.
 
 
+--relaunch-full-screen-programs
+type=bool-set
+Like :code:`--use-foreground-process`, but only for windows that are running a full screen program, such as
+an editor, which is detected by the window using the alternate screen. These are interactive programs that
+are safe to start again, unlike commands run in the shell for their effects.
+
+
 --relocatable
 type=bool-set
 When saving the working directory for windows, do so as paths relative to the directory in which
@@ -769,7 +776,7 @@ def save_session_at_logout(boss: BossType) -> None:
     from .utils import lock_with_file
 
     opts = default_save_as_session_opts()
-    opts.os_window_geometry = True
+    opts.os_window_geometry = opts.relaunch_full_screen_programs = True
     base = saved_at_logout_dir()
     # Every kitty instance saves its own session, so that they are all restored
     path = os.path.join(base, f'{os.getpid()}.kitty-session')

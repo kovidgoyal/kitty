@@ -3142,8 +3142,9 @@ opt(
     long_text="""
 If enabled, when you log out, restart or shut down the computer while kitty is running,
 kitty saves its current state as a :ref:`session <sessions>`, including the size, position
-and state of every :term:`OS Window <os_window>` and the scrollback of every window. The next
-time kitty is started, it restores that session, instead of using :opt:`startup_session`.
+and state of every :term:`OS Window <os_window>` and the scrollback of every window. Full screen
+programs, such as editors, that were running in a window are started again, other programs are not.
+The next time kitty is started, it restores that session, instead of using :opt:`startup_session`.
 If several kitty instances were running, all of them are restored.
 The saved session is used only once, and only when kitty is started without
 :option:`kitty --session` or a command to run. The saved scrollback is readable only by you

@@ -2488,7 +2488,8 @@ class Window:
                         if self.screen.last_reported_cwd:
                             set_cwd_in_cmdline(path_from_osc7_url(self.screen.last_reported_cwd), cmd)
         unserialize_data: dict[str, int | list[str] | str] = {'id': self.id}
-        if not cmd and ser_opts.use_foreground_process:
+        use_foreground_process = ser_opts.use_foreground_process or (ser_opts.relaunch_full_screen_programs and self.screen.is_using_alternate_linebuf())
+        if not cmd and use_foreground_process:
 
             def make_exe_absolute(cmd: list[str], pid: int) -> None:
                 if cmd and not os.path.isabs(cmd[0]):
