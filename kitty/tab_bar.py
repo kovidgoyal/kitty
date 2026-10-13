@@ -290,6 +290,13 @@ class TabAccessor:
         return f'{p}% '
 
     @property
+    def program_status(self) -> str:
+        from .program_status import combined_status_symbol
+
+        tab = get_boss().tab_for_id(self.tab_id)
+        return combined_status_symbol(w.program_status for w in tab) if tab else ''
+
+    @property
     def children_mem_usage(self) -> str:
         from kittens.tui.utils import human_size
 

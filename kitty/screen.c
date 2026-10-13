@@ -3560,6 +3560,11 @@ osc_context(Screen *self, PyObject *ctx) {
 }
 
 void
+program_status_report(Screen *self, PyObject *data) {
+    CALLBACK("program_status_report", "O", data);
+}
+
+void
 desktop_notify(Screen *self, unsigned int osc_code, PyObject *data) {
     CALLBACK("desktop_notify", "IO", osc_code, data);
 }
