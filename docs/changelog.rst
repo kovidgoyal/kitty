@@ -320,6 +320,10 @@ Detailed list of changes
   :code:`wheel_right` buttons, for example, to change the font size with
   :kbd:`Ctrl+scroll`
 
+- Fix bold or italic Nerd Font icons sometimes being rendered using glyphs
+  from an unrelated font that happens to cover the character, for example in
+  the bold italic title of the active tab
+
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
 
