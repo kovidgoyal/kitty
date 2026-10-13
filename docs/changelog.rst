@@ -231,12 +231,6 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Support the `Program Status Protocol (OSC 7501)
-  <https://www.superlogical.com/rex/docs/build/program-status>`__ that lets
-  programs report whether they are working, finished, failed or blocked waiting
-  on the user. Shown in the tab bar via a new :code:`tab.program_status` field
-  for :opt:`tab_title_template`, see :ref:`program_status`
-
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
@@ -440,6 +434,12 @@ Detailed list of changes
 - Custom shaders: Fix the screen going blank, except for parts drawn only by
   the shader, when switching from a pipeline that does not use the named
   textures to one that does
+
+- Support the `Program Status Protocol (OSC 7501)
+  <https://www.superlogical.com/rex/docs/build/program-status>`__ that lets
+  programs report whether they are working, finished, failed or blocked waiting
+  on the user. Shown in the tab bar via a new :code:`tab.program_status` field
+  for :opt:`tab_title_template`, see :ref:`program_status`
 
 
 0.49.2 [2026-10-01]
