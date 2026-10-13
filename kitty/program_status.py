@@ -187,8 +187,12 @@ class ProgramStatus:
     "The records reported by the programs running in one window"
 
     def __init__(self) -> None:
+        # ordered from least to most recently changed
         self.records: OrderedDict[str, Record] = OrderedDict()
+        # when each record last changed, used to break ties between equally urgent records
         self.update_seq: dict[str, int] = {}
+        # when each record was last reported, even identically, used for eviction
+        self.report_seq: dict[str, int] = {}
 
     def __bool__(self) -> bool:
         return bool(self.records)
@@ -212,27 +216,32 @@ class ProgramStatus:
         "Apply a report, returns True if the records changed"
         if isinstance(report, Clear):
             return self.remove(lambda r: is_descendant_or_self(r.id, report.id))
+        seq = next(update_counter)
+        self.report_seq[report.id] = seq
         if self.records.get(report.id) == report:
-            # an identical report changes nothing that is displayed, so only its position for eviction is updated
-            self.records.move_to_end(report.id)
+            # an identical report changes nothing that is displayed, so only its recency for eviction is updated
             return False
-        self.update_seq[report.id] = next(update_counter)
+        self.update_seq[report.id] = seq
         self.records[report.id] = report
         self.records.move_to_end(report.id)
-        while len(self.records) > MAX_RECORDS:  # drop the least recently updated record
-            del self.update_seq[self.records.popitem(last=False)[0]]
+        while len(self.records) > MAX_RECORDS:  # drop the least recently reported record
+            self.discard(min(self.report_seq, key=self.report_seq.__getitem__))
         return True
+
+    def discard(self, rid: str) -> None:
+        del self.records[rid], self.update_seq[rid], self.report_seq[rid]
 
     def remove(self, predicate: Callable[[Record], bool]) -> bool:
         remove = tuple(rid for rid, r in self.records.items() if predicate(r))
         for rid in remove:
-            del self.records[rid], self.update_seq[rid]
+            self.discard(rid)
         return bool(remove)
 
     def clear(self) -> bool:
         ans = bool(self.records)
         self.records.clear()
         self.update_seq.clear()
+        self.report_seq.clear()
         return ans
 
     def on_process_exit_or_prompt(self) -> bool:
@@ -252,12 +261,12 @@ class ProgramStatus:
                 return a.app
         return ''
 
+    def rank(self, record: Record) -> tuple[int, int]:
+        "The sort key for display: the most urgent record wins, ties are broken by the most recently changed record"
+        return URGENCY[record.state], self.update_seq[record.id]
+
     def most_urgent(self) -> Record | None:
-        ans: Record | None = None
-        for r in reversed(self.records.values()):  # prefer the most recently updated
-            if ans is None or (URGENCY[r.state], self.update_seq[r.id]) > (URGENCY[ans.state], self.update_seq[ans.id]):
-                ans = r
-        return ans
+        return max(self.records.values(), key=self.rank, default=None)
 
     def as_list(self) -> list[dict[str, Any]]:
         ans = []
@@ -291,8 +300,8 @@ def combined_status_symbol(statuses: Iterable[ProgramStatus]) -> str:
     The most urgent status of several windows, along with the number of
     windows in that status. Ties are broken by the most recently updated record.
     """
-    items = [(r, ps.update_seq[r.id]) for ps in statuses if (r := ps.most_urgent()) is not None]
+    items = [(r, ps.rank(r)) for ps in statuses if (r := ps.most_urgent()) is not None]
     if not items:
         return ''
-    best = max(items, key=lambda x: (URGENCY[x[0].state], x[1]))[0]
+    best = max(items, key=lambda x: x[1])[0]
     return status_symbol(best, sum(1 for r, _ in items if r.state is best.state))
