@@ -13,6 +13,10 @@ import (
 
 var _ = fmt.Print
 
+// Tells kitty that a program it cannot see exit has exited, so that it can drop
+// the program status (OSC 7501) records that do not outlive the program
+const PROGRAM_STATUS_PROCESS_EXITED = "\x1b]7501;process-exited\x1b\\"
+
 func HoldTillEnter(start_with_newline bool) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking)
 	if err != nil {
@@ -57,6 +61,7 @@ func ExecAndHoldTillEnter(cmdline []string) (int, error) {
 	cmd.Stderr = os.Stderr
 	var ee *exec.ExitError
 	err := cmd.Run()
+	_, _ = os.Stdout.WriteString(PROGRAM_STATUS_PROCESS_EXITED)
 	is_exit_error := err != nil && errors.As(err, &ee)
 	if err != nil && !is_exit_error {
 		return 1, err

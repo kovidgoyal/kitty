@@ -4,13 +4,14 @@
 # Program Status Protocol (OSC 7501), revision 0.4
 # https://www.superlogical.com/rex/docs/build/program-status
 
-import binascii
 import re
 from collections import OrderedDict
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from enum import Enum
 from itertools import count
 from typing import Any, NamedTuple
+
+from .fast_data_types import base64_decode
 
 OSC_CODE = 7501
 # The whole sequence, ESC ] through ST, assuming the longer ST of ESC \
@@ -20,7 +21,9 @@ MAX_KEY_BYTES = 16
 MAX_MSG_ENCODED_BYTES, MAX_MSG_BYTES = 2732, 2048
 MAX_TITLE_ENCODED_BYTES, MAX_TITLE_BYTES = 256, 192
 MAX_APP_BYTES = 32
-MAX_ID_BYTES, MAX_ID_SEGMENT_BYTES, MAX_ID_DEPTH = 128, 32, 8
+MAX_ID_SEGMENT_BYTES, MAX_ID_DEPTH = 32, 8
+# The spec says 128 but that is an error as it is less than the maximum length allowed by the segment and depth limits
+MAX_ID_BYTES = MAX_ID_SEGMENT_BYTES * MAX_ID_DEPTH + MAX_ID_DEPTH - 1
 MAX_RECORDS = 256
 
 key_pat = re.compile(r'[a-z]+')
@@ -29,6 +32,7 @@ name_pat = re.compile(r'[A-Za-z0-9_.+-]+')
 progress_pat = re.compile(r'[0-9]+')
 # C0, DEL and C1 control characters
 control_chars_pat = re.compile('[\x00-\x1f\x7f-\x9f]')
+WHITESPACE = ' \t\n\r\x0b\x0c'
 
 
 class State(Enum):
@@ -45,6 +49,10 @@ class Kind(Enum):
     auth = 'auth'
 
 
+# Sent by kittens that run a program before handing the terminal to something
+# else, such as a shell for launch --hold, as kitty cannot otherwise see the
+# program exit. It is not a valid report so other terminals ignore it.
+PROCESS_EXITED = b'process-exited'
 # Reply to the feature detection query, lists the states and kinds we accept
 QUERY_REPLY = '{};?:states={}:kinds={}'.format(OSC_CODE, ','.join(s.value for s in State), ','.join(k.value for k in Kind))
 # Records that are dropped when the process exits or a new shell prompt begins
@@ -101,9 +109,9 @@ def decode_text(encoded: str, max_encoded: int, max_decoded: int) -> str:
     if len(encoded) % 4 == 1:
         raise InvalidReport('invalid base64')
     try:
-        raw = binascii.a2b_base64(encoded + '=' * (-len(encoded) % 4), strict_mode=True)
+        raw = base64_decode(encoded + '=' * (-len(encoded) % 4), True)
         text = raw.decode('utf-8')
-    except (binascii.Error, UnicodeDecodeError) as e:
+    except (ValueError, UnicodeDecodeError) as e:
         raise InvalidReport(f'invalid text value: {e}') from e
     if len(raw) > max_decoded:
         raise InvalidReport('decoded text value too long')
@@ -112,18 +120,25 @@ def decode_text(encoded: str, max_encoded: int, max_decoded: int) -> str:
     return text
 
 
-def parse_report(body: str) -> Record | Clear:
+def parse_report(raw: str | bytes | memoryview) -> Record | Clear:
     "Parse the body of an OSC 7501 report, everything after 7501; Raises InvalidReport if the report must be discarded."
-    if len(body.encode('utf-8')) > MAX_BODY_BYTES:
+    if isinstance(raw, str):
+        body, num_bytes = raw, len(raw.encode('utf-8'))
+    else:
+        # invalid UTF-8 is outside the value set and so is skipped, as a malformed pair
+        body, num_bytes = str(raw, 'utf-8', 'replace'), len(raw)
+    if num_bytes > MAX_BODY_BYTES:
         raise InvalidReport('report too long')
     values: dict[str, str] = {}
     for pair in body.split(':'):
         key, sep, val = pair.partition('=')
-        key, val = key.strip(), val.strip()
-        if not sep or not key_pat.fullmatch(key):
+        if not sep:
             continue
+        key, val = key.strip(WHITESPACE), val.strip(WHITESPACE)
         if len(key) > MAX_KEY_BYTES:
             raise InvalidReport('key too long')
+        if not key_pat.fullmatch(key):
+            continue
         if value_pat.fullmatch(val) is None:
             if key == 'id':  # never fall back to the root record because of a malformed id
                 raise InvalidReport('invalid id')
@@ -181,21 +196,34 @@ class ProgramStatus:
     def __iter__(self) -> Iterator[Record]:
         return iter(self.records.values())
 
+    def handle_escape_code(self, raw: memoryview | bytes) -> tuple[str, bool]:
+        """
+        Handle the body of an OSC 7501 escape code, returns the reply to send
+        to the child, empty if none, and whether the records changed. Raises
+        InvalidReport if the report must be discarded.
+        """
+        if raw == b'?':
+            return QUERY_REPLY, False
+        if raw == PROCESS_EXITED:
+            return '', self.on_process_exit_or_prompt()
+        return '', self.apply(parse_report(raw))
+
     def apply(self, report: Record | Clear) -> bool:
         "Apply a report, returns True if the records changed"
         if isinstance(report, Clear):
             return self.remove(lambda r: is_descendant_or_self(r.id, report.id))
-        self.update_seq[report.id] = next(update_counter)
         if self.records.get(report.id) == report:
+            # an identical report changes nothing that is displayed, so only its position for eviction is updated
             self.records.move_to_end(report.id)
             return False
+        self.update_seq[report.id] = next(update_counter)
         self.records[report.id] = report
         self.records.move_to_end(report.id)
         while len(self.records) > MAX_RECORDS:  # drop the least recently updated record
             del self.update_seq[self.records.popitem(last=False)[0]]
         return True
 
-    def remove(self, predicate: Any) -> bool:
+    def remove(self, predicate: Callable[[Record], bool]) -> bool:
         remove = tuple(rid for rid, r in self.records.items() if predicate(r))
         for rid in remove:
             del self.records[rid], self.update_seq[rid]

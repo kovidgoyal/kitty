@@ -4,6 +4,7 @@
 from base64 import standard_b64encode
 
 from kitty.program_status import (
+    MAX_BODY_BYTES,
     MAX_RECORDS,
     QUERY_REPLY,
     Clear,
@@ -55,11 +56,24 @@ class TestProgramStatus(BaseTest):
         bad('app=x')
         bad('')
         # invalid ids discard the report rather than fall back to the root record
-        for rid in ('a//b', '/a', 'a/', 'a b', 'a*b', 'a,b', 'x' * 33, '/'.join('a' * 9), '/'.join(['x' * 32] * 4) + '/x'):
+        for rid in ('', 'a//b', '/a', 'a/', 'a b', 'a*b', 'a,b', 'x' * 33, '/'.join('a' * 9), '/'.join(['x' * 32] * 8) + 'x'):
             bad(f'state=clear:id={rid}')
+        # the longest id allowed by the segment limits is accepted, the 128 byte limit in the spec is an error
+        rid = '/'.join(['x' * 32] * 8)
+        self.ae(len(rid), 263)
+        self.ae(p(f'state=idle:id={rid}'), Record(id=rid))
         bad('state=idle:id=a:id=a*b')
         # limits, checked even for values that are later replaced
         bad(f'state=idle:{"k" * 17}=1')
+        bad(f'state=idle:{"K" * 17}=1')
+        self.ae(p(f'state=idle:{"K" * 16}=1'), Record())
+        # only ASCII whitespace is removed
+        self.ae(p('\tstate=done\r\n'), Record(state=State.done))
+        bad('\x1cstate=done')
+        # the limit is on bytes, not on decoded text
+        filler = 'state=idle:' + 'x=y:' * ((MAX_BODY_BYTES - 100) // 4)
+        self.ae(parse_report(filler.encode() + b'\xff' * 30), Record())
+        bad(filler.encode() + b'\xff' * 100)
         bad(f'state=idle:app={"a" * 33}:app=b')
         bad(f'state=idle:title={b64("x" * 193)}')
         bad(f'state=idle:msg={b64("x" * 2049)}')
@@ -76,6 +90,17 @@ class TestProgramStatus(BaseTest):
 
     def test_program_status_records(self):
         ps = ProgramStatus()
+        # the escape code handler used by windows
+        self.ae(ps.handle_escape_code(memoryview(b'?')), (QUERY_REPLY, False))
+        self.ae(ps.handle_escape_code(b'state=working'), ('', True))
+        self.ae(ps.handle_escape_code(b'state=working'), ('', False))
+        with self.assertRaises(InvalidReport):
+            ps.handle_escape_code(b'state=paused')
+        ps.apply(parse_report('state=done:id=d'))
+        self.ae(ps.handle_escape_code(b'process-exited'), ('', True))
+        self.ae([r.id for r in ps], ['d'])
+        self.ae(ps.handle_escape_code(b'process-exited'), ('', False))
+        ps.clear()
 
         def apply(body: str) -> bool:
             return ps.apply(parse_report(body))
@@ -155,3 +180,6 @@ class TestProgramStatus(BaseTest):
         a.apply(parse_report('state=working:progress=30'))
         self.ae(combined_status_symbol([a, b]), '\uf110  2 30% ')
         self.ae(combined_status_symbol([b, a]), '\uf110  2 30% ')
+        # an identical report does not change which record is shown
+        b.apply(parse_report('state=working:progress=20'))
+        self.ae(combined_status_symbol([a, b]), '\uf110  2 30% ')

@@ -1582,8 +1582,7 @@ class Window:
         if focused:
             self.last_focused_at = monotonic()
             update_ime_position_for_window(self.id, False, 1)
-            if self.program_status.on_seen_by_user():
-                self.program_status_changed()
+            self.program_status_seen_by_user()
             changed = self.needs_attention
             self.needs_attention = False
             if changed:
@@ -1612,22 +1611,25 @@ class Window:
 
     def program_status_report(self, raw_data: memoryview) -> None:
         # OSC 7501 https://www.superlogical.com/rex/docs/build/program-status
-        from .program_status import QUERY_REPLY, InvalidReport, parse_report
+        from .program_status import InvalidReport
 
-        body = str(raw_data, 'utf-8', 'replace')
-        if body == '?':
-            self.screen.send_escape_code_to_child(ESC_OSC, QUERY_REPLY)
-            return
         try:
-            report = parse_report(body)
+            reply, changed = self.program_status.handle_escape_code(raw_data)
         except InvalidReport as e:
             log_error(f'Ignoring invalid OSC 7501 program status report: {e}')
             return
-        if self.program_status.apply(report):
+        if reply:
+            self.screen.send_escape_code_to_child(ESC_OSC, reply)
+        if changed:
+            self.program_status_changed()
+
+    def program_status_seen_by_user(self) -> None:
+        if self.program_status.on_seen_by_user():
             self.program_status_changed()
 
     def program_status_changed(self) -> None:
-        self.call_watchers(self.watchers.on_program_status_change, {'program_status': self.program_status.as_list()})
+        if self.watchers.on_program_status_change:
+            self.call_watchers(self.watchers.on_program_status_change, {'program_status': self.program_status.as_list()})
         if (tab := self.tabref()) is not None:
             tab.mark_tab_bar_dirty()
 
