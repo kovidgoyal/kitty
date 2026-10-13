@@ -255,7 +255,7 @@ class ProgramStatus:
     def most_urgent(self) -> Record | None:
         ans: Record | None = None
         for r in reversed(self.records.values()):  # prefer the most recently updated
-            if ans is None or URGENCY[r.state] > URGENCY[ans.state]:
+            if ans is None or (URGENCY[r.state], self.update_seq[r.id]) > (URGENCY[ans.state], self.update_seq[ans.id]):
                 ans = r
         return ans
 
