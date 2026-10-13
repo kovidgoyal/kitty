@@ -163,3 +163,22 @@ func TestThemeCollections(t *testing.T) {
 		t.Fatal("failed to load code for alabaster theme")
 	}
 }
+
+func TestColorSettingsAsEscapeCodes(t *testing.T) {
+	ans := ColorSettingsAsEscapeCodes(map[string]string{"color1": "#ff0000", "color17": "#00ff00"})
+	for _, q := range []string{";1;#ff0000;", ";17;#00ff00;", ";16;#000000;", ";255;#eeeeee\x1b\\"} {
+		if !strings.Contains(ans, q) {
+			t.Fatalf("%#v not found in %#v", q, ans)
+		}
+	}
+	if strings.Contains(ans, ";16;#ffffff") {
+		t.Fatalf("Unset color 16 was set to white: %#v", ans)
+	}
+	_, osc21, found := strings.Cut(ans, "\x1b]21;")
+	if !found {
+		t.Fatalf("No OSC 21 in %#v", ans)
+	}
+	if !strings.HasPrefix(osc21, "16=;18=;") || !strings.HasSuffix(osc21, ";255=\x1b\\") || strings.Contains(osc21, ";17=") {
+		t.Fatalf("Incorrect OSC 21: %#v", osc21)
+	}
+}

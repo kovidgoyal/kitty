@@ -235,6 +235,8 @@ Detailed list of changes
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
+- ssh kitten, themes kitten: Fix colors 16-255 being set to white when using a color theme that does not define them (:iss:`10661`)
+
 - quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
   option to run a program in a new tab or window of an already running quick
   access terminal and a new :option:`kitty +kitten quick_access_terminal --listen-on` option
