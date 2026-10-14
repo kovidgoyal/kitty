@@ -157,7 +157,8 @@ class WorkspacesView(View):
             y += self.row_h
         for i, (kind, item) in enumerate(rows):
             r = Rect(10, y, W - 20, self.row_h - 4)
-            is_hover = hover == ('row', i) or (hover is None and i == self.selected)
+            is_hover = hover == ('row', i) or (hover is None and i == self.selected) or (
+                kind == 'workspace' and hover == ('ask_delete', item['name']))
             if kind == 'create':
                 if is_hover:
                     c.rounded(r.x, r.y, r.w, r.h, 11, P.hover)
@@ -192,6 +193,7 @@ class WorkspacesView(View):
             if detail := item.get('detail', ''):
                 c.text(44, r.y + 36, c.fit_text(detail, 12, r.w - 44 - 20), 12, P.muted)
             trash = Rect(r.x + r.w - 10 - 30, r.y + 4, 30, 30)
+            hits.append((r, ('row', i)))
             if is_hover and hover is not None:
                 c.rounded(trash.x, trash.y, trash.w, trash.h, 8, '#3a2026' if hover == ('ask_delete', name) else None)
                 icon_trash(c, trash.x + 7, trash.y + 7, '#ff7a85' if hover == ('ask_delete', name) else P.muted)
@@ -204,7 +206,6 @@ class WorkspacesView(View):
                 else:
                     status_x = r.x + r.w - 12
                 c.text(status_x, r.y + 18, status, 12, P.muted, anchor='rm')
-            hits.append((r, ('row', i)))
             y += self.row_h
         # footer
         y += 12
@@ -324,7 +325,11 @@ class PixelUI(Handler):
     # Graphics {{{
     def transmit(self, img: 'Image.Image', image_id: int, x: int, y: int, z: int) -> None:
         cw, ch = self.screen_size.cell_width, self.screen_size.cell_height
-        x, y = max(0, x), max(0, y)
+        if x < 0 or y < 0:
+            # Images cannot be placed outside the window: cut off what sticks out (typically part of a
+            # shadow), rather than moving the image, which would offset it from where the mouse is tested
+            img = img.crop((max(0, -x), max(0, -y), img.width, img.height))
+            x, y = max(0, x), max(0, y)
         with tempfile.NamedTemporaryFile(prefix='tty-graphics-protocol-', suffix='.rgba', dir='/dev/shm' if os.path.isdir('/dev/shm') else None, delete=False) as f:
             f.write(img.tobytes())
         path = standard_b64encode(f.name.encode()).decode()
