@@ -273,6 +273,17 @@ typedef struct _GLFWwindowWayland {
         } minimize, maximize, close;
 
         struct {
+            bool hovered;
+            int width, left;
+        } toolbar[GLFW_CSD_TOOLBAR_BUTTON_COUNT];
+
+        // State of a titlebar rendered by the application, see GLFWcsdrenderfun
+        struct {
+            GLFWCSDRegion regions[64];
+            int num_regions, hover_id, pressed_id;
+        } custom;
+
+        struct {
             uint32_t *data;
             size_t for_decoration_size, stride, segments, corner_size;
         } shadow_tile;

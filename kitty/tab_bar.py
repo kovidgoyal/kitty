@@ -236,9 +236,54 @@ def template_has_field(template: str, field: str) -> bool:
     return False
 
 
+def git_branch_for_dir(path: str) -> str:
+    ' The current git branch of the repository containing path, read directly from .git/HEAD so it is cheap enough to call on every redraw '
+    while path:
+        git = os.path.join(path, '.git')
+        if os.path.isfile(git):  # worktrees and submodules have a .git file pointing to the actual git dir
+            try:
+                with open(git) as f:
+                    gitdir = f.read().strip().removeprefix('gitdir:').strip()
+            except OSError:
+                return ''
+            git = os.path.join(path, gitdir)
+        head = os.path.join(git, 'HEAD')
+        try:
+            with open(head) as f:
+                ref = f.read().strip()
+        except OSError:
+            parent = os.path.dirname(path)
+            if parent == path:
+                return ''
+            path = parent
+            continue
+        return ref.removeprefix('ref: refs/heads/') if ref.startswith('ref: ') else ref[:8]
+    return ''
+
+
 class TabAccessor:
     def __init__(self, tab_id: int):
         self.tab_id = tab_id
+
+    @property
+    def active_wd_short(self) -> str:
+        ' The working directory of the active window with the home directory replaced by ~ '
+        wd = self.active_wd
+        home = os.path.expanduser('~')
+        if wd == home or wd.startswith(home + os.sep):
+            wd = '~' + wd[len(home):]
+        return wd
+
+    @property
+    def active_wd_name(self) -> str:
+        ' The name of the working directory of the active window, ~ for the home directory '
+        wd = self.active_wd_short
+        return wd if wd == '~' else os.path.basename(wd.rstrip(os.sep))
+
+    @property
+    def git_branch(self) -> str:
+        wd = self.active_wd
+        return git_branch_for_dir(wd) if wd else ''
 
     @property
     def active_wd(self) -> str:

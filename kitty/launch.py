@@ -937,7 +937,8 @@ def _launch(
             case '!':
                 add_to_session = ''
             case '':
-                if kw['cwd_from'] is not None and source_window:
+                if source_window and (kw['cwd_from'] is not None or opts.type in ('window', 'tab')):
+                    # New windows and tabs join the session (workspace) the user is working in
                     add_to_session = source_window.created_in_session_name
         kw['hold'] = opts.hold
         dock_owner: WindowGroup | None = None
@@ -947,6 +948,9 @@ def _launch(
             tab = target_tab
         else:
             tab = tab_for_window(boss, opts, target_tab, next_to, add_to_session)
+        if not add_to_session and opts.add_to_session != '!' and opts.type in ('window', 'os-window', 'tab') and tab.created_in_session_name:
+            # A window in a tab that belongs to a session (workspace) belongs to that session too
+            add_to_session = tab.created_in_session_name
         if opts.type == 'window-dock':
             owner_window = tab.windows.main_window_for(next_to) if next_to is not None and next_to in tab else None
             owner_window = owner_window or tab.windows.active_main_window

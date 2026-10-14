@@ -1253,6 +1253,15 @@ class Boss:
         else:
             self.mark_window_for_close(window)
 
+    def close_window_from_gui(self, window: Window) -> None:
+        ' Close a window from its close button, asking first only if it is running a program other than the shell '
+        msg = self.close_windows_with_confirmation_msg((window,), window)[0]
+        if msg:
+            msg = _('Are you sure you want to close this window?') + ' ' + msg
+            self.confirm(msg, self.handle_close_window_confirmation, window.id, window=window, title=_('Close window?'))
+        else:
+            self.mark_window_for_close(window)
+
     def handle_close_window_confirmation(self, allowed: bool, window_id: int) -> None:
         if allowed:
             self.mark_window_for_close(window_id)
@@ -1533,6 +1542,8 @@ class Boss:
                 self.launch_urls(*urls)
             else:
                 self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
+            from .workspaces import after_startup
+            after_startup(self)
 
         if (opts := get_options()).update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
@@ -1605,6 +1616,70 @@ class Boss:
             req.callback(os_window_id, window_id, pixels, width, height)
         finally:
             self._issue_next_thumbnail_request()
+
+    @ac('misc', 'Show the Git menu for the project in the active window')
+    def git_menu(self) -> None:
+        from .titlebar import show_toast
+        if tm := self.active_tab_manager:
+            show_toast(tm.os_window_id, 'Меню Git — скоро')
+
+    @ac('win', 'Focus the window running Claude Code in the current tab')
+    def focus_claude(self) -> None:
+        tab = self.active_tab
+        if tab is None:
+            return
+        for w in tab:
+            if os.path.basename(w.child.get_foreground_exe() or '') == 'claude':
+                tab.set_active_window(w)
+                return
+
+    @ac('session', 'Save the current workspace, asking for a name if the current tabs do not belong to a workspace yet')
+    def save_workspace(self) -> None:
+        from .workspaces import save_current_workspace
+        save_current_workspace(self)
+
+    @ac('session', 'Show the list of saved workspaces to switch to, create or delete one')
+    def workspaces(self) -> None:
+        from .workspaces import show_workspaces_panel
+        show_workspaces_panel(self)
+
+    @ac('session', 'Create a new, empty workspace')
+    def new_workspace(self) -> None:
+        from .workspaces import new_workspace
+        new_workspace(self)
+
+    @ac('tab', 'Show or hide the tab bar, which acts as the sidebar listing workspaces when it is on the left or right edge')
+    def toggle_sidebar(self) -> None:
+        tm = self.active_tab_manager_with_dispatch
+        if tm is not None:
+            tm.toggle_sidebar()
+
+    def render_titlebar(self, os_window_id: int, width: int, height: int, scale: float, hover: int, pressed: int, flags: int) -> Any:
+        from .titlebar import render
+        try:
+            return render(self, os_window_id, width, height, scale, hover, pressed, flags)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            return None
+
+    def on_csd_toolbar_button(self, os_window_id: int, button_id: int) -> None:
+        # The order matches the region ids in titlebar.py
+        actions = (
+            'toggle_sidebar',                             # sidebar
+            'new_tab_with_cwd',                           # new tab
+            'launch --location=vsplit --cwd=current',     # split right
+            'launch --location=hsplit --cwd=current',     # split down
+            'save_workspace',                             # save workspace
+            'workspaces',                                 # workspace switcher
+            'edit_config_file',                           # settings
+            'git_menu',                                   # git
+            'focus_claude',                               # claude
+        )
+        tm = self.os_window_map.get(os_window_id)
+        if tm is None or not 0 <= button_id < len(actions):
+            return
+        self.combine(actions[button_id], tm.active_window, dispatch_type='MouseEvent')
 
     def on_window_resize(self, os_window_id: int, w: int, h: int, dpi_changed: bool) -> None:
         if dpi_changed:
@@ -2383,6 +2458,13 @@ class Boss:
             self.confirm_os_window_close(tm.os_window_id)
 
     def confirm_os_window_close(self, os_window_id: int) -> None:
+        from .workspaces import before_close
+        if before_close(
+            self, os_window_id,
+            proceed=lambda: self.mark_os_window_for_close(os_window_id),
+            cancel=lambda: self.mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED),
+        ):
+            return
         tm = self.os_window_map.get(os_window_id)
         if tm is None:
             self.mark_os_window_for_close(os_window_id)
@@ -2471,6 +2553,17 @@ class Boss:
 
     @ac('win', 'Quit, closing all windows')
     def quit(self, *args: Any) -> None:
+        from .workspaces import before_close
+
+        def proceed() -> None:
+            if self._call_on_quit_watchers({'confirmed': True}):
+                set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
+            else:
+                set_application_quit_request(NO_CLOSE_REQUESTED)
+
+        if before_close(self, None, proceed, cancel=lambda: set_application_quit_request(NO_CLOSE_REQUESTED)):
+            set_application_quit_request(CLOSE_BEING_CONFIRMED)
+            return
         windows = []
         for q in self.os_window_map.values():
             for qt in q:

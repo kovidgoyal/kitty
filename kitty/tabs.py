@@ -872,12 +872,17 @@ class Tab:  # {{{
         self.current_layout.add_window(
             self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind, bias=bias, next_to=next_to, dock=dock, dock_owner=dock_owner
         )
+        if overlay_for is None and (session_name := getattr(self, 'created_in_session_name', '')) and not getattr(window, 'created_in_session_name', True):
+            # A window in a tab that belongs to a session (workspace) belongs to that session too
+            window.created_in_session_name = session_name
         if overlay_behind and (w := self.active_window):
             set_redirect_keys_to_overlay(self.os_window_id, self.id, w.id, window.id)
             buffer_keys_in_window(self.os_window_id, self.id, window.id, True)
             window.keys_redirected_till_ready_from = w.id
         self.mark_tab_bar_dirty()
         self.relayout()
+        from .workspaces import schedule_autosave
+        schedule_autosave()
 
     def new_window(
         self,
@@ -1035,6 +1040,8 @@ class Tab:  # {{{
                 boss.mark_window_for_close(w)
         if do_post_removal_update:
             self.post_window_removal_update()
+        from .workspaces import schedule_autosave
+        schedule_autosave()
 
     def post_window_removal_update(self) -> None:
         self.mark_tab_bar_dirty()
@@ -1471,9 +1478,11 @@ class TabManager:  # {{{
         self.created_in_session_name = startup_session.session_name if startup_session else ''
         self.recent_tab_bar_mouse_events = MouseEvents()
         self.recent_title_bar_mouse_events = MouseEvents()
+        self.title_bar_close_pressed_for = 0
         self.wm_name = wm_name
         self.args = args
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
+        self.sidebar_collapsed = False
         self.tabs: list[Tab] = []
         self.active_tab_history: Deque[int] = deque()
         self.tab_bar = TabBar(self.os_window_id)
@@ -1562,6 +1571,8 @@ class TabManager:  # {{{
 
     @property
     def tab_bar_should_be_visible(self) -> bool:
+        if self.sidebar_collapsed:
+            return False
         if self.tab_being_dropped is not None or self.window_drag_over_me:
             return True  # keep tab bar visible in the dest
         count = get_options().tab_bar_min_tabs
@@ -1575,6 +1586,10 @@ class TabManager:  # {{{
             if count < 1:
                 return True
         return count < 1
+
+    @update_tab_bar_visibility
+    def toggle_sidebar(self) -> None:
+        self.sidebar_collapsed = not self.sidebar_collapsed
 
     def _set_active_tab(self, idx: int, store_in_history: bool = True) -> None:
         if store_in_history:
@@ -1598,6 +1613,8 @@ class TabManager:  # {{{
     def mark_tab_bar_dirty(self) -> None:
         should_be_shown = not self.tab_bar_hidden and self.tab_bar_should_be_visible
         mark_tab_bar_dirty(self.os_window_id, should_be_shown)
+        from .titlebar import schedule_redraw
+        schedule_redraw(self.os_window_id)
         w = self.active_window or self.any_window
         if w is not None:
             data = {'tab_manager': self}
@@ -1825,6 +1842,9 @@ class TabManager:  # {{{
             session_name = sw.created_in_session_name
             if not session_name and (sw_tab := sw.tabref()):
                 session_name = sw_tab.created_in_session_name
+        elif special_window is None and (aw := self.active_window) is not None:
+            # New tabs join the session (workspace) the user is working in
+            session_name = aw.created_in_session_name
         t = (
             Tab(self, no_initial_window=True, session_name=session_name)
             if empty_tab
@@ -2102,6 +2122,17 @@ class TabManager:  # {{{
             return
         self.recent_title_bar_mouse_events.add(button, modifiers, action, x, y, window_id)
         if button != GLFW_MOUSE_BUTTON_LEFT:
+            return
+        w = boss.window_id_map.get(window_id)
+        on_close_button = w is not None and (tb := w._title_bar_screen) is not None and tb.is_over_close_button(x)
+        if on_close_button or self.title_bar_close_pressed_for:
+            # The close button: closes the window when both the press and the release are on it
+            if action == GLFW_PRESS:
+                self.title_bar_close_pressed_for = window_id
+            else:
+                pressed_for, self.title_bar_close_pressed_for = self.title_bar_close_pressed_for, 0
+                if on_close_button and pressed_for == window_id and w is not None:
+                    boss.close_window_from_gui(w)
             return
         if action == GLFW_PRESS:
             if (w := boss.window_id_map.get(window_id)) is not None:

@@ -212,7 +212,10 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
 void
 csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.width = 12;
-    decs.metrics.top = 36;
+    // A taller titlebar than upstream, so that it can comfortably hold the toolbar
+    decs.metrics.top = 56;
+    decs.custom.hover_id = decs.custom.pressed_id = -1;
+    decs.custom.num_regions = 0;
     decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
     decs.metrics.horizontal = 2 * decs.metrics.width;
     decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
@@ -336,6 +339,193 @@ render_close(uint8_t *out, unsigned width, unsigned height) {
     render_line(out, width, height, line_thickness, side_margin, baseline, width - side_margin, top);
 }
 
+// toolbar icons {{{
+static GLFWcsdtoolbarfun toolbar_callback = NULL;
+static GLFWcsdrenderfun render_callback = NULL;
+
+GLFWAPI void
+glfwWaylandSetCSDRenderCallback(GLFWcsdrenderfun callback) {
+    render_callback = callback;
+}
+
+// Titlebar rendered by the application {{{
+static int
+custom_region_at(_GLFWwindow *window, int scaled_x) {
+    for (int i = 0; i < decs.custom.num_regions; i++) {
+        const GLFWCSDRegion *r = decs.custom.regions + i;
+        if (r->left <= scaled_x && scaled_x < r->right) return r->id;
+    }
+    return -1;
+}
+
+static bool
+render_custom_title_bar(_GLFWwindow *window, uint8_t *output) {
+    if (!render_callback) return false;
+    int flags = 0;
+    if (window->id == _glfw.focusedWindowId) flags |= GLFW_CSD_FLAG_FOCUSED;
+    if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) flags |= GLFW_CSD_FLAG_MAXIMIZED;
+    if (window->wl.wm_capabilities.maximize) flags |= GLFW_CSD_FLAG_CAN_MAXIMIZE;
+    if (window->wl.wm_capabilities.minimize) flags |= GLFW_CSD_FLAG_CAN_MINIMIZE;
+    int num = 0;
+    if (!render_callback(
+            (GLFWwindow *)window, output, decs.titlebar.buffer.width, decs.titlebar.buffer.height, (float)decs.for_window_state.fscale,
+            decs.custom.hover_id, decs.custom.pressed_id, flags, decs.custom.regions, &num, (int)arraysz(decs.custom.regions)))
+        return false;
+    decs.custom.num_regions = MAX(0, MIN(num, (int)arraysz(decs.custom.regions)));
+    decs.minimize.width = decs.maximize.width = decs.close.width = 0;
+    for (int i = 0; i < GLFW_CSD_TOOLBAR_BUTTON_COUNT; i++) decs.toolbar[i].width = 0;
+    return true;
+}
+
+static void
+activate_custom_region(_GLFWwindow *window, int id) {
+    switch (id) {
+        case GLFW_CSD_REGION_CLOSE: _glfwInputWindowCloseRequest(window); break;
+        case GLFW_CSD_REGION_MINIMIZE: _glfwPlatformIconifyWindow(window); break;
+        case GLFW_CSD_REGION_MAXIMIZE:
+            if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
+            else _glfwPlatformMaximizeWindow(window);
+            break;
+        default:
+            if (toolbar_callback) toolbar_callback((GLFWwindow *)window, id);
+            break;
+    }
+}
+// }}}
+
+GLFWAPI void
+glfwWaylandSetCSDToolbarCallback(GLFWcsdtoolbarfun callback) {
+    toolbar_callback = callback;
+}
+
+static void
+fill_rect(uint8_t *out, unsigned width, unsigned height, int left, int top, int right, int bottom) {
+    left = MAX(0, left);
+    top = MAX(0, top);
+    right = MIN((int)width, right);
+    bottom = MIN((int)height, bottom);
+    for (int y = top; y < bottom; y++) {
+        uint8_t *dest = out + (size_t)width * y;
+        for (int x = left; x < right; x++) dest[x] = 255;
+    }
+}
+
+static void
+outline_rect(uint8_t *out, unsigned width, unsigned height, int left, int top, int right, int bottom, int thickness) {
+    fill_rect(out, width, height, left, top, right, top + thickness);
+    fill_rect(out, width, height, left, bottom - thickness, right, bottom);
+    fill_rect(out, width, height, left, top, left + thickness, bottom);
+    fill_rect(out, width, height, right - thickness, top, right, bottom);
+}
+
+// Geometry shared by all toolbar icons: a box that is slightly wider than it is tall, centered in the button
+typedef struct {
+    int left, top, right, bottom, cx, cy, thickness;
+} IconBox;
+
+static IconBox
+icon_box(uint8_t *out, unsigned width, unsigned height) {
+    memset(out, 0, (size_t)width * height);
+    IconBox b;
+    const int half_width = (int)(height * 0.25f), half_height = (int)(height * 0.21f);
+    b.cx = width / 2;
+    b.cy = height / 2;
+    b.left = b.cx - half_width;
+    b.right = b.cx + half_width;
+    b.top = b.cy - half_height;
+    b.bottom = b.cy + half_height;
+    b.thickness = MAX(1, (int)roundf(height / 16.f));
+    return b;
+}
+
+static void
+render_sidebar_icon(uint8_t *out, unsigned width, unsigned height) {
+    IconBox b = icon_box(out, width, height);
+    outline_rect(out, width, height, b.left, b.top, b.right, b.bottom, b.thickness);
+    int divider = b.left + (b.right - b.left) / 3;
+    fill_rect(out, width, height, divider, b.top, divider + b.thickness, b.bottom);
+}
+
+static void
+render_plus_icon(uint8_t *out, unsigned width, unsigned height) {
+    IconBox b = icon_box(out, width, height);
+    const int half = (b.right - b.left) / 2, t = b.thickness;
+    fill_rect(out, width, height, b.cx - half, b.cy - t / 2, b.cx + half, b.cy - t / 2 + t);
+    fill_rect(out, width, height, b.cx - t / 2, b.cy - half, b.cx - t / 2 + t, b.cy + half);
+}
+
+static void
+render_split_right_icon(uint8_t *out, unsigned width, unsigned height) {
+    IconBox b = icon_box(out, width, height);
+    outline_rect(out, width, height, b.left, b.top, b.right, b.bottom, b.thickness);
+    fill_rect(out, width, height, b.cx - b.thickness / 2, b.top, b.cx - b.thickness / 2 + b.thickness, b.bottom);
+}
+
+static void
+render_split_down_icon(uint8_t *out, unsigned width, unsigned height) {
+    IconBox b = icon_box(out, width, height);
+    outline_rect(out, width, height, b.left, b.top, b.right, b.bottom, b.thickness);
+    fill_rect(out, width, height, b.left, b.cy - b.thickness / 2, b.right, b.cy - b.thickness / 2 + b.thickness);
+}
+
+static void
+render_save_icon(uint8_t *out, unsigned width, unsigned height) {
+    // An arrow pointing down into a tray
+    IconBox b = icon_box(out, width, height);
+    const int t = b.thickness, top = b.top - t, arrow_tip = b.cy + (b.bottom - b.cy) / 3, head = (b.right - b.left) / 4;
+    fill_rect(out, width, height, b.cx - t / 2, top, b.cx - t / 2 + t, arrow_tip);
+    render_line(out, width, height, t, b.cx - head, arrow_tip - head, b.cx, arrow_tip);
+    render_line(out, width, height, t, b.cx + head, arrow_tip - head, b.cx, arrow_tip);
+    fill_rect(out, width, height, b.left, b.bottom - t, b.right, b.bottom);
+    fill_rect(out, width, height, b.left, b.cy, b.left + t, b.bottom);
+    fill_rect(out, width, height, b.right - t, b.cy, b.right, b.bottom);
+}
+
+static void
+render_workspaces_icon(uint8_t *out, unsigned width, unsigned height) {
+    // A list: three bullets with lines
+    IconBox b = icon_box(out, width, height);
+    const int t = b.thickness, bullet = t + t / 2, rows[3] = {b.top, b.cy - bullet / 2, b.bottom - bullet};
+    for (int i = 0; i < 3; i++) {
+        fill_rect(out, width, height, b.left, rows[i], b.left + bullet, rows[i] + bullet);
+        fill_rect(out, width, height, b.left + bullet + 2 * t, rows[i] + (bullet - t) / 2, b.right, rows[i] + (bullet - t) / 2 + t);
+    }
+}
+
+static void
+render_settings_icon(uint8_t *out, unsigned width, unsigned height) {
+    // A gear: a ring with eight teeth
+    IconBox b = icon_box(out, width, height);
+    const float outer = (b.bottom - b.top) * 0.62f, body = outer * 0.74f, hole = outer * 0.32f;
+    for (unsigned y = 0; y < height; y++) {
+        uint8_t *dest = out + (size_t)width * y;
+        for (unsigned x = 0; x < width; x++) {
+            const float dx = x + 0.5f - b.cx, dy = y + 0.5f - b.cy, d = sqrtf(dx * dx + dy * dy);
+            if (d <= hole) continue;
+            const bool on_tooth = cosf(8.f * atan2f(dy, dx)) > 0.35f;
+            if (d <= body || (on_tooth && d <= outer)) dest[x] = 255;
+        }
+    }
+}
+
+typedef void (*IconRenderer)(uint8_t *, unsigned, unsigned);
+static const IconRenderer toolbar_icons[GLFW_CSD_TOOLBAR_BUTTON_COUNT] = {
+    [GLFW_CSD_TOOLBAR_SIDEBAR] = render_sidebar_icon,
+    [GLFW_CSD_TOOLBAR_NEW_WORKSPACE] = render_plus_icon,
+    [GLFW_CSD_TOOLBAR_SPLIT_RIGHT] = render_split_right_icon,
+    [GLFW_CSD_TOOLBAR_SPLIT_DOWN] = render_split_down_icon,
+    [GLFW_CSD_TOOLBAR_SAVE_WORKSPACE] = render_save_icon,
+    [GLFW_CSD_TOOLBAR_WORKSPACES] = render_workspaces_icon,
+    [GLFW_CSD_TOOLBAR_SETTINGS] = render_settings_icon,
+};
+
+// Buttons after which a small gap is left, to visually group related buttons
+static bool
+toolbar_gap_after(int button) {
+    return button == GLFW_CSD_TOOLBAR_SIDEBAR || button == GLFW_CSD_TOOLBAR_SPLIT_DOWN || button == GLFW_CSD_TOOLBAR_WORKSPACES;
+}
+// }}}
+
 static uint32_t
 average_intensity_in_src(uint8_t *src, unsigned src_width, unsigned src_x, unsigned src_y, unsigned factor) {
     uint32_t ans = 0;
@@ -411,39 +601,69 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
         is_dark = true;
     }
     uint8_t *output = to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back;
+    if (render_custom_title_bar(window, output)) return;
+    decs.custom.num_regions = 0;
 
-    // render text part
+    // blank the buffer, the text and buttons are drawn over it
+    for (uint32_t *px = (uint32_t *)output, *end = (uint32_t *)(output + decs.titlebar.buffer.size_in_bytes); px < end; px++) *px = bg_color;
     size_t button_size = decs.titlebar.buffer.height;
     unsigned num_buttons = 1;
     if (window->wl.wm_capabilities.maximize) num_buttons++;
     if (window->wl.wm_capabilities.minimize) num_buttons++;
-    if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        if (_glfw.callbacks.draw_text(
-                (GLFWwindow *)window,
-                window->wl.title,
-                fg_color,
-                bg_color,
-                output,
-                decs.titlebar.buffer.width,
-                decs.titlebar.buffer.height,
-                0,
-                0,
-                num_buttons * button_size,
-                false))
-            goto render_buttons;
-    }
-    // rendering of text failed, blank the buffer
-    for (uint32_t *px = (uint32_t *)output, *end = (uint32_t *)(output + decs.titlebar.buffer.size_in_bytes); px < end; px++) *px = bg_color;
-
-render_buttons:
     decs.maximize.width = 0;
     decs.minimize.width = 0;
     decs.close.width = 0;
+    for (int i = 0; i < GLFW_CSD_TOOLBAR_BUTTON_COUNT; i++) decs.toolbar[i].width = 0;
     if (!button_size) return;
-
     uint8_t *alpha_mask = malloc(button_size * button_size);
-    int left = decs.titlebar.buffer.width - num_buttons * button_size;
-    if (!alpha_mask || left <= 0) return;
+    if (!alpha_mask) return;
+    const int window_buttons_left = (int)decs.titlebar.buffer.width - (int)(num_buttons * button_size);
+
+    // render the toolbar on the left
+    const int toolbar_gap = button_size / 3;
+    int left = toolbar_gap;
+    if (toolbar_callback) {
+        for (int i = 0; i < GLFW_CSD_TOOLBAR_BUTTON_COUNT; i++) {
+            if (left + (int)button_size > window_buttons_left) break;
+            render_button(
+                toolbar_icons[i],
+                true,
+                (uint32_t *)output,
+                alpha_mask,
+                button_size,
+                decs.titlebar.buffer.width,
+                button_size,
+                left,
+                decs.toolbar[i].hovered ? hover_bg : bg_color,
+                fg_color);
+            decs.toolbar[i].left = left;
+            decs.toolbar[i].width = button_size;
+            left += button_size;
+            if (toolbar_gap_after(i)) left += toolbar_gap;
+        }
+    }
+
+    // render text part
+    if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text && left < window_buttons_left) {
+        _glfw.callbacks.draw_text(
+            (GLFWwindow *)window,
+            window->wl.title,
+            fg_color,
+            bg_color,
+            output,
+            decs.titlebar.buffer.width,
+            decs.titlebar.buffer.height,
+            left,
+            0,
+            num_buttons * button_size,
+            false);
+    }
+
+    left = window_buttons_left;
+    if (left <= 0) {
+        free(alpha_mask);
+        return;
+    }
 #define drawb(which, antialias, func, hover_bg)       \
     {                                                 \
         render_button(                                \
@@ -896,14 +1116,23 @@ update_hovered_button(_GLFWwindow *window) {
     c(minimize);
     c(maximize);
     c(close);
+    for (int i = 0; i < GLFW_CSD_TOOLBAR_BUTTON_COUNT; i++) { c(toolbar[i]); }
 #undef c
     update_title_bar(window);
     return has_hovered_button;
 }
 
+static int
+hovered_toolbar_button(_GLFWwindow *window) {
+    for (int i = 0; i < GLFW_CSD_TOOLBAR_BUTTON_COUNT; i++) {
+        if (decs.toolbar[i].hovered) return i;
+    }
+    return -1;
+}
+
 static bool
 has_hovered_button(_GLFWwindow *window) {
-    return decs.minimize.hovered || decs.maximize.hovered || decs.close.hovered;
+    return decs.minimize.hovered || decs.maximize.hovered || decs.close.hovered || hovered_toolbar_button(window) > -1;
 }
 
 static void
@@ -917,6 +1146,11 @@ handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
         c(minimize);
         c(maximize);
         c(close);
+        for (int i = 0; i < GLFW_CSD_TOOLBAR_BUTTON_COUNT; i++) { c(toolbar[i]); }
+        if (decs.custom.hover_id != -1 || decs.custom.pressed_id != -1) {
+            decs.custom.hover_id = decs.custom.pressed_id = -1;
+            decs.titlebar_needs_update = true;
+        }
     }
 #undef c
     decs.focus = CENTRAL_WINDOW;
@@ -932,6 +1166,13 @@ handle_pointer_move(_GLFWwindow *window) {
         case CSD_titlebar: {
             if (decs.dragging) {
                 if (window->wl.xdg.toplevel) xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial);
+            } else if (decs.custom.num_regions) {
+                const int id = custom_region_at(window, (int)round(decs.for_window_state.fscale * x));
+                if (id != decs.custom.hover_id) {
+                    decs.custom.hover_id = id;
+                    decs.titlebar_needs_update = true;
+                }
+                if (id > -1) cursorShape = GLFW_POINTER_CURSOR;
             } else if (update_hovered_button(window)) cursorShape = GLFW_POINTER_CURSOR;
         } break;
         case CSD_shadow_top: cursorShape = GLFW_N_RESIZE_CURSOR; break;
@@ -968,7 +1209,37 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
         switch (decs.focus) {
             case CENTRAL_WINDOW: break;
             case CSD_titlebar:
-                if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+                if (decs.custom.num_regions) {
+                    const int id = custom_region_at(window, (int)round(decs.for_window_state.fscale * x));
+                    if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+                        if (id > -1) {
+                            decs.custom.pressed_id = id;
+                            decs.titlebar_needs_update = true;
+                            decs.dragging = false;
+                            break;
+                        }
+                        monotonic_t last_click_at = decs.last_click_on_top_decoration_at;
+                        decs.last_click_on_top_decoration_at = monotonic();
+                        if (decs.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
+                            decs.last_click_on_top_decoration_at = 0;
+                            activate_custom_region(window, GLFW_CSD_REGION_MAXIMIZE);
+                            return;
+                        }
+                        decs.dragging = true;
+                    } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+                        const int pressed = decs.custom.pressed_id;
+                        decs.custom.pressed_id = -1;
+                        decs.titlebar_needs_update = true;
+                        decs.dragging = false;
+                        if (pressed > -1 && pressed == id) {
+                            // the action may close or otherwise modify the window, so return immediately
+                            activate_custom_region(window, id);
+                            return;
+                        }
+                    }
+                    break;
+                }
+                if (state == WL_POINTER_BUTTON_STATE_PRESSED && !has_hovered_button(window)) {
                     monotonic_t last_click_at = decs.last_click_on_top_decoration_at;
                     decs.last_click_on_top_decoration_at = monotonic();
                     if (decs.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
@@ -977,7 +1248,13 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                         else _glfwPlatformMaximizeWindow(window);
                         return;
                     }
-                } else {
+                } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+                    const int toolbar_button = hovered_toolbar_button(window);
+                    if (toolbar_button > -1) {
+                        // the callback may close or otherwise modify the window, so return immediately
+                        if (toolbar_callback) toolbar_callback((GLFWwindow *)window, toolbar_button);
+                        return;
+                    }
                     if (decs.minimize.hovered) _glfwPlatformIconifyWindow(window);
                     else if (decs.maximize.hovered) {
                         if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);

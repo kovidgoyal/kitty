@@ -826,6 +826,10 @@ class Window:
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
         opts = get_options()
         self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
+        if (replay := (child.env or {}).get('KITTY_FORK_REPLAY')):
+            # Contents of a terminal restored from a workspace, see workspaces.py
+            from .workspaces import replay_into_screen
+            replay_into_screen(self.screen, replay)
         self.screen.track_activity = bool(opts.tab_activity_symbol)
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)

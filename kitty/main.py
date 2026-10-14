@@ -309,7 +309,8 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
                 pos_x, pos_y = parse_os_window_position(args.position)
         startup_session_error: tuple[Exception, str] | None = None
         try:
-            startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
+            from .workspaces import startup_workspace_path
+            startup_sessions = tuple(create_sessions(opts, args, default_session=startup_workspace_path(args, opts.startup_session) or opts.startup_session))
         except Exception as e:
             startup_session_error = (e, (getattr(args, 'session', '') or opts.startup_session or ''))
             if getattr(args, 'session', ''):

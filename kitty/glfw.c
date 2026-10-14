@@ -280,6 +280,53 @@ is_window_ready_for_callbacks(void) {
 
 #define WINDOW_CALLBACK(name, fmt, ...) call_boss(name, "K" fmt, global_state.callback_os_window->id, __VA_ARGS__)
 
+static bool
+csd_render_callback(
+    GLFWwindow *w, uint8_t *buf, size_t width, size_t height, float scale, int hover_id, int pressed_id, int flags, GLFWCSDRegion *regions,
+    int *num_regions, int max_regions) {
+    OSWindow *osw = os_window_for_glfw_window(w);
+    if (!osw || !global_state.boss) return false;
+    RAII_PyObject(ret, PyObject_CallMethod(global_state.boss, "render_titlebar", "KkkfiiI", osw->id, width, height, scale, hover_id, pressed_id, flags));
+    if (!ret) {
+        PyErr_Print();
+        return false;
+    }
+    if (ret == Py_None) return false;
+    PyObject *pixels, *regs;
+    if (!PyArg_ParseTuple(ret, "SO", &pixels, &regs) || !PyList_Check(regs)) {
+        PyErr_Print();
+        return false;
+    }
+    if ((size_t)PyBytes_GET_SIZE(pixels) != width * height * 4) return false;
+    memcpy(buf, PyBytes_AS_STRING(pixels), width * height * 4);
+    int n = 0;
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(regs) && n < max_regions; i++) {
+        GLFWCSDRegion *r = regions + n;
+        if (PyArg_ParseTuple(PyList_GET_ITEM(regs, i), "iii", &r->left, &r->right, &r->id)) n++;
+        else PyErr_Clear();
+    }
+    *num_regions = n;
+    return true;
+}
+
+static PyObject *
+redraw_titlebar(PyObject *self UNUSED, PyObject *os_window_id) {
+    id_type wid = PyLong_AsUnsignedLongLong(os_window_id);
+    if (PyErr_Occurred()) return NULL;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->id == wid && w->handle && global_state.is_wayland) glfwWaylandRedrawCSDWindowTitle(w->handle);
+    }
+    Py_RETURN_NONE;
+}
+
+static void
+csd_toolbar_callback(GLFWwindow *w, int button_id) {
+    if (!set_callback_window(w)) return;
+    WINDOW_CALLBACK(on_csd_toolbar_button, "i", button_id);
+    global_state.callback_os_window = NULL;
+}
+
 static void
 show_mouse_cursor(GLFWwindow *w) {
     glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -2409,6 +2456,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // exists. Register a hook so the window is mapped at the correct cell-based
     // size once the compositor reveals the scale, rather than being resized
     // afterwards (which loses to the compositor's authoritative configure).
+    if (global_state.is_wayland && glfwWaylandSetCSDToolbarCallback) glfwWaylandSetCSDToolbarCallback(csd_toolbar_callback);
+    if (global_state.is_wayland && glfwWaylandSetCSDRenderCallback) glfwWaylandSetCSDRenderCallback(csd_render_callback);
     if (global_state.is_wayland && glfwWaylandSetInitialWindowSizeCallback) {
         glfwWaylandSetInitialWindowSizeCallback(wayland_initial_size_callback);
         initial_window_size_py_callback = get_window_size;
@@ -3989,6 +4038,7 @@ start_drag_with_data(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
+    METHODB(redraw_titlebar, METH_O),
     METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
     {"toggle_os_window_visibility", (PyCFunction)(void (*)(void))(toggle_os_window_visibility), METH_VARARGS | METH_KEYWORDS, NULL},

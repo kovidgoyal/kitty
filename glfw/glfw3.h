@@ -2016,6 +2016,35 @@ typedef bool (*GLFWdrawtextfun)(
     float y_offset,
     size_t right_margin,
     bool is_single_glyph);
+// Buttons drawn on the left of the Wayland client side titlebar, see glfwWaylandSetCSDToolbarCallback()
+typedef enum {
+    GLFW_CSD_TOOLBAR_SIDEBAR,
+    GLFW_CSD_TOOLBAR_NEW_WORKSPACE,
+    GLFW_CSD_TOOLBAR_SPLIT_RIGHT,
+    GLFW_CSD_TOOLBAR_SPLIT_DOWN,
+    GLFW_CSD_TOOLBAR_SAVE_WORKSPACE,
+    GLFW_CSD_TOOLBAR_WORKSPACES,
+    GLFW_CSD_TOOLBAR_SETTINGS,
+    GLFW_CSD_TOOLBAR_BUTTON_COUNT
+} GLFWCSDToolbarButton;
+typedef void (*GLFWcsdtoolbarfun)(GLFWwindow *window, int button_id);
+// A clickable area of a titlebar rendered by GLFWcsdrenderfun, in buffer pixels. The special ids
+// below are handled by GLFW itself, any other non-negative id is passed to the GLFWcsdtoolbarfun.
+typedef struct GLFWCSDRegion {
+    int left, right, id;
+} GLFWCSDRegion;
+#define GLFW_CSD_REGION_CLOSE 1000
+#define GLFW_CSD_REGION_MINIMIZE 1001
+#define GLFW_CSD_REGION_MAXIMIZE 1002
+#define GLFW_CSD_FLAG_FOCUSED 1
+#define GLFW_CSD_FLAG_MAXIMIZED 2
+#define GLFW_CSD_FLAG_CAN_MAXIMIZE 4
+#define GLFW_CSD_FLAG_CAN_MINIMIZE 8
+// Renders the whole titlebar into buf (ARGB32, width x height pixels), filling in its clickable regions.
+// Returns false to fall back to the builtin titlebar.
+typedef bool (*GLFWcsdrenderfun)(
+    GLFWwindow *window, uint8_t *buf, size_t width, size_t height, float scale, int hover_id, int pressed_id, int flags,
+    GLFWCSDRegion *regions, int *num_regions, int max_regions);
 typedef char *(*GLFWcurrentselectionfun)(void);
 typedef bool (*GLFWhascurrentselectionfun)(void);
 typedef void (*GLFWclipboarddatafreefun)(void *data);

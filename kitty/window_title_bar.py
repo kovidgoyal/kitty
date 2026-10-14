@@ -119,6 +119,10 @@ def clear_caches() -> None:
     load_custom_window_title_bar_module.clear_cached()
 
 
+CLOSE_BUTTON = ' \uea76 '  # the codicon close glyph, drawn at the right end of the title bar
+CLOSE_BUTTON_CELLS = len(CLOSE_BUTTON)
+
+
 class WindowTitleBarScreen:
     def __init__(self, os_window_id: int, cell_width: int, cell_height: int):
         self.os_window_id = os_window_id
@@ -187,4 +191,17 @@ class WindowTitleBarScreen:
             s.insert_characters(pad)
             s.cursor.x = 0
             s.erase_characters(pad)
+        if s.columns > CLOSE_BUTTON_CELLS + 4:
+            s.cursor.x = s.columns - CLOSE_BUTTON_CELLS
+            s.cursor.fg = fg
+            s.cursor.bg = bg
+            s.draw(CLOSE_BUTTON)
         return title_str
+
+    def is_over_close_button(self, x: float) -> bool:
+        ' x is in OS window pixels '
+        cols = self.screen.columns
+        if cols <= CLOSE_BUTTON_CELLS + 4:
+            return False
+        left = self.geometry.left + (cols - CLOSE_BUTTON_CELLS) * self.cell_width
+        return left <= x < self.geometry.left + cols * self.cell_width
