@@ -42,7 +42,7 @@ get_termscheme(uint i) {
         return float4(crd.main_cursor_fg_lin.rgb, 1.0);
     }
     if(i < 22) {
-        return float4(color_to_vec(ctb.color_table[i-5]), 1.0);
+        return float4(color_to_vec(ctb.color_table[i-6]), 1.0);
     }
     if(i == 22) {
         return transparent();
