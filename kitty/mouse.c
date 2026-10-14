@@ -1117,6 +1117,21 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
                 ans.window_border = 0;
             }
         }
+        if (detect_title_bar) {
+            // Title bars first: the padding of a window, which counts as part of it, can overlap its title bar
+            for (unsigned int i = 0; i < t->num_windows; i++) {
+                Window *win = t->windows + i;
+                const WindowRenderData *trd = &win->window_title_render_data;
+                if (win->visible && trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top &&
+                    w->mouse_x >= trd->geometry.left && w->mouse_x < trd->geometry.right && w->mouse_y >= trd->geometry.top &&
+                    w->mouse_y < trd->geometry.bottom) {
+                    ans.in_title_bar = true;
+                    ans.window = win;
+                    ans.window_idx = i;
+                    return ans;
+                }
+            }
+        }
         for (unsigned int i = 0; i < t->num_windows; i++) {
             Window *win = t->windows + i;
             if (contains_mouse(win) && win->render_data.screen) {
