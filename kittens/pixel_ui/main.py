@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 P = PALETTE
 BG_IMAGE_ID, PANEL_IMAGE_ID = 1, 2
+APPEAR_STEPS = ((0.25, 10), (0.55, 6), (0.8, 3), (0.95, 1))  # opacity and upward offset of the first frames
 
 
 class Rect(NamedTuple):
@@ -89,6 +90,10 @@ class View:
     def on_escape(self) -> bool:
         return False
 
+    def state_key(self) -> Any:
+        ' Everything other than the hovered item that the drawing depends on, rendered frames are cached by it '
+        return None
+
 
 class WorkspacesView(View):
     title = 'Воркспейсы'
@@ -107,6 +112,9 @@ class WorkspacesView(View):
     def matches(self) -> list[dict[str, Any]]:
         q = self.query.strip().lower()
         return [w for w in self.workspaces if q in w['name'].lower()] if q else list(self.workspaces)
+
+    def state_key(self) -> Any:
+        return self.query, self.selected, self.confirm_delete, self.on_close_policy
 
     def can_create(self) -> bool:
         q = self.query.strip()
@@ -306,6 +314,12 @@ class PixelUI(Handler):
         self.panel_origin = (0, 0)  # where the panel image (with its shadow margin) is placed, in pixels
         self.margin_px = 0
         self.scale = 1.
+        self.shadow_cache: tuple[Any, 'Image.Image', 'Image.Image'] | None = None  # size, shadow, mask for the rounded corners
+        self.frame_cache: dict[Any, tuple['Image.Image', list[Hit]]] = {}
+        self.frame_cache_size: Any = None
+        self.prerender_scheduled = False
+        self.appear_step = 0
+        self.panel_slot = 0  # frames alternate between two image ids, so that the old one is removed only once the new one is shown
 
     # Graphics {{{
     def transmit(self, img: 'Image.Image', image_id: int, x: int, y: int, z: int) -> None:
@@ -337,8 +351,34 @@ class PixelUI(Handler):
         img.alpha_composite(Image.new('RGBA', (W, H), (8, 9, 12, 140)))
         self.transmit(img, BG_IMAGE_ID, 0, 0, 0)
 
-    def draw_panel(self) -> None:
+    def shadow_and_mask(self, pw: int, ph: int, m: int) -> tuple['Image.Image', 'Image.Image']:
+        ' The drop shadow and the rounded corners only depend on the size of the panel, so are computed once '
         from PIL import Image, ImageDraw, ImageFilter
+        s = self.scale
+        key = (pw, ph, m, s)
+        if self.shadow_cache is None or self.shadow_cache[0] != key:
+            shadow = Image.new('RGBA', (pw + 2 * m, ph + 2 * m), (0, 0, 0, 0))
+            ImageDraw.Draw(shadow).rounded_rectangle((m, m + round(8 * s), m + pw, m + ph + round(8 * s)), radius=round(16 * s), fill=(0, 0, 0, 170))
+            shadow = shadow.filter(ImageFilter.GaussianBlur(14 * s))
+            ss = 4
+            mask = Image.new('L', (pw * ss, ph * ss), 0)
+            ImageDraw.Draw(mask).rounded_rectangle((0, 0, pw * ss - 1, ph * ss - 1), radius=round(16 * s * ss), fill=255)
+            self.shadow_cache = key, shadow, mask.reduce(ss)
+        return self.shadow_cache[1], self.shadow_cache[2]
+
+    def render_frame(self, pw: int, ph: int, m: int, hover: Any) -> tuple['Image.Image', list[Hit]]:
+        view = self.view
+        c = Canvas(pw, ph, self.scale, '#1a1b22', 'RGB')
+        c.rounded(0, 0, view.width, view.height(), 16, None, '#2c2e3a')
+        hits = view.draw(c, hover)
+        shadow, mask = self.shadow_and_mask(pw, ph, m)
+        panel = c.finish().convert('RGBA')
+        panel.putalpha(mask)
+        frame = shadow.copy()
+        frame.alpha_composite(panel, (m, m))
+        return frame, hits
+
+    def draw_panel(self) -> None:
         s = self.scale
         view = self.view
         pw, ph = round(view.width * s), round(view.height() * s)
@@ -348,16 +388,54 @@ class PixelUI(Handler):
         y0 = round(10 * s)
         self.panel_rect = (x0, y0, pw, ph)
         self.panel_origin = (x0 - m, y0 - m)
-        c = Canvas(pw, ph, s, (0, 0, 0, 0))
-        c.rounded(0, 0, view.width, view.height(), 16, '#1a1b22', '#2c2e3a')
-        self.hits = view.draw(c, self.hover)
-        panel = c.finish()
-        shadow = Image.new('RGBA', (pw + 2 * m, ph + 2 * m), (0, 0, 0, 0))
-        ImageDraw.Draw(shadow).rounded_rectangle((m, m + round(8 * s), m + pw, m + ph + round(8 * s)), radius=round(16 * s), fill=(0, 0, 0, 170))
-        shadow = shadow.filter(ImageFilter.GaussianBlur(14 * s))
-        shadow.alpha_composite(panel, (m, m))
-        self.transmit(shadow, PANEL_IMAGE_ID, x0 - m, y0 - m, 1)
+        if self.frame_cache_size != (pw, ph, s):
+            self.frame_cache.clear()
+            self.frame_cache_size = (pw, ph, s)
+        key = (view.state_key(), self.hover)
+        if (cached := self.frame_cache.get(key)) is None:
+            if len(self.frame_cache) > 64:
+                self.frame_cache.clear()
+            cached = self.frame_cache[key] = self.render_frame(pw, ph, m, self.hover)
+        frame, self.hits = cached
+        self.schedule_prerender()
+        if self.appear_step < len(APPEAR_STEPS):
+            # Fade in while sliding down a little, like macOS popovers
+            opacity, dy = APPEAR_STEPS[self.appear_step]
+            frame = frame.copy()
+            frame.putalpha(frame.getchannel('A').point(lambda a: int(a * opacity)))
+            self.show_frame(frame, x0 - m, y0 - m - round(dy * s))
+            self.appear_step += 1
+            self.asyncio_loop.call_later(1 / 60, self.draw_panel)
+            return
+        self.show_frame(frame, x0 - m, y0 - m)
+
+    def show_frame(self, frame: 'Image.Image', x: int, y: int) -> None:
+        old = PANEL_IMAGE_ID + self.panel_slot
+        self.panel_slot ^= 1
+        new = PANEL_IMAGE_ID + self.panel_slot
+        # The new frame goes above the old one, which is deleted only afterwards, so nothing flickers
+        self.transmit(frame, new, x, y, 2 + self.panel_slot)
+        self.write(f'\x1b_Ga=d,d=I,i={old},q=2\x1b\\')
     # }}}
+
+    def schedule_prerender(self) -> None:
+        if not self.prerender_scheduled:
+            self.prerender_scheduled = True
+            self.asyncio_loop.call_later(0.05, self.prerender_one)
+
+    def prerender_one(self) -> None:
+        ' Render, one per event loop iteration, the frames for hovering each control, so that hovering never waits for rendering '
+        self.prerender_scheduled = False
+        pw, ph, s = self.frame_cache_size or (0, 0, 0)
+        if not pw:
+            return
+        state = self.view.state_key()
+        for _, action in self.hits:
+            key = (state, action)
+            if key not in self.frame_cache:
+                self.frame_cache[key] = self.render_frame(pw, ph, self.margin_px, action)
+                self.schedule_prerender()
+                return
 
     def initialize(self) -> None:
         self.cmd.set_cursor_visible(False)

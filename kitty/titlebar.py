@@ -192,16 +192,20 @@ def state_for_os_window(boss: 'Boss', os_window_id: int) -> TitlebarState:
 class Canvas:
     ' Draws in logical pixels on a supersampled image, so that shapes come out antialiased '
 
-    def __init__(self, width: int, height: int, scale: float, bg: str | tuple[int, int, int, int] = PALETTE.bg):
+    def __init__(self, width: int, height: int, scale: float, bg: str | tuple[int, int, int, int] = PALETTE.bg, mode: str = 'RGBA'):
         from PIL import Image, ImageDraw
         self.scale = scale
         self.ss = 3 if scale < 1.5 else 2
         self.factor = scale * self.ss
         self.out_size = (width, height)
-        self.img: Image.Image = Image.new('RGBA', (width * self.ss, height * self.ss), bg)
+        # RGB is much faster to downsample than RGBA, use it for anything opaque
+        self.img: Image.Image = Image.new(mode, (width * self.ss, height * self.ss), bg)
         self.draw: ImageDraw.ImageDraw = ImageDraw.Draw(self.img)
         self.width = width / scale  # in logical pixels
         self.height = height / scale
+        # Text is drawn after downsampling, at the final size: FreeType antialiases it anyway and
+        # rendering glyphs at the supersampled size is by far the slowest part of drawing
+        self.texts: list[tuple[float, float, str, float, str, str, str]] = []
 
     def p(self, v: float) -> int:
         return round(v * self.factor)
@@ -219,15 +223,15 @@ class Canvas:
         self.draw.line([(self.p(x), self.p(y)) for x, y in points], fill=color, width=max(1, self.p(width)), joint='curve')
 
     def font(self, size: float, weight: str = 'Regular') -> 'ImageFont.FreeTypeFont':
-        return ui_font(self.p(size), weight)
+        ' The font at the final, not supersampled, size '
+        return ui_font(max(1, round(size * self.scale)), weight)
 
     def text_width(self, text: str, size: float, weight: str = 'Regular') -> float:
-        return self.font(size, weight).getlength(text) / self.factor
+        return self.font(size, weight).getlength(text) / self.scale
 
     def text(self, x: float, cy: float, text: str, size: float, color: str, weight: str = 'Regular', anchor: str = 'lm') -> float:
-        f = self.font(size, weight)
-        self.draw.text((self.p(x), self.p(cy)), text, font=f, fill=color, anchor=anchor)
-        return f.getlength(text) / self.factor
+        self.texts.append((x, cy, text, size, color, weight, anchor))
+        return self.text_width(text, size, weight)
 
     def fit_text(self, text: str, size: float, max_width: float, weight: str = 'Regular') -> str:
         ' Shorten text with an ellipsis so that it fits in max_width '
@@ -238,10 +242,16 @@ class Canvas:
         return text + '…'
 
     def finish(self) -> 'Image.Image':
-        from PIL import Image
+        from PIL import Image, ImageDraw
         if self.img.width == self.out_size[0] * self.ss:
-            return self.img.reduce(self.ss)
-        return self.img.resize(self.out_size, Image.Resampling.BOX)
+            img = self.img.reduce(self.ss)
+        else:
+            img = self.img.resize(self.out_size, Image.Resampling.BOX)
+        if self.texts:
+            draw = ImageDraw.Draw(img)
+            for x, cy, text, size, color, weight, anchor in self.texts:
+                draw.text((round(x * self.scale), round(cy * self.scale)), text, font=self.font(size, weight), fill=color, anchor=anchor)
+        return img
 
 
 # Icons, drawn in a 16x16 box whose top left corner is at x, y
@@ -469,7 +479,7 @@ def render_uncached(st: TitlebarState, width: int, height: int, scale: float, ho
             bx = x + 9 + 16 + 7 + tw + 7
             bwidth = max(18, bw)
             c.rounded(bx, cy - 9, bwidth, 18, 9, P.accent)
-            c.draw.text((c.p(bx + bwidth / 2), c.p(cy)), badge, font=c.font(11, 'SemiBold'), fill='#0b0c10', anchor='mm')
+            c.text(bx + bwidth / 2, cy, badge, 11, '#0b0c10', 'SemiBold', anchor='mm')
         region(x, w, rid)
         return x
 
