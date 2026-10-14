@@ -615,6 +615,18 @@ class Rendering(FontBaseTest):
         else:
             self.skipTest('No font on this system has a fallback font for any of the tested codepoints')
 
+    def test_private_use_fallback_font_ignores_style(self):
+        # private use codepoints such as Nerd Font icons must use the same
+        # fallback font in every style, rather than whatever unrelated bold or
+        # italic font happens to cover the codepoint
+        for text in '\uf00c\uf071\uf110\ue654':
+            try:
+                regular = get_fallback_font(text, False, False)
+            except ValueError:
+                continue
+            for bold, italic in ((True, False), (False, True), (True, True)):
+                self.ae(get_fallback_font(text, bold, italic).postscript_name(), regular.postscript_name(), f'{text!r} {bold=} {italic=}')
+
     @unittest.skipIf(is_macos, 'fontconfig is not used on macOS')
     def test_fallback_font_matching(self):
         # Fallback font matching narrows the candidates down using a cached,

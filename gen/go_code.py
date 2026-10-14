@@ -35,7 +35,7 @@ from kitty.cli import (
 from kitty.conf.generate import gen_go_code
 from kitty.conf.types import Definition
 from kitty.config import commented_out_default_config
-from kitty.fast_data_types import all_color_names
+from kitty.fast_data_types import NULL_COLOR_VALUE, all_color_names, default_color_table
 from kitty.guess_mime_type import known_extensions, text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
@@ -647,6 +647,11 @@ def generate_color_names() -> str:
         + '\n\nvar ColorTable = [256]uint32{'
         + ', '.join(f'{x}' for x in Options.color_table)
         + '}\n'
+        + '\n// Fixed values for entries in ColorTable that are unset (NullColorValue)\n'
+        + 'var FixedColorTable = [256]uint32{'
+        + ', '.join(f'{x}' for x in default_color_table())
+        + '}\n'
+        + f'\nconst NullColorValue uint32 = {NULL_COLOR_VALUE}\n'
         + f'''
 var DefaultColors = struct {{
 Foreground, Background, Cursor, SelectionFg, SelectionBg string

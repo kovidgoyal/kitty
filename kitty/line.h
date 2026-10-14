@@ -19,7 +19,8 @@ typedef union CellAttrs {
         uint16_t dim : 1;
         uint16_t blink : 1;
         uint16_t mark : 2;
-        uint32_t : 21;
+        // named so that initializers zero it, see CPUCell
+        uint32_t padding : 21;
     };
     uint32_t val;
 } CellAttrs;
@@ -58,20 +59,25 @@ typedef union CPUCell {
 #else
 #error "Unsupported endianness"
 #endif
+        // the fields below are ordered so that none of them straddles a 32
+        // bit boundary, leaving all padding at the end
         char_type hyperlink_id : sizeof(hyperlink_id_type) * 8;
-        char_type next_char_was_wrapped : 1;
-        char_type is_multicell : 1;
-        char_type natural_width : 1;
         char_type scale : SCALE_BITS;
         char_type subscale_n : SUBSCALE_BITS;
         char_type subscale_d : SUBSCALE_BITS;
+        char_type valign : VALIGN_BITS;
+        char_type halign : HALIGN_BITS;
+        char_type next_char_was_wrapped : 1;
+        char_type is_multicell : 1;
+        char_type natural_width : 1;
         char_type x : WIDTH_BITS + SCALE_BITS;
         char_type y : SCALE_BITS;
         char_type width : WIDTH_BITS;
-        char_type valign : VALIGN_BITS;
-        char_type halign : HALIGN_BITS;
         char_type temp_flag : 1;
-        char_type : 15;
+        // The padding is named because unnamed bit-fields are left
+        // indeterminate by initializers, and clang on arm64 fills them with
+        // stack garbage, making cells with identical contents compare unequal.
+        char_type padding : 17;
     };
     struct {
         char_type ch_and_idx : sizeof(char_type) * 8;
@@ -86,7 +92,8 @@ typedef union LineAttrs {
         uint8_t has_dirty_text : 1;
         uint8_t has_image_placeholders : 1;
         uint8_t prompt_kind : 2;
-        uint8_t : 4;
+        // named so that initializers zero it, see CPUCell
+        uint8_t padding : 4;
     };
     uint8_t val;
 } LineAttrs;

@@ -102,6 +102,7 @@ from .fast_data_types import (
     global_font_size,
     grab_keyboard,
     is_layer_shell_supported,
+    is_modifier_key,
     last_focused_os_window_id,
     load_png_data,
     macos_cycle_through_os_windows,
@@ -1853,6 +1854,9 @@ class Boss:
         self.mappings.push_keyboard_mode(new_mode)
 
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
+        if (w := self.active_window) is not None and w.program_status and not is_modifier_key(ev.key):
+            # the user pressing a key in the window means they have seen its finished or failed programs
+            w.program_status_seen_by_user()
         return self.mappings.dispatch_possible_special_key(ev)
 
     def on_shortcut_key_release(self, ev: KeyEvent) -> bool:

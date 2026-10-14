@@ -691,6 +691,7 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 	set_default_color("selection_background", style.DefaultColors.SelectionBg, loop.SELECTION_BG)
 	set_default_color("selection_foreground", style.DefaultColors.SelectionFg, loop.SELECTION_FG)
 
+	unset := make([]int, 0, 256)
 	w.WriteString("\033]4")
 	for i := range 256 {
 		key := "color" + strconv.Itoa(i)
@@ -702,11 +703,27 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 				continue
 			}
 		}
+		c := style.ColorTable[i]
+		if c == style.NullColorValue {
+			// Use the fixed palette for terminals that don't support OSC 21
+			c = style.FixedColorTable[i]
+			unset = append(unset, i)
+		}
 		rgba := style.RGBA{}
-		rgba.FromRGB(style.ColorTable[i])
+		rgba.FromRGB(c)
 		set_color(i, rgba.AsRGBSharp())
 	}
 	w.WriteString("\033\\")
+	if len(unset) > 0 {
+		// Have kitty fill in unset colors based on its palette_generate setting
+		w.WriteString("\033]21")
+		for _, i := range unset {
+			w.WriteByte(';')
+			w.WriteString(strconv.Itoa(i))
+			w.WriteByte('=')
+		}
+		w.WriteString("\033\\")
+	}
 	return w.String()
 }
 

@@ -235,6 +235,7 @@ Detailed list of changes
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
+
 - quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
   option to run a program in a new tab or window of an already running quick
   access terminal and a new :option:`kitty +kitten quick_access_terminal --listen-on` option
@@ -266,12 +267,17 @@ Detailed list of changes
 - Add English and Spanish subtitles to the intro video shown at the top of the
   documentation
 
+- ssh kitten, themes kitten: Fix colors 16-255 being set to white when using a color theme that does not define them (:iss:`10661`)
+
 - quick-access-terminal kitten: Fix :option:`kitty +kitten quick_access_terminal --detached-log` not working
 
 - choose-files kitten: Various edge case crashes and deadlocks fixed
 
 - choose-files kitten: Fix handling of symlinks to directories in directory
   selection modes and when using file filters
+
+- choose-files kitten: Fix switching between file filters made up of multiple
+  patterns that share the same first pattern not updating the results
 
 - Fix a non-zero :opt:`input_delay` painting once before delayed program output is parsed and again when it is parsed, so it could use more CPU than :opt:`input_delay` ``0``
 
@@ -310,6 +316,10 @@ Detailed list of changes
   the :code:`wheel_up`, :code:`wheel_down`, :code:`wheel_left` and
   :code:`wheel_right` buttons, for example, to change the font size with
   :kbd:`Ctrl+scroll`
+
+- Fix bold or italic Nerd Font icons sometimes being rendered using glyphs
+  from an unrelated font that happens to cover the character, for example in
+  the bold italic title of the active tab
 
 - Fix closing an unfocused window that comes before the focused window in the
   layout sometimes moving focus to a different window
@@ -427,6 +437,12 @@ Detailed list of changes
 - Custom shaders: Fix the screen going blank, except for parts drawn only by
   the shader, when switching from a pipeline that does not use the named
   textures to one that does
+
+- Support the `Program Status Protocol (OSC 7501)
+  <https://www.superlogical.com/rex/docs/build/program-status>`__ that lets
+  programs report whether they are working, finished, failed or blocked waiting
+  on the user. Shown in the tab bar via a new :code:`tab.program_status` field
+  for :opt:`tab_title_template`, see :ref:`program_status`
 
 
 0.49.2 [2026-10-01]

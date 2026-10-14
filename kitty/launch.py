@@ -629,6 +629,9 @@ def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
         w = m.get('on_cmd_startstop')
         if callable(w):
             ans.on_cmd_startstop.append(w)
+        w = m.get('on_program_status_change')
+        if callable(w):
+            ans.on_program_status_change.append(w)
         w = m.get('on_color_scheme_preference_change')
         if callable(w):
             ans.on_color_scheme_preference_change.append(w)

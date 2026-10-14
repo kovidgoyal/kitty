@@ -774,11 +774,41 @@ chars_as_utf8(const ListOfChars *lc, char *buf, size_t bufsz, char_type zero_cha
     return n;
 }
 
+static bool
+is_nerd_font_codepoint(char_type ch) {
+    // The Private Use Area ranges of the glyph sets in Nerd Fonts
+    switch (ch) {
+        START_ALLOW_CASE_RANGE
+        case 0xe000 ... 0xe00a:   // Pomicons
+        case 0xe0a0 ... 0xe0d7:   // Powerline and Powerline Extra
+        case 0xe200 ... 0xe2a9:   // Font Awesome Extension
+        case 0xe300 ... 0xe3e3:   // Weather
+        case 0xe5fa ... 0xe6b7:   // Seti-UI and Custom
+        case 0xe700 ... 0xe8ef:   // Devicons
+        case 0xea60 ... 0xec1e:   // Codicons
+        case 0xed00 ... 0xf2ff:   // Font Awesome
+        case 0xf300 ... 0xf381:   // Font Logos
+        case 0xf400 ... 0xf533:   // Octicons
+        case 0xf0001 ... 0xf1af0: // Material Design
+            return true;
+            END_ALLOW_CASE_RANGE
+    }
+    return false;
+}
+
 static ssize_t
 fallback_font(FontGroup *fg, const CPUCell *cpu_cell, const GPUCell *gpu_cell, const ListOfChars *lc) {
     bool bold = gpu_cell->attrs.bold;
     bool italic = gpu_cell->attrs.italic;
     bool emoji_presentation = has_emoji_presentation(cpu_cell, lc);
+    // Nerd Font icons are private use codepoints, whose glyph depends on the
+    // font, not on the style. Looking for a bold or italic font covering one
+    // tends to find an unrelated text font that happens to cover it, for
+    // example Liberation Serif Italic for the check mark U+f00c. So ignore the
+    // style, which also renders such icons the same way in every style. Other
+    // private use codepoints are left alone, as they may be used by fonts
+    // that do have styled variants.
+    if ((bold || italic) && is_nerd_font_codepoint(lc->chars[0])) bold = italic = false;
     char style = emoji_presentation ? 'a' : 'A';
     if (bold) style += italic ? 3 : 2;
     else style += italic ? 1 : 0;

@@ -222,6 +222,7 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 					loop.RESTORE_PRIVATE_MODE_VALUES,
 					"\x1b[=u", // reset kitty keyboard protocol to legacy
 					"\x1bP@kitty-restore-cursor-appearance|\a",
+					PROGRAM_STATUS_PROCESS_EXITED,
 				}, ""))
 				_ = term.Tcsetattr(tty.TCSANOW, &state_before)
 				term.Close()
