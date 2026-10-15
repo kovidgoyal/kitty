@@ -232,10 +232,15 @@ The function must be ``public`` and return ``float2``. kitty evaluates it on a
 grid only when the pipeline is loaded and when the OS Window is resized, and
 uses it to move all pointer events, so the only field of ``d`` it may use is
 ``d.viewport_size_pixels``. Only shaders in groups that draw to the whole
-screen and are always active, that is, without ``animation_start``,
-``attach``, ``output_texture``, ``viewport_pos`` or ``viewport_size``, are
-used, since only they move content permanently. When several shaders define
-it, they are applied starting from the last one to run.
+screen, that is, without ``attach``, ``output_texture``, ``viewport_pos`` or
+``viewport_size``, and that are either always active or active until an event
+turns them off, that is, without an ``animation_stop`` duration, are used,
+since only they move content for any length of time. For a group that is
+turned on and off by events, such as one using ``animation_toggle``, the
+function is used only while the group is active, so a shader that moves
+content can be turned on and off with a :ref:`key press
+<custom_shader_mappings>`. When several shaders define it, they are applied
+starting from the last one to run.
 
 Note that :code:`d.mouse_pos` then contains the mapped position, that is, the
 position of the content under the mouse before it was moved. Effects that draw

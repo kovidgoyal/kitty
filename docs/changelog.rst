@@ -268,6 +268,10 @@ Detailed list of changes
   :ac:`shader_event` action, :code:`user:` animation events and the
   :code:`animation_toggle` pipeline directive, see :ref:`custom_shader_mappings` (:iss:`10667`)
 
+- Custom shaders: The :code:`pointer_map()` function of shaders that move
+  content is now also used for groups that are turned on and off by events,
+  while they are active
+
 - Add English and Spanish subtitles to the intro video shown at the top of the
   documentation
 

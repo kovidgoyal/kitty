@@ -127,8 +127,6 @@ class TestSlang(BaseTest):
         many = '|'.join(f'user:e{i}' for i in range(MAX_SHADER_ANIM_USER_EVENTS + 1))
         self.assertRaises(ValueError, pipeline, f'animation_start {many}')
         pipeline(f'animation_start {many.rpartition("|")[0]}')
-        # Toggled groups do not move content permanently
-        self.ae(pointer_map_shaders(pipeline('animation_toggle user:t'), lambda g, s: True), ())
 
         # The action
         self.ae(parse_key_action('shader_event find-cursor'), KeyAction('shader_event', ('find-cursor', 'active')))
@@ -474,6 +472,12 @@ fsMain(VertexOutput vo) : SV_Target { return float4(0); }
         self.ae(pms('startgroup\nshaders crt sample crt\nendgroup\nstartgroup\nshaders crt\nendgroup'), ((1, 0), (0, 2), (0, 0)))
         # Transient effects and passes that do not draw to the screen do not move pointer events
         self.ae(pms('startgroup\nanimation_start tab-change\nshaders crt\nendgroup'), ())
+        self.ae(pms('startgroup\nanimation_start user:s\nanimation_stop 100\nshaders crt\nendgroup'), ())
+        self.ae(pms('startgroup\nanimation_toggle user:t\nanimation_stop 100\nshaders crt\nendgroup'), ())
+        # Effects that last until an event turns them off do
+        self.ae(pms('startgroup\nanimation_toggle user:t\nshaders crt\nendgroup'), ((0, 0),))
+        self.ae(pms('startgroup\nanimation_start user:s\nanimation_stop never\nshaders crt\nendgroup'), ((0, 0),))
+        self.ae(pms('startgroup\nanimation_start user:s\nanimation_stop user:e\nshaders crt\nendgroup'), ((0, 0),))
         self.ae(pms('startgroup\nshaders sample\nendgroup\nstartgroup\nattach\nshaders crt\nendgroup'), ())
         self.ae(pms('textures a\nstartgroup\nshaders crt\noutput_texture a\nendgroup\nstartgroup\nshaders sample\nendgroup'), ())
         # Groups that draw only part of the screen do not move pointer events everywhere
@@ -670,6 +674,32 @@ float f() { static const float SCAN = 2; return SCAN; }
         self.assertIsInstance(metadata, dict)
         self.assertFalse(metadata['has_pointer_map'])
         self.assertFalse(invocation_tracker)
+
+        with tempfile.TemporaryDirectory() as cache_dir:
+            clear_caches()
+            # pointer_map() of a group turned on and off by events applies only while it is active
+            p = parse_pipeline_definition(
+                [
+                    'startgroup',
+                    'shaders crt',
+                    'endgroup',
+                    'startgroup',
+                    'shaders sample',
+                    'endgroup',
+                    'startgroup',
+                    'animation_toggle user:t',
+                    'shaders crt',
+                    'endgroup',
+                ],
+                'test',
+            )
+            try:
+                _, pm_frag_src, pm_metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)
+            finally:
+                clear_caches()
+        self.assertTrue(pm_metadata['has_pointer_map'])
+        self.ae(pm_metadata['pointer_map_groups'], [0, 2])
+        self.assertIn('active_groups', pm_frag_src)
 
         if not shutil.which('glslangValidator'):
             return

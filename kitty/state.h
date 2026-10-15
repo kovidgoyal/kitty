@@ -633,6 +633,9 @@ typedef struct OSWindow {
         float *data;
         int viewport_width, viewport_height;
         unsigned pipeline_generation;
+        // Bitmask of the groups whose pointer_map() functions data was computed
+        // from, zero when there are none and so pointer events are not moved
+        uint32_t groups;
     } pointer_map;
 } OSWindow;
 

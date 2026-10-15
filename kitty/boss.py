@@ -2833,7 +2833,7 @@ class Boss:
 
     @ac(
         'misc',
-        '''
+        """
         Send an event to the :doc:`custom shaders <custom-shaders>`
 
         Groups in the custom shader pipeline that use the event as
@@ -2846,7 +2846,7 @@ class Boss:
             map f1 shader_event find-cursor
             # Toggle groups that have: animation_toggle user:notch in all OS windows
             map f2 shader_event notch all
-        ''',
+        """,
     )
     def shader_event(self, name: str, scope: str = 'active') -> None:
         os_window_id = 0

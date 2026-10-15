@@ -1810,23 +1810,31 @@ def merge_pipelines(pipelines: list[Pipeline]) -> Pipeline:
     }
 
 
+def group_has_own_animation(group: Group) -> bool:
+    "Whether the group is turned on and off by events of its own"
+    return bool(group['animation_start'] or group['animation_toggle'])
+
+
 def group_moves_content(group: Group) -> bool:
-    "Whether whatever the shaders in a group do to the content is visible on the whole screen at all times"
+    """Whether whatever the shaders in a group do to the content is visible on
+    the whole screen for as long as the group is active, which is either always
+    or until an event turns the group off, as opposed to a transient effect that
+    lasts for a fixed duration"""
     return (
-        not group['animation_start']
-        and not group['animation_toggle']
-        and not group['attached']
+        not group['attached']
         and group['output_texture'] is NamedTexture.default
         and group['viewport_pos'] == (0, 0)
         and group['viewport_size'] == (1, 1)
+        and (not group_has_own_animation(group) or group['animation_end_duration'] == 0)
     )
 
 
 def pointer_map_shaders(pipeline: Pipeline, defines_pointer_map: Callable[[int, int], bool]) -> tuple[tuple[int, int], ...]:
     """The (group, shader) indices of the shaders whose pointer_map() decides
     where pointer events land, in the order they must be applied. Only groups
-    that draw to the whole screen and are always active move content
-    permanently, so only they count. The last shader to run decides what is
+    that draw to the whole screen and are active either always or until an
+    event turns them off move content for any length of time, so only they
+    count. The last shader to run decides what is
     visible at a given position, so it is applied first. defines_pointer_map()
     is called with the (group, shader) indices of the shaders that count."""
     ans: list[tuple[int, int]] = []
@@ -1948,7 +1956,15 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'import {imp};' for imp in imports), 1)
     mod_src = mod_src.replace('// PIPELINE', pipeline_code, 1)
     pm = pointer_map_shaders(pipeline, lambda g, s: defines_pointer_map(queries[(g, s)]))
-    pointer_map_code = '\n    '.join(f'pos = {entry_point(g, s, "pointer_map")}(pos, csd);' for g, s in pm)
+
+    def pointer_map_call(g: int, s: int) -> str:
+        call = f'pos = {entry_point(g, s, "pointer_map")}(pos, csd);'
+        if group_has_own_animation(pipeline['groups'][g]):
+            # Applies only while the group is active
+            call = f'if ((active_groups & {1 << g}u) != 0u) {call}'
+        return call
+
+    pointer_map_code = '\n    '.join(pointer_map_call(g, s) for g, s in pm)
     mod_src = mod_src.replace('// POINTER_MAP', pointer_map_code, 1)
     # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
 
@@ -1990,9 +2006,10 @@ float4 fmain_wrap(
     uniform int group,
     uniform float4 viewport,
     uniform float animation_progress,
-    uniform bool convert_to_srgb
+    uniform bool convert_to_srgb,
+    uniform uint active_groups
 ) : SV_Target {
-    return pipeline_fragment_main(texcoord, group, viewport, animation_progress, convert_to_srgb);
+    return pipeline_fragment_main(texcoord, group, viewport, animation_progress, convert_to_srgb, active_groups);
 }
         """.replace('MODULE', slot.replace('-', '_')).encode()
 
@@ -2063,6 +2080,7 @@ def build_custom_shader_pipeline_glsl(
             m = glsl_metadata_for_shader(metadata)
             m['pipeline'] = pipeline
             m['has_pointer_map'] = bool(pipeline_ir.pointer_map_shaders)
+            m['pointer_map_groups'] = sorted({g for g, _ in pipeline_ir.pointer_map_shaders})
             return vf.read(), ff.read(), m
 
 

@@ -462,11 +462,11 @@ typedef struct CustomShaderGroup {
     ShaderAnimEventMask animation_start_events;  // events that start the animation; 0 = none
     ShaderAnimEventMask animation_toggle_events; // events that start the animation when stopped and vice versa; 0 = none
     ShaderAnimEventMask animation_end_events;    // events that stop the animation; 0 = none
-    monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit, < 0 = use cursor_stop_blinking_after
-    monotonic_t animation_step;         // nanoseconds between animation samples
-    Animation *animation_curve;         // parsed easing curve; NULL = no animation
-    bool animation_curve_is_shared;     // true if animation_curve is owned by an earlier group
-    bool attached;                      // true = always active when the preceding group is active
+    monotonic_t animation_end_duration;          // nanoseconds; 0 = no time limit, < 0 = use cursor_stop_blinking_after
+    monotonic_t animation_step;                  // nanoseconds between animation samples
+    Animation *animation_curve;                  // parsed easing curve; NULL = no animation
+    bool animation_curve_is_shared;              // true if animation_curve is owned by an earlier group
+    bool attached;                               // true = always active when the preceding group is active
 } CustomShaderGroup;
 
 typedef struct CustomShaderPipeline {
@@ -474,9 +474,10 @@ typedef struct CustomShaderPipeline {
     CustomShaderGroup groups[MAX_CUSTOM_SHADER_GROUPS];
     size_t num_groups;
     bool active;
-    bool bypass_builtin_trail;           // true when any group subscribes to cursor-trail-move
+    bool bypass_builtin_trail;                      // true when any group subscribes to cursor-trail-move
     ShaderAnimEventMask all_animation_start_events; // union of the start and toggle events of all groups
     bool has_pointer_map;                           // true when a shader defines pointer_map() to move pointer events
+    uint32_t pointer_map_groups;                    // bitmask of the groups with shaders whose pointer_map() is used
     // Names (without the user: prefix) of the user events the pipeline uses,
     // user event i is bit SHADER_ANIM_FIRST_USER_EVENT + i
     char user_events[MAX_SHADER_ANIM_USER_EVENTS][MAX_SHADER_ANIM_USER_EVENT_NAME_LEN + 1];
@@ -2734,6 +2735,18 @@ sample_pointer_map(const float *data, double *u, double *v) {
 #undef P
 }
 
+// The groups whose pointer_map() functions currently apply: those that are
+// always active and those turned on by events that are active right now
+static uint32_t
+active_pointer_map_groups(const OSWindow *os_window) {
+    uint32_t ans = 0;
+    for (size_t g = 0; g < custom_shaders.end.num_groups; g++) {
+        if (!(custom_shaders.end.pointer_map_groups & (1u << g))) continue;
+        if (!group_is_animated(custom_shaders.end.groups + g) || os_window->shader_group_anim[g].active) ans |= 1u << g;
+    }
+    return ans;
+}
+
 // Moves a pointer position, in viewport pixels with the origin at the top left,
 // to the position of the content that custom shaders such as crt actually show
 // there, so that clicks and selections land on what the user sees.
@@ -2741,6 +2754,11 @@ void
 map_pointer_position(const OSWindow *os_window, double *x, double *y) {
     const float *data = os_window->pointer_map.data;
     if (!data || !custom_shaders.end.has_pointer_map || os_window->pointer_map.pipeline_generation != custom_shaders.generation) return;
+    // The map is updated only when the custom shaders are drawn, which they
+    // are not once every group has been turned off, so check that it is
+    // still for the groups that are active
+    const uint32_t groups = active_pointer_map_groups(os_window);
+    if (!groups || groups != os_window->pointer_map.groups) return;
     const double width = os_window->viewport_width, height = os_window->viewport_height;
     if (width <= 0 || height <= 0) return;
     const double u = *x / width, v = 1. - *y / height;
@@ -2755,14 +2773,22 @@ map_pointer_position(const OSWindow *os_window, double *x, double *y) {
 
 // Renders the pointer_map() functions of the pipeline into a small texture
 // and reads it back so that pointer events can be mapped without the GPU. A
-// pointer map can depend only on the pipeline and the viewport size, so this
-// is done only when those change.
+// pointer map can depend only on the pipeline, the viewport size and which
+// groups are active, so this is done only when those change.
 static void
 update_pointer_map(OSWindow *os_window, GLint group_loc) {
-    if (os_window->pointer_map.data && os_window->pointer_map.pipeline_generation == custom_shaders.generation) {
+    const uint32_t groups = active_pointer_map_groups(os_window);
+    if (os_window->pointer_map.pipeline_generation == custom_shaders.generation && os_window->pointer_map.groups == groups &&
+        (os_window->pointer_map.data || !groups)) {
         if (os_window->live_resize.in_progress) return; // avoid a GPU sync on every frame of a live resize
         if (os_window->pointer_map.viewport_width == os_window->viewport_width && os_window->pointer_map.viewport_height == os_window->viewport_height) return;
     }
+    os_window->pointer_map.viewport_width = os_window->viewport_width;
+    os_window->pointer_map.viewport_height = os_window->viewport_height;
+    os_window->pointer_map.pipeline_generation = custom_shaders.generation;
+    os_window->pointer_map.groups = 0;
+    // No pointer_map() applies, such as when content moving groups are toggled off, so pointer events are not moved
+    if (!groups) return;
     if (!os_window->pointer_map.data && !(os_window->pointer_map.data = malloc(sizeof(float) * 2 * POINTER_MAP_SIZE * POINTER_MAP_SIZE))) return;
     if (!pointer_map_target.framebuffer_id)
         setup_texture_as_render_target(POINTER_MAP_SIZE, POINTER_MAP_SIZE, &pointer_map_target.texture_id, &pointer_map_target.framebuffer_id);
@@ -2775,6 +2801,9 @@ update_pointer_map(OSWindow *os_window, GLint group_loc) {
     bind_framebuffer_for_output(pointer_map_target.framebuffer_id);
     glViewport(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE);
     glUniform1i(group_loc, -1);
+    // Absent when no group with a pointer_map() is turned on and off by events
+    GLint active_groups_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "active_groups");
+    if (active_groups_loc >= 0) glUniform1ui(active_groups_loc, groups);
     draw_quad(false, 0);
     static uint8_t pixels[POINTER_MAP_SIZE * POINTER_MAP_SIZE * 4];
     glReadPixels(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
@@ -2784,9 +2813,7 @@ update_pointer_map(OSWindow *os_window, GLint group_loc) {
         os_window->pointer_map.data[2 * i] = (float)(p[0] * 256 + p[2]) / 65535.f;
         os_window->pointer_map.data[2 * i + 1] = (float)(p[1] * 256 + p[3]) / 65535.f;
     }
-    os_window->pointer_map.viewport_width = os_window->viewport_width;
-    os_window->pointer_map.viewport_height = os_window->viewport_height;
-    os_window->pointer_map.pipeline_generation = custom_shaders.generation;
+    os_window->pointer_map.groups = groups;
 }
 
 static void
@@ -3555,6 +3582,17 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         custom_shaders.end.active = true;
         PyObject *has_pointer_map = PyDict_GetItemString(metadata, "has_pointer_map");
         custom_shaders.end.has_pointer_map = has_pointer_map && PyObject_IsTrue(has_pointer_map) == 1;
+        PyObject *pointer_map_groups = PyDict_GetItemString(metadata, "pointer_map_groups");
+        if (pointer_map_groups && (PyList_Check(pointer_map_groups) || PyTuple_Check(pointer_map_groups))) {
+            for (Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(pointer_map_groups); i++) {
+                long g = PyLong_AsLong(PySequence_Fast_GET_ITEM(pointer_map_groups, i));
+                if (g >= 0 && (size_t)g < custom_shaders.end.num_groups) custom_shaders.end.pointer_map_groups |= 1u << g;
+            }
+            if (PyErr_Occurred()) {
+                glDeleteProgram(program->id);
+                return NULL;
+            }
+        }
         custom_shaders.generation++;
     }
     init_uniforms(which);
