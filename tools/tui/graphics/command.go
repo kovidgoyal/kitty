@@ -44,9 +44,11 @@ const (
 type GRT_f int // enum
 
 const (
-	GRT_format_rgba GRT_f = iota // 32
-	GRT_format_rgb               // 24
-	GRT_format_png               // 100
+	GRT_format_rgba          GRT_f = iota // 32
+	GRT_format_rgb                        // 24
+	GRT_format_png                        // 100
+	GRT_format_indexed                    // 8
+	GRT_format_indexed_alpha              // 16
 )
 
 type GRT_t int // enum

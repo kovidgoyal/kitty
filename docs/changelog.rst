@@ -231,6 +231,11 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Graphics protocol: Add two new :ref:`indexed color image formats
+  <indexed_color_data>` whose pixels are indices into the terminal color
+  palette, so that images automatically change color along with the terminal
+  color scheme (:iss:`9379`)
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

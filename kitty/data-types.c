@@ -1001,6 +1001,7 @@ PyInit_fast_data_types(void) {
     s(BLINK, blink);
 #undef s
     PyModule_AddIntConstant(m, "MARK_MASK", MARK_MASK);
+    PyModule_AddIntConstant(m, "NUM_INDEXED_IMAGE_SPECIAL_COLORS", NUM_INDEXED_IMAGE_SPECIAL_COLORS);
     PyModule_AddIntConstant(m, "DECORATION_MASK", DECORATION_MASK);
     PyModule_AddStringMacro(m, ERROR_PREFIX);
 #ifdef KITTY_VCS_REV

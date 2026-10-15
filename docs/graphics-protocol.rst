@@ -281,7 +281,9 @@ emulator must understand pixel data in three formats, 24-bit RGB, 32-bit RGBA an
 PNG. This is specified using the ``f`` key in the control data. ``f=32`` (which is the
 default) indicates 32-bit RGBA data and ``f=24`` indicates 24-bit RGB data and ``f=100``
 indicates PNG data. The PNG format is supported both for convenience, and as a compact way
-of transmitting paletted images.
+of transmitting paletted images. Additionally, ``f=8`` and ``f=16`` indicate
+:ref:`indexed color data <indexed_color_data>`, whose colors come from the
+terminal color scheme.
 
 RGB and RGBA data
 ~~~~~~~~~~~~~~~~~~~
@@ -296,6 +298,60 @@ control data. For example::
 Here the width and height are specified using the ``s`` and ``v`` keys respectively. Since
 ``f=24`` there are three bytes per pixel and therefore the pixel data must be ``3 * 10 * 20 = 600``
 bytes.
+
+.. _indexed_color_data:
+
+Indexed color data
+~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 0.50.0
+
+In these formats every pixel is an index into the terminal's color palette,
+rather than an actual color. The image is drawn using the current colors of
+the terminal and is automatically redrawn when they change, for example, when
+the user switches from a dark to a light color theme. This is useful for
+graphics such as charts and diagrams that should match the colors of the text
+around them. As with RGB data, the image dimensions **must** be sent in the
+control data. For example::
+
+    <ESC>_Gf=16,s=10,v=20;<payload><ESC>\
+
+With ``f=8`` every pixel is a single byte, the palette index, and the image is
+fully opaque, so the data must be ``10 * 20 = 200`` bytes. With ``f=16`` every
+pixel is two bytes, the palette index followed by the alpha (opacity) of the
+pixel, from ``0`` (fully transparent) to ``255`` (fully opaque), so the data
+must be ``2 * 10 * 20 = 400`` bytes. Use a transparent pixel when you want
+whatever is below the image, such as the terminal background, to show through,
+and partially transparent pixels to anti-alias edges.
+
+The palette index maps to colors as follows:
+
+=========== ====================================================================
+Index        Color
+=========== ====================================================================
+0 - 247      The same colors as in the SGR 256 color table, that is the 16
+             ANSI colors, the 6x6x6 color cube and the first sixteen shades
+             of the grayscale ramp
+248          The default background color
+249          The default foreground color
+250          The selection background color
+251          The selection foreground color
+252          The cursor color
+253          The cursor text color
+254          The color used to highlight URLs on mouse hover
+255          Reserved for future use, currently the default foreground color
+=========== ====================================================================
+
+When a terminal setting means one of the special colors at ``250 - 253`` is
+taken from the cell it is drawn over, the default foreground color is used
+for ``250`` and ``252`` and the default background color for ``251`` and
+``253``. Note that ``248`` is always drawn as an opaque color, ignoring any
+background opacity of the terminal window, use transparent pixels instead to
+let the actual window background show through.
+
+Animation and frame composition are not supported for images in these formats.
+Clients can check for support by sending a :ref:`query <querying>` with
+``f=8`` and checking for an ``OK`` response.
 
 PNG data
 ~~~~~~~~~~~~~~~
@@ -425,6 +481,8 @@ codes. Note that the cursor position used to display the image **must** be the
 position when the final chunk is received. Finally, terminals must not display
 anything, until the entire sequence is received and validated.
 
+
+.. _querying:
 
 Querying support and available transmission mediums
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1078,7 +1136,7 @@ Key      Value                 Default    Description
 **Keys for image transmission**
 -----------------------------------------------------------
 ``f``    Positive integer.     ``32``     The format in which the image data is sent.
-         ``(24, 32, 100)``.
+         ``(8, 16, 24, 32, 100)``.
 ``t``    Single character.     ``d``      The transmission medium used.
          ``(d, f, t, s)``.
 ``s``    Positive integer.     ``0``      The width of the image being sent.

@@ -44,8 +44,11 @@ public struct CellRenderData {
 // Uniform Blocks (adjust binding slots as needed for your pipeline layout)
 public ConstantBuffer<CellRenderData> crd;
 
+// The SGR color table, then the mark background and foreground colors and
+// finally the special colors used by indexed color images.
+#define INDEXED_IMAGE_SPECIAL_COLORS_OFFSET (NUM_COLORS + MARK_MASK + MARK_MASK + 2)
 public struct ColorTable {
-    uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
+    uint color_table[INDEXED_IMAGE_SPECIAL_COLORS_OFFSET + NUM_INDEXED_IMAGE_SPECIAL_COLORS];
 };
 
 public ConstantBuffer<ColorTable> ctb;
@@ -94,6 +97,17 @@ color_to_vec(uint c) {
     g = (c >> 8) & BYTE_MASK;
     b = c & BYTE_MASK;
     return float3(gamma_lut[r], gamma_lut[g], gamma_lut[b]);
+}
+
+// Convert an entry in the palette of indexed color images to a linear color.
+// The palette is the SGR color table with its last few entries replaced by
+// special colors such as the default foreground and background.
+public float3
+indexed_image_color(uint idx) {
+    const uint first_special = NUM_COLORS - NUM_INDEXED_IMAGE_SPECIAL_COLORS;
+    idx &= BYTE_MASK;
+    const uint slot = idx < first_special ? idx : idx + (INDEXED_IMAGE_SPECIAL_COLORS_OFFSET - first_special);
+    return color_to_vec(color_table[slot]);
 }
 
 public float

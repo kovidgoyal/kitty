@@ -277,6 +277,7 @@ grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
     dest->num_of_below_refs = 0;
     dest->num_of_negative_refs = 0;
     dest->num_of_positive_refs = 0;
+    dest->num_of_indexed_refs = 0;
     if (self == NULL) return;
     dest->window_id = self->window_id;
     dest->layers_dirty = true;
@@ -692,7 +693,7 @@ get_free_client_id(const GraphicsManager *self) {
     }
 
 #define MAX_DATA_SZ (4u * 100000000u)
-enum FORMATS { RGB = 24, RGBA = 32, PNG = 100 };
+enum FORMATS { INDEXED = 8, INDEXED_ALPHA = 16, RGB = 24, RGBA = 32, PNG = 100 };
 
 static bool
 is_file_transmission(const unsigned char transmission_type) {
@@ -905,6 +906,14 @@ initialize_load_data(
             self->currently_loading.is_4byte_aligned = data_fmt == RGBA || (self->currently_loading.width % 4 == 0);
             self->currently_loading.is_opaque = data_fmt == RGB;
             break;
+        case INDEXED:
+        case INDEXED_ALPHA:
+            self->currently_loading.indexed_px_sz = data_fmt / 8;
+            self->currently_loading.data_sz = (size_t)g->data_width * g->data_height * self->currently_loading.indexed_px_sz;
+            if (!self->currently_loading.data_sz) ABRT("EINVAL", "Zero width/height not allowed");
+            self->currently_loading.is_4byte_aligned = ((size_t)self->currently_loading.width * self->currently_loading.indexed_px_sz) % 4 == 0;
+            self->currently_loading.is_opaque = data_fmt == INDEXED;
+            break;
         default: ABRT("EINVAL", "Unknown image format: %u", data_fmt);
     }
     self->currently_loading.loading_for.image_id = img->internal_id;
@@ -938,7 +947,9 @@ upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const boo
         if (!make_window_context_current(self->window_id)) return;
         self->context_made_current_for_this_command = true;
     }
-    if (img->texture) { send_image_to_gpu(&img->texture->id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP); }
+    if (!img->texture) return;
+    if (img->indexed_px_sz) send_indexed_image_to_gpu(&img->texture->id, data, img->width, img->height, img->indexed_px_sz, is_4byte_aligned);
+    else send_image_to_gpu(&img->texture->id, data, img->width, img->height, is_opaque, is_4byte_aligned, true, REPEAT_CLAMP);
 }
 
 static Image *
@@ -958,6 +969,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             free_image_resources(self, img);
             img->texture = new_texture_ref();
             img->root_frame_data_loaded = false;
+            img->indexed_px_sz = 0;
             img->is_drawn = false;
             img->current_frame_shown_at = 0;
             img->extra_framecnt = 0;
@@ -993,7 +1005,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     self->currently_loading.loading_for = (const ImageAndFrame){0};
     img = process_image_data(self, img, g, fmt);
     if (!img) return NULL;
-    size_t required_sz = (size_t)(self->currently_loading.is_opaque ? 3 : 4) * self->currently_loading.width * self->currently_loading.height;
+    const size_t px_sz = self->currently_loading.indexed_px_sz ? self->currently_loading.indexed_px_sz : (self->currently_loading.is_opaque ? 3 : 4);
+    size_t required_sz = px_sz * self->currently_loading.width * self->currently_loading.height;
     if (self->currently_loading.data_sz != required_sz)
         ABRT(
             "EINVAL",
@@ -1005,6 +1018,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (self->currently_loading.loading_completed_successfully) {
         img->width = self->currently_loading.width;
         img->height = self->currently_loading.height;
+        img->indexed_px_sz = self->currently_loading.indexed_px_sz;
         if (img->root_frame.id) remove_from_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id = img->root_frame.id});
         img->root_frame = (const Frame){
             .id = ++img->frame_id_counter,
@@ -1505,6 +1519,7 @@ grman_update_layers(
     self->num_of_below_refs = 0;
     self->num_of_negative_refs = 0;
     self->num_of_positive_refs = 0;
+    self->num_of_indexed_refs = 0;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
     float screen_bottom = screen_top - screen_height;
@@ -1575,6 +1590,8 @@ grman_update_layers(
             rd->image_id = img->internal_id;
             rd->ref_id = ref->internal_id;
             rd->texture_id = texture_id_for_img(img);
+            rd->indexed_px_sz = img->indexed_px_sz;
+            if (img->indexed_px_sz) self->num_of_indexed_refs++;
             img->is_drawn = true;
             refitr = vt_next(refitr);
         }
@@ -1867,6 +1884,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     if (is_chunked_continuation) {
         INIT_CHUNKED_LOAD; // g now points to the command that started the chunked load
     }
+    if (img->indexed_px_sz || fmt == INDEXED || fmt == INDEXED_ALPHA) ABRT("EINVAL", "Animation is not supported for indexed color images");
     uint32_t frame_number = g->frame_number;
     if (!frame_number || frame_number > img->extra_framecnt + 2) frame_number = img->extra_framecnt + 2;
     bool is_new_frame = frame_number == img->extra_framecnt + 2;
@@ -2214,6 +2232,10 @@ cfd_free(CoalescedFrameData *p) {
 
 static void
 handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsCommand *g, Image *img) {
+    if (img->indexed_px_sz) {
+        set_command_failed_response("EINVAL", "Composition is not supported for indexed color images");
+        return;
+    }
     Frame *src_frame = frame_for_number(img, g->frame_number);
     if (!src_frame) {
         set_command_failed_response("ENOENT", "No source frame number %u exists in image id: %u\n", g->frame_number, img->client_id);
@@ -2835,7 +2857,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
         "{sI sI sI sI sI sI sI "
         "sO sI sO "
         "sI sI sI "
-        "sI sI sy# sN}",
+        "sI sI sy# sN sI}",
         "texture_id",
         texture_id_for_img(img),
         U(client_id),
@@ -2860,9 +2882,10 @@ image_as_dict(GraphicsManager *self, Image *img) {
         U(displayed_frame_id),
         "data",
         cfd.buf,
-        (Py_ssize_t)((cfd.is_opaque ? 3 : 4) * img->width * img->height),
+        (Py_ssize_t)((img->indexed_px_sz ? img->indexed_px_sz : (cfd.is_opaque ? 3 : 4)) * img->width * img->height),
         "extra_frames",
-        frames);
+        frames,
+        U(indexed_px_sz));
     free(cfd.buf);
     return ans;
 #undef B
@@ -2944,7 +2967,7 @@ W(update_layers) {
             ans,
             i,
             Py_BuildValue(
-                "{sN sN sI si sK sK}",
+                "{sN sN sI si sK sK sI}",
                 "src_rect",
                 R(src_rect),
                 "dest_rect",
@@ -2956,7 +2979,9 @@ W(update_layers) {
                 "image_id",
                 r->image_id,
                 "ref_id",
-                r->ref_id));
+                r->ref_id,
+                "indexed_px_sz",
+                (unsigned int)r->indexed_px_sz));
 #undef R
     }
     return ans;
@@ -3068,6 +3093,7 @@ grman_render_data(GraphicsManager *self) {
         .num_of_below_refs = self->num_of_below_refs,
         .num_of_negative_refs = self->num_of_negative_refs,
         .num_of_positive_refs = self->num_of_positive_refs,
+        .num_of_indexed_refs = self->num_of_indexed_refs,
     };
     return ans;
 }

@@ -94,6 +94,18 @@ func TestGraphicsCommandSerialization(t *testing.T) {
 		t.Fatalf("Failed to parse payload:\n%s", diff)
 	}
 
+	for _, x := range []struct {
+		f GRT_f
+		s string
+	}{{GRT_format_indexed, "f=8"}, {GRT_format_indexed_alpha, "f=16"}} {
+		gc = &GraphicsCommand{}
+		gc.SetFormat(x.f).SetDataWidth(2).SetDataHeight(1)
+		test_serialize("ab", x.s, "s=2", "v=1")
+		if q = from_full_apc_escape_code(gc.AsAPC(nil)); q.Format() != x.f {
+			t.Fatalf("Failed to parse format %s, got: %s", x.s, q.Format())
+		}
+	}
+
 	test_chunked_payload([]byte("abcd"))
 	data := make([]byte, 8111)
 	_, _ = rand.Read(data)

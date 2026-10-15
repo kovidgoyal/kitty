@@ -1600,6 +1600,26 @@ PYWRAP0(apply_options_update) {
     Py_RETURN_NONE;
 }
 
+// Indexed color images use the url color, so the color tables on the GPU must
+// be refreshed when it changes
+static void
+mark_all_color_profiles_dirty(void) {
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *osw = global_state.os_windows + o;
+        for (size_t t = 0; t < osw->num_tabs; t++) {
+            Tab *tab = osw->tabs + t;
+            for (size_t w = 0; w < tab->num_windows; w++) {
+                Screen *screen = tab->windows[w].render_data.screen;
+                if (screen) {
+                    screen->color_profile->dirty = true;
+                    screen->paused_rendering.color_profile.dirty = true;
+                    screen->is_dirty = true;
+                }
+            }
+        }
+    }
+}
+
 PYWRAP1(patch_global_colors) {
     PyObject *spec;
     int configured;
@@ -1623,7 +1643,9 @@ PYWRAP1(patch_global_colors) {
     P(scrollbar_track_color);
     if (configured) {
         P(background);
+        const color_type prev_url_color = OPT(url_color);
         P(url_color);
+        if (OPT(url_color) != prev_url_color) mark_all_color_profiles_dirty();
     }
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;

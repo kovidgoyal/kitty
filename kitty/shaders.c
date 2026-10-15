@@ -28,6 +28,7 @@ enum {
     GRAPHICS_PROGRAM,
     GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_ALPHA_MASK_PROGRAM,
+    GRAPHICS_INDEXED_PROGRAM,
     BGIMAGE_PROGRAM,
     TINT_PROGRAM,
     TRAIL_PROGRAM,
@@ -403,6 +404,23 @@ send_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei heigh
     glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
 }
 
+// Indexed color images are stored as integer textures with the palette index
+// in the red channel and, if bytes_per_pixel is 2, alpha in the green channel.
+// Integer textures cannot be filtered, the shader does its own filtering after
+// the palette lookup.
+void
+send_indexed_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei height, unsigned bytes_per_pixel, bool is_4byte_aligned) {
+    if (!(*tex_id)) { glGenTextures(1, tex_id); }
+    glBindTexture(GL_TEXTURE_2D, *tex_id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    const bool has_alpha = bytes_per_pixel == 2;
+    glTexImage2D(GL_TEXTURE_2D, 0, has_alpha ? GL_RG8UI : GL_R8UI, width, height, 0, has_alpha ? GL_RG_INTEGER : GL_RED_INTEGER, GL_UNSIGNED_BYTE, data);
+}
+
 // }}}
 
 // Rounded rect {{{
@@ -522,6 +540,7 @@ upload_gamma_lut(void) {
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) U(i);
     U(BORDERS_PROGRAM);
     U(PADDING_PROGRAM);
+    U(GRAPHICS_INDEXED_PROGRAM);
 #undef U
     unbind_program();
 }
@@ -568,6 +587,11 @@ init_cell_program(void) {
     C(sprite_idx, 1);
     C(is_selected, 2);
 #undef C
+    // Indexed color images get their colors from the color table of the window they are in
+    {
+        UniformBlock ct = program_uniform_block(GRAPHICS_INDEXED_PROGRAM, "ColorTable");
+        glUniformBlockBinding(program_id(GRAPHICS_INDEXED_PROGRAM), ct.index, COLOR_TABLE_BINDING_POINT);
+    }
 
     if (shader_globals_vao_idx == -1) {
         shader_globals_vao_idx = create_vao();
@@ -1281,9 +1305,11 @@ draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, fl
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     GLint src_rect_loc = program_uniform_location(program, "src_rect");
     GLint dest_rect_loc = program_uniform_location(program, "dest_rect");
+    const GLint has_alpha_loc = program == GRAPHICS_INDEXED_PROGRAM ? program_uniform_location(program, "has_alpha") : -1;
     for (GLuint i = 0; i < count;) {
         ImageRenderData *group = data + start + i;
         glBindTexture(GL_TEXTURE_2D, group->texture_id);
+        if (has_alpha_loc > -1) glUniform1ui(has_alpha_loc, group->indexed_px_sz == 2);
         if (group->group_count == 0) {
             i++;
             continue;
@@ -1356,7 +1382,7 @@ set_cell_uniforms(bool force) {
     if (!constants_set || force) {
         float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
         float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
-        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_ALPHA_MASK_PROGRAM; i++) {
+        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_INDEXED_PROGRAM; i++) {
             bind_program(i);
             glUniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
         }
@@ -2238,6 +2264,28 @@ draw_tint(const UIRenderData *ui) {
     draw_quad(true, 0);
 }
 
+// Draw a range of the image render data. Indexed color images need a
+// different program, so when any are present, switch programs at the
+// boundaries between runs of indexed and normal images, preserving draw order.
+static void
+draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, GLuint start, GLuint count) {
+    if (!ui->grd.num_of_indexed_refs) {
+        draw_graphics(GRAPHICS_PROGRAM, ui->grd.images, start, count, ui->inactive_text_alpha);
+        return;
+    }
+    CELL_BUFFERS;
+    // The color table may not be bound yet, for example, when the window has a background image
+    bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
+    const ImageRenderData *data = ui->grd.images;
+    for (GLuint run_start = start, end = start + count; run_start < end;) {
+        const bool is_indexed = data[run_start].indexed_px_sz != 0;
+        GLuint run_end = run_start + 1;
+        while (run_end < end && (data[run_end].indexed_px_sz != 0) == is_indexed) run_end++;
+        draw_graphics(is_indexed ? GRAPHICS_INDEXED_PROGRAM : GRAPHICS_PROGRAM, ui->grd.images, run_start, run_end - run_start, ui->inactive_text_alpha);
+        run_start = run_end;
+    }
+}
+
 static void
 draw_cells_with_layers(const UIRenderData *ui, ssize_t vao_idx) {
     if (ui->has_background_image && OPT(background_tint) > 0) draw_tint(ui);
@@ -2245,16 +2293,13 @@ draw_cells_with_layers(const UIRenderData *ui, ssize_t vao_idx) {
     if (has_content_between_background_and_foreground) {
         if (!ui->has_background_image) call_cell_program(CELL_BG_PROGRAM, ui, vao_idx, false, DRAW_DEFAULT_BG);
         if (ui->window_logo != NULL) draw_window_logo(ui);
-        if (ui->grd.num_of_below_refs > 0) draw_graphics(GRAPHICS_PROGRAM, ui->grd.images, 0, ui->grd.num_of_below_refs, ui->inactive_text_alpha);
+        if (ui->grd.num_of_below_refs > 0) draw_image_layer(ui, vao_idx, 0, ui->grd.num_of_below_refs);
         call_cell_program(CELL_BG_PROGRAM, ui, vao_idx, false, DRAW_NON_DEFAULT_BG);
-        if (ui->grd.num_of_negative_refs)
-            draw_graphics(GRAPHICS_PROGRAM, ui->grd.images, ui->grd.num_of_below_refs, ui->grd.num_of_negative_refs, ui->inactive_text_alpha);
+        if (ui->grd.num_of_negative_refs) draw_image_layer(ui, vao_idx, ui->grd.num_of_below_refs, ui->grd.num_of_negative_refs);
         call_cell_program(CELL_FG_PROGRAM, ui, vao_idx, false, DRAW_NEITHER_BG);
     } else call_cell_program(CELL_PROGRAM, ui, vao_idx, false, ui->has_background_image ? DRAW_NON_DEFAULT_BG : DRAW_BOTH_BG);
 
-    if (ui->grd.num_of_positive_refs > 0)
-        draw_graphics(
-            GRAPHICS_PROGRAM, ui->grd.images, ui->grd.num_of_below_refs + ui->grd.num_of_negative_refs, ui->grd.num_of_positive_refs, ui->inactive_text_alpha);
+    if (ui->grd.num_of_positive_refs > 0) draw_image_layer(ui, vao_idx, ui->grd.num_of_below_refs + ui->grd.num_of_negative_refs, ui->grd.num_of_positive_refs);
 
     draw_visual_bell(ui);
     draw_drag_preview_overlay(ui);
@@ -3840,6 +3885,7 @@ init_shaders(PyObject *module) {
     C(GRAPHICS_PROGRAM);
     C(GRAPHICS_PREMULT_PROGRAM);
     C(GRAPHICS_ALPHA_MASK_PROGRAM);
+    C(GRAPHICS_INDEXED_PROGRAM);
     C(BGIMAGE_PROGRAM);
     C(TINT_PROGRAM);
     C(TRAIL_PROGRAM);

@@ -298,6 +298,10 @@ typedef struct TransparentDynamicColor {
 
 
 #define MARK_MASK (3u)
+// Number of special colors such as the default foreground and background
+// that indexed color images can use, they are the last colors in the
+// 256 color palette available to such images, see graphics-protocol.rst
+#define NUM_INDEXED_IMAGE_SPECIAL_COLORS (8u)
 
 typedef struct {
     PyObject_HEAD
