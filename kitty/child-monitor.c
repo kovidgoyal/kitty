@@ -1032,7 +1032,7 @@ prepare_to_render_os_window(
         }
     }
     {
-        unsigned events = os_window->shader_anim_event_registry;
+        ShaderAnimEventMask events = os_window->shader_anim_event_registry;
         if (os_window->active_tab != os_window->last_active_tab)
             events |= (1u << SHADER_ANIM_EVENT_TAB_CHANGE) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
         if (*active_window_id && *active_window_id != os_window->last_active_window_id)

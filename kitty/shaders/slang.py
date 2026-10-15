@@ -47,6 +47,8 @@ from kitty.fast_data_types import (
     MARK,
     MARK_MASK,
     MAX_CUSTOM_SHADER_GROUPS,
+    MAX_SHADER_ANIM_USER_EVENT_NAME_LEN,
+    MAX_SHADER_ANIM_USER_EVENTS,
     PADDING_PROGRAM,
     POINTER_MAP_SIZE,
     REVERSE,
@@ -59,7 +61,7 @@ from kitty.fast_data_types import (
     get_options,
 )
 from kitty.options.types import Options, defaults
-from kitty.options.utils import EasingFunction
+from kitty.options.utils import USER_ANIMATION_EVENT_PREFIX, EasingFunction, is_valid_user_animation_event_name
 from kitty.types import run_once
 from kitty.utils import lock_with_file, log_error, resolve_custom_file
 
@@ -1509,6 +1511,8 @@ SHADER_ANIMATION_EVENTS: frozenset[str] = frozenset(
 
 
 def is_valid_animation_event(name: str) -> bool:
+    if name.startswith(USER_ANIMATION_EVENT_PREFIX):
+        return is_valid_user_animation_event_name(name[len(USER_ANIMATION_EVENT_PREFIX) :])
     return name in SHADER_ANIMATION_EVENTS
 
 
@@ -1516,7 +1520,15 @@ def parse_animation_events(raw: str) -> tuple[str, ...]:
     events = raw.split('|')
     for e in events:
         if not is_valid_animation_event(e):
-            raise ValueError(f'{e!r} is not a valid animation event name; valid names: {", ".join(sorted(SHADER_ANIMATION_EVENTS))}')
+            if e.startswith(USER_ANIMATION_EVENT_PREFIX):
+                raise ValueError(
+                    f'{e!r} is not a valid user event name, the part after {USER_ANIMATION_EVENT_PREFIX} must be at most'
+                    f' {MAX_SHADER_ANIM_USER_EVENT_NAME_LEN} letters, digits, underscores, hyphens or periods'
+                )
+            raise ValueError(
+                f'{e!r} is not a valid animation event name; valid names: {", ".join(sorted(SHADER_ANIMATION_EVENTS))}'
+                f' or {USER_ANIMATION_EVENT_PREFIX}<name> for events sent by the shader_event action'
+            )
     return tuple(events)
 
 
@@ -1596,6 +1608,7 @@ class Group(TypedDict):
     shaders: tuple[str, ...]
     vars: dict[str, tuple[str, str]]
     animation_start: tuple[str, ...]  # empty = no animation
+    animation_toggle: tuple[str, ...]  # events that start the animation if stopped and stop it if running
     animation_curve: EasingFunction  # parsed easing curve
     animation_step: int  # nanoseconds between animation samples
     animation_end_events: tuple[str, ...]  # events that stop the animation
@@ -1617,6 +1630,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
     groups: list[Group] = []
     current_group: Group | None = None
     pipeline_vars: dict[str, tuple[str, str]] = {}
+    has_animation_stop = False
 
     def unit_float(x: str) -> float:
         return max(0, min(float(x), 1))
@@ -1624,6 +1638,9 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
     def commit_group() -> None:
         nonlocal current_group
         if current_group is not None:
+            if current_group['animation_toggle'] and not current_group['animation_start'] and not has_animation_stop:
+                # A group turned on and off by toggling should stay on until toggled off
+                current_group['animation_end_duration'] = 0
             groups.append(current_group)
             current_group = None
 
@@ -1636,6 +1653,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
             'shaders': shaders,
             'vars': {},
             'animation_start': (),
+            'animation_toggle': (),
             'animation_curve': EasingFunction(),
             'animation_step': ANIMATION_SAMPLE_WAIT,
             'animation_end_events': (),
@@ -1659,6 +1677,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                 case 'startgroup':
                     commit_group()
                     current_group = init_group()
+                    has_animation_stop = False
                 case 'var':
                     var_type, var_name, value = parse_var_directive(parts)
                     pipeline_vars[var_name] = (var_type, value)
@@ -1682,6 +1701,9 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                 case 'animation_start':
                     val = ''.join(parts[1:]) if len(parts) > 1 else 'none'
                     current_group['animation_start'] = () if val == 'none' else parse_animation_events(val)
+                case 'animation_toggle':
+                    val = ''.join(parts[1:]) if len(parts) > 1 else 'none'
+                    current_group['animation_toggle'] = () if val == 'none' else parse_animation_events(val)
                 case 'animation_curve':
                     if len(parts) < 2:
                         raise ValueError('animation_curve requires a CSS curve name')
@@ -1694,6 +1716,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                         raise ValueError(f'animation_step must be non-negative, not: {step_ms}')
                     current_group['animation_step'] = step_ms * 1_000_000
                 case 'animation_stop':
+                    has_animation_stop = True
                     val = ''.join(parts[1:]) if len(parts) > 1 else 'never'
                     if val == 'never':
                         current_group['animation_end_events'] = ()
@@ -1725,6 +1748,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
         raise ValueError('The final group cannot output to a named texture')
     if groups[-1]['viewport_pos'] != (0, 0) or groups[-1]['viewport_size'] != (1, 1):
         raise ValueError('The final group must not specify a viewport')
+    check_user_animation_events(groups, f'Pipeline {pipeline_name!r}')
 
     return {'slot': slot, 'textures': textures, 'groups': tuple(groups), 'vars': pipeline_vars, 'pipeline_dir': pipeline_dir}
 
@@ -1733,6 +1757,21 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
 def parse_pipeline(name: str) -> Pipeline:
     lines, pipeline_dir = pipeline_definition(name)
     return parse_pipeline_definition(lines, name, pipeline_dir)
+
+
+def user_animation_events(groups: Iterable[Group]) -> tuple[str, ...]:
+    "The names, without the user: prefix, of all user events used by groups, in order of first use"
+    ans: dict[str, None] = {}
+    for g in groups:
+        for e in chain(g['animation_start'], g['animation_toggle'], g['animation_end_events']):
+            if e.startswith(USER_ANIMATION_EVENT_PREFIX):
+                ans[e[len(USER_ANIMATION_EVENT_PREFIX) :]] = None
+    return tuple(ans)
+
+
+def check_user_animation_events(groups: Iterable[Group], what: str) -> None:
+    if (n := len(user_animation_events(groups))) > MAX_SHADER_ANIM_USER_EVENTS:
+        raise ValueError(f'{what} uses {n} user events but the maximum is {MAX_SHADER_ANIM_USER_EVENTS}')
 
 
 def merge_pipelines(pipelines: list[Pipeline]) -> Pipeline:
@@ -1758,6 +1797,7 @@ def merge_pipelines(pipelines: list[Pipeline]) -> Pipeline:
         raise ValueError('The final group of the last pipeline cannot output to a named texture')
     if all_groups[-1]['viewport_pos'] != (0, 0) or all_groups[-1]['viewport_size'] != (1, 1):
         raise ValueError('The final group of the last pipeline must not specify a viewport')
+    check_user_animation_events(all_groups, 'Chained pipelines')
     merged_vars: dict[str, tuple[str, str]] = {}
     for p in pipelines:
         merged_vars.update(p['vars'])
@@ -1774,6 +1814,7 @@ def group_moves_content(group: Group) -> bool:
     "Whether whatever the shaders in a group do to the content is visible on the whole screen at all times"
     return (
         not group['animation_start']
+        and not group['animation_toggle']
         and not group['attached']
         and group['output_texture'] is NamedTexture.default
         and group['viewport_pos'] == (0, 0)

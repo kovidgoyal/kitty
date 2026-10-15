@@ -101,6 +101,67 @@ class TestSlang(BaseTest):
         # there are no shaders to draw.
         self.ae(simulate_custom_shader_render_ticks(8, 0xFF, True), [False] * 8)
 
+    def test_custom_shader_user_events(self):
+        from kitty.fast_data_types import MAX_SHADER_ANIM_USER_EVENTS, fire_custom_shader_event, simulate_custom_shader_animation
+        from kitty.options.utils import KeyAction, parse_key_action
+
+        def pipeline(*groups: str):
+            lines = []
+            for g in groups:
+                lines.append('startgroup')
+                lines.extend(g.splitlines())
+                lines.append('shaders sample')
+                lines.append('endgroup')
+            return parse_pipeline_definition(lines, 'test')
+
+        # Parsing
+        g = pipeline('animation_start user:find-cursor|tab-change\nanimation_stop user:x.y_z')['groups'][0]
+        self.ae(g['animation_start'], ('user:find-cursor', 'tab-change'))
+        self.ae(g['animation_end_events'], ('user:x.y_z',))
+        for bad in ('user:', 'user:a/b', 'user:' + 'x' * 100, 'usr:a'):
+            self.assertRaises(ValueError, pipeline, f'animation_start {bad}')
+        # A toggled group stays on until toggled off unless told otherwise
+        self.ae(pipeline('animation_toggle user:t')['groups'][0]['animation_end_duration'], 0)
+        self.ae(pipeline('animation_toggle user:t\nanimation_stop 100')['groups'][0]['animation_end_duration'], 100_000_000)
+        self.ae(pipeline('animation_start user:s\nanimation_toggle user:t')['groups'][0]['animation_end_duration'], -1)
+        many = '|'.join(f'user:e{i}' for i in range(MAX_SHADER_ANIM_USER_EVENTS + 1))
+        self.assertRaises(ValueError, pipeline, f'animation_start {many}')
+        pipeline(f'animation_start {many.rpartition("|")[0]}')
+        # Toggled groups do not move content permanently
+        self.ae(pointer_map_shaders(pipeline('animation_toggle user:t'), lambda g, s: True), ())
+
+        # The action
+        self.ae(parse_key_action('shader_event find-cursor'), KeyAction('shader_event', ('find-cursor', 'active')))
+        self.ae(parse_key_action('shader_event user:notch ALL'), KeyAction('shader_event', ('notch', 'all')))
+        for bad in ('a b c', 'a sideways', 'a/b'):
+            self.assertRaises(ValueError, parse_key_action, f'shader_event {bad}')
+        # Events not used by the current pipeline, here no pipeline at all, are ignored
+        self.assertFalse(fire_custom_shader_event('find-cursor'))
+
+        # The animation state machine
+        p = pipeline(
+            'animation_toggle user:t',
+            'animation_start user:s\nanimation_stop 20',
+            'attach',
+            'animation_start user:on\nanimation_toggle user:t\nanimation_stop user:off|0',
+            '',
+        )
+        ticks = [(), ('user:t',), (), ('user:t',), ('user:s', 'user:unknown'), (), (), ('user:on',), ('user:t',), ('user:t', 'user:off'), ('user:on', 'user:t')]
+        expected = [
+            (False, False, False, False, True),
+            (True, False, False, True, True),  # toggled on
+            (True, False, False, True, True),  # toggles stay on
+            (False, False, False, False, True),  # toggled off
+            (False, True, True, False, True),  # started, with the attached group
+            (False, True, True, False, True),
+            (False, False, False, False, True),  # duration expired
+            (False, False, False, True, True),
+            (True, False, False, False, True),  # toggles flip each group's own state
+            (False, False, False, True, True),  # toggle wins over a simultaneous stop
+            (True, False, False, False, True),  # and over a simultaneous start
+        ]
+        self.ae(simulate_custom_shader_animation(p, ticks), expected)
+
     def test_custom_shader_reenable(self):
         from kitty.fast_data_types import CUSTOM_END_PROGRAM
         from kitty.options.types import defaults

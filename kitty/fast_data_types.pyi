@@ -1,5 +1,5 @@
 import termios
-from typing import Any, Callable, Dict, Iterator, List, Literal, NewType, Optional, Sequence, Tuple, TypedDict, Union, overload
+from typing import Any, Callable, Dict, Iterator, List, Literal, Mapping, NewType, Optional, Sequence, Tuple, TypedDict, Union, overload
 
 from kitty.borders import Border
 from kitty.boss import Boss
@@ -49,6 +49,8 @@ CLD_CONTINUED: int
 CLD_EXITED: int
 SHM_NAME_MAX: int
 MAX_CUSTOM_SHADER_GROUPS: int
+MAX_SHADER_ANIM_USER_EVENTS: int
+MAX_SHADER_ANIM_USER_EVENT_NAME_LEN: int
 POINTER_MAP_SIZE: int
 MOUSE_SELECTION_LINE: int
 MOUSE_SELECTION_EXTEND: int
@@ -546,6 +548,8 @@ def custom_shader_needs_render(before: Tuple[bool, int, int], after: Tuple[bool,
 def decorations_map_new_size(count: int, current_capacity: int, max_size: int) -> Optional[Tuple[int, int]]: ...
 def simulate_custom_shader_render_ticks(num_ticks: int, event_mask: int = 0, initialize: bool = False) -> list[bool]: ...
 def sample_pointer_map(data: bytes, u: float, v: float) -> tuple[float, float]: ...
+def fire_custom_shader_event(name: str, os_window_id: int = 0) -> bool: ...
+def simulate_custom_shader_animation(pipeline: Mapping[str, object], ticks: list[Sequence[str]]) -> list[tuple[bool, ...]]: ...
 def set_os_window_chrome(os_window_id: int) -> bool:
     pass
 

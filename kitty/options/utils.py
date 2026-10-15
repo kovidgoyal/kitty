@@ -282,6 +282,29 @@ def clear_terminal(func: str, rest: str) -> FuncArgsType:
     return func, args
 
 
+USER_ANIMATION_EVENT_PREFIX = 'user:'
+user_animation_event_name_pat = re.compile(r'[a-zA-Z0-9_.-]+')
+
+
+def is_valid_user_animation_event_name(name: str) -> bool:
+    "Whether name, without the user: prefix, is valid as the name of a custom shader user event"
+    return len(name) <= defines.MAX_SHADER_ANIM_USER_EVENT_NAME_LEN and user_animation_event_name_pat.fullmatch(name) is not None
+
+
+@func_with_args('shader_event')
+def shader_event(func: str, rest: str) -> FuncArgsType:
+    vals = rest.split()
+    if not vals or len(vals) > 2:
+        raise ValueError(f'shader_event needs an event name and optionally one of active or all, not: {rest}')
+    name = vals[0].removeprefix(USER_ANIMATION_EVENT_PREFIX)
+    if not is_valid_user_animation_event_name(name):
+        raise ValueError(f'{name!r} is not a valid custom shader user event name')
+    scope = vals[1].lower() if len(vals) > 1 else 'active'
+    if scope not in ('active', 'all'):
+        raise ValueError(f'{scope} is not valid for shader_event, must be one of active or all')
+    return func, [name, scope]
+
+
 @func_with_args('copy_to_buffer')
 def copy_to_buffer(func: str, rest: str) -> FuncArgsType:
     return func, [rest]

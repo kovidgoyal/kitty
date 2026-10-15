@@ -92,6 +92,7 @@ from .fast_data_types import (
     current_focused_os_window_id,
     current_os_window,
     destroy_global_data,
+    fire_custom_shader_event,
     focus_os_window,
     get_boss,
     get_options,
@@ -2829,6 +2830,36 @@ class Boss:
         if errors:
             load_shader_programs.custom_shader_errors = []
             self.show_error(_('Failed to load custom shaders'), '\n\n'.join(errors))
+
+    @ac(
+        'misc',
+        '''
+        Send an event to the :doc:`custom shaders <custom-shaders>`
+
+        Groups in the custom shader pipeline that use the event as
+        :code:`user:name` in their :code:`animation_start`, :code:`animation_stop`
+        or :code:`animation_toggle` directives respond to it. By default the
+        event is sent only to the active OS window, use :code:`all` to send it
+        to all OS windows. For example::
+
+            # Start the animation of groups that have: animation_start user:find-cursor
+            map f1 shader_event find-cursor
+            # Toggle groups that have: animation_toggle user:notch in all OS windows
+            map f2 shader_event notch all
+        ''',
+    )
+    def shader_event(self, name: str, scope: str = 'active') -> None:
+        os_window_id = 0
+        if scope != 'all':
+            if self.window_for_dispatch:
+                tm = self.active_tab_manager_with_dispatch
+                os_window_id = tm.os_window_id if tm else 0
+            else:
+                os_window_id = current_os_window() or 0
+            if not os_window_id:
+                return
+        if not fire_custom_shader_event(name, os_window_id):
+            log_error(f'The custom shader pipeline does not use the event user:{name}, ignoring')
 
     @ac('mk', 'Create a new marker')
     def create_marker(self) -> None:

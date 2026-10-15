@@ -93,6 +93,43 @@ mouse shader. In the first group we have the crt shader and its color has been
 customised. The second group defines the spotlight shader and specifies exactly
 when the spotlight animation should start and stop.
 
+.. _custom_shader_mappings:
+
+Controlling shaders with key presses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Groups can respond to events you send from a mapping in :file:`kitty.conf`
+using the :ac:`shader_event` action. Such events are named in the pipeline
+with a ``user:`` prefix. For example, to show the spotlight for a couple of
+seconds when you press :kbd:`F1`, so that you can find the mouse pointer,
+create the pipeline file :file:`shaders/find-pointer.pipeline` in the kitty config
+directory with::
+
+    startgroup
+        animation_start user:find-pointer
+        animation_stop 2000
+        shaders spotlight
+    endgroup
+
+and in :file:`kitty.conf`::
+
+    custom_shaders find-pointer
+    map f1 shader_event find-pointer
+
+Use ``animation_toggle`` to turn an effect on with one press and off with the
+next::
+
+    startgroup
+        animation_toggle user:crt
+        shaders crt
+    endgroup
+
+Here ``map f2 shader_event crt`` toggles the ``crt`` effect. Events are sent to
+the active OS window, use ``map f2 shader_event crt all`` to send them to all OS
+windows. You can also send them from scripts with remote control, for example:
+``kitten @ action shader_event crt``. Groups that are not active are not drawn
+at all, so an effect that is turned off costs nothing.
+
 As another example, to blend inactive windows toward gray instead of black, save the
 following as :file:`shaders/dim-gray.pipeline` in your kitty config directory and
 set ``custom_shaders dim-gray`` and ``inactive_text_alpha 1`` in :file:`kitty.conf`::
@@ -285,8 +322,8 @@ Directives inside a group:
 
 ``animation_start <event>[|<event> …]``
     Events that trigger the start of this group's animation. Multiple events
-    are separated by ``|``. If omitted the group runs on every frame
-    unconditionally. See *Animation events* below for the full list.
+    are separated by ``|``. If neither this nor ``animation_toggle`` is
+    specified the group runs on every frame unconditionally. See *Animation events* below for the full list.
 
 ``animation_stop <token>[|<token> …]``
     When to stop the animation. Tokens are separated by ``|`` and may be:
@@ -319,6 +356,15 @@ Directives inside a group:
     :opt:`repaint_delay`. Set this to ``0`` for static effects that should
     redraw only when content or shader events change, without periodic frames.
     Animation stop events and duration limits still apply.
+
+``animation_toggle <event>[|<event> …]``
+    Events that start this group's animation when it is not running and stop
+    it when it is. This is mostly useful with ``user:`` events sent by the
+    :ac:`shader_event` action to turn effects on and off from a mapping. A
+    toggle takes precedence over start and stop events in the same frame. A
+    group that has ``animation_toggle`` but neither ``animation_start`` nor
+    ``animation_stop`` keeps running until it is toggled off, rather than
+    stopping after :opt:`cursor_stop_blinking_after`.
 
 ``attach``
     Mark this group as *attached* to the preceding group. An attached group
@@ -437,7 +483,7 @@ Animation events
 ^^^^^^^^^^^^^^^^^^^
 
 Animation events drive when groups start and stop animating. They are used in
-the ``animation_start`` and ``animation_stop`` directives. Multiple events can
+the ``animation_start``, ``animation_stop`` and ``animation_toggle`` directives. Multiple events can
 be combined with ``|`` — any one of them will trigger the action.
 
 .. list-table::
@@ -494,6 +540,12 @@ be combined with ``|`` — any one of them will trigger the action.
    * - ``cursor-trail-stop``
      - The cursor trail stops moving. Typically used as an ``animation_stop``
        event paired with ``cursor-trail-move`` as the start event.
+
+   * - ``user:<name>``
+     - Sent by the :ac:`shader_event` action, typically from a mapping, see
+       :ref:`custom_shader_mappings`. ``<name>`` can be any combination of
+       letters, digits, underscores, hyphens and periods, up to 63 characters.
+       A pipeline can use up to 48 different user events.
 
 Note that if both a start event and a focus-out event fire in the same frame
 (for example, a mouse click that simultaneously moves focus away), the

@@ -459,8 +459,9 @@ typedef struct CustomShaderGroup {
         float w, h;
     } viewport_size;
     NamedTexture output_texture;
-    unsigned animation_start_events;    // bitmask of ShaderAnimationEvent values; 0 = no own animation
-    unsigned animation_end_events;      // bitmask of events that stop the animation; 0 = none
+    ShaderAnimEventMask animation_start_events;  // events that start the animation; 0 = none
+    ShaderAnimEventMask animation_toggle_events; // events that start the animation when stopped and vice versa; 0 = none
+    ShaderAnimEventMask animation_end_events;    // events that stop the animation; 0 = none
     monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit, < 0 = use cursor_stop_blinking_after
     monotonic_t animation_step;         // nanoseconds between animation samples
     Animation *animation_curve;         // parsed easing curve; NULL = no animation
@@ -474,8 +475,12 @@ typedef struct CustomShaderPipeline {
     size_t num_groups;
     bool active;
     bool bypass_builtin_trail;           // true when any group subscribes to cursor-trail-move
-    unsigned all_animation_start_events; // union of animation_start_events across all groups
-    bool has_pointer_map;                // true when a shader defines pointer_map() to move pointer events
+    ShaderAnimEventMask all_animation_start_events; // union of the start and toggle events of all groups
+    bool has_pointer_map;                           // true when a shader defines pointer_map() to move pointer events
+    // Names (without the user: prefix) of the user events the pipeline uses,
+    // user event i is bit SHADER_ANIM_FIRST_USER_EVENT + i
+    char user_events[MAX_SHADER_ANIM_USER_EVENTS][MAX_SHADER_ANIM_USER_EVENT_NAME_LEN + 1];
+    size_t num_user_events;
 } CustomShaderPipeline;
 
 static struct {
@@ -573,12 +578,25 @@ init_cell_program(void) {
     bind_shader_globals_to_current_context();
 }
 
+// Whether the group has events of its own that turn it on, as opposed to
+// running on every frame or only following its predecessor via attach
+static inline bool
+group_has_own_animation(const CustomShaderGroup *cg) {
+    return (cg->animation_start_events | cg->animation_toggle_events) != 0;
+}
+
+// Whether the group runs only when the animation state machine says it is active
+static inline bool
+group_is_animated(const CustomShaderGroup *cg) {
+    return cg->attached || group_has_own_animation(cg);
+}
+
 // Non-animated, non-attached groups are active from the moment the pipeline
 // loads; animated groups start inactive and attached groups inherit the state
 // of their predecessor.
 static bool
 group_is_initially_active(const CustomShaderGroup *cg, bool predecessor_is_active) {
-    return cg->attached ? predecessor_is_active : (cg->animation_start_events == 0);
+    return cg->attached ? predecessor_is_active : !group_has_own_animation(cg);
 }
 
 static bool
@@ -689,12 +707,12 @@ init_shader_animation_state(OSWindow *osw) {
 }
 
 static const char *
-shader_anim_event_mask_str(unsigned mask) {
+shader_anim_event_mask_str(ShaderAnimEventMask mask) {
     static char buf[256];
     char *p = buf;
     char *const end = buf + sizeof(buf) - 1;
     static const struct {
-        unsigned bit;
+        ShaderAnimEventMask bit;
         const char *name;
     } events[] = {
         {1u << SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS, "pointer-left-button-press"},
@@ -719,6 +737,14 @@ shader_anim_event_mask_str(unsigned mask) {
         p += len;
         first = false;
     }
+    for (size_t i = 0; i < custom_shaders.end.num_user_events; i++) {
+        if (!(mask & (1ull << (SHADER_ANIM_FIRST_USER_EVENT + i)))) continue;
+        if (!first && p < end) *p++ = '|';
+        int n = snprintf(p, end - p + 1, "user:%s", custom_shaders.end.user_events[i]);
+        if (n < 0 || p + n >= end) break;
+        p += n;
+        first = false;
+    }
     if (first) {
         memcpy(buf, "(none)", 7);
     } else {
@@ -728,7 +754,7 @@ shader_anim_event_mask_str(unsigned mask) {
 }
 
 monotonic_t
-update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window) {
+update_custom_shader_animations(ShaderAnimEventMask event_mask, monotonic_t now, OSWindow *os_window) {
     if (!custom_shaders.count) {
         os_window->shader_anim = (ShaderAnimState){.min_step = MONOTONIC_T_MAX, .next_end_at = MONOTONIC_T_MAX};
         return MONOTONIC_T_MAX;
@@ -746,17 +772,23 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
     for (size_t i = 0; i < p->num_groups; i++) {
         const CustomShaderGroup *cg = &p->groups[i];
         bool this_active;
-        if (!cg->attached && cg->animation_start_events == 0) {
+        if (!group_is_animated(cg)) {
             // Always-active, non-attached group — never enters the state machine.
             any_active = true;
             this_active = true;
             min_step = MIN(min_step, cg->animation_step);
         } else {
             monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
-            if (cg->animation_start_events != 0) {
+            if (group_has_own_animation(cg)) {
+                const bool was_active = os_window->shader_group_anim[i].active;
+                // Focus-out events are hard stops: if a focus-out stop condition is present in
+                // the same tick as a start event (e.g. user-activity fired by the click that
+                // moved focus away), the focus-out wins and the animation is not restarted.
+                const ShaderAnimEventMask focus_out_mask = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
+                const bool hard_stop = (cg->animation_end_events & event_mask & focus_out_mask) != 0;
                 // Check end conditions before start so simultaneous start+end lets start win,
-                // except for focus-out events which act as hard stops (see below).
-                if (os_window->shader_group_anim[i].active) {
+                // except for focus-out events which act as hard stops.
+                if (was_active) {
                     bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
                                (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
                     if (end) {
@@ -764,15 +796,21 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
                         debug_rendering("Custom shader group %zu animation stopped (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
                     }
                 }
-                if (event_mask & cg->animation_start_events) {
-                    // Focus-out events are hard stops: if a focus-out stop condition is present in
-                    // the same tick as a start event (e.g. user-activity fired by the click that
-                    // moved focus away), the focus-out wins and the animation is not restarted.
-                    const unsigned focus_out_mask = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
-                    if (!(cg->animation_end_events & event_mask & focus_out_mask)) {
+                if ((event_mask & cg->animation_start_events) && !hard_stop) {
+                    os_window->shader_group_anim[i].active = true;
+                    os_window->shader_group_anim[i].started_at = now;
+                    debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+                }
+                // A toggle flips the state the group had before this tick and so
+                // takes precedence over simultaneous start and stop events.
+                if (event_mask & cg->animation_toggle_events) {
+                    if (was_active || hard_stop) {
+                        os_window->shader_group_anim[i].active = false;
+                        debug_rendering("Custom shader group %zu animation toggled off (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+                    } else {
                         os_window->shader_group_anim[i].active = true;
                         os_window->shader_group_anim[i].started_at = now;
-                        debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+                        debug_rendering("Custom shader group %zu animation toggled on (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
                     }
                 }
             }
@@ -784,7 +822,7 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
                     monotonic_t prev_started = (i > 0) ? os_window->shader_group_anim[i - 1].started_at : 0;
                     os_window->shader_group_anim[i].started_at = prev_started ? prev_started : now;
                     debug_rendering("Custom shader group %zu activated via attach\n", i);
-                } else if (!prev_active && cg->animation_start_events == 0 && os_window->shader_group_anim[i].active) {
+                } else if (!prev_active && !group_has_own_animation(cg) && os_window->shader_group_anim[i].active) {
                     // No own events: mirror the previous group's deactivation.
                     os_window->shader_group_anim[i].active = false;
                 }
@@ -795,7 +833,7 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
                 min_step = MIN(min_step, cg->animation_step);
                 // Only track next_end for groups with own stop conditions; attached-only groups
                 // deactivate when their predecessor does (already tracked by the predecessor).
-                if (cg->animation_start_events != 0 && eff_dur > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + eff_dur);
+                if (group_has_own_animation(cg) && eff_dur > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + eff_dur);
             }
         }
         prev_active = this_active;
@@ -808,12 +846,43 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
     return min_step;
 }
 
+// The bit for the user event with the specified name (without the user:
+// prefix) in the current pipeline, zero if the pipeline does not use it
+static ShaderAnimEventMask
+user_event_bit(const char *name) {
+    for (size_t i = 0; i < custom_shaders.end.num_user_events; i++) {
+        if (strcmp(custom_shaders.end.user_events[i], name) == 0) return 1ull << (SHADER_ANIM_FIRST_USER_EVENT + i);
+    }
+    return 0;
+}
+
+// Queue the user event with the specified name for the OS window with the
+// specified id, or for all OS windows when the id is zero. Returns false when
+// the current pipeline does not use the event.
+static bool
+fire_custom_shader_user_event(const char *name, id_type os_window_id) {
+    const ShaderAnimEventMask bit = user_event_bit(name);
+    if (!bit) {
+        debug_rendering("Ignoring the custom shader event user:%s as the current pipeline does not use it\n", name);
+        return false;
+    }
+    bool queued = false;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *osw = global_state.os_windows + i;
+        if (os_window_id && osw->id != os_window_id) continue;
+        osw->shader_anim_event_registry |= bit;
+        queued = true;
+    }
+    if (queued) wakeup_main_loop();
+    return true;
+}
+
 // Decide whether the custom shader layer needs a frame drawn this tick, given
 // the cached state from the previous tick and the state just recomputed by
 // update_custom_shader_animations(). Kept separate from the renderer so it can
 // be unit tested -- see test_custom_shader_redraw_logic.
 bool
-custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, unsigned event_mask, monotonic_t now) {
+custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, ShaderAnimEventMask event_mask, monotonic_t now) {
     // Groups turned on or off: draw once so the change becomes visible. This is
     // what produces the final frame that clears a finished effect.
     if (before->has_active_shaders != after->has_active_shaders) return true;
@@ -2995,7 +3064,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     for (unsigned g = 0; g < num_groups; g++) {
         const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
         // Non-attached always-active groups always run; attached and animated groups run only when active.
-        if ((!cg->attached && cg->animation_start_events == 0) || os_window->shader_group_anim[g].active) last_active_g = (int)g;
+        if (!group_is_animated(cg) || os_window->shader_group_anim[g].active) last_active_g = (int)g;
     }
 
     // Ping-pong state: when true, backbuffer = texture_id and the ping-pong
@@ -3015,7 +3084,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
         // Skip inactive groups. Non-attached, non-animated groups always run; all others require
         // shader_group_anim[g].active (set by update_custom_shader_animations, including attach logic).
-        if ((cg->animation_start_events != 0 || cg->attached) && !os_window->shader_group_anim[g].active) continue;
+        if (group_is_animated(cg) && !os_window->shader_group_anim[g].active) continue;
         const GLuint backbuffer = backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
 
         // Bind backbuffer to the backbuffer texture unit
@@ -3082,7 +3151,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
         float anim_progress = 0.0f;
         monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
-        if ((cg->animation_start_events != 0 || cg->attached) && eff_dur > 0 && os_window->shader_group_anim[g].active) {
+        if (group_is_animated(cg) && eff_dur > 0 && os_window->shader_group_anim[g].active) {
             monotonic_t started_at = os_window->shader_group_anim[g].started_at;
             bool cached = false;
             for (size_t c = 0; c < num_anim_cached; c++) {
@@ -3276,8 +3345,8 @@ named_texture_from_str(const char *s) {
     return CUSTOM_SHADER_TEXTURE_DEFAULT;
 }
 
-static unsigned
-shader_anim_event_bit(const char *s) {
+static ShaderAnimEventMask
+shader_anim_event_bit(const char *s, CustomShaderPipeline *p) {
     if (strcmp(s, "pointer-left-button-press") == 0) return 1u << SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS;
     if (strcmp(s, "os-window-focus-in") == 0) return 1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN;
     if (strcmp(s, "os-window-focus-out") == 0) return 1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT;
@@ -3289,15 +3358,27 @@ shader_anim_event_bit(const char *s) {
     if (strcmp(s, "user-idle") == 0) return 1u << SHADER_ANIM_EVENT_USER_IDLE;
     if (strcmp(s, "cursor-trail-move") == 0) return 1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE;
     if (strcmp(s, "cursor-trail-stop") == 0) return 1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP;
+    static const char user_prefix[] = "user:";
+    if (strncmp(s, user_prefix, sizeof(user_prefix) - 1) == 0) {
+        const char *name = s + sizeof(user_prefix) - 1;
+        if (!name[0] || strlen(name) > MAX_SHADER_ANIM_USER_EVENT_NAME_LEN) return 0;
+        size_t i = 0;
+        while (i < p->num_user_events && strcmp(p->user_events[i], name) != 0) i++;
+        if (i == p->num_user_events) {
+            if (i >= MAX_SHADER_ANIM_USER_EVENTS) return 0;
+            memcpy(p->user_events[p->num_user_events++], name, strlen(name) + 1);
+        }
+        return 1ull << (SHADER_ANIM_FIRST_USER_EVENT + i);
+    }
     return 0;
 }
 
-static unsigned
-parse_anim_event_sequence(PyObject *seq) {
-    unsigned mask = 0;
+static ShaderAnimEventMask
+parse_anim_event_sequence(PyObject *seq, CustomShaderPipeline *p) {
+    ShaderAnimEventMask mask = 0;
     for (Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(seq); i++) {
         PyObject *item = PySequence_Fast_GET_ITEM(seq, i);
-        if (PyUnicode_Check(item)) mask |= shader_anim_event_bit(PyUnicode_AsUTF8(item));
+        if (PyUnicode_Check(item)) mask |= shader_anim_event_bit(PyUnicode_AsUTF8(item), p);
     }
     return mask;
 }
@@ -3348,7 +3429,9 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
         if (ot && PyUnicode_Check(ot)) { cg->output_texture = named_texture_from_str(PyUnicode_AsUTF8(ot)); }
 
         PyObject *astart = PyDict_GetItemString(g, "animation_start");
-        if (is_seq(astart)) cg->animation_start_events = parse_anim_event_sequence(astart);
+        if (is_seq(astart)) cg->animation_start_events = parse_anim_event_sequence(astart, p);
+        PyObject *atoggle = PyDict_GetItemString(g, "animation_toggle");
+        if (is_seq(atoggle)) cg->animation_toggle_events = parse_anim_event_sequence(atoggle, p);
 
         PyObject *acurve = PyDict_GetItemString(g, "animation_curve");
         if (acurve && PyObject_IsTrue(acurve)) {
@@ -3368,7 +3451,7 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
         cg->animation_step = cg->animation_step == 0 ? MONOTONIC_T_MAX : MAX(cg->animation_step, OPT(repaint_delay));
 
         PyObject *ae_events = PyDict_GetItemString(g, "animation_end_events");
-        if (is_seq(ae_events)) cg->animation_end_events = parse_anim_event_sequence(ae_events);
+        if (is_seq(ae_events)) cg->animation_end_events = parse_anim_event_sequence(ae_events, p);
 
         PyObject *ae_dur = PyDict_GetItemString(g, "animation_end_duration");
         if (ae_dur && PyLong_Check(ae_dur)) cg->animation_end_duration = (monotonic_t)PyLong_AsLong(ae_dur);
@@ -3377,7 +3460,7 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
         cg->attached = attached && PyObject_IsTrue(attached);
     }
     p->all_animation_start_events = 0;
-    for (size_t i = 0; i < p->num_groups; i++) p->all_animation_start_events |= p->groups[i].animation_start_events;
+    for (size_t i = 0; i < p->num_groups; i++) p->all_animation_start_events |= p->groups[i].animation_start_events | p->groups[i].animation_toggle_events;
     p->bypass_builtin_trail = (p->all_animation_start_events & (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE)) != 0;
 #undef is_seq
     return true;
@@ -3551,10 +3634,10 @@ parse_shader_anim_state(PyObject *obj, ShaderAnimState *ans) {
 static PyObject *
 pycustom_shader_needs_render(PyObject *self UNUSED, PyObject *args) {
     PyObject *b, *a;
-    unsigned int event_mask;
+    unsigned long long event_mask;
     long long now;
     ShaderAnimState before, after;
-    if (!PyArg_ParseTuple(args, "O!O!IL", &PyTuple_Type, &b, &PyTuple_Type, &a, &event_mask, &now)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!O!KL", &PyTuple_Type, &b, &PyTuple_Type, &a, &event_mask, &now)) return NULL;
     if (!parse_shader_anim_state(b, &before) || !parse_shader_anim_state(a, &after)) return NULL;
     if (custom_shader_needs_render(&before, &after, event_mask, now)) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
@@ -3567,9 +3650,9 @@ pycustom_shader_needs_render(PyObject *self UNUSED, PyObject *args) {
 static PyObject *
 pysimulate_custom_shader_render_ticks(PyObject *self UNUSED, PyObject *args) {
     unsigned long num_ticks;
-    unsigned int event_mask = 0;
+    unsigned long long event_mask = 0;
     int initialize = 0;
-    if (!PyArg_ParseTuple(args, "k|Ip", &num_ticks, &event_mask, &initialize)) return NULL;
+    if (!PyArg_ParseTuple(args, "k|Kp", &num_ticks, &event_mask, &initialize)) return NULL;
     RAII_ALLOC(OSWindow, osw, calloc(1, sizeof(OSWindow)));
     if (!osw) return PyErr_NoMemory();
     if (initialize) init_shader_animation_state(osw);
@@ -3583,6 +3666,60 @@ pysimulate_custom_shader_render_ticks(PyObject *self UNUSED, PyObject *args) {
         if (PyList_Append(ans, v) != 0) return NULL;
     }
     return Py_NewRef(ans);
+}
+
+static PyObject *
+pyfire_custom_shader_event(PyObject *self UNUSED, PyObject *args) {
+    const char *name;
+    unsigned long long os_window_id = 0;
+    if (!PyArg_ParseTuple(args, "s|K", &name, &os_window_id)) return NULL;
+    if (fire_custom_shader_user_event(name, os_window_id)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+// Test only. Loads pipeline, a dict as sent by compile_program(), in place of
+// the current one and runs the animation state machine over an OS window, one
+// tick per item of ticks, each a sequence of event names, 10ms apart. Returns
+// the active state of every group after each tick.
+static PyObject *
+pysimulate_custom_shader_animation(PyObject *self UNUSED, PyObject *args) {
+    PyObject *pipeline, *ticks;
+    if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &pipeline, &PyList_Type, &ticks)) return NULL;
+    RAII_ALLOC(OSWindow, osw, calloc(1, sizeof(OSWindow)));
+    if (!osw) return PyErr_NoMemory();
+    const CustomShaderPipeline saved = custom_shaders.end;
+    const size_t saved_count = custom_shaders.count;
+    zero_at_ptr(&custom_shaders.end);
+    PyObject *ans = NULL;
+    if (transfer_pipeline_to_struct(pipeline, &custom_shaders.end)) {
+        custom_shaders.count = 1;
+        init_shader_animation_state(osw);
+        ans = PyList_New(0);
+        monotonic_t now = monotonic();
+        for (Py_ssize_t i = 0; ans && i < PyList_GET_SIZE(ticks); i++, now += ms_to_monotonic_t(10ll)) {
+            PyObject *names = PyList_GET_ITEM(ticks, i);
+            if (!PyTuple_Check(names) && !PyList_Check(names)) {
+                PyErr_SetString(PyExc_TypeError, "each tick must be a sequence of event names");
+                Py_CLEAR(ans);
+                break;
+            }
+            update_custom_shader_animations(parse_anim_event_sequence(names, &custom_shaders.end), now, osw);
+            RAII_PyObject(states, PyTuple_New(custom_shaders.end.num_groups));
+            if (!states) {
+                Py_CLEAR(ans);
+                break;
+            }
+            for (size_t g = 0; g < custom_shaders.end.num_groups; g++) {
+                const CustomShaderGroup *cg = custom_shaders.end.groups + g;
+                PyTuple_SET_ITEM(states, g, Py_NewRef(!group_is_animated(cg) || osw->shader_group_anim[g].active ? Py_True : Py_False));
+            }
+            if (PyList_Append(ans, states) != 0) Py_CLEAR(ans);
+        }
+    }
+    free_custom_shader_pipeline(&custom_shaders.end);
+    custom_shaders.end = saved;
+    custom_shaders.count = saved_count;
+    return ans;
 }
 
 // Test only. Looks up a position in a pointer map given as the bytes of
@@ -3618,6 +3755,8 @@ static PyMethodDef module_methods[] = {
     MW(decorations_map_new_size, METH_VARARGS),
     MW(simulate_custom_shader_render_ticks, METH_VARARGS),
     MW(sample_pointer_map, METH_VARARGS),
+    MW(fire_custom_shader_event, METH_VARARGS),
+    MW(simulate_custom_shader_animation, METH_VARARGS),
 
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
@@ -3672,6 +3811,8 @@ init_shaders(PyObject *module) {
     C(PADDING_PROGRAM);
     C(CUSTOM_END_PROGRAM);
     C(MAX_CUSTOM_SHADER_GROUPS);
+    C(MAX_SHADER_ANIM_USER_EVENTS);
+    C(MAX_SHADER_ANIM_USER_EVENT_NAME_LEN);
     C(POINTER_MAP_SIZE);
     C(GLSL_VERSION);
     C(GL_VERSION);

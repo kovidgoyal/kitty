@@ -533,6 +533,13 @@ typedef enum {
     SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP,
     NUM_SHADER_ANIM_EVENTS
 } ShaderAnimationEvent;
+// Events named by the pipeline itself, with the user: prefix, and fired by the
+// shader_event action occupy the bits above the builtin events
+#define SHADER_ANIM_FIRST_USER_EVENT 16
+#define MAX_SHADER_ANIM_USER_EVENTS (64 - SHADER_ANIM_FIRST_USER_EVENT)
+#define MAX_SHADER_ANIM_USER_EVENT_NAME_LEN 63
+// Bitmask of ShaderAnimationEvent values and user events
+typedef uint64_t ShaderAnimEventMask;
 
 typedef struct OSWindow {
     void *handle;
@@ -614,7 +621,7 @@ typedef struct OSWindow {
         monotonic_t mapped_last_event_at;
         bool mapped_gesture, mapped_grabbed;
     } scroll;
-    unsigned shader_anim_event_registry;
+    ShaderAnimEventMask shader_anim_event_registry;
     id_type last_bell_window_id; // ID of the most recent window that received a bell event
     struct {
         bool active;
@@ -823,9 +830,9 @@ void dispatch_buffered_keys(Window *w);
 void free_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow *, Tab *, Window *, bool, monotonic_t);
-monotonic_t update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window);
+monotonic_t update_custom_shader_animations(ShaderAnimEventMask event_mask, monotonic_t now, OSWindow *os_window);
 void init_shader_animation_state(OSWindow *os_window);
-bool custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, unsigned event_mask, monotonic_t now);
+bool custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, ShaderAnimEventMask event_mask, monotonic_t now);
 void map_pointer_position(const OSWindow *os_window, double *x, double *y);
 void set_os_window_mouse_position(OSWindow *window, double x, double y);
 void swap_window_buffers(OSWindow *w);

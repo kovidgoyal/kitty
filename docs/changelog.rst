@@ -264,6 +264,10 @@ Detailed list of changes
   remaining resize steps. Configure the fraction with the resize-window
   kitten's :code:`--fraction` option.
 
+- Custom shaders: Allow controlling shaders with key presses, via the new
+  :ac:`shader_event` action, :code:`user:` animation events and the
+  :code:`animation_toggle` pipeline directive, see :ref:`custom_shader_mappings` (:iss:`10667`)
+
 - Add English and Spanish subtitles to the intro video shown at the top of the
   documentation
 
