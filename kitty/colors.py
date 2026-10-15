@@ -253,7 +253,10 @@ def parse_colors(
 
 
 def patch_options_with_color_spec(
-    opts: Options, spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, background_image_options: BackgroundImageOptions | None = None
+    opts: Options,
+    spec: ColorsSpec,
+    transparent_background_colors: TransparentBackgroundColors | None,
+    background_image_options: BackgroundImageOptions | None = None,
 ) -> None:
     for k, v in spec.items():
         if hasattr(opts, k):
@@ -265,7 +268,8 @@ def patch_options_with_color_spec(
                     setattr(opts, k, v)
                 else:
                     setattr(opts, k, color_from_int(v))
-    opts.transparent_background_colors = transparent_background_colors
+    if transparent_background_colors is not None:
+        opts.transparent_background_colors = transparent_background_colors
     if background_image_options is not None:
         for k, bv in background_image_options.items():
             if hasattr(opts, k):
@@ -274,7 +278,7 @@ def patch_options_with_color_spec(
 
 def patch_colors(
     spec: ColorsSpec,
-    transparent_background_colors: TransparentBackgroundColors = (),
+    transparent_background_colors: TransparentBackgroundColors | None = (),
     configured: bool = False,
     windows: Sequence[WindowType] | None = None,
     notify_on_bg_change: bool = True,

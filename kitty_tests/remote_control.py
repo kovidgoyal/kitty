@@ -57,6 +57,48 @@ class TestRemoteControl(BaseTest):
 
         setter.assert_called_once_with(11, '')
 
+    def test_set_colors_preserves_transparency(self):
+        from types import SimpleNamespace
+        from typing import cast
+
+        from kitty.fast_data_types import Color, get_options
+        from kitty.rc.base import Boss as KittyBoss
+        from kitty.rc.base import Window as KittyWindow
+
+        cmd = command_for_name('set-colors')
+        for configured in (False, True):
+            with self.subTest(configured=configured):
+                window = cast(KittyWindow, SimpleNamespace(id=1, screen=self.create_screen(), refresh=lambda: None))
+                boss = cast(
+                    KittyBoss,
+                    SimpleNamespace(
+                        all_windows=[window],
+                        all_tab_managers=[],
+                        color_settings_at_startup={'foreground': get_options().foreground},
+                    ),
+                )
+
+                def apply(colors: dict[str, int | str], *, reset: bool = False) -> None:
+                    payload = {'all': True, 'colors': colors, 'configured': configured or reset, 'reset': reset}
+                    cmd.response_from_kitty(boss, window, PayloadGetter(cmd, payload))
+
+                with patch('kitty.colors.get_boss', return_value=boss):
+                    apply({'transparent_background_colors': '#ff0000@0.5'})
+                    before = window.screen.color_profile.get_transparent_background_color(0)
+                    self.assertIsNotNone(before)
+                    apply({'foreground': 0x00FF00})
+                    self.ae(window.screen.color_profile.as_dict()['foreground'], 0x00FF00)
+                    self.ae(window.screen.color_profile.get_transparent_background_color(0), before)
+                    if configured:
+                        self.ae(get_options().transparent_background_colors, ((Color(255, 0, 0), 0.5),))
+                    apply({'transparent_background_colors': ''})
+                    self.assertIsNone(window.screen.color_profile.get_transparent_background_color(0))
+                    if configured:
+                        self.ae(get_options().transparent_background_colors, ())
+                    apply({'transparent_background_colors': '#ff0000@0.5'})
+                    apply({}, reset=True)
+                    self.assertIsNone(window.screen.color_profile.get_transparent_background_color(0))
+
 
 TALK_THREAD_SURVIVES_ACCEPT_ERROR = """
 import os, socket, sys, time

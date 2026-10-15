@@ -240,6 +240,9 @@ Detailed list of changes
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
+- Remote control: Preserve transparent background color overrides when changing
+  unrelated colors with :code:`kitten @ set-colors`. Fix setting transparent
+  background colors with :option:`kitten @ set-colors --configured`.
 
 - quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
   option to run a program in a new tab or window of an already running quick

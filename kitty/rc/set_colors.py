@@ -106,13 +106,13 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
         colors: dict[str, int | None] = payload_get('colors') or {}
         if payload_get('reset'):
             colors = {k: None if v is None else int(v) for k, v in boss.color_settings_at_startup.items()}
-        tbc = colors.get('transparent_background_colors')
-        if tbc:
+        tbc = colors.pop('transparent_background_colors', None)
+        if tbc is not None:
             from kitty.options.utils import transparent_background_colors
 
             parsed_tbc = transparent_background_colors(str(tbc))
         else:
-            parsed_tbc = ()
+            parsed_tbc = () if payload_get('reset') else None
         patch_colors(colors, parsed_tbc, bool(payload_get('configured')), windows=windows)
         return None
 
