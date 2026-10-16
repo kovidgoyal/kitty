@@ -155,8 +155,10 @@ class TestSessions(BaseTest):
             finish_restore,
             is_logout_in_progress,
             load_snapshot,
+            new_key_id,
             read_key_id,
             remove_all_snapshots,
+            remove_orphaned_keys,
             remove_stale_snapshots,
             restore_snapshots,
             save_snapshot,
@@ -180,6 +182,11 @@ class TestSessions(BaseTest):
 
             def delete(self, key_id: str) -> None:
                 self.keys.pop(key_id, None)
+
+            def list_ids(self) -> list[str]:
+                if self.fail:
+                    raise OSError('User interaction is not allowed')
+                return list(self.keys)
 
         errors: list[str] = []
         log_error.redirect = errors.append
@@ -252,18 +259,42 @@ class TestSessions(BaseTest):
         def swap(path: str) -> None:
             os.replace(os.path.join(path, 'session.kitty-session'), os.path.join(path, 'process.json'))
 
-        for name, damage in (
-            ('missing key', lambda path: ks.keys.clear()),
-            ('keychain needs interaction', lambda path: setattr(ks, 'fail', True)),
-            ('modified', modify),
-            ('swapped', swap),
+        for name, damage, num_errors in (
+            ('missing key', lambda path: ks.keys.clear(), 1),
+            # both reading the key and listing keys to remove orphans fail
+            ('keychain needs interaction', lambda path: setattr(ks, 'fail', True), 2),
+            ('modified', modify, 1),
+            ('swapped', swap, 1),
         ):
             with self.subTest(name):
                 errors.clear()
                 damage(save(13))
                 self.ae(claim_snapshots(base, 1, ks, alive.__contains__), [])
                 ks.fail = False
-                self.ae((os.listdir(base), len(errors)), ([], 1))
+                self.ae((os.listdir(base), len(errors)), ([], num_errors))
+
+        # Keys of snapshots deleted by something other than kitty are deleted, but not the keys of existing snapshots or keys
+        # not created by kitty
+        path = save(15)
+        orphan, foreign = new_key_id(), 'some-other-item'
+        ks.keys[orphan] = ks.keys[foreign] = ks.keys[read_key_id(path)]
+        remove_orphaned_keys(base, ks)
+        self.ae(sorted(ks.keys), sorted((read_key_id(path), foreign)))
+        # Orphans are removed when saving and claiming, and all keys when all snapshots are removed
+        ks.keys[orphan] = ks.keys[foreign]
+        remove_stale_snapshots(base, 0, ks)
+        self.assertNotIn(orphan, ks.keys)
+        ks.keys[orphan] = ks.keys[foreign]
+        self.ae(len(claim_snapshots(base, 1, ks, alive.__contains__)), 1)
+        self.assertNotIn(orphan, ks.keys)
+        # Failing to list the keys is logged, not raised
+        errors.clear()
+        ks.fail = True
+        remove_orphaned_keys(base, ks)
+        ks.fail = False
+        self.ae(len(errors), 1)
+        shutil.rmtree(base)
+        ks.keys.clear()
 
         # Files are bound to their names, so swapping the scrollback of two windows is detected
         path = save(14)

@@ -900,6 +900,9 @@ def cocoa_keychain_read_secret(service: str, account: str) -> Optional[Secret]:
 def cocoa_keychain_delete(service: str, account: str) -> bool:
     pass
 
+def cocoa_keychain_list_accounts(service: str) -> List[str]:
+    pass
+
 def cocoa_set_menubar_title(title: str) -> None:
     pass
 

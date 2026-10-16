@@ -39,6 +39,7 @@ PROCESS_FILE = 'process.json'
 SCROLLBACK_DIR = 'scrollback'
 ATTEMPTS_FILE = 'attempts'
 KEY_ID_FILE = 'key-id'
+KEY_ID_BYTES = 16
 KEYCHAIN_SERVICE = 'net.kovidgoyal.kitty.session-saved-at-logout'
 ENCRYPTED_FILE_MAGIC = b'kitty-snapshot-1'
 IV_SIZE, TAG_SIZE = 12, 16
@@ -70,6 +71,7 @@ class KeyStore(Protocol):
     def store(self, key_id: str, key: Secret) -> None: ...
     def read(self, key_id: str) -> Secret | None: ...
     def delete(self, key_id: str) -> None: ...
+    def list_ids(self) -> list[str]: ...
 
 
 class MacOSKeychain:
@@ -87,6 +89,11 @@ class MacOSKeychain:
         from .fast_data_types import cocoa_keychain_delete
 
         cocoa_keychain_delete(KEYCHAIN_SERVICE, key_id)
+
+    def list_ids(self) -> list[str]:
+        from .fast_data_types import cocoa_keychain_list_accounts
+
+        return cocoa_keychain_list_accounts(KEYCHAIN_SERVICE)
 
 
 def get_key_store() -> KeyStore | None:
@@ -150,6 +157,37 @@ def delete_key(key_store: KeyStore, key_id: str, path: str) -> None:
         key_store.delete(key_id)
     except OSError as e:
         log_error(f'Failed to delete the encryption key for the session saved at logout in {path} from the keychain. Error: {e}')
+
+
+def new_key_id() -> str:
+    return secrets.token_hex(KEY_ID_BYTES)
+
+
+@run_once
+def key_id_pat() -> 're.Pattern[str]':
+    return re.compile(f'[0-9a-f]{{{2 * KEY_ID_BYTES}}}')
+
+
+def remove_orphaned_keys(base: str, key_store: KeyStore | None) -> None:
+    # Must be called with the lock held. Deletes the keys of snapshots that no longer exist, for example because they were deleted
+    # by something other than kitty. Snapshots being saved or restored hold the lock, so their keys are never orphans here.
+    if key_store is None:
+        return
+    try:
+        key_ids = key_store.list_ids()
+    except OSError as e:
+        log_error(f'Failed to list the encryption keys for sessions saved at logout in the keychain. Error: {e}')
+        return
+    used = set()
+    with suppress(FileNotFoundError), os.scandir(base) as entries:
+        for entry in entries:
+            if key_id := read_key_id(entry.path):
+                used.add(key_id)
+    pat = key_id_pat()
+    for key_id in key_ids:
+        # Only keys created by kitty, so items added by anything else with the same service are not touched
+        if key_id not in used and pat.fullmatch(key_id) is not None:
+            delete_key(key_store, key_id, base)
 
 
 def remove_snapshot(path: str, key_store: KeyStore | None) -> None:
@@ -242,7 +280,7 @@ def save_snapshot(base: str, pid: int, session: str, scrollback: Mapping[int, by
     # Must be called with the lock held. Nothing is saved if the key cannot be stored. The snapshot is written to a temporary
     # directory and renamed, so that an incomplete snapshot is never restored.
     key_store = require_key_store(key_store)
-    key, key_id = random_secret(), secrets.token_hex(16)
+    key, key_id = random_secret(), new_key_id()
     key_store.store(key_id, key)
     tdir = ''
     try:
@@ -276,6 +314,7 @@ def remove_stale_snapshots(base: str, started_at: float, key_store: KeyStore | N
                     remove_snapshot(entry.path, key_store)
     except FileNotFoundError:
         pass
+    remove_orphaned_keys(base, key_store)
 
 
 def save_session_at_logout(boss: BossType) -> None:
@@ -353,6 +392,7 @@ def claim_snapshots(base: str, pid: int, key_store: KeyStore | None, is_alive: C
             except Exception as e:
                 log_error(f'Failed to read the session saved at logout in {path}, deleting it. Error: {e}')
                 remove_snapshot(path, key_store)
+        remove_orphaned_keys(base, key_store)
     ans.sort(key=lambda s: s.saved_at)
     return ans
 
@@ -443,3 +483,4 @@ def remove_all_snapshots() -> None:
                 for entry in entries:
                     remove_snapshot(entry.path, key_store)
             remove_path(base)
+            remove_orphaned_keys(base, key_store)
