@@ -1135,8 +1135,7 @@ Key      Value                 Default    Description
 
 **Keys for image transmission**
 -----------------------------------------------------------
-``f``    Positive integer.     ``32``     The format in which the image data is sent.
-         ``(8, 16, 24, 32, 100)``.
+``f``    Positive integer.     ``32``     The format in which the image data is sent ``(8, 16, 24, 32, 100)``.
 ``t``    Single character.     ``d``      The transmission medium used.
          ``(d, f, t, s)``.
 ``s``    Positive integer.     ``0``      The width of the image being sent.
