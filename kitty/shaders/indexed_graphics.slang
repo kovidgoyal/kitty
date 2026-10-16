@@ -10,6 +10,10 @@
 import blit_common;
 import background;
 
+// False for the variant used when the image is drawn at its natural size,
+// which needs only a single pixel read per fragment.
+extern static const bool is_scaled = true;
+
 struct VSOutput {
     float2 texcoord : TEXCOORD;
     float4 position : SV_Position;
@@ -38,11 +42,14 @@ float4
 fragment_main(float2 texcoord: TEXCOORD, uniform uint has_alpha, uniform float extra_alpha)
     : SV_Target {
     // Integer textures cannot be filtered and anyway the palette lookup must
-    // happen before interpolation, so do bilinear filtering here. When the
-    // image is not scaled this reduces to reading a single pixel.
+    // happen before interpolation, so do bilinear filtering here.
     int width, height;
     image.GetDimensions(width, height);
     const int2 limit = int2(width - 1, height - 1);
+    // When the image is drawn at its natural size every fragment is at the
+    // center of a pixel, so just read that pixel. is_scaled is a compile time
+    // constant so this is not a branch in the shader.
+    if (!is_scaled) return premult_color_at(clamp(int2(texcoord * float2(width, height)), int2(0, 0), limit), has_alpha) * extra_alpha;
     const float2 pos = texcoord * float2(width, height) - 0.5;
     const float2 base = floor(pos);
     const float2 frac = pos - base;

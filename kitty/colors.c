@@ -727,8 +727,8 @@ copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size
     }
     // Copy the special colors used by indexed color images, these must be in
     // the order defined in the graphics protocol documentation.
-    const color_type fg = resolved_dynamic_color(self, self->overridden.default_fg, self->configured.default_fg, 0);
-    const color_type bg = resolved_dynamic_color(self, self->overridden.default_bg, self->configured.default_bg, 0);
+    const color_type fg = resolved_dynamic_color(self, self->overridden.default_fg, self->configured.default_fg, OPT(foreground));
+    const color_type bg = resolved_dynamic_color(self, self->overridden.default_bg, self->configured.default_bg, OPT(background));
     const color_type specials[NUM_INDEXED_IMAGE_SPECIAL_COLORS] = {
         bg,
         fg,

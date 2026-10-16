@@ -54,6 +54,9 @@ typedef struct {
     int z_index;
     // Zero for normal images, otherwise the number of bytes per pixel of an indexed color image
     uint8_t indexed_px_sz;
+    // True for indexed color images drawn at their natural size, which can use
+    // a cheaper shader. Always false for normal images.
+    bool is_unscaled;
     id_type image_id, ref_id;
 } ImageRenderData;
 

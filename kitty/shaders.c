@@ -29,6 +29,7 @@ enum {
     GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_ALPHA_MASK_PROGRAM,
     GRAPHICS_INDEXED_PROGRAM,
+    GRAPHICS_INDEXED_UNSCALED_PROGRAM,
     BGIMAGE_PROGRAM,
     TINT_PROGRAM,
     TRAIL_PROGRAM,
@@ -541,6 +542,7 @@ upload_gamma_lut(void) {
     U(BORDERS_PROGRAM);
     U(PADDING_PROGRAM);
     U(GRAPHICS_INDEXED_PROGRAM);
+    U(GRAPHICS_INDEXED_UNSCALED_PROGRAM);
 #undef U
     unbind_program();
 }
@@ -588,9 +590,9 @@ init_cell_program(void) {
     C(is_selected, 2);
 #undef C
     // Indexed color images get their colors from the color table of the window they are in
-    {
-        UniformBlock ct = program_uniform_block(GRAPHICS_INDEXED_PROGRAM, "ColorTable");
-        glUniformBlockBinding(program_id(GRAPHICS_INDEXED_PROGRAM), ct.index, COLOR_TABLE_BINDING_POINT);
+    for (int i = GRAPHICS_INDEXED_PROGRAM; i <= GRAPHICS_INDEXED_UNSCALED_PROGRAM; i++) {
+        UniformBlock ct = program_uniform_block(i, "ColorTable");
+        glUniformBlockBinding(program_id(i), ct.index, COLOR_TABLE_BINDING_POINT);
     }
 
     if (shader_globals_vao_idx == -1) {
@@ -1305,7 +1307,8 @@ draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, fl
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     GLint src_rect_loc = program_uniform_location(program, "src_rect");
     GLint dest_rect_loc = program_uniform_location(program, "dest_rect");
-    const GLint has_alpha_loc = program == GRAPHICS_INDEXED_PROGRAM ? program_uniform_location(program, "has_alpha") : -1;
+    const bool is_indexed = program == GRAPHICS_INDEXED_PROGRAM || program == GRAPHICS_INDEXED_UNSCALED_PROGRAM;
+    const GLint has_alpha_loc = is_indexed ? program_uniform_location(program, "has_alpha") : -1;
     for (GLuint i = 0; i < count;) {
         ImageRenderData *group = data + start + i;
         glBindTexture(GL_TEXTURE_2D, group->texture_id);
@@ -1382,7 +1385,7 @@ set_cell_uniforms(bool force) {
     if (!constants_set || force) {
         float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
         float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
-        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_INDEXED_PROGRAM; i++) {
+        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_INDEXED_UNSCALED_PROGRAM; i++) {
             bind_program(i);
             glUniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
         }
@@ -2266,7 +2269,14 @@ draw_tint(const UIRenderData *ui) {
 
 // Draw a range of the image render data. Indexed color images need a
 // different program, so when any are present, switch programs at the
-// boundaries between runs of indexed and normal images, preserving draw order.
+// boundaries between runs of images that need different programs, preserving
+// draw order.
+static int
+program_for_image(const ImageRenderData *rd) {
+    if (!rd->indexed_px_sz) return GRAPHICS_PROGRAM;
+    return rd->is_unscaled ? GRAPHICS_INDEXED_UNSCALED_PROGRAM : GRAPHICS_INDEXED_PROGRAM;
+}
+
 static void
 draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, GLuint start, GLuint count) {
     if (!ui->grd.num_of_indexed_refs) {
@@ -2278,10 +2288,10 @@ draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, GLuint start, GLuint c
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
     const ImageRenderData *data = ui->grd.images;
     for (GLuint run_start = start, end = start + count; run_start < end;) {
-        const bool is_indexed = data[run_start].indexed_px_sz != 0;
+        const int program = program_for_image(data + run_start);
         GLuint run_end = run_start + 1;
-        while (run_end < end && (data[run_end].indexed_px_sz != 0) == is_indexed) run_end++;
-        draw_graphics(is_indexed ? GRAPHICS_INDEXED_PROGRAM : GRAPHICS_PROGRAM, ui->grd.images, run_start, run_end - run_start, ui->inactive_text_alpha);
+        while (run_end < end && program_for_image(data + run_end) == program) run_end++;
+        draw_graphics(program, ui->grd.images, run_start, run_end - run_start, ui->inactive_text_alpha);
         run_start = run_end;
     }
 }
@@ -3886,6 +3896,7 @@ init_shaders(PyObject *module) {
     C(GRAPHICS_PREMULT_PROGRAM);
     C(GRAPHICS_ALPHA_MASK_PROGRAM);
     C(GRAPHICS_INDEXED_PROGRAM);
+    C(GRAPHICS_INDEXED_UNSCALED_PROGRAM);
     C(BGIMAGE_PROGRAM);
     C(TINT_PROGRAM);
     C(TRAIL_PROGRAM);

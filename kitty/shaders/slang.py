@@ -43,6 +43,7 @@ from kitty.fast_data_types import (
     GLSL_VERSION,
     GRAPHICS_ALPHA_MASK_PROGRAM,
     GRAPHICS_INDEXED_PROGRAM,
+    GRAPHICS_INDEXED_UNSCALED_PROGRAM,
     GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_PROGRAM,
     MARK,
@@ -278,6 +279,9 @@ class LoadShaderPrograms:
         }.items():
             vert, frag = glsl_shaders('graphics', vname)
             compile_program(prog, (vert,), (frag,), metadata['graphics'], allow_recompile)
+        for prog, vname in {GRAPHICS_INDEXED_PROGRAM: '', GRAPHICS_INDEXED_UNSCALED_PROGRAM: 'unscaled'}.items():
+            vert, frag = glsl_shaders('indexed_graphics', vname)
+            compile_program(prog, (vert,), (frag,), metadata['indexed_graphics'], allow_recompile)
         for name, prog in {
             'bgimage': BGIMAGE_PROGRAM,
             'tint': TINT_PROGRAM,
@@ -287,7 +291,6 @@ class LoadShaderPrograms:
             'rounded_rect': ROUNDED_RECT_PROGRAM,
             'border': BORDERS_PROGRAM,
             'padding': PADDING_PROGRAM,
-            'indexed_graphics': GRAPHICS_INDEXED_PROGRAM,
         }.items():
             vert, frag = glsl_shaders(name)
             compile_program(prog, (vert,), (frag,), metadata[name], allow_recompile)
@@ -761,6 +764,9 @@ class SlangFile(NamedTuple):
                 yield s()
                 yield s('alpha_mask', is_alpha_mask='true')
                 yield s('premult', texture_is_not_premultiplied='false')
+            case 'indexed_graphics.slang':
+                yield s()
+                yield s('unscaled', is_scaled='false')
             case 'cell.slang':
                 d = cell_variant()
                 seen = set()

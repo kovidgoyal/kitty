@@ -951,7 +951,6 @@ class TestGraphics(BaseTest):
         data = bytes(range(256)) * 4
         img = sl(zlib.compress(data), s=32, v=16, f=16, o='z', expecting_data=data)
         self.ae(img['indexed_px_sz'], 2)
-        img = g.image_for_client_id(1)
         self.ae(pl(bytes(range(3)), s=3, v=1, f=8), 'OK')
         img = g.image_for_client_id(1)
         self.ae((img['indexed_px_sz'], img['is_4byte_aligned'], img['data']), (1, False, bytes(range(3))))
@@ -982,6 +981,15 @@ class TestGraphics(BaseTest):
         self.ae(parse_response(send_command(s, 'a=T,f=8,i=3,s=2,v=2,z=1', b'\xf8' * 4)), 'OK')
         self.ae(tuple((x['image_id'], x['indexed_px_sz']) for x in layers(s)), ((2, 2), (1, 0), (3, 1)))
         self.ae(s.grman.image_count, 3)
+
+        # Refs drawn at natural size use a cheaper program, so must not share
+        # a group with scaled refs of the same image
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+        self.ae(parse_response(send_command(s, 'a=T,f=8,i=1,s=2,v=2', b'\x01' * 4)), 'OK')
+        self.ae(parse_response(send_command(s, 'a=p,i=1,c=1,r=1')), 'OK')
+        self.ae(parse_response(send_command(s, 'a=p,i=1')), 'OK')
+        self.ae(parse_response(send_command(s, 'a=T,f=32,i=2,s=2,v=2', b'abcd' * 4)), 'OK')
+        self.ae(tuple((x['is_unscaled'], x['group_count']) for x in layers(s)), ((True, 1), (False, 1), (True, 1), (False, 1)))
 
     def test_image_parents(self):
         cw, ch = 10, 20

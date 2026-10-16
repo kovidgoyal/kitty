@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include <zlib.h>
 #include <structmember.h>
@@ -1591,7 +1592,13 @@ grman_update_layers(
             rd->ref_id = ref->internal_id;
             rd->texture_id = texture_id_for_img(img);
             rd->indexed_px_sz = img->indexed_px_sz;
-            if (img->indexed_px_sz) self->num_of_indexed_refs++;
+            if (img->indexed_px_sz) {
+                self->num_of_indexed_refs++;
+                // The rect is in normalized device co-ordinates, so allow for rounding errors
+                const float width_px = (r.right - r.left) / screen_width * screen_width_px;
+                const float height_px = (r.top - r.bottom) / screen_height * screen_height_px;
+                rd->is_unscaled = fabsf(width_px - ref->src_width) < 0.01f && fabsf(height_px - ref->src_height) < 0.01f;
+            }
             img->is_drawn = true;
             refitr = vt_next(refitr);
         }
@@ -1612,12 +1619,14 @@ grman_update_layers(
      ((a)->z_index == (b)->z_index && ((a)->image_id < (b)->image_id || ((a)->image_id == (b)->image_id && a->ref_id < b->ref_id))))
     QSORT(ImageRenderData, self->render_data.item, self->render_data.count, lt);
 #undef lt
-    // Calculate the group counts
+    // Calculate the group counts. Refs drawn with different programs must not
+    // be in the same group as programs are switched only between groups.
     i = 0;
     while (i < self->render_data.count) {
         id_type num_identical = 1, image_id = self->render_data.item[i].image_id, start = i;
+        const bool is_unscaled = self->render_data.item[i].is_unscaled;
         while (++i < self->render_data.count) {
-            if (self->render_data.item[i].image_id != image_id) break;
+            if (self->render_data.item[i].image_id != image_id || self->render_data.item[i].is_unscaled != is_unscaled) break;
             num_identical++;
         }
         while (num_identical > 0) { self->render_data.item[start++].group_count = num_identical--; }
@@ -2967,7 +2976,7 @@ W(update_layers) {
             ans,
             i,
             Py_BuildValue(
-                "{sN sN sI si sK sK sI}",
+                "{sN sN sI si sK sK sI sO}",
                 "src_rect",
                 R(src_rect),
                 "dest_rect",
@@ -2981,7 +2990,9 @@ W(update_layers) {
                 "ref_id",
                 r->ref_id,
                 "indexed_px_sz",
-                (unsigned int)r->indexed_px_sz));
+                (unsigned int)r->indexed_px_sz,
+                "is_unscaled",
+                r->is_unscaled ? Py_True : Py_False));
 #undef R
     }
     return ans;
