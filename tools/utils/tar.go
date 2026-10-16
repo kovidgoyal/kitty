@@ -274,6 +274,9 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 		return
 	}
 	needed_prefix := dest_path + string(os.PathSeparator)
+	// Directory permissions are set after extraction as a read-only
+	// directory would prevent its contents from being created
+	var dir_chmods []func() error
 
 	for {
 		var hdr *tar.Header
@@ -309,7 +312,10 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			if err != nil {
 				return
 			}
-			if err = set_metadata(func(m fs.FileMode) error { return os.Chmod(dest, m) }, hdr.Mode); err != nil {
+			if err = set_metadata(func(m fs.FileMode) error {
+				dir_chmods = append(dir_chmods, func() error { return os.Chmod(dest, m) })
+				return nil
+			}, hdr.Mode); err != nil {
 				return
 			}
 		case tar.TypeReg:
@@ -392,6 +398,11 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			if err = set_metadata(nil, hdr.Mode); err != nil {
 				return
 			}
+		}
+	}
+	for _, chmod := range dir_chmods {
+		if err = chmod(); err != nil {
+			return
 		}
 	}
 	return
