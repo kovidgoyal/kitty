@@ -363,7 +363,7 @@ class RemoteCommand:
             return self.defaults.get(name, missing)
         return missing
 
-    def windows_for_match_payload(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> list['Window']:
+    def windows_for_match_payload(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType, match_name: str = 'match') -> list['Window']:
         if payload_get('all'):
             windows = list(boss.all_windows)
         else:
@@ -373,10 +373,10 @@ class RemoteCommand:
             else:
                 window = boss.active_window or window
             windows = [window] if window else []
-            if payload_get('match'):
-                windows = list(boss.match_windows(payload_get('match'), self_window))
+            if match := payload_get(match_name):
+                windows = list(boss.match_windows(match, self_window))
                 if not windows:
-                    raise MatchError(payload_get('match'))
+                    raise MatchError(match)
         return windows
 
     def tabs_for_match_payload(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> list['Tab']:

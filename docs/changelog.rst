@@ -250,6 +250,9 @@ Detailed list of changes
 - Fix kitty repeatedly calling ``on_quit`` watchers when a watcher aborts a quit
   requested by the OS, for example, via the macOS menu or Dock
 
+- Remote control: Fix ``kitten @ action --match`` ignoring the match and
+  running the action on the active window (:iss:`10672`)
+
 - Graphics protocol: Add two new :ref:`indexed color image formats
   <indexed_color_data>` whose pixels are indices into the terminal color
   palette, so that images automatically change color along with the terminal

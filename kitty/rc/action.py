@@ -63,7 +63,7 @@ using this option means that you will not be notified of failures.
         return {'action': ' '.join(args), 'self': opts.self, 'match_window': opts.match}
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
-        w = self.windows_for_match_payload(boss, window, payload_get)
+        w = self.windows_for_match_payload(boss, window, payload_get, 'match_window')
         if w:
             window = w[0]
         ac = payload_get('action')
