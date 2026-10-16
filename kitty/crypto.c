@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "crypto.h"
 #include "cross-platform-random.h"
 
 #include <openssl/evp.h>
@@ -119,6 +120,40 @@ alloc_secret(size_t len) {
         }
     }
     return self;
+}
+
+PyObject *
+secret_from_data(const void *data, size_t len) {
+    Secret *ans = alloc_secret(len);
+    if (ans) memcpy(ans->secret, data, len);
+    return (PyObject *)ans;
+}
+
+bool
+secret_data(PyObject *obj, const void **data, size_t *len) {
+    if (!PyObject_TypeCheck(obj, &Secret_Type)) {
+        PyErr_SetString(PyExc_TypeError, "Not a Secret object");
+        return false;
+    }
+    *data = ((Secret *)obj)->secret;
+    *len = ((Secret *)obj)->secret_len;
+    return true;
+}
+
+static PyObject *
+random_secret(PyObject *self UNUSED, PyObject *args) {
+    unsigned int len = 32;
+    if (!PyArg_ParseTuple(args, "|I", &len)) return NULL;
+    if (!len) {
+        PyErr_SetString(PyExc_ValueError, "The length of a secret must be positive");
+        return NULL;
+    }
+    Secret *ans = alloc_secret(len);
+    if (ans && !secure_random_bytes(ans->secret, len)) {
+        Py_CLEAR(ans);
+        PyErr_SetString(PyExc_OSError, "Failed to generate random bytes for a secret");
+    }
+    return (PyObject *)ans;
 }
 // }}}
 
@@ -586,7 +621,7 @@ static PyTypeObject AES256GCMDecrypt_Type = {
 // }}}
 
 static PyMethodDef module_methods[] = {
-    {NULL, NULL, 0, NULL} /* Sentinel */
+    METHODB(random_secret, METH_VARARGS), {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 bool

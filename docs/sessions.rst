@@ -288,6 +288,20 @@ not started again, since they could have been run for their effects, like
 :file:`rm`. To save OS Window geometry in your own session files, use the
 ``--os-window-geometry`` option of :ac:`save_as_session`.
 
+The saved state, which includes the scrollback and the environment variables
+of every kitty instance, is encrypted, with a separate random key for every
+kitty instance, stored in your login keychain. The keys are deleted when the
+state is restored, so any copies of it left on disk or in backups cannot be
+read. kitty never shows any keychain prompts for this. If the keychain needs
+user interaction, the state is not saved or not restored. This happens if:
+
+* your login keychain is locked, for example, because it has a different
+  password from your login password or because it is set to lock itself after
+  a period of inactivity
+* the kitty you are running is not signed by the same developer as the kitty
+  that saved the state, for example, because you build kitty yourself, in
+  which case every new build counts as a different application
+
 If your session is not restored, any errors are written to the system log,
 where you can see them with::
 

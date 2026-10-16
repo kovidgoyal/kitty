@@ -54,7 +54,9 @@ class TestSessions(BaseTest):
             return as_text(s, add_history=True).rstrip('\n').splitlines()
 
         src = self.create_screen(cols=10, lines=4, scrollback=20)
-        parse_bytes(src, b''.join(b'line %d\r\n' % i for i in range(8)) + b'\x1b[31mred\x1b[m 0123456789abcdef\r\n\x1b]8;;https://x.org\x1b\\link\x1b]8;;\x1b\\')
+        parse_bytes(
+            src, b''.join(b'line %d\r\n' % i for i in range(8)) + b'\x1b[31mred\x1b[m 0123456789abcdef\r\n\x1b]8;;https://x.org\x1b\\link\x1b]8;;\x1b\\'
+        )
         expected, expected_ansi = text(src), as_text(src, as_ansi=True, add_history=True).rstrip('\n')
         # Output on the alternate screen, such as from a full screen program, is not restored
         parse_bytes(src, b'\x1b[?1049hfull screen program')
@@ -131,6 +133,10 @@ class TestSessions(BaseTest):
                 self.ae(s(f'a{unsafe}b'), expected)
 
     def test_logout_snapshots(self) -> None:
+        from .crypto import is_rlimit_memlock_too_low
+
+        if is_rlimit_memlock_too_low():
+            self.skipTest('RLIMIT_MEMLOCK is too low')
         import json
         import os
         import shlex
@@ -141,6 +147,7 @@ class TestSessions(BaseTest):
         from unittest.mock import patch
 
         from kitty.constants import unserialize_launch_flag
+        from kitty.fast_data_types import Secret
         from kitty.logout_session import (
             LOGOUT_CONFIRMATION_TIMEOUT,
             ProcessState,
@@ -148,12 +155,31 @@ class TestSessions(BaseTest):
             finish_restore,
             is_logout_in_progress,
             load_snapshot,
+            read_key_id,
             remove_all_snapshots,
             remove_stale_snapshots,
             restore_snapshots,
             save_snapshot,
         )
         from kitty.utils import log_error
+
+        class FakeKeyStore:
+            def __init__(self) -> None:
+                self.keys: dict[str, Secret] = {}
+                self.fail = False
+
+            def store(self, key_id: str, key: Secret) -> None:
+                if self.fail:
+                    raise OSError('User interaction is not allowed')
+                self.keys[key_id] = key
+
+            def read(self, key_id: str) -> Secret | None:
+                if self.fail:
+                    raise OSError('User interaction is not allowed')
+                return self.keys.get(key_id)
+
+            def delete(self, key_id: str) -> None:
+                self.keys.pop(key_id, None)
 
         errors: list[str] = []
         log_error.redirect = errors.append
@@ -162,72 +188,119 @@ class TestSessions(BaseTest):
         tdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tdir, True)
         base = os.path.join(tdir, 'saved-at-logout')
-        state = ProcessState(('--config', 'other.conf'), tdir, {'VAR': 'value'}, 0)
+        state = ProcessState(('--config', 'other.conf'), tdir, {'SECRET_VAR': 'value'}, 0)
         session = shlex.join(['launch', unserialize_launch_flag + json.dumps({'id': 7})])
+        ks = FakeKeyStore()
 
         def save(pid: int, argv: tuple[str, ...] = state.argv) -> str:
-            return save_snapshot(base, pid, session, {7: b'\x1b]52;c;eA==\x07seven', 8: b'eight'}, state._replace(argv=argv))
+            return save_snapshot(base, pid, session, {7: b'\x1b]52;c;eA==\x07seven', 8: b'eight'}, state._replace(argv=argv), ks)
 
         def mode(path: str) -> int:
             return stat.S_IMODE(os.stat(path).st_mode)
 
-        # The saved state is readable only by the user
+        def raw(path: str, name: str) -> bytes:
+            with open(os.path.join(path, name), 'rb') as f:
+                return f.read()
+
+        # The saved state is readable only by the user and is encrypted with a key in the key store
         path = save(11)
         self.ae((mode(base), mode(path), mode(os.path.join(path, 'scrollback', '7')), mode(os.path.join(path, 'process.json'))), (0o700, 0o700, 0o600, 0o600))
-        # Snapshots from before this instance was started are from an earlier logout and were never restored
+        self.ae(list(ks.keys), [read_key_id(path)])
+        for name, plaintext in (('process.json', b'SECRET_VAR'), ('session.kitty-session', b'launch'), ('scrollback/7', b'seven')):
+            self.assertNotIn(plaintext, raw(path, name))
+        # Snapshots from before this instance was started are from an earlier logout and were never restored, their keys are deleted
         stale = save(10)
         day_ago = time.time() - 86400
         os.utime(stale, (day_ago, day_ago))
-        remove_stale_snapshots(base, time.time() - 3600)
+        remove_stale_snapshots(base, time.time() - 3600, ks)
+        self.ae((os.listdir(base), list(ks.keys)), (['11'], [read_key_id(path)]))
+        # Nothing is saved if the key cannot be stored, for example because the keychain needs user interaction or there is none
+        ks.fail = True
+        with self.assertRaises(OSError):
+            save(12)
+        ks.fail = False
+        with self.assertRaises(OSError):
+            save_snapshot(base, 12, session, {}, state, None)
         self.ae(os.listdir(base), ['11'])
 
         # Snapshots claimed by a running kitty instance are not claimed again, but those claimed by an instance that died are
         alive = {99}
         os.rename(path, os.path.join(base, '11.claimed-by-99'))
-        self.ae(claim_snapshots(base, 1, alive.__contains__), [])
+        self.ae(claim_snapshots(base, 1, ks, alive.__contains__), [])
         alive.clear()
-        (snapshot,) = claim_snapshots(base, 1, alive.__contains__)
+        (snapshot,) = claim_snapshots(base, 1, ks, alive.__contains__)
         self.ae((snapshot.path, snapshot.process_state[:3]), (os.path.join(base, '11.claimed-by-1'), state[:3]))
-        (s,) = load_snapshot(snapshot.path, opts)
+        (s,) = load_snapshot(snapshot.path, opts, ks)
         # The scrollback is restored, without unsafe escape codes, followed by a line showing when it was saved
         restored = s.tabs[0].windows[0].restored_scrollback
         self.assertTrue(restored.startswith(b'seven\r\n'), restored)
         self.assertIn(b'Restored from', restored)
-        # A snapshot that repeatedly fails to be restored, for example, because kitty crashes, is deleted
-        self.ae(len(claim_snapshots(base, 2, alive.__contains__)), 1)
-        self.ae(claim_snapshots(base, 3, alive.__contains__), [])
-        self.ae(os.listdir(base), [])
+        # A snapshot that repeatedly fails to be restored, for example, because kitty crashes, is deleted, with its key
+        self.ae(len(claim_snapshots(base, 2, ks, alive.__contains__)), 1)
+        self.ae(claim_snapshots(base, 3, ks, alive.__contains__), [])
+        self.ae((os.listdir(base), ks.keys), ([], {}))
         self.assertTrue(errors)
-        # Snapshots that cannot be read are deleted
-        errors.clear()
-        path = save(12)
-        with open(os.path.join(path, 'process.json'), 'w') as f:
-            f.write('{"argv": 1}')
-        self.ae(claim_snapshots(base, 1, alive.__contains__), [])
-        self.ae((os.listdir(base), len(errors)), ([], 1))
+
+        # Snapshots that cannot be decrypted are deleted: key not in the keychain, keychain needs user interaction, modified or
+        # swapped files
+        def modify(path: str) -> None:
+            data = bytearray(raw(path, 'process.json'))
+            data[-1] ^= 1
+            with open(os.path.join(path, 'process.json'), 'wb') as f:
+                f.write(data)
+
+        def swap(path: str) -> None:
+            os.replace(os.path.join(path, 'session.kitty-session'), os.path.join(path, 'process.json'))
+
+        for name, damage in (
+            ('missing key', lambda path: ks.keys.clear()),
+            ('keychain needs interaction', lambda path: setattr(ks, 'fail', True)),
+            ('modified', modify),
+            ('swapped', swap),
+        ):
+            with self.subTest(name):
+                errors.clear()
+                damage(save(13))
+                self.ae(claim_snapshots(base, 1, ks, alive.__contains__), [])
+                ks.fail = False
+                self.ae((os.listdir(base), len(errors)), ([], 1))
+
+        # Files are bound to their names, so swapping the scrollback of two windows is detected
+        path = save(14)
+        os.rename(os.path.join(path, 'scrollback', '7'), os.path.join(path, 'scrollback', 'x'))
+        os.rename(os.path.join(path, 'scrollback', '8'), os.path.join(path, 'scrollback', '7'))
+        with self.assertRaises(Exception):
+            load_snapshot(path, opts, ks)
+        shutil.rmtree(base)
+        ks.keys.clear()
 
         # The snapshot of the kitty instance with the same command line is restored in this instance, others in new instances
         save(21, ('a',)), save(22, ('b',))
         started: list[str] = []
-        with patch('kitty.logout_session.snapshots_dir', return_value=base), patch(
-            'kitty.logout_session.start_instance_for_snapshot', side_effect=lambda s: started.append(s.path)
+        with (
+            patch('kitty.logout_session.snapshots_dir', return_value=base),
+            patch('kitty.logout_session.get_key_store', return_value=ks),
+            patch('kitty.logout_session.start_instance_for_snapshot', side_effect=lambda s: started.append(s.path)),
         ):
             r = restore_snapshots(opts, ('b',))
             assert r is not None
             self.ae((os.path.basename(r.path), len(r.sessions)), (f'22.claimed-by-{os.getpid()}', 1))
             self.ae([os.path.basename(x) for x in started], [f'21.claimed-by-{os.getpid()}'])
-            # Snapshots are deleted only once they have been restored
+            # Snapshots and their keys are deleted only once they have been restored
             self.assertTrue(os.path.exists(r.path))
+            self.ae(len(ks.keys), 2)
             finish_restore(r.path)
-            self.ae(os.listdir(base), [os.path.basename(started[0])])
+            self.ae((os.listdir(base), list(ks.keys)), ([os.path.basename(started[0])], [read_key_id(started[0])]))
             self.assertIsNone(restore_snapshots(opts, ('b',)))
             remove_all_snapshots()
             self.assertFalse(os.path.exists(base))
+            self.ae(ks.keys, {})
             self.assertIsNone(restore_snapshots(opts, ('b',)))
 
         # A quit confirmed long after the OS asked kitty to quit for a logout is an ordinary quit
         for requested_at, now, expected in ((-1, 10, False), (5, 10, True), (5, 6 + LOGOUT_CONFIRMATION_TIMEOUT, False)):
-            with patch('kitty.logout_session.application_logout_requested_at', return_value=requested_at), patch(
-                'kitty.logout_session.monotonic', return_value=now
+            with (
+                patch('kitty.logout_session.application_logout_requested_at', return_value=requested_at),
+                patch('kitty.logout_session.monotonic', return_value=now),
             ):
                 self.ae(is_logout_in_progress(), expected)

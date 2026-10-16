@@ -783,6 +783,8 @@ def kitty_env(args: Options) -> Env:
             'AudioToolbox',
             '-framework',
             'IOKit',
+            '-framework',
+            'Security',
         ]
         test_program_src = """#include <UserNotifications/UserNotifications.h>
         int main(void) { return 0; }\n"""

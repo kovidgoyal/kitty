@@ -232,9 +232,10 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: A new option :opt:`restore_session_after_logout` to save the state of
-  every kitty instance, including the scrollback of every window, when logging
-  out, restarting or shutting down the computer and restore it the next time
-  kitty is started, see :ref:`restore_after_logout` (:iss:`1197`)
+  every kitty instance, including the scrollback of every window, encrypted with
+  a key in the keychain, when logging out, restarting or shutting down the
+  computer and restore it the next time kitty is started, see
+  :ref:`restore_after_logout` (:iss:`1197`)
 
 - Sessions: A new ``os_window_position`` keyword and a new
   ``--os-window-geometry`` option for :ac:`save_as_session` to save the size,

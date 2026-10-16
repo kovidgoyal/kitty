@@ -9,12 +9,14 @@
 #include "state.h"
 #include "cleanup.h"
 #include "cocoa_window.h"
+#include "crypto.h"
 #include <Availability.h>
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
 #import <IOKit/IOKitLib.h>
 #include <UserNotifications/UserNotifications.h>
 #import <AudioToolbox/AudioServices.h>
+#include <Security/Security.h>
 
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
@@ -1494,7 +1496,146 @@ cocoa_get_machine_id(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyUnicode_FromString(ans);
 }
 
+// Keychain {{{
+// These never show any UI, such as a prompt to unlock the keychain or to allow kitty to access an item, failing instead.
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+// The legacy file based keychain, which is the one used by default, shows its prompts unless interaction is disallowed with this
+// deprecated, process wide, API, which has no replacement.
+typedef struct {
+    Boolean previous;
+    bool is_set;
+} KeychainInteraction;
+
+static KeychainInteraction
+disallow_keychain_interaction(void) {
+    KeychainInteraction ans = {0};
+    if (SecKeychainGetUserInteractionAllowed(&ans.previous) == errSecSuccess) ans.is_set = SecKeychainSetUserInteractionAllowed(false) == errSecSuccess;
+    return ans;
+}
+
+static void
+restore_keychain_interaction(KeychainInteraction x) {
+    if (x.is_set) SecKeychainSetUserInteractionAllowed(x.previous);
+}
+
+static void
+set_keychain_query_ui_fail(CFMutableDictionaryRef q) {
+    CFDictionarySetValue(q, kSecUseAuthenticationUI, kSecUseAuthenticationUIFail);
+}
+#pragma clang diagnostic pop
+
+static CFMutableDictionaryRef
+keychain_query(const char *service, const char *account) {
+    CFMutableDictionaryRef q = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFStringRef s = CFStringCreateWithCString(NULL, service, kCFStringEncodingUTF8);
+    CFStringRef a = CFStringCreateWithCString(NULL, account, kCFStringEncodingUTF8);
+    if (!q || !s || !a) {
+        if (q) CFRelease(q);
+        if (s) CFRelease(s);
+        if (a) CFRelease(a);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    CFDictionarySetValue(q, kSecClass, kSecClassGenericPassword);
+    CFDictionarySetValue(q, kSecAttrService, s);
+    CFDictionarySetValue(q, kSecAttrAccount, a);
+    CFRelease(s);
+    CFRelease(a);
+    return q;
+}
+
+static PyObject *
+set_keychain_error(OSStatus status, const char *action) {
+    char msg[512] = {0};
+    CFStringRef m = SecCopyErrorMessageString(status, NULL);
+    if (m) {
+        CFStringGetCString(m, msg, sizeof(msg), kCFStringEncodingUTF8);
+        CFRelease(m);
+    }
+    PyErr_Format(PyExc_OSError, "Failed to %s the item in the keychain: %s (error code: %d)", action, msg, (int)status);
+    return NULL;
+}
+
+static PyObject *
+cocoa_keychain_store_secret(PyObject *self UNUSED, PyObject *args) {
+    const char *service, *account, *label;
+    PyObject *secret;
+    if (!PyArg_ParseTuple(args, "sssO", &service, &account, &label, &secret)) return NULL;
+    const void *data;
+    size_t len;
+    if (!secret_data(secret, &data, &len)) return NULL;
+    CFMutableDictionaryRef q = keychain_query(service, account);
+    if (!q) return NULL;
+    // Do not copy the secret into memory that is not cleared when freed
+    CFDataRef d = CFDataCreateWithBytesNoCopy(NULL, data, (CFIndex)len, kCFAllocatorNull);
+    CFStringRef l = CFStringCreateWithCString(NULL, label, kCFStringEncodingUTF8);
+    if (!d || !l) {
+        CFRelease(q);
+        if (d) CFRelease(d);
+        if (l) CFRelease(l);
+        return PyErr_NoMemory();
+    }
+    CFDictionarySetValue(q, kSecValueData, d);
+    CFDictionarySetValue(q, kSecAttrLabel, l);
+    CFRelease(d);
+    CFRelease(l);
+    KeychainInteraction ki = disallow_keychain_interaction();
+    OSStatus status = SecItemAdd(q, NULL);
+    restore_keychain_interaction(ki);
+    CFRelease(q);
+    if (status != errSecSuccess) return set_keychain_error(status, "store");
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+cocoa_keychain_read_secret(PyObject *self UNUSED, PyObject *args) {
+    const char *service, *account;
+    if (!PyArg_ParseTuple(args, "ss", &service, &account)) return NULL;
+    CFMutableDictionaryRef q = keychain_query(service, account);
+    if (!q) return NULL;
+    CFDictionarySetValue(q, kSecReturnData, kCFBooleanTrue);
+    CFDictionarySetValue(q, kSecMatchLimit, kSecMatchLimitOne);
+    set_keychain_query_ui_fail(q);
+    CFTypeRef result = NULL;
+    KeychainInteraction ki = disallow_keychain_interaction();
+    OSStatus status = SecItemCopyMatching(q, &result);
+    restore_keychain_interaction(ki);
+    CFRelease(q);
+    if (status == errSecItemNotFound) Py_RETURN_NONE;
+    if (status != errSecSuccess) return set_keychain_error(status, "read");
+    if (!result || CFGetTypeID(result) != CFDataGetTypeID()) {
+        if (result) CFRelease(result);
+        PyErr_SetString(PyExc_OSError, "The item read from the keychain has no data");
+        return NULL;
+    }
+    PyObject *ans = secret_from_data(CFDataGetBytePtr((CFDataRef)result), (size_t)CFDataGetLength((CFDataRef)result));
+    CFRelease(result);
+    return ans;
+}
+
+static PyObject *
+cocoa_keychain_delete(PyObject *self UNUSED, PyObject *args) {
+    const char *service, *account;
+    if (!PyArg_ParseTuple(args, "ss", &service, &account)) return NULL;
+    CFMutableDictionaryRef q = keychain_query(service, account);
+    if (!q) return NULL;
+    set_keychain_query_ui_fail(q);
+    KeychainInteraction ki = disallow_keychain_interaction();
+    OSStatus status = SecItemDelete(q);
+    restore_keychain_interaction(ki);
+    CFRelease(q);
+    if (status == errSecItemNotFound) Py_RETURN_FALSE;
+    if (status != errSecSuccess) return set_keychain_error(status, "delete");
+    Py_RETURN_TRUE;
+}
+// }}}
+
 static PyMethodDef module_methods[] = {
+    {"cocoa_keychain_store_secret", (PyCFunction)cocoa_keychain_store_secret, METH_VARARGS, ""},
+    {"cocoa_keychain_read_secret", (PyCFunction)cocoa_keychain_read_secret, METH_VARARGS, ""},
+    {"cocoa_keychain_delete", (PyCFunction)cocoa_keychain_delete, METH_VARARGS, ""},
     {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_get_machine_id", (PyCFunction)cocoa_get_machine_id, METH_NOARGS, ""},

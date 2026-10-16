@@ -891,6 +891,15 @@ def last_focused_os_window_id() -> int:
 def current_focused_os_window_id() -> int:
     pass
 
+def cocoa_keychain_store_secret(service: str, account: str, label: str, secret: Secret) -> None:
+    pass
+
+def cocoa_keychain_read_secret(service: str, account: str) -> Optional[Secret]:
+    pass
+
+def cocoa_keychain_delete(service: str, account: str) -> bool:
+    pass
+
 def cocoa_set_menubar_title(title: str) -> None:
     pass
 
@@ -1528,6 +1537,9 @@ SHA384_HASH: int
 SHA512_HASH: int
 
 class Secret:
+    pass
+
+def random_secret(length: int = 32) -> Secret:
     pass
 
 class EllipticCurveKey:

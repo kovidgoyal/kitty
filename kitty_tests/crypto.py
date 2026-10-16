@@ -22,6 +22,20 @@ def is_rlimit_memlock_too_low() -> bool:
 
 
 class TestCrypto(BaseTest):
+    def test_random_secret(self):
+        if is_rlimit_memlock_too_low():
+            self.skipTest('RLIMIT_MEMLOCK is too low')
+        from kitty.fast_data_types import AES256GCMDecrypt, AES256GCMEncrypt, random_secret
+
+        a, b = random_secret(), random_secret()
+        self.ae((len(a), len(random_secret(64))), (32, 64))
+        self.assertNotEqual(a, b)
+        with self.assertRaises(ValueError):
+            random_secret(0)
+        e = AES256GCMEncrypt(a)
+        ciphertext = e.add_data_to_be_encrypted(b'data', True)
+        self.ae(AES256GCMDecrypt(a, e.iv, e.tag).add_data_to_be_decrypted(ciphertext, True), b'data')
+
     def test_elliptic_curve_data_exchange(self):
         if is_rlimit_memlock_too_low():
             self.skipTest('RLIMIT_MEMLOCK is too low')
