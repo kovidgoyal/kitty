@@ -420,6 +420,8 @@ class RemoteCommand:
                 windows = []
                 for tab in tabs:
                     windows += list(tab)
+        if payload_get('exclude_active'):
+            windows = [w for w in windows if w is not boss.active_window]
         return windows
 
     def create_async_responder(self, payload_get: PayloadGetType, window: Window | None) -> AsyncResponder:

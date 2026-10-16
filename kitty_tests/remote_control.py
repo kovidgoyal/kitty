@@ -31,6 +31,10 @@ class Boss:
             if str(window.id) == expr:
                 yield window
 
+    def match_tabs(self, expr: str):
+        if expr == 'all':
+            yield list(self.all_windows)
+
 
 class TestRemoteControl(BaseTest):
     def test_set_os_window_title_command_is_registered(self):
@@ -61,20 +65,30 @@ class TestRemoteControl(BaseTest):
         windows = [Window(1, 11), Window(2, 11)]
         boss = Boss(windows)
         cmd = command_for_name('send-key')
+        keys = ['ctrl+a', 'ctrl+b']
+        # selector -> (expected recipients without --exclude-active, with --exclude-active)
+        cases = {
+            'all': ({'all': True}, windows, windows[1:]),
+            'match': ({'match': 'all'}, windows, windows[1:]),
+            'match_tab': ({'match_tab': 'all'}, windows, windows[1:]),
+            'default': ({}, windows[:1], []),
+        }
 
-        for exclude_active in (False, True):
-            with (
-                self.subTest(exclude_active=exclude_active),
-                patch.object(windows[0], 'send_key', create=True) as active,
-                patch.object(windows[1], 'send_key', create=True) as other,
-            ):
-                cmd.response_from_kitty(boss, windows[1], PayloadGetter(cmd, {'all': True, 'exclude_active': exclude_active, 'keys': ['ctrl+a', 'ctrl+b']}))
+        for name, (selector, expected, expected_excluding_active) in cases.items():
+            for exclude_active in (False, True):
+                with (
+                    self.subTest(selector=name, exclude_active=exclude_active),
+                    patch.object(windows[0], 'send_key', create=True) as active,
+                    patch.object(windows[1], 'send_key', create=True) as other,
+                ):
+                    cmd.response_from_kitty(boss, None, PayloadGetter(cmd, {**selector, 'exclude_active': exclude_active, 'keys': keys}))
 
-                other.assert_called_once_with('ctrl+a', 'ctrl+b')
-                if exclude_active:
-                    active.assert_not_called()
-                else:
-                    active.assert_called_once_with('ctrl+a', 'ctrl+b')
+                    recipients = expected_excluding_active if exclude_active else expected
+                    for w, mock in ((windows[0], active), (windows[1], other)):
+                        if w in recipients:
+                            mock.assert_called_once_with(*keys)
+                        else:
+                            mock.assert_not_called()
 
     def test_set_colors_transparent_background_colors(self):
         from kitty.fast_data_types import Color

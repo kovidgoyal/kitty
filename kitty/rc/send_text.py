@@ -220,8 +220,6 @@ on bracketed paste mode.
             session = q
         else:
             raise TypeError(f'Invalid encoding for send-text data: {encoding}')
-        exclude_active = payload_get('exclude_active')
-        actual_windows = (w for w in windows if w is not None and (not exclude_active or w is not boss.active_window))
 
         def create_or_update_session() -> Session:
             s = sessions_map.setdefault(sid, Session(sid))
@@ -229,7 +227,7 @@ on bracketed paste mode.
 
         if session == 'end':
             s = create_or_update_session()
-            for w in actual_windows:
+            for w in windows:
                 w.screen.render_unfocused_cursor = False
                 s.window_ids.discard(w.id)
             ClearSession(sid)()
@@ -244,14 +242,14 @@ on bracketed paste mode.
                 window.actions_on_focus_change = list(filter(is_ok, window.actions_on_focus_change))
                 window.actions_on_removal.append(ClearSession(sid))
                 window.actions_on_focus_change.append(FocusChangedSession(sid))
-            for w in actual_windows:
+            for w in windows:
                 w.screen.render_unfocused_cursor = True
                 s.window_ids.add(w.id)
         else:
             bp = payload_get('bracketed_paste')
             if sid:
                 s = create_or_update_session()
-            for w in actual_windows:
+            for w in windows:
                 if sid:
                     w.screen.render_unfocused_cursor = True
                     s.window_ids.add(w.id)
