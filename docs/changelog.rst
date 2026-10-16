@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Fix kitty repeatedly calling ``on_quit`` watchers when a watcher aborts a quit
+  requested by the OS, for example, via the macOS menu or Dock
+
 - Graphics protocol: Add two new :ref:`indexed color image formats
   <indexed_color_data>` whose pixels are indices into the terminal color
   palette, so that images automatically change color along with the terminal

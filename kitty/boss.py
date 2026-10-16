@@ -2484,6 +2484,7 @@ class Boss:
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
             if not self._call_on_quit_watchers({'confirmed': True}):
+                set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
@@ -2500,6 +2501,7 @@ class Boss:
                         return
             return
         if not self._call_on_quit_watchers({'confirmed': False}):
+            set_application_quit_request(NO_CLOSE_REQUESTED)
             return
         msg = msg or _('It has {} windows.').format(num)
         w = self.confirm(_('Are you sure you want to quit kitty?') + ' ' + msg, self.handle_quit_confirmation, window=active_window, title=_('Quit kitty?'))
