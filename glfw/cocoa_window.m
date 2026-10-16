@@ -2417,7 +2417,10 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)removeGLFWWindow {
     glfw_window = NULL;
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    // Remove only our own observation, a blanket removeObserver: would also
+    // remove any observations Cocoa has registered with this window as the
+    // observer.
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationDidChangeScreenParametersNotification object:nil];
 }
 
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
@@ -2451,6 +2454,10 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 - (BOOL)canBecomeMainWindow {
+    // Cocoa can send this to a window that has already been destroyed, for
+    // instance while the exit full screen transition started by -close is
+    // still running.
+    if (!glfw_window) return NO;
     return !glfw_window->ns.layer_shell.is_active || glfw_window->ns.layer_shell.config.type != GLFW_LAYER_SHELL_BACKGROUND;
 }
 
@@ -2495,7 +2502,7 @@ update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow *w, bo
     // When the window decoration is hidden, toggling fullscreen causes the style mask to be changed,
     // and causes the first responder to be cleared.
     if (glfw_window && !glfw_window->decorated && glfw_window->ns.view) [self makeFirstResponder:glfw_window->ns.view];
-    update_titlebar_button_visibility_after_fullscreen_transition(glfw_window, false, !is_fullscreen_already);
+    if (glfw_window) update_titlebar_button_visibility_after_fullscreen_transition(glfw_window, false, !is_fullscreen_already);
 }
 
 - (void)zoom:(id)sender {
@@ -2672,12 +2679,17 @@ _glfwPlatformDestroyWindow(_GLFWwindow *window) {
     // Workaround for macOS Tahoe where if the frame is not set to zero size
     // even after NSWindow::close the window remains on screen as an invisible
     // rectangle that intercepts mouse events and takes up space in mission
-    // control. Sigh.
-    NSRect frame = w.frame;
-    frame.size.width = 0;
-    frame.size.height = 0;
-    [w setFrame:frame display:NO];
-    [w setHasShadow:NO];
+    // control. Sigh. Not done for full screen windows as there -close starts
+    // the exit full screen transition which restores the pre-full screen frame
+    // anyway, and feeding a degenerate frame to that transition is asking for
+    // trouble.
+    if (!([w styleMask] & NSWindowStyleMaskFullScreen)) {
+        NSRect frame = w.frame;
+        frame.size.width = 0;
+        frame.size.height = 0;
+        [w setFrame:frame display:NO];
+        [w setHasShadow:NO];
+    }
     [w close]; // sends a release to NSWindow so we dont release it
     window->ns.object = nil;
 }
