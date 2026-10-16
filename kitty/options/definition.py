@@ -3183,8 +3183,9 @@ If several kitty instances were running, each is restored as a separate kitty in
 command line arguments and environment it originally had. Programs that were running in windows,
 other than the shell, are not started again. The saved session is used only once, and only when
 kitty is started without :option:`kitty --session` or a command to run. The saved state is encrypted,
-with a key stored in your login keychain, and is deleted once it has been restored. Currently, this
-works only on macOS.
+with a key stored in your login keychain, and is deleted once it has been restored. Note that
+despite the encryption any process that runs as you can access the stored session data.
+Currently, this works only on macOS.
 See :ref:`restore_after_logout` for details.
 """,
 )
