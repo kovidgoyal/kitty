@@ -2211,6 +2211,19 @@ set_window_creation_error(bool is_panel) {
     }
 }
 
+static bool
+is_visible_on_a_monitor(int x, int y, int width, int height) {
+    int count = 0;
+    GLFWmonitor **monitors = glfwGetMonitors(&count);
+    if (count <= 0 || !monitors) return true;
+    for (int i = 0; i < count; i++) {
+        int mx, my, mw, mh;
+        glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
+        if (x < mx + mw && mx < x + width && y < my + mh && my < y + height) return true;
+    }
+    return false;
+}
+
 static PyObject *
 create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     int x = INT_MIN, y = INT_MIN, window_state = WINDOW_NORMAL, disallow_override_title = 0;
@@ -2437,7 +2450,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
     if (pret == NULL) return NULL;
     Py_DECREF(pret);
-    if (x != INT_MIN && y != INT_MIN) glfwSetWindowPos(glfw_window, x, y);
+    // Ignore positions that are not on any monitor, for example, because the monitor was disconnected
+    if (x != INT_MIN && y != INT_MIN && is_visible_on_a_monitor(x, y, width, height)) glfwSetWindowPos(glfw_window, x, y);
     if (!global_state.is_apple && !global_state.is_wayland && window_state != WINDOW_HIDDEN) glfwShowWindow(glfw_window, false);
     if (global_state.is_wayland || global_state.is_apple) {
         float n_xscale, n_yscale;

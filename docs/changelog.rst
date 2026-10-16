@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Ignore initial OS Window positions that are not on any connected monitor, for
+  example, because the monitor was disconnected
+
 - Sessions: Fix the OS Window size specified in a session being ignored when
   :opt:`remember_window_size` is enabled
 
