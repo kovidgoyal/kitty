@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Sessions: Fix the OS Window size specified in a session being ignored when
+  :opt:`remember_window_size` is enabled
+
 - Fix kitty repeatedly calling ``on_quit`` watchers when a watcher aborts a quit
   requested by the OS, for example, via the macOS menu or Dock
 
