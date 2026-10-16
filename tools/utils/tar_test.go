@@ -82,6 +82,7 @@ func TestTarExtract(t *testing.T) {
 type tar_entry struct {
 	name, body, linkname string
 	typeflag             byte
+	mode                 int64
 }
 
 func make_tar(t *testing.T, entries ...tar_entry) *tar.Reader {
@@ -93,7 +94,11 @@ func make_tar(t *testing.T, entries ...tar_entry) *tar.Reader {
 		if typeflag == 0 {
 			typeflag = tar.TypeReg
 		}
-		hdr := tar.Header{Name: e.name, Mode: 0600, Typeflag: typeflag, Linkname: e.linkname, Size: int64(len(e.body))}
+		mode := e.mode
+		if mode == 0 {
+			mode = 0600
+		}
+		hdr := tar.Header{Name: e.name, Mode: mode, Typeflag: typeflag, Linkname: e.linkname, Size: int64(len(e.body))}
 		if err := tw.WriteHeader(&hdr); err != nil {
 			t.Fatal(err)
 		}
@@ -250,4 +255,24 @@ func TestTarExtractHardlinks(t *testing.T) {
 			tar_entry{name: "link.txt", typeflag: tar.TypeLink, linkname: "s/outside.txt"},
 		)
 	})
+}
+
+func TestTarExtractReadOnlyDirectory(t *testing.T) {
+	dest := t.TempDir()
+	ro := filepath.Join(dest, "ro")
+	t.Cleanup(func() { _ = os.Chmod(ro, 0700) })
+	if _, err := ExtractAllFromTar(make_tar(t,
+		tar_entry{name: "ro/", typeflag: tar.TypeDir, mode: 0555},
+		tar_entry{name: "ro/file.txt", body: "contents"},
+	), dest); err != nil {
+		t.Fatal(err)
+	}
+	assert_file_contents(t, filepath.Join(ro, "file.txt"), "contents")
+	st, err := os.Stat(ro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Mode().Perm() != 0555 {
+		t.Fatalf("Permissions of read-only directory not preserved: %v", st.Mode())
+	}
 }

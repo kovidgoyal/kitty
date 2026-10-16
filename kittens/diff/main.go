@@ -153,6 +153,13 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	init_caches()
 	defer func() {
 		for tdir := range remote_dirs {
+			// Directories extracted from the remote host can be read-only
+			_ = filepath.WalkDir(tdir, func(path string, d fs.DirEntry, err error) error {
+				if err == nil && d.IsDir() {
+					_ = os.Chmod(path, 0o700)
+				}
+				return nil
+			})
 			os.RemoveAll(tdir)
 		}
 	}()
