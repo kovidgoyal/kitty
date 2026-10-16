@@ -12,17 +12,20 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import wraps
 from gettext import gettext as _
-from typing import Any, Concatenate, Deque, Literal, NamedTuple, Optional, ParamSpec, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Concatenate, Deque, Literal, NamedTuple, Optional, ParamSpec, TypeVar, cast
 
 from .borders import Border, Borders
 from .child import Child
 from .cli_stub import CLIOptions, SaveAsSessionOptions
-from .constants import appname
+from .constants import appname, is_wayland
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_MIDDLE,
     GLFW_PRESS,
     GLFW_RELEASE,
+    WINDOW_FULLSCREEN,
+    WINDOW_MAXIMIZED,
+    WINDOW_MINIMIZED,
     add_tab,
     add_timer,
     attach_window,
@@ -33,6 +36,7 @@ from .fast_data_types import (
     get_boss,
     get_click_interval,
     get_options,
+    get_os_window_geometry,
     get_tab_being_dragged,
     get_window_being_dragged,
     is_tab_bar_visible,
@@ -64,6 +68,9 @@ from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import cmdline_for_hold, color_as_int, log_error, natsort_key, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowCreationSpec, WindowDict, global_watchers
 from .window_list import WindowGroup, WindowList
+
+if TYPE_CHECKING:
+    from .fast_data_types import OSWindowGeometry
 
 P = ParamSpec('P')
 T = TypeVar('T')
@@ -172,6 +179,15 @@ def SpecialWindow(
     hold: bool = False,
 ) -> SpecialWindowInstance:
     return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env, watchers, overlay_behind, hold)
+
+
+def os_window_geometry_as_session(g: 'OSWindowGeometry', include_position: bool = True) -> list[str]:
+    ans = [f'os_window_size {g["width"]} {g["height"]}']
+    if include_position:
+        ans.append(f'os_window_position {g["x"]}x{g["y"]}')
+    state = {WINDOW_FULLSCREEN: 'fullscreen', WINDOW_MAXIMIZED: 'maximized', WINDOW_MINIMIZED: 'minimized'}.get(g['state'], 'normal')
+    ans.append(f'os_window_state {state}')
+    return ans
 
 
 def add_active_id_to_history(items: Deque[int], item_id: int, maxlen: int = 64) -> None:
@@ -1763,12 +1779,18 @@ class TabManager:  # {{{
                 prefix.append(f'os_window_class {self.wm_class}')
             if self.wm_name and self.wm_name != appname:
                 prefix.append(f'os_window_name {self.wm_name}')
+            if ser_opts.os_window_geometry:
+                prefix.extend(self.serialize_geometry_as_session())
             ans = prefix + ans
             # Add focus_tab command to preserve the active tab
             if active_tab_index >= 0:
                 ans.append('')
                 ans.append(f'focus_tab {active_tab_index}')
         return ans
+
+    def serialize_geometry_as_session(self) -> list[str]:
+        g = get_os_window_geometry(self.os_window_id)
+        return [] if g is None else os_window_geometry_as_session(g, include_position=not is_wayland())
 
     @property
     def active_tab(self) -> Tab | None:

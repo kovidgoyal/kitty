@@ -231,6 +231,10 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Sessions: A new ``os_window_position`` keyword and a new
+  ``--os-window-geometry`` option for :ac:`save_as_session` to save the size,
+  position and state of OS Windows in session files
+
 - Ignore initial OS Window positions that are not on any connected monitor, for
   example, because the monitor was disconnected
 

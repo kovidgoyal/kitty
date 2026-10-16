@@ -1887,8 +1887,17 @@ static bool
 intercept_cocoa_fullscreen(GLFWwindow *w) {
     if (!set_callback_window(w)) return false;
     if (!OPT(macos_traditional_fullscreen)) {
+        OSWindow *osw = global_state.callback_os_window;
+        const bool is_fullscreen = is_os_window_fullscreen(osw);
+        if (!is_fullscreen) {
+            // Remember the geometry from before macOS makes the window fullscreen, as do_toggle_fullscreen() does
+            glfwGetWindowSize(w, &osw->before_fullscreen.w, &osw->before_fullscreen.h);
+            glfwGetWindowPos(w, &osw->before_fullscreen.x, &osw->before_fullscreen.y);
+            osw->before_fullscreen.was_maximized = glfwGetWindowAttrib(w, GLFW_MAXIMIZED);
+            osw->before_fullscreen.is_set = true;
+        }
         // In non traditional fullscreen macOS forces the window to opaque
-        global_state.callback_os_window->background_opacity.os_forces_opaque = !is_os_window_fullscreen(global_state.callback_os_window);
+        osw->background_opacity.os_forces_opaque = !is_fullscreen;
         return false;
     }
     // macOS Split View uses Cocoa fullscreen internally, so the window
@@ -3142,6 +3151,27 @@ change_os_window_state(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+get_os_window_geometry(PyObject *self UNUSED, PyObject *args) {
+    // The geometry needed to re-create the OS Window, for fullscreen windows this is the geometry from before they were made fullscreen
+    id_type wid;
+    if (!PyArg_ParseTuple(args, "K", &wid)) return NULL;
+    OSWindow *w = os_window_for_id(wid);
+    if (!w || !w->handle || w->is_layer_shell) Py_RETURN_NONE;
+    int x = 0, y = 0, width = 0, height = 0, state = WINDOW_NORMAL;
+    glfwGetWindowSize(w->handle, &width, &height);
+    if (!global_state.is_wayland) glfwGetWindowPos(w->handle, &x, &y);
+    if (is_os_window_fullscreen(w)) {
+        state = WINDOW_FULLSCREEN;
+        if (w->before_fullscreen.is_set) {
+            width = w->before_fullscreen.w; height = w->before_fullscreen.h;
+            x = w->before_fullscreen.x; y = w->before_fullscreen.y;
+        }
+    } else if (glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED)) state = WINDOW_MINIMIZED;
+    else if (glfwGetWindowAttrib(w->handle, GLFW_MAXIMIZED)) state = WINDOW_MAXIMIZED;
+    return Py_BuildValue("{si si si si si}", "x", x, "y", y, "width", width, "height", height, "state", state);
+}
+
 void
 request_window_attention(id_type kitty_window_id, bool audio_bell) {
     OSWindow *w = os_window_for_kitty_window(kitty_window_id);
@@ -4026,6 +4056,7 @@ static PyMethodDef module_methods[] = {
     METHODB(toggle_fullscreen, METH_VARARGS),
     METHODB(toggle_maximized, METH_VARARGS),
     METHODB(change_os_window_state, METH_VARARGS),
+    METHODB(get_os_window_geometry, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(x11_display, METH_NOARGS),
     METHODB(wayland_compositor_data, METH_NOARGS),

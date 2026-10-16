@@ -90,6 +90,7 @@ class Session:
         self.focus_tab_spec: str | None = None
         self.default_title = default_title
         self.os_window_size: WindowSizes | None = None
+        self.os_window_position: tuple[int, int] | None = None
         self.os_window_class: str | None = None
         self.os_window_name: str | None = None
         self.os_window_state: str | None = None
@@ -278,6 +279,11 @@ def parse_session(
             elif cmd == 'os_window_size':
                 w, h = map(window_size, rest.split(maxsplit=1))
                 ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
+            elif cmd == 'os_window_position':
+                x, sep, y = rest.lower().partition('x')
+                if not sep:
+                    raise ValueError(f'Invalid os_window_position: {rest!r}, must be of the form XxY, for example: 100x50')
+                ans.os_window_position = int(x), int(y)
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
             elif cmd == 'os_window_name':
@@ -688,6 +694,13 @@ working directory. This is useful when kitty is launched from locations where th
 is not your home directory, such as from system-wide shortcuts. Note that :code:`--relocatable` is
 typically not used with :code:`--base-dir`, since relocatable is meant for session files that are
 co-located with their project directories.
+
+
+--os-window-geometry
+type=bool-set
+Save the size, position and state (maximized, fullscreen, etc.) of OS Windows, so that they
+are restored as they are now when the session is loaded. Note that positions are not
+saved on Wayland as it does not allow applications to position their windows.
 """
 
 
