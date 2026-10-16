@@ -71,29 +71,19 @@ get_all_processes(PyObject *self UNUSED, PyObject *args UNUSED) {
     pid_t num = proc_listallpids(NULL, 0);
     if (num <= 0) return PyTuple_New(0);
     size_t sz = sizeof(pid_t) * num * 2;
-    pid_t *buf = malloc(sz);
+    RAII_ALLOC(pid_t, buf, malloc(sz));
     if (!buf) return PyErr_NoMemory();
     num = proc_listallpids(buf, sz);
-    if (num <= 0) {
-        free(buf);
-        return PyTuple_New(0);
-    }
-    PyObject *ans = PyTuple_New(num);
-    if (!ans) {
-        free(buf);
-        return NULL;
-    }
+    if (num <= 0) return PyTuple_New(0);
+    RAII_PyObject(ans, PyTuple_New(num));
+    if (!ans) return NULL;
     for (pid_t i = 0; i < num; i++) {
         long long pid = buf[i];
         PyObject *t = PyLong_FromLongLong(pid);
-        if (!t) {
-            free(buf);
-            Py_CLEAR(ans);
-            return NULL;
-        }
+        if (!t) return NULL;
         PyTuple_SET_ITEM(ans, i, t);
     }
-    return ans;
+    return Py_NewRef(ans);
 }
 
 static PyObject *
