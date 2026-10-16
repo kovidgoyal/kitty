@@ -93,6 +93,7 @@ get_all_processes(PyObject *self UNUSED, PyObject *args UNUSED) {
         }
         PyTuple_SET_ITEM(ans, i, t);
     }
+    free(buf);
     return ans;
 }
 
