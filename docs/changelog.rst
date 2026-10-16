@@ -494,6 +494,9 @@ Detailed list of changes
 - Sessions: Fix ``os_window_title`` having no effect on the first OS Window
   created when starting kitty with a session file (:iss:`10675`)
 
+- Remote control: Fix :option:`kitten @ send-key --exclude-active` sending keys
+  to the active window instead of excluding it.
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -65,7 +65,8 @@ Do not send text to the active window, even if it is one of the matched windows.
         windows = self.windows_for_payload(boss, None, payload_get, window_match_name='match')
         keys = payload_get('keys')
         for w in windows:
-            w.send_key(*keys)
+            if not payload_get('exclude_active') or w is not boss.active_window:
+                w.send_key(*keys)
         return None
 
 
