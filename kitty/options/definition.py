@@ -4753,7 +4753,7 @@ require a full restart of kitty. Particularly, when changing shortcuts for
 actions located on the macOS global menu bar, a full restart is needed. You can
 also map a keybinding to load a different config file, for example::
 
-    map f5 load_config /path/to/alternative/kitty.conf
+    map f5 load_config_file /path/to/alternative/kitty.conf
 
 Note that all options from the original :file:`kitty.conf` are discarded, in
 other words the new configuration *replace* the old ones.
