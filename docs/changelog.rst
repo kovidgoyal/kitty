@@ -488,6 +488,9 @@ Detailed list of changes
 - macOS: Fix a memory leak when getting the list of all processes, for
   example, when querying the memory used by child processes (:iss:`10673`)
 
+- Sessions: Fix ``os_window_title`` having no effect on the first OS Window
+  created when starting kitty with a session file (:iss:`10675`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
