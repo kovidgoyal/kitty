@@ -276,3 +276,36 @@ func TestTarExtractReadOnlyDirectory(t *testing.T) {
 		t.Fatalf("Permissions of read-only directory not preserved: %v", st.Mode())
 	}
 }
+
+func TestTarExtractUnsearchableParentDirectory(t *testing.T) {
+	dest := t.TempDir()
+	parent := filepath.Join(dest, "a")
+	t.Cleanup(func() {
+		_ = os.Chmod(parent, 0700)
+		_ = os.Chmod(filepath.Join(parent, "b"), 0700)
+	})
+	if _, err := ExtractAllFromTar(make_tar(t,
+		tar_entry{name: "a/", typeflag: tar.TypeDir, mode: 0600},
+		tar_entry{name: "a/b/", typeflag: tar.TypeDir, mode: 0555},
+		tar_entry{name: "a/b/file.txt", body: "contents"},
+	), dest); err != nil {
+		t.Fatal(err)
+	}
+	st, err := os.Stat(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Mode().Perm() != 0600 {
+		t.Fatalf("Permissions of parent directory not preserved: %v", st.Mode())
+	}
+	if err = os.Chmod(parent, 0700); err != nil {
+		t.Fatal(err)
+	}
+	assert_file_contents(t, filepath.Join(parent, "b", "file.txt"), "contents")
+	if st, err = os.Stat(filepath.Join(parent, "b")); err != nil {
+		t.Fatal(err)
+	}
+	if st.Mode().Perm() != 0555 {
+		t.Fatalf("Permissions of child directory not preserved: %v", st.Mode())
+	}
+}

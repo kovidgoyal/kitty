@@ -400,8 +400,10 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 			}
 		}
 	}
-	for _, chmod := range dir_chmods {
-		if err = chmod(); err != nil {
+	// Apply in reverse so that children are processed before their parents,
+	// as a parent without search permission prevents chmod of its children
+	for i := len(dir_chmods) - 1; i >= 0; i-- {
+		if err = dir_chmods[i](); err != nil {
 			return
 		}
 	}
