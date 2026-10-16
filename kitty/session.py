@@ -52,6 +52,7 @@ class WindowSpec:
         self.is_background_process = False
         self.serialized_id = serialized_id
         self.run_command_at_shell_startup = run_command_at_shell_startup
+        self.restored_scrollback = b''
         if hasattr(launch_spec, 'opts'):  # LaunchSpec
             from .launch import LaunchSpec
 

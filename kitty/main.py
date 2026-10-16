@@ -10,6 +10,7 @@ from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from gettext import gettext as _
 
+from . import logout_session
 from .boss import Boss
 from .child import set_default_env, set_LANG_in_default_env
 from .cli import create_opts, parse_args
@@ -54,6 +55,14 @@ from .fast_data_types import (
     set_use_os_log,
 )
 from .fonts.render import dump_font_debug, set_font_family
+from .logout_session import (
+    RestoredSnapshot,
+    finish_restore,
+    load_or_discard_snapshot,
+    record_process_state,
+    remove_all_snapshots,
+    restore_snapshots,
+)
 from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
@@ -278,6 +287,21 @@ def list_monitors(json_output: bool = False) -> None:
             print()
 
 
+def logout_snapshot_to_restore(opts: Options, args: CLIOptions) -> RestoredSnapshot | None:
+    if path := logout_session.snapshot_requested_by_parent:
+        return load_or_discard_snapshot(path, opts)
+    if opts.restore_session_after_logout:
+        if not args.session and not args.args and not getattr(sys, 'cmdline_args_for_open', None):
+            return restore_snapshots(opts, tuple(sys.argv[1:]))
+    elif not args.config and not args.override:
+        # The option is disabled in the default configuration, so the saved state will never be restored
+        try:
+            remove_all_snapshots()
+        except OSError as e:
+            log_error(f'Failed to delete the sessions saved at logout. Error: {e}')
+    return None
+
+
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
@@ -299,13 +323,17 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         grab_keyboard(True)
     with cached_values_for(run_app.cached_values_name) as cached_values:
         startup_session_error: tuple[Exception, str] | None = None
-        try:
-            startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
-        except Exception as e:
-            startup_session_error = (e, (getattr(args, 'session', '') or opts.startup_session or ''))
-            if getattr(args, 'session', ''):
-                args.session = ''
-            startup_sessions = tuple(create_sessions(opts, args))
+        restored = None if _is_panel_kitten else logout_snapshot_to_restore(opts, args)
+        if restored is not None and restored.sessions:
+            startup_sessions = restored.sessions
+        else:
+            try:
+                startup_sessions = tuple(create_sessions(opts, args, default_session=opts.startup_session))
+            except Exception as e:
+                startup_session_error = (e, (getattr(args, 'session', '') or opts.startup_session or ''))
+                if getattr(args, 'session', ''):
+                    args.session = ''
+                startup_sessions = tuple(create_sessions(opts, args))
         if not _is_panel_kitten and not is_wayland():
             if opts.remember_window_position:
                 cached_workarea = tuple(tuple(x) for x in cached_values.get('monitor-workarea', ()))
@@ -343,6 +371,11 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
             )
         boss = Boss(opts, args, cached_values, global_shortcuts, talk_fd)
         boss.start(window_id, startup_sessions)
+        if restored is not None:
+            try:
+                finish_restore(restored.path)
+            except OSError as e:
+                log_error(f'Failed to delete the restored session saved at logout in {restored.path}. Error: {e}')
         if args.debug_font_fallback:
             dump_font_debug()
         if bad_lines or boss.misc_config_errors:
@@ -573,6 +606,7 @@ def kitty_main(called_from_panel: bool = False) -> None:
     running_in_kitty(True)
 
     args = sys.argv[1:]
+    record_process_state(tuple(args))
     try:
         cwd_ok = os.path.isdir(os.getcwd())
     except Exception:

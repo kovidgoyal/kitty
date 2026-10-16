@@ -263,6 +263,36 @@ When you run the session file in another kitty instance you will see both
 windows re-created, as expected with the correct working directories and
 running programs.
 
+.. _restore_after_logout:
+
+Restoring kitty after logging out
+------------------------------------
+
+kitty can save its state when you log out, restart or shut down the computer
+and restore it the next time it is started, just like other applications. To
+enable this, set :opt:`restore_session_after_logout` in :file:`kitty.conf`::
+
+    restore_session_after_logout yes
+
+Currently, this works only on macOS. The state of every kitty instance is saved
+as a session file, including the size, position and state of every OS Window,
+and the scrollback of every window. The next time kitty is started, it restores
+the state of the instance that had the same command line arguments, and starts
+a separate kitty instance for each of the others, with the command line
+arguments, working directory and environment variables they originally had.
+
+The scrollback of every window is restored before the shell starts, followed by
+a line showing when it was saved. Only text and its formatting and hyperlinks
+are restored. Programs that were running in windows, other than the shell, are
+not started again, since they could have been run for their effects, like
+:file:`rm`. To save OS Window geometry in your own session files, use the
+``--os-window-geometry`` option of :ac:`save_as_session`.
+
+If your session is not restored, any errors are written to the system log,
+where you can see them with::
+
+    /usr/bin/log show --last 1d --predicate 'processImagePath contains "kitty" and messageType == error'
+
 Managing multi tab sessions in a single OS Window
 ----------------------------------------------------
 

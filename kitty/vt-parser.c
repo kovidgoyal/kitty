@@ -1645,19 +1645,32 @@ run_worker(void *p, ParseData *pd, bool flush) {
 
 #ifndef DUMP_COMMANDS
 
-uint8_t *
-vt_parser_create_write_buffer(Parser *p, size_t *sz) {
+static uint8_t *
+create_write_buffer(Parser *p, size_t *sz) {
     PS *self = (PS *)p->state;
-    uint8_t *ans;
+    uint8_t *ans = NULL;
     with_lock {
-        if (self->write.sz) fatal("vt_parser_create_write_buffer() called with an already existing write buffer");
-        self->write.offset = self->read.sz + self->write.pending;
-        *sz = BUF_SZ - self->write.offset;
-        self->write.sz = *sz;
-        ans = self->buf + self->write.offset;
+        if (!self->write.sz) {
+            self->write.offset = self->read.sz + self->write.pending;
+            *sz = BUF_SZ - self->write.offset;
+            self->write.sz = *sz;
+            ans = self->buf + self->write.offset;
+        }
     }
     end_with_lock;
     return ans;
+}
+
+uint8_t *
+vt_parser_create_write_buffer(Parser *p, size_t *sz) {
+    uint8_t *ans = create_write_buffer(p, sz);
+    if (!ans) fatal("vt_parser_create_write_buffer() called with an already existing write buffer");
+    return ans;
+}
+
+uint8_t *
+vt_parser_create_write_buffer_if_none(Parser *p, size_t *sz) {
+    return create_write_buffer(p, sz);
 }
 
 void

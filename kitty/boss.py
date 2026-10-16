@@ -2488,6 +2488,7 @@ class Boss:
             if not self._call_on_quit_watchers({'confirmed': True}):
                 set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
+            self.save_session_if_logging_out()
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
@@ -2516,7 +2517,20 @@ class Boss:
             if not self._call_on_quit_watchers({'confirmed': True}):
                 set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
+            self.save_session_if_logging_out()
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
+
+    def save_session_if_logging_out(self) -> None:
+        from .logout_session import is_logout_in_progress, save_session_at_logout
+        from .main import is_panel_kitten
+
+        if get_options().restore_session_after_logout and not is_panel_kitten() and is_logout_in_progress():
+            try:
+                save_session_at_logout(self)
+            except Exception:
+                import traceback
+
+                log_error('Failed to save the session at logout with error:\n' + traceback.format_exc())
 
     def notify_on_os_window_death(self, address: str) -> None:
         import socket

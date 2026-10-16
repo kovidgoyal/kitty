@@ -1240,12 +1240,19 @@ PYWRAP1(set_application_quit_request) {
     CloseRequest cr = IMPERATIVE_CLOSE_REQUESTED;
     PA("|i", &cr);
     global_state.quit_request = cr;
+    if (cr == NO_CLOSE_REQUESTED) global_state.logout_quit.requested = false;
     global_state.has_pending_closes = true;
     request_tick_callback();
     Py_RETURN_NONE;
 }
 
 PYWRAP0(current_application_quit_request) { return Py_BuildValue("i", global_state.quit_request); }
+
+PYWRAP0(application_logout_requested_at) {
+    // The monotonic time at which the OS asked kitty to quit for a logout, restart or shutdown, or -1 if it has not done so since
+    // the last time a quit was cancelled
+    return PyFloat_FromDouble(global_state.logout_quit.requested ? monotonic_t_to_s_double(global_state.logout_quit.at) : -1);
+}
 
 PYWRAP1(focus_os_window) {
     id_type os_window_id;
@@ -2113,6 +2120,7 @@ static PyMethodDef module_methods[] = {
     MW(mark_os_window_for_close, METH_VARARGS),
     MW(set_application_quit_request, METH_VARARGS),
     MW(current_application_quit_request, METH_NOARGS),
+    MW(application_logout_requested_at, METH_NOARGS),
     MW(set_os_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_VARARGS),

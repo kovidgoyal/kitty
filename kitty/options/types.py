@@ -435,6 +435,7 @@ option_names = (
     'repaint_delay',
     'resize_debounce_time',
     'resize_in_steps',
+    'restore_session_after_logout',
     'scrollback_fill_enlarged_window',
     'scrollback_lines',
     'scrollback_pager',
@@ -652,6 +653,7 @@ class Options:
     repaint_delay: int = 10
     resize_debounce_time: tuple[float, float] = (0.1, 0.5)
     resize_in_steps: bool = False
+    restore_session_after_logout: bool = False
     scrollback_fill_enlarged_window: bool = False
     scrollback_lines: int = 2000
     scrollback_pager: list[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']

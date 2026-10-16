@@ -798,6 +798,7 @@ class Window:
         self.current_marker_spec: tuple[str, str | tuple[tuple[int, str], ...]] | None = None
         self.kitten_result_processors: list[Callable[['Window', Any], None]] = []
         self.child_is_launched = False
+        self.restored_scrollback = b''
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self.needs_attention = False
@@ -1070,6 +1071,16 @@ class Window:
         self.notify_child_of_resize()
         update_ime_position = False
         if not self.child_is_launched:
+            if self.restored_scrollback:
+                # The screen now has its actual size, so restored lines are wrapped correctly, and the child cannot produce any
+                # output until it is marked as ready, so the restored output comes before it.
+                data, self.restored_scrollback = self.restored_scrollback, b''
+                try:
+                    self.screen.restore_scrollback(data)
+                except Exception:
+                    import traceback
+
+                    log_error('Failed to restore the scrollback with error:\n' + traceback.format_exc())
             self.child.mark_terminal_ready()
             self.child_is_launched = True
             update_ime_position = True

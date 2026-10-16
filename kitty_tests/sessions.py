@@ -2,14 +2,14 @@
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+from kitty.fast_data_types import Screen
 from kitty.os_window_size import WindowSize, WindowSizes, initial_window_size_func
 from kitty.session import get_os_window_sizing_data, parse_session
 
-from .base import BaseTest
+from .base import BaseTest, parse_bytes
 
 
 class TestSessions(BaseTest):
-
     def test_session_size_overrides_remembered_size(self) -> None:
         opts = self.set_options({'remember_window_size': True})
         with_size, without_size = parse_session('os_window_size 1180 760\nlaunch\nnew_os_window\nlaunch', opts)
@@ -40,3 +40,194 @@ class TestSessions(BaseTest):
         self.ae((s.os_window_size, s.os_window_position, s.os_window_state), (size, (-1200, 80), 'maximized'))
         for state, name in ((WINDOW_FULLSCREEN, 'fullscreen'), (WINDOW_NORMAL, 'normal')):
             self.ae(os_window_geometry_as_session({**g, 'state': state})[-1], f'os_window_state {name}')
+
+    def test_scrollback_for_restore(self) -> None:
+        from kitty.logout_session import sanitize_restored_output, scrollback_for_restore
+        from kitty.window import as_text
+
+        def restore(data: bytes, cols: int = 10, lines: int = 4, scrollback: int = 20) -> Screen:
+            s = self.create_screen(cols=cols, lines=lines, scrollback=scrollback)
+            s.restore_scrollback(sanitize_restored_output(data.decode()).encode())
+            return s
+
+        def text(s: Screen) -> list[str]:
+            return as_text(s, add_history=True).rstrip('\n').splitlines()
+
+        src = self.create_screen(cols=10, lines=4, scrollback=20)
+        parse_bytes(src, b''.join(b'line %d\r\n' % i for i in range(8)) + b'\x1b[31mred\x1b[m 0123456789abcdef\r\n\x1b]8;;https://x.org\x1b\\link\x1b]8;;\x1b\\')
+        expected, expected_ansi = text(src), as_text(src, as_ansi=True, add_history=True).rstrip('\n')
+        # Output on the alternate screen, such as from a full screen program, is not restored
+        parse_bytes(src, b'\x1b[?1049hfull screen program')
+        data = scrollback_for_restore(src)
+        self.assertNotIn(b'full screen program', data)
+        self.assertFalse(data.endswith(b'\r\n'))
+        same_width = restore(data)
+        self.ae(text(same_width), expected)
+        self.ae(as_text(same_width, as_ansi=True, add_history=True).rstrip('\n'), expected_ansi)
+        # Wrapped lines are re-wrapped to the width of the new screen
+        wider = restore(data, cols=30)
+        self.ae(text(wider)[-2:], ['red 0123456789abcdef', 'link'])
+        self.assertTrue(any(url.endswith('https://x.org') for url, hyperlink_id in wider.hyperlinks_as_set()))
+
+        # The scrollback pager history is not saved, so at most scrollback + lines lines are restored
+        src = self.create_screen(cols=10, lines=4, scrollback=5)
+        parse_bytes(src, b'\r\n'.join(b'%d' % i for i in range(30)))
+        self.ae(text(restore(scrollback_for_restore(src), scrollback=50)), [str(i) for i in range(21, 30)])
+
+        # The shell prompt the cursor is at is not restored, since the restored shell shows a new one
+        def restored_lines(data: bytes, lines: int = 6) -> list[str]:
+            src = self.create_screen(cols=20, lines=lines, scrollback=50)
+            parse_bytes(src, data)
+            return text(restore(scrollback_for_restore(src), cols=20, lines=lines, scrollback=50))
+
+        prompt, output = b'\x1b]133;A\x07', b'\x1b]133;C\x07'
+        self.ae(restored_lines(prompt + b'$ ls\r\n' + output + b'a\r\nb\r\n' + prompt + b'$ partial'), ['$ ls', 'a', 'b'])
+        two_line_prompt = prompt + b'~/project on main\r\n$ '
+        self.ae(restored_lines(two_line_prompt + b'ls\r\n' + output + b'a\r\n' + two_line_prompt), ['~/project on main', '$ ls', 'a'])
+        many = b''.join(b'%d\r\n' % i for i in range(10))
+        self.ae(restored_lines(prompt + b'$ seq\r\n' + output + many + prompt + b'$ ', lines=4), ['$ seq'] + [str(i) for i in range(10)])
+        # A running command is restored with all its output
+        self.ae(restored_lines(prompt + b'$ tail -f log\r\n' + output + b'a\r\nb'), ['$ tail -f log', 'a', 'b'])
+
+        # Shell integration marks are not restored, so restored output is not treated as the output of a command
+        src = self.create_screen(cols=20, lines=6, scrollback=50)
+        parse_bytes(src, prompt + b'$ ls\r\n' + output + b'a\r\n' + prompt + b'$ ')
+        data = scrollback_for_restore(src)
+        self.assertIn(b'\x1b]133;C', data)
+        self.assertNotIn('\x1b]133;', sanitize_restored_output(data.decode()))
+
+        # Output larger than the parser buffer
+        big = self.create_screen(cols=80, lines=4, scrollback=20)
+        big.restore_scrollback(b''.join(b'%05d %s\r\n' % (i, b'x' * 70) for i in range(16000)))
+        self.ae(text(big)[-1], '15999 ' + 'x' * 70)
+
+        # Restoring scrollback while the child is writing to the screen raises instead of crashing
+        s = self.create_screen()
+        s.test_create_write_buffer()
+        with self.assertRaises(RuntimeError):
+            s.restore_scrollback(b'x')
+
+    def test_sanitize_restored_output(self) -> None:
+        from kitty.logout_session import sanitize_restored_output as s
+
+        sgr, link, link_end, sized = '\x1b[1;38:2:1:2:3m', '\x1b]8;id=1;https://x.org\x1b\\', '\x1b]8;;\x07', '\x1b]66;s=2;big\x1b\\'
+        text = f'{sgr}bold\x1b[m {link}link{link_end} {sized}\ttab\r\n'
+        self.ae(s(text), text)
+        for unsafe, expected in (
+            ('\x1b]52;c;aGVsbG8=\x07', 'ab'),
+            ('\x1b]133;A\x1b\\', 'ab'),
+            ('\x1b]99;;notification\x1b\\', 'ab'),
+            ('\x1bP@kitty-cmd{"cmd":"ls"}\x1b\\', 'ab'),
+            ('\x1b_Gf=100;AAAA\x1b\\', 'ab'),
+            ('\x1b[2J', 'ab'),
+            ('\x1b[?1049h', 'ab'),
+            ('\x1bc', 'ab'),
+            ('\x07\x08\x0c', 'ab'),
+            ('\x1b', 'a'),  # ESC followed by a character is an escape code
+            ('\x9b2J', 'a2Jb'),  # C1 control codes are removed, leaving harmless text
+            ('\x1b]0;title', 'a'),  # an unterminated OSC consumes the rest of the text
+        ):
+            with self.subTest(unsafe=unsafe):
+                self.ae(s(f'a{unsafe}b'), expected)
+
+    def test_logout_snapshots(self) -> None:
+        import json
+        import os
+        import shlex
+        import shutil
+        import stat
+        import tempfile
+        import time
+        from unittest.mock import patch
+
+        from kitty.constants import unserialize_launch_flag
+        from kitty.logout_session import (
+            LOGOUT_CONFIRMATION_TIMEOUT,
+            ProcessState,
+            claim_snapshots,
+            finish_restore,
+            is_logout_in_progress,
+            load_snapshot,
+            remove_all_snapshots,
+            remove_stale_snapshots,
+            restore_snapshots,
+            save_snapshot,
+        )
+        from kitty.utils import log_error
+
+        errors: list[str] = []
+        log_error.redirect = errors.append
+        self.addCleanup(delattr, log_error, 'redirect')
+        opts = self.set_options()
+        tdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tdir, True)
+        base = os.path.join(tdir, 'saved-at-logout')
+        state = ProcessState(('--config', 'other.conf'), tdir, {'VAR': 'value'}, 0)
+        session = shlex.join(['launch', unserialize_launch_flag + json.dumps({'id': 7})])
+
+        def save(pid: int, argv: tuple[str, ...] = state.argv) -> str:
+            return save_snapshot(base, pid, session, {7: b'\x1b]52;c;eA==\x07seven', 8: b'eight'}, state._replace(argv=argv))
+
+        def mode(path: str) -> int:
+            return stat.S_IMODE(os.stat(path).st_mode)
+
+        # The saved state is readable only by the user
+        path = save(11)
+        self.ae((mode(base), mode(path), mode(os.path.join(path, 'scrollback', '7')), mode(os.path.join(path, 'process.json'))), (0o700, 0o700, 0o600, 0o600))
+        # Snapshots from before this instance was started are from an earlier logout and were never restored
+        stale = save(10)
+        day_ago = time.time() - 86400
+        os.utime(stale, (day_ago, day_ago))
+        remove_stale_snapshots(base, time.time() - 3600)
+        self.ae(os.listdir(base), ['11'])
+
+        # Snapshots claimed by a running kitty instance are not claimed again, but those claimed by an instance that died are
+        alive = {99}
+        os.rename(path, os.path.join(base, '11.claimed-by-99'))
+        self.ae(claim_snapshots(base, 1, alive.__contains__), [])
+        alive.clear()
+        (snapshot,) = claim_snapshots(base, 1, alive.__contains__)
+        self.ae((snapshot.path, snapshot.process_state[:3]), (os.path.join(base, '11.claimed-by-1'), state[:3]))
+        (s,) = load_snapshot(snapshot.path, opts)
+        # The scrollback is restored, without unsafe escape codes, followed by a line showing when it was saved
+        restored = s.tabs[0].windows[0].restored_scrollback
+        self.assertTrue(restored.startswith(b'seven\r\n'), restored)
+        self.assertIn(b'Restored from', restored)
+        # A snapshot that repeatedly fails to be restored, for example, because kitty crashes, is deleted
+        self.ae(len(claim_snapshots(base, 2, alive.__contains__)), 1)
+        self.ae(claim_snapshots(base, 3, alive.__contains__), [])
+        self.ae(os.listdir(base), [])
+        self.assertTrue(errors)
+        # Snapshots that cannot be read are deleted
+        errors.clear()
+        path = save(12)
+        with open(os.path.join(path, 'process.json'), 'w') as f:
+            f.write('{"argv": 1}')
+        self.ae(claim_snapshots(base, 1, alive.__contains__), [])
+        self.ae((os.listdir(base), len(errors)), ([], 1))
+
+        # The snapshot of the kitty instance with the same command line is restored in this instance, others in new instances
+        save(21, ('a',)), save(22, ('b',))
+        started: list[str] = []
+        with patch('kitty.logout_session.snapshots_dir', return_value=base), patch(
+            'kitty.logout_session.start_instance_for_snapshot', side_effect=lambda s: started.append(s.path)
+        ):
+            r = restore_snapshots(opts, ('b',))
+            assert r is not None
+            self.ae((os.path.basename(r.path), len(r.sessions)), (f'22.claimed-by-{os.getpid()}', 1))
+            self.ae([os.path.basename(x) for x in started], [f'21.claimed-by-{os.getpid()}'])
+            # Snapshots are deleted only once they have been restored
+            self.assertTrue(os.path.exists(r.path))
+            finish_restore(r.path)
+            self.ae(os.listdir(base), [os.path.basename(started[0])])
+            self.assertIsNone(restore_snapshots(opts, ('b',)))
+            remove_all_snapshots()
+            self.assertFalse(os.path.exists(base))
+            self.assertIsNone(restore_snapshots(opts, ('b',)))
+
+        # A quit confirmed long after the OS asked kitty to quit for a logout is an ordinary quit
+        for requested_at, now, expected in ((-1, 10, False), (5, 10, True), (5, 6 + LOGOUT_CONFIRMATION_TIMEOUT, False)):
+            with patch('kitty.logout_session.application_logout_requested_at', return_value=requested_at), patch(
+                'kitty.logout_session.monotonic', return_value=now
+            ):
+                self.ae(is_logout_in_progress(), expected)

@@ -231,6 +231,11 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- macOS: A new option :opt:`restore_session_after_logout` to save the state of
+  every kitty instance, including the scrollback of every window, when logging
+  out, restarting or shutting down the computer and restore it the next time
+  kitty is started, see :ref:`restore_after_logout` (:iss:`1197`)
+
 - Sessions: A new ``os_window_position`` keyword and a new
   ``--os-window-geometry`` option for :ac:`save_as_session` to save the size,
   position and state of OS Windows in session files

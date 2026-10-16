@@ -266,9 +266,23 @@ static NSDictionary<NSString *, NSNumber *> *global_shortcuts = nil;
     }
 }
 
+static bool
+is_quit_for_logout(void) {
+    // The OS sets a quit reason only when quitting applications because the user is logging out, restarting or shutting down
+    NSAppleEventDescriptor *event = [[NSAppleEventManager sharedAppleEventManager] currentAppleEvent];
+    if (!event) return false;
+    switch ([[event attributeDescriptorForKeyword:kAEQuitReason] typeCodeValue]) {
+        case kAELogOut:
+        case kAEReallyLogOut:
+        case kAERestart:
+        case kAEShutDown: return true;
+        default: return false;
+    }
+}
+
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
     (void)sender;
-    if (_glfw.callbacks.application_close) _glfw.callbacks.application_close(0);
+    if (_glfw.callbacks.application_close) _glfw.callbacks.application_close(is_quit_for_logout() ? GLFW_APPLICATION_CLOSE_LOGOUT : 0);
     return NSTerminateCancel;
 }
 

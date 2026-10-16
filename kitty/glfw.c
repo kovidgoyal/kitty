@@ -1264,7 +1264,11 @@ request_drop_status_update(OSWindow *osw) {
 
 static void
 application_close_requested_callback(int flags) {
-    if (flags) {
+    if (flags & GLFW_APPLICATION_CLOSE_LOGOUT) {
+        global_state.logout_quit.requested = true;
+        global_state.logout_quit.at = monotonic();
+    }
+    if (flags & GLFW_APPLICATION_CLOSE_FATAL_ERROR) {
         global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
         global_state.has_pending_closes = true;
         request_tick_callback();
@@ -3164,8 +3168,10 @@ get_os_window_geometry(PyObject *self UNUSED, PyObject *args) {
     if (is_os_window_fullscreen(w)) {
         state = WINDOW_FULLSCREEN;
         if (w->before_fullscreen.is_set) {
-            width = w->before_fullscreen.w; height = w->before_fullscreen.h;
-            x = w->before_fullscreen.x; y = w->before_fullscreen.y;
+            width = w->before_fullscreen.w;
+            height = w->before_fullscreen.h;
+            x = w->before_fullscreen.x;
+            y = w->before_fullscreen.y;
         }
     } else if (glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED)) state = WINDOW_MINIMIZED;
     else if (glfwGetWindowAttrib(w->handle, GLFW_MAXIMIZED)) state = WINDOW_MAXIMIZED;
