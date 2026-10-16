@@ -19,6 +19,9 @@ ColorsSpec = dict[str, Optional[int]]
 TransparentBackgroundColors = tuple[tuple[Color, float], ...]
 ColorSchemes = Literal['light', 'dark', 'no_preference']
 Colors = tuple[ColorsSpec, TransparentBackgroundColors]
+# None for the transparent background colors means they were not specified and
+# should be left unchanged, as opposed to () which means clear them.
+ParsedColors = tuple[ColorsSpec, TransparentBackgroundColors | None]
 
 
 class BackgroundImageOptions(TypedDict, total=False):
@@ -70,7 +73,7 @@ class ThemeColors:
         spec, tbc = parse_colors((f,), background_image_options)
         ans = dc_spec.copy()
         ans.update(spec)
-        return ans, tbc
+        return ans, (() if tbc is None else tbc)
 
     def refresh(self) -> bool:
         found = False
@@ -209,13 +212,13 @@ def parse_colors(
     args: Iterable[str | Iterable[str]],
     background_image_options: BackgroundImageOptions | None = None,
     allow_reading_conf_files: bool = True,
-) -> Colors:
+) -> ParsedColors:
     from kitty.options.parse import parse_conf_item
 
     colors: dict[str, Color | None | int] = {}
     nullable_color_map: dict[str, int | None] = {}
     special_color_map: dict[str, int] = {}
-    transparent_background_colors: TransparentBackgroundColors = ()
+    transparent_background_colors: TransparentBackgroundColors | None = None
     allowed = all_color_related_conf_keys()
     for spec in args:
         conf: dict[str, Any] = {}
@@ -253,7 +256,10 @@ def parse_colors(
 
 
 def patch_options_with_color_spec(
-    opts: Options, spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, background_image_options: BackgroundImageOptions | None = None
+    opts: Options,
+    spec: ColorsSpec,
+    transparent_background_colors: TransparentBackgroundColors | None,
+    background_image_options: BackgroundImageOptions | None = None,
 ) -> None:
     for k, v in spec.items():
         if hasattr(opts, k):
@@ -265,7 +271,8 @@ def patch_options_with_color_spec(
                     setattr(opts, k, v)
                 else:
                     setattr(opts, k, color_from_int(v))
-    opts.transparent_background_colors = transparent_background_colors
+    if transparent_background_colors is not None:
+        opts.transparent_background_colors = transparent_background_colors
     if background_image_options is not None:
         for k, bv in background_image_options.items():
             if hasattr(opts, k):
@@ -274,7 +281,7 @@ def patch_options_with_color_spec(
 
 def patch_colors(
     spec: ColorsSpec,
-    transparent_background_colors: TransparentBackgroundColors = (),
+    transparent_background_colors: TransparentBackgroundColors | None = None,
     configured: bool = False,
     windows: Sequence[WindowType] | None = None,
     notify_on_bg_change: bool = True,

@@ -804,7 +804,10 @@ class ColorProfile:
     def set_transparent_background_color(self, index: int, color: Color | None = None, opacity: float | None = None) -> None: ...
 
 def patch_color_profiles(
-    spec: Dict[str, Optional[int]], transparent_background_colors: tuple[tuple[Color, float], ...], profiles: Tuple[ColorProfile, ...], change_configured: bool
+    spec: Dict[str, Optional[int]],
+    transparent_background_colors: Optional[tuple[tuple[Color, float], ...]],
+    profiles: Tuple[ColorProfile, ...],
+    change_configured: bool,
 ) -> None:
     pass
 

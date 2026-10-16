@@ -5,7 +5,6 @@
 from typing import TYPE_CHECKING
 
 from kitty.cli import emph
-from kitty.fast_data_types import Color
 
 from .base import (
     MATCH_TAB_OPTION,
@@ -17,17 +16,19 @@ from .base import (
     PayloadType,
     RCOptions,
     RemoteCommand,
+    RemoteControlErrorWithoutTraceback,
     ResponseType,
     Window,
 )
 
 if TYPE_CHECKING:
     from kitty.cli_stub import SetColorsRCOptions as CLIOptions
+    from kitty.colors import TransparentBackgroundColors
 
 
 class SetColors(RemoteCommand):
     protocol_spec = __doc__ = """
-    colors+/dict.colors: An object mapping names to colors as 24-bit RGB integers or null for nullable colors. Or a string for transparent_background_colors.
+    colors+/dict.colors: Map of names to 24-bit RGB ints or null for nullable colors. transparent_background_colors is a string, empty to clear, absent to keep.
     match_window/str: Window to change colors in
     match_tab/str: Tab to change colors in
     all/bool: Boolean indicating change colors everywhere or not
@@ -76,7 +77,7 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         final_colors: dict[str, int | None | str] = {}
-        transparent_background_colors: tuple[tuple[Color, float], ...] = ()
+        transparent_background_colors: 'TransparentBackgroundColors | None' = None
         from kitty.colors import parse_colors
 
         if not opts.reset:
@@ -87,7 +88,7 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
             except Exception as err:
                 raise ParsingOfArgsFailed(str(err)) from err
             final_colors.update(fc)
-        if transparent_background_colors:
+        if transparent_background_colors is not None:
             final_colors['transparent_background_colors'] = ' '.join(f'{c.as_sharp}@{f}' for c, f in transparent_background_colors)
         ans = {
             'match_window': opts.match,
@@ -102,19 +103,36 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         from kitty.colors import patch_colors
 
-        windows = self.windows_for_payload(boss, window, payload_get)
-        colors: dict[str, int | None] = payload_get('colors') or {}
-        if payload_get('reset'):
+        colors: dict[str, int | None] = {}
+        tbc: TransparentBackgroundColors | None = None
+        # reset implies all and configured, enforce it here as not all clients set them
+        reset = bool(payload_get('reset'))
+        configured = reset or bool(payload_get('configured'))
+        windows = list(boss.all_windows) if reset else self.windows_for_payload(boss, window, payload_get)
+        if reset:
             colors = {k: None if v is None else int(v) for k, v in boss.color_settings_at_startup.items()}
-        tbc = colors.get('transparent_background_colors')
-        if tbc:
-            from kitty.options.utils import transparent_background_colors
-
-            parsed_tbc = transparent_background_colors(str(tbc))
+            tbc = boss.transparent_background_colors_at_startup
         else:
-            parsed_tbc = ()
-        patch_colors(colors, parsed_tbc, bool(payload_get('configured')), windows=windows)
+            payload_colors: dict[str, int | str | None] = payload_get('colors') or {}
+            for k, v in payload_colors.items():
+                if k == 'transparent_background_colors':
+                    tbc = self.parse_transparent_background_colors(v)
+                elif isinstance(v, str):
+                    raise RemoteControlErrorWithoutTraceback(f'The color {k} must be an integer or null, not a string')
+                else:
+                    colors[k] = v
+        patch_colors(colors, tbc, configured, windows=windows)
         return None
+
+    def parse_transparent_background_colors(self, spec: int | str | None) -> 'TransparentBackgroundColors':
+        from kitty.options.utils import transparent_background_colors
+
+        if not isinstance(spec, str):
+            raise RemoteControlErrorWithoutTraceback('transparent_background_colors must be a string')
+        try:
+            return transparent_background_colors(spec)
+        except ValueError as err:
+            raise RemoteControlErrorWithoutTraceback(f'Invalid transparent_background_colors: {spec!r} with error: {err}') from err
 
 
 set_colors = SetColors()

@@ -127,6 +127,15 @@ class TestConfParsing(BaseTest):
                 self.ae(actual.get('transparent_background_colors', ()), expected)
                 self.ae(actual['foreground'], 0xFF0000)
 
+        # colors that do not mention transparent_background_colors must leave existing ones unchanged
+        window = Window.__new__(Window)
+        window.screen = self.create_screen()
+        apply_colors(window, ('transparent_background_colors=#ffffff@0.5',))
+        apply_colors(window, ('foreground=red',))
+        self.ae(window.screen.color_profile.as_dict().get('transparent_background_colors', ()), ((Color(255, 255, 255), 0.5),))
+        apply_colors(window, ('transparent_background_colors=',))
+        self.ae(window.screen.color_profile.as_dict().get('transparent_background_colors', ()), ())
+
 
 def cli_parsing(self):
     from kitty.cli import CLIOptions, Options, parse_cmdline, parse_option_spec

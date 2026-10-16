@@ -57,6 +57,47 @@ class TestRemoteControl(BaseTest):
 
         setter.assert_called_once_with(11, '')
 
+    def test_set_colors_transparent_background_colors(self):
+        from kitty.fast_data_types import Color
+        from kitty.rc.base import RemoteControlErrorWithoutTraceback, parse_subcommand_cli
+        from kitty.remote_control import parse_rc_args
+
+        cmd = command_for_name('set-colors')
+
+        def payload(*args: str):
+            opts, items = parse_subcommand_cli(cmd, ['set-colors'] + list(args))
+            return cmd.message_to_kitty(parse_rc_args([])[0], opts, items)
+
+        # omitted means leave unchanged, explicitly empty means clear
+        self.assertNotIn('transparent_background_colors', payload('foreground=red')['colors'])
+        self.ae(payload('transparent_background_colors=')['colors']['transparent_background_colors'], '')
+        self.ae(payload('transparent_background_colors=red@0.5')['colors']['transparent_background_colors'], '#ff0000@0.5')
+
+        windows = [Window(1, 11)]
+        boss = Boss(windows)
+        boss.color_settings_at_startup = {'foreground': Color(1, 2, 3)}
+        boss.transparent_background_colors_at_startup = ((Color(0, 0, 0), 0.25),)
+
+        def response(p):
+            with patch('kitty.colors.patch_colors') as patcher:
+                cmd.response_from_kitty(boss, windows[0], PayloadGetter(cmd, p))
+            patcher.assert_called_once()
+            return patcher.call_args.args
+
+        self.ae(response({'colors': {'foreground': 0xFF0000}}), ({'foreground': 0xFF0000}, None, False))
+        colors = {'foreground': 0xFF0000, 'transparent_background_colors': 'red@0.5'}
+        self.ae(response({'colors': colors, 'configured': True}), ({'foreground': 0xFF0000}, ((Color(255, 0, 0), 0.5),), True))
+        self.ae(colors['transparent_background_colors'], 'red@0.5')  # payload must not be mutated
+        self.ae(response({'colors': {'transparent_background_colors': ''}}), ({}, (), False))
+        # reset implies configured even when the client does not set it
+        self.ae(
+            response({'colors': {'transparent_background_colors': 'red@0.5'}, 'reset': True}),
+            ({'foreground': int(Color(1, 2, 3))}, ((Color(0, 0, 0), 0.25),), True),
+        )
+        for bad in (0, 'not-a-color@0.5'):
+            with self.subTest(bad=bad), self.assertRaises(RemoteControlErrorWithoutTraceback):
+                response({'colors': {'transparent_background_colors': bad}})
+
 
 TALK_THREAD_SURVIVES_ACCEPT_ERROR = """
 import os, socket, sys, time

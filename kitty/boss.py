@@ -429,6 +429,7 @@ class Boss:
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.color_settings_at_startup: dict[str, Color | None] = {k: opts[k] for k in opts if isinstance(opts[k], Color) or k in nullable_colors}
+        self.transparent_background_colors_at_startup = opts.transparent_background_colors
         self.current_visual_select: VisualSelect | None = None
         # A list of events received so far that are potentially part of a sequence keybinding.
         self.cached_values = cached_values

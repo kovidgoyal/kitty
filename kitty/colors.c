@@ -428,8 +428,11 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     PyObject *spec, *transparent_background_colors, *profiles, *v;
     ColorProfile *self;
     int change_configured;
-    if (!PyArg_ParseTuple(args, "O!O!O!p", &PyDict_Type, &spec, &PyTuple_Type, &transparent_background_colors, &PyTuple_Type, &profiles, &change_configured))
+    if (!PyArg_ParseTuple(args, "O!OO!p", &PyDict_Type, &spec, &transparent_background_colors, &PyTuple_Type, &profiles, &change_configured)) return NULL;
+    if (transparent_background_colors != Py_None && !PyTuple_Check(transparent_background_colors)) {
+        PyErr_SetString(PyExc_TypeError, "transparent_background_colors must be a tuple or None");
         return NULL;
+    }
     char key[32] = {0};
     bool has_null_values = false;
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
@@ -476,10 +479,13 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     S(visual_bell_color, visual_bell_color);
 #undef SI
 #undef S
-    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {
-        self = (ColorProfile *)PyTuple_GET_ITEM(profiles, i);
-        set_transparent_background_colors(self->overriden_transparent_colors, transparent_background_colors);
-        if (change_configured) set_transparent_background_colors(self->configured_transparent_colors, transparent_background_colors);
+    // None means the transparent colors were not specified, so leave them unchanged
+    if (transparent_background_colors != Py_None) {
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {
+            self = (ColorProfile *)PyTuple_GET_ITEM(profiles, i);
+            set_transparent_background_colors(self->overriden_transparent_colors, transparent_background_colors);
+            if (change_configured) set_transparent_background_colors(self->configured_transparent_colors, transparent_background_colors);
+        }
     }
 
     if (has_null_values) {

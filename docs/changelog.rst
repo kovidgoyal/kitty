@@ -457,6 +457,12 @@ Detailed list of changes
   on the user. Shown in the tab bar via a new :code:`tab.program_status` field
   for :opt:`tab_title_template`, see :ref:`program_status`
 
+- Remote control: Fix :ref:`at-set-colors` and :option:`launch --color` clearing
+  :opt:`transparent_background_colors` when changing other colors, fix an error
+  when setting them with :option:`kitten @ set-colors --configured` and fix
+  :option:`kitten @ set-colors --reset` not restoring them and not resetting all
+  windows and the configured colors when used from the command line
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
