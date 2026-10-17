@@ -60,7 +60,7 @@ as well.
             layouts = parse_layout_names(a)
         except ValueError as err:
             self.fatal(str(err))
-        return {'layouts': layouts, 'match': opts.match}
+        return {'layouts': layouts, 'match': opts.match, 'configured': opts.configured}
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         tabs = self.tabs_for_match_payload(boss, window, payload_get)
