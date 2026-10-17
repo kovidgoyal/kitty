@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2026 Kovid Goyal <kovid at kovidgoyal.net>
 
+import io
 import os
 import subprocess
 import tempfile
@@ -37,6 +38,25 @@ class Boss:
 
 
 class TestRemoteControl(BaseTest):
+    def test_run_stdin_completion(self):
+        from kitty.boss import Boss as KittyBoss
+
+        command = command_for_name('run')
+        for is_tty, data in ((False, b''), (False, b'hello'), (False, b'\x00\xff' * 4097), (True, b'')):
+            with self.subTest(is_tty=is_tty, size=len(data)):
+                stdin = Mock(buffer=io.BytesIO(data))
+                stdin.isatty.return_value = is_tty
+                boss = Mock()
+                with patch('kitty.rc.run.sys.stdin', stdin), patch.object(command, 'create_async_responder'):
+                    KittyBoss.call_remote_control(boss, None, ('run', 'cat'))
+                    for call in boss.run_background_process.call_args_list:
+                        call.kwargs['notify_on_death'](0, None)
+
+                boss.run_background_process.assert_called_once()
+                call = boss.run_background_process.call_args
+                self.ae(call.args[0], ['cat'])
+                self.ae(call.kwargs['stdin'], data)
+
     def test_set_enabled_layouts_configured(self):
         from kitty.boss import Boss as KittyBoss
 

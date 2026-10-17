@@ -91,6 +91,8 @@ The executed program will have privileges to run remote control commands in kitt
                         break
                     ret['data'] = standard_b64encode(data).decode('ascii')
                     yield ret
+                ret['data'] = ''
+                yield ret
 
         return pipe()
 

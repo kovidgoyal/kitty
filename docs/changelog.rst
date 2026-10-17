@@ -503,6 +503,9 @@ Detailed list of changes
 - Remote control: Fix ``ls --self`` and ``ls --output-format`` being ignored
   when used in a :ac:`remote_control` mapping.
 
+- Remote control: Fix ``run`` not executing commands from
+  :ac:`remote_control` mappings when standard input is not a terminal.
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
