@@ -139,5 +139,8 @@ func (self *Command) parse_args(ctx *Context, args []string) error {
 			expecting_arg_for = nil
 		}
 	}
+	if expecting_arg_for != nil {
+		return &ParseError{Option: expecting_arg_for, Message: fmt.Sprintf("The option: :yellow:`%s` requires a value", expecting_arg_for.seen_option)}
+	}
 	return nil
 }
