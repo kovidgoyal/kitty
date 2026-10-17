@@ -51,6 +51,20 @@ class TestRemoteControl(BaseTest):
                 boss.active_tab.set_enabled_layouts.assert_called_once_with(['stack'])
                 self.ae(options.enabled_layouts, ['stack'] if configured else ['tall'])
 
+    def test_ls_self_and_output_format(self):
+        from kitty.boss import Boss as KittyBoss
+
+        self_window = Mock()
+        boss = Mock(list_os_windows=Mock(return_value=[]), serialize_state_as_session=Mock(return_value=['a', 'b']))
+        self.ae(KittyBoss.call_remote_control(boss, None, ('ls', '--output-format', 'session')), 'a\nb')
+        boss.list_os_windows.assert_not_called()
+
+        KittyBoss.call_remote_control(boss, self_window, ('ls', '--self'))
+        window_filter = boss.list_os_windows.call_args.args[2]
+        self.assertIsNotNone(window_filter)
+        self.assertTrue(window_filter(self_window))
+        self.assertFalse(window_filter(Mock()))
+
     def test_set_os_window_title_command_is_registered(self):
         self.assertIn('set_os_window_title', all_command_names())
         self.ae(command_for_name('set-os-window-title').name, 'set-os-window-title')

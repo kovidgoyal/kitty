@@ -500,6 +500,9 @@ Detailed list of changes
 - Remote control: Fix ``set-enabled-layouts --configured`` not updating the
   default layouts for new tabs when used in a :ac:`remote_control` mapping.
 
+- Remote control: Fix ``ls --self`` and ``ls --output-format`` being ignored
+  when used in a :ac:`remote_control` mapping.
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

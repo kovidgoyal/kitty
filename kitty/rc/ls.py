@@ -58,7 +58,13 @@ Output in JSON or kitty session format
     )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'all_env_vars': opts.all_env_vars, 'match': opts.match, 'match_tab': opts.match_tab}
+        return {
+            'all_env_vars': opts.all_env_vars,
+            'match': opts.match,
+            'match_tab': opts.match_tab,
+            'self': opts.self,
+            'output_format': opts.output_format,
+        }
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         tab_filter: Callable[[Tab], bool] | None = None
