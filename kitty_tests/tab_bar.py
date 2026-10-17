@@ -195,7 +195,7 @@ class TestTabBar(BaseTest):
         self.ae(tb.tab_id_at(5, 110), 1)
         self.ae(tb.tab_id_at(5, 150), 2)
 
-    def vertical_tab_bar(self, num_tabs: int = 2, height: int = 160, **opts: object) -> TabBar:
+    def vertical_tab_bar(self, num_tabs: int = 2, height: int = 160, width: int = 120, **opts: object) -> TabBar:
         self.set_options(
             {
                 'tab_bar_edge': LEFT_EDGE,
@@ -204,8 +204,8 @@ class TestTabBar(BaseTest):
                 **opts,
             }
         )
-        central = region(120, 0, 400, height)
-        tab_bar = region(0, 0, 120, height)
+        central = region(width, 0, 400, height)
+        tab_bar = region(0, 0, width, height)
         with (
             patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
             patch('kitty.tab_bar.viewport_for_window', return_value=(central, tab_bar, 400, height, 10, 20)),
@@ -220,6 +220,14 @@ class TestTabBar(BaseTest):
     def screen_lines(self, tb: TabBar) -> list[str]:
         s = tb.screen
         return [str(s.line(i)).rstrip() for i in range(s.lines)]
+
+    def test_vertical_tab_bar_narrow_powerline(self) -> None:
+        # A short title fits in a narrow vertical tab bar, since the separator
+        # is drawn in a column of its own
+        sep = powerline_symbols['round'][0]
+        tb = self.vertical_tab_bar(width=40, tab_bar_style='powerline', tab_powerline_style='round', tab_title_template='{index}', tab_title_max_length=1)
+        self.ae(tb.screen.columns, 4)
+        self.ae(self.screen_lines(tb)[:3], [f' 1 {sep}', '', f' 2 {sep}'])
 
     def test_vertical_tab_bar_multiline_titles(self) -> None:
         # newlines are ignored unless tab_title_max_lines allows them, and the

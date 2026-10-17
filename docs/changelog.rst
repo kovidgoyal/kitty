@@ -265,6 +265,10 @@ Detailed list of changes
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
+- Vertical tab bars: When :opt:`tab_title_max_length` is set, size the tab bar
+  to fit the decorations of the current :opt:`tab_bar_style` rather than always
+  adding eight cells, allowing much narrower tab bars (:iss:`10680`)
+
 
 - quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
   option to run a program in a new tab or window of an already running quick

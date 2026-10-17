@@ -2364,7 +2364,10 @@ opt(
 The maximum number of cells that can be used to render the text in a tab.
 A value of zero means that no limit is applied. For vertical tab bars, kitty
 uses a default sidebar width sized for about twenty title cells when this is
-left unset.
+left unset. When it is set, the sidebar is made just wide enough to fit titles
+of this length along with the decorations drawn by :opt:`tab_bar_style`. With
+the :code:`fade` style, use fewer values in :opt:`tab_fade` for a narrower
+sidebar.
 """,
 )
 

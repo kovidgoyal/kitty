@@ -655,9 +655,11 @@ def draw_tab_with_powerline(
         needs_soft_separator = False
 
     separator_symbol, soft_separator_symbol = powerline_symbols.get(draw_data.powerline_style, ('', ''))
-    min_title_length = 1 + 2
-    start_draw = 2
     is_vertical = draw_data.tab_bar_edge in ('left', 'right')
+    # Vertical tabs draw their separator in a column of its own, so they need
+    # room only for the leading space and a single character of the title.
+    min_title_length = 1 if is_vertical else 1 + 2
+    start_draw = 2
     first_row = screen.cursor.y
 
     if screen.cursor.x == 0:

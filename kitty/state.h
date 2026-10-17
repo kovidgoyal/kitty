@@ -155,6 +155,9 @@ typedef struct Options {
         size_t count;
     } detect_url_regex;
     bool tab_bar_hidden;
+    struct {
+        unsigned padding, min_cols;
+    } vertical_tab_bar;
     double font_size;
     struct {
         double outer, inner;
