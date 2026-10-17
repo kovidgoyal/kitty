@@ -504,7 +504,8 @@ Detailed list of changes
   when used in a :ac:`remote_control` mapping.
 
 - Remote control: Fix ``run`` not executing commands from
-  :ac:`remote_control` mappings when standard input is not a terminal.
+  :ac:`remote_control` mappings when kitty's standard input is not a terminal.
+  The mapping no longer reads kitty's own standard input.
 
 
 0.49.2 [2026-10-01]

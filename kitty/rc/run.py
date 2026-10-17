@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-import sys
 from base64 import standard_b64decode, standard_b64encode
 from typing import TYPE_CHECKING
 
@@ -12,7 +11,6 @@ from kitty.types import AsyncResponse
 from .base import (
     ArgsType,
     Boss,
-    CmdGenerator,
     ParsingOfArgsFailed,
     PayloadGetType,
     PayloadType,
@@ -80,21 +78,9 @@ The executed program will have privileges to run remote control commands in kitt
             'data': '',
         }
 
-        def pipe() -> CmdGenerator:
-            if sys.stdin.isatty():
-                yield ret
-            else:
-                limit = 4096
-                while True:
-                    data = sys.stdin.buffer.read(limit)
-                    if not data:
-                        break
-                    ret['data'] = standard_b64encode(data).decode('ascii')
-                    yield ret
-                ret['data'] = ''
-                yield ret
-
-        return pipe()
+        # This is only used for remote_control mappings, where there is no
+        # meaningful STDIN to forward (the kitten @ client is implemented in Go)
+        return ret
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         import os
