@@ -37,6 +37,27 @@ class Boss:
 
 
 class TestRemoteControl(BaseTest):
+    def test_select_window_excludes_only_window(self):
+        from kitty.boss import Boss as KittyBoss
+
+        command = command_for_name('select-window')
+        for other_ids, exclude_active in ((set(), True), (set(), False), ({2}, True)):
+            with self.subTest(other_ids=other_ids, exclude_active=exclude_active):
+                tab = Mock(all_window_ids_except_active_window=other_ids)
+                boss = Mock(active_tab=tab)
+                args = ('select-window',) + (('--exclude-active',) if exclude_active else ())
+                with patch.object(command, 'create_async_responder') as create_responder:
+                    KittyBoss.call_remote_control(boss, None, args)
+                responder = create_responder.return_value
+                if exclude_active and not other_ids:
+                    boss.visual_window_select_action.assert_not_called()
+                    responder.send_error.assert_called_once_with('No window selected')
+                    responder.send_data.assert_not_called()
+                else:
+                    boss.visual_window_select_action.assert_called_once()
+                    self.ae(boss.visual_window_select_action.call_args.kwargs['only_window_ids'], other_ids if exclude_active else set())
+                    responder.send_error.assert_not_called()
+
     def test_run_mapping_ignores_stdin(self):
         from kitty.boss import Boss as KittyBoss
 

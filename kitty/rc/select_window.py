@@ -80,6 +80,9 @@ be refocused.
             if tab:
                 if payload_get('exclude_active'):
                     wids = tab.all_window_ids_except_active_window
+                    if not wids:
+                        callback(None, None)
+                        break
                 else:
                     wids = set()
                 boss.visual_window_select_action(
