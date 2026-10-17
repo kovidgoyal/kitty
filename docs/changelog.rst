@@ -497,6 +497,9 @@ Detailed list of changes
 - Remote control: Fix :option:`kitten @ send-key --exclude-active` sending keys
   to the active window instead of excluding it.
 
+- Remote control: Fix ``set-enabled-layouts --configured`` not updating the
+  default layouts for new tabs when used in a :ac:`remote_control` mapping.
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
