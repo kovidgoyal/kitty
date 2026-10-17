@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -31,6 +32,33 @@ type options struct {
 	Float           float64
 	List            []string
 	ListWithDefault []string
+}
+
+func TestCLIRequiredOptionValues(t *testing.T) {
+	for _, typ := range []string{"string", "int", "float", "list", "choices"} {
+		for _, alias := range []string{"--value", "-v"} {
+			for _, child := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/child=%t", typ, alias, child), func(t *testing.T) {
+					root := NewRootCommand()
+					spec := OptionSpec{Name: "--value -v", Type: typ, Depth: 1}
+					if typ == "choices" {
+						spec.Choices = "a,b"
+					}
+					root.Add(spec)
+					args := []string{"test"}
+					if child {
+						root.AddSubCommand(&Command{Name: "child"})
+						args = append(args, "child")
+					}
+					_, err := root.ParseArgs(append(args, alias))
+					var pe *ParseError
+					if !errors.As(err, &pe) || !strings.Contains(pe.Error(), alias) {
+						t.Fatalf("Expected missing-value error for %s, got %v", alias, err)
+					}
+				})
+			}
+		}
+	}
 }
 
 func TestCLIParsing(t *testing.T) {
