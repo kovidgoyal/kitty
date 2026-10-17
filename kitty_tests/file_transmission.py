@@ -621,7 +621,7 @@ class TestFileTransmission(BaseTest):
         os.remove(os.path.join(dest, 'sym'))
         shutil.rmtree(os.path.join(dest, 'sub'))
 
-    def test_transfer_receive_empty_file(self):
+    def test_transfer_receive_empty_file(self) -> None:
         self.direction_receive = True
         src = Path(self.tdir) / 'empty'
         src.write_bytes(b'')
