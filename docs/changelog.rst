@@ -511,6 +511,12 @@ Detailed list of changes
   :ac:`remote_control` mappings when kitty's standard input is not a terminal.
   The mapping no longer reads kitty's own standard input.
 
+- :ac:`detach_tab`: Show custom OS Window titles and tab titles in the OS
+  Window chooser
+
+- :option:`launch --os-window-title`: Fix the value :code:`current` not copying
+  a fixed title set with :option:`kitty --title`
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1485,8 +1485,10 @@ PYWRAP1(set_os_window_title) {
 
 PYWRAP1(get_os_window_title) {
     id_type os_window_id;
-    PA("K", &os_window_id);
+    int only_if_overridden = 0;
+    PA("K|p", &os_window_id, &only_if_overridden);
     WITH_OS_WINDOW(os_window_id)
+    if (only_if_overridden && !os_window->disallow_title_changes && !os_window->title_is_overriden) break;
     if (os_window->window_title) return Py_BuildValue("O", os_window->window_title);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;

@@ -1508,7 +1508,7 @@ def send_data_to_peer(peer_id: int, data: Union[str, bytes], is_async_response: 
 def set_os_window_title(os_window_id: int, title: str) -> None:
     pass
 
-def get_os_window_title(os_window_id: int) -> Optional[str]:
+def get_os_window_title(os_window_id: int, only_if_overridden: bool = False) -> Optional[str]:
     pass
 
 def update_ime_position_for_window(window_id: int, force: bool = False, update_focus: int = 0) -> bool:
