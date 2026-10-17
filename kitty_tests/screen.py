@@ -13,6 +13,21 @@ from .base import BaseTest, draw_multicell, parse_bytes
 
 
 class TestScreen(BaseTest):
+    def test_wide_character_after_scaled_text_collision(self) -> None:
+        for lines in (2, 4):
+            with self.subTest(lines=lines):
+                s = self.create_screen(cols=4, lines=lines)
+                s.cursor_position(1, 2)
+                draw_multicell(s, 'X', scale=2)
+                lower_row = str(s.line(1))
+                s.cursor_position(2, 1)
+                s.draw('界')
+                row = min(2, lines - 1)
+                self.ae((s.cursor.x, s.cursor.y), (2, row))
+                self.ae(str(s.line(row)), '界')
+                if lines == 4:
+                    self.ae(str(s.line(1)), lower_row)
+
     def test_draw_fast(self):
         s = self.create_screen()
 
