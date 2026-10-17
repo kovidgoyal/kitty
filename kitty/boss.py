@@ -97,6 +97,7 @@ from .fast_data_types import (
     get_boss,
     get_options,
     get_os_window_size,
+    get_os_window_title,
     get_tab_being_dragged,
     get_window_being_dragged,
     glfw_get_monitor_workarea,
@@ -4006,7 +4007,7 @@ class Boss:
         ct = self.active_tab_manager_with_dispatch
         for osw_id, tm in self.os_window_map.items():
             if tm is not ct and tm.active_tab:
-                items.append((osw_id, tm.active_tab.title))
+                items.append((osw_id, get_os_window_title(osw_id) or tm.active_tab.effective_title))
         items.append(('new', 'New OS Window'))
         w = self.window_for_dispatch or self.active_window
         target_tab = w.tabref() if w else None

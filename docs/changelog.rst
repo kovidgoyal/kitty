@@ -507,6 +507,9 @@ Detailed list of changes
   :ac:`remote_control` mappings when kitty's standard input is not a terminal.
   The mapping no longer reads kitty's own standard input.
 
+- Fix the OS Window chooser for :ac:`detach_tab` not showing custom OS Window
+  titles
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
