@@ -1480,6 +1480,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 if (second->y) {
                     self->cursor->x++;
                     move_cursor_past_multicell(self, 2);
+                    init_text_loop_line(self, s);
                     fc = s->cp + self->cursor->x;
                     second = fc + 1;
                 } else nuke_multicell_char_at(self, self->cursor->x + 1, self->cursor->y, true);

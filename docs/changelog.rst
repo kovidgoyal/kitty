@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Fix wide characters being drawn on the wrong row when colliding with
+  multiple sized text
+
 - Fix changing text marker colors at runtime, for example with
   :code:`kitten @ set-colors` or automatic dark/light theme switching, applying
   the colors of each marker to the next one, with changes to ``mark3`` having
