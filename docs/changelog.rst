@@ -231,6 +231,8 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Fix cursor position reports returning the wrong row in origin mode
+
 - macOS: A new option :opt:`restore_session_after_logout` to save the state of
   every kitty instance, including the scrollback of every window, encrypted with
   a key in the keychain, when logging out, restarting or shutting down the

@@ -3284,7 +3284,7 @@ report_device_status(Screen *self, unsigned int which, bool private) {
                     y++;
                 } else x--;
             }
-            if (self->modes.mDECOM) y -= MAX(y, self->margin_top);
+            if (self->modes.mDECOM) y -= MIN(y, self->margin_top);
             // 1-based indexing
             int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%uR", (private ? "?" : ""), y + 1, x + 1);
             if (sz > 0) write_escape_code_to_child(self, ESC_CSI, buf);
