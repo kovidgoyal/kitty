@@ -621,6 +621,20 @@ class TestFileTransmission(BaseTest):
         os.remove(os.path.join(dest, 'sym'))
         shutil.rmtree(os.path.join(dest, 'sub'))
 
+    def test_transfer_receive_empty_file(self):
+        self.direction_receive = True
+        src = Path(self.tdir) / 'empty'
+        src.write_bytes(b'')
+        dest = Path(self.tdir) / 'dest'
+        for previous, args in ((None, []), (b'old contents', []), (b'x' * 8192, ['--transmit-deltas'])):
+            with self.subTest(previous_size=None if previous is None else len(previous), args=args):
+                dest.unlink(missing_ok=True)
+                if previous is not None:
+                    dest.write_bytes(previous)
+                with self.run_kitten([*args, str(src), str(dest)]) as pty:
+                    pty.wait_till_child_exits(require_exit_code=0)
+                self.ae(dest.read_bytes(), b'')
+
     def test_transfer_receive(self):
         self.direction_receive = True
         self.basic_transfer_tests()
