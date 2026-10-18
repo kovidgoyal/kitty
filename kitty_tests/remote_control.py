@@ -46,15 +46,19 @@ class TestRemoteControl(BaseTest):
         self.set_options()
         for action in ('goto_tab not-a-number', 'set_font_size invalid', 'unknown_action argument', 'goto_tab 1'):
             with self.subTest(action=action):
-                boss = Mock(active_window=None, window_for_dispatch=None, dispatch_action=Mock(return_value=True))
+                boss = Mock(spec=KittyBoss, active_window=None, window_for_dispatch=None, dispatch_action=Mock(return_value=True))
                 boss.combine = MethodType(KittyBoss.combine, boss)
                 request = {'cmd': 'action', 'version': [0, 26, 0], 'payload': {'action': action}}
                 if action == 'goto_tab 1':
                     self.ae(handle_cmd(boss, None, request, 0, None), {'ok': True})
                     boss.dispatch_action.assert_called_once()
                 else:
-                    with self.assertRaises(RemoteControlErrorWithoutTraceback):
+                    with self.assertRaises(RemoteControlErrorWithoutTraceback) as cm:
                         handle_cmd(boss, None, request, 0, None)
+                    msg = str(cm.exception)
+                    self.assertTrue(msg.startswith(f'Failed to parse action: {action}: '), msg)
+                    if action == 'unknown_action argument':
+                        self.ae(msg, f'Failed to parse action: {action}: Unknown action: unknown_action')
                     boss.dispatch_action.assert_not_called()
                 boss.show_error.assert_not_called()
 
@@ -62,7 +66,7 @@ class TestRemoteControl(BaseTest):
         from kitty.boss import Boss as KittyBoss
 
         self.set_options()
-        boss = Mock()
+        boss = Mock(spec=KittyBoss)
         self.assertTrue(KittyBoss.combine(boss, 'goto_tab not-a-number'))
         boss.show_error.assert_called_once()
         boss.dispatch_action.assert_not_called()

@@ -524,7 +524,7 @@ Detailed list of changes
   silently ignoring them (:pull:`10687`)
 
 - Remote control: Fix :ref:`at-action` reporting success when the action's
-  arguments cannot be parsed.
+  arguments cannot be parsed (:pull:`10688`)
 
 
 0.49.2 [2026-10-01]

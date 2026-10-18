@@ -2106,9 +2106,11 @@ class Boss:
             try:
                 actions = get_options().alias_map.resolve_aliases(action_definition, MapType.MAP if dispatch_type == 'KeyPress' else MapType.MOUSE_MAP)
             except Exception as e:
+                # str() of a KeyError is the repr of its message, so use the message directly
+                msg = e.args[0] if isinstance(e, KeyError) and e.args else str(e)
                 if raise_error:
-                    raise
-                self.show_error('Failed to parse action', f'{action_definition}\n{e}')
+                    raise ValueError(f'Failed to parse action: {action_definition}: {msg}') from e
+                self.show_error('Failed to parse action', f'{action_definition}\n{msg}')
                 return True
             if actions:
                 window_for_dispatch = window_for_dispatch or self.window_for_dispatch
