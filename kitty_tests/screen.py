@@ -28,6 +28,28 @@ class TestScreen(BaseTest):
                 if lines == 4:
                     self.ae(str(s.line(1)), lower_row)
 
+    def test_wide_collision_at_scroll_margin(self) -> None:
+        for alternate in (False, True):
+            with self.subTest(alternate=alternate):
+                s = self.create_screen(cols=4, lines=6)
+                if alternate:
+                    s.toggle_alt_screen()
+                s.draw('top')
+                s.cursor_position(6, 1)
+                s.draw('last')
+                parse_bytes(s, b'\x1b[2;4r')
+                s.cursor_position(3, 2)
+                draw_multicell(s, 'X', scale=2)
+                s.cursor_position(4, 1)
+                s.select_graphic_rendition(31)
+                s.draw('界\u0301a')
+                self.ae((s.cursor.x, s.cursor.y), (3, 3))
+                self.ae(str(s.line(3)), '界\u0301a')
+                self.ae(str(s.line(0)), 'top')
+                self.ae(str(s.line(5)), 'last')
+                for x in (0, 1, 2):
+                    self.ae(s.line(3).cursor_from(x).fg, (1 << 8) | 1)
+
     def test_draw_fast(self):
         s = self.create_screen()
 
