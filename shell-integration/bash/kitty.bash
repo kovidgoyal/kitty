@@ -45,6 +45,10 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
                     builtin command sudo TERMINFO="$TERMINFO" "$@";
                 fi
             }
+            run0() {
+                # Ensure terminfo is available in run0, --setenv=NAME copies NAME from the current env
+                builtin command run0 --setenv=TERMINFO "$@";
+            }
     fi
 
     if [[ "$kitty_bash_inject" == *"posix"* ]]; then
