@@ -186,6 +186,16 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
     end
 
+    # Same as above for run0
+    if not contains "no-sudo" $_ksi
+        and test -n "$TERMINFO" -a "file" = (type -t run0 2> /dev/null || echo "x")
+        and not test -r "/usr/share/terminfo/x/xterm-kitty" -o -r "/usr/share/terminfo/78/xterm-kitty"
+        # Ensure terminfo is available in run0, --setenv=NAME copies NAME from the current env
+        function run0
+            command run0 --setenv=TERMINFO $argv
+        end
+    end
+
     # Handle clone launches
     if test -n "$KITTY_IS_CLONE_LAUNCH"
         set --local orig_conda_env "$CONDA_DEFAULT_ENV"
