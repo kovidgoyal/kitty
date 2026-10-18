@@ -232,7 +232,7 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Kittens: Reject command-line options missing their required value instead of
-  silently ignoring them
+  silently ignoring them (:pull:`10687`)
 
 - Custom shaders: New :code:`cursor-trail-railgun`, :code:`cursor-trail-torpedo`
   and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
