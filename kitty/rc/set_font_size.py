@@ -39,8 +39,8 @@ the font size for any newly created OS Windows in the future.
         if not args:
             self.fatal('No font size specified')
         fs = args[0]
-        inc = fs[0] if fs and fs[0] in '+-' else None
-        return {'size': abs(float(fs)), 'all': opts.all, 'increment_op': inc}
+        inc = fs[0] if fs and fs[0] in '+-*/' else None
+        return {'size': abs(float(fs[1:] if inc else fs)), 'all': opts.all, 'increment_op': inc}
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         boss.change_font_size(payload_get('all'), payload_get('increment_op'), payload_get('size') or 0)

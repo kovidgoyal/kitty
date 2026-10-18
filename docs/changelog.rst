@@ -538,6 +538,9 @@ Detailed list of changes
   via :program:`run0`, similar to what is already done for :program:`sudo`
   (:pull:`10692`)
 
+- Remote control: Fix ``set-font-size`` rejecting multiplication and division
+  when used in a :ac:`remote_control` mapping.
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

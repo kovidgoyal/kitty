@@ -38,6 +38,24 @@ class Boss:
 
 
 class TestRemoteControl(BaseTest):
+    def test_set_font_size_mapping(self):
+        from kitty.boss import Boss as KittyBoss
+
+        for all_windows in (False, True):
+            for value, operation, size in (
+                ('12.5', None, 12.5),
+                ('0', None, 0.0),
+                ('+2', '+', 2.0),
+                ('-2', '-', 2.0),
+                ('*1.5', '*', 1.5),
+                ('/2', '/', 2.0),
+            ):
+                with self.subTest(all_windows=all_windows, value=value):
+                    boss = Mock(spec=KittyBoss)
+                    args = ('set-font-size',) + (('--all',) if all_windows else ()) + ('--', value)
+                    KittyBoss.call_remote_control(boss, None, args)
+                    boss.change_font_size.assert_called_once_with(all_windows, operation, size)
+
     def test_action_parse_errors(self):
         from kitty.boss import Boss as KittyBoss
         from kitty.rc.base import RemoteControlErrorWithoutTraceback
