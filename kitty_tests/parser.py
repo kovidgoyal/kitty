@@ -1013,19 +1013,6 @@ class TestParser(BaseTest):
         self.ae(c.wtcbuf, b'\x1b[?2033;1$y')
         pb('\033[?2033l', ('screen_reset_mode', 2033, 1))
 
-    def test_cursor_position_report_origin_mode(self) -> None:
-        s = self.create_screen(cols=10, lines=10)
-        for top in (1, 3):
-            for origin in (False, True):
-                parse_bytes(s, f'\033[{top};8r\033[?6{"h" if origin else "l"}'.encode())
-                for row in (1, 4):
-                    parse_bytes(s, f'\033[{row};5H'.encode())
-                    for private in ('', '?'):
-                        with self.subTest(top=top, origin=origin, row=row, private=private):
-                            s.callbacks.clear()
-                            parse_bytes(s, f'\033[{private}6n'.encode())
-                            self.ae(s.callbacks.wtcbuf, f'\033[{private}{row};5R'.encode())
-
     def test_malformed_csi_subparam_does_not_corrupt_sgr(self):
         # Regression for #10434: \e[?:m sets is_sub_param[0]=true in the CSI
         # state. reset_csi must clear that flag so the next SGR isn't rejected.

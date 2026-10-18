@@ -3279,7 +3279,8 @@ report_device_status(Screen *self, unsigned int which, bool private) {
             x = self->cursor->x;
             y = self->cursor->y;
             if (x >= self->columns) {
-                if (y < self->lines - 1) {
+                // A wrap at the bottom margin scrolls the region, leaving the cursor on the same row
+                if (y < self->lines - 1 && y != self->margin_bottom) {
                     x = 0;
                     y++;
                 } else x--;

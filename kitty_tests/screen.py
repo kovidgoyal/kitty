@@ -647,6 +647,35 @@ class TestScreen(BaseTest):
         parse_bytes(s, b'\x1b[?2033l\x1b[?2033$p')  # ]]
         self.ae(c.wtcbuf, b'\x1b[?2033;2$y')  # ]
 
+    def test_cursor_position_report_origin_mode(self):
+        s = self.create_screen(cols=10, lines=10)
+
+        def report(private=''):
+            s.callbacks.clear()
+            parse_bytes(s, f'\x1b[{private}6n'.encode())  # ]
+            return s.callbacks.wtcbuf.decode()
+
+        for top in (1, 3):
+            for origin in (False, True):
+                parse_bytes(s, f'\x1b[{top};8r\x1b[?6{"h" if origin else "l"}'.encode())  # ]]
+                for row in (1, 4):
+                    parse_bytes(s, f'\x1b[{row};5H'.encode())  # ]
+                    for private in ('', '?'):
+                        with self.subTest(top=top, origin=origin, row=row, private=private):
+                            self.ae(report(private), f'\x1b[{private}{row};5R')  # ]
+        # cursor addressing is clamped to the bottom margin in origin mode
+        parse_bytes(s, b'\x1b[3;8r\x1b[?6h\x1b[99;5H')  # ]]]
+        self.ae(report(), '\x1b[6;5R')  # ]
+        # pending wrap at the bottom margin stays on the same row
+        parse_bytes(s, b'\x1b[6;10Hx')  # ]
+        self.ae(report(), '\x1b[6;10R')  # ]
+        # pending wrap inside the region moves to the start of the next row
+        parse_bytes(s, b'\x1b[2;10Hx')  # ]
+        self.ae(report(), '\x1b[3;1R')  # ]
+        # pending wrap at the bottom of the screen outside the region
+        parse_bytes(s, b'\x1b[?6l\x1b[10;10Hx')  # ]]
+        self.ae(report(), '\x1b[10;10R')  # ]
+
     def test_da1(self):
         s = self.create_screen()
         parse_bytes(s, b'\x1b[c\x1b[0c')  # ]]
