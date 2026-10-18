@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -31,6 +32,42 @@ type options struct {
 	Float           float64
 	List            []string
 	ListWithDefault []string
+}
+
+func TestCLIRequiredOptionValues(t *testing.T) {
+	for _, typ := range []string{"string", "int", "float", "list", "choices"} {
+		for _, tc := range []struct {
+			args   []string
+			option string
+		}{
+			{[]string{"--value"}, "--value"},
+			{[]string{"-v"}, "-v"},
+			{[]string{"-bv"}, "-v"},
+			{[]string{"--value", "1", "--value"}, "--value"},
+		} {
+			for _, child := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/child=%t", typ, strings.Join(tc.args, " "), child), func(t *testing.T) {
+					root := NewRootCommand()
+					root.Add(OptionSpec{Name: "--bool -b", Type: "bool-set", Depth: 1})
+					spec := OptionSpec{Name: "--value -v", Type: typ, Depth: 1}
+					if typ == "choices" {
+						spec.Choices = "1 2"
+					}
+					root.Add(spec)
+					args := []string{"test"}
+					if child {
+						root.AddSubCommand(&Command{Name: "child"})
+						args = append(args, "child")
+					}
+					_, err := root.ParseArgs(append(args, tc.args...))
+					var pe *ParseError
+					if !errors.As(err, &pe) || pe.Option == nil || !strings.Contains(pe.Error(), tc.option) || !strings.Contains(pe.Error(), "requires a value") {
+						t.Fatalf("Expected missing-value error for %s, got %v", tc.option, err)
+					}
+				})
+			}
+		}
+	}
 }
 
 func TestCLIParsing(t *testing.T) {
@@ -99,6 +136,10 @@ func TestCLIParsing(t *testing.T) {
 	rt(child1, "test child1 --set-me --simple-string=foo one", &options{SimpleString: "foo", SetMe: true}, "one")
 	rt(child1, "test child1 --set-me --simp=foo one", &options{SimpleString: "foo", SetMe: true}, "one")
 	rt(child1, "test child1 --set-me --simple-string= one", &options{SetMe: true}, "one")
+	rt(child1, "test child1 --simple-string ''", &options{})
+	rt(child1, "test child1 -bs ''", &options{SetMe: true})
+	rt(child1, "test child1 -bp", &options{SetMe: true, FromParent: 1})
+	rt(child1, "test child1 --simple-string --", &options{SimpleString: "--"})
 	rt(child1, "test child1 --int -3 --simple-s -s --float=3.3", &options{SimpleString: "-s", Int: -3, Float: 3.3})
 	rt(child1, "test child1 -bi=3 --float=3.3", &options{SetMe: true, Int: 3, Float: 3.3})
 	rt(child1, "test child1 --list -3 -p --list one", &options{FromParent: 1, List: []string{"-3", "one"}})
