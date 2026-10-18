@@ -837,3 +837,49 @@ float f() { static const float SCAN = 2; return SCAN; }
                 self.assertEqual(import_dir, tmpdir)
             finally:
                 clear_caches()
+
+    def test_custom_shader_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdir = os.path.join(tmpdir, 'pipelines')
+            os.mkdir(pdir)
+
+            def w(path: str, data: str) -> str:
+                path = os.path.join(tmpdir, path)
+                with open(path, 'w') as f:
+                    f.write(data)
+                return path
+
+            effect = w('effect.slang', '// effect shader\n')
+            w('effect.pipeline', 'startgroup\n    shaders effect\nendgroup\n')
+            notch = w('notch.slang', '// notch shader\n')
+            w('pipelines/other.slang', '// other\n')
+            orig_home = os.environ.get('HOME')
+            os.environ['HOME'] = tmpdir
+            clear_caches()
+            try:
+                # absolute paths with the extension are not extended again
+                self.assertEqual(custom_shader(effect)[0], effect)
+                self.assertEqual(custom_shader(effect[: -len('.slang')])[0], effect)
+                # ~ is expanded both at top level and inside a pipeline, even
+                # when the pipeline is in the same directory as the shader
+                self.assertEqual(custom_shader('~/effect.slang')[0], effect)
+                self.assertEqual(custom_shader('~/notch', tmpdir)[0], notch)
+                self.assertEqual(custom_shader('~/notch', pdir)[0], notch)
+                self.assertEqual(custom_shader('other', pdir)[0], os.path.join(pdir, 'other.slang'))
+                lines, pipeline_dir = pipeline_definition('~/effect')
+                self.assertEqual(pipeline_dir, tmpdir)
+                self.assertIn('    shaders effect', lines)
+                # names ending with .slang never load pipelines
+                with self.assertRaises(FileNotFoundError):
+                    pipeline_definition('~/effect.slang')
+                # builtins work with or without the extension
+                self.assertEqual(custom_shader('crt.slang')[2], custom_shader('crt')[2])
+                with self.assertRaises(FileNotFoundError) as cm:
+                    custom_shader('~/does-not-exist')
+                self.assertIn(os.path.join(tmpdir, 'does-not-exist.slang'), str(cm.exception))
+            finally:
+                if orig_home is None:
+                    os.environ.pop('HOME', None)
+                else:
+                    os.environ['HOME'] = orig_home
+                clear_caches()

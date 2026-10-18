@@ -235,6 +235,11 @@ Detailed list of changes
   and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
   cursor as it moves, in the style of neovide (:iss:`10587`)
 
+- Custom shaders: Fix shaders specified by absolute paths or paths starting
+  with :file:`~` not being found in some cases, allow specifying names with the
+  :file:`.slang` extension and look for shaders in the :file:`shaders`
+  sub-directory of the config directory as documented (:iss:`10694`)
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

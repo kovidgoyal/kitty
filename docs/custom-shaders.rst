@@ -183,15 +183,21 @@ tries to load a pipeline file with that name and if no pipeline file is found
 but a shader with that name is found instead, it is loaded with a default
 pipeline file. Loading of pipeline files takes place in the following order:
 
-#. If the specified pipeline file is an absolute path, it is loaded directly
+#. If the specified pipeline file is an absolute path, it is loaded directly.
+   A leading :file:`~` and environment variables are expanded.
 #. If a relative path it is loaded from the :file:`shaders` sub-directory
    inside the kitty config directory
 #. It is looked for amongst the custom shaders shipped with kitty
 #. A default pipeline file is constructed
 
+The :file:`.pipeline` extension is added automatically if not present. If the
+name ends with :file:`.slang`, no pipeline file is looked for and the shader is
+loaded directly, which is useful when a pipeline and a shader have the same name.
+
 The shaders that a pipeline references are first looked for in the directory
 from which the pipeline file is loaded, then they follow the same order as for
-pipeline files.
+pipeline files. For shaders, the name is first tried exactly as specified and
+then with the :file:`.slang` extension added.
 
 The shader part
 ^^^^^^^^^^^^^^^^^
@@ -300,8 +306,10 @@ Directives inside a group:
 
 ``shaders <name> [name …]``
     One or more shader names to run in order. Shaders are searched for first
-    in the :file:`shaders/` subdirectory of the kitty config directory, then
-    among the shaders shipped with kitty.
+    in the directory containing the pipeline file, then in the :file:`shaders/`
+    subdirectory of the kitty config directory, then among the shaders shipped
+    with kitty. Absolute paths, including ones starting with :file:`~`, are
+    loaded directly.
 
 ``var <type> <name> <value>``
     Same as the top-level ``var`` but scoped to this group. Merged with

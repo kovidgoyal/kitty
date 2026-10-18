@@ -22,7 +22,7 @@ from itertools import chain, product
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, TypedDict, TypeGuard
 
-from kitty.constants import read_kitty_resource, shaders_dir, slangc
+from kitty.constants import config_dir, read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
     ANIMATION_SAMPLE_WAIT,
     BGIMAGE_PROGRAM,
@@ -66,7 +66,7 @@ from kitty.fast_data_types import (
 from kitty.options.types import Options, defaults
 from kitty.options.utils import USER_ANIMATION_EVENT_PREFIX, EasingFunction, is_valid_user_animation_event_name
 from kitty.types import run_once
-from kitty.utils import lock_with_file, log_error, resolve_custom_file
+from kitty.utils import expandvars, lock_with_file, log_error
 
 
 @lru_cache(maxsize=64)
@@ -1422,65 +1422,75 @@ def key(*items: str | bytes) -> bytes:
     return h.hexdigest().encode()
 
 
-@lru_cache(maxsize=64)
-def custom_shader(name: str = '', pipeline_dir: str = '') -> tuple[str, str, bytes, bytes]:
-    import_dir = ''
-    if not name:
-        src = get_custom_shader_src('types')
-        return name, import_dir, src, key(src)
+def _expand_custom_path(name: str) -> str:
+    opts: Options | None = None
+    with suppress(RuntimeError):
+        opts = get_options()
+    return expandvars(os.path.expanduser(name), opts.env if opts else {})
 
-    found_path = ''
-    src = b''
 
-    if pipeline_dir:
-        candidate = os.path.join(pipeline_dir, f'{name}.slang')
+def _custom_file_candidates(name: str, ext: str, search_dirs: Iterable[str]) -> Iterator[str]:
+    # Exact name first, then with the extension added, so that names that
+    # already have the extension or are absolute paths work as expected
+    name = _expand_custom_path(name)
+    names = (name,) if name.endswith(ext) else (name, name + ext)
+    if os.path.isabs(name):
+        yield from names
+        return
+    seen: set[str] = set()
+    for d in search_dirs:
+        if d:
+            d = os.path.normpath(os.path.abspath(d))
+            if d not in seen:
+                seen.add(d)
+                for n in names:
+                    yield os.path.join(d, n)
+
+
+def _read_first(candidates: Iterable[str], tried: list[str]) -> tuple[str, bytes]:
+    for candidate in candidates:
+        tried.append(candidate)
         try:
             with open(candidate, 'rb') as f:
-                src = f.read()
-            found_path = os.path.abspath(candidate)
-            import_dir = os.path.dirname(found_path)
-        except FileNotFoundError:
+                return os.path.abspath(candidate), f.read()
+        except (FileNotFoundError, IsADirectoryError, NotADirectoryError):
             pass
+    return '', b''
 
-    if not found_path:
-        config_path = resolve_custom_file(f'{name}.slang')
-        config_shader_dir = os.path.dirname(os.path.abspath(config_path))
-        if not pipeline_dir or os.path.normpath(os.path.abspath(pipeline_dir)) != os.path.normpath(config_shader_dir):
-            try:
-                with open(config_path, 'rb') as f:
-                    src = f.read()
-                found_path = os.path.abspath(config_path)
-                import_dir = os.path.dirname(found_path)
-            except FileNotFoundError:
-                pass
 
-    if not found_path:
-        src = get_custom_shader_src(name)
-        return name, import_dir, src, key(src)
+def _builtin_src(reader: Callable[[str], bytes], name: str, tried: list[str]) -> bytes:
+    try:
+        return reader(name)
+    except FileNotFoundError:
+        raise FileNotFoundError(f'Could not find {name!r} amongst the builtins or at any of: {", ".join(tried)}') from None
 
-    return found_path, import_dir, src, key(src)
+
+@lru_cache(maxsize=64)
+def custom_shader(name: str = '', pipeline_dir: str = '') -> tuple[str, str, bytes, bytes]:
+    if not name:
+        src = get_custom_shader_src('types')
+        return name, '', src, key(src)
+
+    tried: list[str] = []
+    found_path, src = _read_first(_custom_file_candidates(name, '.slang', (pipeline_dir, os.path.join(config_dir, 'shaders'))), tried)
+    if found_path:
+        return found_path, os.path.dirname(found_path), src, key(src)
+    src = _builtin_src(get_custom_shader_src, name.removesuffix('.slang'), tried)
+    return name, '', src, key(src)
 
 
 @lru_cache(maxsize=64)
 def pipeline_definition(name: str) -> tuple[tuple[str, ...], str]:
-    name = os.path.expanduser(name)
-    if os.path.isabs(name):
-        pipeline_path = name if name.endswith('.pipeline') else name + '.pipeline'
-        with open(pipeline_path, 'rb') as f:
-            src = f.read()
-        return tuple(src.decode().splitlines()), os.path.dirname(os.path.abspath(pipeline_path))
-
-    filename = name if name.endswith('.pipeline') else f'{name}.pipeline'
-    path = resolve_custom_file(f'shaders/{filename}')
-    try:
-        with open(path, 'rb') as f:
-            src = f.read()
-        pipeline_dir = os.path.dirname(os.path.abspath(path))
-    except FileNotFoundError:
-        base_name = name[: -len('.pipeline')] if name.endswith('.pipeline') else name
-        src = get_custom_pipeline_src(base_name)
-        pipeline_dir = ''
-    return tuple(src.decode().splitlines()), pipeline_dir
+    if name.endswith('.slang'):
+        raise FileNotFoundError(f'{name} is a shader not a pipeline')
+    tried: list[str] = []
+    found_path, src = _read_first(
+        (c for c in _custom_file_candidates(name, '.pipeline', (os.path.join(config_dir, 'shaders'),)) if c.endswith('.pipeline')), tried
+    )
+    if found_path:
+        return tuple(src.decode().splitlines()), os.path.dirname(found_path)
+    src = _builtin_src(get_custom_pipeline_src, name.removesuffix('.pipeline'), tried)
+    return tuple(src.decode().splitlines()), ''
 
 
 class NamedTexture(StrEnum):
