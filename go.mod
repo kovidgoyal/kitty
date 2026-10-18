@@ -18,7 +18,7 @@ require (
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
 	github.com/kovidgoyal/go-shm/v2 v2.0.1
-	github.com/kovidgoyal/imaging v1.8.23
+	github.com/kovidgoyal/imaging v1.9.0
 	github.com/nwaples/rardecode/v2 v2.4.2
 	github.com/seancfoley/ipaddress-go v1.8.4
 	github.com/sgtdi/fswatcher v1.3.0
@@ -26,9 +26,9 @@ require (
 	github.com/ulikunitz/xz v0.5.17
 	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
-	golang.org/x/image v0.46.0
-	golang.org/x/sys v0.48.0
-	golang.org/x/text v0.42.0
+	golang.org/x/image v0.47.0
+	golang.org/x/sys v0.49.0
+	golang.org/x/text v0.43.0
 	howett.net/plist v1.0.1
 )
 
