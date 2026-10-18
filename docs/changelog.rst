@@ -529,6 +529,9 @@ Detailed list of changes
 - Remote control: Fix :ref:`at-action` reporting success when the action's
   arguments cannot be parsed (:pull:`10688`)
 
+- Remote control: Fix ``set-font-size`` rejecting multiplication and division
+  when used in a :ac:`remote_control` mapping.
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
