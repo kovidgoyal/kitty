@@ -512,7 +512,8 @@ Detailed list of changes
   default layouts for new tabs when used in a :ac:`remote_control` mapping.
 
 - Remote control: Fix ``ls --self`` and ``ls --output-format`` being ignored
-  when used in a :ac:`remote_control` mapping.
+  when used in a :ac:`remote_control` mapping and reject invalid sizes such as
+  ``/0`` or ``*-2`` instead of silently misinterpreting them (:pull:`10690`)
 
 - Remote control: Fix ``run`` not executing commands from
   :ac:`remote_control` mappings when kitty's standard input is not a terminal.

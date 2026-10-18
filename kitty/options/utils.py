@@ -9,6 +9,7 @@ from collections import defaultdict
 from collections.abc import Callable, Container, Iterable, Iterator, Sequence
 from contextlib import suppress
 from dataclasses import dataclass, fields
+from math import isfinite
 from typing import (
     Any,
     Generic,
@@ -259,12 +260,18 @@ def parse_change_font_size(func: str, rest: str) -> tuple[str, tuple[bool, str |
         log_error(f'Invalid change_font_size specification: {rest}, treating it as default')
         return func, (True, None, 0)
     c_all = vals[0].lower() == 'all'
+    sign, amt = parse_font_size_change(vals[1])
+    return func, (c_all, sign, amt)
+
+
+def parse_font_size_change(spec: str) -> tuple[str | None, float]:
     sign: str | None = None
-    amt = vals[1]
-    if amt[0] in '+-*/':
-        sign = amt[0]
-        amt = amt[1:]
-    return func, (c_all, sign, float(amt.strip()))
+    if spec and spec[0] in '+-*/':
+        sign, spec = spec[0], spec[1:]
+    amt = float(spec.strip())
+    if not isfinite(amt):
+        raise ValueError(f'{spec} is not a finite number')
+    return sign, amt
 
 
 @func_with_args('clear_terminal')

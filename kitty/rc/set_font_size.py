@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+from math import isfinite
 from typing import TYPE_CHECKING
 
-from .base import ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+from kitty.options.utils import parse_font_size_change
+
+from .base import ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, RemoteControlErrorWithoutTraceback, ResponseType, Window
 
 if TYPE_CHECKING:
     from kitty.cli_stub import SetFontSizeRCOptions as CLIOptions
@@ -38,12 +41,18 @@ the font size for any newly created OS Windows in the future.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if not args:
             self.fatal('No font size specified')
-        fs = args[0]
-        inc = fs[0] if fs and fs[0] in '+-*/' else None
-        return {'size': abs(float(fs[1:] if inc else fs)), 'all': opts.all, 'increment_op': inc}
+        try:
+            inc, size = parse_font_size_change(args[0])
+        except ValueError as e:
+            self.fatal(f'Invalid font size: {args[0]}: {e}')
+        return {'size': size, 'all': opts.all, 'increment_op': inc}
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
-        boss.change_font_size(payload_get('all'), payload_get('increment_op'), payload_get('size') or 0)
+        size = payload_get('size') or 0
+        inc = payload_get('increment_op')
+        if not isfinite(size) or size < 0 or (inc and size == 0):
+            raise RemoteControlErrorWithoutTraceback(f'Invalid font size: {inc or ""}{size}, must be a positive number')
+        boss.change_font_size(payload_get('all'), inc, size)
         return None
 
 

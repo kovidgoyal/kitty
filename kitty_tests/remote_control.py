@@ -40,6 +40,7 @@ class Boss:
 class TestRemoteControl(BaseTest):
     def test_set_font_size_mapping(self):
         from kitty.boss import Boss as KittyBoss
+        from kitty.rc.base import RemoteControlErrorWithoutTraceback
 
         for all_windows in (False, True):
             for value, operation, size in (
@@ -55,6 +56,20 @@ class TestRemoteControl(BaseTest):
                     args = ('set-font-size',) + (('--all',) if all_windows else ()) + ('--', value)
                     KittyBoss.call_remote_control(boss, None, args)
                     boss.change_font_size.assert_called_once_with(all_windows, operation, size)
+        for value in ('*-2', '+-2', '/0', '*0', '+0', '-0', '*nan', '/inf', 'inf', '-nan', '*', '', 'abc'):
+            with self.subTest(value=value):
+                boss = Mock(spec=KittyBoss)
+                with self.assertRaises(Exception):
+                    KittyBoss.call_remote_control(boss, None, ('set-font-size', '--', value))
+                boss.change_font_size.assert_not_called()
+        # payloads sent directly by kitten @ bypass message_to_kitty
+        command = command_for_name('set-font-size')
+        for payload in ({'size': -2, 'increment_op': '+'}, {'size': 0, 'increment_op': '/'}, {'size': -1}):
+            with self.subTest(payload=payload):
+                boss = Mock(spec=KittyBoss)
+                with self.assertRaises(RemoteControlErrorWithoutTraceback):
+                    command.response_from_kitty(boss, None, PayloadGetter(command, payload))
+                boss.change_font_size.assert_not_called()
 
     def test_action_parse_errors(self):
         from kitty.boss import Boss as KittyBoss
