@@ -231,9 +231,6 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Kittens: Reject command-line options missing their required value instead of
-  silently ignoring them (:pull:`10687`)
-
 - Custom shaders: New :code:`cursor-trail-railgun`, :code:`cursor-trail-torpedo`
   and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
   cursor as it moves, in the style of neovide (:iss:`10587`)
@@ -522,6 +519,9 @@ Detailed list of changes
 - Visual window selection: Fix excluded windows becoming selectable when no
   other windows are eligible, for example, with
   :option:`kitten @ select-window --exclude-active` in a tab with a single window
+
+- Kittens: Reject command-line options missing their required value instead of
+  silently ignoring them (:pull:`10687`)
 
 
 0.49.2 [2026-10-01]
