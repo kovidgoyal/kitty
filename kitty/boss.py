@@ -1881,7 +1881,7 @@ class Boss:
         tab: Tab,
         callback: Callable[[Tab | None, Window | None], None],
         choose_msg: str,
-        only_window_ids: Container[int] = (),
+        only_window_ids: Container[int] | None = None,
         reactivate_prev_tab: bool = False,
     ) -> None:
         import string
@@ -1906,7 +1906,7 @@ class Boss:
         fmap = get_name_to_functional_number_map()
         alphanumerics = get_options().visual_window_select_characters
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
-            if only_window_ids and window.id not in only_window_ids:
+            if only_window_ids is not None and window.id not in only_window_ids:
                 continue
             ac = KeyDefinition(definition=f'visual_window_select_action_trigger {window.id}')
             if idx >= len(alphanumerics):
@@ -1962,11 +1962,11 @@ class Boss:
             ev = WindowSystemMouseEvent(in_tab_bar, window_id, action, modifiers, button, currently_pressed_button, x, y)
             self.mouse_handler(ev)
 
-    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> Window | None:
+    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] | None = None) -> Window | None:
         windows: list[tuple[int | None, str]] = []
         selectable_windows: list[tuple[int, str]] = []
         for i, w in tab.windows.iter_windows_with_number(only_visible=False):
-            if only_window_ids and w.id not in only_window_ids:
+            if only_window_ids is not None and w.id not in only_window_ids:
                 windows.append((None, f'Current window: {w.title}' if w is self.active_window else w.title))
             else:
                 windows.append((w.id, w.title))

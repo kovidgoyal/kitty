@@ -78,10 +78,7 @@ be refocused.
 
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
-                if payload_get('exclude_active'):
-                    wids = tab.all_window_ids_except_active_window
-                else:
-                    wids = set()
+                wids = tab.all_window_ids_except_active_window if payload_get('exclude_active') else None
                 boss.visual_window_select_action(
                     tab, callback, payload_get('title') or 'Choose window', only_window_ids=wids, reactivate_prev_tab=payload_get('reactivate_prev_tab')
                 )

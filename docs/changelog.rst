@@ -519,6 +519,10 @@ Detailed list of changes
 - :option:`launch --os-window-title`: Fix the value :code:`current` not copying
   a fixed title set with :option:`kitty --title`
 
+- Visual window selection: Fix excluded windows becoming selectable when no
+  other windows are eligible, for example, with
+  :option:`kitten @ select-window --exclude-active` in a tab with a single window
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
