@@ -172,30 +172,40 @@ func (self *remote_file) Write(data []byte) (n int, err error) {
 		self.remote_symlink_value += string(data)
 		return len(data), nil
 	case FileType_regular:
-		if self.actual_file == nil {
-			parent := filepath.Dir(self.expanded_local_path)
-			if parent != "" {
-				if err = os.MkdirAll(parent, 0o755); err != nil {
-					return 0, err
-				}
-			}
-			if self.expect_diff {
-				if pf, err := new_patch_file(self.expanded_local_path, self.patcher); err != nil {
-					return 0, err
-				} else {
-					self.actual_file = pf
-				}
-			} else {
-				if ff, err := os.Create(self.expanded_local_path); err != nil {
-					return 0, err
-				} else {
-					f := filesystem_file{f: ff}
-					self.actual_file = &f
-				}
-			}
+		if err = self.ensure_open(); err != nil {
+			return 0, err
 		}
 		return self.actual_file.write(data)
 	}
+}
+
+// Create the local output file for a regular file if not already done. This
+// must happen even if no bytes are ever written, so that empty files are
+// created and existing files are truncated.
+func (self *remote_file) ensure_open() (err error) {
+	if self.actual_file != nil {
+		return
+	}
+	parent := filepath.Dir(self.expanded_local_path)
+	if parent != "" {
+		if err = os.MkdirAll(parent, 0o755); err != nil {
+			return
+		}
+	}
+	if self.expect_diff {
+		pf, err := new_patch_file(self.expanded_local_path, self.patcher)
+		if err != nil {
+			return err
+		}
+		self.actual_file = pf
+	} else {
+		ff, err := os.Create(self.expanded_local_path)
+		if err != nil {
+			return err
+		}
+		self.actual_file = &filesystem_file{f: ff}
+	}
+	return
 }
 
 func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int64, err error) {
@@ -206,6 +216,14 @@ func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int6
 			err = fmt.Errorf("Failed writing to %s with error: %w", self.expanded_local_path, err)
 		}
 	}()
+	if self.ftype == FileType_regular {
+		// Open the output file when its first chunk arrives rather than
+		// relying on the decompressor producing output, which it does not do
+		// for empty files.
+		if err = self.ensure_open(); err != nil {
+			return 0, err
+		}
+	}
 	if self.actual_file != nil {
 		base, err = self.actual_file.tell()
 		if err != nil {

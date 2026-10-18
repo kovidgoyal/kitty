@@ -517,6 +517,28 @@ class TestFileTransmission(BaseTest):
         single_file('--compress=always')
         single_file('--transmit-deltas', '--compress=never')
 
+        def empty_file(*cmd, existing_dest_data=None):
+            esrc = os.path.join(self.tdir, 'esrc')
+            edest = os.path.join(self.tdir, 'edest')
+            open(esrc, 'wb').close()
+            if existing_dest_data is None:
+                if os.path.exists(edest):
+                    os.remove(edest)
+            else:
+                with open(edest, 'wb') as d:
+                    d.write(existing_dest_data)
+            with self.run_kitten(list(cmd) + [esrc, edest]) as pty:
+                pty.wait_till_child_exits(require_exit_code=0)
+            self.assertTrue(os.path.isfile(edest), f'{edest} was not created by: {cmd}')
+            self.ae(os.path.getsize(edest), 0, f'{edest} is not empty after: {cmd}')
+
+        empty_file()
+        # an existing destination must be truncated
+        empty_file(existing_dest_data=b'stale')
+        # an existing destination larger than the signature threshold causes an rsync transfer
+        empty_file('--transmit-deltas', existing_dest_data=os.urandom(8192))
+        empty_file('--transmit-deltas')
+
         def multiple_files(*cmd):
             src = os.path.join(self.tdir, 'msrc')
             dest = os.path.join(self.tdir, 'mdest')
@@ -549,6 +571,10 @@ class TestFileTransmission(BaseTest):
             se(str(b / 'hardlink'))
             os.mkdir(b / 'empty')
             se(str(b / 'empty'))
+            with open(b / 'emptyfile', 'wb') as f:
+                os.fchmod(f.fileno(), 0o640)
+            os.utime(f.name, (2345.6, 2345.6))
+            se(f.name)
             s = b / 'sub'
             os.mkdir(s)
             with open(s / 'reg', 'wb') as f:

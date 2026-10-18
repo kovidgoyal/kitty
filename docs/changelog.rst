@@ -259,6 +259,9 @@ Detailed list of changes
 - diff kitten: Fix comparing remote directories over SSH failing when they
   contain read-only directories (:pull:`10676`)
 
+- transfer kitten: Fix receiving an empty file not creating it, or leaving an
+  existing destination file unchanged instead of truncating it
+
 - Vertical tab bars: When :opt:`tab_title_max_length` is set, size the tab bar
   to fit the decorations of the current :opt:`tab_bar_style` rather than always
   adding eight cells, allowing much narrower tab bars (:iss:`10680`)
