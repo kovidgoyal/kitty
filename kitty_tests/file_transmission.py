@@ -625,8 +625,17 @@ class TestFileTransmission(BaseTest):
         self.direction_receive = True
         src = Path(self.tdir) / 'empty'
         src.write_bytes(b'')
+        src.chmod(0o640)
+        os.utime(src, (1_700_000_000, 1_700_000_000))
         dest = Path(self.tdir) / 'dest'
-        for previous, args in ((None, []), (b'old contents', []), (b'x' * 8192, ['--transmit-deltas'])):
+        for previous, args in (
+            (None, []),
+            (b'old contents', []),
+            (b'x' * 8192, ['--transmit-deltas']),
+            (None, ['--compress=always']),
+            (b'old contents', ['--compress=always']),
+            (b'x' * 8192, ['--transmit-deltas', '--compress=always']),
+        ):
             with self.subTest(previous_size=None if previous is None else len(previous), args=args):
                 dest.unlink(missing_ok=True)
                 if previous is not None:
@@ -634,6 +643,18 @@ class TestFileTransmission(BaseTest):
                 with self.run_kitten([*args, str(src), str(dest)]) as pty:
                     pty.wait_till_child_exits(require_exit_code=0)
                 self.ae(dest.read_bytes(), b'')
+                self.ae(stat.S_IMODE(dest.stat().st_mode), 0o640)
+                self.ae(dest.stat().st_mtime, 1_700_000_000)
+
+    def test_transfer_receive_empty_file_write_error(self) -> None:
+        self.direction_receive = True
+        src = Path(self.tdir) / 'empty'
+        src.touch()
+        blocked = Path(self.tdir) / 'blocked'
+        blocked.write_bytes(b'keep me')
+        with self.run_kitten([str(src), str(blocked / 'destination')]) as pty:
+            pty.wait_till_child_exits(require_exit_code=1)
+        self.ae(blocked.read_bytes(), b'keep me')
 
     def test_transfer_receive(self):
         self.direction_receive = True
