@@ -232,7 +232,7 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Transfer kitten: Fix receiving empty files failing to create the destination
-  or replace its previous contents
+  or replace its previous contents (:pull:`10689`)
 
 - Custom shaders: New :code:`cursor-trail-railgun`, :code:`cursor-trail-torpedo`
   and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
