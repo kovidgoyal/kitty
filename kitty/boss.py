@@ -2106,6 +2106,8 @@ class Boss:
             try:
                 actions = get_options().alias_map.resolve_aliases(action_definition, MapType.MAP if dispatch_type == 'KeyPress' else MapType.MOUSE_MAP)
             except Exception as e:
+                if raise_error:
+                    raise
                 self.show_error('Failed to parse action', f'{action_definition}\n{e}')
                 return True
             if actions:

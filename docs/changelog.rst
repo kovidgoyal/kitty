@@ -523,6 +523,9 @@ Detailed list of changes
 - Kittens: Reject command-line options missing their required value instead of
   silently ignoring them (:pull:`10687`)
 
+- Remote control: Fix :ref:`at-action` reporting success when the action's
+  arguments cannot be parsed.
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
