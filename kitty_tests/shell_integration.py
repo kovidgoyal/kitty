@@ -46,8 +46,8 @@ def run_interactive_bash(command: str, env: dict[str, str], cwd: str | None = No
     return subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], cwd=cwd, env=env, capture_output=True, start_new_session=True)
 
 
-def extract_sudo_function(content: str, opening='sudo() {', closing='}', witht='command sudo TERMINFO="$TERMINFO" "$@";', without='command sudo "$@";') -> str:
-    """Extract the sudo() function from bash/zsh shell integration content using indentation."""
+def extract_block(content: str, opening: str, closing: str) -> str | None:
+    """Extract the block starting at the line opening and ending at closing with the same indentation."""
     lines = content.split('\n')
     start_idx = None
     indent_len = None
@@ -63,11 +63,19 @@ def extract_sudo_function(content: str, opening='sudo() {', closing='}', witht='
         line = lines[i]
         stripped = line.strip()
         if stripped == closing and (len(line) - len(line.lstrip())) == indent_len:
-            func = '\n'.join(lines[start_idx : i + 1])
-            func = func.replace(witht, 'echo "with_terminfo";')
-            func = func.replace(without, 'echo "no_terminfo";')
-            return func
+            return '\n'.join(lines[start_idx : i + 1])
     return None
+
+
+def extract_sudo_function(
+    content: str, opening='sudo() {', closing='}', witht='command sudo TERMINFO="$TERMINFO" "$@";', without='command sudo "$@";'
+) -> str | None:
+    """Extract the sudo() function from bash/zsh shell integration content using indentation."""
+    func = extract_block(content, opening, closing)
+    if func is None:
+        return None
+    func = func.replace(witht, 'echo "with_terminfo";')
+    return func.replace(without, 'echo "no_terminfo";')
 
 
 def basic_shell_env(home_dir):
@@ -220,6 +228,44 @@ class ShellIntegration(BaseTest):
             func = extract_sudo_function(f.read(), opening='function sudo', closing='end', witht='sudo TERMINFO="$TERMINFO" $argv', without='sudo $argv')
         self.assertIsNotNone(func)
         self.sudo_parser_tests(['fish', '--no-config', '-c'], func)
+
+    def test_run0_wrapper(self):
+        if self.with_kitten:
+            return
+        shells = (
+            # shell, integration file, wrapper guard, set PATH, define a user run0 function
+            ('bash', ('bash', 'kitty.bash'), 'if builtin type -P run0 >/dev/null 2>&1; then', 'fi', 'PATH="{}"', ''),
+            ('zsh', ('zsh', 'kitty-integration'), 'if (( $+commands[run0] && ! $+functions[run0] )); then', 'fi', 'PATH="{}"', 'run0() { echo user; }'),
+            (
+                'fish',
+                ('fish', 'vendor_conf.d', 'kitty-shell-integration.fish'),
+                'if test "file" = (type -t run0 2> /dev/null || echo "x")',
+                'end',
+                'set -gx PATH "{}"',
+                'function run0; echo user; end',
+            ),
+        )
+        with tempfile.TemporaryDirectory() as bin_dir:
+            with open(os.path.join(bin_dir, 'run0'), 'w') as f:
+                f.write('#!/bin/sh\necho "$*"\n')
+            os.chmod(os.path.join(bin_dir, 'run0'), 0o755)
+            for shell, path, opening, closing, set_path, user_func in shells:
+                exe = shutil.which(shell)
+                if not exe:
+                    continue
+                with self.subTest(shell=shell), open(os.path.join(shell_integration_dir, *path)) as f:
+                    block = extract_block(f.read(), opening, closing)
+                    self.assertIsNotNone(block)
+                    # The wrapper must not be defined when run0 is not installed
+                    script = [set_path.format('/nonexistent'), block, set_path.format(bin_dir), 'run0 -u root ls', block, 'run0 -u root ls', 'run0']
+                    expected = ['-u root ls', '--setenv=TERMINFO -u root ls', '--setenv=TERMINFO']
+                    if user_func:
+                        # The wrapper must not clobber a user defined run0 function
+                        script += [user_func, block, 'run0 -u root ls']
+                        expected.append('user')
+                    cp = subprocess.run([exe, '-c', '\n'.join(script)], capture_output=True, env={'HOME': bin_dir, 'TERMINFO': 'x'})
+                    self.assertEqual(cp.returncode, 0, f'{shell} failed with stderr: {cp.stderr.decode()}')
+                    self.assertEqual(expected, cp.stdout.decode().splitlines())
 
     def sudo_parser_tests(self, shell: list[str], func: str) -> None:
         test_cases = [

@@ -534,6 +534,10 @@ Detailed list of changes
 - Remote control: Fix :ref:`at-action` reporting success when the action's
   arguments cannot be parsed (:pull:`10688`)
 
+- Shell integration: Make the kitty terminfo files available in commands run
+  via :program:`run0`, similar to what is already done for :program:`sudo`
+  (:pull:`10692`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
