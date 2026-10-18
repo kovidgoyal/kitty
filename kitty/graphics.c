@@ -737,10 +737,8 @@ load_image_data_from_file(
     int fd;
     *was_opened = false;
     if (is_shm) {
-        if (fname[0] != '/') {
-            FAIL_IMAGE_FILE("Failed to open shared memory object: %s with error: %s", fname, "POSIX SHM names must start with /");
-            return false;
-        }
+        // Names without a leading slash are allowed, as, for example, macOS
+        // sandboxed applications can only use names of the form group-id/name
         fd = safe_shm_open(fname, O_RDONLY, 0);
     } else {
         // The policy check has to happen before the file is opened. Merely

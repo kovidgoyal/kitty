@@ -669,7 +669,14 @@ class TestGraphics(BaseTest):
         # A shared memory object that could not be opened must also be
         # removed, and reported with the same generic error
         self.ae(pl('/kitty-test-shm-missing', s=1024, v=8, t='s'), generic_error)
-        self.ae(pl('kitty-test-shm-no-leading-slash', s=1024, v=8, t='s'), generic_error)
+        self.ae(pl('kitty-test-shm-missing-no-leading-slash', s=1024, v=8, t='s'), generic_error)
+
+        # Names without a leading slash must be accepted, as, for example,
+        # sandboxed applications on macOS cannot use a leading slash
+        name = 'kitty-test-shm-no-leading-slash'
+        shm_write(name, random_data)
+        sl(name, s=1024, v=8, t='s', expecting_data=random_data)
+        self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that the object was deleted
 
         s.reset()
         self.assertEqual(g.disk_cache.total_size, 0)

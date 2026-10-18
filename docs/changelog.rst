@@ -231,23 +231,24 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Fix cursor position reports returning the wrong row in origin mode (:pull:`10682`)
+- Custom shaders: New :code:`cursor-trail-railgun`, :code:`cursor-trail-torpedo`
+  and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
+  cursor as it moves, in the style of neovide (:iss:`10587`)
+
+- Allow docking kitty windows to the edges of other windows or of the tab, for
+  status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
+  or :code:`launch --type=tab-dock`, see :ref:`docks`
+
+- Graphics protocol: Add two new :ref:`indexed color image formats
+  <indexed_color_data>` whose pixels are indices into the terminal color
+  palette, so that images automatically change color along with the terminal
+  color scheme (:iss:`9379`)
 
 - macOS: A new option :opt:`restore_session_after_logout` to save the state of
   every kitty instance, including the scrollback of every window, encrypted with
   a key in the keychain, when logging out, restarting or shutting down the
   computer and restore it the next time kitty is started, see
   :ref:`restore_after_logout` (:iss:`1197`, :pull:`10659`)
-
-- Sessions: A new ``os_window_position`` keyword and a new
-  ``--os-window-geometry`` option for :ac:`save_as_session` to save the size,
-  position and state of OS Windows in session files
-
-- Ignore initial OS Window positions that are not on any connected monitor, for
-  example, because the monitor was disconnected
-
-- Sessions: Fix the OS Window size specified in a session being ignored when
-  :opt:`remember_window_size` is enabled
 
 - Fix kitty repeatedly calling ``on_quit`` watchers when a watcher aborts a quit
   requested by the OS, for example, via the macOS menu or Dock
@@ -258,19 +259,9 @@ Detailed list of changes
 - diff kitten: Fix comparing remote directories over SSH failing when they
   contain read-only directories (:pull:`10676`)
 
-- Graphics protocol: Add two new :ref:`indexed color image formats
-  <indexed_color_data>` whose pixels are indices into the terminal color
-  palette, so that images automatically change color along with the terminal
-  color scheme (:iss:`9379`)
-
-- Allow docking kitty windows to the edges of other windows or of the tab, for
-  status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
-  or :code:`launch --type=tab-dock`, see :ref:`docks`
-
 - Vertical tab bars: When :opt:`tab_title_max_length` is set, size the tab bar
   to fit the decorations of the current :opt:`tab_bar_style` rather than always
   adding eight cells, allowing much narrower tab bars (:iss:`10680`)
-
 
 - quick-access-terminal kitten: A new :option:`kitty +kitten quick_access_terminal --if-running`
   option to run a program in a new tab or window of an already running quick
@@ -304,9 +295,7 @@ Detailed list of changes
   :ac:`shader_event` action, :code:`user:` animation events and the
   :code:`animation_toggle` pipeline directive, see :ref:`custom_shader_mappings` (:iss:`10667`)
 
-- Custom shaders: The :code:`pointer_map()` function of shaders that move
-  content is now also used for groups that are turned on and off by events,
-  while they are active
+- Fix cursor position reports returning the wrong row in origin mode (:pull:`10682`)
 
 - Add English and Spanish subtitles to the intro video shown at the top of the
   documentation
@@ -332,6 +321,11 @@ Detailed list of changes
   such as :file:`Makefile`, and case-sensitive patterns. MIME types in open
   actions and the choose-files kitten also match the aliases of the detected
   MIME type, for example, ``text/x-sh`` matches shell scripts (:iss:`3056`)
+
+- Graphics protocol: Allow shared memory object names without a leading slash
+  again, as sandboxed macOS applications cannot use names with a leading
+  slash. Clients are still recommended to use a leading slash when possible
+  (:iss:`10684`)
 
 - Graphics protocol: Fix a fragment of a Unicode placeholder image
   sometimes reappearing over unrelated text on the bottom line after the screen
@@ -386,10 +380,6 @@ Detailed list of changes
 
 - macOS: Fix OS windows not staying on all spaces when kitty is assigned to
   All Desktops via its Dock icon (:iss:`10581`)
-
-- Custom shaders: New :code:`cursor-trail-railgun`, :code:`cursor-trail-torpedo`
-  and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
-  cursor as it moves, in the style of neovide (:iss:`10587`)
 
 - Cursor trail: Always show the trail when focus moves to a different window,
   regardless of :opt:`cursor_trail_start_threshold` (:iss:`10591`)
@@ -496,6 +486,13 @@ Detailed list of changes
 
 - macOS: Fix a memory leak when getting the list of all processes, for
   example, when querying the memory used by child processes (:iss:`10673`)
+
+- Sessions: A new ``os_window_position`` keyword and a new
+  ``--os-window-geometry`` option for :ac:`save_as_session` to save the size,
+  position and state of OS Windows in session files
+
+- Sessions: Fix the OS Window size specified in a session being ignored when
+  :opt:`remember_window_size` is enabled
 
 - Sessions: Fix ``os_window_title`` having no effect on the first OS Window
   created when starting kitty with a session file (:iss:`10675`)

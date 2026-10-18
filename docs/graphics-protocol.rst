@@ -403,7 +403,18 @@ Value of `t`          Meaning
 ``s``                 A *shared memory object*, which on POSIX systems is a
                       `POSIX shared memory object <https://pubs.opengroup.org/onlinepubs/9699919799/functions/shm_open.html>`_
                       and on Windows is a
-                      `Named shared memory object <https://docs.microsoft.com/en-us/windows/win32/memory/creating-named-shared-memory>`_. On POSIX SHM names **must** start with a :file:`/` and have no other :file:`/` characters and must be no longer than the maximum SHM name size supported by the OS
+                      `Named shared memory object <https://docs.microsoft.com/en-us/windows/win32/memory/creating-named-shared-memory>`_.
+                      On POSIX, clients *should* use SHM names that start with
+                      a :file:`/` and have no other :file:`/` characters,
+                      whenever possible. However, some platforms require
+                      other forms, for example, sandboxed applications on
+                      macOS can only use names of the form
+                      :file:`app-group-id/name`, with no leading slash. So
+                      terminal emulators **must** accept names without a
+                      leading slash and pass the name unmodified to
+                      :code:`shm_open()` and :code:`shm_unlink()`. Names must
+                      be no longer than the maximum SHM name size supported
+                      by the OS.
                       The terminal emulator must read the data from the memory
                       object and then unlink and close it on POSIX and just
                       close it on Windows.
