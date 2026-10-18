@@ -235,11 +235,6 @@ Detailed list of changes
   and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
   cursor as it moves, in the style of neovide (:iss:`10587`)
 
-- Custom shaders: Fix shaders specified by absolute paths or paths starting
-  with :file:`~` not being found in some cases, allow specifying names with the
-  :file:`.slang` extension and look for shaders in the :file:`shaders`
-  sub-directory of the config directory as documented (:iss:`10694`)
-
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
@@ -321,6 +316,11 @@ Detailed list of changes
   patterns that share the same first pattern not updating the results
 
 - Fix a non-zero :opt:`input_delay` painting once before delayed program output is parsed and again when it is parsed, so it could use more CPU than :opt:`input_delay` ``0``
+
+- Custom shaders: Fix shaders specified by absolute paths or paths starting
+  with :file:`~` not being found in some cases, allow specifying names with the
+  :file:`.slang` extension and look for shaders in the :file:`shaders`
+  sub-directory of the config directory as documented (:iss:`10694`)
 
 - Linux/BSD: Detect MIME types for :doc:`open actions <open_actions>` and
   kittens using the fast binary shared-mime-info cache
