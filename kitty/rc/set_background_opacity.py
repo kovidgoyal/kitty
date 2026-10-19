@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-
+import math
 from typing import TYPE_CHECKING
 
 from .base import (
@@ -59,7 +59,10 @@ equal to the specified value, otherwise it will be set to the specified value.
     args = RemoteCommand.Args(spec='OPACITY', count=1, json_field='opacity', special_parse='parse_opacity(args[0])')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        opacity = max(0, min(float(args[0]), 1))
+        opacity = float(args[0])
+        if math.isnan(opacity):
+            raise ValueError(f'Invalid opacity {args[0]!r}: must be a number between 0 and 1')
+        opacity = max(0, min(opacity, 1))
         return {
             'opacity': opacity,
             'match_window': opts.match,
