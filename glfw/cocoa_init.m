@@ -1104,10 +1104,9 @@ _glfwPlatformRunMainLoop(GLFWtickcallback callback, void *data) {
     main_thread = pthread_self();
     tick_callback = callback;
     tick_callback_data = data;
-    tick_lock = [NSLock new];
+    // Never released as other threads can lock it until they are joined, after this function returns
+    if (!tick_lock) tick_lock = [NSLock new];
     [NSApp run];
-    [tick_lock release];
-    tick_lock = NULL;
     tick_callback = NULL;
     tick_callback_data = NULL;
 }
