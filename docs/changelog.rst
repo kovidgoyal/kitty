@@ -260,6 +260,10 @@ Detailed list of changes
   to the server has silently died, for example, after a network change or
   suspend. Now the kitten detects this and reconnects (:iss:`10691`)
 
+- Linux: Desktop notifications: Fix a request to close a notification being
+  ignored if it arrives before the notification server has finished creating
+  the notification (:iss:`10695`)
+
 - diff kitten: Fix comparing remote directories over SSH failing when they
   contain read-only directories (:pull:`10676`)
 

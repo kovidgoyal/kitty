@@ -6,8 +6,9 @@ import os
 import re
 import tempfile
 from base64 import standard_b64encode
+from unittest.mock import patch
 
-from kitty.notifications import Channel, DesktopIntegration, IconDataCache, NotificationManager, UIState, Urgency
+from kitty.notifications import Channel, DesktopIntegration, FreeDesktopIntegration, IconDataCache, NotificationManager, UIState, Urgency
 
 from .base import BaseTest
 
@@ -362,3 +363,47 @@ class TestNotifications(BaseTest):
     def test_desktop_notify(self):
         with tempfile.TemporaryDirectory() as tdir:
             do_test(self, tdir)
+
+    def test_freedesktop_close_before_created(self):
+        import kitty.fast_data_types as fdt
+
+        sent: list[int] = []
+        closed: list[int] = []
+
+        def send_notification(**kw: object) -> int:
+            sent.append(len(sent) + 1)
+            return sent[-1]
+
+        def close_notification(dbus_id: int) -> bool:
+            closed.append(dbus_id)
+            return True
+
+        with tempfile.TemporaryDirectory() as tdir, patch.multiple(
+            fdt, create=True, dbus_set_notification_callback=lambda *a: None,
+            dbus_send_notification=send_notification, dbus_close_notification=close_notification,
+        ):
+            di = FreeDesktopIntegration(None)
+            ch = Channel()
+            nm = NotificationManager(di, ch, lambda *a, **kw: None, base_cache_dir=tdir)
+            di.notification_manager = nm
+
+            # close requested before the notification daemon replies to Notify
+            nm.handle_notification_cmd(1, 99, 'i=x:c=1;title')
+            nm.handle_notification_cmd(1, 99, 'i=x:p=close;')
+            self.ae(closed, [])
+            self.assertIn('x', nm.in_progress_notification_commands_by_client_id)
+            self.ae(ch.responses, [])
+            di.dispatch_event_from_desktop('created', sent[-1], 101)
+            self.ae(closed, [101])
+            di.dispatch_event_from_desktop('closed', 101, 0)
+            self.assertNotIn('x', nm.in_progress_notification_commands_by_client_id)
+            self.ae(ch.responses, ['99;i=x:p=close;'])
+            self.ae(di.pending_closes, set())
+
+            # normal close after creation
+            closed.clear(), ch.reset()
+            nm.handle_notification_cmd(1, 99, 'i=y;title')
+            di.dispatch_event_from_desktop('created', sent[-1], 102)
+            self.ae(closed, [])
+            nm.handle_notification_cmd(1, 99, 'i=y:p=close;')
+            self.ae(closed, [102])
