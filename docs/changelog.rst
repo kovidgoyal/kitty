@@ -257,6 +257,9 @@ Detailed list of changes
 - Remote control: Fix ``kitten @ action --match`` ignoring the match and
   running the action on the active window (:iss:`10672`)
 
+- Remote control: Fix ``kitten @ set-background-opacity`` treating invalid
+  numeric arguments as zero opacity instead of reporting an error
+
 - ssh kitten: Fix hanging when re-using a shared connection whose connection
   to the server has silently died, for example, after a network change or
   suspend. Now the kitten detects this and reconnects (:iss:`10691`)
