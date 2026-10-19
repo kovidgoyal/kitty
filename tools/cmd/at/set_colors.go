@@ -294,6 +294,9 @@ func set_color_in_color_map(key, val string, ans map[string]any, check_nullable,
 
 func parse_colors_and_files(args []string) (map[string]any, error) {
 	ans := make(map[string]any, len(args))
+	if options_set_colors.Reset {
+		return ans, nil
+	}
 	for _, arg := range args {
 		key, val, found := strings.Cut(strings.ToLower(arg), "=")
 		if found {
