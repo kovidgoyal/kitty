@@ -369,8 +369,10 @@ class TestNotifications(BaseTest):
 
         sent: list[int] = []
         closed: list[int] = []
+        replaces: list[object] = []
 
         def send_notification(**kw: object) -> int:
+            replaces.append(kw['replaces'])
             sent.append(len(sent) + 1)
             return sent[-1]
 
@@ -378,9 +380,15 @@ class TestNotifications(BaseTest):
             closed.append(dbus_id)
             return True
 
-        with tempfile.TemporaryDirectory() as tdir, patch.multiple(
-            fdt, create=True, dbus_set_notification_callback=lambda *a: None,
-            dbus_send_notification=send_notification, dbus_close_notification=close_notification,
+        with (
+            tempfile.TemporaryDirectory() as tdir,
+            patch.multiple(
+                fdt,
+                create=True,
+                dbus_set_notification_callback=lambda *a: None,
+                dbus_send_notification=send_notification,
+                dbus_close_notification=close_notification,
+            ),
         ):
             di = FreeDesktopIntegration(None)
             ch = Channel()
@@ -399,6 +407,24 @@ class TestNotifications(BaseTest):
             self.assertNotIn('x', nm.in_progress_notification_commands_by_client_id)
             self.ae(ch.responses, ['99;i=x:p=close;'])
             self.ae(di.pending_closes, set())
+
+            # replacement sent before the notification being replaced is created
+            closed.clear(), ch.reset()
+            nm.handle_notification_cmd(1, 99, 'i=r;first')
+            first = sent[-1]
+            nm.handle_notification_cmd(1, 99, 'i=r;second')
+            second = sent[-1]
+            self.ae(nm.in_progress_notification_commands_by_client_id['r'].title, 'second')
+            di.dispatch_event_from_desktop('created', first, 201)
+            self.ae(closed, [201])
+            di.dispatch_event_from_desktop('closed', 201, 0)
+            di.dispatch_event_from_desktop('created', second, 202)
+            self.ae(closed, [201])
+            self.ae(nm.in_progress_notification_commands_by_client_id['r'].title, 'second')
+            self.ae(ch.responses, [])
+            nm.handle_notification_cmd(1, 99, 'i=r;third')
+            self.ae(closed, [201])  # replaced via the replaces argument to Notify, not closed
+            self.ae(replaces[-3:], [0, 0, 202])
 
             # normal close after creation
             closed.clear(), ch.reset()

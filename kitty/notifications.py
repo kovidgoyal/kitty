@@ -714,15 +714,22 @@ class FreeDesktopIntegration(DesktopIntegration):
             close_succeeded = dbus_close_notification(dbus_id)
             if debug_desktop_integration:
                 log_error(f'Close request for {desktop_notification_id=} {"succeeded" if close_succeeded else "failed"}')
-        elif (n := self.notification_manager.in_progress_notification_commands.get(desktop_notification_id)) and not n.created_by_desktop:
-            # The notification daemon has not yet replied to Notify, close it once it does
-            if len(self.pending_closes) > 128:
-                self.pending_closes &= set(self.notification_manager.in_progress_notification_commands)
-            self.pending_closes.add(desktop_notification_id)
-            close_succeeded = True
-            if debug_desktop_integration:
-                log_error(f'Close request for {desktop_notification_id=} deferred till notification is created')
+        else:
+            close_succeeded = self.defer_close_till_created(desktop_notification_id)
         return close_succeeded
+
+    def defer_close_till_created(self, desktop_notification_id: int) -> bool:
+        # If the notification daemon has not yet replied to Notify, close the
+        # notification once it does
+        n = self.notification_manager.in_progress_notification_commands.get(desktop_notification_id)
+        if n is None or n.created_by_desktop:
+            return False
+        if len(self.pending_closes) > 128:
+            self.pending_closes &= set(self.notification_manager.in_progress_notification_commands)
+        self.pending_closes.add(desktop_notification_id)
+        if debug_desktop_integration:
+            log_error(f'Close request for {desktop_notification_id=} deferred till notification is created')
+        return True
 
     def get_desktop_notification_id(self, dbus_notification_id: int, event: str) -> int | None:
         q = self.dbus_to_desktop.get(dbus_notification_id)
@@ -816,6 +823,10 @@ class FreeDesktopIntegration(DesktopIntegration):
         replaces_dbus_id = 0
         if existing_desktop_notification_id:
             replaces_dbus_id = self.get_dbus_notification_id(existing_desktop_notification_id, 'notify') or 0
+            if not replaces_dbus_id:
+                # The notification being replaced has not been created yet so
+                # it cannot be replaced, instead close it once it is created
+                self.defer_close_till_created(existing_desktop_notification_id)
         actions = {'default': ''}
         for i, b in enumerate(nc.buttons):
             actions[str(i + 1)] = b
