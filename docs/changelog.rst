@@ -550,6 +550,15 @@ Detailed list of changes
 - Remote control: Fix ``set-font-size`` rejecting multiplication and division
   when used in a :ac:`remote_control` mapping.
 
+- Custom shaders: New :code:`animation_duration`, :code:`animation_reverse`
+  and :code:`animation_loops` pipeline directives to have
+  :code:`animation_progress` rise to one and stay there, and to play
+  animations in reverse, optionally several times, when they stop, making it
+  easy to fade effects in and out or blink them (:iss:`10693`)
+
+- Custom shaders: Fix groups using :code:`attach` not having the same
+  :code:`animation_progress` as the group they are attached to (:iss:`10693`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

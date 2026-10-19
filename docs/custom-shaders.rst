@@ -343,8 +343,8 @@ Directives inside a group:
 
     * An event name — the animation stops when that event fires.
     * An integer — a duration in **milliseconds** after which the animation
-      automatically stops. The ``animation_progress`` value will smoothly
-      reach ``1.0`` at that point.
+      automatically stops. Unless ``animation_duration`` is set, the
+      ``animation_progress`` value will smoothly reach ``1.0`` at that point.
     * ``never`` — the animation runs indefinitely until an explicit stop event.
 
     When ``animation_stop`` is omitted kitty uses
@@ -361,6 +361,60 @@ Directives inside a group:
     * ``steps(n, start|end)``
 
     Defaults to a linear mapping (no easing).
+
+``animation_duration <ms>``
+    How many milliseconds the ``animation_progress`` value takes to go from
+    ``0.0`` to ``1.0`` after the animation starts. It then stays at ``1.0``
+    until the animation stops. This is useful for effects that should fade in
+    and then stay on, for example ones turned on by ``animation_toggle``.
+    Defaults to the ``animation_stop`` duration. Note that groups with no stop
+    duration, such as those using ``animation_stop never`` or only
+    ``animation_toggle``, always have an ``animation_progress`` of ``0.0``
+    unless this is set.
+
+``animation_reverse yes|no|<ms>``
+    Whether to play the animation in reverse when it stops, for any reason,
+    instead of turning the group off immediately. The group then stays active
+    while ``animation_progress`` goes back down to ``0.0``, using the same
+    ``animation_curve``, and turns off once it gets there. With ``yes`` this
+    takes as long as ``animation_duration``, a number sets the time in
+    milliseconds instead. If the animation is stopped before
+    ``animation_progress`` reaches ``1.0`` it goes back down from wherever it
+    was, and if it is started again while going back down, it goes up again
+    from wherever it was. Stop events are ignored while playing in reverse.
+    Defaults to ``no``. For example, to fade the ``crt`` effect in and out
+    over half a second when toggling it::
+
+        startgroup
+            animation_toggle user:crt
+            animation_duration 500
+            animation_reverse yes
+            shaders crt
+        endgroup
+
+    Note that the ``crt`` shader does not actually use ``animation_progress``,
+    you would need to modify it to do so.
+
+``animation_loops <n>``
+    How many times to play the animation forwards and in reverse when it
+    stops. Can only be used together with ``animation_reverse``. After the
+    first reverse finishes, ``animation_progress`` goes from ``0.0`` to
+    ``1.0`` over ``animation_duration`` and immediately back down again,
+    without staying at ``1.0``, until it has gone up and down ``n`` times in
+    all, after which the group turns off. Stop events are ignored while
+    looping, start and toggle events turn the group back on, continuing from
+    the current progress. Defaults to ``1``. For example, to blink three times
+    when a key is pressed, with an animation that stops as soon as it has
+    risen to ``1.0``::
+
+        startgroup
+            animation_start user:blink
+            animation_duration 150
+            animation_stop 150
+            animation_reverse yes
+            animation_loops 3
+            shaders my-blink-shader
+        endgroup
 
 ``animation_step <ms>``
     How many milliseconds between animation frames. Lower values produce
@@ -390,9 +444,10 @@ Directives inside a group:
     condition is true (its own events or the preceding group being active).
     If an attached group has no ``animation_start`` of its own, it mirrors
     the preceding group exactly: it activates when that group activates and
-    deactivates when that group deactivates. ``animation_progress`` for
-    an attached group is computed from the same ``started_at`` timestamp as
-    the preceding group, so both groups animate in perfect sync.
+    deactivates when that group deactivates, and has the same
+    ``animation_progress`` as that group, so both groups animate in perfect
+    sync. Its own ``animation_curve``, ``animation_duration`` and
+    ``animation_reverse`` are ignored.
 
 .. _named_textures:
 

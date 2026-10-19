@@ -482,6 +482,9 @@ typedef struct CustomShaderGroup {
     ShaderAnimEventMask animation_toggle_events; // events that start the animation when stopped and vice versa; 0 = none
     ShaderAnimEventMask animation_end_events;    // events that stop the animation; 0 = none
     monotonic_t animation_end_duration;          // nanoseconds; 0 = no time limit, < 0 = use cursor_stop_blinking_after
+    monotonic_t animation_duration;              // nanoseconds for animation_progress to reach one; < 0 = same as the stop duration
+    monotonic_t animation_reverse;               // nanoseconds to play the animation in reverse when stopped; 0 = no, < 0 = animation_duration
+    unsigned animation_loops;                    // times to play the animation forwards and in reverse when reversing
     monotonic_t animation_step;                  // nanoseconds between animation samples
     Animation *animation_curve;                  // parsed easing curve; NULL = no animation
     bool animation_curve_is_shared;              // true if animation_curve is owned by an earlier group
@@ -616,6 +619,110 @@ group_has_own_animation(const CustomShaderGroup *cg) {
 static inline bool
 group_is_animated(const CustomShaderGroup *cg) {
     return cg->attached || group_has_own_animation(cg);
+}
+
+// How long after starting the group stops by itself, zero if it does not
+static inline monotonic_t
+group_stop_duration(const CustomShaderGroup *cg) {
+    return cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
+}
+
+// How long animation_progress takes to rise to one, zero if it stays at zero
+static inline monotonic_t
+group_ramp_duration(const CustomShaderGroup *cg) {
+    return cg->animation_duration < 0 ? group_stop_duration(cg) : cg->animation_duration;
+}
+
+// How long animation_progress takes to fall from one to zero after the group
+// is stopped, zero if the group turns off immediately instead
+static inline monotonic_t
+group_reverse_duration(const CustomShaderGroup *cg) {
+    return cg->animation_reverse < 0 ? group_ramp_duration(cg) : cg->animation_reverse;
+}
+
+// The animation_progress of an active group before applying the easing curve
+static double
+group_linear_progress(const CustomShaderGroup *cg, const ShaderGroupAnimState *s, monotonic_t now) {
+    double ans = 0;
+    if (s->reverse_ends_at) {
+        const monotonic_t d = group_reverse_duration(cg);
+        if (d > 0) ans = (double)(s->reverse_ends_at - now) / (double)d;
+    } else {
+        const monotonic_t d = group_ramp_duration(cg);
+        if (d > 0) ans = (double)(now - s->ramp_started_at) / (double)d;
+    }
+    return MAX(0., MIN(ans, 1.));
+}
+
+// The animation_progress of every group in the current pipeline. Attached
+// groups without events of their own share the progress of the group they are
+// attached to, so that multi-pass effects animate in sync.
+static void
+custom_shader_group_progress(const OSWindow *os_window, monotonic_t now, float *ans) {
+    for (size_t g = 0; g < custom_shaders.end.num_groups; g++) {
+        const CustomShaderGroup *cg = custom_shaders.end.groups + g;
+        const ShaderGroupAnimState *s = os_window->shader_group_anim + g;
+        ans[g] = 0.f;
+        if (!group_is_animated(cg) || !s->active) continue;
+        if (g > 0 && cg->attached && !group_has_own_animation(cg)) {
+            ans[g] = ans[g - 1];
+            continue;
+        }
+        const double t = group_linear_progress(cg, s, now);
+        ans[g] = (float)(cg->animation_curve ? apply_easing_curve(cg->animation_curve, t, group_ramp_duration(cg)) : t);
+    }
+}
+
+static void
+start_group_animation(const CustomShaderGroup *cg, ShaderGroupAnimState *s, monotonic_t now) {
+    // Restarting while playing in reverse or looping continues from the
+    // current progress rather than jumping back to zero
+    if (s->active && (s->reverse_ends_at || s->looping)) {
+        s->ramp_started_at = now - (monotonic_t)(group_linear_progress(cg, s, now) * (double)group_ramp_duration(cg));
+    } else s->ramp_started_at = now;
+    s->active = true;
+    s->started_at = now;
+    s->reverse_ends_at = 0;
+    s->loops_left = 0;
+    s->looping = false;
+}
+
+static void
+stop_group_animation(const CustomShaderGroup *cg, ShaderGroupAnimState *s, monotonic_t now) {
+    // Playing in reverse takes as long as falling from the current progress
+    // to zero, so a group stopped part way through rising does not jump to one
+    const monotonic_t reverse_for = (monotonic_t)(group_linear_progress(cg, s, now) * (double)group_reverse_duration(cg));
+    if (reverse_for > 0) {
+        s->reverse_ends_at = now + reverse_for;
+        s->loops_left = cg->animation_loops > 1 ? cg->animation_loops - 1 : 0;
+    } else s->active = false;
+}
+
+// Moves a group that is playing in reverse or looping on to whichever phase it
+// should be in at now, turning it off once it has finished. The phases are
+// advanced from the time the previous one ended rather than from now, so that
+// loops do not drift when the state machine runs late.
+static void
+advance_stopped_group_animation(const CustomShaderGroup *cg, ShaderGroupAnimState *s, monotonic_t now, size_t i) {
+    while (true) {
+        if (s->reverse_ends_at && now >= s->reverse_ends_at) {
+            if (s->loops_left) {
+                s->loops_left--;
+                s->ramp_started_at = s->reverse_ends_at;
+                s->reverse_ends_at = 0;
+                s->looping = true;
+            } else {
+                s->active = false;
+                s->reverse_ends_at = 0;
+                debug_rendering("Custom shader group %zu finished playing in reverse\n", i);
+                break;
+            }
+        } else if (s->looping && now >= s->ramp_started_at + group_ramp_duration(cg)) {
+            // Loops only start after a reverse, which needs both durations to be non-zero, so this terminates
+            s->looping = false;
+            s->reverse_ends_at = s->ramp_started_at + group_ramp_duration(cg) + group_reverse_duration(cg);
+        } else break;
+    }
 }
 
 // Non-animated, non-attached groups are active from the moment the pipeline
@@ -805,62 +912,70 @@ update_custom_shader_animations(ShaderAnimEventMask event_mask, monotonic_t now,
             this_active = true;
             min_step = MIN(min_step, cg->animation_step);
         } else {
-            monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
+            const monotonic_t eff_dur = group_stop_duration(cg);
+            ShaderGroupAnimState *s = os_window->shader_group_anim + i;
             if (group_has_own_animation(cg)) {
-                const bool was_active = os_window->shader_group_anim[i].active;
+                advance_stopped_group_animation(cg, s, now, i);
+                // Whether the group is on, as opposed to off or playing in reverse or looping after being stopped
+                const bool was_on = s->active && !s->reverse_ends_at && !s->looping;
                 // Focus-out events are hard stops: if a focus-out stop condition is present in
                 // the same tick as a start event (e.g. user-activity fired by the click that
                 // moved focus away), the focus-out wins and the animation is not restarted.
                 const ShaderAnimEventMask focus_out_mask = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
                 const bool hard_stop = (cg->animation_end_events & event_mask & focus_out_mask) != 0;
-                // Check end conditions before start so simultaneous start+end lets start win,
-                // except for focus-out events which act as hard stops.
-                if (was_active) {
-                    bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
-                               (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
-                    if (end) {
-                        os_window->shader_group_anim[i].active = false;
-                        debug_rendering("Custom shader group %zu animation stopped (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
-                    }
+                // A simultaneous start and end lets start win, except for focus-out
+                // events which act as hard stops.
+                bool turn_on = false, turn_off = false;
+                if (was_on) {
+                    turn_off = (cg->animation_end_events && (event_mask & cg->animation_end_events)) || (eff_dur > 0 && now - s->started_at >= eff_dur);
                 }
-                if ((event_mask & cg->animation_start_events) && !hard_stop) {
-                    os_window->shader_group_anim[i].active = true;
-                    os_window->shader_group_anim[i].started_at = now;
-                    debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
-                }
+                if ((event_mask & cg->animation_start_events) && !hard_stop) turn_on = true;
                 // A toggle flips the state the group had before this tick and so
                 // takes precedence over simultaneous start and stop events.
                 if (event_mask & cg->animation_toggle_events) {
-                    if (was_active || hard_stop) {
-                        os_window->shader_group_anim[i].active = false;
-                        debug_rendering("Custom shader group %zu animation toggled off (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
-                    } else {
-                        os_window->shader_group_anim[i].active = true;
-                        os_window->shader_group_anim[i].started_at = now;
-                        debug_rendering("Custom shader group %zu animation toggled on (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
-                    }
+                    turn_on = !was_on && !hard_stop;
+                    turn_off = was_on;
+                }
+                if (turn_on) {
+                    start_group_animation(cg, s, now);
+                    debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+                } else if (turn_off) {
+                    stop_group_animation(cg, s, now);
+                    debug_rendering(
+                        "Custom shader group %zu animation stopped%s (events=%s)\n",
+                        i,
+                        s->active ? ", playing in reverse" : "",
+                        shader_anim_event_mask_str(event_mask));
                 }
             }
             // Attach: follow the previous group's effective active state.
             if (cg->attached) {
-                if (prev_active && !os_window->shader_group_anim[i].active) {
-                    os_window->shader_group_anim[i].active = true;
+                if (prev_active && !s->active) {
+                    s->active = true;
                     // Sync animation timing with the previous group when possible.
                     monotonic_t prev_started = (i > 0) ? os_window->shader_group_anim[i - 1].started_at : 0;
-                    os_window->shader_group_anim[i].started_at = prev_started ? prev_started : now;
+                    s->started_at = prev_started ? prev_started : now;
+                    s->ramp_started_at = s->started_at;
+                    s->reverse_ends_at = 0;
+                    s->loops_left = 0;
+                    s->looping = false;
                     debug_rendering("Custom shader group %zu activated via attach\n", i);
-                } else if (!prev_active && !group_has_own_animation(cg) && os_window->shader_group_anim[i].active) {
+                } else if (!prev_active && !group_has_own_animation(cg) && s->active) {
                     // No own events: mirror the previous group's deactivation.
-                    os_window->shader_group_anim[i].active = false;
+                    s->active = false;
                 }
             }
-            this_active = os_window->shader_group_anim[i].active;
+            this_active = s->active;
             if (this_active) {
                 any_active = true;
                 min_step = MIN(min_step, cg->animation_step);
                 // Only track next_end for groups with own stop conditions; attached-only groups
                 // deactivate when their predecessor does (already tracked by the predecessor).
-                if (group_has_own_animation(cg) && eff_dur > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + eff_dur);
+                if (group_has_own_animation(cg)) {
+                    if (s->reverse_ends_at) next_end = MIN(next_end, s->reverse_ends_at);
+                    else if (s->looping) next_end = MIN(next_end, s->ramp_started_at + group_ramp_duration(cg));
+                    else if (eff_dur > 0) next_end = MIN(next_end, s->started_at + eff_dur);
+                }
             }
         }
         prev_active = this_active;
@@ -3153,12 +3268,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     // target is extra_texture_id; toggled each time a group outputs to DEFAULT.
     bool backbuffer_is_main = true;
 
-    struct AnimCacheEntry {
-        Animation *curve;
-        monotonic_t started_at, duration;
-        float progress;
-    } anim_cache[MAX_CUSTOM_SHADER_GROUPS];
-    size_t num_anim_cached = 0;
+    float anim_progress[MAX_CUSTOM_SHADER_GROUPS];
+    custom_shader_group_progress(os_window, now, anim_progress);
 
     for (unsigned g = 0; g < num_groups; g++) {
         const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
@@ -3231,32 +3342,11 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             vp_h = sh;
         }
 
-        float anim_progress = 0.0f;
-        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
-        if (group_is_animated(cg) && eff_dur > 0 && os_window->shader_group_anim[g].active) {
-            monotonic_t started_at = os_window->shader_group_anim[g].started_at;
-            bool cached = false;
-            for (size_t c = 0; c < num_anim_cached; c++) {
-                if (anim_cache[c].curve == cg->animation_curve && anim_cache[c].started_at == started_at && anim_cache[c].duration == eff_dur) {
-                    anim_progress = anim_cache[c].progress;
-                    cached = true;
-                    break;
-                }
-            }
-            if (!cached) {
-                double elapsed = (double)(now - started_at);
-                double t = elapsed / (double)eff_dur;
-                if (t < 0.0) t = 0.0;
-                if (t > 1.0) t = 1.0;
-                anim_progress = (float)(cg->animation_curve ? apply_easing_curve(cg->animation_curve, t, eff_dur) : t);
-                anim_cache[num_anim_cached++] = (struct AnimCacheEntry){cg->animation_curve, started_at, eff_dur, anim_progress};
-            }
-        }
         glUniform1i(group_loc, (GLint)g);
         glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
-        glUniform1f(anim_progress_loc, anim_progress);
+        glUniform1f(anim_progress_loc, anim_progress[g]);
         glUniform1i(convert_to_srgb_loc, is_last ? 1 : 0);
-        // debug_rendering("Custom shader draw group %u: anim_progress=%.4f viewport=(%.2f,%.2f,%.2f,%.2f)\n", g, anim_progress, vp_x, vp_y, vp_w, vp_h);
+        // debug_rendering("Custom shader draw group %u: anim_progress=%.4f viewport=(%.2f,%.2f,%.2f,%.2f)\n", g, anim_progress[g], vp_x, vp_y, vp_w, vp_h);
         draw_quad(false, 0);
     }
 }
@@ -3538,6 +3628,13 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
         PyObject *ae_dur = PyDict_GetItemString(g, "animation_end_duration");
         if (ae_dur && PyLong_Check(ae_dur)) cg->animation_end_duration = (monotonic_t)PyLong_AsLong(ae_dur);
 
+        PyObject *a_dur = PyDict_GetItemString(g, "animation_duration");
+        cg->animation_duration = (a_dur && PyLong_Check(a_dur)) ? (monotonic_t)PyLong_AsLong(a_dur) : -1;
+        PyObject *a_rev = PyDict_GetItemString(g, "animation_reverse");
+        cg->animation_reverse = (a_rev && PyLong_Check(a_rev)) ? (monotonic_t)PyLong_AsLong(a_rev) : 0;
+        PyObject *a_loops = PyDict_GetItemString(g, "animation_loops");
+        cg->animation_loops = (a_loops && PyLong_Check(a_loops)) ? (unsigned)PyLong_AsUnsignedLong(a_loops) : 1;
+
         PyObject *attached = PyDict_GetItemString(g, "attached");
         cg->attached = attached && PyObject_IsTrue(attached);
     }
@@ -3773,11 +3870,13 @@ pyfire_custom_shader_event(PyObject *self UNUSED, PyObject *args) {
 // Test only. Loads pipeline, a dict as sent by compile_program(), in place of
 // the current one and runs the animation state machine over an OS window, one
 // tick per item of ticks, each a sequence of event names, 10ms apart. Returns
-// the active state of every group after each tick.
+// the active state of every group after each tick, or if with_progress is
+// true, the animation_progress of active groups and None for inactive ones.
 static PyObject *
 pysimulate_custom_shader_animation(PyObject *self UNUSED, PyObject *args) {
     PyObject *pipeline, *ticks;
-    if (!PyArg_ParseTuple(args, "O!O!", &PyDict_Type, &pipeline, &PyList_Type, &ticks)) return NULL;
+    int with_progress = 0;
+    if (!PyArg_ParseTuple(args, "O!O!|p", &PyDict_Type, &pipeline, &PyList_Type, &ticks, &with_progress)) return NULL;
     RAII_ALLOC(OSWindow, osw, calloc(1, sizeof(OSWindow)));
     if (!osw) return PyErr_NoMemory();
     const CustomShaderPipeline saved = custom_shaders.end;
@@ -3802,9 +3901,19 @@ pysimulate_custom_shader_animation(PyObject *self UNUSED, PyObject *args) {
                 Py_CLEAR(ans);
                 break;
             }
+            float progress[MAX_CUSTOM_SHADER_GROUPS];
+            custom_shader_group_progress(osw, now, progress);
             for (size_t g = 0; g < custom_shaders.end.num_groups; g++) {
                 const CustomShaderGroup *cg = custom_shaders.end.groups + g;
-                PyTuple_SET_ITEM(states, g, Py_NewRef(!group_is_animated(cg) || osw->shader_group_anim[g].active ? Py_True : Py_False));
+                const bool active = !group_is_animated(cg) || osw->shader_group_anim[g].active;
+                PyObject *state =
+                    with_progress && active ? PyFloat_FromDouble(progress[g]) : Py_NewRef(with_progress ? Py_None : (active ? Py_True : Py_False));
+                if (!state) break;
+                PyTuple_SET_ITEM(states, g, state);
+            }
+            if (PyErr_Occurred()) {
+                Py_CLEAR(ans);
+                break;
             }
             if (PyList_Append(ans, states) != 0) Py_CLEAR(ans);
         }

@@ -160,6 +160,97 @@ class TestSlang(BaseTest):
         ]
         self.ae(simulate_custom_shader_animation(p, ticks), expected)
 
+    def test_custom_shader_animation_progress(self):
+        from kitty.fast_data_types import simulate_custom_shader_animation
+
+        def pipeline(*groups: str):
+            lines = []
+            for g in groups:
+                lines.append('startgroup')
+                lines.extend(g.splitlines())
+                lines.append('shaders sample')
+                lines.append('endgroup')
+            return parse_pipeline_definition(lines, 'test')
+
+        def group(spec: str):
+            return pipeline(spec)['groups'][0]
+
+        def progress(spec: str, ticks: list[tuple[str, ...]]) -> list[float | None]:
+            # The ticks are 10ms apart
+            return [x[0] for x in simulate_custom_shader_animation(pipeline(spec, ''), ticks, True)]
+
+        # Parsing
+        self.ae(group('')['animation_duration'], -1)
+        self.ae(group('animation_duration 300')['animation_duration'], 300_000_000)
+        self.ae(group('')['animation_reverse'], 0)
+        self.ae(group('animation_reverse yes')['animation_reverse'], -1)
+        self.ae(group('animation_reverse no')['animation_reverse'], 0)
+        self.ae(group('animation_reverse 200')['animation_reverse'], 200_000_000)
+        self.ae(group('')['animation_loops'], 1)
+        self.ae(group('animation_reverse yes\nanimation_loops 3')['animation_loops'], 3)
+        for bad in (
+            'animation_duration -1',
+            'animation_duration x',
+            'animation_reverse -1',
+            'animation_reverse maybe',
+            'animation_reverse yes\nanimation_loops 0',
+            'animation_loops 2',
+        ):
+            self.assertRaises(ValueError, group, bad)
+
+        on, off, none = ('user:t',), ('user:off',), ()
+        # Without animation_duration progress follows the stop duration, and a
+        # group with no stop duration has no progress
+        self.ae(progress('animation_start user:t\nanimation_stop 40', [on, none, none, none, none]), [0, 0.25, 0.5, 0.75, None])
+        self.ae(progress('animation_toggle user:t', [on, none, none]), [0, 0, 0])
+        # animation_duration makes progress rise to one and stay there
+        self.ae(progress('animation_toggle user:t\nanimation_duration 40', [on] + [none] * 5 + [on, none]), [0, 0.25, 0.5, 0.75, 1, 1, None, None])
+        # Reversing on toggle off, over animation_duration with yes
+        self.ae(
+            progress('animation_toggle user:t\nanimation_duration 40\nanimation_reverse yes', [on] + [none] * 4 + [on] + [none] * 4),
+            [0, 0.25, 0.5, 0.75, 1, 1, 0.75, 0.5, 0.25, None],
+        )
+        # ...or over its own duration
+        self.ae(
+            progress('animation_toggle user:t\nanimation_duration 40\nanimation_reverse 20', [on] + [none] * 4 + [on, none, none]),
+            [0, 0.25, 0.5, 0.75, 1, 1, 0.5, None],
+        )
+        # Stopping part way reverses from the current progress, and restarting
+        # while reversing continues rising from there
+        self.ae(
+            progress('animation_toggle user:t\nanimation_duration 40\nanimation_reverse yes', [on, none, on, on, none, none, none]),
+            [0, 0.25, 0.5, 0.25, 0.5, 0.75, 1],
+        )
+        # Stop events are ignored while reversing, start events restart
+        self.ae(
+            progress('animation_start user:t\nanimation_stop user:off\nanimation_duration 40\nanimation_reverse yes', [on] + [none] * 4 + [off, off, on, none]),
+            [0, 0.25, 0.5, 0.75, 1, 1, 0.75, 0.5, 0.75],
+        )
+        # The stop duration ending also reverses, with progress having reached one
+        self.ae(progress('animation_start user:t\nanimation_stop 40\nanimation_reverse yes', [on] + [none] * 8), [0, 0.25, 0.5, 0.75, 1, 0.75, 0.5, 0.25, None])
+        # Loops play the animation forwards and in reverse again after the
+        # first reverse, without holding, for example, to blink three times
+        self.ae(
+            progress('animation_start user:t\nanimation_stop 20\nanimation_duration 20\nanimation_reverse yes\nanimation_loops 3', [on] + [none] * 12),
+            [0, 0.5, 1, 0.5, 0, 0.5, 1, 0.5, 0, 0.5, 1, 0.5, None],
+        )
+        # Starting again while looping goes back to holding at one
+        self.ae(
+            progress(
+                'animation_toggle user:t\nanimation_duration 20\nanimation_reverse yes\nanimation_loops 2', [on, none, none, on, none, none, on, none, none]
+            ),
+            [0, 0.5, 1, 1, 0.5, 0, 0.5, 1, 1],
+        )
+        # Attached groups without their own events share the progress, including
+        # the easing curve and reversal, of the group they are attached to
+        p = pipeline('animation_toggle user:t\nanimation_duration 40\nanimation_curve ease-in\nanimation_reverse yes', 'attach', '')
+        results = simulate_custom_shader_animation(p, [on] + [none] * 4 + [on] + [none] * 4, True)
+        self.ae([r[0] for r in results], [r[1] for r in results])
+        eased = results[2][0]
+        assert eased is not None
+        self.assertLess(eased, 0.5)
+        self.ae([r[1] is None for r in results], [False] * 9 + [True])
+
     def test_custom_shader_reenable(self):
         from kitty.fast_data_types import CUSTOM_END_PROGRAM
         from kitty.options.types import defaults

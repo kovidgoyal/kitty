@@ -155,14 +155,20 @@ public struct KittyTextures {
 
     public float2 pos; // the position of this pixel in the viewport (UV coordinates, [0,1] range, origin at bottom-left)
 
-    // Some group related uniforms
+    // Some group related uniforms. These are here rather than in
+    // KittyCustomShaderData as that is shared by all groups, while these can
+    // differ from group to group.
 
     // The viewport for this group in the form (x, y, width, height) where (x, y) is the
     // bottom-left corner, with (0, 0) at the bottom-left of the screen and y increasing upwards
     // (UV coordinates). Defaults to (0, 0, 1, 1) when no viewport is defined for the group.
     public float4 viewport;
-    // The value after applying the animation easing curve to time since animation start.
-    // Zero when no animation is active.
+    // Goes from zero to one over animation_duration after the group's
+    // animation starts, with the animation_curve applied, then stays at one.
+    // If animation_reverse is set, it goes back down to zero after the
+    // animation stops, going up and down again animation_loops - 1 more
+    // times. Always zero for groups that run on every frame and for
+    // groups that have neither animation_duration nor a stop duration.
     public float animation_progress;
     // The index of the current group in the pipeline.
     public int group;

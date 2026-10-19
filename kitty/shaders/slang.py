@@ -1633,6 +1633,9 @@ class Group(TypedDict):
     animation_step: int  # nanoseconds between animation samples
     animation_end_events: tuple[str, ...]  # events that stop the animation
     animation_end_duration: int  # nanoseconds; 0 = no time limit, negative = use cursor_stop_blinking_after
+    animation_duration: int  # nanoseconds for animation_progress to reach one; negative = same as animation_end_duration
+    animation_reverse: int  # nanoseconds to play the animation in reverse when stopped; 0 = no, negative = same as animation_duration
+    animation_loops: int  # times to play the animation forwards and in reverse, only used with animation_reverse
     attached: bool  # if True, this group is always active when the previous group is active
 
 
@@ -1661,6 +1664,8 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
             if current_group['animation_toggle'] and not current_group['animation_start'] and not has_animation_stop:
                 # A group turned on and off by toggling should stay on until toggled off
                 current_group['animation_end_duration'] = 0
+            if current_group['animation_loops'] > 1 and not current_group['animation_reverse']:
+                raise ValueError('animation_loops can only be used together with animation_reverse')
             groups.append(current_group)
             current_group = None
 
@@ -1678,6 +1683,9 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
             'animation_step': ANIMATION_SAMPLE_WAIT,
             'animation_end_events': (),
             'animation_end_duration': -1,
+            'animation_duration': -1,
+            'animation_reverse': 0,
+            'animation_loops': 1,
             'attached': False,
         }
 
@@ -1751,6 +1759,35 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                                 end_events.extend(parse_animation_events(token))
                         current_group['animation_end_events'] = tuple(end_events)
                         current_group['animation_end_duration'] = end_duration
+                case 'animation_duration':
+                    if len(parts) < 2:
+                        raise ValueError('animation_duration requires a millisecond value')
+                    duration_ms = int(parts[1])
+                    if duration_ms < 0:
+                        raise ValueError(f'animation_duration must be non-negative, not: {duration_ms}')
+                    current_group['animation_duration'] = duration_ms * 1_000_000
+                case 'animation_reverse':
+                    val = parts[1] if len(parts) > 1 else 'yes'
+                    match val:
+                        case 'yes':
+                            current_group['animation_reverse'] = -1
+                        case 'no':
+                            current_group['animation_reverse'] = 0
+                        case _:
+                            try:
+                                reverse_ms = int(val)
+                            except ValueError:
+                                reverse_ms = -1
+                            if reverse_ms < 0:
+                                raise ValueError(f'animation_reverse must be yes, no or a non-negative number of milliseconds, not: {val}')
+                            current_group['animation_reverse'] = reverse_ms * 1_000_000
+                case 'animation_loops':
+                    if len(parts) < 2:
+                        raise ValueError('animation_loops requires a number')
+                    loops = int(parts[1])
+                    if not 1 <= loops < 2**31:
+                        raise ValueError(f'animation_loops must be a positive number, not: {loops}')
+                    current_group['animation_loops'] = loops
                 case 'attach':
                     current_group['attached'] = True
                 case 'endgroup':

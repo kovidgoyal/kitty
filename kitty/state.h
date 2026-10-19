@@ -522,6 +522,22 @@ typedef struct ShaderAnimState {
     monotonic_t next_end_at; // earliest expiry of a duration bounded active animation, MONOTONIC_T_MAX if none
 } ShaderAnimState;
 
+typedef struct ShaderGroupAnimState {
+    bool active;
+    monotonic_t started_at;
+    // When animation_progress would have been zero, before applying the
+    // easing curve, had it been rising since then without interruption
+    monotonic_t ramp_started_at;
+    // Non-zero while the group is active only to play its animation in
+    // reverse after being stopped, the time at which that finishes
+    monotonic_t reverse_ends_at;
+    // How many more times to play the animation forwards and in reverse
+    // after the current reverse finishes
+    unsigned loops_left;
+    // true while playing the animation forwards in one of those loops
+    bool looping;
+} ShaderGroupAnimState;
+
 typedef enum {
     SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS,
     SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN,
@@ -626,10 +642,7 @@ typedef struct OSWindow {
     } scroll;
     ShaderAnimEventMask shader_anim_event_registry;
     id_type last_bell_window_id; // ID of the most recent window that received a bell event
-    struct {
-        bool active;
-        monotonic_t started_at;
-    } shader_group_anim[MAX_CUSTOM_SHADER_GROUPS];
+    ShaderGroupAnimState shader_group_anim[MAX_CUSTOM_SHADER_GROUPS];
     ShaderAnimState shader_anim;
     struct {
         // POINTER_MAP_SIZE x POINTER_MAP_SIZE (x, y) pairs, rows from the bottom up, in viewport UV
