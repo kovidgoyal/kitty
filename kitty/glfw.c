@@ -2705,6 +2705,32 @@ dbus_user_notification_activated(uint32_t notification_id, int type, const char 
     }
     send_dbus_notification_event_to_python(stype, nid, action);
 }
+
+static PyObject *dbus_session_state_callback = NULL;
+
+static void
+dbus_session_state_changed(uint32_t state) {
+    if (dbus_session_state_callback) {
+        RAII_PyObject(ret, PyObject_CallFunction(dbus_session_state_callback, "k", (unsigned long)state));
+        if (!ret) PyErr_Print();
+    }
+}
+
+static PyObject *
+dbus_monitor_session_state(PyObject *self UNUSED, PyObject *callback) {
+    if (!PyCallable_Check(callback)) {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
+    if (!glfwDBusMonitorSessionState) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusMonitorSessionState, did you call glfw_init?");
+        return NULL;
+    }
+    Py_CLEAR(dbus_session_state_callback);
+    dbus_session_state_callback = Py_NewRef(callback);
+    if (glfwDBusMonitorSessionState(dbus_session_state_changed)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
 #endif
 
 static PyObject *
@@ -4078,6 +4104,7 @@ static PyMethodDef module_methods[] = {
 #ifndef __APPLE__
     METHODB(dbus_close_notification, METH_VARARGS),
     METHODB(dbus_set_notification_callback, METH_O),
+    METHODB(dbus_monitor_session_state, METH_O),
     {"dbus_send_notification", (PyCFunction)(void (*)(void))(dbus_send_notification), METH_KEYWORDS | METH_VARARGS, NULL},
 #else
     {"cocoa_recreate_global_menu", (PyCFunction)py_recreate_global_menu, METH_NOARGS, ""},
@@ -4111,6 +4138,7 @@ cleanup_glfw(void) {
     Py_CLEAR(edge_spacing_func);
 #ifndef __APPLE__
     Py_CLEAR(dbus_notification_callback);
+    Py_CLEAR(dbus_session_state_callback);
     release_freetype_render_context(bold_render_ctx);
     release_freetype_render_context(normal_render_ctx);
 #endif

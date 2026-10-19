@@ -32,6 +32,7 @@
 #include "math.h"
 #include "backend_utils.h"
 #include "linux_notify.h"
+#include "linux_session_monitor.h"
 #include "../kitty/monotonic.h"
 
 #include <X11/cursorfont.h>
@@ -3452,6 +3453,11 @@ glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreate
 GLFWAPI void
 glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {
     glfw_dbus_set_user_notification_activated_handler(handler);
+}
+
+GLFWAPI bool
+glfwDBusMonitorSessionState(GLFWDBussessionstatefun callback) {
+    return glfw_dbus_monitor_session_state(callback);
 }
 
 GLFWAPI int

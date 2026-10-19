@@ -67,6 +67,7 @@
       "null_joystick.h",
       "linux_notify.h",
       "linux_desktop_settings.h",
+      "linux_session_monitor.h",
       "wl_client_side_decorations.h",
       "main_loop.h"
     ],
@@ -117,6 +118,7 @@
       "null_joystick.c",
       "momentum-scroll.c",
       "linux_notify.c",
+      "linux_session_monitor.c",
       "wl_inject.c"
     ]
   },
@@ -159,6 +161,7 @@
       "null_joystick.h",
       "linux_notify.h",
       "linux_desktop_settings.h",
+      "linux_session_monitor.h",
       "main_loop.h"
     ],
     "sources": [
@@ -177,7 +180,8 @@
       "null_joystick.c",
       "linux_desktop_settings.c",
       "momentum-scroll.c",
-      "linux_notify.c"
+      "linux_notify.c",
+      "linux_session_monitor.c"
     ]
   }
 }

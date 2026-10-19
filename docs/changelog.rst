@@ -244,10 +244,11 @@ Detailed list of changes
   palette, so that images automatically change color along with the terminal
   color scheme (:iss:`9379`)
 
-- macOS: A new option :opt:`restore_session_after_logout` to save the state of
-  every kitty instance, including the scrollback of every window, encrypted with
-  a key in the keychain, when logging out, restarting or shutting down the
-  computer and restore it the next time kitty is started, see
+- A new option :opt:`restore_session_after_logout` to save the state of
+  every kitty instance, including the scrollback of every window, when logging
+  out, restarting or shutting down the computer and restore it the next time
+  kitty is started. On macOS, the state is encrypted with a key in the
+  keychain. On Linux, it requires the Inhibit desktop portal. See
   :ref:`restore_after_logout` (:iss:`1197`, :pull:`10659`)
 
 - Fix kitty repeatedly calling ``on_quit`` watchers when a watcher aborts a quit

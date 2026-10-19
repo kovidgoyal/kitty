@@ -9,10 +9,20 @@
 # instance for each of the others, so that every instance is restored with its own command line and environment. Snapshots are
 # deleted only after they have been restored.
 #
-# Snapshots are encrypted with a random key per snapshot, stored in the macOS Keychain. The Keychain is never allowed to show any
-# UI, if it needs user interaction, saving or restoring fails instead. The key is deleted before the snapshot is, so that any
-# copies of the snapshot left on disk or in backups cannot be read.
+# On macOS, snapshots are encrypted with a random key per snapshot, stored in the macOS Keychain. The Keychain is never allowed to
+# show any UI, if it needs user interaction, saving or restoring fails instead. The key is deleted before the snapshot is, so that
+# any copies of the snapshot left on disk or in backups cannot be read. On Linux, there is no way to store the key securely without
+# user interaction, so snapshots are not encrypted and are protected only by their file permissions.
+#
+# On macOS, the OS asks kitty to quit when the user logs out and the snapshot is saved when the quit is confirmed. On Linux, the
+# desktop portal tells kitty that the session is about to end and kitty is then killed, so the snapshot is saved immediately and is
+# deleted if the logout is cancelled.
+#
+# An instance that saved a snapshot holds a lock on a file in it for as long as it is running, so that the snapshot of an instance
+# that is still running, for example because the logout was cancelled, is never claimed. The kernel releases the lock when the
+# instance dies, however it dies.
 
+import fcntl
 import json
 import os
 import re
@@ -39,6 +49,7 @@ PROCESS_FILE = 'process.json'
 SCROLLBACK_DIR = 'scrollback'
 ATTEMPTS_FILE = 'attempts'
 KEY_ID_FILE = 'key-id'
+SAVER_LOCK_FILE = 'saver.lock'
 KEY_ID_BYTES = 16
 KEYCHAIN_SERVICE = 'net.kovidgoyal.kitty.session-saved-at-logout'
 ENCRYPTED_FILE_MAGIC = b'kitty-snapshot-1'
@@ -51,6 +62,37 @@ SNAPSHOT_ENV_VAR = 'KITTY_RESTORE_LOGOUT_SNAPSHOT'
 # A quit confirmed by the user later than this many seconds after the OS asked kitty to quit for a logout is treated as an
 # ordinary quit, since the OS will have given up on the logout by then
 LOGOUT_CONFIRMATION_TIMEOUT = 60
+# Environment variables that refer to the login session, such as the display server and the session bus. A kitty instance started to
+# restore a snapshot gets these from the kitty instance that started it, as the saved values refer to the login session that ended.
+LOGIN_SESSION_ENV_VARS = frozenset(
+    (
+        'DBUS_SESSION_BUS_ADDRESS',
+        'DESKTOP_SESSION',
+        'DISPLAY',
+        'GPG_AGENT_INFO',
+        'HYPRLAND_INSTANCE_SIGNATURE',
+        'I3SOCK',
+        'NIRI_SOCKET',
+        'SESSION_MANAGER',
+        'SSH_AGENT_PID',
+        'SSH_AUTH_SOCK',
+        'SWAYSOCK',
+        'WAYLAND_DISPLAY',
+        'XAUTHORITY',
+        'XDG_CURRENT_DESKTOP',
+        'XDG_RUNTIME_DIR',
+        'XDG_SEAT',
+        'XDG_SESSION_CLASS',
+        'XDG_SESSION_DESKTOP',
+        'XDG_SESSION_ID',
+        'XDG_SESSION_TYPE',
+        'XDG_VTNR',
+    )
+)
+# Environment variables used to pass a single use token to a newly started application, never passed on to restored instances
+STARTUP_TOKEN_ENV_VARS = frozenset(('DESKTOP_STARTUP_ID', 'XDG_ACTIVATION_TOKEN', 'WAYLAND_SOCKET'))
+# The session states reported by the Inhibit desktop portal on Linux
+DESKTOP_SESSION_RUNNING, DESKTOP_SESSION_QUERY_END, DESKTOP_SESSION_ENDING = 1, 2, 3
 
 
 class ProcessState(NamedTuple):
@@ -97,13 +139,8 @@ class MacOSKeychain:
 
 
 def get_key_store() -> KeyStore | None:
+    # Snapshots are encrypted only on platforms that have a key store that can be used without user interaction
     return MacOSKeychain() if is_macos else None
-
-
-def require_key_store(key_store: KeyStore | None) -> KeyStore:
-    if key_store is None:
-        raise OSError('Saving the session at logout requires the macOS Keychain')
-    return key_store
 
 
 def encrypt(key: Secret, name: str, data: bytes) -> bytes:
@@ -125,13 +162,14 @@ def decrypt(key: Secret, name: str, data: bytes) -> bytes:
     return d.add_data_to_be_decrypted(data[h + IV_SIZE + TAG_SIZE :], True)
 
 
-def write_encrypted(snapshot_dir: str, key: Secret, name: str, data: bytes) -> None:
-    write_private_file(os.path.join(snapshot_dir, name), encrypt(key, name, data))
+def write_snapshot_file(snapshot_dir: str, key: Secret | None, name: str, data: bytes) -> None:
+    write_private_file(os.path.join(snapshot_dir, name), data if key is None else encrypt(key, name, data))
 
 
-def read_encrypted(snapshot_dir: str, key: Secret, name: str) -> bytes:
+def read_snapshot_file(snapshot_dir: str, key: Secret | None, name: str) -> bytes:
     with open(os.path.join(snapshot_dir, name), 'rb') as f:
-        return decrypt(key, name, f.read())
+        data = f.read()
+    return data if key is None else decrypt(key, name, data)
 
 
 def read_key_id(snapshot_dir: str) -> str:
@@ -142,11 +180,16 @@ def read_key_id(snapshot_dir: str) -> str:
         return ''
 
 
-def snapshot_key(snapshot_dir: str, key_store: KeyStore | None) -> Secret:
+def snapshot_key(snapshot_dir: str, key_store: KeyStore | None) -> Secret | None:
+    # Returns None if snapshots are not encrypted on this platform
     key_id = read_key_id(snapshot_dir)
+    if key_store is None:
+        if key_id:
+            raise ValueError('The snapshot is encrypted, but there is no key store to read its key from')
+        return None
     if not key_id:
         raise ValueError('The snapshot has no encryption key id')
-    key = require_key_store(key_store).read(key_id)
+    key = key_store.read(key_id)
     if key is None:
         raise ValueError('The encryption key for the snapshot is not in the keychain')
     return key
@@ -198,6 +241,8 @@ def remove_snapshot(path: str, key_store: KeyStore | None) -> None:
 
 
 process_state = ProcessState((), '', {}, time.time())
+# The path and locked file descriptor of the snapshot saved by this kitty instance, if any
+saver_lock: tuple[str, int] | None = None
 # The snapshot this kitty instance was started to restore by the kitty instance that claimed it, if any
 snapshot_requested_by_parent = ''
 
@@ -212,6 +257,41 @@ def record_process_state(argv: tuple[str, ...]) -> None:
     except OSError:
         cwd = ''  # the working directory was deleted, the home directory is used instead when restoring
     process_state = ProcessState(argv, cwd, dict(os.environ), time.time())
+
+
+def lock_snapshot_for_saver(path: str) -> None:
+    # Must be called with the lock held, by the kitty instance that saved the snapshot. Raises OSError if the lock cannot be taken.
+    global saver_lock
+    release_saver_lock()
+    fd = os.open(os.path.join(path, SAVER_LOCK_FILE), os.O_CREAT | os.O_WRONLY | os.O_CLOEXEC, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        raise
+    saver_lock = path, fd
+
+
+def release_saver_lock(path: str = '') -> None:
+    # Releases the lock on the snapshot saved by this instance, if path is empty or is the path of that snapshot
+    global saver_lock
+    if saver_lock is not None and (not path or saver_lock[0] == path):
+        fd, saver_lock = saver_lock[1], None
+        os.close(fd)
+
+
+def is_saver_running(path: str) -> bool:
+    try:
+        fd = os.open(os.path.join(path, SAVER_LOCK_FILE), os.O_RDONLY | os.O_CLOEXEC)
+    except FileNotFoundError:
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return True
+    finally:
+        os.close(fd)
+    return False
 
 
 def snapshots_dir() -> str:
@@ -278,28 +358,32 @@ def sanitize_restored_output(text: str) -> str:
 
 def save_snapshot(base: str, pid: int, session: str, scrollback: Mapping[int, bytes], state: ProcessState, key_store: KeyStore | None) -> str:
     # Must be called with the lock held. Nothing is saved if the key cannot be stored. The snapshot is written to a temporary
-    # directory and renamed, so that an incomplete snapshot is never restored.
-    key_store = require_key_store(key_store)
-    key, key_id = random_secret(), new_key_id()
-    key_store.store(key_id, key)
+    # directory and renamed, so that an incomplete snapshot is never restored. The snapshot is encrypted only if there is a key store.
+    key: Secret | None = None
+    key_id = ''
+    if key_store is not None:
+        key, key_id = random_secret(), new_key_id()
+        key_store.store(key_id, key)
     tdir = ''
     try:
         os.makedirs(base, mode=0o700, exist_ok=True)
         tdir = tempfile.mkdtemp(dir=base, prefix=f'{pid}.', suffix='.tmp')
-        write_private_file(os.path.join(tdir, KEY_ID_FILE), key_id.encode())
+        if key_id:
+            write_private_file(os.path.join(tdir, KEY_ID_FILE), key_id.encode())
         os.mkdir(os.path.join(tdir, SCROLLBACK_DIR), 0o700)
         for window_id, data in scrollback.items():
-            write_encrypted(tdir, key, f'{SCROLLBACK_DIR}/{window_id}', data)
+            write_snapshot_file(tdir, key, f'{SCROLLBACK_DIR}/{window_id}', data)
         pdata = {'argv': state.argv, 'cwd': state.cwd, 'environ': state.environ, 'saved_at': time.time()}
-        write_encrypted(tdir, key, PROCESS_FILE, json.dumps(pdata).encode())
-        write_encrypted(tdir, key, SESSION_FILE, session.encode())
+        write_snapshot_file(tdir, key, PROCESS_FILE, json.dumps(pdata).encode())
+        write_snapshot_file(tdir, key, SESSION_FILE, session.encode())
         path = os.path.join(base, str(pid))
         remove_snapshot(path, key_store)
         os.rename(tdir, path)
     except BaseException:
         if tdir:
             remove_path(tdir)
-        delete_key(key_store, key_id, tdir or base)
+        if key_store is not None:
+            delete_key(key_store, key_id, tdir or base)
         raise
     return path
 
@@ -317,7 +401,8 @@ def remove_stale_snapshots(base: str, started_at: float, key_store: KeyStore | N
     remove_orphaned_keys(base, key_store)
 
 
-def save_session_at_logout(boss: BossType) -> None:
+def save_session_at_logout(boss: BossType) -> str:
+    # Returns the path to the saved snapshot or an empty string if there was nothing to save
     from .session import default_save_as_session_opts, parse_session
 
     ser_opts = default_save_as_session_opts()
@@ -329,13 +414,19 @@ def save_session_at_logout(boss: BossType) -> None:
     with lock_with_file(lock_path(base)):
         remove_stale_snapshots(base, process_state.started_at, key_store)
         if not session:
-            return
+            return ''
         serialized_ids = {w.serialized_id for s in parse_session(session, get_options()) for t in s.tabs for w in t.windows}
         scrollback = {}
         for window in boss.all_windows:
             if window.id in serialized_ids and (data := scrollback_for_restore(window.screen)):
                 scrollback[window.id] = data
-        save_snapshot(base, os.getpid(), session, scrollback, process_state, key_store)
+        path = save_snapshot(base, os.getpid(), session, scrollback, process_state, key_store)
+        try:
+            lock_snapshot_for_saver(path)
+        except OSError as e:
+            # The snapshot is still useful, but could be restored by another kitty instance while this one is running
+            log_error(f'Failed to lock the session saved at logout in {path}. Error: {e}')
+        return path
 
 
 def is_logout_in_progress() -> bool:
@@ -351,8 +442,8 @@ def parse_claimed_name(name: str) -> tuple[str, int]:
     return snapshot_name, int(claimer or 0)
 
 
-def read_snapshot(path: str, key: Secret) -> Snapshot:
-    pdata = json.loads(read_encrypted(path, key, PROCESS_FILE))
+def read_snapshot(path: str, key: Secret | None) -> Snapshot:
+    pdata = json.loads(read_snapshot_file(path, key, PROCESS_FILE))
     argv, cwd, environ = pdata['argv'], pdata['cwd'], pdata['environ']
     if not isinstance(argv, list) or not all(isinstance(x, str) for x in argv):
         raise ValueError('Invalid command line in the snapshot')
@@ -374,6 +465,9 @@ def claim_snapshots(base: str, pid: int, key_store: KeyStore | None, is_alive: C
         for name in names:
             snapshot_name, claimer = parse_claimed_name(name)
             if not snapshot_name or (claimer and is_alive(claimer)):
+                continue
+            if not claimer and is_saver_running(os.path.join(base, name)):
+                # The instance that saved it is still running, for example, because the logout was cancelled
                 continue
             path = os.path.join(base, f'{snapshot_name}{CLAIMED_MARKER}{pid}')
             try:
@@ -401,7 +495,7 @@ def load_snapshot(path: str, opts: Options, key_store: KeyStore | None) -> tuple
     from .session import parse_session
 
     key = snapshot_key(path, key_store)
-    raw = read_encrypted(path, key, SESSION_FILE).decode()
+    raw = read_snapshot_file(path, key, SESSION_FILE).decode()
     saved_at = read_snapshot(path, key).saved_at
     sessions = tuple(parse_session(raw, opts))
     marker = '\r\n\x1b[m\x1b[7m ' + _('Restored from {}').format(time.strftime('%c', time.localtime(saved_at))) + ' \x1b[m\r\n'
@@ -409,15 +503,21 @@ def load_snapshot(path: str, opts: Options, key_store: KeyStore | None) -> tuple
         for tab in session.tabs:
             for window in tab.windows:
                 with suppress(FileNotFoundError):
-                    data = read_encrypted(path, key, f'{SCROLLBACK_DIR}/{window.serialized_id}')
+                    data = read_snapshot_file(path, key, f'{SCROLLBACK_DIR}/{window.serialized_id}')
                     window.restored_scrollback = (sanitize_restored_output(data.decode('utf-8', 'replace')) + marker).encode()
     return sessions
+
+
+def environment_for_snapshot(saved: Mapping[str, str], current: Mapping[str, str]) -> dict[str, str]:
+    env = {k: v for k, v in saved.items() if k not in LOGIN_SESSION_ENV_VARS and k not in STARTUP_TOKEN_ENV_VARS}
+    env.update((k, v) for k, v in current.items() if k in LOGIN_SESSION_ENV_VARS)
+    return env
 
 
 def start_instance_for_snapshot(snapshot: Snapshot) -> None:
     import subprocess
 
-    env = dict(snapshot.process_state.environ)
+    env = environment_for_snapshot(snapshot.process_state.environ, process_state.environ)
     env[SNAPSHOT_ENV_VAR] = snapshot.path
     cwd = snapshot.process_state.cwd
     if not os.path.isdir(cwd):
@@ -468,10 +568,15 @@ def restore_snapshots(opts: Options, argv: tuple[str, ...]) -> RestoredSnapshot 
     return None if own is None else load_or_discard_snapshot(own.path, opts)
 
 
-def finish_restore(path: str) -> None:
-    # Called once the windows of a restored snapshot have been created, as a snapshot is restored only once
+def delete_snapshot(path: str) -> None:
     with lock_with_file(lock_path(os.path.dirname(path))):
         remove_snapshot(path, get_key_store())
+        release_saver_lock(path)
+
+
+def finish_restore(path: str) -> None:
+    # Called once the windows of a restored snapshot have been created, as a snapshot is restored only once
+    delete_snapshot(path)
 
 
 def remove_all_snapshots() -> None:

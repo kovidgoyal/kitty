@@ -1940,6 +1940,7 @@ typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
 typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, int, const char*);
+typedef void (*GLFWDBussessionstatefun)(uint32_t);
 typedef int (*glfwInit_func)(monotonic_t, bool*);
 GFW_EXTERN glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
@@ -2683,6 +2684,10 @@ GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 typedef void (*glfwDBusSetUserNotificationHandler_func)(GLFWDBusnotificationactivatedfun);
 GFW_EXTERN glfwDBusSetUserNotificationHandler_func glfwDBusSetUserNotificationHandler_impl;
 #define glfwDBusSetUserNotificationHandler glfwDBusSetUserNotificationHandler_impl
+
+typedef bool (*glfwDBusMonitorSessionState_func)(GLFWDBussessionstatefun);
+GFW_EXTERN glfwDBusMonitorSessionState_func glfwDBusMonitorSessionState_impl;
+#define glfwDBusMonitorSessionState glfwDBusMonitorSessionState_impl
 
 typedef int (*glfwSetX11LaunchCommand_func)(GLFWwindow*, char**, int);
 GFW_EXTERN glfwSetX11LaunchCommand_func glfwSetX11LaunchCommand_impl;

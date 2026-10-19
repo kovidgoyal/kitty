@@ -422,6 +422,7 @@ class Boss:
         self.window_for_dispatch: Window | None = None
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
+        self.snapshot_saved_for_logout = ''
         self.peer_data_map: dict[int, dict[str, Sequence[str]] | None] = {}
         self.background_process_death_notify_map: dict[int, Callable[[int, Exception | None], None]] = {}
         self.encryption_key = EllipticCurveKey()
@@ -1544,6 +1545,7 @@ class Boss:
 
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
+        self.monitor_desktop_session_if_needed()
         if opts.auto_reload_config >= 0 and not hasattr(self, 'config_reload_watcher_process') and opts.all_config_paths:
             self.config_reload_watcher_process = subprocess.Popen(
                 [kitten_exe(), '__watch_conf__', str(os.getpid()), str(int(opts.auto_reload_config * 1000))] + list(opts.all_config_paths),
@@ -2526,16 +2528,49 @@ class Boss:
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
 
     def save_session_if_logging_out(self) -> None:
-        from .logout_session import is_logout_in_progress, save_session_at_logout
+        from .logout_session import is_logout_in_progress
+
+        if is_logout_in_progress():
+            self.save_session_at_logout()
+
+    def save_session_at_logout(self) -> str:
+        from .logout_session import save_session_at_logout
         from .main import is_panel_kitten
 
-        if get_options().restore_session_after_logout and not is_panel_kitten() and is_logout_in_progress():
+        if get_options().restore_session_after_logout and not is_panel_kitten():
             try:
-                save_session_at_logout(self)
+                return save_session_at_logout(self)
             except Exception:
                 import traceback
 
                 log_error('Failed to save the session at logout with error:\n' + traceback.format_exc())
+        return ''
+
+    def monitor_desktop_session_if_needed(self) -> None:
+        # On Linux, kitty is not asked to quit when the user logs out, so it uses the desktop portal to find out when the session is
+        # about to end. Does nothing if already monitoring and tries again if monitoring failed, for example, because the portal was
+        # not running.
+        from .main import is_panel_kitten
+
+        if is_macos or not get_options().restore_session_after_logout or is_panel_kitten():
+            return
+        from .fast_data_types import dbus_monitor_session_state
+
+        dbus_monitor_session_state(self.on_desktop_session_state_changed)
+
+    def on_desktop_session_state_changed(self, state: int) -> None:
+        from .logout_session import DESKTOP_SESSION_QUERY_END, DESKTOP_SESSION_RUNNING, delete_snapshot
+
+        if state == DESKTOP_SESSION_QUERY_END:
+            # The session will end once this returns, unless some other application cancels it
+            self.snapshot_saved_for_logout = self.save_session_at_logout()
+        elif state == DESKTOP_SESSION_RUNNING and self.snapshot_saved_for_logout:
+            # The logout was cancelled, so kitty keeps running and the snapshot must not be restored by another kitty instance
+            path, self.snapshot_saved_for_logout = self.snapshot_saved_for_logout, ''
+            try:
+                delete_snapshot(path)
+            except OSError as e:
+                log_error(f'Failed to delete the session saved for a cancelled logout in {path}. Error: {e}')
 
     def notify_on_os_window_death(self, address: str) -> None:
         import socket
@@ -3609,6 +3644,7 @@ class Boss:
                 w.report_color_scheme_preference_if_wanted()
             w.refresh(reload_all_gpu_data=True)
         load_shader_programs.recompile_if_needed()
+        self.monitor_desktop_session_if_needed()
 
     @ac(
         'misc',

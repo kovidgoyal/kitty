@@ -274,9 +274,11 @@ enable this, set :opt:`restore_session_after_logout` in :file:`kitty.conf`::
 
     restore_session_after_logout yes
 
-Currently, this works only on macOS. The state of every kitty instance is saved
-as a session file, including the size, position and state of every OS Window,
-and the scrollback of every window. The next time kitty is started, it restores
+This works on macOS and on Linux, where it needs a desktop portal that supports
+monitoring the session state (version 3 of the Inhibit portal), such as the one
+used by GNOME. The state of every kitty instance is saved as a session file,
+including the size, position and state of every OS Window, and the scrollback
+of every window. The next time kitty is started, it restores
 the state of the instance that had the same command line arguments, and starts
 a separate kitty instance for each of the others, with the command line
 arguments, working directory and environment variables they originally had.
@@ -288,12 +290,12 @@ not started again, since they could have been run for their effects, like
 :file:`rm`. To save OS Window geometry in your own session files, use the
 ``--os-window-geometry`` option of :ac:`save_as_session`.
 
-The saved state, which includes the scrollback and the environment variables
-of every kitty instance, is encrypted, with a separate random key for every
-kitty instance, stored in your login keychain. Note that despite the encryption
-any process that runs as you can read the saved session data. The keys are deleted when the
-state is restored, so any copies of it left on disk or in backups cannot be
-read. kitty never shows any keychain prompts for this. If the keychain needs
+On macOS, the saved state, which includes the scrollback and the environment
+variables of every kitty instance, is encrypted, with a separate random key for
+every kitty instance, stored in your login keychain. Note that despite the
+encryption any process that runs as you can read the saved session data. The
+keys are deleted when the state is restored, so any copies of it left on disk or
+in backups cannot be read. kitty never shows any keychain prompts for this. If the keychain needs
 user interaction, the state is not saved or not restored. This happens if:
 
 * your login keychain is locked, for example, because it has a different
@@ -303,10 +305,18 @@ user interaction, the state is not saved or not restored. This happens if:
   that saved the state, for example, because you build kitty yourself, in
   which case every new build counts as a different application
 
-If your session is not restored, any errors are written to the system log,
-where you can see them with::
+On Linux, the saved state is not encrypted, as there is no way to store the key
+securely without asking you for a password. It is stored in the kitty cache
+directory and is readable only by you, like your shell history. It is saved when
+the desktop says that the session is about to end, and deleted again if the
+logout is cancelled, for example, by another application.
+
+If your session is not restored on macOS, any errors are written to the system
+log, where you can see them with::
 
     /usr/bin/log show --last 1d --predicate 'processImagePath contains "kitty" and messageType == error'
+
+On Linux, they are written to the standard error of kitty.
 
 Managing multi tab sessions in a single OS Window
 ----------------------------------------------------

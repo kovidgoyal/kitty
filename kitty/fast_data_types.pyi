@@ -583,6 +583,7 @@ def dbus_send_notification(
     pass
 
 def dbus_close_notification(dbus_notification_id: int) -> bool: ...
+def dbus_monitor_session_state(callback: Callable[[int], None]) -> bool: ...
 def cocoa_send_notification(
     appname: str,
     identifier: str,

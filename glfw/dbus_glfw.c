@@ -221,8 +221,10 @@ method_reply_received(DBusPendingCall *pending, void *user_data) {
     if (msg) {
         DBusError err;
         dbus_error_init(&err);
-        if (dbus_set_error_from_message(&err, msg)) res->callback(NULL, &err, res->user_data);
-        else res->callback(msg, NULL, res->user_data);
+        if (dbus_set_error_from_message(&err, msg)) {
+            res->callback(NULL, &err, res->user_data);
+            dbus_error_free(&err);
+        } else res->callback(msg, NULL, res->user_data);
     }
 }
 
@@ -246,6 +248,7 @@ call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_p
             RAII_MSG(reply, dbus_connection_send_with_reply_and_block(session_bus, msg, timeout, &error));
             if (dbus_error_is_set(&error)) {
                 callback(reply, &error, user_data);
+                dbus_error_free(&error);
                 return false;
             } else if (reply) {
                 callback(reply, NULL, user_data);

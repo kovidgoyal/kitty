@@ -152,11 +152,14 @@ class TestSessions(BaseTest):
             LOGOUT_CONFIRMATION_TIMEOUT,
             ProcessState,
             claim_snapshots,
+            delete_snapshot,
             finish_restore,
             is_logout_in_progress,
             load_snapshot,
+            lock_snapshot_for_saver,
             new_key_id,
             read_key_id,
+            release_saver_lock,
             remove_all_snapshots,
             remove_orphaned_keys,
             remove_stale_snapshots,
@@ -221,13 +224,11 @@ class TestSessions(BaseTest):
         os.utime(stale, (day_ago, day_ago))
         remove_stale_snapshots(base, time.time() - 3600, ks)
         self.ae((os.listdir(base), list(ks.keys)), (['11'], [read_key_id(path)]))
-        # Nothing is saved if the key cannot be stored, for example because the keychain needs user interaction or there is none
+        # Nothing is saved if the key cannot be stored, for example because the keychain needs user interaction
         ks.fail = True
         with self.assertRaises(OSError):
             save(12)
         ks.fail = False
-        with self.assertRaises(OSError):
-            save_snapshot(base, 12, session, {}, state, None)
         self.ae(os.listdir(base), ['11'])
 
         # Snapshots claimed by a running kitty instance are not claimed again, but those claimed by an instance that died are
@@ -305,6 +306,48 @@ class TestSessions(BaseTest):
         shutil.rmtree(base)
         ks.keys.clear()
 
+        # The snapshot of a kitty instance that is still running, for example, because the logout was cancelled, is not claimed,
+        # even if a process with its pid is running, since pids are reused
+        import kitty.logout_session as ls
+
+        path = save(16)
+        lock_snapshot_for_saver(path)
+        alive.add(16)
+        self.ae(claim_snapshots(base, 1, ks, alive.__contains__), [])
+        release_saver_lock(os.path.join(base, 'other'))
+        self.ae(claim_snapshots(base, 1, ks, alive.__contains__), [])
+        release_saver_lock(path)
+        self.ae(len(claim_snapshots(base, 1, ks, alive.__contains__)), 1)
+        alive.clear()
+        # Deleting the snapshot of this instance, as when the logout is cancelled, releases its lock
+        path = save(17)
+        lock_snapshot_for_saver(path)
+        delete_snapshot(path)
+        self.assertIsNone(ls.saver_lock)
+        shutil.rmtree(base)
+        ks.keys.clear()
+
+        # Without a key store, as on Linux, snapshots are not encrypted and are readable only by the user
+        path = save_snapshot(base, 31, session, {7: b'seven'}, state, None)
+        self.ae((read_key_id(path), mode(path), mode(os.path.join(path, 'process.json'))), ('', 0o700, 0o600))
+        self.assertIn(b'SECRET_VAR', raw(path, 'process.json'))
+        (snapshot,) = claim_snapshots(base, 1, None, alive.__contains__)
+        self.ae(snapshot.process_state[:3], state[:3])
+        (s,) = load_snapshot(snapshot.path, opts, None)
+        self.assertTrue(s.tabs[0].windows[0].restored_scrollback.startswith(b'seven\r\n'))
+        finish_restore(snapshot.path)
+        # An encrypted snapshot cannot be read without a key store and an unencrypted one is not accepted when there is a key store
+        errors.clear()
+        save_snapshot(base, 32, session, {}, state, None)
+        self.ae(claim_snapshots(base, 1, ks, alive.__contains__), [])
+        save(33)
+        self.ae(claim_snapshots(base, 1, None, alive.__contains__), [])
+        self.ae((os.listdir(base), len(errors)), ([], 2))
+        remove_orphaned_keys(base, ks)
+        self.ae(ks.keys, {})
+        shutil.rmtree(base)
+        ks.keys.clear()
+
         # The snapshot of the kitty instance with the same command line is restored in this instance, others in new instances
         save(21, ('a',)), save(22, ('b',))
         started: list[str] = []
@@ -327,6 +370,36 @@ class TestSessions(BaseTest):
             self.assertFalse(os.path.exists(base))
             self.ae(ks.keys, {})
             self.assertIsNone(restore_snapshots(opts, ('b',)))
+
+        # On Linux, the snapshot is saved when the desktop portal says the session is about to end and is deleted if the logout is
+        # cancelled
+        from types import SimpleNamespace
+
+        from kitty.boss import Boss
+        from kitty.logout_session import DESKTOP_SESSION_ENDING, DESKTOP_SESSION_QUERY_END, DESKTOP_SESSION_RUNNING
+
+        boss = SimpleNamespace(snapshot_saved_for_logout='', save_session_at_logout=lambda: save_snapshot(base, 41, session, {}, state, None))
+        for new_state, expected in (
+            (DESKTOP_SESSION_QUERY_END, ['41']),
+            (DESKTOP_SESSION_RUNNING, []),
+            (DESKTOP_SESSION_QUERY_END, ['41']),
+            (DESKTOP_SESSION_ENDING, ['41']),
+        ):
+            Boss.on_desktop_session_state_changed(boss, new_state)  # type: ignore[arg-type]
+            self.ae(os.listdir(base), expected)
+        shutil.rmtree(base)
+
+        # Restored instances get variables that refer to the login session, such as the display, from the current login session and
+        # never get single use startup tokens
+        from kitty.logout_session import environment_for_snapshot
+
+        self.ae(
+            environment_for_snapshot(
+                {'HOME': '/h', 'WAYLAND_DISPLAY': 'wayland-1', 'XAUTHORITY': '/old', 'DISPLAY': ':1', 'XDG_ACTIVATION_TOKEN': 'x'},
+                {'HOME': '/other', 'DISPLAY': ':0', 'XAUTHORITY': '/new', 'XDG_ACTIVATION_TOKEN': 'y'},
+            ),
+            {'HOME': '/h', 'DISPLAY': ':0', 'XAUTHORITY': '/new'},
+        )
 
         # A quit confirmed long after the OS asked kitty to quit for a logout is an ordinary quit
         for requested_at, now, expected in ((-1, 10, False), (5, 10, True), (5, 6 + LOGOUT_CONFIRMATION_TIMEOUT, False)):
