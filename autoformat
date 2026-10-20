@@ -34,7 +34,7 @@ threading.Thread(target=wait_go).start()
 
 clang_files = []
 for x in os.listdir(base):
-    if x in ('dist', 'build', 'bypy', '3rdparty') or x.startswith('.'):
+    if x in ('dist', 'build', 'bypy', '3rdparty', 'dependencies') or x.startswith('.'):
         continue
     for root, dirnames, files in os.walk(os.path.join(base, x)):
         for file in files:
