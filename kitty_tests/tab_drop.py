@@ -3,7 +3,7 @@
 
 import os
 from collections import deque
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from functools import partial
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -20,6 +20,10 @@ from .layout import Window, create_layout, create_windows
 def tab_mime() -> str:
     # Must be computed at run time, the test runner may fork after importing this module
     return f'application/net.kovidgoyal.kitty-tab-{os.getpid()}'
+
+
+def window_mime() -> str:
+    return f'application/net.kovidgoyal.kitty-window-{os.getpid()}'
 
 
 def region(left: int, top: int, right: int, bottom: int) -> SimpleNamespace:
@@ -324,6 +328,9 @@ class FakeTabs(SimpleNamespace):
     @property
     def active_tab(self):
         return self.tabs[self.active_tab_idx] if 0 <= self.active_tab_idx < len(self.tabs) else None
+
+    def __iter__(self):
+        return iter(self.tabs)
 
     def bind(self, *names: str) -> None:
         for name in names:
@@ -915,6 +922,152 @@ class TestWindowDropTargets(BaseTest):
         self.ae((preview.quadrant, preview.direction), (5, None))
         boss._move_window_to.assert_called_once_with(src, target_tab_id=7)
         boss._insert_window_in_direction.assert_not_called()
+
+    @contextmanager
+    def drag_window(self, y=45, title_bars_always_shown=False, pending_window_drops=None):
+        "Drag window 10 over window 20 to height y, by default its title bar, with title bars force shown unless title_bars_always_shown"
+        g = region(5, 35, 995, 795)
+        tab = MagicMock(force_show_title_bars=not title_bars_always_shown, current_layout=SimpleNamespace(drag_overlay_mode=DragOverlayMode.free))
+        dest = self.make_window(20, g, show_title_bar=True, tab=tab)
+        src = self.make_window(10, g, show_title_bar=True, tab=tab)
+        tab.__iter__.side_effect = lambda: iter([dest])
+
+        def relayout():
+            # As Layout.__call__() does, title bars are shown when forced or when there are enough windows. Hiding a top
+            # title bar moves the window down by its compensatory padding, see compensatory_padding_away_from_title_bar()
+            dest.show_title_bar = src.show_title_bar = title_bars_always_shown or tab.force_show_title_bars
+            dest.geometry = g if dest.show_title_bar else region(g.left, g.top + 8, g.right, g.bottom + 8)
+
+        tab.relayout.side_effect = relayout
+        tm = FakeTabs(
+            tabs=[tab],
+            active_tab_idx=0,
+            os_window_id=1,
+            window_being_dropped=None,
+            window_drag_over_me=True,
+            mark_tab_bar_dirty=Mock(),
+            set_drag_over_me=Mock(),
+            _set_window_drop_tab_target=Mock(),
+            start_window_drag=Mock(),
+        )
+        tm.bind(
+            '_find_window_at',
+            '_pointer_in_title_bar_of',
+            '_drop_direction_for',
+            '_set_drag_target_window',
+            '_clear_force_show_title_bars',
+            'on_window_drop_move',
+            'on_window_drop',
+        )
+        boss = self.make_boss(src, dest)
+        boss.all_tab_managers, boss.os_window_map = [tm], {1: tm}
+        boss._update_drag_over = partial(Boss._update_drag_over, boss)
+        boss._reset_drop_previews = Mock()
+        boss.pending_window_drops = dict(pending_window_drops or {})  # as left behind by an earlier drag
+        dragged = Mock(return_value=(10, True))
+
+        def end_drag():
+            dragged.return_value = (0, False)
+
+        with (
+            patch('kitty.fast_data_types.viewport_for_window', return_value=(region(0, 30, 1000, 800), region(0, 0, 1000, 30))),
+            patch('kitty.fast_data_types.cell_size_for_window', return_value=(10, 20)),
+            patch('kitty.fast_data_types.set_window_drag_overlay'),
+            patch('kitty.tabs.get_options', return_value=SimpleNamespace(window_title_bar='top')),
+            patch('kitty.tabs.get_boss', return_value=boss),
+            patch('kitty.tabs.set_window_being_dragged', side_effect=end_drag),
+            patch('kitty.boss.set_window_being_dragged', side_effect=end_drag),
+            patch('kitty.boss.get_window_being_dragged', dragged),
+        ):
+            Boss.start_window_drag(boss, 1, 10, b'', 0, 0)
+            tm.on_window_drop_move(10, True, 500, y)
+            yield SimpleNamespace(
+                tab=tab,
+                boss=boss,
+                windows=(src, dest),
+                preview=tm.window_being_dropped,
+                drop=partial(Boss.on_drop, boss, 1, {window_mime(): b'10'}, True, 500, y),
+                finish=partial(self.finish, boss),
+            )
+
+    def finish(self, boss, was_dropped=True, was_canceled=False, needs_toplevel_on_wayland=True):
+        Boss.on_drag_source_finished(boss, was_dropped, was_canceled, '', 0, {window_mime(): b'10'}, needs_toplevel_on_wayland)
+
+    def assert_swapped(self, d):
+        self.ae((d.preview.quadrant, d.preview.direction), (5, None), 'not previewed as a swap')
+        d.tab.swap_windows.assert_called_once_with(*d.windows)
+        d.boss._insert_window_in_direction.assert_not_called()
+        self.ae([w.show_title_bar for w in d.windows], [False, False], 'the title bars shown for the drag were not hidden')
+
+    def test_drop_on_force_shown_title_bar_swaps(self):
+        # The drop is delivered before the drag source finishes, as on X11, and on macOS, where on_drop() runs
+        # synchronously in performDragOperation: before endedAtPoint:
+        with self.drag_window() as d:
+            d.drop()
+            d.finish(was_dropped=False, needs_toplevel_on_wayland=False)
+        self.assert_swapped(d)
+
+    def test_drop_on_force_shown_title_bar_swaps_after_drag_source_finished(self):
+        # Wayland can finish the drag source before delivering the drop
+        with self.drag_window() as d:
+            d.finish(was_dropped=False)
+            d.drop()
+        self.assert_swapped(d)
+
+    def test_drag_ending_without_a_drop_hides_title_bars(self):
+        # On Wayland the drag source reports a drop outside kitty or a cancel, while X11 reports a drop accepted by
+        # another application as neither dropped nor canceled. So does Wayland for a cancel over kitty on a compositor
+        # without xdg-toplevel-drag, which sends cancelled before leave, and then no drop follows.
+        for was_dropped, was_canceled, needs_toplevel_on_wayland in ((True, False, True), (False, True, True), (False, False, False), (False, False, True)):
+            with self.subTest(was_dropped=was_dropped, was_canceled=was_canceled, needs_toplevel_on_wayland=needs_toplevel_on_wayland):
+                with self.drag_window() as d:
+                    d.finish(was_dropped, was_canceled, needs_toplevel_on_wayland)
+                self.assertFalse(d.tab.force_show_title_bars)
+                self.ae([w.show_title_bar for w in d.windows], [False, False])
+                d.tab.swap_windows.assert_not_called()
+
+    def test_drop_on_always_shown_title_bar_swaps_without_relayout(self):
+        # With window_title_bar_min_windows met nothing is forced, so the drop must not hide anything
+        for drop_first in (True, False):
+            with self.subTest(drop_first=drop_first):
+                with self.drag_window(title_bars_always_shown=True) as d:
+                    finish = partial(d.finish, was_dropped=False)
+                    for step in (d.drop, finish) if drop_first else (finish, d.drop):
+                        step()
+                d.tab.swap_windows.assert_called_once_with(*d.windows)
+                d.tab.relayout.assert_not_called()
+                self.ae([w.show_title_bar for w in d.windows], [True, True])
+
+    def test_drop_with_force_shown_title_bars_inserts_on_the_previewed_side(self):
+        # 3px below the middle of window 20 previews an insert below it, and hiding its title bar moves it 8px down,
+        # past the pointer, so the drop must be classified before the title bars are hidden
+        for drop_first in (True, False):
+            with self.subTest(drop_first=drop_first):
+                with self.drag_window(y=418) as d:
+                    finish = partial(d.finish, was_dropped=False)
+                    for step in (d.drop, finish) if drop_first else (finish, d.drop):
+                        step()
+                self.ae(d.preview.direction, 'bottom')
+                d.boss._insert_window_in_direction.assert_called_once_with(*d.windows, 'bottom')
+
+    def test_drop_preview_saved_when_the_drag_source_finishes_is_used_once(self):
+        # It classifies the drop that follows, and no other
+        with self.drag_window() as d:
+            d.finish(was_dropped=False)
+            d.tab.swap_windows.assert_not_called()
+            d.drop()
+        self.assert_swapped(d)
+        self.ae(d.boss.pending_window_drops, {})
+        # One that no drop used, as after a cancel on a compositor without xdg-toplevel-drag, must not classify the drop
+        # of the next drag, here an insert below window 20 delivered before the drag source finishes
+        with self.drag_window() as cancelled:
+            cancelled.finish(was_dropped=False)
+        self.ae(cancelled.boss.pending_window_drops[10].quadrant, 5)
+        with self.drag_window(y=418, pending_window_drops=cancelled.boss.pending_window_drops) as d:
+            d.drop()
+            d.finish(was_dropped=False)
+        d.tab.swap_windows.assert_not_called()
+        d.boss._insert_window_in_direction.assert_called_once_with(*d.windows, 'bottom')
 
 
 def make_tab(layout, windows):

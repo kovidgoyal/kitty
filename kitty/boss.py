@@ -156,7 +156,7 @@ from .session import (
 )
 from .shaders.slang import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
-from .tabs import DropDirection, SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
+from .tabs import DropDirection, SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager, WindowBeingDropped
 from .types import AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing_compat import PopenType, TypedDict
 from .utils import (
@@ -416,6 +416,8 @@ class Boss:
         talk_fd: int = -1,
     ):
         self.drag_resize_of_window = WindowResizeDrag()
+        # The drop previews of window drags whose drag source finished before the drop arrived, see on_drag_source_finished()
+        self.pending_window_drops: dict[int, WindowBeingDropped] = {}
         self.atexit = Atexit()
         set_layout_options(opts)
         self.clipboard = Clipboard()
@@ -1569,6 +1571,8 @@ class Boss:
             tm.start_tab_drag(pixels, width, height)
 
     def start_window_drag(self, os_window_id: int, window_id: int, pixels: bytes, width: int, height: int) -> None:
+        # A drop preview saved for a drop that never arrived must not classify the drop of this drag, discard it.
+        self.pending_window_drops.clear()
         if tm := self.os_window_map.get(os_window_id):
             tm.start_window_drag(pixels, width, height)
 
@@ -2235,7 +2239,7 @@ class Boss:
         window_mime_key = f'application/net.kovidgoyal.kitty-window-{os.getpid()}'
         if widb := drop.get(window_mime_key):
             window_id = int(widb)
-            tm.on_window_drop(x, y, window_id)
+            tm.on_window_drop(x, y, window_id, self.pending_window_drops.pop(window_id, None))
             set_window_being_dragged()
             self._reset_drop_previews()
             return
@@ -2290,7 +2294,14 @@ class Boss:
         if wid_bytes := (data or {}).get(window_mime_key):
             window_id = int(wid_bytes.decode())
             if get_window_being_dragged()[0] == window_id:
-                # Drop was not handled by on_drop (e.g. dropped outside kitty or on Wayland)
+                # The native callback reports was_dropped=False for internal drops, and on Wayland their on_drop()
+                # can still arrive after this. Hiding the force shown title bars changes the window geometry, so first
+                # save what the drop preview showed (window 0 if none) for on_window_drop() to classify that drop by.
+                # If none follows, as on a compositor without xdg-toplevel-drag that sends cancelled before leave,
+                # start_window_drag() discards it.
+                self.pending_window_drops[window_id] = next(
+                    (p for tm in self.all_tab_managers if (p := tm.window_being_dropped) is not None), WindowBeingDropped(0)
+                )
                 for tm in self.all_tab_managers:
                     for t in tm:
                         if t.force_show_title_bars:
