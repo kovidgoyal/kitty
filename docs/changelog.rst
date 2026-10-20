@@ -261,6 +261,9 @@ Detailed list of changes
   arguments, such as non-numbers or NaN, as zero opacity instead of reporting
   an error
 
+- Remote control: Fix ``kitten @ set-colors --reset`` failing on invalid
+  color arguments or missing configuration files instead of ignoring them
+
 - ssh kitten: Fix hanging when re-using a shared connection whose connection
   to the server has silently died, for example, after a network change or
   suspend. Now the kitten detects this and reconnects (:iss:`10691`)
