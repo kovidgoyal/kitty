@@ -30,7 +30,7 @@
 #include "../kitty/monotonic.h"
 #include <sys/param.h> // For MAXPATHLEN
 #include <sys/sysctl.h>
-#include <pthread.h>
+#include <stdatomic.h>
 
 // Needed for _NSGetProgname
 #include <crt_externs.h>
@@ -1051,45 +1051,24 @@ _glfwPlatformGetVersionString(void) {
 
 static GLFWtickcallback tick_callback = NULL;
 static void *tick_callback_data = NULL;
-static bool tick_callback_requested = false;
-static pthread_t main_thread;
-static NSLock *tick_lock = NULL;
+// Atomic rather than lock protected, as it can be set from other threads at
+// any time, including after the main loop has returned and before they are joined.
+static atomic_bool tick_callback_requested = false;
 
+static void
+queue_tick_callback(void) {
+    [NSApp performSelectorOnMainThread:@selector(tick_callback) withObject:nil waitUntilDone:NO];
+}
 
 void
 _glfwDispatchTickCallback(void) {
-    if (tick_lock && tick_callback) {
-        while (true) {
-            bool do_call = false;
-            [tick_lock lock];
-            if (tick_callback_requested) {
-                do_call = true;
-                tick_callback_requested = false;
-            }
-            [tick_lock unlock];
-            if (do_call) tick_callback(tick_callback_data);
-            else break;
-        }
-    }
-}
-
-static void
-request_tick_callback(void) {
-    if (!tick_callback_requested) {
-        tick_callback_requested = true;
-        [NSApp performSelectorOnMainThread:@selector(tick_callback) withObject:nil waitUntilDone:NO];
-    }
+    if (!tick_callback) return;
+    while (atomic_exchange(&tick_callback_requested, false)) tick_callback(tick_callback_data);
 }
 
 void
 _glfwPlatformPostEmptyEvent(void) {
-    if (pthread_equal(pthread_self(), main_thread)) {
-        request_tick_callback();
-    } else if (tick_lock) {
-        [tick_lock lock];
-        request_tick_callback();
-        [tick_lock unlock];
-    }
+    if (!atomic_exchange(&tick_callback_requested, true)) queue_tick_callback();
 }
 
 
@@ -1101,13 +1080,12 @@ _glfwPlatformStopMainLoop(void) {
 
 void
 _glfwPlatformRunMainLoop(GLFWtickcallback callback, void *data) {
-    main_thread = pthread_self();
     tick_callback = callback;
     tick_callback_data = data;
-    tick_lock = [NSLock new];
+    // A request made while there was no main loop may have had its selector
+    // consumed without dispatch, so queue it again
+    if (atomic_load(&tick_callback_requested)) queue_tick_callback();
     [NSApp run];
-    [tick_lock release];
-    tick_lock = NULL;
     tick_callback = NULL;
     tick_callback_data = NULL;
 }
