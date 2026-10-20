@@ -264,6 +264,11 @@ Detailed list of changes
 - Remote control: Fix ``kitten @ set-colors --reset`` failing on invalid
   color arguments or missing configuration files instead of ignoring them
 
+- Remote control: ``kitten @ set-colors`` now reports invalid colors in
+  configuration files instead of silently ignoring them, and parses them the
+  same way as :file:`kitty.conf`, with support for tabs, indentation and
+  ``include`` directives
+
 - ssh kitten: Fix hanging when re-using a shared connection whose connection
   to the server has silently died, for example, after a network change or
   suspend. Now the kitten detects this and reconnects (:iss:`10691`)

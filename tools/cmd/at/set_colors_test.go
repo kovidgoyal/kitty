@@ -4,15 +4,13 @@ package at
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
-
-	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 func TestSetColorsResetIgnoresArguments(t *testing.T) {
-	original_reset := options_set_colors.Reset
-	t.Cleanup(func() { options_set_colors.Reset = original_reset })
 	missing_file := filepath.Join(t.TempDir(), "missing.conf")
 	for _, reset := range []bool{false, true} {
 		for _, test := range []struct {
@@ -24,9 +22,8 @@ func TestSetColorsResetIgnoresArguments(t *testing.T) {
 			{"valid-color", "foreground=red", false},
 		} {
 			t.Run(fmt.Sprintf("%s/reset=%t", test.name, reset), func(t *testing.T) {
-				options_set_colors.Reset = reset
-				io_data := rc_io_data{rc: &utils.RemoteControlCmd{}}
-				err := create_payload_set_colors(&io_data, nil, []string{test.arg})
+				payload := set_colors_json_type{}
+				err := parse_colors_and_files([]string{test.arg}, options_set_colors_type{Reset: reset}, &payload)
 				want_error := test.invalid && !reset
 				if (err != nil) != want_error {
 					t.Fatalf("expected error=%t, got: %v", want_error, err)
@@ -34,9 +31,8 @@ func TestSetColorsResetIgnoresArguments(t *testing.T) {
 				if err != nil {
 					return
 				}
-				payload := io_data.rc.Payload.(set_colors_json_type)
-				if payload.Reset != reset {
-					t.Fatalf("expected reset=%t, got: %#v", reset, payload)
+				if payload.Reset != reset || payload.All != reset || payload.Configured != reset {
+					t.Fatalf("reset=%t should set reset, all and configured to the same value, got: %#v", reset, payload)
 				}
 				if reset {
 					if len(payload.Colors) != 0 {
@@ -47,5 +43,50 @@ func TestSetColorsResetIgnoresArguments(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestSetColorsConfFiles(t *testing.T) {
+	tdir := t.TempDir()
+	write := func(name string, lines ...string) string {
+		path := filepath.Join(tdir, name)
+		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	write("base.conf", "selection_background #00ff00")
+	good := write("good.conf",
+		"# a comment",
+		"foreground\t#ff0000",
+		"  background   #0000ff",
+		"font_size 12",
+		"cursor none",
+		"background_opacity 0.5",
+		"wayland_titlebar_color background",
+		"include base.conf",
+		"color1 #"+strings.Repeat("a", 6)+" "+strings.Repeat(" ", 70000),
+	)
+	payload := set_colors_json_type{}
+	if err := parse_colors_and_files([]string{good}, options_set_colors_type{}, &payload); err != nil {
+		t.Fatal(err)
+	}
+	expected := map[string]any{
+		"foreground": uint32(0xff0000), "background": uint32(0xff), "cursor": nil,
+		"selection_background": uint32(0xff00), "color1": uint32(0xaaaaaa),
+	}
+	if len(payload.Colors) != len(expected) {
+		t.Fatalf("unexpected colors parsed from conf file: %#v", payload.Colors)
+	}
+	for k, v := range expected {
+		if actual, found := payload.Colors[k]; !found || actual != v {
+			t.Fatalf("%s: expected %#v got %#v", k, v, actual)
+		}
+	}
+
+	bad := write("bad.conf", "background #000000", "foreground #zzzzzz")
+	err := parse_colors_and_files([]string{bad}, options_set_colors_type{}, &set_colors_json_type{})
+	if err == nil || !strings.Contains(err.Error(), "foreground") {
+		t.Fatalf("expected an error for an invalid color in a conf file, got: %v", err)
 	}
 }

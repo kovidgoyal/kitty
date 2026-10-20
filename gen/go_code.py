@@ -440,7 +440,11 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
     unhandled = {}
     used_options = set()
     for field in json_fields:
-        if field.go_option_name in option_map:
+        if field.field in handled_fields:
+            # the special parser is responsible for setting this field and reading its option
+            if field.go_option_name in option_map:
+                used_options.add(field.go_option_name)
+        elif field.go_option_name in option_map:
             o = option_map[field.go_option_name]
             used_options.add(field.go_option_name)
             optstring = f'options_{name}.{o.go_var_name}'
@@ -454,8 +458,6 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
                 jc.append(f'payload.{field.struct_field_name} = escape_dict_of_strings({optstring})')
             else:
                 jc.append(f'payload.{field.struct_field_name} = {optstring}')
-        elif field.field in handled_fields:
-            pass
         else:
             unhandled[field.field] = field
     for x in tuple(unhandled):

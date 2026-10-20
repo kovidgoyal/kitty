@@ -64,6 +64,7 @@ def main(args: list[str] = sys.argv) -> None:
                     nullable_colors.append(opt.name)
 
     patch_color_list('tools/cmd/at/set_colors.go', nullable_colors, 'NULLABLE')
+    patch_color_list('tools/cmd/at/set_colors.go', special_colors, 'SPECIAL')
     patch_color_list('tools/themes/collection.go', all_colors, 'ALL')
     nc = ',\n    '.join(f'{x!r}' for x in nullable_colors)
     sc = ',\n    '.join(f'{x!r}' for x in special_colors)

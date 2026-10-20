@@ -71,7 +71,7 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
     args = RemoteCommand.Args(
         spec='COLOR_OR_FILE ...',
         json_field='colors',
-        special_parse='parse_colors_and_files(args)',
+        special_parse='+all,configured,reset:parse_colors_and_files(args, options_set_colors, &payload)',
         completion=RemoteCommand.CompletionSpec.from_string('type:file group:"CONF files", ext:conf'),
     )
 
