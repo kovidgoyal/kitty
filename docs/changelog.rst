@@ -269,6 +269,11 @@ Detailed list of changes
   same way as :file:`kitty.conf`, with support for tabs, indentation and
   ``include`` directives
 
+- Remote control: Fix ``kitten @ set-colors`` setting the wrong colors for
+  :opt:`wayland_titlebar_color`, :opt:`macos_titlebar_color`,
+  :opt:`scrollbar_handle_color` and :opt:`scrollbar_track_color` and not
+  accepting their special values such as ``background``
+
 - ssh kitten: Fix hanging when re-using a shared connection whose connection
   to the server has silently died, for example, after a network change or
   suspend. Now the kitten detects this and reconnects (:iss:`10691`)

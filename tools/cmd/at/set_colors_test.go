@@ -74,6 +74,7 @@ func TestSetColorsConfFiles(t *testing.T) {
 	expected := map[string]any{
 		"foreground": uint32(0xff0000), "background": uint32(0xff), "cursor": nil,
 		"selection_background": uint32(0xff00), "color1": uint32(0xaaaaaa),
+		"wayland_titlebar_color": 1,
 	}
 	if len(payload.Colors) != len(expected) {
 		t.Fatalf("unexpected colors parsed from conf file: %#v", payload.Colors)
@@ -88,5 +89,43 @@ func TestSetColorsConfFiles(t *testing.T) {
 	err := parse_colors_and_files([]string{bad}, options_set_colors_type{}, &set_colors_json_type{})
 	if err == nil || !strings.Contains(err.Error(), "foreground") {
 		t.Fatalf("expected an error for an invalid color in a conf file, got: %v", err)
+	}
+}
+
+func TestSetColorsSpecialColors(t *testing.T) {
+	for key := range special_colors {
+		if special_color_values[key] == nil {
+			t.Fatalf("The special values for %s are not defined", key)
+		}
+	}
+	// expected values are from kitty.colors.parse_colors()
+	for _, test := range []struct {
+		arg      string
+		expected int
+	}{
+		{"wayland_titlebar_color=#123456", 0x12345602},
+		{"wayland_titlebar_color=system", 0},
+		{`wayland_titlebar_color="background"`, 1},
+		{"macos_titlebar_color=dark", -2},
+		{"macos_titlebar_color=light", -1},
+		{"macos_titlebar_color=background", 1},
+		{"macos_titlebar_color=red", 0xff000002},
+		{"scrollbar_handle_color=selection_background", 1},
+		{"scrollbar_track_color=foreground", 0},
+		{"scrollbar_track_color=#123456", 0x12345602},
+	} {
+		payload := set_colors_json_type{}
+		if err := parse_colors_and_files([]string{test.arg}, options_set_colors_type{}, &payload); err != nil {
+			t.Fatalf("%s: %s", test.arg, err)
+		}
+		key, _, _ := strings.Cut(test.arg, "=")
+		if actual := payload.Colors[key]; actual != test.expected {
+			t.Fatalf("%s: expected %#x got %#v", test.arg, test.expected, actual)
+		}
+	}
+	for _, arg := range []string{"wayland_titlebar_color=light", "scrollbar_track_color=system", "macos_titlebar_color=none"} {
+		if err := parse_colors_and_files([]string{arg}, options_set_colors_type{}, &set_colors_json_type{}); err == nil {
+			t.Fatalf("%s: expected an error", arg)
+		}
 	}
 }

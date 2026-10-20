@@ -282,6 +282,45 @@ var special_colors = map[string]bool{
 	// SPECIAL_COLORS_END
 }
 
+var titlebar_special_values = map[string]int{"system": 0, "background": 1}
+var scrollbar_special_values = map[string]int{"foreground": 0, "selection_background": 1}
+
+// The special values each color in special_colors accepts, must match the
+// parsers in kitty/options/utils.py
+var special_color_values = map[string]map[string]int{
+	"macos_titlebar_color":   titlebar_special_values,
+	"wayland_titlebar_color": titlebar_special_values,
+	"scrollbar_handle_color": scrollbar_special_values,
+	"scrollbar_track_color":  scrollbar_special_values,
+}
+
+// Encode a color that accepts special values the same way as
+// color_with_special_values() in kitty/options/utils.py: special values are
+// stored in the lowest byte and actual colors are shifted into the upper bytes.
+func encode_special_color(key, val string) (int, error) {
+	special_values, found := special_color_values[key]
+	if !found {
+		return 0, fmt.Errorf("The special values for the color %s are not known", key)
+	}
+	val = strings.Trim(val, `"`)
+	if key == "macos_titlebar_color" {
+		switch val {
+		case "light":
+			return -1, nil
+		case "dark":
+			return -2, nil
+		}
+	}
+	if ans, found := special_values[val]; found {
+		return ans, nil
+	}
+	col, err := style.ParseColor(val)
+	if err != nil {
+		return 0, fmt.Errorf("%s is not a valid color", val)
+	}
+	return int(col.AsRGB())<<8 | len(special_values), nil
+}
+
 func set_color_in_color_map(key, val string, ans map[string]any, check_nullable, skip_nullable bool) error {
 	if val == "none" {
 		if check_nullable && !nullable_colors[key] {
@@ -293,6 +332,12 @@ func set_color_in_color_map(key, val string, ans map[string]any, check_nullable,
 		ans[key] = nil
 	} else if key == "transparent_background_colors" {
 		ans[key] = val
+	} else if special_colors[key] {
+		col, err := encode_special_color(key, val)
+		if err != nil {
+			return err
+		}
+		ans[key] = col
 	} else {
 		col, err := style.ParseColor(val)
 		if err != nil {
@@ -311,7 +356,7 @@ func read_colors_from_conf_file(path string, ans map[string]any) error {
 			// conf files can contain non-color settings, ignore them
 			return nil
 		}
-		if err := set_color_in_color_map(key, strings.ToLower(val), ans, true, true); err != nil && !special_colors[key] && color_err == nil {
+		if err := set_color_in_color_map(key, strings.ToLower(val), ans, true, true); err != nil && color_err == nil {
 			color_err = fmt.Errorf("Invalid value for %s in %s: %w", key, path, err)
 		}
 		return nil
