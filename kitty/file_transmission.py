@@ -459,6 +459,12 @@ class DestFile:
             self.existing_stat: os.stat_result | None = os.stat(self.name, follow_symlinks=False)
         except OSError:
             self.existing_stat = None
+        if ftc.ftype is FileType.regular and self.existing_stat is not None and stat.S_ISDIR(self.existing_stat.st_mode):
+            raise TransmissionError(
+                code=ErrorCode.EISDIR,
+                file_id=ftc.file_id,
+                msg=f'Destination {self.name!r} is a directory. Add a trailing slash to the destination path to copy the file into it.',
+            )
         self.needs_unlink = self.existing_stat is not None and (self.existing_stat.st_nlink > 1 or stat.S_ISLNK(self.existing_stat.st_mode))
         self.mtime = ftc.mtime
         self.file_id = ftc.file_id

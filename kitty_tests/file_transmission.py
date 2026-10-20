@@ -234,6 +234,29 @@ class TestFileTransmission(BaseTest):
             with self.assertRaises(RsyncError):
                 d.add_signature_data(bytes(8) + block_size.to_bytes(4, 'little'))
 
+    def test_file_put_to_directory(self):
+        dest = os.path.join(self.tdir, 'Downloads')
+        os.mkdir(dest)
+        sentinel = Path(dest) / 'existing.txt'
+        sentinel.write_bytes(b'keep me')
+        for ttype in ('simple', 'rsync'):
+            with self.subTest(ttype=ttype):
+                ft = FileTransmission()
+                ft.handle_serialized_command(serialized_cmd(action='send'))
+                ft.test_responses = []
+                ft.handle_serialized_command(serialized_cmd(action='file', file_id='f', name=dest, ftype='regular', ttype=ttype))
+                self.ae(
+                    ft.test_responses,
+                    [
+                        response(
+                            file_id='f',
+                            status=f'EISDIR:Destination {dest!r} is a directory. Add a trailing slash to the destination path to copy the file into it.',
+                        )
+                    ],
+                )
+                self.assertTrue(os.path.isdir(dest))
+                self.ae(sentinel.read_bytes(), b'keep me')
+
     def test_file_put_differential(self):
         from kitty.file_transmission import PatchFile
 
