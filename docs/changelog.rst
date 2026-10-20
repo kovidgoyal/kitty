@@ -251,6 +251,10 @@ Detailed list of changes
   keychain. On Linux, it requires the Inhibit desktop portal. See
   :ref:`restore_after_logout` (:iss:`1197`, :pull:`10659`)
 
+- Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
+  with momentum, and a finger held still before it moves selects text
+  (:iss:`5432`, :pull:`10551`)
+
 - Fix kitty repeatedly calling ``on_quit`` watchers when a watcher aborts a quit
   requested by the OS, for example, via the macOS menu or Dock
 
@@ -306,10 +310,6 @@ Detailed list of changes
   the :ac:`detach_window` action to send windows to a named tab, creating it
   if needed (:iss:`10627`)
 
-- Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
-  with momentum, and a finger held still before it moves selects text
-  (:iss:`5432`, :pull:`10551`)
-
 - Window resizing: Add an :code:`--strategy=edge` mode to select and move a
   specific internal divider in the Splits layout. A sole internal edge is
   selected automatically; R restores the sizes saved when resize mode opened.
@@ -334,12 +334,6 @@ Detailed list of changes
 - quick-access-terminal kitten: Fix :option:`kitty +kitten quick_access_terminal --detached-log` not working
 
 - choose-files kitten: Various edge case crashes and deadlocks fixed
-
-- choose-files kitten: Fix handling of symlinks to directories in directory
-  selection modes and when using file filters
-
-- choose-files kitten: Fix switching between file filters made up of multiple
-  patterns that share the same first pattern not updating the results
 
 - Fix a non-zero :opt:`input_delay` painting once before delayed program output is parsed and again when it is parsed, so it could use more CPU than :opt:`input_delay` ``0``
 
