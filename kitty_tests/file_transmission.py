@@ -697,6 +697,35 @@ class TestFileTransmission(BaseTest):
         os.remove(os.path.join(dest, 'sym'))
         shutil.rmtree(os.path.join(dest, 'sub'))
 
+    def test_transfer_receive_existing_links(self):
+        self.direction_receive = True
+        for link in (os.symlink, os.link):
+            for args in ([], ['--compress=always'], ['--transmit-deltas']):
+                for data in (b'', b'incoming contents' * 1024):
+                    with self.subTest(link=link.__name__, args=args, size=len(data)):
+                        self.clean_tdir()
+                        base = Path(self.tdir)
+                        src = base / 'source'
+                        src.write_bytes(data)
+                        src.chmod(0o644)
+                        target = base / 'unrelated'
+                        original = b'keep these contents' * 1024
+                        target.write_bytes(original)
+                        target.chmod(0o600)
+                        before = target.stat()
+                        dest = base / 'downloads' / 'received'
+                        dest.parent.mkdir()
+                        link(target, dest)
+                        with self.run_kitten([*args, str(src), str(dest)]) as pty:
+                            pty.wait_till_child_exits(require_exit_code=0)
+                        self.assertFalse(dest.is_symlink())
+                        self.assertFalse(os.path.samefile(target, dest))
+                        self.ae(dest.read_bytes(), data)
+                        self.ae(stat.S_IMODE(dest.stat().st_mode), 0o644)
+                        self.ae(target.read_bytes(), original)
+                        self.ae(target.stat().st_mtime_ns, before.st_mtime_ns)
+                        self.ae(stat.S_IMODE(target.stat().st_mode), 0o600)
+
     def test_transfer_receive(self):
         self.direction_receive = True
         self.basic_transfer_tests()

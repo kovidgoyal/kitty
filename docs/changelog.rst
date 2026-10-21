@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Transfer kitten: Fix receiving files overwriting the targets of existing
+  symbolic and hard links.
+
 - Custom shaders: New :code:`cursor-trail-railgun`, :code:`cursor-trail-torpedo`
   and :code:`cursor-trail-pixiedust` shaders that make particles fly off the
   cursor as it moves, in the style of neovide (:iss:`10587`)

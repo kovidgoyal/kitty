@@ -199,7 +199,19 @@ func (self *remote_file) ensure_open() (err error) {
 		}
 		self.actual_file = pf
 	} else {
-		ff, err := os.Create(self.expanded_local_path)
+		var st unix.Stat_t
+		if err := unix.Lstat(self.expanded_local_path, &st); err == nil {
+			// Replace links rather than truncating their targets. Leave directories
+			// and symlinks to directories in place so that opening them fails.
+			if (st.Mode&unix.S_IFMT == unix.S_IFLNK || st.Nlink > 1) && !isdir(self.expanded_local_path) {
+				if err := os.Remove(self.expanded_local_path); err != nil {
+					return err
+				}
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		ff, err := os.OpenFile(self.expanded_local_path, os.O_RDWR|os.O_CREATE|os.O_TRUNC|unix.O_NOFOLLOW, 0o666)
 		if err != nil {
 			return err
 		}

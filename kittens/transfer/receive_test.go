@@ -107,3 +107,106 @@ func TestReceiveEmptyFileError(t *testing.T) {
 		t.Fatalf("Error does not mention the destination path: %s", err)
 	}
 }
+
+func TestReceiveReplacesExistingLinks(t *testing.T) {
+	for _, link := range []struct {
+		name          string
+		create        func(string, string) error
+		target_exists bool
+	}{
+		{"symlink", os.Symlink, true},
+		{"hardlink", os.Link, true},
+		{"dangling_symlink", os.Symlink, false},
+	} {
+		for _, data := range []string{"", "incoming contents"} {
+			t.Run(fmt.Sprintf("%s/size=%d", link.name, len(data)), func(t *testing.T) {
+				dir := t.TempDir()
+				target := filepath.Join(dir, "unrelated")
+				const original = "keep these contents"
+				if link.target_exists {
+					if err := os.WriteFile(target, []byte(original), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				dest := filepath.Join(dir, "downloads", "received")
+				if err := os.Mkdir(filepath.Dir(dest), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := link.create(target, dest); err != nil {
+					t.Fatal(err)
+				}
+				f, err := new_remote_file(&Options{Compress: "never"}, &FileTransmissionCommand{
+					File_id: "0", Ftype: FileType_regular, Size: int64(len(data)), Permissions: 0o644,
+				}, 1)
+				if err != nil {
+					t.Fatal(err)
+				}
+				f.expanded_local_path = dest
+				t.Cleanup(func() { _ = f.close() })
+				if _, err := f.write_data([]byte(data), true); err != nil {
+					t.Fatal(err)
+				}
+				m := manager{files: []*remote_file{f}}
+				if err := m.finalize_transfer(); err != nil {
+					t.Fatal(err)
+				}
+				st, err := os.Lstat(dest)
+				if err != nil || !st.Mode().IsRegular() {
+					t.Fatalf("Destination is not a regular file: %v, %v", st, err)
+				}
+				if actual, err := os.ReadFile(dest); err != nil || string(actual) != data {
+					t.Fatalf("Incorrect received contents: %q, %v", actual, err)
+				}
+				if !link.target_exists {
+					if _, err := os.Lstat(target); !os.IsNotExist(err) {
+						t.Fatalf("Dangling symlink target was created: %v", err)
+					}
+				} else {
+					if actual, err := os.ReadFile(target); err != nil || string(actual) != original {
+						t.Fatalf("Unrelated file was modified: %q, %v", actual, err)
+					}
+					if st, err := os.Stat(target); err != nil || st.Mode().Perm() != 0o600 {
+						t.Fatalf("Unrelated file permissions changed: %v, %v", st, err)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestReceivePreservesExistingDirectory(t *testing.T) {
+	for _, symlink := range []bool{false, true} {
+		t.Run(fmt.Sprintf("symlink=%t", symlink), func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "directory")
+			if err := os.Mkdir(target, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			dest := target
+			if symlink {
+				dest = filepath.Join(dir, "link")
+				if err := os.Symlink(target, dest); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before, err := os.Lstat(dest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f, err := new_remote_file(&Options{Compress: "never"}, &FileTransmissionCommand{
+				File_id: "0", Ftype: FileType_regular,
+			}, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f.expanded_local_path = dest
+			if _, err := f.write_data(nil, true); err == nil {
+				t.Fatal("Receiving a regular file over a directory should fail")
+			}
+			after, err := os.Lstat(dest)
+			if err != nil || !os.SameFile(before, after) {
+				t.Fatalf("Directory or its symlink was replaced: %v", err)
+			}
+		})
+	}
+}
