@@ -498,10 +498,28 @@ class DestFile:
                 self.actual_file.close()
                 self.actual_file = None
 
+    def check_destination(self) -> None:
+        if self.ftype is FileType.directory or self.existing_stat is None:
+            return
+        is_dir = stat.S_ISDIR(self.existing_stat.st_mode)
+        if not is_dir and self.ftype is FileType.regular and stat.S_ISLNK(self.existing_stat.st_mode):
+            # Replacing a symlink to a directory with a regular file is almost
+            # certainly not what the user intended, so refuse. Symlinks and
+            # hard links are still allowed to replace such symlinks.
+            with suppress(OSError):
+                is_dir = stat.S_ISDIR(os.stat(self.name).st_mode)
+        if is_dir:
+            raise TransmissionError(code=ErrorCode.EISDIR, file_id=self.file_id, msg=f'Cannot replace the existing directory {self.name} with a file')
+
     def make_parent_dirs(self) -> str:
         d = os.path.dirname(self.name)
         if d:
-            os.makedirs(d, exist_ok=True)
+            try:
+                os.makedirs(d, exist_ok=True)
+            except OSError as err:
+                code = errno.errorcode.get(err.errno, 'EFAIL') if err.errno is not None else 'EFAIL'
+                path = err.filename if isinstance(err.filename, str) else d
+                raise TransmissionError(code=code, file_id=self.file_id, msg=f'Failed to create the directory {path}: {err.strerror or err}') from err
         return d
 
     def apply_metadata(self, is_symlink: bool = False) -> None:
@@ -641,6 +659,13 @@ class ActiveReceive:
                 file_id=ftc.file_id,
             )
         self.files[ftc.file_id] = df = DestFile(ftc)
+        try:
+            df.check_destination()
+        except TransmissionError:
+            # keep the file registered so that any data sent for it is discarded
+            df.failed = True
+            df.close()
+            raise
         return df
 
     def add_data(self, ftc: FileTransmissionCommand) -> DestFile:

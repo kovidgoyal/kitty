@@ -1195,7 +1195,32 @@ func (self *SendHandler) on_interrupt() {
 	self.abort_transfer()
 }
 
-func send_loop(opts *Options, files []*File) (err error, rc int) {
+// failure_hints returns suggestions for common mistakes that can cause
+// transfers to fail, based on the command line arguments.
+func failure_hints(opts *Options, args []string, failed_files []*File) (ans []string) {
+	if opts.Mode == "mirror" || len(args) < 2 || len(failed_files) == 0 {
+		return
+	}
+	dest := filepath.ToSlash(args[len(args)-1])
+	if len(args) == 2 && !strings.HasSuffix(dest, "/") {
+		for _, f := range failed_files {
+			if f.remote_path == dest && strings.HasPrefix(f.err_msg, "EISDIR:") {
+				ans = append(ans, fmt.Sprintf("To transfer into the directory %s add a trailing slash, for example: %s/", dest, dest))
+				break
+			}
+		}
+	}
+	home := filepath.ToSlash(strings.TrimRight(home_path(), string(filepath.Separator)))
+	if home != "" && (dest == home || strings.HasPrefix(dest, home+"/")) {
+		suggestion := "\\~" + strings.TrimPrefix(dest, home)
+		ans = append(ans, fmt.Sprintf(
+			"The destination %s is in the home directory of the computer this kitten is running on, probably because your shell expanded ~ before running the kitten. "+
+				"To refer to the home directory of the computer kitty is running on, escape the ~, for example: %s", dest, suggestion))
+	}
+	return
+}
+
+func send_loop(opts *Options, args []string, files []*File) (err error, rc int) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
 	if err != nil {
 		return err, 1
@@ -1266,6 +1291,10 @@ func send_loop(opts *Options, files []*File) (err error, rc int) {
 			fmt.Println(handler.ctx.BrightRed(f.display_name))
 			fmt.Println(` `, f.err_msg)
 		}
+		for _, hint := range failure_hints(opts, args, handler.failed_files) {
+			fmt.Println()
+			fmt.Println(handler.ctx.Yellow("Hint:"), hint)
+		}
 		rc = 1
 	}
 	if lp.ExitCode() != 0 {
@@ -1282,7 +1311,7 @@ func send_main(opts *Options, args []string) (err error, rc int) {
 	}
 	fmt.Printf("Found %d files and directories, requesting transfer permission…", len(files))
 	fmt.Println()
-	err, rc = send_loop(opts, files)
+	err, rc = send_loop(opts, args, files)
 
 	return
 }

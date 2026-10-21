@@ -340,6 +340,56 @@ class TestFileTransmission(BaseTest):
         self.assertPathEqual(os.path.dirname(tf.name), base)
         os.remove(tf.name)
 
+    def test_file_put_existing_directory(self):
+        def start_receiving():
+            ft = FileTransmission()
+            ft.handle_serialized_command(serialized_cmd(action='send'))
+            ft.test_responses = []
+            return ft
+
+        def statuses(ft):
+            return [r['status'] for r in ft.test_responses if r.get('action') == 'status']
+
+        base = os.path.join(self.tdir, 'existing')
+        dest_dir = os.path.join(base, 'dir')
+        os.makedirs(os.path.join(dest_dir, 'child'))
+        dir_link = os.path.join(base, 'dir_link')
+        os.symlink(dest_dir, dir_link)
+
+        # a regular file must not replace an existing directory or a symlink
+        # to one, and data sent for it must be silently discarded
+        for dest in (dest_dir, dir_link):
+            ft = start_receiving()
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='f', name=dest, ftype='regular'))
+            ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='f', data='xyz'))
+            self.ae(statuses(ft), [f'EISDIR:Cannot replace the existing directory {dest} with a file'])
+            self.assertTrue(os.path.isdir(dest))
+        self.assertTrue(os.path.islink(dir_link))
+        self.ae(set(names_in(dest_dir)), {'child'})
+
+        # a symlink must not replace an existing directory
+        ft = start_receiving()
+        ft.handle_serialized_command(serialized_cmd(action='file', file_id='s', name=dest_dir, ftype='symlink'))
+        self.ae(statuses(ft), [f'EISDIR:Cannot replace the existing directory {dest_dir} with a file'])
+        self.assertTrue(os.path.isdir(dest_dir))
+
+        # but it may replace a symlink to a directory
+        ft = start_receiving()
+        ft.handle_serialized_command(serialized_cmd(action='file', file_id='s', name=dir_link, ftype='symlink'))
+        ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='s', data='path:elsewhere'))
+        self.ae(statuses(ft)[-1], 'OK')
+        self.ae(os.readlink(dir_link), 'elsewhere')
+
+        # failure to create parent directories gives a clear error
+        blocker = os.path.join(base, 'blocker')
+        with open(blocker, 'w'):
+            pass
+        dest = os.path.join(blocker, 'sub', 'f')
+        ft = start_receiving()
+        ft.handle_serialized_command(serialized_cmd(action='file', file_id='f', name=dest, ftype='regular'))
+        ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='f', data='xyz'))
+        self.ae(statuses(ft), ['STARTED', f'ENOTDIR:Failed to create the directory {os.path.dirname(dest)}: Not a directory'])
+
     def test_file_get(self):
         # send refusal
         for quiet in (0, 1, 2):
