@@ -753,6 +753,59 @@ func TestShowUnmappedToggle(t *testing.T) {
 	}
 }
 
+func TestUnmappedAliasesAlwaysShown(t *testing.T) {
+	h := newBuilder().
+		addBinding("", "Action aliases", Binding{
+			Action: "launch", ActionDisplay: "launch_bg",
+			Definition: "launch --type=background", Alias: "launch_bg",
+		}).
+		addBinding("", "Copy/paste", testBinding("ctrl+c", "copy", "Copy")).
+		addBinding("", "Copy/paste", testBinding("", "paste_from_buffer", "Paste from buffer")).
+		build()
+	h.show_unmapped = false
+
+	h.updateFilter()
+	if len(h.filtered_idx) != 2 {
+		t.Fatalf("With show_unmapped=false, expected the alias and the mapped item, got %d items", len(h.filtered_idx))
+	}
+	if h.all_items[h.filtered_idx[0]].binding.Alias != "launch_bg" {
+		t.Fatal("Unmapped alias should be shown first when show_unmapped=false")
+	}
+
+	h.query = "launch"
+	h.updateFilter()
+	if len(h.filtered_idx) != 1 || h.all_items[h.filtered_idx[0]].binding.Alias != "launch_bg" {
+		t.Fatal("Unmapped alias should be found by search when show_unmapped=false")
+	}
+}
+
+func TestAliasNotDuplicatedInActionText(t *testing.T) {
+	h := newBuilder().
+		addBinding("", "Action aliases", Binding{
+			Key: "f5", Action: "detach_tab", ActionDisplay: "fav_detach",
+			Definition: "fav_detach", Alias: "fav_detach",
+		}).
+		addBinding("", "Kitten aliases", Binding{
+			Action: "kitten", ActionDisplay: "kitten hints",
+			Definition: "kitten hints --hints-offset=0", Alias: "kitten hints",
+		}).
+		build()
+	for _, want := range []string{"fav_detach", "kitten hints"} {
+		found := false
+		for _, item := range h.all_items {
+			if item.binding.Alias == want {
+				found = true
+				if item.actionText != want {
+					t.Fatalf("actionText for alias %q is %q, expected the alias exactly once", want, item.actionText)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("Alias %q not found in items", want)
+		}
+	}
+}
+
 // newMultiTokenTestHandler creates a handler with items designed to test
 // multi-token search. It has items where different tokens match different
 // columns, enabling cross-column and RRF ranking tests.

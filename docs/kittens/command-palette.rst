@@ -121,6 +121,19 @@ configured a shortcut for. You can run them directly from the palette, or note
 the action name and add a mapping in :file:`kitty.conf`.
 
 
+Pinning frequently used actions
+---------------------------------
+
+When the search query is empty, actions defined with :opt:`action_alias` and
+:opt:`kitten_alias` are shown at the top of the palette, above all other
+actions. They are shown even when unmapped actions are hidden with :kbd:`F12`.
+To keep actions you use often at the top, define an alias for each of them in
+:file:`kitty.conf`, for example::
+
+    action_alias fav_session launch --type=background kitty --session ~/.config/kitty/last.session
+    action_alias fav_detach detach_tab ask
+
+
 Custom keyboard modes
 -----------------------
 

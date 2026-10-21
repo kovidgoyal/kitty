@@ -273,6 +273,19 @@ def add_alias_sections(opts: Any, modes: dict[str, dict[str, list[dict[str, str]
             default_mode_cats[section_name] = existing
 
 
+def move_alias_sections_to_top(modes: dict[str, dict[str, list[dict[str, str]]]]) -> None:
+    """Put the user defined alias sections first in the default mode."""
+    default_mode_cats = modes.get('')
+    if not default_mode_cats:
+        return
+    ordered: dict[str, list[dict[str, str]]] = {}
+    for section_name in ('Action aliases', 'Kitten aliases'):
+        if section_name in default_mode_cats:
+            ordered[section_name] = default_mode_cats.pop(section_name)
+    ordered.update(default_mode_cats)
+    modes[''] = ordered
+
+
 def collect_mouse_bindings(opts: Any) -> list[dict[str, str]]:
     """Collect mouse mappings."""
     mouse: list[dict[str, str]] = []
@@ -290,6 +303,7 @@ def collect_keys_data(opts: Any) -> dict[str, Any]:
     relocate_mode_entry_bindings(modes)
     add_unmapped_actions(modes)
     add_alias_sections(opts, modes)
+    move_alias_sections_to_top(modes)
 
     mode_order = list(modes.keys())
     category_order: dict[str, list[str]] = {}

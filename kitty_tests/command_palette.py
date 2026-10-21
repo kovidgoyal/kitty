@@ -169,6 +169,48 @@ class TestCommandPalette(BaseTest):
             for b in bindings:
                 self.assertNotEqual(b.get('alias'), 'launch_tab', f'Alias binding should not appear in {cat_name!r}')
 
+    def test_alias_sections_come_first(self):
+        from kittens.command_palette.main import collect_keys_data
+        from kitty.options.utils import ActionAlias, AliasMap
+
+        opts = self.set_options()
+        alias_map = AliasMap()
+        alias_map.append('launch_bg', ActionAlias('launch_bg', 'launch --type=background'))
+        alias_map.append('kitten', ActionAlias('hints', 'hints --hints-offset=0', replace_second_arg=True))
+        opts.alias_map = alias_map
+        data = collect_keys_data(opts)
+        cat_names = list(data['modes'][''].keys())
+        self.ae(cat_names[:2], ['Action aliases', 'Kitten aliases'])
+        self.ae(data['category_order'][''][:2], ['Action aliases', 'Kitten aliases'])
+
+        # Without aliases there are no alias sections at the top
+        opts = self.set_options()
+        opts.alias_map = AliasMap()
+        data = collect_keys_data(opts)
+        self.assertNotIn('Action aliases', data['modes'][''])
+        self.assertNotIn('Kitten aliases', data['modes'][''])
+
+    def test_alias_entries_display_alias_name(self):
+        # The Go side relies on action_display starting with the alias name
+        # for every entry that has an alias, so that it does not need to add it.
+        from kittens.command_palette.main import collect_keys_data
+        from kitty.options.utils import ActionAlias, AliasMap, parse_map
+
+        opts = self.set_options()
+        alias_map = AliasMap()
+        alias_map.append('launch_tab', ActionAlias('launch_tab', 'launch --type=tab --cwd=current'))
+        alias_map.append('launch_bg', ActionAlias('launch_bg', 'launch --type=background'))
+        alias_map.append('kitten', ActionAlias('hints', 'hints --hints-offset=0', replace_second_arg=True))
+        opts.alias_map = alias_map
+        for kd in parse_map('f1 launch_tab vim'):
+            kd = kd.resolve_and_copy(opts.kitty_mod)
+            opts.keyboard_modes[''].keymap.setdefault(kd.trigger, []).append(kd)
+        data = collect_keys_data(opts)
+        alias_entries = [b for cats in data['modes'].values() for bindings in cats.values() for b in bindings if 'alias' in b]
+        self.ae({b['alias'] for b in alias_entries}, {'launch_tab', 'launch_bg', 'kitten hints'})
+        for b in alias_entries:
+            self.assertTrue(b['action_display'].startswith(b['alias']), f'{b["action_display"]!r} does not start with {b["alias"]!r}')
+
     def test_kitten_alias_section(self):
         from kittens.command_palette.main import collect_keys_data
         from kitty.options.utils import ActionAlias, AliasMap

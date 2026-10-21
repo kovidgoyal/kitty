@@ -278,6 +278,9 @@ Detailed list of changes
   :opt:`scrollbar_handle_color` and :opt:`scrollbar_track_color` and not
   accepting their special values such as ``background``
 
+- Command palette: Show action and kitten aliases at the top when the search
+  query is empty, so they can be used to pin frequently used actions (:iss:`10711`)
+
 - ssh kitten: Fix hanging when re-using a shared connection whose connection
   to the server has silently died, for example, after a network change or
   suspend. Now the kitten detects this and reconnects (:iss:`10691`)

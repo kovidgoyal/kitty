@@ -331,10 +331,9 @@ func bindingToDisplayItem(b Binding) DisplayItem {
 	if keyText == "" {
 		keyText = unmappedLabel
 	}
+	// For aliases, ActionDisplay already starts with the alias name, so it is
+	// not prepended here.
 	actionText := b.ActionDisplay
-	if b.Alias != "" {
-		actionText = b.Alias + " " + actionText
-	}
 	return DisplayItem{
 		binding:       b,
 		keyText:       keyText,
@@ -412,6 +411,12 @@ func (h *Handler) flattenBindings() {
 	}
 }
 
+// isHidden reports whether an item is hidden by the show_unmapped toggle.
+// Aliases are user defined, so they are always shown, even when unmapped.
+func (h *Handler) isHidden(item *DisplayItem) bool {
+	return !h.show_unmapped && item.binding.Key == "" && item.binding.Alias == ""
+}
+
 // updateFilter rebuilds the filtered item list based on the current query.
 func (h *Handler) updateFilter() {
 	tokens := tokenizeQuery(h.query)
@@ -419,8 +424,8 @@ func (h *Handler) updateFilter() {
 	if len(tokens) == 0 {
 		// Show all items in original order, respecting the show_unmapped toggle
 		h.filtered_idx = make([]int, 0, len(h.all_items))
-		for i, item := range h.all_items {
-			if !h.show_unmapped && item.binding.Key == "" {
+		for i := range h.all_items {
+			if h.isHidden(&h.all_items[i]) {
 				continue
 			}
 			h.filtered_idx = append(h.filtered_idx, i)
@@ -433,7 +438,7 @@ func (h *Handler) updateFilter() {
 
 	var matches []scoredItem
 	for i := range h.all_items {
-		if !h.show_unmapped && h.all_items[i].binding.Key == "" {
+		if h.isHidden(&h.all_items[i]) {
 			continue
 		}
 		item := &h.all_items[i]
