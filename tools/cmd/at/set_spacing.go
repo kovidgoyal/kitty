@@ -15,7 +15,9 @@ func parse_set_spacing(args []string) (map[string]any, error) {
 	for _, q := range types {
 		mapper[q] = []string{q + "-left", q + "-top", q + "-right", q + "-bottom"}
 		mapper[q+"-h"] = []string{q + "-left", q + "-right"}
+		mapper[q+"-horizontal"] = mapper[q+"-h"]
 		mapper[q+"-v"] = []string{q + "-top", q + "-bottom"}
+		mapper[q+"-vertical"] = mapper[q+"-v"]
 		mapper[q+"-left"] = []string{q + "-left"}
 		mapper[q+"-right"] = []string{q + "-right"}
 		mapper[q+"-top"] = []string{q + "-top"}

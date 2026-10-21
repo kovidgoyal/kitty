@@ -278,6 +278,10 @@ Detailed list of changes
   :opt:`scrollbar_handle_color` and :opt:`scrollbar_track_color` and not
   accepting their special values such as ``background``
 
+- Remote control: Fix ``kitten @ set-spacing`` not accepting
+  ``margin-horizontal``, ``margin-vertical``, ``padding-horizontal`` and
+  ``padding-vertical``, which ``launch --spacing`` accepts
+
 - ssh kitten: Fix hanging when re-using a shared connection whose connection
   to the server has silently died, for example, after a network change or
   suspend. Now the kitten detects this and reconnects (:iss:`10691`)
