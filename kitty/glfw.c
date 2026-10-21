@@ -367,6 +367,9 @@ cocoa_out_of_sequence_render(OSWindow *window) {
             request_tick_callback();
             return;
         }
+        // Recreation creates a new context, which does not inherit per-context
+        // state such as uniform buffer binding points
+        bind_shader_globals_to_current_context();
     }
 
     bool rendered = false;

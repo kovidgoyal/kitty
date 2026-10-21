@@ -512,6 +512,8 @@ Detailed list of changes
   :option:`kitten @ set-colors --reset` not restoring them and not resetting all
   windows and the configured colors when used from the command line
 
+- macOS: Fix padding rendering black after sleep/screen lock (:iss:`10708`)
+
 - macOS: Fix a memory leak when getting the list of all processes, for
   example, when querying the memory used by child processes (:iss:`10673`)
 
