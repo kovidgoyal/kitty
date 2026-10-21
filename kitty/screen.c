@@ -4347,8 +4347,14 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 }
 
 static void
+render_iteration_data(const Screen *self, const Selection *s, IterationData *ans) {
+    // Must be used for both rendering and the dirty check so that they compare equal when nothing has changed
+    iteration_data(s, ans, self->columns, -self->historybuf->count, 0);
+}
+
+static void
 apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int extra_leading_rows, int scrolled_by) {
-    iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, 0);
+    render_iteration_data(self, s, &s->last_rendered);
     Line *line;
     const int y_min = MAX(-extra_leading_rows - scrolled_by, s->last_rendered.y), y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - scrolled_by);
     for (int y = y_min; y < y_limit; y++) {
@@ -4375,7 +4381,6 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int
             }
         }
     }
-    s->last_rendered.y = MAX(0, s->last_rendered.y);
 }
 
 bool
@@ -6177,11 +6182,11 @@ screen_is_selection_dirty(Screen *self) {
         self->extra_cursors.dirty)
         return true;
     for (size_t i = 0; i < self->selections.count; i++) {
-        iteration_data(self->selections.items + i, &q, self->columns, 0, self->scrolled_by);
+        render_iteration_data(self, self->selections.items + i, &q);
         if (memcmp(&q, &self->selections.items[i].last_rendered, sizeof(IterationData)) != 0) return true;
     }
     for (size_t i = 0; i < self->url_ranges.count; i++) {
-        iteration_data(self->url_ranges.items + i, &q, self->columns, 0, self->scrolled_by);
+        render_iteration_data(self, self->url_ranges.items + i, &q);
         if (memcmp(&q, &self->url_ranges.items[i].last_rendered, sizeof(IterationData)) != 0) return true;
     }
     return false;
@@ -7063,7 +7068,14 @@ current_selections(Screen *self, PyObject *a UNUSED) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)render_lines_for_screen(self) * self->columns);
     if (!ans) return NULL;
     screen_apply_selection(self, PyBytes_AS_STRING(ans), PyBytes_GET_SIZE(ans));
+    self->last_rendered.scrolled_by = self->scrolled_by; // mimic what the renderer does
     return ans;
+}
+
+static PyObject *
+is_selection_dirty(Screen *self, PyObject *a UNUSED) {
+    if (screen_is_selection_dirty(self)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 WRAP0(update_only_line_graphics_data)
@@ -7285,7 +7297,7 @@ static PyMethodDef methods[] = {
                             MND(paste, METH_O) MND(paste_bytes, METH_O) MND(focus_changed, METH_O) MND(has_focus, METH_NOARGS)
                                 MND(has_activity_since_last_focus, METH_NOARGS) MND(copy_colors_from, METH_O) MND(set_marker, METH_VARARGS)
                                     MND(marked_cells, METH_NOARGS) MND(scroll_to_next_mark, METH_VARARGS) MND(update_only_line_graphics_data, METH_NOARGS)
-                                        MND(bell, METH_NOARGS) MND(current_selections, METH_NOARGS){
+                                        MND(bell, METH_NOARGS) MND(current_selections, METH_NOARGS) MND(is_selection_dirty, METH_NOARGS){
                                             "select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL} /* Sentinel */

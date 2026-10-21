@@ -236,6 +236,9 @@ Detailed list of changes
   Files are now written to a temporary file and renamed into place, so an
   interrupted transfer no longer leaves a truncated file behind (:pull:`10713`)
 
+- Fix continuous re-rendering and needless GPU usage when a selection is
+  present and the window is scrolled back (:iss:`10714`)
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

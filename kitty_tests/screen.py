@@ -1178,6 +1178,38 @@ class TestScreen(BaseTest):
         # marked (set_mask = 1 for plain selections).
         self.assertIn(1, result)
 
+    def test_selection_not_dirty_after_render(self):
+        # Regression test for https://github.com/kovidgoyal/kitty/issues/10714
+        # selections were considered dirty on every frame when scrolled back,
+        # causing continuous re-rendering
+        s = self.create_screen(cols=10, lines=3, scrollback=50)
+        for i in range(40):
+            s.draw(f'row{i:03d}')
+            s.carriage_return()
+            s.linefeed()
+
+        def check(msg):
+            s.current_selections()
+            self.assertFalse(s.is_selection_dirty(), msg)
+
+        s.start_selection(0, 0)
+        s.update_selection(2, 1)
+        check('not scrolled')
+        for amt in (1, 2, 5, 20):
+            s.scroll(amt, True)
+            self.assertTrue(s.is_selection_dirty())
+            check(f'scrolled by {s.scrolled_by}')
+        s.clear_selection()
+        s.start_selection(0, 0)
+        s.update_selection(2, 1)
+        check('selection in scrollback')
+        s.scroll(20, False)
+        self.assertTrue(s.is_selection_dirty())
+        check('selection above visible area')
+        s.update_selection(3, 1)
+        self.assertTrue(s.is_selection_dirty())
+        check('updated selection above visible area')
+
     def test_soft_hyphen(self):
         s = self.create_screen()
         s.draw('a\u00adb')
