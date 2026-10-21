@@ -28,30 +28,23 @@ func read_window_logo(io_data *rc_io_data, path string) (func(io_data *rc_io_dat
 		}, nil
 	}
 
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var image_data_stream io.Reader
-	image_data_stream = f
-	config, format, ierr := image.DecodeConfig(f)
-	if ierr != nil {
+	_, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
 		return nil, fmt.Errorf("%s is not a supported image format", path)
 	}
-	f.Seek(0, 0)
-
+	var image_data_stream io.Reader = bytes.NewReader(data)
 	if format != "png" {
-		f.Seek(0, 0)
-		img, _, err := image.Decode(f)
+		img, _, err := image.Decode(bytes.NewReader(data))
 		if err != nil {
-			f.Close()
+			return nil, fmt.Errorf("failed to decode the image %s: %w", path, err)
 		}
-		f.Close()
 		b := bytes.Buffer{}
-		b.Grow(config.Height * config.Width * 4)
-		err = images.Encode(&b, img, "image/png")
-		if err != nil {
-			return nil, err
+		if err = images.Encode(&b, img, "image/png"); err != nil {
+			return nil, fmt.Errorf("failed to convert the image %s to PNG: %w", path, err)
 		}
 		image_data_stream = &b
 	}
