@@ -87,6 +87,8 @@ class BossDropTest(BaseTest):
             _move_window_to=Mock(),
             _insert_window_in_direction=Mock(),
             window_id_map={},
+            awaiting_window_drop=False,
+            _hide_force_shown_title_bars=Mock(),
         )
         for name in ('_update_drag_over', '_reset_drop_previews', '_sole_window_of_tab', '_tab_merge_target'):
             setattr(self.boss, name, partial(getattr(Boss, name), self.boss))
@@ -224,7 +226,7 @@ class TestTabDropClassificationStability(BossDropTest):
 
 class TestWaylandDragFinish(BossDropTest):
     def finish(self, was_dropped: bool = True, was_canceled: bool = False) -> None:
-        Boss.on_drag_source_finished(self.boss, was_dropped, was_canceled, '', 0, self.data, True)
+        Boss.on_drag_source_finished(self.boss, was_dropped, was_canceled, '', 0, self.data, True, not was_dropped)
 
     def set_pending_target(self, quadrant: int, direction: str | None) -> SimpleNamespace:
         target = SimpleNamespace(id=20, tab_id=2)
@@ -295,6 +297,58 @@ class TestWaylandDragFinish(BossDropTest):
     def test_drop_outside_kitty_detaches_into_new_os_window(self):
         self.finish()
         self.boss._move_tab_to.assert_called_once_with(self.source)
+
+
+class TestWindowDragFinish(BossDropTest):
+    "The title bars shown only for a window drag must stay until the drop has been classified"
+
+    def setUp(self):
+        super().setUp()
+        self.data = {f'application/net.kovidgoyal.kitty-window-{os.getpid()}': b'10'}
+        self.get_window_being_dragged.return_value = (10, True)
+        self.enterContext(patch('kitty.boss.set_window_being_dragged'))
+
+    def finish(self, was_dropped: bool = False, was_canceled: bool = False, dropped_on_kitty: bool = True) -> None:
+        Boss.on_drag_source_finished(self.boss, was_dropped, was_canceled, '', 0, self.data, True, dropped_on_kitty)
+
+    def test_drop_on_kitty_delivered_after_finish(self):
+        self.finish()
+        self.boss._hide_force_shown_title_bars.assert_not_called()
+        self.assertTrue(self.boss.awaiting_window_drop)
+        Boss.on_drop(self.boss, 1, self.data, True, 600, 400)
+        # on_window_drop() hides them once it has classified the drop
+        self.tm.on_window_drop.assert_called_once_with(600, 400, 10)
+        self.boss._hide_force_shown_title_bars.assert_not_called()
+        self.assertFalse(self.boss.awaiting_window_drop)
+        # the leave that follows a drop must not do anything further
+        Boss.on_drop_move(self.boss, 1, 600, 400, True, True)
+        self.boss._hide_force_shown_title_bars.assert_not_called()
+
+    def test_awaited_drop_that_never_arrives(self):
+        self.finish()
+        self.get_window_being_dragged.return_value = (0, False)
+        Boss.on_drop_move(self.boss, 1, 600, 400, True, True)
+        self.boss._hide_force_shown_title_bars.assert_called_once_with()
+        self.assertFalse(self.boss.awaiting_window_drop)
+
+    def test_awaited_drop_replaced_by_another_drop(self):
+        self.tm.active_tab = None
+        for drop in ({'text/plain': b'x'}, 5):
+            with self.subTest(drop=drop):
+                self.boss._hide_force_shown_title_bars.reset_mock()
+                self.boss.awaiting_window_drop = True
+                with patch.object(self.boss, 'show_error', Mock(), create=True):
+                    Boss.on_drop(self.boss, 1, drop, False, 600, 400)
+                self.boss._hide_force_shown_title_bars.assert_called_once_with()
+                self.assertFalse(self.boss.awaiting_window_drop)
+
+    def test_title_bars_hidden_immediately_without_a_drop_on_kitty(self):
+        for was_dropped, was_canceled, dropped_on_kitty in ((True, False, False), (False, True, False), (False, True, True), (False, False, False)):
+            with self.subTest(was_dropped=was_dropped, was_canceled=was_canceled, dropped_on_kitty=dropped_on_kitty):
+                self.boss._hide_force_shown_title_bars.reset_mock()
+                self.finish(was_dropped, was_canceled, dropped_on_kitty)
+                self.boss._hide_force_shown_title_bars.assert_called_once_with()
+                self.assertFalse(self.boss.awaiting_window_drop)
 
 
 class TestFileDrop(BossDropTest):
@@ -902,6 +956,47 @@ class TestWindowDropTargets(BaseTest):
                     if edge in ('top', 'bottom') and mode is DragOverlayMode.axis_x:
                         continue
                     self.ae(TabManager._drop_direction_for(tm, dest, x, y), expected[edge])
+
+    def hide_title_bar_on_clear(self, tm, *windows):
+        "Make clearing the title bars shown for the drag hide them, moving the window content up as the real layout does"
+
+        def clear():
+            for w in windows:
+                if w.show_title_bar:
+                    w.show_title_bar = False
+                    w.geometry = region(w.geometry.left, w.geometry.top + 20, w.geometry.right, w.geometry.bottom)
+
+        tm._clear_force_show_title_bars = Mock(side_effect=clear)
+
+    def test_drop_on_temporarily_shown_title_bar_swaps(self):
+        central = region(0, 30, 1000, 800)
+        tab = MagicMock()
+        dest = self.make_window(20, region(5, 35, 995, 400), show_title_bar=True, tab=tab)
+        src = self.make_window(10, region(5, 400, 995, 795), show_title_bar=True, tab=tab)
+        tm, regions = self.make_tab_manager([dest, src], central, region(0, 0, 1000, 30))
+        self.hide_title_bar_on_clear(tm, dest, src)
+        boss = self.make_boss(src, dest)
+        preview = self.drop_window(tm, regions, boss, 500, 45, 10)
+        self.ae(preview.quadrant, 5)
+        tm._clear_force_show_title_bars.assert_called_once_with()
+        tab.swap_windows.assert_called_once_with(src, dest)
+        boss._insert_window_in_direction.assert_not_called()
+        boss._move_window_to.assert_not_called()
+
+    def test_drop_direction_matches_preview_when_title_bars_hide(self):
+        central = region(0, 30, 1000, 800)
+        g = region(5, 35, 995, 795)
+        # just below the centre of the window with its title bar shown, and so above
+        # the centre once hiding the title bar moves the window down
+        x, y = (g.left + g.right) // 2, (g.top + g.bottom) // 2 + 5
+        dest = self.make_window(20, g, show_title_bar=True)
+        src = self.make_window(10, g)
+        tm, regions = self.make_tab_manager([dest], central, region(0, 0, 1000, 30), mode=DragOverlayMode.axis_y)
+        self.hide_title_bar_on_clear(tm, dest)
+        boss = self.make_boss(src, dest)
+        preview = self.drop_window(tm, regions, boss, x, y, 10)
+        self.ae(preview.direction, 'bottom')
+        boss._insert_window_in_direction.assert_called_once_with(src, dest, 'bottom')
 
     def test_title_bar_hover_targets_the_whole_window(self):
         central = region(0, 30, 1000, 800)

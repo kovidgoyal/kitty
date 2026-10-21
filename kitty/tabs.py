@@ -2150,6 +2150,7 @@ class TabManager:  # {{{
         if (w := boss.window_id_map.get(window_id)) is None:
             set_window_being_dragged()
             return
+        boss.awaiting_window_drop = False
         opts = get_options()
         min_w = opts.window_title_bar_min_windows
         for tm in boss.all_tab_managers:
@@ -2406,6 +2407,14 @@ class TabManager:  # {{{
         central, tab_bar = viewport_for_window(self.os_window_id)[:2]
         in_tab_bar = tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom
         tab_target = self.tab_bar.window_drop_target_at(x, y) if in_tab_bar else None
+        in_central = central.left <= x < central.right and central.top <= y < central.bottom
+        # Classify the drop before hiding the title bars shown only for the drag, as
+        # hiding them changes the window geometry the preview was drawn against.
+        dest_window = self._find_window_at(x, y) if tab_target is None and in_central else None
+        if dest_window is not None and dest_window.id == window_id:
+            dest_window = None
+        on_title_bar = dest_window is not None and self._pointer_in_title_bar_of(dest_window, y)
+        direction = self._drop_direction_for(dest_window, x, y) if dest_window is not None and not on_title_bar else None
         self._clear_force_show_title_bars()
         w = boss.window_id_map.get(window_id)
         if w is None:
@@ -2421,21 +2430,19 @@ class TabManager:  # {{{
             return
 
         # Case 2: Drop in central area
-        in_central = central.left <= x < central.right and central.top <= y < central.bottom
         if not in_central:
             return
 
         if (active_tab := self.active_tab) is None:
             return
 
-        dest_window = self._find_window_at(x, y)
-        if dest_window is None or dest_window.id == window_id:
+        if dest_window is None:
             # Dropped on empty space or self; if different tab, move there
             if active_tab is not w.tabref():
                 boss._move_window_to(w, target_tab_id=active_tab.id)
             return
 
-        if self._pointer_in_title_bar_of(dest_window, y):
+        if direction is None:
             if (src_tab := w.tabref()) is dest_window.tabref() and src_tab is not None:
                 # Same tab: swap positions
                 src_tab.swap_windows(w, dest_window)
@@ -2443,7 +2450,7 @@ class TabManager:  # {{{
                 # Cross-tab title bar drop: move to the destination tab
                 boss._move_window_to(w, target_tab_id=active_tab.id)
         else:
-            boss._insert_window_in_direction(w, dest_window, self._drop_direction_for(dest_window, x, y))
+            boss._insert_window_in_direction(w, dest_window, direction)
 
     def update_progress(self) -> None:
         self.num_of_windows_with_progress = 0

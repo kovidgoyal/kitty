@@ -571,6 +571,10 @@ Detailed list of changes
 - Custom shaders: Fix groups using :code:`attach` not having the same
   :code:`animation_progress` as the group they are attached to (:iss:`10693`)
 
+- Drag and drop: Fix dropping a window on the title bar of another window
+  inserting it at an edge of that window instead of swapping the two, when
+  the title bars are only shown temporarily, for example during the drag
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
