@@ -43,20 +43,62 @@ const (
 
 type output_file interface {
 	write([]byte) (int, error)
-	close() error
+	// Close the file. When commit is false any data written is discarded, if
+	// possible, leaving the destination untouched.
+	close(commit bool) error
 	tell() (int64, error)
 }
 
 type filesystem_file struct {
 	f *os.File
+	// The destination the temporary file f is renamed to on commit. Empty
+	// when f is the destination itself.
+	dest string
+}
+
+// Create a temporary file in the same directory as path that is atomically
+// renamed to path once it is completely written. This ensures that symlinks
+// and hard links at path are replaced rather than their targets overwritten
+// and that interrupted transfers do not leave truncated files behind.
+func new_filesystem_file(path string) (*filesystem_file, error) {
+	if s, err := os.Stat(path); err == nil && s.IsDir() {
+		return nil, &fs.PathError{Op: "open", Path: path, Err: unix.EISDIR}
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".kitty-transfer-")
+	if err == nil {
+		return &filesystem_file{f: f, dest: path}, nil
+	}
+	if errors.Is(err, fs.ErrPermission) {
+		// The directory is not writable, fallback to writing in place, but
+		// only if that cannot affect any other file.
+		var st unix.Stat_t
+		if unix.Lstat(path, &st) == nil && st.Mode&unix.S_IFMT == unix.S_IFREG && st.Nlink == 1 {
+			if f, ferr := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|unix.O_NOFOLLOW, 0); ferr == nil {
+				return &filesystem_file{f: f}, nil
+			}
+		}
+	}
+	return nil, err
 }
 
 func (ff *filesystem_file) tell() (int64, error) {
 	return ff.f.Seek(0, io.SeekCurrent)
 }
 
-func (ff *filesystem_file) close() error {
-	return ff.f.Close()
+func (ff *filesystem_file) close(commit bool) (err error) {
+	err = ff.f.Close()
+	if ff.dest == "" {
+		return
+	}
+	if commit && err == nil {
+		if err = os.Rename(ff.f.Name(), ff.dest); err == nil {
+			return
+		}
+	}
+	if rerr := os.Remove(ff.f.Name()); err == nil {
+		err = rerr
+	}
+	return
 }
 
 func (ff *filesystem_file) write(data []byte) (int, error) {
@@ -81,15 +123,24 @@ func (pf *patch_file) tell() (int64, error) {
 	return pf.temp.Seek(0, io.SeekCurrent)
 }
 
-func (pf *patch_file) close() (err error) {
+func (pf *patch_file) close(commit bool) (err error) {
 	if pf.p == nil {
 		return
 	}
-	err = pf.p.FinishDelta()
+	if commit {
+		err = pf.p.FinishDelta()
+	}
 	pf.src.Close()
-	pf.temp.Close()
-	if err == nil {
-		err = os.Rename(pf.temp.Name(), pf.src.Name())
+	if cerr := pf.temp.Close(); err == nil {
+		err = cerr
+	}
+	if commit && err == nil {
+		err = os.Rename(pf.temp.Name(), pf.path)
+	}
+	if !commit || err != nil {
+		if rerr := os.Remove(pf.temp.Name()); err == nil {
+			err = rerr
+		}
 	}
 	pf.src = nil
 	pf.temp = nil
@@ -156,7 +207,8 @@ func (self *remote_file) close() (err error) {
 	if self.actual_file != nil {
 		af := self.actual_file
 		self.actual_file = nil
-		cerr := af.close()
+		// Files still open here were not completely received
+		cerr := af.close(false)
 		if err == nil {
 			err = cerr
 		}
@@ -199,11 +251,11 @@ func (self *remote_file) ensure_open() (err error) {
 		}
 		self.actual_file = pf
 	} else {
-		ff, err := os.Create(self.expanded_local_path)
+		ff, err := new_filesystem_file(self.expanded_local_path)
 		if err != nil {
 			return err
 		}
-		self.actual_file = &filesystem_file{f: ff}
+		self.actual_file = ff
 	}
 	return
 }
@@ -244,7 +296,7 @@ func (self *remote_file) write_data(data []byte, is_last bool) (amt_written int6
 	}
 	amt_written = pos - base
 	if is_last && self.actual_file != nil {
-		cerr := self.actual_file.close()
+		cerr := self.actual_file.close(err == nil)
 		if err == nil {
 			err = cerr
 		}
@@ -422,8 +474,8 @@ func (self *manager) request_files() transmit_iterator {
 		}
 		read_signature := self.use_rsync && f.ftype == FileType_regular
 		if read_signature {
-			if s, err := os.Lstat(f.expanded_local_path); err == nil {
-				read_signature = s.Size() > 4096
+			if s, err := os.Stat(f.expanded_local_path); err == nil {
+				read_signature = s.Mode().IsRegular() && s.Size() > 4096
 			} else {
 				read_signature = false
 			}

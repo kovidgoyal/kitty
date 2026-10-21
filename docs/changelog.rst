@@ -231,6 +231,11 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Transfer kitten: When receiving files, replace existing symbolic and hard
+  links at the destination instead of overwriting the files they point to.
+  Files are now written to a temporary file and renamed into place, so an
+  interrupted transfer no longer leaves a truncated file behind (:pull:`10713`)
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
