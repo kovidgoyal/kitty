@@ -45,6 +45,7 @@ func read_window_logo(io_data *rc_io_data, path string) (func(io_data *rc_io_dat
 		img, _, err := image.Decode(f)
 		if err != nil {
 			f.Close()
+			return nil, err
 		}
 		f.Close()
 		b := bytes.Buffer{}

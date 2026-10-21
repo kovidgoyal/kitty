@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Remote control: Fix a crash when using damaged images with
+  :code:`set-window-logo` or :code:`set-background-image`.
+
 - Transfer kitten: When receiving files, replace existing symbolic and hard
   links at the destination instead of overwriting the files they point to.
   Files are now written to a temporary file and renamed into place, so an
