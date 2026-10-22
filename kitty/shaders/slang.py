@@ -1658,6 +1658,11 @@ class Pipeline(TypedDict):
     pipeline_dir: str
 
 
+@run_once
+def trailing_comment_pat() -> re.Pattern[str]:
+    return re.compile(r'\s#.*')
+
+
 def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline_dir: str = '') -> Pipeline:
     slot = Slot.end
     textures: tuple[NamedTexture, ...] = ()
@@ -1701,7 +1706,8 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
         }
 
     for line in lines:
-        line = line.strip()
+        # A # at the start of the line or preceded by whitespace starts a comment
+        line = trailing_comment_pat().sub('', line).strip()
         if not line or line.startswith('#'):
             continue
         parts = line.split()

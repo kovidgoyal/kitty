@@ -118,6 +118,11 @@ class TestSlang(BaseTest):
         g = pipeline('animation_start user:find-cursor|tab-change\nanimation_stop user:x.y_z')['groups'][0]
         self.ae(g['animation_start'], ('user:find-cursor', 'tab-change'))
         self.ae(g['animation_end_events'], ('user:x.y_z',))
+        # Trailing comments, including empty ones
+        for comment in ('# ', '#', '# some comment', '\t#x'):
+            g = pipeline(f'animation_toggle user:toggle-notch {comment}\nanimation_duration 600 {comment}')['groups'][0]
+            self.ae(g['animation_toggle'], ('user:toggle-notch',))
+            self.ae(g['animation_duration'], 600_000_000)
         for bad in ('user:', 'user:a/b', 'user:' + 'x' * 100, 'usr:a'):
             self.assertRaises(ValueError, pipeline, f'animation_start {bad}')
         # A toggled group stays on until toggled off unless told otherwise

@@ -260,7 +260,8 @@ The pipeline part
 
 A pipeline file (:file:`.pipeline`) is a plain text file that controls how
 one or more shaders are assembled into a rendering pipeline. Lines starting
-with ``#`` are comments; blank lines are ignored.
+with ``#`` are comments, as is everything after a ``#`` that is preceded by
+whitespace; blank lines are ignored.
 
 **Top-level directives** (outside any group):
 
