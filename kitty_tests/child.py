@@ -3,8 +3,9 @@
 
 import os
 import subprocess
+import tempfile
 
-from kitty.child import memory_used_by_process_tree_rooted_at
+from kitty.child import Child, KittyWrapper, children_of_process, cmdline_of_pid, cwd_of_process, memory_used_by_process_tree_rooted_at
 from kitty.constants import is_macos, kitty_exe
 
 from .base import BaseTest
@@ -103,3 +104,91 @@ time.sleep(300)
             self.assertGreater(mem_walk, 0)
         finally:
             self._terminate(child)
+
+
+class ChildRootTest(BaseTest):
+    def _spawn_wrapper(self, child_cwd: str, start_child: bool = True) -> subprocess.Popen:
+        # A process that, like /usr/bin/login, runs a child and waits for it.
+        # The child is started from a non-main thread, as kitten does.
+        code = f"""\
+import sys, threading, time
+def run_child(started):
+    import subprocess, sys, time
+    subprocess.Popen(
+        [sys.executable, '-c', 'import time; time.sleep(300)'], cwd={child_cwd!r},
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    started.set()
+    time.sleep(300)  # keep the thread alive so the child stays its child
+if {start_child!r}:
+    started = threading.Event()
+    threading.Thread(target=run_child, args=(started,), daemon=True).start()
+    if not started.wait(10):
+        raise SystemExit('Failed to start child')
+sys.stdout.write("ready\\n")
+sys.stdout.flush()
+time.sleep(300)
+"""
+        p = subprocess.Popen([kitty_exe(), '+runpy', code], stdout=subprocess.PIPE)
+        line = p.stdout.readline().strip()
+        p.stdout.close()
+        if line != b'ready':
+            p.kill()
+            p.wait()
+            raise AssertionError(f'Unexpected output from wrapper: {line!r}')
+        return p
+
+    def _terminate_tree(self, p: subprocess.Popen) -> None:
+        children = children_of_process(p.pid)
+        p.terminate()
+        p.wait()
+        for c in children:
+            try:
+                os.kill(c, 15)
+            except ProcessLookupError:
+                pass
+
+    def _child_for(self, pid: int, *wrappers: KittyWrapper) -> Child:
+        c = Child(['unused'], '/')
+        c.pid = pid
+        c.kitty_wrappers = wrappers
+        return c
+
+    def test_root_pid(self):
+        with tempfile.TemporaryDirectory() as tdir:
+            tdir = os.path.realpath(tdir)
+            p = self._spawn_wrapper(tdir)
+            try:
+                children = children_of_process(p.pid)
+                self.ae(len(children), 1)
+                inner = children[0]
+                self.ae(cwd_of_process(inner), tdir)
+                self.assertNotEqual(cwd_of_process(p.pid), tdir)
+                # Not launched via a wrapper, the original process is root
+                c = self._child_for(p.pid)
+                self.ae(c.root_pid, p.pid)
+                self.ae(c.root_cwd, cwd_of_process(p.pid))
+                # A wrapper that never replaces itself is always skipped
+                c = self._child_for(p.pid, KittyWrapper(('/usr/bin/login', '-f'), False))
+                self.ae(c.root_pid, inner)
+                self.ae(c.root_cwd, tdir)
+                # A wrapper that replaces itself is skipped only while it is
+                # still running as the wrapper
+                argv = tuple(cmdline_of_pid(p.pid))
+                c = self._child_for(p.pid, KittyWrapper(argv[:2], True))
+                self.ae(c.root_pid, inner)
+                c = self._child_for(p.pid, KittyWrapper(('/some/other/wrapper',), True))
+                self.ae(c.root_pid, p.pid)
+                # Skipping stops at the first process that is not a wrapper
+                c = self._child_for(p.pid, KittyWrapper(argv[:2], True), KittyWrapper(('/some/other/wrapper',), True))
+                self.ae(c.root_pid, inner)
+            finally:
+                self._terminate_tree(p)
+
+    def test_root_pid_wrapper_without_child(self):
+        p = self._spawn_wrapper('/', start_child=False)
+        try:
+            self.ae(children_of_process(p.pid), [])
+            c = self._child_for(p.pid, KittyWrapper(('/usr/bin/login',), False))
+            self.ae(c.root_pid, p.pid)
+        finally:
+            self._terminate_tree(p)

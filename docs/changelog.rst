@@ -231,6 +231,12 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :option:`launch --cwd`:code:`=root`: Fix it using the working directory of
+  the foreground process instead of the root process while the shell is running
+  a command. Also, wrapper processes that kitty itself inserts, such as
+  :file:`/usr/bin/login` on macOS, are now skipped, so their first child is used
+  as the root process
+
 - Remote control: Fix a crash when using damaged images with
   :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
 

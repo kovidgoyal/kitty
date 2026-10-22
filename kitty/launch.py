@@ -203,6 +203,10 @@ by the shell (needs :ref:`shell_integration` to work). The special value
 oldest foreground process associated with the currently active window rather
 than the newest foreground process. Finally, the special value :code:`root`
 refers to the process that was originally started when the window was created.
+If kitty itself started that process via a wrapper, such as :file:`/usr/bin/login`
+on macOS, the wrapper is ignored and its first child is used instead. The
+working directory reported by the shell is used only when the root process is in
+the foreground.
 
 When opening in the same working directory as the current window causes the new
 window to connect to a remote host, you can use the :option:`--hold-after-ssh`
