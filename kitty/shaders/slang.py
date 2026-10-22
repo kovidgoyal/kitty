@@ -20,7 +20,7 @@ from enum import StrEnum, auto
 from functools import lru_cache, partial
 from itertools import chain, product
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, TypedDict, TypeGuard
+from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, TypedDict, TypeGuard
 
 from kitty.constants import config_dir, read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
@@ -314,9 +314,14 @@ class LoadShaderPrograms:
         for k in self.custom_shaders:
             try:
                 d = parse_pipeline(k)
-            except FileNotFoundError:
+            except FileNotFoundError as pe:
                 try:
                     custom_shader(k)
+                except CustomFileNotFound as e:
+                    # Report the pipeline locations searched as well, not just the shader ones
+                    tried = (pe.tried if isinstance(pe, CustomFileNotFound) else ()) + e.tried
+                    err(f'Failed to find custom shader or pipeline {k} with error: {CustomFileNotFound(k, tried)}')
+                    continue
                 except Exception as e:
                     err(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
                     continue
@@ -1458,11 +1463,17 @@ def _read_first(candidates: Iterable[str], tried: list[str]) -> tuple[str, bytes
     return '', b''
 
 
+class CustomFileNotFound(FileNotFoundError):
+    def __init__(self, name: str, tried: Sequence[str]):
+        self.tried = tuple(tried)
+        super().__init__(f'Could not find {name!r} amongst the builtins or at any of: {", ".join(self.tried)}')
+
+
 def _builtin_src(reader: Callable[[str], bytes], name: str, tried: list[str]) -> bytes:
     try:
         return reader(name)
     except FileNotFoundError:
-        raise FileNotFoundError(f'Could not find {name!r} amongst the builtins or at any of: {", ".join(tried)}') from None
+        raise CustomFileNotFound(name, tried) from None
 
 
 @lru_cache(maxsize=64)
