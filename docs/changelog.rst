@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Fix :option:`launch --cwd`:code:`=root` behaving like :code:`current` while
+  the shell is running a command, instead of using the shell's working directory
+
 - Remote control: Fix a crash when using damaged images with
   :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
 
