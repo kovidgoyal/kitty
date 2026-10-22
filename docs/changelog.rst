@@ -234,6 +234,11 @@ Detailed list of changes
 - Remote control: Fix a crash when using damaged images with
   :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
 
+- Show the hand pointer and hover highlighting over links only when the pressed
+  modifiers match a configured mouse action for opening the link. Update both
+  immediately when modifiers are pressed or released, even without moving the
+  mouse.
+
 - Transfer kitten: When receiving files, replace existing symbolic and hard
   links at the destination instead of overwriting the files they point to.
   Files are now written to a temporary file and renamed into place, so an

@@ -19,6 +19,8 @@ extern PyTypeObject Screen_Type;
 static MouseShape mouse_cursor_shape = TEXT_POINTER;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE, LEAVE } MouseAction;
 #define debug debug_input
+#define MOUSE_MAPPING_MODS_MASK (GLFW_MOD_SHIFT | GLFW_MOD_ALT | GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META)
+static_assert(MOUSE_MAPPING_MODS_MASK < 64, "mouse mapping modifiers must fit in a uint64_t bitmap");
 
 static void
 finish_scroll_animation(Screen *screen) {
@@ -432,18 +434,23 @@ handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
 }
 
 static void
-detect_url(Screen *screen, unsigned int x, unsigned int y) {
+detect_url(Screen *screen, unsigned int x, unsigned int y, int modifiers) {
     int hid = screen_detect_url(screen, x, y);
     zero_at_ptr(&screen->current_hyperlink_under_mouse);
+    set_mouse_cursor_for_screen(screen);
     if (hid != 0) {
-        mouse_cursor_shape = POINTER_POINTER;
+        if (OPT(url_mappings)[screen->modes.mouse_tracking_mode != NO_TRACKING] & (1ull << (modifiers & MOUSE_MAPPING_MODS_MASK))) {
+            mouse_cursor_shape = POINTER_POINTER;
+        } else {
+            screen_mark_url(screen, 0, 0, 0, 0);
+        }
         screen->current_hyperlink_under_mouse.has_detected_url = hid < 0;
         if (hid > 0) {
             screen->current_hyperlink_under_mouse.id = (hyperlink_id_type)hid;
             screen->current_hyperlink_under_mouse.x = x;
             screen->current_hyperlink_under_mouse.y = y;
         }
-    } else set_mouse_cursor_for_screen(screen);
+    }
 }
 
 static bool
@@ -721,7 +728,7 @@ HANDLER(handle_move_event) {
         return;
     }
     Screen *screen = w->render_data.screen;
-    if (OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
+    if (OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, modifiers);
     if (should_handle_in_kitty(w, screen, button)) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
@@ -798,7 +805,8 @@ add_press(Window *w, int button, int modifiers) {
 bool
 mouse_open_url(Window *w) {
     Screen *screen = w->render_data.screen;
-    detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
+    // Opening a URL must work even when hover highlighting is disabled.
+    screen_detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
     return screen_open_url(screen, "open_url");
 }
 
@@ -1168,6 +1176,9 @@ focus_in_event(void) {
 
 void
 update_mouse_pointer_shape(void) {
+    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window ||
+        global_state.tab_being_dragged.id || global_state.window_being_dragged.id || global_state.active_drag_resize)
+        return;
     mouse_cursor_shape = TEXT_POINTER;
     MouseRegion r = mouse_region(false, true);
     if (r.in_tab_bar) {
@@ -1180,6 +1191,10 @@ update_mouse_pointer_shape(void) {
         } else if (r.window->render_data.screen) {
             screen_mark_url(r.window->render_data.screen, 0, 0, 0, 0);
             set_mouse_cursor_for_screen(r.window->render_data.screen);
+            bool mouse_cell_changed, cell_half_changed;
+            if (OPT(detect_urls) && set_mouse_position(r.window, &mouse_cell_changed, &cell_half_changed)) {
+                detect_url(r.window->render_data.screen, r.window->mouse_pos.cell_x, r.window->mouse_pos.cell_y, global_state.mods_at_last_key_or_button_event);
+            }
         }
     }
     set_mouse_cursor(mouse_cursor_shape);
@@ -1595,9 +1610,6 @@ mapped_scroll_steps(GLFWOffsetType offset_type, double offset, double *pending, 
 
 // Bit i of wheel_mappings[button - MOUSE_WHEEL_UP][grabbed] is set when the wheel is mapped
 // with the modifiers i, so that unmapped scrolling never calls into Python.
-#define WHEEL_MAPPING_MODS_MASK (GLFW_MOD_SHIFT | GLFW_MOD_ALT | GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META)
-static_assert(WHEEL_MAPPING_MODS_MASK < 64, "wheel mapping modifiers must fit in a uint64_t bitmap");
-
 bool
 set_wheel_mappings(PyObject *py_opts, Options *opts) {
     memset(opts->wheel_mappings, 0, sizeof(opts->wheel_mappings));
@@ -1618,7 +1630,7 @@ set_wheel_mappings(PyObject *py_opts, Options *opts) {
         const long button = PyLong_AsLong(PyTuple_GET_ITEM(key, 0)), mods = PyLong_AsLong(PyTuple_GET_ITEM(key, 1));
         if (PyErr_Occurred()) return false;
         // modifiers outside the mask are stripped from events, so such a mapping can never match
-        if (button < MOUSE_WHEEL_UP || button > MOUSE_WHEEL_RIGHT || (mods & ~WHEEL_MAPPING_MODS_MASK)) continue;
+        if (button < MOUSE_WHEEL_UP || button > MOUSE_WHEEL_RIGHT || (mods & ~MOUSE_MAPPING_MODS_MASK)) continue;
         const int grabbed = PyObject_IsTrue(PyTuple_GET_ITEM(key, 3));
         if (grabbed < 0) return false;
         opts->wheel_mappings[button - MOUSE_WHEEL_UP][grabbed] |= 1ull << mods;
@@ -1746,7 +1758,7 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
     }
     if (ev->momentum_type == GLFW_NO_MOMENTUM_DATA) {
         const bool grabbed = screen->modes.mouse_tracking_mode != NO_TRACKING;
-        const int mods = ev->keyboard_modifiers & WHEEL_MAPPING_MODS_MASK;
+        const int mods = ev->keyboard_modifiers & MOUSE_MAPPING_MODS_MASK;
         if (dispatch_mapped_scroll(osw, w, ev, mods, grabbed)) osw->scroll.mapped_gesture = true;
         else if (osw->scroll.mapped_gesture) {
             osw->scroll.mapped_gesture = continues_mapped_gesture(osw, w, ev, mods, grabbed);
@@ -1937,7 +1949,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
         if (button == -2) do_drag_scroll(w, true);
         else if (button == -3) do_drag_scroll(w, false);
         else {
-            if (OPT(detect_urls)) detect_url(w->render_data.screen, x, y);
+            if (OPT(detect_urls)) detect_url(w->render_data.screen, x, y, modifiers);
             handle_mouse_movement_in_kitty(w, last_button_pressed, mouse_cell_changed);
             handle_potential_drag(w, last_button_pressed);
         }
@@ -1954,7 +1966,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
             }
         }
     }
-    Py_RETURN_NONE;
+    return PyLong_FromLong(mouse_cursor_shape);
 }
 
 static PyObject *

@@ -134,6 +134,8 @@ typedef struct Options {
     // wheel with the modifiers i, button is 0 for wheel_up, 1 for wheel_down,
     // 2 for wheel_left and 3 for wheel_right
     uint64_t wheel_mappings[4][2];
+    // Bit i is set when a mouse button opens the hovered URL with modifiers i.
+    uint64_t url_mappings[2]; // ungrabbed, grabbed
     bool window_alert_on_bell;
     bool macos_dock_badge_on_bell;
     bool debug_keyboard;

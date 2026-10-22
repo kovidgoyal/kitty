@@ -130,7 +130,7 @@ class TestSelectionDrag(BaseTest):
         self.ae(drags, ['alpha'])
 
     def test_selection_drag_links(self):
-        s, ev, drags = self.drag_screen()
+        s, ev, drags = self.drag_screen('mouse_map left click ungrabbed')
         s.draw('https://example.com')
         urls = []
         s.callbacks.drag_url = lambda url, hyperlink_id: urls.append(url)
@@ -142,6 +142,7 @@ class TestSelectionDrag(BaseTest):
         self.ae(urls, [])
         s.clear_selection()
         ev(x=10)
+        self.assertNotIn(2, s.current_selections())
         ev(LEFT, x=10, clear_click_queue=True)
         ev(x=11)
         self.ae(urls, ['https://example.com'])

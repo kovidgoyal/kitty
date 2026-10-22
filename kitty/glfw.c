@@ -601,11 +601,15 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
 #ifndef __APPLE__
     if (key_modifier != -1) update_modifier_state_on_modifier_key_event(ev, key_modifier, is_left);
 #endif
+    const int old_mods = global_state.mods_at_last_key_or_button_event;
     global_state.mods_at_last_key_or_button_event = ev->mods;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     global_state.callback_os_window->user_is_idle = false;
     global_state.callback_os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
-    if (is_window_ready_for_callbacks() && !ev->fake_event_on_focus_change) on_key_input(ev);
+    if (is_window_ready_for_callbacks()) {
+        if ((old_mods ^ ev->mods) & ~GLFW_LOCK_MASK) update_mouse_pointer_shape();
+        if (!ev->fake_event_on_focus_change) on_key_input(ev);
+    }
     global_state.callback_os_window = NULL;
     request_tick_callback();
 }

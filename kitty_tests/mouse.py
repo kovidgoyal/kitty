@@ -4,8 +4,10 @@
 from functools import partial
 from time import sleep
 
+from kitty.config import load_config
 from kitty.fast_data_types import (
     GLFW_MOD_ALT,
+    GLFW_MOD_CAPS_LOCK,
     GLFW_MOD_CONTROL,
     GLFW_MOD_SHIFT,
     GLFW_MOUSE_BUTTON_LEFT,
@@ -34,10 +36,67 @@ def send_mouse_event(
 ):
     ix = int(x)
     in_left_half_of_cell = x - ix < 0.5
-    send_mock_mouse_event_to_window(window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell, pixel_x, pixel_y)
+    return send_mock_mouse_event_to_window(window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell, pixel_x, pixel_y)
 
 
 class TestMouse(BaseTest):
+    def test_link_hover_modifiers(self):
+        s = self.create_screen(cols=60)
+        s.draw('https://example.invalid/')
+        parse_bytes(s, b'\r\n\x1b]8;;https://example.invalid/\x1b\\hyperlink\x1b]8;;\x1b\\\r\nsrc/file.py:42')
+        w = create_mock_window(s)
+        hover = partial(send_mouse_event, w, x=2)
+        normal_shape = send_mouse_event(w, x=50)
+        link_shape = hover()
+        self.assertNotEqual(normal_shape, link_shape)
+
+        def configure(*lines):
+            set_options(load_config(overrides=('clear_all_mouse_actions yes', 'detect_url_regex [[:alnum:]_./-]+:[0-9]+', *lines)))
+
+        def check(mods, clickable, y=0):
+            self.ae(hover(modifiers=mods, y=y), link_shape if clickable else normal_shape)
+            expected = ('https://example.invalid/', 'hyperlink', 'src/file.py:42')[y] if clickable else ''
+            self.ae(''.join(s.text_for_marked_url()), expected)
+            # The renderer uses bit 1 of the selection buffer for URL underlines.
+            self.ae(sum(bool(cell & 2) for cell in s.current_selections()), len(expected))
+
+        mods = GLFW_MOD_CONTROL | GLFW_MOD_SHIFT
+        configure('mouse_map ctrl+shift+left release grabbed,ungrabbed mouse_handle_click link')
+        for y in (0, 1, 2):
+            for held, clickable in (
+                (0, False),
+                (GLFW_MOD_CONTROL, False),
+                (mods, True),
+                (mods | GLFW_MOD_ALT, False),
+                (mods | GLFW_MOD_CAPS_LOCK, True),
+                (0, False),
+            ):
+                # Repeated events in the same cell must respond to modifier changes.
+                check(held, clickable, y)
+
+        configure('mouse_map left click ungrabbed mouse_handle_click selection link prompt')
+        check(0, True)
+        check(mods, False)
+        parse_bytes(s, b'\x1b[?1000h')
+        normal_shape = send_mouse_event(w, x=50)
+        check(0, False)
+        configure('mouse_map alt+left release grabbed mouse_click_url')
+        check(GLFW_MOD_ALT, True)
+        check(0, False)
+        parse_bytes(s, b'\x1b[?1000l')
+        normal_shape = send_mouse_event(w, x=50)
+        check(GLFW_MOD_ALT, False)
+
+        configure('action_alias follow_link mouse_handle_click link', 'mouse_map alt+left release ungrabbed follow_link')
+        check(GLFW_MOD_ALT, True)
+        check(0, False)
+        configure('mouse_map left click ungrabbed combine : mouse_handle_click link : discard_event')
+        check(0, True)
+        configure('mouse_map left click ungrabbed mouse_click_url_or_select')
+        check(0, True)
+        configure('mouse_map left click ungrabbed mouse_click_url', 'mouse_map left click ungrabbed')
+        check(0, False)
+
     def test_mouse_selection(self):
         s = self.create_screen(options=dict(rectangle_select_modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL))
         w = create_mock_window(s)

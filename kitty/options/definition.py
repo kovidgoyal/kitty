@@ -1226,6 +1226,11 @@ Mouse buttons can be mapped to perform arbitrary actions. The syntax is:
 
     mouse_map button-name event-type modes action
 
+The mouse pointer changes to a hand and links are highlighted on hover only when
+the current keyboard modifiers and grabbed/ungrabbed mode match a mouse mapping
+that opens the link. Both update when modifiers are pressed or released, even
+if the mouse does not move.
+
 Where :code:`button-name` is one of :code:`left`, :code:`middle`, :code:`right`,
 :code:`b1` ... :code:`b8`, :code:`wheel_up`, :code:`wheel_down`,
 :code:`wheel_left`, :code:`wheel_right` with added keyboard modifiers. For example: :code:`ctrl+shift+left` refers to holding the
