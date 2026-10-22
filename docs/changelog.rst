@@ -237,6 +237,11 @@ Detailed list of changes
   :file:`/usr/bin/login` on macOS, are now skipped, so their first child is used
   as the root process
 
+- macOS: The working directory, command line and environment of a window
+  reported by :ref:`kitten @ ls <at-ls>` and used when matching windows by
+  :code:`cwd`, :code:`cmdline` or :code:`env` are now those of the shell rather
+  than of the :file:`/usr/bin/login` wrapper kitty runs it with
+
 - Remote control: Fix a crash when using damaged images with
   :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
 

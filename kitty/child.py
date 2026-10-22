@@ -385,6 +385,7 @@ class Child:
     forked = False
     # Wrapper processes kitty itself inserted around the command, outermost first
     kitty_wrappers: tuple[KittyWrapper, ...] = ()
+    resolved_root_pid: int | None = None
 
     def __init__(
         self,
@@ -403,6 +404,9 @@ class Child:
     ):
         self.is_clone_launch = is_clone_launch
         self.id = next(child_counter)
+        # Used to cache the root pid, see root_pid
+        self.wrapper_children: dict[int, int] = {}
+        self.wrappers_seen: set[int] = set()
         self.add_listen_on_env_var = add_listen_on_env_var
         self.argv = list(argv)
         self.pass_fds = pass_fds
@@ -610,7 +614,7 @@ class Child:
             ans = cmdline_of_pid(pid)
         except Exception:
             ans = []
-        if pid == self.pid and (not ans):
+        if not ans and pid in (self.pid, self.root_pid):
             ans = list(self.argv)
         return ans
 
@@ -657,8 +661,9 @@ class Child:
     @property
     def cmdline(self) -> list[str]:
         try:
-            assert self.pid is not None
-            return self.cmdline_of_pid(self.pid) or list(self.argv)
+            pid = self.root_pid
+            assert pid is not None
+            return self.cmdline_of_pid(pid) or list(self.argv)
         except Exception:
             return list(self.argv)
 
@@ -673,16 +678,18 @@ class Child:
     @property
     def environ(self) -> dict[str, str]:
         try:
-            assert self.pid is not None
-            return environ_of_process(self.pid) or self.final_env.copy()
+            pid = self.root_pid
+            assert pid is not None
+            return environ_of_process(pid) or self.final_env.copy()
         except Exception:
             return self.final_env.copy()
 
     @property
     def current_cwd(self) -> str | None:
         with suppress(Exception):
-            assert self.pid is not None
-            return cwd_of_process(self.pid)
+            pid = self.root_pid
+            assert pid is not None
+            return cwd_of_process(pid)
         return None
 
     @property
@@ -692,34 +699,46 @@ class Child:
         skipping over any wrapper processes kitty itself inserted, such as
         /usr/bin/login on macOS. A wrapper is replaced by its first child.
         """
+        if self.resolved_root_pid is not None:
+            return self.resolved_root_pid
         pid = self.pid
-        if pid is None:
-            return None
-        for w in self.kitty_wrappers:
+        if pid is None or not self.kitty_wrappers:
+            return pid
+        # Whether the result can never change and so can be cached
+        final = True
+        for i, w in enumerate(self.kitty_wrappers):
             if w.replaces_itself:
                 try:
                     cmdline = tuple(cmdline_of_pid(pid))
                 except Exception:
+                    final = False
                     break
                 if cmdline[: len(w.argv)] != w.argv:
-                    break  # the wrapper has already replaced itself
-            try:
-                children = children_of_process(pid)
-            except Exception as err:
-                log_error(f'Failed to get children of process {pid} with error: {err}')
-                break
-            if not children:
-                break  # the wrapper has not started its child yet
-            pid = min(children)
+                    # Either the wrapper has replaced itself, which is
+                    # permanent, or it has not been exec-ed yet and the forked
+                    # process is still running kitty code
+                    final = final and i in self.wrappers_seen
+                    break
+                self.wrappers_seen.add(i)
+                final = False  # it will replace itself later
+            # A wrapper only ever runs a single child, so cache it
+            child = self.wrapper_children.get(pid)
+            if child is None:
+                try:
+                    children = children_of_process(pid)
+                except Exception as err:
+                    log_error(f'Failed to get children of process {pid} with error: {err}')
+                    final = False
+                    break
+                if not children:
+                    final = False  # the wrapper has not started its child yet
+                    break
+                child = self.wrapper_children[pid] = min(children)
+            pid = child
+        if final:
+            self.resolved_root_pid = pid
+            self.wrapper_children.clear()
         return pid
-
-    @property
-    def root_cwd(self) -> str | None:
-        with suppress(Exception):
-            pid = self.root_pid
-            if pid is not None:
-                return cwd_of_process(pid)
-        return None
 
     def get_pid_for_cwd(self, oldest: bool = False) -> int | None:
         with suppress(Exception):
@@ -738,7 +757,7 @@ class Child:
                 # With this script , the foreground process group will contain
                 # both the bash instance running the script and vim.
                 return min(foreground_processes) if oldest else max(foreground_processes)
-        return self.pid
+        return self.root_pid
 
     @property
     def pid_for_cwd(self) -> int | None:
@@ -770,7 +789,7 @@ class Child:
         if pid is not None:
             with suppress(Exception):
                 return environ_of_process(pid)
-        pid = self.pid
+        pid = self.root_pid
         if pid is not None:
             with suppress(Exception):
                 return environ_of_process(pid)

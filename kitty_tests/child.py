@@ -166,11 +166,11 @@ time.sleep(300)
                 # Not launched via a wrapper, the original process is root
                 c = self._child_for(p.pid)
                 self.ae(c.root_pid, p.pid)
-                self.ae(c.root_cwd, cwd_of_process(p.pid))
+                self.ae(c.current_cwd, cwd_of_process(p.pid))
                 # A wrapper that never replaces itself is always skipped
                 c = self._child_for(p.pid, KittyWrapper(('/usr/bin/login', '-f'), False))
                 self.ae(c.root_pid, inner)
-                self.ae(c.root_cwd, tdir)
+                self.ae(c.current_cwd, tdir)
                 # A wrapper that replaces itself is skipped only while it is
                 # still running as the wrapper
                 argv = tuple(cmdline_of_pid(p.pid))
@@ -181,6 +181,45 @@ time.sleep(300)
                 # Skipping stops at the first process that is not a wrapper
                 c = self._child_for(p.pid, KittyWrapper(argv[:2], True), KittyWrapper(('/some/other/wrapper',), True))
                 self.ae(c.root_pid, inner)
+            finally:
+                self._terminate_tree(p)
+
+    def test_root_pid_caching(self):
+        with tempfile.TemporaryDirectory() as tdir:
+            p = self._spawn_wrapper(tdir)
+            try:
+                inner = children_of_process(p.pid)[0]
+                argv = tuple(cmdline_of_pid(p.pid))
+                # No wrappers, nothing to resolve
+                c = self._child_for(p.pid)
+                self.ae(c.root_pid, p.pid)
+                self.assertIsNone(c.resolved_root_pid)
+                # A wrapper that never replaces itself has a fixed child
+                c = self._child_for(p.pid, KittyWrapper(('/usr/bin/login',), False))
+                self.ae(c.root_pid, inner)
+                self.ae(c.resolved_root_pid, inner)
+                # A wrapper that will replace itself, its child is cached but
+                # not the result
+                wrapping = KittyWrapper(argv[:2], True)
+                c = self._child_for(p.pid, wrapping)
+                self.ae(c.root_pid, inner)
+                self.assertIsNone(c.resolved_root_pid)
+                self.ae(c.wrapper_children, {p.pid: inner})
+                # Once it has replaced itself, the result is final
+                replaced = KittyWrapper(('/not/the/wrapper/anymore',), True)
+                c.kitty_wrappers = (replaced,)
+                self.ae(c.root_pid, p.pid)
+                self.ae(c.resolved_root_pid, p.pid)
+                self.ae(c.wrapper_children, {})
+                # Not looking like the wrapper without ever having looked like
+                # it, means it might not have been exec-ed yet, so dont cache
+                c = self._child_for(p.pid, replaced)
+                self.ae(c.root_pid, p.pid)
+                self.assertIsNone(c.resolved_root_pid)
+                # The original process properties use the root process
+                c = self._child_for(p.pid, KittyWrapper(('/usr/bin/login',), False))
+                self.ae(c.current_cwd, os.path.realpath(tdir))
+                self.ae(c.cmdline, cmdline_of_pid(inner))
             finally:
                 self._terminate_tree(p)
 

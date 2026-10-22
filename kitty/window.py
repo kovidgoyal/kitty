@@ -2216,7 +2216,7 @@ class Window:
         return self.child.get_foreground_cwd(oldest) or self.child.current_cwd
 
     def get_cwd_of_root_child(self) -> str | None:
-        return self.child.root_cwd
+        return self.child.current_cwd
 
     def get_exe_of_child(self, oldest: bool = False) -> str:
         return self.child.get_foreground_exe(oldest) or self.child.argv[0]
@@ -2568,7 +2568,7 @@ class Window:
             elif not self.at_prompt:
                 if self.last_cmd_cmdline:
                     unserialize_data['cmd_at_shell_startup'] = self.last_cmd_cmdline
-                elif self.child.pid != (pid := self.child.pid_for_cwd) and pid is not None:
+                elif self.child.root_pid != (pid := self.child.pid_for_cwd) and pid is not None:
                     # we have a shell running some command
                     with suppress(Exception):
                         fcmd = self.child.cmdline_of_pid(pid)
