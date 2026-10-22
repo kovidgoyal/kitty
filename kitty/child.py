@@ -5,7 +5,7 @@ import os
 import sys
 import termios
 from collections import defaultdict
-from collections.abc import Generator, Iterable, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
 from time import monotonic
@@ -128,42 +128,57 @@ else:
     def abspath_of_exe(pid: int) -> str:
         return os.path.realpath(f'/proc/{pid}/exe', strict=True)
 
-    def _get_descendants_of(pid: int) -> set[int]:
-        result: set[int] = set()
-        stack = [pid]
-        while stack:
-            current = stack.pop()
-            with suppress(OSError):
-                with open(f'/proc/{current}/task/{current}/children') as f:
-                    for child_str in f.read().split():
-                        child = int(child_str)
-                        if child not in result:
-                            result.add(child)
-                            stack.append(child)
-        return result
+    @run_once
+    def proc_children_supported() -> bool:
+        # Needs a kernel built with CONFIG_PROC_CHILDREN
+        pid = os.getpid()
+        return os.path.exists(f'/proc/{pid}/task/{pid}/children')
 
-    def children_of_process(pid: int) -> list[int]:
+    def _children_from_task_files(pid: int) -> list[int]:
         # Each thread has its own list of children, and multi-threaded programs
         # such as kitten can create children from any thread
         ans: list[int] = []
-        with suppress(OSError):
-            for tid in os.listdir(f'/proc/{pid}/task'):
-                with open(f'/proc/{pid}/task/{tid}/children') as f:
-                    ans.extend(int(x) for x in f.read().split())
-            return ans
-        # Kernels without CONFIG_PROC_CHILDREN, scan all processes instead
-        ans = []
-        with suppress(OSError):
-            for x in os.listdir('/proc'):
-                if not x.isdigit():
-                    continue
-                with suppress(OSError, ValueError, IndexError):
-                    with open(f'/proc/{x}/stat', 'rb') as f:
-                        raw = f.read()
-                    # The process name can contain spaces and parentheses
-                    if int(raw[raw.rindex(b')') + 2 :].split()[1]) == pid:
-                        ans.append(int(x))
+        for tid in os.listdir(f'/proc/{pid}/task'):
+            with suppress(FileNotFoundError):  # thread exited
+                with open(f'/proc/{pid}/task/{tid}/children', 'rb') as f:
+                    ans.extend(map(int, f.read().split()))
         return ans
+
+    def _children_map() -> DefaultDict[int, list[int]]:
+        ans: DefaultDict[int, list[int]] = defaultdict(list)
+        try:
+            entries = os.listdir('/proc')
+        except OSError:  # no procfs, for example on FreeBSD
+            return ans
+        for x in entries:
+            if not x.isdigit():
+                continue
+            with suppress(OSError, ValueError, IndexError):
+                with open(f'/proc/{x}/stat', 'rb') as f:
+                    raw = f.read()
+                # The process name can contain spaces and parentheses
+                ans[int(raw[raw.rindex(b')') + 2 :].split()[1])].append(int(x))
+        return ans
+
+    def children_of_process(pid: int) -> list[int]:
+        if proc_children_supported():
+            try:
+                return _children_from_task_files(pid)
+            except FileNotFoundError:  # process exited
+                return []
+        return _children_map().get(pid, [])
+
+    def _get_descendants_of(pid: int) -> set[int]:
+        result: set[int] = set()
+        # Without per thread children files, build the full map only once
+        get_children: Callable[[int], list[int]] = children_of_process if proc_children_supported() else _children_map().__getitem__
+        stack = [pid]
+        while stack:
+            for child in get_children(stack.pop()):
+                if child not in result:
+                    result.add(child)
+                    stack.append(child)
+        return result
 
     def _memory_from_smaps_rollup(pid: int) -> int:
         with open(f'/proc/{pid}/smaps_rollup') as f:
@@ -180,6 +195,7 @@ else:
             cgroup_dir = os.path.join('/sys/fs/cgroup', cgroup_path)
 
             use_cgroup = True
+            descendants: set[int] | None = None
             if check_if_cgroup_root:
                 with suppress(OSError):
                     with open(os.path.join(cgroup_dir, 'cgroup.procs')) as f:
@@ -199,8 +215,9 @@ else:
                 return mem_bytes
 
             # cgroup contains processes outside our tree; sum PSS per process
-            descendants = _get_descendants_of(pid)
-            descendants.add(pid)
+            if descendants is None:
+                descendants = _get_descendants_of(pid)
+                descendants.add(pid)
             mem_bytes = 0
             for p in descendants:
                 with suppress(OSError):

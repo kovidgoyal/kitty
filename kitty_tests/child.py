@@ -184,6 +184,28 @@ time.sleep(300)
             finally:
                 self._terminate_tree(p)
 
+    def test_descendants_from_threads(self):
+        if is_macos:
+            self.skipTest('Per thread children lists are Linux only')
+        from kitty import child
+
+        with tempfile.TemporaryDirectory() as tdir:
+            p = self._spawn_wrapper(tdir)
+            try:
+                inner = children_of_process(p.pid)
+                self.ae(len(inner), 1)
+                self.ae(child._get_descendants_of(p.pid), set(inner))
+                # Kernels without /proc/<pid>/task/<tid>/children
+                orig = child.proc_children_supported
+                child.proc_children_supported = lambda: False  # type: ignore
+                try:
+                    self.ae(children_of_process(p.pid), inner)
+                    self.ae(child._get_descendants_of(p.pid), set(inner))
+                finally:
+                    child.proc_children_supported = orig
+            finally:
+                self._terminate_tree(p)
+
     def test_root_pid_wrapper_without_child(self):
         p = self._spawn_wrapper('/', start_child=False)
         try:
