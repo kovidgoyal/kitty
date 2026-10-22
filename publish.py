@@ -502,7 +502,7 @@ def run_upload(args: Any) -> None:
 
 
 def run_upload_nightly(args: Any) -> None:
-    subprocess.check_call(['git', 'tag', '-f', 'nightly'])
+    subprocess.check_call(['git', 'tag', '--no-sign', '-f', 'nightly'])
     subprocess.check_call(['git', 'push', 'origin', 'nightly', '-f'])
     gd = get_github_data()
     files = files_for_upload()
