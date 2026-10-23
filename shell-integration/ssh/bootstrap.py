@@ -112,6 +112,26 @@ def apply_env_vars(raw):
     login_shell = os.environ.pop('KITTY_LOGIN_SHELL', login_shell)
 
 
+def move_dir(src, dest):
+    try:
+        os.rename(src, dest)
+    except OSError as e:
+        if e.errno != errno.EXDEV:
+            raise
+        # copytree preserves permissions, the source is removed with the
+        # temporary directory
+        shutil.copytree(src, dest, symlinks=True)
+
+
+def make_deletable(top):
+    # copied directories can be read-only
+    for dirpath, dirnames, filenames in os.walk(top):
+        for x in dirnames:
+            path = os.path.join(dirpath, x)
+            if not os.path.islink(path):
+                os.chmod(path, 0o700)
+
+
 def move(src, base_dest):
     for x in os.listdir(src):
         path = os.path.join(src, x)
@@ -123,9 +143,16 @@ def move(src, base_dest):
                 pass
             os.symlink(os.readlink(path), dest)
         elif os.path.isdir(path):
-            if not os.path.exists(dest):
-                os.makedirs(dest)
-            move(path, dest)
+            if os.path.isdir(dest):
+                # merge into the existing directory, keeping its permissions,
+                # the source may be read-only so make it writable
+                os.chmod(path, 0o700)
+                move(path, dest)
+            else:
+                # move the directory intact to preserve its permissions
+                if os.path.lexists(dest):
+                    os.unlink(dest)
+                move_dir(path, dest)
         else:
             shutil.move(path, dest)
 
@@ -196,6 +223,7 @@ def temporary_directory(dir, prefix):
     try:
         yield tdir
     finally:
+        make_deletable(tdir)
         shutil.rmtree(tdir)
 
 

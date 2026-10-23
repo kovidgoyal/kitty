@@ -7,6 +7,7 @@ import json
 import os
 import shlex
 import shutil
+import stat
 import subprocess
 import tempfile
 from contextlib import suppress
@@ -19,6 +20,14 @@ from kitty.utils import SSHConnectionData
 
 from .base import BaseTest, retry_on_failure
 from .shell_integration import bash_ok, basic_shell_env
+
+
+def make_writable(top):
+    for dirpath, dirnames, filenames in os.walk(top):
+        for x in dirnames:
+            path = os.path.join(dirpath, x)
+            if not os.path.islink(path):
+                os.chmod(path, 0o700)
 
 
 def files_in(path):
@@ -150,6 +159,72 @@ copy --exclude **/w.* --exclude **/r d1
                     },
                 )
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
+
+    def test_ssh_copy_directory_permissions(self):
+        dirs = {
+            '': 0o750,
+            'private': 0o700,
+            'private/nested': 0o750,
+            '.hidden': 0o700,
+            'empty': 0o710,
+            'space dir': 0o750,
+            'readonly': 0o500,
+            'readonly/sub': 0o500,
+            'replaced': 0o750,
+        }
+        files = {'private/nested/file with spaces': 'one', 'readonly/f': 'two', 'readonly/sub/f': 'three'}
+        existing = {'': 0o700, 'private': 0o710, 'readonly': 0o750}
+        for sh in self.all_possible_sh:
+            for umask in ('022', '077'):
+                with self.subTest(interpreter=sh, umask=umask), tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
+                    try:
+                        self.do_test_ssh_copy_directory_permissions(sh, umask, remote_home, local_home, dirs, files, existing)
+                    finally:
+                        make_writable(remote_home)
+                        make_writable(local_home)
+
+    def do_test_ssh_copy_directory_permissions(self, sh, umask, remote_home, local_home, dirs, files, existing):
+        tree = os.path.join(local_home, 'tree')
+        for name in dirs:
+            os.makedirs(os.path.join(tree, name), exist_ok=True)
+        for name, data in files.items():
+            with open(os.path.join(tree, name), 'w') as f:
+                f.write(data)
+        os.symlink('private/nested', os.path.join(tree, 'link'))
+        os.symlink('missing', os.path.join(tree, 'broken'))
+        for name, mode in sorted(dirs.items(), reverse=True):
+            os.chmod(os.path.join(tree, name), mode)
+        for name, mode in existing.items():
+            path = os.path.join(remote_home, 'merged', name)
+            os.mkdir(path, mode)
+            os.chmod(path, mode)
+        # a directory replacing a dangling symlink
+        os.symlink('missing', os.path.join(remote_home, 'merged', 'replaced'))
+        launcher = os.path.join(local_home, 'launcher')
+        with open(launcher, 'w') as f:
+            f.write(f'#!/bin/sh\numask {umask}\nexec sh "$@"\n')
+        os.chmod(launcher, 0o755)
+        self.check_bootstrap(
+            sh,
+            remote_home,
+            test_script='env; exit 0',
+            SHELL_INTEGRATION_VALUE='',
+            conf='copy --dest=new tree\ncopy --dest=merged tree',
+            home=local_home,
+            launcher=launcher,
+        )
+        for target in ('new', 'merged'):
+            dest = os.path.join(remote_home, target)
+            for name, mode in dirs.items():
+                # the ssh kitten ensures everything is readable and writable by the owner
+                expected = existing.get(name, mode | 0o600) if target == 'merged' else mode | 0o600
+                self.ae(stat.S_IMODE(os.lstat(os.path.join(dest, name)).st_mode), expected, (sh, umask, target, name))
+            for name, data in files.items():
+                with open(os.path.join(dest, name)) as f:
+                    self.ae(f.read(), data)
+            self.ae(os.readlink(os.path.join(dest, 'link')), 'private/nested')
+            self.ae(os.readlink(os.path.join(dest, 'broken')), 'missing')
+        self.ae(glob.glob(os.path.join(remote_home, '.kitty-ssh-kitten-untar-*')), [])
 
     @retry_on_failure()
     def test_ssh_env_vars(self):

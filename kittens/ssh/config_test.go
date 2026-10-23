@@ -3,12 +3,15 @@
 package ssh
 
 import (
+	"archive/tar"
 	"fmt"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -156,4 +159,63 @@ func TestSSHConfigParsing(t *testing.T) {
 		}
 	}
 
+}
+
+func TestSSHCopyDirectoryMetadata(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "tree")
+	dirs := []struct {
+		name string
+		mode os.FileMode
+	}{
+		{"", 0o755},
+		{"private", 0o700},
+		{"private/nested", 0o750},
+		{"other", 0o711},
+	}
+	for _, d := range dirs {
+		name := filepath.Join(root, d.name)
+		if err := os.MkdirAll(name, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(name, d.mode); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// symlinks to directories must be copied as symlinks
+	if err := os.Symlink("private", filepath.Join(root, "link")); err != nil {
+		t.Fatal(err)
+	}
+	for i, d := range dirs {
+		stamp := time.Unix(1600000000+int64(i)*60, 0)
+		if err := os.Chtimes(filepath.Join(root, d.name), stamp, stamp); err != nil {
+			t.Fatal(err)
+		}
+	}
+	headers := make(map[string]tar.Header)
+	ci := CopyInstruction{local_path: root, arcname: "home/tree"}
+	if err := ci.get_file_data(func(h *tar.Header, data []byte) error {
+		headers[strings.TrimSuffix(h.Name, "/")] = *h
+		return nil
+	}, make(map[file_unique_id]string)); err != nil {
+		t.Fatal(err)
+	}
+	for i, d := range dirs {
+		name := filepath.ToSlash(filepath.Join("home/tree", d.name))
+		h, found := headers[name]
+		if !found {
+			t.Fatalf("Missing directory: %s", name)
+		}
+		if h.Typeflag != tar.TypeDir {
+			t.Errorf("%s: not a directory", name)
+		}
+		if h.Mode != int64(d.mode) {
+			t.Errorf("%s: permissions %04o != %04o", name, h.Mode, d.mode)
+		}
+		if expected := time.Unix(1600000000+int64(i)*60, 0); !h.ModTime.Equal(expected) {
+			t.Errorf("%s: modification time %s != %s", name, h.ModTime, expected)
+		}
+	}
+	if h := headers["home/tree/link"]; h.Typeflag != tar.TypeSymlink || h.Linkname != "private" {
+		t.Errorf("Symlink to directory not copied as symlink: %#v", h)
+	}
 }

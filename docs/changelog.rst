@@ -342,6 +342,10 @@ Detailed list of changes
   unresponsive peer blocking all remote control communication (:iss:`10672`,
   :pull:`10632`, :pull:`10688`, :pull:`10690`)
 
+- ssh kitten: Preserve the permissions of copied directories, including nested
+  directories, instead of using the permissions of the top level directory
+  and the remote umask (:pull:`10727`)
+
 - ssh kitten: Fix hanging when re-using a shared connection that has silently
   died, for example, after a network change or suspend, and fix colors 16-255
   being set to white with themes that do not define them (:iss:`10691`,

@@ -7,10 +7,16 @@ tdir=""
 shell_integration_dir=""
 echo_on="ECHO_ON"
 
+remove_tdir() {
+    # copied directories can be read-only, make them deletable
+    command chmod -R u+rwx "$tdir" 2> /dev/null
+    command rm -rf "$tdir"
+}
+
 cleanup_on_bootstrap_exit() {
     [ "$echo_on" = "1" ] && command stty "echo" 2> /dev/null < /dev/tty
     echo_on="0"
-    [ -n "$tdir" ] && command rm -rf "$tdir"
+    [ -n "$tdir" ] && remove_tdir
     tdir=""
 }
 
@@ -130,7 +136,7 @@ untar_and_read_env() {
     compile_terminfo "$tdir/home"
     mv_files_and_dirs "$tdir/home" "$HOME"
     [ -e "$tdir/root" ] && mv_files_and_dirs "$tdir/root" ""
-    command rm -rf "$tdir"
+    remove_tdir
     tdir=""
 }
 

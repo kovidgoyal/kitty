@@ -277,16 +277,16 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 	if err := unix.Lstat(local_path, &s); err != nil {
 		return err
 	}
-	cb := func(h *tar.Header, data []byte, arcname string) error {
+	cb := func(h *tar.Header, data []byte, arcname string, st *unix.Stat_t) error {
 		h.Name = arcname
 		if h.Typeflag == tar.TypeDir {
 			h.Name = strings.TrimRight(h.Name, "/") + "/"
 		}
 		h.Size = int64(len(data))
-		h.Mode = int64(s.Mode & 0777) // discard the setuid, setgid and sticky bits
-		h.ModTime = time.Unix(s.Mtim.Unix())
-		h.AccessTime = time.Unix(s.Atim.Unix())
-		h.ChangeTime = time.Unix(s.Ctim.Unix())
+		h.Mode = int64(st.Mode & 0777) // discard the setuid, setgid and sticky bits
+		h.ModTime = time.Unix(st.Mtim.Unix())
+		h.AccessTime = time.Unix(st.Atim.Unix())
+		h.ChangeTime = time.Unix(st.Ctim.Unix())
 		h.Format = tar.FormatPAX
 		return callback(h, data)
 	}
@@ -301,7 +301,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		err = cb(&tar.Header{
 			Typeflag: tar.TypeSymlink,
 			Linkname: target,
-		}, nil, arcname)
+		}, nil, arcname, &s)
 		if err != nil {
 			return err
 		}
@@ -314,6 +314,14 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		for len(stack) > 0 {
 			x := stack[0]
 			stack = stack[1:]
+			// Each directory needs its own metadata, re-check its type as it
+			// may have been replaced since its parent was read
+			ds := s
+			if x.path != local_path {
+				if err := unix.Lstat(x.path, &ds); err != nil || ds.Mode&unix.S_IFMT != unix.S_IFDIR {
+					continue
+				}
+			}
 			entries, err := os.ReadDir(x.path)
 			if err != nil {
 				if x.path == local_path {
@@ -321,7 +329,7 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 				}
 				continue
 			}
-			err = cb(&tar.Header{Typeflag: tar.TypeDir}, nil, x.arcname)
+			err = cb(&tar.Header{Typeflag: tar.TypeDir}, nil, x.arcname, &ds)
 			if err != nil {
 				return err
 			}
@@ -351,14 +359,14 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 	case unix.S_IFREG: // Regular file
 		fid := file_unique_id{dev: uint64(s.Dev), inode: uint64(s.Ino)}
 		if prev, ok := seen[fid]; ok { // Hard link
-			return cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname)
+			return cb(&tar.Header{Typeflag: tar.TypeLink, Linkname: prev}, nil, arcname, &s)
 		}
 		seen[fid] = arcname
 		data, err := os.ReadFile(local_path)
 		if err != nil {
 			return err
 		}
-		err = cb(&tar.Header{Typeflag: tar.TypeReg}, data, arcname)
+		err = cb(&tar.Header{Typeflag: tar.TypeReg}, data, arcname, &s)
 		if err != nil {
 			return err
 		}
