@@ -121,6 +121,9 @@ def finalize_keys(opts: Options, accumulate_bad_lines: list[BadLine] | None = No
 
 
 def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: list[BadLine] | None = None) -> None:
+    from .fast_data_types import GLFW_MOUSE_BUTTON_LAST
+    from .keys import mod_mask
+
     defns: list[MouseMapping] = []
     for d in opts.mouse_map:
         if d is None:  # clear_all_mouse_actions
@@ -141,15 +144,9 @@ def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: list[BadLine] |
         else:
             mousemap.pop(defn.trigger, None)
     opts.mousemap = mousemap
-
-
-def mouse_url_modifiers(opts: Options) -> tuple[int, int]:
-    from .fast_data_types import GLFW_MOUSE_BUTTON_LAST
-    from .keys import mod_mask
-
-    modifiers = [0, 0]
-    for event, definition in opts.mousemap.items():
-        if not 0 <= event.button <= GLFW_MOUSE_BUTTON_LAST or event.mods & ~mod_mask:
+    opts.url_mappings = {False: 0, True: 0}
+    for event, definition in mousemap.items():
+        if not 0 <= event.button <= GLFW_MOUSE_BUTTON_LAST or event.mods & ~mod_mask or event.repeat_count not in (-2, -1, 1):
             continue
         try:
             actions = opts.alias_map.resolve_aliases(definition, MapType.MOUSE_MAP)
@@ -157,8 +154,7 @@ def mouse_url_modifiers(opts: Options) -> tuple[int, int]:
             log_error(f'Ignoring mouse_map with invalid action: {definition}. Error: {err}')
             continue
         if any(a.func in ('mouse_click_url', 'mouse_click_url_or_select') or (a.func == 'mouse_handle_click' and 'link' in a.args) for a in actions):
-            modifiers[event.grabbed] |= 1 << event.mods
-    return modifiers[0], modifiers[1]
+            opts.url_mappings[event.grabbed] |= 1 << event.mods
 
 
 def parse_config(

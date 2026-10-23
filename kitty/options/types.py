@@ -12,7 +12,7 @@ from kitty.fonts import FontSpec
 import kitty.fonts
 from kitty.options.utils import (
     AliasMap, KeyDefinition, KeyFallbackType, KeyMapOptions, KeyboardModeMap, MouseHideWait, MouseMap,
-    MouseMapping, NotifyOnCmdFinish, TabBarMarginHeight
+    MouseMapping, NotifyOnCmdFinish, TabBarMarginHeight, URLMappings
 )
 import kitty.options.utils
 from kitty.types import FloatEdges
@@ -762,6 +762,7 @@ class Options:
     alias_map: AliasMap = AliasMap()
     mouse_map: list[kitty.options.utils.MouseMapping] = []
     mousemap: MouseMap = {}
+    url_mappings: URLMappings = {}
     color_table: "array[int]" = array("L", (
         0x000000, 0xcc0403, 0x19cb00, 0xcecb00, 0x0d73cc, 0xcb1ed1, 0x0dcdcd, 0xdddddd,
         0x767676, 0xf2201f, 0x23fd00, 0xfffd00, 0x1a8fff, 0xfd28ff, 0x14ffff, 0xffffff,

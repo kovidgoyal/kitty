@@ -607,7 +607,7 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     global_state.callback_os_window->user_is_idle = false;
     global_state.callback_os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
     if (is_window_ready_for_callbacks()) {
-        if ((old_mods ^ ev->mods) & ~GLFW_LOCK_MASK) update_mouse_pointer_shape();
+        update_link_hover_for_modifiers(old_mods, ev->mods);
         if (!ev->fake_event_on_focus_change) on_key_input(ev);
     }
     global_state.callback_os_window = NULL;
@@ -1615,7 +1615,8 @@ set_glfw_mouse_pointer_shape_in_window(GLFWwindow *w, MouseShape type) {
 
 void
 set_mouse_cursor(MouseShape type) {
-    if (global_state.callback_os_window) {
+    // Headless mock OS windows have no native cursor.
+    if (global_state.callback_os_window && global_state.callback_os_window->handle) {
         GLFWwindow *w = (GLFWwindow *)global_state.callback_os_window->handle;
         set_glfw_mouse_pointer_shape_in_window(w, type);
     }

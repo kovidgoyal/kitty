@@ -234,11 +234,6 @@ Detailed list of changes
 - Remote control: Fix a crash when using damaged images with
   :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
 
-- Show the hand pointer and hover highlighting over links only when the pressed
-  modifiers match a configured mouse action for opening the link. Update both
-  immediately when modifiers are pressed or released, even without moving the
-  mouse.
-
 - Transfer kitten: When receiving files, replace existing symbolic and hard
   links at the destination instead of overwriting the files they point to.
   Files are now written to a temporary file and renamed into place, so an
@@ -250,6 +245,11 @@ Detailed list of changes
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
+
+- Show the hand pointer and hover highlighting over links only when the pressed
+  modifiers match a configured mouse action for opening the link with a single
+  click. Update both immediately when modifiers are pressed or released, even
+  without moving the mouse.
 
 - A new option :opt:`restore_session_after_logout` to save the state of
   every kitty instance, including the scrollback of every window, when logging

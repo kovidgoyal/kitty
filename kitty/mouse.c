@@ -1176,9 +1176,6 @@ focus_in_event(void) {
 
 void
 update_mouse_pointer_shape(void) {
-    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window ||
-        global_state.tab_being_dragged.id || global_state.window_being_dragged.id || global_state.active_drag_resize)
-        return;
     mouse_cursor_shape = TEXT_POINTER;
     MouseRegion r = mouse_region(false, true);
     if (r.in_tab_bar) {
@@ -1189,12 +1186,7 @@ update_mouse_pointer_shape(void) {
         if (handle_scrollbar_mouse(r.window, -1, MOVE, 0)) {
             mouse_cursor_shape = scrollbar_drag_mouse_cursor;
         } else if (r.window->render_data.screen) {
-            screen_mark_url(r.window->render_data.screen, 0, 0, 0, 0);
             set_mouse_cursor_for_screen(r.window->render_data.screen);
-            bool mouse_cell_changed, cell_half_changed;
-            if (OPT(detect_urls) && set_mouse_position(r.window, &mouse_cell_changed, &cell_half_changed)) {
-                detect_url(r.window->render_data.screen, r.window->mouse_pos.cell_x, r.window->mouse_pos.cell_y, global_state.mods_at_last_key_or_button_event);
-            }
         }
     }
     set_mouse_cursor(mouse_cursor_shape);
@@ -1204,6 +1196,30 @@ void
 leave_event(int modifiers) {
     if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
     set_currently_hovered_window(0, modifiers, false);
+}
+
+bool
+update_link_hover_for_modifiers(int old_mods, int new_mods) {
+    old_mods &= MOUSE_MAPPING_MODS_MASK;
+    new_mods &= MOUSE_MAPPING_MODS_MASK;
+    OSWindow *osw = global_state.callback_os_window;
+    if (old_mods == new_mods || !OPT(detect_urls) || !osw || !osw->num_tabs || !global_state.mouse_hover_in_window || global_state.redirect_mouse_handling ||
+        global_state.active_drag_in_window || global_state.tracked_drag_in_window || global_state.tab_being_dragged.id ||
+        global_state.window_being_dragged.id || global_state.active_drag_resize)
+        return false;
+    Tab *tab = osw->tabs + osw->active_tab;
+    for (unsigned i = 0; i < tab->num_windows; i++) {
+        Window *w = tab->windows + i;
+        if (w->id != global_state.mouse_hover_in_window) continue;
+        Screen *screen = w->render_data.screen;
+        if (!w->visible || !screen || w->scrollbar.is_hovering || w->scrollbar.is_dragging) return false;
+        const uint64_t mappings = OPT(url_mappings)[screen->modes.mouse_tracking_mode != NO_TRACKING];
+        if (((mappings >> old_mods) & 1) == ((mappings >> new_mods) & 1)) return false;
+        detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, new_mods);
+        set_mouse_cursor(mouse_cursor_shape);
+        return true;
+    }
+    return false;
 }
 
 void
@@ -1970,6 +1986,64 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyObject *
+update_mock_pointer(PyObject *self UNUSED, PyObject *args) {
+    PyObject *capsule;
+    int old_mods, new_mods, inside = 1;
+    unsigned drag = 0, border = 0;
+    const char *pointer_shape = NULL;
+    if (!PyArg_ParseTuple(args, "O!ii|pIIs", &PyCapsule_Type, &capsule, &old_mods, &new_mods, &inside, &drag, &border, &pointer_shape)) return NULL;
+    Window *w = PyCapsule_GetPointer(capsule, "Window");
+    if (!w) return NULL;
+    Screen *screen = w->render_data.screen;
+    GlobalState saved = global_state;
+    MouseShape saved_shape = mouse_cursor_shape;
+    Window windows[] = {*w, *w};
+    windows[1].id++;
+    windows[0].render_data.geometry = (WindowGeometry){.right = screen->columns * 10, .bottom = screen->lines * 20};
+    windows[1].render_data.geometry = windows[0].render_data.geometry;
+    BorderRect rect = {.border_type = (int)w->id, .horizontal = border == 2};
+    rect.px.left = (unsigned)w->mouse_pos.global_x;
+    rect.px.right = rect.px.left + 1;
+    rect.px.top = (unsigned)w->mouse_pos.global_y;
+    rect.px.bottom = rect.px.top + 1;
+    Tab tab = {.windows = windows, .num_windows = border ? 2 : 1};
+    tab.border_rects.rect_buf = &rect;
+    tab.border_rects.num_border_rects = border ? 1 : 0;
+    struct {
+        FONTS_DATA_HEAD
+    } fonts = {.logical_dpi_x = 72, .logical_dpi_y = 72, .fcm = {.cell_width = 10, .cell_height = 20}};
+    OSWindow osw = {
+        .tabs = &tab,
+        .num_tabs = 1,
+        .has_too_few_tabs = true,
+        .fonts_data = (FONTS_DATA_HANDLE)&fonts,
+        .viewport_width = screen->columns * 10,
+        .viewport_height = screen->lines * 20,
+        .mouse_x = w->mouse_pos.global_x,
+        .mouse_y = w->mouse_pos.global_y};
+    global_state.callback_os_window = &osw;
+    global_state.mouse_hover_in_window = global_state.active_drag_in_window = global_state.tracked_drag_in_window = global_state.active_drag_resize = 0;
+    global_state.tab_being_dragged.id = global_state.window_being_dragged.id = 0;
+    global_state.redirect_mouse_handling = false;
+    global_state.mods_at_last_key_or_button_event = old_mods;
+    mouse_event(-1, old_mods, -1);
+    if (!inside) leave_event(old_mods);
+    if (drag == 1) global_state.active_drag_in_window = w->id;
+    else if (drag == 2) global_state.tracked_drag_in_window = w->id;
+    global_state.mods_at_last_key_or_button_event = new_mods;
+    bool updated = false;
+    if (pointer_shape) {
+        RAII_PyObject(ret, PyObject_CallMethod((PyObject *)screen, "change_pointer_shape", "ss", "=", pointer_shape));
+        if (ret) update_mouse_pointer_shape();
+    } else updated = update_link_hover_for_modifiers(old_mods, new_mods);
+    MouseShape result = mouse_cursor_shape;
+    global_state = saved;
+    mouse_cursor_shape = saved_shape;
+    if (PyErr_Occurred()) return NULL;
+    return Py_BuildValue("(iO)", result, updated ? Py_True : Py_False);
+}
+
+static PyObject *
 test_scale_scroll(PyObject *self UNUSED, PyObject *args) {
     PyObject *values;
     int cell_size;
@@ -2043,6 +2117,7 @@ static PyMethodDef module_methods[] = {
     METHODB(test_scale_scroll, METH_VARARGS),
     METHODB(test_mapped_scroll_steps, METH_VARARGS),
     METHODB(send_mock_mouse_event_to_window, METH_VARARGS),
+    METHODB(update_mock_pointer, METH_VARARGS),
     METHODB(send_mock_scroll_event_to_window, METH_VARARGS),
     METHODB(mock_mouse_selection, METH_VARARGS),
     {NULL, NULL, 0, NULL} /* Sentinel */

@@ -47,6 +47,7 @@ from kitty.utils import expandvars, log_error, resolve_abs_or_config_path, shlex
 
 KeyMap = dict[SingleKey, list['KeyDefinition']]
 MouseMap = dict[MouseEvent, str]
+URLMappings = dict[bool, int]
 KeySequence = tuple[SingleKey, ...]
 MINIMUM_FONT_SIZE = 4
 # Zooming is limited to a multiple of the configured font size, or to this

@@ -10,6 +10,7 @@ from kitty.fast_data_types import (
     GLFW_MOD_CAPS_LOCK,
     GLFW_MOD_CONTROL,
     GLFW_MOD_SHIFT,
+    GLFW_MOD_SUPER,
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_RIGHT,
     MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
@@ -18,6 +19,7 @@ from kitty.fast_data_types import (
     send_mock_mouse_event_to_window,
     send_mock_scroll_event_to_window,
     set_options,
+    update_mock_pointer,
 )
 
 from .base import BaseTest, parse_bytes
@@ -96,6 +98,66 @@ class TestMouse(BaseTest):
         check(0, True)
         configure('mouse_map left click ungrabbed mouse_click_url', 'mouse_map left click ungrabbed')
         check(0, False)
+
+        for event in ('press', 'release', 'click'):
+            configure(f'mouse_map cmd+left {event} ungrabbed mouse_handle_click link')
+            check(GLFW_MOD_SUPER, True)
+            check(0, False)
+        for event in ('doublepress', 'triplepress', 'doubleclick'):
+            configure(f'mouse_map left {event} ungrabbed mouse_click_url')
+            check(0, False)
+
+    def test_link_hover_key_events(self):
+        s = self.create_screen(cols=60)
+        s.draw('https://example.invalid/')
+        w = create_mock_window(s)
+        link_shape = send_mouse_event(w, x=2)
+        mods = GLFW_MOD_CONTROL | GLFW_MOD_SHIFT
+        set_options(
+            load_config(
+                overrides=(
+                    'clear_all_mouse_actions yes',
+                    'mouse_map ctrl+shift+left release grabbed,ungrabbed mouse_handle_click link',
+                    'mouse_map cmd+left release grabbed,ungrabbed mouse_handle_click link',
+                )
+            )
+        )
+        for tracking in (False, True):
+            parse_bytes(s, b'\x1b[?1000h' if tracking else b'\x1b[?1000l')
+            normal_shape = send_mouse_event(w, x=50)
+            send_mouse_event(w, x=2)
+            for held in (mods, GLFW_MOD_SUPER):
+                for old, new, highlighted in ((0, held, True), (held, 0, False)):
+                    self.ae(update_mock_pointer(w, old, new), (link_shape if highlighted else normal_shape, True))
+                    self.ae(bool(''.join(s.text_for_marked_url())), highlighted)
+                self.ae(update_mock_pointer(w, 0, held, False)[1], False)
+                self.ae(''.join(s.text_for_marked_url()), '')
+            for old, new in ((0, GLFW_MOD_SHIFT), (mods, GLFW_MOD_SUPER), (mods, mods | GLFW_MOD_CAPS_LOCK)):
+                self.ae(update_mock_pointer(w, old, new)[1], False)
+            for drag in (1, 2):
+                self.ae(update_mock_pointer(w, 0, mods, True, drag)[1], False)
+
+    def test_link_hover_preserves_border_cursor(self):
+        s = self.create_screen(cols=60)
+        s.draw('https://example.invalid/')
+        w = create_mock_window(s)
+        send_mouse_event(w, x=2)
+        mods = GLFW_MOD_CONTROL | GLFW_MOD_SHIFT
+        for border in (1, 2):
+            shape, updated = update_mock_pointer(w, 0, 0, True, 0, border)
+            self.ae(updated, False)
+            self.ae(update_mock_pointer(w, 0, mods, True, 0, border), (shape, False))
+
+    def test_pointer_shape_during_mouse_drag(self):
+        s = self.create_screen(cols=60)
+        parse_bytes(s, b'\x1b[?1000h')
+        w = create_mock_window(s)
+        for drag in (1, 2):
+            for name in ('grabbing', 'ew-resize'):
+                s.change_pointer_shape('=', name)
+                expected = send_mouse_event(w, x=2)
+                s.change_pointer_shape('=', 'text')
+                self.ae(update_mock_pointer(w, 0, 0, True, drag, 0, name)[0], expected)
 
     def test_mouse_selection(self):
         s = self.create_screen(options=dict(rectangle_select_modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL))
