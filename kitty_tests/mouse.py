@@ -148,6 +148,39 @@ class TestMouse(BaseTest):
             self.ae(updated, False)
             self.ae(update_mock_pointer(w, 0, mods, True, 0, border), (shape, False))
 
+    def test_link_hover_key_events_after_output(self):
+        s = self.create_screen(cols=60)
+        w = create_mock_window(s)
+        set_options(
+            load_config(
+                overrides=(
+                    'clear_all_mouse_actions yes',
+                    'mouse_map ctrl+shift+left release grabbed,ungrabbed mouse_handle_click link',
+                    'mouse_map cmd+left release grabbed,ungrabbed mouse_handle_click link',
+                )
+            )
+        )
+        mods = GLFW_MOD_CONTROL | GLFW_MOD_SHIFT
+        for tracking in (False, True):
+            for held, released in ((GLFW_MOD_SUPER, 0), (mods, GLFW_MOD_SHIFT), (mods, GLFW_MOD_CONTROL)):
+                for output in (b' suffix', b'\r\x1b[Kplain text'):
+                    with self.subTest(tracking=tracking, held=held, released=released, output=output):
+                        s.reset()
+                        s.draw('https://example.invalid/')
+                        if tracking:
+                            parse_bytes(s, b'\x1b[?1000h')
+                        normal_shape = send_mouse_event(w, x=50, modifiers=released)
+                        send_mouse_event(w, x=2, modifiers=held)
+
+                        def write_output():
+                            self.ae(''.join(s.text_for_marked_url()), 'https://example.invalid/')
+                            parse_bytes(s, output)
+                            self.ae(''.join(s.text_for_marked_url()), '')
+
+                        self.ae(update_mock_pointer(w, held, released, True, 0, 0, None, False, write_output), (normal_shape, False))
+                        self.ae(''.join(s.text_for_marked_url()), '')
+                        self.assertFalse(any(cell & 2 for cell in s.current_selections()))
+
     def test_link_hover_stays_consistent(self):
         s = self.create_screen(cols=30)
         s.draw('x' * 6 + 'https://example.invalid/')

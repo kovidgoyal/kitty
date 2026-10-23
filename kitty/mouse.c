@@ -1243,9 +1243,10 @@ update_link_hover_for_modifiers(int old_mods, int new_mods) {
     unsigned x, y;
     bool in_left_half_of_cell, over_cell = cell_for_pos(w, &x, &y, &in_left_half_of_cell, osw);
     bool changed = false;
-    // Compare against what is displayed rather than old_mods as the mouse
-    // tracking mode, and thus the applicable mappings, may have changed since
-    if (over_cell ? was_highlighted != url_is_clickable_with(screen, new_mods) : was_highlighted) {
+    // Output can clear the highlight without resetting the pointer, or a
+    // tracking-mode change can leave a stale highlight. Check both transitions.
+    const bool clickable = url_is_clickable_with(screen, new_mods);
+    if (over_cell ? was_highlighted != clickable || url_is_clickable_with(screen, old_mods) != clickable : was_highlighted) {
         if (over_cell) detect_url(screen, x, y, new_mods);
         else {
             screen_mark_url(screen, 0, 0, 0, 0);
