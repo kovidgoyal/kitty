@@ -182,3 +182,28 @@ func TestColorSettingsAsEscapeCodes(t *testing.T) {
 		t.Fatalf("Incorrect OSC 21: %#v", osc21)
 	}
 }
+
+func TestColorSettingsAsSpec(t *testing.T) {
+	settings := map[string]string{"color1": "#ff0000", "color17": "#00ff00", "background": "#010203", "cursor": "", "foreground": "invalid"}
+	ans := ColorSettingsAsSpec(settings)
+	expected := map[string]any{"background": uint32(0x010203), "color1": uint32(0xff0000), "color17": uint32(0x00ff00), "color16": nil, "color255": nil}
+	for k, v := range expected {
+		if actual, found := ans[k]; !found || actual != v {
+			t.Fatalf("Incorrect value for %s: %#v != %#v", k, actual, v)
+		}
+	}
+	// colors reset to their configured value by the escape codes are not present
+	for _, k := range []string{"cursor", "foreground"} {
+		if _, found := ans[k]; found {
+			t.Fatalf("%s should not be present in %#v", k, ans)
+		}
+	}
+	// colors not specified by the theme get the same defaults as with escape codes
+	if ans["selection_background"] != uint32(0xfffacd) || ans["color0"] != uint32(0) || len(ans) != 256+3 {
+		t.Fatalf("Incorrect default colors in: %#v", ans)
+	}
+	if codes := ColorSettingsAsEscapeCodes(settings); !strings.Contains(codes, "\x1b]11;#010203\x1b\\") || !strings.Contains(codes, "\x1b]112\x1b\\") ||
+		!strings.Contains(codes, "\x1b]4;0;#000000;") {
+		t.Fatalf("Escape codes not consistent with spec: %#v", codes)
+	}
+}

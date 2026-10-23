@@ -4222,6 +4222,9 @@ class Boss:
 
     def on_system_color_scheme_change(self, appearance: ColorSchemes, is_initial_value: bool) -> None:
         theme_colors.on_system_color_scheme_change(appearance, is_initial_value)
+        for w in self.all_windows:
+            if w.session_color_schemes:
+                w.apply_session_color_scheme(appearance)
 
     @ac(
         'win',

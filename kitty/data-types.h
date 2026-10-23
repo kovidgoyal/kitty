@@ -308,8 +308,9 @@ typedef uint64_t ColorTableMask[4];
 
 // A layer of colors. The configured colors of a window are the global layer
 // (kitty.conf and the automatic color theme) with the window layer (launch
-// --color, --copy-colors) on top. Colors set by the program running in the
-// window (escape codes or set-colors without --configured) are on top of that.
+// --color, --copy-colors) on top and the session layer (color schemes from
+// the ssh kitten) on top of that. Colors set by the program running in the
+// window (escape codes or set-colors without --configured) are on top of all.
 typedef struct ColorLayer {
     // Entries of type COLOR_NOT_SET mean use the value from the layer below
     DynamicColors dynamic_colors;
@@ -339,10 +340,10 @@ typedef struct {
         TransparentDynamicColor transparent_colors[8];
     } *color_stack;
     unsigned int color_stack_idx, color_stack_sz;
-    // configured is the global_layer and window_layer combined. overridden
+    // configured is the global, window and session layers combined. overridden
     // has entries of type COLOR_NOT_SET for colors not set by the program.
     DynamicColors configured, overridden;
-    ColorLayer global_layer, window_layer;
+    ColorLayer global_layer, window_layer, session_layer;
     color_type mark_foregrounds[MARK_MASK + 1], mark_backgrounds[MARK_MASK + 1];
 } ColorProfile;
 

@@ -615,36 +615,90 @@ func drain_potential_tty_garbage(term *tty.Term) {
 	}
 }
 
-func change_colors(color_scheme string) (ans string, err error) {
-	if color_scheme == "" {
-		return
-	}
-	var theme *themes.Theme
-	if !strings.HasSuffix(color_scheme, ".conf") {
-		cs := os.ExpandEnv(color_scheme)
-		tc, closer, err := themes.LoadThemes(-1)
-		if err != nil && errors.Is(err, themes.ErrNoCacheFound) {
-			tc, closer, err = themes.LoadThemes(time.Hour * 24)
+// Load the color settings of the named color schemes, loading the themes
+// collection only if needed
+func load_color_schemes(names ...string) (ans map[string]map[string]string, err error) {
+	ans = make(map[string]map[string]string, len(names))
+	var tc *themes.Themes
+	for _, color_scheme := range names {
+		if _, found := ans[color_scheme]; found || color_scheme == "" {
+			continue
 		}
-		if err != nil {
-			return "", err
+		var theme *themes.Theme
+		if !strings.HasSuffix(color_scheme, ".conf") {
+			if tc == nil {
+				var closer io.Closer
+				tc, closer, err = themes.LoadThemes(-1)
+				if err != nil && errors.Is(err, themes.ErrNoCacheFound) {
+					tc, closer, err = themes.LoadThemes(time.Hour * 24)
+				}
+				if err != nil {
+					return nil, err
+				}
+				defer closer.Close()
+			}
+			cs := os.ExpandEnv(color_scheme)
+			if theme = tc.ThemeByName(cs); theme == nil {
+				return nil, fmt.Errorf("No theme named %#v found", cs)
+			}
+		} else if theme, err = themes.ThemeFromFile(utils.ResolveConfPath(color_scheme)); err != nil {
+			return nil, err
 		}
-		defer closer.Close()
-		theme = tc.ThemeByName(cs)
-		if theme == nil {
-			return "", fmt.Errorf("No theme named %#v found", cs)
+		if ans[color_scheme], err = theme.Settings(); err != nil {
+			return nil, err
 		}
-	} else {
-		theme, err = themes.ThemeFromFile(utils.ResolveConfPath(color_scheme))
-		if err != nil {
-			return "", err
-		}
-	}
-	ans, err = theme.AsEscapeCodes()
-	if err == nil {
-		ans = "\033[#P" + ans
 	}
 	return
+}
+
+// The escape codes to change colors for the remote session, the colors are
+// first pushed onto the color stack so that they can be restored afterwards.
+// If no color schemes for specific system color schemes are configured, the
+// colors are set via escape codes as for any program. Otherwise, the color
+// schemes for all system color schemes are sent to kitty, which switches
+// between them when the system color scheme changes. This requires kitty to
+// receive the push colors escape code, which does not happen with tmux.
+func change_colors(host_opts *Config) (ans string, err error) {
+	variants := map[string]string{
+		"dark": host_opts.Color_scheme_dark, "light": host_opts.Color_scheme_light, "no_preference": host_opts.Color_scheme_no_preference}
+	has_variants := false
+	for _, name := range variants {
+		has_variants = has_variants || name != ""
+	}
+	if !has_variants || tui.TmuxSocketAddress() != "" {
+		if host_opts.Color_scheme == "" {
+			return
+		}
+		settings, err := load_color_schemes(host_opts.Color_scheme)
+		if err != nil {
+			return "", err
+		}
+		return "\033[#P" + themes.ColorSettingsAsEscapeCodes(settings[host_opts.Color_scheme]), nil
+	}
+	for k, name := range variants {
+		if name == "" {
+			variants[k] = host_opts.Color_scheme
+		}
+	}
+	settings, err := load_color_schemes(slices.Collect(maps.Values(variants))...)
+	if err != nil {
+		return "", err
+	}
+	payload := make(map[string]map[string]any, len(variants))
+	for k, name := range variants {
+		if name != "" {
+			payload[k] = themes.ColorSettingsAsSpec(settings[name])
+		}
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	dcs, err := tui.DCSToKitty("color-scheme", utils.UnsafeBytesToString(data))
+	if err != nil {
+		return "", err
+	}
+	return "\033[#P" + dcs, nil
 }
 
 func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channel <-chan *SSHConfig) (rc int, err error) {
@@ -832,7 +886,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channe
 	cd.host_opts, cd.literal_env = host_opts, literal_env
 	cd.request_data = need_to_request_data
 	cd.hostname_for_match, cd.username = hostname_for_match, uname
-	escape_codes_to_set_colors, err := change_colors(cd.host_opts.Color_scheme)
+	escape_codes_to_set_colors, err := change_colors(cd.host_opts)
 	if err == nil {
 		err = term.WriteAllString(escape_codes_to_set_colors + loop.SAVE_PRIVATE_MODE_VALUES + loop.PUSH_KEY_FLAGS + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToSet())
 	}

@@ -350,6 +350,12 @@ Detailed list of changes
   used rather than those from before the switch. :option:`launch --color`
   colors now also survive config reloads (:iss:`10724`)
 
+- ssh kitten: Allow using different color schemes for remote hosts depending
+  on whether the operating system is in dark or light mode, via the new
+  :opt:`kitten-ssh.color_scheme_dark`, :opt:`kitten-ssh.color_scheme_light` and
+  :opt:`kitten-ssh.color_scheme_no_preference` options. The colors switch
+  automatically when the operating system changes modes (:iss:`10724`)
+
 - diff kitten: Fix laggy mouse selection with high polling rate mice and
   various failures when comparing remote directories over SSH (:iss:`10634`,
   :pull:`10641`, :pull:`10676`)

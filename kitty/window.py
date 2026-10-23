@@ -28,6 +28,7 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .clipboard import ClipboardRequestManager, set_clipboard_string
+from .colors import ColorSchemes, SessionColorSchemes, parse_color_scheme_variants
 from .constants import (
     appname,
     clear_handled_signals,
@@ -75,6 +76,7 @@ from .fast_data_types import (
     get_options,
     get_window_logo_settings_if_not_default,
     glfw_get_keyboard_repeat_interval,
+    glfw_get_system_color_theme,
     is_css_pointer_name_valid,
     is_modifier_key,
     last_focused_os_window_id,
@@ -839,8 +841,10 @@ class Window:
         opts = get_options()
         self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
         self.screen.track_activity = bool(opts.tab_activity_symbol)
+        self.session_color_schemes = SessionColorSchemes()
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)
+            self.session_color_schemes.copy_from(copy_colors_from.session_color_schemes)
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
         self.scroll_animation = ScrollAnimation()
@@ -1695,8 +1699,18 @@ class Window:
                 tab.on_bell(self)
 
     def color_profile_popped(self, bg_changed: bool) -> None:
+        if self.session_color_schemes.color_stack_popped(self.screen.color_profile.color_stack_depth()):
+            self.apply_session_color_scheme()
         if bg_changed:
             get_boss().default_bg_changed_for(self.id, via_escape_code=True)
+
+    def apply_session_color_scheme(self, scheme: ColorSchemes | None = None) -> None:
+        cp = self.screen.color_profile
+        bg_before = cp.default_bg
+        self.session_color_schemes.apply(cp, glfw_get_system_color_theme() if scheme is None else scheme)
+        if cp.default_bg != bg_before:
+            get_boss().default_bg_changed_for(self.id)
+        self.refresh()
 
     def report_color(self, code: str, col: Color) -> None:
         r, g, b = col.red, col.green, col.blue
@@ -1710,6 +1724,10 @@ class Window:
 
         if is_hard_reset and self.program_status.clear():
             self.program_status_changed()
+        # A reset clears the color stack, so the session color schemes, which
+        # are associated with color stack entries, are cleared as well
+        if self.session_color_schemes.clear():
+            self.apply_session_color_scheme()
         if self.progress.state is not ProgressState.unset:
             self.progress.update(0)  # unset
             if (tab := self.tabref()) is not None:
@@ -1847,6 +1865,22 @@ class Window:
 
         for line in get_ssh_data(msg, f'{os.getpid()}-{self.id}'):
             self.write_to_child(line)
+
+    def handle_remote_color_scheme(self, msg: memoryview) -> None:
+        # Used by the ssh kitten to set colors for the dark, light and no
+        # preference system color schemes, after pushing the current colors onto
+        # the color stack. The colors are removed when the stack is popped.
+        try:
+            variants = parse_color_scheme_variants(json.loads(base64_decode(msg)))
+        except Exception as e:
+            log_error(f'Invalid color scheme received from client: {e}')
+            return
+        depth = self.screen.color_profile.color_stack_depth()
+        if not depth:
+            log_error('Ignoring color scheme received from client as it was not preceded by pushing colors onto the color stack')
+            return
+        self.session_color_schemes.add(depth, variants)
+        self.apply_session_color_scheme()
 
     def handle_kitten_result(self, msg: memoryview) -> None:
         import base64

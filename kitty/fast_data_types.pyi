@@ -16,11 +16,13 @@ from kitty.typing_compat import EdgeLiteral, NotRequired, ReadableBuffer, Writea
 SCALE_BITS: int
 NULL_COLOR_VALUE: int
 # Which layer of colors patch_color_profiles() changes: the colors set by the
-# program running in the window, the global configured colors or the configured
-# colors of individual windows
+# program running in the window, the global configured colors, the configured
+# colors of individual windows or the color scheme of the session running in
+# the window, such as from the ssh kitten
 COLOR_LAYER_OVERRIDE: int
 COLOR_LAYER_GLOBAL: int
 COLOR_LAYER_WINDOW: int
+COLOR_LAYER_SESSION: int
 DEVELOP_ROOT: str
 WIDTH_BITS: int
 SUBSCALE_BITS: int
@@ -818,6 +820,8 @@ class ColorProfile:
     def palette_color_is_generated(self, idx: int) -> None: ...
     def get_transparent_background_color(self, index: int) -> Color | None: ...
     def set_transparent_background_color(self, index: int, color: Color | None = None, opacity: float | None = None) -> None: ...
+    def reset_layer(self, layer: int) -> None: ...
+    def color_stack_depth(self) -> int: ...
 
 def patch_color_profiles(
     spec: Dict[str, Optional[int]],

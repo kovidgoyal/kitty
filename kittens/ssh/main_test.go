@@ -3,11 +3,13 @@
 package ssh
 
 import (
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	shm "github.com/kovidgoyal/go-shm/v2"
 	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/themes"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -152,5 +154,78 @@ func TestSSHTarfile(t *testing.T) {
 	}
 	if seen[path.Join("home", cd.host_opts.Remote_dir, "shell-integration", "ssh", "kitten")] {
 		t.Fatalf("Contents of shell-integration/ssh not excluded")
+	}
+}
+
+func TestSSHChangeColors(t *testing.T) {
+	tdir := t.TempDir()
+	write_conf := func(name, text string) string {
+		p := filepath.Join(tdir, name)
+		if err := os.WriteFile(p, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	a := write_conf("a.conf", "background #010101\nforeground #020202\ncolor1 #030303\n")
+	b := write_conf("b.conf", "background #fefefe\ncolor1 #fdfdfd\n")
+	settings := func(p string) map[string]string {
+		s, err := load_color_schemes(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s[p]
+	}
+	change := func(c Config) string {
+		ans, err := change_colors(&c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ans
+	}
+	// existing configs with only color_scheme use escape codes
+	if ans := change(Config{}); ans != "" {
+		t.Fatalf("Colors changed with no color scheme: %#v", ans)
+	}
+	if ans := change(Config{Color_scheme: a}); ans != "\x1b[#P"+themes.ColorSettingsAsEscapeCodes(settings(a)) {
+		t.Fatalf("Incorrect escape codes for color_scheme: %#v", ans)
+	}
+	if _, err := change_colors(&Config{Color_scheme_dark: filepath.Join(tdir, "missing.conf")}); err == nil {
+		t.Fatal("No error for missing color scheme file")
+	}
+
+	variants := func(c Config) map[string]any {
+		ans := change(c)
+		prefix := "\x1b[#P\x1bP@kitty-color-scheme|"
+		if !strings.HasPrefix(ans, prefix) || !strings.HasSuffix(ans, "\x1b\\") {
+			t.Fatalf("Incorrect escape code for color scheme variants: %#v", ans)
+		}
+		data, err := base64.StdEncoding.DecodeString(ans[len(prefix) : len(ans)-2])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var payload map[string]any
+		if err = json.Unmarshal(data, &payload); err != nil {
+			t.Fatal(err)
+		}
+		return payload
+	}
+	spec := func(p string) any {
+		data, err := json.Marshal(themes.ColorSettingsAsSpec(settings(p)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ans any
+		if err = json.Unmarshal(data, &ans); err != nil {
+			t.Fatal(err)
+		}
+		return ans
+	}
+	// color_scheme is used for modes without a specific color scheme
+	if diff := cmp.Diff(map[string]any{"dark": spec(b), "light": spec(a), "no_preference": spec(a)}, variants(Config{Color_scheme: a, Color_scheme_dark: b})); diff != "" {
+		t.Fatalf("Incorrect color scheme variants:\n%s", diff)
+	}
+	// modes without any color scheme use the colors from kitty
+	if diff := cmp.Diff(map[string]any{"light": spec(b)}, variants(Config{Color_scheme_light: b})); diff != "" {
+		t.Fatalf("Incorrect color scheme variants:\n%s", diff)
 	}
 }

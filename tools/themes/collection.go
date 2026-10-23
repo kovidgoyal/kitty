@@ -655,63 +655,91 @@ func (self *Theme) AsEscapeCodes() (string, error) {
 	return ColorSettingsAsEscapeCodes(settings), nil
 }
 
-func ColorSettingsAsEscapeCodes(settings map[string]string) string {
-	w := strings.Builder{}
-	w.Grow(4096)
+// A default color, such as foreground or background, set by a color theme
+type ThemeDefaultColor struct {
+	Name string
+	Num  loop.DefaultColor
+	// nil means the color is reset to its configured value
+	Value *style.RGBA
+}
 
-	set_color := func(i int, sharp string) {
-		w.WriteByte(';')
-		w.WriteString(strconv.Itoa(i))
-		w.WriteByte(';')
-		w.WriteString(sharp)
-	}
+// The colors set by a color theme, with defaults for colors the theme does
+// not specify
+type ThemeColors struct {
+	Defaults []ThemeDefaultColor
+	Palette  [256]style.RGBA
+	// Palette colors that the terminal should generate based on its
+	// palette_generate setting, the value in Palette is the fixed palette color
+	// for terminals that don't support generating colors
+	Generated [256]bool
+}
 
-	set_default_color := func(name, defval string, num loop.DefaultColor) {
-		w.WriteString("\033]")
-		defer func() { w.WriteString("\033\\") }()
+func ResolveColorSettings(settings map[string]string) (ans ThemeColors) {
+	default_color := func(name, defval string, num loop.DefaultColor) {
+		dc := ThemeDefaultColor{Name: name, Num: num}
 		val, found := settings[name]
 		if !found {
 			val = defval
 		}
 		if val != "" {
-			rgba, err := style.ParseColor(val)
-			if err == nil {
-				w.WriteString(strconv.Itoa(int(num)))
-				w.WriteByte(';')
-				w.WriteString(rgba.AsRGBSharp())
-				return
+			if rgba, err := style.ParseColor(val); err == nil {
+				dc.Value = &rgba
 			}
 		}
-		w.WriteByte('1')
-		w.WriteString(strconv.Itoa(int(num)))
+		ans.Defaults = append(ans.Defaults, dc)
 	}
-	set_default_color("foreground", style.DefaultColors.Foreground, loop.FOREGROUND)
-	set_default_color("background", style.DefaultColors.Background, loop.BACKGROUND)
-	set_default_color("cursor", style.DefaultColors.Cursor, loop.CURSOR)
-	set_default_color("selection_background", style.DefaultColors.SelectionBg, loop.SELECTION_BG)
-	set_default_color("selection_foreground", style.DefaultColors.SelectionFg, loop.SELECTION_FG)
+	default_color("foreground", style.DefaultColors.Foreground, loop.FOREGROUND)
+	default_color("background", style.DefaultColors.Background, loop.BACKGROUND)
+	default_color("cursor", style.DefaultColors.Cursor, loop.CURSOR)
+	default_color("selection_background", style.DefaultColors.SelectionBg, loop.SELECTION_BG)
+	default_color("selection_foreground", style.DefaultColors.SelectionFg, loop.SELECTION_FG)
 
-	unset := make([]int, 0, 256)
-	w.WriteString("\033]4")
 	for i := range 256 {
-		key := "color" + strconv.Itoa(i)
-		val := settings[key]
-		if val != "" {
-			rgba, err := style.ParseColor(val)
-			if err == nil {
-				set_color(i, rgba.AsRGBSharp())
+		if val := settings["color"+strconv.Itoa(i)]; val != "" {
+			if rgba, err := style.ParseColor(val); err == nil {
+				ans.Palette[i] = rgba
 				continue
 			}
 		}
 		c := style.ColorTable[i]
 		if c == style.NullColorValue {
-			// Use the fixed palette for terminals that don't support OSC 21
 			c = style.FixedColorTable[i]
+			ans.Generated[i] = true
+		}
+		ans.Palette[i].FromRGB(c)
+	}
+	return
+}
+
+func ColorSettingsAsEscapeCodes(settings map[string]string) string {
+	colors := ResolveColorSettings(settings)
+	w := strings.Builder{}
+	w.Grow(4096)
+
+	for _, dc := range colors.Defaults {
+		w.WriteString("\033]")
+		if dc.Value != nil {
+			w.WriteString(strconv.Itoa(int(dc.Num)))
+			w.WriteByte(';')
+			w.WriteString(dc.Value.AsRGBSharp())
+		} else {
+			w.WriteByte('1')
+			w.WriteString(strconv.Itoa(int(dc.Num)))
+		}
+		w.WriteString("\033\\")
+	}
+
+	unset := make([]int, 0, 256)
+	w.WriteString("\033]4")
+	for i, rgba := range colors.Palette {
+		w.WriteByte(';')
+		w.WriteString(strconv.Itoa(i))
+		w.WriteByte(';')
+		// Use the fixed palette for terminals that don't support OSC 21
+		w.WriteString(rgba.AsRGBSharp())
+		if colors.Generated[i] {
 			unset = append(unset, i)
 		}
-		rgba := style.RGBA{}
-		rgba.FromRGB(c)
-		set_color(i, rgba.AsRGBSharp())
 	}
 	w.WriteString("\033\\")
 	if len(unset) > 0 {
@@ -725,6 +753,28 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 		w.WriteString("\033\\")
 	}
 	return w.String()
+}
+
+// The same colors as set by ColorSettingsAsEscapeCodes as a map of kitty
+// color names to 0xRRGGBB values. Colors that are reset to their configured
+// values are not present and colors that kitty should generate are nil.
+func ColorSettingsAsSpec(settings map[string]string) map[string]any {
+	colors := ResolveColorSettings(settings)
+	ans := make(map[string]any, len(colors.Defaults)+len(colors.Palette))
+	for _, dc := range colors.Defaults {
+		if dc.Value != nil {
+			ans[dc.Name] = dc.Value.AsRGB()
+		}
+	}
+	for i, rgba := range colors.Palette {
+		key := "color" + strconv.Itoa(i)
+		if colors.Generated[i] {
+			ans[key] = nil
+		} else {
+			ans[key] = rgba.AsRGB()
+		}
+	}
+	return ans
 }
 
 type Themes struct {

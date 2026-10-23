@@ -196,7 +196,52 @@ ends with :code:`.conf`, it is assumed to be the name of a config file to load
 from the kitty config directory, otherwise it is assumed to be the name of a
 color theme to load via the :doc:`themes kitten </kittens/themes>`. Note that
 only colors applying to the text/background are changed, other config settings
-in the .conf files/themes are ignored.
+in the .conf files/themes are ignored. To use different color schemes depending
+on whether the operating system is in dark or light mode, see
+:opt:`kitten-ssh.color_scheme_dark`.
+""",
+)
+
+opt(
+    'color_scheme_dark',
+    '',
+    long_text="""
+Specify a color scheme to use when connecting to the remote host while the
+operating system is in dark mode. Uses the same syntax as
+:opt:`kitten-ssh.color_scheme`. Similarly, use :opt:`kitten-ssh.color_scheme_light`
+and :opt:`kitten-ssh.color_scheme_no_preference` for light mode and when the
+operating system has no preference. When the operating system switches between
+modes, the colors of the remote session switch accordingly, just as for
+:ref:`automatic color themes <auto_color_scheme>` in kitty itself. For a mode
+with no color scheme specified, :opt:`kitten-ssh.color_scheme` is used, and if
+that is also not specified, the colors from kitty for that mode are used. For
+example::
+
+    color_scheme_dark Solarized Dark
+    color_scheme_light Solarized Light
+
+Requires the ssh kitten to be run in kitty, outside of terminal multiplexers
+such as tmux. Otherwise, only :opt:`kitten-ssh.color_scheme` is used.
+""",
+)
+
+opt(
+    'color_scheme_light',
+    '',
+    long_text="""
+Specify a color scheme to use when connecting to the remote host while the
+operating system is in light mode. See :opt:`kitten-ssh.color_scheme_dark` for
+details.
+""",
+)
+
+opt(
+    'color_scheme_no_preference',
+    '',
+    long_text="""
+Specify a color scheme to use when connecting to the remote host while the
+operating system has no dark or light mode preference. See
+:opt:`kitten-ssh.color_scheme_dark` for details.
 """,
 )
 

@@ -2549,6 +2549,124 @@ class TestScreen(BaseTest):
         theme({'background': int(blue)}, COLOR_LAYER_WINDOW)
         self.ae(pal(213), generated({**light, 'background': int(blue)}))
 
+    def test_session_color_schemes(self):
+        from kitty.colors import SessionColorSchemes, parse_color_scheme_variants
+        from kitty.fast_data_types import COLOR_LAYER_GLOBAL, COLOR_LAYER_SESSION, COLOR_LAYER_WINDOW, patch_color_profiles
+
+        opts = self.set_options({'palette_generate': 'fixed'})
+        s = self.create_screen()
+        cp = s.color_profile
+        cp.reload_from_opts(opts)
+        red, green, blue, white, black = Color(255, 0, 0), Color(0, 255, 0), Color(0, 0, 255), Color(255, 255, 255), Color(0, 0, 0)
+        patch_color_profiles({'background': int(black), 'foreground': int(white), 'color1': 1}, None, (cp,), COLOR_LAYER_GLOBAL)
+
+        # validation of untrusted data
+        for bad in (
+            [],
+            {'dusk': {}},
+            {'dark': []},
+            {'dark': {'background_image': 1}},
+            {'dark': {'url_color': 1}},
+            {'dark': {'background': None}},
+            {'dark': {'color1': None}},
+            {'dark': {'color1': -1}},
+            {'dark': {'color1': 0x1000000}},
+            {'dark': {'color1': True}},
+            {'dark': {'color1': '#ff0000'}},
+        ):
+            with self.assertRaises(ValueError, msg=repr(bad)):
+                parse_color_scheme_variants(bad)
+        variants = parse_color_scheme_variants(
+            {
+                'dark': {'background': int(blue), 'color1': int(red), 'color16': None, 'cursor': None},
+                'light': {'background': int(white), 'foreground': int(black), 'color1': int(green)},
+            }
+        )
+
+        def pal(i):
+            return cp.as_color(i << 8 | 1)
+
+        def check(bg, fg, c1):
+            self.ae((cp.default_bg, cp.default_fg, pal(1)), (bg, fg, c1))
+
+        scs = SessionColorSchemes()
+        self.assertFalse(scs)
+        parse_bytes(s, b'\x1b[#P')  # the ssh kitten pushes colors first
+        scs.add(cp.color_stack_depth(), variants)
+        scs.apply(cp, 'dark')
+        check(blue, white, red)
+        self.assertIsNone(cp.cursor_color)
+        self.assertTrue(cp.palette_color_is_generated(16))
+        self.ae(cp.as_dict()['background'], int(blue))
+        scs.apply(cp, 'light')
+        check(white, black, green)
+        # no variant for the system color scheme uses the configured colors
+        scs.apply(cp, 'no_preference')
+        check(black, white, Color(0, 0, 1))
+        self.assertNotIn('background', cp.as_dict())
+
+        # the session layer is above the window layer, below program colors and
+        # is not affected by changes to the global layer
+        scs.apply(cp, 'dark')
+        patch_color_profiles({'background': int(green), 'foreground': int(green)}, None, (cp,), COLOR_LAYER_WINDOW)
+        check(blue, green, red)
+        parse_bytes(s, b'\x1b]21;background=#ffffff\a')
+        self.ae(cp.default_bg, white)
+        parse_bytes(s, b'\x1b]21;background\a')  # resets to the session color
+        self.ae(cp.default_bg, blue)
+        patch_color_profiles({'background': int(white), 'color1': int(white)}, None, (cp,), COLOR_LAYER_GLOBAL)
+        check(blue, green, red)
+
+        # a nested session, such as ssh from the remote host, replaces the colors
+        # till it ends
+        parse_bytes(s, b'\x1b[#P')
+        scs.add(cp.color_stack_depth(), parse_color_scheme_variants({'dark': {'background': int(red)}}))
+        scs.apply(cp, 'dark')
+        check(red, green, Color(255, 255, 255))
+        # programs pushing and popping colors in the session do not end it
+        parse_bytes(s, b'\x1b[#P\x1b]21;background=#00ff00\a')
+        self.ae(cp.default_bg, green)
+        parse_bytes(s, b'\x1b[#Q')
+        self.assertFalse(scs.color_stack_popped(cp.color_stack_depth()))
+        self.ae(cp.default_bg, red)
+        parse_bytes(s, b'\x1b[#Q')
+        self.assertTrue(scs.color_stack_popped(cp.color_stack_depth()))
+        scs.apply(cp, 'dark')
+        check(blue, green, red)
+        parse_bytes(s, b'\x1b[#Q')
+        self.assertTrue(scs.color_stack_popped(cp.color_stack_depth()))
+        self.assertFalse(scs)
+        scs.apply(cp, 'dark')
+        check(green, green, white)
+
+        # copying colors, as for launch --copy-colors
+        parse_bytes(s, b'\x1b[#P')
+        scs.add(cp.color_stack_depth(), variants)
+        scs.apply(cp, 'light')
+        s2 = self.create_screen()
+        s2.copy_colors_from(s)
+        scs2 = SessionColorSchemes()
+        scs2.copy_from(scs)
+        self.ae(s2.color_profile.default_bg, white)
+        self.assertFalse(scs2.color_stack_popped(s2.color_profile.color_stack_depth()))
+        scs2.apply(s2.color_profile, 'dark')
+        self.ae(s2.color_profile.default_bg, blue)
+
+        # a full reset clears the color stack and the session
+        parse_bytes(s, b'\x1bc')
+        self.ae(cp.color_stack_depth(), 0)
+        self.assertTrue(scs.clear())
+        scs.apply(cp, 'light')
+        check(green, green, white)
+        cp.reset_layer(COLOR_LAYER_WINDOW)
+        check(white, white, white)
+        with self.assertRaises(ValueError):
+            cp.reset_layer(COLOR_LAYER_GLOBAL)
+        patch_color_profiles({'background': int(red)}, None, (cp,), COLOR_LAYER_SESSION)
+        self.ae(cp.default_bg, red)
+        cp.reset_layer(COLOR_LAYER_SESSION)
+        self.ae(cp.default_bg, white)
+
     def test_multi_cursors(self):
         s = self.create_screen()
         c = s.callbacks

@@ -12,7 +12,9 @@ from .constants import config_dir
 from .fast_data_types import (
     COLOR_LAYER_GLOBAL,
     COLOR_LAYER_OVERRIDE,
+    COLOR_LAYER_SESSION,
     Color,
+    ColorProfile,
     get_boss,
     get_options,
     glfw_get_system_color_theme,
@@ -211,6 +213,81 @@ class ThemeColors:
 
 
 theme_colors = ThemeColors()
+
+# The colors that can be set by a session color scheme, these are the colors
+# the ssh kitten sets via escape codes for a color_scheme
+session_color_scheme_keys = frozenset(('foreground', 'background', 'cursor', 'selection_foreground', 'selection_background')) | frozenset(
+    f'color{i}' for i in range(256)
+)
+color_schemes: dict[str, ColorSchemes] = {'dark': 'dark', 'light': 'light', 'no_preference': 'no_preference'}
+ColorSchemeVariants = dict[ColorSchemes, ColorsSpec]
+
+
+def parse_color_scheme_variants(data: object) -> ColorSchemeVariants:
+    """
+    Parse untrusted color scheme variants of the form: {scheme: {color_name: 0xRRGGBB or None}}
+    where scheme is one of dark, light or no_preference. Raises ValueError if data is invalid.
+    """
+    if not isinstance(data, dict):
+        raise ValueError('Color scheme variants must be a JSON object')
+    ans: ColorSchemeVariants = {}
+    for scheme, spec in data.items():
+        if (cs := color_schemes.get(scheme)) is None:
+            raise ValueError(f'Unknown color scheme: {scheme!r}')
+        if not isinstance(spec, dict):
+            raise ValueError(f'The colors for the {cs} color scheme must be a JSON object')
+        colors: ColorsSpec = {}
+        for name, val in spec.items():
+            if name not in session_color_scheme_keys:
+                raise ValueError(f'Unknown color in the {cs} color scheme: {name!r}')
+            if val is None:
+                if name not in nullable_colors:
+                    raise ValueError(f'The color {name} in the {cs} color scheme cannot be null')
+            elif isinstance(val, bool) or not isinstance(val, int) or not 0 <= val <= 0xFFFFFF:
+                raise ValueError(f'The color {name} in the {cs} color scheme must be an integer from 0 to 0xffffff')
+            colors[name] = val
+        ans[cs] = colors
+    return ans
+
+
+class SessionColorSchemes:
+    """
+    The color schemes of sessions running in a window, such as from the ssh
+    kitten. Each session has variants for the dark, light and no preference
+    system color schemes and is associated with the depth of the color stack
+    when it was set, it is removed when the color stack is popped below that
+    depth. The variant matching the system color scheme of the innermost
+    session is applied to the session color layer of the window.
+    """
+
+    def __init__(self) -> None:
+        self.sessions: list[tuple[int, ColorSchemeVariants]] = []
+
+    def __bool__(self) -> bool:
+        return bool(self.sessions)
+
+    def add(self, color_stack_depth: int, variants: ColorSchemeVariants) -> None:
+        self.sessions = [x for x in self.sessions if x[0] < color_stack_depth]
+        self.sessions.append((color_stack_depth, variants))
+
+    def color_stack_popped(self, color_stack_depth: int) -> bool:
+        before = len(self.sessions)
+        self.sessions = [x for x in self.sessions if x[0] <= color_stack_depth]
+        return len(self.sessions) != before
+
+    def clear(self) -> bool:
+        had_sessions = bool(self.sessions)
+        self.sessions = []
+        return had_sessions
+
+    def copy_from(self, other: 'SessionColorSchemes') -> None:
+        # The copy is not associated with any color stack entry in this window
+        self.sessions = [(0, other.sessions[-1][1])] if other.sessions else []
+
+    def apply(self, cp: ColorProfile, scheme: ColorSchemes) -> None:
+        cp.reset_layer(COLOR_LAYER_SESSION)
+        if self.sessions and (spec := self.sessions[-1][1].get(scheme)):
+            patch_color_profiles(spec, None, (cp,), COLOR_LAYER_SESSION)
 
 
 @run_once
