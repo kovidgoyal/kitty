@@ -579,6 +579,7 @@ def dbus_send_notification(
     replaces: int = 0,
     category: str = '',
     muted: bool = False,
+    desktop_entry: str = '',
 ) -> int:
     pass
 

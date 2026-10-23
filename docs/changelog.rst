@@ -231,30 +231,6 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :option:`launch --cwd`:code:`=root`: Fix it using the working directory of
-  the foreground process instead of the root process while the shell is running
-  a command. Also, wrapper processes that kitty itself inserts, such as
-  :file:`/usr/bin/login` on macOS, are now skipped, so their first child is used
-  as the root process
-
-- The pid, working directory, command line and environment of a window
-  reported by :ref:`kitten @ ls <at-ls>` and used when matching windows by
-  :code:`pid`, :code:`cwd`, :code:`cmdline` or :code:`env` are now those of the
-  process kitty was asked to run rather than of a wrapper kitty runs it with,
-  such as :file:`/usr/bin/login` on macOS or the wrapper used for
-  :option:`launch --hold`
-
-- Remote control: Fix a crash when using damaged images with
-  :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
-
-- Transfer kitten: When receiving files, replace existing symbolic and hard
-  links at the destination instead of overwriting the files they point to.
-  Files are now written to a temporary file and renamed into place, so an
-  interrupted transfer no longer leaves a truncated file behind (:pull:`10713`)
-
-- Fix continuous re-rendering and needless GPU usage when a selection is
-  present and the window is scrolled back (:iss:`10714`)
-
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
@@ -417,6 +393,35 @@ Detailed list of changes
 - macOS: Fix padding rendering black after sleep, OS windows not staying on all
   spaces, a duplicate path when dropping items from Apple Mail and a memory
   leak (:iss:`10708`, :iss:`10581`, :iss:`10628`, :iss:`10673`)
+
+- Linux: Desktop notifications that do not specify an application name now
+  identify kitty's desktop file to the notification server, so desktops such
+  as KDE can group them under kitty (:pull:`10721`)
+
+- :option:`launch --cwd`:code:`=root`: Fix it using the working directory of
+  the foreground process instead of the root process while the shell is running
+  a command. Also, wrapper processes that kitty itself inserts, such as
+  :file:`/usr/bin/login` on macOS, are now skipped, so their first child is used
+  as the root process
+
+- The pid, working directory, command line and environment of a window
+  reported by :ref:`kitten @ ls <at-ls>` and used when matching windows by
+  :code:`pid`, :code:`cwd`, :code:`cmdline` or :code:`env` are now those of the
+  process kitty was asked to run rather than of a wrapper kitty runs it with,
+  such as :file:`/usr/bin/login` on macOS or the wrapper used for
+  :option:`launch --hold`
+
+- Remote control: Fix a crash when using damaged images with
+  :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
+
+- Transfer kitten: When receiving files, replace existing symbolic and hard
+  links at the destination instead of overwriting the files they point to.
+  Files are now written to a temporary file and renamed into place, so an
+  interrupted transfer no longer leaves a truncated file behind (:pull:`10713`)
+
+- Fix continuous re-rendering and needless GPU usage when a selection is
+  present and the window is scrolled back (:iss:`10714`)
+
 
 
 0.49.2 [2026-10-01]

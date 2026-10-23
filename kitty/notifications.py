@@ -798,7 +798,7 @@ class FreeDesktopIntegration(DesktopIntegration):
 
     def notify(self, nc: NotificationCommand, existing_desktop_notification_id: int | None) -> int:
         from .fast_data_types import dbus_send_notification
-        from .xdg import icon_exists, icon_for_appname
+        from .xdg import icon_exists, icon_for_appname, kitty_desktop_entry
 
         app_icon = ''
         if nc.icon_names:
@@ -841,6 +841,10 @@ class FreeDesktopIntegration(DesktopIntegration):
             replaces=replaces_dbus_id,
             category=(nc.notification_types or ('',))[0],
             muted=nc.sound_name == 'silent' or nc.sound_name != 'system',
+            # Only claim the notification for kitty's desktop file when it
+            # does not come from some other named application, as notification
+            # servers prefer desktop-entry over app_name for grouping.
+            desktop_entry=kitty_desktop_entry() if nc.application_name in ('', 'kitty') else '',
         )
         if debug_desktop_integration:
             log_error(f'Requested creation of notification with {desktop_notification_id=}')
