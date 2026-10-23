@@ -314,6 +314,9 @@ func get_file_data(callback func(h *tar.Header, data []byte) error, seen map[fil
 		for len(stack) > 0 {
 			x := stack[0]
 			stack = stack[1:]
+			if err := unix.Lstat(x.path, &s); err != nil {
+				return err
+			}
 			entries, err := os.ReadDir(x.path)
 			if err != nil {
 				if x.path == local_path {

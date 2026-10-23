@@ -122,9 +122,7 @@ def move(src, base_dest):
             except EnvironmentError:
                 pass
             os.symlink(os.readlink(path), dest)
-        elif os.path.isdir(path):
-            if not os.path.exists(dest):
-                os.makedirs(dest)
+        elif os.path.isdir(path) and os.path.exists(dest):
             move(path, dest)
         else:
             shutil.move(path, dest)

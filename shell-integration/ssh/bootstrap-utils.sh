@@ -9,7 +9,11 @@
 mv_files_and_dirs() {
     cwd="$PWD"
     cd "$1"
-    command find . -type d -exec mkdir -p "$2/{}" ";"
+    # Move new directories intact to preserve their permissions; merge existing ones.
+    command find . -type d ! -name . -exec sh -c '
+        [ -d "$1/$2" ] && exit 1
+        command mv -- "$2" "$1/$2"
+    ' sh "$2" "{}" ";" -prune
     command find . -type l -exec sh -c 'tgt=$(command readlink -n "$2"); command ln -snf -- "$tgt" "$1/$2"; command rm -f -- "$2"' sh "$2" "{}" ";"
     command find . -type f -exec mv "{}" "$2/{}" ";"
     cd "$cwd"

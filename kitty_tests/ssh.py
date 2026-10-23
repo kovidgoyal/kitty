@@ -7,6 +7,7 @@ import json
 import os
 import shlex
 import shutil
+import stat
 import subprocess
 import tempfile
 from contextlib import suppress
@@ -150,6 +151,49 @@ copy --exclude **/w.* --exclude **/r d1
                     },
                 )
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
+
+    def test_ssh_copy_directory_permissions(self):
+        dirs = {'': 0o750, 'private': 0o700, 'private/nested': 0o750, '.hidden': 0o700, 'empty': 0o710, 'space dir': 0o750}
+        existing = {'': 0o700, 'private': 0o710}
+        for sh in self.all_possible_sh:
+            for umask in ('022', '077'):
+                with self.subTest(interpreter=sh, umask=umask), tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
+                    tree = os.path.join(local_home, 'tree')
+                    for name, mode in dirs.items():
+                        path = os.path.join(tree, name)
+                        os.makedirs(path, exist_ok=True)
+                        os.chmod(path, mode)
+                    filename = 'private/nested/file with spaces'
+                    with open(os.path.join(tree, filename), 'w') as f:
+                        f.write('copied contents')
+                    os.symlink(filename, os.path.join(tree, 'link'))
+                    os.symlink('missing', os.path.join(tree, 'broken'))
+                    for name, mode in existing.items():
+                        path = os.path.join(remote_home, 'merged', name)
+                        os.mkdir(path, mode)
+                        os.chmod(path, mode)
+                    launcher = os.path.join(local_home, 'launcher')
+                    with open(launcher, 'w') as f:
+                        f.write(f'#!/bin/sh\numask {umask}\nexec sh "$@"\n')
+                    os.chmod(launcher, 0o755)
+                    self.check_bootstrap(
+                        sh,
+                        remote_home,
+                        test_script='env; exit 0',
+                        SHELL_INTEGRATION_VALUE='',
+                        conf='copy --dest=new tree\ncopy --dest=merged tree',
+                        home=local_home,
+                        launcher=launcher,
+                    )
+                    for target in ('new', 'merged'):
+                        dest = os.path.join(remote_home, target)
+                        for name, mode in dirs.items():
+                            expected = existing.get(name, mode) if target == 'merged' else mode
+                            self.ae(stat.S_IMODE(os.stat(os.path.join(dest, name)).st_mode), expected, (sh, umask, target, name))
+                        with open(os.path.join(dest, filename)) as f:
+                            self.ae(f.read(), 'copied contents')
+                        self.ae(os.readlink(os.path.join(dest, 'link')), filename)
+                        self.ae(os.readlink(os.path.join(dest, 'broken')), 'missing')
 
     @retry_on_failure()
     def test_ssh_env_vars(self):
