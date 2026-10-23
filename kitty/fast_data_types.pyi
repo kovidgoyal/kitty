@@ -15,6 +15,12 @@ from kitty.typing_compat import EdgeLiteral, NotRequired, ReadableBuffer, Writea
 # Constants {{{
 SCALE_BITS: int
 NULL_COLOR_VALUE: int
+# Which layer of colors patch_color_profiles() changes: the colors set by the
+# program running in the window, the global configured colors or the configured
+# colors of individual windows
+COLOR_LAYER_OVERRIDE: int
+COLOR_LAYER_GLOBAL: int
+COLOR_LAYER_WINDOW: int
 DEVELOP_ROOT: str
 WIDTH_BITS: int
 SUBSCALE_BITS: int
@@ -817,7 +823,8 @@ def patch_color_profiles(
     spec: Dict[str, Optional[int]],
     transparent_background_colors: Optional[tuple[tuple[Color, float], ...]],
     profiles: Tuple[ColorProfile, ...],
-    change_configured: bool,
+    layer: int,
+    clear_upper_layers: bool = False,
 ) -> None:
     pass
 

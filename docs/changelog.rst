@@ -342,6 +342,14 @@ Detailed list of changes
   being set to white with themes that do not define them (:iss:`10691`,
   :iss:`10661`)
 
+- :ref:`Automatic color themes <auto_color_scheme>`: When the system switches
+  between light and dark, keep colors set by programs running in a window, by
+  the :opt:`ssh kitten <kitten-ssh.color_scheme>`, by :option:`launch --color`
+  or :option:`launch --copy-colors`. Also, when a program restores its saved
+  colors, such as when exiting the ssh kitten, the current theme colors are
+  used rather than those from before the switch. :option:`launch --color`
+  colors now also survive config reloads (:iss:`10724`)
+
 - diff kitten: Fix laggy mouse selection with high polling rate mice and
   various failures when comparing remote directories over SSH (:iss:`10634`,
   :pull:`10641`, :pull:`10676`)

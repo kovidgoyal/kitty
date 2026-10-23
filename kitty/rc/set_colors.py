@@ -121,7 +121,7 @@ this option, any color arguments are ignored and :option:`kitten @ set-colors --
                     raise RemoteControlErrorWithoutTraceback(f'The color {k} must be an integer or null, not a string')
                 else:
                     colors[k] = v
-        patch_colors(colors, tbc, configured, windows=windows)
+        patch_colors(colors, tbc, configured, windows=windows, replace_window_colors=True)
         return None
 
     def parse_transparent_background_colors(self, spec: int | str | None) -> 'TransparentBackgroundColors':

@@ -14,7 +14,7 @@ from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .clipboard import set_clipboard_string, set_primary_selection
 from .constants import is_wayland
-from .fast_data_types import add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
+from .fast_data_types import COLOR_LAYER_WINDOW, add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import DockSpec, LayerShellConfig, OverlayType, dock_edges, parse_dock_spec, run_once
@@ -672,7 +672,7 @@ def apply_colors(window: Window, spec: Sequence[str]) -> None:
 
     colors, transparent_background_colors = parse_colors(spec)
     profiles = (window.screen.color_profile,)
-    patch_color_profiles(colors, transparent_background_colors, profiles, True)
+    patch_color_profiles(colors, transparent_background_colors, profiles, COLOR_LAYER_WINDOW)
 
 
 def parse_var(defn: Iterable[str]) -> Iterator[tuple[str, str]]:

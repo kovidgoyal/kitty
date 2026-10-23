@@ -2425,7 +2425,129 @@ class TestScreen(BaseTest):
         patch_color_profiles({'background': Color(255, 255, 255), 'foreground': Color(0, 0, 0)}, (), (s.color_profile,), True)
         self.assertTrue(s.color_profile.palette_color_is_generated(213))
         self.assertFalse(s.color_profile.palette_color_is_generated(114))
-        q({'213': '?'}, {'213': Color(216, 125, 215)})
+        # the generated colors are re-generated from the new configured colors
+        opts.background, opts.foreground = Color(255, 255, 255), Color(0, 0, 0)
+        q({'213': '?'}, {'213': ColorProfile(opts).as_color(213 << 8 | 1)})
+
+    def test_color_layers(self):
+        from kitty.fast_data_types import COLOR_LAYER_GLOBAL, COLOR_LAYER_OVERRIDE, COLOR_LAYER_WINDOW, patch_color_profiles
+
+        opts = self.set_options({'palette_generate': 'fixed'})
+        s = self.create_screen()
+        cp = s.color_profile
+        cp.reload_from_opts(opts)
+        red, green, blue, white, black = Color(255, 0, 0), Color(0, 255, 0), Color(0, 0, 255), Color(255, 255, 255), Color(0, 0, 0)
+        dark = {'background': int(black), 'foreground': int(white), 'color1': int(Color(1, 1, 1)), 'color2': int(Color(2, 2, 2))}
+        light = {'background': int(white), 'foreground': int(black), 'color1': int(Color(11, 11, 11)), 'color2': int(Color(12, 12, 12))}
+
+        def pal(i):
+            return cp.as_color(i << 8 | 1)
+
+        def osc21(**kw):
+            parse_bytes(s, b'\x1b]21;' + ';'.join(f'{k}={v}' for k, v in kw.items()).encode() + b'\a')
+
+        def theme(spec, layer=COLOR_LAYER_GLOBAL, clear=False, tbc=None):
+            patch_color_profiles(spec, tbc, (cp,), layer, clear)
+
+        def check(bg, fg, c1, c2):
+            self.ae((cp.default_bg, cp.default_fg, pal(1), pal(2)), (bg, fg, c1, c2))
+
+        theme(dark)
+        check(black, white, Color(1, 1, 1), Color(2, 2, 2))
+        # colors set by the program survive changes to the configured colors
+        osc21(background='#ff0000', **{'1': '#00ff00'})
+        theme(light)
+        check(red, black, green, Color(12, 12, 12))
+        # and are reset to the new configured colors
+        parse_bytes(s, b'\x1b]21;background;1\a')
+        check(white, black, Color(11, 11, 11), Color(12, 12, 12))
+
+        # the color stack restores the current configured colors for colors
+        # not set by the program
+        theme(dark)
+        osc21(**{'2': '#0000ff'})
+        parse_bytes(s, b'\x1b[#P')
+        osc21(background='#ff0000', foreground='#00ff00', **{'1': '#ff0000', '2': '#00ff00'})
+        theme(light)
+        check(red, green, red, green)
+        parse_bytes(s, b'\x1b[#Q')
+        check(white, black, Color(11, 11, 11), blue)
+        cp.reset_color(2)
+        check(white, black, Color(11, 11, 11), Color(12, 12, 12))
+
+        # window layer colors survive changes to the global layer and are reset to
+        theme({'background': int(blue), 'color2': int(red)}, COLOR_LAYER_WINDOW)
+        check(blue, black, Color(11, 11, 11), red)
+        self.ae(cp.as_dict()['background'], int(blue))
+        self.assertNotIn('foreground', cp.as_dict())
+        theme(dark)
+        check(blue, white, Color(1, 1, 1), red)
+        osc21(background='#00ff00', **{'2': '#00ff00'})
+        check(green, white, Color(1, 1, 1), green)
+        parse_bytes(s, b'\x1b]21;background;2\a')
+        check(blue, white, Color(1, 1, 1), red)
+        osc21(background='#00ff00', **{'2': '#00ff00'})
+        parse_bytes(s, b'\x1bc')  # full reset
+        check(blue, white, Color(1, 1, 1), red)
+        # window layer survives reloading the global layer from opts
+        osc21(background='#00ff00')
+        cp.reload_from_opts(opts)
+        check(blue, opts.foreground, opts.color1, red)
+        theme(dark)
+        # copying colors copies all layers
+        s2 = self.create_screen()
+        s2.copy_colors_from(s)
+        theme(light)
+        patch_color_profiles(light, None, (s2.color_profile,), COLOR_LAYER_GLOBAL)
+        self.ae((s2.color_profile.default_bg, s2.color_profile.default_fg, s2.color_profile.as_color(2 << 8 | 1)), (blue, black, red))
+
+        # changing the global layer and clearing upper layers replaces colors
+        # from the window layer and the program, like set-colors --configured
+        osc21(foreground='#ff0000', **{'1': '#ff0000'})
+        check(blue, red, red, red)
+        theme({'foreground': int(green), 'color1': int(green)}, clear=True)
+        check(blue, green, green, red)
+        theme({'background': int(white), 'color2': int(white)}, clear=True)
+        check(white, green, green, white)
+        self.assertNotIn('background', cp.as_dict())
+        # the override layer is like set-colors without --configured
+        theme({'background': int(red), 'color2': int(red)}, COLOR_LAYER_OVERRIDE)
+        theme(dark)
+        check(red, white, Color(1, 1, 1), red)
+
+        # transparent background colors
+        theme(dark, tbc=((Color(1, 2, 3), 0.5),))
+        self.ae(cp.get_transparent_background_color(0), Color(1, 2, 3, 127))
+        osc21(transparent_background_color1='#ff0000@0.5')
+        theme(light, tbc=((Color(3, 2, 1), 0.5),))
+        self.ae(cp.get_transparent_background_color(0), Color(255, 0, 0, 127))
+        theme({}, COLOR_LAYER_WINDOW, tbc=((Color(4, 4, 4), 1.0),))
+        parse_bytes(s, b'\x1b]21;transparent_background_color1\a')
+        self.ae(cp.get_transparent_background_color(0), Color(4, 4, 4, 255))
+        theme(dark, tbc=((Color(1, 2, 3), 0.5),))
+        self.ae(cp.get_transparent_background_color(0), Color(4, 4, 4, 255))
+        theme({}, tbc=((Color(1, 2, 3), 0.5),), clear=True)
+        self.ae(cp.get_transparent_background_color(0), Color(1, 2, 3, 127))
+
+        # generated palette colors
+        opts = self.set_options({'palette_generate': 'semantic'})
+        cp.reload_from_opts(opts)
+        theme(dark)
+
+        def generated(spec, idx=213):
+            o = self.set_options({'palette_generate': 'semantic', **{k: Color(v >> 16, (v >> 8) & 0xFF, v & 0xFF) for k, v in spec.items()}})
+            return ColorProfile(o).as_color(idx << 8 | 1)
+
+        self.assertTrue(cp.palette_color_is_generated(213))
+        self.ae(pal(213), generated(dark))
+        osc21(**{'100': '#ff0000'})
+        theme(light)
+        self.ae(pal(213), generated(light))
+        self.ae(pal(100), red)
+        self.assertTrue(cp.palette_color_is_generated(213))
+        # generated from the window layer colors
+        theme({'background': int(blue)}, COLOR_LAYER_WINDOW)
+        self.ae(pal(213), generated({**light, 'background': int(blue)}))
 
     def test_multi_cursors(self):
         s = self.create_screen()

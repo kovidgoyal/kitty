@@ -659,13 +659,13 @@ def color_control(cp: ColorProfile, code: int, value: str | bytes | memoryview =
                         elif colnum > 15:
                             cp.set_color(colnum, NULL_COLOR_VALUE)
                         else:
-                            cp.set_color(colnum, get_options().color_table[colnum])
+                            cp.reset_color(colnum)
         else:
             if attr:
                 delattr(cp, attr)
             else:
                 if 0 <= colnum <= 255:
-                    cp.set_color(colnum, get_options().color_table[colnum])
+                    cp.reset_color(colnum)
     if responses:
         payload = ';'.join(f'{k}={v}' for k, v in responses)
         return f'{code};{payload}'

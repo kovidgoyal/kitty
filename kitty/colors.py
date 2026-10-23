@@ -9,7 +9,17 @@ from typing import Any, Literal, Optional, TypedDict, cast
 
 from .config import parse_config
 from .constants import config_dir
-from .fast_data_types import Color, get_boss, get_options, glfw_get_system_color_theme, patch_color_profiles, patch_global_colors, set_os_window_chrome
+from .fast_data_types import (
+    COLOR_LAYER_GLOBAL,
+    COLOR_LAYER_OVERRIDE,
+    Color,
+    get_boss,
+    get_options,
+    glfw_get_system_color_theme,
+    patch_color_profiles,
+    patch_global_colors,
+    set_os_window_chrome,
+)
 from .options.types import Options, all_colors, nullable_colors, special_colors
 from .rgb import color_from_int
 from .types import run_once
@@ -286,14 +296,19 @@ def patch_colors(
     windows: Sequence[WindowType] | None = None,
     notify_on_bg_change: bool = True,
     background_image_options: BackgroundImageOptions | None = None,
+    replace_window_colors: bool = False,
 ) -> None:
+    # When configured is True the global configured colors are changed, colors
+    # set in individual windows, by launch --color or by programs running in
+    # them, are kept unless replace_window_colors is True. When configured is
+    # False, the colors are set as if by the programs running in the windows.
     boss = get_boss()
     opts = get_options()
     if windows is None:
         windows = tuple(boss.all_windows)
     bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in windows}
     profiles = tuple(w.screen.color_profile for w in windows if w)
-    patch_color_profiles(spec, transparent_background_colors, profiles, configured)
+    patch_color_profiles(spec, transparent_background_colors, profiles, COLOR_LAYER_GLOBAL if configured else COLOR_LAYER_OVERRIDE, replace_window_colors)
     if configured:
         patch_options_with_color_spec(opts, spec, transparent_background_colors, background_image_options)
     os_window_ids = set()
