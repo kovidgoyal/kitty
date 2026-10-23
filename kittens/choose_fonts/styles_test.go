@@ -65,4 +65,15 @@ func TestStylesInFamily(t *testing.T) {
 	// Without style attribute data, the de-duplicated style names of the fonts are used
 	fonts := []ListedFont{{Style: "Regular"}, {Style: "Bold"}, {Style: ""}, {Style: "Bold"}, {Style: "Italic"}}
 	check([]group_result{{"Styles", []string{"Bold", "Italic", "Regular"}}}, fonts, make([]VariableData, len(fonts)))
+
+	// With style attribute data, styles are sorted by axis value, not by name
+	vd := func(weight string, weight_value float64, italic string, italic_value float64) VariableData {
+		return VariableData{Design_axes: []DesignAxis{
+			{Name: "Weight", Ordering: 0, Values: []DesignAxisValue{{Name: weight, Value: weight_value}}},
+			{Name: "Italic", Ordering: 1, Values: []DesignAxisValue{{Name: italic, Value: italic_value}}},
+		}}
+	}
+	fonts = []ListedFont{{Style: "Bold"}, {Style: "Regular"}, {Style: "Light"}}
+	check([]group_result{{"Weight", []string{"Light", "Regular", "Bold"}}, {"Italic", []string{"Upright", "Italic"}}},
+		fonts, []VariableData{vd("Bold", 700, "Italic", 1), vd("Regular", 400, "Upright", 0), vd("Light", 300, "Upright", 0)})
 }

@@ -115,8 +115,7 @@ func styles_in_family_from_variable_data(fonts []ListedFont, vds []VariableData)
 				sg.styles = append(sg.styles, f.Style)
 			}
 		}
-	}
-	for _, sg := range ans.style_groups {
+		// styles_with_attribute_data has already sorted by axis value, only sort by name here
 		slices.Sort(sg.styles)
 	}
 	return
