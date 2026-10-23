@@ -1152,13 +1152,7 @@ PYWRAP1(set_options) {
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
     if (!convert_opts_from_python_opts(opts, &global_state.opts)) return NULL;
     if (!set_wheel_mappings(opts, &global_state.opts)) return NULL;
-    RAII_PyObject(url_mappings, PyObject_GetAttrString(opts, "url_mappings"));
-    if (!url_mappings) return NULL;
-    for (size_t i = 0; i < arraysz(global_state.opts.url_mappings); i++) {
-        PyObject *mask = PyDict_GetItem(url_mappings, i ? Py_True : Py_False);
-        global_state.opts.url_mappings[i] = mask ? PyLong_AsUnsignedLongLong(mask) : 0;
-        if (PyErr_Occurred()) return NULL;
-    }
+    if (!set_url_mappings(opts, &global_state.opts)) return NULL;
     if (!set_vertical_tab_bar_padding(opts, &global_state.opts)) return NULL;
     push_modifier_remap_to_glfw();
     Py_XDECREF(global_state.options_object);

@@ -4870,7 +4870,7 @@ detect_url_with_regex(Screen *self, index_type x, index_type y, TextCache *text_
 // }}}
 
 int
-screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
+screen_detect_url(Screen *screen, unsigned int x, unsigned int y, bool mark) {
     bool has_url = false;
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
@@ -4883,7 +4883,9 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
     if (line->cpu_cells[x].is_multicell && line->cpu_cells[x].x) x = x > line->cpu_cells[x].x ? x - line->cpu_cells[x].x : 0;
     hyperlink_id_type hid;
     if ((hid = line->cpu_cells[x].hyperlink_id)) {
-        screen_mark_hyperlink(screen, x, y);
+        // Marking a hyperlink scans the surrounding lines, so skip it when not needed
+        if (mark) screen_mark_hyperlink(screen, x, y);
+        else screen_mark_url(screen, 0, 0, 0, 0);
         return hid;
     }
     char_type sentinel = 0;
@@ -4911,9 +4913,8 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
         screen_mark_url(screen, url_start, y, url_end, y_extended);
     } else if (OPT(detect_url_regex).count && detect_url_with_regex(screen, x, y, line->text_cache)) {
         has_url = true;
-    } else {
-        screen_mark_url(screen, 0, 0, 0, 0);
     }
+    if (!has_url || !mark) screen_mark_url(screen, 0, 0, 0, 0);
     return has_url ? -1 : 0;
 }
 
@@ -5878,7 +5879,13 @@ WRAP0(tab)
 WRAP0(linefeed)
 WRAP0(carriage_return)
 WRAP2(set_margins, 1, 1)
-WRAP2(detect_url, 0, 0)
+static PyObject *
+detect_url(Screen *self, PyObject *args) {
+    unsigned int x = 0, y = 0;
+    if (!PyArg_ParseTuple(args, "|II", &x, &y)) return NULL;
+    screen_detect_url(self, x, y, true);
+    Py_RETURN_NONE;
+}
 WRAP0(rescale_images)
 
 static PyObject *

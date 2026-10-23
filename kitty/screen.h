@@ -358,7 +358,7 @@ void screen_pop_key_encoding_flags(Screen *self, uint32_t num);
 uint8_t screen_current_key_encoding_flags(Screen *self);
 void screen_modify_other_keys(Screen *self, unsigned, unsigned);
 void screen_report_key_encoding_flags(Screen *self);
-int screen_detect_url(Screen *screen, unsigned int x, unsigned int y);
+int screen_detect_url(Screen *screen, unsigned int x, unsigned int y, bool mark);
 int screen_cursor_at_a_shell_prompt(const Screen *);
 bool screen_prompt_supports_click_events(const Screen *, bool *is_relative);
 bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);

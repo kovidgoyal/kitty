@@ -847,6 +847,7 @@ void update_ime_state_in_os_window(OSWindow *osw, Window *window, int update_foc
 void set_ignore_os_keyboard_processing(bool enabled);
 void push_modifier_remap_to_glfw(void);
 bool set_wheel_mappings(PyObject *py_opts, Options *opts);
+bool set_url_mappings(PyObject *py_opts, Options *opts);
 void update_menu_bar_title(PyObject *title UNUSED);
 void change_live_resize_state(OSWindow *, bool);
 bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images);

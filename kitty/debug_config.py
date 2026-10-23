@@ -84,7 +84,7 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
     print()
     print('Config options different from defaults:')
     default_opts = load_config()
-    ignored = ('keymap', 'sequence_map', 'mousemap', 'map', 'mouse_map')
+    ignored = ('keymap', 'sequence_map', 'mousemap', 'url_mappings', 'map', 'mouse_map')
     changed_opts = [f for f in sorted(defaults._fields) if f not in ignored and getattr(opts, f) != getattr(defaults, f)]
     field_len = max(map(len, changed_opts)) if changed_opts else 20
     fmt = f'{{:{field_len:d}s}}'

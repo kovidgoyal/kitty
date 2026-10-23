@@ -148,6 +148,41 @@ class TestMouse(BaseTest):
             self.ae(updated, False)
             self.ae(update_mock_pointer(w, 0, mods, True, 0, border), (shape, False))
 
+    def test_link_hover_stays_consistent(self):
+        s = self.create_screen(cols=30)
+        s.draw('x' * 6 + 'https://example.invalid/')
+        w = create_mock_window(s)
+        normal_shape = send_mouse_event(w, x=2)
+        link_shape = send_mouse_event(w, x=29)
+        mods = GLFW_MOD_CONTROL | GLFW_MOD_SHIFT
+
+        def configure(*lines):
+            set_options(load_config(overrides=('clear_all_mouse_actions yes', *lines)))
+
+        def marked():
+            return ''.join(s.text_for_marked_url())
+
+        # The cell under the mouse is stale once it moves into the padding
+        configure('mouse_map ctrl+shift+left release ungrabbed mouse_handle_click link')
+        send_mouse_event(w, x=29)
+        self.ae(update_mock_pointer(w, 0, mods, True, 0, 0, None, True), (normal_shape, False))
+        self.ae(marked(), '')
+        send_mouse_event(w, x=29)
+        self.ae(update_mock_pointer(w, mods, 0, True, 0, 0, None, True), (normal_shape, True))
+        self.ae(marked(), '')
+
+        # The mouse tracking mode can change without the mouse moving
+        configure('mouse_map left click ungrabbed mouse_click_url')
+        send_mouse_event(w, x=10)
+        self.ae(update_mock_pointer(w, 0, GLFW_MOD_ALT, True, 0, 0, None, False, partial(parse_bytes, s, b'\x1b[?1000h'))[1], True)
+        self.ae(marked(), '')
+        parse_bytes(s, b'\x1b[?1000l')
+
+        # Pointer shape changes from the program keep the hand over a highlighted link
+        send_mouse_event(w, x=10)
+        self.ae(update_mock_pointer(w, 0, 0, True, 0, 0, 'wait')[0], link_shape)
+        self.ae(marked(), 'https://example.invalid/')
+
     def test_pointer_shape_during_mouse_drag(self):
         s = self.create_screen(cols=60)
         parse_bytes(s, b'\x1b[?1000h')
