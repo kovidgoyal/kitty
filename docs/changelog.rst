@@ -346,6 +346,8 @@ Detailed list of changes
   directories, instead of using the permissions of the top level directory
   and the remote umask (:pull:`10727`)
 
+- ssh kitten: Fix spurious chmod errors when merging copied directories on macOS
+
 - ssh kitten: Fix hanging when re-using a shared connection that has silently
   died, for example, after a network change or suspend, and fix colors 16-255
   being set to white with themes that do not define them (:iss:`10691`,

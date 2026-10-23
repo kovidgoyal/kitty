@@ -160,6 +160,41 @@ copy --exclude **/w.* --exclude **/r d1
                 )
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
 
+    def test_ssh_copy_directory_merge(self):
+        bootstrap_utils = os.path.join(kitty_base_dir, 'shell-integration', 'ssh', 'bootstrap-utils.sh')
+        for sh in self.all_possible_sh:
+            if 'python' in sh:
+                continue
+            with self.subTest(shell=sh), tempfile.TemporaryDirectory() as tdir:
+                src, dest = os.path.join(tdir, 'src'), os.path.join(tdir, 'dest')
+                name = '-private dir'
+                source, target = os.path.join(src, name), os.path.join(dest, name)
+                os.makedirs(os.path.join(source, 'nested'))
+                os.makedirs(target)
+                with open(os.path.join(source, 'nested', 'file with spaces'), 'w') as f:
+                    f.write('copied contents')
+                with open(os.path.join(target, 'existing'), 'w') as f:
+                    f.write('retained contents')
+                os.chmod(os.path.join(source, 'nested'), 0o750)
+                os.chmod(source, 0o500)
+                os.chmod(target, 0o710)
+                try:
+                    cp = subprocess.run(
+                        [sh, '-c', '. "$1"; mv_files_and_dirs "$2" "$3"', 'sh', bootstrap_utils, src, dest],
+                        stdin=subprocess.DEVNULL,
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.ae(cp.returncode, 0, cp.stderr)
+                    self.ae(cp.stderr, '')
+                    self.ae(stat.S_IMODE(os.stat(target).st_mode), 0o710)
+                    self.ae(stat.S_IMODE(os.stat(os.path.join(target, 'nested')).st_mode), 0o750)
+                    for filename, data in (('nested/file with spaces', 'copied contents'), ('existing', 'retained contents')):
+                        with open(os.path.join(target, filename)) as f:
+                            self.ae(f.read(), data)
+                finally:
+                    make_writable(tdir)
+
     def test_ssh_copy_directory_permissions(self):
         dirs = {
             '': 0o750,
