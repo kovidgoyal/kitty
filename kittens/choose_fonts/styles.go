@@ -23,20 +23,16 @@ type family_style_data struct {
 }
 
 func styles_with_attribute_data(ans *family_style_data, items ...VariableData) {
-	groups := make(map[string]*style_group)
-	seen_map := make(map[string]map[string]string)
+	// Store indices, not pointers, as appending to ans.style_groups can reallocate it
+	groups := make(map[string]int)
 	get := func(key string, ordering int) *style_group {
-		sg := groups[key]
-		seen := seen_map[key]
-		if sg == nil {
-			ans.style_groups = append(ans.style_groups, style_group{name: key, ordering: ordering, styles: make([]string, 0)})
-			sg = &ans.style_groups[len(ans.style_groups)-1]
-			groups[key] = sg
-			sg.style_sort_map = make(map[string]string)
-			seen = make(map[string]string)
-			seen_map[key] = seen
+		idx, found := groups[key]
+		if !found {
+			idx = len(ans.style_groups)
+			ans.style_groups = append(ans.style_groups, style_group{name: key, ordering: ordering, styles: make([]string, 0), style_sort_map: make(map[string]string)})
+			groups[key] = idx
 		}
-		return sg
+		return &ans.style_groups[idx]
 	}
 	has := func(n string, m map[string]string) bool {
 		_, found := m[n]
