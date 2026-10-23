@@ -20,7 +20,7 @@ mv_files_and_dirs() {
             [ -d "$1/$2" ] && exit 0
             command mkdir -p -- "$1/$2"
         fi
-        command chmod u+rwx -- "$2"
+        command chmod u+rwx "$2"
         exit 1' sh "$2" "{}" ";" -prune
     command find . -type l -exec sh -c 'tgt=$(command readlink -n "$2"); command ln -snf -- "$tgt" "$1/$2"; command rm -f -- "$2"' sh "$2" "{}" ";"
     command find . -type f -exec mv "{}" "$2/{}" ";"
