@@ -235,6 +235,11 @@ Detailed list of changes
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
+- Show the hand pointer and hover highlighting over links only when the pressed
+  modifiers match a configured mouse action for opening the link with a single
+  click. Update both immediately when modifiers are pressed or released, even
+  without moving the mouse.
+
 - A new option :opt:`restore_session_after_logout` to save the state of
   every kitty instance, including the scrollback of every window, when logging
   out, restarting or shutting down the computer and restore it the next time

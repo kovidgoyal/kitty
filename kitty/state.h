@@ -134,6 +134,8 @@ typedef struct Options {
     // wheel with the modifiers i, button is 0 for wheel_up, 1 for wheel_down,
     // 2 for wheel_left and 3 for wheel_right
     uint64_t wheel_mappings[4][2];
+    // Bit i is set when a mouse button opens the hovered URL with modifiers i.
+    uint64_t url_mappings[2]; // ungrabbed, grabbed
     bool window_alert_on_bell;
     bool macos_dock_badge_on_bell;
     bool debug_keyboard;
@@ -849,6 +851,7 @@ void update_menu_bar_title(PyObject *title UNUSED);
 void change_live_resize_state(OSWindow *, bool);
 bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images);
 void update_mouse_pointer_shape(void);
+bool update_link_hover_for_modifiers(int old_mods, int new_mods);
 void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height);
 void dispatch_buffered_keys(Window *w);
 void free_buffered_keys(Window *w);

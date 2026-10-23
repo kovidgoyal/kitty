@@ -17,7 +17,7 @@ definition = Definition(
         {'keyboard_modes': 'KeyboardModeMap', 'alias_map': 'AliasMap'},
         ['KeyDefinition', 'KeyMapOptions', 'kitty.fast_data_types.SingleKey'],
     ),
-    Action('mouse_map', 'parse_mouse_map', {'mousemap': 'MouseMap'}, ['MouseMapping']),
+    Action('mouse_map', 'parse_mouse_map', {'mousemap': 'MouseMap', 'url_mappings': 'URLMappings'}, ['MouseMapping']),
     has_color_table=True,
 )
 definition.add_deprecation('deprecated_hide_window_decorations_aliases', 'x11_hide_window_decorations', 'macos_hide_titlebar')
@@ -1282,6 +1282,12 @@ grabbed by the program running in the terminal, or not. The values are
 :code:`grabbed` refers to when the program running in the terminal has requested
 mouse events. Note that the click and double click events have a delay of
 :opt:`click_interval` to disambiguate from double and triple presses.
+
+The mouse pointer changes to a hand and links are highlighted on hover only when
+the current keyboard modifiers and grabbed/ungrabbed mode match a mouse mapping
+that opens the link on a single :code:`press`, :code:`release` or :code:`click`.
+Both update when modifiers are pressed or released, even if the mouse does not
+move. Mappings that require a double or triple click do not enable hover feedback.
 
 You can run kitty with the :option:`kitty --debug-input` command line option
 to see mouse events. See the builtin actions below to get a sense of what is
