@@ -401,6 +401,38 @@ class Rendering(FontBaseTest):
         test_render_line(line)
         self.assertEqual(len(self.sprites) - prerendered, len(box_chars))
 
+    def test_line_thickness_scales_with_font_size(self):
+        from kitty.fast_data_types import create_test_font_group, render_box_char
+        from kitty.fonts.render import set_font_family
+
+        options = {'font_size': self.font_size}
+        opts = self.set_options(options)
+        chars = '─│╭┃'
+
+        def check(factor):
+            set_font_family(opts)  # resets font groups so that the first one is at the specified size
+            cell_width, cell_height, _ = create_test_font_group(factor * self.font_size, self.dpi, self.dpi)
+            s = self.create_screen(cols=len(chars) + 1, lines=1, scrollback=0, options=options)
+            s.draw(chars)
+            line = s.line(0)
+            test_render_line(line)
+
+            def alpha(sprite_idx):
+                pixels = array.array('I', self.sprites[sprite_idx_to_pos(sprite_idx, setup_for_testing.xnum, setup_for_testing.ynum)])
+                return bytes(p & 0xFF for p in pixels)
+
+            for i, ch in enumerate(chars):
+                expected = render_box_char(ord(ch), cell_width, cell_height, factor, self.dpi, self.dpi)
+                self.ae(alpha(line.sprite_at(i)), expected, f'{ch!r} not rendered with line thickness scale: {factor}')
+            beam = alpha(2)
+            mid = (cell_height // 2) * cell_width
+            # dpi is 72 so 1pt == 1px
+            self.ae(sum(1 for x in range(cell_width) if beam[mid + x]), round(factor * opts.cursor_beam_thickness))
+
+        check(1)
+        check(2)
+        check(4)
+
     def test_scaled_box_drawing(self):
         self.scaled_drawing_test()
 

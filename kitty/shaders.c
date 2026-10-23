@@ -430,7 +430,7 @@ thickness_as_float(const OSWindow *os_window, unsigned level) {
     level = MIN(level, arraysz(OPT(box_drawing_scale)));
     double pts = OPT(box_drawing_scale)[level];
     double dpi = (os_window->fonts_data->logical_dpi_x + os_window->fonts_data->logical_dpi_y) / 2.0;
-    return pts * dpi / 72.0;
+    return line_thickness_scale_for_font_size(os_window->fonts_data) * pts * dpi / 72.0;
 }
 
 
@@ -1632,7 +1632,14 @@ has_scrollbar(Window *w, Screen *screen) {
 
 static unsigned
 render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool along_bottom) {
-    unsigned border_width = (unsigned)ceil(thickness_as_float(ui->os_window, 1));
+    const double thickness = thickness_as_float(ui->os_window, 1);
+    const unsigned border_width = MAX(1u, (unsigned)ceil(thickness));
+    // The rounded rect shader anti-aliases each edge over a band extending
+    // one pixel on either side of it, so keep the drawn line at least half a
+    // pixel inside the border_width pixels reserved for it, otherwise it would
+    // bleed onto the rendered title.
+    const float drawn_thickness = (float)MIN(thickness, border_width - 0.5);
+    if (ui->screen_width <= 2 * border_width) return 0;
     unsigned bar_height = ui->cell_height + 2;
     unsigned bar_width = ui->screen_width - 2 * border_width;
     if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
@@ -1686,7 +1693,7 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
     restore_viewport();
     free_texture(&data.texture_id);
     // finally draw border with transparent bg
-    draw_rounded_rect(border_rect, sh, (float)thickness_as_float(ui->os_window, 1), ui->cell_width, fg, bg, 0.f, 0, 0.f);
+    draw_rounded_rect(border_rect, sh, drawn_thickness, ui->cell_width, fg, bg, 0.f, 0, 0.f);
     return border_rect.height;
 }
 

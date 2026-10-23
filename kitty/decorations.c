@@ -213,26 +213,26 @@ horz(uint8_t *ans, bool is_top_edge, double height_pt, double dpi_y, FontCellMet
 
 
 DecorationGeometry
-add_beam_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_x) {
-    vert(buf, true, OPT(cursor_beam_thickness), dpi_x, fcm);
+add_beam_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_x, double scale) {
+    vert(buf, true, scale * OPT(cursor_beam_thickness), dpi_x, fcm);
     DecorationGeometry ans = {.height = fcm.cell_height};
     return ans;
 }
 
 DecorationGeometry
-add_underline_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_y) {
+add_underline_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_y, double scale) {
     DecorationGeometry ans = {0};
-    ans.top = horz(buf, false, OPT(cursor_underline_thickness), dpi_y, fcm);
+    ans.top = horz(buf, false, scale * OPT(cursor_underline_thickness), dpi_y, fcm);
     ans.height = fcm.cell_height - ans.top;
     return ans;
 }
 
 DecorationGeometry
-add_hollow_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_x, double dpi_y) {
-    vert(buf, true, 1.0, dpi_x, fcm);
-    vert(buf, false, 1.0, dpi_x, fcm);
-    horz(buf, true, 1.0, dpi_y, fcm);
-    horz(buf, false, 1.0, dpi_y, fcm);
+add_hollow_cursor(uint8_t *buf, FontCellMetrics fcm, double dpi_x, double dpi_y, double scale) {
+    vert(buf, true, scale, dpi_x, fcm);
+    vert(buf, false, scale, dpi_x, fcm);
+    horz(buf, true, scale, dpi_y, fcm);
+    horz(buf, false, scale, dpi_y, fcm);
     DecorationGeometry ans = {.height = fcm.cell_height};
     return ans;
 }
@@ -256,7 +256,7 @@ typedef struct Canvas {
     struct {
         double x, y;
     } dpi;
-    double scale; // used to scale line thickness with font size for multicell rendering
+    double scale; // used to scale line thickness with font size changes and for multicell rendering
     Range *holes;
     uint holes_count, holes_capacity;
     Limit *y_limits;

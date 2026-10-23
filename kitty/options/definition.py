@@ -237,7 +237,8 @@ opt(
 The sizes of the lines used for the box drawing Unicode characters. These values
 are in pts. They will be scaled by the monitor DPI to arrive at a pixel value.
 There must be four values corresponding to thin, normal, thick, and very thick
-lines.
+lines. The values apply at the configured :opt:`font_size`, when the font size
+is changed, for example by zooming, the lines are scaled proportionally.
 """,
 )
 
@@ -407,9 +408,21 @@ cursor shape can be one of :code:`block`, :code:`beam`, :code:`underline`,
 """,
 )
 
-opt('cursor_beam_thickness', '1.5', option_type='positive_float', ctype='float', long_text='The thickness of the beam cursor (in pts).')
+opt(
+    'cursor_beam_thickness',
+    '1.5',
+    option_type='positive_float',
+    ctype='float',
+    long_text='The thickness of the beam cursor (in pts). Scaled proportionally when the font size is changed from :opt:`font_size`.',
+)
 
-opt('cursor_underline_thickness', '2.0', option_type='positive_float', ctype='float', long_text='The thickness of the underline cursor (in pts).')
+opt(
+    'cursor_underline_thickness',
+    '2.0',
+    option_type='positive_float',
+    ctype='float',
+    long_text='The thickness of the underline cursor (in pts). Scaled proportionally when the font size is changed from :opt:`font_size`.',
+)
 
 opt(
     'cursor_blink_interval',

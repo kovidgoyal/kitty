@@ -436,6 +436,11 @@ Detailed list of changes
 - Fix continuous re-rendering and needless GPU usage when a selection is
   present and the window is scrolled back (:iss:`10714`)
 
+- Scale the thickness of box drawing characters, cursors and the window title
+  bar border with the font size, so they no longer look too thin when zoomed in
+  or too thick when zoomed out. At the configured :opt:`font_size` nothing
+  changes (:iss:`10362`)
+
 
 
 0.49.2 [2026-10-01]
