@@ -450,6 +450,9 @@ Detailed list of changes
   or too thick when zoomed out. At the configured :opt:`font_size` nothing
   changes (:iss:`10362`)
 
+- hints kitten: Fix Unicode quotes not being removed from around paths and
+  URLs, such as file names in the output of wget
+
 
 
 0.49.2 [2026-10-01]
