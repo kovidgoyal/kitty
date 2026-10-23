@@ -148,6 +148,46 @@ class TestMouse(BaseTest):
             self.ae(updated, False)
             self.ae(update_mock_pointer(w, 0, mods, True, 0, border), (shape, False))
 
+    def test_link_hover_cleared_by_output(self):
+        s = self.create_screen(cols=60)
+        w = create_mock_window(s)
+        mods = GLFW_MOD_CONTROL | GLFW_MOD_SHIFT
+        set_options(load_config(overrides=('clear_all_mouse_actions yes', 'mouse_map ctrl+shift+left release ungrabbed mouse_handle_click link')))
+
+        def marked():
+            return ''.join(s.text_for_marked_url())
+
+        def setup():
+            s.reset()
+            s.draw('https://example.invalid/')
+            return send_mouse_event(w, x=2, modifiers=mods)
+
+        parse_bytes(s, b'\x1b[?1000h')
+        grabbed_shape = send_mouse_event(w, x=50)
+        s.reset()
+        normal_shape = send_mouse_event(w, x=50)
+        for output, expected in (
+            (b' suffix', normal_shape),
+            (b'\r\x1b[Kplain text', normal_shape),
+            (b'\x1b[2J', normal_shape),
+            (b'\x1b[?1000h\r\x1b[K', grabbed_shape),
+            (b'\x1b[?1000h', None),
+            (b'\x1b[3;1Hother line', None),
+        ):
+            with self.subTest(output=output):
+                link_shape = setup()
+                self.assertNotIn(link_shape, (normal_shape, grabbed_shape))
+                self.ae(marked(), 'https://example.invalid/')
+                # Output alone, with the modifiers still held, must update the pointer
+                shape = update_mock_pointer(w, mods, mods, True, 0, 0, None, False, partial(parse_bytes, s, output))[0]
+                self.ae(shape, expected or link_shape)
+                self.ae(bool(marked()), expected is None)
+                if expected is not None:
+                    # Releasing the modifiers after the output changes nothing
+                    setup()
+                    self.ae(update_mock_pointer(w, mods, 0, True, 0, 0, None, False, partial(parse_bytes, s, output)), (expected, False))
+                    self.ae(marked(), '')
+
     def test_link_hover_stays_consistent(self):
         s = self.create_screen(cols=30)
         s.draw('x' * 6 + 'https://example.invalid/')

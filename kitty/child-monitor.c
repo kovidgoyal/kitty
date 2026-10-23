@@ -551,7 +551,9 @@ parse_input_once(ChildMonitor *self, PyObject *a UNUSED) {
 static bool
 do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     ParseData pd = {.dump_callback = self->dump_callback, .now = now};
+    const bool had_url_highlight = screen->url_ranges.count > 0;
     self->parse_func(screen, &pd, flush);
+    if (had_url_highlight && !screen->url_ranges.count) link_hover_cleared_by_output(screen);
     if (pd.input_read) {
         if (pd.write_space_created) wakeup_io_loop(self, false);
         if (screen->paused_rendering.expires_at) set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));

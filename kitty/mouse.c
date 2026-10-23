@@ -1216,23 +1216,50 @@ window_in_active_tab(OSWindow *osw, id_type window_id) {
     return NULL;
 }
 
+static bool
+mouse_is_busy(void) {
+    return global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window ||
+           global_state.tab_being_dragged.id || global_state.window_being_dragged.id || global_state.active_drag_resize;
+}
+
+static Window *
+hovered_window(OSWindow **osw) {
+    const id_type wid = global_state.mouse_hover_in_window;
+    if (!wid) return NULL;
+    // The mouse can be over an OS window other than the one receiving events
+    *osw = global_state.callback_os_window;
+    Window *w = window_in_active_tab(*osw, wid);
+    for (size_t i = 0; !w && i < global_state.num_os_windows; i++) {
+        *osw = global_state.os_windows + i;
+        w = window_in_active_tab(*osw, wid);
+    }
+    return w;
+}
+
+// Output can clear the link hover highlight, so keep the pointer and the
+// hovered link consistent with it when the screen is under the mouse.
+void
+link_hover_cleared_by_output(Screen *screen) {
+    OSWindow *osw;
+    Window *w = hovered_window(&osw);
+    if (!w || w->render_data.screen != screen) return;
+    zero_at_ptr(&screen->current_hyperlink_under_mouse);
+    if (mouse_cursor_shape != POINTER_POINTER || mouse_is_busy()) return;
+    OSWindow *callback_os_window = global_state.callback_os_window;
+    global_state.callback_os_window = osw;
+    update_mouse_pointer_shape();
+    global_state.callback_os_window = callback_os_window;
+}
+
 // Show or remove the link hover highlight in the window under the mouse when
 // modifiers change without the mouse moving. Returns true if the highlight changed.
 bool
 update_link_hover_for_modifiers(int old_mods, int new_mods) {
     old_mods &= MOUSE_MAPPING_MODS_MASK;
     new_mods &= MOUSE_MAPPING_MODS_MASK;
-    const id_type wid = global_state.mouse_hover_in_window;
-    if (old_mods == new_mods || !OPT(detect_urls) || !wid || global_state.redirect_mouse_handling || global_state.active_drag_in_window ||
-        global_state.tracked_drag_in_window || global_state.tab_being_dragged.id || global_state.window_being_dragged.id || global_state.active_drag_resize)
-        return false;
-    // The mouse can be over an OS window other than the one receiving key events
-    OSWindow *osw = global_state.callback_os_window;
-    Window *w = window_in_active_tab(osw, wid);
-    for (size_t i = 0; !w && i < global_state.num_os_windows; i++) {
-        osw = global_state.os_windows + i;
-        w = window_in_active_tab(osw, wid);
-    }
+    if (old_mods == new_mods || !OPT(detect_urls) || mouse_is_busy()) return false;
+    OSWindow *osw;
+    Window *w = hovered_window(&osw);
     if (!w) return false;
     Screen *screen = w->render_data.screen;
     if (!w->visible || !screen || w->scrollbar.is_hovering || w->scrollbar.is_dragging) return false;

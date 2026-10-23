@@ -7138,8 +7138,10 @@ static PyObject *
 test_parse_written_data(Screen *screen, PyObject *args) {
     ParseData pd = {.now = monotonic()};
     if (!PyArg_ParseTuple(args, "|O", &pd.dump_callback)) return NULL;
+    const bool had_url_highlight = screen->url_ranges.count > 0;
     if (pd.dump_callback && pd.dump_callback != Py_None) parse_worker_dump(screen, &pd, true);
     else parse_worker(screen, &pd, true);
+    if (had_url_highlight && !screen->url_ranges.count) link_hover_cleared_by_output(screen);
     Py_RETURN_NONE;
 }
 

@@ -853,6 +853,7 @@ void change_live_resize_state(OSWindow *, bool);
 bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images);
 void update_mouse_pointer_shape(void);
 bool update_link_hover_for_modifiers(int old_mods, int new_mods);
+void link_hover_cleared_by_output(Screen *screen);
 void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height);
 void dispatch_buffered_keys(Window *w);
 void free_buffered_keys(Window *w);
