@@ -450,6 +450,9 @@ Detailed list of changes
   or too thick when zoomed out. At the configured :opt:`font_size` nothing
   changes (:iss:`10362`)
 
+- Fix a use-after-free that could cause a crash when reloading the config after
+  changing font settings (:iss:`10729`)
+
 
 
 0.49.2 [2026-10-01]

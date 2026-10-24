@@ -573,6 +573,9 @@ init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentati
 static void
 free_font_groups(void) {
     if (font_groups) {
+        // Clear dangling pointers into font_groups, otherwise the next call to
+        // save_window_font_groups() would read freed memory
+        for (size_t o = 0; o < global_state.num_os_windows; o++) global_state.os_windows[o].fonts_data = NULL;
         for (size_t i = 0; i < num_font_groups; i++) del_font_group(font_groups + i);
         free(font_groups);
         font_groups = NULL;
