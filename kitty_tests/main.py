@@ -335,7 +335,9 @@ def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
             with forwardable_stdio():
                 result = PipeTestResult(write_fd)
                 unittest.TestSuite(tests).run(result)
-                exit_code = 0
+        # Cleanup is part of completing the worker, so report it after both contexts exit.
+        result._send({'t': 'done'})
+        exit_code = 0
     except Exception:
         import traceback
 
@@ -463,6 +465,7 @@ def collect_worker_results(
     use_tty = sys.stdout.isatty()
     py_buffers: dict[int, bytes] = {fd: b'' for fd in read_fds}
     active_py = list(read_fds)
+    completed_py: set[int] = set()
     go_buffer = b''
     go_active = go_proc is not None
     start = time.monotonic()
@@ -618,6 +621,8 @@ def collect_worker_results(
                         py_unexpected_successes.append(rec['id'])
                         all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
                         show_progress()
+                    elif t == 'done':
+                        completed_py.add(fd)
                     elif t == 'worker_error':
                         py_worker_errors.append(rec['msg'])
 
@@ -630,6 +635,10 @@ def collect_worker_results(
         rc = proc.wait()
         if rc != 0:
             py_worker_errors.append(f'Python test worker exited with status {rc}')
+
+    # A zero exit code alone does not guarantee that a worker finished its suite.
+    if len(completed_py) != len(read_fds) and not py_worker_errors:
+        py_worker_errors.append('A Python test worker exited without reporting completion')
 
     elapsed = time.monotonic() - start
 
