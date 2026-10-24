@@ -2099,6 +2099,7 @@ def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
         kitten_exe = build_static_kittens(args, launcher_dir=os.path.dirname(kitty_exe))
         if not kitten_exe:
             raise SystemExit('kitten not built cannot create macOS bundle')
+        shutil.copytree('shaders', ddir / 'Contents/Resources/kitty/shaders', dirs_exist_ok=True)
         os.symlink(os.path.relpath(kitten_exe, os.path.dirname(in_src_launcher)), os.path.join(os.path.dirname(in_src_launcher), os.path.basename(kitten_exe)))
     create_quick_access_bundle(dest)
     return str(kitty_exe)
@@ -2180,7 +2181,7 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
     if not for_freeze:
         if not bundle_type.startswith('macos-'):
             build_static_kittens(args, launcher_dir=launcher_dir)
-        shutil.copytree('shaders', os.path.join(libdir, 'shaders'), dirs_exist_ok=True)
+            shutil.copytree('shaders', os.path.join(libdir, 'shaders'), dirs_exist_ok=True)
     if not is_macos and not is_windows:
         create_linux_bundle_gunk(ddir, args)
 
