@@ -152,7 +152,7 @@ func matching_remover(openers ...string) PostProcessorFunc {
 			before := char_at(text, s)
 			if slices.Index(openers, before) > -1 {
 				q := closing_bracket_for(before)
-				if e > 0 && char_before(text, e) == q {
+				if s+len(before) <= e-len(q) && char_before(text, e) == q {
 					s += len(before)
 					e -= len(q)
 				} else if char_at(text, e) == q {
@@ -183,15 +183,16 @@ var PostProcessorMap = sync.OnceValue(func() map[string]PostProcessorFunc {
 					e -= len(url) - idx
 				}
 			}
-			for e > 1 && is_punctuation(char_at(text, e-1)) { // remove trailing punctuation
+			for e > 1 && is_punctuation(char_before(text, e)) { // remove trailing punctuation
 				e--
 			}
 			// truncate url at closing bracket/quote
-			if s > 0 && e <= len(text) && closing_bracket_for(char_before(text, s)) != "" {
-				q := closing_bracket_for(char_before(text, s))
-				idx := strings.Index(text[s:], q)
-				if idx > 0 {
-					e = s + idx
+			if s > 0 && e <= len(text) {
+				if q := closing_bracket_for(char_before(text, s)); q != "" {
+					idx := strings.Index(text[s:], q)
+					if idx > 0 {
+						e = s + idx
+					}
 				}
 			}
 			// reStructuredText URLs

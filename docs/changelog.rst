@@ -454,7 +454,7 @@ Detailed list of changes
   changing font settings (:iss:`10729`)
 
 - hints kitten: Fix Unicode quotes not being removed from around paths and
-  URLs, such as file names in the output of wget
+  URLs, such as file names in the output of wget (:pull:`10730`)
 
 
 
