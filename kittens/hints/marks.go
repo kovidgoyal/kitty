@@ -138,17 +138,25 @@ func char_at(s string, i int) string {
 	return string(ans)
 }
 
+func char_before(s string, i int) string {
+	ans, _ := utf8.DecodeLastRuneInString(s[:i])
+	if ans == utf8.RuneError {
+		return ""
+	}
+	return string(ans)
+}
+
 func matching_remover(openers ...string) PostProcessorFunc {
 	return func(text string, s, e int) (int, int) {
 		if s < e && e <= len(text) {
 			before := char_at(text, s)
 			if slices.Index(openers, before) > -1 {
 				q := closing_bracket_for(before)
-				if e > 0 && char_at(text, e-1) == q {
-					s++
-					e--
+				if e > 0 && char_before(text, e) == q {
+					s += len(before)
+					e -= len(q)
 				} else if char_at(text, e) == q {
-					s++
+					s += len(before)
 				}
 			}
 		}
@@ -179,8 +187,8 @@ var PostProcessorMap = sync.OnceValue(func() map[string]PostProcessorFunc {
 				e--
 			}
 			// truncate url at closing bracket/quote
-			if s > 0 && e <= len(text) && closing_bracket_for(char_at(text, s-1)) != "" {
-				q := closing_bracket_for(char_at(text, s-1))
+			if s > 0 && e <= len(text) && closing_bracket_for(char_before(text, s)) != "" {
+				q := closing_bracket_for(char_before(text, s))
 				idx := strings.Index(text[s:], q)
 				if idx > 0 {
 					e = s + idx

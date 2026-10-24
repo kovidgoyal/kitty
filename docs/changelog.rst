@@ -453,6 +453,9 @@ Detailed list of changes
 - Fix a use-after-free that could cause a crash when reloading the config after
   changing font settings (:iss:`10729`)
 
+- hints kitten: Fix Unicode quotes not being removed from around paths and
+  URLs, such as file names in the output of wget
+
 
 
 0.49.2 [2026-10-01]

@@ -71,6 +71,8 @@ func TestHintMarking(t *testing.T) {
 	r("http://example.com.", "http://example.com")
 	r("http://example.com!", "http://example.com")
 	r("http://example.com?", "http://example.com")
+	r("“"+u+"”", u)
+	r("‘"+u+"’", u)
 
 	opts.Type = "linenum"
 	m := func(text, path string, line int) {
@@ -98,6 +100,8 @@ func TestHintMarking(t *testing.T) {
 	r("file.epub.", "file.epub")
 	r("(file.epub)", "file.epub")
 	r("some/path", "some/path")
+	r("“some/path”", "some/path")
+	r("Saving to: ‘index.html’", "index.html")
 	// long lines without spaces must not cause quadratic backtracking
 	long_line := strings.Repeat("1,", 20000)
 	r(long_line)
