@@ -161,6 +161,29 @@ func TestSSHConfigParsing(t *testing.T) {
 
 }
 
+func TestSSHCopyArcnames(t *testing.T) {
+	for _, tc := range []struct {
+		name, loc, dest, home, expected string
+	}{
+		{"home", "/home/alice", "", "/home/alice", "home/."},
+		{"inside home", "/home/alice/.config/app", "", "/home/alice", "home/.config/app"},
+		{"sibling directory", "/home/alice-backup/config", "", "/home/alice", "root/home/alice-backup/config"},
+		{"sibling user", "/home/alice2/config", "", "/home/alice", "root/home/alice2/config"},
+		{"outside home", "/etc/config", "", "/home/alice", "root/etc/config"},
+		{"cleaned path", "/home/alice/../alice-backup/config", "", "/home/alice", "root/home/alice-backup/config"},
+		{"trailing slash", "/home/alice/.config/app", "", "/home/alice/", "home/.config/app"},
+		{"root home", "/etc/config", "", "/", "home/etc/config"},
+		{"relative destination", "/home/alice-backup/config", "config", "/home/alice", "home/config"},
+		{"absolute destination", "/home/alice/config", "/etc/config", "/home/alice", "root/etc/config"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if actual := get_arcname(tc.loc, tc.dest, tc.home); actual != tc.expected {
+				t.Fatalf("Incorrect arcname: %q != %q", actual, tc.expected)
+			}
+		})
+	}
+}
+
 func TestSSHCopyDirectoryMetadata(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "tree")
 	dirs := []struct {

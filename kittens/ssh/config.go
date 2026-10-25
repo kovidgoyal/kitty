@@ -201,11 +201,8 @@ func get_arcname(loc, dest, home string) (arcname string) {
 		arcname = dest
 	} else {
 		arcname = filepath.Clean(loc)
-		if strings.HasPrefix(arcname, home) {
-			ra, err := filepath.Rel(home, arcname)
-			if err == nil {
-				arcname = ra
-			}
+		if ra, err := filepath.Rel(home, arcname); err == nil && filepath.IsLocal(ra) {
+			arcname = ra
 		}
 	}
 	prefix := "home/"
