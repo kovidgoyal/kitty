@@ -351,6 +351,9 @@ Detailed list of changes
   remote control authentication by masquerading as a cancellation of an
   asynchronous request
 
+- ssh kitten: Fix copying files outside HOME whose paths share its prefix,
+  such as :file:`/home/alice-backup` when HOME is :file:`/home/alice`
+
 - ssh kitten: Preserve the permissions of copied directories, including nested
   directories, instead of using the permissions of the top level directory
   and the remote umask (:pull:`10727`)

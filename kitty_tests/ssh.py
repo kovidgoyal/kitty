@@ -160,6 +160,36 @@ copy --exclude **/w.* --exclude **/r d1
                 )
                 self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-kitty')), 2)
 
+    def test_ssh_copy_home_prefix(self):
+        for sh in self.all_possible_sh:
+            with self.subTest(interpreter=sh), tempfile.TemporaryDirectory() as tdir:
+                local_home = os.path.join(tdir, 'alice')
+                remote_home = os.path.join(tdir, 'remote')
+                sibling = local_home + '-backup'
+                for d in (local_home, remote_home, sibling):
+                    os.mkdir(d)
+                source = os.path.join(sibling, 'config')
+                with open(source, 'w') as f:
+                    f.write('copied contents')
+                # Remove the local file after creating the archive so that the
+                # bootstrap must restore it at the same absolute path.
+                launcher = os.path.join(tdir, 'launcher')
+                with open(launcher, 'w') as f:
+                    f.write(f'#!/bin/sh\nrm -f {shlex.quote(source)} || exit 1\nexec sh "$@"\n')
+                os.chmod(launcher, 0o755)
+                self.check_bootstrap(
+                    sh,
+                    remote_home,
+                    test_script='env; exit 0',
+                    SHELL_INTEGRATION_VALUE='',
+                    conf=f'copy {shlex.quote(source)}',
+                    home=local_home,
+                    launcher=launcher,
+                )
+                with open(source) as f:
+                    self.ae(f.read(), 'copied contents')
+                self.ae(glob.glob(os.path.join(remote_home, '.kitty-ssh-kitten-untar-*')), [])
+
     def test_ssh_copy_directory_merge(self):
         bootstrap_utils = os.path.join(kitty_base_dir, 'shell-integration', 'ssh', 'bootstrap-utils.sh')
         for sh in self.all_possible_sh:
