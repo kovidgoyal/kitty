@@ -541,6 +541,71 @@ If you get back a response to the graphics query, the terminal emulator supports
 the protocol, if you get back a response to the device attributes query without
 a response to the graphics query, it does not.
 
+.. _graphics_query_features:
+
+Querying support for protocol features
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 0.50.0
+   Support for querying protocol features with the ``e`` key
+
+Some terminal emulators implement only part of this protocol, while still
+replying ``OK`` to the *query action*. To find out which features a terminal
+supports, send a *feature query*: a *query action* with the ``e`` key set to
+the action you are interested in. For example, ``e=T`` to ask about
+transmitting and displaying images or ``e=f`` to ask about loading animation
+frames. Since the meaning of many keys differs between actions, the other keys
+in the feature query are interpreted as they would be for that action. The
+terminal emulator will include in its reply every key from the feature query
+that has a non-default value which it supports for that action, with that
+value, as well as ``e`` itself, to indicate that it supports the action. For
+example, to check for support for :ref:`Unicode placeholders
+<graphics_unicode_placeholders>` and the cursor movement policy::
+
+    <ESC>_Ga=q,i=31,e=T,U=1,C=1<ESC>\
+
+to which a terminal that supports both will reply::
+
+    <ESC>_Gi=31,e=T,C=1,U=1;OK<ESC>\
+
+And to check for support for :ref:`animation <animation_protocol>`, including
+editing existing frames and the overwrite composition mode::
+
+    <ESC>_Ga=q,i=31,e=f,r=1,X=1<ESC>\
+
+to which a terminal that supports animation frames but not the overwrite
+composition mode will reply::
+
+    <ESC>_Gi=31,e=f,r=1;OK<ESC>\
+
+Keys can appear in the reply in any order. A key that is missing from the reply
+is not supported, at least not with the value specified in the query. If ``e``
+is missing from the reply, the action is not supported, and no other keys are
+reported. Keys with default values, as well as the ``a``, ``i``, ``I``, ``m``
+and ``q`` keys, are not included in the reply. A feature query transmits no
+image data, any payload is ignored, and it has no effect on images or on any
+chunked transmission in progress. The ``e`` key is only allowed in
+*query actions*, and the feature query must have the ``i`` key set, as for any
+other *query action*.
+
+Note that a feature query never performs any action, it only checks whether
+the specified keys and values are understood. For example, a terminal emulator
+replying with ``t=f`` might still fail to read a particular file. Use a normal
+*query action* to check that.
+
+Terminal emulators that do not support feature queries will either ignore the
+``e`` key and reply to a normal *query action*, without ``e`` in the reply, or
+consider the command malformed and not reply at all. A client can handle all
+cases by sending feature queries after the query used to detect support for the
+protocol, followed by the request for the primary device attributes::
+
+    <ESC>_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA<ESC>\<ESC>_Ga=q,i=32,e=T,U=1<ESC>\<ESC>_Ga=q,i=33,e=f<ESC>\<ESC>[c
+
+If no reply to a feature query is received before the reply to the device
+attributes query, or the reply does not contain ``e``, the terminal emulator
+does not support the queried action, or does not support feature queries at
+all, and the client has to fall back to other means of detecting features.
+
 
 Display images on screen
 -----------------------------
@@ -655,6 +720,10 @@ You can also use a special Unicode character ``U+10EEEE`` as a placeholder for
 an image. This approach is less flexible, but it allows using images inside
 any host application that supports Unicode, foreground colors (tmux, vim, weechat, etc.),
 and a way to pass escape codes through to the underlying terminal.
+
+Clients can detect support for Unicode placeholders by sending a :ref:`feature
+query <graphics_query_features>` with ``e=T`` and ``U=1`` and checking that
+``U=1`` is present in the reply.
 
 The central idea is that we use a single *Private Use* Unicode character as a
 *placeholder* to indicate to the terminal that an image is supposed to be
@@ -954,6 +1023,10 @@ Animation
 .. versionadded:: 0.20.0
    Animation support (see :doc:`kittens/query_terminal` to query kitty version)
 
+Clients can detect support for animation by sending :ref:`feature queries
+<graphics_query_features>` with ``e=f``, ``e=a`` and ``e=c`` for loading
+frames, controlling animations and composing frames, respectively.
+
 When designing support for animation, the two main considerations were:
 
 #. There should be a way for both client and terminal driven animations.
@@ -1143,6 +1216,10 @@ Key      Value                 Default    Description
                                           ``a`` - control animation, ``c`` - compose animation frames
 
 ``q``    ``0, 1, 2``           ``0``      Suppress responses from the terminal to this graphics command.
+
+``e``    Single character.     ``null``   When set in a query, report the supported keys from the query, interpreted
+         ``(a, c, d, f,                   as for the specified action, in the response, see
+         p, q, t, T)``                    :ref:`graphics_query_features`.
 
 **Keys for image transmission**
 -----------------------------------------------------------

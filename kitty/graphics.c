@@ -1044,8 +1044,107 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 }
 
 static const char *
-finish_command_response(const GraphicsCommand *g, bool data_loaded) {
-    static char rbuf[sizeof(command_response) / sizeof(command_response[0]) + 128];
+supported_keys_for_query(const GraphicsCommand *g) {
+    // A query with e=<action> is a feature query. Echo back every key from it
+    // that has a non-default value which is supported when used with that
+    // action, so that clients can detect support for protocol features. A
+    // leading e=<action> tells the client that the action itself is supported.
+    static char buf[512];
+    size_t pos = 0;
+    buf[0] = 0;
+    const unsigned char action = g->report_supported;
+    if (!action || !strchr("tTqpdfac", action)) return buf;
+#define print(fmt, ...) \
+    if (sizeof(buf) - 1 > pos) pos += snprintf(buf + pos, sizeof(buf) - pos, fmt, __VA_ARGS__)
+#define ECHO_FLAG(key, attr) \
+    if (g->attr) print(",%c=%c", key, g->attr)
+#define ECHO_UINT(key, attr) \
+    if (g->attr) print(",%c=%u", key, g->attr)
+#define ECHO_INT(key, attr) \
+    if (g->attr) print(",%c=%d", key, g->attr)
+#define ECHO_ONE(key, attr) \
+    if (g->attr == 1) print(",%c=%u", key, 1u)
+    print(",e=%c", action);
+    switch (action) {
+        case 't':
+        case 'T':
+        case 'q':
+        case 'f': {
+            ECHO_FLAG('t', transmission_type);
+            ECHO_FLAG('o', compressed);
+            const uint32_t fmt = g->format;
+            if (fmt == RGB || fmt == RGBA || fmt == PNG || (action != 'f' && (fmt == INDEXED || fmt == INDEXED_ALPHA))) print(",f=%u", fmt);
+            if (g->data_width <= MAX_IMAGE_DIMENSION) ECHO_UINT('s', data_width);
+            if (g->data_height <= MAX_IMAGE_DIMENSION) ECHO_UINT('v', data_height);
+            ECHO_UINT('S', data_sz);
+            ECHO_UINT('O', data_offset);
+            if (g->usage_hints && !(g->usage_hints & ~GRAPHICS_USAGE_HINT_TRANSIENT)) print(",N=%u", g->usage_hints);
+            if (action == 'f') {
+                ECHO_UINT('x', x_offset);
+                ECHO_UINT('y', y_offset);
+                ECHO_UINT('c', other_frame_number);
+                ECHO_UINT('r', frame_number);
+                ECHO_INT('z', gap);
+                ECHO_ONE('X', blend_mode);
+                ECHO_UINT('Y', bgcolor);
+            }
+            if (action != 'T') break;
+        } /* fallthrough */
+        case 'p':
+            ECHO_UINT('p', placement_id);
+            ECHO_UINT('x', x_offset);
+            ECHO_UINT('y', y_offset);
+            ECHO_UINT('w', width);
+            ECHO_UINT('h', height);
+            ECHO_UINT('X', cell_x_offset);
+            ECHO_UINT('Y', cell_y_offset);
+            ECHO_UINT('c', num_cells);
+            ECHO_UINT('r', num_lines);
+            ECHO_ONE('C', cursor_movement);
+            ECHO_ONE('U', unicode_placement);
+            ECHO_INT('z', z_index);
+            ECHO_UINT('P', parent_id);
+            ECHO_UINT('Q', parent_placement_id);
+            ECHO_INT('H', offset_from_parent_x);
+            ECHO_INT('V', offset_from_parent_y);
+            break;
+        case 'd':
+            ECHO_FLAG('d', delete_action);
+            ECHO_UINT('p', placement_id);
+            ECHO_UINT('x', x_offset);
+            ECHO_UINT('y', y_offset);
+            ECHO_INT('z', z_index);
+            break;
+        case 'a':
+            if (g->animation_state <= 3) ECHO_UINT('s', animation_state);
+            ECHO_UINT('v', loop_count);
+            ECHO_UINT('r', frame_number);
+            ECHO_UINT('c', other_frame_number);
+            ECHO_INT('z', gap);
+            break;
+        case 'c':
+            ECHO_UINT('r', frame_number);
+            ECHO_UINT('c', other_frame_number);
+            ECHO_UINT('x', x_offset);
+            ECHO_UINT('y', y_offset);
+            ECHO_UINT('w', width);
+            ECHO_UINT('h', height);
+            ECHO_UINT('X', cell_x_offset);
+            ECHO_UINT('Y', cell_y_offset);
+            ECHO_ONE('C', compose_mode);
+            break;
+    }
+#undef ECHO_ONE
+#undef ECHO_INT
+#undef ECHO_UINT
+#undef ECHO_FLAG
+#undef print
+    return buf;
+}
+
+static const char *
+finish_command_response_with_keys(const GraphicsCommand *g, bool data_loaded, const char *extra_keys) {
+    static char rbuf[sizeof(command_response) / sizeof(command_response[0]) + 1024];
     bool is_ok_response = !command_response[0];
     if (g->quiet) {
         if (is_ok_response || g->quiet > 1) return NULL;
@@ -1063,11 +1162,17 @@ finish_command_response(const GraphicsCommand *g, bool data_loaded) {
         if (g->image_number) print(",I=%u", g->image_number);
         if (g->placement_id) print(",p=%u", g->placement_id);
         if (g->num_lines && (g->action == 'f' || g->action == 'a')) print(",r=%u", g->num_lines);
+        if (is_ok_response && extra_keys) print("%s", extra_keys);
         print(";%s", command_response);
         return rbuf;
 #undef print
     }
     return NULL;
+}
+
+static const char *
+finish_command_response(const GraphicsCommand *g, bool data_loaded) {
+    return finish_command_response_with_keys(g, data_loaded, NULL);
 }
 
 // }}}
@@ -2745,6 +2850,12 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                     REPORT_ERROR("Query graphics command without image id");
                     break;
                 }
+            }
+            if (is_query && g->report_supported) {
+                // A feature query transmits no image data, so it must not
+                // interfere with any chunked load that is in progress
+                ret = finish_command_response_with_keys(&(const GraphicsCommand){.id = q_iid, .quiet = g->quiet}, true, supported_keys_for_query(g));
+                break;
             }
             Image *image = handle_add_command(self, g, payload, is_dirty, iid, is_query);
             if (!self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);

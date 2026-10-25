@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import string
 import subprocess
 import sys
 from collections import defaultdict
@@ -46,11 +47,30 @@ def parse_key(keymap: KeymapType) -> str:
     return '        \n'.join(lines)
 
 
+def disallowed_checks(var: str, allowed_values: frozenset[str]) -> list[str]:
+    # Collapse runs of consecutive characters into range checks
+    runs: list[list[int]] = []
+    for x in sorted(map(ord, allowed_values)):
+        if runs and runs[-1][1] == x - 1:
+            runs[-1][1] = x
+        else:
+            runs.append([x, x])
+    ans = []
+    for first, last in runs:
+        if last - first < 2:
+            ans.extend(f"{var} != '{chr(x)}'" for x in range(first, last + 1))
+        else:
+            ans.append(f"({var} < '{chr(first)}' || {var} > '{chr(last)}')")
+    return ans
+
+
 def parse_flag(keymap: KeymapType, type_map: dict[str, Any], command_class: str) -> str:
     lines = []
     for ch in type_map['flag']:
         attr, allowed_values = keymap[ch]
-        q = ' && '.join(f"g.{attr} != '{x}'" for x in sorted(allowed_values))
+        if not isinstance(allowed_values, frozenset):
+            raise TypeError(f'The allowed values for the flag key {ch} must be a frozenset, not: {allowed_values!r}')
+        q = ' && '.join(disallowed_checks(f'g.{attr}', allowed_values))
         lines.append(f"""
             case {attr}: {{
                 g.{attr} = parser_buf[pos++];
@@ -318,6 +338,8 @@ def parsers() -> None:
         'N': ('usage_hints', 'uint'),
         'H': ('offset_from_parent_x', 'int'),
         'V': ('offset_from_parent_y', 'int'),
+        # any letter is accepted so that queries for unknown actions get a reply
+        'e': ('report_supported', flag(string.ascii_letters)),
     }
     text = generate('parse_graphics_code', 'screen_handle_graphics_command', 'graphics_command', keymap, 'GraphicsCommand')
     write_header(text, 'kitty/parse-graphics-command.h')

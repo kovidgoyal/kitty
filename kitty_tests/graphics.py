@@ -537,6 +537,40 @@ class TestGraphics(BaseTest):
         self.ae(pl('abcd', s=1, v=1, a='q'), 'OK')
         self.ae(g.image_count, 0)
 
+        # Test feature queries
+        def q(e, payload='', **kw):
+            res = send_command(s, ','.join(f'{k}={v}' for k, v in dict(a='q', i=31, e=e, **kw).items()), payload)
+            return res.decode('ascii') if res else None
+
+        def r(keys=''):
+            return f'\033_Gi=31{keys};OK\033\\'
+
+        self.ae(q('T', s=1, v=1, f=24, U=1), r(',e=T,f=24,s=1,v=1,U=1'))
+        self.ae(q('T', s=1, v=1, f=24, t='d', C=1, z=-3, N=1), r(',e=T,t=d,f=24,s=1,v=1,N=1,C=1,z=-3'))
+        # no image data is needed or loaded
+        self.ae(q('t', 'abcd', s=1, v=1, f=8, c=2), r(',e=t,f=8,s=1,v=1'))
+        self.ae(g.image_count, 0)
+        # keys are interpreted according to the action being queried
+        self.ae(q('p', c=2, r=3, U=1, C=1, s=1), r(',e=p,c=2,r=3,C=1,U=1'))
+        self.ae(q('f', c=2, r=3, z=40, X=1, f=8, s=1), r(',e=f,s=1,c=2,r=3,z=40,X=1'))
+        self.ae(q('a', s=3, v=1, r=2, c=1, z=-1), r(',e=a,s=3,v=1,r=2,c=1,z=-1'))
+        self.ae(q('c', r=1, c=2, w=3, X=1, C=1, U=1), r(',e=c,r=1,c=2,w=3,X=1,C=1'))
+        self.ae(q('d', d='F', p=2, s=1), r(',e=d,d=F,p=2'))
+        # unsupported values are not reported
+        self.ae(q('T', s=1, v=1, f=24, C=7, N=6, U=2), r(',e=T,f=24,s=1,v=1'))
+        self.ae(q('t', f=42, s=100000), r(',e=t'))
+        self.ae(q('a', s=4), r(',e=a'))
+        # unknown actions are not reported
+        self.ae(q('x', s=1, v=1, f=24, U=1), r())
+        # a feature query does not disturb a chunked load in progress
+        self.assertIsNone(pl('ab', i=99, s=1, v=1, f=24, m=1))
+        self.ae(q('T', U=1), r(',e=T,U=1'))
+        self.ae(pl('c', i=99, m=0), 'OK')
+        self.ae(g.image_count, 1)
+        s.reset()
+        self.ae(g.image_count, 0)
+        self.assertIsNone(q('T', U=1, q=1))
+
         # Test simple load
         for f in 32, 24:
             p = 'abc' + ('d' if f == 32 else '')

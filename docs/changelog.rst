@@ -280,6 +280,11 @@ Detailed list of changes
   palette, so that images automatically change color along with the terminal
   color scheme (:iss:`9379`)
 
+- Graphics protocol: Allow clients to detect support for individual protocol
+  actions and features, such as animation and Unicode placeholders, by adding
+  the new ``e`` key to a query, see :ref:`graphics_query_features`
+  (:iss:`10732`)
+
 - Layouts: Align the borders of neighboring windows and keep the gaps between
   them uniform, and add a new option :opt:`collapse_window_margins` to have
   the margins of neighboring windows collapse into each other instead of

@@ -1155,7 +1155,7 @@ class TestParser(BaseTest):
             for p, v in tuple(k.items()):
                 if isinstance(v, str) and p != 'payload':
                     k[p] = v.encode('ascii')
-            for f in 'action delete_action transmission_type compressed'.split():
+            for f in 'action delete_action transmission_type compressed report_supported'.split():
                 k.setdefault(f, b'\0')
             for f in (
                 'format more id data_sz data_offset width height x_offset y_offset data_height data_width cursor_movement'
@@ -1184,6 +1184,7 @@ class TestParser(BaseTest):
         t('a=t,t=d,s=100,z=9', payload='payload', action='t', transmission_type='d', data_width=100, z_index=9)
         t('a=t,t=d,s=100,z=9,q=2', action='t', transmission_type='d', data_width=100, z_index=9, quiet=2)
         t('N=1', usage_hints=1)
+        t('a=q,e=f', action='q', report_supported='f')
         e(',s=1', 'Malformed GraphicsCommand control block, invalid key character: 0x2c')
         e('W=1', 'Malformed GraphicsCommand control block, invalid key character: 0x57')
         e('1=1', 'Malformed GraphicsCommand control block, invalid key character: 0x31')
