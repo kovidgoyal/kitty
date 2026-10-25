@@ -130,7 +130,6 @@ func (self *Output) commit() {
 					self.dest.Chmod(fi.Mode().Perm())
 				}
 				f.Close()
-				os.Remove(f.Name())
 			}
 			self.err = os.Rename(self.dest.Name(), self.arg)
 			if self.err != nil {
