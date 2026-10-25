@@ -84,25 +84,20 @@ func (self *Output) add_data(data []byte) {
 }
 
 func (self *Output) write_image(img image.Image) (err error) {
-	var output *os.File
 	if self.arg_is_stream {
-		output = os.Stdout
+		output := os.Stdout
 		if self.arg == "/dev/stderr" {
 			output = os.Stderr
 		}
-	} else {
-		output, err = os.Create(self.arg)
-		if err != nil {
-			return err
-		}
+		return images.Encode(output, img, self.mime_type)
 	}
-	defer func() {
-		output.Close()
-		if err != nil && !self.arg_is_stream {
-			os.Remove(output.Name())
-		}
-	}()
-	return images.Encode(output, img, self.mime_type)
+	// Encode into memory first so that an encoding failure leaves any
+	// existing destination file untouched.
+	var buf bytes.Buffer
+	if err = images.Encode(&buf, img, self.mime_type); err != nil {
+		return err
+	}
+	return utils.AtomicUpdateFile(self.arg, &buf)
 }
 
 func (self *Output) commit() {
@@ -112,30 +107,23 @@ func (self *Output) commit() {
 	if self.image_needs_conversion {
 		self.dest.Seek(0, io.SeekStart)
 		img, _, err := image.Decode(self.dest)
-		self.dest.Close()
-		os.Remove(self.dest.Name())
+		self.cleanup()
 		if err == nil {
 			err = self.write_image(img)
 		}
 		if err != nil {
 			self.err = fmt.Errorf("Failed to encode image data to %s with error: %w", self.mime_type, err)
 		}
-	} else {
-		self.dest.Close()
-		if !self.is_stream {
-			f, err := os.OpenFile(self.arg, os.O_CREATE|os.O_RDONLY, 0666)
-			if err == nil {
-				fi, err := f.Stat()
-				if err == nil {
-					self.dest.Chmod(fi.Mode().Perm())
-				}
-				f.Close()
-			}
-			self.err = os.Rename(self.dest.Name(), self.arg)
-			if self.err != nil {
-				os.Remove(self.dest.Name())
-				self.err = fmt.Errorf("Failed to rename temporary file used for downloading to destination: %s with error: %w", self.arg, self.err)
-			}
+	} else if !self.is_stream {
+		// Copy the temporary file into place atomically, preserving the
+		// permissions of and following symlinks at the destination.
+		_, err := self.dest.Seek(0, io.SeekStart)
+		if err == nil {
+			err = utils.AtomicUpdateFile(self.arg, self.dest)
+		}
+		self.cleanup()
+		if err != nil {
+			self.err = fmt.Errorf("Failed to write downloaded data to destination: %s with error: %w", self.arg, err)
 		}
 	}
 	self.dest = nil

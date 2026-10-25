@@ -383,7 +383,8 @@ Detailed list of changes
   transfer no longer leaves a truncated file behind (:pull:`10713`)
 
 - Clipboard kitten: Fix a race when replacing an existing output file and
-  losing the original file if renaming the temporary file fails
+  losing the original file if writing it fails. Also preserve the permissions
+  of and follow symlinks at existing output files (:pull:`10738`)
 
 - Kittens: Fix laggy mouse selection and failures comparing remote
   directories in the diff kitten, Unicode quotes not being removed from around
