@@ -180,12 +180,14 @@ def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket
     sid = pcmd.get('stream_id', '')
     if sid and active_streams.get(sid, '') == pcmd['cmd']:
         return True
-    if 'cancel_async' in pcmd and pcmd.get('async_id'):
+    if 'cancel_async' in pcmd and str(pcmd.get('async', '')):
         # we allow these without authentication as they are sent on error
         # conditions and we can't have users prompted for these. The worst side
         # effect of a malicious cancel_async request is that it can prevent
         # another async request from getting a result, if it knows the async_id
-        # of that request.
+        # of that request. The condition here must match the one in
+        # handle_cmd() exactly, so that these requests are guaranteed to only
+        # cancel and never execute the command.
         return True
     pw = pcmd.get('password', '')
     if not pw:

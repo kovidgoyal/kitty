@@ -342,6 +342,10 @@ Detailed list of changes
   unresponsive peer blocking all remote control communication (:iss:`10672`,
   :pull:`10632`, :pull:`10688`, :pull:`10690`)
 
+- Remote control: Fix a crafted request being able to bypass password based
+  remote control authentication by masquerading as a cancellation of an
+  asynchronous request
+
 - ssh kitten: Preserve the permissions of copied directories, including nested
   directories, instead of using the permissions of the top level directory
   and the remote umask (:pull:`10727`)
