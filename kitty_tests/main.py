@@ -412,6 +412,9 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
 
 
 def worker_main(write_fd: int, ids_fd: int, verbosity: Optional[int] = None) -> None:
+    import warnings
+
+    warnings.simplefilter('error')
     # we need fonts installed in the user home directory as well, so initialize
     # fontconfig before nuking $HOME and friends
     from kitty.fonts.common import all_fonts_map
