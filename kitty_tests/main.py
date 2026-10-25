@@ -272,6 +272,13 @@ def env_for_python_tests() -> Iterator[None]:
         yield
 
 
+def send_record(write_fd: int, record: dict[str, Any]) -> None:
+    data = (json.dumps(record) + '\n').encode()
+    while data:
+        n = os.write(write_fd, data)
+        data = data[n:]
+
+
 class PipeTestResult(unittest.TestResult):
     """Writes test results as newline-delimited JSON records to a file descriptor."""
 
@@ -281,10 +288,7 @@ class PipeTestResult(unittest.TestResult):
         self._test_start: float = 0.0
 
     def _send(self, record: dict[str, Any]) -> None:
-        data = (json.dumps(record) + '\n').encode()
-        while data:
-            n = os.write(self._wfd, data)
-            data = data[n:]
+        send_record(self._wfd, record)
 
     def _elapsed(self) -> float:
         return time.monotonic() - self._test_start
@@ -324,32 +328,43 @@ class PipeTestResult(unittest.TestResult):
             self._send({'t': record_type, 'id': str(subtest), 'e': self._elapsed(), 'msg': self._exc_info_to_string(err, test)})
 
 
-def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
-    """Execute in a forked child: run tests, send results over write_fd, then exit."""
-    result: Optional[PipeTestResult] = None
+def run_test_worker(tests: list[unittest.TestCase], write_fd: int, verbosity: Optional[int] = None) -> None:
+    """Execute in a child process: run tests, then exit, never returning.
+
+    With verbosity None, results are sent over write_fd as JSON records,
+    otherwise they are printed to stdout. In both cases a final 'done' record
+    is sent once the tests and their environment cleanup are complete, so the
+    parent can detect a worker that exits early, for example because some code
+    under test called os._exit(0). Such an exit cannot be detected in-process.
+    """
+    worker_pid = os.getpid()
     exit_code = 1
     try:
         with env_for_python_tests():
-            from .base import forwardable_stdio
+            if verbosity is not None:
+                ok = run_cli(unittest.TestSuite(tests), verbosity)
+            else:
+                from .base import forwardable_stdio
 
-            with forwardable_stdio():
-                result = PipeTestResult(write_fd)
-                unittest.TestSuite(tests).run(result)
-                exit_code = 0
-    except Exception:
+                with forwardable_stdio():
+                    unittest.TestSuite(tests).run(PipeTestResult(write_fd))
+                ok = True
+        exit_code = 0 if ok else 1
+    except BaseException:
+        if os.getpid() != worker_pid:
+            # A process forked by a test escaped from it, it must not report
+            # anything on behalf of the worker
+            os._exit(1)
         import traceback
 
-        try:
-            rec: dict[str, Any] = {'t': 'worker_error', 'msg': traceback.format_exc()}
-            os.write(write_fd, (json.dumps(rec) + '\n').encode())
-        except OSError:
-            pass
+        with suppress(OSError):
+            send_record(write_fd, {'t': 'worker_error', 'msg': traceback.format_exc()})
         exit_code = 1
-    finally:
-        try:
-            os.close(write_fd)
-        except OSError:
-            pass
+    if os.getpid() == worker_pid:
+        with suppress(OSError):
+            send_record(write_fd, {'t': 'done'})
+    with suppress(OSError):
+        os.close(write_fd)
     os._exit(exit_code)
 
 
@@ -396,24 +411,53 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
     return pids, read_fds
 
 
-def worker_main(write_fd: int) -> None:
+def worker_main(write_fd: int, ids_fd: int, verbosity: Optional[int] = None) -> None:
     # we need fonts installed in the user home directory as well, so initialize
     # fontconfig before nuking $HOME and friends
     from kitty.fonts.common import all_fonts_map
 
     all_fonts_map(True)
 
-    test_ids = json.load(sys.stdin)
+    with open(ids_fd) as f:
+        test_ids = json.load(f)
     tests = [getattr(importlib.import_module(t['module']), t['cls'])(t['method']) for t in test_ids]
-    run_test_worker(tests, write_fd)
+    run_test_worker(tests, write_fd, verbosity)
+
+
+def spawn_test_worker(tests: list[unittest.TestCase], verbosity: Optional[int] = None) -> tuple['subprocess.Popen[bytes]', int]:
+    """Spawn a worker subprocess via kitty +runpy. Returns (proc, read_fd).
+
+    Used on macOS where fork() + threading is unsafe. With verbosity None the
+    worker is detached from the terminal, otherwise it shares it with us."""
+    from kitty.constants import kitty_exe
+
+    r, w = os.pipe()
+    ids_r, ids_w = os.pipe()
+    test_ids = [{'module': t.__class__.__module__, 'cls': t.__class__.__name__, 'method': t._testMethodName} for t in tests]
+    detached = verbosity is None
+    try:
+        proc: subprocess.Popen[bytes] = subprocess.Popen(
+            [kitty_exe(), '+runpy', f'from kitty_tests.main import *; worker_main({w}, {ids_r}, {verbosity!r})'],
+            pass_fds=(w, ids_r),
+            stdin=subprocess.DEVNULL if detached else None,
+            stdout=subprocess.DEVNULL if detached else None,
+            stderr=subprocess.DEVNULL if detached else None,
+            start_new_session=detached,  # see detach_from_controlling_terminal()
+        )
+    except BaseException:
+        os.close(r)
+        os.close(ids_w)
+        raise
+    finally:
+        os.close(w)
+        os.close(ids_r)
+    with open(ids_w, 'w') as f:
+        json.dump(test_ids, f)
+    return proc, r
 
 
 def spawn_test_workers(tests: list[unittest.TestCase]) -> tuple[list[subprocess.Popen[bytes]], list[int]]:
-    """Chunk tests and spawn worker subprocesses via kitty +runpy. Returns (procs, read_fds).
-
-    Used on macOS where fork() + threading is unsafe."""
-    from kitty.constants import kitty_exe
-
+    """Chunk tests and spawn worker subprocesses. Returns (procs, read_fds)."""
     n = min(os.cpu_count() or 4, 8, len(tests))
     chunks: list[list[unittest.TestCase]] = [[] for _ in range(n)]
     for i, test in enumerate(tests):
@@ -423,24 +467,56 @@ def spawn_test_workers(tests: list[unittest.TestCase]) -> tuple[list[subprocess.
     read_fds: list[int] = []
 
     for chunk in chunks:
-        r, w = os.pipe()
-        test_ids = [{'module': t.__class__.__module__, 'cls': t.__class__.__name__, 'method': t._testMethodName} for t in chunk]
-        proc: subprocess.Popen[bytes] = subprocess.Popen(
-            [kitty_exe(), '+runpy', f'from kitty_tests.main import *; worker_main({w})'],
-            pass_fds=(w,),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,  # see detach_from_controlling_terminal()
-        )
-        os.close(w)
-        assert proc.stdin is not None
-        proc.stdin.write(json.dumps(test_ids).encode())
-        proc.stdin.close()
+        proc, r = spawn_test_worker(chunk)
         read_fds.append(r)
         procs.append(proc)
 
     return procs, read_fds
+
+
+def run_serial_tests(tests: list[unittest.TestCase], verbosity: int) -> bool:
+    """Run tests in a single child process that shares our terminal, printing
+    results as they happen. The child is used so that it exiting before all
+    tests have run is detected."""
+    if sys.platform == 'darwin':
+        proc, r = spawn_test_worker(tests, verbosity)
+        pids: list[int] = []
+        procs = [proc]
+    else:
+        r, w = os.pipe()
+        pid = os.fork()
+        if pid == 0:
+            os.close(r)
+            run_test_worker(tests, w, verbosity)
+        os.close(w)
+        pids, procs = [pid], []
+    try:
+        data = b''
+        while chunk := os.read(r, 65536):
+            data += chunk
+        os.close(r)
+        if pids:
+            status = os.waitstatus_to_exitcode(os.waitpid(pids[0], 0)[1])
+        else:
+            status = procs[0].wait()
+    except BaseException:
+        terminate_workers(pids, procs, None)
+        raise
+    done = False
+    worker_errors: list[str] = []
+    for line in data.splitlines():
+        if line:
+            rec = json.loads(line)
+            if rec['t'] == 'done':
+                done = True
+            elif rec['t'] == 'worker_error':
+                worker_errors.append(rec['msg'])
+    if not done:
+        worker_errors.append(f'\nPython test process exited with status {status} before completing its tests')
+    for msg in worker_errors:
+        print(msg, file=sys.stderr)
+    sys.stderr.flush()
+    return status == 0 and not worker_errors
 
 
 _RED = '\x1b[31m'
@@ -462,6 +538,10 @@ def collect_worker_results(
     """Read JSON from worker pipes and go proc stdout, show live progress, print failures."""
     use_tty = sys.stdout.isatty()
     py_buffers: dict[int, bytes] = {fd: b'' for fd in read_fds}
+    # read_fds are in the same order as the pids or procs they belong to
+    worker_pid_for_fd = dict(zip(read_fds, pids + [p.pid for p in procs]))
+    py_completed: set[int] = set()
+    py_last_started: dict[int, str] = {}
     active_py = list(read_fds)
     go_buffer = b''
     go_active = go_proc is not None
@@ -590,7 +670,11 @@ def collect_worker_results(
                     rec: dict[str, Any] = json.loads(raw_py)
                     t = rec['t']
                     elapsed_test = float(rec.get('e') or 0.0)
-                    if t == 'ok':
+                    if t == 'start':
+                        py_last_started[fd] = rec['id']
+                    elif t == 'done':
+                        py_completed.add(fd)
+                    elif t == 'ok':
                         py_run += 1
                         all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
                         show_progress()
@@ -621,15 +705,16 @@ def collect_worker_results(
                     elif t == 'worker_error':
                         py_worker_errors.append(rec['msg'])
 
-    for pid in pids:
-        _, status = os.waitpid(pid, 0)
-        if status != 0:
-            py_worker_errors.append(f'Python test worker {pid} exited with status {os.waitstatus_to_exitcode(status)}')
-
-    for proc in procs:
-        rc = proc.wait()
-        if rc != 0:
-            py_worker_errors.append(f'Python test worker exited with status {rc}')
+    exit_codes: dict[int, int] = {pid: os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]) for pid in pids}
+    exit_codes.update((proc.pid, proc.wait()) for proc in procs)
+    for fd, pid in worker_pid_for_fd.items():
+        if fd not in py_completed:
+            msg = f'Python test worker {pid} exited with status {exit_codes[pid]} before completing its tests'
+            if last := py_last_started.get(fd):
+                msg += f', the last test it started was: {last}'
+            py_worker_errors.append(msg)
+        elif exit_codes[pid] != 0:
+            py_worker_errors.append(f'Python test worker {pid} exited with status {exit_codes[pid]}')
 
     elapsed = time.monotonic() - start
 
@@ -824,10 +909,10 @@ def run_tests(report_env: bool = False) -> None:
             from kitty.fonts.common import all_fonts_map
 
             all_fonts_map(True)
-            # Tests must never run against the real $HOME, some of them delete
-            # files/directories in it. See run_test_worker() for the parallel equivalent.
-            with env_for_python_tests():
-                python_ok = run_cli(all_tests, args.verbosity)
+            # run_test_worker() runs the tests with env_for_python_tests() as
+            # they must never run against the real $HOME, some of them delete
+            # files/directories in it.
+            python_ok = run_serial_tests(tests_list, args.verbosity)
             if go_proc is not None:
                 _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
             else:
