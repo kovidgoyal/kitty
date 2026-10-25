@@ -382,6 +382,9 @@ Detailed list of changes
   write to a temporary file that is renamed into place, so an interrupted
   transfer no longer leaves a truncated file behind (:pull:`10713`)
 
+- Clipboard kitten: Fix a race when replacing an existing output file and
+  losing the original file if renaming the temporary file fails
+
 - Kittens: Fix laggy mouse selection and failures comparing remote
   directories in the diff kitten, Unicode quotes not being removed from around
   paths and URLs in the hints kitten, various bugs in the choose-files,
