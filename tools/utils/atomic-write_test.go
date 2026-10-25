@@ -17,18 +17,19 @@ func TestAtomicWriteFileSymlinkChain(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	links := map[string]string{"nested/link": "../link", "link": "parent/target", "parent": "real"}
-	for path, target := range links {
-		if err := os.Symlink(target, path); err != nil {
+	// nested/link -> link -> parent/target where parent -> real and real/target does not exist
+	links := []struct{ path, target string }{{"nested/link", "../link"}, {"link", "parent/target"}, {"parent", "real"}}
+	for _, l := range links {
+		if err := os.Symlink(l.target, l.path); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if err := AtomicWriteFile(filepath.Join("nested", "link"), strings.NewReader("new contents"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	for path, target := range links {
-		if actual, err := os.Readlink(path); err != nil || actual != target {
-			t.Errorf("Symlink %s changed: %q %v", path, actual, err)
+	for _, l := range links {
+		if actual, err := os.Readlink(l.path); err != nil || actual != l.target {
+			t.Errorf("Symlink %s changed: %q %v", l.path, actual, err)
 		}
 	}
 	target := filepath.Join("real", "target")
