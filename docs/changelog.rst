@@ -235,11 +235,6 @@ Detailed list of changes
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
-- Show the hand pointer and hover highlighting over links only when the pressed
-  modifiers match a configured mouse action for opening the link with a single
-  click. Update both immediately when modifiers are pressed or released, even
-  without moving the mouse, or when program output removes the link.
-
 - A new option :opt:`restore_session_after_logout` to save the state of
   every kitty instance, including the scrollback of every window, when logging
   out, restarting or shutting down the computer and restore it the next time
@@ -272,18 +267,30 @@ Detailed list of changes
   with new :code:`animation_*` pipeline directives and can define a
   :code:`pointer_map()` function so that clicks and selections land on the
   text shown under the mouse, which the :code:`crt` shader now uses, see
-  :ref:`custom_shader_pointer_map` (:iss:`10587`, :iss:`10667`, :iss:`10693`,
-  :pull:`10639`)
+  :ref:`custom_shader_pointer_map`. Also fix animations becoming jerky after
+  kitty has been running for a few hours, shaders specified by path not being
+  found and various pipeline bugs (:iss:`10587`, :iss:`10667`, :iss:`10693`,
+  :iss:`10595`, :iss:`10694`, :pull:`10639`)
 
 - Graphics protocol: Add two new :ref:`indexed color image formats
   <indexed_color_data>` whose pixels are indices into the terminal color
   palette, so that images automatically change color along with the terminal
-  color scheme (:iss:`9379`)
+  color scheme, and allow clients to detect support for individual protocol
+  features, such as animation and Unicode placeholders, by adding the new
+  ``e`` key to a query, see :ref:`graphics_query_features` (:iss:`9379`,
+  :iss:`10732`)
 
-- Graphics protocol: Allow clients to detect support for individual protocol
-  actions and features, such as animation and Unicode placeholders, by adding
-  the new ``e`` key to a query, see :ref:`graphics_query_features`
-  (:iss:`10732`)
+- ssh kitten: Allow using different color schemes for remote hosts depending
+  on whether the operating system is in dark or light mode, via the new
+  :opt:`kitten-ssh.color_scheme_dark`, :opt:`kitten-ssh.color_scheme_light` and
+  :opt:`kitten-ssh.color_scheme_no_preference` options (:iss:`10724`)
+
+- :ref:`Automatic color themes <auto_color_scheme>`: When the system switches
+  between light and dark, keep colors set by programs running in a window, by
+  the :opt:`ssh kitten <kitten-ssh.color_scheme>`, by :option:`launch --color`
+  or :option:`launch --copy-colors`, and use the current theme colors when a
+  program restores its saved colors. :option:`launch --color` colors now also
+  survive config reloads (:iss:`10724`)
 
 - Layouts: Align the borders of neighboring windows and keep the gaps between
   them uniform, and add a new option :opt:`collapse_window_margins` to have
@@ -295,10 +302,19 @@ Detailed list of changes
   resize letter to take a fraction of the remaining resize steps, configurable
   with the new :code:`--fraction` option
 
+- Scale the thickness of box drawing characters, cursors and the window title
+  bar border with the font size, so they no longer look too thin when zoomed in
+  or too thick when zoomed out. At the configured :opt:`font_size` nothing
+  changes (:iss:`10362`)
+
 - :ref:`mouse_map <conf-kitty-mouse.mousemap>` can now map the scroll wheel, via
   the :code:`wheel_up`, :code:`wheel_down`, :code:`wheel_left` and
   :code:`wheel_right` buttons, for example, to change the font size with
   :kbd:`Ctrl+scroll`
+
+- Show the hand pointer and hover highlighting over links only when the pressed
+  modifiers match a configured mouse action for opening the link with a single
+  click, updating immediately when modifiers are pressed or released
 
 - quick-access-terminal kitten: New
   :option:`kitty +kitten quick_access_terminal --if-running`,
@@ -332,67 +348,46 @@ Detailed list of changes
 - Shell integration: Make the kitty terminfo files available in commands run
   via :program:`run0`, similar to :program:`sudo` (:pull:`10692`)
 
-- :ac:`detach_tab`: Show custom OS Window titles and tab titles in the OS
-  Window chooser
+- Processes kitty inserts to wrap the program it runs, such as
+  :file:`/usr/bin/login` on macOS or the wrapper for :option:`launch --hold`,
+  are now skipped when reporting the pid, working directory, command line and
+  environment of a window in :ref:`kitten @ ls <at-ls>` and when matching
+  windows. Also fix :option:`launch --cwd`:code:`=root` using the working
+  directory of the foreground process instead of the root process while the
+  shell is running a command
 
-- Add English and Spanish subtitles to the intro video shown at the top of the
-  documentation
+- Remote control: Fix a crafted request being able to bypass password based
+  remote control authentication by masquerading as a cancellation of an
+  asynchronous request
 
 - Remote control: Fix many commands, including ``action``, ``send-key``,
   ``set-colors``, ``set-background-opacity``, ``set-font-size``, ``ls``,
   ``run`` and ``set-enabled-layouts``, ignoring options, reporting false
   success or silently misinterpreting invalid input, particularly when used in
   :ac:`remote_control` mappings. ``set-colors`` now parses color files the same
-  way as :file:`kitty.conf` and handles all colors correctly. Also fix a single
-  unresponsive peer blocking all remote control communication (:iss:`10672`,
-  :pull:`10632`, :pull:`10688`, :pull:`10690`)
+  way as :file:`kitty.conf`. Also fix a single unresponsive peer blocking all
+  remote control communication and a crash when using damaged images with
+  ``set-window-logo`` or ``set-background-image`` (:iss:`10672`,
+  :pull:`10632`, :pull:`10688`, :pull:`10690`, :pull:`10715`)
 
-- Remote control: Fix a crafted request being able to bypass password based
-  remote control authentication by masquerading as a cancellation of an
-  asynchronous request
+- ssh kitten: Preserve the permissions of copied directories, fix copying
+  files outside HOME whose paths share its prefix and files in HOME being
+  copied to an absolute path with :code:`--symlink-strategy=resolve` when HOME
+  is a symlink, fix hanging when re-using a shared connection that has
+  silently died and fix colors 16-255 being set to white with themes that do
+  not define them (:iss:`10691`, :iss:`10661`, :pull:`10727`, :pull:`10737`)
 
-- ssh kitten: Fix copying files outside HOME whose paths share its prefix,
-  such as :file:`/home/alice-backup` when HOME is :file:`/home/alice`
-  (:pull:`10737`)
+- Transfer kitten: When receiving files, replace existing symbolic and hard
+  links at the destination instead of overwriting the files they point to, and
+  write to a temporary file that is renamed into place, so an interrupted
+  transfer no longer leaves a truncated file behind (:pull:`10713`)
 
-- ssh kitten: Fix files in HOME being copied to an absolute path on the remote
-  machine when using :code:`--symlink-strategy=resolve` and HOME is itself
-  reached via a symlink
-
-- ssh kitten: Preserve the permissions of copied directories, including nested
-  directories, instead of using the permissions of the top level directory
-  and the remote umask (:pull:`10727`)
-
-- ssh kitten: Fix hanging when re-using a shared connection that has silently
-  died, for example, after a network change or suspend, and fix colors 16-255
-  being set to white with themes that do not define them (:iss:`10691`,
-  :iss:`10661`)
-
-- :ref:`Automatic color themes <auto_color_scheme>`: When the system switches
-  between light and dark, keep colors set by programs running in a window, by
-  the :opt:`ssh kitten <kitten-ssh.color_scheme>`, by :option:`launch --color`
-  or :option:`launch --copy-colors`. Also, when a program restores its saved
-  colors, such as when exiting the ssh kitten, the current theme colors are
-  used rather than those from before the switch. :option:`launch --color`
-  colors now also survive config reloads (:iss:`10724`)
-
-- ssh kitten: Allow using different color schemes for remote hosts depending
-  on whether the operating system is in dark or light mode, via the new
-  :opt:`kitten-ssh.color_scheme_dark`, :opt:`kitten-ssh.color_scheme_light` and
-  :opt:`kitten-ssh.color_scheme_no_preference` options. The colors switch
-  automatically when the operating system changes modes (:iss:`10724`)
-
-- diff kitten: Fix laggy mouse selection with high polling rate mice and
-  various failures when comparing remote directories over SSH (:iss:`10634`,
-  :pull:`10641`, :pull:`10676`)
-
-- Kittens: Fix various bugs in the transfer, choose-files, quick-access-terminal
-  and other kittens and reject command-line options missing their required
-  value (:pull:`10687`)
-
-- Custom shaders: Fix animations becoming jerky after kitty has been running
-  for a few hours, shaders specified by path not being found and various
-  pipeline bugs (:iss:`10595`, :iss:`10694`, :iss:`10693`)
+- Kittens: Fix laggy mouse selection and failures comparing remote
+  directories in the diff kitten, Unicode quotes not being removed from around
+  paths and URLs in the hints kitten, various bugs in the choose-files,
+  quick-access-terminal and other kittens and reject command-line options
+  missing their required value (:iss:`10634`, :pull:`10641`, :pull:`10676`,
+  :pull:`10687`, :pull:`10730`)
 
 - Graphics protocol: Allow shared memory object names without a leading slash
   again, for sandboxed macOS applications, and fix various bugs with animation
@@ -400,26 +395,26 @@ Detailed list of changes
 
 - Fix various terminal emulation bugs, including in origin mode cursor
   position reports, erasing multicell characters, the CHT escape code and
-  copying text containing tabs, as well as a heap buffer overflow and an out
-  of bounds write (:iss:`10609`, :pull:`10632`, :pull:`10682`)
+  copying text containing tabs, text typed into a new window before the
+  program is ready sometimes being garbled, as well as a heap buffer overflow,
+  an out of bounds write and a use-after-free when reloading the config
+  (:iss:`10609`, :iss:`10729`, :pull:`10632`, :pull:`10682`)
 
 - Fix various window and tab management bugs, with focus moving to the wrong
   window on close, drag and drop onto title bars, visual window selection,
   Grid layout placement, title bar padding and tab titles being truncated too
-  early (:pull:`10640`)
+  early. :ac:`detach_tab` now shows custom titles in the OS Window chooser
+  (:pull:`10640`)
 
 - Fix bold or italic Nerd Font icons sometimes being rendered using glyphs
-  from an unrelated font, and always show the cursor trail when focus moves to
-  a different window (:iss:`10591`)
-
-- Fix :opt:`watcher` entries not being removed on config reload and
-  ``on_quit`` watchers being called repeatedly when a watcher aborts a quit
+  from an unrelated font, the cursor trail not always being shown when focus
+  moves to a different window and :opt:`watcher` entries not being removed on
+  config reload (:iss:`10591`)
 
 - Performance: Faster growing of the GPU sprite cache, particularly on macOS,
-  and less CPU usage with a non-zero :opt:`input_delay`
-
-- Fix text typed into a new window before the program in it is ready sometimes
-  being garbled
+  less CPU usage with a non-zero :opt:`input_delay` and no continuous
+  re-rendering when a selection is present and the window is scrolled back
+  (:iss:`10714`)
 
 - Wayland: Fix a crash on compositors without cursor-shape support, kitty
   being disconnected by GNOME when showing a long covered window, the app_id
@@ -427,52 +422,14 @@ Detailed list of changes
   (:iss:`10597`, :iss:`10602`, :iss:`10604`, :pull:`10632`)
 
 - Linux: Fix momentum scrolling up or left, X11 wheel events from sources
-  without smooth scrolling being ignored and various desktop notification bugs
-  (:iss:`10625`, :iss:`10695`, :pull:`10610`)
+  without smooth scrolling being ignored and various desktop notification
+  bugs. Notifications now identify kitty's desktop file, so desktops such as
+  KDE can group them (:iss:`10625`, :iss:`10695`, :pull:`10610`,
+  :pull:`10721`)
 
 - macOS: Fix padding rendering black after sleep, OS windows not staying on all
   spaces, a duplicate path when dropping items from Apple Mail and a memory
   leak (:iss:`10708`, :iss:`10581`, :iss:`10628`, :iss:`10673`)
-
-- Linux: Desktop notifications that do not specify an application name now
-  identify kitty's desktop file to the notification server, so desktops such
-  as KDE can group them under kitty (:pull:`10721`)
-
-- :option:`launch --cwd`:code:`=root`: Fix it using the working directory of
-  the foreground process instead of the root process while the shell is running
-  a command. Also, wrapper processes that kitty itself inserts, such as
-  :file:`/usr/bin/login` on macOS, are now skipped, so their first child is used
-  as the root process
-
-- The pid, working directory, command line and environment of a window
-  reported by :ref:`kitten @ ls <at-ls>` and used when matching windows by
-  :code:`pid`, :code:`cwd`, :code:`cmdline` or :code:`env` are now those of the
-  process kitty was asked to run rather than of a wrapper kitty runs it with,
-  such as :file:`/usr/bin/login` on macOS or the wrapper used for
-  :option:`launch --hold`
-
-- Remote control: Fix a crash when using damaged images with
-  :code:`set-window-logo` or :code:`set-background-image` (:pull:`10715`)
-
-- Transfer kitten: When receiving files, replace existing symbolic and hard
-  links at the destination instead of overwriting the files they point to.
-  Files are now written to a temporary file and renamed into place, so an
-  interrupted transfer no longer leaves a truncated file behind (:pull:`10713`)
-
-- Fix continuous re-rendering and needless GPU usage when a selection is
-  present and the window is scrolled back (:iss:`10714`)
-
-- Scale the thickness of box drawing characters, cursors and the window title
-  bar border with the font size, so they no longer look too thin when zoomed in
-  or too thick when zoomed out. At the configured :opt:`font_size` nothing
-  changes (:iss:`10362`)
-
-- Fix a use-after-free that could cause a crash when reloading the config after
-  changing font settings (:iss:`10729`)
-
-- hints kitten: Fix Unicode quotes not being removed from around paths and
-  URLs, such as file names in the output of wget (:pull:`10730`)
-
 
 
 0.49.2 [2026-10-01]
