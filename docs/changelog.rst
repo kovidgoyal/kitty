@@ -384,7 +384,8 @@ Detailed list of changes
 
 - Clipboard kitten: Fix a race when replacing an existing output file and
   losing the original file if writing it fails. Also preserve the permissions
-  of and follow symlinks at existing output files (:pull:`10738`)
+  of existing output files and follow symlinks even when their targets do not
+  exist (:pull:`10738`)
 
 - Kittens: Fix laggy mouse selection and failures comparing remote
   directories in the diff kitten, Unicode quotes not being removed from around

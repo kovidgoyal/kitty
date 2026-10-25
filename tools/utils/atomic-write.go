@@ -41,11 +41,7 @@ func AtomicCreateSymlink(oldname, newname string) (err error) {
 }
 
 func AtomicWriteFile(path string, data io.Reader, perm os.FileMode) (err error) {
-	npath, err := filepath.EvalSymlinks(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		err = nil
-		npath = path
-	}
+	npath, err := EvalSymlinksThatExist(path)
 	if err == nil {
 		path = npath
 		path, err = filepath.Abs(path)
