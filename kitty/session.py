@@ -671,8 +671,8 @@ both the shell **and** the process running inside it are re-started. This is mos
 when you have opened programs like editors or similar inside windows that started out running
 the shell and you want to preserve that. WARNING: Be careful when using this option, if you are
 running some dangerous command like :file:`rm` or :file:`mv` or similar in a shell, it will be re-run when
-the session is executed if you use this option. Note that this option requires :ref:`shell_integration`
-to work.
+the session is executed if you use this option and it is unsafe to use if you are connected to untrusted hosts.
+Note that this option requires :ref:`shell_integration` to work.
 
 
 --relocatable
