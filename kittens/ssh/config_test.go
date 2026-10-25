@@ -6,6 +6,7 @@ import (
 	"archive/tar"
 	"fmt"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/paths"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -179,6 +180,36 @@ func TestSSHCopyArcnames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if actual := get_arcname(tc.loc, tc.dest, tc.home); actual != tc.expected {
 				t.Fatalf("Incorrect arcname: %q != %q", actual, tc.expected)
+			}
+		})
+	}
+}
+
+func TestSSHCopySymlinkedHome(t *testing.T) {
+	tdir := t.TempDir()
+	real_home := filepath.Join(tdir, "usr", "home", "alice")
+	if err := os.MkdirAll(real_home, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(tdir, "usr", "home"), filepath.Join(tdir, "home")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(real_home, "config"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	home := filepath.Join(tdir, "home", "alice")
+	orig_paths_ctx := paths_ctx
+	defer func() { paths_ctx = orig_paths_ctx }()
+	paths_ctx = &paths.Ctx{}
+	paths_ctx.SetHome(home)
+	for _, strategy := range []string{"preserve", "keep-path", "resolve"} {
+		t.Run(strategy, func(t *testing.T) {
+			ci, err := ParseCopyInstruction("--symlink-strategy=" + strategy + " " + filepath.Join(home, "config"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ci[0].arcname != "home/config" {
+				t.Fatalf("Incorrect arcname: %q != %q", ci[0].arcname, "home/config")
 			}
 		})
 	}

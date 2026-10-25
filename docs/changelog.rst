@@ -353,6 +353,11 @@ Detailed list of changes
 
 - ssh kitten: Fix copying files outside HOME whose paths share its prefix,
   such as :file:`/home/alice-backup` when HOME is :file:`/home/alice`
+  (:pull:`10737`)
+
+- ssh kitten: Fix files in HOME being copied to an absolute path on the remote
+  machine when using :code:`--symlink-strategy=resolve` and HOME is itself
+  reached via a symlink
 
 - ssh kitten: Preserve the permissions of copied directories, including nested
   directories, instead of using the permissions of the top level directory

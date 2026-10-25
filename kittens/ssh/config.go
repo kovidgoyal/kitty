@@ -236,6 +236,15 @@ func ParseCopyInstruction(spec string) (ans []*CopyInstruction, err error) {
 		return nil, fmt.Errorf("Specifying a remote location with more than one file is not supported")
 	}
 	home := paths_ctx.HomePath()
+	if opts.SymlinkStrategy == "resolve" {
+		// The copied paths have their symlinks resolved, so HOME must be resolved
+		// as well, otherwise paths under a HOME that is itself reached via a
+		// symlink, such as /home -> /usr/home, are not recognized as being in HOME.
+		// If HOME cannot be resolved fall back to using it as is.
+		if rh, err := filepath.EvalSymlinks(home); err == nil {
+			home = rh
+		}
+	}
 	ans = make([]*CopyInstruction, 0, len(locations))
 	for _, loc := range locations {
 		ci := CopyInstruction{local_path: loc, exclude_patterns: opts.Exclude}
