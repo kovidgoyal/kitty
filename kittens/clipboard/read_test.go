@@ -162,6 +162,63 @@ func TestClipboardOutputCommitSymlink(t *testing.T) {
 	}
 }
 
+func TestClipboardOutputCommitDanglingSymlink(t *testing.T) {
+	for _, link_type := range []string{"absolute", "relative"} {
+		for _, data_type := range []string{"text", "image"} {
+			t.Run(link_type+"/"+data_type, func(t *testing.T) {
+				dir := t.TempDir()
+				target := filepath.Join(dir, "target")
+				dest := filepath.Join(dir, "link")
+				link := target
+				if link_type == "relative" {
+					link = "target"
+				}
+				if err := os.Symlink(link, dest); err != nil {
+					t.Fatal(err)
+				}
+				data := []byte("new contents")
+				output := Output{arg: dest}
+				defer output.cleanup()
+				if data_type == "image" {
+					var buf bytes.Buffer
+					if err := png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 2, 3))); err != nil {
+						t.Fatal(err)
+					}
+					data = buf.Bytes()
+					output.image_needs_conversion = true
+					output.mime_type = "image/jpeg"
+				}
+				output.add_data(data)
+				output.commit()
+				if output.err != nil {
+					t.Fatal(output.err)
+				}
+				if actual, err := os.Readlink(dest); err != nil || actual != link {
+					t.Errorf("Symlink at destination changed: %q %v", actual, err)
+				}
+				actual, err := os.ReadFile(target)
+				if err != nil {
+					t.Fatalf("Symlink target not created: %v", err)
+				}
+				if data_type == "image" {
+					img, format, err := image.Decode(bytes.NewReader(actual))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if format != "jpeg" || img.Bounds() != image.Rect(0, 0, 2, 3) {
+						t.Fatalf("Incorrect converted image: %s %v", format, img.Bounds())
+					}
+				} else if !bytes.Equal(actual, data) {
+					t.Fatalf("Incorrect contents in symlink target: %q", actual)
+				}
+				if names := list_dir(t, dir); !slices.Equal(names, []string{"link", "target"}) {
+					t.Fatalf("Stray files left behind after commit: %v", names)
+				}
+			})
+		}
+	}
+}
+
 func TestClipboardOutputImageEncodeFailure(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "output")
 	old_data := []byte("old contents")
