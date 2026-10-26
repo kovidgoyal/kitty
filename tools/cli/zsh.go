@@ -108,7 +108,13 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 		fmt.Fprintln(&output, "words[1]="+service)
 		fmt.Fprintln(&output, "_normal -p", service)
 	} else {
+		if len(completions.Groups) > 0 {
+			// Respect the user's description format, falling back to bold group titles
+			fmt.Fprintln(&output, "builtin local _kitty_fmt _kitty_expl")
+			output.WriteString(`builtin zstyle -s ":completion:${curcontext}:descriptions" format _kitty_fmt || _kitty_fmt='%B%d%b'` + "\n")
+		}
 		for _, mg := range completions.Groups {
+			fmt.Fprintln(&output, "builtin zformat -f _kitty_expl \"$_kitty_fmt\"", utils.QuoteStringForSH("d:"+mg.Title))
 			cmd := strings.Builder{}
 			escape_ourselves := mg.IsFiles // zsh quoting quotes a leading ~/ in filenames which is wrong
 			cmd.WriteString("compadd -U ")
@@ -117,8 +123,7 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 			}
 			cmd.WriteString("-J ")
 			cmd.WriteString(utils.QuoteStringForSH(mg.Title))
-			cmd.WriteString(" -X ")
-			cmd.WriteString(utils.QuoteStringForSH("%B" + mg.Title + "%b"))
+			cmd.WriteString(` -X "$_kitty_expl"`)
 			if mg.NoTrailingSpace {
 				cmd.WriteString(" -S ''")
 			}

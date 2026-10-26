@@ -454,6 +454,10 @@ Detailed list of changes
   :file:`/dev` is stuck (:iss:`10708`, :iss:`10581`, :iss:`10628`,
   :iss:`10673`, :iss:`10741`)
 
+- zsh completion: Respect the user's ``descriptions`` format style for group
+  headings instead of always using bold titles. Fixes literal ``%B`` markers
+  appearing with fzf-tab (:iss:`10748`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
