@@ -10,8 +10,129 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"testing"
 )
+
+func TestClipboardReadMultipleOutputs(t *testing.T) {
+	var png_data bytes.Buffer
+	bounds := image.Rect(0, 0, 2, 3)
+	if err := png.Encode(&png_data, image.NewRGBA(bounds)); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name            string
+		available_mimes []string
+		output_mimes    []string
+		aliases         []string
+	}{
+		{"text", []string{"text/plain"}, []string{"text/plain", "text/plain"}, nil},
+		{"images", []string{"image/png"}, []string{"image/png", "image/jpeg"}, nil},
+		{"images reversed", []string{"image/png"}, []string{"image/jpeg", "image/png"}, nil},
+		{"mixed", []string{"image/png", "text/plain"}, []string{"text/plain", "image/png", "text/plain", "image/jpeg"}, nil},
+		{"alias", []string{"text/x-custom"}, []string{"text/plain", "text/x-custom"}, []string{"text/plain=text/x-custom"}},
+		{"wildcard", []string{"text/plain"}, []string{"text/*", "text/plain"}, nil},
+		{"text fallback", []string{"text/plain"}, []string{"text/html", "text/plain"}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			requested := make(read_outputs)
+			aliases, err := parse_aliases(tc.aliases)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var outputs []*Output
+			var names []string
+			for i, mime_type := range tc.output_mimes {
+				name := fmt.Sprintf("output-%d", i)
+				names = append(names, name)
+				o := &Output{arg: filepath.Join(dir, name), mime_type: mime_type}
+				defer o.cleanup()
+				if err := o.assign_mime_type(tc.available_mimes, aliases); err != nil {
+					t.Fatal(err)
+				}
+				outputs = append(outputs, o)
+				requested.add(o)
+			}
+			if len(requested) != len(tc.available_mimes) {
+				t.Fatalf("Expected one request per remote MIME type, got %d", len(requested))
+			}
+			text_data := []byte("first line\nsecond line\n")
+			var wg sync.WaitGroup
+			for _, mime_type := range tc.available_mimes {
+				data := text_data
+				if mime_type == "image/png" {
+					data = png_data.Bytes()
+				}
+				for chunk := range slices.Chunk(data, 7) {
+					requested.add_data(mime_type, chunk)
+				}
+				requested.commit(mime_type, &wg)
+				// Completed outputs must ignore further data and not be committed twice.
+				requested.add_data(mime_type, []byte("ignored"))
+				requested.commit(mime_type, &wg)
+			}
+			wg.Wait()
+			for _, o := range outputs {
+				if o.err != nil {
+					t.Fatal(o.err)
+				}
+				if !o.started || !o.all_data_received {
+					t.Fatalf("Output %s was not completed", o.arg)
+				}
+				data, err := os.ReadFile(o.arg)
+				if err != nil {
+					t.Fatal(err)
+				}
+				switch o.mime_type {
+				case "image/jpeg":
+					img, format, err := image.Decode(bytes.NewReader(data))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if format != "jpeg" || img.Bounds() != bounds {
+						t.Fatalf("Incorrect converted image: %s %v", format, img.Bounds())
+					}
+				case "image/png":
+					if !bytes.Equal(data, png_data.Bytes()) {
+						t.Fatal("PNG output differs from clipboard data")
+					}
+				default:
+					if !bytes.Equal(data, text_data) {
+						t.Fatalf("Incorrect text output: %q", data)
+					}
+				}
+			}
+			if actual := list_dir(t, dir); !slices.Equal(actual, names) {
+				t.Fatalf("Unexpected output files: %v", actual)
+			}
+		})
+	}
+}
+
+func TestClipboardReadOutputFailure(t *testing.T) {
+	dir := t.TempDir()
+	failed := &Output{arg: filepath.Join(dir, "missing", "output"), remote_mime_type: "text/plain"}
+	succeeded := &Output{arg: filepath.Join(dir, "output"), remote_mime_type: "text/plain"}
+	defer failed.cleanup()
+	defer succeeded.cleanup()
+	requested := make(read_outputs)
+	requested.add(failed)
+	requested.add(succeeded)
+	requested.add_data("text/plain", []byte("clipboard contents"))
+	var wg sync.WaitGroup
+	requested.commit("text/plain", &wg)
+	wg.Wait()
+	if failed.err == nil {
+		t.Fatal("Expected an error writing to a missing directory")
+	}
+	if succeeded.err != nil {
+		t.Fatal(succeeded.err)
+	}
+	if data, err := os.ReadFile(succeeded.arg); err != nil || string(data) != "clipboard contents" {
+		t.Fatalf("Other output was not saved after a write failure: %q %v", data, err)
+	}
+}
 
 func TestClipboardOutputCommitAtomic(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "output")
