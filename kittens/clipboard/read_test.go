@@ -260,6 +260,45 @@ func TestClipboardReadDuplicateOutputFiles(t *testing.T) {
 	}
 }
 
+func TestClipboardReadDuplicateOutputFilesSymlinkParent(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		for _, absolute_link := range []bool{false, true} {
+			t.Run(fmt.Sprintf("existing=%t/absolute_link=%t", existing, absolute_link), func(t *testing.T) {
+				dir := t.TempDir()
+				t.Chdir(dir)
+				if err := os.MkdirAll("real/sub", 0o755); err != nil {
+					t.Fatal(err)
+				}
+				link := "real/sub"
+				if absolute_link {
+					link = filepath.Join(dir, link)
+				}
+				if err := os.Symlink(link, "link"); err != nil {
+					t.Fatal(err)
+				}
+				if existing {
+					for _, path := range []string{"target", "real/target"} {
+						if err := os.WriteFile(path, []byte("old contents"), 0o600); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+				// Concatenate to preserve link/.. in the absolute path as well.
+				for _, path := range []string{"link/../target", dir + "/link/../target"} {
+					outputs := []*Output{{arg: path}, {arg: "real/target"}}
+					if err := check_for_duplicate_output_files(outputs); err == nil {
+						t.Errorf("Duplicate output files not rejected: %s and real/target", path)
+					}
+					outputs[1].arg = "target"
+					if err := check_for_duplicate_output_files(outputs); err != nil {
+						t.Errorf("Distinct output files rejected: %s and target: %s", path, err)
+					}
+				}
+			})
+		}
+	}
+}
+
 func TestClipboardOutputCommitAtomic(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "output")
 	old_data := bytes.Repeat([]byte("old contents\n"), 1024)
