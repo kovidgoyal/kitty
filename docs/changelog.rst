@@ -454,6 +454,10 @@ Detailed list of changes
   :file:`/dev` is stuck (:iss:`10708`, :iss:`10581`, :iss:`10628`,
   :iss:`10673`, :iss:`10741`)
 
+- Fix programs that update the screen with several small writes, such as
+  :program:`less` when scrolling with the mouse wheel, briefly showing
+  partially drawn screens (:iss:`10749`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
