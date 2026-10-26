@@ -399,6 +399,9 @@ Detailed list of changes
   a symlink followed by ``..``, avoiding overwrites of the same target and
   erroneous rejection of distinct output files
 
+- Clipboard kitten: Reject duplicate output files that differ only in case on
+  case-insensitive filesystems, preventing one output from overwriting another
+
 - Kittens: When saving files, such as themes, config files or clipboard
   output, write to the target of a symlink even when the target does not yet
   exist, instead of replacing the symlink with a regular file (:pull:`10740`)
