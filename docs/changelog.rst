@@ -389,6 +389,10 @@ Detailed list of changes
 - Clipboard kitten: Fix saving the list of available MIME types to a file
   with :code:`kitten clipboard -g -m . formats.txt` silently doing nothing
 
+- Clipboard kitten: Fix only the last of several outputs that use the same
+  clipboard MIME type being saved, for example with
+  :code:`kitten clipboard -g picture.png picture.jpg` (:pull:`10744`)
+
 - Kittens: When saving files, such as themes, config files or clipboard
   output, write to the target of a symlink even when the target does not yet
   exist, instead of replacing the symlink with a regular file (:pull:`10740`)

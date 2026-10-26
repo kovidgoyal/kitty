@@ -52,7 +52,9 @@ func TestClipboardReadMultipleOutputs(t *testing.T) {
 					t.Fatal(err)
 				}
 				outputs = append(outputs, o)
-				requested.add(o)
+				if err := requested.add(o); err != nil {
+					t.Fatal(err)
+				}
 			}
 			if len(requested) != len(tc.available_mimes) {
 				t.Fatalf("Expected one request per remote MIME type, got %d", len(requested))
@@ -117,8 +119,11 @@ func TestClipboardReadOutputFailure(t *testing.T) {
 	defer failed.cleanup()
 	defer succeeded.cleanup()
 	requested := make(read_outputs)
-	requested.add(failed)
-	requested.add(succeeded)
+	for _, o := range []*Output{failed, succeeded} {
+		if err := requested.add(o); err != nil {
+			t.Fatal(err)
+		}
+	}
 	requested.add_data("text/plain", []byte("clipboard contents"))
 	var wg sync.WaitGroup
 	requested.commit("text/plain", &wg)
@@ -131,6 +136,31 @@ func TestClipboardReadOutputFailure(t *testing.T) {
 	}
 	if data, err := os.ReadFile(succeeded.arg); err != nil || string(data) != "clipboard contents" {
 		t.Fatalf("Other output was not saved after a write failure: %q %v", data, err)
+	}
+}
+
+func TestClipboardReadDuplicateStreamOutputs(t *testing.T) {
+	stream := func(arg, remote_mime_type string) *Output {
+		return &Output{arg: arg, arg_is_stream: true, remote_mime_type: remote_mime_type}
+	}
+	requested := make(read_outputs)
+	for _, o := range []*Output{
+		stream("/dev/stdout", "text/plain"),
+		stream("/dev/stderr", "text/plain"),
+		stream("/dev/stdout", "text/html"),
+		{arg: filepath.Join(t.TempDir(), "output"), remote_mime_type: "text/plain"},
+	} {
+		if err := requested.add(o); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, o := range []*Output{stream("/dev/stdout", "text/plain"), stream("/dev/stderr", "text/plain")} {
+		if err := requested.add(o); err == nil {
+			t.Fatalf("Duplicate stream output to %s for %s was not rejected", o.arg, o.remote_mime_type)
+		}
+	}
+	if len(requested["text/plain"]) != 3 || len(requested["text/html"]) != 1 {
+		t.Fatalf("Rejected outputs were added: %d %d", len(requested["text/plain"]), len(requested["text/html"]))
 	}
 }
 

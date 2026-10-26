@@ -281,8 +281,18 @@ func parse_aliases(raw []string) (map[string][]string, error) {
 
 type read_outputs map[string][]*Output
 
-func (self read_outputs) add(o *Output) {
+func (self read_outputs) add(o *Output) error {
+	if o.arg_is_stream {
+		// Stream outputs write data as it arrives, so two of them sharing a
+		// remote MIME type would interleave their data in the same stream.
+		for _, x := range self[o.remote_mime_type] {
+			if x.arg_is_stream && x.arg == o.arg {
+				return fmt.Errorf("Cannot write the clipboard MIME type %s to %s more than once", o.remote_mime_type, o.arg)
+			}
+		}
+	}
 	self[o.remote_mime_type] = append(self[o.remote_mime_type], o)
+	return nil
 }
 
 func (self read_outputs) add_data(mime_type string, data []byte) {
@@ -382,8 +392,8 @@ func run_get_loop(opts *Options, args []string) (err error) {
 					}
 					if o.remote_mime_type == "." {
 						o.write_mime_list(available_mimes)
-					} else {
-						requested_mimes.add(o)
+					} else if err = requested_mimes.add(o); err != nil {
+						return err
 					}
 				}
 				if len(requested_mimes) > 0 {
