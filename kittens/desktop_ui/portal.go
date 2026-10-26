@@ -71,9 +71,14 @@ type Portal struct {
 	file_chooser_first_instance_exited chan struct{}
 }
 
+func color_variant(col style.RGBA) dbus.Variant {
+	return dbus.MakeVariant([]float64{float64(col.Red) / 255., float64(col.Green) / 255., float64(col.Blue) / 255.})
+}
+
 func to_color(spec string) (v dbus.Variant, err error) {
-	if col, err := style.ParseColor(spec); err == nil {
-		return dbus.MakeVariant([]float64{float64(col.Red) / 255., float64(col.Green) / 255., float64(col.Blue) / 255.}), nil
+	col, err := style.ParseColor(spec)
+	if err == nil {
+		v = color_variant(col)
 	}
 	return
 }
@@ -94,7 +99,7 @@ func NewPortal(opts *Config, server_options *ServerOptions) (p *Portal, err erro
 	default:
 		ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_COLOR_SCHEME_KEY] = dbus.MakeVariant(uint32(NO_PREFERENCE))
 	}
-	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_ACCENT_COLOR_KEY], err = to_color(opts.Accent_color)
+	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_ACCENT_COLOR_KEY] = color_variant(opts.Accent_color)
 	var contrast uint32
 	if opts.Contrast == Contrast_high {
 		contrast = 1
