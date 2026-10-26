@@ -119,6 +119,9 @@ func TestClipboardReadOutputFailure(t *testing.T) {
 	succeeded := &Output{arg: filepath.Join(dir, "output"), remote_mime_type: "text/plain"}
 	defer failed.cleanup()
 	defer succeeded.cleanup()
+	if err := check_for_duplicate_output_files([]*Output{failed, succeeded}); err != nil {
+		t.Fatal(err)
+	}
 	requested := make(read_outputs)
 	for _, o := range []*Output{failed, succeeded} {
 		if err := requested.add(o); err != nil {
@@ -257,6 +260,75 @@ func TestClipboardReadDuplicateOutputFiles(t *testing.T) {
 		if err := check_for_duplicate_output_files(outputs(args...)); err == nil {
 			t.Fatalf("Duplicate output files not rejected: %v", args)
 		}
+	}
+}
+
+func TestClipboardReadCaseAliasedOutputFiles(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		t.Run(fmt.Sprintf("existing=%t", existing), func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			for _, dir := range []string{"destination", "DESTINATION"} {
+				if err := os.Mkdir(dir, 0o755); err != nil && !os.IsExist(err) {
+					t.Fatal(err)
+				}
+			}
+			lower, err := os.Stat("destination")
+			if err != nil {
+				t.Fatal(err)
+			}
+			upper, err := os.Stat("DESTINATION")
+			if err != nil {
+				t.Fatal(err)
+			}
+			case_insensitive := os.SameFile(lower, upper)
+			if err := os.Symlink("destination/OUTPUT.TXT", "link"); err != nil {
+				t.Fatal(err)
+			}
+			paths := []string{"destination/output.txt", "destination/OUTPUT.TXT", "DESTINATION/output.txt", "DESTINATION/OUTPUT.TXT"}
+			if existing {
+				for _, path := range paths {
+					if err := os.WriteFile(path, []byte("original contents"), 0o640); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			before := list_dir(t, "destination")
+			for _, path := range append(paths[1:], "link") {
+				err := check_for_duplicate_output_files([]*Output{{arg: paths[0]}, {arg: path}})
+				if (err != nil) != case_insensitive {
+					t.Errorf("Incorrect duplicate detection for %s and %s: case_insensitive=%t error=%v", paths[0], path, case_insensitive, err)
+				}
+			}
+			if actual := list_dir(t, "destination"); !slices.Equal(actual, before) {
+				t.Errorf("Duplicate detection left files behind: %v", actual)
+			}
+			for _, path := range paths {
+				data, err := os.ReadFile(path)
+				if existing {
+					if err != nil || string(data) != "original contents" {
+						t.Errorf("Duplicate detection changed %s: %q %v", path, data, err)
+					}
+				} else if !os.IsNotExist(err) {
+					t.Errorf("Duplicate detection created %s: %v", path, err)
+				}
+			}
+		})
+	}
+}
+
+func TestClipboardReadHardLinkedOutputFiles(t *testing.T) {
+	dir := t.TempDir()
+	a, b := filepath.Join(dir, "output.txt"), filepath.Join(dir, "hardlink.txt")
+	if err := os.WriteFile(a, []byte("original contents"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(a, b); err != nil {
+		t.Fatal(err)
+	}
+	// Atomic replacement writes to distinct directory entries even when the
+	// original files share an inode.
+	if err := check_for_duplicate_output_files([]*Output{{arg: a}, {arg: b}}); err != nil {
+		t.Fatal(err)
 	}
 }
 

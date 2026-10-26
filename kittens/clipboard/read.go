@@ -440,6 +440,7 @@ func resolved_output_path(path string) (string, error) {
 
 func check_for_duplicate_output_files(outputs []*Output) error {
 	seen := make(map[string]string, len(outputs))
+	probe_prefix := "." + utils.RandomFilename() + "-"
 	for _, o := range outputs {
 		if o.arg_is_stream {
 			continue
@@ -452,6 +453,21 @@ func check_for_duplicate_output_files(outputs []*Output) error {
 			return fmt.Errorf("The output files %s and %s are the same file", prev, o.arg)
 		}
 		seen[path] = o.arg
+
+		// Let the destination filesystem compare the names, including case
+		// and Unicode normalization, without touching the output files.
+		probe := filepath.Join(filepath.Dir(path), probe_prefix+filepath.Base(path))
+		f, err := os.OpenFile(probe, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			if os.IsExist(err) {
+				return fmt.Errorf("The output file %s refers to the same file as another output", o.arg)
+			}
+			// If no temporary file can be created, let this output report
+			// its write error without preventing other outputs.
+			continue
+		}
+		f.Close()
+		defer os.Remove(probe)
 	}
 	return nil
 }
