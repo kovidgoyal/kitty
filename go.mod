@@ -9,17 +9,17 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/bmatcuk/doublestar/v4 v4.10.3
 	github.com/dlclark/regexp2 v1.12.0
-	github.com/ebitengine/purego v0.11.1
-	github.com/emmansun/base64 v0.10.0
+	github.com/ebitengine/purego v0.11.2
+	github.com/emmansun/base64 v0.11.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
-	github.com/klauspost/compress v1.20.1
+	github.com/klauspost/compress v1.20.3
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
 	github.com/kovidgoyal/go-shm/v2 v2.0.1
 	github.com/kovidgoyal/imaging v1.9.0
-	github.com/nwaples/rardecode/v2 v2.4.4
+	github.com/nwaples/rardecode/v2 v2.4.5
 	github.com/seancfoley/ipaddress-go v1.8.4
 	github.com/sgtdi/fswatcher v1.3.0
 	github.com/shirou/gopsutil/v4 v4.26.9
