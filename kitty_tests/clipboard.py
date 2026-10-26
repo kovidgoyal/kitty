@@ -1,15 +1,55 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 from base64 import standard_b64decode, standard_b64encode
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from kitty.clipboard import WriteRequest
+from kitty.constants import kitten_exe
 from kitty.fast_data_types import StreamingBase64Decoder
 
 from .base import BaseTest
 
 
 class TestClipboard(BaseTest):
+    def test_clipboard_read_mime_list(self):
+        mime_list = b'text/plain image/png'
+        response = (
+            b'\x1b]5522;type=read:status=OK\x1b\\'
+            b'\x1b]5522;type=read:status=DATA:mime=Lg==;' + standard_b64encode(mime_list) + b'\x1b\\'
+            b'\x1b]5522;type=read:status=DONE\x1b\\'
+        )
+        for destination in ('new', 'existing', 'directory', 'stdout'):
+            with self.subTest(destination=destination), TemporaryDirectory() as tdir:
+                dest = Path(tdir) / 'formats.txt'
+                if destination == 'existing':
+                    dest.write_bytes(b'old contents')
+                    dest.chmod(0o640)
+                elif destination == 'directory':
+                    dest.mkdir()
+                    (dest / 'child').write_bytes(b'keep me')
+                arg = '/dev/stdout' if destination == 'stdout' else 'formats.txt'
+                with self.create_pty([kitten_exe(), 'clipboard', '-g', '-m', '.', arg], cwd=tdir) as pty:
+                    pty.wait_till(lambda: bool(pty.callbacks.cc_buf))
+                    self.ae([x[0] for x in pty.callbacks.cc_buf], ['type=read;Lg=='])
+                    pty.write_to_child(response)
+                    pty.wait_till_child_exits(require_exit_code=1 if destination == 'directory' else 0)
+                    if destination == 'directory':
+                        pty.wait_till(lambda: 'Failed to write downloaded data' in pty.screen_contents())
+                    elif destination == 'stdout':
+                        pty.wait_till(lambda: pty.screen_contents() == 'text/plain\nimage/png')
+                if destination == 'directory':
+                    self.ae((dest / 'child').read_bytes(), b'keep me')
+                    self.ae(os.listdir(dest), ['child'])
+                elif destination != 'stdout':
+                    self.assertTrue(dest.is_file(), 'MIME list was not saved to the destination file')
+                    self.ae(dest.read_bytes(), b'text/plain\nimage/png')
+                    if destination == 'existing':
+                        self.ae(dest.stat().st_mode & 0o777, 0o640)
+                self.ae(os.listdir(tdir), [] if destination == 'stdout' else ['formats.txt'])
+
     def test_clipboard_write_request(self):
         def t(data, expected):
             wr = WriteRequest(max_size=64)
