@@ -279,6 +279,29 @@ func parse_aliases(raw []string) (map[string][]string, error) {
 	return ans, nil
 }
 
+type read_outputs map[string][]*Output
+
+func (self read_outputs) add(o *Output) {
+	self[o.remote_mime_type] = append(self[o.remote_mime_type], o)
+}
+
+func (self read_outputs) add_data(mime_type string, data []byte) {
+	for _, o := range self[mime_type] {
+		if !o.all_data_received {
+			o.add_data(data)
+		}
+	}
+}
+
+func (self read_outputs) commit(mime_type string, wg *sync.WaitGroup) {
+	for _, o := range self[mime_type] {
+		if !o.all_data_received {
+			o.all_data_received = true
+			wg.Go(o.commit)
+		}
+	}
+}
+
 func run_get_loop(opts *Options, args []string) (err error) {
 	lp, err := loop.NewForSimpleInteraction()
 	if err != nil {
@@ -287,7 +310,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 	var available_mimes []string
 	var wg sync.WaitGroup
 	var getting_data_for string
-	requested_mimes := make(map[string]*Output)
+	requested_mimes := make(read_outputs)
 	reading_available_mimes := true
 	outputs := make([]*Output, len(args))
 	aliases, merr := parse_aliases(opts.Alias)
@@ -360,7 +383,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 					if o.remote_mime_type == "." {
 						o.write_mime_list(available_mimes)
 					} else {
-						requested_mimes[o.remote_mime_type] = o
+						requested_mimes.add(o)
 					}
 				}
 				if len(requested_mimes) > 0 {
@@ -375,31 +398,17 @@ func run_get_loop(opts *Options, args []string) (err error) {
 			switch metadata["status"] {
 			case "DATA":
 				current_mime := metadata["mime"]
-				o := requested_mimes[current_mime]
-				if o != nil {
+				if _, found := requested_mimes[current_mime]; found {
 					if getting_data_for != current_mime {
-						if prev := requested_mimes[getting_data_for]; prev != nil && !prev.all_data_received {
-							prev.all_data_received = true
-							wg.Go(func() {
-								prev.commit()
-							})
-
-						}
+						requested_mimes.commit(getting_data_for, &wg)
 						getting_data_for = current_mime
 					}
-					if !o.all_data_received {
-						o.add_data(payload)
-					}
+					requested_mimes.add_data(current_mime, payload)
 				}
 			case "OK":
 			case "DONE":
-				if prev := requested_mimes[getting_data_for]; getting_data_for != "" && prev != nil && !prev.all_data_received {
-					prev.all_data_received = true
-					wg.Go(func() {
-						prev.commit()
-					})
-					getting_data_for = ""
-				}
+				requested_mimes.commit(getting_data_for, &wg)
+				getting_data_for = ""
 				lp.Quit(0)
 			default:
 				return fmt.Errorf("Failed to read data from the clipboard with error: %w", error_from_status(metadata["status"]))
