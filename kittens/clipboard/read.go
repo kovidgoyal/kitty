@@ -439,8 +439,11 @@ func resolved_output_path(path string) (string, error) {
 }
 
 func check_for_duplicate_output_files(outputs []*Output) error {
+	type resolved_output struct {
+		path, arg string
+	}
 	seen := make(map[string]string, len(outputs))
-	probe_prefix := "." + utils.RandomFilename() + "-"
+	resolved := make([]resolved_output, 0, len(outputs))
 	for _, o := range outputs {
 		if o.arg_is_stream {
 			continue
@@ -453,21 +456,46 @@ func check_for_duplicate_output_files(outputs []*Output) error {
 			return fmt.Errorf("The output files %s and %s are the same file", prev, o.arg)
 		}
 		seen[path] = o.arg
+		resolved = append(resolved, resolved_output{path, o.arg})
+	}
+	if len(resolved) < 2 {
+		// Avoid creating probe files when there is nothing to compare
+		return nil
+	}
 
-		// Let the destination filesystem compare the names, including case
-		// and Unicode normalization, without touching the output files.
-		probe := filepath.Join(filepath.Dir(path), probe_prefix+filepath.Base(path))
+	// Let the destination filesystem compare the names, including case
+	// and Unicode normalization, without touching the output files.
+	type created_probe struct {
+		info os.FileInfo
+		arg  string
+	}
+	probe_prefix := "." + utils.RandomFilename() + "-"
+	probes := make([]created_probe, 0, len(resolved))
+	for _, r := range resolved {
+		probe := filepath.Join(filepath.Dir(r.path), probe_prefix+filepath.Base(r.path))
 		f, err := os.OpenFile(probe, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 		if err != nil {
 			if os.IsExist(err) {
-				return fmt.Errorf("The output file %s refers to the same file as another output", o.arg)
+				if s, serr := os.Stat(probe); serr == nil {
+					for _, p := range probes {
+						if os.SameFile(p.info, s) {
+							return fmt.Errorf("The output files %s and %s are the same file", p.arg, r.arg)
+						}
+					}
+				}
+				return fmt.Errorf("The output file %s refers to the same file as another output", r.arg)
 			}
 			// If no temporary file can be created, let this output report
 			// its write error without preventing other outputs.
 			continue
 		}
-		f.Close()
 		defer os.Remove(probe)
+		s, err := f.Stat()
+		f.Close()
+		if err != nil {
+			return fmt.Errorf("Failed to stat the temporary file %s with error: %w", probe, err)
+		}
+		probes = append(probes, created_probe{s, r.arg})
 	}
 	return nil
 }

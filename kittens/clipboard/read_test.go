@@ -292,15 +292,22 @@ func TestClipboardReadCaseAliasedOutputFiles(t *testing.T) {
 					}
 				}
 			}
-			before := list_dir(t, "destination")
+			before := map[string][]string{"destination": list_dir(t, "destination"), "DESTINATION": list_dir(t, "DESTINATION")}
 			for _, path := range append(paths[1:], "link") {
 				err := check_for_duplicate_output_files([]*Output{{arg: paths[0]}, {arg: path}})
 				if (err != nil) != case_insensitive {
 					t.Errorf("Incorrect duplicate detection for %s and %s: case_insensitive=%t error=%v", paths[0], path, case_insensitive, err)
 				}
+				if err != nil {
+					if expected := fmt.Sprintf("The output files %s and %s are the same file", paths[0], path); err.Error() != expected {
+						t.Errorf("Incorrect error message: %q != %q", err.Error(), expected)
+					}
+				}
 			}
-			if actual := list_dir(t, "destination"); !slices.Equal(actual, before) {
-				t.Errorf("Duplicate detection left files behind: %v", actual)
+			for dir, files := range before {
+				if actual := list_dir(t, dir); !slices.Equal(actual, files) {
+					t.Errorf("Duplicate detection left files behind in %s: %v", dir, actual)
+				}
 			}
 			for _, path := range paths {
 				data, err := os.ReadFile(path)
