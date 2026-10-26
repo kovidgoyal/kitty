@@ -386,6 +386,9 @@ Detailed list of changes
   losing the original file if writing it fails. Also preserve the permissions
   of and follow symlinks at existing output files (:pull:`10738`)
 
+- Clipboard kitten: Fix saving the list of available MIME types to a file
+  with :code:`kitten clipboard -g -m . formats.txt` silently doing nothing
+
 - Kittens: When saving files, such as themes, config files or clipboard
   output, write to the target of a symlink even when the target does not yet
   exist, instead of replacing the symlink with a regular file (:pull:`10740`)

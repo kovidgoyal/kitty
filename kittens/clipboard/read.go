@@ -355,6 +355,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 						o.started = true
 						o.add_data(utils.UnsafeStringToBytes(strings.Join(available_mimes, "\n")))
 						o.all_data_received = true
+						o.commit()
 					} else {
 						requested_mimes[o.remote_mime_type] = o
 					}
