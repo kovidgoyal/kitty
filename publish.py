@@ -81,8 +81,11 @@ def run_build(args: Any) -> None:
     m = runpy.run_path('./setup.py', run_name='__publish__')
     vcs_rev: str = m['get_vcs_rev']()
     program_data = vcs_rev
+    build_options = [f'--vcs-rev={vcs_rev}']
     if building_nightly:
-        program_data = json.dumps({'vcs_rev': vcs_rev, 'nightly': True, 'build_timestamp': int(time.time())})
+        timestamp = int(time.time())
+        program_data = f'nightly:{vcs_rev}:{timestamp}'
+        build_options += ['--nightly', f'--build-timestamp={timestamp}']
     program_data = shlex.quote(program_data)
 
     def run_with_retry(cmd: str, timeout: float | None = 20 * 60, retry_cmd: str = '') -> None:
@@ -106,7 +109,7 @@ def run_build(args: Any) -> None:
     )
     call('python ../bypy macos shutdown', echo=True)
     call('make debug')
-    call('./setup.py build-static-binaries')
+    call('./setup.py', 'build-static-binaries', *build_options)
 
 
 def run_tag(args: Any) -> None:

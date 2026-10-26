@@ -331,6 +331,7 @@ class Options:
     vcs_rev: str = ''
     nightly: bool = False
     build_timestamp: Optional[int] = None
+    version_suffix: Optional[str] = None
 
 
 def emphasis(text: str) -> str:
@@ -881,16 +882,43 @@ def get_vcs_rev() -> str:
     return ans
 
 
+def parse_build_timestamp(value: str) -> int:
+    try:
+        timestamp = int(value)
+        if timestamp < 0:
+            raise ValueError
+        datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        raise argparse.ArgumentTypeError('expected a non-negative Unix timestamp within the supported date range') from None
+    return timestamp
+
+
 def version_suffix(args: Options) -> str:
+    if args.version_suffix is not None:
+        return args.version_suffix
     if not args.nightly:
-        return ''
-    vcs_rev = args.vcs_rev or get_vcs_rev()
-    if not vcs_rev:
-        raise SystemExit('A nightly build requires a VCS revision. Specify --vcs-rev when building without .git.')
+        if args.build_timestamp is not None:
+            raise ValueError('--build-timestamp requires --nightly')
+        args.version_suffix = ''
+        return args.version_suffix
+    source = '--build-timestamp'
     if args.build_timestamp is None:
-        raise SystemExit('A nightly build requires --build-timestamp.')
+        timestamp = os.environ.get('SOURCE_DATE_EPOCH', '')
+        source = 'SOURCE_DATE_EPOCH'
+    else:
+        timestamp = str(args.build_timestamp)
+    if not timestamp:
+        raise ValueError('--nightly requires --build-timestamp or SOURCE_DATE_EPOCH')
+    try:
+        args.build_timestamp = parse_build_timestamp(timestamp)
+    except argparse.ArgumentTypeError as err:
+        raise ValueError(f'Invalid {source}: {err}') from None
+    args.vcs_rev = args.vcs_rev or get_vcs_rev()
+    if not args.vcs_rev:
+        raise ValueError('A nightly build requires a VCS revision. Specify --vcs-rev when building without .git.')
     built_at = datetime.datetime.fromtimestamp(args.build_timestamp, datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    return f'-nightly-{vcs_rev[:10]} (built {built_at})'
+    args.version_suffix = f'-nightly-{args.vcs_rev[:10]} (built {built_at})'
+    return args.version_suffix
 
 
 @lru_cache
@@ -1357,6 +1385,7 @@ def compile_kittens(args: Options) -> None:
 
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
     global env
+    suffix = version_suffix(args)
     env = init_env(
         args.debug,
         args.sanitize,
@@ -1376,7 +1405,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
         verbose=args.verbose > 0,
         vcs_rev=args.vcs_rev,
     )
-    env.version_suffix = version_suffix(args)
+    env.version_suffix = suffix
 
 
 @lru_cache
@@ -1547,21 +1576,22 @@ def build_static_kittens(
         print('Skipping building of the kitten binary because of a command line option. Build is incomplete', file=sys.stderr)
         return ''
     cmd = go + ['build', '-v']
+    suffix = version_suffix(args)
     vcs_rev = args.vcs_rev or get_vcs_rev()
     ld_flags: List[str] = []
     with open('go.mod') as f:
         m = re.search(r'^module\s+(\S+)', f.read(), flags=re.M)
         assert m is not None
         modpath = m.group(1).strip()
-    binary_data_flags = [f'-X {modpath}.VCSRevision={vcs_rev}']
+    binary_data_flags = ['-X', f'{modpath}.VCSRevision={vcs_rev}', '-X', f'{modpath}.VersionSuffix={suffix}']
     if for_freeze:
-        binary_data_flags.append(f'-X {modpath}.IsFrozenBuild=true')
+        binary_data_flags += ['-X', f'{modpath}.IsFrozenBuild=true']
     if for_platform:
-        binary_data_flags.append(f'-X {modpath}.IsStandaloneBuild=true')
+        binary_data_flags += ['-X', f'{modpath}.IsStandaloneBuild=true']
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
-    cmd += ['-ldflags', ' '.join(binary_data_flags + ld_flags)]
+    cmd += ['-ldflags', shlex.join(binary_data_flags + ld_flags)]
     dest = os.path.join(destination_dir or launcher_dir, 'kitten')
     if for_platform:
         dest += f'-{for_platform[0]}-{for_platform[1]}'
@@ -1696,7 +1726,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(build_dir, exist_ok=True)
     objects = []
     headers = glob.glob('kitty/launcher/*.h')
-    cppflags.append('-DKITTY_VERSION=' + json.dumps('.'.join(map(str, version)) + version_suffix(args)))
+    cppflags.append('-DKITTY_VERSION=' + json.dumps('.'.join(map(str, version)) + env.version_suffix))
     for src in ('kitty/launcher/main.c', 'kitty/launcher/single-instance.c', 'kitty/launcher/cmdline.c'):
         obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)
@@ -2355,9 +2385,9 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
     p.add_argument('--nightly', default=Options.nightly, action='store_true', help='Include nightly build information in the displayed kitty version.')
     p.add_argument(
         '--build-timestamp',
-        type=int,
+        type=parse_build_timestamp,
         default=Options.build_timestamp,
-        help='The build time as seconds since the Unix epoch. For nightly builds, defaults to SOURCE_DATE_EPOCH or the current time.',
+        help='The build time as seconds since the Unix epoch. Requires --nightly. Defaults to SOURCE_DATE_EPOCH; required if that is unset.',
     )
     p.add_argument(
         '--extra-logging',
@@ -2574,9 +2604,12 @@ def main() -> None:
     global verbose, build_dir
     if len(sys.argv) > 1 and sys.argv[1] == 'build-dep':
         return build_dep()
-    args = option_parser().parse_args(namespace=Options())
-    if args.nightly and args.build_timestamp is None:
-        args.build_timestamp = int(os.environ.get('SOURCE_DATE_EPOCH') or time.time())
+    parser = option_parser()
+    args = parser.parse_args(namespace=Options())
+    try:
+        version_suffix(args)
+    except ValueError as err:
+        parser.error(str(err))
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(src_base)

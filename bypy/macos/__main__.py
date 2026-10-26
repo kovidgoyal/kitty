@@ -416,7 +416,7 @@ class Freeze(object):
         self.compile_py_modules()
         freeze_python(self.python_stdlib, pdir, self.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM', remove_pyc_files=True)
         shutil.rmtree(self.python_stdlib)
-        iv['build_frozen_launcher']([path_to_freeze_dir(), self.obj_dir])
+        iv['build_frozen_launcher']([path_to_freeze_dir(), self.obj_dir], globals()['args'])
         os.rename(join(dirname(self.contents_dir), 'bin', 'kitty'), join(self.contents_dir, 'MacOS', 'kitty'))
         shutil.rmtree(join(dirname(self.contents_dir), 'bin'))
         self.fix_dependencies_in_lib(join(self.contents_dir, 'MacOS', 'kitty'))
@@ -429,7 +429,7 @@ class Freeze(object):
 
     @flush
     def build_frozen_tools(self) -> None:
-        iv['build_frozen_tools'](join(self.contents_dir, 'MacOS', 'kitty'))
+        iv['build_frozen_tools'](join(self.contents_dir, 'MacOS', 'kitty'), globals()['args'])
 
     @flush
     def add_site_packages(self) -> None:

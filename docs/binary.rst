@@ -94,7 +94,9 @@ Customizing the installation
          installer=nightly
 
   Nightly builds include ``-nightly-<commit>`` and the UTC build time in
-  :option:`kitty --version`, so different nightly builds can be identified.
+  :option:`kitty --version` and ``kitten --version``, so different nightly builds
+  can be identified. Local nightly builds require ``setup.py --nightly`` and
+  either ``--build-timestamp`` (Unix epoch seconds) or ``SOURCE_DATE_EPOCH``.
 
   If you want to install it in parallel to the released kitty specify a
   different install locations with ``dest``:

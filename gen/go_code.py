@@ -712,6 +712,7 @@ const ImagePlaceholderChar rune = {placeholder_char}
 const SSHControlMasterTemplate = "{kc.ssh_control_master_template}"
 const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
 var VCSRevision string = ""
+var VersionSuffix string = ""
 var IsFrozenBuild string = ""
 var IsStandaloneBuild string = ""
 const HandleTermiosSignals = {Mode.HANDLE_TERMIOS_SIGNALS.value[0]}

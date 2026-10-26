@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-import json
 import os
 import re
 import shlex
@@ -52,18 +51,15 @@ SETUP_CMD = [PYTHON, 'setup.py']
 def build_options(extra_program_data):
     if not extra_program_data:
         return []
-    if not extra_program_data.startswith('{'):
+    if not extra_program_data.startswith('nightly:'):
         return [f'--vcs-rev={extra_program_data}']
-    data = json.loads(extra_program_data)
-    ans = [f'--vcs-rev={data["vcs_rev"]}']
-    if data.get('nightly'):
-        ans += ['--nightly', f'--build-timestamp={data["build_timestamp"]}']
-    return ans
+    _, revision, timestamp = extra_program_data.split(':')
+    return [f'--vcs-rev={revision}', '--nightly', f'--build-timestamp={timestamp}']
 
 
-def build_frozen_launcher(extra_include_dirs):
+def build_frozen_launcher(extra_include_dirs, args):
     inc_dirs = [f'--extra-include-dirs={x}' for x in extra_include_dirs]
-    cmd = SETUP_CMD + ['--prefix', build_frozen_launcher.prefix] + inc_dirs + build_frozen_launcher.build_options + ['build-frozen-launcher']
+    cmd = SETUP_CMD + ['--prefix', build_frozen_launcher.prefix] + inc_dirs + build_options(args.extra_program_data) + ['build-frozen-launcher']
     if run(*cmd, cwd=build_frozen_launcher.writeable_src_dir) != 0:
         print('Building of frozen kitty launcher failed', file=sys.stderr)
         os.chdir(KITTY_DIR)
@@ -87,8 +83,8 @@ def run_tests(kitty_exe) -> None:
             raise SystemExit('Checking of kitty build failed')
 
 
-def build_frozen_tools(kitty_exe) -> None:
-    cmd = SETUP_CMD + ['--prefix', os.path.dirname(kitty_exe)] + ['build-frozen-tools']
+def build_frozen_tools(kitty_exe, args) -> None:
+    cmd = SETUP_CMD + ['--prefix', os.path.dirname(kitty_exe)] + build_options(args.extra_program_data) + ['build-frozen-tools']
     if run(*cmd, cwd=build_frozen_launcher.writeable_src_dir) != 0:
         print('Building of frozen kitten failed', file=sys.stderr)
         os.chdir(KITTY_DIR)
@@ -117,8 +113,7 @@ def build_c_extensions(ext_dir, args):
     cmd = SETUP_CMD + ['macos-freeze' if ismacos else 'linux-freeze']
     if args.dont_strip:
         cmd.append('--debug')
-    build_frozen_launcher.build_options = build_options(args.extra_program_data)
-    cmd += build_frozen_launcher.build_options
+    cmd += build_options(args.extra_program_data)
     dest = kitty_constants['appname'] + ('.app' if ismacos else '')
     dest = build_frozen_launcher.prefix = os.path.join(ext_dir, dest)
     cmd += ['--prefix', dest, '--full']
