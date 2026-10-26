@@ -424,16 +424,16 @@ func (self read_outputs) cleanup() {
 	}
 }
 
-// Return the path an output file will be written to, following symlinks the
-// same way utils.AtomicUpdateFile does. Make it absolute without cleaning it
-// so symlinks are resolved before any following ".." components.
+// Resolve the path in the same order as utils.AtomicUpdateFile, then resolve
+// symlinks in the absolute working-directory prefix as well.
 func resolved_output_path(path string) (string, error) {
-	if !filepath.IsAbs(path) {
-		wd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-		path = wd + string(os.PathSeparator) + path
+	path, err := utils.EvalSymlinksThatExist(path)
+	if err != nil {
+		return "", err
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return "", err
 	}
 	return utils.EvalSymlinksThatExist(path)
 }

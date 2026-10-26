@@ -299,6 +299,51 @@ func TestClipboardReadDuplicateOutputFilesSymlinkParent(t *testing.T) {
 	}
 }
 
+func TestClipboardReadDuplicateOutputFilesSymlinkCwd(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		t.Run(fmt.Sprintf("existing=%t", existing), func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(dir, "real", "sub"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			link := filepath.Join(dir, "link")
+			if err := os.Symlink("real/sub", link); err != nil {
+				t.Fatal(err)
+			}
+			t.Chdir(link)
+			t.Setenv("PWD", link)
+			paths := []string{filepath.Join(dir, "target"), filepath.Join(dir, "real", "target")}
+			if existing {
+				for _, path := range paths {
+					if err := os.WriteFile(path, []byte("old contents"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			output := &Output{arg: "../target"}
+			defer output.cleanup()
+			output.add_data([]byte("clipboard contents"))
+			output.commit()
+			if output.err != nil {
+				t.Fatal(output.err)
+			}
+			// Compare detection with the actual write, including when PWD
+			// names a symlink rather than the physical working directory.
+			for _, path := range paths {
+				data, err := os.ReadFile(path)
+				if err != nil && !os.IsNotExist(err) {
+					t.Fatal(err)
+				}
+				written := string(data) == "clipboard contents"
+				err = check_for_duplicate_output_files([]*Output{output, {arg: path}})
+				if (err != nil) != written {
+					t.Errorf("Duplicate detection disagrees with write to %s: written=%t error=%v", path, written, err)
+				}
+			}
+		})
+	}
+}
+
 func TestClipboardOutputCommitAtomic(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "output")
 	old_data := bytes.Repeat([]byte("old contents\n"), 1024)
