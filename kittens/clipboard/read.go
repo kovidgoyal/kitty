@@ -425,13 +425,14 @@ func (self read_outputs) cleanup() {
 }
 
 // Return the path an output file will be written to, following symlinks the
-// same way utils.AtomicUpdateFile does
+// same way utils.AtomicUpdateFile does. The path is made absolute first so
+// that symlinks in the working directory are resolved as well.
 func resolved_output_path(path string) (string, error) {
-	path, err := utils.EvalSymlinksThatExist(path)
+	path, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Abs(path)
+	return utils.EvalSymlinksThatExist(path)
 }
 
 func check_for_duplicate_output_files(outputs []*Output) error {
