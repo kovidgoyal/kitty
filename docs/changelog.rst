@@ -391,7 +391,9 @@ Detailed list of changes
 
 - Clipboard kitten: Fix only the last of several outputs that use the same
   clipboard MIME type being saved, for example with
-  :code:`kitten clipboard -g picture.png picture.jpg` (:pull:`10744`)
+  :code:`kitten clipboard -g picture.png picture.jpg`. The data is now
+  downloaded only once and images are decoded only once for all such outputs.
+  Specifying the same output file twice is now an error (:pull:`10744`)
 
 - Kittens: When saving files, such as themes, config files or clipboard
   output, write to the target of a symlink even when the target does not yet

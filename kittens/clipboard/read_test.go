@@ -37,6 +37,7 @@ func TestClipboardReadMultipleOutputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			requested := make(read_outputs)
+			defer requested.cleanup()
 			aliases, err := parse_aliases(tc.aliases)
 			if err != nil {
 				t.Fatal(err)
@@ -159,8 +160,103 @@ func TestClipboardReadDuplicateStreamOutputs(t *testing.T) {
 			t.Fatalf("Duplicate stream output to %s for %s was not rejected", o.arg, o.remote_mime_type)
 		}
 	}
-	if len(requested["text/plain"]) != 3 || len(requested["text/html"]) != 1 {
-		t.Fatalf("Rejected outputs were added: %d %d", len(requested["text/plain"]), len(requested["text/html"]))
+	if len(requested["text/plain"].outputs) != 3 || len(requested["text/html"].outputs) != 1 {
+		t.Fatalf("Rejected outputs were added: %d %d", len(requested["text/plain"].outputs), len(requested["text/html"].outputs))
+	}
+}
+
+func TestClipboardReadSharedDownload(t *testing.T) {
+	dir := t.TempDir()
+	requested := make(read_outputs)
+	defer requested.cleanup()
+	var outputs []*Output
+	for _, name := range []string{"a", "b", "c"} {
+		o := &Output{arg: filepath.Join(dir, name), remote_mime_type: "text/plain"}
+		outputs = append(outputs, o)
+		if err := requested.add(o); err != nil {
+			t.Fatal(err)
+		}
+	}
+	requested.add_data("text/plain", []byte("clipboard "))
+	// All outputs share a single temporary file for the downloaded data
+	if actual := list_dir(t, dir); len(actual) != 1 {
+		t.Fatalf("Expected a single temporary file, got: %v", actual)
+	}
+	requested.add_data("text/plain", []byte("contents"))
+	var wg sync.WaitGroup
+	requested.commit("text/plain", &wg)
+	wg.Wait()
+	for _, o := range outputs {
+		if o.err != nil {
+			t.Fatal(o.err)
+		}
+		if data, err := os.ReadFile(o.arg); err != nil || string(data) != "clipboard contents" {
+			t.Fatalf("Incorrect contents for %s: %q %v", o.arg, data, err)
+		}
+	}
+	if actual := list_dir(t, dir); !slices.Equal(actual, []string{"a", "b", "c"}) {
+		t.Fatalf("Temporary file not removed: %v", actual)
+	}
+}
+
+func TestClipboardReadDownloadFailure(t *testing.T) {
+	dir := t.TempDir()
+	outputs := []*Output{
+		{arg: filepath.Join(dir, "missing", "a"), remote_mime_type: "text/plain"},
+		{arg: filepath.Join(dir, "missing", "b"), remote_mime_type: "text/plain"},
+	}
+	requested := make(read_outputs)
+	defer requested.cleanup()
+	for _, o := range outputs {
+		if err := requested.add(o); err != nil {
+			t.Fatal(err)
+		}
+	}
+	requested.add_data("text/plain", []byte("clipboard contents"))
+	var wg sync.WaitGroup
+	requested.commit("text/plain", &wg)
+	wg.Wait()
+	for _, o := range outputs {
+		if o.err == nil {
+			t.Fatalf("Expected an error for %s when no temporary file can be created", o.arg)
+		}
+	}
+}
+
+func TestClipboardReadDuplicateOutputFiles(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.Symlink("target", "link"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir("sub", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outputs := func(args ...string) (ans []*Output) {
+		for _, arg := range args {
+			ans = append(ans, &Output{arg: arg, arg_is_stream: arg == "/dev/stdout" || arg == "/dev/stderr"})
+		}
+		return
+	}
+	for _, args := range [][]string{
+		{"a", "b", "sub/a", "/dev/stdout", "/dev/stdout", "/dev/stderr"},
+		{"link", "sub/target"},
+	} {
+		if err := check_for_duplicate_output_files(outputs(args...)); err != nil {
+			t.Fatalf("Unexpected error for %v: %s", args, err)
+		}
+	}
+	for _, args := range [][]string{
+		{"a", "a"},
+		{"a", "./a"},
+		{"a", filepath.Join(dir, "a")},
+		{"sub/../a", "a"},
+		{"link", "target"},
+		{"target", filepath.Join(dir, "link")},
+	} {
+		if err := check_for_duplicate_output_files(outputs(args...)); err == nil {
+			t.Fatalf("Duplicate output files not rejected: %v", args)
+		}
 	}
 }
 
