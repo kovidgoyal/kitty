@@ -436,11 +436,10 @@ Detailed list of changes
   :pull:`10721`)
 
 - macOS: Fix padding rendering black after sleep, OS windows not staying on all
-  spaces, a duplicate path when dropping items from Apple Mail and a memory
-  leak (:iss:`10708`, :iss:`10581`, :iss:`10628`, :iss:`10673`)
-
-- macOS: Fix kitty freezing when opening a new window while another entry in
-  :file:`/dev` is stuck (:iss:`10741`)
+  spaces, a duplicate path when dropping items from Apple Mail, a memory
+  leak and kitty freezing when opening a new window while another entry in
+  :file:`/dev` is stuck (:iss:`10708`, :iss:`10581`, :iss:`10628`,
+  :iss:`10673`, :iss:`10741`)
 
 
 0.49.2 [2026-10-01]

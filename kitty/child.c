@@ -120,6 +120,22 @@ spawn(PyObject *self UNUSED, PyObject *args) {
         PyErr_SetFromErrno(PyExc_OSError);
         return NULL;
     }
+#ifdef __APPLE__
+    // The name came from master, ensure it refers to the same pty as slave
+    struct stat slave_st, name_st;
+    if (fstat(slave, &slave_st) != 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
+    if (stat(name, &name_st) != 0) {
+        PyErr_SetFromErrnoWithFilename(PyExc_OSError, name);
+        return NULL;
+    }
+    if (slave_st.st_rdev != name_st.st_rdev) {
+        PyErr_Format(PyExc_ValueError, "The slave fd %d is not the pty of the master fd %d (%s)", slave, master, name);
+        return NULL;
+    }
+#endif
     char **argv = serialize_string_tuple(argv_p, 0);
     if (!argv) return NULL;
     char **env = serialize_string_tuple(env_p, 1);
