@@ -395,6 +395,10 @@ Detailed list of changes
   downloaded only once and images are decoded only once for all such outputs.
   Specifying the same output file twice is now an error (:pull:`10744`)
 
+- Clipboard kitten: Correctly detect duplicate output files when a path contains
+  a symlink followed by ``..``, avoiding overwrites of the same target and
+  erroneous rejection of distinct output files
+
 - Kittens: When saving files, such as themes, config files or clipboard
   output, write to the target of a symlink even when the target does not yet
   exist, instead of replacing the symlink with a regular file (:pull:`10740`)
