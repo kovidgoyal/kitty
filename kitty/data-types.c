@@ -1007,6 +1007,7 @@ PyInit_fast_data_types(void) {
 #ifdef KITTY_VCS_REV
     PyModule_AddStringMacro(m, KITTY_VCS_REV);
 #endif
+    PyModule_AddStringMacro(m, KITTY_VERSION_SUFFIX);
 #ifndef DEVELOP_ROOT
 #define DEVELOP_ROOT ""
 #endif

@@ -93,6 +93,9 @@ Customizing the installation
      _kitty_install_cmd \
          installer=nightly
 
+  Nightly builds include ``-nightly-<commit>`` and the UTC build time in
+  :option:`kitty --version`, so different nightly builds can be identified.
+
   If you want to install it in parallel to the released kitty specify a
   different install locations with ``dest``:
 

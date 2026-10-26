@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import datetime
 import glob
 import json
 import os
@@ -120,6 +121,7 @@ class Env:
     ldpaths: List[str] = []
     ccver: Tuple[int, int]
     vcs_rev: str = ''
+    version_suffix: str = ''
     binary_arch: BinaryArch = BinaryArch()
     native_optimizations: bool = False
     primary_version: int = 0
@@ -185,6 +187,7 @@ class Env:
         ans.wayland_scanner_code = self.wayland_scanner_code
         ans.wayland_protocols = self.wayland_protocols
         ans.vcs_rev = self.vcs_rev
+        ans.version_suffix = self.version_suffix
         ans.binary_arch = self.binary_arch
         ans.native_optimizations = self.native_optimizations
         ans.primary_version = self.primary_version
@@ -326,6 +329,8 @@ class Options:
     # Extras
     compilation_database: CompilationDatabase = CompilationDatabase()
     vcs_rev: str = ''
+    nightly: bool = False
+    build_timestamp: Optional[int] = None
 
 
 def emphasis(text: str) -> str:
@@ -876,6 +881,18 @@ def get_vcs_rev() -> str:
     return ans
 
 
+def version_suffix(args: Options) -> str:
+    if not args.nightly:
+        return ''
+    vcs_rev = args.vcs_rev or get_vcs_rev()
+    if not vcs_rev:
+        raise SystemExit('A nightly build requires a VCS revision. Specify --vcs-rev when building without .git.')
+    if args.build_timestamp is None:
+        raise SystemExit('A nightly build requires --build-timestamp.')
+    built_at = datetime.datetime.fromtimestamp(args.build_timestamp, datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    return f'-nightly-{vcs_rev[:10]} (built {built_at})'
+
+
 @lru_cache
 def base64_defines(isa: ISA) -> List[str]:
     defs = {
@@ -909,7 +926,15 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
     if src == 'kitty/data-types.c':
         if not env.vcs_rev:
             env.vcs_rev = get_vcs_rev()
-        return src, [], [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
+        return (
+            src,
+            [],
+            [
+                f'KITTY_VCS_REV="{env.vcs_rev}"',
+                f'KITTY_VERSION_SUFFIX={json.dumps(env.version_suffix)}',
+                f'WRAPPED_KITTENS="{wrapped_kittens()}"',
+            ],
+        )
     if src.startswith('3rdparty/base64/'):
         return (
             src,
@@ -1351,6 +1376,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
         verbose=args.verbose > 0,
         vcs_rev=args.vcs_rev,
     )
+    env.version_suffix = version_suffix(args)
 
 
 @lru_cache
@@ -1670,7 +1696,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(build_dir, exist_ok=True)
     objects = []
     headers = glob.glob('kitty/launcher/*.h')
-    cppflags.append('-DKITTY_VERSION="' + '.'.join(map(str, version)) + '"')
+    cppflags.append('-DKITTY_VERSION=' + json.dumps('.'.join(map(str, version)) + version_suffix(args)))
     for src in ('kitty/launcher/main.c', 'kitty/launcher/single-instance.c', 'kitty/launcher/cmdline.c'):
         obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)
@@ -2326,6 +2352,13 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         '--libdir-name', default=Options.libdir_name, help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
     )
     p.add_argument('--vcs-rev', default='', help='The VCS revision to embed in the binary. The default is to read it from the .git directory when present.')
+    p.add_argument('--nightly', default=Options.nightly, action='store_true', help='Include nightly build information in the displayed kitty version.')
+    p.add_argument(
+        '--build-timestamp',
+        type=int,
+        default=Options.build_timestamp,
+        help='The build time as seconds since the Unix epoch. For nightly builds, defaults to SOURCE_DATE_EPOCH or the current time.',
+    )
     p.add_argument(
         '--extra-logging',
         action='append',
@@ -2542,6 +2575,8 @@ def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == 'build-dep':
         return build_dep()
     args = option_parser().parse_args(namespace=Options())
+    if args.nightly and args.build_timestamp is None:
+        args.build_timestamp = int(os.environ.get('SOURCE_DATE_EPOCH') or time.time())
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(src_base)

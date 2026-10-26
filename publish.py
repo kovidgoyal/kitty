@@ -80,6 +80,10 @@ def run_build(args: Any) -> None:
 
     m = runpy.run_path('./setup.py', run_name='__publish__')
     vcs_rev: str = m['get_vcs_rev']()
+    program_data = vcs_rev
+    if building_nightly:
+        program_data = json.dumps({'vcs_rev': vcs_rev, 'nightly': True, 'build_timestamp': int(time.time())})
+    program_data = shlex.quote(program_data)
 
     def run_with_retry(cmd: str, timeout: float | None = 20 * 60, retry_cmd: str = '') -> None:
         try:
@@ -94,9 +98,9 @@ def run_build(args: Any) -> None:
 
     for x, retry_cmd in {'64': '', 'arm64': 'pkill -9 -f -e qemu-aarch64-static'}.items():
         prefix = f'python ../bypy linux --arch {x} '
-        run_with_retry(prefix + f'program --non-interactive --extra-program-data "{vcs_rev}"', retry_cmd=retry_cmd)
+        run_with_retry(prefix + f'program --non-interactive --extra-program-data {program_data}', retry_cmd=retry_cmd)
     run_with_retry(
-        f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{vcs_rev}"',
+        f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data {program_data}',
         retry_cmd='python ../bypy macos shutdown',
         timeout=60 * 60,  # notarization can be slow
     )
