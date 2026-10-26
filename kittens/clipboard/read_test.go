@@ -243,3 +243,23 @@ func TestClipboardOutputImageEncodeFailure(t *testing.T) {
 		t.Fatalf("Original destination changed after failed image encode: %q %v", actual, err)
 	}
 }
+
+func TestClipboardOutputMimeList(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "formats.txt")
+	output := Output{arg: dest, mime_type: ".", remote_mime_type: "."}
+	defer output.cleanup()
+	output.write_mime_list([]string{"text/plain", "image/png"})
+	if output.err != nil {
+		t.Fatal(output.err)
+	}
+	if !output.started || !output.all_data_received {
+		t.Fatal("MIME list output not marked as complete")
+	}
+	if actual, err := os.ReadFile(dest); err != nil || string(actual) != "text/plain\nimage/png" {
+		t.Fatalf("Incorrect MIME list saved: %q %v", actual, err)
+	}
+	if names := list_dir(t, dir); !slices.Equal(names, []string{"formats.txt"}) {
+		t.Fatalf("Stray files left behind after saving MIME list: %v", names)
+	}
+}

@@ -129,6 +129,12 @@ func (self *Output) commit() {
 	self.dest = nil
 }
 
+func (self *Output) write_mime_list(available_mimes []string) {
+	self.add_data(utils.UnsafeStringToBytes(strings.Join(available_mimes, "\n")))
+	self.all_data_received = true
+	self.commit()
+}
+
 func (self *Output) assign_mime_type(available_mimes []string, aliases map[string][]string) (err error) {
 	if self.mime_type == "." {
 		self.remote_mime_type = "."
@@ -352,10 +358,7 @@ func run_get_loop(opts *Options, args []string) (err error) {
 						return err
 					}
 					if o.remote_mime_type == "." {
-						o.started = true
-						o.add_data(utils.UnsafeStringToBytes(strings.Join(available_mimes, "\n")))
-						o.all_data_received = true
-						o.commit()
+						o.write_mime_list(available_mimes)
 					} else {
 						requested_mimes[o.remote_mime_type] = o
 					}
