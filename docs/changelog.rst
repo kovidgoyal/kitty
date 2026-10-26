@@ -458,6 +458,9 @@ Detailed list of changes
   headings instead of always using bold titles. Fixes literal ``%B`` markers
   appearing with fzf-tab (:iss:`10748`)
 
+- Do not render between render frames to reduce flicker from programs that draw
+  with many small partial updates (:iss:`10749`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
