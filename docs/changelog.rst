@@ -439,6 +439,9 @@ Detailed list of changes
   spaces, a duplicate path when dropping items from Apple Mail and a memory
   leak (:iss:`10708`, :iss:`10581`, :iss:`10628`, :iss:`10673`)
 
+- macOS: Fix kitty freezing when opening a new window while another entry in
+  :file:`/dev` is stuck (:iss:`10741`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
