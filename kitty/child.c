@@ -107,7 +107,16 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             &pass_fds))
         return NULL;
     char name[2048] = {0};
-    if (ttyname_r(slave, name, sizeof(name) - 1) != 0) {
+#ifdef __APPLE__
+    // ttyname_r() on macOS calls lstat() on every entry in /dev until it finds
+    // the pty, so a single stuck entry can hang it. ptsname_r() gets the name
+    // from the master with an ioctl() instead.
+    // See https://github.com/kovidgoyal/kitty/issues/10741
+    int ret = ptsname_r(master, name, sizeof(name) - 1);
+#else
+    int ret = ttyname_r(slave, name, sizeof(name) - 1);
+#endif
+    if (ret != 0) {
         PyErr_SetFromErrno(PyExc_OSError);
         return NULL;
     }
