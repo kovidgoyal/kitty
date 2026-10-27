@@ -464,6 +464,9 @@ Detailed list of changes
 - Do not render between render frames to reduce flicker from programs that draw
   with many small partial updates (:iss:`10749`)
 
+- Nightly builds now show the date and hash of the commit they were built from
+  in the output of :option:`kitty --version` and :code:`kitten --version`
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

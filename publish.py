@@ -80,6 +80,12 @@ def run_build(args: Any) -> None:
 
     m = runpy.run_path('./setup.py', run_name='__publish__')
     vcs_rev: str = m['get_vcs_rev']()
+    program_data = vcs_rev
+    setup_options = [f'--vcs-rev={vcs_rev}']
+    if building_nightly:
+        commit_time: int = m['get_vcs_commit_time'](vcs_rev)
+        program_data += f':nightly:{commit_time}'
+        setup_options += ['--nightly', f'--vcs-commit-time={commit_time}']
 
     def run_with_retry(cmd: str, timeout: float | None = 20 * 60, retry_cmd: str = '') -> None:
         try:
@@ -94,15 +100,15 @@ def run_build(args: Any) -> None:
 
     for x, retry_cmd in {'64': '', 'arm64': 'pkill -9 -f -e qemu-aarch64-static'}.items():
         prefix = f'python ../bypy linux --arch {x} '
-        run_with_retry(prefix + f'program --non-interactive --extra-program-data "{vcs_rev}"', retry_cmd=retry_cmd)
+        run_with_retry(prefix + f'program --non-interactive --extra-program-data "{program_data}"', retry_cmd=retry_cmd)
     run_with_retry(
-        f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{vcs_rev}"',
+        f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{program_data}"',
         retry_cmd='python ../bypy macos shutdown',
         timeout=60 * 60,  # notarization can be slow
     )
     call('python ../bypy macos shutdown', echo=True)
     call('make debug')
-    call('./setup.py build-static-binaries')
+    call('./setup.py', 'build-static-binaries', *setup_options)
 
 
 def run_tag(args: Any) -> None:

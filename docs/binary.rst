@@ -93,6 +93,9 @@ Customizing the installation
      _kitty_install_cmd \
          installer=nightly
 
+  Nightly builds show the date and hash of the commit they were built from in
+  the output of :option:`kitty --version`.
+
   If you want to install it in parallel to the released kitty specify a
   different install locations with ``dest``:
 

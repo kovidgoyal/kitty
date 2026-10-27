@@ -48,9 +48,20 @@ def run(*args, **extra_env):
 SETUP_CMD = [PYTHON, 'setup.py']
 
 
+def setup_py_options(extra_program_data: str) -> list[str]:
+    # extra_program_data is the VCS revision, followed by :nightly:<commit time> for nightly builds
+    if not extra_program_data:
+        return []
+    vcs_rev, _, commit_time = extra_program_data.partition(':nightly:')
+    ans = [f'--vcs-rev={vcs_rev}']
+    if commit_time:
+        ans += ['--nightly', f'--vcs-commit-time={commit_time}']
+    return ans
+
+
 def build_frozen_launcher(extra_include_dirs):
     inc_dirs = [f'--extra-include-dirs={x}' for x in extra_include_dirs]
-    cmd = SETUP_CMD + ['--prefix', build_frozen_launcher.prefix] + inc_dirs + ['build-frozen-launcher']
+    cmd = SETUP_CMD + ['--prefix', build_frozen_launcher.prefix] + inc_dirs + build_frozen_launcher.setup_py_options + ['build-frozen-launcher']
     if run(*cmd, cwd=build_frozen_launcher.writeable_src_dir) != 0:
         print('Building of frozen kitty launcher failed', file=sys.stderr)
         os.chdir(KITTY_DIR)
@@ -75,7 +86,7 @@ def run_tests(kitty_exe) -> None:
 
 
 def build_frozen_tools(kitty_exe) -> None:
-    cmd = SETUP_CMD + ['--prefix', os.path.dirname(kitty_exe)] + ['build-frozen-tools']
+    cmd = SETUP_CMD + ['--prefix', os.path.dirname(kitty_exe)] + build_frozen_launcher.setup_py_options + ['build-frozen-tools']
     if run(*cmd, cwd=build_frozen_launcher.writeable_src_dir) != 0:
         print('Building of frozen kitten failed', file=sys.stderr)
         os.chdir(KITTY_DIR)
@@ -104,8 +115,8 @@ def build_c_extensions(ext_dir, args):
     cmd = SETUP_CMD + ['macos-freeze' if ismacos else 'linux-freeze']
     if args.dont_strip:
         cmd.append('--debug')
-    if args.extra_program_data:
-        cmd.append(f'--vcs-rev={args.extra_program_data}')
+    build_frozen_launcher.setup_py_options = setup_py_options(args.extra_program_data)
+    cmd += build_frozen_launcher.setup_py_options
     dest = kitty_constants['appname'] + ('.app' if ismacos else '')
     dest = build_frozen_launcher.prefix = os.path.join(ext_dir, dest)
     cmd += ['--prefix', dest, '--full']

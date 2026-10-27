@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import datetime
 import glob
 import json
 import os
@@ -120,6 +121,7 @@ class Env:
     ldpaths: List[str] = []
     ccver: Tuple[int, int]
     vcs_rev: str = ''
+    version_suffix: str = ''
     binary_arch: BinaryArch = BinaryArch()
     native_optimizations: bool = False
     primary_version: int = 0
@@ -185,6 +187,7 @@ class Env:
         ans.wayland_scanner_code = self.wayland_scanner_code
         ans.wayland_protocols = self.wayland_protocols
         ans.vcs_rev = self.vcs_rev
+        ans.version_suffix = self.version_suffix
         ans.binary_arch = self.binary_arch
         ans.native_optimizations = self.native_optimizations
         ans.primary_version = self.primary_version
@@ -326,6 +329,9 @@ class Options:
     # Extras
     compilation_database: CompilationDatabase = CompilationDatabase()
     vcs_rev: str = ''
+    nightly: bool = False
+    vcs_commit_time: Optional[int] = None
+    version_suffix: str = ''
 
 
 def emphasis(text: str) -> str:
@@ -877,6 +883,28 @@ def get_vcs_rev() -> str:
 
 
 @lru_cache
+def get_vcs_commit_time(rev: str) -> int:
+    git_exe = shutil.which('git') or 'git'
+    try:
+        return int(subprocess.check_output([git_exe, 'show', '--no-patch', '--format=%ct', rev]).decode('utf-8').strip())
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
+        raise SystemExit(f'Failed to get the commit time of {rev} from git, use --vcs-commit-time to specify it. Error: {e}')
+
+
+def nightly_version_suffix(args: Options) -> str:
+    # Use semver build metadata, which is ignored when comparing versions, so
+    # that tools that parse the version are not confused by nightly builds.
+    if not args.nightly:
+        return ''
+    vcs_rev = args.vcs_rev or get_vcs_rev()
+    if not vcs_rev:
+        raise SystemExit('Failed to get the VCS revision needed for a nightly build, use --vcs-rev to specify it')
+    commit_time = get_vcs_commit_time(vcs_rev) if args.vcs_commit_time is None else args.vcs_commit_time
+    commit_date = datetime.datetime.fromtimestamp(commit_time, datetime.timezone.utc).strftime('%Y-%m-%d')
+    return f'+nightly.{commit_date}.{vcs_rev[:10]}'
+
+
+@lru_cache
 def base64_defines(isa: ISA) -> List[str]:
     defs = {
         'HAVE_AVX512': 0,
@@ -909,7 +937,11 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
     if src == 'kitty/data-types.c':
         if not env.vcs_rev:
             env.vcs_rev = get_vcs_rev()
-        return src, [], [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
+        return (
+            src,
+            [],
+            [f'KITTY_VCS_REV="{env.vcs_rev}"', f'KITTY_VERSION_SUFFIX="{env.version_suffix}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"'],
+        )
     if src.startswith('3rdparty/base64/'):
         return (
             src,
@@ -1351,6 +1383,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
         verbose=args.verbose > 0,
         vcs_rev=args.vcs_rev,
     )
+    env.version_suffix = args.version_suffix
 
 
 @lru_cache
@@ -1532,6 +1565,8 @@ def build_static_kittens(
         binary_data_flags.append(f'-X {modpath}.IsFrozenBuild=true')
     if for_platform:
         binary_data_flags.append(f'-X {modpath}.IsStandaloneBuild=true')
+    if args.version_suffix:
+        binary_data_flags.append(f'-X {modpath}.VersionSuffix={args.version_suffix}')
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
@@ -1670,7 +1705,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(build_dir, exist_ok=True)
     objects = []
     headers = glob.glob('kitty/launcher/*.h')
-    cppflags.append('-DKITTY_VERSION="' + '.'.join(map(str, version)) + '"')
+    cppflags.append('-DKITTY_VERSION="' + '.'.join(map(str, version)) + args.version_suffix + '"')
     for src in ('kitty/launcher/main.c', 'kitty/launcher/single-instance.c', 'kitty/launcher/cmdline.c'):
         obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)
@@ -2327,6 +2362,18 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
     )
     p.add_argument('--vcs-rev', default='', help='The VCS revision to embed in the binary. The default is to read it from the .git directory when present.')
     p.add_argument(
+        '--nightly',
+        default=Options.nightly,
+        action='store_true',
+        help='Mark this as a nightly build. The displayed version will include the date and hash of the commit being built.',
+    )
+    p.add_argument(
+        '--vcs-commit-time',
+        type=int,
+        default=Options.vcs_commit_time,
+        help='The time of the commit being built, as seconds since the Unix epoch. Used only for nightly builds. The default is to read it from git.',
+    )
+    p.add_argument(
         '--extra-logging',
         action='append',
         default=Options.extra_logging,
@@ -2545,6 +2592,7 @@ def main() -> None:
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(src_base)
+    args.version_suffix = nightly_version_suffix(args)
     os.makedirs(build_dir, exist_ok=True)
     do_build(args)
 
