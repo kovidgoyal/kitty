@@ -402,6 +402,9 @@ Detailed list of changes
 - Clipboard kitten: Reject duplicate output files that differ only in case on
   case-insensitive filesystems, preventing one output from overwriting another
 
+- choose-fonts kitten: Sort font styles by numeric axis value, fixing the order
+  of styles with negative or closely spaced fractional values
+
 - Kittens: When saving files, such as themes, config files or clipboard
   output, write to the target of a symlink even when the target does not yet
   exist, instead of replacing the symlink with a regular file (:pull:`10740`)
