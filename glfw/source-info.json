@@ -69,6 +69,7 @@
       "linux_desktop_settings.h",
       "linux_session_monitor.h",
       "wl_client_side_decorations.h",
+      "wl_native_titlebar.h",
       "main_loop.h"
     ],
     "protocols": [
@@ -106,6 +107,7 @@
       "wl_cursors.c",
       "wl_text_input.c",
       "wl_client_side_decorations.c",
+      "wl_native_titlebar.c",
       "posix_thread.c",
       "xkb_glfw.c",
       "dbus_glfw.c",

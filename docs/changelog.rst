@@ -231,6 +231,11 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: Add an opt-in GTK 4/libadwaita titlebar renderer with native theme
+  integration, compact window controls, rounded upper corners and shadows.
+  Build with :code:`KITTY_BUILD_GNOME_TITLEBAR=1` and enable with
+  :code:`KITTY_WAYLAND_TITLEBAR=system`. The original renderer remains the default.
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

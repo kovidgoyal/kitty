@@ -1263,6 +1263,13 @@ def glfw_init_env(
         for dep in 'wayland-client wayland-cursor xkbcommon dbus-1'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
+        if os.environ.get('KITTY_BUILD_GNOME_TITLEBAR') == '1':
+            at_least_version('gtk4', 4, 12)
+            at_least_version('libadwaita-1', 1, 4)
+            ans.cppflags.append('-DKITTY_GNOME_TITLEBAR')
+            for dep in ('gtk4', 'libadwaita-1'):
+                ans.cflags.extend(pkg_config(dep, '--cflags'))
+                ans.ldpaths.extend(pkg_config(dep, '--libs'))
         has_memfd_create = test_compile(
             env.cc,
             '-Werror',

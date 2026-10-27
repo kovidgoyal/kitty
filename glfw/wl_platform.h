@@ -241,6 +241,9 @@ typedef struct _GLFWwindowWayland {
     } pointerLock;
 
     struct {
+        void *native_titlebar;
+        bool native_shadow_dirty;
+        enum { CSD_BUTTON_none, CSD_BUTTON_minimize, CSD_BUTTON_maximize, CSD_BUTTON_close } pressed_button;
         bool serverSide, buffer_destroyed, titlebar_needs_update, dragging, titlebar_hidden;
         _GLFWCSDSurface focus;
 
@@ -269,7 +272,7 @@ typedef struct _GLFWwindowWayland {
 
         struct {
             bool hovered;
-            int width, left;
+            int width, left, top, height;
         } minimize, maximize, close;
 
         struct {

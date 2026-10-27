@@ -30,6 +30,7 @@
 #include "internal.h"
 #include "backend_utils.h"
 #include "wl_client_side_decorations.h"
+#include "wl_native_titlebar.h"
 #include "linux_desktop_settings.h"
 #include "../kitty/monotonic.h"
 #include "wl_text_input.h"
@@ -1092,6 +1093,7 @@ _glfwPlatformInit(bool *supports_window_occlusion) {
 
 void
 _glfwPlatformTerminate(void) {
+    csd_native_titlebar_terminate();
     if (_glfw.wl.activation_requests.array) {
         for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
             glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;

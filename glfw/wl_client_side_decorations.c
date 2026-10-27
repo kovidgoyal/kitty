@@ -6,6 +6,7 @@
  */
 
 #include "wl_client_side_decorations.h"
+#include "wl_native_titlebar.h"
 
 #include "backend_utils.h"
 #include <sys/mman.h>
@@ -211,8 +212,10 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
 
 void
 csd_initialize_metrics(_GLFWwindow *window) {
-    decs.metrics.width = 12;
-    decs.metrics.top = 36;
+    const int native_margin = csd_native_titlebar_margin(window);
+    decs.metrics.width = native_margin > 0 ? native_margin : 12;
+    const int native_height = csd_native_titlebar_height(window);
+    decs.metrics.top = decs.metrics.width + (native_height > 0 ? native_height : 24);
     decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
     decs.metrics.horizontal = 2 * decs.metrics.width;
     decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
@@ -384,6 +387,8 @@ render_button(
 
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
+    uint8_t *native_output = to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back;
+    if (csd_native_titlebar_render(window, native_output)) return;
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool is_maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
     const uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
@@ -443,7 +448,10 @@ render_buttons:
 
     uint8_t *alpha_mask = malloc(button_size * button_size);
     int left = decs.titlebar.buffer.width - num_buttons * button_size;
-    if (!alpha_mask || left <= 0) return;
+    if (!alpha_mask || left <= 0) {
+        free(alpha_mask);
+        return;
+    }
 #define drawb(which, antialias, func, hover_bg)       \
     {                                                 \
         render_button(                                \
@@ -458,6 +466,8 @@ render_buttons:
             decs.which.hovered ? hover_bg : bg_color, \
             fg_color);                                \
         decs.which.left = left;                       \
+        decs.which.top = 0;                           \
+        decs.which.height = button_size;               \
         decs.which.width = button_size;               \
         left += button_size;                          \
     }
@@ -510,6 +520,7 @@ copy_vertical_region(
 
 static void
 render_shadows(_GLFWwindow *window) {
+    if (csd_native_titlebar_shadows(window)) return;
     if (!window_needs_shadows(window)) return;
     const ssize_t scaled_shadow_size = create_shadow_tile(window);
     if (!st.data || !scaled_shadow_size) return; // out of memory
@@ -700,7 +711,8 @@ ensure_csd_resources(_GLFWwindow *window) {
          decs.for_window_state.fscale != current_scale || !decs.mapping.data);
     const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
     const bool titlebar_state_changed = (has_titlebar && !decs.titlebar.surface) || (!has_titlebar && decs.titlebar.surface);
-    const bool needs_update = focus_changed || size_changed || titlebar_state_changed || decs.buffer_destroyed || state_changed;
+    const bool style_changed = decs.native_shadow_dirty;
+    const bool needs_update = focus_changed || size_changed || titlebar_state_changed || decs.buffer_destroyed || state_changed || style_changed;
     debug(
         "CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d buffer_destroyed: %d\n",
         decs.for_window_state.width,
@@ -717,7 +729,10 @@ ensure_csd_resources(_GLFWwindow *window) {
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
         decs.buffer_destroyed = false;
+    } else if (style_changed || state_changed) {
+        render_shadows(window);
     }
+    decs.native_shadow_dirty = false;
 
     const int top_y = has_titlebar ? -(int)decs.metrics.visible_titlebar_height : 0;
 
@@ -744,7 +759,7 @@ ensure_csd_resources(_GLFWwindow *window) {
     setup_surface(shadow_lower_right, decs.shadow_right.x, decs.shadow_bottom.y);
 
     if (has_titlebar) {
-        if (focus_changed || state_changed) update_title_bar(window);
+        if (focus_changed || state_changed || style_changed) update_title_bar(window);
         damage_csd(titlebar, decs.titlebar.buffer.front);
     }
 #define d(which) damage_csd(which, is_focused ? decs.which.buffer.front : decs.which.buffer.back);
@@ -776,6 +791,7 @@ csd_set_visible(_GLFWwindow *window, bool visible) {
 
 void
 csd_free_all_resources(_GLFWwindow *window) {
+    csd_native_titlebar_free(window);
     free_csd_surfaces(window);
     free_csd_buffers(window);
     if (decs.shadow_tile.data) free(decs.shadow_tile.data);
@@ -881,8 +897,10 @@ static bool
 update_hovered_button(_GLFWwindow *window) {
     bool has_hovered_button = false;
     int scaled_x = (int)round(decs.for_window_state.fscale * x);
+    int scaled_y = (int)round(decs.for_window_state.fscale * y);
 #define c(which)                                                                        \
-    if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) { \
+    if (decs.which.width > 0 && decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width && \
+        decs.which.top <= scaled_y && scaled_y < decs.which.top + decs.which.height) { \
         has_hovered_button = true;                                                      \
         if (!decs.which.hovered) {                                                      \
             decs.titlebar_needs_update = true;                                          \
@@ -897,13 +915,7 @@ update_hovered_button(_GLFWwindow *window) {
     c(maximize);
     c(close);
 #undef c
-    update_title_bar(window);
     return has_hovered_button;
-}
-
-static bool
-has_hovered_button(_GLFWwindow *window) {
-    return decs.minimize.hovered || decs.maximize.hovered || decs.close.hovered;
 }
 
 static void
@@ -969,25 +981,37 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
             case CENTRAL_WINDOW: break;
             case CSD_titlebar:
                 if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+                    decs.pressed_button = decs.minimize.hovered ? CSD_BUTTON_minimize :
+                        decs.maximize.hovered ? CSD_BUTTON_maximize : decs.close.hovered ? CSD_BUTTON_close : CSD_BUTTON_none;
+                    decs.titlebar_needs_update = true;
+                    if (decs.pressed_button != CSD_BUTTON_none) {
+                        decs.last_click_on_top_decoration_at = 0;
+                        decs.dragging = false;
+                        break;
+                    }
                     monotonic_t last_click_at = decs.last_click_on_top_decoration_at;
                     decs.last_click_on_top_decoration_at = monotonic();
-                    if (decs.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
+                    if (last_click_at && decs.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
                         decs.last_click_on_top_decoration_at = 0;
-                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
-                        else _glfwPlatformMaximizeWindow(window);
+                        if (window->resizable && window->wl.wm_capabilities.maximize) {
+                            if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
+                            else _glfwPlatformMaximizeWindow(window);
+                        }
                         return;
                     }
+                    decs.dragging = true;
                 } else {
-                    if (decs.minimize.hovered) _glfwPlatformIconifyWindow(window);
-                    else if (decs.maximize.hovered) {
+                    const int pressed = decs.pressed_button;
+                    decs.pressed_button = CSD_BUTTON_none;
+                    decs.titlebar_needs_update = true;
+                    decs.dragging = false;
+                    if (pressed == CSD_BUTTON_minimize && decs.minimize.hovered) _glfwPlatformIconifyWindow(window);
+                    else if (pressed == CSD_BUTTON_maximize && decs.maximize.hovered) {
                         if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
                         else _glfwPlatformMaximizeWindow(window);
-                        // hack otherwise on GNOME maximize button remains hovered sometimes
                         decs.maximize.hovered = false;
-                        decs.titlebar_needs_update = true;
-                    } else if (decs.close.hovered) _glfwInputWindowCloseRequest(window);
+                    } else if (pressed == CSD_BUTTON_close && decs.close.hovered) _glfwInputWindowCloseRequest(window);
                 }
-                decs.dragging = !has_hovered_button(window);
                 break;
             case CSD_shadow_left: edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT; break;
             case CSD_shadow_upper_left: edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT; break;

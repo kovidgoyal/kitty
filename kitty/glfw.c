@@ -2457,6 +2457,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwDestroyWindow(temp_window);
         temp_window = NULL;
     }
+    if (global_state.is_wayland && glfwWaylandUsesSystemTitlebar && glfwWaylandUsesSystemTitlebar()) global_state.native_titlebar_used = true;
     if (glfw_window == NULL) glfw_failure(lsc != NULL);
 #undef glfw_failure
     // Set titlebar-only mode before the window becomes visible

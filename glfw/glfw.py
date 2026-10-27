@@ -108,6 +108,7 @@ def generate_wrappers(glfw_header: str) -> None:
     void glfwWaylandSetTitlebarHidden(GLFWwindow *handle, bool hidden)
     void glfwWaylandSetInitialWindowSizeCallback(GLFWwaylandinitialsizefun callback)
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)
+    bool glfwWaylandUsesSystemTitlebar(void)
     bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle)
     bool glfwWaylandBeep(GLFWwindow *handle)
     pid_t glfwWaylandCompositorPID(void)

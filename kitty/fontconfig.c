@@ -6,6 +6,7 @@
  */
 
 #include "cleanup.h"
+#include "state.h"
 #include "lineops.h"
 #include "fonts.h"
 #include <fontconfig/fontconfig.h>
@@ -159,7 +160,8 @@ finalize(void) {
         Py_CLEAR(builtin_nerd_font.face);
         Py_CLEAR(builtin_nerd_font.descriptor);
         clear_fallback_candidates();
-        FcFini();
+        // Pango still owns Fontconfig caches when a native GTK titlebar was used.
+        if (!global_state.native_titlebar_used) FcFini();
         dlclose(libfontconfig_handle);
         libfontconfig_handle = NULL;
         initialized = false;

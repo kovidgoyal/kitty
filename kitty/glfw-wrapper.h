@@ -2649,6 +2649,10 @@ typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;
 #define glfwWaylandRedrawCSDWindowTitle glfwWaylandRedrawCSDWindowTitle_impl
 
+typedef bool (*glfwWaylandUsesSystemTitlebar_func)(void);
+GFW_EXTERN glfwWaylandUsesSystemTitlebar_func glfwWaylandUsesSystemTitlebar_impl;
+#define glfwWaylandUsesSystemTitlebar glfwWaylandUsesSystemTitlebar_impl
+
 typedef bool (*glfwWaylandIsWindowFullyCreated_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandIsWindowFullyCreated_func glfwWaylandIsWindowFullyCreated_impl;
 #define glfwWaylandIsWindowFullyCreated glfwWaylandIsWindowFullyCreated_impl
