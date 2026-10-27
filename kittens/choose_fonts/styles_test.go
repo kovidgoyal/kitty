@@ -55,6 +55,70 @@ func TestStylesWithAttributeData(t *testing.T) {
 	check([]group_result{{"Styles", []string{"Black", "Bold Expanded", "Light Condensed"}}, {"Styles", []string{"Narrow", "Wide"}}}, ma, mb)
 }
 
+func TestStyleAxisValueOrder(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		values []DesignAxisValue
+		want   []string
+	}{
+		{
+			name: "negative slant values",
+			values: []DesignAxisValue{
+				{Name: "Oblique", Value: -5}, {Name: "Upright", Value: 0},
+				{Name: "Backslant", Value: 5}, {Name: "More oblique", Value: -15},
+				{Name: "Medium oblique", Value: -10},
+			},
+			want: []string{"More oblique", "Medium oblique", "Oblique", "Upright", "Backslant"},
+		},
+		{
+			name: "fractional values",
+			values: []DesignAxisValue{
+				{Name: "Zero", Value: 0},
+				{Name: "A positive", Value: 2.0 / 65536}, {Name: "Z positive", Value: 1.0 / 65536},
+				{Name: "A negative", Value: -1.0 / 65536}, {Name: "Z negative", Value: -2.0 / 65536},
+			},
+			want: []string{"Z negative", "A negative", "Zero", "Z positive", "A positive"},
+		},
+		{
+			name: "large negative values",
+			values: []DesignAxisValue{
+				{Name: "Zero", Value: 0}, {Name: "Minimum", Value: -32768},
+				{Name: "Maximum", Value: 32767 + 65535.0/65536},
+				{Name: "Minus ten thousand", Value: -10000}, {Name: "Minus one", Value: -1},
+			},
+			want: []string{"Minimum", "Minus ten thousand", "Minus one", "Zero", "Maximum"},
+		},
+		{
+			name: "equal values use stable case insensitive name order",
+			values: []DesignAxisValue{
+				{Name: "beta", Value: -10}, {Name: "alpha", Value: -10},
+				{Name: "Alpha", Value: -10},
+			},
+			want: []string{"alpha", "Alpha", "beta"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			vd := VariableData{Design_axes: []DesignAxis{{Name: "Slant", Values: tt.values}}}
+			fonts := make([]ListedFont, len(tt.values))
+			vds := make([]VariableData, len(tt.values))
+			for i, v := range tt.values {
+				fonts[i].Style = v.Name
+				vds[i].Design_axes = []DesignAxis{{Name: "Slant", Values: []DesignAxisValue{v}}}
+			}
+			for name, ans := range map[string]*family_style_data{
+				"single face": styles_for_variable_data(vd),
+				"family":      styles_in_family_from_variable_data(fonts, vds),
+			} {
+				t.Run(name, func(t *testing.T) {
+					if diff := cmp.Diff([]group_result{{"Slant", tt.want}}, group_results(ans)); diff != "" {
+						t.Fatalf("Unexpected styles (-want +got):\n%s", diff)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestStylesInFamily(t *testing.T) {
 	check := func(expected []group_result, fonts []ListedFont, vds []VariableData) {
 		t.Helper()

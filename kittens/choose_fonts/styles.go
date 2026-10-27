@@ -1,19 +1,18 @@
 package choose_fonts
 
 import (
-	"fmt"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"cmp"
 	"slices"
 	"strings"
-)
 
-var _ = fmt.Print
+	"github.com/kovidgoyal/kitty/tools/utils"
+)
 
 type style_group struct {
 	name           string
 	ordering       int
 	styles         []string
-	style_sort_map map[string]string
+	style_sort_map map[string]float64
 }
 
 type family_style_data struct {
@@ -37,12 +36,12 @@ func styles_with_attribute_data(ans *family_style_data, items ...VariableData) {
 			ans.style_groups[idx].ordering = min(ans.style_groups[idx].ordering, ordering)
 		} else {
 			idx = len(ans.style_groups)
-			ans.style_groups = append(ans.style_groups, style_group{name: key.name, ordering: ordering, styles: make([]string, 0), style_sort_map: make(map[string]string)})
+			ans.style_groups = append(ans.style_groups, style_group{name: key.name, ordering: ordering, styles: make([]string, 0), style_sort_map: make(map[string]float64)})
 			groups[key] = idx
 		}
 		return &ans.style_groups[idx]
 	}
-	has := func(n string, m map[string]string) bool {
+	has := func(n string, m map[string]float64) bool {
 		_, found := m[n]
 		return found
 	}
@@ -54,8 +53,7 @@ func styles_with_attribute_data(ans *family_style_data, items ...VariableData) {
 			sg := get(group_key{name: ax.Name}, ax.Ordering)
 			for _, v := range ax.Values {
 				if v.Name != "" && !has(v.Name, sg.style_sort_map) {
-					sort_key := fmt.Sprintf("%09d:%s", int(v.Value*10000), strings.ToLower(v.Name))
-					sg.style_sort_map[v.Name] = sort_key
+					sg.style_sort_map[v.Name] = v.Value
 					sg.styles = append(sg.styles, v.Name)
 				}
 			}
@@ -64,7 +62,7 @@ func styles_with_attribute_data(ans *family_style_data, items ...VariableData) {
 		for _, ma := range vd.Multi_axis_styles {
 			sg := get(group_key{name: "Styles", multi_axis_style: true}, 0)
 			if ma.Name != "" && !has(ma.Name, sg.style_sort_map) {
-				sg.style_sort_map[ma.Name] = strings.ToLower(ma.Name)
+				sg.style_sort_map[ma.Name] = 0
 				sg.styles = append(sg.styles, ma.Name)
 			}
 		}
@@ -72,7 +70,12 @@ func styles_with_attribute_data(ans *family_style_data, items ...VariableData) {
 	ans.style_groups = utils.StableSortWithKey(ans.style_groups, func(sg style_group) int { return sg.ordering })
 	for i := range ans.style_groups {
 		sg := &ans.style_groups[i]
-		sg.styles = utils.StableSortWithKey(sg.styles, func(s string) string { return sg.style_sort_map[s] })
+		slices.SortStableFunc(sg.styles, func(a, b string) int {
+			if c := cmp.Compare(sg.style_sort_map[a], sg.style_sort_map[b]); c != 0 {
+				return c
+			}
+			return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+		})
 	}
 
 }
