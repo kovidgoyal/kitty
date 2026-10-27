@@ -26,7 +26,12 @@ The color scheme for your system. This sets the initial value of the color schem
 by using :code:`kitten desktop-ui color-scheme`.
 """,
 )
-opt('accent_color', 'cyan', long_text='The RGB accent color for your system, can be specified as a color name or in hex a decimal format.')
+opt(
+    'accent_color',
+    'cyan',
+    option_type='to_color',
+    long_text='The RGB accent color for your system, can be specified as a color name or in hex a decimal format.',
+)
 opt('contrast', 'normal', choices=('normal', 'high'), long_text='The preferred contrast level.')
 opt(
     'file_chooser_size',
