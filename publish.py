@@ -87,7 +87,7 @@ def run_build(args: Any) -> None:
         program_data += f':nightly:{commit_time}'
         setup_options += ['--nightly', f'--vcs-commit-time={commit_time}']
 
-    def run_with_retry(cmd: str, timeout: float | None = 20 * 60, retry_cmd: str = '') -> None:
+    def run_with_retry(cmd: str, timeout: float | None = 30 * 60, retry_cmd: str = '') -> None:
         try:
             call(cmd, echo=True, timeout=timeout)
         except (SystemExit, Exception):
