@@ -6,7 +6,10 @@ fonts, light/dark appearance, icons, button layout, and upper corner shape come
 from GTK and libadwaita rather than a copied palette. The native
 `default-decoration` style uses a compact titlebar (37 px with the current
 system theme), rather than the taller toolbar/header style used by Files.
-GTK never maps its helper window and is restricted to the Wayland backend.
+GTK never maps its helper window and is restricted to the Wayland backend. Its implicit GTK renderer is
+also forced to Cairo during realization, so creating it does not initialize an
+unused Vulkan/OpenGL device. The previous `GSK_RENDERER` environment value is
+restored immediately and is not imposed on terminal children.
 
 Kitty continues to handle window movement, edge resizing, double-click to
 maximize/restore, the window menu, and minimize/maximize/close requests using
@@ -81,3 +84,25 @@ GNOME Wayland. Kitty's process-wide Cairo/Fontconfig reset is skipped when GTK
 was initialized, because GTK/Pango keep shared font caches alive until process
 exit; resetting them prematurely causes a shutdown assertion. Per-window
 renderer/widget resources and Kitty's own font resources are still released.
+
+
+Source-build startup measurements on the same Ubuntu/GNOME session, with a
+clean configuration, a 1000x600 logical-pixel client, one warmup excluded and
+ten timed launches (median time until the child shell writes its ready marker,
+not first-visible-frame latency):
+
+| Build | Startup median |
+| --- | ---: |
+| Installed upstream release | 131 ms |
+| Initial local GTK titlebar build | 534 ms |
+| Optimized local GTK titlebar build | 279 ms |
+| Same optimized build, GTK titlebar disabled | 164 ms |
+
+The optimized installation uses release compiler flags, a Cairo-only hidden
+GTK renderer, and precompiled optimized (`-OO`) Python standard-library bytecode.
+The bytecode cache change is a local source-build installation improvement, not
+a change to this renderer: without writable/preinstalled `.opt-2.pyc` caches,
+the system Python recompiles several standard-library modules at every launch.
+The remaining roughly 115 ms enabling the native titlebar is mostly libadwaita
+initialization on this machine. These are warm-cache desktop measurements and
+should not be interpreted as a frame-rate or scrolling benchmark.

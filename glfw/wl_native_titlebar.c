@@ -3,6 +3,7 @@
  * GTK draws into Kitty's existing shared-memory titlebar. GTK never maps a
  * toplevel: input, window management and the terminal stay on Kitty's display.
  */
+#define _POSIX_C_SOURCE 200809L
 #include "wl_native_titlebar.h"
 #include "wl_client_side_decorations.h"
 #include <stdlib.h>
@@ -90,7 +91,21 @@ get_titlebar(_GLFWwindow *window) {
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(n->header), n->title);
     adw_header_bar_set_show_back_button(ADW_HEADER_BAR(n->header), false);
     gtk_window_set_child(GTK_WINDOW(n->window), n->header);
+    // GtkWindow creates its own implicit renderer on realization, even though
+    // we snapshot with the explicit Cairo renderer below. Prevent it from also
+    // initializing a Vulkan/GL device for this never-mapped helper window.
+    // Restore the environment immediately so terminal children keep their own
+    // renderer choice.
+    const char *renderer_env = getenv("GSK_RENDERER");
+    char *saved_renderer_env = renderer_env ? strdup(renderer_env) : NULL;
+    const bool override_renderer = !renderer_env || saved_renderer_env;
+    if (override_renderer) setenv("GSK_RENDERER", "cairo", 1);
     gtk_widget_realize(n->window);
+    if (override_renderer) {
+        if (saved_renderer_env) setenv("GSK_RENDERER", saved_renderer_env, 1);
+        else unsetenv("GSK_RENDERER");
+    }
+    free(saved_renderer_env);
     n->renderer = gsk_cairo_renderer_new();
     GError *error = NULL;
     if (!gsk_renderer_realize(n->renderer, gtk_native_get_surface(GTK_NATIVE(n->window)), &error)) {

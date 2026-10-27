@@ -147,6 +147,9 @@ test_native_shadows(_GLFWwindow *w, double scale, const char *filename) {
 int
 main(void) {
     g_setenv("KITTY_WAYLAND_TITLEBAR", "system", true);
+    // The helper must use Cairo without imposing that choice on child apps.
+    char *original_renderer_env = g_strdup(g_getenv("GSK_RENDERER"));
+    g_setenv("GSK_RENDERER", "vulkan", true);
     _GLFWwindow w = {0};
     w.id = _glfw.focusedWindowId = 1;
     w.resizable = true;
@@ -154,6 +157,12 @@ main(void) {
     w.wl.title = "Kitty — GTK 4 / libadwaita";
     w.wl.wm_capabilities.minimize = w.wl.wm_capabilities.maximize = true;
     assert(csd_native_titlebar_height(&w) > 0);
+    assert(strcmp(g_getenv("GSK_RENDERER"), "vulkan") == 0);
+    GListModel *toplevels = gtk_window_get_toplevels();
+    GtkWindow *helper = g_list_model_get_item(toplevels, 0);
+    assert(helper);
+    assert(strcmp(G_OBJECT_TYPE_NAME(gtk_native_get_renderer(GTK_NATIVE(helper))), "GskCairoRenderer") == 0);
+    g_object_unref(helper);
     g_object_set(gtk_settings_get_default(), "gtk-decoration-layout", ":minimize,maximize,close", "gtk-enable-animations", false, NULL);
     adw_style_manager_set_color_scheme(adw_style_manager_get_default(), ADW_COLOR_SCHEME_FORCE_DARK);
     uint8_t *dark = render(&w, 1, "/tmp/kitty-titlebar-dark.png");
@@ -215,7 +224,14 @@ main(void) {
     free(render(&w, 1.25, NULL));
     csd_native_titlebar_free(&w);
     assert(!w.wl.decorations.native_titlebar);
+    g_unsetenv("GSK_RENDERER");
+    assert(csd_native_titlebar_height(&w) > 0);
+    assert(g_getenv("GSK_RENDERER") == NULL);
+    csd_native_titlebar_free(&w);
     csd_native_titlebar_terminate();
+    if (original_renderer_env) g_setenv("GSK_RENDERER", original_renderer_env, true);
+    else g_unsetenv("GSK_RENDERER");
+    g_free(original_renderer_env);
     puts("Native GTK titlebar: theme, layout, capabilities, scaling and lifecycle passed");
     return 0;
 }
