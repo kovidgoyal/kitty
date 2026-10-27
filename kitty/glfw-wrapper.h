@@ -2677,6 +2677,10 @@ typedef void (*glfwCancelMomentumScroll_func)(void);
 GFW_EXTERN glfwCancelMomentumScroll_func glfwCancelMomentumScroll_impl;
 #define glfwCancelMomentumScroll glfwCancelMomentumScroll_impl
 
+typedef void (*glfwConfigureX11TouchpadScroll_func)(double);
+GFW_EXTERN glfwConfigureX11TouchpadScroll_func glfwConfigureX11TouchpadScroll_impl;
+#define glfwConfigureX11TouchpadScroll glfwConfigureX11TouchpadScroll_impl
+
 typedef unsigned long long (*glfwDBusUserNotify_func)(const GLFWDBUSNotificationData*, GLFWDBusnotificationcreatedfun, void*);
 GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl

@@ -29,6 +29,20 @@ class TestConfParsing(BaseTest):
     def test_conf_parsing(self):
         conf_parsing(self)
 
+    def test_x11_touchpad_scroll_scale(self):
+        from kitty.config import defaults, load_config
+
+        self.ae(defaults.x11_touchpad_scroll_scale, 0)
+        for value in ('0', '40', '12.5', '-1'):
+            bad_lines = []
+            opts = load_config(overrides=(f'x11_touchpad_scroll_scale {value}',), accumulate_bad_lines=bad_lines)
+            self.assertFalse(bad_lines)
+            self.ae(opts.x11_touchpad_scroll_scale, max(0, float(value)))
+        bad_lines = []
+        opts = load_config(overrides=('x11_touchpad_scroll_scale invalid',), accumulate_bad_lines=bad_lines)
+        self.ae(len(bad_lines), 1)
+        self.ae(opts.x11_touchpad_scroll_scale, 0)
+
     def test_launcher(self):
         launcher(self)
 

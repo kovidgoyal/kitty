@@ -834,6 +834,21 @@ themselves.
 )
 
 opt(
+    'x11_touchpad_scroll_scale',
+    '0',
+    option_type='positive_float',
+    ctype='float',
+    long_text="""
+Force X11/XWayland scroll valuator events to be treated as touchpad input.
+Zero disables the override. A positive value specifies logical pixels per
+scroll increment; try 40 on XWayland. Enables per-pixel scrolling and momentum
+when those features are enabled in kitty. This also affects mouse wheels,
+because XWayland can expose both devices through the same virtual pointer.
+It cannot restore precision discarded by the compositor. Requires a restart.
+""",
+)
+
+opt(
     'momentum_scroll',
     '0.96',
     option_type='unit_float',

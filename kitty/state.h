@@ -198,6 +198,7 @@ typedef struct Options {
     } underline_exclusion;
     float box_drawing_scale[4];
     double momentum_scroll;
+    double x11_touchpad_scroll_scale;
     double window_drag_tolerance;
     bool generate_256_palette;
     int drag_threshold;

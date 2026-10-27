@@ -8,6 +8,13 @@
 #include "internal.h"
 #include <math.h>
 
+double glfw_x11_touchpad_scroll_scale = 0;
+
+GLFWAPI void
+glfwConfigureX11TouchpadScroll(double scale) {
+    glfw_x11_touchpad_scroll_scale = isfinite(scale) && scale > 0 ? scale : 0;
+}
+
 typedef struct ScrollSample {
     double dx, dy;
     monotonic_t timestamp;

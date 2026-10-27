@@ -528,6 +528,7 @@ option_names = (
     'window_title_bar_inactive_foreground',
     'window_title_bar_min_windows',
     'window_title_template',
+    'x11_touchpad_scroll_scale',
 )
 
 
@@ -744,6 +745,7 @@ class Options:
     window_title_bar_inactive_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_min_windows: int = 0
     window_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}'
+    x11_touchpad_scroll_scale: float = 0
     action_alias: dict[str, str] = {}
     detect_url_regex: dict[str, str] = {}
     env: dict[str, str] = {}

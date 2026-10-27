@@ -231,6 +231,10 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- X11/XWayland: Add :opt:`x11_touchpad_scroll_scale` to explicitly treat scroll
+  valuators as touchpad input with per-pixel scrolling and momentum when the
+  virtual pointer does not identify the physical device. Disabled by default.
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

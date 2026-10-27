@@ -569,6 +569,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwCancelMomentumScroll_impl) = dlsym(handle, "glfwCancelMomentumScroll");
     if (glfwCancelMomentumScroll_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwConfigureX11TouchpadScroll_impl) = dlsym(handle, "glfwConfigureX11TouchpadScroll");
+    if (glfwConfigureX11TouchpadScroll_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwDBusUserNotify_impl) = dlsym(handle, "glfwDBusUserNotify");
     if (glfwDBusUserNotify_impl == NULL) dlerror(); // clear error indicator
 

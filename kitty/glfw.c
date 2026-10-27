@@ -2322,6 +2322,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (is_first_window) {
 #ifndef __APPLE__
         glfwConfigureMomentumScroller(OPT(momentum_scroll), -1, -1, 0);
+        glfwConfigureX11TouchpadScroll(OPT(x11_touchpad_scroll_scale));
 #endif
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);

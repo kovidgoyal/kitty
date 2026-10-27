@@ -1336,7 +1336,13 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             double *off = v->is_vertical ? &yOffset : &xOffset;
             *off = delta;
             d->num_events++;
-            if (!d->type_detected) {
+            if (glfw_x11_touchpad_scroll_scale > 0) {
+                // XWayland may hide the physical touchpad identity. Normalize
+                // XI scroll increments to logical pixels before adding inertia.
+                *off *= glfw_x11_touchpad_scroll_scale / (v->increment != 0 ? v->increment : 1.);
+                d->offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
+                d->type_detected = true;
+            } else if (!d->type_detected) {
                 debug_input("Detecting scroll device type: delta: %.3f delta*120: %.3f v->increment: %.3f\n", delta, delta * 120, v->increment);
                 if (v->increment == 120.) {
                     d->type_detected = true;
@@ -1358,7 +1364,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
                     }
                 }
             }
-            if (v->increment != 0) {
+            if (glfw_x11_touchpad_scroll_scale <= 0 && v->increment != 0) {
                 if (d->offset_type == GLFW_SCROLL_OFFSET_LINES) {
                     *off /= v->increment;
                 } else if (d->offset_type == GLFW_SCROLL_OFFEST_V120 && d->v120_offset_needs_scaling) {
@@ -1382,7 +1388,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             };
 
             // For high-resolution, finger-based scrolling, use timer-based momentum scrolling
-            if (d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES && glfw_is_momentum_scroll_enabled()) {
+            if ((d->is_finger_based || glfw_x11_touchpad_scroll_scale > 0) && type == GLFW_SCROLL_OFFEST_HIGHRES && glfw_is_momentum_scroll_enabled()) {
                 // Reset the timer on each scroll event
                 x11_cancel_momentum_scroll_timer();
 

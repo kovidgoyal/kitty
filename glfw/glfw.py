@@ -115,6 +115,7 @@ def generate_wrappers(glfw_header: str) -> None:
     void glfwConfigureMomentumScroller(double friction, double min_velocity, double max_velocity, unsigned timer_interval)
     void glfwFeedMomentumScroller(GLFWwindow *window, double dx, double dy, int keyboard_modifiers, bool stopped, monotonic_t timestamp)
     void glfwCancelMomentumScroll(void)
+    void glfwConfigureX11TouchpadScroll(double scale)
     unsigned long long glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
     bool glfwDBusMonitorSessionState(GLFWDBussessionstatefun callback)

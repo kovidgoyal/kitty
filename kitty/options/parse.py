@@ -1612,6 +1612,9 @@ class Parser:
     def window_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_template'] = tab_title_template(val)
 
+    def x11_touchpad_scroll_scale(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['x11_touchpad_scroll_scale'] = positive_float(val)
+
     def x11_hide_window_decorations(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_hide_window_decorations_aliases('x11_hide_window_decorations', val, ans)
 

@@ -4,6 +4,7 @@
 #include "to-c.h"
 
 
+
 static void
 convert_from_python_font_size(PyObject *val, Options *opts) {
     opts->font_size = PyFloat_AsDouble(val);
@@ -534,6 +535,19 @@ convert_from_opts_pixel_scroll(PyObject *py_opts, Options *opts) {
     PyObject *ret = PyObject_GetAttrString(py_opts, "pixel_scroll");
     if (ret == NULL) return;
     convert_from_python_pixel_scroll(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_x11_touchpad_scroll_scale(PyObject *val, Options *opts) {
+    opts->x11_touchpad_scroll_scale = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_x11_touchpad_scroll_scale(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "x11_touchpad_scroll_scale");
+    if (ret == NULL) return;
+    convert_from_python_x11_touchpad_scroll_scale(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1660,6 +1674,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_touch_scroll_multiplier(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_pixel_scroll(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_x11_touchpad_scroll_scale(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_momentum_scroll(py_opts, opts);
     if (PyErr_Occurred()) return false;
