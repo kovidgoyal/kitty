@@ -154,11 +154,25 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, ac
 		if err != nil {
 			return err
 		}
+		// Each source needs its own staging entry. Reusing an entry could
+		// truncate a hard link to an earlier source, including inside a directory.
+		name := filepath.Base(path)
+		for q := 1; ; q++ {
+			if _, err := utils.LstatAt(dest_dir, name); errors.Is(err, fs.ErrNotExist) {
+				break
+			} else if err != nil {
+				return err
+			}
+			name = fmt.Sprintf("name-conflict-%d-%s", q, filepath.Base(path))
+		}
 		if st.IsDir() {
 			if src_file, err = os.Open(path); err != nil {
 				return err
 			}
-			d, err := utils.CreateDirAt(dest_dir, filepath.Base(path), st.Mode().Perm())
+			if err := utils.MkdirAt(dest_dir, name, st.Mode().Perm()); err != nil {
+				return err
+			}
+			d, err := utils.OpenDirAt(dest_dir, name)
 			if err != nil {
 				return err
 			}
@@ -175,7 +189,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, ac
 		} else if st.Mode().IsRegular() {
 			if !disallow_hardlinks {
 				// First try a hard link
-				dest := filepath.Join(dest_dir.Name(), filepath.Base(path))
+				dest := filepath.Join(dest_dir.Name(), name)
 				if err = os.Link(path, dest); err == nil {
 					continue
 				}
@@ -183,7 +197,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, ac
 			if src_file, err = os.Open(path); err != nil {
 				return err
 			}
-			d, err := utils.CreateAt(dest_dir, filepath.Base(path), st.Mode().Perm())
+			d, err := utils.CreateExclusiveAt(dest_dir, name, st.Mode().Perm())
 			if err != nil {
 				return err
 			}
@@ -197,7 +211,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, ac
 			if err != nil {
 				return err
 			}
-			dest := filepath.Join(dest_dir.Name(), filepath.Base(path))
+			dest := filepath.Join(dest_dir.Name(), name)
 			if err := os.Symlink(target, dest); err != nil {
 				return err
 			}

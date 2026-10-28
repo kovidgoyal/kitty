@@ -102,6 +102,150 @@ func TestLocalCopyHardlinkPolicy(t *testing.T) {
 	}
 }
 
+func TestLocalCopyDuplicateBasenames(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		action    int
+		copy_mode string
+	}{
+		{"copy-auto", copy_on_drop, "auto"},
+		{"copy-independent", copy_on_drop, "independent"},
+		{"move-auto", move_on_drop, "auto"},
+		{"move-independent", move_on_drop, "independent"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, kind := range []string{"files", "directories", "repeated-source", "case-conflict", "existing-name"} {
+				t.Run(kind, func(t *testing.T) {
+					tmp := t.TempDir()
+					src := filepath.Join(tmp, "src")
+					dst := filepath.Join(tmp, "dst")
+					first, second := "first/file.txt", "second/file.txt"
+					switch kind {
+					case "directories":
+						first, second = "first/folder/file.txt", "second/folder/file.txt"
+					case "case-conflict":
+						second = "second/FILE.txt"
+					}
+					files := map[string]string{first: "FIRST original", second: "SECOND original"}
+					buildTree(t, src, files, nil)
+					if err := os.Mkdir(dst, 0755); err != nil {
+						t.Fatal(err)
+					}
+					paths := []string{filepath.Join(src, first), filepath.Join(src, second)}
+					want := []string{"FIRST original", "SECOND original"}
+					switch kind {
+					case "directories":
+						paths[0], paths[1] = filepath.Dir(paths[0]), filepath.Dir(paths[1])
+					case "repeated-source":
+						paths[1], want[1] = paths[0], want[0]
+					case "existing-name":
+						buildTree(t, dst, map[string]string{"file.txt": "existing", "name-conflict-1-file.txt": "existing conflict"}, nil)
+						want = append(want, "existing", "existing conflict")
+					}
+					if err := do_local_copy(context.Background(), openDir(t, dst), paths, tc.action, tc.copy_mode); err != nil {
+						t.Fatal(err)
+					}
+					for path, want := range files {
+						data, err := os.ReadFile(filepath.Join(src, path))
+						if err != nil {
+							t.Fatal(err)
+						}
+						if string(data) != want {
+							t.Errorf("source %s: got %q, want %q", path, data, want)
+						}
+					}
+					entries, err := os.ReadDir(dst)
+					if err != nil {
+						t.Fatal(err)
+					}
+					var contents []string
+					for _, entry := range entries {
+						path := filepath.Join(dst, entry.Name())
+						if kind == "directories" {
+							path = filepath.Join(path, "file.txt")
+						}
+						data, err := os.ReadFile(path)
+						if err != nil {
+							t.Fatal(err)
+						}
+						contents = append(contents, string(data))
+					}
+					if got, want := sortedStrings(contents), sortedStrings(want); !equalStringSlices(got, want) {
+						t.Errorf("dropped file contents: got %q, want %q", got, want)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestLocalCopySymlinkNameConflict(t *testing.T) {
+	for _, tc := range []struct {
+		name                         string
+		target_exists, symlink_first bool
+	}{
+		{"symlink-first", true, true},
+		{"file-first", true, false},
+		{"dangling-symlink-first", false, true},
+		{"dangling-file-first", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			src, dst := filepath.Join(tmp, "src"), filepath.Join(tmp, "dst")
+			target := filepath.Join(src, "target.txt")
+			files := map[string]string{"file/file.txt": "FILE original"}
+			if tc.target_exists {
+				files["target.txt"] = "TARGET original"
+			}
+			buildTree(t, src, files, map[string]string{"link/file.txt": target})
+			if err := os.Mkdir(dst, 0755); err != nil {
+				t.Fatal(err)
+			}
+			paths := []string{filepath.Join(src, "file/file.txt"), filepath.Join(src, "link/file.txt")}
+			if tc.symlink_first {
+				paths[0], paths[1] = paths[1], paths[0]
+			}
+			if err := do_local_copy(context.Background(), openDir(t, dst), paths, copy_on_drop, "auto"); err != nil {
+				t.Fatal(err)
+			}
+			for path, want := range files {
+				if data, err := os.ReadFile(filepath.Join(src, path)); err != nil {
+					t.Fatal(err)
+				} else if string(data) != want {
+					t.Errorf("source %s: got %q, want %q", path, data, want)
+				}
+			}
+			if !tc.target_exists {
+				if _, err := os.Lstat(target); !os.IsNotExist(err) {
+					t.Errorf("dangling symlink target was created: %v", err)
+				}
+			}
+			entries, err := os.ReadDir(dst)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 2 {
+				t.Fatalf("got %d dropped entries, want 2", len(entries))
+			}
+			num_symlinks := 0
+			for _, entry := range entries {
+				path := filepath.Join(dst, entry.Name())
+				if entry.Type()&os.ModeSymlink != 0 {
+					num_symlinks++
+					if got, err := os.Readlink(path); err != nil || got != target {
+						t.Errorf("dropped symlink: got %q, %v, want %q", got, err, target)
+					}
+				} else if data, err := os.ReadFile(path); err != nil || string(data) != "FILE original" {
+					t.Errorf("dropped file: got %q, %v, want FILE original", data, err)
+				}
+			}
+			if num_symlinks != 1 {
+				t.Errorf("got %d dropped symlinks, want 1", num_symlinks)
+			}
+		})
+	}
+}
+
 // TestFindOverwrites_NoOverlap verifies that an empty result is returned when
 // source and destination have no names in common.
 func TestFindOverwrites_NoOverlap(t *testing.T) {
