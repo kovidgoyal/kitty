@@ -1266,6 +1266,8 @@ render_glyphs_in_cells(
     FONTS_DATA_HANDLE fg,
     GlyphRenderInfo *ri) {
     CTFace *self = (CTFace *)s;
+    // Emoji presentation codepoints rendered with a monochrome font must use the foreground color
+    *was_colored = *was_colored && (CTFontGetSymbolicTraits(self->ct_font) & kCTFontColorGlyphsTrait) != 0;
     ensure_render_space(128, 128, num_glyphs);
     for (unsigned i = 0; i < num_glyphs; i++) buffers.glyphs[i] = info[i].codepoint;
     return do_render(

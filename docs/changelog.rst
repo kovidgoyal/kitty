@@ -470,6 +470,9 @@ Detailed list of changes
 - Nightly builds now show the date and hash of the commit they were built from
   in the output of :option:`kitty --version` and :code:`kitten --version`
 
+- macOS: Fix emoji rendered with a monochrome emoji font such as Noto Emoji
+  not using the foreground color (:iss:`10757`)
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
