@@ -163,7 +163,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, ac
 			} else if err != nil {
 				return err
 			}
-			name = fmt.Sprintf("name-conflict-%d-%s", q, filepath.Base(path))
+			name = fmt.Sprintf(case_conflict_template, q, filepath.Base(path))
 		}
 		if st.IsDir() {
 			if src_file, err = os.Open(path); err != nil {

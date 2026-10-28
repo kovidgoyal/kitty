@@ -4,6 +4,7 @@ package dnd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -139,7 +140,7 @@ func TestLocalCopyDuplicateBasenames(t *testing.T) {
 					case "repeated-source":
 						paths[1], want[1] = paths[0], want[0]
 					case "existing-name":
-						buildTree(t, dst, map[string]string{"file.txt": "existing", "name-conflict-1-file.txt": "existing conflict"}, nil)
+						buildTree(t, dst, map[string]string{"file.txt": "existing", fmt.Sprintf(case_conflict_template, 1, "file.txt"): "existing conflict"}, nil)
 						want = append(want, "existing", "existing conflict")
 					}
 					if err := do_local_copy(context.Background(), openDir(t, dst), paths, tc.action, tc.copy_mode); err != nil {
