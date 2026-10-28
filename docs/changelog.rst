@@ -395,6 +395,9 @@ Detailed list of changes
   downloaded only once and images are decoded only once for all such outputs.
   Specifying the same output file twice is now an error (:pull:`10744`)
 
+- Wayland: Fix :option:`kitty --os-window-tag` not setting the window tag
+  (:iss:`10759`)
+
 - Clipboard kitten: Correctly detect duplicate output files when a path contains
   a symlink followed by ``..``, avoiding overwrites of the same target and
   erroneous rejection of distinct output files

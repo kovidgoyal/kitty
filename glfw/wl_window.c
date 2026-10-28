@@ -1555,6 +1555,7 @@ _glfwPlatformCreateWindow(
     csd_initialize_metrics(window);
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
+    strncpy(window->wl.windowTag, wndconfig->wl.windowTag, sizeof(window->wl.windowTag));
     window->swaps_disallowed = true;
 
     if (!create_surface(window, wndconfig)) return false;
