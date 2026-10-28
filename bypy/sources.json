@@ -145,10 +145,10 @@
     },
 
     {
-        "name": "python 3.14.8",
+        "name": "python 3.14.10",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:c2215904f02b175596dc49351585104f4bc20341e1c47378b26a2c274360ce73",
+            "hash": "sha256:de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
             "urls": ["https://www.python.org/ftp/python/{version}/Python-{version}.{file_extension}"]
         }
     },
