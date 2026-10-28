@@ -71,7 +71,8 @@ provide implementations for some backends as well. Service discovery and
 configuring which backend to use happens via the :file:`xdg-desktop-portal`
 program, usually found at :file:`/usr/lib/xdg-desktop-portal`.
 
-It can be configured by files in :file:`~/.local/share/xdg-desktop-portal`. See
+It can be configured by files in :file:`$XDG_CONFIG_HOME/xdg-desktop-portal`,
+which defaults to :file:`~/.config/xdg-desktop-portal`. See
 `man portals.conf <https://man.archlinux.org/man/portals.conf.5>`__. The
 ``kitten desktop-ui enable-portal`` command takes care of the setup for you
 automatically. If you want to customize exactly which services to use this
@@ -108,7 +109,7 @@ returns a not found error, then some other backend is being used for settings.
 
 Read the ``portals.conf`` man page and run::
 
-    /usr/lib/xdg-desktop-portal -r v
+    /usr/lib/xdg-desktop-portal -r -v
 
 this will output a lot of debug information, which should tell you which
 backend is chosen for which service. Read the debug output carefully to

@@ -21,8 +21,8 @@ Where ``<ESC>`` is the byte ``0x1b``. The JSON object has the form:
 
 The ``version`` above is an array of the form :code:`[0, 14, 2]`. If you are
 developing a standalone client, use the kitty version that you are developing
-against. Using a version greater than the version of the kitty instance you are
-talking to, will cause a failure.
+against. A client whose major and minor version pair is greater than that of
+the kitty instance will be rejected. The patch version is not compared.
 
 Set ``no_response`` to ``true`` if you don't want a response from kitty.
 

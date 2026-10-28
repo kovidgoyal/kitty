@@ -1307,9 +1307,10 @@ Key      Value                 Default    Description
 -----------------------------------------------------------
 ``d``    Single character.     ``a``      What to delete.
          ``(
-         a, A, c, C, n, N,
-         i, I, p, P, q, Q, r,
-         R, x, X, y, Y, z, Z
+         a, A, c, C, f, F,
+         n, N, i, I, p, P,
+         q, Q, r, R, x, X,
+         y, Y, z, Z
          )``.
 =======  ====================  =========  =================
 

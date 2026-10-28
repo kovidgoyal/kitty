@@ -92,9 +92,12 @@ Variables that influence kitty behavior
 
 .. envvar:: KITTY_RUNTIME_DIRECTORY
 
-   Controls where kitty stores runtime files like sockets. Defaults to
-   the :code:`XDG_RUNTIME_DIR` environment variable if that is defined
-   otherwise the run directory inside the kitty cache directory is used.
+   Controls where kitty stores runtime files like sockets. On macOS, the
+   default is the native per-user cache directory returned by
+   :code:`getconf DARWIN_USER_CACHE_DIR`. On other platforms, kitty uses
+   :code:`XDG_RUNTIME_DIR` if defined, otherwise :file:`/run/user/<uid>` if
+   accessible, falling back to the :file:`run` directory inside the kitty
+   cache directory.
 
 .. envvar:: VISUAL
 
@@ -268,7 +271,7 @@ Variables that kitty sets when running child programs
 .. envvar:: KITTY_SIMD
 
    Set it to ``128`` to use 128 bit vector registers, ``256`` to use 256 bit
-   vector registers or any other value to prevent kitty from using SIMD CPU
-   vector instructions. Warning, this overrides CPU capability detection so
-   will cause kitty to crash with SIGILL if your CPU does not support the
-   necessary SIMD extensions.
+   vector registers, or ``512`` to use AVX-512 on x86-64. Any other value
+   prevents kitty from using SIMD CPU vector instructions. Warning, this
+   overrides CPU capability detection so will cause kitty to crash with SIGILL
+   if your CPU does not support the necessary SIMD extensions.

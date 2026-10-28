@@ -191,7 +191,7 @@ treat these as being two unique *unidentified* notifications.
 
 To close a previous notification, send::
 
-    <OSC> i=<notification id> : p=close ; <terminator>
+    <OSC> 99 ; i=<notification id> : p=close ; <terminator>
 
 This will close a previous notification with the specified id. If no such
 notification exists (perhaps because it was already closed or it was activated)

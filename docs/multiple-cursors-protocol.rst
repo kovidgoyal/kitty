@@ -63,8 +63,9 @@ one of:
 
 The sequence of ``CO-ORD TYPE : CO-ORDINATES`` can be repeated any number of
 times separated by ``;``. The ``SHAPE`` will be set on the cells indicated by
-each such group. For example: ``-1;2:3:4;4:5:6:7:8`` will set the shape ``-1``
-at the cell ``(3, 2)`` and in the rectangle ``(6, 5)`` to ``(8, 7)`` inclusive.
+each such group. For example: ``1;2:3:4;4:5:6:7:8`` will set block cursors
+at the cell ``(4, 3)`` and in the rectangle ``(6, 5)`` to ``(8, 7)`` inclusive,
+where each pair is written as ``(x, y)``.
 
 Finally, the ``TRAILER`` terminates the sequence and is the bytes SPACE
 (``0x20``) and q (``0x71``).
