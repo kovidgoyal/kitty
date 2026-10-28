@@ -652,6 +652,29 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		dnd.end_drop(true)
 		return dnd.render_screen()
 	}
+	if !drop_status.is_remote_client && drop_status.action == move_on_drop {
+		dest_info, err := dnd.drop_output_dir.Stat()
+		if err != nil {
+			return err
+		}
+		for i, u := range drop_status.uri_list {
+			if u.kind != parsed_uri_file || u.path == "" {
+				continue
+			}
+			parent_info, err := os.Stat(filepath.Dir(u.path))
+			if err != nil {
+				return err
+			}
+			if os.SameFile(parent_info, dest_info) {
+				if _, err := os.Lstat(u.path); err != nil {
+					return err
+				}
+				// Moving into the source directory is a no-op. Exclude it
+				// from both staging and end_drop's source cleanup.
+				drop_status.uri_list[i].path = ""
+			}
+		}
+	}
 	f, err := dnd.new_tdir()
 	if err != nil {
 		return err
