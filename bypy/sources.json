@@ -232,11 +232,11 @@
     },
 
     {
-        "name": "freetype 2.13.2",
+        "name": "freetype 2.15.0",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:12991c4e55c506dd7f9b765933e62fd2be2e06d421505d7950a132e4f1bb484d",
+            "hash": "sha256:93cd47eb719c325107f2d3cf087d06299e944c3b48a40b55537302304dea1dd5",
             "urls": ["https://download.savannah.gnu.org/releases/freetype/{filename}"]
         }
     },
@@ -262,10 +262,10 @@
     },
 
     {
-        "name": "harfbuzz 12.3.0",
+        "name": "harfbuzz 15.0.0",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:8660ebd3c27d9407fc8433b5d172bafba5f0317cb0bb4339f28e5370c93d42b7",
+            "hash": "sha256:968536e9abd782f07f7954044c0c4020199fcdd39b41d221ec42d2a3be4a44df",
             "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/{version}/{filename}"]
         }
     },
