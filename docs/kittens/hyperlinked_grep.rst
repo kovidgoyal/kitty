@@ -28,7 +28,7 @@ following contents:
 .. code:: conf
 
     # Open any file with a fragment in vim, fragments are generated
-    # by the hyperlink-grep kitten and nothing else so far.
+    # by ripgrep or the hyperlinked-grep kitten.
     protocol file
     fragment_matches [0-9]+
     action launch --type=overlay --cwd=current vim +${FRAGMENT} -- ${FILE_PATH}
@@ -70,11 +70,6 @@ file headers and context lines but not match lines. :code:`--kitten
 hyperlink=none` will cause the command line to be passed directly to
 :command:`rg` so no hyperlinking will be performed. :code:`--kitten hyperlink`
 may be specified multiple times.
-
-Hopefully, someday this functionality will make it into some `upstream grep
-<https://github.com/BurntSushi/ripgrep/issues/665>`__ program directly removing
-the need for this kitten.
-
 
 .. note::
    While you can pass any of ripgrep's command line options to the kitten and

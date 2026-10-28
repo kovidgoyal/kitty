@@ -56,7 +56,7 @@ easily swap between them, kitty has you covered. You can use the
    # Browse and select from the list of known projects defined via goto_session commands
    map f7>/ goto_session
    # Browse and select from the list of active projects defined via goto_session commands
-   map f7>/ goto_session --active-only [=no]
+   map f7>/ goto_session --active-only
    # Same as above, but the sessions are listed alphabetically instead of by most recent
    map f7>/ goto_session --sort-by=alphabetical
    # Browse session files inside a directory and pick one
@@ -250,7 +250,7 @@ If you use the :doc:`ssh kitten </kittens/ssh>` to connect to remote computers,
 session file, preserving the remote working directory and even the currently
 running program on the remote host! Try it, run kitty with::
 
-    kitty -o 'map f1 save_as_session --use-foreground-process --relocatable' --session <(echo "layout vertical\nlaunch\nlaunch")
+    kitty -o 'map f1 save_as_session --use-foreground-process --relocatable' --session <(printf '%s\n' 'layout vertical' launch launch)
 
 Now in both windows, run::
 

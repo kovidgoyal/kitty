@@ -55,7 +55,7 @@ at the specified size. It is an ``OSC`` code of the form::
 
     <OSC> _text_size_code ; metadata ; text <terminator>
 
-Here, ``OSC`` is the bytes ``ESC ] (0x1b 0x5b)``. The ``metadata`` is a colon
+Here, ``OSC`` is the bytes ``ESC ] (0x1b 0x5d)``. The ``metadata`` is a colon
 separated list of ``key=value`` pairs. The final part of the escape code is the
 text which is simply plain text encoded as :ref:`safe_utf8`, the text must be
 no longer than ``4096`` bytes. Longer strings than that must be broken up into
@@ -364,7 +364,7 @@ The algorithm for splitting text into cells
    are brought to light in that discussion, there may be small changes to the
    algorithm to address them. Additionally, in the future if the Unicode standard
    changes in ways that affect this algorithm, it will be updated. Currently the
-   algorithm is based on Unicode version 16.
+   algorithm is based on Unicode version 17.
 
 Here, we specify how a terminal must split up text into cells, where a cell is
 a width one unit in the character grid the terminal displays.
@@ -377,15 +377,15 @@ fully specify text handling for terminals. The full algorithm is specified below
 A terminal using this algorithm must decode the bytes they receive
 into Unicode scalar values (i.e., code points except surrogates) using UTF-8.
 When it encounters any UTF-8 ill-formed subsequences,
-it must be replace each
-`maximal subpart of the ill-formed subsequence <https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G66453>`__
+it must replace each
+`maximal subpart of the ill-formed subsequence <https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G66453>`__
 with a :code:`U+FFFD REPLACEMENT CHARACTER` (�).
 
 For each decoded code point:
 
 #. First check if the code point is an ASCII control code, and handle it
-   appropriately. ASCII control codes are the code points less than :code:`U+0032` and the
-   code point :code:`U+0127 DEL`. The code point :code:`U+0000 NUL` must be discarded.
+   appropriately. ASCII control codes are the code points less than :code:`U+0020` and the
+   code point :code:`U+007F DEL`. The code point :code:`U+0000 NUL` must be discarded.
 
 #. Next, check if the code point is *invalid*, and if it is, discard it
    and finish processing. Invalid code points are code points with Unicode category :code:`Cc or Cs`
@@ -453,7 +453,7 @@ described by the rules below, in order of decreasing priority:
    All code points in :code:`RGI_Emoji_Flag_Sequence` have width two.
 
 #. *Marks*: These are all zero width code points. They are code points with Unicode
-   categories whose first letter is :code:`M` or :code:`S`. Additionally,
+   categories whose first letter is :code:`M`. Additionally,
    code points with Unicode category: :code:`Cf`. Finally, they include
    all modifier code points from :code:`RGI_Emoji_Modifier_Sequence` in the
    *Wide emoji* rule above.
@@ -474,14 +474,14 @@ When adding a code point to the previous cell these have to be handled specially
   When the previous cell is two cells wide, its width was not set explicitly using
   the ``w`` key of this protocol, and the last code point in the previous
   cell is one of the ``Basic_Emoji`` code points from the *Wide emoji* rule above
-  that is *not* followed by ``FEOF`` then the width of the previous cell is
+  that is *not* followed by ``FE0F`` then the width of the previous cell is
   decreased to one.
 
 ``U+FE0F`` - Variation Selector 16
   When the previous cell is a single, unscaled cell whose width was not set
   explicitly using the ``w`` key of this protocol, and the last code point in the
   previous cell is one of the ``Basic_Emoji`` code points from the *Wide emoji*
-  rule above that is followed by ``FEOF`` then the width of the
+  rule above that is followed by ``FE0F`` then the width of the
   previous cell is increased to two.
 
 In all three of these cases the width the application requested with the ``w`` key
@@ -516,7 +516,7 @@ is such a function in the Python language:
         yield graphemes[0].text
         for i in range(1, len(graphemes)):
             g = graphemes[i]
-            if g is graphemes[-1]:
+            if i == len(graphemes) - 1:
                 prev_g = graphemes[i-1]
                 yield f'\x1b[{prev_g.width}D'  # move cursor back
                 yield g.text
@@ -524,6 +524,8 @@ is such a function in the Python language:
                 yield f'\x1b[{prev_g.width}@'  # insert cells
                 yield prev_g.text
                 yield f'\x1b[{g.width}C'  # move cursor forward
+            else:
+                yield g.text
 
 Then, using ``wcswidth()`` the application can split long text into lines of
 width no more than the screen width and use the above function to write each

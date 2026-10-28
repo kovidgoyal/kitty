@@ -124,6 +124,11 @@ lines. The various available criteria are:
     A shell glob pattern that must match the filename, for example:
     ``image-??.png``
 
+``path``
+    A shell glob pattern that must match the entire unquoted URL path, for
+    example: ``/home/*/projects/*.py``. Both ``file`` and ``path`` matching
+    ignore case.
+
 
 .. _launch_actions:
 

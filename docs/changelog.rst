@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Documentation: Correct protocol definitions and examples, configuration and
+  session examples, and generated option help to match the current behavior.
+
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`

@@ -89,8 +89,11 @@ You can also define a shortcut to switch to the previously active window::
 :ac:`nth_window` will focus the nth window for positive numbers (starting from
 zero) and the previously active windows for negative numbers.
 
-To switch to the nth OS window, you can define :ac:`nth_os_window`. Only
-positive numbers are accepted, starting from one.
+To switch to the nth OS window, you can define :ac:`nth_os_window`. Positive
+numbers start from one, and numbers larger than the number of OS windows focus
+the last one. Negative numbers select previously active OS windows. Zero
+refocuses the current or most recently focused OS window, if the window manager
+allows applications to grab focus.
 
 .. _detach_window:
 

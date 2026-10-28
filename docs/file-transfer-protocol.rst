@@ -190,7 +190,7 @@ message for the file, for example::
 Once the client is done reading data for all the files it expects, it
 terminates the session with::
 
-    → action=finished id=someid
+    → action=finish id=someid
 
 Canceling a session
 ----------------------
@@ -524,6 +524,11 @@ is::
 The value of ``bypass`` is of the form ``hash_function_name : hash_value``
 (without spaces). Currently, only the SHA256 hash function is supported.
 
+The value is base64 encoded in the serialized ``pw`` field. For the example
+above, the serialized fields are::
+
+    ac=send;id=mysession;pw=c2hhMjU2OjE5MmJkMjE1OTE1ZWVhYThjMmIyYTRjMGY4Zjg1MTgyNjQ5N2QxMmIzMDAzNmQ4YjViMWI0ZmM0NDExY2FmMmM=
+
 .. warning::
    Hashing does not effectively hide the value of the password. So this
    functionality should only be used in secure/trusted contexts. While there
@@ -564,7 +569,7 @@ the numeralization of the word ``file``.
     transmission_type tt       enum           simple, rsync
     id                id       safe_string    A unique-ish value, to avoid collisions
     file_id           fid      safe_string    Must be unique per file in a session
-    bypass            pw       safe_string    hash of the bypass password and the session id
+    bypass            pw       base64_string  hash of the bypass password and the session id
     quiet             q        integer        0 - verbose, 1 - only errors, 2 - totally silent
     mtime             mod      integer        the modification time of file in nanoseconds since the UNIX epoch
     permissions       prm      integer        the UNIX file permissions bits
@@ -592,7 +597,9 @@ safe_string
 
 integer
     A base-10 number composed of the characters ``[0-9]`` with a possible
-    leading ``-`` sign. When missing the value is zero.
+    leading ``-`` sign. The default for ``quiet`` is zero. The defaults for
+    ``mtime``, ``permissions`` and ``size`` are ``-1``, meaning unspecified.
+    Omitted permissions and modification times are not applied to the destination.
 
 base64_string
     A base64 encoded UTF-8 string using the standard base64 encoding

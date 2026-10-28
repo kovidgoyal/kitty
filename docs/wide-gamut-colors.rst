@@ -68,9 +68,10 @@ gamut mapping algorithm:
 - Uses perceptual color difference (deltaE OK) to minimize visible changes
 - Maximizes color saturation while staying in gamut
 
-This ensures that wide gamut colors gracefully degrade on standard sRGB displays while
-taking full advantage of wide gamut displays when available. The mapping happens
-automatically - you don't need to do anything special.
+Colors specified in these formats are converted to 8-bit sRGB values when
+parsed, regardless of the display's color gamut. This mapping does not preserve
+colors outside sRGB for wide gamut displays. On macOS, :opt:`macos_colorspace`
+separately controls how the resulting RGB values are interpreted.
 
 For example, :code:`oklch(0.7 0.4 25)` might be too saturated for sRGB but will be
 automatically adjusted to fit while preserving the perceived hue and lightness.

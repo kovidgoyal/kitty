@@ -319,12 +319,12 @@ Directives inside a group:
 ``viewport_pos <x> <y>``
     The bottom-left corner of this group's rendering region, expressed as
     unit floats in UV coordinates (0,0 = bottom-left of the screen, 1,1 =
-    top-right). Defaults to ``0 0``. Ignored for the final group, which
-    always covers the full screen.
+    top-right). Defaults to ``0 0``. The final group must use this default,
+    since it always covers the full screen. Non-default values are rejected.
 
 ``viewport_size <w> <h>``
     The width and height of the rendering region as unit floats. Defaults to
-    ``1 1``. Ignored for the final group.
+    ``1 1``. The final group must use this default; non-default values are rejected.
 
 ``output_texture <name>``
     Where the group writes its output. The default (``default``) ping-pongs
@@ -336,8 +336,9 @@ Directives inside a group:
 
 ``animation_start <event>[|<event> …]``
     Events that trigger the start of this group's animation. Multiple events
-    are separated by ``|``. If neither this nor ``animation_toggle`` is
-    specified the group runs on every frame unconditionally. See *Animation events* below for the full list.
+    are separated by ``|``. A group with neither this nor ``animation_toggle``
+    nor ``attach`` runs on every frame unconditionally. See *Animation events*
+    below for the full list.
 
 ``animation_stop <token>[|<token> …]``
     When to stop the animation. Tokens are separated by ``|`` and may be:
@@ -441,10 +442,11 @@ Directives inside a group:
     directives. This is the primary way to build multi-pass effects where
     several groups must activate and deactivate together. The first group in
     a pipeline cannot use ``attach``. An attached group may also carry its
-    own ``animation_start`` — in that case it becomes active when *either*
-    condition is true (its own events or the preceding group being active).
-    If an attached group has no ``animation_start`` of its own, it mirrors
-    the preceding group exactly: it activates when that group activates and
+    own ``animation_start`` or ``animation_toggle`` — in that case it becomes
+    active when *either* condition is true (its own events or the preceding
+    group being active). If an attached group has neither ``animation_start``
+    nor ``animation_toggle`` of its own, it mirrors the preceding group
+    exactly: it activates when that group activates and
     deactivates when that group deactivates, and has the same
     ``animation_progress`` as that group, so both groups animate in perfect
     sync. Its own ``animation_curve``, ``animation_duration`` and
@@ -492,9 +494,9 @@ reads from ``t.backbuffer`` and writes somewhere:
 * ``output_texture a|b|persist``: the group writes into the named texture
   instead, leaving the backbuffer intact for the next group.
 
-Groups that have ``animation_start`` set are skipped entirely when their
-animation is not active, saving GPU work. Groups without any
-``animation_start`` run on every frame.
+Groups with ``animation_start``, ``animation_toggle`` or ``attach`` are skipped
+entirely when their animation is not active, saving GPU work. Groups without
+any of these directives run on every frame.
 
 **A minimal pipeline** — one shader, event-driven animation::
 

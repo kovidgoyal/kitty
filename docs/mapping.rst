@@ -110,9 +110,10 @@ for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
 prefix. Note that you can only use an XKB key name for keys that are not known
 as kitty keys.
 
-Finally, you can use raw system key codes to map keys, again only for keys that
-are not known as kitty keys. To see the system key code for a key, start kitty
-with the :option:`kitty --debug-input` option, kitty will output some debug text
+Finally, you can use raw system key codes to map keys. These mappings are tried
+only when no ordinary key mapping or its allowed fallbacks match the event.
+System key codes depend on the platform. To see the system key code for a key,
+start kitty with the :option:`kitty --debug-input` option, kitty will output some debug text
 for every key event. In that text look for :code:`native_code`, the value
 of that becomes the key name in the shortcut. For example:
 
@@ -395,7 +396,7 @@ Now, if you run kitty as:
 
 .. code-block:: sh
 
-    kitty -o enabled_layouts=vertical --session <(echo "launch\nlaunch\nlaunch")
+    kitty -o enabled_layouts=vertical --session <(printf '%s\n' launch launch launch)
 
 Press :kbd:`Ctrl+Shift+F7` to enter the mode and then press the up and
 down arrow keys to focus the next/previous window. Press :kbd:`Shift+Up` or

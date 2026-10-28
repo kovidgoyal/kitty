@@ -187,12 +187,12 @@ define a few extra key bindings in :file:`kitty.conf`::
     # Maximize the active window along the horizontal axis (fill full width),
     # keeping other windows visible in their vertical positions. Press again to
     # restore the original layout.
-    map ctrl+shift+right layout_action maximize horizontal
+    map ctrl+alt+right layout_action maximize horizontal
 
     # Maximize the active window along the vertical axis (fill full height),
     # keeping other windows visible in their horizontal positions. Press again
     # to restore the original layout.
-    map ctrl+shift+up layout_action maximize vertical
+    map ctrl+alt+up layout_action maximize vertical
 
     # Equalize all splits so that windows share available space proportionally.
     map ctrl+shift+e layout_action equalize

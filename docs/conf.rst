@@ -29,9 +29,9 @@ current configuration by pressing :sc:`debug_config` (:kbd:`⌥+⌘+,` on macOS)
 :option:`kitty --config` option or use the :envvar:`KITTY_CONFIG_DIRECTORY`
 environment variable. See :option:`kitty --config` for full details.
 
-**Comments** can be added to the config file as lines starting with the ``#``
-character. This works only if the ``#`` character is the first character in the
-line.
+**Comments** can be added to the config file as lines whose first non-whitespace
+character is ``#``. Trailing comments after configuration values are not
+generally supported.
 
 **Lines can be split** by starting the next line with the ``\`` character.
 All leading whitespace and the ``\`` character are removed.

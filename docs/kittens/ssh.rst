@@ -122,8 +122,7 @@ this could be achieved using the ssh kitten with :program:`zsh` and
    # If you use other zsh init files add them in a similar manner
 
    # Setup vim to read its config from my-conf/vim
-   env VIMINIT=$HOME/my-conf/vim/vimrc
-   env VIMRUNTIME=$HOME/my-conf/vim
+   env VIMINIT=set runtimepath^=$HOME/my-conf/vim runtimepath+=$HOME/my-conf/vim/after | source $HOME/my-conf/vim/vimrc
    copy --dest my-conf/vim .vim
    copy --dest my-conf/vim/vimrc .vimrc
 
