@@ -306,6 +306,11 @@ typedef struct TransparentDynamicColor {
 // One bit per entry of the 256 color palette
 typedef uint64_t ColorTableMask[4];
 
+// The background and foreground colors of the marks, entry i is for mark i + 1
+typedef struct MarkColors {
+    DynamicColor bg[MARK_MASK], fg[MARK_MASK];
+} MarkColors;
+
 // A layer of colors. The configured colors of a window are the global layer
 // (kitty.conf and the automatic color theme) with the window layer (launch
 // --color, --copy-colors) on top and the session layer (color schemes from
@@ -320,6 +325,7 @@ typedef struct ColorLayer {
     TransparentDynamicColor transparent_colors[8];
     // Whether transparent_colors is set, unused for the global layer
     bool transparent_colors_set;
+    MarkColors mark_colors;
 } ColorLayer;
 
 typedef struct {
@@ -338,12 +344,17 @@ typedef struct {
         uint32_t color_table[256];
         ColorTableMask color_table_mask;
         TransparentDynamicColor transparent_colors[8];
+        MarkColors mark_colors;
     } *color_stack;
     unsigned int color_stack_idx, color_stack_sz;
     // configured is the global, window and session layers combined. overridden
     // has entries of type COLOR_NOT_SET for colors not set by the program.
     DynamicColors configured, overridden;
     ColorLayer global_layer, window_layer, session_layer;
+    // The mark colors set by the program, entries of type COLOR_NOT_SET for colors not set by the program
+    MarkColors overridden_mark_colors;
+    // The current mark colors resolved from the layers and overridden_mark_colors, in
+    // the layout used by the shaders, entry i is for mark i + 1 and the last entry is unused
     color_type mark_foregrounds[MARK_MASK + 1], mark_backgrounds[MARK_MASK + 1];
 } ColorProfile;
 

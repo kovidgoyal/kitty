@@ -2402,6 +2402,79 @@ class TestScreen(BaseTest):
             profiles[0].reload_from_opts(opts, reset_overriden_colors=reset)
             ae(profiles[0], configured())
 
+    def test_mark_color_layers(self):
+        from kitty.fast_data_types import COLOR_LAYER_GLOBAL, COLOR_LAYER_OVERRIDE, COLOR_LAYER_SESSION, COLOR_LAYER_WINDOW, patch_color_profiles
+
+        opts = self.set_options({'palette_generate': 'fixed'})
+        s = self.create_screen()
+        cp = s.color_profile
+        cp.reload_from_opts(opts)
+        configured = cp.test_mark_colors()
+
+        def theme(bg, layer=COLOR_LAYER_GLOBAL, clear=False, profile=cp):
+            patch_color_profiles({'mark1_background': bg}, None, (profile,), layer, clear)
+
+        def check(bg, profile=cp):
+            # only the background of mark1 is ever changed
+            self.ae(profile.test_mark_colors(), ((configured[0][0], bg),) + configured[1:])
+
+        theme(1)
+        check(1)
+        self.assertNotIn('mark1_background', cp.as_dict())
+        # colors set by the program survive changes to the configured colors
+        theme(2, COLOR_LAYER_OVERRIDE)
+        theme(3)
+        check(2)
+        # and are restored by popping the color stack and removed by a full reset
+        parse_bytes(s, b'\x1b[#P')
+        theme(4, COLOR_LAYER_OVERRIDE)
+        check(4)
+        parse_bytes(s, b'\x1b[#Q')
+        check(2)
+        parse_bytes(s, b'\x1bc')
+        check(3)
+        # window layer colors survive changes to the global layer and full reset
+        theme(5, COLOR_LAYER_WINDOW)
+        theme(6)
+        check(5)
+        self.ae(cp.as_dict()['mark1_background'], 5)
+        self.assertNotIn('mark1_foreground', cp.as_dict())
+        theme(7, COLOR_LAYER_OVERRIDE)
+        parse_bytes(s, b'\x1bc')
+        check(5)
+        # session layer colors are above the window layer
+        theme(8, COLOR_LAYER_SESSION)
+        check(8)
+        cp.reset_layer(COLOR_LAYER_SESSION)
+        check(5)
+        # reloading from opts keeps the window layer, and program colors unless reset
+        theme(9, COLOR_LAYER_OVERRIDE)
+        cp.reload_from_opts(opts, reset_overriden_colors=False)
+        check(9)
+        cp.reload_from_opts(opts)
+        check(5)
+        # copying colors copies all layers
+        theme(10, COLOR_LAYER_OVERRIDE)
+        s2 = self.create_screen()
+        s2.copy_colors_from(s)
+        check(10, s2.color_profile)
+        parse_bytes(s2, b'\x1bc')
+        check(5, s2.color_profile)
+        parse_bytes(s, b'\x1bc')
+        cp.reset_layer(COLOR_LAYER_WINDOW)
+        check(configured[0][1])
+        # changing the global layer and clearing upper layers replaces colors
+        # from all layers above it, like set-colors --configured
+        theme(11, COLOR_LAYER_WINDOW)
+        theme(12, COLOR_LAYER_SESSION)
+        theme(13, COLOR_LAYER_OVERRIDE)
+        theme(14, clear=True)
+        check(14)
+        cp.reset_layer(COLOR_LAYER_SESSION)
+        cp.reset_layer(COLOR_LAYER_WINDOW)
+        check(14)
+        self.assertNotIn('mark1_background', cp.as_dict())
+
     def test_color_profile(self):
         from kitty.fast_data_types import patch_color_profiles
 
