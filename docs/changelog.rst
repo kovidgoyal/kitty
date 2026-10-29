@@ -410,7 +410,9 @@ Detailed list of changes
   equivalent file and directory names on filesystems that treat them as
   aliases. Also list the existing files that will be overwritten under their
   actual names, including files inside symlinked directories, and fix dropping
-  a directory over an existing file (:pull:`10772`)
+  a directory over an existing file. Also no longer rename remotely dropped
+  files whose names differ only in case on case sensitive filesystems
+  (:pull:`10772`)
 
 - Clipboard kitten: Fix a race when replacing an existing output file and
   losing the original file if writing it fails. Also preserve the permissions

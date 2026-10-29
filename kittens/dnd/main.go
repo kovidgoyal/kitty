@@ -4,9 +4,11 @@ package dnd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	"io"
+	"io/fs"
 	"maps"
 	"net/url"
 	"os"
@@ -90,7 +92,7 @@ type dnd struct {
 	drop_output_dir                        *os.File
 	base_tempdir                           *os.File
 	tdir_counter                           int
-	is_case_sensitive_filesystem           bool
+	is_case_sensitive_filesystem           bool // false if names differing in case or Unicode normalization are aliases
 	num_dropped_files                      int
 	drag_status                            drag_status
 	in_test_mode                           bool
@@ -131,10 +133,27 @@ func (dnd *dnd) setup_base_dir(base_dir string) (err error) {
 		return err
 	}
 	dnd.base_tempdir = bf
-	if _, serr := os.Stat(filepath.Join(base_dir, strings.ToUpper(filepath.Base(base_tdir)))); serr == nil {
-		dnd.is_case_sensitive_filesystem = false
-	}
+	dnd.is_case_sensitive_filesystem = names_are_distinct(base_tdir)
 	return err
+}
+
+// Return true if names that differ only in case or Unicode normalization
+// refer to different entries in the empty directory dir. Any failure to
+// determine this is treated as them being aliases, which is the safe choice.
+func names_are_distinct(dir string) bool {
+	is_absent := func(path string) bool {
+		_, err := os.Lstat(path)
+		return errors.Is(err, fs.ErrNotExist)
+	}
+	if !is_absent(filepath.Join(filepath.Dir(dir), strings.ToUpper(filepath.Base(dir)))) {
+		return false
+	}
+	probe := filepath.Join(dir, "\u00e9")
+	if err := os.WriteFile(probe, nil, 0o600); err != nil {
+		return false
+	}
+	defer os.Remove(probe)
+	return is_absent(filepath.Join(dir, "e\u0301"))
 }
 
 func (dnd *dnd) remove_tdir() error {

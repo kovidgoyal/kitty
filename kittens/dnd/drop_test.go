@@ -1122,3 +1122,33 @@ func equalStringSlices(a, b []string) bool {
 	}
 	return true
 }
+
+// TestSetupBaseDirDetectsNameAliases verifies that setup_base_dir detects
+// whether the filesystem treats names differing in case or Unicode
+// normalization as aliases and leaves no probe files behind.
+func TestSetupBaseDirDetectsNameAliases(t *testing.T) {
+	dest := t.TempDir()
+	buildTree(t, dest, map[string]string{"Probe": "", "é": ""}, nil)
+	_, cerr := os.Lstat(filepath.Join(dest, "probe"))
+	_, nerr := os.Lstat(filepath.Join(dest, "é"))
+	want := os.IsNotExist(cerr) && os.IsNotExist(nerr)
+	for _, name := range []string{"Probe", "é"} {
+		if err := os.Remove(filepath.Join(dest, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	d, err := runLocalDrop(t, dest, nil, copy_on_drop, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.is_case_sensitive_filesystem != want {
+		t.Errorf("is_case_sensitive_filesystem: got %v, want %v", d.is_case_sensitive_filesystem, want)
+	}
+	entries, err := os.ReadDir(d.base_tempdir.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("probe files left in the base temporary directory: %v", entries)
+	}
+}
