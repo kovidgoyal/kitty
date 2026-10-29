@@ -2127,7 +2127,7 @@ class Window:
         del self.kitten_result_processors
         if hasattr(self, 'screen'):
             self.finish_scroll_animation()
-            if self.is_active and self.os_window_id == current_focused_os_window_id():
+            if not get_boss().shutting_down and self.is_active and self.os_window_id == current_focused_os_window_id():
                 # Cancel IME composition when window is destroyed
                 update_ime_position_for_window(self.id, False, -1)
             # Remove cycles so that screen is de-allocated immediately

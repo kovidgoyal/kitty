@@ -380,6 +380,12 @@ Detailed list of changes
   (:pull:`10632`)
 
 
+- macOS: Preserve pending typed or speech input as ordinary input when focus
+  loss ends its composition. Accept the current marked text automatically,
+  without appending a newline, using the input method's final result when
+  available. Ignore delayed callbacks from the ended conversion. Escape cancels
+  the conversion, while Backspace continues to edit it normally.
+
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
