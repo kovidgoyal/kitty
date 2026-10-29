@@ -73,9 +73,9 @@ def user_mime_map() -> dict[str, str]:
     if ans is None:
         from mimetypes import read_mime_types
 
-        from kitty.constants import config_dir
+        from kitty.constants import config_dir, config_dir_files_ignored
 
-        ans = read_mime_types(os.path.join(config_dir, 'mime.types')) or {}
+        ans = {} if config_dir_files_ignored() else (read_mime_types(os.path.join(config_dir, 'mime.types')) or {})
         setattr(user_mime_map, 'ans', ans)
     return ans
 

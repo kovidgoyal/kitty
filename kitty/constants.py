@@ -128,6 +128,19 @@ def _get_config_dir() -> str:
 config_dir = _get_config_dir()
 del _get_config_dir
 defconf = os.path.join(config_dir, 'kitty.conf')
+# When True, auxiliary files in config_dir that kitty loads implicitly, such as
+# the automatic color theme files, open-actions.conf, etc. are ignored. Set when
+# kitty is run with --config=NONE.
+_ignore_config_dir_files = False
+
+
+def set_ignore_config_dir_files(val: bool) -> None:
+    global _ignore_config_dir_files
+    _ignore_config_dir_files = val
+
+
+def config_dir_files_ignored() -> bool:
+    return _ignore_config_dir_files
 
 
 @run_once

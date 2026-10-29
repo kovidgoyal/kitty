@@ -31,6 +31,7 @@ from .constants import (
     launched_by_launch_services,
     logo_png_file,
     running_in_kitty,
+    set_ignore_config_dir_files,
     supports_window_occlusion,
     website_url,
 )
@@ -649,6 +650,7 @@ def kitty_main(called_from_panel: bool = False) -> None:
 
         client_main(cli_opts.replay_commands)
         return
+    set_ignore_config_dir_files('NONE' in cli_opts.config)
     bad_lines: list[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
     if is_quick_access_terminal_app:

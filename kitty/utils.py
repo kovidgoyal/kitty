@@ -26,6 +26,7 @@ from .constants import (
     cache_dir,
     clear_handled_signals,
     config_dir,
+    config_dir_files_ignored,
     is_macos,
     is_wayland,
     kitten_exe,
@@ -1190,6 +1191,8 @@ def safe_mtime(path: str) -> float | None:
 
 @run_once
 def get_custom_window_icon() -> tuple[float, str] | tuple[None, None]:
+    if config_dir_files_ignored():
+        return None, None
     filenames = ['kitty.app.png']
     if is_macos:
         # On macOS, prefer icns to png.

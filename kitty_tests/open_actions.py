@@ -58,6 +58,48 @@ action two
         single('some thing.txt', 'ignored')
         self.ae(actions('x:///a.txt'), (KeyAction('one', ()), KeyAction('two', ())))
 
+    def test_config_dir_files_ignored(self):
+        import tempfile
+        from unittest.mock import patch
+
+        from kitty.colors import ThemeColors, ThemeFile
+        from kitty.constants import config_dir_files_ignored, set_ignore_config_dir_files
+        from kitty.guess_mime_type import clear_mime_cache, user_mime_map
+        from kitty.open_actions import clear_caches, load_launch_actions, load_open_actions
+
+        self.set_options()
+        with tempfile.TemporaryDirectory() as tdir:
+            for name in (ThemeFile.dark.value, ThemeFile.light.value):
+                with open(os.path.join(tdir, name), 'w') as f:
+                    f.write('background #123456\n')
+            for name in ('open-actions.conf', 'launch-actions.conf'):
+                with open(os.path.join(tdir, name), 'w') as f:
+                    f.write('protocol file\naction one\n')
+            with open(os.path.join(tdir, 'mime.types'), 'w') as f:
+                f.write('text/x-kitty-test kittytest\n')
+
+            def check(ignored: bool) -> None:
+                clear_caches()
+                clear_mime_cache()
+                set_ignore_config_dir_files(ignored)
+                try:
+                    self.ae(config_dir_files_ignored(), ignored)
+                    tc = ThemeColors()
+                    self.ae(tc.refresh(), not ignored)
+                    self.ae(tc.has_dark_theme, not ignored)
+                    self.ae(tc.has_light_theme, not ignored)
+                    self.ae(bool(load_open_actions()), not ignored)
+                    self.ae(bool(load_launch_actions()), not ignored)
+                    self.ae('.kittytest' in user_mime_map(), not ignored)
+                finally:
+                    set_ignore_config_dir_files(False)
+                    clear_caches()
+                    clear_mime_cache()
+
+            with patch('kitty.colors.config_dir', tdir), patch('kitty.open_actions.config_dir', tdir), patch('kitty.constants.config_dir', tdir):
+                check(False)
+                check(True)
+
     def test_mime_cache(self):
         import shutil
         import subprocess

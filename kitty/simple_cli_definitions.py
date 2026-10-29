@@ -356,6 +356,14 @@ previous instance is found, then :italic:`{appname}` will wait anyway,
 regardless of this option.
 """
 
+KITTY_CONFIG_NONE_HELP = """
+When :code:`NONE` is used, other files in the kitty config directory that
+are normally loaded automatically are also ignored, namely, the automatic
+color theme files (:file:`*-theme.auto.conf`), :file:`open-actions.conf`,
+:file:`launch-actions.conf`, :file:`mime.types`, :file:`paste-actions.py`,
+:file:`notifications.py` and the custom window icon (:file:`kitty.app.png`).
+"""
+
 CONFIG_HELP = """\
 Specify a path to the configuration file(s) to use. All configuration files are
 merged onto the builtin :file:`{conf_name}.conf`, overriding the builtin values.
@@ -561,7 +569,7 @@ type=bool-set
                 listen_on_defn=listen_on_defn,
                 grab_keyboard_docs=grab_keyboard_docs,
                 wait_for_single_instance_defn=wait_for_single_instance_defn,
-                config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
+                config_help=CONFIG_HELP.format(appname=appname, conf_name=appname) + KITTY_CONFIG_NONE_HELP,
             ),
         )
     ans: str = getattr(kitty_options_spec, 'ans')

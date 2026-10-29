@@ -475,6 +475,11 @@ Detailed list of changes
 - macOS: Fix emoji rendered with a monochrome emoji font such as Noto Emoji
   not using the foreground color (:iss:`10757`)
 
+- :option:`kitty --config`\=NONE now also skips the automatic color theme
+  files, :file:`open-actions.conf`, :file:`launch-actions.conf`,
+  :file:`mime.types`, :file:`paste-actions.py`, :file:`notifications.py` and
+  the custom window icon in the kitty config directory
+
 
 0.49.2 [2026-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

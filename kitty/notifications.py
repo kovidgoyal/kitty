@@ -12,7 +12,16 @@ from itertools import count
 from typing import Any, NamedTuple, Set
 from weakref import ReferenceType, ref
 
-from .constants import cache_dir, config_dir, is_macos, logo_png_file, standard_icon_names, standard_sound_names, supports_window_occlusion
+from .constants import (
+    cache_dir,
+    config_dir,
+    config_dir_files_ignored,
+    is_macos,
+    logo_png_file,
+    standard_icon_names,
+    standard_sound_names,
+    supports_window_occlusion,
+)
 from .fast_data_types import (
     ESC_OSC,
     StreamingBase64Decoder,
@@ -931,7 +940,7 @@ class NotificationManager:
         self.icon_data_cache = IconDataCache(base_cache_dir=self.base_cache_dir)
         script_path = os.path.join(config_dir, 'notifications.py')
         self.filter_script: Callable[[NotificationCommand], bool] = lambda nc: False
-        if os.path.exists(script_path):
+        if not config_dir_files_ignored() and os.path.exists(script_path):
             import runpy
 
             try:

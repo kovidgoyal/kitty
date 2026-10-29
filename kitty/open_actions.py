@@ -11,7 +11,7 @@ from typing import Any, NamedTuple
 from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
-from .constants import config_dir
+from .constants import config_dir, config_dir_files_ignored
 from .fast_data_types import get_options
 from .guess_mime_type import guess_type, mime_types_for_matching
 from .options.utils import ActionAlias, MapType, resolve_aliases_and_parse_actions
@@ -220,10 +220,14 @@ def load_actions_from_path(path: str) -> tuple[OpenAction, ...]:
 
 
 def load_open_actions() -> tuple[OpenAction, ...]:
+    if config_dir_files_ignored():
+        return ()
     return load_actions_from_path(os.path.join(config_dir, 'open-actions.conf'))
 
 
 def load_launch_actions() -> tuple[OpenAction, ...]:
+    if config_dir_files_ignored():
+        return ()
     return load_actions_from_path(os.path.join(config_dir, 'launch-actions.conf'))
 
 
