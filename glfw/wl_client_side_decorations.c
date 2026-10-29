@@ -38,6 +38,13 @@
         y = SWAP;               \
     } while (0)
 
+// An optional built-in approximation of GNOME decorations, without a toolkit.
+static bool
+gnome_titlebar(void) {
+    const char *style = getenv("KITTY_WAYLAND_TITLEBAR");
+    return style && strcmp(style, "gnome") == 0;
+}
+
 // shadow tile  {{{
 typedef float kernel_type;
 
@@ -97,12 +104,16 @@ blur_mask(
 }
 
 static kernel_type *
-create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_size, kernel_type base_alpha, kernel_type sigma) {
+create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_size, kernel_type base_alpha, kernel_type sigma, double radius) {
     kernel_type *mask = calloc(2 * width * height + kernel_size, sizeof(kernel_type));
     if (!mask) return NULL;
     for (size_t y = margin; y < height - margin; y++) {
         kernel_type *row = mask + y * width;
-        for (size_t x = margin; x < width - margin; x++) row[x] = base_alpha;
+        for (size_t x = margin; x < width - margin; x++) {
+            double dx = fmax(margin + radius - x - .5, x + .5 - (width - margin - radius));
+            double dy = margin + radius - y - .5;
+            row[x] = radius > 0 && dx > 0 && dy > 0 ? base_alpha * (kernel_type)fmax(0, fmin(1, radius - hypot(dx, dy) + .5)) : base_alpha;
+        }
     }
     blur_mask(mask, width, height, kernel_size, sigma, mask + width * height, (kernel_type *)(mask + 2 * width * height), margin);
     return mask;
@@ -118,11 +129,29 @@ create_shadow_tile(_GLFWwindow *window) {
     st.segments = 7;
     st.stride = st.segments * margin;
     st.corner_size = margin * (st.segments - 1) / 2;
-    kernel_type *mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.7, 32 * margin);
+    kernel_type *mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)(gnome_titlebar() ? 0.46 : 0.7), 32 * margin, gnome_titlebar() && !decs.titlebar_hidden ? margin : 0);
     free(st.data);
+    st.data = NULL;
+    if (!mask) return margin;
     st.data = malloc(sizeof(st.data[0]) * st.stride * st.stride);
     if (st.data)
-        for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = ((uint8_t)(mask[i] * 255)) << 24;
+        for (size_t y = 0; y < st.stride; y++) for (size_t x = 0; x < st.stride; x++) {
+            double alpha = mask[y * st.stride + x];
+            if (gnome_titlebar()) {
+                // The blur has finite buffers. Fade to a rounded outer envelope
+                // instead of exposing their rectangular edges on the desktop.
+                const double feather = fmax(1, 3 * decs.for_window_state.fscale);
+                const bool upper = y < st.stride / 2;
+                const double radius = margin * (upper && !decs.titlebar_hidden ? 2. : 1.);
+                const double dx = fmax(radius - x - .5, x + .5 - (st.stride - radius));
+                const double dy = upper ? radius - y - .5 : y + .5 - (st.stride - radius);
+                double distance = fmin(fmin(x + .5, st.stride - x - .5), fmin(y + .5, st.stride - y - .5));
+                if (dx > 0 && dy > 0) distance = radius - hypot(dx, dy);
+                double coverage = fmax(0, fmin(1, distance / feather));
+                alpha *= coverage * coverage * (3 - 2 * coverage);
+            }
+            st.data[y * st.stride + x] = ((uint32_t)(alpha * 255)) << 24;
+        }
     free(mask);
     return margin;
 }
@@ -212,7 +241,7 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
 void
 csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.width = 12;
-    decs.metrics.top = 36;
+    decs.metrics.top = decs.metrics.width + (gnome_titlebar() ? 38 : 24);
     decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
     decs.metrics.horizontal = 2 * decs.metrics.width;
     decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
@@ -382,8 +411,117 @@ render_button(
     patch_titlebar_with_alpha_mask(dest, src, height, dest_stride, src_width, dest_left, bg, fg);
 }
 
+// All geometry is in logical pixels; coverage is evaluated in buffer pixels.
+static uint32_t
+coverage_pixel(uint32_t color, double coverage) {
+    unsigned a = (unsigned)(255 * fmax(0, fmin(1, coverage)));
+    return ARGB(a, R(color) * a / 255, G(color) * a / 255, B(color) * a / 255);
+}
+
+static double
+segment_distance(double x, double y, double ax, double ay, double bx, double by) {
+    double dx = bx - ax, dy = by - ay;
+    double t = fmax(0, fmin(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+    return hypot(x - ax - t * dx, y - ay - t * dy);
+}
+
+static void
+render_gnome_titlebar(_GLFWwindow *window, uint8_t *output) {
+    const int width = decs.titlebar.buffer.width, height = decs.titlebar.buffer.height;
+    if (width <= 0 || height <= 0) return;
+    const double scale = decs.for_window_state.fscale;
+    const bool focused = window->id == _glfw.focusedWindowId;
+    const bool docked = window->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED;
+    const bool maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
+    // Keep the built-in dark palette independent of the desktop appearance.
+    // Explicit kitty titlebar colors still take precedence.
+    bool dark = true;
+    uint32_t bg = 0xff303030;
+    if (decs.use_custom_titlebar_color) {
+        bg = 0xff000000 | (decs.titlebar_color & 0xffffff);
+        dark = .2126 * R(bg) + .7152 * G(bg) + .0722 * B(bg) < 128;
+    }
+    uint32_t fg = dark ? (focused ? 0xffeeeeee : 0xffaaaaaa) : (focused ? 0xff333333 : 0xff888888);
+    uint32_t circle = dark ? 0xff484848 : 0xffd6d6d6;
+    uint32_t hover = dark ? 0xff606060 : 0xffbfbfbf;
+    uint32_t *pixels = (uint32_t *)output;
+    for (int i = 0; i < width * height; i++) pixels[i] = bg;
+    decs.minimize.width = decs.maximize.width = decs.close.width = 0;
+    // Keep controls inside narrow windows, prioritizing the close button.
+    int slot = MAX(1, (int)round(36 * scale));
+    int pad = MAX(0, MIN((int)round(6 * scale), (width - slot) / 2));
+    int count = 1 + window->wl.wm_capabilities.maximize + window->wl.wm_capabilities.minimize;
+    count = MIN(count, MAX(0, (width - 2 * pad) / slot));
+    int margin = pad + count * slot;
+    if (width > 2 * margin && window->wl.title && _glfw.callbacks.draw_text)
+        _glfw.callbacks.draw_text((GLFWwindow *)window, window->wl.title, fg, bg, output,
+            width, height, margin, 0, margin, false);
+    int left = width - pad - slot;
+    for (int button = 0, drawn = 0; button < 3 && drawn < count; button++) {
+        if (button == 1 && !window->wl.wm_capabilities.maximize) continue;
+        if (button == 2 && !window->wl.wm_capabilities.minimize) continue;
+        bool hovered = button == 0 ? decs.close.hovered : button == 1 ? decs.maximize.hovered : decs.minimize.hovered;
+        uint32_t fill = hovered ? hover : circle;
+        if (hovered && decs.gnome_pressed_button == button + 1) fill = dark ? 0xff707070 : 0xffaaaaaa;
+        for (int y = 0; y < height; y++) for (int x = left; x < left + slot; x++) {
+            double lx = (x + .5 - left - slot / 2.) / scale, ly = (y + .5 - height / 2.) / scale;
+            double coverage = fmax(0, fmin(1, (12 - hypot(lx, ly)) * scale + .5));
+            double d;
+            if (button == 0) d = fmin(segment_distance(lx, ly, -4, -4, 4, 4), segment_distance(lx, ly, -4, 4, 4, -4));
+            else if (button == 2) d = segment_distance(lx, ly, -4, 3, 4, 3);
+            else {
+                double bx = fabs(lx) - 3.5, by = fabs(ly) - 3.5;
+                d = (bx > 0 || by > 0) ? hypot(fmax(0, bx), fmax(0, by)) : fmin(-bx, -by);
+                if (maximized) d = fmin(segment_distance(lx, ly, -1, -5, 5, -5), segment_distance(lx, ly, 5, -5, 5, 1)) < .75 ? 0 : d;
+            }
+            double ink = fmax(0, fmin(1, (.5 - d) * scale + .5));
+            uint32_t c = ARGB(255u, (unsigned)(R(fill) * (1 - ink) + R(fg) * ink),
+                (unsigned)(G(fill) * (1 - ink) + G(fg) * ink), (unsigned)(B(fill) * (1 - ink) + B(fg) * ink));
+            pixels[y * width + x] = ARGB(255u, (unsigned)(R(bg) * (1 - coverage) + R(c) * coverage),
+                (unsigned)(G(bg) * (1 - coverage) + G(c) * coverage), (unsigned)(B(bg) * (1 - coverage) + B(c) * coverage));
+        }
+#define bounds(which) decs.which.left = left; decs.which.width = slot
+        if (button == 0) { bounds(close); }
+        else if (button == 1) { bounds(maximize); }
+        else { bounds(minimize); }
+#undef bounds
+        left -= slot;
+        drawn++;
+    }
+    if (!decs.close.width) decs.close.hovered = false;
+    if (!decs.maximize.width) decs.maximize.hovered = false;
+    if (!decs.minimize.width) decs.minimize.hovered = false;
+    // The terminal owns the bottom corners. Only the separate header is clipped.
+    if (!docked) {
+        const size_t shadow_margin = create_shadow_tile(window);
+        double radius = fmin(12 * scale, fmin(width / 2., height));
+        for (int y = 0; y < (int)ceil(radius); y++) for (int x = 0; x < width; x++) {
+            double dx = x < width / 2 ? radius - x - .5 : x + .5 - (width - radius);
+            if (dx <= 0) continue;
+            double coverage = fmax(0, fmin(1, radius - hypot(dx, radius - y - .5) + .5));
+            uint32_t color = coverage_pixel(pixels[y * width + x], coverage);
+            // The header occupies a rectangular subsurface. Its transparent
+            // cutouts must contain the same shadow as the adjacent subsurfaces,
+            // otherwise their straight boundary remains visible at the corner.
+            if (decs.shadow_tile.data) {
+                size_t sx = x < width / 2 ? shadow_margin + x : decs.shadow_tile.stride - shadow_margin - (width - x);
+                size_t sy = shadow_margin + y;
+                unsigned shadow_alpha = A(decs.shadow_tile.data[sy * decs.shadow_tile.stride + sx]);
+                if (!focused) shadow_alpha /= 2;
+                unsigned alpha = A(color) + (unsigned)(shadow_alpha * (1 - coverage));
+                color = (color & 0xffffff) | (alpha << 24);
+            }
+            pixels[y * width + x] = color;
+        }
+    }
+}
+
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
+    if (gnome_titlebar()) {
+        render_gnome_titlebar(window, to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back);
+        return;
+    }
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool is_maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
     const uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
@@ -714,6 +852,10 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!needs_update) return false;
     decs.for_window_state.fscale = current_scale; // used in create_shm_buffers
     if (size_changed || decs.buffer_destroyed || titlebar_state_changed) {
+        if (gnome_titlebar() && titlebar_state_changed) {
+            free(decs.shadow_tile.data);
+            decs.shadow_tile.data = NULL;
+        }
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
         decs.buffer_destroyed = false;
@@ -920,6 +1062,7 @@ handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
     }
 #undef c
     decs.focus = CENTRAL_WINDOW;
+    decs.gnome_pressed_button = 0;
     decs.dragging = false;
 }
 
@@ -968,6 +1111,24 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
         switch (decs.focus) {
             case CENTRAL_WINDOW: break;
             case CSD_titlebar:
+                if (gnome_titlebar() && (has_hovered_button(window) || decs.gnome_pressed_button)) {
+                    int hovered = decs.close.hovered ? 1 : decs.maximize.hovered ? 2 : decs.minimize.hovered ? 3 : 0;
+                    decs.dragging = false;
+                    decs.titlebar_needs_update = true;
+                    decs.last_click_on_top_decoration_at = 0;
+                    if (state == WL_POINTER_BUTTON_STATE_PRESSED) decs.gnome_pressed_button = hovered;
+                    else {
+                        int pressed = decs.gnome_pressed_button;
+                        decs.gnome_pressed_button = 0;
+                        if (pressed && pressed == hovered) {
+                            if (pressed == 1) _glfwInputWindowCloseRequest(window);
+                            else if (pressed == 3) _glfwPlatformIconifyWindow(window);
+                            else if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
+                            else _glfwPlatformMaximizeWindow(window);
+                        }
+                    }
+                    break;
+                }
                 if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
                     monotonic_t last_click_at = decs.last_click_on_top_decoration_at;
                     decs.last_click_on_top_decoration_at = monotonic();

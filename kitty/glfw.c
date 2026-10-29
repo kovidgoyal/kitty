@@ -1517,14 +1517,49 @@ draw_text_callback(
     bool is_single_glyph) {
     if (!set_callback_window(window)) return false;
     FreeTypeRenderCtx ctx;
-    if (!(ctx = freetype_render_ctx(true))) return false;
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
     unsigned px_sz = 2 * height / 3;
     static char title[2048];
-    if (!is_single_glyph) {
-        snprintf(title, sizeof(title), " ❭ %s", text);
-        text = title;
+    const char *titlebar_style = getenv("KITTY_WAYLAND_TITLEBAR");
+    const bool gnome_title = !is_single_glyph && titlebar_style && strcmp(titlebar_style, "gnome") == 0;
+    if (gnome_title) {
+        const char *description = glfwGetSystemFont();
+        char family[256];
+        snprintf(family, sizeof(family), "%s", description && description[0] ? description : "sans-serif 11");
+        double points = 11;
+        char *size = strrchr(family, ' ');
+        if (size && size != family) {
+            char *end;
+            double parsed = strtod(size + 1, &end);
+            if (end != size + 1 && !*end && parsed >= 1 && parsed <= 200) {
+                points = parsed;
+                *size = 0;
+            }
+        }
+        static FreeTypeRenderCtx gnome_ctx = NULL;
+        static char cached_family[256] = {0};
+        if (!gnome_ctx || strcmp(cached_family, family) != 0) {
+            FreeTypeRenderCtx replacement = create_freetype_render_context(family, true, false);
+            if (replacement) {
+                if (gnome_ctx) release_freetype_render_context(gnome_ctx);
+                gnome_ctx = replacement;
+                snprintf(cached_family, sizeof(cached_family), "%s", family);
+            } else if (PyErr_Occurred()) PyErr_Print();
+        }
+        ctx = gnome_ctx ? gnome_ctx : freetype_render_ctx(true);
+        if (!ctx) return false;
+        px_sz = (unsigned)round(points * 96. / 72. * height / 38.);
+        px_sz = MIN(px_sz, (unsigned)(height * 3 / 4));
+        size_t text_width = freetype_text_width_for_single_line(ctx, text, px_sz);
+        size_t available = width > right_margin + (size_t)x_offset ? width - right_margin - (size_t)x_offset : 0;
+        if (text_width < available) x_offset += (float)((available - text_width) / 2.);
+    } else {
+        if (!(ctx = freetype_render_ctx(true))) return false;
+        if (!is_single_glyph) {
+            snprintf(title, sizeof(title), " ❭ %s", text);
+            text = title;
+        }
     }
     bool ok = render_single_line(ctx, text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin, is_single_glyph);
     if (!ok && PyErr_Occurred()) PyErr_Print();

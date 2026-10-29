@@ -4218,6 +4218,9 @@ GLFWAPI GLFWsystemcolorthemechangefun glfwSetSystemColorThemeChangeCallback(GLFW
 GLFWAPI GLFWclipboardlostfun glfwSetClipboardLostCallback(GLFWclipboardlostfun callback);
 GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialized);
 
+/*! @brief Returns the desktop interface font description, or NULL if unavailable. */
+GLFWAPI const char* glfwGetSystemFont(void);
+
 /*! @brief Sets the refresh callback for the specified window.
  *
  *  This function sets the refresh callback of the specified window, which is

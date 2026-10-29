@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <string.h>
+#ifdef _GLFW_WAYLAND
+GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *window);
+#endif
 
 #define DESKTOP_SERVICE "org.freedesktop.portal.Desktop"
 #define DESKTOP_PATH "/org/freedesktop/portal/desktop"
@@ -20,6 +23,12 @@ static const char *supported_namespaces[2] = {FDO_DESKTOP_NAMESPACE, GNOME_DESKT
 
 
 static char theme_name[128] = {0};
+static char interface_font[256] = "sans-serif 11";
+
+const char *
+glfw_current_system_font(void) {
+    return interface_font;
+}
 static int theme_size = -1;
 static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
 static bool cursor_theme_changed = false, appearance_initialized = false;
@@ -146,6 +155,20 @@ process_gnome_setting(const char *key, DBusMessageIter *value) {
             if (sz > 0 && sz != theme_size) {
                 theme_size = sz;
                 cursor_theme_changed = true;
+            }
+        }
+    } else if (strcmp(key, "font-name") == 0) {
+        if (dbus_message_iter_get_arg_type(value) == DBUS_TYPE_STRING) {
+            const char *name;
+            dbus_message_iter_get_basic(value, &name);
+            if (name && name[0] && strcmp(name, interface_font) != 0) {
+                snprintf(interface_font, sizeof(interface_font), "%s", name);
+#ifdef _GLFW_WAYLAND
+                const char *style = getenv("KITTY_WAYLAND_TITLEBAR");
+                if (style && strcmp(style, "gnome") == 0)
+                    for (_GLFWwindow *w = _glfw.windowListHead; w; w = w->next)
+                        glfwWaylandRedrawCSDWindowTitle((GLFWwindow *)w);
+#endif
             }
         }
     } else if (strcmp(key, "cursor-theme") == 0) {
@@ -283,6 +306,13 @@ setting_changed(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
                 DBUS_TYPE_INVALID)) {
             if (strcmp(namespace, FDO_DESKTOP_NAMESPACE) == 0) {
                 if (strcmp(key, FDO_APPEARANCE_KEY) == 0) { on_color_scheme_change(msg); }
+            } else if (strcmp(namespace, GNOME_DESKTOP_NAMESPACE) == 0 && strcmp(key, "font-name") == 0) {
+                DBusMessageIter iter, value;
+                if (dbus_message_iter_init(msg, &iter) && dbus_message_iter_next(&iter) && dbus_message_iter_next(&iter)
+                    && dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_VARIANT) {
+                    dbus_message_iter_recurse(&iter, &value);
+                    process_gnome_setting(key, &value);
+                }
             }
         }
     }
