@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -693,8 +694,16 @@ func TestFindOverwritesFilesystemAliases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(got) != 1 || got[0] != tc.src {
-				t.Errorf("got overwrites %q, want [%q]", got, tc.src)
+			// The existing entry is reported under the name it is stored as,
+			// which some filesystems normalize.
+			entries, err := os.ReadDir(dest)
+			if err != nil || len(entries) != 1 {
+				t.Fatalf("unexpected destination contents: %v %v", entries, err)
+			}
+			_, rest, _ := strings.Cut(tc.dest, "/")
+			want := filepath.Join(entries[0].Name(), rest)
+			if len(got) != 1 || got[0] != want {
+				t.Errorf("got overwrites %q, want [%q]", got, want)
 			}
 		})
 	}
@@ -832,7 +841,96 @@ func TestFindOverwrites_DirVsFile(t *testing.T) {
 	}
 }
 
+// TestFindOverwrites_FileVsDir verifies that a dropped file that would
+// replace an existing directory is an error up front, as rename_contents
+// cannot replace a directory with a file.
+func TestFindOverwrites_FileVsDir(t *testing.T) {
+	src, dst := t.TempDir(), t.TempDir()
+	buildTree(t, src, map[string]string{"conflict": "file"}, nil)
+	buildTree(t, dst, map[string]string{"conflict/x.txt": "x"}, nil)
+	if got, err := find_overwrites(openDir(t, src), openDir(t, dst)); err == nil {
+		t.Fatalf("expected an error, got overwrites %v", got)
+	}
+}
+
+// TestSymlinkToDirInDestIsMerged verifies that a symlink to a directory in
+// the destination is merged into by rename_contents and that find_overwrites
+// reports the files in the symlink target that will be overwritten.
+func TestSymlinkToDirInDestIsMerged(t *testing.T) {
+	tmp := t.TempDir()
+	src, dst, target := filepath.Join(tmp, "src"), filepath.Join(tmp, "dst"), filepath.Join(tmp, "target")
+	buildTree(t, src, map[string]string{"folder/file.txt": "new", "folder/new.txt": "new"}, nil)
+	buildTree(t, target, map[string]string{"file.txt": "old", "other.txt": "old"}, nil)
+	buildTree(t, dst, nil, map[string]string{"folder": target})
+	srcDir, dstDir := openDir(t, src), openDir(t, dst)
+
+	got, err := find_overwrites(srcDir, dstDir)
+	if err != nil {
+		t.Fatalf("find_overwrites: %v", err)
+	}
+	if want := []string{filepath.Join("folder", "file.txt")}; !equalStringSlices(got, want) {
+		t.Errorf("find_overwrites: got %v, want %v", got, want)
+	}
+	if err := rename_contents(srcDir, dstDir); err != nil {
+		t.Fatalf("rename_contents: %v", err)
+	}
+	if st, err := os.Lstat(filepath.Join(dst, "folder")); err != nil || st.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("dst/folder is no longer a symlink: %v %v", st, err)
+	}
+	for name, want := range map[string]string{"file.txt": "new", "new.txt": "new", "other.txt": "old"} {
+		if data, err := os.ReadFile(filepath.Join(target, name)); err != nil || string(data) != want {
+			t.Errorf("target/%s: got %q %v, want %q", name, data, err, want)
+		}
+	}
+}
+
 // --- rename_contents tests ---
+
+// TestRenameContents_DirReplacesNonDir verifies that a dropped directory
+// replaces an existing file or dangling symlink of the same name.
+func TestRenameContents_DirReplacesNonDir(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		files, symlinks map[string]string
+	}{
+		{"file", map[string]string{"conflict": "file"}, nil},
+		{"dangling symlink", nil, map[string]string{"conflict": "nonexistent"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			src, dst := t.TempDir(), t.TempDir()
+			buildTree(t, src, map[string]string{"conflict/a.txt": "a"}, nil)
+			buildTree(t, dst, tc.files, tc.symlinks)
+			if err := rename_contents(openDir(t, src), openDir(t, dst)); err != nil {
+				t.Fatalf("rename_contents: %v", err)
+			}
+			if data, err := os.ReadFile(filepath.Join(dst, "conflict", "a.txt")); err != nil || string(data) != "a" {
+				t.Errorf("dst/conflict/a.txt: got %q %v", data, err)
+			}
+		})
+	}
+}
+
+// TestRenameContents_FileVsDir verifies that replacing an existing directory
+// with a file fails and leaves the directory intact.
+func TestRenameContents_FileVsDir(t *testing.T) {
+	src, dst := t.TempDir(), t.TempDir()
+	buildTree(t, src, map[string]string{"conflict": "file"}, nil)
+	buildTree(t, dst, map[string]string{"conflict/x.txt": "x"}, nil)
+	if err := rename_contents(openDir(t, src), openDir(t, dst)); err == nil {
+		t.Fatal("expected an error")
+	}
+	if _, err := os.Stat(filepath.Join(dst, "conflict", "x.txt")); err != nil {
+		t.Errorf("dst/conflict/x.txt missing: %v", err)
+	}
+}
+
+func TestUniqifyChildNamesNormalization(t *testing.T) {
+	got := uniqify_child_names([]string{"caf\u00e9.txt", "Cafe\u0301.txt", "other"}, false)
+	want := []string{"caf\u00e9.txt", fmt.Sprintf(case_conflict_template, 1, "Cafe\u0301.txt"), "other"}
+	if !equalStringSlices(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
 
 // TestRenameContents_SimpleFiles verifies that plain files are moved from src
 // to dst.

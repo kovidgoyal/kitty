@@ -211,12 +211,24 @@ class TestDnDKitten(BaseTest):
         self.exit_kitten()
 
     def test_dnd_kitten_overwrite_filesystem_aliases(self):
-        self.finish_setup(cli_args=('--confirm-drop-overwrite',))
-        aliases = (
-            ('case', 'report.txt', 'Report.txt'),
-            ('unicode', 'cafe\u0301.txt', 'caf\u00e9.txt'),
-            ('directory', 'folder/file.txt', 'Folder/file.txt'),
+        def filesystem_aliases(src_rel: str, dest_rel: str) -> bool:
+            with tempfile.TemporaryDirectory(dir=self.test_dir) as tdir:
+                os.makedirs(os.path.dirname(os.path.join(tdir, dest_rel)), exist_ok=True)
+                open(os.path.join(tdir, dest_rel), 'wb').close()
+                return os.path.exists(os.path.join(tdir, src_rel))
+
+        aliases = tuple(
+            x
+            for x in (
+                ('case', 'report.txt', 'Report.txt'),
+                ('unicode', 'cafe\u0301.txt', 'caf\u00e9.txt'),
+                ('directory', 'folder/file.txt', 'Folder/file.txt'),
+            )
+            if filesystem_aliases(x[1], x[2])
         )
+        if not aliases:
+            self.skipTest('The filesystem does not alias names differing in case or Unicode normalization')
+        self.finish_setup(cli_args=('--confirm-drop-overwrite',))
         for (name, src_rel, dest_rel), remote, action, accepted in itertools.product(
             aliases, (False, True), (GLFW_DRAG_OPERATION_COPY, GLFW_DRAG_OPERATION_MOVE), (False, True)
         ):
@@ -228,10 +240,7 @@ class TestDnDKitten(BaseTest):
                     os.makedirs(os.path.dirname(path), exist_ok=True)
                     with open(path, 'wb') as f:
                         f.write(content)
-                alias = os.path.join(self.kitten_wd, src_rel)
-                if not os.path.exists(alias):
-                    self.skipTest(f'The destination filesystem does not alias {src_rel!r} to {dest_rel!r}')
-                self.assertTrue(os.path.samefile(alias, dest))
+                self.assertTrue(os.path.samefile(os.path.join(self.kitten_wd, src_rel), dest))
                 copy, move = self.get_button_geometry()
                 button = copy if action == GLFW_DRAG_OPERATION_COPY else move
                 dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], button[0] + 1, button[1] + 1)

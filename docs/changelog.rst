@@ -407,7 +407,10 @@ Detailed list of changes
   copying of the staging directory (:pull:`10769`)
 
 - Drag and drop kitten: Respect overwrite confirmation for case and Unicode
-  equivalent file and directory names on filesystems that treat them as aliases
+  equivalent file and directory names on filesystems that treat them as
+  aliases. Also list the existing files that will be overwritten under their
+  actual names, including files inside symlinked directories, and fix dropping
+  a directory over an existing file (:pull:`10772`)
 
 - Clipboard kitten: Fix a race when replacing an existing output file and
   losing the original file if writing it fails. Also preserve the permissions
