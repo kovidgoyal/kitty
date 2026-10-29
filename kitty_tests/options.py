@@ -385,7 +385,7 @@ def conf_parsing(self):
     radius_opts = p('window_border_radius 7px')
     self.ae(radius_opts.window_border_radius, (7.0, 'px'))
     self.ae(defaults.hyperlink_target_position, 'top')
-    for pos in ('top', 'bottom', 'below'):
+    for pos in ('top', 'bottom', 'below', 'tooltip'):
         self.ae(p(f'hyperlink_target_position {pos}').hyperlink_target_position, pos)
     self.ae(p('hyperlink_target_position xxx', bad_line_num=1).hyperlink_target_position, 'top')
     radius_opts = p('window_border_radius -2')

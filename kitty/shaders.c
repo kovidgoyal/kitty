@@ -1641,26 +1641,8 @@ window_bar_rect(const UIRenderData *ui) {
     return (Viewport){.left = ui->screen_left, .top = ui->screen_top, .width = ui->screen_width, .height = ui->cell_height + 2 + 2 * bar_border_width(ui)};
 }
 
-static unsigned
-render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, Viewport border_rect) {
-    const double thickness = thickness_as_float(ui->os_window, 1);
-    const unsigned border_width = bar_border_width(ui);
-    // The rounded rect shader anti-aliases each edge over a band extending
-    // one pixel on either side of it, so keep the drawn line at least half a
-    // pixel inside the border_width pixels reserved for it, otherwise it would
-    // bleed onto the rendered title.
-    const float drawn_thickness = (float)MIN(thickness, border_width - 0.5);
-    if (border_rect.width <= 2 * border_width || border_rect.height <= 2 * border_width) return 0;
-    unsigned bar_height = border_rect.height - 2 * border_width;
-    unsigned bar_width = border_rect.width - 2 * border_width;
-    if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
-        free(bar->buf);
-        bar->buf = malloc((size_t)4 * bar_width * bar_height);
-        if (!bar->buf) return 0;
-        bar->height = bar_height;
-        bar->width = bar_width;
-        bar->needs_render = true;
-    }
+static void
+bar_colors(const UIRenderData *ui, color_type *fg, color_type *bg) {
 #define RGBCOL(which, fallback)                                       \
     (0xff000000 | colorprofile_to_color_with_fallback(                \
                       ui->screen->color_profile,                      \
@@ -1668,18 +1650,61 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, Viewpo
                       ui->screen->color_profile->configured.which,    \
                       ui->screen->color_profile->overridden.fallback, \
                       ui->screen->color_profile->configured.fallback))
-    color_type fg = RGBCOL(default_fg, default_fg), bg = RGBCOL(default_bg, default_bg);
+    *fg = RGBCOL(default_fg, default_fg);
+    *bg = RGBCOL(default_bg, default_bg);
 #undef RGBCOL
+}
+
+// Render title into bar->buf, if needed. The rendered text is max_width x
+// height pixels, unless fit_to_text is true, in which case its width is reduced
+// to the width of the text. The actual width is stored in bar->width.
+static bool
+render_bar_text(
+    const UIRenderData *ui, WindowBarData *bar, PyObject *title, unsigned max_width, unsigned height, bool fit_to_text, color_type fg, color_type bg) {
+    if (!title) return false;
+    if (!bar->buf || bar->requested_width != max_width || bar->height != height || bar->fit_to_text != fit_to_text) {
+        free(bar->buf);
+        bar->buf = malloc((size_t)4 * max_width * height);
+        if (!bar->buf) return false;
+        bar->requested_width = max_width;
+        bar->width = max_width;
+        bar->height = height;
+        bar->fit_to_text = fit_to_text;
+        bar->needs_render = true;
+    }
     if (bar->last_drawn_title_object_id != title || bar->needs_render) {
         static char titlebuf[2048] = {0};
-        if (!title) return 0;
-        snprintf(titlebuf, arraysz(titlebuf), " %s", PyUnicode_AsUTF8(title));
+        snprintf(titlebuf, arraysz(titlebuf), fit_to_text ? " %s " : " %s", PyUnicode_AsUTF8(title));
+        size_t actual_width = max_width;
         if (!draw_window_title(
-                ui->os_window->fonts_data->font_sz_in_pts, ui->os_window->fonts_data->logical_dpi_y, titlebuf, fg, bg, bar->buf, bar_width, bar_height, NULL))
-            return 0;
+                ui->os_window->fonts_data->font_sz_in_pts,
+                ui->os_window->fonts_data->logical_dpi_y,
+                titlebuf,
+                fg,
+                bg,
+                bar->buf,
+                max_width,
+                height,
+                fit_to_text ? &actual_width : NULL))
+            return false;
+        bar->width = MAX(1u, (unsigned)actual_width);
         Py_CLEAR(bar->last_drawn_title_object_id);
         bar->last_drawn_title_object_id = Py_NewRef(title);
     }
+    return true;
+}
+
+// Draw the text previously rendered by render_bar_text() surrounded by a
+// border. border_rect must be the size of the rendered text plus the borders.
+static void
+draw_bar(const UIRenderData *ui, const WindowBarData *bar, Viewport border_rect, color_type fg, color_type bg) {
+    const double thickness = thickness_as_float(ui->os_window, 1);
+    const unsigned border_width = bar_border_width(ui);
+    // The rounded rect shader anti-aliases each edge over a band extending
+    // one pixel on either side of it, so keep the drawn line at least half a
+    // pixel inside the border_width pixels reserved for it, otherwise it would
+    // bleed onto the rendered title.
+    const float drawn_thickness = (float)MIN(thickness, border_width - 0.5);
     static ImageRenderData data = {.group_count = 1};
     gpu_data_for_image(&data, -1, 1, 1, -1);
     glGenTextures(1, &data.texture_id);
@@ -1689,7 +1714,7 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, Viewpo
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar->width, bar->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
     bind_program(GRAPHICS_PROGRAM);
     const unsigned sh = ui->full_framebuffer_height;
     // first blank the area to be drawn to background
@@ -1697,12 +1722,22 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, Viewpo
     blank_canvas(ui->bg_alpha, bg, false);
     disable_scissor();
     // then draw the rendered text
-    save_viewport_using_top_left_origin(border_rect.left + border_width, border_rect.top + border_width, bar_width, bar_height, sh);
+    save_viewport_using_top_left_origin(border_rect.left + border_width, border_rect.top + border_width, bar->width, bar->height, sh);
     draw_graphics(GRAPHICS_PROGRAM, &data, 0, 1, 1.f);
     restore_viewport();
     free_texture(&data.texture_id);
     // finally draw border with transparent bg
     draw_rounded_rect(border_rect, sh, drawn_thickness, ui->cell_width, fg, bg, 0.f, 0, 0.f);
+}
+
+static unsigned
+render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, Viewport border_rect) {
+    const unsigned border_width = bar_border_width(ui);
+    if (border_rect.width <= 2 * border_width || border_rect.height <= 2 * border_width) return 0;
+    color_type fg, bg;
+    bar_colors(ui, &fg, &bg);
+    if (!render_bar_text(ui, bar, title, border_rect.width - 2 * border_width, border_rect.height - 2 * border_width, false, fg, bg)) return 0;
+    draw_bar(ui, bar, border_rect, fg, bg);
     return border_rect.height;
 }
 
@@ -1735,9 +1770,27 @@ hyperlink_target_bar_top(const UIRenderData *ui, unsigned bar_height) {
     switch (OPT(hyperlink_target_position)) {
         case HYPERLINK_TARGET_TOP: top = row_top < bar_height ? max_top : 0; break;
         case HYPERLINK_TARGET_BOTTOM: top = row_bottom > max_top ? 0 : max_top; break;
-        case HYPERLINK_TARGET_BELOW: top = row_bottom > max_top ? row_top - bar_height : row_bottom; break;
+        case HYPERLINK_TARGET_BELOW:
+        case HYPERLINK_TARGET_TOOLTIP: top = row_bottom > max_top ? row_top - bar_height : row_bottom; break;
     }
     return (unsigned)MAX(0., MIN(top, max_top));
+}
+
+// Draw the URL in a box sized to fit it, starting at the hovered cell, moved
+// left as needed to fit in the window. rect is the full width bar it replaces.
+static void
+draw_hyperlink_target_tooltip(const UIRenderData *ui, Viewport rect, PyObject *url) {
+    const unsigned border_width = bar_border_width(ui);
+    if (rect.width <= 2 * border_width || rect.height <= 2 * border_width) return;
+    WindowBarData *bar = &ui->window->title_bar_data;
+    color_type fg, bg;
+    bar_colors(ui, &fg, &bg);
+    if (!render_bar_text(ui, bar, url, rect.width - 2 * border_width, rect.height - 2 * border_width, true, fg, bg)) return;
+    const unsigned width = bar->width + 2 * border_width;
+    const unsigned left = ui->screen->current_hyperlink_under_mouse.x * ui->cell_width;
+    rect.left += MIN(left, rect.width - width);
+    rect.width = width;
+    draw_bar(ui, bar, rect, fg, bg);
 }
 
 static void
@@ -1762,9 +1815,10 @@ draw_hyperlink_target(const UIRenderData *ui) {
         bd->needs_render = true;
     }
     if (bd->last_drawn_title_object_id == NULL) return;
-    PyObject *ref = Py_NewRef(bd->last_drawn_title_object_id); // render_a_bar clears bd->last_drawn_title_object_id
+    PyObject *ref = Py_NewRef(bd->last_drawn_title_object_id); // render_bar_text() clears bd->last_drawn_title_object_id
     rect.top += hyperlink_target_bar_top(ui, rect.height);
-    render_a_bar(ui, &window->title_bar_data, bd->last_drawn_title_object_id, rect);
+    if (OPT(hyperlink_target_position) == HYPERLINK_TARGET_TOOLTIP) draw_hyperlink_target_tooltip(ui, rect, bd->last_drawn_title_object_id);
+    else render_a_bar(ui, &window->title_bar_data, bd->last_drawn_title_object_id, rect);
     Py_DECREF(ref);
 }
 

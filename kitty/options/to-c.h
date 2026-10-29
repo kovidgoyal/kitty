@@ -147,7 +147,9 @@ static inline HyperlinkTargetPosition
 hyperlink_target_position(PyObject *x) {
     const char *in = PyUnicode_AsUTF8(x);
     if (!in) return HYPERLINK_TARGET_TOP;
-    if (in[0] == 'b') return in[1] == 'e' ? HYPERLINK_TARGET_BELOW : HYPERLINK_TARGET_BOTTOM;
+    if (strcmp(in, "bottom") == 0) return HYPERLINK_TARGET_BOTTOM;
+    if (strcmp(in, "below") == 0) return HYPERLINK_TARGET_BELOW;
+    if (strcmp(in, "tooltip") == 0) return HYPERLINK_TARGET_TOOLTIP;
     return HYPERLINK_TARGET_TOP;
 }
 

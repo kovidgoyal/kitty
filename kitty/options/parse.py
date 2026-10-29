@@ -1058,7 +1058,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for hyperlink_target_position")
         ans["hyperlink_target_position"] = val
 
-    choices_for_hyperlink_target_position = frozenset(('top', 'bottom', 'below'))
+    choices_for_hyperlink_target_position = frozenset(('top', 'bottom', 'below', 'tooltip'))
 
     def inactive_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_border_color'] = to_color(val)
