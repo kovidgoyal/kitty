@@ -60,6 +60,8 @@ main(void) {
     assert(notifications == 3 && received == GLFW_COLOR_SCHEME_DARK);
     change_scheme(1);
     assert(notifications == 3);
+    change_scheme(0);
+    assert(notifications == 4 && received == GLFW_COLOR_SCHEME_NO_PREFERENCE);
     _GLFWwindow window = {0};
     _glfw.windowListHead = &window;
     double factor;

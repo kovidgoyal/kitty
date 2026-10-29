@@ -263,10 +263,8 @@ render_titlebar_pixels(_GLFWwindow *window, uint8_t *output) {
     const bool maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
     GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
     bool dark = appearance == GLFW_COLOR_SCHEME_DARK;
-    if (appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
-        uint32_t color = decs.titlebar_color;
-        dark = .2126 * R(color) + .7152 * G(color) + .0722 * B(color) < 128;
-    }
+    // GNOME's normal light appearance is reported as "no preference".
+    // Do not let a dark terminal background override that desktop default.
     uint32_t bg = dark ? 0xff303030 : 0xffebebeb;
     if (decs.use_custom_titlebar_color) {
         bg = 0xff000000 | (decs.titlebar_color & 0xffffff);

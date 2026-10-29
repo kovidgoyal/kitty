@@ -85,11 +85,12 @@ main(void) {
     w.wl.decorations.titlebar.buffer.width = 128;
     w.wl.decorations.titlebar.buffer.height = 38;
     uint32_t custom_pixels[128 * 38];
-    const GLFWColorScheme transitions[] = {GLFW_COLOR_SCHEME_DARK, GLFW_COLOR_SCHEME_LIGHT, GLFW_COLOR_SCHEME_DARK};
+    const GLFWColorScheme transitions[] = {GLFW_COLOR_SCHEME_DARK, GLFW_COLOR_SCHEME_NO_PREFERENCE,
+        GLFW_COLOR_SCHEME_DARK, GLFW_COLOR_SCHEME_LIGHT, GLFW_COLOR_SCHEME_NO_PREFERENCE};
     for (unsigned i = 0; i < sizeof(transitions) / sizeof(*transitions); i++) {
         scheme = transitions[i];
         render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
-        assert(custom_pixels[19 * 128] == (scheme == GLFW_COLOR_SCHEME_LIGHT ? 0xffebebeb : 0xff303030));
+        assert(custom_pixels[19 * 128] == (scheme == GLFW_COLOR_SCHEME_DARK ? 0xff303030 : 0xffebebeb));
     }
     w.wl.decorations.use_custom_titlebar_color = true;
     const uint32_t custom_colors[] = {0x123456, 0xfafafa};

@@ -22,8 +22,9 @@ minimize/maximize controls before close, when those controls are configured.
 A control activates only after a matching press/release.
 
 With `wayland_titlebar_color system`, the palette follows the desktop's color
-scheme, including live light/dark transitions. Without a desktop preference,
-the palette follows the terminal background's luminance. Explicit colors still
+scheme, including live light/dark transitions. GNOME reports its normal light
+appearance as "no preference"; this uses the light palette, independent of the
+terminal background. Explicit colors still
 take precedence, with contrasting text and controls.
 
 The existing asynchronous portal query also reads these GNOME settings:
