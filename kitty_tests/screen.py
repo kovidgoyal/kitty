@@ -2369,33 +2369,38 @@ class TestScreen(BaseTest):
                 self.assertEqual('continued' in row, which_screen == 0 and i == 1, row)
 
     def test_live_mark_colors(self):
-        from kitty.fast_data_types import COLOR_LAYER_GLOBAL, patch_color_profiles
+        from kitty.fast_data_types import COLOR_LAYER_GLOBAL, MARK_MASK, patch_color_profiles
 
         opts = self.set_options({'palette_generate': 'fixed'})
         profiles = tuple(ColorProfile(opts) for _ in range(3))
+        marks = range(1, MARK_MASK + 1)
+        channels = ('foreground', 'background')
 
         def configured():
-            return tuple(tuple(int(getattr(opts, f'mark{i}_{channel}')) for channel in ('foreground', 'background')) for i in range(1, 4))
+            return [[int(getattr(opts, f'mark{m}_{ch}')) for ch in channels] for m in marks]
 
-        expected = configured()
+        def ae(cp, expected):
+            self.ae([list(pair) for pair in cp.test_mark_colors()], expected)
+
         for cp in profiles:
-            self.ae(cp.test_mark_colors(), expected)
+            ae(cp, configured())
+        # Patch all marks in the first two profiles, the third must be unaffected
         for base in (0x123400, 0x567800):
-            spec = {f'mark{i}_{channel}': base + 2 * i + j for i in range(1, 4) for j, channel in enumerate(('foreground', 'background'))}
+            spec = {f'mark{m}_{ch}': base + 2 * m + j for m in marks for j, ch in enumerate(channels)}
             patch_color_profiles(spec, None, profiles[:2], COLOR_LAYER_GLOBAL)
-            expected = tuple((spec[f'mark{i}_foreground'], spec[f'mark{i}_background']) for i in range(1, 4))
+            expected = [[spec[f'mark{m}_{ch}'] for ch in channels] for m in marks]
             for cp in profiles[:2]:
-                self.ae(cp.test_mark_colors(), expected)
-            self.ae(profiles[2].test_mark_colors(), configured())
-        for i in range(3):
-            for j, channel in enumerate(('foreground', 'background')):
-                value = 0xABCD00 + 2 * i + j
-                patch_color_profiles({f'mark{i + 1}_{channel}': value}, None, profiles[:1], COLOR_LAYER_GLOBAL)
-                expected = tuple(tuple(value if (r, c) == (i, j) else v for c, v in enumerate(pair)) for r, pair in enumerate(expected))
-                self.ae(profiles[0].test_mark_colors(), expected)
+                ae(cp, expected)
+            ae(profiles[2], configured())
+        # Patching a single channel of a single mark must not affect the others
+        for i, m in enumerate(marks):
+            for j, ch in enumerate(channels):
+                expected[i][j] = 0xABCD00 + 2 * i + j
+                patch_color_profiles({f'mark{m}_{ch}': expected[i][j]}, None, profiles[:1], COLOR_LAYER_GLOBAL)
+                ae(profiles[0], expected)
         for reset in (False, True):
             profiles[0].reload_from_opts(opts, reset_overriden_colors=reset)
-            self.ae(profiles[0].test_mark_colors(), configured())
+            ae(profiles[0], configured())
 
     def test_color_profile(self):
         from kitty.fast_data_types import patch_color_profiles

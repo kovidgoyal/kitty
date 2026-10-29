@@ -231,8 +231,10 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Fix live text-marker color updates applying each foreground/background pair
-  to the next marker instead of its own marker.
+- Fix changing text marker colors at runtime, for example with
+  :code:`kitten @ set-colors` or automatic dark/light theme switching, applying
+  the colors of each marker to the next one, with changes to ``mark3`` having
+  no effect
 
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`

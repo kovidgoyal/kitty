@@ -1140,16 +1140,24 @@ set_transparent_background_color(ColorProfile *self, PyObject *const *args, Py_s
     Py_RETURN_NONE;
 }
 
-// Test the same marker slots consumed by the renderer without clearing pending uploads.
+// Return the (fg, bg) pair for each mark, as uploaded to the GPU, without
+// clearing pending uploads. The buffer layout must match copy_color_table_to_buffer().
 static PyObject *
 test_mark_colors(ColorProfile *self, PyObject *unused UNUSED) {
     color_type buf[arraysz(self->color_table) + arraysz(self->mark_backgrounds) + arraysz(self->mark_foregrounds) + NUM_INDEXED_IMAGE_SPECIAL_COLORS];
-    bool dirty = self->dirty;
+    const bool dirty = self->dirty;
     copy_color_table_to_buffer(self, buf, 0, 1);
     self->dirty = dirty;
     const color_type *bg = buf + arraysz(self->color_table);
     const color_type *fg = bg + arraysz(self->mark_backgrounds);
-    return Py_BuildValue("((II)(II)(II))", fg[0], bg[0], fg[1], bg[1], fg[2], bg[2]);
+    RAII_PyObject(ans, PyTuple_New(MARK_MASK));
+    if (!ans) return NULL;
+    for (size_t i = 0; i < MARK_MASK; i++) {
+        PyObject *pair = Py_BuildValue("II", fg[i], bg[i]);
+        if (!pair) return NULL;
+        PyTuple_SET_ITEM(ans, i, pair);
+    }
+    return Py_NewRef(ans);
 }
 
 static PyMethodDef cp_methods[] = {
