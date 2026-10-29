@@ -576,7 +576,7 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     for (size_t i = 1; i <= MARK_MASK; i++) {
 #define S(which, i)                                       \
     snprintf(key, sizeof(key) - 1, "mark%zu_" #which, i); \
-    patch_mark_color(key, profiles, spec, mark_##which##s, i)
+    patch_mark_color(key, profiles, spec, mark_##which##s, i - 1)
         S(background, i);
         S(foreground, i);
 #undef S
@@ -1140,12 +1140,25 @@ set_transparent_background_color(ColorProfile *self, PyObject *const *args, Py_s
     Py_RETURN_NONE;
 }
 
+// Test the same marker slots consumed by the renderer without clearing pending uploads.
+static PyObject *
+test_mark_colors(ColorProfile *self, PyObject *unused UNUSED) {
+    color_type buf[arraysz(self->color_table) + arraysz(self->mark_backgrounds) + arraysz(self->mark_foregrounds) + NUM_INDEXED_IMAGE_SPECIAL_COLORS];
+    bool dirty = self->dirty;
+    copy_color_table_to_buffer(self, buf, 0, 1);
+    self->dirty = dirty;
+    const color_type *bg = buf + arraysz(self->color_table);
+    const color_type *fg = bg + arraysz(self->mark_backgrounds);
+    return Py_BuildValue("((II)(II)(II))", fg[0], bg[0], fg[1], bg[1], fg[2], bg[2]);
+}
+
 static PyMethodDef cp_methods[] = {
     METHOD(reset_color_table, METH_NOARGS) METHOD(as_dict, METH_NOARGS) METHOD(basic_colors, METH_NOARGS) METHOD(color_table_address, METH_NOARGS)
         METHOD(as_color, METH_O) METHOD(reset_color, METH_O) METHOD(set_color, METH_VARARGS) METHODB(palette_color_is_generated, METH_O),
     METHODB(get_transparent_background_color, METH_O),
     METHODB(reset_layer, METH_O),
     METHODB(color_stack_depth, METH_NOARGS),
+    METHODB(test_mark_colors, METH_NOARGS),
     {"reload_from_opts", (PyCFunction)(void (*)(void))(reload_from_opts), METH_VARARGS | METH_KEYWORDS, NULL},
     {"set_transparent_background_color", (PyCFunction)(void (*)(void))set_transparent_background_color, METH_FASTCALL, ""},
     {NULL} /* Sentinel */
