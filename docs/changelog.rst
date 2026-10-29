@@ -231,8 +231,8 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Fix wide characters being drawn on the wrong row when colliding with
-  multiple sized text
+- Fix wide characters being drawn on the wrong row after colliding with
+  scaled text (:pull:`10767`)
 
 - Fix changing text marker colors at runtime, for example with
   :code:`kitten @ set-colors` or automatic dark/light theme switching, applying
