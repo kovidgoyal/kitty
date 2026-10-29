@@ -374,6 +374,18 @@ RPS1="{rps1}"
             pty.wait_till(lambda: 'XXX' in pty.screen_contents())
             self.assertIn('pre-start', pty.screen_contents())
             self.assertTrue(pty.screen_contents().startswith('pre-start'))
+        # Interrupting the startup command must not leave integration half
+        # initialized. The marker is printed by the child itself so that we
+        # know it is the foreground job when we send SIGINT.
+        with self.run_shell(rc='PS1=XXX', extra_env={'KITTY_SI_RUN_COMMAND_AT_STARTUP': "sh -c 'echo pre-start; exec sleep 100'"}) as pty:
+            pty.wait_till(lambda: 'pre-start' in pty.screen_contents())
+            pty.write_to_child('\x03')
+            pty.wait_till(lambda: 'XXX' in pty.screen_contents())
+            pty.send_cmd_to_child('echo ok1')
+            pty.wait_till(lambda: '\nok1\n' in pty.screen_contents())
+            pty.send_cmd_to_child('echo ok2')
+            pty.wait_till(lambda: '\nok2\n' in pty.screen_contents())
+            self.assertNotIn('FUNCNEST', pty.screen_contents())
 
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_integration(self):

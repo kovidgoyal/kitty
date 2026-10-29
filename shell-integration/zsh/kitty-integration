@@ -353,7 +353,15 @@ _ksi_deferred_init() {
     # run startup command
     if [[ -n "$krcs" ]]; then
         builtin print -nu "$_ksi_fd" -f '\e]2;%s\e\\' -- "${(V)krcs}"
-        builtin eval "$krcs"
+        # If the command is interrupted with Ctrl-C, zsh aborts the rest of
+        # this function, leaving it in precmd_functions so it runs again on the
+        # next prompt and wraps our zle widgets around themselves, causing
+        # infinite recursion. Clear the interrupt so initialization completes.
+        {
+            builtin eval "$krcs"
+        } always {
+            TRY_BLOCK_INTERRUPT=0
+        }
     fi
 
     if (( $+functions[_ksi_preexec] )); then

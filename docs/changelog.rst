@@ -235,6 +235,10 @@ Detailed list of changes
   scaled text and emoji sequences being split into multiple cells when
   wrapped onto the next line (:pull:`10767`)
 
+- zsh integration: Fix a "maximum nested function level reached" error at
+  every prompt after interrupting a command run at shell startup, for example
+  via a session file (:iss:`10768`)
+
 - Fix changing text marker colors at runtime, for example with
   :code:`kitten @ set-colors` or automatic dark/light theme switching, applying
   the colors of each marker to the next one, with changes to ``mark3`` having
