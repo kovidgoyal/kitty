@@ -24,7 +24,9 @@ A control activates only after a matching press/release.
 With `wayland_titlebar_color system`, the palette follows the desktop's color
 scheme, including live light/dark transitions. GNOME reports its normal light
 appearance as "no preference"; this uses the light palette, independent of the
-terminal background. Explicit colors still
+terminal background. If the portal or color-scheme setting is unavailable, the
+fallback is dark; a valid "no preference" reply remains distinguishable from
+missing settings. Explicit colors still
 take precedence, with contrasting text and controls.
 
 The existing asynchronous portal query also reads these GNOME settings:

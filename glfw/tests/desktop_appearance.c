@@ -51,6 +51,18 @@ change_setting(const char *namespace, const char *key, int type, const void *dat
 
 int
 main(void) {
+    assert(!glfw_has_system_color_theme());
+    // An attempted/failed query must not hide a later initial reply containing 0.
+    appearance_initialized = true;
+    DBusMessage *reply = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
+    uint32_t zero = 0;
+    assert(dbus_message_append_args(reply, DBUS_TYPE_UINT32, &zero, DBUS_TYPE_INVALID));
+    DBusMessageIter value;
+    dbus_message_iter_init(reply, &value);
+    process_fdo_setting(FDO_APPEARANCE_KEY, &value);
+    assert(glfw_has_system_color_theme() && notifications == 1 && received == GLFW_COLOR_SCHEME_NO_PREFERENCE);
+    dbus_message_unref(reply);
+    notifications = 0;
     change_scheme(1);
     assert(notifications == 1 && received == GLFW_COLOR_SCHEME_DARK);
     change_scheme(2);

@@ -14,6 +14,8 @@ static double text_scale = 1.;
 const GLFWTitlebarButtonLayout *glfw_current_titlebar_button_layout(void) { return &layout; }
 double glfw_current_titlebar_text_scale(void) { return text_scale; }
 unsigned glfw_current_titlebar_height(void) { return (unsigned)ceil(38 * fmax(1, text_scale)); }
+static bool theme_available = true;
+bool glfw_has_system_color_theme(void) { return theme_available; }
 static GLFWColorScheme scheme = GLFW_COLOR_SCHEME_DARK;
 GLFWAPI GLFWColorScheme
 glfwGetCurrentSystemColorTheme(bool query) {
@@ -85,6 +87,13 @@ main(void) {
     w.wl.decorations.titlebar.buffer.width = 128;
     w.wl.decorations.titlebar.buffer.height = 38;
     uint32_t custom_pixels[128 * 38];
+    theme_available = false;
+    scheme = GLFW_COLOR_SCHEME_NO_PREFERENCE;
+    render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
+    assert(custom_pixels[19 * 128] == 0xff303030);
+    theme_available = true;
+    render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
+    assert(custom_pixels[19 * 128] == 0xffebebeb);
     const GLFWColorScheme transitions[] = {GLFW_COLOR_SCHEME_DARK, GLFW_COLOR_SCHEME_NO_PREFERENCE,
         GLFW_COLOR_SCHEME_DARK, GLFW_COLOR_SCHEME_LIGHT, GLFW_COLOR_SCHEME_NO_PREFERENCE};
     for (unsigned i = 0; i < sizeof(transitions) / sizeof(*transitions); i++) {
