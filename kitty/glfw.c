@@ -983,12 +983,22 @@ window_focus_callback(GLFWwindow *w, int focused) {
     osw->last_mouse_activity_at = now;
     osw->cursor_blink_zero_time = now;
     if (is_window_ready_for_callbacks()) {
-        WINDOW_CALLBACK(on_focus, "O", focused ? Py_True : Py_False);
-        if (!osw || osw->id != wid) osw = os_window_for_id(wid);
-        if (osw) {
-            GLFWIMEUpdateEvent ev = {.type = GLFW_IME_UPDATE_FOCUS, .focused = focused};
+        GLFWIMEUpdateEvent ev = {.type = GLFW_IME_UPDATE_FOCUS, .focused = focused};
+        // On focus loss update the IME before reporting the focus change, so
+        // that any pre-edit text the IME commits reaches the child before the
+        // focus out event. Updating the IME can dispatch key events which reset
+        // callback_os_window, so look it up again.
+        if (!focused) {
             glfwUpdateIMEState(osw->handle, &ev);
-            if (focused) {
+            osw = os_window_for_id(wid);
+        }
+        if (osw) {
+            WINDOW_CALLBACK(on_focus, "O", focused ? Py_True : Py_False);
+            if (!osw || osw->id != wid) osw = os_window_for_id(wid);
+        }
+        if (osw && focused) {
+            glfwUpdateIMEState(osw->handle, &ev);
+            if ((osw = os_window_for_id(wid))) {
                 Tab *tab = osw->tabs + osw->active_tab;
                 Window *window = tab->windows + tab->active_window;
                 if (window->render_data.screen) update_ime_position(window, window->render_data.screen);

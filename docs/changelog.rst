@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- macOS: Commit in-progress IME or dictation text instead of discarding it when
+  the OS window loses focus, matching native macOS applications
+
 - Fix wide characters being drawn on the wrong row after colliding with
   scaled text and emoji sequences being split into multiple cells when
   wrapped onto the next line (:pull:`10767`)
