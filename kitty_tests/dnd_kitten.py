@@ -210,6 +210,52 @@ class TestDnDKitten(BaseTest):
             self.dnd_kitten_drop(True, img_drop_path)
         self.exit_kitten()
 
+    def test_dnd_kitten_overwrite_filesystem_aliases(self):
+        self.finish_setup(cli_args=('--confirm-drop-overwrite',))
+        aliases = (
+            ('case', 'report.txt', 'Report.txt'),
+            ('unicode', 'cafe\u0301.txt', 'caf\u00e9.txt'),
+            ('directory', 'folder/file.txt', 'Folder/file.txt'),
+        )
+        for (name, src_rel, dest_rel), remote, action, accepted in itertools.product(
+            aliases, (False, True), (GLFW_DRAG_OPERATION_COPY, GLFW_DRAG_OPERATION_MOVE), (False, True)
+        ):
+            with self.subTest(alias=name, remote=remote, action=action, accepted=accepted):
+                self.reset_kitten(remote)
+                src = os.path.join(self.src_data_dir, src_rel)
+                dest = os.path.join(self.kitten_wd, dest_rel)
+                for path, content in ((src, b'incoming'), (dest, b'original')):
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    with open(path, 'wb') as f:
+                        f.write(content)
+                alias = os.path.join(self.kitten_wd, src_rel)
+                if not os.path.exists(alias):
+                    self.skipTest(f'The destination filesystem does not alias {src_rel!r} to {dest_rel!r}')
+                self.assertTrue(os.path.samefile(alias, dest))
+                copy, move = self.get_button_geometry()
+                button = copy if action == GLFW_DRAG_OPERATION_COPY else move
+                dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], button[0] + 1, button[1] + 1)
+                self.wait_for_state('drop_action', action)
+                dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], button[0] + 1, button[1] + 1)
+                self.wait_for_state('drop_data_requests', ((1, 0, 0),))
+                uri = as_file_url(self.src_data_dir, src_rel.split('/')[0])
+                dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', (uri + '\r\n').encode())
+                self.pty.wait_till(lambda: 'overwrite existing' in self.pty.screen_contents() or self.probe_state('drop_action') == 0)
+                with open(dest, 'rb') as f:
+                    self.assertEqual(b'original', f.read(), 'destination changed before overwrite confirmation')
+                self.assertIn('overwrite existing', self.pty.screen_contents())
+                self.pty.write_to_child('\x1b[13u' if accepted else '\x1b[27u')
+                self.wait_for_state('last_drop_action', action if accepted else 0)
+                self.wait_for_state('drop_action', 0)
+                with open(dest, 'rb') as f:
+                    self.assertEqual(b'incoming' if accepted else b'original', f.read())
+                if accepted and action == GLFW_DRAG_OPERATION_MOVE and not remote:
+                    self.assertFalse(os.path.exists(src))
+                else:
+                    with open(src, 'rb') as f:
+                        self.assertEqual(b'incoming', f.read())
+        self.exit_kitten()
+
     def dnd_kitten_drop(self, remote_client, img_drop_path):
         copy, move = self.get_button_geometry()
         all_mimes = 'text/uri-list a/b c/d'

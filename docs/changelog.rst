@@ -406,6 +406,9 @@ Detailed list of changes
   one of its subdirectories before staging files, preventing recursive
   copying of the staging directory (:pull:`10769`)
 
+- Drag and drop kitten: Respect overwrite confirmation for case and Unicode
+  equivalent file and directory names on filesystems that treat them as aliases
+
 - Clipboard kitten: Fix a race when replacing an existing output file and
   losing the original file if writing it fails. Also preserve the permissions
   of and follow symlinks at existing output files (:pull:`10738`)

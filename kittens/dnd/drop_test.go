@@ -666,6 +666,40 @@ func TestFindOverwrites_FileOverlap(t *testing.T) {
 	}
 }
 
+func TestFindOverwritesFilesystemAliases(t *testing.T) {
+	for _, tc := range []struct{ name, src, dest string }{
+		{"case", "report.txt", "Report.txt"},
+		{"unicode", "cafe\u0301.txt", "caf\u00e9.txt"},
+		{"directory", "folder/file.txt", "Folder/file.txt"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			src, dest := t.TempDir(), t.TempDir()
+			buildTree(t, src, map[string]string{tc.src: "incoming"}, nil)
+			buildTree(t, dest, map[string]string{tc.dest: "original"}, nil)
+			alias, err := os.Stat(filepath.Join(dest, tc.src))
+			if os.IsNotExist(err) {
+				t.Skip("destination filesystem does not alias these names")
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			original, err := os.Stat(filepath.Join(dest, tc.dest))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !os.SameFile(alias, original) {
+				t.Fatal("names do not refer to the same destination file")
+			}
+			got, err := find_overwrites(openDir(t, src), openDir(t, dest))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != 1 || got[0] != tc.src {
+				t.Errorf("got overwrites %q, want [%q]", got, tc.src)
+			}
+		})
+	}
+}
+
 // TestFindOverwrites_DirsNotReported verifies that matching *directories* in
 // both trees are not reported as overwrites — only non-directory conflicts are.
 func TestFindOverwrites_DirsNotReported(t *testing.T) {
