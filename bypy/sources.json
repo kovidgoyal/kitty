@@ -212,11 +212,11 @@
     },
 
     {
-        "name": "libbrotli 1.1.0",
+        "name": "libbrotli 1.1.1",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:e720a6ca29428b803f4ad165371771f5398faba397edf6778837a18599ea13ff",
+            "hash": "sha256:1a84dfaa740994d19254bf78aa7d74a4a8040d1638f3d5f2cdecb188fd520da8",
             "urls": ["https://github.com/google/brotli/archive/v{version}/{filename}"]
         }
     },
