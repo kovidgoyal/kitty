@@ -1052,6 +1052,14 @@ class Parser:
     def hide_window_decorations(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['hide_window_decorations'] = hide_window_decorations(val)
 
+    def hyperlink_target_position(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_hyperlink_target_position:
+            raise ValueError(f"The value {val} is not a valid choice for hyperlink_target_position")
+        ans["hyperlink_target_position"] = val
+
+    choices_for_hyperlink_target_position = frozenset(('top', 'bottom', 'below'))
+
     def inactive_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_border_color'] = to_color(val)
 

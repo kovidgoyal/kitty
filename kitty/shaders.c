@@ -1631,17 +1631,28 @@ has_scrollbar(Window *w, Screen *screen) {
 }
 
 static unsigned
-render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool along_bottom) {
+bar_border_width(const UIRenderData *ui) {
+    return MAX(1u, (unsigned)ceil(thickness_as_float(ui->os_window, 1)));
+}
+
+// The rect, including borders, of a full width bar along the top of the window
+static Viewport
+window_bar_rect(const UIRenderData *ui) {
+    return (Viewport){.left = ui->screen_left, .top = ui->screen_top, .width = ui->screen_width, .height = ui->cell_height + 2 + 2 * bar_border_width(ui)};
+}
+
+static unsigned
+render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, Viewport border_rect) {
     const double thickness = thickness_as_float(ui->os_window, 1);
-    const unsigned border_width = MAX(1u, (unsigned)ceil(thickness));
+    const unsigned border_width = bar_border_width(ui);
     // The rounded rect shader anti-aliases each edge over a band extending
     // one pixel on either side of it, so keep the drawn line at least half a
     // pixel inside the border_width pixels reserved for it, otherwise it would
     // bleed onto the rendered title.
     const float drawn_thickness = (float)MIN(thickness, border_width - 0.5);
-    if (ui->screen_width <= 2 * border_width) return 0;
-    unsigned bar_height = ui->cell_height + 2;
-    unsigned bar_width = ui->screen_width - 2 * border_width;
+    if (border_rect.width <= 2 * border_width || border_rect.height <= 2 * border_width) return 0;
+    unsigned bar_height = border_rect.height - 2 * border_width;
+    unsigned bar_width = border_rect.width - 2 * border_width;
     if (!bar->buf || bar->width != bar_width || bar->height != bar_height) {
         free(bar->buf);
         bar->buf = malloc((size_t)4 * bar_width * bar_height);
@@ -1680,8 +1691,6 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
     bind_program(GRAPHICS_PROGRAM);
-    Viewport border_rect = {.height = bar_height + 2 * border_width, .left = ui->screen_left, .width = ui->screen_width, .top = ui->screen_top};
-    if (along_bottom) border_rect.top += ui->screen_height - border_rect.height;
     const unsigned sh = ui->full_framebuffer_height;
     // first blank the area to be drawn to background
     enable_scissor_using_top_left_origin(border_rect, sh);
@@ -1715,12 +1724,29 @@ has_hyperlink_target(OSWindow *os_window, Window *w, Screen *screen) {
            !is_mouse_hidden(os_window) && global_state.mouse_hover_in_window == w->id;
 }
 
+// Return the offset from the top of the screen at which to draw a bar of the
+// specified height so that it does not obscure the hovered line
+static unsigned
+hyperlink_target_bar_top(const UIRenderData *ui, unsigned bar_height) {
+    const double max_top = ui->screen_height - bar_height;
+    const double row_top = (double)ui->screen->current_hyperlink_under_mouse.y * ui->cell_height + ui->screen->pixel_scroll_offset_y;
+    const double row_bottom = row_top + ui->cell_height;
+    double top = 0;
+    switch (OPT(hyperlink_target_position)) {
+        case HYPERLINK_TARGET_TOP: top = row_top < bar_height ? max_top : 0; break;
+        case HYPERLINK_TARGET_BOTTOM: top = row_bottom > max_top ? 0 : max_top; break;
+        case HYPERLINK_TARGET_BELOW: top = row_bottom > max_top ? row_top - bar_height : row_bottom; break;
+    }
+    return (unsigned)MAX(0., MIN(top, max_top));
+}
+
 static void
 draw_hyperlink_target(const UIRenderData *ui) {
     if (!has_hyperlink_target(ui->os_window, ui->window, ui->screen)) return;
     Screen *screen = ui->screen;
     Window *window = ui->window;
-    const bool along_bottom = screen->current_hyperlink_under_mouse.y < 3;
+    Viewport rect = window_bar_rect(ui);
+    if (rect.height > ui->screen_height) return;
     WindowBarData *bd = &window->url_target_bar_data;
     hyperlink_id_type hid = screen->current_hyperlink_under_mouse.id;
     if (bd->hyperlink_id_for_title_object != hid) {
@@ -1737,7 +1763,8 @@ draw_hyperlink_target(const UIRenderData *ui) {
     }
     if (bd->last_drawn_title_object_id == NULL) return;
     PyObject *ref = Py_NewRef(bd->last_drawn_title_object_id); // render_a_bar clears bd->last_drawn_title_object_id
-    render_a_bar(ui, &window->title_bar_data, bd->last_drawn_title_object_id, along_bottom);
+    rect.top += hyperlink_target_bar_top(ui, rect.height);
+    render_a_bar(ui, &window->title_bar_data, bd->last_drawn_title_object_id, rect);
     Py_DECREF(ref);
 }
 
@@ -1751,7 +1778,7 @@ draw_window_number(const UIRenderData *ui) {
     if (!has_window_number(ui->window, ui->screen)) return;
     unsigned title_bar_height = 0, requested_height = ui->screen_height;
     if (ui->window->title && PyUnicode_Check(ui->window->title) && (requested_height > (ui->cell_height + 1) * 2)) {
-        title_bar_height = render_a_bar(ui, &ui->window->title_bar_data, ui->window->title, false);
+        title_bar_height = render_a_bar(ui, &ui->window->title_bar_data, ui->window->title, window_bar_rect(ui));
     }
     unsigned height_for_letter = ui->screen_height - title_bar_height - ui->cell_height;
     unsigned width_for_letter = ui->screen_width - ui->cell_width;

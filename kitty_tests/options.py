@@ -384,6 +384,10 @@ def conf_parsing(self):
     self.ae(opts.font_size, 11.37)
     radius_opts = p('window_border_radius 7px')
     self.ae(radius_opts.window_border_radius, (7.0, 'px'))
+    self.ae(defaults.hyperlink_target_position, 'top')
+    for pos in ('top', 'bottom', 'below'):
+        self.ae(p(f'hyperlink_target_position {pos}').hyperlink_target_position, pos)
+    self.ae(p('hyperlink_target_position xxx', bad_line_num=1).hyperlink_target_position, 'top')
     radius_opts = p('window_border_radius -2')
     self.ae(radius_opts.window_border_radius, (0.0, 'pt'))
     self.ae(opts.mouse_hide_wait[0], 0 if is_macos else 3)

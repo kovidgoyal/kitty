@@ -23,6 +23,7 @@ choices_for_allow_remote_control = typing.Literal['password', 'socket-only', 'so
 choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled']
 choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'cell', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
 choices_for_focus_follows_mouse = typing.Literal['no', 'n', 'false', 'y', 'yes', 'true', 'drop']
+choices_for_hyperlink_target_position = typing.Literal['top', 'bottom', 'below']
 choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
 choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
@@ -375,6 +376,7 @@ option_names = (
     'foreground',
     'forward_stdio',
     'hide_window_decorations',
+    'hyperlink_target_position',
     'inactive_border_color',
     'inactive_tab_background',
     'inactive_tab_font_style',
@@ -600,6 +602,7 @@ class Options:
     foreground: Color = Color(221, 221, 221)
     forward_stdio: bool = False
     hide_window_decorations: int = 0
+    hyperlink_target_position: choices_for_hyperlink_target_position = 'top'
     inactive_border_color: Color = Color(204, 204, 204)
     inactive_tab_background: Color = Color(153, 153, 153)
     inactive_tab_font_style: tuple[bool, bool] = (False, False)

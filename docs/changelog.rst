@@ -231,6 +231,9 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new option :opt:`hyperlink_target_position` to control where the URL shown
+  by :opt:`show_hyperlink_targets` is displayed (:iss:`10770`)
+
 - macOS: Commit in-progress IME or dictation text instead of discarding it when
   the OS window loses focus, matching native macOS applications
 

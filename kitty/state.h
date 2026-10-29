@@ -44,6 +44,7 @@ typedef enum ShowHyperlinkTargets {
     SHOW_HYPERLINK_TARGETS_SUPER = 8,
     SHOW_HYPERLINK_TARGETS_ALT = 16
 } ShowHyperlinkTargets;
+typedef enum HyperlinkTargetPosition { HYPERLINK_TARGET_TOP = 0, HYPERLINK_TARGET_BOTTOM = 1, HYPERLINK_TARGET_BELOW = 2 } HyperlinkTargetPosition;
 
 struct MenuItem {
     const char **location;
@@ -171,6 +172,7 @@ typedef struct Options {
         AdjustmentUnit unit;
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;
     ShowHyperlinkTargets show_hyperlink_targets;
+    HyperlinkTargetPosition hyperlink_target_position;
     UnderlineHyperlinks underline_hyperlinks;
     int background_blur;
     long macos_titlebar_color;

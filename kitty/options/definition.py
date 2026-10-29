@@ -1025,6 +1025,20 @@ are pressed, the URL is shown as long as the configured modifier is among them.
 
 
 opt(
+    'hyperlink_target_position',
+    'top',
+    choices=('top', 'bottom', 'below'),
+    ctype='hyperlink_target_position',
+    long_text="""
+Where to display the URL shown by :opt:`show_hyperlink_targets`. :code:`top`
+and :code:`bottom` display it along that edge of the window, :code:`below`
+displays it immediately below the hovered line. In all cases, if the URL would
+cover the hovered line, it is displayed on the opposite side instead.
+""",
+)
+
+
+opt(
     'underline_hyperlinks',
     'hover',
     choices=('hover', 'always', 'never'),
