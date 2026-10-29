@@ -397,7 +397,7 @@ Detailed list of changes
 
 - Drag and drop kitten: Reject copying or moving a directory into itself or
   one of its subdirectories before staging files, preventing recursive
-  copying of the staging directory.
+  copying of the staging directory (:pull:`10769`)
 
 - Clipboard kitten: Fix a race when replacing an existing output file and
   losing the original file if writing it fails. Also preserve the permissions

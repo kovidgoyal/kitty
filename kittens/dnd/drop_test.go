@@ -108,6 +108,13 @@ func TestLocalCopyHardlinkPolicy(t *testing.T) {
 
 func runLocalDrop(t *testing.T, dest string, uris []parsed_uri, action int, copy_mode string) (*dnd, error) {
 	t.Helper()
+	return runLocalDropAfter(t, dest, uris, action, copy_mode, nil)
+}
+
+// Like runLocalDrop but calls before_drop, if not nil, after the kitten has
+// opened dest and before the drop is processed.
+func runLocalDropAfter(t *testing.T, dest string, uris []parsed_uri, action int, copy_mode string, before_drop func()) (*dnd, error) {
+	t.Helper()
 	lp, err := loop.New()
 	if err != nil {
 		t.Fatal(err)
@@ -121,6 +128,9 @@ func runLocalDrop(t *testing.T, dest string, uris []parsed_uri, action int, copy
 		d.remove_tdir()
 		d.drop_output_dir.Close()
 	})
+	if before_drop != nil {
+		before_drop()
+	}
 	d.drop_status = drop_status{action: action, reading_data: true, uri_list: uris}
 	if err := d.all_mime_data_dropped(); err != nil {
 		return d, err
@@ -261,12 +271,14 @@ func TestLocalMoveMissingSource(t *testing.T) {
 	}
 }
 
+var action_names = map[int]string{copy_on_drop: "copy", move_on_drop: "move"}
+
 func TestLocalDropIntoSourceDirectory(t *testing.T) {
 	for _, action := range []int{copy_on_drop, move_on_drop} {
 		for _, copy_mode := range []string{"auto", "independent"} {
 			for _, location := range []string{"self", "descendant"} {
 				for _, alias := range []string{"none", "source-parent", "destination", "case"} {
-					t.Run(fmt.Sprintf("%d/%s/%s/%s", action, copy_mode, location, alias), func(t *testing.T) {
+					t.Run(fmt.Sprintf("%s/%s/%s/%s", action_names[action], copy_mode, location, alias), func(t *testing.T) {
 						root := t.TempDir()
 						source := filepath.Join(root, "source")
 						files := map[string]string{"data.txt": "source data", "child/nested/keep.txt": "destination data"}
@@ -334,7 +346,7 @@ func TestLocalDropOutsideSourceDirectory(t *testing.T) {
 	for _, action := range []int{copy_on_drop, move_on_drop} {
 		for _, copy_mode := range []string{"auto", "independent"} {
 			for _, location := range []string{"sibling", "symlink", "search-only-parent"} {
-				t.Run(fmt.Sprintf("%d/%s/%s", action, copy_mode, location), func(t *testing.T) {
+				t.Run(fmt.Sprintf("%s/%s/%s", action_names[action], copy_mode, location), func(t *testing.T) {
 					root := t.TempDir()
 					source := filepath.Join(root, "source")
 					buildTree(t, source, map[string]string{"data.txt": "source data", "child/keep.txt": "destination data"}, nil)
@@ -353,7 +365,11 @@ func TestLocalDropOutsideSourceDirectory(t *testing.T) {
 						}
 						if location == "search-only-parent" {
 							parent := filepath.Dir(dest)
-							t.Cleanup(func() { os.Chmod(parent, 0755) })
+							t.Cleanup(func() {
+								if err := os.Chmod(parent, 0755); err != nil {
+									t.Error(err)
+								}
+							})
 							if err := os.Chmod(parent, 0111); err != nil {
 								t.Fatal(err)
 							}
@@ -381,6 +397,82 @@ func TestLocalDropOutsideSourceDirectory(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestLocalDropIntoMovedDestination(t *testing.T) {
+	for _, action := range []int{copy_on_drop, move_on_drop} {
+		for _, location := range []string{"outside", "inside"} {
+			t.Run(action_names[action]+"/"+location, func(t *testing.T) {
+				root := t.TempDir()
+				source := filepath.Join(root, "source")
+				buildTree(t, source, map[string]string{"data.txt": "source data", "child/keep.txt": "keep"}, nil)
+				dest, moved_to := filepath.Join(root, "dest"), filepath.Join(root, "moved")
+				if location == "inside" {
+					dest, moved_to = filepath.Join(root, "dest"), filepath.Join(source, "child", "moved")
+				}
+				if err := os.Mkdir(dest, 0755); err != nil {
+					t.Fatal(err)
+				}
+				// Replace the original path so that a path based check would
+				// look at the wrong directory.
+				d, err := runLocalDropAfter(t, dest, []parsed_uri{{kind: parsed_uri_file, path: source}}, action, "auto", func() {
+					if err := os.Rename(dest, moved_to); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.Mkdir(dest, 0755); err != nil {
+						t.Fatal(err)
+					}
+				})
+				if location == "inside" {
+					if err == nil {
+						t.Fatal("dropping a directory into a destination moved inside it must fail")
+					}
+					if d.tdir_counter != 0 {
+						t.Errorf("invalid drop started staging before failing: %v", err)
+					}
+					if data, err := os.ReadFile(filepath.Join(source, "data.txt")); err != nil || string(data) != "source data" {
+						t.Errorf("source changed: %q, %v", data, err)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if data, err := os.ReadFile(filepath.Join(moved_to, "source", "data.txt")); err != nil || string(data) != "source data" {
+					t.Errorf("copied data: %q, %v", data, err)
+				}
+			})
+		}
+	}
+}
+
+func TestLocalCopySkipsStagingDirectory(t *testing.T) {
+	// Simulate a route to the staging directory that the up-front check
+	// cannot detect, such as a bind mount, by bypassing that check.
+	for _, action := range []int{copy_on_drop, move_on_drop} {
+		t.Run(action_names[action], func(t *testing.T) {
+			source := filepath.Join(t.TempDir(), "source")
+			buildTree(t, source, map[string]string{"data.txt": "source data"}, nil)
+			staging_path := filepath.Join(source, "staging")
+			if err := os.Mkdir(staging_path, 0700); err != nil {
+				t.Fatal(err)
+			}
+			staging, err := os.Open(staging_path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer staging.Close()
+			if err := do_local_copy(context.Background(), staging, []string{source}, action, "auto"); err != nil {
+				t.Fatal(err)
+			}
+			if data, err := os.ReadFile(filepath.Join(staging_path, "source", "data.txt")); err != nil || string(data) != "source data" {
+				t.Errorf("copied data: %q, %v", data, err)
+			}
+			if _, err := os.Lstat(filepath.Join(staging_path, "source", "staging")); !os.IsNotExist(err) {
+				t.Errorf("staging directory was copied into itself: %v", err)
+			}
+		})
 	}
 }
 

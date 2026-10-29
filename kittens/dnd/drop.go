@@ -14,8 +14,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/emmansun/base64"
+	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -132,6 +134,12 @@ func uniqify_child_names(names []string, is_case_sensitive_filesystem bool) []st
 
 func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, action int, copy_mode string) (err error) {
 	disallow_hardlinks := action == copy_on_drop && copy_mode == "independent"
+	// Never copy the staging directory into itself, even if it is reachable
+	// from a source by a route the up-front check cannot see, such as a bind mount.
+	staging_info, err := dest_dir.Stat()
+	if err != nil {
+		return err
+	}
 	var src_file *os.File
 	defer func() {
 		if src_file != nil {
@@ -179,7 +187,10 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, ac
 			err = utils.CopyFolderContents(ctx, src_file, d, utils.CopyFolderOptions{
 				Disallow_hardlinks: disallow_hardlinks,
 				Filter_files: func(parent *os.File, child os.FileInfo) bool {
-					return child.IsDir() || child.Mode().IsRegular() || child.Mode()&fs.ModeSymlink != 0
+					if child.IsDir() {
+						return !os.SameFile(child, staging_info)
+					}
+					return child.Mode().IsRegular() || child.Mode()&fs.ModeSymlink != 0
 				},
 			})
 			d.Close()
@@ -645,32 +656,51 @@ func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
 	return utils.CreateDirAt(dnd.base_tempdir, name, 0o700)
 }
 
-func destination_is_within_source(source_info os.FileInfo, dest_dir *os.File) (bool, error) {
-	path, err := filepath.EvalSymlinks(dest_dir.Name())
+// Identify a file by device and inode. Unlike os.SameFile this also works
+// with the os.FileInfo objects returned by utils.StatAt.
+func file_identity(info os.FileInfo) (dev, ino uint64, err error) {
+	switch s := info.Sys().(type) {
+	case *syscall.Stat_t:
+		return uint64(s.Dev), uint64(s.Ino), nil
+	case *unix.Stat_t:
+		return uint64(s.Dev), uint64(s.Ino), nil
+	}
+	return 0, 0, fmt.Errorf("unknown stat result type for %s: %T", info.Name(), info.Sys())
+}
+
+func same_file(a, b os.FileInfo) (bool, error) {
+	adev, aino, err := file_identity(a)
 	if err != nil {
 		return false, err
 	}
-	if path, err = filepath.Abs(path); err != nil {
+	bdev, bino, err := file_identity(b)
+	if err != nil {
 		return false, err
 	}
+	return adev == bdev && aino == bino, nil
+}
+
+// Walk up from dest_dir via .. relative to its file descriptor rather than
+// its path, so that the result is correct even if dest_dir has been moved or
+// its path contains symlinks. Comparing identities handles case aliases and
+// stat only requires search permission on the ancestors.
+func destination_is_within_source(source_info os.FileInfo, dest_dir *os.File) (bool, error) {
 	info, err := dest_dir.Stat()
 	if err != nil {
 		return false, err
 	}
-	// Compare directory identities to handle case aliases, without opening
-	// ancestors for reading: traversal only requires search permission.
-	for {
-		if os.SameFile(source_info, info) {
-			return true, nil
+	for rel := ".."; ; rel = filepath.Join(rel, "..") {
+		if same, err := same_file(source_info, info); err != nil || same {
+			return same, err
 		}
-		parent := filepath.Dir(path)
-		if parent == path {
-			return false, nil
-		}
-		path = parent
-		if info, err = os.Stat(path); err != nil {
+		parent, err := utils.StatAt(dest_dir, rel)
+		if err != nil {
 			return false, err
 		}
+		if at_root, err := same_file(parent, info); err != nil || at_root {
+			return false, err
+		}
+		info = parent
 	}
 }
 
