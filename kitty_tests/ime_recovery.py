@@ -18,21 +18,26 @@ def method(source: str, signature: str) -> str:
     if definition is None:
         raise ValueError(f'Method definition not found: {signature}')
     start = definition.start()
-    return source[start:source.index('\n}\n', start) + 3]
+    return source[start : source.index('\n}\n', start) + 3]
 
 
 @unittest.skipUnless(sys.platform == 'darwin', 'Cocoa composition recovery requires macOS')
 class IMERecoveryTest(unittest.TestCase):
-
     def test_shutdown_does_not_finalize_composition(self) -> None:
         from kitty.window import Window
 
         for shutting_down in (False, True):
             window = SimpleNamespace(
-                call_watchers=lambda *_: None, watchers=SimpleNamespace(on_close=[]),
-                clipboard_request_manager=SimpleNamespace(close=lambda: None), kitten_result_processors=[],
-                screen=SimpleNamespace(reset_callbacks=lambda: None), finish_scroll_animation=lambda: None,
-                is_active=True, os_window_id=1, id=1,
+                call_watchers=lambda *_: None,
+                watchers=SimpleNamespace(on_close=[]),
+                clear_progress_timer=0,
+                clipboard_request_manager=SimpleNamespace(close=lambda: None),
+                kitten_result_processors=[],
+                screen=SimpleNamespace(reset_callbacks=lambda: None),
+                finish_scroll_animation=lambda: None,
+                is_active=True,
+                os_window_id=1,
+                id=1,
             )
             with (
                 patch('kitty.window.get_boss', return_value=SimpleNamespace(shutting_down=shutting_down)),
@@ -49,40 +54,66 @@ class IMERecoveryTest(unittest.TestCase):
         """Exercise real Cocoa receiver/focus methods through headless ports."""
         root = Path(__file__).resolve().parent.parent
         source = (root / 'glfw/cocoa_window.m').read_text()
-        receiver_source = source[source.index('@implementation GLFWContentView'):]
-        context_command = method(source[source.index('@implementation GLFWTextInputContext'):], '- (void)doCommandBySelector:')
+        receiver_source = source[source.index('@implementation GLFWContentView') :]
+        context_command = method(source[source.index('@implementation GLFWTextInputContext') :], '- (void)doCommandBySelector:')
         helper_start = source.index('static bool\nis_modifier_pressed(')
-        modifier_helper = source[helper_start:source.index('\n}\n', helper_start) + 3]
-        receiver = '\n'.join(method(receiver_source, signature) for signature in (
-            '- (BOOL)hasMarkedText', '- (void)clearMarkedTextBuffer',
-            '- (void)unmarkText', '- (void)setMarkedText:', '- (void)insertText:',
-            '- (void)finishMarkedTextOnFocusLoss', '- (void)updateIMEStateFor:', '- (void)keyDown:',
-            '- (void)cancelMarkedText', '- (void)cancelOperation:', '- (void)doCommandBySelector:',
-            '- (void)flagsChanged:', '- (void)startDictation:',
-        ))
+        modifier_helper = source[helper_start : source.index('\n}\n', helper_start) + 3]
+        receiver = '\n'.join(
+            method(receiver_source, signature)
+            for signature in (
+                '- (BOOL)hasMarkedText',
+                '- (void)clearMarkedTextBuffer',
+                '- (void)unmarkText',
+                '- (void)setMarkedText:',
+                '- (void)insertText:',
+                '- (void)finishMarkedTextOnFocusLoss',
+                '- (void)updateIMEStateFor:',
+                '- (void)keyDown:',
+                '- (void)cancelMarkedText',
+                '- (void)cancelOperation:',
+                '- (void)doCommandBySelector:',
+                '- (void)flagsChanged:',
+                '- (void)startDictation:',
+            )
+        )
         declarations = []
-        for name in ('window', 'input_context', 'markedText', 'markedTextSelectedRange', 'interruptedMarkedText',
-                     'finishing_marked_text', 'ime_session_closed', 'text_committed_during_key_event', 'marked_text_cleared_by_insert',
-                     'in_key_handler', 'input_source_at_last_key_event'):
+        for name in (
+            'window',
+            'input_context',
+            'markedText',
+            'markedTextSelectedRange',
+            'interruptedMarkedText',
+            'finishing_marked_text',
+            'ime_session_closed',
+            'text_committed_during_key_event',
+            'marked_text_cleared_by_insert',
+            'in_key_handler',
+            'input_source_at_last_key_event',
+        ):
             declaration = re.search(r'^    [^;\n]+\b' + name + r';$', source, re.MULTILINE)
             self.assertIsNotNone(declaration, name)
             if declaration is not None:
                 declarations.append(declaration.group(0))
-        fixture = (PREFIX.replace('/* MODIFIER_HELPER */', modifier_helper) + '\n'.join(declarations) + '\n}\n'
-                   + '- (void)finishMarkedTextOnFocusLoss;\n'
-                   + '- (void)cancelMarkedText;\n- (void)cancelOperation:(id)sender;\n- (void)doCommandBySelector:(SEL)selector;\n'
-                   + '- (void)updateIMEStateFor:(GLFWIMEUpdateType)which focused:(bool)focused;\n'
-                   + '@end\n@implementation Probe\n- (id)inputContext { return input_context; }\n'
-                   + '- (void)interpretKeyEvents:(NSArray *)events { (void)events;\n'
-                   + 'if (fixture_key_mode == 1) [self setMarkedText:fixture_key_text selectedRange:kEmptyRange replacementRange:kEmptyRange];\n'
-                   + 'if (fixture_key_mode == 3) { [self insertText:@"已确认" replacementRange:kEmptyRange];\n'
-                   + '[self setMarkedText:fixture_key_text selectedRange:kEmptyRange replacementRange:kEmptyRange]; }\n'
-                   + 'if (fixture_key_mode == 2 || fixture_key_mode == 3) [self finishMarkedTextOnFocusLoss]; }\n'
-                   + receiver + '\n@end\n'
-                   + '@interface Delegate : NSObject { @public _GLFWwindow *window; }\n@end\n@implementation Delegate\n'
-                   + method(source, '- (void)windowDidResignKey:') + '\n@end\n'
-                   + CASES.replace('@implementation GLFWTextInputContext\n',
-                                   '@implementation GLFWTextInputContext\n' + context_command, 1))
+        fixture = (
+            PREFIX.replace('/* MODIFIER_HELPER */', modifier_helper)
+            + '\n'.join(declarations)
+            + '\n}\n'
+            + '- (void)finishMarkedTextOnFocusLoss;\n'
+            + '- (void)cancelMarkedText;\n- (void)cancelOperation:(id)sender;\n- (void)doCommandBySelector:(SEL)selector;\n'
+            + '- (void)updateIMEStateFor:(GLFWIMEUpdateType)which focused:(bool)focused;\n'
+            + '@end\n@implementation Probe\n- (id)inputContext { return input_context; }\n'
+            + '- (void)interpretKeyEvents:(NSArray *)events { (void)events;\n'
+            + 'if (fixture_key_mode == 1) [self setMarkedText:fixture_key_text selectedRange:kEmptyRange replacementRange:kEmptyRange];\n'
+            + 'if (fixture_key_mode == 3) { [self insertText:@"已确认" replacementRange:kEmptyRange];\n'
+            + '[self setMarkedText:fixture_key_text selectedRange:kEmptyRange replacementRange:kEmptyRange]; }\n'
+            + 'if (fixture_key_mode == 2 || fixture_key_mode == 3) [self finishMarkedTextOnFocusLoss]; }\n'
+            + receiver
+            + '\n@end\n'
+            + '@interface Delegate : NSObject { @public _GLFWwindow *window; }\n@end\n@implementation Delegate\n'
+            + method(source, '- (void)windowDidResignKey:')
+            + '\n@end\n'
+            + CASES.replace('@implementation GLFWTextInputContext\n', '@implementation GLFWTextInputContext\n' + context_command, 1)
+        )
         build = root / 'build'
         build.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='ime-recovery-', dir=build) as directory:
@@ -93,17 +124,35 @@ class IMERecoveryTest(unittest.TestCase):
             del fixture, receiver, receiver_source, context_command, source, modifier_helper
             library = path / 'receiver.dylib'
             compile_result = subprocess.run(
-                ['/usr/bin/xcrun', 'clang', '-dynamiclib', '-fno-objc-arc', '-Wall', '-Werror',
-                 '-framework', 'Cocoa', '-framework', 'Carbon', '-I', str(root),
-                 str(native_source), '-o', str(library)], capture_output=True, text=True, check=False,
+                [
+                    '/usr/bin/xcrun',
+                    'clang',
+                    '-dynamiclib',
+                    '-fno-objc-arc',
+                    '-Wall',
+                    '-Werror',
+                    '-framework',
+                    'Cocoa',
+                    '-framework',
+                    'Carbon',
+                    '-I',
+                    str(root),
+                    str(native_source),
+                    '-o',
+                    str(library),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
             )
             self.assertEqual(compile_result.returncode, 0, compile_result.stdout + compile_result.stderr)
             # Use a dylib in trusted system Python, avoiding code-evaluation UI
             # from launching a fresh executable. No GUI or real input context.
             result = subprocess.run(
-                ['/usr/bin/python3', '-c',
-                 'import ctypes,sys; sys.exit(ctypes.CDLL(sys.argv[1]).ime_recovery_run())', str(library)],
-                capture_output=True, text=True, check=False,
+                ['/usr/bin/python3', '-c', 'import ctypes,sys; sys.exit(ctypes.CDLL(sys.argv[1]).ime_recovery_run())', str(library)],
+                capture_output=True,
+                text=True,
+                check=False,
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn('IME_RECOVERY_NATIVE_OK', result.stdout)
@@ -111,7 +160,7 @@ class IMERecoveryTest(unittest.TestCase):
         self.assertFalse(os.path.exists(directory), 'task-owned native fixture must be removed')
 
 
-PREFIX = r'''
+PREFIX = r"""
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <IOKit/hidsystem/IOLLEvent.h>
@@ -198,9 +247,9 @@ static bool _glfwPlatformWindowFocused(_GLFWwindow *window) { (void)window; retu
 @public
     NSUInteger fixture_key_mode;
     NSString *fixture_key_text;
-'''
+"""
 
-CASES = r'''
+CASES = r"""
 @interface KeyEvent : NSObject
 @property unsigned short keyCode;
 @property NSUInteger modifierFlags;
@@ -433,4 +482,4 @@ int ime_recovery_run(void) {
         return 0;
     }
 }
-'''
+"""

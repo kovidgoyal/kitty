@@ -1261,7 +1261,8 @@ is_ascii_control_char(char x) {
     const bool process_text =
         !_glfw.ignoreOSKeyboardProcessing && (!window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1);
     if (!cancel_key && !delete_key && process_text && !(GLFW_FKEY_FIRST <= key && key <= GLFW_FKEY_LAST) &&
-        !(mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META))) ime_session_closed = false;
+        !(mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META)))
+        ime_session_closed = false;
     _glfw.ns.text[0] = 0;
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = GLFW_PRESS, .mods = mods};
     if (!_glfw.ns.unicodeData) {
@@ -1406,7 +1407,8 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
         key,
         format_mods(mods));
     if (action == GLFW_PRESS && process_text && (key == GLFW_FKEY_LEFT_ALT || key == GLFW_FKEY_RIGHT_ALT) &&
-        !(mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META))) ime_session_closed = false;
+        !(mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META)))
+        ime_session_closed = false;
     marked_text_cleared_by_insert = false;
     if (process_text && input_context) {
         // this will call insertText which will fill up _glfw.ns.text
@@ -2078,9 +2080,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
 
 - (void)setMarkedText:(id)string selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange {
     const char *s = polymorphic_string_as_utf8(string);
-    if (ime_session_closed) {
-        return;
-    }
+    if (ime_session_closed) { return; }
     debug_input(
         "\n\tsetMarkedText: %s selectedRange: (%lu, %lu) replacementRange: (%lu, %lu)\n",
         s,
@@ -2257,9 +2257,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         return;
     }
     const char *utf8 = polymorphic_string_as_utf8(string);
-    if (ime_session_closed) {
-        return;
-    }
+    if (ime_session_closed) { return; }
     debug_input("\n\tinsertText: %s replacementRange: (%lu, %lu)\n", utf8, replacementRange.location, replacementRange.length);
     if (!is_ascii_control_char(utf8[0])) {
         [interruptedMarkedText release];
