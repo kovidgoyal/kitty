@@ -270,25 +270,24 @@ func find_overwrites(src_dir *os.File, dest_dir *os.File) (ans []string, err err
 				return err
 			}
 			defer dd.Close()
-			dest_children, err := dd.ReadDir(0)
 			src_children, err := sd.ReadDir(0)
 			if err != nil {
 				return err
 			}
-			dest_map := make(map[string]os.DirEntry)
-			for _, x := range dest_children {
-				dest_map[x.Name()] = x
-			}
 			for _, x := range src_children {
-				if d, found := dest_map[x.Name()]; found {
-					crelpath := utils.IfElse(relpath == ".", x.Name(), filepath.Join(relpath, x.Name()))
-					if !d.IsDir() || !x.IsDir() {
-						ans = append(ans, crelpath)
-					} else {
-						stack.push(crelpath)
-					}
-				} else {
+				// Let the destination filesystem resolve case and Unicode aliases,
+				// just as it does when renaming the staged entries into place.
+				d, err := utils.LstatAt(dd, x.Name())
+				if errors.Is(err, fs.ErrNotExist) {
 					continue
+				} else if err != nil {
+					return err
+				}
+				crelpath := utils.IfElse(relpath == ".", x.Name(), filepath.Join(relpath, x.Name()))
+				if !d.IsDir() || !x.IsDir() {
+					ans = append(ans, crelpath)
+				} else {
+					stack.push(crelpath)
 				}
 			}
 			return
