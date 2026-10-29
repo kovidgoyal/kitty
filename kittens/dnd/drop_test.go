@@ -261,6 +261,129 @@ func TestLocalMoveMissingSource(t *testing.T) {
 	}
 }
 
+func TestLocalDropIntoSourceDirectory(t *testing.T) {
+	for _, action := range []int{copy_on_drop, move_on_drop} {
+		for _, copy_mode := range []string{"auto", "independent"} {
+			for _, location := range []string{"self", "descendant"} {
+				for _, alias := range []string{"none", "source-parent", "destination", "case"} {
+					t.Run(fmt.Sprintf("%d/%s/%s/%s", action, copy_mode, location, alias), func(t *testing.T) {
+						root := t.TempDir()
+						source := filepath.Join(root, "source")
+						files := map[string]string{"data.txt": "source data", "child/nested/keep.txt": "destination data"}
+						buildTree(t, source, files, nil)
+						dest := source
+						if location == "descendant" {
+							dest = filepath.Join(source, "child", "nested")
+						}
+						source_path, dest_path := source, dest
+						switch alias {
+						case "source-parent", "destination":
+							path := filepath.Join(t.TempDir(), "alias")
+							target := root
+							if alias == "destination" {
+								target = dest
+							}
+							if err := os.Symlink(target, path); err != nil {
+								t.Fatal(err)
+							}
+							if alias == "source-parent" {
+								source_path = filepath.Join(path, "source")
+							} else {
+								dest_path = path
+							}
+						case "case":
+							source_path = filepath.Join(root, "SOURCE")
+							if _, err := os.Stat(source_path); os.IsNotExist(err) {
+								t.Skip("case-sensitive filesystem")
+							} else if err != nil {
+								t.Fatal(err)
+							}
+						}
+						incoming := filepath.Join(root, "incoming.txt")
+						if err := os.WriteFile(incoming, []byte("incoming data"), 0644); err != nil {
+							t.Fatal(err)
+						}
+						uris := []parsed_uri{
+							{kind: parsed_uri_file, path: incoming},
+							{kind: parsed_uri_data, mime: "text/plain", data: []byte("data URI")},
+							{kind: parsed_uri_file, path: source_path},
+						}
+						d, err := runLocalDrop(t, dest_path, uris, action, copy_mode)
+						if err == nil {
+							t.Fatal("dropping a directory into itself must fail")
+						}
+						if d.tdir_counter != 0 || d.drop_status.dropping_to != nil {
+							t.Errorf("invalid drop started staging before failing: %v", err)
+						}
+						for path, want := range files {
+							if data, err := os.ReadFile(filepath.Join(source, path)); err != nil || string(data) != want {
+								t.Errorf("source %s changed: %q, %v", path, data, err)
+							}
+						}
+						if data, err := os.ReadFile(incoming); err != nil || string(data) != "incoming data" {
+							t.Errorf("incoming file changed: %q, %v", data, err)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestLocalDropOutsideSourceDirectory(t *testing.T) {
+	for _, action := range []int{copy_on_drop, move_on_drop} {
+		for _, copy_mode := range []string{"auto", "independent"} {
+			for _, location := range []string{"sibling", "symlink", "search-only-parent"} {
+				t.Run(fmt.Sprintf("%d/%s/%s", action, copy_mode, location), func(t *testing.T) {
+					root := t.TempDir()
+					source := filepath.Join(root, "source")
+					buildTree(t, source, map[string]string{"data.txt": "source data", "child/keep.txt": "destination data"}, nil)
+					path, dest := source, filepath.Join(root, "source-sibling")
+					if location == "symlink" {
+						path, dest = filepath.Join(root, "link"), filepath.Join(source, "child")
+						if err := os.Symlink(source, path); err != nil {
+							t.Fatal(err)
+						}
+					} else {
+						if location == "search-only-parent" {
+							dest = filepath.Join(root, "search-only", "dest")
+						}
+						if err := os.MkdirAll(dest, 0755); err != nil {
+							t.Fatal(err)
+						}
+						if location == "search-only-parent" {
+							parent := filepath.Dir(dest)
+							t.Cleanup(func() { os.Chmod(parent, 0755) })
+							if err := os.Chmod(parent, 0111); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+					d, err := runLocalDrop(t, dest, []parsed_uri{{kind: parsed_uri_file, path: path}}, action, copy_mode)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if d.num_dropped_files != 1 {
+						t.Errorf("got %d dropped files, want 1", d.num_dropped_files)
+					}
+					if location == "symlink" {
+						if target, err := os.Readlink(filepath.Join(dest, "link")); err != nil || target != source {
+							t.Errorf("copied symlink: %q, %v", target, err)
+						}
+					} else if data, err := os.ReadFile(filepath.Join(dest, "source", "data.txt")); err != nil || string(data) != "source data" {
+						t.Errorf("copied data: %q, %v", data, err)
+					}
+					if action == move_on_drop {
+						if _, err := os.Lstat(path); !os.IsNotExist(err) {
+							t.Errorf("moved source still exists: %v", err)
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestLocalCopyDuplicateBasenames(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
