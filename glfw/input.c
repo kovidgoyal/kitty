@@ -1599,10 +1599,12 @@ glfwGetTime(void) {
 }
 
 GLFWAPI const char *
-glfwGetSystemFont(void) {
+glfwGetSystemFont(double *text_scale, bool *bold) {
 #if defined(_GLFW_WAYLAND) || defined(_GLFW_X11)
-    return glfw_current_system_font();
+    return glfw_current_system_font(text_scale, bold);
 #else
+    if (text_scale) *text_scale = 1.;
+    if (bold) *bold = true;
     return NULL;
 #endif
 }

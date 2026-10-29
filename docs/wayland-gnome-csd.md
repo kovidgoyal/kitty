@@ -14,27 +14,49 @@ python3 setup.py build
     -o wayland_titlebar_color=system
 ```
 
-The renderer draws a 38 logical-pixel header, centered bold title, 24-pixel
-circular controls spaced 36 pixels apart, antialiased upper corners and matching
-shadows. Maximized/tiled headers have square corners. Narrow headers prioritize
-the close control. A control activates only after a matching press/release.
-Existing movement, resizing, maximize/restore, menu and fullscreen behavior is
-preserved.
+The renderer draws a header of at least 38 logical pixels, centered title,
+24-pixel circular controls spaced 36 pixels apart, antialiased upper corners
+and matching shadows. The header grows to accommodate the selected font and
+text scale. Maximized/tiled headers have square corners. Narrow headers hide
+minimize/maximize controls before close, when those controls are configured.
+A control activates only after a matching press/release.
 
 With `wayland_titlebar_color system`, the palette follows the desktop's color
-scheme, including live light/dark transitions. When the desktop expresses no
-preference, the palette follows the terminal background's luminance. An explicit
-`wayland_titlebar_color` takes precedence, with contrasting text and controls.
+scheme, including live light/dark transitions. Without a desktop preference,
+the palette follows the terminal background's luminance. Explicit colors still
+take precedence, with contrasting text and controls.
 
-The interface font family and point size come from the existing asynchronous
-portal settings query and are rendered bold through FreeType/Fontconfig. Font
-changes redraw the header. No settings subprocess or additional blocking query
-is added at startup. If no font is exposed, the fallback is sans-serif 11.
+The existing asynchronous portal query also reads these GNOME settings:
 
-This approximates GNOME's appearance; it does not interpret GTK/Yaru CSS, arbitrary
-Pango font-description styling, GNOME button layout or text scaling settings.
-The lower terminal corners remain square. Visual review used Ubuntu 26.10 /
-GNOME Shell 51.0; Ubuntu 24.10 has not been tested.
+| Namespace | Settings used |
+| --- | --- |
+| `org.gnome.desktop.interface` | `font-name`, `text-scaling-factor` |
+| `org.gnome.desktop.wm.preferences` | `titlebar-font`, `titlebar-uses-system-font`, `button-layout` |
+| `org.gnome.desktop.wm.preferences` | `action-double-click-titlebar`, `action-middle-click-titlebar`, `action-right-click-titlebar` |
+
+These affect the titlebar, not terminal text. Font preferences select either
+GNOME's interface font (bold for the title) or the configured title font.
+Family, point size and trailing Bold/Italic/Oblique/Regular/Normal styles are
+supported through FreeType/Fontconfig. Text scale is validated between 0.5 and
+4.0. Font or scale changes rebuild the cached font/header as needed. Normal
+windows keep their terminal content size; docked windows keep their exterior
+size while the header changes height.
+
+Button layout respects left/right placement, ordering and omitted controls.
+Duplicate or unsupported control names are ignored; malformed layouts retain
+the last valid layout. Supported titlebar actions are menu, toggle-maximize,
+minimize and none. Unsupported actions such as lower, shade or single-axis
+maximize are treated as no action; no equivalent xdg-shell request is used.
+
+Updates are applied live through portal SettingChanged signals, without a new
+settings subprocess or blocking query. On backends that omit these GNOME keys,
+fallbacks are sans-serif 11, scale 1, controls minimize/maximize/close on the
+right, double-click maximize, right-click menu and no middle-click action.
+
+This approximates GNOME appearance. GTK/Yaru CSS, arbitrary Pango font styling,
+theme-specific decoration palettes, icon artwork and shadow geometry are not
+interpreted. Lower terminal corners remain square. Visual review used Ubuntu
+26.10 / GNOME Shell 51.0; Ubuntu 24.10 has not been tested.
 
 The rounded header cutouts contain the same shadow field as the adjacent
 surfaces, including inactive opacity. A smooth outer envelope removes the finite
@@ -45,9 +67,11 @@ full-window atlas.
 
 The renderer test checks buffer bounds at 100/125/150/200% scale, tiny/narrow/normal
 widths, focused/unfocused/maximized states, dark/light/dark repainting, explicit
-custom colors, control spacing and header/shadow continuity. A separate test
-feeds real D-Bus appearance signal messages to the portal handler without
-changing desktop settings.
+custom colors, control spacing, split/empty layouts, narrow-window priorities,
+header growth and header/shadow continuity. A separate test feeds real D-Bus
+settings signal messages through the handler to validate appearance, font
+selection, text scale, invalid values, duplicate controls and titlebar actions,
+without changing desktop settings.
 
 From the repository root:
 
@@ -60,8 +84,8 @@ gcc -D_GLFW_WAYLAND -Iglfw $(pkg-config --cflags dbus-1) \
 
 gcc -D_GLFW_WAYLAND -Iglfw $(pkg-config --cflags dbus-1) \
     -Wall -Wextra -Werror -Wno-missing-field-initializers -std=c11 -pedantic-errors \
-    -ffunction-sections -fdata-sections glfw/tests/desktop_appearance.c \
-    -Wl,--gc-sections $(pkg-config --libs dbus-1) -o /tmp/kitty-appearance-test
+    -ffunction-sections -fdata-sections glfw/tests/desktop_appearance.c glfw/dbus_glfw.c \
+    -Wl,--gc-sections $(pkg-config --libs dbus-1) -lm -o /tmp/kitty-appearance-test
 /tmp/kitty-appearance-test
 ```
 

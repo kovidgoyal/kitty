@@ -2273,7 +2273,7 @@ typedef GLFWColorScheme (*glfwGetCurrentSystemColorTheme_func)(bool);
 GFW_EXTERN glfwGetCurrentSystemColorTheme_func glfwGetCurrentSystemColorTheme_impl;
 #define glfwGetCurrentSystemColorTheme glfwGetCurrentSystemColorTheme_impl
 
-typedef const char* (*glfwGetSystemFont_func)(void);
+typedef const char* (*glfwGetSystemFont_func)(double*, bool*);
 GFW_EXTERN glfwGetSystemFont_func glfwGetSystemFont_impl;
 #define glfwGetSystemFont glfwGetSystemFont_impl
 

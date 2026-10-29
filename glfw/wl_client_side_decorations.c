@@ -6,6 +6,7 @@
  */
 
 #include "wl_client_side_decorations.h"
+#include "linux_desktop_settings.h"
 
 #include "backend_utils.h"
 #include <sys/mman.h>
@@ -232,7 +233,7 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
 void
 csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.width = 12;
-    decs.metrics.top = decs.metrics.width + 38;
+    decs.metrics.top = decs.metrics.width + glfw_current_titlebar_height();
     decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
     decs.metrics.horizontal = 2 * decs.metrics.width;
     decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
@@ -280,16 +281,39 @@ render_titlebar_pixels(_GLFWwindow *window, uint8_t *output) {
     // Keep controls inside narrow windows, prioritizing the close button.
     int slot = MAX(1, (int)round(36 * scale));
     int pad = MAX(0, MIN((int)round(6 * scale), (width - slot) / 2));
-    int count = 1 + window->wl.wm_capabilities.maximize + window->wl.wm_capabilities.minimize;
-    count = MIN(count, MAX(0, (width - 2 * pad) / slot));
-    int margin = pad + count * slot;
+    const GLFWTitlebarButtonLayout *layout = glfw_current_titlebar_button_layout();
+    bool visible[4] = {false};
+    for (unsigned side = 0; side < 2; side++) {
+        const int *ids = side ? layout->right : layout->left;
+        unsigned n = side ? layout->right_count : layout->left_count;
+        for (unsigned i = 0; i < n; i++) {
+            int id = ids[i];
+            if (id == 1 || (id == 2 && window->wl.wm_capabilities.maximize) || (id == 3 && window->wl.wm_capabilities.minimize)) visible[id] = true;
+        }
+    }
+    int count = visible[1] + visible[2] + visible[3];
+    int capacity = MAX(0, (width - 2 * pad) / slot);
+    for (int id = 3; id >= 1 && count > capacity; id--) {
+        if (visible[id]) { visible[id] = false; count--; }
+    }
+    int ids[3], positions[3], used = 0, side_count[2] = {0};
+    for (unsigned side = 0; side < 2; side++) {
+        const int *buttons = side ? layout->right : layout->left;
+        unsigned n = side ? layout->right_count : layout->left_count;
+        for (unsigned i = 0; i < n; i++) if (visible[buttons[i]]) side_count[side]++;
+        int left = side ? width - pad - side_count[side] * slot : pad;
+        for (unsigned i = 0; i < n; i++) if (visible[buttons[i]]) {
+            ids[used] = buttons[i];
+            positions[used++] = left;
+            left += slot;
+        }
+    }
+    int margin = pad + MAX(side_count[0], side_count[1]) * slot;
     if (width > 2 * margin && window->wl.title && _glfw.callbacks.draw_text)
         _glfw.callbacks.draw_text((GLFWwindow *)window, window->wl.title, fg, bg, output,
             width, height, margin, 0, margin, false);
-    int left = width - pad - slot;
-    for (int button = 0, drawn = 0; button < 3 && drawn < count; button++) {
-        if (button == 1 && !window->wl.wm_capabilities.maximize) continue;
-        if (button == 2 && !window->wl.wm_capabilities.minimize) continue;
+    for (int i = 0; i < used; i++) {
+        int button = ids[i] - 1, left = positions[i];
         bool hovered = button == 0 ? decs.close.hovered : button == 1 ? decs.maximize.hovered : decs.minimize.hovered;
         uint32_t fill = hovered ? hover : circle;
         if (hovered && decs.pressed_button == button + 1) fill = dark ? 0xff707070 : 0xffaaaaaa;
@@ -315,8 +339,6 @@ render_titlebar_pixels(_GLFWwindow *window, uint8_t *output) {
         else if (button == 1) { bounds(maximize); }
         else { bounds(minimize); }
 #undef bounds
-        left -= slot;
-        drawn++;
     }
     if (!decs.close.width) decs.close.hovered = false;
     if (!decs.maximize.width) decs.maximize.hovered = false;
@@ -573,7 +595,8 @@ ensure_csd_resources(_GLFWwindow *window) {
     const double current_scale = _glfwWaylandWindowScale(window);
     const bool size_changed =
         (decs.for_window_state.width != window->wl.width || decs.for_window_state.height != window->wl.height ||
-         decs.for_window_state.fscale != current_scale || !decs.mapping.data);
+         decs.for_window_state.fscale != current_scale || !decs.mapping.data ||
+         (has_titlebar && decs.titlebar.buffer.viewport_height != decs.metrics.visible_titlebar_height));
     const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
     const bool titlebar_state_changed = (has_titlebar && !decs.titlebar.surface) || (!has_titlebar && decs.titlebar.surface);
     const bool needs_update = focus_changed || size_changed || titlebar_state_changed || decs.buffer_destroyed || state_changed;
@@ -843,6 +866,27 @@ handle_pointer_enter(_GLFWwindow *window, struct wl_surface *surface) {
 }
 
 static void
+perform_titlebar_action(_GLFWwindow *window, GLFWTitlebarAction action) {
+    switch (action) {
+        case TITLEBAR_ACTION_MENU:
+            if (window->wl.xdg.toplevel && window->wl.wm_capabilities.window_menu)
+                xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial,
+                    (int32_t)x, (int32_t)y - decs.metrics.top);
+            break;
+        case TITLEBAR_ACTION_MAXIMIZE:
+            if (window->wl.wm_capabilities.maximize) {
+                if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
+                else _glfwPlatformMaximizeWindow(window);
+            }
+            break;
+        case TITLEBAR_ACTION_MINIMIZE:
+            if (window->wl.wm_capabilities.minimize) _glfwPlatformIconifyWindow(window);
+            break;
+        case TITLEBAR_ACTION_NONE: break;
+    }
+}
+
+static void
 handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
     uint32_t edges = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
     if (button == BTN_LEFT) {
@@ -872,8 +916,7 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                     decs.last_click_on_top_decoration_at = monotonic();
                     if (decs.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
                         decs.last_click_on_top_decoration_at = 0;
-                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
-                        else _glfwPlatformMaximizeWindow(window);
+                        perform_titlebar_action(window, glfw_current_titlebar_action(0));
                         return;
                     }
                 }
@@ -889,13 +932,9 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
             case CSD_shadow_lower_right: edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT; break;
         }
         if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, edges);
-    } else if (button == BTN_RIGHT) {
-        if (decs.focus == CSD_titlebar && window->wl.xdg.toplevel) {
-            if (window->wl.wm_capabilities.window_menu)
-                xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - decs.metrics.top);
-            else _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing wndow menu");
-            return;
-        }
+    } else if ((button == BTN_RIGHT || button == BTN_MIDDLE) && state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        if (decs.focus == CSD_titlebar)
+            perform_titlebar_action(window, glfw_current_titlebar_action(button == BTN_MIDDLE ? 1 : 2));
     }
 }
 

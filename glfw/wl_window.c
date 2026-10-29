@@ -3128,6 +3128,20 @@ glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, bool use_system_
 GLFWAPI void
 glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     _GLFWwindow *window = (_GLFWwindow *)handle;
+    unsigned old_height = window->wl.decorations.metrics.visible_titlebar_height;
+    csd_initialize_metrics(window);
+    bool height_changed = old_height != window->wl.decorations.metrics.visible_titlebar_height;
+    if (height_changed && csd_should_window_be_decorated(window) && !window->wl.decorations.titlebar_hidden) {
+        int32_t width = window->wl.width;
+        int32_t height = window->wl.height + (int)window->wl.decorations.metrics.visible_titlebar_height;
+        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED) height = window->wl.height + (int)old_height;
+        csd_set_window_geometry(window, &width, &height);
+        if (height > 0 && height != window->wl.height) {
+            window->wl.height = height;
+            resizeFramebuffer(window);
+        }
+        inform_compositor_of_window_geometry(window, "TitlebarSettings");
+    }
     if (csd_change_title(window)) commit_window_surface_if_safe(window);
 }
 

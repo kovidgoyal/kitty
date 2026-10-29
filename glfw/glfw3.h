@@ -4218,8 +4218,9 @@ GLFWAPI GLFWsystemcolorthemechangefun glfwSetSystemColorThemeChangeCallback(GLFW
 GLFWAPI GLFWclipboardlostfun glfwSetClipboardLostCallback(GLFWclipboardlostfun callback);
 GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialized);
 
-/*! @brief Returns the desktop interface font description, or NULL if unavailable. */
-GLFWAPI const char* glfwGetSystemFont(void);
+/*! @brief Returns the selected desktop titlebar font, or NULL if unavailable.
+ * Optional outputs give text scale and the default bold style. */
+GLFWAPI const char* glfwGetSystemFont(double *text_scale, bool *bold);
 
 /*! @brief Sets the refresh callback for the specified window.
  *

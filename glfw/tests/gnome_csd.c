@@ -9,6 +9,11 @@ _glfwWindowForId(GLFWid id) {
     (void)id;
     abort();
 }
+static GLFWTitlebarButtonLayout layout = {.right = {3, 2, 1}, .right_count = 3};
+static double text_scale = 1.;
+const GLFWTitlebarButtonLayout *glfw_current_titlebar_button_layout(void) { return &layout; }
+double glfw_current_titlebar_text_scale(void) { return text_scale; }
+unsigned glfw_current_titlebar_height(void) { return (unsigned)ceil(38 * fmax(1, text_scale)); }
 static GLFWColorScheme scheme = GLFW_COLOR_SCHEME_DARK;
 GLFWAPI GLFWColorScheme
 glfwGetCurrentSystemColorTheme(bool query) {
@@ -96,6 +101,27 @@ main(void) {
             assert(custom_pixels[19 * 128] == (0xff000000 | custom_colors[i]));
         }
     }
+    w.wl.decorations.use_custom_titlebar_color = false;
+    w.wl.decorations.titlebar.buffer.width = 128;
+    w.wl.decorations.titlebar.buffer.height = 38;
+    layout = (GLFWTitlebarButtonLayout){.left = {1}, .right = {3, 2}, .left_count = 1, .right_count = 2};
+    render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
+    assert(w.wl.decorations.close.left == 6);
+    assert(w.wl.decorations.minimize.left == 50 && w.wl.decorations.maximize.left == 86);
+    layout = (GLFWTitlebarButtonLayout){0};
+    render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
+    assert(!w.wl.decorations.close.width && !w.wl.decorations.maximize.width && !w.wl.decorations.minimize.width);
+    layout = (GLFWTitlebarButtonLayout){.left = {1, 2, 3}, .left_count = 3};
+    w.wl.decorations.titlebar.buffer.width = 40;
+    render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
+    assert(w.wl.decorations.close.width == 36);
+    assert(!w.wl.decorations.maximize.width && !w.wl.decorations.minimize.width);
+    text_scale = 2.;
+    csd_initialize_metrics(&w);
+    assert(w.wl.decorations.metrics.visible_titlebar_height == 76);
+    text_scale = .75;
+    csd_initialize_metrics(&w);
+    assert(w.wl.decorations.metrics.visible_titlebar_height == 38);
     kernel_type *square = create_shadow_mask(84, 84, 12, 25, .7f, 384, 0);
     kernel_type *rounded = create_shadow_mask(84, 84, 12, 25, .7f, 384, 12);
     assert(square && rounded);
