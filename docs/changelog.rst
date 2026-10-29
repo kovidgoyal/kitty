@@ -391,6 +391,10 @@ Detailed list of changes
   write to a temporary file that is renamed into place, so an interrupted
   transfer no longer leaves a truncated file behind (:pull:`10713`)
 
+- Drag and drop kitten: Reject copying or moving a directory into itself or
+  one of its subdirectories before staging files, preventing recursive
+  copying of the staging directory.
+
 - Clipboard kitten: Fix a race when replacing an existing output file and
   losing the original file if writing it fails. Also preserve the permissions
   of and follow symlinks at existing output files (:pull:`10738`)

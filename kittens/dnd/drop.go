@@ -645,6 +645,35 @@ func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
 	return utils.CreateDirAt(dnd.base_tempdir, name, 0o700)
 }
 
+func destination_is_within_source(source_info os.FileInfo, dest_dir *os.File) (bool, error) {
+	path, err := filepath.EvalSymlinks(dest_dir.Name())
+	if err != nil {
+		return false, err
+	}
+	if path, err = filepath.Abs(path); err != nil {
+		return false, err
+	}
+	info, err := dest_dir.Stat()
+	if err != nil {
+		return false, err
+	}
+	// Compare directory identities to handle case aliases, without opening
+	// ancestors for reading: traversal only requires search permission.
+	for {
+		if os.SameFile(source_info, info) {
+			return true, nil
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return false, nil
+		}
+		path = parent
+		if info, err = os.Stat(path); err != nil {
+			return false, err
+		}
+	}
+}
+
 func (dnd *dnd) all_mime_data_dropped() (err error) {
 	drop_status := &dnd.drop_status
 	if len(drop_status.uri_list) == 0 {
@@ -652,7 +681,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		dnd.end_drop(true)
 		return dnd.render_screen()
 	}
-	if !drop_status.is_remote_client && drop_status.action == move_on_drop {
+	if !drop_status.is_remote_client {
 		dest_info, err := dnd.drop_output_dir.Stat()
 		if err != nil {
 			return err
@@ -661,14 +690,27 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 			if u.kind != parsed_uri_file || u.path == "" {
 				continue
 			}
+			source_info, err := os.Lstat(u.path)
+			if err != nil {
+				return err
+			}
+			if source_info.IsDir() {
+				inside, err := destination_is_within_source(source_info, dnd.drop_output_dir)
+				if err != nil {
+					return err
+				}
+				if inside {
+					return fmt.Errorf("cannot drop directory %q into itself or one of its subdirectories", u.path)
+				}
+			}
+			if drop_status.action != move_on_drop {
+				continue
+			}
 			parent_info, err := os.Stat(filepath.Dir(u.path))
 			if err != nil {
 				return err
 			}
 			if os.SameFile(parent_info, dest_info) {
-				if _, err := os.Lstat(u.path); err != nil {
-					return err
-				}
 				// Moving into the source directory is a no-op. Exclude it
 				// from both staging and end_drop's source cleanup.
 				drop_status.uri_list[i].path = ""
