@@ -232,7 +232,8 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix wide characters being drawn on the wrong row after colliding with
-  scaled text (:pull:`10767`)
+  scaled text and emoji sequences being split into multiple cells when
+  wrapped onto the next line (:pull:`10767`)
 
 - Fix changing text marker colors at runtime, for example with
   :code:`kitten @ set-colors` or automatic dark/light theme switching, applying

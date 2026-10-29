@@ -27,6 +27,21 @@ class TestScreen(BaseTest):
                 self.ae(str(s.line(row)), '界')
                 if lines == 4:
                     self.ae(str(s.line(1)), lower_row)
+        # grapheme clusters must not be split by the cursor move
+        for text in ('\U0001f1fa\U0001f1f8', '\U0001f468‍\U0001f469'):
+            with self.subTest(text=text):
+                s = self.create_screen(cols=4, lines=4)
+                s.cursor_position(1, 2)
+                draw_multicell(s, 'X', scale=2)
+                s.cursor_position(2, 1)
+                s.draw(text)
+                self.ae((s.cursor.x, s.cursor.y), (2, 2))
+                self.ae(s.cpu_cells(2, 0)['text'], text)
+        s = self.create_screen(cols=4, lines=4)
+        s.cursor_position(1, 4)
+        s.draw('\U0001f468‍\U0001f469')
+        self.ae((s.cursor.x, s.cursor.y), (2, 1))
+        self.ae(s.cpu_cells(1, 0)['text'], '\U0001f468‍\U0001f469')
 
     def test_wide_collision_at_scroll_margin(self) -> None:
         for alternate in (False, True):
