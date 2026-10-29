@@ -654,8 +654,8 @@ func (root *remote_dir_entry) close_tree() {
 
 func (dnd *dnd) end_drop(success bool) {
 	if dnd.drop_status.reading_data {
-		dnd.lp.QueueDnDData(DC{
-			Type: 'r', Operation: utils.IfElse(success, dnd.drop_status.action, 0)}) // end drop
+		// Remove the sources of a move before signalling the end of the drop,
+		// so that the drop is complete when the terminal is told it has finished
 		if success && dnd.drop_status.action == move_on_drop && !dnd.drop_status.is_remote_client {
 			for _, u := range dnd.drop_status.uri_list {
 				if u.kind != parsed_uri_file || u.path == "" {
@@ -672,6 +672,8 @@ func (dnd *dnd) end_drop(success bool) {
 				}
 			}
 		}
+		dnd.lp.QueueDnDData(DC{
+			Type: 'r', Operation: utils.IfElse(success, dnd.drop_status.action, 0)}) // end drop
 	}
 	dnd.reset_drop()
 	if success && dnd.has_exit_on("drop-finish") {
