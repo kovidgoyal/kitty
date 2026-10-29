@@ -164,10 +164,8 @@ process_gnome_setting(const char *key, DBusMessageIter *value) {
             if (name && name[0] && strcmp(name, interface_font) != 0) {
                 snprintf(interface_font, sizeof(interface_font), "%s", name);
 #ifdef _GLFW_WAYLAND
-                const char *style = getenv("KITTY_WAYLAND_TITLEBAR");
-                if (style && strcmp(style, "gnome") == 0)
-                    for (_GLFWwindow *w = _glfw.windowListHead; w; w = w->next)
-                        glfwWaylandRedrawCSDWindowTitle((GLFWwindow *)w);
+                for (_GLFWwindow *w = _glfw.windowListHead; w; w = w->next)
+                    glfwWaylandRedrawCSDWindowTitle((GLFWwindow *)w);
 #endif
             }
         }

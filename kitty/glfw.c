@@ -1521,8 +1521,7 @@ draw_text_callback(
     get_window_dpi(window, &xdpi, &ydpi);
     unsigned px_sz = 2 * height / 3;
     static char title[2048];
-    const char *titlebar_style = getenv("KITTY_WAYLAND_TITLEBAR");
-    const bool gnome_title = !is_single_glyph && titlebar_style && strcmp(titlebar_style, "gnome") == 0;
+    const bool gnome_title = global_state.is_wayland && !is_single_glyph;
     if (gnome_title) {
         const char *description = glfwGetSystemFont();
         char family[256];

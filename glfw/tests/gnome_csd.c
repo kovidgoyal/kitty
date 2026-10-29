@@ -18,7 +18,6 @@ glfwGetCurrentSystemColorTheme(bool query) {
 
 int
 main(void) {
-    assert(setenv("KITTY_WAYLAND_TITLEBAR", "gnome", 1) == 0);
     _GLFWwindow w = {0};
     w.id = _glfw.focusedWindowId = 1;
     w.wl.wm_capabilities.maximize = w.wl.wm_capabilities.minimize = true;
@@ -41,11 +40,10 @@ main(void) {
         uint8_t *data = malloc(bytes + 32);
         assert(data);
         memset(data, 0xab, bytes + 32);
-        render_gnome_titlebar(&w, data);
+        render_titlebar_pixels(&w, data);
         for (int i = 0; i < 32; i++) assert(data[bytes + i] == 0xab);
         if (widths[wi] >= 128) {
-            // The light desktop theme must not change the titlebar palette.
-            assert(((uint32_t *)data)[(height / 2) * width] == 0xff303030);
+            assert(((uint32_t *)data)[(height / 2) * width] == (state == 3 ? 0xffebebeb : 0xff303030));
             unsigned corner_alpha = A(((uint32_t *)data)[0]);
             if (state == 1) assert(corner_alpha == 255);
             else {
@@ -81,14 +79,20 @@ main(void) {
     w.wl.decorations.for_window_state.fscale = 1;
     w.wl.decorations.titlebar.buffer.width = 128;
     w.wl.decorations.titlebar.buffer.height = 38;
-    w.wl.decorations.use_custom_titlebar_color = true;
     uint32_t custom_pixels[128 * 38];
+    const GLFWColorScheme transitions[] = {GLFW_COLOR_SCHEME_DARK, GLFW_COLOR_SCHEME_LIGHT, GLFW_COLOR_SCHEME_DARK};
+    for (unsigned i = 0; i < sizeof(transitions) / sizeof(*transitions); i++) {
+        scheme = transitions[i];
+        render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
+        assert(custom_pixels[19 * 128] == (scheme == GLFW_COLOR_SCHEME_LIGHT ? 0xffebebeb : 0xff303030));
+    }
+    w.wl.decorations.use_custom_titlebar_color = true;
     const uint32_t custom_colors[] = {0x123456, 0xfafafa};
     for (unsigned i = 0; i < sizeof(custom_colors) / sizeof(*custom_colors); i++) {
         w.wl.decorations.titlebar_color = custom_colors[i];
         for (int dark = 0; dark < 2; dark++) {
             scheme = dark ? GLFW_COLOR_SCHEME_DARK : GLFW_COLOR_SCHEME_LIGHT;
-            render_gnome_titlebar(&w, (uint8_t *)custom_pixels);
+            render_titlebar_pixels(&w, (uint8_t *)custom_pixels);
             assert(custom_pixels[19 * 128] == (0xff000000 | custom_colors[i]));
         }
     }
@@ -101,9 +105,6 @@ main(void) {
     free(rounded);
     free(w.wl.decorations.shadow_tile.data);
     w.wl.decorations.shadow_tile.data = NULL;
-    assert(unsetenv("KITTY_WAYLAND_TITLEBAR") == 0);
-    csd_initialize_metrics(&w);
-    assert(w.wl.decorations.metrics.visible_titlebar_height == 24);
     puts("GNOME CSD renderer: 96 scale/size/state combinations and corner-shadow continuity passed");
     return 0;
 }

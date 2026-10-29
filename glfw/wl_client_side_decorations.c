@@ -38,13 +38,6 @@
         y = SWAP;               \
     } while (0)
 
-// An optional built-in approximation of GNOME decorations, without a toolkit.
-static bool
-gnome_titlebar(void) {
-    const char *style = getenv("KITTY_WAYLAND_TITLEBAR");
-    return style && strcmp(style, "gnome") == 0;
-}
-
 // shadow tile  {{{
 typedef float kernel_type;
 
@@ -129,7 +122,7 @@ create_shadow_tile(_GLFWwindow *window) {
     st.segments = 7;
     st.stride = st.segments * margin;
     st.corner_size = margin * (st.segments - 1) / 2;
-    kernel_type *mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)(gnome_titlebar() ? 0.46 : 0.7), 32 * margin, gnome_titlebar() && !decs.titlebar_hidden ? margin : 0);
+    kernel_type *mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.46, 32 * margin, !decs.titlebar_hidden ? margin : 0);
     free(st.data);
     st.data = NULL;
     if (!mask) return margin;
@@ -137,19 +130,17 @@ create_shadow_tile(_GLFWwindow *window) {
     if (st.data)
         for (size_t y = 0; y < st.stride; y++) for (size_t x = 0; x < st.stride; x++) {
             double alpha = mask[y * st.stride + x];
-            if (gnome_titlebar()) {
-                // The blur has finite buffers. Fade to a rounded outer envelope
-                // instead of exposing their rectangular edges on the desktop.
-                const double feather = fmax(1, 3 * decs.for_window_state.fscale);
-                const bool upper = y < st.stride / 2;
-                const double radius = margin * (upper && !decs.titlebar_hidden ? 2. : 1.);
-                const double dx = fmax(radius - x - .5, x + .5 - (st.stride - radius));
-                const double dy = upper ? radius - y - .5 : y + .5 - (st.stride - radius);
-                double distance = fmin(fmin(x + .5, st.stride - x - .5), fmin(y + .5, st.stride - y - .5));
-                if (dx > 0 && dy > 0) distance = radius - hypot(dx, dy);
-                double coverage = fmax(0, fmin(1, distance / feather));
-                alpha *= coverage * coverage * (3 - 2 * coverage);
-            }
+            // The blur has finite buffers. Fade to a rounded outer envelope
+            // instead of exposing their rectangular edges on the desktop.
+            const double feather = fmax(1, 3 * decs.for_window_state.fscale);
+            const bool upper = y < st.stride / 2;
+            const double radius = margin * (upper && !decs.titlebar_hidden ? 2. : 1.);
+            const double dx = fmax(radius - x - .5, x + .5 - (st.stride - radius));
+            const double dy = upper ? radius - y - .5 : y + .5 - (st.stride - radius);
+            double distance = fmin(fmin(x + .5, st.stride - x - .5), fmin(y + .5, st.stride - y - .5));
+            if (dx > 0 && dy > 0) distance = radius - hypot(dx, dy);
+            double coverage = fmax(0, fmin(1, distance / feather));
+            alpha *= coverage * coverage * (3 - 2 * coverage);
             st.data[y * st.stride + x] = ((uint32_t)(alpha * 255)) << 24;
         }
     free(mask);
@@ -241,174 +232,10 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
 void
 csd_initialize_metrics(_GLFWwindow *window) {
     decs.metrics.width = 12;
-    decs.metrics.top = decs.metrics.width + (gnome_titlebar() ? 38 : 24);
+    decs.metrics.top = decs.metrics.width + 38;
     decs.metrics.visible_titlebar_height = decs.metrics.top - decs.metrics.width;
     decs.metrics.horizontal = 2 * decs.metrics.width;
     decs.metrics.vertical = decs.metrics.width + decs.metrics.top;
-}
-
-static void
-patch_titlebar_with_alpha_mask(
-    uint32_t *dest, uint8_t *src, unsigned height, unsigned dest_stride, unsigned src_width, unsigned dest_left, uint32_t bg, uint32_t fg) {
-    for (unsigned y = 0; y < height; y++, src += src_width, dest += dest_stride) {
-        uint32_t *d = dest + dest_left;
-        for (unsigned i = 0; i < src_width; i++) {
-            const uint8_t alpha = src[i], calpha = 255 - alpha;
-            // Blend the red and blue components
-            uint32_t ans = ((bg & 0xff00ff) * calpha + (fg & 0xff00ff) * alpha) & 0xff00ff00;
-            // Blend the green component
-            ans += ((bg & 0xff00) * calpha + (fg & 0xff00) * alpha) & 0xff0000;
-            ans >>= 8;
-            d[i] = ans | 0xff000000;
-        }
-    }
-}
-
-static void
-render_hline(uint8_t *out, unsigned width, unsigned thickness, unsigned bottom, unsigned left, unsigned right) {
-    for (unsigned y = bottom - thickness; y < bottom; y++) {
-        uint8_t *dest = out + width * y;
-        for (unsigned x = left; x < right; x++) dest[x] = 255;
-    }
-}
-
-static void
-render_vline(uint8_t *out, unsigned width, unsigned thickness, unsigned left, unsigned top, unsigned bottom) {
-    for (unsigned y = top; y < bottom; y++) {
-        uint8_t *dest = out + width * y;
-        for (unsigned x = left; x < left + thickness; x++) dest[x] = 255;
-    }
-}
-
-static int
-scale(unsigned thickness, float factor) {
-    return (unsigned)(roundf(thickness * factor));
-}
-
-static void
-render_minimize(uint8_t *out, unsigned width, unsigned height) {
-    memset(out, 0, (size_t)width * height);
-    unsigned thickness = height / 12;
-    unsigned baseline = height - thickness * 2;
-    unsigned side_margin = scale(thickness, 3.8f);
-    if (!thickness || width <= side_margin || height < baseline + 2 * thickness) return;
-    render_hline(out, width, thickness, baseline, side_margin, width - side_margin);
-}
-
-static void
-render_maximize(uint8_t *out, unsigned width, unsigned height) {
-    memset(out, 0, (size_t)width * height);
-    unsigned thickness = height / 12, half_thickness = thickness / 2;
-    unsigned baseline = height - thickness * 2;
-    unsigned side_margin = scale(thickness, 3.0f);
-    unsigned top = 4 * thickness;
-    if (!half_thickness || width <= side_margin || height < baseline + 2 * thickness || top >= baseline) return;
-    render_hline(out, width, half_thickness, baseline, side_margin, width - side_margin);
-    render_hline(out, width, thickness, top + thickness, side_margin, width - side_margin);
-    render_vline(out, width, half_thickness, side_margin, top, baseline);
-    render_vline(out, width, half_thickness, width - side_margin, top, baseline);
-}
-
-static void
-render_restore(uint8_t *out, unsigned width, unsigned height) {
-    memset(out, 0, (size_t)width * height);
-    unsigned thickness = height / 12, half_thickness = thickness / 2;
-    unsigned baseline = height - thickness * 2;
-    unsigned side_margin = scale(thickness, 3.0f);
-    unsigned top = 4 * thickness;
-    if (!half_thickness || width <= side_margin || height < baseline + 2 * thickness || top >= baseline) return;
-    unsigned box_height = ((baseline - top) * 3) / 4;
-    if (box_height < 2 * thickness) return;
-    unsigned box_width = ((width - 2 * side_margin) * 3) / 4;
-    // bottom box
-    unsigned box_top = baseline - box_height, left = side_margin, right = side_margin + box_width, bottom = baseline;
-    render_hline(out, width, thickness, box_top + thickness, left, right);
-    render_hline(out, width, half_thickness, bottom, left, right);
-    render_vline(out, width, half_thickness, left, box_top, bottom);
-    render_vline(out, width, half_thickness, side_margin + box_width, baseline - box_height, baseline);
-    // top box
-    unsigned box_x_shift = 2 * thickness, box_y_shift = 2 * thickness;
-    box_x_shift = MIN(width - right, box_x_shift);
-    box_y_shift = MIN(box_top, box_y_shift);
-    unsigned left2 = left + box_x_shift, right2 = right + box_x_shift, top2 = box_top - box_y_shift, bottom2 = bottom - box_y_shift;
-    render_hline(out, width, thickness, top2 + thickness, left2, right2);
-    render_vline(out, width, half_thickness, right2, top2, bottom2);
-    render_hline(out, width, half_thickness, bottom2, right, right2);
-    render_vline(out, width, half_thickness, left2, top2, box_top);
-}
-
-static void
-render_line(uint8_t *buf, unsigned width, unsigned height, unsigned thickness, int x1, int y1, int x2, int y2) {
-    float m = (y2 - y1) / (float)(x2 - x1);
-    float c = y1 - m * x1;
-    unsigned delta = thickness / 2, extra = thickness % 2;
-    for (int x = MAX(0, MIN(x1, x2)); x < MIN((int)width, MAX(x1, x2) + 1); x++) {
-        float ly = m * x + c;
-        for (int y = MAX(0, (int)(ly - delta)); y < MIN((int)height, (int)(ly + delta + extra + 1)); y++) buf[x + y * width] = 255;
-    }
-    for (int y = MAX(0, MIN(y1, y2)); y < MIN((int)height, MAX(y1, y2) + 1); y++) {
-        float lx = (y - c) / m;
-        for (int x = MAX(0, (int)(lx - delta)); x < MIN((int)width, (int)(lx + delta + extra + 1)); x++) buf[x + y * width] = 255;
-    }
-}
-
-static void
-render_close(uint8_t *out, unsigned width, unsigned height) {
-    memset(out, 0, (size_t)width * height);
-    unsigned thickness = height / 12;
-    unsigned baseline = height - thickness * 2;
-    unsigned side_margin = scale(thickness, 3.3f);
-    int top = baseline - (width - 2 * side_margin);
-    if (top <= 0) return;
-    unsigned line_thickness = scale(thickness, 1.5f);
-    render_line(out, width, height, line_thickness, side_margin, top, width - side_margin, baseline);
-    render_line(out, width, height, line_thickness, side_margin, baseline, width - side_margin, top);
-}
-
-static uint32_t
-average_intensity_in_src(uint8_t *src, unsigned src_width, unsigned src_x, unsigned src_y, unsigned factor) {
-    uint32_t ans = 0;
-    for (unsigned y = src_y; y < src_y + factor; y++) {
-        uint8_t *s = src + src_width * y;
-        for (unsigned x = src_x; x < src_x + factor; x++) ans += s[x];
-    }
-    return ans / (factor * factor);
-}
-
-static void
-downsample(uint8_t *dest, uint8_t *src, unsigned dest_width, unsigned dest_height, unsigned factor) {
-    unsigned src_width = factor * dest_width;
-    for (unsigned y = 0; y < dest_height; y++) {
-        uint8_t *d = dest + dest_width * y;
-        for (unsigned x = 0; x < dest_width; x++) {
-            d[x] = MIN(255u, (uint32_t)d[x] + average_intensity_in_src(src, src_width, x * factor, y * factor, factor));
-        }
-    }
-}
-
-static void
-render_button(
-    void (*which)(uint8_t *, unsigned, unsigned),
-    bool antialias,
-    uint32_t *dest,
-    uint8_t *src,
-    unsigned height,
-    unsigned dest_stride,
-    unsigned src_width,
-    unsigned dest_left,
-    uint32_t bg,
-    uint32_t fg) {
-    if (antialias) {
-        static const unsigned factor = 4;
-        uint8_t *big_src = malloc((size_t)factor * factor * height * src_width);
-        if (big_src) {
-            which(big_src, src_width * factor, height * factor);
-            memset(src, 0, (size_t)src_width * height);
-            downsample(src, big_src, src_width, height, factor);
-            free(big_src);
-        } else which(src, src_width, height);
-    } else which(src, src_width, height);
-    patch_titlebar_with_alpha_mask(dest, src, height, dest_stride, src_width, dest_left, bg, fg);
 }
 
 // All geometry is in logical pixels; coverage is evaluated in buffer pixels.
@@ -426,17 +253,20 @@ segment_distance(double x, double y, double ax, double ay, double bx, double by)
 }
 
 static void
-render_gnome_titlebar(_GLFWwindow *window, uint8_t *output) {
+render_titlebar_pixels(_GLFWwindow *window, uint8_t *output) {
     const int width = decs.titlebar.buffer.width, height = decs.titlebar.buffer.height;
     if (width <= 0 || height <= 0) return;
     const double scale = decs.for_window_state.fscale;
     const bool focused = window->id == _glfw.focusedWindowId;
     const bool docked = window->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED;
     const bool maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
-    // Keep the built-in dark palette independent of the desktop appearance.
-    // Explicit kitty titlebar colors still take precedence.
-    bool dark = true;
-    uint32_t bg = 0xff303030;
+    GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
+    bool dark = appearance == GLFW_COLOR_SCHEME_DARK;
+    if (appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
+        uint32_t color = decs.titlebar_color;
+        dark = .2126 * R(color) + .7152 * G(color) + .0722 * B(color) < 128;
+    }
+    uint32_t bg = dark ? 0xff303030 : 0xffebebeb;
     if (decs.use_custom_titlebar_color) {
         bg = 0xff000000 | (decs.titlebar_color & 0xffffff);
         dark = .2126 * R(bg) + .7152 * G(bg) + .0722 * B(bg) < 128;
@@ -462,7 +292,7 @@ render_gnome_titlebar(_GLFWwindow *window, uint8_t *output) {
         if (button == 2 && !window->wl.wm_capabilities.minimize) continue;
         bool hovered = button == 0 ? decs.close.hovered : button == 1 ? decs.maximize.hovered : decs.minimize.hovered;
         uint32_t fill = hovered ? hover : circle;
-        if (hovered && decs.gnome_pressed_button == button + 1) fill = dark ? 0xff707070 : 0xffaaaaaa;
+        if (hovered && decs.pressed_button == button + 1) fill = dark ? 0xff707070 : 0xffaaaaaa;
         for (int y = 0; y < height; y++) for (int x = left; x < left + slot; x++) {
             double lx = (x + .5 - left - slot / 2.) / scale, ly = (y + .5 - height / 2.) / scale;
             double coverage = fmax(0, fmin(1, (12 - hypot(lx, ly)) * scale + .5));
@@ -518,99 +348,7 @@ render_gnome_titlebar(_GLFWwindow *window, uint8_t *output) {
 
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
-    if (gnome_titlebar()) {
-        render_gnome_titlebar(window, to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back);
-        return;
-    }
-    const bool is_focused = window->id == _glfw.focusedWindowId;
-    const bool is_maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
-    const uint32_t light_fg = is_focused ? 0xff444444 : 0xff888888, light_bg = is_focused ? 0xffdddad6 : 0xffeeeeee;
-    const uint32_t dark_fg = is_focused ? 0xffffffff : 0xffcccccc, dark_bg = is_focused ? 0xff303030 : 0xff242424;
-    static const uint32_t hover_dark_bg = 0xff444444, hover_light_bg = 0xffbbbbbb;
-    uint32_t bg_color = light_bg, fg_color = light_fg, hover_bg = hover_light_bg;
-    GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
-    bool is_dark = false;
-    if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
-        bg_color = 0xff000000 | (decs.titlebar_color & 0xffffff);
-        double red = ((bg_color >> 16) & 0xFF) / 255.0;
-        double green = ((bg_color >> 8) & 0xFF) / 255.0;
-        double blue = (bg_color & 0xFF) / 255.0;
-        double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-        if (luma < 0.5) {
-            fg_color = dark_fg;
-            hover_bg = hover_dark_bg;
-            is_dark = true;
-        }
-        if (!decs.use_custom_titlebar_color) bg_color = luma < 0.5 ? dark_bg : light_bg;
-    } else if (appearance == GLFW_COLOR_SCHEME_DARK) {
-        bg_color = dark_bg;
-        fg_color = dark_fg;
-        hover_bg = hover_dark_bg;
-        is_dark = true;
-    }
-    uint8_t *output = to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back;
-
-    // render text part
-    size_t button_size = decs.titlebar.buffer.height;
-    unsigned num_buttons = 1;
-    if (window->wl.wm_capabilities.maximize) num_buttons++;
-    if (window->wl.wm_capabilities.minimize) num_buttons++;
-    if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        if (_glfw.callbacks.draw_text(
-                (GLFWwindow *)window,
-                window->wl.title,
-                fg_color,
-                bg_color,
-                output,
-                decs.titlebar.buffer.width,
-                decs.titlebar.buffer.height,
-                0,
-                0,
-                num_buttons * button_size,
-                false))
-            goto render_buttons;
-    }
-    // rendering of text failed, blank the buffer
-    for (uint32_t *px = (uint32_t *)output, *end = (uint32_t *)(output + decs.titlebar.buffer.size_in_bytes); px < end; px++) *px = bg_color;
-
-render_buttons:
-    decs.maximize.width = 0;
-    decs.minimize.width = 0;
-    decs.close.width = 0;
-    if (!button_size) return;
-
-    uint8_t *alpha_mask = malloc(button_size * button_size);
-    int left = decs.titlebar.buffer.width - num_buttons * button_size;
-    if (!alpha_mask || left <= 0) return;
-#define drawb(which, antialias, func, hover_bg)       \
-    {                                                 \
-        render_button(                                \
-            func,                                     \
-            antialias,                                \
-            (uint32_t *)output,                       \
-            alpha_mask,                               \
-            button_size,                              \
-            decs.titlebar.buffer.width,               \
-            button_size,                              \
-            left,                                     \
-            decs.which.hovered ? hover_bg : bg_color, \
-            fg_color);                                \
-        decs.which.left = left;                       \
-        decs.which.width = button_size;               \
-        left += button_size;                          \
-    }
-
-    if (window->wl.wm_capabilities.minimize) drawb(minimize, false, render_minimize, hover_bg);
-    if (window->wl.wm_capabilities.maximize) {
-        if (is_maximized) {
-            drawb(maximize, false, render_restore, hover_bg);
-        } else {
-            drawb(maximize, false, render_maximize, hover_bg);
-        }
-    }
-    drawb(close, true, render_close, is_dark ? 0xff880000 : 0xffc80000);
-    free(alpha_mask);
-#undef drawb
+    render_titlebar_pixels(window, to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back);
 }
 
 static void
@@ -852,7 +590,7 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!needs_update) return false;
     decs.for_window_state.fscale = current_scale; // used in create_shm_buffers
     if (size_changed || decs.buffer_destroyed || titlebar_state_changed) {
-        if (gnome_titlebar() && titlebar_state_changed) {
+        if (titlebar_state_changed) {
             free(decs.shadow_tile.data);
             decs.shadow_tile.data = NULL;
         }
@@ -1062,7 +800,7 @@ handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
     }
 #undef c
     decs.focus = CENTRAL_WINDOW;
-    decs.gnome_pressed_button = 0;
+    decs.pressed_button = 0;
     decs.dragging = false;
 }
 
@@ -1111,15 +849,15 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
         switch (decs.focus) {
             case CENTRAL_WINDOW: break;
             case CSD_titlebar:
-                if (gnome_titlebar() && (has_hovered_button(window) || decs.gnome_pressed_button)) {
+                if (has_hovered_button(window) || decs.pressed_button) {
                     int hovered = decs.close.hovered ? 1 : decs.maximize.hovered ? 2 : decs.minimize.hovered ? 3 : 0;
                     decs.dragging = false;
                     decs.titlebar_needs_update = true;
                     decs.last_click_on_top_decoration_at = 0;
-                    if (state == WL_POINTER_BUTTON_STATE_PRESSED) decs.gnome_pressed_button = hovered;
+                    if (state == WL_POINTER_BUTTON_STATE_PRESSED) decs.pressed_button = hovered;
                     else {
-                        int pressed = decs.gnome_pressed_button;
-                        decs.gnome_pressed_button = 0;
+                        int pressed = decs.pressed_button;
+                        decs.pressed_button = 0;
                         if (pressed && pressed == hovered) {
                             if (pressed == 1) _glfwInputWindowCloseRequest(window);
                             else if (pressed == 3) _glfwPlatformIconifyWindow(window);
@@ -1138,15 +876,6 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                         else _glfwPlatformMaximizeWindow(window);
                         return;
                     }
-                } else {
-                    if (decs.minimize.hovered) _glfwPlatformIconifyWindow(window);
-                    else if (decs.maximize.hovered) {
-                        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
-                        else _glfwPlatformMaximizeWindow(window);
-                        // hack otherwise on GNOME maximize button remains hovered sometimes
-                        decs.maximize.hovered = false;
-                        decs.titlebar_needs_update = true;
-                    } else if (decs.close.hovered) _glfwInputWindowCloseRequest(window);
                 }
                 decs.dragging = !has_hovered_button(window);
                 break;
