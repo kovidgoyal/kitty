@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/emmansun/base64"
 	"golang.org/x/sys/unix"
@@ -522,11 +523,10 @@ const (
 )
 
 type parsed_uri struct {
-	kind        parsed_uri_kind
-	path        string      // for file URIs: the local filesystem path (empty if not a valid file URI)
-	mime        string      // for data URIs: the MIME type
-	data        []byte      // for data URIs: the decoded payload
-	source_info os.FileInfo // identity of a local move source before staging
+	kind parsed_uri_kind
+	path string // for file URIs: the local filesystem path (empty if not a valid file URI)
+	mime string // for data URIs: the MIME type
+	data []byte // for data URIs: the decoded payload
 }
 
 // ext_for_mime returns a file extension (with leading dot) for a MIME type.
@@ -615,6 +615,7 @@ type drop_status struct {
 	reading_data       bool
 	is_remote_client   bool
 	source_allowed_ops int
+	move_sources       map[int]move_source // local move sources, by index in uri_list
 
 	dropping_to          *dir_handle
 	root_remote_dir      *remote_dir_entry
@@ -682,19 +683,17 @@ func (dnd *dnd) end_drop(success bool) {
 		// Remove the sources of a move before signalling the end of the drop,
 		// so that the drop is complete when the terminal is told it has finished
 		if success && dnd.drop_status.action == move_on_drop && !dnd.drop_status.is_remote_client {
-			for _, u := range dnd.drop_status.uri_list {
-				if u.kind != parsed_uri_file || u.path == "" {
-					continue
-				}
-				st, err := os.Lstat(u.path)
+			for i, src := range dnd.drop_status.move_sources {
 				// Placement can replace a source path through a destination symlink.
-				if err != nil || u.source_info == nil || !os.SameFile(u.source_info, st) {
+				path := dnd.drop_status.uri_list[i].path
+				st, err := src.current(path)
+				if err != nil || st == nil {
 					continue
 				}
 				if st.IsDir() {
-					os.RemoveAll(u.path)
+					os.RemoveAll(path)
 				} else {
-					os.Remove(u.path)
+					os.Remove(path)
 				}
 			}
 		}
@@ -727,18 +726,15 @@ func (dnd *dnd) move_source_dirs() (ans []os.FileInfo, err error) {
 	if dnd.drop_status.action != move_on_drop || dnd.drop_status.is_remote_client {
 		return nil, nil
 	}
-	for _, u := range dnd.drop_status.uri_list {
-		if u.kind != parsed_uri_file || u.path == "" {
-			continue
-		}
-		info, err := os.Lstat(u.path)
+	for i, src := range dnd.drop_status.move_sources {
+		info, err := src.current(dnd.drop_status.uri_list[i].path)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				continue // end_drop has nothing to remove
 			}
 			return nil, err
 		}
-		if info.IsDir() && u.source_info != nil && os.SameFile(u.source_info, info) {
+		if info != nil && info.IsDir() {
 			ans = append(ans, info)
 		}
 	}
@@ -886,6 +882,31 @@ func destination_is_within_source(dest_dir *os.File, sources []os.FileInfo) (boo
 	}
 }
 
+// The state of a local move source before staging, so that end_drop does
+// not remove anything that has since replaced it. The birth time, where the
+// filesystem records one, distinguishes a replacement that reuses the inode
+// number of the deleted source.
+type move_source struct {
+	info  os.FileInfo
+	birth time.Time // zero if unknown
+}
+
+// Return the current file info of the move source at path, or nil if path
+// no longer refers to the original source.
+func (s move_source) current(path string) (os.FileInfo, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if same, err := same_file(s.info, info); err != nil || !same {
+		return nil, err
+	}
+	if !s.birth.IsZero() && !birth_time(path, info).Equal(s.birth) {
+		return nil, nil
+	}
+	return info, nil
+}
+
 func (dnd *dnd) all_mime_data_dropped() (err error) {
 	drop_status := &dnd.drop_status
 	if len(drop_status.uri_list) == 0 {
@@ -918,7 +939,6 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 			if drop_status.action != move_on_drop {
 				continue
 			}
-			drop_status.uri_list[i].source_info = source_info
 			parent_info, err := os.Stat(filepath.Dir(u.path))
 			if err != nil {
 				return err
@@ -927,7 +947,12 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 				// Moving into the source directory is a no-op. Exclude it
 				// from both staging and end_drop's source cleanup.
 				drop_status.uri_list[i].path = ""
+				continue
 			}
+			if drop_status.move_sources == nil {
+				drop_status.move_sources = make(map[int]move_source, len(drop_status.uri_list))
+			}
+			drop_status.move_sources[i] = move_source{info: source_info, birth: birth_time(u.path, source_info)}
 		}
 	}
 	f, err := dnd.new_tdir()

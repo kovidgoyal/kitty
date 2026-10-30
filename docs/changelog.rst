@@ -432,8 +432,9 @@ Detailed list of changes
 
 - Drag and drop kitten: Reject copying or moving a directory into itself or
   one of its subdirectories, and moving a directory into a symlink that points
-  inside it, which would delete the moved files. Preserve files placed through
-  destination symlinks over other move sources. Respect overwrite
+  inside it, which would delete the moved files. When moving, do not delete
+  sources that were replaced during the drop, for example by files merged
+  through a symlink in the destination. Respect overwrite
   confirmation for case and Unicode equivalent names on filesystems that treat them as aliases, list the
   existing files that will be overwritten under their actual names, including
   inside symlinked directories, and fix dropping a directory over an existing

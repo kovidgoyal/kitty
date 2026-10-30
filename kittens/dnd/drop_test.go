@@ -418,6 +418,28 @@ func TestLocalMoveSourceReplacedWhileAwaitingConfirmation(t *testing.T) {
 	}
 }
 
+func TestMoveSourceReplacementReusingInode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "item")
+	if err := os.WriteFile(path, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	birth := birth_time(path, info)
+	if birth.IsZero() {
+		t.Skip("filesystem does not record birth times")
+	}
+	if got, err := (move_source{info, birth}).current(path); err != nil || got == nil {
+		t.Fatalf("unchanged source not recognized: %v, %v", got, err)
+	}
+	// A replacement with the same inode number differs only in birth time
+	if got, err := (move_source{info, birth.Add(-time.Second)}).current(path); err != nil || got != nil {
+		t.Fatalf("replacement recognized as the source: %v, %v", got, err)
+	}
+}
+
 func TestLocalMoveToSourceDirectory(t *testing.T) {
 	for _, copy_mode := range []string{"auto", "independent"} {
 		for _, alias := range []string{"none", "source", "destination"} {
