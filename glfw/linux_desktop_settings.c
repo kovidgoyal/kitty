@@ -10,9 +10,6 @@
 #include <strings.h>
 #include <string.h>
 #include <math.h>
-#ifdef _GLFW_WAYLAND
-GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *window);
-#endif
 
 #define DESKTOP_SERVICE "org.freedesktop.portal.Desktop"
 #define DESKTOP_PATH "/org/freedesktop/portal/desktop"
@@ -65,12 +62,8 @@ glfw_current_titlebar_height(void) {
 
 static void
 redraw_titlebars(void) {
-#ifdef _GLFW_WAYLAND
-    for (_GLFWwindow *w = _glfw.windowListHead; w; w = w->next) {
-        w->wl.decorations.pressed_button = 0;
-        w->wl.decorations.close.hovered = w->wl.decorations.maximize.hovered = w->wl.decorations.minimize.hovered = false;
-        glfwWaylandRedrawCSDWindowTitle((GLFWwindow *)w);
-    }
+#ifndef _GLFW_X11
+    _glfwPlatformTitlebarSettingsChanged();
 #endif
 }
 
