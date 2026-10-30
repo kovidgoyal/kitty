@@ -168,9 +168,24 @@ glfw_dbus_connect_to(const char *path, const char *err_msg, const char *name, bo
     return ans;
 }
 
+static unsigned session_bus_dispatch_depth = 0;
+
 void
 glfw_dbus_dispatch(DBusConnection *conn) {
+    const bool is_session_bus = conn == session_bus;
+    if (is_session_bus) session_bus_dispatch_depth++;
     while (dbus_connection_dispatch(conn) == DBUS_DISPATCH_DATA_REMAINS);
+    if (is_session_bus) session_bus_dispatch_depth--;
+}
+
+bool
+glfw_dbus_session_bus_read_write_dispatch(int timeout_ms) {
+    // Dispatching is not re-entrant, so refuse to do it from inside a DBus callback
+    if (!session_bus || session_bus_dispatch_depth) return false;
+    session_bus_dispatch_depth++;
+    const bool ok = dbus_connection_read_write_dispatch(session_bus, timeout_ms);
+    session_bus_dispatch_depth--;
+    return ok;
 }
 
 void

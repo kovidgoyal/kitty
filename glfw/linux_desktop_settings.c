@@ -161,8 +161,12 @@ glfw_current_titlebar_height(void) {
     return (unsigned)ceil(fmax(38. * fmax(1, scale), text_height + 18));
 }
 
+static bool titlebar_settings_dirty = false;
+static unsigned long long titlebar_redraw_timer = 0;
+
 static void
 redraw_titlebars(void) {
+    titlebar_settings_dirty = false;
     const bool use_system_font = titlebar_uses_system_font || !titlebar_font[0];
     // GNOME uses a bold version of the interface font for titles
     parse_font_description(
@@ -171,6 +175,26 @@ redraw_titlebars(void) {
 #ifndef _GLFW_X11
     _glfwPlatformTitlebarSettingsChanged();
 #endif
+}
+
+static void
+redraw_titlebars_if_dirty(void) {
+    if (titlebar_settings_dirty) redraw_titlebars();
+}
+
+static void
+on_titlebar_redraw_timer(unsigned long long timer_id UNUSED, void *data UNUSED) {
+    titlebar_redraw_timer = 0;
+    redraw_titlebars_if_dirty();
+}
+
+static void
+schedule_titlebar_redraw(void) {
+    // The portal sends one SettingChanged signal per key, so coalesce a burst
+    // of changes, such as a font and scale change, into a single redraw.
+    if (!titlebar_settings_dirty || titlebar_redraw_timer) return;
+    titlebar_redraw_timer = _glfwPlatformAddTimer(ms_to_monotonic_t(10ll), false, on_titlebar_redraw_timer, NULL, NULL);
+    if (!titlebar_redraw_timer) redraw_titlebars();
 }
 
 static bool
@@ -254,12 +278,13 @@ process_wm_setting(const char *key, DBusMessageIter *value) {
             break;
         }
     }
-    if (changed) redraw_titlebars();
+    titlebar_settings_dirty |= changed;
 }
 
 static int theme_size = -1;
 static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
-static bool cursor_theme_changed = false, appearance_initialized = false, desktop_settings_pending = false;
+static bool cursor_theme_changed = false, appearance_initialized = false;
+static bool desktop_settings_pending = false, desktop_settings_received = false;
 
 static void
 set_queried_appearance(uint32_t value) {
@@ -278,21 +303,24 @@ set_queried_appearance(uint32_t value) {
         }
 
 HANDLER(get_color_scheme_legacy)
-DBusMessageIter iter, variant_iter, variant_iter2;
-if (!dbus_message_iter_init(msg, &iter)) return;
-dbus_message_iter_recurse(&iter, &variant_iter);
-int type = dbus_message_iter_get_arg_type(&variant_iter);
-if (type != DBUS_TYPE_VARIANT) {
+DBusMessageIter iter, variant_iter, value_iter;
+if (!dbus_message_iter_init(msg, &iter) || dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT) {
     _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a variant");
     return;
 }
-dbus_message_iter_recurse(&variant_iter, &variant_iter2);
-if (type != DBUS_TYPE_VARIANT) {
+dbus_message_iter_recurse(&iter, &variant_iter);
+// The deprecated Read method wraps the value in a second variant
+if (dbus_message_iter_get_arg_type(&variant_iter) != DBUS_TYPE_VARIANT) {
     _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a nested variant");
     return;
 }
+dbus_message_iter_recurse(&variant_iter, &value_iter);
+if (dbus_message_iter_get_arg_type(&value_iter) != DBUS_TYPE_UINT32) {
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a uint32");
+    return;
+}
 uint32_t val;
-dbus_message_iter_get_basic(&variant_iter2, &val);
+dbus_message_iter_get_basic(&value_iter, &val);
 set_queried_appearance(val);
 }
 
@@ -327,7 +355,10 @@ get_color_scheme(DBusMessage *msg, const DBusError *err, void *data) {
     }
     uint32_t val;
     DBusMessageIter iter, variant_iter;
-    if (!dbus_message_iter_init(msg, &iter)) return;
+    if (!dbus_message_iter_init(msg, &iter) || dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "ReadOne for color-scheme did not return a variant");
+        return;
+    }
     dbus_message_iter_recurse(&iter, &variant_iter);
     int type = dbus_message_iter_get_arg_type(&variant_iter);
     if (type != DBUS_TYPE_UINT32) {
@@ -338,11 +369,24 @@ get_color_scheme(DBusMessage *msg, const DBusError *err, void *data) {
     set_queried_appearance(val);
 }
 
+static void
+wait_for_desktop_settings(monotonic_t timeout) {
+    const monotonic_t deadline = monotonic() + timeout;
+    for (monotonic_t now = monotonic(); desktop_settings_pending && now < deadline; now = monotonic()) {
+        if (!glfw_dbus_session_bus_read_write_dispatch(MAX(1, (int)monotonic_t_to_ms_ceil(deadline - now)))) break;
+    }
+}
+
 GLFWColorScheme
 glfw_current_system_color_theme(bool query_if_unintialized) {
     if (!appearance_initialized && query_if_unintialized) {
+        // The ReadAll request sent at startup includes color-scheme, so wait for
+        // its reply instead of making a second, blocking, request to the portal.
+        if (desktop_settings_pending) wait_for_desktop_settings(ms_to_monotonic_t(1000ll));
+        // If ReadAll succeeded without a color-scheme the portal does not provide one
+        const bool needs_query = !appearance_initialized && !desktop_settings_received;
         appearance_initialized = true;
-        DBusConnection *session_bus = glfw_dbus_session_bus();
+        DBusConnection *session_bus = needs_query ? glfw_dbus_session_bus() : NULL;
         if (session_bus) {
             const char *namespace = FDO_DESKTOP_NAMESPACE, *key = FDO_APPEARANCE_KEY;
             glfw_dbus_call_blocking_method(
@@ -394,13 +438,13 @@ process_gnome_setting(const char *key, DBusMessageIter *value) {
             }
         }
     } else if (strcmp(key, "font-name") == 0) {
-        if (read_string_setting(value, interface_font, sizeof(interface_font))) redraw_titlebars();
+        if (read_string_setting(value, interface_font, sizeof(interface_font))) titlebar_settings_dirty = true;
     } else if (strcmp(key, "text-scaling-factor") == 0 && dbus_message_iter_get_arg_type(value) == DBUS_TYPE_DOUBLE) {
         double factor;
         dbus_message_iter_get_basic(value, &factor);
         if (isfinite(factor) && factor >= .5 && factor <= 4 && factor != titlebar_text_scale) {
             titlebar_text_scale = factor;
-            redraw_titlebars();
+            titlebar_settings_dirty = true;
         }
     } else if (strcmp(key, "cursor-theme") == 0) {
         if (dbus_message_iter_get_arg_type(value) == DBUS_TYPE_STRING) {
@@ -441,6 +485,7 @@ dbus_message_iter_init(msg, &root);
         return;                                            \
     }
 if (dbus_message_iter_get_arg_type(&root) != DBUS_TYPE_ARRAY) die("Reply to request for desktop settings is not an array");
+desktop_settings_received = true;
 dbus_message_iter_recurse(&root, &array);
 while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
     dbus_message_iter_recurse(&array, &item);
@@ -461,6 +506,7 @@ while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
     if (!dbus_message_iter_next(&array)) break;
 }
 #undef die
+redraw_titlebars_if_dirty();
 #ifndef _GLFW_X11
 if (cursor_theme_changed) _glfwPlatformChangeCursorTheme();
 #endif
@@ -492,18 +538,11 @@ read_desktop_settings(DBusConnection *session_bus) {
 void
 glfw_wait_for_desktop_settings(monotonic_t timeout) {
     // Wait for the reply to the asynchronous ReadAll request sent at startup,
-    // dispatching only the session bus. Only done once, for the first window,
-    // which is not created from inside a DBus callback, as dispatching is not
-    // re-entrant.
+    // dispatching only the session bus. Only done once, for the first window.
     static bool waited = false;
     if (waited || !desktop_settings_pending) return;
     waited = true;
-    DBusConnection *session_bus = glfw_dbus_session_bus();
-    if (!session_bus) return;
-    const monotonic_t deadline = monotonic() + timeout;
-    for (monotonic_t now = monotonic(); desktop_settings_pending && now < deadline; now = monotonic()) {
-        if (!dbus_connection_read_write_dispatch(session_bus, MAX(1, (int)monotonic_t_to_ms_ceil(deadline - now)))) break;
-    }
+    wait_for_desktop_settings(timeout);
     if (desktop_settings_pending) debug_rendering("Timed out waiting for desktop settings from the portal\n");
 }
 
@@ -577,6 +616,7 @@ setting_changed(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
                         if (cursor_theme_changed) _glfwPlatformChangeCursorTheme();
 #endif
                     }
+                    schedule_titlebar_redraw();
                 }
             }
         }

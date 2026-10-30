@@ -73,6 +73,7 @@ bool glfw_dbus_call_blocking_method(
     ...);
 void glfw_dbus_dispatch(DBusConnection *);
 void glfw_dbus_session_bus_dispatch(void);
+bool glfw_dbus_session_bus_read_write_dispatch(int timeout_ms);
 bool glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...);
 int glfw_dbus_match_signal(DBusMessage *msg, const char *interface, ...);
 DBusConnection *glfw_dbus_session_bus(void);
