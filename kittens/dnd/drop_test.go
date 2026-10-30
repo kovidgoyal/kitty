@@ -329,6 +329,95 @@ func TestLocalMoveSourceRemovedWhileAwaitingConfirmation(t *testing.T) {
 	}
 }
 
+func TestLocalMoveDirectoryAndFileThroughAlias(t *testing.T) {
+	for _, mode := range []string{"auto", "independent"} {
+		for _, confirm := range []bool{false, true} {
+			for _, selection := range []string{"folder-only", "folder-first", "file-first"} {
+				t.Run(fmt.Sprintf("%s/confirm=%t/%s", mode, confirm, selection), func(t *testing.T) {
+					tmp := t.TempDir()
+					src, dst := filepath.Join(tmp, "src"), filepath.Join(tmp, "dst")
+					buildTree(t, src, map[string]string{"folder/file.txt": "directory payload", "file.txt": "top level payload"}, nil)
+					buildTree(t, dst, nil, map[string]string{"folder": src})
+					uris := []parsed_uri{{kind: parsed_uri_file, path: filepath.Join(src, "folder")}}
+					if selection != "folder-only" {
+						file := parsed_uri{kind: parsed_uri_file, path: filepath.Join(src, "file.txt")}
+						if selection == "file-first" {
+							uris = append([]parsed_uri{file}, uris...)
+						} else {
+							uris = append(uris, file)
+						}
+					}
+					run := runLocalDrop
+					if confirm {
+						run = runLocalDropConfirming
+					}
+					d, err := run(t, dst, uris, move_on_drop, mode)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if confirm {
+						if d.confirm_drop.staging_dir == nil {
+							t.Fatal("expected overwrite confirmation")
+						}
+						if err := d.drop_confirm(true); err != nil {
+							t.Fatal(err)
+						}
+					}
+					if got, err := os.ReadFile(filepath.Join(dst, "folder/file.txt")); err != nil || string(got) != "directory payload" {
+						t.Errorf("merged directory payload: got %q, %v", got, err)
+					}
+					if selection != "folder-only" {
+						if got, err := os.ReadFile(filepath.Join(dst, "file.txt")); err != nil || string(got) != "top level payload" {
+							t.Errorf("top level payload: got %q, %v", got, err)
+						}
+					}
+					if _, err := os.Lstat(filepath.Join(src, "folder")); !os.IsNotExist(err) {
+						t.Errorf("move source directory still present: %v", err)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestLocalMoveSourceReplacedWhileAwaitingConfirmation(t *testing.T) {
+	for _, mode := range []string{"auto", "independent"} {
+		for _, directory := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/directory=%t", mode, directory), func(t *testing.T) {
+				tmp := t.TempDir()
+				src, dst := filepath.Join(tmp, "src"), filepath.Join(tmp, "dst")
+				name := "item"
+				if directory {
+					name = "item/file.txt"
+				}
+				buildTree(t, src, map[string]string{name: "original"}, nil)
+				buildTree(t, dst, map[string]string{name: "old destination"}, nil)
+				source := filepath.Join(src, "item")
+				d, err := runLocalDropConfirming(t, dst, []parsed_uri{{kind: parsed_uri_file, path: source}}, move_on_drop, mode)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if d.confirm_drop.staging_dir == nil {
+					t.Fatal("expected overwrite confirmation")
+				}
+				if err := os.Rename(source, source+".original"); err != nil {
+					t.Fatal(err)
+				}
+				buildTree(t, src, map[string]string{name: "replacement"}, nil)
+				if err := d.drop_confirm(true); err != nil {
+					t.Fatal(err)
+				}
+				if got, err := os.ReadFile(filepath.Join(src, name)); err != nil || string(got) != "replacement" {
+					t.Errorf("replacement source: got %q, %v", got, err)
+				}
+				if got, err := os.ReadFile(filepath.Join(dst, name)); err != nil || string(got) != "original" {
+					t.Errorf("destination: got %q, %v", got, err)
+				}
+			})
+		}
+	}
+}
+
 func TestLocalMoveToSourceDirectory(t *testing.T) {
 	for _, copy_mode := range []string{"auto", "independent"} {
 		for _, alias := range []string{"none", "source", "destination"} {
