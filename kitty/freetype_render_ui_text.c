@@ -690,14 +690,22 @@ render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *
 FreeTypeRenderCtx
 create_freetype_render_context(const char *family, bool bold, bool italic) {
     RenderCtx *ctx = calloc(1, sizeof(RenderCtx));
+    if (!ctx) {
+        PyErr_NoMemory();
+        return NULL;
+    }
     main_face_family.name = family ? strdup(family) : NULL;
     main_face_family.bold = bold;
     main_face_family.italic = italic;
-    if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return NULL;
-    if (!load_font(&main_face_information, &main_face)) return NULL;
+    if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information) ||
+        !load_font(&main_face_information, &main_face)) {
+        release_freetype_render_context((FreeTypeRenderCtx)ctx);
+        return NULL;
+    }
     hb_buffer = hb_buffer_create();
     if (!hb_buffer) {
         PyErr_NoMemory();
+        release_freetype_render_context((FreeTypeRenderCtx)ctx);
         return NULL;
     }
     ctx->created = true;
