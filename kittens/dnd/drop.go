@@ -522,10 +522,11 @@ const (
 )
 
 type parsed_uri struct {
-	kind parsed_uri_kind
-	path string // for file URIs: the local filesystem path (empty if not a valid file URI)
-	mime string // for data URIs: the MIME type
-	data []byte // for data URIs: the decoded payload
+	kind        parsed_uri_kind
+	path        string      // for file URIs: the local filesystem path (empty if not a valid file URI)
+	mime        string      // for data URIs: the MIME type
+	data        []byte      // for data URIs: the decoded payload
+	source_info os.FileInfo // identity of a local move source before staging
 }
 
 // ext_for_mime returns a file extension (with leading dot) for a MIME type.
@@ -686,7 +687,8 @@ func (dnd *dnd) end_drop(success bool) {
 					continue
 				}
 				st, err := os.Lstat(u.path)
-				if err != nil {
+				// Placement can replace a source path through a destination symlink.
+				if err != nil || u.source_info == nil || !os.SameFile(u.source_info, st) {
 					continue
 				}
 				if st.IsDir() {
@@ -736,7 +738,7 @@ func (dnd *dnd) move_source_dirs() (ans []os.FileInfo, err error) {
 			}
 			return nil, err
 		}
-		if info.IsDir() {
+		if info.IsDir() && u.source_info != nil && os.SameFile(u.source_info, info) {
 			ans = append(ans, info)
 		}
 	}
@@ -916,6 +918,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 			if drop_status.action != move_on_drop {
 				continue
 			}
+			drop_status.uri_list[i].source_info = source_info
 			parent_info, err := os.Stat(filepath.Dir(u.path))
 			if err != nil {
 				return err
