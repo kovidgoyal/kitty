@@ -231,6 +231,11 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: The client side window decorations used on compositors such as
+  GNOME now look like native GNOME decorations and follow the desktop titlebar
+  font, text scaling, button layout and titlebar click action settings
+  (:pull:`10766`)
+
 - A new option :opt:`hyperlink_target_position` to control where the URL shown
   by :opt:`show_hyperlink_targets` is displayed, including as a browser style
   tooltip next to the mouse cursor (:iss:`10770`)

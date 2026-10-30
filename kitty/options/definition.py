@@ -3489,9 +3489,15 @@ opt(
     long_text="""
 The color of the kitty window's titlebar on Wayland systems with client
 side window decorations such as GNOME. A value of :code:`system` means to use
-the default system colors, a value of :code:`background` means to use the
+the default system colors, following the desktop light/dark preference. If the
+desktop has no preference, the titlebar follows the background color of the
+currently active kitty window. A value of :code:`background` means to always use the
 background color of the currently active kitty window and finally you can use an
 arbitrary color, such as :code:`#12af59` or :code:`red`.
+
+The titlebar font, its size, the placement of the buttons and the actions
+performed when clicking on the titlebar are read from the GNOME desktop settings,
+via the desktop portal.
 """,
 )
 
