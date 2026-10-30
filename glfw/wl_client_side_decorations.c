@@ -120,6 +120,11 @@ create_shadow_tile(_GLFWwindow *window) {
     const size_t margin = (size_t)round(decs.metrics.width * decs.for_window_state.fscale);
     if (st.data && st.for_decoration_size == margin) return margin;
     st.for_decoration_size = margin;
+    if (!margin) { // absurdly small scale, no shadows
+        free(st.data);
+        st.data = NULL;
+        return 0;
+    }
     st.segments = 7;
     st.stride = st.segments * margin;
     st.corner_size = margin * (st.segments - 1) / 2;
@@ -166,8 +171,9 @@ swap_buffers(_GLFWWaylandBufferPair *pair) {
 static size_t
 init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, double scale) {
     memset(pair, 0, sizeof(_GLFWWaylandBufferPair));
-    pair->width = (int)round(width * scale);
-    pair->height = (int)round(height * scale);
+    // wl_shm buffers must have non-zero size
+    pair->width = MAX(1, (int)round(width * scale));
+    pair->height = MAX(1, (int)round(height * scale));
     pair->viewport_width = width;
     pair->viewport_height = height;
     pair->stride = 4 * pair->width;
@@ -404,8 +410,10 @@ render_titlebar_corners(_GLFWwindow *window, uint32_t *pixels, int width, int he
             if (dx <= 0) continue;
             const double coverage = fmax(0, fmin(1, radius - hypot(dx, radius - y - .5) + .5));
             uint32_t color = coverage_pixel(pixels[y * width + x], coverage);
-            if (decs.shadow_tile.data) {
-                const size_t sx = x < width / 2 ? shadow_margin + x : decs.shadow_tile.stride - shadow_margin - (width - x);
+            // Distance from the nearest vertical edge of the titlebar
+            const size_t corner_x = x < width / 2 ? (size_t)x : (size_t)(width - x);
+            if (decs.shadow_tile.data && shadow_margin + corner_x < decs.shadow_tile.stride && shadow_margin + (size_t)y < decs.shadow_tile.stride) {
+                const size_t sx = x < width / 2 ? shadow_margin + corner_x : decs.shadow_tile.stride - shadow_margin - corner_x;
                 const size_t sy = shadow_margin + y;
                 unsigned shadow_alpha = A(decs.shadow_tile.data[sy * decs.shadow_tile.stride + sx]);
                 if (!focused) shadow_alpha /= 2;
