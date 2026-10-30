@@ -26,5 +26,3 @@ const GLFWTitlebarButtonLayout *glfw_current_titlebar_button_layout(void);
 double glfw_current_titlebar_text_scale(void);
 unsigned glfw_current_titlebar_height(void);
 const char *glfw_current_system_font(double *text_scale, bool *bold);
-
-bool glfw_has_system_color_theme(void);

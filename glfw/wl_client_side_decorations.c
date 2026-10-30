@@ -261,14 +261,16 @@ render_titlebar_pixels(_GLFWwindow *window, uint8_t *output) {
     const bool focused = window->id == _glfw.focusedWindowId;
     const bool docked = window->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED;
     const bool maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
-    GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
-    bool dark = !glfw_has_system_color_theme() || appearance == GLFW_COLOR_SCHEME_DARK;
-    // GNOME's normal light appearance is reported as "no preference".
-    // Do not let a dark terminal background override that desktop default.
-    uint32_t bg = dark ? 0xff303030 : 0xffebebeb;
-    if (decs.use_custom_titlebar_color) {
-        bg = 0xff000000 | (decs.titlebar_color & 0xffffff);
-        dark = .2126 * R(bg) + .7152 * G(bg) + .0722 * B(bg) < 128;
+    static const uint32_t dark_bg = 0xff303030, light_bg = 0xffebebeb;
+    const GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
+    bool dark = appearance == GLFW_COLOR_SCHEME_DARK;
+    uint32_t bg = dark ? dark_bg : light_bg;
+    if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
+        // When using system colors and the desktop has no preference, follow
+        // the background color of the active kitty window.
+        const uint32_t color = 0xff000000 | (decs.titlebar_color & 0xffffff);
+        dark = .2126 * R(color) + .7152 * G(color) + .0722 * B(color) < 128;
+        bg = decs.use_custom_titlebar_color ? color : (dark ? dark_bg : light_bg);
     }
     uint32_t fg = dark ? (focused ? 0xffeeeeee : 0xffaaaaaa) : (focused ? 0xff333333 : 0xff888888);
     uint32_t circle = dark ? 0xff484848 : 0xffd6d6d6;

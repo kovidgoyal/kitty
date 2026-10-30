@@ -145,18 +145,13 @@ process_wm_setting(const char *key, DBusMessageIter *value) {
 static int theme_size = -1;
 static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
 static bool cursor_theme_changed = false, appearance_initialized = false;
-static bool appearance_received = false;
-
-bool
-glfw_has_system_color_theme(void) { return appearance_received; }
 
 static void
 set_queried_appearance(uint32_t value) {
-    if (value > 2) value = 0;
-    bool changed = !appearance_received || appearance != (GLFWColorScheme)value;
-    appearance = value;
-    appearance_received = true;
-    if (changed) redraw_titlebars();
+    if (value < 3 && appearance != (GLFWColorScheme)value) {
+        appearance = value;
+        redraw_titlebars();
+    }
 }
 
 #define HANDLER(name_)                                                                                              \
@@ -261,11 +256,12 @@ process_fdo_setting(const char *key, DBusMessageIter *value) {
             uint32_t val;
             dbus_message_iter_get_basic(value, &val);
             if (val > 2) val = 0;
-            if (!appearance_received) {
-                appearance_received = true;
+            if (!appearance_initialized) {
                 appearance_initialized = true;
-                appearance = val;
-                _glfwInputColorScheme(appearance, true);
+                if (val != appearance) {
+                    appearance = val;
+                    _glfwInputColorScheme(appearance, true);
+                }
             }
         }
     }
@@ -401,9 +397,8 @@ on_color_scheme_change(DBusMessage *message) {
                 uint32_t val = 0;
                 dbus_message_iter_get_basic(&iter[1], &val);
                 if (val > 2) val = 0;
-                if (val != appearance || !appearance_received) {
+                if (val != appearance) {
                     appearance = val;
-                    appearance_received = true;
                     appearance_initialized = true;
                     _glfwInputColorScheme(appearance, false);
                 }
