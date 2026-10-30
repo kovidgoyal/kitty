@@ -307,8 +307,9 @@ type overwrite_dir struct{ src, dest string }
 // Return a list of relative paths, as stored in dest_dir, for all entries in
 // the tree rooted at src_dir that also exist in the tree rooted at dest_dir,
 // except for directories that exist in both places. Symlinks to directories
-// in dest_dir are treated as directories, matching rename_contents.
-func find_overwrites(src_dir *os.File, dest_dir *os.File) (ans []string, err error) {
+// in dest_dir are treated as directories, matching rename_contents. When move
+// sources are supplied, reject merge targets inside them before moving anything.
+func find_overwrites(src_dir *os.File, dest_dir *os.File, move_sources ...os.FileInfo) (ans []string, err error) {
 	stack := path_stack[overwrite_dir]{}
 	stack.push(overwrite_dir{".", "."})
 	join := func(parent, name string) string {
@@ -327,6 +328,15 @@ func find_overwrites(src_dir *os.File, dest_dir *os.File) (ans []string, err err
 				return err
 			}
 			defer dd.Close()
+			for _, source := range move_sources {
+				inside, err := destination_is_within_source(source, dd)
+				if err != nil {
+					return err
+				}
+				if inside {
+					return fmt.Errorf("cannot merge dropped files into move source directory %s", dd.Name())
+				}
+			}
 			src_children, err := sd.ReadDir(0)
 			if err != nil {
 				return err
@@ -696,6 +706,32 @@ func (dnd *dnd) count_files_in_drop() int {
 	return n
 }
 
+func (dnd *dnd) rename_drop_contents(staging_dir *os.File) error {
+	if dnd.drop_status.action == move_on_drop && !dnd.drop_status.is_remote_client {
+		var sources []os.FileInfo
+		for _, u := range dnd.drop_status.uri_list {
+			if u.kind != parsed_uri_file || u.path == "" {
+				continue
+			}
+			info, err := os.Lstat(u.path)
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				sources = append(sources, info)
+			}
+		}
+		// end_drop removes every move source. Check the entire merge tree first,
+		// including symlinks that may have changed while awaiting confirmation.
+		if len(sources) > 0 {
+			if _, err := find_overwrites(staging_dir, dnd.drop_output_dir, sources...); err != nil {
+				return err
+			}
+		}
+	}
+	return rename_contents(staging_dir, dnd.drop_output_dir)
+}
+
 func (dnd *dnd) all_drop_data_received() (err error) {
 	dnd.num_dropped_files = dnd.count_files_in_drop()
 	var staging_dir *os.File
@@ -725,7 +761,7 @@ func (dnd *dnd) all_drop_data_received() (err error) {
 				return dnd.render_screen()
 			}
 		}
-		err := rename_contents(staging_dir, dnd.drop_output_dir)
+		err := dnd.rename_drop_contents(staging_dir)
 		staging_dir.Close()
 		if err != nil {
 			return err
@@ -1142,7 +1178,7 @@ func (dnd *dnd) drop_confirm(accepted bool) error {
 		dnd.num_dropped_files = 0
 	}
 	if accepted {
-		if err := rename_contents(staging_dir, dnd.drop_output_dir); err != nil {
+		if err := dnd.rename_drop_contents(staging_dir); err != nil {
 			dnd.end_drop(false)
 			return err
 		}
