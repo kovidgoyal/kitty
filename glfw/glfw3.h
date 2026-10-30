@@ -1421,7 +1421,7 @@ typedef struct GLFWLayerShellConfig {
 } GLFWLayerShellConfig;
 
 typedef struct GLFWTitlebarFont {
-    const char *family;  // NULL means use the default font
+    const char *family; // NULL means use the default font
     double point_size, text_scale;
     bool bold, italic;
 } GLFWTitlebarFont;

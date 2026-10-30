@@ -32,18 +32,20 @@ GLFWTitlebarAction
 glfw_current_titlebar_action(GLFWTitlebarGesture gesture) {
     return gesture < arraysz(titlebar_actions) ? titlebar_actions[gesture] : TITLEBAR_ACTION_NONE;
 }
-static GLFWTitlebarButtonLayout button_layout = {
-    .right = {TITLEBAR_BUTTON_MINIMIZE, TITLEBAR_BUTTON_MAXIMIZE, TITLEBAR_BUTTON_CLOSE}, .right_count = 3};
+static GLFWTitlebarButtonLayout button_layout = {.right = {TITLEBAR_BUTTON_MINIMIZE, TITLEBAR_BUTTON_MAXIMIZE, TITLEBAR_BUTTON_CLOSE}, .right_count = 3};
 
 const GLFWTitlebarButtonLayout *
-glfw_current_titlebar_button_layout(void) { return &button_layout; }
+glfw_current_titlebar_button_layout(void) {
+    return &button_layout;
+}
 
 static char current_titlebar_family[256];
 static GLFWTitlebarFont current_titlebar_font = {.point_size = 11, .text_scale = 1, .bold = true};
 
 static bool
 is_one_of(const char *word, const char **names) {
-    for (; *names; names++) if (strcasecmp(word, *names) == 0) return true;
+    for (; *names; names++)
+        if (strcasecmp(word, *names) == 0) return true;
     return false;
 }
 
@@ -64,15 +66,53 @@ parse_font_description(const char *description, bool default_bold, char *family,
     // Parses the subset of Pango font descriptions used in practice:
     // "[FAMILY-LIST] [STYLE-OPTIONS] [SIZE[px]]"
     static const char *bold_weights[] = {
-        "semi-bold", "semibold", "demi-bold", "demibold", "bold", "ultra-bold", "ultrabold", "extra-bold", "extrabold",
-        "heavy", "ultra-heavy", "ultraheavy", "black", "ultra-black", "ultrablack", "extra-black", "extrablack", NULL};
+        "semi-bold",
+        "semibold",
+        "demi-bold",
+        "demibold",
+        "bold",
+        "ultra-bold",
+        "ultrabold",
+        "extra-bold",
+        "extrabold",
+        "heavy",
+        "ultra-heavy",
+        "ultraheavy",
+        "black",
+        "ultra-black",
+        "ultrablack",
+        "extra-black",
+        "extrablack",
+        NULL};
     static const char *normal_weights[] = {
-        "thin", "ultra-light", "ultralight", "extra-light", "extralight", "light", "semi-light", "semilight", "demi-light",
-        "demilight", "book", "regular", "normal", "medium", "roman", NULL};
+        "thin",
+        "ultra-light",
+        "ultralight",
+        "extra-light",
+        "extralight",
+        "light",
+        "semi-light",
+        "semilight",
+        "demi-light",
+        "demilight",
+        "book",
+        "regular",
+        "normal",
+        "medium",
+        "roman",
+        NULL};
     static const char *italic_styles[] = {"italic", "oblique", NULL};
     static const char *ignored_styles[] = {
-        "ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "semi-expanded", "expanded",
-        "extra-expanded", "ultra-expanded", "small-caps", NULL};
+        "ultra-condensed",
+        "extra-condensed",
+        "condensed",
+        "semi-condensed",
+        "semi-expanded",
+        "expanded",
+        "extra-expanded",
+        "ultra-expanded",
+        "small-caps",
+        NULL};
     char buf[256];
     snprintf(buf, sizeof(buf), "%s", description ? description : "");
     ans->point_size = 11;
@@ -110,7 +150,9 @@ parse_font_description(const char *description, bool default_bold, char *family,
 }
 
 const GLFWTitlebarFont *
-glfw_current_titlebar_font(void) { return &current_titlebar_font; }
+glfw_current_titlebar_font(void) {
+    return &current_titlebar_font;
+}
 
 unsigned
 glfw_current_titlebar_height(void) {
@@ -124,8 +166,7 @@ redraw_titlebars(void) {
     const bool use_system_font = titlebar_uses_system_font || !titlebar_font[0];
     // GNOME uses a bold version of the interface font for titles
     parse_font_description(
-        use_system_font ? interface_font : titlebar_font, use_system_font, current_titlebar_family, sizeof(current_titlebar_family),
-        &current_titlebar_font);
+        use_system_font ? interface_font : titlebar_font, use_system_font, current_titlebar_family, sizeof(current_titlebar_family), &current_titlebar_font);
     current_titlebar_font.text_scale = titlebar_text_scale;
 #ifndef _GLFW_X11
     _glfwPlatformTitlebarSettingsChanged();
@@ -151,9 +192,10 @@ parse_button_layout(const char *value, GLFWTitlebarButtonLayout *out) {
             while (*token == ' ') token++;
             char *end = token + strlen(token);
             while (end > token && end[-1] == ' ') *--end = 0;
-            const GLFWTitlebarButton id = strcmp(token, "close") == 0 ? TITLEBAR_BUTTON_CLOSE :
-                strcmp(token, "maximize") == 0 ? TITLEBAR_BUTTON_MAXIMIZE :
-                strcmp(token, "minimize") == 0 ? TITLEBAR_BUTTON_MINIMIZE : TITLEBAR_BUTTON_NONE;
+            const GLFWTitlebarButton id = strcmp(token, "close") == 0      ? TITLEBAR_BUTTON_CLOSE
+                                          : strcmp(token, "maximize") == 0 ? TITLEBAR_BUTTON_MAXIMIZE
+                                          : strcmp(token, "minimize") == 0 ? TITLEBAR_BUTTON_MINIMIZE
+                                                                           : TITLEBAR_BUTTON_NONE;
             if (id && !seen[id]) {
                 seen[id] = true;
                 if (side) out->right[out->right_count++] = id;
@@ -203,9 +245,10 @@ process_wm_setting(const char *key, DBusMessageIter *value) {
             const char *name;
             dbus_message_iter_get_basic(value, &name);
             // xdg-shell has no lower/shade or one-axis maximize request.
-            GLFWTitlebarAction action = strcmp(name, "menu") == 0 ? TITLEBAR_ACTION_MENU :
-                strcmp(name, "toggle-maximize") == 0 ? TITLEBAR_ACTION_MAXIMIZE :
-                strcmp(name, "minimize") == 0 ? TITLEBAR_ACTION_MINIMIZE : TITLEBAR_ACTION_NONE;
+            GLFWTitlebarAction action = strcmp(name, "menu") == 0              ? TITLEBAR_ACTION_MENU
+                                        : strcmp(name, "toggle-maximize") == 0 ? TITLEBAR_ACTION_MAXIMIZE
+                                        : strcmp(name, "minimize") == 0        ? TITLEBAR_ACTION_MINIMIZE
+                                                                               : TITLEBAR_ACTION_NONE;
             changed |= action != titlebar_actions[i];
             titlebar_actions[i] = action;
             break;
@@ -519,8 +562,8 @@ setting_changed(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
                 if (strcmp(key, FDO_APPEARANCE_KEY) == 0) { on_color_scheme_change(msg); }
             } else if (strcmp(namespace, GNOME_DESKTOP_NAMESPACE) == 0 || strcmp(namespace, GNOME_WM_NAMESPACE) == 0) {
                 DBusMessageIter iter, value;
-                if (dbus_message_iter_init(msg, &iter) && dbus_message_iter_next(&iter) && dbus_message_iter_next(&iter)
-                    && dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_VARIANT) {
+                if (dbus_message_iter_init(msg, &iter) && dbus_message_iter_next(&iter) && dbus_message_iter_next(&iter) &&
+                    dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_VARIANT) {
                     dbus_message_iter_recurse(&iter, &value);
                     if (strcmp(namespace, GNOME_WM_NAMESPACE) == 0) process_wm_setting(key, &value);
                     else process_gnome_setting(key, &value);

@@ -1521,8 +1521,8 @@ static struct {
 static FreeTypeRenderCtx
 csd_title_render_ctx_for(const GLFWTitlebarFont *font) {
     const char *family = font->family ? font->family : "";
-    if (csd_title_render_ctx_key.initialized && csd_title_render_ctx_key.bold == font->bold &&
-        csd_title_render_ctx_key.italic == font->italic && strcmp(csd_title_render_ctx_key.family, family) == 0)
+    if (csd_title_render_ctx_key.initialized && csd_title_render_ctx_key.bold == font->bold && csd_title_render_ctx_key.italic == font->italic &&
+        strcmp(csd_title_render_ctx_key.family, family) == 0)
         return csd_title_render_ctx;
     // Remember failures as well, so as to not retry and report them on every redraw
     release_freetype_render_context(csd_title_render_ctx);
