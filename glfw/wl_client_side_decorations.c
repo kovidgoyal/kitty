@@ -189,26 +189,32 @@ init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, doub
     all_shadow_surfaces(Q);
 
 static bool
-window_has_buffer(_GLFWwindow *window, struct wl_buffer *q) {
-#define Q(which)                                           \
-    if (decs.which.buffer.a == q) {                        \
-        decs.which.buffer.a_needs_to_be_destroyed = false; \
-        return true;                                       \
-    }                                                      \
-    if (decs.which.buffer.b == q) {                        \
-        decs.which.buffer.b_needs_to_be_destroyed = false; \
-        return true;                                       \
+mark_buffer_released(_GLFWwindow *window, struct wl_buffer *q) {
+#define Q(which)                          \
+    if (decs.which.buffer.a == q) {       \
+        decs.which.buffer.a_busy = false; \
+        return true;                      \
+    }                                     \
+    if (decs.which.buffer.b == q) {       \
+        decs.which.buffer.b_busy = false; \
+        return true;                      \
     }
     all_surfaces(Q);
 #undef Q
     return false;
 }
 
+static void on_titlebar_buffer_released(_GLFWwindow *window);
+
 static void
 buffer_release_event(void *data, struct wl_buffer *buffer) {
-    wl_buffer_destroy(buffer);
     _GLFWwindow *window = _glfwWindowForId((uintptr_t)data);
-    if (window && window_has_buffer(window, buffer)) decs.buffer_destroyed = true;
+    if (!window || !mark_buffer_released(window, buffer)) {
+        // A buffer that was busy when the buffers it belonged to were freed
+        wl_buffer_destroy(buffer);
+        return;
+    }
+    if (buffer == decs.titlebar.buffer.back) on_titlebar_buffer_released(window);
 }
 
 static struct wl_buffer_listener handle_buffer_events = {.release = buffer_release_event};
@@ -217,12 +223,10 @@ static void
 alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_t *data, size_t *offset) {
     pair->data.a = data + *offset;
     pair->a = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
-    pair->a_needs_to_be_destroyed = true;
     wl_buffer_add_listener(pair->a, &handle_buffer_events, (void *)window_id);
     *offset += pair->size_in_bytes;
     pair->data.b = data + *offset;
     pair->b = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
-    pair->b_needs_to_be_destroyed = true;
     wl_buffer_add_listener(pair->b, &handle_buffer_events, (void *)window_id);
     *offset += pair->size_in_bytes;
     pair->front = pair->a;
@@ -450,10 +454,19 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     if (!docked) render_titlebar_corners(window, pixels, width, height, scale, focused);
 }
 
-static void
+static bool
 update_title_bar(_GLFWwindow *window) {
+    // Never render into a buffer the compositor might still be reading from,
+    // instead render when it is released.
+    _GLFWWaylandBufferPair *pair = &decs.titlebar.buffer;
+    if (pair->back == pair->a ? pair->a_busy : pair->b_busy) {
+        pair->has_pending_update = true;
+        return false;
+    }
+    pair->has_pending_update = false;
     render_title_bar(window, false);
-    swap_buffers(&decs.titlebar.buffer);
+    swap_buffers(pair);
+    return true;
 }
 
 static void
@@ -604,11 +617,13 @@ free_csd_surfaces(_GLFWwindow *window) {
 
 static void
 free_csd_buffers(_GLFWwindow *window) {
-#define Q(which)                                                                                                      \
-    {                                                                                                                 \
-        if (decs.which.buffer.a_needs_to_be_destroyed && decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a); \
-        if (decs.which.buffer.b_needs_to_be_destroyed && decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b); \
-        memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair));                                                \
+#define Q(which)                                                                                      \
+    {                                                                                                 \
+        /* Busy buffers are destroyed when released, as destroying them now  */                       \
+        /* causes flicker. Mutter never releases buffers that are not busy. */                        \
+        if (decs.which.buffer.a && !decs.which.buffer.a_busy) wl_buffer_destroy(decs.which.buffer.a); \
+        if (decs.which.buffer.b && !decs.which.buffer.b_busy) wl_buffer_destroy(decs.which.buffer.b); \
+        memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair));                                \
     }
     all_surfaces(Q);
 #undef Q
@@ -647,9 +662,9 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDSurface *s) {
         wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height);                                                       \
         wl_surface_commit(decs.which.surface);                                                                                                                \
         if (decs.which.buffer.a == (xbuffer)) {                                                                                                               \
-            decs.which.buffer.a_needs_to_be_destroyed = false;                                                                                                \
+            decs.which.buffer.a_busy = true;                                                                                                                  \
         } else {                                                                                                                                              \
-            decs.which.buffer.b_needs_to_be_destroyed = false;                                                                                                \
+            decs.which.buffer.b_busy = true;                                                                                                                  \
         }                                                                                                                                                     \
     }
 
@@ -676,27 +691,25 @@ ensure_csd_resources(_GLFWwindow *window) {
          (has_titlebar && decs.titlebar.buffer.viewport_height != decs.metrics.visible_titlebar_height));
     const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
     const bool titlebar_state_changed = (has_titlebar && !decs.titlebar.surface) || (!has_titlebar && decs.titlebar.surface);
-    const bool needs_update = focus_changed || size_changed || titlebar_state_changed || decs.buffer_destroyed || state_changed;
+    const bool needs_update = focus_changed || size_changed || titlebar_state_changed || state_changed;
     debug(
-        "CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d buffer_destroyed: %d\n",
+        "CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d\n",
         decs.for_window_state.width,
         decs.for_window_state.height,
         window->wl.width,
         window->wl.height,
         needs_update,
         size_changed,
-        state_changed,
-        decs.buffer_destroyed);
+        state_changed);
     if (!needs_update) return false;
     decs.for_window_state.fscale = current_scale; // used in create_shm_buffers
-    if (size_changed || decs.buffer_destroyed || titlebar_state_changed) {
+    if (size_changed || titlebar_state_changed) {
         if (titlebar_state_changed) {
             free(decs.shadow_tile.data);
             decs.shadow_tile.data = NULL;
         }
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
-        decs.buffer_destroyed = false;
     }
 
     const int top_y = has_titlebar ? -(int)decs.metrics.visible_titlebar_height : 0;
@@ -772,6 +785,15 @@ csd_change_title(_GLFWwindow *window) {
         return true;
     }
     return false;
+}
+
+static void
+on_titlebar_buffer_released(_GLFWwindow *window) {
+    if (!decs.titlebar.buffer.has_pending_update || !decs.titlebar.surface || !window_is_csd_capable(window)) return;
+    if (update_title_bar(window)) {
+        damage_csd(titlebar, decs.titlebar.buffer.front);
+        if (!window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
+    }
 }
 
 void
