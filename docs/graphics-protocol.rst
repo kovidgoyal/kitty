@@ -63,6 +63,7 @@ Libraries:
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 * `malevich <https://github.com/shergin/malevich>`_ - Rust library for terminal plotting that can draw charts with the graphics protocol
+* `kmp-terminal <https://github.com/JohNan/kmp-terminal-emulator>`_ - Kotlin Multiplatform terminal emulator library and Compose Multiplatform renderer supporting the graphics protocol and Unicode placeholders
 
 Other terminals that have implemented the graphics protocol:
 
@@ -71,6 +72,7 @@ Other terminals that have implemented the graphics protocol:
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
 * `Mobile SSH <https://mobile-ssh.github.io/docs/terminal/>`_
 * `st (with a patch) <https://st.suckless.org/patches/kitty-graphics-protocol>`_
+* `SSH Client for Android <https://ssh-client.nanzen.se/features>`_
 * `Warp <https://docs.warp.dev/getting-started/changelog#id-2025.03.26-v0.2025.03.26.08.10>`_
 * `wayst <https://github.com/91861/wayst>`_
 * `WezTerm <https://github.com/wez/wezterm/issues/986>`_
