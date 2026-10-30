@@ -231,31 +231,6 @@ Detailed list of changes
 0.50.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Wayland: The client side window decorations used on compositors such as
-  GNOME now look like native GNOME decorations and follow the desktop titlebar
-  font, text scaling, button layout and titlebar click action settings
-  (:pull:`10766`)
-
-- A new option :opt:`hyperlink_target_position` to control where the URL shown
-  by :opt:`show_hyperlink_targets` is displayed, including as a browser style
-  tooltip next to the mouse cursor (:iss:`10770`)
-
-- macOS: Commit in-progress IME or dictation text instead of discarding it when
-  the OS window loses focus, matching native macOS applications
-
-- Fix wide characters being drawn on the wrong row after colliding with
-  scaled text and emoji sequences being split into multiple cells when
-  wrapped onto the next line (:pull:`10767`)
-
-- zsh integration: Fix a "maximum nested function level reached" error at
-  every prompt after interrupting a command run at shell startup, for example
-  via a session file (:iss:`10768`)
-
-- Fix changing text marker colors at runtime, for example with
-  :code:`kitten @ set-colors` or automatic dark/light theme switching, applying
-  the colors of each marker to the next one, with changes to ``mark3`` having
-  no effect
-
 - Allow docking kitty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
@@ -266,6 +241,11 @@ Detailed list of changes
   kitty is started. On macOS, the state is encrypted with a key in the
   keychain. On Linux, it requires the Inhibit desktop portal. See
   :ref:`restore_after_logout` (:iss:`1197`, :pull:`10659`)
+
+- Wayland: The client side window decorations used on compositors such as
+  GNOME now look like native GNOME decorations and follow the desktop titlebar
+  font, text scaling, button layout and titlebar click action settings
+  (:pull:`10766`)
 
 - Wayland: Support touchscreens. A tap is a click, a finger that moves scrolls
   with momentum, and a finger held still before it moves selects text
@@ -516,6 +496,27 @@ Detailed list of changes
   files, :file:`open-actions.conf`, :file:`launch-actions.conf`,
   :file:`mime.types`, :file:`paste-actions.py`, :file:`notifications.py` and
   the custom window icon in the kitty config directory
+
+- A new option :opt:`hyperlink_target_position` to control where the URL shown
+  by :opt:`show_hyperlink_targets` is displayed, including as a browser style
+  tooltip next to the mouse cursor (:iss:`10770`)
+
+- macOS: Commit in-progress IME or dictation text instead of discarding it when
+  the OS window loses focus, matching native macOS applications
+
+- Fix wide characters being drawn on the wrong row after colliding with
+  scaled text and emoji sequences being split into multiple cells when
+  wrapped onto the next line (:pull:`10767`)
+
+- zsh integration: Fix a "maximum nested function level reached" error at
+  every prompt after interrupting a command run at shell startup, for example
+  via a session file (:iss:`10768`)
+
+- Fix changing text marker colors at runtime, for example with
+  :code:`kitten @ set-colors` or automatic dark/light theme switching, applying
+  the colors of each marker to the next one, with changes to ``mark3`` having
+  no effect
+
 
 
 0.49.2 [2026-10-01]
