@@ -266,6 +266,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetCurrentSystemColorTheme_impl) = dlsym(handle, "glfwGetCurrentSystemColorTheme");
     if (glfwGetCurrentSystemColorTheme_impl == NULL) fail("Failed to load glfw function glfwGetCurrentSystemColorTheme with error: %s", dlerror());
 
+    *(void **) (&glfwGetSystemFont_impl) = dlsym(handle, "glfwGetSystemFont");
+    if (glfwGetSystemFont_impl == NULL) fail("Failed to load glfw function glfwGetSystemFont with error: %s", dlerror());
+
     *(void **) (&glfwSetWindowRefreshCallback_impl) = dlsym(handle, "glfwSetWindowRefreshCallback");
     if (glfwSetWindowRefreshCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowRefreshCallback with error: %s", dlerror());
 

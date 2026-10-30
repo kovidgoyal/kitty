@@ -241,6 +241,7 @@ typedef struct _GLFWwindowWayland {
     } pointerLock;
 
     struct {
+        int pressed_button;
         bool serverSide, buffer_destroyed, titlebar_needs_update, dragging, titlebar_hidden;
         _GLFWCSDSurface focus;
 
