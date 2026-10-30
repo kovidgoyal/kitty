@@ -492,8 +492,12 @@ read_desktop_settings(DBusConnection *session_bus) {
 void
 glfw_wait_for_desktop_settings(monotonic_t timeout) {
     // Wait for the reply to the asynchronous ReadAll request sent at startup,
-    // dispatching only the session bus.
-    if (!desktop_settings_pending) return;
+    // dispatching only the session bus. Only done once, for the first window,
+    // which is not created from inside a DBus callback, as dispatching is not
+    // re-entrant.
+    static bool waited = false;
+    if (waited || !desktop_settings_pending) return;
+    waited = true;
     DBusConnection *session_bus = glfw_dbus_session_bus();
     if (!session_bus) return;
     const monotonic_t deadline = monotonic() + timeout;
@@ -566,7 +570,13 @@ setting_changed(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
                     dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_VARIANT) {
                     dbus_message_iter_recurse(&iter, &value);
                     if (strcmp(namespace, GNOME_WM_NAMESPACE) == 0) process_wm_setting(key, &value);
-                    else process_gnome_setting(key, &value);
+                    else {
+                        cursor_theme_changed = false;
+                        process_gnome_setting(key, &value);
+#ifndef _GLFW_X11
+                        if (cursor_theme_changed) _glfwPlatformChangeCursorTheme();
+#endif
+                    }
                 }
             }
         }

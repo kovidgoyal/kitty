@@ -877,7 +877,6 @@ update_hovered_button(_GLFWwindow *window) {
     c(maximize);
     c(close);
 #undef c
-    update_title_bar(window);
     return has_hovered_button;
 }
 

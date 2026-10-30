@@ -3148,9 +3148,12 @@ update_titlebar_height(_GLFWwindow *window) {
     int32_t height = window->wl.height + (int32_t)window->wl.decorations.metrics.visible_titlebar_height;
     if (window->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED) height = window->wl.height + (int32_t)old_height;
     csd_set_window_geometry(window, &width, &height);
-    if (height > 0 && height != window->wl.height) {
+    height = MAX(1, height);
+    if (height != window->wl.height) {
+        _glfwInputWindowSize(window, width, height);
         window->wl.height = height;
         resizeFramebuffer(window);
+        _glfwInputWindowDamage(window);
     }
     inform_compositor_of_window_geometry(window, "TitlebarSettings");
 }
