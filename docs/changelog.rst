@@ -430,7 +430,9 @@ Detailed list of changes
   write to a temporary file that is renamed into place, so an interrupted
   transfer no longer leaves a truncated file behind (:pull:`10713`)
 
-- Drag and drop kitten: Reject copying or moving a directory into itself or
+- Drag and drop kitten: Reject moves that merge into a destination symlink
+  pointing inside a source directory, preventing source cleanup from deleting
+  the dropped files. Reject copying or moving a directory into itself or
   one of its subdirectories. Respect overwrite confirmation for case and
   Unicode equivalent names on filesystems that treat them as aliases, list the
   existing files that will be overwritten under their actual names, including
