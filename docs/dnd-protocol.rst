@@ -60,14 +60,15 @@ escape code of the form::
 
     OSC _dnd_code ; t=m:x=x:y=y:X=X:Y=Y:o=O ; optional MIME list ST
 
-Here, ``x, y`` identify the cell over which the drag is currently present.
-The ``(0, 0)`` cell is at top left of the screen. ``X and Y`` are the pixel
-offsets from the top-left. The ``O`` value is the set of allowed operations,
-which can be ``1`` for copy, ``2`` for move and ``3`` for either, at the
-client's discretion. The optional list of MIMES is a space separated
-list of MIME types that are available for dropping. To avoid overhead, the
-terminal should only send this list for the first move event and subsequently
-only if the list changes.
+Here, ``x, y`` identify the cell over which the drag is currently present. The
+``(0, 0)`` cell is at top left of the screen. ``X and Y`` are the pixel offsets
+from the top-left. The ``O`` value is the set of allowed operations, which can
+be ``1`` for copy, ``2`` for move and ``3`` for either, at the client's
+discretion. The optional list of MIMES is a space separated list of MIME types
+that are available for dropping. To avoid overhead, the terminal should only
+send this list for the first move event and subsequently only if the list
+changes. This means that applications can only rely on the MIME types from the
+first move event.
 
 When the drag leaves the window, the terminal will send the same event but
 with ``x, y = -1, -1`` to indicate that the drag has left the window. For such
