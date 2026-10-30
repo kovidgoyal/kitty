@@ -1160,6 +1160,12 @@ typedef struct GLFWLayerShellConfig {
     } related;
 } GLFWLayerShellConfig;
 
+typedef struct GLFWTitlebarFont {
+    const char *family;  // NULL means use the default font
+    double point_size, text_scale;
+    bool bold, italic;
+} GLFWTitlebarFont;
+
 typedef struct GLFWDBUSNotificationData {
     const char *app_name, *icon, *summary, *body, *category, *desktop_entry, **actions;
     size_t num_actions;
@@ -2273,9 +2279,9 @@ typedef GLFWColorScheme (*glfwGetCurrentSystemColorTheme_func)(bool);
 GFW_EXTERN glfwGetCurrentSystemColorTheme_func glfwGetCurrentSystemColorTheme_impl;
 #define glfwGetCurrentSystemColorTheme glfwGetCurrentSystemColorTheme_impl
 
-typedef const char* (*glfwGetSystemFont_func)(double*, bool*);
-GFW_EXTERN glfwGetSystemFont_func glfwGetSystemFont_impl;
-#define glfwGetSystemFont glfwGetSystemFont_impl
+typedef GLFWTitlebarFont (*glfwGetTitlebarFont_func)(void);
+GFW_EXTERN glfwGetTitlebarFont_func glfwGetTitlebarFont_impl;
+#define glfwGetTitlebarFont glfwGetTitlebarFont_impl
 
 typedef GLFWwindowrefreshfun (*glfwSetWindowRefreshCallback_func)(GLFWwindow*, GLFWwindowrefreshfun);
 GFW_EXTERN glfwSetWindowRefreshCallback_func glfwSetWindowRefreshCallback_impl;

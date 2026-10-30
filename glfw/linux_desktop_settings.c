@@ -22,7 +22,7 @@ static const char *supported_namespaces[3] = {FDO_DESKTOP_NAMESPACE, GNOME_DESKT
 
 
 static char theme_name[128] = {0};
-static char interface_font[256] = "sans-serif 11";
+static char interface_font[256];
 
 static char titlebar_font[256];
 static bool titlebar_uses_system_font = true;
@@ -36,32 +36,95 @@ static GLFWTitlebarButtonLayout button_layout = {.right = {3, 2, 1}, .right_coun
 const GLFWTitlebarButtonLayout *
 glfw_current_titlebar_button_layout(void) { return &button_layout; }
 
-double
-glfw_current_titlebar_text_scale(void) { return titlebar_text_scale; }
+static char current_titlebar_family[256];
+static GLFWTitlebarFont current_titlebar_font = {.point_size = 11, .text_scale = 1, .bold = true};
 
-const char *
-glfw_current_system_font(double *text_scale, bool *bold) {
-    bool system_font = titlebar_uses_system_font || !titlebar_font[0];
-    if (text_scale) *text_scale = titlebar_text_scale;
-    if (bold) *bold = system_font;
-    return system_font ? interface_font : titlebar_font;
+static bool
+is_one_of(const char *word, const char **names) {
+    for (; *names; names++) if (strcasecmp(word, *names) == 0) return true;
+    return false;
 }
+
+static char *
+rstrip_font_description(char *buf, char *end) {
+    while (end > buf && (end[-1] == ' ' || end[-1] == ',')) *--end = 0;
+    return end;
+}
+
+static char *
+last_word(char *buf, char *end) {
+    while (end > buf && end[-1] != ' ') end--;
+    return end;
+}
+
+static void
+parse_font_description(const char *description, bool default_bold, char *family, size_t family_sz, GLFWTitlebarFont *ans) {
+    // Parses the subset of Pango font descriptions used in practice:
+    // "[FAMILY-LIST] [STYLE-OPTIONS] [SIZE[px]]"
+    static const char *bold_weights[] = {
+        "semi-bold", "semibold", "demi-bold", "demibold", "bold", "ultra-bold", "ultrabold", "extra-bold", "extrabold",
+        "heavy", "ultra-heavy", "ultraheavy", "black", "ultra-black", "ultrablack", "extra-black", "extrablack", NULL};
+    static const char *normal_weights[] = {
+        "thin", "ultra-light", "ultralight", "extra-light", "extralight", "light", "semi-light", "semilight", "demi-light",
+        "demilight", "book", "regular", "normal", "medium", "roman", NULL};
+    static const char *italic_styles[] = {"italic", "oblique", NULL};
+    static const char *ignored_styles[] = {
+        "ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "semi-expanded", "expanded",
+        "extra-expanded", "ultra-expanded", "small-caps", NULL};
+    char buf[256];
+    snprintf(buf, sizeof(buf), "%s", description ? description : "");
+    ans->point_size = 11;
+    ans->bold = default_bold;
+    ans->italic = false;
+    char *end = rstrip_font_description(buf, buf + strlen(buf));
+    char *word = last_word(buf, end);
+    if (*word) {
+        char *num_end;
+        double size = strtod(word, &num_end);
+        const bool is_px = strcmp(num_end, "px") == 0;
+        if (num_end != word && (!*num_end || is_px)) {
+            if (is_px) size *= 72. / 96.;
+            if (isfinite(size) && size >= 1 && size <= 200) ans->point_size = size;
+            *word = 0;
+            end = rstrip_font_description(buf, word);
+        }
+    }
+    while ((word = last_word(buf, end)) > buf) {
+        if (is_one_of(word, bold_weights)) ans->bold = true;
+        else if (is_one_of(word, normal_weights)) ans->bold = false;
+        else if (is_one_of(word, italic_styles)) ans->italic = true;
+        else if (!is_one_of(word, ignored_styles)) break;
+        *word = 0;
+        end = rstrip_font_description(buf, word);
+    }
+    // Only the first family of a family list is used
+    char *comma = strchr(buf, ',');
+    if (comma) {
+        *comma = 0;
+        rstrip_font_description(buf, comma);
+    }
+    snprintf(family, family_sz, "%s", buf);
+    ans->family = family[0] ? family : NULL;
+}
+
+const GLFWTitlebarFont *
+glfw_current_titlebar_font(void) { return &current_titlebar_font; }
 
 unsigned
 glfw_current_titlebar_height(void) {
-    const char *font = glfw_current_system_font(NULL, NULL);
-    const char *size = strrchr(font, ' ');
-    double points = 11;
-    if (size) {
-        char *end;
-        double parsed = strtod(size + 1, &end);
-        if (end != size + 1 && !*end && isfinite(parsed) && parsed >= 1 && parsed <= 200) points = parsed;
-    }
-    return (unsigned)ceil(fmax(38., points * 96. / 72. + 18) * fmax(1, titlebar_text_scale));
+    const double scale = current_titlebar_font.text_scale;
+    const double text_height = current_titlebar_font.point_size * scale * 96. / 72.;
+    return (unsigned)ceil(fmax(38. * fmax(1, scale), text_height + 18));
 }
 
 static void
 redraw_titlebars(void) {
+    const bool use_system_font = titlebar_uses_system_font || !titlebar_font[0];
+    // GNOME uses a bold version of the interface font for titles
+    parse_font_description(
+        use_system_font ? interface_font : titlebar_font, use_system_font, current_titlebar_family, sizeof(current_titlebar_family),
+        &current_titlebar_font);
+    current_titlebar_font.text_scale = titlebar_text_scale;
 #ifndef _GLFW_X11
     _glfwPlatformTitlebarSettingsChanged();
 #endif

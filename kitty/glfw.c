@@ -1512,6 +1512,29 @@ freetype_render_ctx(bool bold) {
     return *which;
 }
 
+static FreeTypeRenderCtx csd_title_render_ctx = NULL;
+static struct {
+    char family[256];
+    bool bold, italic, initialized;
+} csd_title_render_ctx_key;
+
+static FreeTypeRenderCtx
+csd_title_render_ctx_for(const GLFWTitlebarFont *font) {
+    const char *family = font->family ? font->family : "";
+    if (csd_title_render_ctx_key.initialized && csd_title_render_ctx_key.bold == font->bold &&
+        csd_title_render_ctx_key.italic == font->italic && strcmp(csd_title_render_ctx_key.family, family) == 0)
+        return csd_title_render_ctx;
+    // Remember failures as well, so as to not retry and report them on every redraw
+    release_freetype_render_context(csd_title_render_ctx);
+    csd_title_render_ctx = create_freetype_render_context(family[0] ? family : NULL, font->bold, font->italic);
+    if (!csd_title_render_ctx && PyErr_Occurred()) PyErr_Print();
+    snprintf(csd_title_render_ctx_key.family, sizeof(csd_title_render_ctx_key.family), "%s", family);
+    csd_title_render_ctx_key.bold = font->bold;
+    csd_title_render_ctx_key.italic = font->italic;
+    csd_title_render_ctx_key.initialized = true;
+    return csd_title_render_ctx;
+}
+
 static bool
 draw_text_callback(
     GLFWwindow *window,
@@ -1525,66 +1548,19 @@ draw_text_callback(
     float y_offset,
     size_t right_margin,
     bool is_single_glyph) {
+    // Used only to render the title in Wayland client side decorations
     if (!set_callback_window(window)) return false;
-    FreeTypeRenderCtx ctx;
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
-    unsigned px_sz = 2 * height / 3;
-    static char title[2048];
-    const bool gnome_title = global_state.is_wayland && !is_single_glyph;
-    if (gnome_title) {
-        double text_scale = 1.;
-        bool bold = true, italic = false;
-        const char *description = glfwGetSystemFont(&text_scale, &bold);
-        char family[256];
-        snprintf(family, sizeof(family), "%s", description && description[0] ? description : "sans-serif 11");
-        double points = 11;
-        char *size = strrchr(family, ' ');
-        if (size && size != family) {
-            char *end;
-            double parsed = strtod(size + 1, &end);
-            if (end != size + 1 && !*end && parsed >= 1 && parsed <= 200) {
-                points = parsed;
-                *size = 0;
-            }
-        }
-        // Common GNOME descriptions have optional trailing style words.
-        for (;;) {
-            char *style = strrchr(family, ' ');
-            if (!style) break;
-            if (strcmp(style + 1, "Bold") == 0) bold = true;
-            else if (strcmp(style + 1, "Italic") == 0 || strcmp(style + 1, "Oblique") == 0) italic = true;
-            else if (strcmp(style + 1, "Regular") == 0 || strcmp(style + 1, "Normal") == 0) bold = false;
-            else break;
-            *style = 0;
-        }
-        static FreeTypeRenderCtx gnome_ctx = NULL;
-        static bool cached_bold, cached_italic;
-        static char cached_family[256] = {0};
-        if (!gnome_ctx || strcmp(cached_family, family) != 0 || cached_bold != bold || cached_italic != italic) {
-            FreeTypeRenderCtx replacement = create_freetype_render_context(family, bold, italic);
-            if (replacement) {
-                if (gnome_ctx) release_freetype_render_context(gnome_ctx);
-                gnome_ctx = replacement;
-                cached_bold = bold;
-                cached_italic = italic;
-                snprintf(cached_family, sizeof(cached_family), "%s", family);
-            } else if (PyErr_Occurred()) PyErr_Print();
-        }
-        ctx = gnome_ctx ? gnome_ctx : freetype_render_ctx(true);
-        if (!ctx) return false;
-        px_sz = (unsigned)round(points * ydpi / 72. * text_scale);
-        px_sz = MIN(px_sz, (unsigned)(height * 3 / 4));
-        size_t text_width = freetype_text_width_for_single_line(ctx, text, px_sz);
-        size_t available = width > right_margin + (size_t)x_offset ? width - right_margin - (size_t)x_offset : 0;
-        if (text_width < available) x_offset += (float)((available - text_width) / 2.);
-    } else {
-        if (!(ctx = freetype_render_ctx(true))) return false;
-        if (!is_single_glyph) {
-            snprintf(title, sizeof(title), " ❭ %s", text);
-            text = title;
-        }
-    }
+    const GLFWTitlebarFont font = glfwGetTitlebarFont();
+    FreeTypeRenderCtx ctx = csd_title_render_ctx_for(&font);
+    if (!ctx && !(ctx = freetype_render_ctx(true))) return false;
+    unsigned px_sz = (unsigned)round(font.point_size * ydpi / 72. * font.text_scale);
+    px_sz = MIN(px_sz, (unsigned)(height * 3 / 4));
+    // Center the title
+    size_t text_width = freetype_text_width_for_single_line(ctx, text, px_sz);
+    size_t available = width > right_margin + (size_t)x_offset ? width - right_margin - (size_t)x_offset : 0;
+    if (text_width < available) x_offset += (float)((available - text_width) / 2.);
     bool ok = render_single_line(ctx, text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin, is_single_glyph);
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
@@ -4213,6 +4189,7 @@ cleanup_glfw(void) {
     Py_CLEAR(dbus_session_state_callback);
     release_freetype_render_context(bold_render_ctx);
     release_freetype_render_context(normal_render_ctx);
+    release_freetype_render_context(csd_title_render_ctx);
 #endif
 }
 

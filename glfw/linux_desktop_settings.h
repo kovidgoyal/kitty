@@ -24,6 +24,5 @@ typedef enum { TITLEBAR_ACTION_NONE, TITLEBAR_ACTION_MENU, TITLEBAR_ACTION_MAXIM
 // Gesture: 0=double click, 1=middle click, 2=right click.
 GLFWTitlebarAction glfw_current_titlebar_action(unsigned gesture);
 const GLFWTitlebarButtonLayout *glfw_current_titlebar_button_layout(void);
-double glfw_current_titlebar_text_scale(void);
 unsigned glfw_current_titlebar_height(void);
-const char *glfw_current_system_font(double *text_scale, bool *bold);
+const GLFWTitlebarFont *glfw_current_titlebar_font(void);

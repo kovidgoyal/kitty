@@ -1598,13 +1598,11 @@ glfwGetTime(void) {
     return monotonic();
 }
 
-GLFWAPI const char *
-glfwGetSystemFont(double *text_scale, bool *bold) {
+GLFWAPI GLFWTitlebarFont
+glfwGetTitlebarFont(void) {
 #if defined(_GLFW_WAYLAND) || defined(_GLFW_X11)
-    return glfw_current_system_font(text_scale, bold);
+    return *glfw_current_titlebar_font();
 #else
-    if (text_scale) *text_scale = 1.;
-    if (bold) *bold = true;
-    return NULL;
+    return (GLFWTitlebarFont){.point_size = 11, .text_scale = 1, .bold = true};
 #endif
 }
