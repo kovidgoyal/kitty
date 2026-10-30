@@ -439,6 +439,9 @@ Detailed list of changes
   file. No longer rename remotely dropped files whose names differ only in case
   on case sensitive filesystems (:pull:`10769`, :pull:`10772`)
 
+- Drag and drop protocol: Fix base64 data with padding at the end being
+  rejected, as allowed by the protocol (:iss:`10777`)
+
 - Clipboard kitten: Fix only the last of several outputs that use the same
   MIME type being saved, for example with
   :code:`kitten clipboard -g picture.png picture.jpg`, the data is now

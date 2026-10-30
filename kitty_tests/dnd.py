@@ -1801,6 +1801,36 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_pre_send(0, chunk2_b64, more=False))
             self._assert_no_output(cap)
 
+    def test_drag_padded_base64_then_end_of_data(self) -> None:
+        """base64 padding at the end of the last chunk is accepted, followed by the empty terminator."""
+        for raw in (b'hello from the repro', b'drag image', b'A'):
+            with self.subTest(raw=raw), dnd_test_window() as (screen, cap):
+                self._setup_drag_offer(screen, cap, 'text/plain')
+                padded = standard_b64encode(raw).decode()
+                self.assertTrue(padded.endswith('='))
+                parse_bytes(screen, client_drag_pre_send(0, padded))
+                parse_bytes(screen, client_drag_pre_send(0, ''))
+                self._assert_no_output(cap)
+                parse_bytes(screen, client_drag_add_image(1, 0, 1, 1, padded))
+                parse_bytes(screen, _osc(f'{DND_CODE};t=p:x=-1:y=0:X=1:Y=1'))
+                self._assert_no_output(cap)
+
+    def test_remote_drag_process_item_data_padded(self) -> None:
+        """MIME data whose last chunk carries base64 padding is accepted."""
+        for data in (b'A', b'test data!'):
+            with self.subTest(data=data), dnd_test_window() as (screen, cap):
+                parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;{machine_id()}'))
+                parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
+                cap.consume()
+                dnd_test_force_drag_dropped(cap.window_id)
+                with self.assertRaises(OSError):
+                    dnd_test_drag_get_data(cap.window_id, 'text/plain')
+                cap.consume()
+                parse_bytes(screen, client_drag_send_data(0, standard_b64encode(data).decode(), more=True))
+                parse_bytes(screen, client_drag_send_data(0, ''))
+                self._assert_no_output(cap)
+                self.assertEqual(dnd_test_drag_get_data(cap.window_id, 'text/plain'), data)
+
     def test_drag_add_image_chunked(self) -> None:
         """Image data can be chunked across multiple escape codes."""
         with dnd_test_window() as (screen, cap):

@@ -28,6 +28,13 @@ base64_init_stream_decoder(base64_state *state) {
 
 static inline bool
 base64_decode_stream(base64_state *state, const uint8_t *src, size_t src_sz, uint8_t *dest, size_t *dest_sz) {
+    // Decoding nothing always succeeds. libbase64 fails any call made after
+    // it has seen padding, even an empty one, which breaks protocols that
+    // terminate streams with an empty chunk.
+    if (!src_sz) {
+        *dest_sz = 0;
+        return true;
+    }
     if (*dest_sz < required_buffer_size_for_base64_decode(src_sz)) return false;
     return base64_stream_decode(state, (const char *)src, src_sz, (char *)dest, dest_sz) == 1;
 }

@@ -1601,8 +1601,9 @@ drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t s
         item.data_decode_initialized = true;
         base64_init_stream_decoder(&item.base64_state);
     }
-    if (item.data_capacity < sz + item.data_size) {
-        size_t newcap = MAX(item.data_capacity * 2, sz + item.data_size);
+    const size_t needed = MAX(sz, required_buffer_size_for_base64_decode(sz)) + item.data_size;
+    if (item.data_capacity < needed) {
+        size_t newcap = MAX(item.data_capacity * 2, needed);
         uint8_t *tmp = realloc(item.optional_data, newcap);
         if (!tmp) abrt(ENOMEM, "");
         item.optional_data = tmp;
@@ -2145,12 +2146,12 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
 
     // Decode and write payload data
     if (payload_sz > 0) {
-        RAII_ALLOC(uint8_t, decoded, malloc(payload_sz));
+        size_t outlen = MAX(payload_sz, required_buffer_size_for_base64_decode(payload_sz));
+        RAII_ALLOC(uint8_t, decoded, malloc(outlen));
         if (!decoded) {
             cancel_drag(w, ENOMEM, "out of memory processing drag source item data");
             return;
         }
-        size_t outlen = payload_sz;
         if (!base64_decode_stream(&ds.items[idx].base64_state, payload, payload_sz, decoded, &outlen)) {
             cancel_drag(w, EINVAL, "failed to base64 decode drag source item data");
             return;
