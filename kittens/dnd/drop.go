@@ -302,16 +302,22 @@ func stored_name(dir *os.File, dest_entries []os.DirEntry, name string, info os.
 	return name, nil
 }
 
-type overwrite_dir struct{ src, dest string }
+type overwrite_dir struct {
+	src, dest string
+	// Whether dest is the root or was reached through a symlink, so that its
+	// actual ancestors may differ from the directories it was reached through
+	via_symlink bool
+}
 
 // Return a list of relative paths, as stored in dest_dir, for all entries in
 // the tree rooted at src_dir that also exist in the tree rooted at dest_dir,
 // except for directories that exist in both places. Symlinks to directories
-// in dest_dir are treated as directories, matching rename_contents. When move
-// sources are supplied, reject merge targets inside them before moving anything.
-func find_overwrites(src_dir *os.File, dest_dir *os.File, move_sources ...os.FileInfo) (ans []string, err error) {
+// in dest_dir are treated as directories, matching rename_contents. Fail if
+// any directory that would be merged into is inside one of move_sources,
+// since those are removed once the drop completes.
+func find_overwrites(src_dir *os.File, dest_dir *os.File, move_sources []os.FileInfo) (ans []string, err error) {
 	stack := path_stack[overwrite_dir]{}
-	stack.push(overwrite_dir{".", "."})
+	stack.push(overwrite_dir{".", ".", true})
 	join := func(parent, name string) string {
 		return utils.IfElse(parent == ".", name, filepath.Join(parent, name))
 	}
@@ -328,13 +334,21 @@ func find_overwrites(src_dir *os.File, dest_dir *os.File, move_sources ...os.Fil
 				return err
 			}
 			defer dd.Close()
-			for _, source := range move_sources {
-				inside, err := destination_is_within_source(source, dd)
+			if len(move_sources) > 0 {
+				// A real subdirectory of a directory that is not inside a
+				// source is itself inside one only if it is that source.
+				// Directories reached through symlinks need a full check.
+				var inside bool
+				if relpath.via_symlink {
+					inside, err = destination_is_within_source(dd, move_sources)
+				} else {
+					inside, err = is_any_of(dd, move_sources)
+				}
 				if err != nil {
 					return err
 				}
 				if inside {
-					return fmt.Errorf("cannot merge dropped files into move source directory %s", dd.Name())
+					return fmt.Errorf("cannot merge dropped files into the directory %s as it is inside a directory being moved", dd.Name())
 				}
 			}
 			src_children, err := sd.ReadDir(0)
@@ -362,15 +376,15 @@ func find_overwrites(src_dir *os.File, dest_dir *os.File, move_sources ...os.Fil
 				if err != nil {
 					return err
 				}
-				dest_is_dir := d.IsDir()
-				if !dest_is_dir && d.Mode()&fs.ModeSymlink != 0 {
+				dest_is_dir, is_symlink := d.IsDir(), d.Mode()&fs.ModeSymlink != 0
+				if is_symlink {
 					if dest_is_dir, err = is_dir_at(dd, x.Name()); err != nil {
 						return err
 					}
 				}
 				switch {
 				case x.IsDir() && dest_is_dir:
-					stack.push(overwrite_dir{join(relpath.src, x.Name()), join(relpath.dest, name)})
+					stack.push(overwrite_dir{join(relpath.src, x.Name()), join(relpath.dest, name), is_symlink})
 				case dest_is_dir:
 					return fmt.Errorf("cannot replace the existing directory %s with a dropped file", join(relpath.dest, name))
 				default:
@@ -706,30 +720,48 @@ func (dnd *dnd) count_files_in_drop() int {
 	return n
 }
 
-func (dnd *dnd) rename_drop_contents(staging_dir *os.File) error {
-	if dnd.drop_status.action == move_on_drop && !dnd.drop_status.is_remote_client {
-		var sources []os.FileInfo
-		for _, u := range dnd.drop_status.uri_list {
-			if u.kind != parsed_uri_file || u.path == "" {
-				continue
-			}
-			info, err := os.Lstat(u.path)
-			if err != nil {
-				return err
-			}
-			if info.IsDir() {
-				sources = append(sources, info)
-			}
+// Return the directories that end_drop will remove once the drop succeeds
+func (dnd *dnd) move_source_dirs() (ans []os.FileInfo, err error) {
+	if dnd.drop_status.action != move_on_drop || dnd.drop_status.is_remote_client {
+		return nil, nil
+	}
+	for _, u := range dnd.drop_status.uri_list {
+		if u.kind != parsed_uri_file || u.path == "" {
+			continue
 		}
-		// end_drop removes every move source. Check the entire merge tree first,
-		// including symlinks that may have changed while awaiting confirmation.
-		if len(sources) > 0 {
-			if _, err := find_overwrites(staging_dir, dnd.drop_output_dir, sources...); err != nil {
-				return err
+		info, err := os.Lstat(u.path)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue // end_drop has nothing to remove
 			}
+			return nil, err
+		}
+		if info.IsDir() {
+			ans = append(ans, info)
 		}
 	}
-	return rename_contents(staging_dir, dnd.drop_output_dir)
+	return
+}
+
+// Rename the staged files into the output directory. If confirm_overwrites
+// is true and existing files would be overwritten, return them instead
+// without changing anything. end_drop removes the sources of a local move, so
+// merging into them, for example via a symlink in the output directory, is
+// rejected first.
+func (dnd *dnd) place_staged_drop(staging_dir *os.File, confirm_overwrites bool) (overwrites []string, err error) {
+	move_sources, err := dnd.move_source_dirs()
+	if err != nil {
+		return nil, err
+	}
+	if confirm_overwrites || len(move_sources) > 0 {
+		if overwrites, err = find_overwrites(staging_dir, dnd.drop_output_dir, move_sources); err != nil {
+			return nil, err
+		}
+		if confirm_overwrites && len(overwrites) > 0 {
+			return overwrites, nil
+		}
+	}
+	return nil, rename_contents(staging_dir, dnd.drop_output_dir)
 }
 
 func (dnd *dnd) all_drop_data_received() (err error) {
@@ -750,23 +782,14 @@ func (dnd *dnd) all_drop_data_received() (err error) {
 		}
 	}()
 	if staging_dir != nil {
-		if dnd.opts.ConfirmDropOverwrite {
-			overwrites, err := find_overwrites(staging_dir, dnd.drop_output_dir)
-			if err != nil {
-				return err
-			}
-			if len(overwrites) > 0 {
-				dnd.confirm_drop.overwrites = overwrites
-				dnd.confirm_drop.staging_dir = staging_dir
-				return dnd.render_screen()
-			}
+		overwrites, err := dnd.place_staged_drop(staging_dir, dnd.opts.ConfirmDropOverwrite)
+		if err == nil && len(overwrites) > 0 {
+			dnd.confirm_drop.overwrites = overwrites
+			dnd.confirm_drop.staging_dir = staging_dir
+			return dnd.render_screen()
 		}
-		err := dnd.rename_drop_contents(staging_dir)
 		staging_dir.Close()
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	}
 	return nil
 }
@@ -818,17 +841,36 @@ func same_file(a, b os.FileInfo) (bool, error) {
 	return adev == bdev && aino == bino, nil
 }
 
+func matches_any(info os.FileInfo, candidates []os.FileInfo) (bool, error) {
+	for _, c := range candidates {
+		if same, err := same_file(info, c); err != nil || same {
+			return same, err
+		}
+	}
+	return false, nil
+}
+
+// Return whether dir is one of candidates
+func is_any_of(dir *os.File, candidates []os.FileInfo) (bool, error) {
+	info, err := dir.Stat()
+	if err != nil {
+		return false, err
+	}
+	return matches_any(info, candidates)
+}
+
+// Return whether dest_dir is one of sources or inside one of them.
 // Walk up from dest_dir via .. relative to its file descriptor rather than
 // its path, so that the result is correct even if dest_dir has been moved or
 // its path contains symlinks. Comparing identities handles case aliases and
 // stat only requires search permission on the ancestors.
-func destination_is_within_source(source_info os.FileInfo, dest_dir *os.File) (bool, error) {
+func destination_is_within_source(dest_dir *os.File, sources []os.FileInfo) (bool, error) {
 	info, err := dest_dir.Stat()
 	if err != nil {
 		return false, err
 	}
 	for rel := ".."; ; rel = filepath.Join(rel, "..") {
-		if same, err := same_file(source_info, info); err != nil || same {
+		if same, err := matches_any(info, sources); err != nil || same {
 			return same, err
 		}
 		parent, err := utils.StatAt(dest_dir, rel)
@@ -863,7 +905,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 				return err
 			}
 			if source_info.IsDir() {
-				inside, err := destination_is_within_source(source_info, dnd.drop_output_dir)
+				inside, err := destination_is_within_source(dnd.drop_output_dir, []os.FileInfo{source_info})
 				if err != nil {
 					return err
 				}
@@ -1178,7 +1220,9 @@ func (dnd *dnd) drop_confirm(accepted bool) error {
 		dnd.num_dropped_files = 0
 	}
 	if accepted {
-		if err := dnd.rename_drop_contents(staging_dir); err != nil {
+		// Symlinks in the output directory may have changed while awaiting
+		// confirmation, so place_staged_drop checks them again.
+		if _, err := dnd.place_staged_drop(staging_dir, false); err != nil {
 			dnd.end_drop(false)
 			return err
 		}
