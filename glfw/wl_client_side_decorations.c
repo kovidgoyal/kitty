@@ -253,124 +253,189 @@ segment_distance(double x, double y, double ax, double ay, double bx, double by)
     return hypot(x - ax - t * dx, y - ay - t * dy);
 }
 
+static uint32_t
+blend_colors(uint32_t a, uint32_t b, double t) {
+    t = fmax(0, fmin(1, t));
+    return ARGB(255u, (unsigned)(R(a) * (1 - t) + R(b) * t), (unsigned)(G(a) * (1 - t) + G(b) * t), (unsigned)(B(a) * (1 - t) + B(b) * t));
+}
+
+typedef struct {
+    uint32_t bg, fg, button, hovered_button, pressed_button;
+} TitlebarColors;
+
+static TitlebarColors
+titlebar_colors(_GLFWwindow *window) {
+    static const uint32_t dark_bg = 0xff303030, light_bg = 0xffebebeb;
+    TitlebarColors ans;
+    const GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
+    bool dark = appearance == GLFW_COLOR_SCHEME_DARK;
+    ans.bg = dark ? dark_bg : light_bg;
+    if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
+        // When using system colors and the desktop has no preference, follow
+        // the background color of the active kitty window.
+        const uint32_t color = 0xff000000 | (decs.titlebar_color & 0xffffff);
+        dark = .2126 * R(color) + .7152 * G(color) + .0722 * B(color) < 128;
+        ans.bg = decs.use_custom_titlebar_color ? color : (dark ? dark_bg : light_bg);
+    }
+    const bool focused = window->id == _glfw.focusedWindowId;
+    ans.fg = dark ? (focused ? 0xffeeeeee : 0xffaaaaaa) : (focused ? 0xff333333 : 0xff888888);
+    // Button backgrounds are tints of the titlebar background so that they
+    // fit in with custom titlebar colors as well.
+    static const double dark_tints[3] = {.116, .232, .31}, light_tints[3] = {.09, .187, .277};
+    const double *tints = dark ? dark_tints : light_tints;
+    const uint32_t tint = dark ? 0xffffffff : 0xff000000;
+    ans.button = blend_colors(ans.bg, tint, tints[0]);
+    ans.hovered_button = blend_colors(ans.bg, tint, tints[1]);
+    ans.pressed_button = blend_colors(ans.bg, tint, tints[2]);
+    return ans;
+}
+
+typedef struct {
+    GLFWTitlebarButton which;
+    int left;
+} PlacedTitlebarButton;
+
+static bool
+is_titlebar_button_available(_GLFWwindow *window, GLFWTitlebarButton which) {
+    switch (which) {
+        case TITLEBAR_BUTTON_CLOSE: return true;
+        case TITLEBAR_BUTTON_MAXIMIZE: return window->wl.wm_capabilities.maximize;
+        case TITLEBAR_BUTTON_MINIMIZE: return window->wl.wm_capabilities.minimize;
+        case TITLEBAR_BUTTON_NONE: case TITLEBAR_BUTTON_COUNT: break;
+    }
+    return false;
+}
+
+// Places the buttons from the desktop button layout on the left and right
+// sides of the titlebar, returns the number of buttons placed.
+static unsigned
+layout_titlebar_buttons(_GLFWwindow *window, int width, int slot, int pad, PlacedTitlebarButton *ans, int *side_margin) {
+    const GLFWTitlebarButtonLayout *layout = glfw_current_titlebar_button_layout();
+    bool visible[TITLEBAR_BUTTON_COUNT] = {0};
+    unsigned count = 0;
+    for (unsigned side = 0; side < 2; side++) {
+        const GLFWTitlebarButton *buttons = side ? layout->right : layout->left;
+        const unsigned n = side ? layout->right_count : layout->left_count;
+        for (unsigned i = 0; i < n; i++) {
+            if (!visible[buttons[i]] && is_titlebar_button_available(window, buttons[i])) {
+                visible[buttons[i]] = true;
+                count++;
+            }
+        }
+    }
+    // Hide buttons that dont fit in narrow windows, close is hidden last
+    const unsigned capacity = width > 2 * pad ? (unsigned)((width - 2 * pad) / slot) : 0;
+    static const GLFWTitlebarButton hide_order[] = {TITLEBAR_BUTTON_MINIMIZE, TITLEBAR_BUTTON_MAXIMIZE, TITLEBAR_BUTTON_CLOSE};
+    for (unsigned i = 0; i < arraysz(hide_order) && count > capacity; i++) {
+        if (visible[hide_order[i]]) {
+            visible[hide_order[i]] = false;
+            count--;
+        }
+    }
+    unsigned used = 0;
+    int side_count[2] = {0};
+    for (unsigned side = 0; side < 2; side++) {
+        const GLFWTitlebarButton *buttons = side ? layout->right : layout->left;
+        const unsigned n = side ? layout->right_count : layout->left_count;
+        for (unsigned i = 0; i < n; i++) if (visible[buttons[i]]) side_count[side]++;
+        int left = side ? width - pad - side_count[side] * slot : pad;
+        for (unsigned i = 0; i < n; i++) {
+            if (visible[buttons[i]]) {
+                visible[buttons[i]] = false;  // guard against duplicates
+                ans[used].which = buttons[i];
+                ans[used++].left = left;
+                left += slot;
+            }
+        }
+    }
+    *side_margin = pad + MAX(side_count[0], side_count[1]) * slot;
+    return used;
+}
+
 static void
-render_titlebar_pixels(_GLFWwindow *window, uint8_t *output) {
+render_titlebar_button(
+    uint32_t *pixels, int width, int height, int left, int slot, double scale, GLFWTitlebarButton which, bool maximized, uint32_t fill,
+    uint32_t fg, uint32_t bg) {
+    for (int y = 0; y < height; y++) for (int x = left; x < left + slot; x++) {
+        const double lx = (x + .5 - left - slot / 2.) / scale, ly = (y + .5 - height / 2.) / scale;
+        // a circle of radius 12 with the icon drawn as lines of width 1
+        const double coverage = fmax(0, fmin(1, (12 - hypot(lx, ly)) * scale + .5));
+        double d;
+        switch (which) {
+            case TITLEBAR_BUTTON_CLOSE:
+                d = fmin(segment_distance(lx, ly, -4, -4, 4, 4), segment_distance(lx, ly, -4, 4, 4, -4));
+                break;
+            case TITLEBAR_BUTTON_MINIMIZE: d = segment_distance(lx, ly, -4, 3, 4, 3); break;
+            default: {
+                const double bx = fabs(lx) - 3.5, by = fabs(ly) - 3.5;
+                d = (bx > 0 || by > 0) ? hypot(fmax(0, bx), fmax(0, by)) : fmin(-bx, -by);
+                if (maximized && fmin(segment_distance(lx, ly, -1, -5, 5, -5), segment_distance(lx, ly, 5, -5, 5, 1)) < .75) d = 0;
+            } break;
+        }
+        const double ink = (.5 - d) * scale + .5;
+        pixels[y * width + x] = blend_colors(bg, blend_colors(fill, fg, ink), coverage);
+    }
+}
+
+// Rounds the upper corners of the titlebar, filling the cutouts with the
+// shadow, so that it matches the shadow in the adjacent subsurfaces.
+static void
+render_titlebar_corners(_GLFWwindow *window, uint32_t *pixels, int width, int height, double scale, bool focused) {
+    const size_t shadow_margin = create_shadow_tile(window);
+    const double radius = fmin(12 * scale, fmin(width / 2., height));
+    for (int y = 0; y < (int)ceil(radius); y++) for (int x = 0; x < width; x++) {
+        const double dx = x < width / 2 ? radius - x - .5 : x + .5 - (width - radius);
+        if (dx <= 0) continue;
+        const double coverage = fmax(0, fmin(1, radius - hypot(dx, radius - y - .5) + .5));
+        uint32_t color = coverage_pixel(pixels[y * width + x], coverage);
+        if (decs.shadow_tile.data) {
+            const size_t sx = x < width / 2 ? shadow_margin + x : decs.shadow_tile.stride - shadow_margin - (width - x);
+            const size_t sy = shadow_margin + y;
+            unsigned shadow_alpha = A(decs.shadow_tile.data[sy * decs.shadow_tile.stride + sx]);
+            if (!focused) shadow_alpha /= 2;
+            const unsigned alpha = A(color) + (unsigned)(shadow_alpha * (1 - coverage));
+            color = (color & 0xffffff) | (alpha << 24);
+        }
+        pixels[y * width + x] = color;
+    }
+}
+
+static void
+render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
+    uint32_t *pixels = (uint32_t *)(to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back);
     const int width = decs.titlebar.buffer.width, height = decs.titlebar.buffer.height;
     if (width <= 0 || height <= 0) return;
     const double scale = decs.for_window_state.fscale;
     const bool focused = window->id == _glfw.focusedWindowId;
     const bool docked = window->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED;
     const bool maximized = window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
-    static const uint32_t dark_bg = 0xff303030, light_bg = 0xffebebeb;
-    const GLFWColorScheme appearance = glfwGetCurrentSystemColorTheme(false);
-    bool dark = appearance == GLFW_COLOR_SCHEME_DARK;
-    uint32_t bg = dark ? dark_bg : light_bg;
-    if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
-        // When using system colors and the desktop has no preference, follow
-        // the background color of the active kitty window.
-        const uint32_t color = 0xff000000 | (decs.titlebar_color & 0xffffff);
-        dark = .2126 * R(color) + .7152 * G(color) + .0722 * B(color) < 128;
-        bg = decs.use_custom_titlebar_color ? color : (dark ? dark_bg : light_bg);
-    }
-    uint32_t fg = dark ? (focused ? 0xffeeeeee : 0xffaaaaaa) : (focused ? 0xff333333 : 0xff888888);
-    uint32_t circle = dark ? 0xff484848 : 0xffd6d6d6;
-    uint32_t hover = dark ? 0xff606060 : 0xffbfbfbf;
-    uint32_t *pixels = (uint32_t *)output;
-    for (int i = 0; i < width * height; i++) pixels[i] = bg;
-    decs.minimize.width = decs.maximize.width = decs.close.width = 0;
-    // Keep controls inside narrow windows, prioritizing the close button.
-    int slot = MAX(1, (int)round(36 * scale));
-    int pad = MAX(0, MIN((int)round(6 * scale), (width - slot) / 2));
-    const GLFWTitlebarButtonLayout *layout = glfw_current_titlebar_button_layout();
-    bool visible[4] = {false};
-    for (unsigned side = 0; side < 2; side++) {
-        const int *ids = side ? layout->right : layout->left;
-        unsigned n = side ? layout->right_count : layout->left_count;
-        for (unsigned i = 0; i < n; i++) {
-            int id = ids[i];
-            if (id == 1 || (id == 2 && window->wl.wm_capabilities.maximize) || (id == 3 && window->wl.wm_capabilities.minimize)) visible[id] = true;
-        }
-    }
-    int count = visible[1] + visible[2] + visible[3];
-    int capacity = MAX(0, (width - 2 * pad) / slot);
-    for (int id = 3; id >= 1 && count > capacity; id--) {
-        if (visible[id]) { visible[id] = false; count--; }
-    }
-    int ids[3], positions[3], used = 0, side_count[2] = {0};
-    for (unsigned side = 0; side < 2; side++) {
-        const int *buttons = side ? layout->right : layout->left;
-        unsigned n = side ? layout->right_count : layout->left_count;
-        for (unsigned i = 0; i < n; i++) if (visible[buttons[i]]) side_count[side]++;
-        int left = side ? width - pad - side_count[side] * slot : pad;
-        for (unsigned i = 0; i < n; i++) if (visible[buttons[i]]) {
-            ids[used] = buttons[i];
-            positions[used++] = left;
-            left += slot;
-        }
-    }
-    int margin = pad + MAX(side_count[0], side_count[1]) * slot;
+    const TitlebarColors colors = titlebar_colors(window);
+    for (int i = 0; i < width * height; i++) pixels[i] = colors.bg;
+
+    const int slot = MAX(1, (int)round(36 * scale));
+    const int pad = MAX(0, MIN((int)round(6 * scale), (width - slot) / 2));
+    PlacedTitlebarButton buttons[TITLEBAR_BUTTON_COUNT];
+    int margin;
+    const unsigned num_buttons = layout_titlebar_buttons(window, width, slot, pad, buttons, &margin);
     if (width > 2 * margin && window->wl.title && _glfw.callbacks.draw_text)
-        _glfw.callbacks.draw_text((GLFWwindow *)window, window->wl.title, fg, bg, output,
-            width, height, margin, 0, margin, false);
-    for (int i = 0; i < used; i++) {
-        int button = ids[i] - 1, left = positions[i];
-        bool hovered = button == 0 ? decs.close.hovered : button == 1 ? decs.maximize.hovered : decs.minimize.hovered;
-        uint32_t fill = hovered ? hover : circle;
-        if (hovered && decs.pressed_button == button + 1) fill = dark ? 0xff707070 : 0xffaaaaaa;
-        for (int y = 0; y < height; y++) for (int x = left; x < left + slot; x++) {
-            double lx = (x + .5 - left - slot / 2.) / scale, ly = (y + .5 - height / 2.) / scale;
-            double coverage = fmax(0, fmin(1, (12 - hypot(lx, ly)) * scale + .5));
-            double d;
-            if (button == 0) d = fmin(segment_distance(lx, ly, -4, -4, 4, 4), segment_distance(lx, ly, -4, 4, 4, -4));
-            else if (button == 2) d = segment_distance(lx, ly, -4, 3, 4, 3);
-            else {
-                double bx = fabs(lx) - 3.5, by = fabs(ly) - 3.5;
-                d = (bx > 0 || by > 0) ? hypot(fmax(0, bx), fmax(0, by)) : fmin(-bx, -by);
-                if (maximized) d = fmin(segment_distance(lx, ly, -1, -5, 5, -5), segment_distance(lx, ly, 5, -5, 5, 1)) < .75 ? 0 : d;
-            }
-            double ink = fmax(0, fmin(1, (.5 - d) * scale + .5));
-            uint32_t c = ARGB(255u, (unsigned)(R(fill) * (1 - ink) + R(fg) * ink),
-                (unsigned)(G(fill) * (1 - ink) + G(fg) * ink), (unsigned)(B(fill) * (1 - ink) + B(fg) * ink));
-            pixels[y * width + x] = ARGB(255u, (unsigned)(R(bg) * (1 - coverage) + R(c) * coverage),
-                (unsigned)(G(bg) * (1 - coverage) + G(c) * coverage), (unsigned)(B(bg) * (1 - coverage) + B(c) * coverage));
-        }
-#define bounds(which) decs.which.left = left; decs.which.width = slot
-        if (button == 0) { bounds(close); }
-        else if (button == 1) { bounds(maximize); }
-        else { bounds(minimize); }
-#undef bounds
+        _glfw.callbacks.draw_text(
+            (GLFWwindow *)window, window->wl.title, colors.fg, colors.bg, (uint8_t *)pixels, width, height, margin, 0, margin, false);
+
+    decs.minimize.width = decs.maximize.width = decs.close.width = 0;
+    for (unsigned i = 0; i < num_buttons; i++) {
+        __typeof__(decs.close) *state = buttons[i].which == TITLEBAR_BUTTON_CLOSE ? &decs.close :
+            buttons[i].which == TITLEBAR_BUTTON_MAXIMIZE ? &decs.maximize : &decs.minimize;
+        state->left = buttons[i].left;
+        state->width = slot;
+        uint32_t fill = colors.button;
+        if (state->hovered) fill = decs.pressed_button == (int)buttons[i].which ? colors.pressed_button : colors.hovered_button;
+        render_titlebar_button(pixels, width, height, buttons[i].left, slot, scale, buttons[i].which, maximized, fill, colors.fg, colors.bg);
     }
     if (!decs.close.width) decs.close.hovered = false;
     if (!decs.maximize.width) decs.maximize.hovered = false;
     if (!decs.minimize.width) decs.minimize.hovered = false;
-    // The terminal owns the bottom corners. Only the separate header is clipped.
-    if (!docked) {
-        const size_t shadow_margin = create_shadow_tile(window);
-        double radius = fmin(12 * scale, fmin(width / 2., height));
-        for (int y = 0; y < (int)ceil(radius); y++) for (int x = 0; x < width; x++) {
-            double dx = x < width / 2 ? radius - x - .5 : x + .5 - (width - radius);
-            if (dx <= 0) continue;
-            double coverage = fmax(0, fmin(1, radius - hypot(dx, radius - y - .5) + .5));
-            uint32_t color = coverage_pixel(pixels[y * width + x], coverage);
-            // The header occupies a rectangular subsurface. Its transparent
-            // cutouts must contain the same shadow as the adjacent subsurfaces,
-            // otherwise their straight boundary remains visible at the corner.
-            if (decs.shadow_tile.data) {
-                size_t sx = x < width / 2 ? shadow_margin + x : decs.shadow_tile.stride - shadow_margin - (width - x);
-                size_t sy = shadow_margin + y;
-                unsigned shadow_alpha = A(decs.shadow_tile.data[sy * decs.shadow_tile.stride + sx]);
-                if (!focused) shadow_alpha /= 2;
-                unsigned alpha = A(color) + (unsigned)(shadow_alpha * (1 - coverage));
-                color = (color & 0xffffff) | (alpha << 24);
-            }
-            pixels[y * width + x] = color;
-        }
-    }
-}
-
-static void
-render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
-    render_titlebar_pixels(window, to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back);
+    // The terminal owns the bottom corners, only the separate header is rounded
+    if (!docked) render_titlebar_corners(window, pixels, width, height, scale, focused);
 }
 
 static void
@@ -823,7 +888,7 @@ handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
     }
 #undef c
     decs.focus = CENTRAL_WINDOW;
-    decs.pressed_button = 0;
+    decs.pressed_button = TITLEBAR_BUTTON_NONE;
     decs.dragging = false;
 }
 
@@ -869,9 +934,11 @@ static void
 perform_titlebar_action(_GLFWwindow *window, GLFWTitlebarAction action) {
     switch (action) {
         case TITLEBAR_ACTION_MENU:
-            if (window->wl.xdg.toplevel && window->wl.wm_capabilities.window_menu)
-                xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial,
-                    (int32_t)x, (int32_t)y - decs.metrics.top);
+            if (!window->wl.xdg.toplevel) break;
+            if (window->wl.wm_capabilities.window_menu)
+                xdg_toplevel_show_window_menu(
+                    window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - decs.metrics.top);
+            else _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing window menu");
             break;
         case TITLEBAR_ACTION_MAXIMIZE:
             if (window->wl.wm_capabilities.maximize) {
@@ -894,19 +961,25 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
             case CENTRAL_WINDOW: break;
             case CSD_titlebar:
                 if (has_hovered_button(window) || decs.pressed_button) {
-                    int hovered = decs.close.hovered ? 1 : decs.maximize.hovered ? 2 : decs.minimize.hovered ? 3 : 0;
+                    const GLFWTitlebarButton hovered = decs.close.hovered ? TITLEBAR_BUTTON_CLOSE :
+                        decs.maximize.hovered ? TITLEBAR_BUTTON_MAXIMIZE : decs.minimize.hovered ? TITLEBAR_BUTTON_MINIMIZE : TITLEBAR_BUTTON_NONE;
                     decs.dragging = false;
                     decs.titlebar_needs_update = true;
                     decs.last_click_on_top_decoration_at = 0;
                     if (state == WL_POINTER_BUTTON_STATE_PRESSED) decs.pressed_button = hovered;
                     else {
-                        int pressed = decs.pressed_button;
-                        decs.pressed_button = 0;
-                        if (pressed && pressed == hovered) {
-                            if (pressed == 1) _glfwInputWindowCloseRequest(window);
-                            else if (pressed == 3) _glfwPlatformIconifyWindow(window);
-                            else if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
-                            else _glfwPlatformMaximizeWindow(window);
+                        const GLFWTitlebarButton pressed = decs.pressed_button;
+                        decs.pressed_button = TITLEBAR_BUTTON_NONE;
+                        if (pressed == hovered) {
+                            switch (pressed) {
+                                case TITLEBAR_BUTTON_CLOSE: _glfwInputWindowCloseRequest(window); break;
+                                case TITLEBAR_BUTTON_MINIMIZE: _glfwPlatformIconifyWindow(window); break;
+                                case TITLEBAR_BUTTON_MAXIMIZE:
+                                    if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
+                                    else _glfwPlatformMaximizeWindow(window);
+                                    break;
+                                case TITLEBAR_BUTTON_NONE: case TITLEBAR_BUTTON_COUNT: break;
+                            }
                         }
                     }
                     break;
@@ -916,7 +989,7 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                     decs.last_click_on_top_decoration_at = monotonic();
                     if (decs.last_click_on_top_decoration_at - last_click_at <= _glfwPlatformGetDoubleClickInterval(window)) {
                         decs.last_click_on_top_decoration_at = 0;
-                        perform_titlebar_action(window, glfw_current_titlebar_action(0));
+                        perform_titlebar_action(window, glfw_current_titlebar_action(TITLEBAR_GESTURE_DOUBLE_CLICK));
                         return;
                     }
                 }
@@ -934,7 +1007,8 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
         if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, edges);
     } else if ((button == BTN_RIGHT || button == BTN_MIDDLE) && state == WL_POINTER_BUTTON_STATE_PRESSED) {
         if (decs.focus == CSD_titlebar)
-            perform_titlebar_action(window, glfw_current_titlebar_action(button == BTN_MIDDLE ? 1 : 2));
+            perform_titlebar_action(
+                window, glfw_current_titlebar_action(button == BTN_MIDDLE ? TITLEBAR_GESTURE_MIDDLE_CLICK : TITLEBAR_GESTURE_RIGHT_CLICK));
     }
 }
 

@@ -3158,7 +3158,7 @@ update_titlebar_height(_GLFWwindow *window) {
 void
 _glfwPlatformTitlebarSettingsChanged(void) {
     for (_GLFWwindow *w = _glfw.windowListHead; w; w = w->next) {
-        w->wl.decorations.pressed_button = 0;
+        w->wl.decorations.pressed_button = TITLEBAR_BUTTON_NONE;
         w->wl.decorations.close.hovered = w->wl.decorations.maximize.hovered = w->wl.decorations.minimize.hovered = false;
         update_titlebar_height(w);
         if (csd_change_title(w)) commit_window_surface_if_safe(w);

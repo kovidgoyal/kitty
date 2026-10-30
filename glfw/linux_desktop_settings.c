@@ -27,11 +27,13 @@ static char interface_font[256];
 static char titlebar_font[256];
 static bool titlebar_uses_system_font = true;
 static double titlebar_text_scale = 1.;
-static GLFWTitlebarAction titlebar_actions[] = {TITLEBAR_ACTION_MAXIMIZE, TITLEBAR_ACTION_NONE, TITLEBAR_ACTION_MENU};
-GLFWTitlebarAction glfw_current_titlebar_action(unsigned gesture) {
+static GLFWTitlebarAction titlebar_actions[TITLEBAR_GESTURE_COUNT] = {TITLEBAR_ACTION_MAXIMIZE, TITLEBAR_ACTION_NONE, TITLEBAR_ACTION_MENU};
+GLFWTitlebarAction
+glfw_current_titlebar_action(GLFWTitlebarGesture gesture) {
     return gesture < arraysz(titlebar_actions) ? titlebar_actions[gesture] : TITLEBAR_ACTION_NONE;
 }
-static GLFWTitlebarButtonLayout button_layout = {.right = {3, 2, 1}, .right_count = 3};
+static GLFWTitlebarButtonLayout button_layout = {
+    .right = {TITLEBAR_BUTTON_MINIMIZE, TITLEBAR_BUTTON_MAXIMIZE, TITLEBAR_BUTTON_CLOSE}, .right_count = 3};
 
 const GLFWTitlebarButtonLayout *
 glfw_current_titlebar_button_layout(void) { return &button_layout; }
@@ -135,20 +137,23 @@ parse_button_layout(const char *value, GLFWTitlebarButtonLayout *out) {
     if (!value || strlen(value) >= 256) return false;
     char copy[256];
     snprintf(copy, sizeof(copy), "%s", value);
+    // Same semantics as GTK: buttons before the colon are on the left, after it
+    // on the right, no colon means all buttons are on the left.
     char *colon = strchr(copy, ':');
-    if (!colon || strchr(colon + 1, ':')) return false;
-    *colon = 0;
+    if (colon) *colon = 0;
     memset(out, 0, sizeof(*out));
-    bool seen[4] = {false};
+    bool seen[TITLEBAR_BUTTON_COUNT] = {false};
     for (int side = 0; side < 2; side++) {
-        char *token = side ? colon + 1 : copy;
+        char *token = side ? (colon ? colon + 1 : NULL) : copy;
         while (token && *token) {
             char *next = strchr(token, ',');
             if (next) *next++ = 0;
             while (*token == ' ') token++;
             char *end = token + strlen(token);
             while (end > token && end[-1] == ' ') *--end = 0;
-            int id = strcmp(token, "close") == 0 ? 1 : strcmp(token, "maximize") == 0 ? 2 : strcmp(token, "minimize") == 0 ? 3 : 0;
+            const GLFWTitlebarButton id = strcmp(token, "close") == 0 ? TITLEBAR_BUTTON_CLOSE :
+                strcmp(token, "maximize") == 0 ? TITLEBAR_BUTTON_MAXIMIZE :
+                strcmp(token, "minimize") == 0 ? TITLEBAR_BUTTON_MINIMIZE : TITLEBAR_BUTTON_NONE;
             if (id && !seen[id]) {
                 seen[id] = true;
                 if (side) out->right[out->right_count++] = id;
@@ -188,7 +193,11 @@ process_wm_setting(const char *key, DBusMessageIter *value) {
             changed = true;
         }
     }
-    static const char *action_keys[] = {"action-double-click-titlebar", "action-middle-click-titlebar", "action-right-click-titlebar"};
+    static const char *action_keys[TITLEBAR_GESTURE_COUNT] = {
+        [TITLEBAR_GESTURE_DOUBLE_CLICK] = "action-double-click-titlebar",
+        [TITLEBAR_GESTURE_MIDDLE_CLICK] = "action-middle-click-titlebar",
+        [TITLEBAR_GESTURE_RIGHT_CLICK] = "action-right-click-titlebar",
+    };
     for (unsigned i = 0; i < arraysz(action_keys); i++) {
         if (strcmp(key, action_keys[i]) == 0 && dbus_message_iter_get_arg_type(value) == DBUS_TYPE_STRING) {
             const char *name;
