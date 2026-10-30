@@ -19,10 +19,11 @@ func (r button_region) has(x, y int) bool {
 }
 
 func truncate_at_space(text string, width int) (string, string) {
-	truncated, p := wcswidth.TruncateToVisualLengthWithWidth(text, width)
+	truncated := wcswidth.TruncateToVisualLength(text, width)
 	if len(truncated) == len(text) {
 		return text, ""
 	}
+	p := len(truncated)
 	i := strings.LastIndexByte(truncated, ' ')
 	if i > 0 && p-i < 12 {
 		p = i + 1
@@ -33,9 +34,12 @@ func truncate_at_space(text string, width int) (string, string) {
 func paragraph_as_lines(text string, width int) (ans []string) {
 	for text != "" {
 		var line string
-		if line, text = truncate_at_space(text, width); line != "" {
-			ans = append(ans, line)
+		if line, text = truncate_at_space(text, width); line == "" {
+			// width too small to fit even a single character
+			ans = append(ans, text)
+			break
 		}
+		ans = append(ans, line)
 	}
 	return
 }
@@ -75,7 +79,7 @@ func (dnd *dnd) render_screen() error {
 		sz, _ := lp.ScreenSize()
 		next_line()
 		next_line()
-		overwrites := dnd.confirm_drop.overwrites[:min(int(sz.HeightCells)-y-1, len(dnd.confirm_drop.overwrites))]
+		overwrites := dnd.confirm_drop.overwrites[:max(0, min(int(sz.HeightCells)-y-1, len(dnd.confirm_drop.overwrites)))]
 		for _, x := range overwrites {
 			lp.Println(x)
 		}
