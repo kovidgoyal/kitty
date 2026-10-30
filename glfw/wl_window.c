@@ -32,6 +32,7 @@
 #include "backend_utils.h"
 #include "linux_notify.h"
 #include "linux_session_monitor.h"
+#include "linux_desktop_settings.h"
 #include "wl_client_side_decorations.h"
 #include "../kitty/monotonic.h"
 
@@ -1552,6 +1553,10 @@ int
 _glfwPlatformCreateWindow(
     _GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig, const GLFWLayerShellConfig *lsc) {
     window->wl.layer_shell.config = lsc ? *lsc : (GLFWLayerShellConfig){0};
+    // Compositors without xdg-decoration such as mutter need client side
+    // decorations, whose titlebar height depends on desktop settings. Wait
+    // briefly for them, to avoid resizing the window right after it is mapped.
+    if (!_glfw.wl.decorationManager && wndconfig->decorated && !is_layer_shell(window)) glfw_wait_for_desktop_settings(ms_to_monotonic_t(200ll));
     csd_initialize_metrics(window);
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));

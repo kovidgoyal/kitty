@@ -144,7 +144,7 @@ process_wm_setting(const char *key, DBusMessageIter *value) {
 
 static int theme_size = -1;
 static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
-static bool cursor_theme_changed = false, appearance_initialized = false;
+static bool cursor_theme_changed = false, appearance_initialized = false, desktop_settings_pending = false;
 
 static void
 set_queried_appearance(uint32_t value) {
@@ -353,6 +353,12 @@ if (cursor_theme_changed) _glfwPlatformChangeCursorTheme();
 
 #undef HANDLER
 
+static void
+on_desktop_settings_reply(DBusMessage *msg, const DBusError *err, void *data) {
+    desktop_settings_pending = false;
+    process_desktop_settings(msg, err, data);
+}
+
 static bool
 read_desktop_settings(DBusConnection *session_bus) {
     RAII_MSG(msg, dbus_message_new_method_call(DESKTOP_SERVICE, DESKTOP_PATH, DESKTOP_INTERFACE, "ReadAll"));
@@ -364,7 +370,22 @@ read_desktop_settings(DBusConnection *session_bus) {
         if (!dbus_message_iter_append_basic(&array_iter, DBUS_TYPE_STRING, &supported_namespaces[i])) return false;
     }
     if (!dbus_message_iter_close_container(&iter, &array_iter)) { return false; }
-    return call_method_with_msg(session_bus, msg, DBUS_TIMEOUT_USE_DEFAULT, process_desktop_settings, NULL, false);
+    desktop_settings_pending = call_method_with_msg(session_bus, msg, DBUS_TIMEOUT_USE_DEFAULT, on_desktop_settings_reply, NULL, false);
+    return desktop_settings_pending;
+}
+
+void
+glfw_wait_for_desktop_settings(monotonic_t timeout) {
+    // Wait for the reply to the asynchronous ReadAll request sent at startup,
+    // dispatching only the session bus.
+    if (!desktop_settings_pending) return;
+    DBusConnection *session_bus = glfw_dbus_session_bus();
+    if (!session_bus) return;
+    const monotonic_t deadline = monotonic() + timeout;
+    for (monotonic_t now = monotonic(); desktop_settings_pending && now < deadline; now = monotonic()) {
+        if (!dbus_connection_read_write_dispatch(session_bus, MAX(1, (int)monotonic_t_to_ms_ceil(deadline - now)))) break;
+    }
+    if (desktop_settings_pending) debug_rendering("Timed out waiting for desktop settings from the portal\n");
 }
 
 void
