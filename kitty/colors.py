@@ -3,7 +3,7 @@
 
 import os
 from collections.abc import Iterable, Sequence
-from contextlib import suppress
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal, Optional, TypedDict, cast
 
@@ -50,13 +50,25 @@ class ThemeFile(Enum):
     no_preference = 'no-preference-theme.auto.conf'
 
 
+theme_file_schemes: dict[str, ColorSchemes] = {ThemeFile.dark.value: 'dark', ThemeFile.light.value: 'light', ThemeFile.no_preference.value: 'no_preference'}
+
+
+@dataclass
+class AutoTheme:
+    # mtime is -1 when there is no theme file for this color scheme
+    mtime: int = -1
+    spec: ColorsSpec = field(default_factory=dict)
+    tbc: TransparentBackgroundColors = ()
+    background_image_options: BackgroundImageOptions = field(default_factory=lambda: BackgroundImageOptions())
+
+
 class ThemeColors:
-    dark_mtime: int = -1
-    light_mtime: int = -1
-    no_preference_mtime: int = -1
     applied_theme: Literal['light', 'dark', 'no_preference', ''] = ''
     default_colors: ColorsSpec | None = None
     default_background_image_options: BackgroundImageOptions | None = None
+
+    def __init__(self) -> None:
+        self.themes: dict[ColorSchemes, AutoTheme] = {'dark': AutoTheme(), 'light': AutoTheme(), 'no_preference': AutoTheme()}
 
     def get_default_colors(self) -> ColorsSpec:
         if self.default_colors is None:
@@ -88,72 +100,53 @@ class ThemeColors:
         return ans, (() if tbc is None else tbc)
 
     def refresh(self) -> bool:
-        found = False
+        "Load new or modified theme files and forget deleted ones. Returns True if any theme changed."
+        changed = False
         if config_dir_files_ignored():
-            return found
-        d: BackgroundImageOptions
-        with suppress(FileNotFoundError):
-            for x in os.scandir(config_dir):
-                if x.name == ThemeFile.dark.value:
-                    mtime = x.stat().st_mtime_ns
-                    if mtime > self.dark_mtime:
-                        with open(x.path) as f:
-                            d = {}
-                            self.dark_spec, self.dark_tbc = self.parse_colors(f, d)
-                            self.dark_background_image_options = d
-                        self.dark_mtime = mtime
-                        found = True
-                elif x.name == ThemeFile.light.value:
-                    mtime = x.stat().st_mtime_ns
-                    if mtime > self.light_mtime:
-                        with open(x.path) as f:
-                            d = {}
-                            self.light_spec, self.light_tbc = self.parse_colors(f, d)
-                            self.light_background_image_options = d
-                        self.light_mtime = mtime
-                        found = True
-                elif x.name == ThemeFile.no_preference.value:
-                    mtime = x.stat().st_mtime_ns
-                    if mtime > self.no_preference_mtime:
-                        with open(x.path) as f:
-                            d = {}
-                            self.no_preference_spec, self.no_preference_tbc = self.parse_colors(f, d)
-                            self.no_preference_background_image_options = d
-                        self.no_preference_mtime = mtime
-                        found = True
-        for theme in ThemeFile:
-            name = theme.name
-            if getattr(self, f'{name}_mtime') > -1 and not os.path.exists(os.path.join(config_dir, theme.value)):
-                setattr(self, f'{name}_mtime', -1)
-                setattr(self, f'{name}_spec', {})
-                setattr(self, f'{name}_tbc', ())
-                setattr(self, f'{name}_background_image_options', {})
-                found = True
-        return found
+            return changed
+        present: set[ColorSchemes] = set()
+        try:
+            entries = list(os.scandir(config_dir))
+        except FileNotFoundError:
+            entries = []
+        for x in entries:
+            if (scheme := theme_file_schemes.get(x.name)) is None:
+                continue
+            theme = self.themes[scheme]
+            try:
+                mtime = x.stat().st_mtime_ns
+                if mtime > theme.mtime:
+                    bgo: BackgroundImageOptions = {}
+                    with open(x.path) as f:
+                        spec, tbc = self.parse_colors(f, bgo)
+                    self.themes[scheme] = AutoTheme(mtime, spec, tbc, bgo)
+                    changed = True
+            except FileNotFoundError:
+                continue  # deleted after the directory was scanned
+            present.add(scheme)
+        for scheme, theme in tuple(self.themes.items()):
+            if theme.mtime > -1 and scheme not in present:
+                self.themes[scheme] = AutoTheme()
+                if self.applied_theme == scheme:
+                    self.applied_theme = ''
+                changed = True
+        return changed
 
     @property
     def has_applied_theme(self) -> bool:
-        match self.applied_theme:
-            case '':
-                return False
-            case 'dark':
-                return self.has_dark_theme
-            case 'light':
-                return self.has_light_theme
-            case 'no_preference':
-                return self.has_no_preference_theme
+        return self.applied_theme != '' and self.themes[self.applied_theme].mtime > -1
 
     @property
     def has_dark_theme(self) -> bool:
-        return self.dark_mtime > -1
+        return self.themes['dark'].mtime > -1
 
     @property
     def has_light_theme(self) -> bool:
-        return self.light_mtime > -1
+        return self.themes['light'].mtime > -1
 
     @property
     def has_no_preference_theme(self) -> bool:
-        return self.no_preference_mtime > -1
+        return self.themes['no_preference'].mtime > -1
 
     def patch_opts(self, opts: Options, debug_rendering: bool = False) -> None:
         from .utils import log_error
@@ -163,20 +156,10 @@ class ThemeColors:
         which = glfw_get_system_color_theme()
         if debug_rendering:
             log_error('Current system color scheme:', which)
-        cols: Colors | None = None
-        bgo: BackgroundImageOptions | None = None
-        if which == 'dark' and self.has_dark_theme:
-            cols = self.dark_spec, self.dark_tbc
-            bgo = self.dark_background_image_options
-        elif which == 'light' and self.has_light_theme:
-            cols = self.light_spec, self.light_tbc
-            bgo = self.light_background_image_options
-        elif which == 'no_preference' and self.has_no_preference_theme:
-            cols = self.no_preference_spec, self.no_preference_tbc
-            bgo = self.no_preference_background_image_options
-        if cols is not None:
-            patch_options_with_color_spec(opts, *cols, background_image_options=bgo)
-            patch_global_colors(cols[0], True)
+        theme = self.themes[which]
+        if theme.mtime > -1:
+            patch_options_with_color_spec(opts, theme.spec, theme.tbc, background_image_options=theme.background_image_options)
+            patch_global_colors(theme.spec, True)
             self.applied_theme = which
             if debug_rendering:
                 log_error(f'Applied {self.applied_theme} color theme')
@@ -187,39 +170,26 @@ class ThemeColors:
         self.refresh()
         return self.apply_theme(new_value)
 
+    def on_config_reload(self) -> None:
+        # Reloading the config resets colors to those from kitty.conf, so apply the
+        # theme for the current system color scheme, if any. Theme files are
+        # always re-read so that ones created or deleted since the last refresh
+        # are picked up.
+        self.refresh()
+        if not self.apply_theme(glfw_get_system_color_theme(), notify_on_bg_change=False):
+            self.applied_theme = ''
+
     def apply_theme(self, new_value: ColorSchemes, notify_on_bg_change: bool = True) -> bool:
         from .utils import log_error
 
-        boss = get_boss()
-        if new_value == 'dark' and self.has_dark_theme:
-            patch_colors(
-                self.dark_spec, self.dark_tbc, True, notify_on_bg_change=notify_on_bg_change, background_image_options=self.dark_background_image_options
-            )
-            self.applied_theme = new_value
-            if boss.args.debug_rendering:
-                log_error(f'Applied color theme {new_value}')
-            return True
-        if new_value == 'light' and self.has_light_theme:
-            patch_colors(
-                self.light_spec, self.light_tbc, True, notify_on_bg_change=notify_on_bg_change, background_image_options=self.light_background_image_options
-            )
-            self.applied_theme = new_value
-            if boss.args.debug_rendering:
-                log_error(f'Applied color theme {new_value}')
-            return True
-        if new_value == 'no_preference' and self.has_no_preference_theme:
-            patch_colors(
-                self.no_preference_spec,
-                self.no_preference_tbc,
-                True,
-                notify_on_bg_change=notify_on_bg_change,
-                background_image_options=self.no_preference_background_image_options,
-            )
-            self.applied_theme = new_value
-            if boss.args.debug_rendering:
-                log_error(f'Applied color theme {new_value}')
-            return True
-        return False
+        theme = self.themes[new_value]
+        if theme.mtime < 0:
+            return False
+        patch_colors(theme.spec, theme.tbc, True, notify_on_bg_change=notify_on_bg_change, background_image_options=theme.background_image_options)
+        self.applied_theme = new_value
+        if get_boss().args.debug_rendering:
+            log_error(f'Applied color theme {new_value}')
+        return True
 
 
 theme_colors = ThemeColors()

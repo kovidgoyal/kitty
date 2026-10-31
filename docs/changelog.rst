@@ -429,7 +429,8 @@ Detailed list of changes
   containing spaces or quoting characters (:pull:`10784`)
 
 - Automatic color themes: Stop using cached colors and background images after
-  the corresponding theme file has been deleted
+  the corresponding theme file has been deleted and apply theme files created
+  after kitty was started when reloading the config (:pull:`10786`)
 
 - Themes kitten: Fix overwriting the Unicode input kitten's recent entries
   and input mode, and vice versa, by using separate caches (:pull:`10780`)

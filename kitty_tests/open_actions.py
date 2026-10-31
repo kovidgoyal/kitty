@@ -106,11 +106,12 @@ action two
         from types import SimpleNamespace
         from unittest.mock import patch
 
-        from kitty.colors import ThemeColors, ThemeFile
+        from kitty.colors import ThemeColors, ThemeFile, theme_file_schemes
 
         self.set_options()
         boss = SimpleNamespace(args=SimpleNamespace(debug_rendering=False))
         for theme in ThemeFile:
+            scheme = theme_file_schemes[theme.value]
             for remove_directory in (False, True):
                 with self.subTest(theme=theme.name, remove_directory=remove_directory), tempfile.TemporaryDirectory() as tdir:
                     config_dir = os.path.join(tdir, 'kitty')
@@ -126,20 +127,21 @@ action two
                     ):
                         tc = ThemeColors()
                         self.assertTrue(tc.refresh())
-                        self.assertTrue(tc.apply_theme(theme.name))
-                        mtime = getattr(tc, f'{theme.name}_mtime')
+                        self.assertTrue(tc.apply_theme(scheme))
+                        mtime = tc.themes[scheme].mtime
                         apply.reset_mock()
                         if remove_directory:
                             shutil.rmtree(config_dir)
                         else:
                             os.unlink(os.path.join(config_dir, theme.value))
                         changed = tc.refresh()
-                        self.assertFalse(tc.apply_theme(theme.name), 'Deleted automatic theme was applied again')
+                        self.assertFalse(tc.apply_theme(scheme), 'Deleted automatic theme was applied again')
                         self.assertFalse(tc.has_applied_theme)
+                        self.ae(tc.applied_theme, '')
                         for other in ThemeFile:
                             self.ae(getattr(tc, f'has_{other.name}_theme'), not remove_directory and other is not theme)
                         self.assertFalse(tc.refresh())
-                        self.assertFalse(tc.on_system_color_scheme_change(theme.name))
+                        self.assertFalse(tc.on_system_color_scheme_change(scheme))
                         apply.assert_not_called()
                         self.assertTrue(changed)
                         os.makedirs(config_dir, exist_ok=True)
@@ -148,12 +150,64 @@ action two
                             f.write('background #abcdef\n')
                         os.utime(path, ns=(mtime, mtime))
                         self.assertTrue(tc.refresh())
-                        self.assertTrue(tc.apply_theme(theme.name))
+                        self.assertTrue(tc.apply_theme(scheme))
                         apply.assert_called_once()
                         self.ae(apply.call_args.args[0]['background'], 0xABCDEF)
                         self.ae(apply.call_args.args[1], ())
                         self.ae(apply.call_args.kwargs['background_image_options']['background_image'], ())
                         self.assertFalse(tc.refresh())
+
+    def test_auto_theme_config_reload(self):
+        import tempfile
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from kitty.colors import ThemeColors, ThemeFile
+
+        self.set_options()
+        boss = SimpleNamespace(args=SimpleNamespace(debug_rendering=False))
+        with tempfile.TemporaryDirectory() as config_dir:
+            path = os.path.join(config_dir, ThemeFile.dark.value)
+            with (
+                patch('kitty.colors.config_dir', config_dir),
+                patch('kitty.colors.config_dir_files_ignored', return_value=False),
+                patch('kitty.colors.get_boss', return_value=boss),
+                patch('kitty.colors.glfw_get_system_color_theme', return_value='dark'),
+                patch('kitty.colors.patch_colors') as apply,
+            ):
+                tc = ThemeColors()
+                # No theme file: reloading applies nothing
+                tc.on_config_reload()
+                apply.assert_not_called()
+                self.ae(tc.applied_theme, '')
+                # A theme file created after startup is applied on reload
+                with open(path, 'w') as f:
+                    f.write('background #111111\n')
+                tc.on_config_reload()
+                apply.assert_called_once()
+                self.ae(apply.call_args.args[0]['background'], 0x111111)
+                self.ae(tc.applied_theme, 'dark')
+                # Deleting it stops it from being applied
+                apply.reset_mock()
+                os.unlink(path)
+                tc.on_config_reload()
+                apply.assert_not_called()
+                self.ae(tc.applied_theme, '')
+                # Re-creating it applies it again
+                with open(path, 'w') as f:
+                    f.write('background #222222\n')
+                tc.on_config_reload()
+                apply.assert_called_once()
+                self.ae(apply.call_args.args[0]['background'], 0x222222)
+                self.ae(tc.applied_theme, 'dark')
+                # A theme only for a different color scheme is not applied
+                apply.reset_mock()
+                os.rename(path, os.path.join(config_dir, ThemeFile.light.value))
+                tc.on_config_reload()
+                apply.assert_not_called()
+                self.ae(tc.applied_theme, '')
+                self.assertTrue(tc.has_light_theme)
+                self.assertFalse(tc.has_dark_theme)
 
     def test_mime_cache(self):
         import shutil
