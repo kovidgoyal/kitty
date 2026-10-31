@@ -396,6 +396,23 @@ func patch_portals_conf(text []byte) []byte {
 	return utils.UnsafeStringToBytes(strings.Join(lines, "\n"))
 }
 
+// dbus_service_exec_line returns the value for the Exec key of a D-Bus
+// .service file. D-Bus first unescapes the value (\\, \n, \t) and then
+// parses it as a shell-style command line.
+func dbus_service_exec_line(argv ...string) (string, error) {
+	quoted := make([]string, len(argv))
+	for i, arg := range argv {
+		// D-Bus decodes \r as a newline and rejects files with a raw CR
+		if strings.ContainsRune(arg, '\r') {
+			return "", fmt.Errorf("cannot use %#v in a D-Bus service file as it contains a carriage return", arg)
+		}
+		quoted[i] = dbus_service_value_escaper.Replace(shlex.Quote(arg))
+	}
+	return strings.Join(quoted, " "), nil
+}
+
+var dbus_service_value_escaper = strings.NewReplacer(`\`, `\\`, "\n", `\n`, "\t", `\t`)
+
 func enable_portal() (err error) {
 	if len(WritableDataDirs()) == 0 {
 		return fmt.Errorf("Could not find any writable data directories. Make sure XDG_DATA_DIRS is set and contains at least one directory for which you have write permission")
@@ -442,15 +459,15 @@ Interfaces=%s;
 	if exe_path, err = filepath.Abs(exe_path); err != nil {
 		return fmt.Errorf("failed to get path to kitten executable with error: %w", err)
 	}
-	// D-Bus unescapes .service values before parsing Exec as a command line.
-	exe_path = strings.NewReplacer(
-		`\`, `\\`, "\n", `\n`, "\r", `\r`, "\t", `\t`,
-	).Replace(shlex.Quote(exe_path))
+	exec_line, err := dbus_service_exec_line(exe_path, "desktop-ui", "run-server")
+	if err != nil {
+		return err
+	}
 	if err = os.WriteFile(dbus_service_defn, utils.UnsafeStringToBytes(fmt.Sprintf(
 		`[D-BUS Service]
 Name=%s
-Exec=%s desktop-ui run-server
-`, PORTAL_BUS_NAME, exe_path)), 0o644); err != nil {
+Exec=%s
+`, PORTAL_BUS_NAME, exec_line)), 0o644); err != nil {
 		return err
 	}
 	fmt.Println("Wrote kitty DBUS activation service file to:", dbus_service_defn)
