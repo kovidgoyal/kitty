@@ -22,6 +22,7 @@ import (
 	"github.com/kovidgoyal/dbus/introspect"
 	"github.com/kovidgoyal/dbus/prop"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"golang.org/x/sys/unix"
 )
@@ -441,6 +442,10 @@ Interfaces=%s;
 	if exe_path, err = filepath.Abs(exe_path); err != nil {
 		return fmt.Errorf("failed to get path to kitten executable with error: %w", err)
 	}
+	// D-Bus unescapes .service values before parsing Exec as a command line.
+	exe_path = strings.NewReplacer(
+		`\`, `\\`, "\n", `\n`, "\r", `\r`, "\t", `\t`,
+	).Replace(shlex.Quote(exe_path))
 	if err = os.WriteFile(dbus_service_defn, utils.UnsafeStringToBytes(fmt.Sprintf(
 		`[D-BUS Service]
 Name=%s

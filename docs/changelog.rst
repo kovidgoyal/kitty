@@ -425,6 +425,9 @@ Detailed list of changes
   silently died and fix colors 16-255 being set to white with themes that do
   not define them (:iss:`10691`, :iss:`10661`, :pull:`10727`, :pull:`10737`)
 
+- Desktop UI kitten: Fix D-Bus activation when kitten is installed in a path
+  containing spaces or quoting characters
+
 - Themes kitten: Fix overwriting the Unicode input kitten's recent entries
   and input mode, and vice versa, by using separate caches (:pull:`10780`)
 
