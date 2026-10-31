@@ -100,6 +100,61 @@ action two
                 check(False)
                 check(True)
 
+    def test_auto_theme_file_deletion(self):
+        import shutil
+        import tempfile
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from kitty.colors import ThemeColors, ThemeFile
+
+        self.set_options()
+        boss = SimpleNamespace(args=SimpleNamespace(debug_rendering=False))
+        for theme in ThemeFile:
+            for remove_directory in (False, True):
+                with self.subTest(theme=theme.name, remove_directory=remove_directory), tempfile.TemporaryDirectory() as tdir:
+                    config_dir = os.path.join(tdir, 'kitty')
+                    os.mkdir(config_dir)
+                    for other in ThemeFile:
+                        with open(os.path.join(config_dir, other.value), 'w') as f:
+                            f.write('background #123456\nbackground_image /tmp/kitty-auto-theme.png\ntransparent_background_colors #234567@0.5\n')
+                    with (
+                        patch('kitty.colors.config_dir', config_dir),
+                        patch('kitty.colors.config_dir_files_ignored', return_value=False),
+                        patch('kitty.colors.get_boss', return_value=boss),
+                        patch('kitty.colors.patch_colors') as apply,
+                    ):
+                        tc = ThemeColors()
+                        self.assertTrue(tc.refresh())
+                        self.assertTrue(tc.apply_theme(theme.name))
+                        mtime = getattr(tc, f'{theme.name}_mtime')
+                        apply.reset_mock()
+                        if remove_directory:
+                            shutil.rmtree(config_dir)
+                        else:
+                            os.unlink(os.path.join(config_dir, theme.value))
+                        changed = tc.refresh()
+                        self.assertFalse(tc.apply_theme(theme.name), 'Deleted automatic theme was applied again')
+                        self.assertFalse(tc.has_applied_theme)
+                        for other in ThemeFile:
+                            self.ae(getattr(tc, f'has_{other.name}_theme'), not remove_directory and other is not theme)
+                        self.assertFalse(tc.refresh())
+                        self.assertFalse(tc.on_system_color_scheme_change(theme.name))
+                        apply.assert_not_called()
+                        self.assertTrue(changed)
+                        os.makedirs(config_dir, exist_ok=True)
+                        path = os.path.join(config_dir, theme.value)
+                        with open(path, 'w') as f:
+                            f.write('background #abcdef\n')
+                        os.utime(path, ns=(mtime, mtime))
+                        self.assertTrue(tc.refresh())
+                        self.assertTrue(tc.apply_theme(theme.name))
+                        apply.assert_called_once()
+                        self.ae(apply.call_args.args[0]['background'], 0xABCDEF)
+                        self.ae(apply.call_args.args[1], ())
+                        self.ae(apply.call_args.kwargs['background_image_options']['background_image'], ())
+                        self.assertFalse(tc.refresh())
+
     def test_mime_cache(self):
         import shutil
         import subprocess

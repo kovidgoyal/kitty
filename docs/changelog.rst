@@ -428,6 +428,9 @@ Detailed list of changes
 - Desktop UI kitten: Fix D-Bus activation when kitten is installed in a path
   containing spaces or quoting characters (:pull:`10784`)
 
+- Automatic color themes: Stop using cached colors and background images after
+  the corresponding theme file has been deleted
+
 - Themes kitten: Fix overwriting the Unicode input kitten's recent entries
   and input mode, and vice versa, by using separate caches (:pull:`10780`)
 

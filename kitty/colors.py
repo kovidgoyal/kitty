@@ -121,6 +121,14 @@ class ThemeColors:
                             self.no_preference_background_image_options = d
                         self.no_preference_mtime = mtime
                         found = True
+        for theme in ThemeFile:
+            name = theme.name
+            if getattr(self, f'{name}_mtime') > -1 and not os.path.exists(os.path.join(config_dir, theme.value)):
+                setattr(self, f'{name}_mtime', -1)
+                setattr(self, f'{name}_spec', {})
+                setattr(self, f'{name}_tbc', ())
+                setattr(self, f'{name}_background_image_options', {})
+                found = True
         return found
 
     @property
