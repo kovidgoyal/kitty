@@ -232,14 +232,20 @@ func parse_args(args ...string) (delegate_to_rg bool, sanitized_args []string, k
 						sanitized_args = append(sanitized_args, x)
 					}
 				}
-			} else if strings.HasPrefix(x, "-") {
+			} else if x != "-" && strings.HasPrefix(x, "-") {
 				ok := true
-				chars := make([]string, len(x)-1)
+				chars := make([]string, 0, len(x)-1)
+				option_arg := ""
 				for i, ch := range x[1:] {
-					chars[i] = string(ch)
-					_, ok = alias_map[string(ch)]
+					chars = append(chars, string(ch))
+					target, found := alias_map[string(ch)]
+					ok = found
 					if !ok {
 						sanitized_args = append(sanitized_args, x)
+						break
+					}
+					if options_that_expect_args[target] {
+						option_arg = x[i+2:]
 						break
 					}
 				}
@@ -247,7 +253,11 @@ func parse_args(args ...string) (delegate_to_rg bool, sanitized_args []string, k
 					for _, ch := range chars {
 						target := alias_map[ch]
 						if options_that_expect_args[target] {
-							expecting_option_arg = target
+							if option_arg == "" {
+								expecting_option_arg = target
+							} else if err = handle_option_arg(target, option_arg, false); err != nil {
+								return
+							}
 						} else {
 							handle_bool_option(target)
 							sanitized_args = append(sanitized_args, "-"+ch)
