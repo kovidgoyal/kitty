@@ -19,6 +19,10 @@ import (
 
 var _ = fmt.Print
 
+func new_cached_values() *utils.CachedValues[*CachedData] {
+	return utils.NewCachedValues("themes", &CachedData{Category: "All"})
+}
+
 func complete_themes(completions *cli.Completions, word string, arg_num int) {
 	themes.CompleteThemes(completions, word, arg_num)
 }
@@ -63,7 +67,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	cv := utils.NewCachedValues("unicode-input", &CachedData{Category: "All"})
+	cv := new_cached_values()
 	h := &handler{lp: lp, opts: opts, cached_data: cv.Load()}
 	defer cv.Save()
 	lp.OnInitialize = func() (string, error) {

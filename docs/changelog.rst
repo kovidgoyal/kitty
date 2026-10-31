@@ -425,6 +425,9 @@ Detailed list of changes
   silently died and fix colors 16-255 being set to white with themes that do
   not define them (:iss:`10691`, :iss:`10661`, :pull:`10727`, :pull:`10737`)
 
+- Themes kitten: Fix overwriting the Unicode input kitten's recent entries
+  and input mode, and vice versa, by using separate caches
+
 - Transfer kitten: When receiving files, replace existing symbolic and hard
   links at the destination instead of overwriting the files they point to, and
   write to a temporary file that is renamed into place, so an interrupted
