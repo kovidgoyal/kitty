@@ -434,9 +434,11 @@ Interfaces=%s;
 	dbus_service_defn := filepath.Join(dbus_service_dir, PORTAL_BUS_NAME+".service")
 	exe_path, eerr := os.Executable()
 	if eerr != nil {
-		exe_path = utils.Which("kitten")
+		if exe_path = utils.Which("kitten"); exe_path == "" {
+			return fmt.Errorf("failed to get path to kitten executable with error: %w", eerr)
+		}
 	}
-	if exe_path, err = filepath.Abs(exe_path); eerr != nil {
+	if exe_path, err = filepath.Abs(exe_path); err != nil {
 		return fmt.Errorf("failed to get path to kitten executable with error: %w", err)
 	}
 	if err = os.WriteFile(dbus_service_defn, utils.UnsafeStringToBytes(fmt.Sprintf(
