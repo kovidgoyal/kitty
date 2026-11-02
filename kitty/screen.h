@@ -240,7 +240,8 @@ typedef struct {
 #define live_pixel_scroll_enabled(screen) (OPT(pixel_scroll) && (screen)->linebuf == (screen)->main_linebuf)
 // While rendering is paused the pixel scroll state captured at pause time is used so that pausing does not change what is rendered
 #define pixel_scroll_enabled(screen) ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.pixel_scroll : live_pixel_scroll_enabled(screen))
-#define rendered_pixel_scroll_offset_y(screen) ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.pixel_scroll_offset_y : (screen)->pixel_scroll_offset_y)
+#define rendered_pixel_scroll_offset_y(screen) \
+    ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.pixel_scroll_offset_y : (screen)->pixel_scroll_offset_y)
 #define render_lines_for_screen(screen) (screen->lines + pixel_scroll_enabled(screen))
 
 void screen_align(Screen *);

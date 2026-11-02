@@ -3829,7 +3829,7 @@ copy_selections(Selections *dest, const Selections *src) {
     return true;
 }
 
-static Line* render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, bool *is_history);
+static Line *render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, bool *is_history);
 
 bool
 screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
@@ -3875,7 +3875,8 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     }
     Line line = {.text_cache = self->text_cache};
     for (index_type y = 0; y < num_rows; y++) {
-        index_type lnum; bool is_history;
+        index_type lnum;
+        bool is_history;
         Line *src = render_line_for_virtual_y(self, (int)y - (int)row_offset, &line, &lnum, &is_history);
         if (src) {
             linebuf_init_line(self->paused_rendering.linebuf, y);
