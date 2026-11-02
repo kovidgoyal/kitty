@@ -496,9 +496,10 @@ Detailed list of changes
 - macOS: Fix padding rendering black after sleep, OS windows not staying on all
   spaces, a duplicate path when dropping items from Apple Mail, emoji from a
   monochrome emoji font such as Noto Emoji not using the foreground color, a
-  memory leak and kitty freezing when opening a new window while another entry
+  memory leak, reloading config causing Apple injected shortcuts to not work
+  and kitty freezing when opening a new window while another entry
   in :file:`/dev` is stuck (:iss:`10708`, :iss:`10581`, :iss:`10628`,
-  :iss:`10673`, :iss:`10741`, :iss:`10757`)
+  :iss:`10673`, :iss:`10741`, :iss:`10757`, :iss:`10793`)
 
 - zsh: Respect the user's ``descriptions`` format style for completion group
   headings, fixing literal ``%B`` markers appearing with fzf-tab, and fix a

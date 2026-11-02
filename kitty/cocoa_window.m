@@ -806,17 +806,86 @@ add_user_global_menu_entry(struct MenuItem *e, NSMenu *bar, size_t action_index)
 }
 
 static void
+add_user_global_menu_entries(NSMenu *bar) {
+    if (OPT(global_menu.entries)) {
+        for (size_t i = 0; i < OPT(global_menu.count); i++) {
+            struct MenuItem *e = OPT(global_menu.entries) + i;
+            if (e->definition && e->location && e->location_count > 1) { add_user_global_menu_entry(e, bar, i); }
+        }
+    }
+}
+
+static void
+remove_user_global_menu_entries(NSMenu *menu) {
+    for (NSInteger i = [menu numberOfItems] - 1; i >= 0; i--) {
+        NSMenuItem *item = [menu itemAtIndex:i];
+        if ([item isKindOfClass:[UserMenuItem class]]) [menu removeItem:item];
+        else if ([item hasSubmenu]) remove_user_global_menu_entries([item submenu]);
+    }
+}
+
+static GlobalShortcut*
+global_shortcut_for_action(GlobalShortcuts *shortcuts, SEL action) {
+#define Q(x) if (action == @selector(x:)) return &shortcuts->x;
+    Q(new_os_window); Q(close_os_window); Q(close_tab); Q(edit_config_file); Q(reload_config);
+    Q(previous_tab); Q(next_tab); Q(new_tab); Q(new_window); Q(close_window); Q(reset_terminal);
+    Q(clear_terminal_and_scrollback); Q(clear_screen); Q(clear_scrollback); Q(clear_last_command);
+    Q(toggle_macos_secure_keyboard_entry); Q(toggle_fullscreen); Q(open_kitty_website);
+    Q(hide_macos_app); Q(hide_macos_other_apps); Q(minimize_macos_window); Q(quit); Q(search_scrollback);
+    Q(macos_cycle_through_os_windows); Q(macos_cycle_through_os_windows_backwards);
+    Q(paste_from_clipboard); Q(copy_or_noop);
+#undef Q
+    return NULL;
+}
+
+// The menu items we create that have global shortcuts and the shortcuts
+// that were applied to them.
+static NSMutableArray<NSMenuItem*> *global_shortcut_menu_items = nil;
+static GlobalShortcuts applied_global_shortcuts;
+
+static bool
+menu_item_has_shortcut(NSMenuItem *item, const GlobalShortcut *gs) {
+    return [item.keyEquivalent isEqualToString:@(gs->key)] && item.keyEquivalentModifierMask == gs->mods;
+}
+
+static void
+update_global_shortcuts_in_menu(void) {
+    // Cocoa modifies some of our menu items, for example, it gives Enter Full
+    // Screen the Globe+F shortcut and moves our shortcut to a hidden copy of the
+    // item. So only change shortcuts that were actually changed in the config
+    // and change them on whichever item has the old shortcut, see
+    // https://github.com/kovidgoyal/kitty/issues/10793
+    for (NSMenuItem *item in global_shortcut_menu_items) {
+        GlobalShortcut *gs = global_shortcut_for_action(&global_shortcuts, item.action);
+        GlobalShortcut *old = global_shortcut_for_action(&applied_global_shortcuts, item.action);
+        if (!gs || !old || (strcmp(gs->key, old->key) == 0 && gs->mods == old->mods)) continue;
+        NSMenuItem *target_item = item;
+        if (!menu_item_has_shortcut(item, old)) {
+            for (NSMenuItem *q in [item.menu itemArray]) {
+                if (q != item && q.action == item.action && q.target == item.target && menu_item_has_shortcut(q, old)) { target_item = q; break; }
+            }
+        }
+        [target_item setKeyEquivalent:@(gs->key)];
+        [target_item setKeyEquivalentModifierMask:gs->mods];
+    }
+    applied_global_shortcuts = global_shortcuts;
+}
+
+static void
 cocoa_create_global_menu(void) {
     NSString *app_name = find_app_name();
     NSMenu *bar = [[NSMenu alloc] init];
     GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
     [NSApp setMainMenu:bar];
+    if (global_shortcut_menu_items) [global_shortcut_menu_items removeAllObjects];
+    else global_shortcut_menu_items = [[NSMutableArray alloc] init];
 
 #define MENU_ITEM(menu, title, name)                                                                                         \
     {                                                                                                                        \
         NSMenuItem *__mi = [menu addItemWithTitle:title action:@selector(name:) keyEquivalent:@(global_shortcuts.name.key)]; \
         [__mi setKeyEquivalentModifierMask:global_shortcuts.name.mods];                                                      \
         [__mi setTarget:global_menu_target];                                                                                 \
+        [global_shortcut_menu_items addObject:__mi];                                                                         \
     }
 
     NSMenuItem *appMenuItem = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
@@ -902,13 +971,9 @@ cocoa_create_global_menu(void) {
     [NSApp setHelpMenu:helpMenu];
     [helpMenu release];
 
-    if (OPT(global_menu.entries)) {
-        for (size_t i = 0; i < OPT(global_menu.count); i++) {
-            struct MenuItem *e = OPT(global_menu.entries) + i;
-            if (e->definition && e->location && e->location_count > 1) { add_user_global_menu_entry(e, bar, i); }
-        }
-    }
+    add_user_global_menu_entries(bar);
     [bar release];
+    applied_global_shortcuts = global_shortcuts;
 
 
     class_addMethod(object_getClass([NSApp delegate]), @selector(applicationDockMenu:), (IMP)get_dock_menu, "@@:@");
@@ -967,7 +1032,15 @@ cocoa_recreate_global_menu(void) {
         [bar removeItem:secure_input_title_menu];
     }
     secure_input_title_menu = NULL;
-    cocoa_create_global_menu();
+    // Update the existing menu in place rather than replacing it, as replacing
+    // the main menu and windows menu breaks the Globe key shortcuts that
+    // Cocoa injects into the windows menu, see https://github.com/kovidgoyal/kitty/issues/10793
+    NSMenu *bar = [NSApp mainMenu];
+    if (bar) {
+        update_global_shortcuts_in_menu();
+        remove_user_global_menu_entries(bar);
+        add_user_global_menu_entries(bar);
+    } else cocoa_create_global_menu();
     SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
     update_secure_input_menu_bar_indicator(k.isDesired);
 }
