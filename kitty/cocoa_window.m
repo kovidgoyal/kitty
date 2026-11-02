@@ -824,23 +824,44 @@ remove_user_global_menu_entries(NSMenu *menu) {
     }
 }
 
-static GlobalShortcut*
+static GlobalShortcut *
 global_shortcut_for_action(GlobalShortcuts *shortcuts, SEL action) {
-#define Q(x) if (action == @selector(x:)) return &shortcuts->x;
-    Q(new_os_window); Q(close_os_window); Q(close_tab); Q(edit_config_file); Q(reload_config);
-    Q(previous_tab); Q(next_tab); Q(new_tab); Q(new_window); Q(close_window); Q(reset_terminal);
-    Q(clear_terminal_and_scrollback); Q(clear_screen); Q(clear_scrollback); Q(clear_last_command);
-    Q(toggle_macos_secure_keyboard_entry); Q(toggle_fullscreen); Q(open_kitty_website);
-    Q(hide_macos_app); Q(hide_macos_other_apps); Q(minimize_macos_window); Q(quit); Q(search_scrollback);
-    Q(macos_cycle_through_os_windows); Q(macos_cycle_through_os_windows_backwards);
-    Q(paste_from_clipboard); Q(copy_or_noop);
+#define Q(x) \
+    if (action == @selector(x:)) return &shortcuts->x;
+    Q(new_os_window);
+    Q(close_os_window);
+    Q(close_tab);
+    Q(edit_config_file);
+    Q(reload_config);
+    Q(previous_tab);
+    Q(next_tab);
+    Q(new_tab);
+    Q(new_window);
+    Q(close_window);
+    Q(reset_terminal);
+    Q(clear_terminal_and_scrollback);
+    Q(clear_screen);
+    Q(clear_scrollback);
+    Q(clear_last_command);
+    Q(toggle_macos_secure_keyboard_entry);
+    Q(toggle_fullscreen);
+    Q(open_kitty_website);
+    Q(hide_macos_app);
+    Q(hide_macos_other_apps);
+    Q(minimize_macos_window);
+    Q(quit);
+    Q(search_scrollback);
+    Q(macos_cycle_through_os_windows);
+    Q(macos_cycle_through_os_windows_backwards);
+    Q(paste_from_clipboard);
+    Q(copy_or_noop);
 #undef Q
     return NULL;
 }
 
 // The menu items we create that have global shortcuts and the shortcuts
 // that were applied to them.
-static NSMutableArray<NSMenuItem*> *global_shortcut_menu_items = nil;
+static NSMutableArray<NSMenuItem *> *global_shortcut_menu_items = nil;
 static GlobalShortcuts applied_global_shortcuts;
 
 static bool
@@ -862,7 +883,10 @@ update_global_shortcuts_in_menu(void) {
         NSMenuItem *target_item = item;
         if (!menu_item_has_shortcut(item, old)) {
             for (NSMenuItem *q in [item.menu itemArray]) {
-                if (q != item && q.action == item.action && q.target == item.target && menu_item_has_shortcut(q, old)) { target_item = q; break; }
+                if (q != item && q.action == item.action && q.target == item.target && menu_item_has_shortcut(q, old)) {
+                    target_item = q;
+                    break;
+                }
             }
         }
         [target_item setKeyEquivalent:@(gs->key)];
