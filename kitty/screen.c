@@ -3829,6 +3829,8 @@ copy_selections(Selections *dest, const Selections *src) {
     return true;
 }
 
+static Line* render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, bool *is_history);
+
 bool
 screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (!pause) {
@@ -3856,22 +3858,30 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     self->paused_rendering.scrolled_by = self->scrolled_by;
     self->paused_rendering.cell_data_updated = false;
     self->paused_rendering.cursor_visible = self->modes.mDECTCEM;
+    // Preserve the pixel scroll geometry so that pausing does not cause the rendered content to jump, see #10794
+    self->paused_rendering.pixel_scroll = live_pixel_scroll_enabled(self);
+    self->paused_rendering.pixel_scroll_offset_y = self->paused_rendering.pixel_scroll ? self->pixel_scroll_offset_y : 0;
     memcpy(&self->paused_rendering.cursor, self->cursor, sizeof(self->paused_rendering.cursor));
     memcpy(&self->paused_rendering.color_profile, self->color_profile, sizeof(self->paused_rendering.color_profile));
-    if (!self->paused_rendering.linebuf || self->paused_rendering.linebuf->xnum != self->columns || self->paused_rendering.linebuf->ynum != self->lines) {
+    const index_type row_offset = self->paused_rendering.pixel_scroll, num_rows = self->lines + row_offset;
+    if (!self->paused_rendering.linebuf || self->paused_rendering.linebuf->xnum != self->columns || self->paused_rendering.linebuf->ynum != num_rows) {
         if (self->paused_rendering.linebuf) Py_CLEAR(self->paused_rendering.linebuf);
-        self->paused_rendering.linebuf = alloc_linebuf(self->lines, self->columns, self->text_cache);
+        self->paused_rendering.linebuf = alloc_linebuf(num_rows, self->columns, self->text_cache);
         if (!self->paused_rendering.linebuf) {
             PyErr_Clear();
             self->paused_rendering.expires_at = 0;
             return false;
         }
     }
-    for (index_type y = 0; y < self->lines; y++) {
-        Line *src = visual_line_(self, y);
-        linebuf_init_line(self->paused_rendering.linebuf, y);
-        copy_line(src, self->paused_rendering.linebuf->line);
-        self->paused_rendering.linebuf->line_attrs[y] = src->attrs;
+    Line line = {.text_cache = self->text_cache};
+    for (index_type y = 0; y < num_rows; y++) {
+        index_type lnum; bool is_history;
+        Line *src = render_line_for_virtual_y(self, (int)y - (int)row_offset, &line, &lnum, &is_history);
+        if (src) {
+            linebuf_init_line(self->paused_rendering.linebuf, y);
+            copy_line(src, self->paused_rendering.linebuf->line);
+            self->paused_rendering.linebuf->line_attrs[y] = src->attrs;
+        } else linebuf_clear_line(self->paused_rendering.linebuf, y, true);
     }
     copy_selections(&self->paused_rendering.selections, &self->selections);
     copy_selections(&self->paused_rendering.url_ranges, &self->url_ranges);
@@ -4125,12 +4135,15 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     if (self->paused_rendering.expires_at) {
         if (!self->paused_rendering.cell_data_updated) {
             LineBuf *linebuf = self->paused_rendering.linebuf;
-            // The GPU buffer was invalidated so every row must be written. Pixel
-            // scrolling is off while paused, so lines == render_lines_for_screen().
-            for (index_type y = 0; y < self->lines; y++) {
+            // The GPU buffer was invalidated so every row must be written. The
+            // paused linebuf has exactly render_lines_for_screen() rows.
+            const index_type row_offset = self->paused_rendering.pixel_scroll;
+            for (index_type y = 0; y < linebuf->ynum; y++) {
                 linebuf_init_line(linebuf, y);
                 if (linebuf->line->attrs.has_dirty_text) {
-                    render_line(fonts_data, linebuf->line, y, &self->paused_rendering.cursor, self->disable_ligatures, self->lc);
+                    // The extra leading row is never the cursor row
+                    const index_type lnum = y < row_offset ? self->lines : y - row_offset;
+                    render_line(fonts_data, linebuf->line, lnum, &self->paused_rendering.cursor, self->disable_ligatures, self->lc);
                     // Cell images are not rendered here: this would modify the live grman using snapshot row numbers
                     if (linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, linebuf->line, &self->as_ansi_buf);
                     linebuf_mark_line_clean(linebuf, y);
@@ -4369,9 +4382,9 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int
     const int y_min = MAX(-extra_leading_rows - scrolled_by, s->last_rendered.y), y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - scrolled_by);
     for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
-            // paused_rendering.linebuf stores only the visible rows captured at pause time
-            const int paused_y = y + scrolled_by;
-            if (paused_y < 0 || paused_y >= (int)self->lines) continue;
+            // paused_rendering.linebuf stores only the rendered rows captured at pause time
+            const int paused_y = y + scrolled_by + extra_leading_rows;
+            if (paused_y < 0 || paused_y >= (int)self->paused_rendering.linebuf->ynum) continue;
             linebuf_init_line(self->paused_rendering.linebuf, paused_y);
             line = self->paused_rendering.linebuf->line;
         } else {
@@ -4416,7 +4429,7 @@ screen_is_cell_selected(Screen *self, index_type x, index_type y) {
     // Every cell of a multi-cell character has the same selection highlight.
     const int first_row = cell.is_multicell ? row - cell.y : row;
     const int last_row = cell.is_multicell ? first_row + cell.scale : row + 1;
-    const int visible_start = -(int)self->scrolled_by - pixel_scroll_enabled(self);
+    const int visible_start = -(int)self->scrolled_by - live_pixel_scroll_enabled(self);
     const int visible_end = (int)self->lines - self->scrolled_by;
     for (size_t i = 0; i < self->selections.count; i++) {
         IterationData idata;
@@ -6098,7 +6111,7 @@ scroll_by_pixels(Screen *self, double delta_pixels) {
 
 bool
 screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
-    if (!pixel_scroll_enabled(self)) return false;
+    if (self->paused_rendering.expires_at || !live_pixel_scroll_enabled(self)) return false;
     if (!self->historybuf->count) return false;
     return scroll_by_pixels(self, delta_pixels);
 }

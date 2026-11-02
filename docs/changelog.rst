@@ -411,6 +411,9 @@ Detailed list of changes
   early. :ac:`detach_tab` now shows custom titles in the OS Window chooser
   (:pull:`10640`)
 
+- Fix render jitter when scrolled back with a partial line and the client is
+  using the synchronised rendering escape code (:iss:`10794`)
+
 - Fix bold or italic Nerd Font icons sometimes being rendered using glyphs
   from an unrelated font, the cursor trail not always being shown when focus
   moves to a different window, :opt:`watcher` entries not being removed on

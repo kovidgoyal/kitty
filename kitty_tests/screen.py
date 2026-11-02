@@ -386,6 +386,20 @@ class TestScreen(BaseTest):
         s.scroll_to_absolute(float('inf'))
         self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (s.historybuf.count, 0))
 
+        # Pausing rendering must not change the pixel scrolled geometry,
+        # otherwise programs using synchronized output cause jitter when the
+        # user is pixel scrolled into the scrollback, see #10794
+        s.scroll_to_absolute(2.5)
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (2, 10))
+        s.start_selection(0, 0)
+        s.update_selection(2, 1)
+        before = s.current_selections()
+        self.ae(len(before), (s.lines + 1) * s.columns)
+        self.assertTrue(s.pause_rendering(True, 5000))
+        self.ae(s.current_selections(), before)
+        self.assertTrue(s.pause_rendering(False))
+        self.ae(s.current_selections(), before)
+
     def test_emoji_skin_tone_modifiers(self):
         s = self.create_screen()
         q = chr(0x1F469) + chr(0x1F3FD)
@@ -1222,10 +1236,11 @@ class TestScreen(BaseTest):
         s.start_selection(0, 0)
         s.update_selection(2, 1)
         self.assertTrue(s.has_selection())
+        before = s.current_selections()
         self.assertTrue(s.pause_rendering(True, 5000))
-        # Must not crash and must return the visible-area buffer.
+        # Must not crash and must return the same render buffer as before pausing
         result = s.current_selections()
-        self.ae(len(result), s.lines * s.columns)
+        self.ae(result, before)
         # The visible portion of the selection must have at least one byte
         # marked (set_mask = 1 for plain selections).
         self.assertIn(1, result)

@@ -60,13 +60,13 @@ typedef struct UIRenderData {
 static inline float
 row_offset_for_screen(const Screen *screen) {
     if (!pixel_scroll_enabled(screen) || !screen->cell_size.height) return 0.f;
-    return -1.f + (float)(screen->pixel_scroll_offset_y / (double)screen->cell_size.height);
+    return -1.f + (float)(rendered_pixel_scroll_offset_y(screen) / (double)screen->cell_size.height);
 }
 
 static inline float
 scroll_offset_lines_for_screen(const Screen *screen) {
     if (!pixel_scroll_enabled(screen) || !screen->cell_size.height) return 0.f;
-    return (float)(screen->pixel_scroll_offset_y / (double)screen->cell_size.height);
+    return (float)(rendered_pixel_scroll_offset_y(screen) / (double)screen->cell_size.height);
 }
 
 // Sprites {{{
