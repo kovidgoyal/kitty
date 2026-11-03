@@ -3611,17 +3611,37 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
 
 // Concatenate the tuple of source strings into a single string, the returned
 // object owns the memory the string points to
+// Join shader sources, which are either all text (str) or all binary (bytes),
+// such as SPIR-V, into a single bytes object
 static PyObject *
 join_shader_sources(PyObject *sources) {
+    bool all_bytes = true, all_text = true;
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(sources); i++) {
-        if (!PyUnicode_Check(PyTuple_GET_ITEM(sources, i))) {
-            PyErr_SetString(PyExc_TypeError, "shaders must be strings");
-            return NULL;
+        PyObject *x = PyTuple_GET_ITEM(sources, i);
+        all_bytes = all_bytes && PyBytes_Check(x);
+        all_text = all_text && PyUnicode_Check(x);
+    }
+    if (!all_bytes && !all_text) {
+        PyErr_SetString(PyExc_TypeError, "shaders must be all str or all bytes");
+        return NULL;
+    }
+    if (all_bytes) {
+        Py_ssize_t total = 0;
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(sources); i++) total += PyBytes_GET_SIZE(PyTuple_GET_ITEM(sources, i));
+        PyObject *ans = PyBytes_FromStringAndSize(NULL, total);
+        if (!ans) return NULL;
+        char *dest = PyBytes_AS_STRING(ans);
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(sources); i++) {
+            PyObject *x = PyTuple_GET_ITEM(sources, i);
+            memcpy(dest, PyBytes_AS_STRING(x), PyBytes_GET_SIZE(x));
+            dest += PyBytes_GET_SIZE(x);
         }
+        return ans;
     }
     RAII_PyObject(empty, PyUnicode_FromString(""));
     if (!empty) return NULL;
-    return PyUnicode_Join(empty, sources);
+    RAII_PyObject(text, PyUnicode_Join(empty, sources));
+    return text ? PyUnicode_AsUTF8String(text) : NULL;
 }
 
 static PyObject *
@@ -3661,10 +3681,8 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     RAII_PyObject(fragment_source, join_shader_sources(fragment_shaders));
     if (!fragment_source) return NULL;
     Py_ssize_t vsz, fsz;
-    const char *vcode = PyUnicode_AsUTF8AndSize(vertex_source, &vsz);
-    if (!vcode) return NULL;
-    const char *fcode = PyUnicode_AsUTF8AndSize(fragment_source, &fsz);
-    if (!fcode) return NULL;
+    char *vcode, *fcode;
+    if (PyBytes_AsStringAndSize(vertex_source, &vcode, &vsz) != 0 || PyBytes_AsStringAndSize(fragment_source, &fcode, &fsz) != 0) return NULL;
     if (!compile_gpu_program(which, vcode, (size_t)vsz, fcode, (size_t)fsz, metadata)) return NULL;
     if (which == CUSTOM_END_PROGRAM) {
         free_custom_shader_pipeline(&custom_shaders.end);

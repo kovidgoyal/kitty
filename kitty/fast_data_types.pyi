@@ -519,7 +519,11 @@ def add_window(os_window_id: int, tab_id: int, title: str) -> int:
     pass
 
 def compile_program(
-    which: int, vertex_shaders: Tuple[str, ...], fragment_shaders: Tuple[str, ...], metadata: Dict[str, Any], allow_recompile: bool = False
+    which: int,
+    vertex_shaders: Tuple[str | bytes, ...],  # all str or all bytes
+    fragment_shaders: Tuple[str | bytes, ...],
+    metadata: Dict[str, Any],
+    allow_recompile: bool = False,
 ) -> None:
     pass
 
