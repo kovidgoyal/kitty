@@ -1182,7 +1182,7 @@ finish_command_response(const GraphicsCommand *g, bool data_loaded) {
 
 static void
 update_src_rect(ImageRef *ref, Image *img) {
-    // The src rect in OpenGL co-ords [0, 1] with origin at top-left corner of image
+    // The src rect in texture co-ords [0, 1] with origin at top-left corner of image
     ref->src_rect.left = (float)ref->src_x / (float)img->width;
     ref->src_rect.right = (float)(ref->src_x + ref->src_width) / (float)img->width;
     ref->src_rect.top = (float)ref->src_y / (float)img->height;
@@ -1551,7 +1551,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
 
 void
 gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom) {
-    // For dest rect: x-axis is from -1 to 1, y axis is from 1 to -1
+    // For dest rect: x-axis is from -1 to 1, y axis is from -1 (top) to 1 (bottom)
     static const ImageRef source_rect = {.src_rect = {.left = 0, .top = 0, .bottom = 1, .right = 1}};
     ans->src_rect = source_rect.src_rect;
     ans->dest_rect = (ImageRect){.left = left, .right = right, .top = top, .bottom = bottom};
@@ -1627,10 +1627,11 @@ grman_update_layers(
     self->num_of_indexed_refs = 0;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
-    float screen_bottom = screen_top - screen_height;
+    // NDC y increases downwards, see gpu/api.h
+    float screen_bottom = screen_top + screen_height;
     float screen_width_px = num_cols * cell.width;
     float screen_height_px = num_rows * cell.height;
-    float y0 = screen_top - dy * ((float)scrolled_by + scroll_offset_lines);
+    float y0 = screen_top + dy * ((float)scrolled_by + scroll_offset_lines);
 
     // Iterate over all visible refs and create render data
     self->render_data.count = 0;
@@ -1657,15 +1658,15 @@ grman_update_layers(
                     continue;
                 }
             }
-            r.top = y0 - start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
+            r.top = y0 + start_row * dy + dy * (float)ref->cell_y_offset / (float)cell.height;
             r.left = screen_left + start_column * dx + dx * (float)ref->cell_x_offset / (float)cell.width;
 
             int32_t nr = ref->num_rows, nc = ref->num_cols;
             if (nr) {
-                r.bottom = y0 - (start_row + nr) * dy;
+                r.bottom = y0 + (start_row + nr) * dy;
                 if (nc) r.right = screen_left + (start_column + nc) * dx;
                 else {
-                    double height_px = (((double)r.top - r.bottom) / screen_height) * screen_height_px;
+                    double height_px = (((double)r.bottom - r.top) / screen_height) * screen_height_px;
                     double width_px = height_px * ref->src_width / (double)ref->src_height;
                     r.right = r.left + (float)((width_px / screen_width_px) * screen_width);
                 }
@@ -1674,10 +1675,10 @@ grman_update_layers(
                 else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
                 double width_px = (((double)r.right - r.left) / screen_width) * screen_width_px;
                 double height_px = width_px * ref->src_height / (double)ref->src_width;
-                r.bottom = r.top - (float)((height_px / screen_height_px) * screen_height);
+                r.bottom = r.top + (float)((height_px / screen_height_px) * screen_height);
             }
 
-            if (r.top <= screen_bottom || r.bottom >= screen_top) {
+            if (r.top >= screen_bottom || r.bottom <= screen_top) {
                 refitr = vt_next(refitr);
                 continue;
             } // not visible
@@ -1700,7 +1701,7 @@ grman_update_layers(
                 self->num_of_indexed_refs++;
                 // The rect is in normalized device co-ordinates, so allow for rounding errors
                 const float width_px = (r.right - r.left) / screen_width * screen_width_px;
-                const float height_px = (r.top - r.bottom) / screen_height * screen_height_px;
+                const float height_px = (r.bottom - r.top) / screen_height * screen_height_px;
                 rd->is_unscaled = fabsf(width_px - ref->src_width) < 0.01f && fabsf(height_px - ref->src_height) < 0.01f;
             }
             img->is_drawn = true;

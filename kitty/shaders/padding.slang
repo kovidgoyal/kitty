@@ -43,8 +43,7 @@ struct Params {
     // The two NDC values of the thin (across) dimension for strip 0.
     float2 across;
     // NDC of the along dimension for the first cell's near corner, and the step
-    // per cell (signed; negative for the vertical strips as NDC y decreases
-    // downwards).
+    // per cell (positive, as NDC x increases rightwards and NDC y downwards).
     float along_start;
     float along_step;
     // NDC bounds used to extend the first/last cell so the strip fills the
