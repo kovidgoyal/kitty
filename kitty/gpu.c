@@ -586,8 +586,8 @@ set_program_layout(int program, PyObject *metadata) {
             return false;
         }
         // The layout of the block is taken from the reflection data, so
-        // verify that it matches what the driver actually uses
-        if (size != info.size) {
+        // verify that it matches what the driver actually uses, if the driver knows
+        if (info.size && size != info.size) {
             PyErr_Format(
                 PyExc_ValueError,
                 "The uniform block: %s in GPU program: %d has size %u according to the GPU driver but %u according to the shader reflection data",

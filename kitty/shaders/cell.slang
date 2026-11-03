@@ -24,7 +24,7 @@ static const bool ONLY_BACKGROUND = RENDER_MODE == 1;
 // that they can be shared with the padding shader.
 
 [[vk::binding(2)]]
-uniform Sampler2D<uint4> sprite_decorations_map; // binding slots: see SHADER_BINDING_SLOTS in slang.py
+uniform Sampler2D<uint> sprite_decorations_map; // a single channel R32UI texture // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
 static const uint SPRITE_INDEX_MASK = 0x7fffffff;
 static const uint SPRITE_COLORED_MASK = 0x80000000;
@@ -98,7 +98,7 @@ read_sprite_decorations_idx(uint2 sprite_idx) {
     int2 sz = int2(width, height);
     int y = idx / sz[0];
     int x = idx - y * sz[0];
-    return sprite_decorations_map[int2(x, y)].r;
+    return sprite_decorations_map[int2(x, y)];
 }
 
 uint2
