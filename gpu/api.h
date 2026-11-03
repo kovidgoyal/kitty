@@ -49,7 +49,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KITTY_GPU_API_VERSION 2u
+#define KITTY_GPU_API_VERSION 3u
 #define KITTY_GPU_DRIVER_ENTRY_POINT "kitty_gpu_driver_load"
 #define GPU_NULL_HANDLE ((uint64_t)0)
 
@@ -227,11 +227,18 @@ typedef struct GPUUniformBlockInfo {
     uint32_t size;  // size in bytes of the data in the block
 } GPUUniformBlockInfo;
 
-typedef struct GPUUniformArrayInfo {
-    uint32_t offset; // byte offset of the array from the start of its uniform block
-    uint32_t stride; // bytes between consecutive elements
-    uint32_t count;  // number of elements
-} GPUUniformArrayInfo;
+// Shaders are written in Slang and compiled ahead of time, or for user
+// supplied shaders at runtime, to the shader target of the driver, see
+// shader_target(). Everything about the parameters of a pipeline, such as the
+// layout of uniform blocks, comes from the reflection data produced by the
+// Slang compiler and is identified by the names used in the Slang source.
+// Some targets, such as GLSL for OpenGL, look up parameters by the identifier
+// used in the compiled code, which can differ from the Slang name. For those
+// the mapping is supplied when creating the pipeline.
+typedef struct GPUNativeName {
+    const char *name;        // the name of a parameter, vertex input or uniform block type in the Slang source
+    const char *native_name; // the corresponding identifier in the compiled code
+} GPUNativeName;
 // }}}
 
 // Drawing {{{
@@ -251,6 +258,14 @@ typedef enum {
 
 typedef struct GPUDriverAPI {
     uint32_t api_version;
+    // A human readable name for the driver, such as "OpenGL"
+    const char *name;
+    // The identifier of the shader target this driver consumes, for example
+    // glsl-140. This is a fixed property of the driver, available as soon as
+    // it is loaded. kitty compiles its built-in shaders for the targets of the
+    // drivers it builds at build time, and user supplied shaders for the target
+    // of the loaded driver at runtime.
+    const char *(*shader_target)(void *driver);
 
     // Lifecycle {{{
     // Called once, when the first surface has been created and made current.
@@ -304,18 +319,23 @@ typedef struct GPUDriverAPI {
     // }}}
 
     // Pipelines {{{
-    // Create a pipeline from shader sources, on failure last_error() contains
-    // the compiler output
-    gpu_pipeline_t (*pipeline_create)(void *driver, const GPUShaderSource *sources, size_t num_sources);
+    // Create a pipeline from shader sources compiled for the shader target of
+    // the driver. native_names maps Slang names to identifiers in the compiled
+    // code, see GPUNativeName, and may be empty for targets that do not need
+    // it. On failure last_error() contains the compiler output.
+    gpu_pipeline_t (*pipeline_create)(
+        void *driver, const GPUShaderSource *sources, size_t num_sources, const GPUNativeName *native_names, size_t num_native_names);
     void (*pipeline_destroy)(void *driver, gpu_pipeline_t pipeline);
     // Make a pipeline current, GPU_NULL_HANDLE for none
     void (*use_pipeline)(void *driver, gpu_pipeline_t pipeline);
+    // All names below are names in the Slang source.
     // The slot used to set the named loose uniform with the set_uniform_*()
     // functions, or -1 if the pipeline does not use that uniform. For arrays,
     // name must not include a subscript.
     int32_t (*pipeline_uniform_slot)(void *driver, gpu_pipeline_t pipeline, const char *name);
+    // name is the name of the type of the uniform block. The size reported
+    // by the driver is used to verify the layout from the reflection data.
     bool (*pipeline_uniform_block)(void *driver, gpu_pipeline_t pipeline, const char *name, GPUUniformBlockInfo *ans);
-    bool (*pipeline_uniform_array)(void *driver, gpu_pipeline_t pipeline, const char *name, GPUUniformArrayInfo *ans);
     // Associate a uniform block of the pipeline with a binding point, see bind_uniform_buffer()
     void (*pipeline_bind_uniform_block)(void *driver, gpu_pipeline_t pipeline, uint32_t block_index, uint32_t binding_point);
     // The location of the named vertex input, -1 if it is not used
