@@ -235,6 +235,22 @@ typedef struct GPUUniformBlockInfo {
 // Some targets, such as GLSL for OpenGL, look up parameters by the identifier
 // used in the compiled code, which can differ from the Slang name. For those
 // the mapping is supplied when creating the pipeline.
+// The binding slot of a texture or uniform block of a pipeline, from the
+// reflection data. Textures and uniform buffers are bound to these slots with
+// bind_texture() and bind_uniform_buffer(). Targets where the slots are not
+// part of the compiled code, such as GLSL for OpenGL 3, apply them when the
+// pipeline is created.
+typedef enum {
+    GPU_BINDING_TEXTURE = 1,
+    GPU_BINDING_UNIFORM_BLOCK,
+} GPUBindingKind;
+
+typedef struct GPUBinding {
+    GPUBindingKind kind;
+    const char *name; // name of the texture, or of the type of the uniform block, in the Slang source
+    uint32_t slot;
+} GPUBinding;
+
 typedef struct GPUNativeName {
     const char *name;        // the name of a parameter, vertex input or uniform block type in the Slang source
     const char *native_name; // the corresponding identifier in the compiled code
@@ -298,8 +314,8 @@ typedef struct GPUDriverAPI {
     // width * height pixels of the specified layout with rows aligned to 4 bytes.
     bool (*texture_read)(void *driver, gpu_texture_t texture, GPUPixelLayout layout, void *dst, size_t dst_size);
     void (*texture_get_desc)(void *driver, gpu_texture_t texture, GPUTextureDesc *ans);
-    // Bind a texture to a texture unit, for sampling by the current pipeline
-    void (*bind_texture)(void *driver, uint32_t unit, gpu_texture_t texture);
+    // Bind a texture to a slot, for sampling by pipelines, see GPUBinding
+    void (*bind_texture)(void *driver, uint32_t slot, gpu_texture_t texture);
     // }}}
 
     // Buffers {{{
@@ -314,17 +330,24 @@ typedef struct GPUDriverAPI {
     void *(*buffer_map)(void *driver, gpu_buffer_t buffer, GPUMapMode mode, size_t offset, size_t size);
     void (*buffer_unmap)(void *driver, gpu_buffer_t buffer);
     void (*buffer_copy)(void *driver, gpu_buffer_t src, size_t src_offset, gpu_buffer_t dst, size_t dst_offset, size_t size);
-    // Make a uniform buffer available to uniform blocks associated with binding_point
-    void (*bind_uniform_buffer)(void *driver, uint32_t binding_point, gpu_buffer_t buffer);
+    // Bind a uniform buffer to a slot, for use by pipelines, see GPUBinding
+    void (*bind_uniform_buffer)(void *driver, uint32_t slot, gpu_buffer_t buffer);
     // }}}
 
     // Pipelines {{{
     // Create a pipeline from shader sources compiled for the shader target of
-    // the driver. native_names maps Slang names to identifiers in the compiled
-    // code, see GPUNativeName, and may be empty for targets that do not need
-    // it. On failure last_error() contains the compiler output.
+    // the driver. bindings are the binding slots of its textures and uniform
+    // blocks, see GPUBinding. native_names maps Slang names to identifiers in
+    // the compiled code, see GPUNativeName, and may be empty for targets that
+    // do not need it. On failure last_error() contains the compiler output.
     gpu_pipeline_t (*pipeline_create)(
-        void *driver, const GPUShaderSource *sources, size_t num_sources, const GPUNativeName *native_names, size_t num_native_names);
+        void *driver,
+        const GPUShaderSource *sources,
+        size_t num_sources,
+        const GPUBinding *bindings,
+        size_t num_bindings,
+        const GPUNativeName *native_names,
+        size_t num_native_names);
     void (*pipeline_destroy)(void *driver, gpu_pipeline_t pipeline);
     // Make a pipeline current, GPU_NULL_HANDLE for none
     void (*use_pipeline)(void *driver, gpu_pipeline_t pipeline);
@@ -336,8 +359,6 @@ typedef struct GPUDriverAPI {
     // name is the name of the type of the uniform block. The size reported
     // by the driver is used to verify the layout from the reflection data.
     bool (*pipeline_uniform_block)(void *driver, gpu_pipeline_t pipeline, const char *name, GPUUniformBlockInfo *ans);
-    // Associate a uniform block of the pipeline with a binding point, see bind_uniform_buffer()
-    void (*pipeline_bind_uniform_block)(void *driver, gpu_pipeline_t pipeline, uint32_t block_index, uint32_t binding_point);
     // The location of the named vertex input, -1 if it is not used
     int32_t (*pipeline_attribute_location)(void *driver, gpu_pipeline_t pipeline, const char *name);
     // Set the value of a loose uniform of the current pipeline. components is

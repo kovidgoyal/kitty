@@ -232,7 +232,7 @@ save_texture_as_png(gpu_texture_t texture, const char *filename) {
 // }}}
 
 // Programs {{{
-typedef enum { PROGRAM_UNIFORM, PROGRAM_ATTRIBUTE, PROGRAM_BLOCK, PROGRAM_ARRAY } ProgramMetadataKind;
+typedef enum { PROGRAM_UNIFORM, PROGRAM_ATTRIBUTE, PROGRAM_BLOCK, PROGRAM_ARRAY, PROGRAM_TEXTURE } ProgramMetadataKind;
 typedef struct ProgramMetadataEntry {
     ProgramMetadataKind kind;
     bool missing_location_logged;
@@ -355,14 +355,23 @@ set_program_layout(int program, PyObject *metadata) {
         insert_program_metadata(program, name, e);
     }
 
+    PyObject *textures = metadata_item(metadata, "textures", &PyDict_Type);
+    if (!textures) return false;
+    pos = 0;
+    while (PyDict_Next(textures, &pos, &key, &val)) {
+        ProgramMetadataEntry e = {.kind = PROGRAM_TEXTURE, .location = (int32_t)PyLong_AsLong(val)};
+        if (PyErr_Occurred()) return false;
+        insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
+    }
+
     PyObject *blocks = metadata_item(metadata, "blocks", &PyDict_Type);
     if (!blocks) return false;
     pos = 0;
     while (PyDict_Next(blocks, &pos, &key, &val)) {
         const char *block_name = PyUnicode_AsUTF8(key);
         if (!block_name) return false;
-        int32_t size;
-        if (!metadata_uint(val, "size", &size)) return false;
+        int32_t size, slot;
+        if (!metadata_uint(val, "size", &size) || !metadata_uint(val, "slot", &slot)) return false;
         GPUUniformBlockInfo info;
         if (!gpu_pipeline_uniform_block(pipeline, block_name, &info)) {
             PyErr_Format(PyExc_ValueError, "The GPU program: %d has no uniform block: %s with error: %s", program, block_name, gpu_last_error());
@@ -380,7 +389,7 @@ set_program_layout(int program, PyObject *metadata) {
                 size);
             return false;
         }
-        ProgramMetadataEntry be = {.kind = PROGRAM_BLOCK, .block = {.index = (int32_t)info.index, .size = size}};
+        ProgramMetadataEntry be = {.kind = PROGRAM_BLOCK, .block = {.index = (int32_t)info.index, .size = size, .slot = (uint32_t)slot}};
         insert_program_metadata(program, block_name, be);
 
         PyObject *arrays = metadata_item(val, "arrays", &PyDict_Type);
@@ -436,10 +445,18 @@ program_uniform_array(int program, const char *name) {
 }
 // }}}
 
-void
-bind_program_uniform_block(int program, const char *name, uint32_t binding_point) {
-    UniformBlock b = program_uniform_block(program, name);
-    gpu_pipeline_bind_uniform_block(programs[program], (uint32_t)b.index, binding_point);
+uint32_t
+program_texture_slot(int program, const char *name) {
+    return (uint32_t)program_metadata_entry(program, name, PROGRAM_TEXTURE)->location;
+}
+
+bool
+try_program_texture_slot(int program, const char *name, uint32_t *slot) {
+    if (!program_layouts_initialized[program]) return false;
+    program_metadata_map_itr itr = vt_get(program_layouts + program, name);
+    if (vt_is_end(itr) || itr.data->val.kind != PROGRAM_TEXTURE) return false;
+    *slot = (uint32_t)itr.data->val.location;
+    return true;
 }
 
 void

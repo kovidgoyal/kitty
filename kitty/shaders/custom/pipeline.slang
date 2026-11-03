@@ -29,7 +29,8 @@ get_coords_for_blit(uint vertex_id, float4 src_rect, float4 dest_rect) {
 }
 
 
-public ConstantBuffer<KittyCustomShaderData> csd;
+[[vk::binding(10)]]
+public ConstantBuffer<KittyCustomShaderData> csd; // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
 
 public float4
@@ -59,7 +60,14 @@ linear2srgb(float3 x) { // vector
     return lerp(lower, upper, step(float3(0.0031308f), x));
 }
 
-uniform Sampler2D backbuffer, a, b, persist;
+[[vk::binding(1)]]
+uniform Sampler2D backbuffer;
+[[vk::binding(3)]]
+uniform Sampler2D a;
+[[vk::binding(4)]]
+uniform Sampler2D b;
+[[vk::binding(5)]]
+uniform Sampler2D persist;
 
 // The size of the pointer map grid, POINTER_MAP_SIZE is defined by kitty from state.h when compiling
 static const float pointer_map_size = POINTER_MAP_SIZE;
