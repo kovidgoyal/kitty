@@ -1149,16 +1149,17 @@ class GLSLMetadata:
         return ans
 
 
-# Uniform blocks that must be emitted as loose uniforms in the default uniform
-# block instead of as a UBO. Uniform values are part of program object state,
-# which the GL implementation is responsible for maintaining, whereas the data
-# store of a buffer object belongs to us and some drivers, notably the macOS
-# OpenGL on Metal layer waking from sleep, silently discard it. Anything we
-# upload to a buffer once and never again then stays corrupt forever. Only
-# suitable for blocks whose contents are compile time constants, since setting
-# a loose uniform costs a GL call per program rather than one buffer write.
-# See https://github.com/kovidgoyal/kitty/issues/10571
-GLSL_LOOSE_UNIFORM_BLOCKS = frozenset({'GammaLUT'})
+# Uniform blocks whose contents are constant for the lifetime of a pipeline.
+# kitty sets them once, as parameter blocks, see program_metadata(), and the
+# GPU driver is responsible for retaining their contents, rather than kitty
+# keeping them in uniform buffers it owns. For OpenGL they are emitted as loose
+# uniforms in the default uniform block. Uniform values are part of program
+# object state, which the GL implementation is responsible for maintaining,
+# whereas the data store of a buffer object belongs to us and some drivers,
+# notably the macOS OpenGL on Metal layer waking from sleep, silently discard
+# it. Anything we upload to a buffer once and never again then stays corrupt
+# forever. See https://github.com/kovidgoyal/kitty/issues/10571
+PIPELINE_CONSTANT_BLOCKS = frozenset({'GammaLUT'})
 
 
 def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLMetadata | None, glsl_version: int) -> tuple[str, GLSLMetadata]:
@@ -1260,7 +1261,7 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
                     in_uniform_block_contents = False
                     block_name = words[-1]
                     slang_block_name = block_name[len('block_') :].rpartition('_')[0] if block_name.startswith('block_') else ''
-                    uniform_block_is_struct = line.startswith('layout(std140') and slang_block_name not in GLSL_LOOSE_UNIFORM_BLOCKS  # )
+                    uniform_block_is_struct = line.startswith('layout(std140') and slang_block_name not in PIPELINE_CONSTANT_BLOCKS  # )
                     if uniform_block_is_struct:
                         current_uniform_struct_name = slang_block_name
                         assert block_name.startswith('block_')
@@ -1355,6 +1356,32 @@ def check_binding_slot(name: str, slot: int) -> int:
     return slot
 
 
+_PARAM_SCALARS = MappingProxyType({'float32': 'float', 'int32': 'int', 'uint32': 'uint', 'bool': 'bool'})
+
+
+def param_field(name: str, offset: int, t: dict[str, Any]) -> dict[str, Any]:
+    # A field of a parameter block, described by its scalar type, the number
+    # of components in each element and the number and stride of elements
+    count, stride = 1, 0
+    if t['kind'] == 'array':
+        count, stride = t['elementCount'], t['uniformStride']
+        t = t['elementType']
+    components = 1
+    if t['kind'] == 'vector':
+        components = t['elementCount']
+        t = t['elementType']
+    if t['kind'] != 'scalar' or t['scalarType'] not in _PARAM_SCALARS:
+        raise ValueError(f'The shader parameter {name} has unsupported type: {t}')
+    return {
+        'name': name,
+        'offset': offset,
+        'scalar': _PARAM_SCALARS[t['scalarType']],
+        'components': components,
+        'count': count,
+        'stride': stride or 4 * components,
+    }
+
+
 def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]], native: GLSLMetadata) -> dict[str, Any]:
     """
     The metadata about a program passed to the C code. It is generated from the
@@ -1364,10 +1391,12 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
     compiled code, for targets that look up parameters by identifier.
     """
     inputs: dict[str, int] = {}
-    uniforms: set[str] = set()
     textures: dict[str, int] = {}
     blocks: dict[str, dict[str, Any]] = {}
-    params: dict[str, dict[str, dict[str, int]]] = {}
+    # Parameter blocks are the uniform parameters of each entry point and the
+    # pipeline constant blocks. kitty sets their contents with set_params()
+    # rather than via uniform buffers.
+    param_blocks: dict[str, dict[str, Any]] = {}
     # Uniform blocks that are emitted as uniform blocks rather than as loose uniforms by the target
     real_blocks = set(native.uniform_struct_names)
     for refl in reflections:
@@ -1379,22 +1408,31 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                     et = evl['type']
                     tname = et['name']
                     slot = check_binding_slot(tname, p['binding']['index'])
-                    if tname in real_blocks:
+                    if tname in PIPELINE_CONSTANT_BLOCKS:
+                        param_blocks[tname] = {
+                            'name': tname,
+                            'stage': '',
+                            'slot': slot,
+                            'size': evl['binding']['size'],
+                            'fields': [param_field(f['name'], f['binding']['offset'], f['type']) for f in et['fields']],
+                        }
+                    elif tname in real_blocks:
                         arrays = {}
                         for f in et['fields']:
                             ft = f['type']
                             if ft['kind'] == 'array':
                                 arrays[f['name']] = {'offset': f['binding']['offset'], 'stride': ft['uniformStride'], 'count': ft['elementCount']}
                         blocks[tname] = {'size': evl['binding']['size'], 'arrays': arrays, 'slot': slot}
-                    else:
-                        uniforms.update(f['name'] for f in et['fields'])
+                    # Otherwise the block is declared in an imported module but not
+                    # used by this program, so it is not present in the compiled code
                 case 'resource':
                     textures[p['name']] = check_binding_slot(p['name'], p['binding']['index'])
                 case _:
                     raise ValueError(f'Unsupported shader parameter: {p["name"]} of kind: {t["kind"]}')
         for ep in refl['entryPoints']:
             stage = ep['stage']
-            fields: dict[str, dict[str, int]] = {}
+            fields: list[dict[str, Any]] = []
+            size = 0
             for p in ep.get('parameters', ()):
                 b = p.get('binding') or {}
                 match b.get('kind'):
@@ -1402,19 +1440,19 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                         if stage == 'vertex':
                             inputs[p['name']] = b['index']
                     case 'uniform':
-                        uniforms.add(p['name'])
-                        fields[p['name']] = {'offset': b['offset'], 'size': b['size']}
-            params[stage] = fields
+                        fields.append(param_field(p['name'], b['offset'], p['type']))
+                        size = max(size, b['offset'] + b['size'])
+            if fields:
+                param_blocks[stage] = {'name': '', 'stage': stage, 'slot': -1, 'size': size, 'fields': fields}
     native_names = {k: v.partition('[')[0] for k, v in native.loose_uniforms.items()}  # ]
     native_names.update(native.uniform_struct_names)
     native_names.update(native.native_inputs)
     return {
         'target': target.id,
         'inputs': inputs,
-        'uniforms': sorted(uniforms),
         'textures': textures,
         'blocks': blocks,
-        'params': params,
+        'param_blocks': [param_blocks[k] for k in sorted(param_blocks)],
         'native_names': native_names,
     }
 
