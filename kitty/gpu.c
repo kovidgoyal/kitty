@@ -86,6 +86,68 @@ load_gpu_driver(const char *path, bool debug_rendering) {
     return NULL;
 }
 
+static struct {
+    GPUDriverCandidate items[8];
+    size_t count, next;
+    bool debug_rendering;
+} candidates = {0};
+
+bool
+set_gpu_driver_candidates(const GPUDriverCandidate *items, size_t count, bool debug_rendering) {
+    for (size_t i = 0; i < candidates.count; i++) {
+        free((void *)candidates.items[i].name);
+        free((void *)candidates.items[i].path);
+    }
+    zero_at_ptr(&candidates);
+    candidates.debug_rendering = debug_rendering;
+    for (size_t i = 0; i < count && i < arraysz(candidates.items); i++) {
+        GPUDriverCandidate *c = candidates.items + candidates.count++;
+        c->name = strdup(items[i].name);
+        c->path = strdup(items[i].path);
+        if (!c->name || !c->path) return false;
+    }
+    return true;
+}
+
+bool
+has_untried_gpu_drivers(void) {
+    return candidates.next < candidates.count;
+}
+
+const char *
+load_next_gpu_driver(const GPUNativeWindow *display) {
+    static char errbuf[8192];
+    size_t pos = 0;
+    errbuf[0] = 0;
+#define add_error(...) \
+    if (pos < sizeof(errbuf)) pos += snprintf(errbuf + pos, sizeof(errbuf) - pos, __VA_ARGS__);
+    if (gpu_driver.driver) {
+        if (gpu_driver.initialized) fatal("Cannot switch GPU drivers after the driver has been initialized");
+        gpu_release_native_resources();
+        unload_gpu_driver();
+    }
+    if (!candidates.count) {
+        add_error("No GPU drivers are available");
+        return errbuf;
+    }
+    while (candidates.next < candidates.count) {
+        const GPUDriverCandidate *c = candidates.items + candidates.next++;
+        const char *err = load_gpu_driver(c->path, candidates.debug_rendering);
+        if (!err) {
+            if (gpu_driver.api.connect(gpu_driver.driver, display)) {
+                if (candidates.debug_rendering) timed_debug_print("Using the %s GPU driver\n", c->name);
+                return NULL;
+            }
+            err = gpu_last_error();
+        }
+        if (candidates.debug_rendering) timed_debug_print("The %s GPU driver is not usable: %s\n", c->name, err);
+        add_error("%sThe %s GPU driver is not usable: %s", pos ? "\n" : "", c->name, err);
+        if (gpu_driver.driver) unload_gpu_driver();
+    }
+#undef add_error
+    return errbuf;
+}
+
 void
 initialize_gpu_driver(void) {
     if (gpu_driver.initialized) return;

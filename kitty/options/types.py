@@ -375,6 +375,7 @@ option_names = (
     'force_ltr',
     'foreground',
     'forward_stdio',
+    'gpu_driver',
     'hide_window_decorations',
     'hyperlink_target_position',
     'inactive_border_color',
@@ -601,6 +602,7 @@ class Options:
     force_ltr: bool = False
     foreground: Color = Color(221, 221, 221)
     forward_stdio: bool = False
+    gpu_driver: tuple[str, ...] = ('metal', 'vulkan', 'opengl')
     hide_window_decorations: int = 0
     hyperlink_target_position: choices_for_hyperlink_target_position = 'top'
     inactive_border_color: Color = Color(204, 204, 204)

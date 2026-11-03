@@ -1057,6 +1057,11 @@ ensure_platform(Driver *d, GPUPlatform type) {
 }
 
 static bool
+connect_to_display(void *driver, const GPUNativeWindow *display) {
+    return ensure_platform(driver, display->platform);
+}
+
+static bool
 choose_native_visual(void *driver, const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint64_t *visual_id) {
     Driver *d = driver;
     *visual_id = 0;
@@ -1310,6 +1315,7 @@ kitty_gpu_driver_load(uint32_t api_version, const GPUDriverInitParams *params, G
         .name = "OpenGL",
 #define F(name) .name = name
         F(shader_target),
+        .connect = connect_to_display,
         F(initialize),
         F(destroy),
         F(last_error),
