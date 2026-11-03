@@ -369,8 +369,8 @@ void free_program(int program);
 bool compile_gpu_program(int program, const char *vertex, size_t vertex_size, const char *fragment, size_t fragment_size, PyObject *metadata);
 int32_t attrib_location(int program, const char *name);
 void free_program_layouts(void);
-// Parameters, the uniform parameters of the entry points and the pipeline
-// constant blocks of a program. Values are written into memory owned by
+// Parameters, the push constant block holding the uniform parameters and the
+// pipeline constant blocks of a program. Values are written into memory owned by
 // kitty and passed to the driver before the next draw call using the
 // program. A handle identifies a parameter of a program, negative handles
 // are ignored by the setters.

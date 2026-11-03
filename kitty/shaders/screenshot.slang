@@ -5,6 +5,16 @@
 import blit_common;
 import linear2srgb;
 
+// The uniform parameters of the program, shared by all its stages. See
+// PUSH_CONSTANTS_MAX_SIZE in slang.py for why they are declared this way.
+struct Params {
+    float4 src_rect;
+    float4 dest_rect;
+    float2 src_size;
+};
+[[vk::push_constant]]
+ConstantBuffer<Params> uniforms;
+
 struct VSOutput {
     float2 texcoord : TEXCOORD;
     float4 position : SV_Position;
@@ -13,8 +23,8 @@ struct VSOutput {
 
 [shader("vertex")]
 VSOutput
-vertex_main(uint vertex_id: SV_VertexID, uniform float4 src_rect, uniform float4 dest_rect, ) {
-    BlitOutput ans = get_coords_for_blit(vertex_id, src_rect, dest_rect);
+vertex_main(uint vertex_id: SV_VertexID) {
+    BlitOutput ans = get_coords_for_blit(vertex_id, uniforms.src_rect, uniforms.dest_rect);
     return { ans.texcoord, float4(ans.position[0], ans.position[1], 0.0, 1.0) };
 }
 
@@ -33,10 +43,10 @@ safe_unpremult_to_linear(float4 s) {
 
 [shader("fragment")]
 float4
-fragment_main(float2 texcoord: TEXCOORD, uniform float2 src_size)
+fragment_main(float2 texcoord: TEXCOORD)
     : SV_Target {
     float4 s00, s10, s01, s11;
-    float2 texel_size = 1.0 / src_size;
+    float2 texel_size = 1.0 / uniforms.src_size;
 
     // Use Slang target switches to dynamically compile for specific backend features
     __target_switch {

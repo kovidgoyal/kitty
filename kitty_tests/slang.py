@@ -11,10 +11,12 @@ import sys
 import tempfile
 from unittest.mock import patch
 
-from kitty.constants import gpu_driver_path, slangc
+from kitty.constants import gpu_driver_path, shaders_dir, slangc
 from kitty.fast_data_types import gpu_shader_target, load_gpu_driver
 from kitty.shaders.slang import (
+    PUSH_CONSTANTS_MAX_SIZE,
     EntryPoint,
+    GLSLMetadata,
     LoadShaderPrograms,
     ShaderTarget,
     SlangFile,
@@ -35,6 +37,7 @@ from kitty.shaders.slang import (
     parse_var_directive,
     pipeline_definition,
     pointer_map_shaders,
+    program_metadata,
     slangc_version,
     text_contrast_is_identity,
     topological_layers,
@@ -55,6 +58,59 @@ def driver_shader_target() -> ShaderTarget:
 
 
 class TestSlang(BaseTest):
+    def test_program_params(self):
+        # The uniform parameters of every built-in program are in a single
+        # push constant block shared by all stages, see PUSH_CONSTANTS_MAX_SIZE
+        target = driver_shader_target()
+        tdir = os.path.join(shaders_dir, target.id)
+        names = [x for x in os.listdir(tdir) if x.endswith('.json')]
+        self.assertTrue(names, f'No compiled shaders in {tdir}')
+        for name in names:
+            with open(os.path.join(tdir, name)) as f:
+                m = json.load(f)
+            push = [b for b in m['param_blocks'] if b['slot'] < 0]
+            self.assertLessEqual(len(push), 1, name)
+            for b in push:
+                self.assertFalse(b['name'], name)
+                self.assertLessEqual(b['size'], PUSH_CONSTANTS_MAX_SIZE, name)
+            for b in m['param_blocks']:
+                self.assertNotIn('stage', b, name)
+        if 'trail.json' in names:
+            with open(os.path.join(tdir, 'trail.json')) as f:
+                m = json.load(f)
+            (push,) = (b for b in m['param_blocks'] if b['slot'] < 0)
+            self.assertEqual({'x_coords', 'y_coords', 'cursor_edge_x', 'cursor_edge_y', 'trail_color', 'trail_opacity'}, {f['name'] for f in push['fields']})
+
+        def field(name: str, offset: int) -> dict:
+            t = {'kind': 'vector', 'elementCount': 4, 'elementType': {'kind': 'scalar', 'scalarType': 'float32'}}
+            return {'name': name, 'type': t, 'binding': {'kind': 'uniform', 'offset': offset, 'size': 16}}
+
+        def push_block(size: int) -> dict:
+            fields = [field(f'f{i}', 16 * i) for i in range(size // 16)]
+            return {
+                'name': 'uniforms',
+                'binding': {'kind': 'pushConstantBuffer', 'index': 0},
+                'type': {
+                    'kind': 'constantBuffer',
+                    'elementVarLayout': {
+                        'type': {'kind': 'struct', 'name': 'Params', 'fields': fields},
+                        'binding': {'kind': 'uniform', 'offset': 0, 'size': size},
+                    },
+                },
+            }
+
+        refl = {'parameters': [push_block(32)], 'entryPoints': [{'name': 'vertex_main', 'stage': 'vertex', 'parameters': []}]}
+        m = program_metadata(target, [refl, refl], GLSLMetadata())
+        self.assertEqual(1, len(m['param_blocks']))
+        self.assertEqual(['f0', 'f1'], [f['name'] for f in m['param_blocks'][0]['fields']])
+        # Too large for push constants
+        with self.assertRaises(ValueError):
+            program_metadata(target, [{'parameters': [push_block(PUSH_CONSTANTS_MAX_SIZE + 16)], 'entryPoints': []}], GLSLMetadata())
+        # Uniform parameters of entry points are not allowed
+        refl = {'parameters': [], 'entryPoints': [{'name': 'vertex_main', 'stage': 'vertex', 'parameters': [field('x', 0)]}]}
+        with self.assertRaises(ValueError):
+            program_metadata(target, [refl], GLSLMetadata())
+
     def test_animation_step_parsing(self):
         def step(val):
             return parse_pipeline_definition(['startgroup', f'animation_step {val}', 'shaders focus-highlight', 'endgroup'], 'test')['groups'][0][
