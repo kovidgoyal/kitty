@@ -404,6 +404,10 @@ def conf_parsing(self):
 
     opts = p('font_size 11.37', 'clear_all_shortcuts y', 'color23 red')
     self.ae(opts.font_size, 11.37)
+    self.ae(defaults.gpu_driver, ('metal', 'vulkan', 'opengl'))
+    self.ae(p('gpu_driver vulkan, opengl  opengl').gpu_driver, ('vulkan', 'opengl'))
+    self.ae(p('gpu_driver opengl,vulkan').gpu_driver, ('opengl', 'vulkan'))
+    self.ae(p('gpu_driver directx opengl', bad_line_num=1).gpu_driver, defaults.gpu_driver)
     radius_opts = p('window_border_radius 7px')
     self.ae(radius_opts.window_border_radius, (7.0, 'px'))
     self.ae(defaults.hyperlink_target_position, 'top')

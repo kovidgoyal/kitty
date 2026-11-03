@@ -322,8 +322,17 @@ typedef struct GPUDriverAPI {
     const char *(*shader_target)(void *driver);
 
     // Lifecycle {{{
+    // Called once, after the driver is loaded and before any surfaces are
+    // created, with the connection to the windowing system: only the
+    // platform, display and screen fields of display are used. The driver
+    // must check, as far as is possible without a window, that it can render
+    // to windows on this display, for example, that the needed system
+    // libraries are present and that there is a GPU that can present to the
+    // display. If it returns false, last_error() describes the problem and
+    // kitty unloads the driver and tries the next one.
+    bool (*connect)(void *driver, const GPUNativeWindow *display);
     // Called once, when the first surface has been created and made current.
-    // Must be called before any other function except destroy(),
+    // Must be called before any other function except connect(), destroy(),
     // last_error() and the surface functions.
     bool (*initialize)(void *driver);
     void (*destroy)(void *driver);

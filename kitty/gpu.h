@@ -25,6 +25,23 @@ extern GPUDriver gpu_driver;
 
 // Load the GPU driver shared library at path. Returns NULL on success or an error message.
 const char *load_gpu_driver(const char *path, bool debug_rendering);
+
+// Choosing between GPU drivers {{{
+// The drivers to try, in order of preference, see the gpu_driver option
+typedef struct GPUDriverCandidate {
+    const char *name, *path;
+} GPUDriverCandidate;
+
+// Remember the drivers to try. Copies the strings.
+bool set_gpu_driver_candidates(const GPUDriverCandidate *candidates, size_t count, bool debug_rendering);
+// Unload the current driver, if any, and load the next candidate that can
+// render to windows on the specified display, see connect() in gpu/api.h.
+// Returns NULL on success or a description of why every remaining
+// candidate failed. Must be called before any GPU resources are created.
+const char *load_next_gpu_driver(const GPUNativeWindow *display);
+// Whether there are candidates that have not yet been tried
+bool has_untried_gpu_drivers(void);
+// }}}
 // Must be called once a surface has been created and made current, before any
 // other GPU functions, except the surface functions, are used
 void initialize_gpu_driver(void);

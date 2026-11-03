@@ -4,7 +4,7 @@
 import os
 import pwd
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional
 
@@ -235,6 +235,17 @@ def glfw_path(module: str) -> str:
 def gpu_driver_path(driver: str = 'opengl') -> str:
     prefix = 'kitty.' if getattr(sys, 'frozen', False) else ''
     return os.path.join(extensions_dir, f'{prefix}{driver}.so')
+
+
+def available_gpu_drivers(names: Iterable[str]) -> list[tuple[str, str]]:
+    # The (name, path) of the specified GPU drivers that are present in this
+    # build of kitty, in the specified order
+    ans = []
+    for name in names:
+        path = gpu_driver_path(name)
+        if os.path.exists(path):
+            ans.append((name, path))
+    return ans
 
 
 def detect_if_wayland_ok() -> bool:
