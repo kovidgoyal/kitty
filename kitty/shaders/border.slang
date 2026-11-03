@@ -20,12 +20,14 @@ import utils;
 struct GammaLUT {
     uniform float gamma_lut[256];
 };
-ConstantBuffer<GammaLUT> glt;
+[[vk::binding(8)]]
+ConstantBuffer<GammaLUT> glt; // binding slots: see SHADER_BINDING_SLOTS in slang.py
 #define gamma_lut glt.gamma_lut
 
 struct Colors {
     uniform uint colors[9];
 };
+[[vk::binding(9)]]
 ConstantBuffer<Colors> clrs;
 #define colors clrs.colors
 
