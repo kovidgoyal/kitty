@@ -8,6 +8,7 @@
 #include "loop-utils.h"
 #include "safe-wrappers.h"
 #include "state.h"
+#include "gpu.h"
 #include "threading.h"
 #include "screen.h"
 #include "monotonic.h"
