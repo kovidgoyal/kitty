@@ -190,8 +190,14 @@ gpu_bind_uniform_buffer(uint32_t binding_point, gpu_buffer_t buffer) {
 }
 
 static inline gpu_pipeline_t
-gpu_pipeline_create(const GPUShaderSource *sources, size_t num_sources, const GPUNativeName *native_names, size_t num_native_names) {
-    return A.pipeline_create(D, sources, num_sources, native_names, num_native_names);
+gpu_pipeline_create(
+    const GPUShaderSource *sources,
+    size_t num_sources,
+    const GPUBinding *bindings,
+    size_t num_bindings,
+    const GPUNativeName *native_names,
+    size_t num_native_names) {
+    return A.pipeline_create(D, sources, num_sources, bindings, num_bindings, native_names, num_native_names);
 }
 
 static inline void
@@ -212,11 +218,6 @@ gpu_pipeline_uniform_slot(gpu_pipeline_t pipeline, const char *name) {
 static inline bool
 gpu_pipeline_uniform_block(gpu_pipeline_t pipeline, const char *name, GPUUniformBlockInfo *ans) {
     return A.pipeline_uniform_block(D, pipeline, name, ans);
-}
-
-static inline void
-gpu_pipeline_bind_uniform_block(gpu_pipeline_t pipeline, uint32_t block_index, uint32_t binding_point) {
-    A.pipeline_bind_uniform_block(D, pipeline, block_index, binding_point);
 }
 
 static inline int32_t
@@ -396,6 +397,7 @@ void save_texture_as_png(gpu_texture_t texture, const char *filename);
 // Programs {{{
 typedef struct UniformBlock {
     int32_t size, index;
+    uint32_t slot; // the binding slot, see bind_uniform_buffer()
 } UniformBlock;
 
 typedef struct ArrayInformation {
@@ -418,7 +420,10 @@ int32_t try_program_uniform_location(int program, const char *name);
 int32_t program_attribute_location(int program, const char *name);
 UniformBlock program_uniform_block(int program, const char *name);
 ArrayInformation program_uniform_array(int program, const char *name);
-void bind_program_uniform_block(int program, const char *name, uint32_t binding_point);
+// The binding slot of the named texture of the program, see bind_texture()
+uint32_t program_texture_slot(int program, const char *name);
+// As above, returns false if the program has no such texture
+bool try_program_texture_slot(int program, const char *name, uint32_t *slot);
 void bind_program(int program);
 void unbind_program(void);
 // }}}

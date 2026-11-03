@@ -542,8 +542,8 @@ texture_get_desc(void *driver UNUSED, gpu_texture_t texture, GPUTextureDesc *ans
 }
 
 static void
-bind_texture(void *driver UNUSED, uint32_t unit, gpu_texture_t texture) {
-    glActiveTexture(GL_TEXTURE0 + unit);
+bind_texture(void *driver UNUSED, uint32_t slot, gpu_texture_t texture) {
+    glActiveTexture(GL_TEXTURE0 + slot);
     const Texture *t = AS_TEXTURE(texture);
     if (t) glBindTexture(t->target, t->id);
     else glBindTexture(GL_TEXTURE_2D, 0);
@@ -622,8 +622,8 @@ buffer_copy(void *driver UNUSED, gpu_buffer_t src, size_t src_offset, gpu_buffer
 }
 
 static void
-bind_uniform_buffer(void *driver UNUSED, uint32_t binding_point, gpu_buffer_t buffer) {
-    glBindBufferBase(GL_UNIFORM_BUFFER, binding_point, AS_BUFFER(buffer)->id);
+bind_uniform_buffer(void *driver UNUSED, uint32_t slot, gpu_buffer_t buffer) {
+    glBindBufferBase(GL_UNIFORM_BUFFER, slot, AS_BUFFER(buffer)->id);
 }
 // }}}
 
@@ -726,8 +726,40 @@ native_name(const Pipeline *p, const char *name) {
     return name;
 }
 
+// OpenGL 3 has no layout(binding) qualifiers, so the binding slots are applied
+// to the linked program
+static void
+apply_bindings(const Pipeline *p, const GPUBinding *bindings, size_t num_bindings) {
+    GLint previous_program = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &previous_program);
+    glUseProgram(p->id);
+    for (size_t i = 0; i < num_bindings; i++) {
+        const GPUBinding *b = bindings + i;
+        const char *name = native_name(p, b->name);
+        switch (b->kind) {
+            case GPU_BINDING_TEXTURE: {
+                // Unused samplers are optimized away by the GLSL compiler
+                GLint loc = glGetUniformLocation(p->id, name);
+                if (loc >= 0) glUniform1i(loc, (GLint)b->slot);
+            } break;
+            case GPU_BINDING_UNIFORM_BLOCK: {
+                GLuint index = glGetUniformBlockIndex(p->id, name);
+                if (index != GL_INVALID_INDEX) glUniformBlockBinding(p->id, index, b->slot);
+            } break;
+        }
+    }
+    glUseProgram((GLuint)previous_program);
+}
+
 static gpu_pipeline_t
-pipeline_create(void *driver, const GPUShaderSource *sources, size_t num_sources, const GPUNativeName *native_names, size_t num_native_names) {
+pipeline_create(
+    void *driver,
+    const GPUShaderSource *sources,
+    size_t num_sources,
+    const GPUBinding *bindings,
+    size_t num_bindings,
+    const GPUNativeName *native_names,
+    size_t num_native_names) {
     Driver *d = driver;
     Pipeline *p = calloc(1, sizeof(Pipeline));
     if (!p) {
@@ -763,6 +795,7 @@ pipeline_create(void *driver, const GPUShaderSource *sources, size_t num_sources
         pipeline_destroy(d, AS_HANDLE(p));
         return GPU_NULL_HANDLE;
     }
+    apply_bindings(p, bindings, num_bindings);
     return AS_HANDLE(p);
 }
 
@@ -798,11 +831,6 @@ pipeline_uniform_block(void *driver, gpu_pipeline_t pipeline, const char *name, 
     ans->index = index;
     ans->size = size > 0 ? (uint32_t)size : 0;
     return true;
-}
-
-static void
-pipeline_bind_uniform_block(void *driver UNUSED, gpu_pipeline_t pipeline, uint32_t block_index, uint32_t binding_point) {
-    glUniformBlockBinding(AS_PIPELINE(pipeline)->id, block_index, binding_point);
 }
 
 static int32_t
@@ -1270,7 +1298,6 @@ kitty_gpu_driver_load(uint32_t api_version, const GPUDriverInitParams *params, G
         F(use_pipeline),
         F(pipeline_uniform_slot),
         F(pipeline_uniform_block),
-        F(pipeline_bind_uniform_block),
         F(pipeline_attribute_location),
         F(set_uniform_floats),
         F(set_uniform_ints),
