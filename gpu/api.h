@@ -232,7 +232,7 @@ typedef struct GPUShaderSource {
 
 typedef struct GPUUniformBlockInfo {
     uint32_t index; // identifies the block within the pipeline
-    uint32_t size;  // size in bytes of the data in the block
+    uint32_t size;  // size in bytes of the data in the block, zero if the driver cannot determine it
 } GPUUniformBlockInfo;
 
 // Shaders are written in Slang and compiled ahead of time, or for user

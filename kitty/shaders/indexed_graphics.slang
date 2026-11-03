@@ -40,11 +40,11 @@ vertex_main(uint vertex_id: SV_VertexID) {
 // The red channel is the palette index and, when has_alpha is non-zero, the
 // green channel is the straight alpha.
 [[vk::binding(1)]]
-uniform Sampler2D<uint4> image; // binding slots: see SHADER_BINDING_SLOTS in slang.py
+uniform Sampler2D<uint2> image; // a two channel RG8UI texture // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
 float4
 premult_color_at(int2 pos, uint has_alpha) {
-    uint4 px = image[pos];
+    uint2 px = image[pos];
     float alpha = has_alpha != 0 ? float(px.g) / 255.0 : 1.0;
     return float4(indexed_image_color(px.r) * alpha, alpha);
 }
