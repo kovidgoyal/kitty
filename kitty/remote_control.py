@@ -233,10 +233,6 @@ def handle_cmd(
         return {'ok': False, 'error': 'Streaming send of data is not supported for this command'}
     if stream_id:
         payload['stream_id'] = stream_id
-        active_streams[stream_id] = cmd['cmd']
-        if len(active_streams) > 32:
-            oldest = next(iter(active_streams))
-            del active_streams[oldest]
     if async_id:
         payload['async_id'] = async_id
         if 'cancel_async' in cmd:
@@ -247,6 +243,14 @@ def handle_cmd(
         if len(active_async_requests) > 32:
             oldest = next(iter(active_async_requests))
             del active_async_requests[oldest]
+    if stream_id:
+        # Register the stream only after cancellations have returned, as they
+        # are allowed without authentication and requests on a registered
+        # stream are allowed without authentication as well
+        active_streams[stream_id] = cmd['cmd']
+        if len(active_streams) > 32:
+            oldest = next(iter(active_streams))
+            del active_streams[oldest]
     try:
         ans = c.response_from_kitty(boss, self_window or window, PayloadGetter(c, payload))
     except Exception:
