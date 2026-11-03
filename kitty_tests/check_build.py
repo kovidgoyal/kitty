@@ -151,15 +151,25 @@ class TestBuild(BaseTest):
             self.assertTrue(os.access(path, os.X_OK), f'{path} is not executable')
 
     def test_gpu_drivers(self) -> None:
-        from kitty.constants import gpu_driver_path
-
-        path = gpu_driver_path('opengl')
-        self.assertTrue(os.path.isfile(path), f'{path} is not a file')
-        self.assertTrue(os.access(path, os.X_OK), f'{path} is not executable')
         import ctypes
+        import glob
 
-        lib = ctypes.CDLL(path)
-        self.assertTrue(hasattr(lib, 'kitty_gpu_driver_load'), f'{path} does not export kitty_gpu_driver_load')
+        from kitty.constants import gpu_driver_path, is_macos, shaders_dir
+
+        def check(name: str) -> None:
+            path = gpu_driver_path(name)
+            self.assertTrue(os.path.isfile(path), f'{path} is not a file')
+            self.assertTrue(os.access(path, os.X_OK), f'{path} is not executable')
+            lib = ctypes.CDLL(path)
+            self.assertTrue(hasattr(lib, 'kitty_gpu_driver_load'), f'{path} does not export kitty_gpu_driver_load')
+
+        check('opengl')
+        # The Vulkan driver is built only when the Vulkan headers are available
+        if not is_macos and os.path.exists(gpu_driver_path('vulkan')):
+            check('vulkan')
+            self.assertTrue(
+                glob.glob(os.path.join(shaders_dir, 'spirv-*', 'cell.json')), 'The built-in shaders have not been compiled for the Vulkan GPU driver'
+            )
 
     def test_gpu_driver_shaders(self) -> None:
         # The built-in shaders must have been compiled for the shader target of the driver
