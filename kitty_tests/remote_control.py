@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 from types import MethodType
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 from kitty.constants import kitty_exe
@@ -128,6 +129,86 @@ class TestRemoteControl(BaseTest):
         self.assertNotIn(sid, active_streams)
         pcmd = {'cmd': 'run', 'version': [0, 26, 0], 'stream_id': sid, 'payload': {'cmdline': ['true'], 'data': ''}}
         self.assertIsNot(is_cmd_allowed(pcmd, None, False, {}), True)
+
+    def test_stream_continuation_auth(self):
+        from base64 import standard_b64encode
+
+        from kitty.boss import Boss as KittyBoss
+        from kitty.remote_control import abort_active_stream, abort_active_streams_from, active_streams, handle_cmd, is_cmd_allowed, register_active_stream
+
+        self.set_options({'remote_control_password': {'secret': frozenset(('ls',))}})
+        command = command_for_name('run')
+
+        def cleanup() -> None:
+            for sid in tuple(active_streams):
+                abort_active_stream(sid)
+
+        self.addCleanup(cleanup)
+
+        def chunk(sid: str, data: bytes = b'x', payload: dict[str, Any] | None = None, **kw: Any) -> dict[str, Any]:
+            p: dict[str, Any] = {'cmdline': ['true'], 'data': standard_b64encode(data).decode('ascii'), **(payload or {})}
+            return {'cmd': 'run', 'version': [0, 26, 0], 'stream_id': sid, 'async': 'a-' + sid, 'payload': p, **kw}
+
+        def open_stream(sid: str, peer_id: int = 0, window: Window | None = None) -> None:
+            # handle_cmd() is only called for authorized requests
+            r = handle_cmd(Mock(spec=KittyBoss), window, chunk(sid, stream=True), peer_id, None)
+            self.ae(r, {'ok': True, 'stream': True})
+            self.assertIn(sid, active_streams)
+
+        def allowed(pcmd: dict[str, Any], peer_id: int = 0, window: Window | None = None) -> bool:
+            return is_cmd_allowed(pcmd, cast(Any, window), peer_id > 0, {}, peer_id) is True
+
+        # continuations from the same origin with only the data changed are allowed
+        open_stream('s1', peer_id=7)
+        self.assertTrue(allowed(chunk('s1', b'y'), 7))
+        self.assertTrue(allowed(chunk('s1', b''), 7))
+        # continuations must not change anything other than the data
+        self.assertFalse(allowed(chunk('s1', payload={'cmdline': ['evil']}), 7))
+        self.assertFalse(allowed(chunk('s1', payload={'env': ['A=b']}), 7))
+        self.assertFalse(allowed({**chunk('s1'), 'async': 'other'}, 7))
+        self.assertFalse(allowed({**chunk('s1'), 'cmd': 'set-window-logo'}, 7))
+        # continuations must come from the origin that opened the stream
+        self.assertFalse(allowed(chunk('s1'), 8))
+        self.assertFalse(allowed(chunk('s1'), 0, Window(7, 1)))
+        self.assertFalse(allowed(chunk('unknown'), 7))
+
+        # cancellations only abort streams opened from the same origin
+        cancel = {'cmd': 'run', 'version': [0, 26, 0], 'stream_id': 's1', 'async': 'a-s1', 'cancel_async': True}
+        self.assertIsNone(handle_cmd(Mock(spec=KittyBoss), None, dict(cancel), 8, None))
+        self.assertIn('s1', active_streams)
+        self.ae(command.stream_in_flight.stream_id, 's1')
+        self.assertIsNone(handle_cmd(Mock(spec=KittyBoss), None, dict(cancel), 7, None))
+        self.assertNotIn('s1', active_streams)
+        self.ae(command.stream_in_flight.stream_id, '')
+        self.assertIsNone(command.stream_in_flight.tempfile)
+        self.assertFalse(allowed(chunk('s1'), 7))
+
+        # streams are aborted when the peer or window that opened them goes away
+        w = Window(5, 1)
+        open_stream('s2', peer_id=7)
+        open_stream('s3', window=w)
+        self.assertTrue(allowed(chunk('s3'), 0, w))
+        abort_active_streams_from(peer_id=7)
+        self.assertNotIn('s2', active_streams)
+        self.assertIn('s3', active_streams)
+        self.ae(command.stream_in_flight.stream_id, 's3')
+        abort_active_streams_from(window_id=w.id)
+        self.assertNotIn('s3', active_streams)
+        self.ae(command.stream_in_flight.stream_id, '')
+
+        # a command has only one stream in flight, opening another aborts the first
+        open_stream('s4', peer_id=7)
+        open_stream('s5', peer_id=8)
+        self.assertNotIn('s4', active_streams)
+        self.assertFalse(allowed(chunk('s4'), 7))
+        self.assertTrue(allowed(chunk('s5'), 8))
+
+        # the number of registered streams is bounded
+        for i in range(40):
+            register_active_stream(f'many-{i}', chunk(f'many-{i}'), None, 9)
+        self.ae(len(active_streams), 32)
+        self.assertNotIn('many-0', active_streams)
+        self.assertIn('many-39', active_streams)
 
     def test_combine_parse_error_reporting(self):
         from kitty.boss import Boss as KittyBoss

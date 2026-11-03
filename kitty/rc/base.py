@@ -297,15 +297,20 @@ class StreamInFlight:
         self.stream_id = ''
         self.tempfile: BytesIO | None = None
 
+    def discard(self, stream_id: str) -> None:
+        # Drop any data received for the specified stream, if it is in flight
+        if stream_id and stream_id == self.stream_id:
+            self.stream_id = ''
+            if self.tempfile is not None:
+                self.tempfile.close()
+                self.tempfile = None
+
     def handle_data(self, stream_id: str, data: bytes) -> AsyncResponse | BytesIO:
         from ..remote_control import close_active_stream
 
         def abort_stream() -> None:
             close_active_stream(self.stream_id)
-            self.stream_id = ''
-            if self.tempfile is not None:
-                self.tempfile.close()
-                self.tempfile = None
+            self.discard(self.stream_id)
 
         if stream_id != self.stream_id:
             abort_stream()

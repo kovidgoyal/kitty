@@ -839,7 +839,7 @@ class Boss:
             return {'ok': False, 'error': 'Remote control disallowed by window specific password'}
         if allowed_unconditionally:
             return self._execute_remote_command(pcmd, window, peer_id, self_window)
-        q = is_cmd_allowed(pcmd, window, from_socket, extra_data)
+        q = is_cmd_allowed(pcmd, window, from_socket, extra_data, peer_id)
         if q is True:
             return self._execute_remote_command(pcmd, window, peer_id, self_window)
         if q is None:
@@ -1006,6 +1006,9 @@ class Boss:
     def peer_message_received(self, msg_bytes: bytes, peer_id: int, is_remote_control: bool) -> bytes | bool | None:
         if peer_id > 0 and msg_bytes == b'peer_death':
             self.peer_data_map.pop(peer_id, None)
+            from .remote_control import abort_active_streams_from
+
+            abort_active_streams_from(peer_id=peer_id)
             return False
         if is_remote_control:
             cmd_prefix = b'\x1bP@kitty-cmd'

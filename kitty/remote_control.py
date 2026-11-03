@@ -12,7 +12,7 @@ from contextlib import suppress
 from functools import lru_cache, partial
 from time import time_ns
 from types import GeneratorType
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, TypeVar, cast
 
 from .cli import parse_args
 from .cli_stub import RCOptions
@@ -33,7 +33,19 @@ from .typing_compat import BossType, WindowType
 from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
 
 active_async_requests: dict[str, float] = {}
-active_streams: dict[str, str] = {}
+
+
+class ActiveStream(NamedTuple):
+    cmd: str
+    # The origin of the request that opened the stream: the socket peer or the
+    # window the request was received from
+    peer_id: int
+    window_id: int
+    # The parts of the request that must be the same for every chunk of the stream
+    fingerprint: str
+
+
+active_streams: dict[str, ActiveStream] = {}
 T = TypeVar('T')
 if TYPE_CHECKING:
     from .window import Window
@@ -176,9 +188,9 @@ def password_authorizer(auth_items: frozenset[str]) -> PasswordAuthorizer:
 user_password_allowed: dict[str, bool] = {}
 
 
-def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any]) -> bool | None:
-    sid = pcmd.get('stream_id', '')
-    if sid and active_streams.get(sid, '') == pcmd['cmd']:
+def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket: bool, extra_data: dict[str, Any], peer_id: int = 0) -> bool | None:
+    if is_stream_continuation(pcmd, window, peer_id):
+        # The request that opened the stream was authorized
         return True
     if 'cancel_async' in pcmd and str(pcmd.get('async', '')):
         # we allow these without authentication as they are sent on error
@@ -210,8 +222,54 @@ def set_user_password_allowed(pwd: str, allowed: bool = True) -> None:
     user_password_allowed[pwd] = allowed
 
 
+def stream_fingerprint(pcmd: dict[str, Any]) -> str:
+    # Every chunk of a stream repeats the request with only the data changed,
+    # so everything else must match the authorized request that opened the stream
+    payload = pcmd.get('payload') or {}
+    if isinstance(payload, dict):
+        # peer_id, stream_id and async_id are added to the payload by handle_cmd()
+        payload = {k: v for k, v in payload.items() if k not in ('data', 'peer_id', 'stream_id', 'async_id')}
+    return json.dumps({'cmd': pcmd.get('cmd'), 'async': str(pcmd.get('async', '')), 'payload': payload}, sort_keys=True)
+
+
+def window_id_of(window: WindowType | None) -> int:
+    return 0 if window is None else window.id
+
+
+def is_stream_continuation(pcmd: dict[str, Any], window: WindowType | None, peer_id: int) -> bool:
+    sid = str(pcmd.get('stream_id', ''))
+    s = active_streams.get(sid) if sid else None
+    return (
+        s is not None
+        and s.cmd == pcmd.get('cmd')
+        and s.peer_id == peer_id
+        and s.window_id == window_id_of(window)
+        and s.fingerprint == stream_fingerprint(pcmd)
+    )
+
+
+def register_active_stream(stream_id: str, pcmd: dict[str, Any], window: WindowType | None, peer_id: int) -> None:
+    active_streams[stream_id] = ActiveStream(pcmd['cmd'], peer_id, window_id_of(window), stream_fingerprint(pcmd))
+    while len(active_streams) > 32:
+        abort_active_stream(next(iter(active_streams)))
+
+
 def close_active_stream(stream_id: str) -> None:
     active_streams.pop(stream_id, None)
+
+
+def abort_active_stream(stream_id: str) -> None:
+    # Close the stream and discard any data already received on it
+    s = active_streams.pop(stream_id, None)
+    if s is not None:
+        command_for_name(s.cmd).stream_in_flight.discard(stream_id)
+
+
+def abort_active_streams_from(peer_id: int = 0, window_id: int = 0) -> None:
+    # Called when the socket peer or window that opened streams goes away, as
+    # the streams can no longer be completed
+    for sid in [sid for sid, s in active_streams.items() if s.peer_id == peer_id and s.window_id == window_id]:
+        abort_active_stream(sid)
 
 
 def handle_cmd(
@@ -237,6 +295,11 @@ def handle_cmd(
         payload['async_id'] = async_id
         if 'cancel_async' in cmd:
             active_async_requests.pop(async_id, None)
+            # Cancellations are allowed without authentication, so only let
+            # them abort a stream opened from the same origin
+            s = active_streams.get(stream_id) if stream_id else None
+            if s is not None and s.peer_id == peer_id and s.window_id == window_id_of(window):
+                abort_active_stream(stream_id)
             c.cancel_async_request(boss, self_window or window, PayloadGetter(c, payload))
             return None
         active_async_requests[async_id] = monotonic()
@@ -247,10 +310,7 @@ def handle_cmd(
         # Register the stream only after cancellations have returned, as they
         # are allowed without authentication and requests on a registered
         # stream are allowed without authentication as well
-        active_streams[stream_id] = cmd['cmd']
-        if len(active_streams) > 32:
-            oldest = next(iter(active_streams))
-            del active_streams[oldest]
+        register_active_stream(stream_id, cmd, window, peer_id)
     try:
         ans = c.response_from_kitty(boss, self_window or window, PayloadGetter(c, payload))
     except Exception:

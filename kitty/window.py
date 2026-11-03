@@ -2225,8 +2225,11 @@ class Window:
                 traceback.print_exc()
 
     def destroy(self) -> None:
+        from .remote_control import abort_active_streams_from
+
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
+        abort_active_streams_from(window_id=self.id)
         if self.clear_progress_timer:
             remove_timer(self.clear_progress_timer)
             self.clear_progress_timer = 0
