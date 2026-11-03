@@ -193,11 +193,18 @@ static inline gpu_pipeline_t
 gpu_pipeline_create(
     const GPUShaderSource *sources,
     size_t num_sources,
+    const GPUParamBlock *param_blocks,
+    size_t num_param_blocks,
     const GPUBinding *bindings,
     size_t num_bindings,
     const GPUNativeName *native_names,
     size_t num_native_names) {
-    return A.pipeline_create(D, sources, num_sources, bindings, num_bindings, native_names, num_native_names);
+    return A.pipeline_create(D, sources, num_sources, param_blocks, num_param_blocks, bindings, num_bindings, native_names, num_native_names);
+}
+
+static inline void
+gpu_set_params(gpu_pipeline_t pipeline, uint32_t block, const void *data, size_t size) {
+    A.set_params(D, pipeline, block, data, size);
 }
 
 static inline void
@@ -210,11 +217,6 @@ gpu_use_pipeline(gpu_pipeline_t pipeline) {
     A.use_pipeline(D, pipeline);
 }
 
-static inline int32_t
-gpu_pipeline_uniform_slot(gpu_pipeline_t pipeline, const char *name) {
-    return A.pipeline_uniform_slot(D, pipeline, name);
-}
-
 static inline bool
 gpu_pipeline_uniform_block(gpu_pipeline_t pipeline, const char *name, GPUUniformBlockInfo *ans) {
     return A.pipeline_uniform_block(D, pipeline, name, ans);
@@ -223,21 +225,6 @@ gpu_pipeline_uniform_block(gpu_pipeline_t pipeline, const char *name, GPUUniform
 static inline int32_t
 gpu_pipeline_attribute_location(gpu_pipeline_t pipeline, const char *name) {
     return A.pipeline_attribute_location(D, pipeline, name);
-}
-
-static inline void
-gpu_set_uniform_floats(int32_t slot, uint32_t components, uint32_t count, const float *values) {
-    A.set_uniform_floats(D, slot, components, count, values);
-}
-
-static inline void
-gpu_set_uniform_ints(int32_t slot, uint32_t components, uint32_t count, const int32_t *values) {
-    A.set_uniform_ints(D, slot, components, count, values);
-}
-
-static inline void
-gpu_set_uniform_uints(int32_t slot, uint32_t components, uint32_t count, const uint32_t *values) {
-    A.set_uniform_uints(D, slot, components, count, values);
 }
 
 static inline gpu_vertex_layout_t
@@ -336,41 +323,6 @@ gpu_draw_quad(uint32_t instance_count, GPUBlendMode blend) {
 #undef A
 // }}}
 
-// Uniform convenience functions {{{
-static inline void
-gpu_uniform1f(int32_t slot, float a) {
-    gpu_set_uniform_floats(slot, 1, 1, &a);
-}
-
-static inline void
-gpu_uniform2f(int32_t slot, float a, float b) {
-    const float v[2] = {a, b};
-    gpu_set_uniform_floats(slot, 2, 1, v);
-}
-
-static inline void
-gpu_uniform3f(int32_t slot, float a, float b, float c) {
-    const float v[3] = {a, b, c};
-    gpu_set_uniform_floats(slot, 3, 1, v);
-}
-
-static inline void
-gpu_uniform4f(int32_t slot, float a, float b, float c, float d) {
-    const float v[4] = {a, b, c, d};
-    gpu_set_uniform_floats(slot, 4, 1, v);
-}
-
-static inline void
-gpu_uniform1i(int32_t slot, int32_t a) {
-    gpu_set_uniform_ints(slot, 1, 1, &a);
-}
-
-static inline void
-gpu_uniform1ui(int32_t slot, uint32_t a) {
-    gpu_set_uniform_uints(slot, 1, 1, &a);
-}
-// }}}
-
 // Higher level helpers {{{
 typedef struct Viewport {
     unsigned left, top, width, height;
@@ -409,14 +361,29 @@ typedef struct ArrayInformation {
 #define MAX_GPU_PROGRAMS 64
 
 gpu_pipeline_t program_pipeline(int program);
-// Replace the pipeline of program, freeing any existing pipeline. Steals the reference to pipeline.
-void set_program_pipeline(int program, gpu_pipeline_t pipeline);
+// Free the pipeline of the program, if any
+void free_program(int program);
+// Create the pipeline for program from shader sources compiled for the shader
+// target of the driver and their metadata, see program_metadata() in
+// shaders/slang.py. Returns false with a Python exception set on failure.
+bool compile_gpu_program(int program, const char *vertex, size_t vertex_size, const char *fragment, size_t fragment_size, PyObject *metadata);
 int32_t attrib_location(int program, const char *name);
-// Returns false with a Python exception set on failure
-bool set_program_layout(int program, PyObject *metadata);
 void free_program_layouts(void);
-int32_t program_uniform_location(int program, const char *name);
-int32_t try_program_uniform_location(int program, const char *name);
+// Parameters, the uniform parameters of the entry points and the pipeline
+// constant blocks of a program. Values are written into memory owned by
+// kitty and passed to the driver before the next draw call using the
+// program. A handle identifies a parameter of a program, negative handles
+// are ignored by the setters.
+int32_t program_param(int program, const char *name);
+// As above, but returns -1 without logging an error if the program has no such parameter
+int32_t try_program_param(int program, const char *name);
+void param_floats(int32_t handle, uint32_t components, uint32_t count, const float *values);
+void param_1f(int32_t handle, float a);
+void param_2f(int32_t handle, float a, float b);
+void param_3f(int32_t handle, float a, float b, float c);
+void param_4f(int32_t handle, float a, float b, float c, float d);
+void param_1i(int32_t handle, int32_t a);
+void param_1ui(int32_t handle, uint32_t a);
 int32_t program_attribute_location(int program, const char *name);
 UniformBlock program_uniform_block(int program, const char *name);
 ArrayInformation program_uniform_array(int program, const char *name);
