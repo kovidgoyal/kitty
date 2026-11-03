@@ -23,7 +23,8 @@ static const bool ONLY_BACKGROUND = RENDER_MODE == 1;
 // LUT as well as most color utility functions live in the background module so
 // that they can be shared with the padding shader.
 
-uniform Sampler2D<uint4> sprite_decorations_map;
+[[vk::binding(2)]]
+uniform Sampler2D<uint4> sprite_decorations_map; // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
 static const uint SPRITE_INDEX_MASK = 0x7fffffff;
 static const uint SPRITE_COLORED_MASK = 0x80000000;
@@ -217,6 +218,7 @@ vertex_main(
     return vo;
 }
 
+[[vk::binding(0)]]
 uniform Sampler2DArray sprites;
 // Scaling factor for the extra text-alpha adjustment for luminance-difference.
 static const float text_gamma_scaling = 0.5;
