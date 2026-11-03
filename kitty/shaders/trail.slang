@@ -40,7 +40,8 @@ fragment_main(float2 frag_pos: TEXCOORD)
     float opacity = uniforms.trail_opacity;
     // Evaluate if the fragment falls inside the bounding box of the cursor
     float in_x = step(uniforms.cursor_edge_x[0], frag_pos.x) * step(frag_pos.x, uniforms.cursor_edge_x[1]);
-    float in_y = step(uniforms.cursor_edge_y[1], frag_pos.y) * step(frag_pos.y, uniforms.cursor_edge_y[0]);
+    // NDC y increases downwards, so the top edge, edge 0, is the smaller one
+    float in_y = step(uniforms.cursor_edge_y[0], frag_pos.y) * step(frag_pos.y, uniforms.cursor_edge_y[1]);
 
     // Mask out opacity inside the active cursor area
     opacity *= 1.0f - (in_x * in_y);

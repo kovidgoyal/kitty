@@ -179,21 +179,11 @@ static struct {
 } saved_viewports;
 
 void
-save_viewport_using_bottom_left_origin(int32_t newx, int32_t newy, uint32_t width, uint32_t height) {
+save_viewport(int32_t newx, int32_t newy, uint32_t width, uint32_t height) {
     if (saved_viewports.used >= arraysz(saved_viewports.items)) fatal("Too many nested saved viewports");
     int32_t *saved_viewport = saved_viewports.items[saved_viewports.used++];
     gpu_get_viewport(saved_viewport);
     gpu_set_viewport(newx, newy, width, height);
-}
-
-void
-save_viewport_using_top_left_origin(int32_t newx, int32_t newy, uint32_t width, uint32_t height, int32_t full_framebuffer_height) {
-    // Converts the viewport defined by the specified arguments which are
-    // assumed to be in the usual co-ord system with origin at top left to the
-    // GPU viewport co-ord system with origin at bottom left.
-    // Use restore_viewport() to restore the viewport to what it was before.
-    newy = full_framebuffer_height - (newy + (int32_t)height);
-    save_viewport_using_bottom_left_origin(newx, newy, width, height);
 }
 
 void
@@ -204,9 +194,8 @@ restore_viewport(void) {
 }
 
 void
-enable_scissor_using_top_left_origin(Viewport vp, unsigned full_framebuffer_height) {
-    int32_t newy = (int32_t)full_framebuffer_height - (int32_t)(vp.top + vp.height);
-    gpu_set_scissor(true, vp.left, newy, vp.width, vp.height);
+enable_scissor(Viewport vp) {
+    gpu_set_scissor(true, vp.left, vp.top, vp.width, vp.height);
 }
 
 void
@@ -287,7 +276,7 @@ save_texture_as_png(gpu_texture_t texture, const char *filename) {
         b = (uint8_t)(linear_to_srgb(bf) * 255);
         data[i] = (r << 0) | (g << 8) | (b << 16) | ((uint32_t)a << 24);
     }
-    const char *png = png_from_32bit_rgba((char *)data, width, height, &sz, true);
+    const char *png = png_from_32bit_rgba((char *)data, width, height, &sz, false);
     if (!sz) fatal("Failed to save PNG to %s with error: %s", filename, png);
     FILE *file = fopen(filename, "wb");
     if (!file) fatal("Failed to open %s for writing with error: %s", filename, strerror(errno));
