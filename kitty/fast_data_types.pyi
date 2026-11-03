@@ -630,7 +630,7 @@ def glfw_terminate() -> None:
 
 def glfw_init(
     path: str,
-    gpu_driver_path: str,
+    gpu_drivers: Sequence[tuple[str, str]],  # (name, path) of the GPU drivers to try in order
     edge_spacing_func: Callable[[EdgeLiteral], float],
     debug_keyboard: bool = False,
     debug_rendering: bool = False,

@@ -20,10 +20,10 @@ from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
     appname,
+    available_gpu_drivers,
     beam_cursor_data_file,
     clear_handled_signals,
     glfw_path,
-    gpu_driver_path,
     is_macos,
     is_quick_access_terminal_app,
     is_wayland,
@@ -65,7 +65,7 @@ from .logout_session import (
     remove_all_snapshots,
     restore_snapshots,
 )
-from .options.types import Options
+from .options.types import Options, defaults
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
 from .session import create_sessions, get_os_window_sizing_data
@@ -105,8 +105,17 @@ def load_all_shaders() -> None:
         raise SystemExit(err)
 
 
-def init_glfw_module(glfw_module: str = 'wayland', debug_keyboard: bool = False, debug_rendering: bool = False, wayland_enable_ime: bool = True) -> None:
-    ok, swo = glfw_init(glfw_path(glfw_module), gpu_driver_path(), edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime)
+def init_glfw_module(
+    glfw_module: str = 'wayland',
+    debug_keyboard: bool = False,
+    debug_rendering: bool = False,
+    wayland_enable_ime: bool = True,
+    gpu_drivers: Sequence[str] = defaults.gpu_driver,
+) -> None:
+    drivers = available_gpu_drivers(gpu_drivers)
+    if not drivers:
+        raise SystemExit(f'None of the GPU drivers: {", ".join(gpu_drivers)} are available in this build of kitty, check the gpu_driver option')
+    ok, swo = glfw_init(glfw_path(glfw_module), drivers, edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime)
     if not ok:
         raise SystemExit('GLFW initialization failed')
     supports_window_occlusion(swo)
@@ -114,7 +123,7 @@ def init_glfw_module(glfw_module: str = 'wayland', debug_keyboard: bool = False,
 
 def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool = False) -> str:
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
-    init_glfw_module(glfw_module, debug_keyboard, debug_rendering, wayland_enable_ime=opts.wayland_enable_ime)
+    init_glfw_module(glfw_module, debug_keyboard, debug_rendering, wayland_enable_ime=opts.wayland_enable_ime, gpu_drivers=opts.gpu_driver)
     return glfw_module
 
 

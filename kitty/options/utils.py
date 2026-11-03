@@ -1034,6 +1034,22 @@ def clipboard_control(x: str) -> tuple[str, ...]:
     return tuple(x.lower().split())
 
 
+GPU_DRIVERS = ('metal', 'vulkan', 'opengl')
+
+
+def gpu_driver(x: str) -> tuple[str, ...]:
+    ans: list[str] = []
+    for name in re.split(r'[\s,]+', x.strip().lower()):
+        if name:
+            if name not in GPU_DRIVERS:
+                raise ValueError(f'Unknown GPU driver: {name}, must be one of: {", ".join(GPU_DRIVERS)}')
+            if name not in ans:
+                ans.append(name)
+    if not ans:
+        raise ValueError('At least one GPU driver must be specified')
+    return tuple(ans)
+
+
 def custom_shaders(x: str) -> tuple[str, ...]:
     return tuple(shlex_split(x)) if x else ()
 

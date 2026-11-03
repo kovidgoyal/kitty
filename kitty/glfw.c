@@ -2328,6 +2328,34 @@ is_visible_on_a_monitor(int x, int y, int width, int height) {
     return false;
 }
 
+typedef char GPUFailure[2048];
+
+static void
+describe_gpu_failure(GPUFailure failure, const char *what) {
+    snprintf(failure, sizeof(GPUFailure), "Failed to %s with the %s GPU driver with error: %s", what, gpu_driver_name(), gpu_last_error());
+}
+
+// Called when the GPU driver fails while creating the first window, before
+// any GPU resources exist, to switch to the next GPU driver, see the
+// gpu_driver option. Any surfaces must have been destroyed. Returns false,
+// with a Python exception set, if there is no other usable driver.
+static bool
+switch_gpu_driver_after_failure(bool is_first_window, const GPUFailure failure) {
+    if (is_first_window && has_untried_gpu_drivers()) {
+        GPUNativeWindow display;
+        native_window_for_gpu(NULL, &display);
+        const char *err = load_next_gpu_driver(&display);
+        if (!err) {
+            log_error("%s, using the %s GPU driver instead", failure, gpu_driver_name());
+            return true;
+        }
+        PyErr_Format(PyExc_OSError, "%s. Other GPU drivers are also not usable:\n%s", failure, err);
+        return false;
+    }
+    PyErr_Format(PyExc_OSError, "%s. This usually happens because of old/broken GPU drivers.", failure);
+    return false;
+}
+
 static PyObject *
 create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     int x = INT_MIN, y = INT_MIN, window_state = WINDOW_NORMAL, disallow_override_title = 0;
@@ -2446,7 +2474,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         native_window_for_gpu(NULL, &display);
         uint64_t visual_id = 0;
         if (!gpu_choose_native_visual(&display, &surface_config, &visual_id)) {
-            PyErr_Format(PyExc_OSError, "Failed to choose an X11 visual for the window with error: %s", gpu_last_error());
+            GPUFailure failure;
+            describe_gpu_failure(failure, "choose an X11 visual for the window");
+            if (switch_gpu_driver_after_failure(is_first_window, failure)) return create_os_window(self, args, kw);
             return NULL;
         }
         glfwWindowHint(GLFW_X11_VISUAL_ID, (int)visual_id);
@@ -2551,12 +2581,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         glfwGetFramebufferSize(glfw_window, &fw, &fh);
         gpu_surface = gpu_surface_create(&native, &surface_config, (uint32_t)MAX(1, fw), (uint32_t)MAX(1, fh));
         if (!gpu_surface || !gpu_make_surface_current(gpu_surface)) {
-            PyErr_Format(
-                PyExc_OSError,
-                "Failed to create a GPU surface for the window with error: %s. This usually happens because of old/broken GPU drivers.",
-                gpu_last_error());
+            GPUFailure failure;
+            describe_gpu_failure(failure, "create a GPU surface for the window");
             if (gpu_surface) gpu_surface_destroy(gpu_surface);
             glfwDestroyWindow(glfw_window);
+            if (switch_gpu_driver_after_failure(is_first_window, failure)) return create_os_window(self, args, kw);
             return NULL;
         }
     }
@@ -2848,16 +2877,38 @@ dbus_monitor_session_state(PyObject *self UNUSED, PyObject *callback) {
 }
 #endif
 
+// Parse a sequence of (name, path) pairs of GPU drivers into candidates
+static bool
+set_gpu_drivers(PyObject *gpu_drivers, bool debug_rendering) {
+    RAII_PyObject(seq, PySequence_Fast(gpu_drivers, "gpu_drivers must be a sequence of (name, path) pairs"));
+    if (!seq) return false;
+    const Py_ssize_t n = PySequence_Fast_GET_SIZE(seq);
+    RAII_ALLOC(GPUDriverCandidate, items, calloc(MAX(1, n), sizeof(GPUDriverCandidate)));
+    if (!items) {
+        PyErr_NoMemory();
+        return false;
+    }
+    for (Py_ssize_t i = 0; i < n; i++) {
+        if (!PyArg_ParseTuple(PySequence_Fast_GET_ITEM(seq, i), "ss", &items[i].name, &items[i].path)) return false;
+    }
+    if (!set_gpu_driver_candidates(items, (size_t)n, debug_rendering)) {
+        PyErr_NoMemory();
+        return false;
+    }
+    return true;
+}
+
 static PyObject *
 glfw_init(PyObject UNUSED *self, PyObject *args) {
-    const char *path, *gpu_driver_path;
+    const char *path;
     int debug_keyboard = 0, debug_rendering = 0, wayland_enable_ime = 0;
-    PyObject *edge_sf;
-    if (!PyArg_ParseTuple(args, "ssO|ppp", &path, &gpu_driver_path, &edge_sf, &debug_keyboard, &debug_rendering, &wayland_enable_ime)) return NULL;
+    PyObject *edge_sf, *gpu_drivers;
+    if (!PyArg_ParseTuple(args, "sOO|ppp", &path, &gpu_drivers, &edge_sf, &debug_keyboard, &debug_rendering, &wayland_enable_ime)) return NULL;
     if (!PyCallable_Check(edge_sf)) {
         PyErr_SetString(PyExc_TypeError, "edge_spacing_func must be a callable");
         return NULL;
     }
+    if (!set_gpu_drivers(gpu_drivers, debug_rendering != 0)) return NULL;
     Py_CLEAR(edge_spacing_func);
 #ifdef __APPLE__
     cocoa_set_uncaught_exception_handler();
@@ -2868,11 +2919,6 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         return NULL;
     }
     glfw_is_loaded = true;
-    err = load_gpu_driver(gpu_driver_path, debug_rendering != 0);
-    if (err) {
-        PyErr_SetString(PyExc_RuntimeError, err);
-        return NULL;
-    }
     push_modifier_remap_to_glfw();
     glfwSetErrorCallback(error_callback);
     glfwInitHint(GLFW_DEBUG_KEYBOARD, debug_keyboard);
@@ -2896,6 +2942,21 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         get_window_dpi(NULL, &global_state.default_dpi.x, &global_state.default_dpi.y);
         edge_spacing_func = edge_sf;
         Py_INCREF(edge_spacing_func);
+        // The GPU driver needs the connection to the windowing system to
+        // check that it can render to windows, see connect() in gpu/api.h.
+        // global_state.is_wayland is not yet set, so use the loaded glfw
+        // module, which exports only the functions of its own platform.
+#ifdef __APPLE__
+        const GPUNativeWindow display = {.platform = GPU_PLATFORM_COCOA};
+#else
+        void *wl_display = glfwGetWaylandDisplay ? glfwGetWaylandDisplay() : NULL;
+        const GPUNativeWindow display = wl_display ? (GPUNativeWindow){.platform = GPU_PLATFORM_WAYLAND, .display = wl_display}
+                                                   : (GPUNativeWindow){.platform = GPU_PLATFORM_X11, .display = glfwGetX11Display(), .screen = -1};
+#endif
+        if ((err = load_next_gpu_driver(&display))) {
+            PyErr_Format(PyExc_RuntimeError, "Failed to load a GPU driver:\n%s", err);
+            return NULL;
+        }
     }
     return Py_BuildValue("OO", ok ? Py_True : Py_False, supports_window_occlusion ? Py_True : Py_False);
 }
