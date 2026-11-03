@@ -150,6 +150,17 @@ class TestBuild(BaseTest):
             self.assertTrue(os.path.isfile(path), f'{path} is not a file')
             self.assertTrue(os.access(path, os.X_OK), f'{path} is not executable')
 
+    def test_gpu_drivers(self) -> None:
+        from kitty.constants import gpu_driver_path
+
+        path = gpu_driver_path('opengl')
+        self.assertTrue(os.path.isfile(path), f'{path} is not a file')
+        self.assertTrue(os.access(path, os.X_OK), f'{path} is not executable')
+        import ctypes
+
+        lib = ctypes.CDLL(path)
+        self.assertTrue(hasattr(lib, 'kitty_gpu_driver_load'), f'{path} does not export kitty_gpu_driver_load')
+
     def test_all_kitten_names(self) -> None:
         from kittens.runner import all_kitten_names
 
