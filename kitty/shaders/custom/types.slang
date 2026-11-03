@@ -135,18 +135,20 @@ public struct KittyCustomShaderData {
 // A texture kitty renders into, addressed in the same UV co-ordinate space as
 // KittyTextures.pos. kitty renders into textures that are at least as large as
 // the largest OS Window viewport, so the pixels for the current OS Window
-// occupy only the lower-left corner of the texture after the window is made
-// smaller. Sampling via the Sample() method below hides that detail, so
-// shaders never need to know the size of the underlying texture.
+// occupy only the top-left corner of the texture after the window is made
+// smaller. Also, texture co-ordinates have their origin at the top-left,
+// unlike UV co-ordinates. Sampling via the Sample() method below hides these
+// details, so shaders never need to know about the underlying texture.
 public struct KittyTexture {
-    // The underlying texture. Use this only if you need raw texture UV,
-    // remember to multiply your co-ordinates by scale below when you do.
+    // The underlying texture. Use this only if you need raw texture
+    // co-ordinates, which have their origin at the top-left, remember to
+    // multiply your co-ordinates by scale below when you do.
     public Sampler2D tex;
     // The fraction of tex occupied by the OS Window viewport. Always in (0, 1].
     public float2 scale;
-    // The largest usable co-ordinate for Sample() below. Half a texel less than
-    // one, so that sampling the top/right edge does not blend in texels from
-    // outside the viewport.
+    // The largest usable texture co-ordinate, before multiplying by scale,
+    // for Sample() below. Half a texel less than one, so that sampling the
+    // right/bottom edge does not blend in texels from outside the viewport.
     public float2 max_pos;
 
     // Sample this texture at pos, which is in the same UV co-ordinate space as
@@ -154,7 +156,7 @@ public struct KittyTexture {
     // Co-ordinates outside that range are clamped to the edge of the viewport.
     public float4
     Sample(float2 pos) {
-        return tex.Sample(clamp(pos, float2(0.f), max_pos) * scale);
+        return tex.Sample(clamp(float2(pos.x, 1.f - pos.y), float2(0.f), max_pos) * scale);
     }
 }
 

@@ -289,14 +289,15 @@ compute_background(uint3 colors, uint2 sprite_idx, uint is_selected, uint instan
     uint row = instance_id / crd.columns;
     uint column = instance_id - row * crd.columns;
 
-    // The position of this vertex, at a corner of the cell
+    // The position of this vertex, at a corner of the cell. NDC y increases
+    // downwards from -1 at the top.
     float left = -1.0 + float(column) * dx;
-    float top = 1.0 - (float(row) + crd.row_offset) * dy;
+    float top = -1.0 + (float(row) + crd.row_offset) * dy;
 
     uint2 pos = cell_pos_map[vertex_id];
 
     float2 select_x = float2(left, left + dx);
-    float2 select_y = float2(top, top - dy);
+    float2 select_y = float2(top, top + dy);
     bo.position = float4(select_x[pos.x], select_y[pos.y], 0.0, 1.0);
     // }}}
 
