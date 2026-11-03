@@ -303,9 +303,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     (void)notification;
     _GLFWwindow *window;
 
-    for (window = _glfw.windowListHead; window; window = window->next) {
-        if (window->context.client != GLFW_NO_API) [window->context.nsgl.object update];
-    }
+    for (window = _glfw.windowListHead; window; window = window->next) { _glfwInputNativeSurfaceChanged(window); }
 
     _glfwPollMonitorsNS();
 }
@@ -1031,7 +1029,6 @@ _glfwPlatformTerminate(void) {
             _glfw.ns.appleSettings = nil;
         }
 
-        _glfwTerminateNSGL();
         if (global_shortcuts != nil) {
             [global_shortcuts release];
             global_shortcuts = nil;
@@ -1042,7 +1039,7 @@ _glfwPlatformTerminate(void) {
 
 const char *
 _glfwPlatformGetVersionString(void) {
-    return _GLFW_VERSION_NUMBER " Cocoa NSGL EGL OSMesa"
+    return _GLFW_VERSION_NUMBER " Cocoa"
 #if defined(_GLFW_BUILD_DLL)
                                 " dynamic"
 #endif

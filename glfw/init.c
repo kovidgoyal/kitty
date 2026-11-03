@@ -51,7 +51,6 @@ static _GLFWerror _glfwMainThreadError;
 static GLFWerrorfun _glfwErrorCallback;
 static _GLFWinitconfig _glfwInitHints = {
     .hatButtons = true,
-    .angleType = GLFW_ANGLE_PLATFORM_TYPE_NONE,
     .debugKeyboard = false,
     .debugRendering = false,
     .ns =
@@ -105,7 +104,6 @@ terminate(void) {
         free(error);
     }
 
-    _glfwPlatformDestroyTls(&_glfw.contextSlot);
     _glfwPlatformDestroyTls(&_glfw.errorSlot);
     _glfwPlatformDestroyMutex(&_glfw.errorLock);
 
@@ -148,7 +146,6 @@ _glfwInputError(int code, const char *format, ...) {
         description[sizeof(description) - 1] = '\0';
     } else {
         if (code == GLFW_NOT_INITIALIZED) strcpy(description, "The GLFW library is not initialized");
-        else if (code == GLFW_NO_CURRENT_CONTEXT) strcpy(description, "There is no current context");
         else if (code == GLFW_INVALID_ENUM) strcpy(description, "Invalid argument for enum parameter");
         else if (code == GLFW_INVALID_VALUE) strcpy(description, "Invalid value for parameter");
         else if (code == GLFW_OUT_OF_MEMORY) strcpy(description, "Out of memory");
@@ -156,7 +153,6 @@ _glfwInputError(int code, const char *format, ...) {
         else if (code == GLFW_VERSION_UNAVAILABLE) strcpy(description, "The requested API version is unavailable");
         else if (code == GLFW_PLATFORM_ERROR) strcpy(description, "A platform-specific error occurred");
         else if (code == GLFW_FORMAT_UNAVAILABLE) strcpy(description, "The requested format is unavailable");
-        else if (code == GLFW_NO_WINDOW_CONTEXT) strcpy(description, "The specified window has no context");
         else if (code == GLFW_FEATURE_UNAVAILABLE) strcpy(description, "The requested feature cannot be implemented for this platform");
         else if (code == GLFW_FEATURE_UNIMPLEMENTED) strcpy(description, "The requested feature has not yet been implemented for this platform");
         else strcpy(description, "ERROR: UNKNOWN GLFW ERROR");
@@ -212,7 +208,7 @@ glfwInit(monotonic_t start_time, bool *supports_window_occlusion) {
         return false;
     }
 
-    if (!_glfwPlatformCreateMutex(&_glfw.errorLock) || !_glfwPlatformCreateTls(&_glfw.errorSlot) || !_glfwPlatformCreateTls(&_glfw.contextSlot)) {
+    if (!_glfwPlatformCreateMutex(&_glfw.errorLock) || !_glfwPlatformCreateTls(&_glfw.errorSlot)) {
         terminate();
         return false;
     }
@@ -248,7 +244,6 @@ GLFWAPI void
 glfwInitHint(int hint, int value) {
     switch (hint) {
         case GLFW_JOYSTICK_HAT_BUTTONS: _glfwInitHints.hatButtons = value; return;
-        case GLFW_ANGLE_PLATFORM_TYPE: _glfwInitHints.angleType = value; return;
         case GLFW_DEBUG_KEYBOARD: _glfwInitHints.debugKeyboard = value; return;
         case GLFW_DEBUG_RENDERING: _glfwInitHints.debugRendering = value; return;
         case GLFW_COCOA_CHDIR_RESOURCES: _glfwInitHints.ns.chdir = value; return;
