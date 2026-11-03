@@ -346,10 +346,11 @@ typedef struct Viewport {
 } Viewport;
 
 void set_gpu_viewport(unsigned w, unsigned h);
-void save_viewport_using_top_left_origin(int32_t x, int32_t y, uint32_t width, uint32_t height, int32_t full_framebuffer_height);
-void save_viewport_using_bottom_left_origin(int32_t x, int32_t y, uint32_t width, uint32_t height);
+// Co-ordinates are relative to the top left corner of the render target, see gpu/api.h
+// Set the viewport, saving the current one, which is restored by restore_viewport()
+void save_viewport(int32_t x, int32_t y, uint32_t width, uint32_t height);
 void restore_viewport(void);
-void enable_scissor_using_top_left_origin(Viewport, unsigned);
+void enable_scissor(Viewport);
 void disable_scissor(void);
 // Draw a quad, blending pre-multiplied colors if blend is true
 void draw_quad(bool blend, unsigned instance_count);
