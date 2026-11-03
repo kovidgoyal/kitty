@@ -19,6 +19,7 @@
 #define UNUSED __attribute__((unused))
 #define arraysz(x) (sizeof(x) / sizeof(x[0]))
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
 
 // All texture management (creation, uploads, copies) is done using this unit,
 // so that it never disturbs the textures bound to the units used for drawing.
@@ -37,10 +38,20 @@ typedef struct Buffer {
     size_t size;
 } Buffer;
 
-typedef struct Uniform {
-    char name[256];
-    GLint location;
-} Uniform;
+typedef struct ParamField {
+    GLint location; // -1 if the GLSL compiler optimized the uniform away
+    uint32_t offset, components, count, stride;
+    GPUParamScalar scalar;
+} ParamField;
+
+typedef struct ParamBlock {
+    uint32_t size;
+    ParamField *fields;
+    size_t num_fields;
+    // The contents last uploaded, so that only changed fields are uploaded
+    uint8_t *uploaded;
+    bool has_uploaded;
+} ParamBlock;
 
 typedef struct NativeName {
     char *name, *native_name;
@@ -48,8 +59,8 @@ typedef struct NativeName {
 
 typedef struct Pipeline {
     GLuint id;
-    Uniform *uniforms;
-    GLint num_uniforms;
+    ParamBlock *param_blocks;
+    size_t num_param_blocks;
     // Maps Slang names to GLSL identifiers
     NativeName *native_names;
     size_t num_native_names;
@@ -659,34 +670,17 @@ pipeline_destroy(void *driver UNUSED, gpu_pipeline_t pipeline) {
     Pipeline *p = AS_PIPELINE(pipeline);
     if (!p) return;
     if (p->id) glDeleteProgram(p->id);
-    free(p->uniforms);
+    for (size_t i = 0; i < p->num_param_blocks; i++) {
+        free(p->param_blocks[i].fields);
+        free(p->param_blocks[i].uploaded);
+    }
+    free(p->param_blocks);
     for (size_t i = 0; i < p->num_native_names; i++) {
         free(p->native_names[i].name);
         free(p->native_names[i].native_name);
     }
     free(p->native_names);
     free(p);
-}
-
-static bool
-read_active_uniforms(Driver *d, Pipeline *p) {
-    glGetProgramiv(p->id, GL_ACTIVE_UNIFORMS, &p->num_uniforms);
-    if (p->num_uniforms <= 0) return true;
-    p->uniforms = calloc(p->num_uniforms, sizeof(Uniform));
-    if (!p->uniforms) {
-        set_error(d, "Out of memory reading the uniforms of a GPU program");
-        return false;
-    }
-    for (GLint i = 0; i < p->num_uniforms; i++) {
-        Uniform *u = p->uniforms + i;
-        GLint size;
-        GLenum type;
-        glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name), NULL, &size, &type, u->name);
-        char *l = strchr(u->name, '[');
-        if (l) *l = 0;
-        u->location = glGetUniformLocation(p->id, u->name);
-    }
-    return true;
 }
 
 static char *
@@ -751,11 +745,49 @@ apply_bindings(const Pipeline *p, const GPUBinding *bindings, size_t num_binding
     glUseProgram((GLuint)previous_program);
 }
 
+// Parameter blocks are implemented as loose uniforms, which are part of the
+// program state and so persist with the program
+static bool
+create_param_blocks(Driver *d, Pipeline *p, const GPUParamBlock *blocks, size_t num_blocks) {
+    if (!num_blocks) return true;
+    if (!(p->param_blocks = calloc(num_blocks, sizeof(ParamBlock)))) goto oom;
+    p->num_param_blocks = num_blocks;
+    for (size_t b = 0; b < num_blocks; b++) {
+        const GPUParamBlock *src = blocks + b;
+        ParamBlock *pb = p->param_blocks + b;
+        pb->size = src->size;
+        if (!(pb->uploaded = calloc(1, MAX(1u, src->size)))) goto oom;
+        if (src->num_fields && !(pb->fields = calloc(src->num_fields, sizeof(ParamField)))) goto oom;
+        pb->num_fields = src->num_fields;
+        for (size_t i = 0; i < src->num_fields; i++) {
+            const GPUParamField *f = src->fields + i;
+            ParamField *pf = pb->fields + i;
+            if (f->components < 1 || f->components > 4 || !f->count ||
+                (uint64_t)f->offset + (uint64_t)(f->count - 1) * f->stride + 4u * f->components > src->size) {
+                set_error(d, "The parameter %s does not fit in its parameter block", f->name);
+                return false;
+            }
+            pf->offset = f->offset;
+            pf->components = f->components;
+            pf->count = f->count;
+            pf->stride = f->stride;
+            pf->scalar = f->scalar;
+            pf->location = glGetUniformLocation(p->id, native_name(p, f->name));
+        }
+    }
+    return true;
+oom:
+    set_error(d, "Out of memory allocating a GPU program");
+    return false;
+}
+
 static gpu_pipeline_t
 pipeline_create(
     void *driver,
     const GPUShaderSource *sources,
     size_t num_sources,
+    const GPUParamBlock *param_blocks,
+    size_t num_param_blocks,
     const GPUBinding *bindings,
     size_t num_bindings,
     const GPUNativeName *native_names,
@@ -791,7 +823,7 @@ pipeline_create(
         pipeline_destroy(d, AS_HANDLE(p));
         return GPU_NULL_HANDLE;
     }
-    if (!read_active_uniforms(d, p)) {
+    if (!create_param_blocks(d, p, param_blocks, num_param_blocks)) {
         pipeline_destroy(d, AS_HANDLE(p));
         return GPU_NULL_HANDLE;
     }
@@ -803,18 +835,6 @@ static void
 use_pipeline(void *driver UNUSED, gpu_pipeline_t pipeline) {
     const Pipeline *p = AS_PIPELINE(pipeline);
     glUseProgram(p ? p->id : 0);
-}
-
-static int32_t
-pipeline_uniform_slot(void *driver UNUSED, gpu_pipeline_t pipeline, const char *name) {
-    const Pipeline *p = AS_PIPELINE(pipeline);
-    name = native_name(p, name);
-    const size_t n = strlen(name) + 1;
-    for (GLint i = 0; i < p->num_uniforms; i++) {
-        const Uniform *u = p->uniforms + i;
-        if (strncmp(u->name, name, n) == 0) return u->location;
-    }
-    return -1;
 }
 
 static bool
@@ -840,36 +860,56 @@ pipeline_attribute_location(void *driver UNUSED, gpu_pipeline_t pipeline, const 
 }
 
 static void
-set_uniform_floats(void *driver UNUSED, int32_t slot, uint32_t components, uint32_t count, const float *v) {
-    if (slot < 0) return;
-    switch (components) {
-        case 1: glUniform1fv(slot, count, v); break;
-        case 2: glUniform2fv(slot, count, v); break;
-        case 3: glUniform3fv(slot, count, v); break;
-        case 4: glUniform4fv(slot, count, v); break;
+upload_param(const ParamField *f, const uint8_t *data) {
+    // Uniform arrays are tightly packed, unlike arrays in parameter blocks
+    uint32_t packed[4 * 256];
+    const uint8_t *src = data + f->offset;
+    const size_t elem = 4u * f->components;
+    const void *values = src;
+    GLsizei count = (GLsizei)f->count;
+    if (f->count > 1 && f->stride != elem) {
+        count = (GLsizei)MIN((size_t)f->count, sizeof(packed) / elem);
+        for (GLsizei i = 0; i < count; i++) memcpy((uint8_t *)packed + i * elem, src + (size_t)i * f->stride, elem);
+        values = packed;
     }
+#define S(suffix, type)                                                                 \
+    switch (f->components) {                                                            \
+        case 1: glUniform1##suffix##v(f->location, count, (const type *)values); break; \
+        case 2: glUniform2##suffix##v(f->location, count, (const type *)values); break; \
+        case 3: glUniform3##suffix##v(f->location, count, (const type *)values); break; \
+        case 4: glUniform4##suffix##v(f->location, count, (const type *)values); break; \
+    }
+    switch (f->scalar) {
+        case GPU_PARAM_FLOAT: S(f, GLfloat); break;
+        case GPU_PARAM_INT:
+        case GPU_PARAM_BOOL: S(i, GLint); break;
+        case GPU_PARAM_UINT: S(ui, GLuint); break;
+    }
+#undef S
 }
 
 static void
-set_uniform_ints(void *driver UNUSED, int32_t slot, uint32_t components, uint32_t count, const int32_t *v) {
-    if (slot < 0) return;
-    switch (components) {
-        case 1: glUniform1iv(slot, count, v); break;
-        case 2: glUniform2iv(slot, count, v); break;
-        case 3: glUniform3iv(slot, count, v); break;
-        case 4: glUniform4iv(slot, count, v); break;
+set_params(void *driver, gpu_pipeline_t pipeline, uint32_t block, const void *data, size_t size) {
+    Pipeline *p = AS_PIPELINE(pipeline);
+    if (block >= p->num_param_blocks) {
+        log_error(driver, "Invalid parameter block index: %u", block);
+        return;
     }
-}
-
-static void
-set_uniform_uints(void *driver UNUSED, int32_t slot, uint32_t components, uint32_t count, const uint32_t *v) {
-    if (slot < 0) return;
-    switch (components) {
-        case 1: glUniform1uiv(slot, count, v); break;
-        case 2: glUniform2uiv(slot, count, v); break;
-        case 3: glUniform3uiv(slot, count, v); break;
-        case 4: glUniform4uiv(slot, count, v); break;
+    ParamBlock *pb = p->param_blocks + block;
+    if (size < pb->size) {
+        log_error(driver, "The data for parameter block %u is %zu bytes instead of %u", block, size, pb->size);
+        return;
     }
+    const uint8_t *d = data;
+    for (size_t i = 0; i < pb->num_fields; i++) {
+        const ParamField *f = pb->fields + i;
+        if (f->location < 0) continue;
+        const size_t extent = (size_t)(f->count - 1) * f->stride + 4u * f->components;
+        if (pb->has_uploaded && memcmp(pb->uploaded + f->offset, d + f->offset, extent) == 0) continue;
+        upload_param(f, d);
+        memcpy(pb->uploaded + f->offset, d + f->offset, extent);
+    }
+    pb->has_uploaded = true;
 }
 // }}}
 
@@ -1296,12 +1336,9 @@ kitty_gpu_driver_load(uint32_t api_version, const GPUDriverInitParams *params, G
         F(pipeline_create),
         F(pipeline_destroy),
         F(use_pipeline),
-        F(pipeline_uniform_slot),
         F(pipeline_uniform_block),
         F(pipeline_attribute_location),
-        F(set_uniform_floats),
-        F(set_uniform_ints),
-        F(set_uniform_uints),
+        F(set_params),
 
         F(vertex_layout_create),
         F(vertex_layout_destroy),
