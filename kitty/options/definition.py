@@ -1569,6 +1569,22 @@ monitor. With a very high speed mouse/high keyboard repeat rate, you may notice
 some slight input latency. If so, set this to :code:`no`.
 """,
 )
+
+opt(
+    'gpu_driver',
+    'metal vulkan opengl',
+    option_type='gpu_driver',
+    long_text="""
+The GPU drivers kitty uses to render, as a space or comma separated list, in
+order of preference. kitty uses the first driver in the list that works on your
+system, skipping drivers that are not available on your platform or were not
+included in the build of kitty. The available drivers are: :code:`metal`
+(macOS), :code:`vulkan` (Linux and BSD) and :code:`opengl` (all platforms).
+Use :option:`kitty --debug-rendering` to see which driver is used and why
+others were rejected. Changing this option by reloading the config is not
+supported.
+""",
+)
 egr()  # }}}
 
 
