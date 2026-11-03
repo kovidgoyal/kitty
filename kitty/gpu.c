@@ -254,8 +254,7 @@ typedef struct ParamField {
 } ParamField;
 
 typedef struct ParamBlock {
-    char *name; // NULL for the uniform parameters of an entry point
-    GPUShaderStage stage;
+    char *name; // NULL for the push constant block
     int32_t slot;
     uint32_t size;
     uint8_t *data; // the contents, laid out as described by the fields
@@ -264,12 +263,9 @@ typedef struct ParamBlock {
     size_t num_fields;
 } ParamBlock;
 
-// The fields with a given name, at most one per stage
+// The field with a given name
 typedef struct ParamRef {
-    uint8_t num;
-    struct {
-        uint16_t block, field;
-    } items[2];
+    uint16_t block, field;
 } ParamRef;
 
 typedef struct ProgramParams {
@@ -414,18 +410,6 @@ metadata_str(PyObject *d, const char *key) {
 }
 
 static bool
-parse_stage(const char *s, GPUShaderStage *ans) {
-    if (strcmp(s, "vertex") == 0) *ans = GPU_SHADER_VERTEX;
-    else if (strcmp(s, "fragment") == 0) *ans = GPU_SHADER_FRAGMENT;
-    else if (!s[0]) *ans = 0;
-    else {
-        PyErr_Format(PyExc_ValueError, "Unknown shader stage: %s", s);
-        return false;
-    }
-    return true;
-}
-
-static bool
 parse_scalar(const char *s, GPUParamScalar *ans) {
     if (strcmp(s, "float") == 0) *ans = GPU_PARAM_FLOAT;
     else if (strcmp(s, "int") == 0) *ans = GPU_PARAM_INT;
@@ -449,8 +433,8 @@ parse_param_blocks(PyObject *metadata, ProgramParams *pp) {
     for (size_t b = 0; b < num_blocks; b++) {
         PyObject *src = PyList_GET_ITEM(blocks, b);
         ParamBlock *pb = pp->blocks + b;
-        const char *name = metadata_str(src, "name"), *stage = metadata_str(src, "stage");
-        if (!name || !stage || !parse_stage(stage, &pb->stage)) return false;
+        const char *name = metadata_str(src, "name");
+        if (!name) return false;
         if (name[0] && !(pb->name = strdup(name))) goto oom;
         if (!metadata_int(src, "slot", &pb->slot) || !metadata_uint(src, "size", &pb->size)) return false;
         if (!(pb->data = calloc(1, MAX(1u, pb->size)))) goto oom;
@@ -498,20 +482,12 @@ index_params(int program, ProgramParams *pp) {
         for (size_t i = 0; i < pp->blocks[b].num_fields; i++) {
             const char *name = pp->blocks[b].fields[i].name;
             ProgramMetadataEntry *e;
-            ParamRef *ref;
-            if (find_program_metadata(program, name, PROGRAM_PARAM, &e)) ref = pp->refs + e->location;
-            else {
-                ref = pp->refs + pp->num_refs;
-                insert_program_metadata(program, name, (ProgramMetadataEntry){.kind = PROGRAM_PARAM, .location = (int32_t)pp->num_refs});
-                pp->num_refs++;
-            }
-            if (ref->num >= arraysz(ref->items)) {
-                PyErr_Format(PyExc_ValueError, "The shader parameter %s is used in too many parameter blocks", name);
+            if (find_program_metadata(program, name, PROGRAM_PARAM, &e)) {
+                PyErr_Format(PyExc_ValueError, "The shader parameter %s is present in more than one parameter block", name);
                 return false;
             }
-            ref->items[ref->num].block = (uint16_t)b;
-            ref->items[ref->num].field = (uint16_t)i;
-            ref->num++;
+            insert_program_metadata(program, name, (ProgramMetadataEntry){.kind = PROGRAM_PARAM, .location = (int32_t)pp->num_refs});
+            pp->refs[pp->num_refs++] = (ParamRef){.block = (uint16_t)b, .field = (uint16_t)i};
         }
     }
     return true;
@@ -657,7 +633,7 @@ compile_gpu_program(int program, const char *vertex, size_t vertex_size, const c
     }
     for (size_t b = 0, fi = 0; b < pp.num_blocks; b++) {
         const ParamBlock *pb = pp.blocks + b;
-        gpb[b] = (GPUParamBlock){.name = pb->name, .stage = pb->stage, .slot = pb->slot, .size = pb->size, .fields = gpf + fi, .num_fields = pb->num_fields};
+        gpb[b] = (GPUParamBlock){.name = pb->name, .slot = pb->slot, .size = pb->size, .fields = gpf + fi, .num_fields = pb->num_fields};
         for (size_t i = 0; i < pb->num_fields; i++, fi++) {
             const ParamField *f = pb->fields + i;
             gpf[fi] =
@@ -705,20 +681,18 @@ write_param(int32_t handle, GPUParamScalar scalar, uint32_t components, uint32_t
     if (r >= pp->num_refs) return;
     const ParamRef *ref = pp->refs + r;
     const size_t elem = 4u * components;
-    for (uint8_t i = 0; i < ref->num; i++) {
-        ParamBlock *pb = pp->blocks + ref->items[i].block;
-        ParamField *f = pb->fields + ref->items[i].field;
-        const bool scalar_ok = f->scalar == scalar || (f->scalar == GPU_PARAM_BOOL && scalar == GPU_PARAM_INT);
-        if (!scalar_ok || f->components != components || count > f->count) {
-            if (!f->type_error_logged) {
-                f->type_error_logged = true;
-                log_error("Setting the shader parameter: %s in GPU program: %d with a value of the wrong type", f->name, program);
-            }
-            continue;
+    ParamBlock *pb = pp->blocks + ref->block;
+    ParamField *f = pb->fields + ref->field;
+    const bool scalar_ok = f->scalar == scalar || (f->scalar == GPU_PARAM_BOOL && scalar == GPU_PARAM_INT);
+    if (!scalar_ok || f->components != components || count > f->count) {
+        if (!f->type_error_logged) {
+            f->type_error_logged = true;
+            log_error("Setting the shader parameter: %s in GPU program: %d with a value of the wrong type", f->name, program);
         }
-        for (uint32_t e = 0; e < count; e++) memcpy(pb->data + f->offset + (size_t)e * f->stride, (const uint8_t *)values + e * elem, elem);
-        pb->dirty = true;
+        return;
     }
+    for (uint32_t e = 0; e < count; e++) memcpy(pb->data + f->offset + (size_t)e * f->stride, (const uint8_t *)values + e * elem, elem);
+    pb->dirty = true;
 }
 
 void
