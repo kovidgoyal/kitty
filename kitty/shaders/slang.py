@@ -1356,6 +1356,22 @@ def check_binding_slot(name: str, slot: int) -> int:
     return slot
 
 
+# The uniform parameters of every program are declared as a single struct,
+# shared by all the stages of the program, in a push constant block:
+#
+#   struct Params { float4 src_rect; float extra_alpha; ... };
+#   [[vk::push_constant]] ConstantBuffer<Params> uniforms;
+#
+# rather than as uniform parameters of the entry points. Slang lays out the
+# uniform parameters of each entry point starting at offset zero, so the
+# vertex and fragment parameters would overlap, which Vulkan does not allow in
+# push constants. A single block shared by all stages is also what Metal wants,
+# where it is passed with set{Vertex,Fragment}Bytes(), and it is emitted as
+# loose uniforms for OpenGL. Vulkan guarantees only this many bytes of push
+# constants.
+PUSH_CONSTANTS_MAX_SIZE = 128
+
+
 _PARAM_SCALARS = MappingProxyType({'float32': 'float', 'int32': 'int', 'uint32': 'uint', 'bool': 'bool'})
 
 
@@ -1393,8 +1409,8 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
     inputs: dict[str, int] = {}
     textures: dict[str, int] = {}
     blocks: dict[str, dict[str, Any]] = {}
-    # Parameter blocks are the uniform parameters of each entry point and the
-    # pipeline constant blocks. kitty sets their contents with set_params()
+    # Parameter blocks are the push constant block holding the uniform
+    # parameters of the program and the pipeline constant blocks. kitty sets their contents with set_params()
     # rather than via uniform buffers.
     param_blocks: dict[str, dict[str, Any]] = {}
     # Uniform blocks that are emitted as uniform blocks rather than as loose uniforms by the target
@@ -1403,6 +1419,17 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
         for p in refl['parameters']:
             t = p['type']
             match t['kind']:
+                case 'constantBuffer' if p['binding']['kind'] == 'pushConstantBuffer':
+                    evl = t['elementVarLayout']
+                    size = evl['binding']['size']
+                    if size > PUSH_CONSTANTS_MAX_SIZE:
+                        raise ValueError(f'The uniform parameters of the shader are {size} bytes, more than the maximum of {PUSH_CONSTANTS_MAX_SIZE}')
+                    param_blocks['push_constants'] = {
+                        'name': '',
+                        'slot': -1,
+                        'size': size,
+                        'fields': [param_field(f['name'], f['binding']['offset'], f['type']) for f in evl['type']['fields']],
+                    }
                 case 'constantBuffer':
                     evl = t['elementVarLayout']
                     et = evl['type']
@@ -1411,7 +1438,6 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                     if tname in PIPELINE_CONSTANT_BLOCKS:
                         param_blocks[tname] = {
                             'name': tname,
-                            'stage': '',
                             'slot': slot,
                             'size': evl['binding']['size'],
                             'fields': [param_field(f['name'], f['binding']['offset'], f['type']) for f in et['fields']],
@@ -1431,8 +1457,6 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                     raise ValueError(f'Unsupported shader parameter: {p["name"]} of kind: {t["kind"]}')
         for ep in refl['entryPoints']:
             stage = ep['stage']
-            fields: list[dict[str, Any]] = []
-            size = 0
             for p in ep.get('parameters', ()):
                 b = p.get('binding') or {}
                 match b.get('kind'):
@@ -1440,10 +1464,10 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                         if stage == 'vertex':
                             inputs[p['name']] = b['index']
                     case 'uniform':
-                        fields.append(param_field(p['name'], b['offset'], p['type']))
-                        size = max(size, b['offset'] + b['size'])
-            if fields:
-                param_blocks[stage] = {'name': '', 'stage': stage, 'slot': -1, 'size': size, 'fields': fields}
+                        raise ValueError(
+                            f'The {stage} entry point has the uniform parameter: {p["name"]}, uniform parameters must be declared'
+                            ' in a push constant block, see PUSH_CONSTANTS_MAX_SIZE'
+                        )
     native_names = {k: v.partition('[')[0] for k, v in native.loose_uniforms.items()}  # ]
     native_names.update(native.uniform_struct_names)
     native_names.update(native.native_inputs)
@@ -2257,16 +2281,21 @@ VertexOutput vmain_wrap(uint vertex_id : SV_VertexID) {
     return {float2(c[0], c[1]), float4(c[2], c[3], 0, 1)};
 }
 
+// The uniform parameters of the program, see PUSH_CONSTANTS_MAX_SIZE in slang.py
+struct Params {
+    int group;
+    float4 viewport;
+    float animation_progress;
+    bool convert_to_srgb;
+    uint active_groups;
+};
+[[vk::push_constant]]
+ConstantBuffer<Params> uniforms;
+
 [shader("fragment")]
-float4 fmain_wrap(
-    float2 texcoord : TEXCOORD,
-    uniform int group,
-    uniform float4 viewport,
-    uniform float animation_progress,
-    uniform bool convert_to_srgb,
-    uniform uint active_groups
-) : SV_Target {
-    return pipeline_fragment_main(texcoord, group, viewport, animation_progress, convert_to_srgb, active_groups);
+float4 fmain_wrap(float2 texcoord : TEXCOORD) : SV_Target {
+    return pipeline_fragment_main(
+        texcoord, uniforms.group, uniforms.viewport, uniforms.animation_progress, uniforms.convert_to_srgb, uniforms.active_groups);
 }
         """.replace('MODULE', slot.replace('-', '_')).encode()
 

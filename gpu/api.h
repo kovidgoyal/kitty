@@ -49,7 +49,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KITTY_GPU_API_VERSION 3u
+#define KITTY_GPU_API_VERSION 4u
 #define KITTY_GPU_DRIVER_ENTRY_POINT "kitty_gpu_driver_load"
 #define GPU_NULL_HANDLE ((uint64_t)0)
 
@@ -252,8 +252,9 @@ typedef struct GPUBinding {
 } GPUBinding;
 
 // Parameter blocks hold the small, frequently changing, parameters of a
-// pipeline: the uniform parameters of each entry point, and uniform blocks
-// whose contents are constant for the lifetime of the pipeline. Their layout
+// pipeline: the push constant block, holding the uniform parameters shared
+// by all stages of the pipeline, and uniform blocks whose contents are
+// constant for the lifetime of the pipeline. Their layout
 // comes from the reflection data. kitty writes their contents into memory it
 // owns, laid out as described here, and passes it to set_params() before
 // drawing. Values persist with the pipeline until set again. Drivers are free
@@ -276,13 +277,12 @@ typedef struct GPUParamField {
 } GPUParamField;
 
 typedef struct GPUParamBlock {
-    // For the uniform parameters of an entry point name is NULL and stage is
-    // the stage of the entry point. For uniform blocks name is the name of the
-    // type of the block in the Slang source, stage is zero and slot is the
-    // binding slot of the block, which drivers that implement it as a
-    // uniform buffer must use.
+    // For the push constant block name is NULL and slot is -1. Its contents
+    // are used by every stage of the pipeline and are at most 128 bytes. For
+    // uniform blocks name is the name of the type of the block in the Slang
+    // source and slot is the binding slot of the block, which drivers that
+    // implement it as a uniform buffer must use.
     const char *name;
-    GPUShaderStage stage;
     int32_t slot;
     uint32_t size; // size in bytes of the block
     const GPUParamField *fields;
