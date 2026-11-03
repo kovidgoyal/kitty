@@ -42,7 +42,8 @@ public struct CellRenderData {
 };
 
 // Uniform Blocks (adjust binding slots as needed for your pipeline layout)
-public ConstantBuffer<CellRenderData> crd;
+[[vk::binding(6)]]
+public ConstantBuffer<CellRenderData> crd; // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
 // The SGR color table, then the mark background and foreground colors and
 // finally the special colors used by indexed color images.
@@ -51,6 +52,7 @@ public struct ColorTable {
     uint color_table[INDEXED_IMAGE_SPECIAL_COLORS_OFFSET + NUM_INDEXED_IMAGE_SPECIAL_COLORS];
 };
 
+[[vk::binding(7)]]
 public ConstantBuffer<ColorTable> ctb;
 #define color_table ctb.color_table
 
@@ -61,6 +63,7 @@ public struct GammaLUT {
     float gamma_lut[256];
 };
 
+[[vk::binding(8)]]
 public ConstantBuffer<GammaLUT> glt;
 #define gamma_lut glt.gamma_lut
 //
