@@ -401,12 +401,6 @@ wait_for_swap_to_commit(_GLFWwindow *window) {
 
 static void
 resizeFramebuffer(_GLFWwindow *window) {
-    GLFWwindow *ctx = glfwGetCurrentContext();
-    bool ctx_changed = false;
-    if (ctx != (GLFWwindow *)window && window->context.client != GLFW_NO_API) {
-        ctx_changed = true;
-        glfwMakeContextCurrent((GLFWwindow *)window);
-    }
     double scale = _glfwWaylandWindowScale(window);
     int scaled_width = (int)round(window->wl.width * scale);
     int scaled_height = (int)round(window->wl.height * scale);
@@ -418,10 +412,9 @@ resizeFramebuffer(_GLFWwindow *window) {
         window->wl.width,
         window->wl.height,
         scale);
-    wl_egl_window_resize(window->wl.native, scaled_width, scaled_height, 0, 0);
     update_regions(window);
     wait_for_swap_to_commit(window);
-    if (ctx_changed) glfwMakeContextCurrent(ctx);
+    // The GPU driver resizes its buffers in response to this
     _glfwInputFramebufferSize(window, scaled_width, scaled_height);
 }
 
@@ -720,9 +713,6 @@ create_surface(_GLFWwindow *window, const _GLFWwndconfig *wndconfig) {
     }
 
     debug("Creating window %llu at size: %dx%d and scale %d\n", window->id, wndconfig->width, wndconfig->height, scale);
-    window->wl.native = wl_egl_window_create(window->wl.surface, wndconfig->width * scale, wndconfig->height * scale);
-    if (!window->wl.native) return false;
-
     window->wl.width = wndconfig->width;
     window->wl.height = wndconfig->height;
     window->wl.user_requested_content_size.width = wndconfig->width;
@@ -1027,16 +1017,12 @@ attach_temp_buffer_during_window_creation(_GLFWwindow *window) {
 static void
 loop_till_window_fully_created(_GLFWwindow *window) {
     if (!window->wl.window_fully_created) {
-        GLFWwindow *ctx = glfwGetCurrentContext();
         debug("Waiting for compositor to send fractional scale for window %llu\n", window->id);
         monotonic_t start = monotonic();
         while (!window->wl.window_fully_created && monotonic() - start < ms_to_monotonic_t(300)) {
             if (wl_display_roundtrip(_glfw.wl.display) == -1) { window->wl.window_fully_created = true; }
         }
         window->wl.window_fully_created = true;
-        // If other OS windows were resized when this window is shown, the ctx might have been changed by
-        // user code, restore it to whatever it was at the start.
-        if (glfwGetCurrentContext() != ctx) glfwMakeContextCurrent(ctx);
     }
 }
 
@@ -1537,21 +1523,8 @@ _glfwLoadCursor(GLFWCursorShape shape, struct wl_cursor_theme *theme) {
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-static bool
-attach_opengl_context_to_window(_GLFWwindow *window, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig) {
-    if (ctxconfig->source == GLFW_EGL_CONTEXT_API || ctxconfig->source == GLFW_NATIVE_CONTEXT_API) {
-        if (!_glfwInitEGL()) return false;
-        if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig)) return false;
-    } else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API) {
-        if (!_glfwInitOSMesa()) return false;
-        if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig)) return false;
-    }
-    return true;
-}
-
 int
-_glfwPlatformCreateWindow(
-    _GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig, const GLFWLayerShellConfig *lsc) {
+_glfwPlatformCreateWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _GLFWfbconfig *fbconfig, const GLFWLayerShellConfig *lsc) {
     window->wl.layer_shell.config = lsc ? *lsc : (GLFWLayerShellConfig){0};
     // Compositors without xdg-decoration such as mutter need client side
     // decorations, whose titlebar height depends on desktop settings. Wait
@@ -1584,11 +1557,9 @@ _glfwPlatformCreateWindow(
     window->wl.monitorsCount = 0;
     window->wl.monitorsSize = 1;
     // looping till window fully created attaches a single pixel buffer to the window,
-    // this cannot be done once a OpenGL context is created for the window. So first loop
-    // and only then create the OpenGL context.
+    // this cannot be done once the GPU driver starts rendering to the window, which it
+    // does only after the window is created.
     if (window->wl.visible) loop_till_window_fully_created(window);
-    debug("Creating OpenGL context and attaching it to window\n");
-    if (ctxconfig->client != GLFW_NO_API && !attach_opengl_context_to_window(window, ctxconfig, fbconfig)) return false;
     return true;
 }
 
@@ -1612,12 +1583,8 @@ _glfwPlatformDestroyWindow(_GLFWwindow *window) {
     if (window->wl.org_kde_kwin_blur) org_kde_kwin_blur_release(window->wl.org_kde_kwin_blur);
     if (window->wl.ext_background_effect_surface_v1) ext_background_effect_surface_v1_destroy(window->wl.ext_background_effect_surface_v1);
 
-    if (window->context.destroy) window->context.destroy(window);
-
     csd_free_all_resources(window);
     if (window->wl.xdg.decoration) zxdg_toplevel_decoration_v1_destroy(window->wl.xdg.decoration);
-
-    if (window->wl.native) wl_egl_window_destroy(window->wl.native);
 
     if (window->wl.xdg.toplevel) xdg_toplevel_destroy(window->wl.xdg.toplevel);
 
@@ -2935,20 +2902,9 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char *mime_typ
     }
 }
 
-EGLenum
-_glfwPlatformGetEGLPlatform(EGLint **attribs UNUSED) {
-    if (_glfw.egl.EXT_platform_base && _glfw.egl.EXT_platform_wayland) return EGL_PLATFORM_WAYLAND_EXT;
-    else return 0;
-}
-
-EGLNativeDisplayType
-_glfwPlatformGetEGLNativeDisplay(void) {
-    return _glfw.wl.display;
-}
-
-EGLNativeWindowType
-_glfwPlatformGetEGLNativeWindow(_GLFWwindow *window) {
-    return window->wl.native;
+void
+_glfwPlatformWindowContentsPresented(_GLFWwindow *window) {
+    _glfwWaylandAfterBufferSwap(window);
 }
 
 void

@@ -1004,16 +1004,6 @@ _glfwPlatformInit(bool *supports_window_occlusion) {
     glfw_dlsym(_glfw.wl.cursor.theme_get_cursor, _glfw.wl.cursor.handle, "wl_cursor_theme_get_cursor");
     glfw_dlsym(_glfw.wl.cursor.image_get_buffer, _glfw.wl.cursor.handle, "wl_cursor_image_get_buffer");
 
-    _glfw.wl.egl.handle = _glfw_dlopen("libwayland-egl.so.1");
-    if (!_glfw.wl.egl.handle) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to open libwayland-egl");
-        return false;
-    }
-
-    glfw_dlsym(_glfw.wl.egl.window_create, _glfw.wl.egl.handle, "wl_egl_window_create");
-    glfw_dlsym(_glfw.wl.egl.window_destroy, _glfw.wl.egl.handle, "wl_egl_window_destroy");
-    glfw_dlsym(_glfw.wl.egl.window_resize, _glfw.wl.egl.handle, "wl_egl_window_resize");
-
     _glfw.wl.display = wl_display_connect(NULL);
     if (!_glfw.wl.display) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to connect to display");
@@ -1140,28 +1130,13 @@ _glfwPlatformTerminate(void) {
     if (_glfw.wl.pointer_gestures) zwp_pointer_gestures_v1_release(_glfw.wl.pointer_gestures);
 
     if (_glfw.wl.registry) wl_registry_destroy(_glfw.wl.registry);
-    // Call eglTerminate before disconnecting from the display: eglTerminate
-    // sends Wayland protocol requests which must be flushed and their closures
-    // drained before we unload the EGL library.  The dlclose calls move to
-    // after wl_display_disconnect so the message format tables remain mapped
-    // while the queue is drained, preventing a segfault in
-    // destroy_queued_closure().
-    if (_glfw.egl.display) {
-        eglTerminate(_glfw.egl.display);
-        _glfw.egl.display = EGL_NO_DISPLAY;
-    }
+    // The GPU driver must have released all its resources, such as EGL
+    // displays, before this is called, since they can send Wayland protocol
+    // requests that must be flushed and drained before disconnecting.
     if (_glfw.wl.display) {
         wl_display_flush(_glfw.wl.display);
         wl_display_disconnect(_glfw.wl.display);
         _glfw.wl.display = NULL;
-    }
-    if (_glfw.egl.handle) {
-        _glfw_dlclose(_glfw.egl.handle);
-        _glfw.egl.handle = NULL;
-    }
-    if (_glfw.wl.egl.handle) {
-        _glfw_dlclose(_glfw.wl.egl.handle);
-        _glfw.wl.egl.handle = NULL;
     }
     finalizePollData(&_glfw.wl.eventLoopData);
     if (_glfw.wl.compositor_name) {
@@ -1176,7 +1151,7 @@ _glfwPlatformTerminate(void) {
 const char *
 _glfwPlatformGetVersionString(void) {
     (void)keep_going;
-    return _GLFW_VERSION_NUMBER " Wayland EGL OSMesa"
+    return _GLFW_VERSION_NUMBER " Wayland"
 #if defined(_POSIX_TIMERS) && defined(_POSIX_MONOTONIC_CLOCK)
                                 " clock_gettime"
 #else

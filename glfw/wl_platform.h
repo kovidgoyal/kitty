@@ -96,12 +96,6 @@ typedef struct wl_buffer *(*PFN_wl_cursor_image_get_buffer)(struct wl_cursor_ima
 #define wl_cursor_theme_get_cursor _glfw.wl.cursor.theme_get_cursor
 #define wl_cursor_image_get_buffer _glfw.wl.cursor.image_get_buffer
 
-typedef struct wl_egl_window *(*PFN_wl_egl_window_create)(struct wl_surface *, int, int);
-typedef void (*PFN_wl_egl_window_destroy)(struct wl_egl_window *);
-typedef void (*PFN_wl_egl_window_resize)(struct wl_egl_window *, int, int, int, int);
-#define wl_egl_window_create _glfw.wl.egl.window_create
-#define wl_egl_window_destroy _glfw.wl.egl.window_destroy
-#define wl_egl_window_resize _glfw.wl.egl.window_resize
 
 typedef enum _GLFWCSDSurface {
     CENTRAL_WINDOW,
@@ -179,7 +173,6 @@ typedef struct _GLFWwindowWayland {
     bool transparent;
     struct wl_surface *surface;
     bool waiting_for_swap_to_commit;
-    struct wl_egl_window *native;
     struct wl_callback *callback;
 
     struct {
@@ -447,14 +440,6 @@ typedef struct _GLFWlibraryWayland {
         PFN_wl_cursor_theme_get_cursor theme_get_cursor;
         PFN_wl_cursor_image_get_buffer image_get_buffer;
     } cursor;
-
-    struct {
-        void *handle;
-
-        PFN_wl_egl_window_create window_create;
-        PFN_wl_egl_window_destroy window_destroy;
-        PFN_wl_egl_window_resize window_resize;
-    } egl;
 
     struct {
         glfw_wl_xdg_activation_request *array;

@@ -3,10 +3,7 @@
     "headers": [
       "cocoa_platform.h",
       "cocoa_joystick.h",
-      "posix_thread.h",
-      "nsgl_context.h",
-      "egl_context.h",
-      "osmesa_context.h"
+      "posix_thread.h"
     ],
     "sources": [
       "cocoa_init.m",
@@ -14,10 +11,7 @@
       "cocoa_monitor.m",
       "cocoa_window.m",
       "cocoa_displaylink.m",
-      "posix_thread.c",
-      "nsgl_context.m",
-      "egl_context.c",
-      "osmesa_context.c"
+      "posix_thread.c"
     ]
   },
   "common": {
@@ -26,7 +20,6 @@
       "mappings.h"
     ],
     "sources": [
-      "context.c",
       "init.c",
       "input.c",
       "monitor.c",
@@ -45,8 +38,6 @@
       "dbus_glfw.h",
       "ibus_glfw.h",
       "backend_utils.h",
-      "egl_context.h",
-      "osmesa_context.h",
       "linux_joystick.h",
       "null_joystick.h",
       "linux_notify.h",
@@ -93,8 +84,6 @@
       "xkb_glfw.c",
       "dbus_glfw.c",
       "ibus_glfw.c",
-      "egl_context.c",
-      "osmesa_context.c",
       "backend_utils.c",
       "linux_joystick.c",
       "linux_desktop_settings.c",
@@ -117,9 +106,6 @@
       "ibus_glfw.h",
       "backend_utils.h",
       "posix_thread.h",
-      "glx_context.h",
-      "egl_context.h",
-      "osmesa_context.h",
       "linux_joystick.h",
       "null_joystick.h",
       "linux_notify.h",
@@ -135,9 +121,6 @@
       "dbus_glfw.c",
       "ibus_glfw.c",
       "posix_thread.c",
-      "glx_context.c",
-      "egl_context.c",
-      "osmesa_context.c",
       "backend_utils.c",
       "linux_joystick.c",
       "null_joystick.c",

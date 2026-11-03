@@ -46,12 +46,6 @@ extern "C" {
  *
  *  For more information about how to use this file, see @ref build_include.
  */
-/*! @defgroup context Context reference
- *  @brief Functions and types related to OpenGL and OpenGL ES contexts.
- *
- *  This is the reference documentation for OpenGL and OpenGL ES context related
- *  functions.  For more task-oriented information, see the @ref context_guide.
- */
 /*! @defgroup vulkan Vulkan reference
  *  @brief Functions and types related to Vulkan.
  *
@@ -153,96 +147,6 @@ typedef intptr_t ssize_t;
 #define GLFW_CALLBACK_DEFINED
 #endif /* CALLBACK */
 
-/* Include the chosen OpenGL or OpenGL ES headers.
- */
-#if defined(GLFW_INCLUDE_ES1)
-
-#include <GLES/gl.h>
-#if defined(GLFW_INCLUDE_GLEXT)
-#include <GLES/glext.h>
-#endif
-
-#elif defined(GLFW_INCLUDE_ES2)
-
-#include <GLES2/gl2.h>
-#if defined(GLFW_INCLUDE_GLEXT)
-#include <GLES2/gl2ext.h>
-#endif
-
-#elif defined(GLFW_INCLUDE_ES3)
-
-#include <GLES3/gl3.h>
-#if defined(GLFW_INCLUDE_GLEXT)
-#include <GLES2/gl2ext.h>
-#endif
-
-#elif defined(GLFW_INCLUDE_ES31)
-
-#include <GLES3/gl31.h>
-#if defined(GLFW_INCLUDE_GLEXT)
-#include <GLES2/gl2ext.h>
-#endif
-
-#elif defined(GLFW_INCLUDE_ES32)
-
-#include <GLES3/gl32.h>
-#if defined(GLFW_INCLUDE_GLEXT)
-#include <GLES2/gl2ext.h>
-#endif
-
-#elif defined(GLFW_INCLUDE_GLCOREARB)
-
-#if defined(__APPLE__)
-
-#include <OpenGL/gl3.h>
-#if defined(GLFW_INCLUDE_GLEXT)
-#include <OpenGL/gl3ext.h>
-#endif /*GLFW_INCLUDE_GLEXT*/
-
-#else /*__APPLE__*/
-
-#include <GL/glcorearb.h>
-
-#endif /*__APPLE__*/
-
-#elif defined(GLFW_INCLUDE_GLU)
-
-#if defined(__APPLE__)
-
-#if defined(GLFW_INCLUDE_GLU)
-#include <OpenGL/glu.h>
-#endif
-
-#else /*__APPLE__*/
-
-#if defined(GLFW_INCLUDE_GLU)
-#include <GL/glu.h>
-#endif
-
-#endif /*__APPLE__*/
-
-#elif !defined(GLFW_INCLUDE_NONE) && !defined(__gl_h_) && !defined(__gles1_gl_h_) && !defined(__gles2_gl2_h_) && !defined(__gles2_gl3_h_) &&                   \
-    !defined(__gles2_gl31_h_) && !defined(__gles2_gl32_h_) && !defined(__gl_glcorearb_h_) && !defined(__gl2_h_) /*legacy*/ && !defined(__gl3_h_) /*legacy*/ && \
-    !defined(__gl31_h_) /*legacy*/ && !defined(__gl32_h_) /*legacy*/ && !defined(__glcorearb_h_) /*legacy*/ && !defined(__GL_H__) /*non-standard*/ &&          \
-    !defined(__gltypes_h_) /*non-standard*/ && !defined(__glee_h_) /*non-standard*/
-
-#if defined(__APPLE__)
-
-#if !defined(GLFW_INCLUDE_GLEXT)
-#define GL_GLEXT_LEGACY
-#endif
-#include <OpenGL/gl.h>
-
-#else /*__APPLE__*/
-
-#include <GL/gl.h>
-#if defined(GLFW_INCLUDE_GLEXT)
-#include <GL/glext.h>
-#endif
-
-#endif /*__APPLE__*/
-
-#endif /* OpenGL and OpenGL ES headers */
 
 #if defined(GLFW_DLL) && defined(_GLFW_BUILD_DLL)
 /* GLFW_DLL must be defined by applications that are linking against the DLL
@@ -713,16 +617,6 @@ typedef struct GLFWTouchEvent {
  *  function that requires initialization.
  */
 #define GLFW_NOT_INITIALIZED 0x00010001
-/*! @brief No context is current for this thread.
- *
- *  This occurs if a GLFW function was called that needs and operates on the
- *  current OpenGL or OpenGL ES context but no context is current on the calling
- *  thread.  One such function is @ref glfwSwapInterval.
- *
- *  @analysis Application programmer error.  Ensure a context is current before
- *  calling functions that require a current context.
- */
-#define GLFW_NO_CURRENT_CONTEXT 0x00010002
 /*! @brief One of the arguments to the function was an invalid enum value.
  *
  *  One of the arguments to the function was an invalid enum value, for example
@@ -813,14 +707,6 @@ typedef struct GLFWTouchEvent {
  *  the user, as appropriate.
  */
 #define GLFW_FORMAT_UNAVAILABLE 0x00010009
-/*! @brief The specified window does not have an OpenGL or OpenGL ES context.
- *
- *  A window that does not have an OpenGL or OpenGL ES context was passed to
- *  a function that requires it to have one.
- *
- *  @analysis Application programmer error.  Fix the offending call.
- */
-#define GLFW_NO_WINDOW_CONTEXT 0x0001000A
 /*! @brief The requested feature is not provided by the platform.
  *
  *  The requested feature is not provided by the platform, so GLFW is unable to
@@ -935,158 +821,12 @@ typedef struct GLFWTouchEvent {
  *  Occlusion [window attribute](@ref GLFW_OCCLUDED_attrib).
  */
 #define GLFW_OCCLUDED 0x0002000E
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_RED_BITS).
- */
-#define GLFW_RED_BITS 0x00021001
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_GREEN_BITS).
- */
-#define GLFW_GREEN_BITS 0x00021002
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_BLUE_BITS).
- */
-#define GLFW_BLUE_BITS 0x00021003
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ALPHA_BITS).
- */
-#define GLFW_ALPHA_BITS 0x00021004
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_DEPTH_BITS).
- */
-#define GLFW_DEPTH_BITS 0x00021005
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_STENCIL_BITS).
- */
-#define GLFW_STENCIL_BITS 0x00021006
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_RED_BITS).
- */
-#define GLFW_ACCUM_RED_BITS 0x00021007
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_GREEN_BITS).
- */
-#define GLFW_ACCUM_GREEN_BITS 0x00021008
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_BLUE_BITS).
- */
-#define GLFW_ACCUM_BLUE_BITS 0x00021009
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_ALPHA_BITS).
- */
-#define GLFW_ACCUM_ALPHA_BITS 0x0002100A
-/*! @brief Framebuffer auxiliary buffer hint.
- *
- *  Framebuffer auxiliary buffer [hint](@ref GLFW_AUX_BUFFERS).
- */
-#define GLFW_AUX_BUFFERS 0x0002100B
-/*! @brief OpenGL stereoscopic rendering hint.
- *
- *  OpenGL stereoscopic rendering [hint](@ref GLFW_STEREO).
- */
-#define GLFW_STEREO 0x0002100C
-/*! @brief Framebuffer MSAA samples hint.
- *
- *  Framebuffer MSAA samples [hint](@ref GLFW_SAMPLES).
- */
-#define GLFW_SAMPLES 0x0002100D
-/*! @brief Framebuffer sRGB hint.
- *
- *  Framebuffer sRGB [hint](@ref GLFW_SRGB_CAPABLE).
- */
-#define GLFW_SRGB_CAPABLE 0x0002100E
 /*! @brief Monitor refresh rate hint.
  *
  *  Monitor refresh rate [hint](@ref GLFW_REFRESH_RATE).
  */
 #define GLFW_REFRESH_RATE 0x0002100F
-/*! @brief Framebuffer double buffering hint.
- *
- *  Framebuffer double buffering [hint](@ref GLFW_DOUBLEBUFFER).
- */
-#define GLFW_DOUBLEBUFFER 0x00021010
 
-/*! @brief Context client API hint and attribute.
- *
- *  Context client API [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
- */
-#define GLFW_CLIENT_API 0x00022001
-/*! @brief Context client API major version hint and attribute.
- *
- *  Context client API major version [hint](@ref GLFW_CONTEXT_VERSION_MAJOR_hint)
- *  and [attribute](@ref GLFW_CONTEXT_VERSION_MAJOR_attrib).
- */
-#define GLFW_CONTEXT_VERSION_MAJOR 0x00022002
-/*! @brief Context client API minor version hint and attribute.
- *
- *  Context client API minor version [hint](@ref GLFW_CONTEXT_VERSION_MINOR_hint)
- *  and [attribute](@ref GLFW_CONTEXT_VERSION_MINOR_attrib).
- */
-#define GLFW_CONTEXT_VERSION_MINOR 0x00022003
-/*! @brief Context client API revision number hint and attribute.
- *
- *  Context client API revision number
- *  [attribute](@ref GLFW_CONTEXT_REVISION_attrib).
- */
-#define GLFW_CONTEXT_REVISION 0x00022004
-/*! @brief Context robustness hint and attribute.
- *
- *  Context client API revision number [hint](@ref GLFW_CONTEXT_ROBUSTNESS_hint)
- *  and [attribute](@ref GLFW_CONTEXT_ROBUSTNESS_attrib).
- */
-#define GLFW_CONTEXT_ROBUSTNESS 0x00022005
-/*! @brief OpenGL forward-compatibility hint and attribute.
- *
- *  OpenGL forward-compatibility [hint](@ref GLFW_OPENGL_FORWARD_COMPAT_hint)
- *  and [attribute](@ref GLFW_OPENGL_FORWARD_COMPAT_attrib).
- */
-#define GLFW_OPENGL_FORWARD_COMPAT 0x00022006
-/*! @brief Debug mode context hint and attribute.
- *
- *  Debug mode context [hint](@ref GLFW_CONTEXT_DEBUG_hint) and
- *  [attribute](@ref GLFW_CONTEXT_DEBUG_attrib).
- */
-#define GLFW_CONTEXT_DEBUG 0x00022007
-/*! @brief Legacy name for compatibility.
- *
- *  This is an alias for compatibility with earlier versions.
- */
-#define GLFW_OPENGL_DEBUG_CONTEXT GLFW_CONTEXT_DEBUG
-/*! @brief OpenGL profile hint and attribute.
- *
- *  OpenGL profile [hint](@ref GLFW_OPENGL_PROFILE_hint) and
- *  [attribute](@ref GLFW_OPENGL_PROFILE_attrib).
- */
-#define GLFW_OPENGL_PROFILE 0x00022008
-/*! @brief Context flush-on-release hint and attribute.
- *
- *  Context flush-on-release [hint](@ref GLFW_CONTEXT_RELEASE_BEHAVIOR_hint) and
- *  [attribute](@ref GLFW_CONTEXT_RELEASE_BEHAVIOR_attrib).
- */
-#define GLFW_CONTEXT_RELEASE_BEHAVIOR 0x00022009
-/*! @brief Context error suppression hint and attribute.
- *
- *  Context error suppression [hint](@ref GLFW_CONTEXT_NO_ERROR_hint) and
- *  [attribute](@ref GLFW_CONTEXT_NO_ERROR_attrib).
- */
-#define GLFW_CONTEXT_NO_ERROR 0x0002200A
-/*! @brief Context creation API hint and attribute.
- *
- *  Context creation API [hint](@ref GLFW_CONTEXT_CREATION_API_hint) and
- *  [attribute](@ref GLFW_CONTEXT_CREATION_API_attrib).
- */
-#define GLFW_CONTEXT_CREATION_API 0x0002200B
 /*! @brief Window content area scaling window
  *  [window hint](@ref GLFW_SCALE_TO_MONITOR).
  */
@@ -1099,10 +839,6 @@ typedef struct GLFWTouchEvent {
  *  [window hint](@ref GLFW_COCOA_FRAME_NAME_hint).
  */
 #define GLFW_COCOA_FRAME_NAME 0x00023002
-/*! @brief macOS specific
- *  [window hint](@ref GLFW_COCOA_GRAPHICS_SWITCHING_hint).
- */
-#define GLFW_COCOA_GRAPHICS_SWITCHING 0x00023003
 /*! @brief macOS specific
  *  [window hint](@ref GLFW_COCOA_COLOR_SPACE_hint).
  */
@@ -1125,23 +861,17 @@ typedef enum {
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
  */
 #define GLFW_X11_INSTANCE_NAME 0x00024002
+/*! @brief X11 specific
+ *  The id of the X11 visual to use for the window, as chosen by the GPU driver,
+ *  zero for the default visual.
+ */
+#define GLFW_X11_VISUAL_ID 0x00024003
 
 #define GLFW_WAYLAND_APP_ID 0x00025001
 #define GLFW_WAYLAND_BGCOLOR 0x00025002
 #define GLFW_WAYLAND_WINDOW_TAG 0x00025003
 /*! @} */
 
-#define GLFW_NO_API 0
-#define GLFW_OPENGL_API 0x00030001
-#define GLFW_OPENGL_ES_API 0x00030002
-
-#define GLFW_NO_ROBUSTNESS 0
-#define GLFW_NO_RESET_NOTIFICATION 0x00031001
-#define GLFW_LOSE_CONTEXT_ON_RESET 0x00031002
-
-#define GLFW_OPENGL_ANY_PROFILE 0
-#define GLFW_OPENGL_CORE_PROFILE 0x00032001
-#define GLFW_OPENGL_COMPAT_PROFILE 0x00032002
 
 #define GLFW_CURSOR 0x00033001
 #define GLFW_STICKY_KEYS 0x00033002
@@ -1153,21 +883,6 @@ typedef enum {
 #define GLFW_CURSOR_HIDDEN 0x00034002
 #define GLFW_CURSOR_DISABLED 0x00034003
 
-#define GLFW_ANY_RELEASE_BEHAVIOR 0
-#define GLFW_RELEASE_BEHAVIOR_FLUSH 0x00035001
-#define GLFW_RELEASE_BEHAVIOR_NONE 0x00035002
-
-#define GLFW_NATIVE_CONTEXT_API 0x00036001
-#define GLFW_EGL_CONTEXT_API 0x00036002
-#define GLFW_OSMESA_CONTEXT_API 0x00036003
-
-#define GLFW_ANGLE_PLATFORM_TYPE_NONE 0x00037001
-#define GLFW_ANGLE_PLATFORM_TYPE_OPENGL 0x00037002
-#define GLFW_ANGLE_PLATFORM_TYPE_OPENGLES 0x00037003
-#define GLFW_ANGLE_PLATFORM_TYPE_D3D9 0x00037004
-#define GLFW_ANGLE_PLATFORM_TYPE_D3D11 0x00037005
-#define GLFW_ANGLE_PLATFORM_TYPE_VULKAN 0x00037007
-#define GLFW_ANGLE_PLATFORM_TYPE_METAL 0x00037008
 
 /*! @defgroup shapes Standard cursor shapes
  *  @brief Standard system cursor shapes.
@@ -1224,11 +939,6 @@ typedef enum {
  *  Joystick hat buttons [init hint](@ref GLFW_JOYSTICK_HAT_BUTTONS).
  */
 #define GLFW_JOYSTICK_HAT_BUTTONS 0x00050001
-/*! @brief ANGLE rendering backend init hint.
- *
- *  ANGLE rendering backend [init hint](@ref GLFW_ANGLE_PLATFORM_TYPE_hint).
- */
-#define GLFW_ANGLE_PLATFORM_TYPE 0x00050002
 #define GLFW_DEBUG_KEYBOARD 0x00050003
 #define GLFW_DEBUG_RENDERING 0x00050004
 /*! @brief macOS specific init hint.
@@ -1250,20 +960,6 @@ typedef enum {
 /*************************************************************************
  * GLFW API types
  *************************************************************************/
-
-/*! @brief Client API function pointer type.
- *
- *  Generic function pointer used for returning client API function pointers
- *  without forcing a cast from a regular pointer.
- *
- *  @sa @ref context_glext
- *  @sa @ref glfwGetProcAddress
- *
- *  @since Added in version 3.0.
- *
- *  @ingroup context
- */
-typedef void (*GLFWglproc)(void);
 
 /*! @brief Vulkan API function pointer type.
  *
@@ -1727,6 +1423,14 @@ typedef void (*GLFWwindowmaximizefun)(GLFWwindow *, int);
  *  @ingroup window
  */
 typedef void (*GLFWframebuffersizefun)(GLFWwindow *, int, int);
+
+/*! @brief The function pointer type for native surface change callbacks.
+ *
+ *  Called when the native surface a window renders into changes in a way that
+ *  requires the GPU driver to update its drawable, such as on macOS when the
+ *  view is resized or moved to a different screen.
+ */
+typedef void (*GLFWnativesurfacechangedfun)(GLFWwindow *);
 
 /*! @brief The function pointer type for window content scale callbacks.
  *
@@ -2953,7 +2657,12 @@ GLFWAPI void glfwWindowHint(int hint, int value);
  */
 GLFWAPI void glfwWindowHintString(int hint, const char *value);
 
-/*! @brief Creates a window and its associated context.
+/*! @brief Creates a window.
+ *
+ *  GLFW does not create any GPU contexts or surfaces for the window, that is
+ *  the responsibility of the GPU driver, which renders into the native window,
+ *  see glfwGetX11Window(), glfwGetWaylandWindow() and glfwGetCocoaView().
+ *  The documentation below about contexts is obsolete.
  *
  *  This function creates a window and its associated OpenGL or OpenGL ES
  *  context.  Most of the options controlling how the window and its context
@@ -3011,8 +2720,6 @@ GLFWAPI void glfwWindowHintString(int hint, const char *value);
  *  @param[in] title The initial, UTF-8 encoded window title.
  *  @param[in] monitor The monitor to use for full screen mode, or `NULL` for
  *  windowed mode.
- *  @param[in] share The window whose context to share resources with, or `NULL`
- *  to not share resources.
  *  @return The handle of the created window, or `NULL` if an
  *  [error](@ref error_handling) occurred.
  *
@@ -3105,7 +2812,7 @@ GLFWAPI void glfwWindowHintString(int hint, const char *value);
  *
  *  @ingroup window
  */
-GLFWAPI GLFWwindow *glfwCreateWindow(int width, int height, const char *title, GLFWmonitor *monitor, GLFWwindow *share, const GLFWLayerShellConfig *lsc);
+GLFWAPI GLFWwindow *glfwCreateWindow(int width, int height, const char *title, GLFWmonitor *monitor, const GLFWLayerShellConfig *lsc);
 GLFWAPI bool glfwToggleFullscreen(GLFWwindow *window, unsigned int flags);
 GLFWAPI bool glfwIsFullscreen(GLFWwindow *window, unsigned int flags);
 GLFWAPI bool glfwAreSwapsAllowed(const GLFWwindow *window);
@@ -4426,6 +4133,29 @@ GLFWAPI GLFWwindowmaximizefun glfwSetWindowMaximizeCallback(GLFWwindow *window, 
  */
 GLFWAPI GLFWframebuffersizefun glfwSetFramebufferSizeCallback(GLFWwindow *window, GLFWframebuffersizefun callback);
 
+/*! @brief Sets the native surface change callback for the specified window.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] callback The new callback, or `NULL` to remove the currently set
+ *  callback.
+ *  @return The previously set callback.
+ *
+ *  @sa GLFWnativesurfacechangedfun
+ *  @ingroup window
+ */
+GLFWAPI GLFWnativesurfacechangedfun glfwSetNativeSurfaceChangedCallback(GLFWwindow *window, GLFWnativesurfacechangedfun callback);
+
+/*! @brief Notify GLFW that the contents of the window were presented.
+ *
+ *  Must be called after the GPU driver presents a new frame for the window.
+ *  On Wayland this commits pending surface state that must be committed
+ *  together with a new buffer.
+ *
+ *  @param[in] window The window that was presented.
+ *  @ingroup window
+ */
+GLFWAPI void glfwWindowContentsPresented(GLFWwindow *window);
+
 /*! @brief Sets the window content scale callback for the specified window.
  *
  *  This function sets the window content scale callback of the specified window,
@@ -5610,225 +5340,6 @@ GLFWAPI void glfwGetClipboard(GLFWClipboardType clipboard_type, const char *mime
  *  @ingroup input
  */
 GLFWAPI monotonic_t glfwGetTime(void);
-
-/*! @brief Makes the context of the specified window current for the calling
- *  thread.
- *
- *  This function makes the OpenGL or OpenGL ES context of the specified window
- *  current on the calling thread.  A context must only be made current on
- *  a single thread at a time and each thread can have only a single current
- *  context at a time.
- *
- *  When moving a context between threads, you must make it non-current on the
- *  old thread before making it current on the new one.
- *
- *  By default, making a context non-current implicitly forces a pipeline flush.
- *  On machines that support `GL_KHR_context_flush_control`, you can control
- *  whether a context performs this flush by setting the
- *  [GLFW_CONTEXT_RELEASE_BEHAVIOR](@ref GLFW_CONTEXT_RELEASE_BEHAVIOR_hint)
- *  hint.
- *
- *  The specified window must have an OpenGL or OpenGL ES context.  Specifying
- *  a window without a context will generate a @ref GLFW_NO_WINDOW_CONTEXT
- *  error.
- *
- *  @param[in] window The window whose context to make current, or `NULL` to
- *  detach the current context.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
- *  GLFW_NO_WINDOW_CONTEXT and @ref GLFW_PLATFORM_ERROR.
- *
- *  @thread_safety This function may be called from any thread.
- *
- *  @sa @ref context_current
- *  @sa @ref glfwGetCurrentContext
- *
- *  @since Added in version 3.0.
- *
- *  @ingroup context
- */
-GLFWAPI void glfwMakeContextCurrent(GLFWwindow *window);
-
-/*! @brief Returns the window whose context is current on the calling thread.
- *
- *  This function returns the window whose OpenGL or OpenGL ES context is
- *  current on the calling thread.
- *
- *  @return The window whose context is current, or `NULL` if no window's
- *  context is current.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
- *
- *  @thread_safety This function may be called from any thread.
- *
- *  @sa @ref context_current
- *  @sa @ref glfwMakeContextCurrent
- *
- *  @since Added in version 3.0.
- *
- *  @ingroup context
- */
-GLFWAPI GLFWwindow *glfwGetCurrentContext(void);
-
-/*! @brief Swaps the front and back buffers of the specified window.
- *
- *  This function swaps the front and back buffers of the specified window when
- *  rendering with OpenGL or OpenGL ES.  If the swap interval is greater than
- *  zero, the GPU driver waits the specified number of screen updates before
- *  swapping the buffers.
- *
- *  The specified window must have an OpenGL or OpenGL ES context.  Specifying
- *  a window without a context will generate a @ref GLFW_NO_WINDOW_CONTEXT
- *  error.
- *
- *  This function does not apply to Vulkan.  If you are rendering with Vulkan,
- *  see `vkQueuePresentKHR` instead.
- *
- *  @param[in] window The window whose buffers to swap.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
- *  GLFW_NO_WINDOW_CONTEXT and @ref GLFW_PLATFORM_ERROR.
- *
- *  @remark __EGL:__ The context of the specified window must be current on the
- *  calling thread.
- *
- *  @thread_safety This function may be called from any thread.
- *
- *  @sa @ref buffer_swap
- *  @sa @ref glfwSwapInterval
- *
- *  @since Added in version 1.0.
- *  @glfw3 Added window handle parameter.
- *
- *  @ingroup window
- */
-GLFWAPI void glfwSwapBuffers(GLFWwindow *window);
-
-/*! @brief Sets the swap interval for the current context.
- *
- *  This function sets the swap interval for the current OpenGL or OpenGL ES
- *  context, i.e. the number of screen updates to wait from the time @ref
- *  glfwSwapBuffers was called before swapping the buffers and returning.  This
- *  is sometimes called _vertical synchronization_, _vertical retrace
- *  synchronization_ or just _vsync_.
- *
- *  A context that supports either of the `WGL_EXT_swap_control_tear` and
- *  `GLX_EXT_swap_control_tear` extensions also accepts _negative_ swap
- *  intervals, which allows the driver to swap immediately even if a frame
- *  arrives a little bit late.  You can check for these extensions with @ref
- *  glfwExtensionSupported.
- *
- *  A context must be current on the calling thread.  Calling this function
- *  without a current context will cause a @ref GLFW_NO_CURRENT_CONTEXT error.
- *
- *  This function does not apply to Vulkan.  If you are rendering with Vulkan,
- *  see the present mode of your swapchain instead.
- *
- *  @param[in] interval The minimum number of screen updates to wait for
- *  until the buffers are swapped by @ref glfwSwapBuffers.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
- *  GLFW_NO_CURRENT_CONTEXT and @ref GLFW_PLATFORM_ERROR.
- *
- *  @remark This function is not called during context creation, leaving the
- *  swap interval set to whatever is the default on that platform.  This is done
- *  because some swap interval extensions used by GLFW do not allow the swap
- *  interval to be reset to zero once it has been set to a non-zero value.
- *
- *  @remark Some GPU drivers do not honor the requested swap interval, either
- *  because of a user setting that overrides the application's request or due to
- *  bugs in the driver.
- *
- *  @thread_safety This function may be called from any thread.
- *
- *  @sa @ref buffer_swap
- *  @sa @ref glfwSwapBuffers
- *
- *  @since Added in version 1.0.
- *
- *  @ingroup context
- */
-GLFWAPI void glfwSwapInterval(int interval);
-
-/*! @brief Returns whether the specified extension is available.
- *
- *  This function returns whether the specified
- *  [API extension](@ref context_glext) is supported by the current OpenGL or
- *  OpenGL ES context.  It searches both for client API extension and context
- *  creation API extensions.
- *
- *  A context must be current on the calling thread.  Calling this function
- *  without a current context will cause a @ref GLFW_NO_CURRENT_CONTEXT error.
- *
- *  As this functions retrieves and searches one or more extension strings each
- *  call, it is recommended that you cache its results if it is going to be used
- *  frequently.  The extension strings will not change during the lifetime of
- *  a context, so there is no danger in doing this.
- *
- *  This function does not apply to Vulkan.  If you are using Vulkan, see @ref
- *  glfwGetRequiredInstanceExtensions, `vkEnumerateInstanceExtensionProperties`
- *  and `vkEnumerateDeviceExtensionProperties` instead.
- *
- *  @param[in] extension The ASCII encoded name of the extension.
- *  @return `true` if the extension is available, or `false`
- *  otherwise.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
- *  GLFW_NO_CURRENT_CONTEXT, @ref GLFW_INVALID_VALUE and @ref
- *  GLFW_PLATFORM_ERROR.
- *
- *  @thread_safety This function may be called from any thread.
- *
- *  @sa @ref context_glext
- *  @sa @ref glfwGetProcAddress
- *
- *  @since Added in version 1.0.
- *
- *  @ingroup context
- */
-GLFWAPI int glfwExtensionSupported(const char *extension);
-
-/*! @brief Returns the address of the specified function for the current
- *  context.
- *
- *  This function returns the address of the specified OpenGL or OpenGL ES
- *  [core or extension function](@ref context_glext), if it is supported
- *  by the current context.
- *
- *  A context must be current on the calling thread.  Calling this function
- *  without a current context will cause a @ref GLFW_NO_CURRENT_CONTEXT error.
- *
- *  This function does not apply to Vulkan.  If you are rendering with Vulkan,
- *  see @ref glfwGetInstanceProcAddress, `vkGetInstanceProcAddr` and
- *  `vkGetDeviceProcAddr` instead.
- *
- *  @param[in] procname The ASCII encoded name of the function.
- *  @return The address of the function, or `NULL` if an
- *  [error](@ref error_handling) occurred.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
- *  GLFW_NO_CURRENT_CONTEXT and @ref GLFW_PLATFORM_ERROR.
- *
- *  @remark The address of a given function is not guaranteed to be the same
- *  between contexts.
- *
- *  @remark This function may return a non-`NULL` address despite the
- *  associated version or extension not being available.  Always check the
- *  context version or extension string first.
- *
- *  @pointer_lifetime The returned function pointer is valid until the context
- *  is destroyed or the library is terminated.
- *
- *  @thread_safety This function may be called from any thread.
- *
- *  @sa @ref context_glext
- *  @sa @ref glfwExtensionSupported
- *
- *  @since Added in version 1.0.
- *
- *  @ingroup context
- */
-GLFWAPI GLFWglproc glfwGetProcAddress(const char *procname);
 
 /*! @brief Returns whether the Vulkan loader and an ICD have been found.
  *

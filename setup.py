@@ -693,7 +693,7 @@ def init_env(
                 raise SystemExit(f'Cannot have quotes in library paths: {val}')
             library_paths.setdefault(which, []).append(f'{name}="{val}"')
 
-    add_lpath('glfw/egl_context.c', '_GLFW_EGL_LIBRARY', egl_library)
+    add_lpath('gpu/opengl/egl.c', '_GLFW_EGL_LIBRARY', egl_library)
     add_lpath('kitty/desktop.c', '_KITTY_STARTUP_NOTIFICATION_LIBRARY', startup_notification_library)
     add_lpath('kitty/desktop.c', '_KITTY_CANBERRA_LIBRARY', canberra_library)
     add_lpath('kitty/systemd.c', '_KITTY_SYSTEMD_LIBRARY', systemd_library)
@@ -1314,17 +1314,30 @@ def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
             # Apple deprecated OpenGL in Mojave (10.14) silence the endless
             # warnings about it
             ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
-            ans.ldpaths.extend(('-framework', 'OpenGL'))
-        # On other platforms the OpenGL functions are loaded at runtime using
-        # the get_proc_address() function passed in by kitty, so there is no
-        # need to link against libGL
+            for f_ in ('OpenGL', 'Cocoa'):
+                ans.ldpaths.extend(('-framework', f_))
+        else:
+            # The X11 headers are needed for GLX. All libraries, libGL, libEGL,
+            # libX11, etc. are loaded at runtime, so as to work on both X11
+            # and Wayland without any link time dependencies.
+            for dep in ('x11', 'xrender'):
+                ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
+            ans.ldpaths.append('-ldl')
     return ans
+
+
+def gpu_driver_sources(driver: str) -> List[str]:
+    if driver == 'opengl':
+        common = ['driver.c', 'gl-wrapper.c']
+        platform = ['nsgl.m'] if is_macos else ['egl.c', 'glx.c']
+        return [f'gpu/{driver}/{x}' for x in common + platform]
+    raise KeyError(f'Unknown GPU driver: {driver}')
 
 
 def compile_gpu_drivers(compilation_database: CompilationDatabase, build_dsym: bool = False) -> None:
     for driver in ('opengl',):
         denv = gpu_driver_init_env(env, driver)
-        sources = sorted(glob.glob(f'gpu/{driver}/*.c'))
+        sources = gpu_driver_sources(driver)
         headers = sorted(set(glob.glob(f'gpu/{driver}/*.h') + gpu_api_headers()))
         compile_c_extension(denv, f'kitty/{driver}', compilation_database, sources, headers, desc_prefix=f'[{driver}] ', build_dsym=build_dsym)
 
