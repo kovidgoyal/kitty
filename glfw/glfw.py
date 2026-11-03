@@ -78,7 +78,7 @@ def generate_wrappers(glfw_header: str) -> None:
         functions.append(Function(decl))
     for line in """\
     void* glfwGetCocoaWindow(GLFWwindow* window)
-    void* glfwGetNSGLContext(GLFWwindow *window)
+    void* glfwGetCocoaView(GLFWwindow* window)
     uint32_t glfwGetCocoaMonitor(GLFWmonitor* monitor)
     GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow* window, GLFWcocoatextinputfilterfun callback)
     GLFWhandleurlopen glfwSetCocoaURLOpenCallback(GLFWhandleurlopen callback)
@@ -87,10 +87,13 @@ def generate_wrappers(glfw_header: str) -> None:
     GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunching(GLFWapplicationwillfinishlaunchingfun callback)
     uint32_t glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int* cocoa_mods)
     void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback)
-    bool glfwCocoaRecreateGLDrawable(GLFWwindow *w)
     GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, GLFWcocoarenderframefun callback)
     void* glfwGetX11Display(void)
     unsigned long glfwGetX11Window(GLFWwindow* window)
+    void glfwX11PushErrorTrap(void)
+    int glfwX11PopErrorTrap(void)
+    void* glfwGetWaylandDisplay(void)
+    void* glfwGetWaylandWindow(GLFWwindow* window)
     void glfwSetPrimarySelectionString(GLFWwindow* window, const char* string)
     void glfwCocoaCycleThroughOSWindows(bool backwards)
     void glfwCocoaSetWindowChrome(GLFWwindow* window, unsigned int color, bool use_system_color, unsigned int system_color,\
