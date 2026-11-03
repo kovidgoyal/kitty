@@ -553,7 +553,7 @@ def add_window(os_window_id: int, tab_id: int, title: str) -> int:
 
 def compile_program(
     which: int, vertex_shaders: Tuple[str, ...], fragment_shaders: Tuple[str, ...], metadata: Dict[str, Any], allow_recompile: bool = False
-) -> int:
+) -> None:
     pass
 
 def custom_shader_needs_render(before: Tuple[bool, int, int], after: Tuple[bool, int, int], event_mask: int, now: int) -> bool: ...
@@ -662,7 +662,12 @@ def glfw_terminate() -> None:
     pass
 
 def glfw_init(
-    path: str, edge_spacing_func: Callable[[EdgeLiteral], float], debug_keyboard: bool = False, debug_rendering: bool = False, wayland_enable_ime: bool = True
+    path: str,
+    gpu_driver_path: str,
+    edge_spacing_func: Callable[[EdgeLiteral], float],
+    debug_keyboard: bool = False,
+    debug_rendering: bool = False,
+    wayland_enable_ime: bool = True,
 ) -> tuple[bool, bool]:
     pass
 

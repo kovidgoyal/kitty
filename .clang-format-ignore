@@ -1,6 +1,6 @@
 *_generated.*
 *-generated.*
-kitty/gl-wrapper.*
+gpu/opengl/gl-wrapper.*
 kitty/srgb_gamma.*
 kitty/glfw-wrapper.*
 kitty/rowcolumn-diacritics.c

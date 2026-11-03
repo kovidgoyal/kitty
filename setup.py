@@ -809,10 +809,9 @@ def kitty_env(args: Options) -> Env:
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(args, cflags)
-    gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
-    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libcrypto_ldflags + xxhash[1]
+    ans.ldpaths += pylib + platform_libs + libpng + lcms2 + libcrypto_ldflags + xxhash[1]
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:
@@ -1189,6 +1188,7 @@ def find_c_files() -> Tuple[List[str], List[str]]:
             ans.append(os.path.join('kitty', x))
         elif ext == '.h':
             headers.append(os.path.join('kitty', x))
+    headers.extend(gpu_api_headers())
     ans.append('kitty/vt-parser-dump.c')
 
     # ringbuf
@@ -1300,6 +1300,33 @@ def build_wayland_protocols(
                 items.append(Command(f'Generating {emphasis(os.path.basename(dest))} ...', [env.wayland_scanner, q, src, dest], lambda: True))
     if items:
         parallel_run(items)
+
+
+def gpu_api_headers() -> List[str]:
+    return ['gpu/api.h', 'gpu/opengl/version.h']
+
+
+def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
+    ans = env.copy()
+    ans.cflags.append('-fPIC')
+    if driver == 'opengl':
+        if is_macos:
+            # Apple deprecated OpenGL in Mojave (10.14) silence the endless
+            # warnings about it
+            ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
+            ans.ldpaths.extend(('-framework', 'OpenGL'))
+        # On other platforms the OpenGL functions are loaded at runtime using
+        # the get_proc_address() function passed in by kitty, so there is no
+        # need to link against libGL
+    return ans
+
+
+def compile_gpu_drivers(compilation_database: CompilationDatabase, build_dsym: bool = False) -> None:
+    for driver in ('opengl',):
+        denv = gpu_driver_init_env(env, driver)
+        sources = sorted(glob.glob(f'gpu/{driver}/*.c'))
+        headers = sorted(set(glob.glob(f'gpu/{driver}/*.h') + gpu_api_headers()))
+        compile_c_extension(denv, f'kitty/{driver}', compilation_database, sources, headers, desc_prefix=f'[{driver}] ', build_dsym=build_dsym)
 
 
 def compile_glfw(compilation_database: CompilationDatabase, build_dsym: bool = False) -> None:
@@ -1478,6 +1505,7 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
         build_dsym=args.build_dsym,
     )
     compile_glfw(args.compilation_database, args.build_dsym)
+    compile_gpu_drivers(args.compilation_database, args.build_dsym)
     compile_kittens(args)
     add_builtin_fonts(args)
 

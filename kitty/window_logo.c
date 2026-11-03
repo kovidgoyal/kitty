@@ -7,6 +7,7 @@
 
 
 #include "state.h"
+#include "gpu.h"
 #include "window_logo.h"
 #include <sys/mman.h>
 

@@ -6,7 +6,7 @@
  */
 
 #include "fonts.h"
-#include "gl.h"
+#include "gpu.h"
 #include "cleanup.h"
 #include "colors.h"
 #include <stddef.h>
@@ -42,6 +42,7 @@ enum {
 
     NUM_PROGRAMS
 };
+static_assert(NUM_PROGRAMS <= MAX_GPU_PROGRAMS, "Too many GPU programs");
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT, CUSTOM_END_TEXTURE_A_UNIT, CUSTOM_END_TEXTURE_B_UNIT, CUSTOM_END_TEXTURE_PERSIST_UNIT };
 
 typedef struct UIRenderData {
@@ -72,43 +73,43 @@ scroll_offset_lines_for_screen(const Screen *screen) {
 // Sprites {{{
 typedef struct {
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
-    GLuint texture_id;
-    GLint max_texture_size, max_array_texture_layers;
+    gpu_texture_t texture_id;
+    int32_t max_texture_size, max_array_texture_layers;
     struct decorations_map {
-        GLuint texture_id;
+        gpu_texture_t texture_id;
         unsigned width, height;
         size_t count;
     } decorations_map;
 } SpriteMap;
 
 static const SpriteMap NEW_SPRITE_MAP = {.xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1};
-static GLint max_texture_size = 0, max_array_texture_layers = 0;
+static int32_t max_texture_size = 0, max_array_texture_layers = 0;
 
-static GLfloat
+static float
 srgb_color(uint8_t color) {
     return srgb_lut[color];
 }
 
 static void
-color_vec3(GLint location, color_type color) {
-    glUniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
+color_vec3(int32_t location, color_type color) {
+    gpu_uniform3f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF]);
 }
 
 static void
-color_vec4_premult(GLint location, color_type color, GLfloat alpha) {
-    glUniform4f(location, srgb_lut[(color >> 16) & 0xFF] * alpha, srgb_lut[(color >> 8) & 0xFF] * alpha, srgb_lut[color & 0xFF] * alpha, alpha);
+color_vec4_premult(int32_t location, color_type color, float alpha) {
+    gpu_uniform4f(location, srgb_lut[(color >> 16) & 0xFF] * alpha, srgb_lut[(color >> 8) & 0xFF] * alpha, srgb_lut[color & 0xFF] * alpha, alpha);
 }
 
 static void
-color_vec4(GLint location, color_type color, GLfloat alpha) {
-    glUniform4f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF], alpha);
+color_vec4(int32_t location, color_type color, float alpha) {
+    gpu_uniform4f(location, srgb_lut[(color >> 16) & 0xFF], srgb_lut[(color >> 8) & 0xFF], srgb_lut[color & 0xFF], alpha);
 }
 
 // Write a color into a std140 float4 whose fourth component is unused. Uses
 // the same table as the shaders so the result is identical to converting the
 // color in the shader.
 static void
-linear_color_vec4(GLfloat *dest, color_type color) {
+linear_color_vec4(float *dest, color_type color) {
     dest[0] = srgb_lut[(color >> 16) & 0xFF];
     dest[1] = srgb_lut[(color >> 8) & 0xFF];
     dest[2] = srgb_lut[color & 0xFF];
@@ -118,24 +119,19 @@ linear_color_vec4(GLfloat *dest, color_type color) {
 
 static void
 clear_current_framebuffer(void) {
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    gpu_clear(0, 0, 0, 0);
 }
 
-// Must be called as soon as there is a current OpenGL context, see
+// Must be called as soon as there is an initialized GPU driver, see
 // initialize_gpu(). Font groups are created before that happens and size their
 // sprite layout using these limits, so the sooner they are known the better.
 static void
 query_gpu_texture_limits(void) {
-    if (max_texture_size) return;
-    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(max_texture_size));
-    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
-#ifdef __APPLE__
-    // Since on Apple we could have multiple GPUs, with different capabilities,
-    // upper bound the values according to the data from https://developer.apple.com/graphicsimaging/opengl/capabilities/
-    max_texture_size = MIN(8192, max_texture_size);
-    max_array_texture_layers = MIN(512, max_array_texture_layers);
-#endif
+    if (max_texture_size || !gpu_driver.initialized) return;
+    GPUCapabilities caps;
+    gpu_get_capabilities(&caps);
+    max_texture_size = (int32_t)caps.max_texture_size;
+    max_array_texture_layers = (int32_t)caps.max_array_texture_layers;
     sprite_tracker_set_limits(max_texture_size, max_array_texture_layers);
 }
 
@@ -161,127 +157,15 @@ free_sprite_data(FONTS_DATA_HANDLE fg) {
     }
 }
 
-
-static void
-discard_pending_gl_errors(void) {
-    // glad's error checking callback is installed only with --debug-rendering,
-    // so in normal runs errors queue up silently. Drain the queue so that a
-    // subsequent glGetError() reports only what we are interested in.
-    for (unsigned i = 0; i < 16 && glGetError() != GL_NO_ERROR; i++);
+static gpu_texture_t
+create_texture_or_die(const GPUTextureDesc *desc, const GPUPixelData *initial) {
+    gpu_texture_t ans = gpu_texture_create(desc, initial);
+    if (!ans) fatal("Failed to create a GPU texture with error: %s", gpu_last_error());
+    return ans;
 }
 
 static bool
-copy_texture_via_framebuffer(GLuint old_texture, GLuint new_texture, GLenum texture_type, GLint width, GLint height, GLint layers) {
-    GLint prev_read_fbo;
-    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prev_read_fbo);
-    discard_pending_gl_errors();
-    GLuint fbo;
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-    bool ok = true;
-    for (GLint z = 0; z < layers && ok; z++) {
-        if (texture_type == GL_TEXTURE_2D_ARRAY) glFramebufferTextureLayer(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, old_texture, 0, z);
-        else glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, old_texture, 0);
-        ok = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
-        if (!ok) break;
-        glBindTexture(texture_type, new_texture);
-        if (texture_type == GL_TEXTURE_2D_ARRAY) glCopyTexSubImage3D(texture_type, 0, 0, 0, z, 0, 0, width, height);
-        else glCopyTexSubImage2D(texture_type, 0, 0, 0, 0, 0, width, height);
-        // A complete framebuffer does not mean the copy itself was accepted,
-        // for instance if the two internal formats are not copy compatible.
-        // Without this check we would claim success and leave the new texture
-        // blank, losing every already rendered sprite.
-        ok = glGetError() == GL_NO_ERROR;
-    }
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, prev_read_fbo);
-    glDeleteFramebuffers(1, &fbo);
-    if (!ok) glBindTexture(texture_type, old_texture);
-    return ok;
-}
-
-static void
-copy_32bit_texture(GLuint old_texture, GLuint new_texture, GLenum texture_type) {
-    // requires new texture to be at least as big as old texture. Assumes textures are 32bits per pixel
-    GLint width, height, layers;
-    glBindTexture(texture_type, old_texture);
-    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_WIDTH, &width);
-    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_HEIGHT, &height);
-    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_DEPTH, &layers);
-    if (GLAD_GL_ARB_copy_image) {
-        glCopyImageSubData(old_texture, texture_type, 0, 0, 0, 0, new_texture, texture_type, 0, 0, 0, 0, width, height, layers);
-        return;
-    }
-    if (copy_texture_via_framebuffer(old_texture, new_texture, texture_type, width, height, layers)) return;
-
-    static bool copy_image_warned = false;
-    // Neither ARB_copy_image nor a framebuffer copy is usable, do a slow roundtrip copy
-    if (!copy_image_warned) {
-        copy_image_warned = true;
-        log_error("WARNING: Your system's OpenGL implementation cannot copy between textures on the GPU, falling back to a slower implementation");
-    }
-
-    GLint internal_format;
-    glGetTexLevelParameteriv(texture_type, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal_format);
-    GLenum format, type;
-    switch (internal_format) {
-        case GL_R8UI:
-        case GL_R8I:
-        case GL_R16UI:
-        case GL_R16I:
-        case GL_R32UI:
-        case GL_R32I:
-        case GL_RG8UI:
-        case GL_RG8I:
-        case GL_RG16UI:
-        case GL_RG16I:
-        case GL_RG32UI:
-        case GL_RG32I:
-        case GL_RGB8UI:
-        case GL_RGB8I:
-        case GL_RGB16UI:
-        case GL_RGB16I:
-        case GL_RGB32UI:
-        case GL_RGB32I:
-        case GL_RGBA8UI:
-        case GL_RGBA8I:
-        case GL_RGBA16UI:
-        case GL_RGBA16I:
-        case GL_RGBA32UI:
-        case GL_RGBA32I:
-            format = GL_RED_INTEGER;
-            type = GL_UNSIGNED_INT;
-            break;
-        default:
-            format = GL_RGBA;
-            type = GL_UNSIGNED_INT_8_8_8_8;
-            break;
-    }
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    RAII_ALLOC(uint8_t, pixels, malloc((size_t)width * height * layers * 4u));
-    if (!pixels) fatal("Out of memory");
-    glGetTexImage(texture_type, 0, format, type, pixels);
-    glBindTexture(texture_type, new_texture);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-    if (texture_type == GL_TEXTURE_2D_ARRAY) glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, layers, format, type, pixels);
-    else glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, pixels);
-}
-
-static GLuint
-setup_new_sprites_texture(GLenum texture_type) {
-    GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(texture_type, tex);
-    // We use GL_NEAREST otherwise glyphs that touch the edge of the cell
-    // often show a border between cells
-    glTexParameteri(texture_type, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(texture_type, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(texture_type, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(texture_type, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    return tex;
-}
-
-static bool
-decorations_map_new_size(size_t count, size_t current_capacity, size_t max_size, GLint *width, GLint *height) {
+decorations_map_new_size(size_t count, size_t current_capacity, size_t max_size, int32_t *width, int32_t *height) {
     const size_t max_capacity = max_size * max_size;
     if (count >= max_capacity) return false;
     size_t capacity = MAX(MAX(count + 256, current_capacity * 2), (size_t)4096);
@@ -302,17 +186,18 @@ realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
     SpriteMap *sm = (SpriteMap *)fg->sprite_map;
     size_t current_capacity = (size_t)dm.width * dm.height;
     if (dm.count < current_capacity && dm.texture_id) return;
-    GLint width, height;
+    int32_t width, height;
     if (!decorations_map_new_size(dm.count, current_capacity, sm->max_texture_size, &width, &height))
-        fatal("Max texture size too small for sprite decorations map, maybe switch to using a GL_TEXTURE_2D_ARRAY");
-    const GLenum texture_type = GL_TEXTURE_2D;
-    GLuint tex = setup_new_sprites_texture(texture_type);
-    glTexImage2D(texture_type, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
+        fatal("Max texture size too small for sprite decorations map, maybe switch to using a GPU_TEXTURE_2D_ARRAY");
+    // We use nearest filtering otherwise glyphs that touch the edge of the cell
+    // often show a border between cells
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D, .format = GPU_FORMAT_R32UI, .width = width, .height = height, .filter = GPU_FILTER_NEAREST, .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+    gpu_texture_t tex = create_texture_or_die(&desc, NULL);
     if (dm.texture_id) { // copy data from old texture
-        copy_32bit_texture(dm.texture_id, tex, texture_type);
+        gpu_texture_copy(dm.texture_id, tex);
         free_texture(&dm.texture_id);
     }
-    glBindTexture(texture_type, 0);
     dm.texture_id = tex;
     dm.width = width;
     dm.height = height;
@@ -327,17 +212,30 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     SpriteMap *sprite_map = (SpriteMap *)fg->sprite_map;
     width = xnum * fg->fcm.cell_width;
     height = ynum * (fg->fcm.cell_height + 1);
-    const GLenum texture_type = GL_TEXTURE_2D_ARRAY;
-    GLuint tex = setup_new_sprites_texture(texture_type);
-    glTexStorage3D(texture_type, 1, GL_SRGB8_ALPHA8, width, height, znum);
+    // We use nearest filtering otherwise glyphs that touch the edge of the cell
+    // often show a border between cells
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D_ARRAY,
+        .format = GPU_FORMAT_SRGB8_ALPHA8,
+        .width = width,
+        .height = height,
+        .layers = znum,
+        .filter = GPU_FILTER_NEAREST,
+        .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+    gpu_texture_t tex = create_texture_or_die(&desc, NULL);
     if (sprite_map->texture_id) { // copy old texture data into new texture
-        copy_32bit_texture(sprite_map->texture_id, tex, texture_type);
+        gpu_texture_copy(sprite_map->texture_id, tex);
         free_texture(&sprite_map->texture_id);
     }
-    glBindTexture(texture_type, 0);
     sprite_map->last_num_of_layers = znum;
     sprite_map->last_ynum = ynum;
     sprite_map->texture_id = tex;
+}
+
+static void
+bind_sprite_map(const SpriteMap *sprite_map) {
+    gpu_bind_texture(SPRITE_DECORATIONS_MAP_UNIT, sprite_map->decorations_map.texture_id);
+    gpu_bind_texture(SPRITE_MAP_UNIT, sprite_map->texture_id);
 }
 
 static void
@@ -347,10 +245,7 @@ ensure_sprite_map(FONTS_DATA_HANDLE fg) {
     if (!sprite_map->decorations_map.texture_id) realloc_sprite_decorations_texture_if_needed(fg);
     // We have to rebind since we don't know if the texture was ever bound
     // in the context of the current OSWindow
-    glActiveTexture(GL_TEXTURE0 + SPRITE_DECORATIONS_MAP_UNIT);
-    glBindTexture(GL_TEXTURE_2D, sprite_map->decorations_map.texture_id);
-    glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
+    bind_sprite_map(sprite_map);
 }
 
 void
@@ -363,46 +258,49 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
     div_t d = div(idx, dm.width);
     x = d.rem;
     y = d.quot;
-    glActiveTexture(GL_TEXTURE0 + SPRITE_DECORATIONS_MAP_UNIT);
-    glBindTexture(GL_TEXTURE_2D, dm.texture_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &decoration_idx);
+    const GPUPixelData decoration_pixels = {.layout = GPU_PIXELS_R32UI, .row_alignment = 4, .data = &decoration_idx};
+    gpu_texture_upload(dm.texture_id, x, y, 0, 1, 1, &decoration_pixels);
 #undef dm
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
     if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) {
         realloc_sprite_texture(fg);
         sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
     }
-    glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
     x *= fg->fcm.cell_width;
     y *= (fg->fcm.cell_height + 1);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
+    const GPUPixelData sprite_pixels = {.layout = GPU_PIXELS_RGBA8_PACKED, .row_alignment = 4, .data = buf};
+    gpu_texture_upload(sprite_map->texture_id, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, &sprite_pixels);
+    // Sprites are sent while preparing to render, after ensure_sprite_map(),
+    // and the sprite textures may have been re-allocated, so rebind them.
+    bind_sprite_map(sprite_map);
+}
+
+static void
+define_texture(gpu_texture_t *tex_id, const GPUTextureDesc *desc, const GPUPixelData *pixels) {
+    if (*tex_id) {
+        if (!gpu_texture_reset(*tex_id, desc, pixels)) fatal("Failed to re-allocate GPU texture with error: %s", gpu_last_error());
+    } else *tex_id = create_texture_or_die(desc, pixels);
 }
 
 void
-send_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned, bool linear, RepeatStrategy repeat) {
-    if (!(*tex_id)) { glGenTextures(1, tex_id); }
-    glBindTexture(GL_TEXTURE_2D, *tex_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear ? GL_LINEAR : GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear ? GL_LINEAR : GL_NEAREST);
-    RepeatStrategy r;
+send_image_to_gpu(
+    gpu_texture_t *tex_id, const void *data, int32_t width, int32_t height, bool is_opaque, bool is_4byte_aligned, bool linear, RepeatStrategy repeat) {
+    GPUWrap wrap;
     switch (repeat) {
-        case REPEAT_MIRROR: r = GL_MIRRORED_REPEAT; break;
-        case REPEAT_CLAMP: {
-            static const GLfloat border_color[4] = {0};
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
-            r = GL_CLAMP_TO_BORDER;
-            break;
-        }
-        default: r = GL_REPEAT;
+        case REPEAT_MIRROR: wrap = GPU_WRAP_MIRRORED_REPEAT; break;
+        case REPEAT_CLAMP: wrap = GPU_WRAP_CLAMP_TO_BORDER; break;
+        default: wrap = GPU_WRAP_REPEAT;
     }
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, r);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, r);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D,
+        .format = GPU_FORMAT_SRGB8_ALPHA8,
+        .width = width,
+        .height = height,
+        .filter = linear ? GPU_FILTER_LINEAR : GPU_FILTER_NEAREST,
+        .wrap = wrap};
+    const GPUPixelData pixels = {.layout = is_opaque ? GPU_PIXELS_RGB8 : GPU_PIXELS_RGBA8, .row_alignment = is_4byte_aligned ? 4 : 1, .data = data};
+    define_texture(tex_id, &desc, &pixels);
 }
 
 // Indexed color images are stored as integer textures with the palette index
@@ -410,16 +308,17 @@ send_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei heigh
 // Integer textures cannot be filtered, the shader does its own filtering after
 // the palette lookup.
 void
-send_indexed_image_to_gpu(GLuint *tex_id, const void *data, GLsizei width, GLsizei height, unsigned bytes_per_pixel, bool is_4byte_aligned) {
-    if (!(*tex_id)) { glGenTextures(1, tex_id); }
-    glBindTexture(GL_TEXTURE_2D, *tex_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+send_indexed_image_to_gpu(gpu_texture_t *tex_id, const void *data, int32_t width, int32_t height, unsigned bytes_per_pixel, bool is_4byte_aligned) {
     const bool has_alpha = bytes_per_pixel == 2;
-    glTexImage2D(GL_TEXTURE_2D, 0, has_alpha ? GL_RG8UI : GL_R8UI, width, height, 0, has_alpha ? GL_RG_INTEGER : GL_RED_INTEGER, GL_UNSIGNED_BYTE, data);
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D,
+        .format = has_alpha ? GPU_FORMAT_RG8UI : GPU_FORMAT_R8UI,
+        .width = width,
+        .height = height,
+        .filter = GPU_FILTER_NEAREST,
+        .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+    const GPUPixelData pixels = {.layout = has_alpha ? GPU_PIXELS_RG8 : GPU_PIXELS_R8, .row_alignment = is_4byte_aligned ? 4 : 1, .data = data};
+    define_texture(tex_id, &desc, &pixels);
 }
 
 // }}}
@@ -451,8 +350,8 @@ draw_rounded_rect(
     color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "outer_color"), srgb_outer, outer_alpha);
     // y co-ord has to be changed to co-ord system with origin at bottom left
     float y = (float)framebuffer_height - (float)(rect.top + rect.height);
-    glUniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"), rect.left, y, rect.width, rect.height);
-    glUniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, corner_radius_px);
+    gpu_uniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"), rect.left, y, rect.width, rect.height);
+    gpu_uniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, corner_radius_px);
     save_viewport_using_top_left_origin(rect.left, rect.top, rect.width, rect.height, framebuffer_height);
     draw_quad(true, 0);
     restore_viewport();
@@ -513,14 +412,15 @@ static struct {
 } custom_shaders;
 
 static struct {
-    GLuint texture_id, framebuffer_id;
+    gpu_texture_t texture_id;
+    gpu_render_target_t framebuffer_id;
 } pointer_map_target;
 
 static void
-write_uint_array_to_ubo(void *dest, const GLuint *src, size_t count, const ArrayInformation *ai) {
-    GLint stride = MAX((GLint)sizeof(GLuint), ai->stride);
+write_uint_array_to_ubo(void *dest, const uint32_t *src, size_t count, const ArrayInformation *ai) {
+    int32_t stride = MAX((int32_t)sizeof(uint32_t), ai->stride);
     uint8_t *buf = (uint8_t *)dest + ai->offset;
-    for (size_t i = 0; i < count; i++, buf += stride) memcpy(buf, src + i, sizeof(GLuint));
+    for (size_t i = 0; i < count; i++, buf += stride) memcpy(buf, src + i, sizeof(uint32_t));
 }
 
 // The gamma LUT is a compile time constant that lives in the default uniform
@@ -535,11 +435,11 @@ write_uint_array_to_ubo(void *dest, const GLuint *src, size_t count, const Array
 // See https://github.com/kovidgoyal/kitty/issues/10571
 void
 upload_gamma_lut(void) {
-#define U(program)                                                    \
-    {                                                                 \
-        bind_program(program);                                        \
-        GLint loc = program_uniform_location(program, "gamma_lut");   \
-        if (loc >= 0) glUniform1fv(loc, arraysz(srgb_lut), srgb_lut); \
+#define U(program)                                                                 \
+    {                                                                              \
+        bind_program(program);                                                     \
+        int32_t loc = program_uniform_location(program, "gamma_lut");              \
+        if (loc >= 0) gpu_set_uniform_floats(loc, 1, arraysz(srgb_lut), srgb_lut); \
     }
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) U(i);
     U(BORDERS_PROGRAM);
@@ -554,9 +454,9 @@ static void
 init_cell_program(void) {
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
         UniformBlock crd = program_uniform_block(i, "CellRenderData");
-        glUniformBlockBinding(program_id(i), crd.index, CELL_RENDER_DATA_BINDING_POINT);
+        gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)crd.index, CELL_RENDER_DATA_BINDING_POINT);
         UniformBlock ct = program_uniform_block(i, "ColorTable");
-        glUniformBlockBinding(program_id(i), ct.index, COLOR_TABLE_BINDING_POINT);
+        gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)ct.index, COLOR_TABLE_BINDING_POINT);
     }
 
     // Sanity check to ensure the attribute location binding worked
@@ -573,15 +473,15 @@ init_cell_program(void) {
     }
 #undef C
     UniformBlock border_colors = program_uniform_block(BORDERS_PROGRAM, "Colors");
-    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_colors.index, BORDER_COLORS_BINDING_POINT);
+    gpu_pipeline_bind_uniform_block(program_pipeline(BORDERS_PROGRAM), (uint32_t)border_colors.index, BORDER_COLORS_BINDING_POINT);
 
     // The padding program shares the cell background computation and so uses the
     // same uniform blocks bound to the same binding points as the cell programs.
     {
         UniformBlock crd = program_uniform_block(PADDING_PROGRAM, "CellRenderData");
-        glUniformBlockBinding(program_id(PADDING_PROGRAM), crd.index, CELL_RENDER_DATA_BINDING_POINT);
+        gpu_pipeline_bind_uniform_block(program_pipeline(PADDING_PROGRAM), (uint32_t)crd.index, CELL_RENDER_DATA_BINDING_POINT);
         UniformBlock ct = program_uniform_block(PADDING_PROGRAM, "ColorTable");
-        glUniformBlockBinding(program_id(PADDING_PROGRAM), ct.index, COLOR_TABLE_BINDING_POINT);
+        gpu_pipeline_bind_uniform_block(program_pipeline(PADDING_PROGRAM), (uint32_t)ct.index, COLOR_TABLE_BINDING_POINT);
     }
 #define C(name, expected)                                                                                                                     \
     {                                                                                                                                         \
@@ -595,14 +495,14 @@ init_cell_program(void) {
     // Indexed color images get their colors from the color table of the window they are in
     for (int i = GRAPHICS_INDEXED_PROGRAM; i <= GRAPHICS_INDEXED_UNSCALED_PROGRAM; i++) {
         UniformBlock ct = program_uniform_block(i, "ColorTable");
-        glUniformBlockBinding(program_id(i), ct.index, COLOR_TABLE_BINDING_POINT);
+        gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)ct.index, COLOR_TABLE_BINDING_POINT);
     }
 
     if (shader_globals_vao_idx == -1) {
         shader_globals_vao_idx = create_vao();
-        add_buffer_to_vao(shader_globals_vao_idx, GL_UNIFORM_BUFFER);
+        add_buffer_to_vao(shader_globals_vao_idx, GPU_BUFFER_UNIFORM);
         // The border colors change on every draw, but are shared amongst all border VAOs (only one is ever drawn at a time)
-        alloc_vao_buffer(shader_globals_vao_idx, border_colors.size, BORDER_COLORS_GLOBAL_BUFFER, GL_STREAM_DRAW);
+        alloc_vao_buffer(shader_globals_vao_idx, border_colors.size, BORDER_COLORS_GLOBAL_BUFFER, GPU_UPDATE_EVERY_USE);
     }
     upload_gamma_lut();
     bind_shader_globals_to_current_context();
@@ -747,23 +647,22 @@ static void
 init_custom_programs(void) {
     custom_shaders.count = 0;
     for (int i = CUSTOM_END_PROGRAM; i < NUM_PROGRAMS; i++) {
-        Program *p = program_ptr(i);
-        if (p && p->id) {
+        if (program_pipeline(i)) {
             custom_shaders.count++;
             if (i == CUSTOM_END_PROGRAM) {
                 bind_program(i);
-                glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
-#define set_optional_sampler(name, unit)                   \
-    {                                                      \
-        GLint loc = try_program_uniform_location(i, name); \
-        if (loc >= 0) glUniform1i(loc, unit);              \
+                gpu_uniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
+#define set_optional_sampler(name, unit)                     \
+    {                                                        \
+        int32_t loc = try_program_uniform_location(i, name); \
+        if (loc >= 0) gpu_uniform1i(loc, unit);              \
     }
                 set_optional_sampler("a", CUSTOM_END_TEXTURE_A_UNIT);
                 set_optional_sampler("b", CUSTOM_END_TEXTURE_B_UNIT);
                 set_optional_sampler("persist", CUSTOM_END_TEXTURE_PERSIST_UNIT);
 #undef set_optional_sampler
-                GLint group_loc = try_program_uniform_location(i, "group");
-                if (group_loc >= 0) glUniform1i(group_loc, 0);
+                int32_t group_loc = try_program_uniform_location(i, "group");
+                if (group_loc >= 0) gpu_uniform1i(group_loc, 0);
                 else if (custom_shaders.end.num_groups > 1) {
                     // Every group is dispatched by setting this uniform, so without it
                     // all of them render as group zero, which for a multi pass pipeline
@@ -774,11 +673,11 @@ init_custom_programs(void) {
                         custom_shaders.end.num_groups);
                 }
                 UniformBlock ubd = program_uniform_block(i, "KittyCustomShaderData");
-                glUniformBlockBinding(program_id(i), ubd.index, CUSTOM_END_DATA_BINDING_POINT);
+                gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)ubd.index, CUSTOM_END_DATA_BINDING_POINT);
                 if (custom_end_vao_idx == -1) {
                     custom_end_vao_idx = create_vao();
-                    add_buffer_to_vao(custom_end_vao_idx, GL_UNIFORM_BUFFER);
-                    alloc_vao_buffer(custom_end_vao_idx, ubd.size, 0, GL_STREAM_DRAW);
+                    add_buffer_to_vao(custom_end_vao_idx, GPU_BUFFER_UNIFORM);
+                    alloc_vao_buffer(custom_end_vao_idx, ubd.size, 0, GPU_UPDATE_EVERY_USE);
                 }
             }
         }
@@ -1058,23 +957,23 @@ create_cell_vao(void) {
 #define A(name, size, dtype, offset, stride) \
     add_attribute_to_vao(                    \
         vao_idx, program_attribute_location(CELL_PROGRAM, name), /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
-#define A1(name, size, dtype, offset) A(name, size, dtype, (void *)(offsetof(GPUCell, offset)), sizeof(GPUCell))
+#define A1(name, size, dtype, offset) A(name, size, dtype, offsetof(GPUCell, offset), sizeof(GPUCell))
 
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    A1("sprite_idx", 2, GL_UNSIGNED_INT, sprite_idx);
-    A1("colors", 3, GL_UNSIGNED_INT, fg);
+    add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX);
+    A1("sprite_idx", 2, GPU_ATTRIB_U32, sprite_idx);
+    A1("colors", 3, GPU_ATTRIB_U32, fg);
 
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    A("is_selected", 1, GL_UNSIGNED_BYTE, NULL, 0);
+    add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX);
+    A("is_selected", 1, GPU_ATTRIB_U8, 0, 0);
 
-    size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "CellRenderData").size, bufnum, GL_STREAM_DRAW);
+    size_t bufnum = add_buffer_to_vao(vao_idx, GPU_BUFFER_UNIFORM);
+    alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "CellRenderData").size, bufnum, GPU_UPDATE_EVERY_USE);
 
-    size_t ctbufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "ColorTable").size, ctbufnum, GL_STATIC_DRAW);
+    size_t ctbufnum = add_buffer_to_vao(vao_idx, GPU_BUFFER_UNIFORM);
+    alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "ColorTable").size, ctbufnum, GPU_UPDATE_RARELY);
 
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER); // padding_cell_data_buffer (slot 4)
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER); // padding_selection_buffer  (slot 5)
+    add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX); // padding_cell_data_buffer (slot 4)
+    add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX); // padding_selection_buffer  (slot 5)
 
     return vao_idx;
 #undef A
@@ -1156,28 +1055,28 @@ cell_update_uniform_block(
         // space so the vertex shader does not do a gamma LUT lookup for them
         // once per vertex. These must come first and the fourth component of
         // each is unused padding, see CellRenderData in background.slang.
-        GLfloat default_fg_lin[4], default_bg_lin[4], highlight_fg_lin[4], highlight_bg_lin[4];
-        GLfloat main_cursor_fg_lin[4], main_cursor_bg_lin[4], url_color_lin[4];
-        GLfloat extra_cursor_fg_lin[4], extra_cursor_bg_lin[4];
+        float default_fg_lin[4], default_bg_lin[4], highlight_fg_lin[4], highlight_bg_lin[4];
+        float main_cursor_fg_lin[4], main_cursor_bg_lin[4], url_color_lin[4];
+        float extra_cursor_fg_lin[4], extra_cursor_bg_lin[4];
 
-        GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
+        float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
-        GLuint default_fg, url_style, inverted, main_cursor_is_special, extra_cursor_fg, extra_cursor_bg;
+        uint32_t default_fg, url_style, inverted, main_cursor_is_special, extra_cursor_fg, extra_cursor_bg;
 
-        GLuint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
-        GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
-        GLfloat cursor_opacity, inactive_text_alpha, fg_override_threshold, row_offset, dim_opacity, blink_opacity;
+        uint32_t columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
+        uint32_t cursor_x1, cursor_x2, cursor_y1, cursor_y2;
+        float cursor_opacity, inactive_text_alpha, fg_override_threshold, row_offset, dim_opacity, blink_opacity;
 
-        GLuint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
-        GLfloat bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
+        uint32_t bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
+        float bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
     };
     // Send the uniform data
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
     if (cp->dirty || screen->reload_all_gpu_data) {
         const ArrayInformation ai = program_uniform_array(CELL_PROGRAM, "color_table");
         uint8_t *base = (uint8_t *)map_vao_buffer_for_write_only(vao_idx, color_table_buf, 0, program_uniform_block(CELL_PROGRAM, "ColorTable").size);
-        GLuint *ct_buf = (GLuint *)(base + ai.offset);
-        copy_color_table_to_buffer(cp, ct_buf, 0, ai.stride / sizeof(GLuint));
+        uint32_t *ct_buf = (uint32_t *)(base + ai.offset);
+        copy_color_table_to_buffer(cp, ct_buf, 0, ai.stride / sizeof(uint32_t));
         unmap_vao_buffer(vao_idx, color_table_buf);
     }
     // This struct is a hand written mirror of the std140 layout of
@@ -1429,26 +1328,25 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 }
 
 static void
-draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, float extra_alpha) {
+draw_graphics(int program, ImageRenderData *data, uint32_t start, uint32_t count, float extra_alpha) {
     bind_program(program);
-    if (program != GRAPHICS_ALPHA_MASK_PROGRAM) glUniform1f(program_uniform_location(program, "extra_alpha"), extra_alpha);
-    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-    GLint src_rect_loc = program_uniform_location(program, "src_rect");
-    GLint dest_rect_loc = program_uniform_location(program, "dest_rect");
+    if (program != GRAPHICS_ALPHA_MASK_PROGRAM) gpu_uniform1f(program_uniform_location(program, "extra_alpha"), extra_alpha);
+    int32_t src_rect_loc = program_uniform_location(program, "src_rect");
+    int32_t dest_rect_loc = program_uniform_location(program, "dest_rect");
     const bool is_indexed = program == GRAPHICS_INDEXED_PROGRAM || program == GRAPHICS_INDEXED_UNSCALED_PROGRAM;
-    const GLint has_alpha_loc = is_indexed ? program_uniform_location(program, "has_alpha") : -1;
-    for (GLuint i = 0; i < count;) {
+    const int32_t has_alpha_loc = is_indexed ? program_uniform_location(program, "has_alpha") : -1;
+    for (uint32_t i = 0; i < count;) {
         ImageRenderData *group = data + start + i;
-        glBindTexture(GL_TEXTURE_2D, group->texture_id);
-        if (has_alpha_loc > -1) glUniform1ui(has_alpha_loc, group->indexed_px_sz == 2);
+        gpu_bind_texture(GRAPHICS_UNIT, group->texture_id);
+        if (has_alpha_loc > -1) gpu_uniform1ui(has_alpha_loc, group->indexed_px_sz == 2);
         if (group->group_count == 0) {
             i++;
             continue;
         }
-        for (GLuint k = 0; k < group->group_count; k++, i++) {
+        for (uint32_t k = 0; k < group->group_count; k++, i++) {
             ImageRenderData *rd = data + start + i;
-            glUniform4f(src_rect_loc, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
-            glUniform4f(dest_rect_loc, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
+            gpu_uniform4f(src_rect_loc, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
+            gpu_uniform4f(dest_rect_loc, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
             draw_quad(true, 0);
         }
     }
@@ -1457,51 +1355,41 @@ draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, fl
 static ImageRenderData *
 load_alpha_mask_texture(size_t width, size_t height, uint8_t *canvas) {
     static ImageRenderData data = {.group_count = 1};
-    if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
-    glBindTexture(GL_TEXTURE_2D, data.texture_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, canvas);
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D, .format = GPU_FORMAT_R8, .width = width, .height = height, .filter = GPU_FILTER_NEAREST, .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+    const GPUPixelData pixels = {.layout = GPU_PIXELS_R8, .row_alignment = 1, .data = canvas};
+    define_texture(&data.texture_id, &desc, &pixels);
     return &data;
 }
 
 static void
-setup_texture_as_render_target(unsigned width, unsigned height, GLuint *texture_id, GLuint *framebuffer_id) {
-    glGenTextures(1, texture_id);
-    glGenFramebuffers(1, framebuffer_id);
-    glBindTexture(GL_TEXTURE_2D, *texture_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // We use GL_RGBA16 to avoid incorrect colors due to quantization loss when
+setup_texture_as_render_target(unsigned width, unsigned height, gpu_texture_t *texture_id, gpu_render_target_t *framebuffer_id) {
+    // We use 16 bit color channels to avoid incorrect colors due to quantization loss when
     // blending, see https://github.com/kovidgoyal/kitty/issues/8953
     static struct {
         bool ok;
-        int fmt;
-    } status = {false, GL_RGBA16};
-    glTexImage2D(GL_TEXTURE_2D, 0, status.fmt, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    bind_framebuffer_for_output(*framebuffer_id);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture_id, 0);
+        GPUTextureFormat fmt;
+    } status = {false, GPU_FORMAT_RGBA16};
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D, .format = status.fmt, .width = width, .height = height, .filter = GPU_FILTER_LINEAR, .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+    *texture_id = create_texture_or_die(&desc, NULL);
+    *framebuffer_id = gpu_render_target_create(*texture_id);
+    if (!*framebuffer_id) fatal("Failed to create a GPU render target with error: %s", gpu_last_error());
     if (!status.ok) {
-        if (check_framebuffer_status() == NULL) {
+        if (gpu_render_target_status(*framebuffer_id) == NULL) {
             status.ok = true;
         } else {
-            if (status.fmt == GL_RGBA16) {
-                // Driver does not support 16 bit FBO so let it choose the
-                // format. It will probably end up choosing 8 bit but
-                // inaccurate colors are better than completely broken rendering.
-                // See https://github.com/kovidgoyal/kitty/issues/9068
-                status.fmt = GL_RGBA;
+            if (status.fmt == GPU_FORMAT_RGBA16) {
+                // Driver does not support 16 bit render targets so fall back
+                // to 8 bit. Inaccurate colors are better than completely
+                // broken rendering. See https://github.com/kovidgoyal/kitty/issues/9068
+                status.fmt = GPU_FORMAT_RGBA8;
                 free_framebuffer(framebuffer_id);
                 free_texture(texture_id);
                 setup_texture_as_render_target(width, height, texture_id, framebuffer_id);
                 log_error("WARNING: Your GPU driver does not support 16bit textures as framebuffer targets, some colors may be slightly inaccurate.");
             } else {
-                fatal("Your GPU driver does not support indirect rendering to a GL_RGBA texture via a framebuffer");
+                fatal("Your GPU driver does not support indirect rendering to a RGBA texture via a framebuffer");
             }
         }
     }
@@ -1515,27 +1403,27 @@ set_cell_uniforms(bool force) {
         float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
         for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_INDEXED_UNSCALED_PROGRAM; i++) {
             bind_program(i);
-            glUniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
+            gpu_uniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
         }
         // These are set for every cell program, but the background program draws no
         // text and so does not have them.
-#define set_optional(setter, name, value)                  \
-    {                                                      \
-        GLint loc = try_program_uniform_location(i, name); \
-        if (loc >= 0) setter(loc, value);                  \
+#define set_optional(setter, name, value)                    \
+    {                                                        \
+        int32_t loc = try_program_uniform_location(i, name); \
+        if (loc >= 0) setter(loc, value);                    \
     }
         for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
             bind_program(i);
-            set_optional(glUniform1i, "sprites", SPRITE_MAP_UNIT);
-            set_optional(glUniform1i, "sprite_decorations_map", SPRITE_DECORATIONS_MAP_UNIT);
-            set_optional(glUniform1f, "text_contrast", text_contrast);
-            set_optional(glUniform1f, "text_gamma_adjustment", text_gamma_adjustment);
+            set_optional(gpu_uniform1i, "sprites", SPRITE_MAP_UNIT);
+            set_optional(gpu_uniform1i, "sprite_decorations_map", SPRITE_DECORATIONS_MAP_UNIT);
+            set_optional(gpu_uniform1f, "text_contrast", text_contrast);
+            set_optional(gpu_uniform1f, "text_gamma_adjustment", text_gamma_adjustment);
         }
 #undef set_optional
         bind_program(BLIT_PROGRAM);
-        glUniform1i(program_uniform_location(BLIT_PROGRAM, "image"), GRAPHICS_UNIT);
+        gpu_uniform1i(program_uniform_location(BLIT_PROGRAM, "image"), GRAPHICS_UNIT);
         bind_program(SCREENSHOT_PROGRAM);
-        glUniform1i(program_uniform_location(SCREENSHOT_PROGRAM, "image"), GRAPHICS_UNIT);
+        gpu_uniform1i(program_uniform_location(SCREENSHOT_PROGRAM, "image"), GRAPHICS_UNIT);
         constants_set = true;
     }
 }
@@ -1565,18 +1453,18 @@ get_visual_bell_intensity(Screen *screen) {
 }
 
 static void
-draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
+draw_visual_bell_flash(float intensity, const color_type flash) {
     bind_program(TINT_PROGRAM);
-    GLfloat attenuation = 0.4f;
+    float attenuation = 0.4f;
 #define C(shift) srgb_color((flash >> shift) & 0xFF)
-    const GLfloat r = C(16), g = C(8), b = C(0);
-    const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
+    const float r = C(16), g = C(8), b = C(0);
+    const float max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
 #undef C
 #define C(x) (x * intensity * attenuation)
     if (max_channel > 0.45) attenuation = 0.6f; // light color
-    glUniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), C(r), C(g), C(b), C(1));
+    gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), C(r), C(g), C(b), C(1));
 #undef C
-    glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
+    gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
     draw_quad(true, 0);
 }
 
@@ -1609,7 +1497,7 @@ draw_drag_preview_overlay(const UIRenderData *ui) {
     const monotonic_t elapsed = monotonic() - screen->start_drag_overlay_at;
     const monotonic_t fade_ms = ms_to_monotonic_t(150ll);
     float intensity = elapsed >= fade_ms ? 1.0f : (float)elapsed / (float)fade_ms;
-    GLfloat left = -1.f, top = 1.f, right = 1.f, bottom = -1.f;
+    float left = -1.f, top = 1.f, right = 1.f, bottom = -1.f;
     switch (screen->drag_overlay_quadrant) {
         case 1: right = 0.f; break;  // left half
         case 2: left = 0.f; break;   // right half
@@ -1623,9 +1511,9 @@ draw_drag_preview_overlay(const UIRenderData *ui) {
     float a = intensity * 0.25f;
     color_type hint = get_flash_color(screen);
 #define C(shift) (srgb_color((hint >> shift) & 0xFF) * a)
-    glUniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), C(16), C(8), C(0), a);
+    gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), C(16), C(8), C(0), a);
 #undef C
-    glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), left, top, right, bottom);
+    gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), left, top, right, bottom);
     draw_quad(true, 0);
 }
 
@@ -1720,14 +1608,15 @@ draw_bar(const UIRenderData *ui, const WindowBarData *bar, Viewport border_rect,
     const float drawn_thickness = (float)MIN(thickness, border_width - 0.5);
     static ImageRenderData data = {.group_count = 1};
     gpu_data_for_image(&data, -1, 1, 1, -1);
-    glGenTextures(1, &data.texture_id);
-    glBindTexture(GL_TEXTURE_2D, data.texture_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, bar->width, bar->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bar->buf);
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D,
+        .format = GPU_FORMAT_SRGB8_ALPHA8,
+        .width = bar->width,
+        .height = bar->height,
+        .filter = GPU_FILTER_NEAREST,
+        .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+    const GPUPixelData pixels = {.layout = GPU_PIXELS_RGBA8, .row_alignment = 1, .data = bar->buf};
+    data.texture_id = create_texture_or_die(&desc, &pixels);
     bind_program(GRAPHICS_PROGRAM);
     const unsigned sh = ui->full_framebuffer_height;
     // first blank the area to be drawn to background
@@ -1868,7 +1757,7 @@ draw_window_number(const UIRenderData *ui) {
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
     gpu_data_for_image(ird, -1, 1, 1, -1);
-    glUniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
+    gpu_uniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(
         ui->screen->color_profile,
         ui->screen->color_profile->overridden.highlight_bg,
@@ -1876,7 +1765,7 @@ draw_window_number(const UIRenderData *ui) {
         ui->screen->color_profile->overridden.default_fg,
         ui->screen->color_profile->configured.default_fg);
     color_vec3(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), digit_color);
-    glUniform4f(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), 0.f, 0.f, 0.f, 0.f);
+    gpu_uniform4f(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), 0.f, 0.f, 0.f, 0.f);
     save_viewport_using_top_left_origin(ui->screen_left + letter_x, ui->screen_top + letter_y, lr.width_px, lr.height_px, ui->full_framebuffer_height);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, ird, 0, 1, 1.f);
     restore_viewport();
@@ -1889,7 +1778,7 @@ set_color_uniform_with_opacity(color_type color, float opacity) {
     float r = srgb_color((color >> 16) & 0xFF) * opacity;
     float g = srgb_color((color >> 8) & 0xFF) * opacity;
     float b = srgb_color(color & 0xFF) * opacity;
-    glUniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), r, g, b, opacity);
+    gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), r, g, b, opacity);
 }
 
 static color_type
@@ -1915,20 +1804,20 @@ draw_scrollbar(const UIRenderData *ui) {
     float bar_frac = (float)(screen->scrolled_by + cell_frac) / MAX(1u, (float)screen->historybuf->count);
     float opacity = OPT(scrollbar_handle_opacity);
     float track_opacity = window->scrollbar.is_hovering ? OPT(scrollbar_track_hover_opacity) : OPT(scrollbar_track_opacity);
-    GLsizei scrollbar_width_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
-    if (window->scrollbar.is_hovering) scrollbar_width_px = (GLsizei)(OPT(scrollbar_hover_width) * ui->cell_width);
-    GLsizei scrollbar_gap_px = (GLsizei)(OPT(scrollbar_gap) * ui->cell_width);
+    int32_t scrollbar_width_px = (int32_t)(OPT(scrollbar_width) * ui->cell_width);
+    if (window->scrollbar.is_hovering) scrollbar_width_px = (int32_t)(OPT(scrollbar_hover_width) * ui->cell_width);
+    int32_t scrollbar_gap_px = (int32_t)(OPT(scrollbar_gap) * ui->cell_width);
     unsigned scrollbar_radius = (unsigned)(OPT(scrollbar_radius) * ui->cell_width);
 
     // Calculate window boundaries including padding
-    GLsizei window_right_edge = ui->screen_left + ui->screen_width + window->render_data.geometry.spaces.right;
-    GLsizei window_top_edge = ui->screen_top - window->render_data.geometry.spaces.top;
-    GLsizei window_height = ui->screen_height + window->render_data.geometry.spaces.top + window->render_data.geometry.spaces.bottom;
+    int32_t window_right_edge = ui->screen_left + ui->screen_width + window->render_data.geometry.spaces.right;
+    int32_t window_top_edge = ui->screen_top - window->render_data.geometry.spaces.top;
+    int32_t window_height = ui->screen_height + window->render_data.geometry.spaces.top + window->render_data.geometry.spaces.bottom;
 
     // Position scrollbar on right side with gap
-    GLsizei scrollbar_left = window_right_edge - scrollbar_width_px - scrollbar_gap_px;
-    GLsizei scrollbar_top = window_top_edge + scrollbar_gap_px;
-    GLsizei scrollbar_height = window_height - 2 * scrollbar_gap_px;
+    int32_t scrollbar_left = window_right_edge - scrollbar_width_px - scrollbar_gap_px;
+    int32_t scrollbar_top = window_top_edge + scrollbar_gap_px;
+    int32_t scrollbar_height = window_height - 2 * scrollbar_gap_px;
 
     // Calculate thumb size and position
     float visible_fraction = (float)screen->lines / (float)(screen->lines + screen->historybuf->count);
@@ -1957,15 +1846,15 @@ draw_scrollbar(const UIRenderData *ui) {
     if (track_opacity > 0) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
-        glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
+        gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
         draw_quad(true, 0);
     }
 
     // Draw scrollbar thumb (handle)
     if (scrollbar_radius > 0) {
         // Rounded thumb - use separate viewport and rounded rect program
-        GLsizei thumb_height_px = (GLsizei)(thumb_height_fraction * scrollbar_height);
-        GLsizei thumb_top_px = scrollbar_top + (GLsizei)(thumb_top_fraction * scrollbar_height);
+        int32_t thumb_height_px = (int32_t)(thumb_height_fraction * scrollbar_height);
+        int32_t thumb_top_px = scrollbar_top + (int32_t)(thumb_top_fraction * scrollbar_height);
 
         restore_viewport();
 
@@ -1975,17 +1864,17 @@ draw_scrollbar(const UIRenderData *ui) {
         color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "outer_color"), 0, 0.0f);
 
         float y = (float)ui->full_framebuffer_height - (float)(thumb_top_px + thumb_height_px);
-        glUniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"), (float)scrollbar_left, y, (float)scrollbar_width_px, (float)thumb_height_px);
+        gpu_uniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"), (float)scrollbar_left, y, (float)scrollbar_width_px, (float)thumb_height_px);
 
         float thickness = (float)MAX(scrollbar_width_px, thumb_height_px);
-        glUniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)scrollbar_radius);
+        gpu_uniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)scrollbar_radius);
 
         save_viewport_using_top_left_origin(scrollbar_left, thumb_top_px, scrollbar_width_px, thumb_height_px, ui->full_framebuffer_height);
         draw_quad(true, 0);
         restore_viewport();
     } else {
         set_color_uniform_with_opacity(bar_color, opacity);
-        glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, thumb_top_gl, 1.f, thumb_bottom_gl);
+        gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, thumb_top_gl, 1.f, thumb_bottom_gl);
         draw_quad(true, 0);
         restore_viewport();
     }
@@ -2003,31 +1892,31 @@ draw_progress_handle(
     color_type bar_color,
     float opacity,
     unsigned bar_radius,
-    GLsizei track_left,
-    GLsizei track_top,
-    GLsizei track_width,
-    GLsizei track_height,
+    int32_t track_left,
+    int32_t track_top,
+    int32_t track_width,
+    int32_t track_height,
     float handle_start,
     float handle_size,
     bool is_horizontal) {
     // handle_start and handle_size are fractions of the track length (0..1)
     // For horizontal: handle moves left-to-right; For vertical: handle moves top-to-bottom
     // Use lroundf to avoid sub-pixel jitter at the leading edge
-    GLsizei handle_left, handle_top;
-    GLsizei handle_w, handle_h;
+    int32_t handle_left, handle_top;
+    int32_t handle_w, handle_h;
     if (is_horizontal) {
-        GLsizei handle_start_px = (GLsizei)lroundf(handle_start * track_width);
-        GLsizei handle_end_px = (GLsizei)lroundf((handle_start + handle_size) * track_width);
-        GLsizei handle_w_px = handle_end_px - handle_start_px;
+        int32_t handle_start_px = (int32_t)lroundf(handle_start * track_width);
+        int32_t handle_end_px = (int32_t)lroundf((handle_start + handle_size) * track_width);
+        int32_t handle_w_px = handle_end_px - handle_start_px;
         if (handle_w_px < 1) handle_w_px = 1;
         handle_left = track_left + handle_start_px;
         handle_top = track_top;
         handle_w = handle_w_px;
         handle_h = track_height;
     } else {
-        GLsizei handle_start_px = (GLsizei)lroundf(handle_start * track_height);
-        GLsizei handle_end_px = (GLsizei)lroundf((handle_start + handle_size) * track_height);
-        GLsizei handle_h_px = handle_end_px - handle_start_px;
+        int32_t handle_start_px = (int32_t)lroundf(handle_start * track_height);
+        int32_t handle_end_px = (int32_t)lroundf((handle_start + handle_size) * track_height);
+        int32_t handle_h_px = handle_end_px - handle_start_px;
         if (handle_h_px < 1) handle_h_px = 1;
         handle_left = track_left;
         handle_top = track_top + handle_start_px;
@@ -2042,17 +1931,17 @@ draw_progress_handle(
         color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "outer_color"), 0, 0.0f);
 
         float y = (float)ui->full_framebuffer_height - (float)(handle_top + handle_h);
-        glUniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"), (float)handle_left, y, (float)handle_w, (float)handle_h);
+        gpu_uniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"), (float)handle_left, y, (float)handle_w, (float)handle_h);
 
         float thickness = (float)(is_horizontal ? handle_h : handle_w);
-        glUniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)bar_radius);
+        gpu_uniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)bar_radius);
 
         save_viewport_using_top_left_origin(handle_left, handle_top, handle_w, handle_h, ui->full_framebuffer_height);
         draw_quad(true, 0);
         restore_viewport();
     } else {
         // Use GL coordinates within the track viewport, snapped to pixel boundaries
-        GLsizei track_len = is_horizontal ? track_width : track_height;
+        int32_t track_len = is_horizontal ? track_width : track_height;
         float start_snapped = (float)lroundf(handle_start * track_len) / (float)track_len;
         float end_snapped = (float)lroundf((handle_start + handle_size) * track_len) / (float)track_len;
         float start_gl = -1.0f + 2.0f * start_snapped;
@@ -2062,11 +1951,11 @@ draw_progress_handle(
         if (is_horizontal) {
             // edges: left, top, right, bottom
             save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
-            glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), start_gl, 1.f, end_gl, -1.f);
+            gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), start_gl, 1.f, end_gl, -1.f);
         } else {
             save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
             // For vertical: start_gl is top in GL coords (inverted y), so bottom_gl = -end_gl, top_gl = -start_gl
-            glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, -start_gl, 1.f, -end_gl);
+            gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, -start_gl, 1.f, -end_gl);
         }
         draw_quad(true, 0);
         restore_viewport();
@@ -2085,19 +1974,19 @@ draw_progress_bar(const UIRenderData *ui) {
     color_type track_color = scrollbar_color(screen, OPT(scrollbar_track_color));
     float opacity = OPT(scrollbar_handle_opacity);
     float track_opacity = OPT(scrollbar_track_hover_opacity);
-    GLsizei bar_thickness_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
-    GLsizei gap_px = (GLsizei)(OPT(scrollbar_gap) * ui->cell_width);
+    int32_t bar_thickness_px = (int32_t)(OPT(scrollbar_width) * ui->cell_width);
+    int32_t gap_px = (int32_t)(OPT(scrollbar_gap) * ui->cell_width);
     unsigned bar_radius = (unsigned)(OPT(scrollbar_radius) * ui->cell_width);
     if (bar_thickness_px < 1) return;
 
     // Calculate window boundaries including padding
-    GLsizei window_left_edge = ui->screen_left - (GLsizei)window->render_data.geometry.spaces.left;
-    GLsizei window_top_edge = ui->screen_top - (GLsizei)window->render_data.geometry.spaces.top;
-    GLsizei window_width = ui->screen_width + (GLsizei)(window->render_data.geometry.spaces.left + window->render_data.geometry.spaces.right);
-    GLsizei window_height = ui->screen_height + (GLsizei)(window->render_data.geometry.spaces.top + window->render_data.geometry.spaces.bottom);
+    int32_t window_left_edge = ui->screen_left - (int32_t)window->render_data.geometry.spaces.left;
+    int32_t window_top_edge = ui->screen_top - (int32_t)window->render_data.geometry.spaces.top;
+    int32_t window_width = ui->screen_width + (int32_t)(window->render_data.geometry.spaces.left + window->render_data.geometry.spaces.right);
+    int32_t window_height = ui->screen_height + (int32_t)(window->render_data.geometry.spaces.top + window->render_data.geometry.spaces.bottom);
 
     // Position the track depending on the chosen edge
-    GLsizei track_left, track_top, track_width, track_height;
+    int32_t track_left, track_top, track_width, track_height;
     switch (pos) {
         case PROGRESS_BAR_BOTTOM:
             track_left = window_left_edge + gap_px;
@@ -2143,7 +2032,7 @@ draw_progress_bar(const UIRenderData *ui) {
     if (track_opacity > 0) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
-        glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
+        gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
         draw_quad(true, 0);
     }
     restore_viewport();
@@ -2242,10 +2131,10 @@ call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for
     CELL_BUFFERS;
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
-    glUniform1ui(program_uniform_location(program, "draw_bg_bitfield"), draw_bg_bitfield);
-    if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
+    gpu_uniform1ui(program_uniform_location(program, "draw_bg_bitfield"), draw_bg_bitfield);
+    if (for_final_output) gpu_set_srgb_output(true);
     draw_quad(!for_final_output, render_lines_for_screen(ui->screen) * ui->screen->columns);
-    if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);
+    if (for_final_output) gpu_set_srgb_output(false);
 }
 
 static void
@@ -2260,34 +2149,27 @@ configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned 
     // layout after padding draws (base_cell=0, cell_step=1). The VAO must be
     // bound before calling this.
     CELL_BUFFERS;
-    const GLsizei cell_stride = (GLsizei)(cell_step * sizeof(GPUCell));
-    const uintptr_t cell_base = (uintptr_t)base_cell * sizeof(GPUCell);
+    const uint32_t cell_stride = (uint32_t)(cell_step * sizeof(GPUCell));
+    const size_t cell_base = (size_t)base_cell * sizeof(GPUCell);
     set_vao_attribute(
         vao_idx,
         cell_data_buffer,
         program_attribute_location(CELL_PROGRAM, "sprite_idx"),
         2,
-        GL_UNSIGNED_INT,
+        GPU_ATTRIB_U32,
         cell_stride,
-        (void *)(cell_base + offsetof(GPUCell, sprite_idx)),
+        cell_base + offsetof(GPUCell, sprite_idx),
         1);
     set_vao_attribute(
-        vao_idx,
-        cell_data_buffer,
-        program_attribute_location(CELL_PROGRAM, "colors"),
-        3,
-        GL_UNSIGNED_INT,
-        cell_stride,
-        (void *)(cell_base + offsetof(GPUCell, fg)),
-        1);
+        vao_idx, cell_data_buffer, program_attribute_location(CELL_PROGRAM, "colors"), 3, GPU_ATTRIB_U32, cell_stride, cell_base + offsetof(GPUCell, fg), 1);
     set_vao_attribute(
         vao_idx,
         selection_buffer,
         program_attribute_location(CELL_PROGRAM, "is_selected"),
         1,
-        GL_UNSIGNED_BYTE,
-        (GLsizei)(cell_step * sizeof(GLubyte)),
-        (void *)((uintptr_t)base_cell * sizeof(GLubyte)),
+        GPU_ATTRIB_U8,
+        (uint32_t)(cell_step * sizeof(uint8_t)),
+        (size_t)base_cell * sizeof(uint8_t),
         1);
 }
 
@@ -2302,21 +2184,13 @@ configure_padding_vao_attributes(ssize_t vao_idx) {
         padding_cell_data_buffer,
         program_attribute_location(CELL_PROGRAM, "sprite_idx"),
         2,
-        GL_UNSIGNED_INT,
+        GPU_ATTRIB_U32,
         sizeof(GPUCell),
-        (void *)offsetof(GPUCell, sprite_idx),
+        offsetof(GPUCell, sprite_idx),
         1);
     set_vao_attribute(
-        vao_idx,
-        padding_cell_data_buffer,
-        program_attribute_location(CELL_PROGRAM, "colors"),
-        3,
-        GL_UNSIGNED_INT,
-        sizeof(GPUCell),
-        (void *)offsetof(GPUCell, fg),
-        1);
-    set_vao_attribute(
-        vao_idx, padding_selection_buffer, program_attribute_location(CELL_PROGRAM, "is_selected"), 1, GL_UNSIGNED_BYTE, sizeof(GLubyte), NULL, 1);
+        vao_idx, padding_cell_data_buffer, program_attribute_location(CELL_PROGRAM, "colors"), 3, GPU_ATTRIB_U32, sizeof(GPUCell), offsetof(GPUCell, fg), 1);
+    set_vao_attribute(vao_idx, padding_selection_buffer, program_attribute_location(CELL_PROGRAM, "is_selected"), 1, GPU_ATTRIB_U8, sizeof(uint8_t), 0, 1);
 }
 
 static void
@@ -2350,7 +2224,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     CELL_BUFFERS;
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
-    if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
+    if (for_final_output) gpu_set_srgb_output(true);
 
     // Point instanced attributes at the padding-specific buffers once for both draws.
     configure_padding_vao_attributes(vao_idx);
@@ -2361,42 +2235,42 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     // Cell data is packed contiguously via GPU-side copies (no CPU round-trip).
     if (ct || cb) {
         const unsigned int nH = (ct ? 1u : 0u) + (cb ? 1u : 0u);
-        alloc_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GPUCell) * nH * columns), padding_cell_data_buffer, GL_DYNAMIC_DRAW);
-        alloc_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GLubyte) * nH * columns), padding_selection_buffer, GL_DYNAMIC_DRAW);
+        alloc_vao_buffer(vao_idx, (size_t)(sizeof(GPUCell) * nH * columns), padding_cell_data_buffer, GPU_UPDATE_OFTEN);
+        alloc_vao_buffer(vao_idx, (size_t)(sizeof(uint8_t) * nH * columns), padding_selection_buffer, GPU_UPDATE_OFTEN);
 
         unsigned int sidx = 0u;
         if (ct) {
             copy_vao_buffer_region(
                 vao_idx,
                 cell_data_buffer,
-                (GLintptr)(sizeof(GPUCell) * top_row * columns),
+                (size_t)(sizeof(GPUCell) * top_row * columns),
                 padding_cell_data_buffer,
-                (GLintptr)(sizeof(GPUCell) * sidx * columns),
-                (GLsizeiptr)(columns * sizeof(GPUCell)));
+                (size_t)(sizeof(GPUCell) * sidx * columns),
+                (size_t)(columns * sizeof(GPUCell)));
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
-                (GLintptr)(sizeof(GLubyte) * top_row * columns),
+                (size_t)(sizeof(uint8_t) * top_row * columns),
                 padding_selection_buffer,
-                (GLintptr)(sizeof(GLubyte) * sidx * columns),
-                (GLsizeiptr)(columns * sizeof(GLubyte)));
+                (size_t)(sizeof(uint8_t) * sidx * columns),
+                (size_t)(columns * sizeof(uint8_t)));
             sidx++;
         }
         if (cb) {
             copy_vao_buffer_region(
                 vao_idx,
                 cell_data_buffer,
-                (GLintptr)(sizeof(GPUCell) * bottom_row * columns),
+                (size_t)(sizeof(GPUCell) * bottom_row * columns),
                 padding_cell_data_buffer,
-                (GLintptr)(sizeof(GPUCell) * sidx * columns),
-                (GLsizeiptr)(sizeof(GPUCell) * columns));
+                (size_t)(sizeof(GPUCell) * sidx * columns),
+                (size_t)(sizeof(GPUCell) * columns));
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
-                (GLintptr)(sizeof(GLubyte) * bottom_row * columns),
+                (size_t)(sizeof(uint8_t) * bottom_row * columns),
                 padding_selection_buffer,
-                (GLintptr)(sizeof(GLubyte) * sidx * columns),
-                (GLsizeiptr)(columns * sizeof(GLubyte)));
+                (size_t)(sizeof(uint8_t) * sidx * columns),
+                (size_t)(columns * sizeof(uint8_t)));
         }
 
         // Strip-0 is top (or bottom when only bottom exists); strip-1 is bottom.
@@ -2404,16 +2278,16 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
         // the shader lerp is a no-op for all instances (strip_f is always 0.0).
         const unsigned int base0 = (ct ? top_row : bottom_row) * columns;
         const unsigned int base1 = bottom_row * columns;
-        glUniform1ui(PL(is_horizontal), 1u);
-        glUniform1ui(PL(along_count), columns);
-        glUniform1ui(PL(instance_step), 1u);
-        glUniform1ui(PL(base_instance), base0);
-        glUniform1ui(PL(base_instance2), base1);
-        glUniform2f(PL(across), ct ? NY(T - ct) : NY(B), ct ? NY(T) : NY(B + cb));
-        glUniform2f(PL(across2), NY(B), NY(B + cb));
-        glUniform1f(PL(along_start), NX(fL));
-        glUniform1f(PL(along_step), dx);
-        glUniform2f(PL(along_clamp), NX(fL), NX(R));
+        gpu_uniform1ui(PL(is_horizontal), 1u);
+        gpu_uniform1ui(PL(along_count), columns);
+        gpu_uniform1ui(PL(instance_step), 1u);
+        gpu_uniform1ui(PL(base_instance), base0);
+        gpu_uniform1ui(PL(base_instance2), base1);
+        gpu_uniform2f(PL(across), ct ? NY(T - ct) : NY(B), ct ? NY(T) : NY(B + cb));
+        gpu_uniform2f(PL(across2), NY(B), NY(B + cb));
+        gpu_uniform1f(PL(along_start), NX(fL));
+        gpu_uniform1f(PL(along_step), dx);
+        gpu_uniform2f(PL(along_clamp), NX(fL), NX(R));
         draw_quad(!for_final_output, nH * columns);
     }
 
@@ -2424,7 +2298,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
         const unsigned int nV = (cl ? 1u : 0u) + (cr ? 1u : 0u);
         // VLA sizes: lines is bounded by the window height / cell height (~<500).
         GPUCell gathered_cells[2 * lines];
-        GLubyte gathered_sel[2 * lines];
+        uint8_t gathered_sel[2 * lines];
 
         const unsigned int strip0_col = cl ? 0u : (columns - 1u);
         const unsigned int strip1_col = columns - 1u;
@@ -2436,38 +2310,38 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
         }
         unmap_vao_buffer(vao_idx, cell_data_buffer);
 
-        const GLubyte *sel = (const GLubyte *)map_vao_buffer_for_reading(vao_idx, selection_buffer);
+        const uint8_t *sel = (const uint8_t *)map_vao_buffer_for_reading(vao_idx, selection_buffer);
         for (unsigned int i = 0; i < lines; i++) {
             gathered_sel[i] = sel[(top_row + i) * columns + strip0_col];
             if (nV == 2u) gathered_sel[lines + i] = sel[(top_row + i) * columns + strip1_col];
         }
         unmap_vao_buffer(vao_idx, selection_buffer);
 
-        void *dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GPUCell) * nV * lines), padding_cell_data_buffer);
+        void *dst = alloc_and_map_vao_buffer(vao_idx, (size_t)(sizeof(GPUCell) * nV * lines), padding_cell_data_buffer);
         memcpy(dst, gathered_cells, sizeof(GPUCell) * nV * lines);
         unmap_vao_buffer(vao_idx, padding_cell_data_buffer);
 
-        dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GLubyte) * nV * lines), padding_selection_buffer);
-        memcpy(dst, gathered_sel, sizeof(GLubyte) * nV * lines);
+        dst = alloc_and_map_vao_buffer(vao_idx, (size_t)(sizeof(uint8_t) * nV * lines), padding_selection_buffer);
+        memcpy(dst, gathered_sel, sizeof(uint8_t) * nV * lines);
         unmap_vao_buffer(vao_idx, padding_selection_buffer);
 
         const unsigned int base0 = top_row * columns + (cl ? 0u : (columns - 1u));
         const unsigned int base1 = top_row * columns + (columns - 1u);
-        glUniform1ui(PL(is_horizontal), 0u);
-        glUniform1ui(PL(along_count), lines);
-        glUniform1ui(PL(instance_step), columns);
-        glUniform1ui(PL(base_instance), base0);
-        glUniform1ui(PL(base_instance2), base1);
-        glUniform2f(PL(across), cl ? NX(fL - cl) : NX(R), cl ? NX(fL) : NX(R + cr));
-        glUniform2f(PL(across2), NX(R), NX(R + cr));
-        glUniform1f(PL(along_start), NY(T));
-        glUniform1f(PL(along_step), -dy);
-        glUniform2f(PL(along_clamp), NY(T - ct), NY(B + cb));
+        gpu_uniform1ui(PL(is_horizontal), 0u);
+        gpu_uniform1ui(PL(along_count), lines);
+        gpu_uniform1ui(PL(instance_step), columns);
+        gpu_uniform1ui(PL(base_instance), base0);
+        gpu_uniform1ui(PL(base_instance2), base1);
+        gpu_uniform2f(PL(across), cl ? NX(fL - cl) : NX(R), cl ? NX(fL) : NX(R + cr));
+        gpu_uniform2f(PL(across2), NX(R), NX(R + cr));
+        gpu_uniform1f(PL(along_start), NY(T));
+        gpu_uniform1f(PL(along_step), -dy);
+        gpu_uniform2f(PL(along_clamp), NY(T - ct), NY(B + cb));
         draw_quad(!for_final_output, nV * lines);
     }
 
 #undef PL
-    if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);
+    if (for_final_output) gpu_set_srgb_output(false);
     // Restore the canonical cell attribute layout so subsequent cell rendering is unaffected.
     configure_cell_vao_attributes(vao_idx, 0u, 1u);
     unbind_program();
@@ -2479,7 +2353,7 @@ static void
 draw_tint(const UIRenderData *ui) {
     bind_program(TINT_PROGRAM);
     color_vec4_premult(program_uniform_location(TINT_PROGRAM, "tint_color"), ui->background_color, OPT(background_tint));
-    glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
+    gpu_uniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
     draw_quad(true, 0);
 }
 
@@ -2494,7 +2368,7 @@ program_for_image(const ImageRenderData *rd) {
 }
 
 static void
-draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, GLuint start, GLuint count) {
+draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, uint32_t start, uint32_t count) {
     if (!ui->grd.num_of_indexed_refs) {
         draw_graphics(GRAPHICS_PROGRAM, ui->grd.images, start, count, ui->inactive_text_alpha);
         return;
@@ -2503,9 +2377,9 @@ draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, GLuint start, GLuint c
     // The color table may not be bound yet, for example, when the window has a background image
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
     const ImageRenderData *data = ui->grd.images;
-    for (GLuint run_start = start, end = start + count; run_start < end;) {
+    for (uint32_t run_start = start, end = start + count; run_start < end;) {
         const int program = program_for_image(data + run_start);
-        GLuint run_end = run_start + 1;
+        uint32_t run_end = run_start + 1;
         while (run_end < end && program_for_image(data + run_end) == program) run_end++;
         draw_graphics(program, ui->grd.images, run_start, run_end - run_start, ui->inactive_text_alpha);
         run_start = run_end;
@@ -2540,15 +2414,14 @@ blank_canvas(float background_opacity, color_type color_in_srgb, bool for_final_
     if (for_final_output) {
         // we need to write pre-multiplied sRGB color to framebuffer
 #define C(shift) ((((color_in_srgb >> shift) & 0xFF) / 255.f) * background_opacity)
-        glClearColor(C(16), C(8), C(0), background_opacity);
+        gpu_clear(C(16), C(8), C(0), background_opacity);
 #undef C
     } else {
         // we need to write pre-multiplied linear color to framebuffer
 #define C(shift) srgb_color((color_in_srgb >> shift) & 0xFF) * background_opacity
-        glClearColor(C(16), C(8), C(0), background_opacity);
+        gpu_clear(C(16), C(8), C(0), background_opacity);
 #undef C
     }
-    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 bool
@@ -2642,7 +2515,7 @@ draw_cells(
 // Borders {{{
 
 static void
-populate_border_colors(GLuint colors[9], color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, const OSWindow *w) {
+populate_border_colors(uint32_t colors[9], color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, const OSWindow *w) {
     colors[0] = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
     colors[1] = OPT(active_border_color);
     colors[2] = OPT(inactive_border_color);
@@ -2658,22 +2531,22 @@ ssize_t
 create_border_vao(void) {
     ssize_t vao_idx = create_vao();
 
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+    add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX);
     add_attribute_to_vao(
         vao_idx,
         program_attribute_location(BORDERS_PROGRAM, "rect"),
         /*size=*/4,
-        /*dtype=*/GL_FLOAT,
+        /*dtype=*/GPU_ATTRIB_F32,
         /*stride=*/sizeof(BorderRect),
-        /*offset=*/(void *)offsetof(BorderRect, left),
+        /*offset=*/offsetof(BorderRect, left),
         /*divisor=*/1);
     add_attribute_to_vao(
         vao_idx,
         program_attribute_location(BORDERS_PROGRAM, "rect_color"),
         /*size=*/1,
-        /*dtype=*/GL_UNSIGNED_INT,
+        /*dtype=*/GPU_ATTRIB_U32,
         /*stride=*/sizeof(BorderRect),
-        /*offset=*/(void *)(offsetof(BorderRect, color)),
+        /*offset=*/offsetof(BorderRect, color),
         /*divisor=*/1);
 
     return vao_idx;
@@ -2701,17 +2574,17 @@ draw_borders(
         if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
         unmap_vao_buffer(vao_idx, 0);
     }
-    GLuint colors[9];
+    uint32_t colors[9];
     populate_border_colors(colors, active_window_bg, num_visible_windows, all_windows_have_same_bg, w);
     void *colors_buf =
         map_vao_buffer_for_write_only(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, 0, program_uniform_block(BORDERS_PROGRAM, "Colors").size);
     const ArrayInformation border_colors_array = program_uniform_array(BORDERS_PROGRAM, "colors");
     write_uint_array_to_ubo(colors_buf, colors, arraysz(colors), &border_colors_array);
     unmap_vao_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER);
-    glUniform1f(program_uniform_location(BORDERS_PROGRAM, "background_opacity"), background_opacity);
-    if (!w->needs_layers) glEnable(GL_FRAMEBUFFER_SRGB);
+    gpu_uniform1f(program_uniform_location(BORDERS_PROGRAM, "background_opacity"), background_opacity);
+    if (!w->needs_layers) gpu_set_srgb_output(true);
     draw_quad(has_background_image, num_border_rects);
-    if (!w->needs_layers) glDisable(GL_FRAMEBUFFER_SRGB);
+    if (!w->needs_layers) gpu_set_srgb_output(false);
     unbind_program();
     unbind_vertex_array();
 }
@@ -2719,7 +2592,7 @@ draw_borders(
 void
 draw_rounded_borders(BorderRects *br, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
     if (!br->num_rounded_rects) return;
-    GLuint colors[9];
+    uint32_t colors[9];
     populate_border_colors(colors, active_window_bg, num_visible_windows, all_windows_have_same_bg, w);
     // The corner regions between the rounded outline and its bounding rect
     // must be painted every frame: when not rendering in layers the
@@ -2728,7 +2601,7 @@ draw_rounded_borders(BorderRects *br, color_type active_window_bg, unsigned int 
     // uses for non-border rects, so corners match the surrounding gaps.
     float corner_bg_alpha = has_bgimage(w) ? OPT(background_tint) * OPT(background_tint_gaps) : effective_os_window_alpha(w);
     bind_vertex_array(br->vao_idx);
-    if (!w->needs_layers) glEnable(GL_FRAMEBUFFER_SRGB);
+    if (!w->needs_layers) gpu_set_srgb_output(true);
     for (unsigned i = 0; i < br->num_border_rects; i++) {
         const BorderRect *r = br->rect_buf + i;
         if (!r->radius || !r->thickness) continue;
@@ -2738,7 +2611,7 @@ draw_rounded_borders(BorderRects *br, color_type active_window_bg, unsigned int 
         color_type color = color_index == 3 ? r->color >> 8 : colors[MIN(color_index, 8u)];
         draw_rounded_rect(rect, w->viewport_height, (float)r->thickness, radius, color, 0, 0.f, colors[0], corner_bg_alpha);
     }
-    if (!w->needs_layers) glDisable(GL_FRAMEBUFFER_SRGB);
+    if (!w->needs_layers) gpu_set_srgb_output(false);
     unbind_program();
     // Deliberately leave the VAO bound: this runs after all cell drawing and
     // subsequent draw_quad() calls (e.g. the fullscreen blit in
@@ -2752,11 +2625,11 @@ void
 draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     bind_program(TRAIL_PROGRAM);
 
-    glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "x_coords"), 1, trail->corner_x);
-    glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "y_coords"), 1, trail->corner_y);
+    gpu_set_uniform_floats(program_uniform_location(TRAIL_PROGRAM, "x_coords"), 4, 1, trail->corner_x);
+    gpu_set_uniform_floats(program_uniform_location(TRAIL_PROGRAM, "y_coords"), 4, 1, trail->corner_y);
 
-    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_x"), 1, trail->cursor_edge_x);
-    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_y"), 1, trail->cursor_edge_y);
+    gpu_set_uniform_floats(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_x"), 2, 1, trail->cursor_edge_x);
+    gpu_set_uniform_floats(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_y"), 2, 1, trail->cursor_edge_y);
 
     color_type trail_color = OPT(cursor_trail_color);
     if (trail_color == 0) { // 0 means "none" was specified
@@ -2764,7 +2637,7 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     }
     color_vec3(program_uniform_location(TRAIL_PROGRAM, "trail_color"), trail_color);
 
-    glUniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), trail->opacity);
+    gpu_uniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), trail->opacity);
 
     draw_quad(true, 0);
     unbind_program();
@@ -2787,10 +2660,10 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
         .bgcolor = OPT(background),
         .opacity = effective_os_window_alpha(os_window),
     };
-    GLfloat iwidth = bg->width, iheight = bg->height;
-    GLfloat vwidth = s.os_window.width, vheight = s.os_window.height;
+    float iwidth = bg->width, iheight = bg->height;
+    float vwidth = s.os_window.width, vheight = s.os_window.height;
     if (CENTER_SCALED == layout) {
-        GLfloat ifrac = iwidth / iheight;
+        float ifrac = iwidth / iheight;
         if (ifrac > (vwidth / vheight)) {
             iheight = vheight;
             iwidth = iheight * ifrac;
@@ -2799,9 +2672,9 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
             iheight = iwidth / ifrac;
         }
     }
-    GLfloat tiled = 0.f;
+    float tiled = 0.f;
     ;
-    GLfloat left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
+    float left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
     switch (layout) {
         case TILING:
         case MIRRORED:
@@ -2809,8 +2682,8 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
         case SCALED: break;
         case CENTER_CLAMPED:
         case CENTER_SCALED: {
-            GLfloat wfrac = (vwidth - iwidth) / vwidth;
-            GLfloat hfrac = (vheight - iheight) / vheight;
+            float wfrac = (vwidth - iwidth) / vwidth;
+            float hfrac = (vheight - iheight) / vheight;
             left += wfrac;
             right -= wfrac;
             top -= hfrac;
@@ -2820,13 +2693,12 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
     bind_program(BGIMAGE_PROGRAM);
     // altough we dont use this VO we need to ensure *some* VAO is bound at this point.
     bind_vertex_array(tab->border_rects.vao_idx);
-    glUniform4f(program_uniform_location(BGIMAGE_PROGRAM, "sizes"), vwidth, vheight, iwidth, iheight);
-    glUniform1f(program_uniform_location(BGIMAGE_PROGRAM, "tiled"), tiled);
-    glUniform4f(program_uniform_location(BGIMAGE_PROGRAM, "positions"), left, top, right, bottom);
-    glUniform1i(program_uniform_location(BGIMAGE_PROGRAM, "image"), GRAPHICS_UNIT);
+    gpu_uniform4f(program_uniform_location(BGIMAGE_PROGRAM, "sizes"), vwidth, vheight, iwidth, iheight);
+    gpu_uniform1f(program_uniform_location(BGIMAGE_PROGRAM, "tiled"), tiled);
+    gpu_uniform4f(program_uniform_location(BGIMAGE_PROGRAM, "positions"), left, top, right, bottom);
+    gpu_uniform1i(program_uniform_location(BGIMAGE_PROGRAM, "image"), GRAPHICS_UNIT);
     color_vec4(program_uniform_location(BGIMAGE_PROGRAM, "background"), s.bgcolor, s.opacity);
-    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-    glBindTexture(GL_TEXTURE_2D, bg->texture_id);
+    gpu_bind_texture(GRAPHICS_UNIT, bg->texture_id);
     draw_quad(false, 0);
     unbind_program();
 }
@@ -2844,7 +2716,7 @@ draw_centered_alpha_mask(size_t screen_width, size_t screen_height, size_t width
     ImageRenderData *data = load_alpha_mask_texture(width, height, canvas);
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-    glUniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
+    gpu_uniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
     color_vec3(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), OPT(foreground));
     color_vec4_premult(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), OPT(background), background_opacity);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, data, 0, 1, 1.0);
@@ -2878,6 +2750,14 @@ blank_os_window(OSWindow *osw) {
     blank_canvas(effective_os_window_alpha(osw), color, true);
 }
 
+// (Re)create a render target that draws into texture, freeing any existing one
+static void
+create_render_target_for(gpu_render_target_t *fb, gpu_texture_t texture) {
+    if (*fb) free_framebuffer(fb);
+    *fb = gpu_render_target_create(texture);
+    if (!*fb) fatal("Failed to create a GPU render target with error: %s", gpu_last_error());
+}
+
 static void
 start_os_window_rendering(OSWindow *os_window, Tab *tab) {
     // note that during live resize rendering is done in layers
@@ -2901,10 +2781,9 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
             global_state.layers_render_texture.texture_generation++;
         }
         // Create per-window framebuffer if needed and attach the global texture to it
-        if (!os_window->indirect_output.framebuffer_id) glGenFramebuffers(1, &os_window->indirect_output.framebuffer_id);
-        if (os_window->indirect_output.attached_texture_generation != global_state.layers_render_texture.texture_generation) {
-            bind_framebuffer_for_output(os_window->indirect_output.framebuffer_id);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.texture_id, 0);
+        if (!os_window->indirect_output.framebuffer_id ||
+            os_window->indirect_output.attached_texture_generation != global_state.layers_render_texture.texture_generation) {
+            create_render_target_for(&os_window->indirect_output.framebuffer_id, global_state.layers_render_texture.texture_id);
             os_window->indirect_output.attached_texture_generation = global_state.layers_render_texture.texture_generation;
         }
         if (custom_shaders.end.num_groups > 1) {
@@ -2918,10 +2797,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
             }
             // Create/re-attach per-window extra FBO when generation changes
             if (os_window->indirect_output.extra_fbo_generation != global_state.layers_render_texture.texture_generation) {
-                if (os_window->indirect_output.extra_fbo_id) free_framebuffer(&os_window->indirect_output.extra_fbo_id);
-                glGenFramebuffers(1, &os_window->indirect_output.extra_fbo_id);
-                bind_framebuffer_for_output(os_window->indirect_output.extra_fbo_id);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.extra_texture_id, 0);
+                create_render_target_for(&os_window->indirect_output.extra_fbo_id, global_state.layers_render_texture.extra_texture_id);
                 os_window->indirect_output.extra_fbo_generation = global_state.layers_render_texture.texture_generation;
             }
         }
@@ -2935,10 +2811,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
                     &global_state.layers_render_texture.texture_a_fbo_id);
             }
             if (os_window->indirect_output.fbo_a_generation != global_state.layers_render_texture.texture_generation) {
-                if (os_window->indirect_output.fbo_a_id) free_framebuffer(&os_window->indirect_output.fbo_a_id);
-                glGenFramebuffers(1, &os_window->indirect_output.fbo_a_id);
-                bind_framebuffer_for_output(os_window->indirect_output.fbo_a_id);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.texture_a_id, 0);
+                create_render_target_for(&os_window->indirect_output.fbo_a_id, global_state.layers_render_texture.texture_a_id);
                 os_window->indirect_output.fbo_a_generation = global_state.layers_render_texture.texture_generation;
             }
         } else {
@@ -2954,10 +2827,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
                     &global_state.layers_render_texture.texture_b_fbo_id);
             }
             if (os_window->indirect_output.fbo_b_generation != global_state.layers_render_texture.texture_generation) {
-                if (os_window->indirect_output.fbo_b_id) free_framebuffer(&os_window->indirect_output.fbo_b_id);
-                glGenFramebuffers(1, &os_window->indirect_output.fbo_b_id);
-                bind_framebuffer_for_output(os_window->indirect_output.fbo_b_id);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.texture_b_id, 0);
+                create_render_target_for(&os_window->indirect_output.fbo_b_id, global_state.layers_render_texture.texture_b_id);
                 os_window->indirect_output.fbo_b_generation = global_state.layers_render_texture.texture_generation;
             }
         } else {
@@ -3047,7 +2917,7 @@ map_pointer_position(const OSWindow *os_window, double *x, double *y) {
 // pointer map can depend only on the pipeline, the viewport size and which
 // groups are active, so this is done only when those change.
 static void
-update_pointer_map(OSWindow *os_window, GLint group_loc) {
+update_pointer_map(OSWindow *os_window, int32_t group_loc) {
     const uint32_t groups = active_pointer_map_groups(os_window);
     if (os_window->pointer_map.pipeline_generation == custom_shaders.generation && os_window->pointer_map.groups == groups &&
         (os_window->pointer_map.data || !groups)) {
@@ -3065,19 +2935,16 @@ update_pointer_map(OSWindow *os_window, GLint group_loc) {
         setup_texture_as_render_target(POINTER_MAP_SIZE, POINTER_MAP_SIZE, &pointer_map_target.texture_id, &pointer_map_target.framebuffer_id);
     // The pointer map does not sample any textures, but every sampler must be bound to a valid one
     static const int units[] = {GRAPHICS_UNIT, CUSTOM_END_TEXTURE_A_UNIT, CUSTOM_END_TEXTURE_B_UNIT, CUSTOM_END_TEXTURE_PERSIST_UNIT};
-    for (size_t i = 0; i < arraysz(units); i++) {
-        glActiveTexture(GL_TEXTURE0 + units[i]);
-        glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
-    }
+    for (size_t i = 0; i < arraysz(units); i++) { gpu_bind_texture(units[i], global_state.layers_render_texture.texture_id); }
     bind_framebuffer_for_output(pointer_map_target.framebuffer_id);
-    glViewport(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE);
-    glUniform1i(group_loc, -1);
+    gpu_set_viewport(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE);
+    gpu_uniform1i(group_loc, -1);
     // Absent when no group with a pointer_map() is turned on and off by events
-    GLint active_groups_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "active_groups");
-    if (active_groups_loc >= 0) glUniform1ui(active_groups_loc, groups);
+    int32_t active_groups_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "active_groups");
+    if (active_groups_loc >= 0) gpu_uniform1ui(active_groups_loc, groups);
     draw_quad(false, 0);
     static uint8_t pixels[POINTER_MAP_SIZE * POINTER_MAP_SIZE * 4];
-    glReadPixels(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    gpu_read_pixels(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE, pixels);
     // See encode_pointer_map() in pipeline.slang
     for (size_t i = 0; i < POINTER_MAP_SIZE * POINTER_MAP_SIZE; i++) {
         const uint8_t *p = pixels + 4 * i;
@@ -3338,23 +3205,23 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
     // A custom shader need not reference any of these, in which case the driver
     // drops them and glUniform*() on the resulting -1 location is a no-op.
-    GLint group_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "group");
-    GLint viewport_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
-    GLint anim_progress_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "animation_progress");
-    GLint convert_to_srgb_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "convert_to_srgb");
+    int32_t group_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "group");
+    int32_t viewport_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
+    int32_t anim_progress_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "animation_progress");
+    int32_t convert_to_srgb_loc = try_program_uniform_location(CUSTOM_END_PROGRAM, "convert_to_srgb");
     if (custom_shaders.end.has_pointer_map && group_loc >= 0) update_pointer_map(os_window, group_loc);
     const unsigned num_groups = (unsigned)custom_shaders.end.num_groups;
     const unsigned textures_mask = custom_shaders.end.textures;
     const int vw = os_window->viewport_width, vh = os_window->viewport_height;
 
     // Named texture IDs and their render-target FBOs, indexed by NamedTexture enum value
-    const GLuint named_tex_ids[4] = {
+    const gpu_texture_t named_tex_ids[4] = {
         0, // DEFAULT — unused
         global_state.layers_render_texture.texture_a_id,
         global_state.layers_render_texture.texture_b_id,
         os_window->persist_texture_id,
     };
-    const GLuint named_tex_fbos[4] = {
+    const gpu_render_target_t named_tex_fbos[4] = {
         0, // DEFAULT — unused
         os_window->indirect_output.fbo_a_id,
         os_window->indirect_output.fbo_b_id,
@@ -3391,17 +3258,17 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         // Skip inactive groups. Non-attached, non-animated groups always run; all others require
         // shader_group_anim[g].active (set by update_custom_shader_animations, including attach logic).
         if (group_is_animated(cg) && !os_window->shader_group_anim[g].active) continue;
-        const GLuint backbuffer = backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
+        const gpu_texture_t backbuffer =
+            backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
 
         // Bind backbuffer to the backbuffer texture unit
-        glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-        glBindTexture(GL_TEXTURE_2D, backbuffer);
+        gpu_bind_texture(GRAPHICS_UNIT, backbuffer);
 
         // Bind each named texture to its own unit.
         // If the texture is the output for this group, or is not declared in the
         // pipeline, fall back to backbuffer so the sampler is always valid.
         for (int t = CUSTOM_SHADER_TEXTURE_A; t <= CUSTOM_SHADER_TEXTURE_PERSIST; t++) {
-            GLuint tex;
+            gpu_texture_t tex;
             if (!is_last && cg->output_texture == (NamedTexture)t) {
                 tex = backbuffer; // can't read from the render target we're writing to
             } else if (textures_mask & (1u << t)) {
@@ -3409,8 +3276,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             } else {
                 tex = backbuffer; // not present — fall back to backbuffer
             }
-            glActiveTexture(GL_TEXTURE0 + named_tex_units[t]);
-            glBindTexture(GL_TEXTURE_2D, tex);
+            gpu_bind_texture(named_tex_units[t], tex);
         }
 
         // Set the output framebuffer
@@ -3431,9 +3297,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         if (is_last) {
             // Last group always covers the full screen region
             if (os_window->live_resize.in_progress) {
-                glViewport(0, os_window->live_resize.height - vh, vw, vh);
+                gpu_set_viewport(0, os_window->live_resize.height - vh, vw, vh);
             } else {
-                glViewport(0, 0, vw, vh);
+                gpu_set_viewport(0, 0, vw, vh);
             }
             vp_x = 0.f;
             vp_y = 0.f;
@@ -3444,21 +3310,21 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             float sw = cg->viewport_size.w, sh = cg->viewport_size.h;
             // viewport_pos/size are standard UV (origin at bottom-left, y increasing
             // upward), which matches GL pixel coords directly — no y-flip needed.
-            GLint x0 = MAX(0, (GLint)(px * vw));
-            GLint y0 = MAX(0, (GLint)(py * vh));
-            GLint x1 = MIN(vw, (GLint)((px + sw) * vw));
-            GLint y1 = MIN(vh, (GLint)((py + sh) * vh));
-            glViewport(x0, y0, MAX(0, x1 - x0), MAX(0, y1 - y0));
+            int32_t x0 = MAX(0, (int32_t)(px * vw));
+            int32_t y0 = MAX(0, (int32_t)(py * vh));
+            int32_t x1 = MIN(vw, (int32_t)((px + sw) * vw));
+            int32_t y1 = MIN(vh, (int32_t)((py + sh) * vh));
+            gpu_set_viewport(x0, y0, MAX(0, x1 - x0), MAX(0, y1 - y0));
             vp_x = px;
             vp_y = py;
             vp_w = sw;
             vp_h = sh;
         }
 
-        glUniform1i(group_loc, (GLint)g);
-        glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
-        glUniform1f(anim_progress_loc, anim_progress[g]);
-        glUniform1i(convert_to_srgb_loc, is_last ? 1 : 0);
+        gpu_uniform1i(group_loc, (int32_t)g);
+        gpu_uniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
+        gpu_uniform1f(anim_progress_loc, anim_progress[g]);
+        gpu_uniform1i(convert_to_srgb_loc, is_last ? 1 : 0);
         // debug_rendering("Custom shader draw group %u: anim_progress=%.4f viewport=(%.2f,%.2f,%.2f,%.2f)\n", g, anim_progress[g], vp_x, vp_y, vp_w, vp_h);
         draw_quad(false, 0);
     }
@@ -3482,10 +3348,9 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
             set_framebuffer_to_use_for_output(0);
             bind_framebuffer_for_output(0);
             bind_program(BLIT_PROGRAM);
-            glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-            glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
-            glUniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
-            glUniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
+            gpu_bind_texture(GRAPHICS_UNIT, global_state.layers_render_texture.texture_id);
+            gpu_uniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
+            gpu_uniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
             restore_viewport();
             if (os_window->live_resize.in_progress)
                 save_viewport_using_top_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
@@ -3530,9 +3395,7 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
     if (no_scaling) {
         *thumb_w = src_width;
         *thumb_h = src_height;
-        glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        glReadPixels((GLint)region.left, (GLint)(vh - region.bottom), (GLsizei)src_width, (GLsizei)src_height, GL_RGBA, GL_UNSIGNED_BYTE, dst_buf);
-        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+        gpu_read_pixels((int32_t)region.left, (int32_t)(vh - region.bottom), src_width, src_height, dst_buf);
         return;
     }
 
@@ -3543,24 +3406,20 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
     *thumb_h = MIN(src_height, *thumb_h);
 
     // Create a texture to hold the current framebuffer content
-    GLuint src_texture = 0;
-    glGenTextures(1, &src_texture);
-    glBindTexture(GL_TEXTURE_2D, src_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    const GPUTextureDesc desc = {
+        .kind = GPU_TEXTURE_2D, .format = GPU_FORMAT_RGBA8, .width = vw, .height = vh, .filter = GPU_FILTER_LINEAR, .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+    gpu_texture_t src_texture = create_texture_or_die(&desc, NULL);
 
     // Copy the current framebuffer to the texture
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, vw, vh, 0);
+    gpu_copy_to_texture(src_texture, 0, 0, vw, vh);
 
     // Create a temporary framebuffer for GPU-based scaling
-    GLuint temp_texture = 0, temp_framebuffer = 0;
+    gpu_texture_t temp_texture = 0;
+    gpu_render_target_t temp_framebuffer = 0;
     setup_texture_as_render_target(*thumb_w, *thumb_h, &temp_texture, &temp_framebuffer);
 
     // Save current state
-    GLint current_framebuffer;
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &current_framebuffer);
+    gpu_render_target_t current_framebuffer = gpu_get_render_target();
 
     // Bind our temporary framebuffer for rendering
     bind_framebuffer_for_output(temp_framebuffer);
@@ -3576,28 +3435,25 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
     float src_right_norm = (float)region.right / (float)vw;
     float src_bottom_norm = (float)(vh - region.bottom) / (float)vh;
     float src_top_norm = (float)(vh - region.top) / (float)vh;
-    glUniform4f(program_uniform_location(SCREENSHOT_PROGRAM, "src_rect"), src_left_norm, src_top_norm, src_right_norm, src_bottom_norm);
+    gpu_uniform4f(program_uniform_location(SCREENSHOT_PROGRAM, "src_rect"), src_left_norm, src_top_norm, src_right_norm, src_bottom_norm);
 
     // Set destination rectangle (NDC coordinates: -1 to 1)
-    glUniform4f(program_uniform_location(SCREENSHOT_PROGRAM, "dest_rect"), -1.0f, -1.0f, 1.0f, 1.0f);
+    gpu_uniform4f(program_uniform_location(SCREENSHOT_PROGRAM, "dest_rect"), -1.0f, -1.0f, 1.0f, 1.0f);
 
     // Set the source texture size for proper downscaling
-    glUniform2f(program_uniform_location(SCREENSHOT_PROGRAM, "src_size"), (float)vw, (float)vh);
+    gpu_uniform2f(program_uniform_location(SCREENSHOT_PROGRAM, "src_size"), (float)vw, (float)vh);
 
     // Bind the source texture
-    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-    glBindTexture(GL_TEXTURE_2D, src_texture);
+    gpu_bind_texture(GRAPHICS_UNIT, src_texture);
 
     // Draw the scaled quad
     draw_quad(false, 0);
 
     // Read the scaled result
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, *thumb_w, *thumb_h, GL_RGBA, GL_UNSIGNED_BYTE, dst_buf);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    gpu_read_pixels(0, 0, *thumb_w, *thumb_h, dst_buf);
 
     // Restore previous state
-    bind_framebuffer_for_output(current_framebuffer);
+    gpu_set_render_target(current_framebuffer);
     restore_viewport();
 
     // Clean up temporary resources
@@ -3611,7 +3467,7 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
 
 static PyObject *
 pygpu_driver_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
-    return PyUnicode_FromString(global_state.gl_version ? gl_version_string() : "");
+    return PyUnicode_FromString(gpu_version_string());
 }
 
 static void
@@ -3762,22 +3618,19 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
     return true;
 }
 
-static bool
-attach_shaders(PyObject *sources, GLuint program_id, GLenum shader_type) {
-    RAII_ALLOC(const GLchar *, c_sources, calloc(PyTuple_GET_SIZE(sources), sizeof(GLchar *)));
+// Concatenate the tuple of source strings into a single string, the returned
+// object owns the memory the string points to
+static PyObject *
+join_shader_sources(PyObject *sources) {
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(sources); i++) {
-        PyObject *temp = PyTuple_GET_ITEM(sources, i);
-        if (!PyUnicode_Check(temp)) {
+        if (!PyUnicode_Check(PyTuple_GET_ITEM(sources, i))) {
             PyErr_SetString(PyExc_TypeError, "shaders must be strings");
-            return false;
+            return NULL;
         }
-        c_sources[i] = PyUnicode_AsUTF8(temp);
     }
-    GLuint shader_id = compile_shaders(shader_type, PyTuple_GET_SIZE(sources), c_sources);
-    if (shader_id == 0) return false;
-    glAttachShader(program_id, shader_id);
-    glDeleteShader(shader_id);
-    return true;
+    RAII_PyObject(empty, PyUnicode_FromString(""));
+    if (!empty) return NULL;
+    return PyUnicode_Join(empty, sources);
 }
 
 static PyObject *
@@ -3799,53 +3652,48 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         PyErr_Format(PyExc_ValueError, "Unknown program: %d", which);
         return NULL;
     }
-    Program *program = program_ptr(which);
     if (!PyTuple_GET_SIZE(vertex_shaders)) {
         if (which == CUSTOM_END_PROGRAM) {
             free_custom_shader_pipeline(&custom_shaders.end);
             zero_at_ptr(&custom_shaders.end);
             custom_shaders.generation++;
         }
-        if (program->id != 0) {
-            glDeleteProgram(program->id);
-            program->id = 0;
-        }
+        set_program_pipeline(which, GPU_NULL_HANDLE);
         Py_RETURN_NONE;
     }
-    if (program->id != 0) {
+    if (program_pipeline(which)) {
         if (allow_recompile) {
-            glDeleteProgram(program->id);
-            program->id = 0;
+            set_program_pipeline(which, GPU_NULL_HANDLE);
         } else {
             PyErr_SetString(PyExc_ValueError, "program already compiled");
             return NULL;
         }
     }
-#define fail_compile()                \
-    {                                 \
-        glDeleteProgram(program->id); \
-        return NULL;                  \
+    RAII_PyObject(vertex_source, join_shader_sources(vertex_shaders));
+    if (!vertex_source) return NULL;
+    RAII_PyObject(fragment_source, join_shader_sources(fragment_shaders));
+    if (!fragment_source) return NULL;
+    Py_ssize_t vsz, fsz;
+    const char *vcode = PyUnicode_AsUTF8AndSize(vertex_source, &vsz);
+    if (!vcode) return NULL;
+    const char *fcode = PyUnicode_AsUTF8AndSize(fragment_source, &fsz);
+    if (!fcode) return NULL;
+    const GPUShaderSource sources[2] = {
+        {.stage = GPU_SHADER_VERTEX, .language = GPU_SHADER_LANGUAGE_GLSL, .code = vcode, .size = (size_t)vsz},
+        {.stage = GPU_SHADER_FRAGMENT, .language = GPU_SHADER_LANGUAGE_GLSL, .code = fcode, .size = (size_t)fsz},
+    };
+    gpu_pipeline_t pipeline = gpu_pipeline_create(sources, arraysz(sources));
+    if (!pipeline) {
+        PyErr_SetString(PyExc_ValueError, gpu_last_error());
+        return NULL;
     }
-    program->id = glCreateProgram();
-    if (!attach_shaders(vertex_shaders, program->id, GL_VERTEX_SHADER)) fail_compile();
-    if (!attach_shaders(fragment_shaders, program->id, GL_FRAGMENT_SHADER)) fail_compile();
-    glLinkProgram(program->id);
-    GLint ret = GL_FALSE;
-    glGetProgramiv(program->id, GL_LINK_STATUS, &ret);
-    if (ret != GL_TRUE) {
-        GLsizei len;
-        static char glbuf[4096];
-        glGetProgramInfoLog(program->id, sizeof(glbuf), &len, glbuf);
-        PyErr_Format(PyExc_ValueError, "Failed to link GLSL shaders:\n%s", glbuf);
-        fail_compile();
-    }
-#undef fail_compile
+    set_program_pipeline(which, pipeline);
     if (which == CUSTOM_END_PROGRAM) {
         free_custom_shader_pipeline(&custom_shaders.end);
         zero_at_ptr(&custom_shaders.end);
         PyObject *pg = PyDict_GetItemString(metadata, "pipeline");
         if (pg && !transfer_pipeline_to_struct(pg, &custom_shaders.end)) {
-            glDeleteProgram(program->id);
+            set_program_pipeline(which, GPU_NULL_HANDLE);
             return NULL;
         }
         custom_shaders.end.active = true;
@@ -3858,53 +3706,15 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
                 if (g >= 0 && (size_t)g < custom_shaders.end.num_groups) custom_shaders.end.pointer_map_groups |= 1u << g;
             }
             if (PyErr_Occurred()) {
-                glDeleteProgram(program->id);
+                set_program_pipeline(which, GPU_NULL_HANDLE);
                 return NULL;
             }
         }
         custom_shaders.generation++;
     }
-    init_uniforms(which);
     set_program_layout(which, metadata);
-    return Py_BuildValue("I", program->id);
+    Py_RETURN_NONE;
 }
-
-#define PYWRAP0(name) static PyObject *py##name(PYNOARG)
-#define PYWRAP1(name) static PyObject *py##name(PyObject UNUSED *self, PyObject *args)
-#define PA(fmt, ...) \
-    if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
-#define ONE_INT(name)                 \
-    PYWRAP1(name) {                   \
-        name(PyLong_AsSsize_t(args)); \
-        Py_RETURN_NONE;               \
-    }
-#define TWO_INT(name)     \
-    PYWRAP1(name) {       \
-        int a, b;         \
-        PA("ii", &a, &b); \
-        name(a, b);       \
-        Py_RETURN_NONE;   \
-    }
-#define NO_ARG(name)    \
-    PYWRAP0(name) {     \
-        name();         \
-        Py_RETURN_NONE; \
-    }
-#define NO_ARG_INT(name) \
-    PYWRAP0(name) { return PyLong_FromSsize_t(name()); }
-
-ONE_INT(bind_program)
-NO_ARG(unbind_program)
-
-PYWRAP0(create_vao) {
-    int ans = create_vao();
-    if (ans < 0) return NULL;
-    return Py_BuildValue("i", ans);
-}
-
-ONE_INT(bind_vertex_array)
-NO_ARG(unbind_vertex_array)
-TWO_INT(unmap_vao_buffer)
 
 static PyObject *
 sprite_map_set_limits(PyObject UNUSED *self, PyObject *args) {
@@ -3921,7 +3731,7 @@ static PyObject *
 pydecorations_map_new_size(PyObject *self UNUSED, PyObject *args) {
     unsigned long count, current_capacity, max_size;
     if (!PyArg_ParseTuple(args, "kkk", &count, &current_capacity, &max_size)) return NULL;
-    GLint w, h;
+    int32_t w, h;
     if (!decorations_map_new_size(count, current_capacity, max_size, &w, &h)) Py_RETURN_NONE;
     return Py_BuildValue("ii", (int)w, (int)h);
 }
@@ -4063,13 +3873,7 @@ pysample_pointer_map(PyObject *self UNUSED, PyObject *args) {
 static PyMethodDef module_methods[] = {
     M(compile_program, METH_VARARGS),
     M(sprite_map_set_limits, METH_VARARGS),
-    MW(create_vao, METH_NOARGS),
     MW(gpu_driver_version_string, METH_NOARGS),
-    MW(bind_vertex_array, METH_O),
-    MW(unbind_vertex_array, METH_NOARGS),
-    MW(unmap_vao_buffer, METH_VARARGS),
-    MW(bind_program, METH_O),
-    MW(unbind_program, METH_NOARGS),
     MW(custom_shader_needs_render, METH_VARARGS),
     MW(decorations_map_new_size, METH_VARARGS),
     MW(simulate_custom_shader_render_ticks, METH_VARARGS),
@@ -4082,7 +3886,10 @@ static PyMethodDef module_methods[] = {
 
 void
 initialize_gpu(void) {
-    gl_init();
+    initialize_gpu_driver();
+    GPUCapabilities caps;
+    gpu_get_capabilities(&caps);
+    global_state.supports_framebuffer_srgb = caps.supports_srgb_output;
     query_gpu_texture_limits();
 }
 
@@ -4105,6 +3912,7 @@ finalize(void) {
     default_visual_bell_animation = free_animation(default_visual_bell_animation);
     free_custom_shader_pipeline(&custom_shaders.end);
     free_program_layouts();
+    unload_gpu_driver();
 }
 
 bool
@@ -4136,55 +3944,6 @@ init_shaders(PyObject *module) {
     C(MAX_SHADER_ANIM_USER_EVENT_NAME_LEN);
     C(POINTER_MAP_SIZE);
     C(GLSL_VERSION);
-    C(GL_VERSION);
-    C(GL_VENDOR);
-    C(GL_SHADING_LANGUAGE_VERSION);
-    C(GL_RENDERER);
-    C(GL_TRIANGLE_FAN);
-    C(GL_TRIANGLE_STRIP);
-    C(GL_TRIANGLES);
-    C(GL_LINE_LOOP);
-    C(GL_COLOR_BUFFER_BIT);
-    C(GL_VERTEX_SHADER);
-    C(GL_FRAGMENT_SHADER);
-    C(GL_TRUE);
-    C(GL_FALSE);
-    C(GL_COMPILE_STATUS);
-    C(GL_LINK_STATUS);
-    C(GL_MAX_ARRAY_TEXTURE_LAYERS);
-    C(GL_TEXTURE_BINDING_BUFFER);
-    C(GL_MAX_TEXTURE_BUFFER_SIZE);
-    C(GL_MAX_TEXTURE_SIZE);
-    C(GL_TEXTURE_2D_ARRAY);
-    C(GL_LINEAR);
-    C(GL_CLAMP_TO_EDGE);
-    C(GL_NEAREST);
-    C(GL_TEXTURE_MIN_FILTER);
-    C(GL_TEXTURE_MAG_FILTER);
-    C(GL_TEXTURE_WRAP_S);
-    C(GL_TEXTURE_WRAP_T);
-    C(GL_UNPACK_ALIGNMENT);
-    C(GL_R8);
-    C(GL_RED);
-    C(GL_UNSIGNED_BYTE);
-    C(GL_UNSIGNED_SHORT);
-    C(GL_R32UI);
-    C(GL_RGB32UI);
-    C(GL_RGBA);
-    C(GL_TEXTURE_BUFFER);
-    C(GL_STATIC_DRAW);
-    C(GL_STREAM_DRAW);
-    C(GL_DYNAMIC_DRAW);
-    C(GL_SRC_ALPHA);
-    C(GL_ONE_MINUS_SRC_ALPHA);
-    C(GL_WRITE_ONLY);
-    C(GL_READ_ONLY);
-    C(GL_READ_WRITE);
-    C(GL_BLEND);
-    C(GL_FLOAT);
-    C(GL_UNSIGNED_INT);
-    C(GL_ARRAY_BUFFER);
-    C(GL_UNIFORM_BUFFER);
     C(ANIMATION_SAMPLE_WAIT);
 
 #undef C

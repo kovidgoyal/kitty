@@ -50,7 +50,8 @@ typedef struct {
 
 typedef struct {
     ImageRect src_rect, dest_rect;
-    uint32_t texture_id, group_count;
+    gpu_texture_t texture_id;
+    uint32_t group_count;
     int z_index;
     // Zero for normal images, otherwise the number of bytes per pixel of an indexed color image
     uint8_t indexed_px_sz;
@@ -61,7 +62,7 @@ typedef struct {
 } ImageRenderData;
 
 typedef struct {
-    uint32_t texture_id;
+    gpu_texture_t texture_id;
     unsigned int height, width;
     uint8_t *bitmap;
     uint32_t refcnt, id;
@@ -103,7 +104,8 @@ typedef struct {
 typedef enum { ANIMATION_STOPPED = 0, ANIMATION_LOADING = 1, ANIMATION_RUNNING = 2 } AnimationState;
 
 typedef struct TextureRef {
-    uint32_t id, refcnt;
+    gpu_texture_t id;
+    uint32_t refcnt;
 } TextureRef;
 
 #define NAME ref_map

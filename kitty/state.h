@@ -594,12 +594,18 @@ typedef struct OSWindow {
         bool has_layout;
     } background_image;
     struct {
-        uint32_t framebuffer_id, attached_texture_generation;
-        uint32_t extra_fbo_id, extra_fbo_generation;
-        uint32_t fbo_a_id, fbo_a_generation;
-        uint32_t fbo_b_id, fbo_b_generation;
+        gpu_render_target_t framebuffer_id;
+        uint32_t attached_texture_generation;
+        gpu_render_target_t extra_fbo_id;
+        uint32_t extra_fbo_generation;
+        gpu_render_target_t fbo_a_id;
+        uint32_t fbo_a_generation;
+        gpu_render_target_t fbo_b_id;
+        uint32_t fbo_b_generation;
     } indirect_output;
-    uint32_t persist_texture_id, persist_fbo_id, persist_texture_generation;
+    gpu_texture_t persist_texture_id;
+    gpu_render_target_t persist_fbo_id;
+    uint32_t persist_texture_generation;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render, needs_layers, input_held;
     unsigned keep_rendering_till_swap;
@@ -710,7 +716,6 @@ typedef struct GlobalState {
     // Set once an IME composition has been seen, see sync_ime_position_with_cursor()
     bool ime_used;
     WindowLogoTable *all_window_logos;
-    int gl_version;
     bool supports_framebuffer_srgb;
     PyObject *options_object;
 
@@ -749,11 +754,16 @@ typedef struct GlobalState {
         double x, y;
     } window_being_dragged;
     struct {
-        uint32_t texture_id, framebuffer_id, texture_generation;
+        gpu_texture_t texture_id;
+        gpu_render_target_t framebuffer_id;
+        uint32_t texture_generation;
         int width, height;
-        uint32_t extra_texture_id, extra_texture_setup_fbo_id;
-        uint32_t texture_a_id, texture_a_fbo_id;
-        uint32_t texture_b_id, texture_b_fbo_id;
+        gpu_texture_t extra_texture_id;
+        gpu_render_target_t extra_texture_setup_fbo_id;
+        gpu_texture_t texture_a_id;
+        gpu_render_target_t texture_a_fbo_id;
+        gpu_texture_t texture_b_id;
+        gpu_render_target_t texture_b_fbo_id;
     } layers_render_texture;
 } GlobalState;
 
@@ -815,11 +825,8 @@ void upload_gamma_lut(void);
 bool send_cell_data_to_gpu(ssize_t, Screen *, OSWindow *);
 void draw_cells(const WindowRenderData *, OSWindow *, bool, bool, bool, Window *, const Window *, monotonic_t);
 bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);
-void set_gpu_viewport(unsigned w, unsigned h);
-void free_texture(uint32_t *);
-void free_framebuffer(uint32_t *);
-void send_image_to_gpu(uint32_t *, const void *, int32_t, int32_t, bool, bool, bool, RepeatStrategy);
-void send_indexed_image_to_gpu(uint32_t *, const void *, int32_t, int32_t, unsigned, bool);
+void send_image_to_gpu(gpu_texture_t *, const void *, int32_t, int32_t, bool, bool, bool, RepeatStrategy);
+void send_indexed_image_to_gpu(gpu_texture_t *, const void *, int32_t, int32_t, unsigned, bool);
 void send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index, pixel *, sprite_index);
 void blank_canvas(float, color_type, bool);
 void blank_os_window(OSWindow *);
