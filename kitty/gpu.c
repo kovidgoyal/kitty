@@ -691,9 +691,16 @@ compile_gpu_program(int program, const char *vertex, size_t vertex_size, const c
                 (GPUParamField){.name = f->name, .offset = f->offset, .scalar = f->scalar, .components = f->components, .count = f->count, .stride = f->stride};
         }
     }
+    PyObject *entry_points = metadata_item(metadata, "entry_points", &PyDict_Type);
+    const char *vertex_entry = entry_points ? metadata_str(entry_points, "vertex") : NULL;
+    const char *fragment_entry = entry_points ? metadata_str(entry_points, "fragment") : NULL;
+    if (!vertex_entry || !fragment_entry) {
+        free_program_params(&pp);
+        return false;
+    }
     const GPUShaderSource sources[2] = {
-        {.stage = GPU_SHADER_VERTEX, .language = language, .code = vertex, .size = vertex_size},
-        {.stage = GPU_SHADER_FRAGMENT, .language = language, .code = fragment, .size = fragment_size},
+        {.stage = GPU_SHADER_VERTEX, .language = language, .code = vertex, .size = vertex_size, .entry_point = vertex_entry},
+        {.stage = GPU_SHADER_FRAGMENT, .language = language, .code = fragment, .size = fragment_size, .entry_point = fragment_entry},
     };
     programs[program] = gpu_pipeline_create(sources, arraysz(sources), gpb, pp.num_blocks, bindings, num_bindings, names, num_names);
     free_program_params(&pp);

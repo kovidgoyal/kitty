@@ -23,7 +23,7 @@ from kitty.shaders.slang import (
     SlangShaderQuery,
     Stage,
     apply_pipeline_specializations,
-    build_custom_shader_pipeline_glsl,
+    build_custom_shader_pipeline,
     build_import_graph,
     cell_variant,
     cell_variations,
@@ -39,6 +39,7 @@ from kitty.shaders.slang import (
     pointer_map_shaders,
     program_metadata,
     slangc_version,
+    spirv_validation_command,
     text_contrast_is_identity,
     topological_layers,
     topological_sort,
@@ -342,7 +343,7 @@ class TestSlang(BaseTest):
         self.ae(pipeline['groups'][0]['animation_step'], 0)
         with (
             patch('kitty.shaders.slang.parse_pipeline', return_value=pipeline),
-            patch('kitty.shaders.slang.build_custom_shader_pipeline_glsl', return_value=('vertex', 'fragment', {})),
+            patch('kitty.shaders.slang.build_custom_shader_pipeline', return_value=('vertex', 'fragment', {})),
             patch('kitty.shaders.slang.current_shader_target', return_value=driver_shader_target()),
             patch('kitty.shaders.slang.compile_program') as compile_program,
         ):
@@ -819,7 +820,7 @@ float f() { static const float SCAN = 2; return SCAN; }
         self.assertEqual(p['groups'][0]['shaders'], ('sample',))
         self.assertEqual(p['groups'][1]['shaders'], ('sample',))
 
-    def test_build_custom_shader_pipeline_glsl(self):
+    def test_build_custom_shader_pipeline(self):
         if not shutil.which(slangc()[0]):
             self.skipTest(f'slangc ({slangc()[0]}) not found in PATH')
 
@@ -835,9 +836,9 @@ float f() { static const float SCAN = 2; return SCAN; }
                 'test',
             )
             try:
-                vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, driver_shader_target(), cache_dir=cache_dir)
+                vert_src, frag_src, metadata = build_custom_shader_pipeline(p, driver_shader_target(), cache_dir=cache_dir)
                 invocation_tracker = set()
-                build_custom_shader_pipeline_glsl(p, driver_shader_target(), cache_dir=cache_dir, invocation_tracker=invocation_tracker)
+                build_custom_shader_pipeline(p, driver_shader_target(), cache_dir=cache_dir, invocation_tracker=invocation_tracker)
             finally:
                 clear_caches()
 
@@ -868,7 +869,7 @@ float f() { static const float SCAN = 2; return SCAN; }
                 'test',
             )
             try:
-                _, pm_frag_src, pm_metadata = build_custom_shader_pipeline_glsl(p, driver_shader_target(), cache_dir=cache_dir)
+                _, pm_frag_src, pm_metadata = build_custom_shader_pipeline(p, driver_shader_target(), cache_dir=cache_dir)
             finally:
                 clear_caches()
         self.assertTrue(pm_metadata['has_pointer_map'])
@@ -933,34 +934,53 @@ float f() { static const float SCAN = 2; return SCAN; }
             if entry.name.endswith('.slang') and entry.name[: -len('.slang')] not in _SUPPORT_SHADER_NAMES
         )
 
-        with tempfile.TemporaryDirectory() as cache_dir:
-            failures: list[str] = []
-            clear_caches()
-            for name in shader_names:
-                pipeline = parse_pipeline_definition(
-                    ['startgroup', f'shaders {name}', 'endgroup'],
-                    name,
-                )
-                try:
-                    vert_src, frag_src, _ = build_custom_shader_pipeline_glsl(pipeline, driver_shader_target(), cache_dir=cache_dir)
-                except Exception as e:
-                    failures.append(f'{name}: {e}')
-                    continue
-                if not vert_src:
-                    failures.append(f'{name}: empty vertex GLSL')
-                if not frag_src:
-                    failures.append(f'{name}: empty fragment GLSL')
-            clear_caches()
-            # Builtin pipelines can override constants with var and chain
-            # shaders, so compile them as well
-            pipeline_names = sorted(entry.name[: -len('.pipeline')] for entry in pkg.iterdir() if entry.name.endswith('.pipeline'))
-            for name in pipeline_names:
-                try:
-                    pipeline = parse_pipeline_definition(get_custom_pipeline_src(name).decode().splitlines(), name)
-                    build_custom_shader_pipeline_glsl(pipeline, driver_shader_target(), cache_dir=cache_dir)
-                except Exception as e:
-                    failures.append(f'{name}.pipeline: {e}')
-            clear_caches()
+        # Compile for the target of the loaded driver and for SPIR-V, used by
+        # the Vulkan driver, which may not be loadable on the test machine
+        targets = [driver_shader_target()]
+        if not targets[0].is_spirv:
+            targets.append(ShaderTarget('spirv', 16))
+        failures: list[str] = []
+
+        def check(name: str, target: ShaderTarget, vert_src: str | bytes, frag_src: str | bytes, tdir: str) -> None:
+            if not vert_src:
+                failures.append(f'{name}: empty vertex shader for {target.id}')
+            if not frag_src:
+                failures.append(f'{name}: empty fragment shader for {target.id}')
+            if target.is_spirv and isinstance(vert_src, bytes) and shutil.which('spirv-val'):
+                path = os.path.join(tdir, 'check.spv')
+                with open(path, 'wb') as f:
+                    f.write(vert_src)
+                cp = subprocess.run(spirv_validation_command(target, path), capture_output=True)
+                if cp.returncode != 0:
+                    failures.append(f'{name}: invalid SPIR-V: {cp.stderr.decode()}{cp.stdout.decode()}')
+
+        for target in targets:
+            with tempfile.TemporaryDirectory() as cache_dir:
+                clear_caches()
+                for name in shader_names:
+                    pipeline = parse_pipeline_definition(
+                        ['startgroup', f'shaders {name}', 'endgroup'],
+                        name,
+                    )
+                    try:
+                        vert_src, frag_src, _ = build_custom_shader_pipeline(pipeline, target, cache_dir=cache_dir)
+                    except Exception as e:
+                        failures.append(f'{name} for {target.id}: {e}')
+                        continue
+                    check(name, target, vert_src, frag_src, cache_dir)
+                clear_caches()
+                # Builtin pipelines can override constants with var and chain
+                # shaders, so compile them as well
+                pipeline_names = sorted(entry.name[: -len('.pipeline')] for entry in pkg.iterdir() if entry.name.endswith('.pipeline'))
+                for name in pipeline_names:
+                    try:
+                        pipeline = parse_pipeline_definition(get_custom_pipeline_src(name).decode().splitlines(), name)
+                        vert_src, frag_src, _ = build_custom_shader_pipeline(pipeline, target, cache_dir=cache_dir)
+                    except Exception as e:
+                        failures.append(f'{name}.pipeline for {target.id}: {e}')
+                        continue
+                    check(f'{name}.pipeline', target, vert_src, frag_src, cache_dir)
+                clear_caches()
 
         if failures:
             self.fail('Custom shader compilation failures:\n' + '\n'.join(failures))
