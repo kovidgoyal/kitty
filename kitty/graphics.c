@@ -8,6 +8,7 @@
 #define GRAPHICS_INTERNAL_APIS
 #include "graphics.h"
 #include "state.h"
+#include "gpu.h"
 #include "disk-cache.h"
 #include "iqsort.h"
 #include "safe-wrappers.h"
@@ -161,7 +162,7 @@ new_texture_ref(void) {
     return ans;
 }
 
-static uint32_t
+static gpu_texture_t
 texture_id_for_img(Image *img) {
     return img->texture ? img->texture->id : 0;
 }
@@ -2972,12 +2973,12 @@ image_as_dict(GraphicsManager *self, Image *img) {
         return NULL;
     }
     PyObject *ans = Py_BuildValue(
-        "{sI sI sI sI sI sI sI "
+        "{sK sI sI sI sI sI sI "
         "sO sI sO "
         "sI sI sI "
         "sI sI sy# sN sI}",
         "texture_id",
-        texture_id_for_img(img),
+        (unsigned long long)texture_id_for_img(img),
         U(client_id),
         U(width),
         U(height),

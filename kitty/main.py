@@ -23,6 +23,7 @@ from .constants import (
     beam_cursor_data_file,
     clear_handled_signals,
     glfw_path,
+    gpu_driver_path,
     is_macos,
     is_quick_access_terminal_app,
     is_wayland,
@@ -105,7 +106,7 @@ def load_all_shaders() -> None:
 
 
 def init_glfw_module(glfw_module: str = 'wayland', debug_keyboard: bool = False, debug_rendering: bool = False, wayland_enable_ime: bool = True) -> None:
-    ok, swo = glfw_init(glfw_path(glfw_module), edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime)
+    ok, swo = glfw_init(glfw_path(glfw_module), gpu_driver_path(), edge_spacing, debug_keyboard, debug_rendering, wayland_enable_ime)
     if not ok:
         raise SystemExit('GLFW initialization failed')
     supports_window_occlusion(swo)
