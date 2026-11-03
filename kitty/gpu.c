@@ -152,8 +152,11 @@ disable_scissor(void) {
     gpu_set_scissor(false, 0, 0, 0, 0);
 }
 
+static void flush_params(void);
+
 void
 draw_quad(bool blend, unsigned instance_count) {
+    flush_params();
     gpu_draw_quad(instance_count, blend ? GPU_BLEND_PREMULTIPLIED_ALPHA : GPU_BLEND_NONE);
 }
 
@@ -232,28 +235,72 @@ save_texture_as_png(gpu_texture_t texture, const char *filename) {
 // }}}
 
 // Programs {{{
-typedef enum { PROGRAM_UNIFORM, PROGRAM_ATTRIBUTE, PROGRAM_BLOCK, PROGRAM_ARRAY, PROGRAM_TEXTURE } ProgramMetadataKind;
+typedef enum { PROGRAM_PARAM, PROGRAM_ATTRIBUTE, PROGRAM_BLOCK, PROGRAM_ARRAY, PROGRAM_TEXTURE } ProgramMetadataKind;
 typedef struct ProgramMetadataEntry {
     ProgramMetadataKind kind;
-    bool missing_location_logged;
     union {
-        int32_t location;
+        int32_t location; // the param ref index for PROGRAM_PARAM, the location for PROGRAM_ATTRIBUTE and the slot for PROGRAM_TEXTURE
         UniformBlock block;
         ArrayInformation array;
     };
 } ProgramMetadataEntry;
 
+// Parameter blocks, see GPUParamBlock {{{
+typedef struct ParamField {
+    char *name;
+    uint32_t offset, components, count, stride;
+    GPUParamScalar scalar;
+    bool type_error_logged;
+} ParamField;
+
+typedef struct ParamBlock {
+    char *name; // NULL for the uniform parameters of an entry point
+    GPUShaderStage stage;
+    int32_t slot;
+    uint32_t size;
+    uint8_t *data; // the contents, laid out as described by the fields
+    bool dirty;    // the contents have changed since they were last passed to the driver
+    ParamField *fields;
+    size_t num_fields;
+} ParamBlock;
+
+// The fields with a given name, at most one per stage
+typedef struct ParamRef {
+    uint8_t num;
+    struct {
+        uint16_t block, field;
+    } items[2];
+} ParamRef;
+
+typedef struct ProgramParams {
+    ParamBlock *blocks;
+    size_t num_blocks;
+    ParamRef *refs;
+    size_t num_refs;
+} ProgramParams;
+// }}}
+
 static gpu_pipeline_t programs[MAX_GPU_PROGRAMS] = {0};
+static ProgramParams program_params[MAX_GPU_PROGRAMS] = {0};
+static int current_program = -1;
+
+static void
+free_program_params(ProgramParams *pp) {
+    for (size_t b = 0; b < pp->num_blocks; b++) {
+        ParamBlock *pb = pp->blocks + b;
+        for (size_t i = 0; i < pb->num_fields; i++) free(pb->fields[i].name);
+        free(pb->fields);
+        free(pb->name);
+        free(pb->data);
+    }
+    free(pp->blocks);
+    free(pp->refs);
+    zero_at_ptr(pp);
+}
 
 gpu_pipeline_t
 program_pipeline(int program) {
     return programs[program];
-}
-
-void
-set_program_pipeline(int program, gpu_pipeline_t pipeline) {
-    if (programs[program]) gpu_pipeline_destroy(programs[program]);
-    programs[program] = pipeline;
 }
 
 int32_t
@@ -261,7 +308,7 @@ attrib_location(int program, const char *name) {
     return gpu_pipeline_attribute_location(programs[program], name);
 }
 
-// Program metadata (uniform/attribute locations and UBO/array info, looked up by name) {{{
+// Program metadata (parameter, attribute and texture locations and UBO/array info, looked up by name) {{{
 #define NAME program_metadata_map
 #define KEY_TY const char *
 #define VAL_TY ProgramMetadataEntry
@@ -272,6 +319,7 @@ static bool program_layouts_initialized[MAX_GPU_PROGRAMS] = {0};
 
 static void
 clear_program_layout(int program) {
+    free_program_params(program_params + program);
     if (!program_layouts_initialized[program]) return;
     program_metadata_map *m = program_layouts + program;
     vt_create_for_loop(program_metadata_map_itr, itr, m) free((void *)itr.data->key);
@@ -282,6 +330,14 @@ clear_program_layout(int program) {
 void
 free_program_layouts(void) {
     for (size_t i = 0; i < arraysz(program_layouts); i++) clear_program_layout((int)i);
+}
+
+void
+free_program(int program) {
+    if (current_program == program) current_program = -1;
+    if (programs[program]) gpu_pipeline_destroy(programs[program]);
+    programs[program] = GPU_NULL_HANDLE;
+    clear_program_layout(program);
 }
 
 static void
@@ -298,10 +354,25 @@ program_metadata_entry(int program, const char *name, ProgramMetadataKind expect
     return &itr.data->val;
 }
 
+static bool
+find_program_metadata(int program, const char *name, ProgramMetadataKind expected, ProgramMetadataEntry **ans) {
+    if (!program_layouts_initialized[program]) return false;
+    program_metadata_map_itr itr = vt_get(program_layouts + program, name);
+    if (vt_is_end(itr) || itr.data->val.kind != expected) return false;
+    *ans = &itr.data->val;
+    return true;
+}
+// }}}
+
+// Parsing the metadata {{{
 // Fetches a required item from a dict in the program metadata, setting a
 // Python exception if it is missing or of the wrong type
 static PyObject *
 metadata_item(PyObject *d, const char *key, PyTypeObject *type) {
+    if (!PyDict_Check(d)) {
+        PyErr_Format(PyExc_TypeError, "Looking up %s in shader program metadata that is not a dict", key);
+        return NULL;
+    }
     PyObject *ans = PyDict_GetItemString(d, key);
     if (!ans) {
         PyErr_Format(PyExc_KeyError, "The shader program metadata has no %s entry", key);
@@ -315,7 +386,7 @@ metadata_item(PyObject *d, const char *key, PyTypeObject *type) {
 }
 
 static bool
-metadata_uint(PyObject *d, const char *key, int32_t *ans) {
+metadata_int(PyObject *d, const char *key, int32_t *ans) {
     PyObject *v = metadata_item(d, key, &PyLong_Type);
     if (!v) return false;
     long val = PyLong_AsLong(v);
@@ -324,10 +395,129 @@ metadata_uint(PyObject *d, const char *key, int32_t *ans) {
     return true;
 }
 
-// The metadata is generated from the reflection data produced by the Slang
-// compiler, see program_metadata() in shaders/slang.py. It is backend neutral,
-// all names are names from the Slang source.
-bool
+static bool
+metadata_uint(PyObject *d, const char *key, uint32_t *ans) {
+    int32_t v;
+    if (!metadata_int(d, key, &v)) return false;
+    if (v < 0) {
+        PyErr_Format(PyExc_ValueError, "The %s entry in the shader program metadata is negative", key);
+        return false;
+    }
+    *ans = (uint32_t)v;
+    return true;
+}
+
+static const char *
+metadata_str(PyObject *d, const char *key) {
+    PyObject *v = metadata_item(d, key, &PyUnicode_Type);
+    return v ? PyUnicode_AsUTF8(v) : NULL;
+}
+
+static bool
+parse_stage(const char *s, GPUShaderStage *ans) {
+    if (strcmp(s, "vertex") == 0) *ans = GPU_SHADER_VERTEX;
+    else if (strcmp(s, "fragment") == 0) *ans = GPU_SHADER_FRAGMENT;
+    else if (!s[0]) *ans = 0;
+    else {
+        PyErr_Format(PyExc_ValueError, "Unknown shader stage: %s", s);
+        return false;
+    }
+    return true;
+}
+
+static bool
+parse_scalar(const char *s, GPUParamScalar *ans) {
+    if (strcmp(s, "float") == 0) *ans = GPU_PARAM_FLOAT;
+    else if (strcmp(s, "int") == 0) *ans = GPU_PARAM_INT;
+    else if (strcmp(s, "uint") == 0) *ans = GPU_PARAM_UINT;
+    else if (strcmp(s, "bool") == 0) *ans = GPU_PARAM_BOOL;
+    else {
+        PyErr_Format(PyExc_ValueError, "Unknown shader parameter type: %s", s);
+        return false;
+    }
+    return true;
+}
+
+static bool
+parse_param_blocks(PyObject *metadata, ProgramParams *pp) {
+    PyObject *blocks = metadata_item(metadata, "param_blocks", &PyList_Type);
+    if (!blocks) return false;
+    const size_t num_blocks = (size_t)PyList_GET_SIZE(blocks);
+    if (!num_blocks) return true;
+    if (!(pp->blocks = calloc(num_blocks, sizeof(ParamBlock)))) goto oom;
+    pp->num_blocks = num_blocks;
+    for (size_t b = 0; b < num_blocks; b++) {
+        PyObject *src = PyList_GET_ITEM(blocks, b);
+        ParamBlock *pb = pp->blocks + b;
+        const char *name = metadata_str(src, "name"), *stage = metadata_str(src, "stage");
+        if (!name || !stage || !parse_stage(stage, &pb->stage)) return false;
+        if (name[0] && !(pb->name = strdup(name))) goto oom;
+        if (!metadata_int(src, "slot", &pb->slot) || !metadata_uint(src, "size", &pb->size)) return false;
+        if (!(pb->data = calloc(1, MAX(1u, pb->size)))) goto oom;
+        PyObject *fields = metadata_item(src, "fields", &PyList_Type);
+        if (!fields) return false;
+        pb->num_fields = (size_t)PyList_GET_SIZE(fields);
+        if (pb->num_fields && !(pb->fields = calloc(pb->num_fields, sizeof(ParamField)))) goto oom;
+        for (size_t i = 0; i < pb->num_fields; i++) {
+            PyObject *fsrc = PyList_GET_ITEM(fields, i);
+            ParamField *f = pb->fields + i;
+            const char *fname = metadata_str(fsrc, "name"), *scalar = metadata_str(fsrc, "scalar");
+            if (!fname || !scalar || !parse_scalar(scalar, &f->scalar)) return false;
+            if (!(f->name = strdup(fname))) goto oom;
+            if (!metadata_uint(fsrc, "offset", &f->offset) || !metadata_uint(fsrc, "components", &f->components) || !metadata_uint(fsrc, "count", &f->count) ||
+                !metadata_uint(fsrc, "stride", &f->stride))
+                return false;
+            if (f->components < 1 || f->components > 4 || !f->count ||
+                (uint64_t)f->offset + (uint64_t)(f->count - 1) * f->stride + 4u * f->components > pb->size) {
+                PyErr_Format(PyExc_ValueError, "The shader parameter %s does not fit in its parameter block", fname);
+                return false;
+            }
+        }
+    }
+    return true;
+oom:
+    PyErr_NoMemory();
+    return false;
+}
+
+// Map parameter names to the fields that have that name
+static bool
+index_params(int program, ProgramParams *pp) {
+    size_t total = 0;
+    for (size_t b = 0; b < pp->num_blocks; b++) total += pp->blocks[b].num_fields;
+    if (!total) return true;
+    if (total > UINT16_MAX || pp->num_blocks > UINT16_MAX) {
+        PyErr_SetString(PyExc_ValueError, "Too many shader parameters");
+        return false;
+    }
+    if (!(pp->refs = calloc(total, sizeof(ParamRef)))) {
+        PyErr_NoMemory();
+        return false;
+    }
+    for (size_t b = 0; b < pp->num_blocks; b++) {
+        for (size_t i = 0; i < pp->blocks[b].num_fields; i++) {
+            const char *name = pp->blocks[b].fields[i].name;
+            ProgramMetadataEntry *e;
+            ParamRef *ref;
+            if (find_program_metadata(program, name, PROGRAM_PARAM, &e)) ref = pp->refs + e->location;
+            else {
+                ref = pp->refs + pp->num_refs;
+                insert_program_metadata(program, name, (ProgramMetadataEntry){.kind = PROGRAM_PARAM, .location = (int32_t)pp->num_refs});
+                pp->num_refs++;
+            }
+            if (ref->num >= arraysz(ref->items)) {
+                PyErr_Format(PyExc_ValueError, "The shader parameter %s is used in too many parameter blocks", name);
+                return false;
+            }
+            ref->items[ref->num].block = (uint16_t)b;
+            ref->items[ref->num].field = (uint16_t)i;
+            ref->num++;
+        }
+    }
+    return true;
+}
+
+static bool
 set_program_layout(int program, PyObject *metadata) {
     clear_program_layout(program);
     vt_init(program_layouts + program);
@@ -346,15 +536,6 @@ set_program_layout(int program, PyObject *metadata) {
         insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
     }
 
-    PyObject *uniforms = metadata_item(metadata, "uniforms", &PyList_Type);
-    if (!uniforms) return false;
-    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(uniforms); i++) {
-        const char *name = PyUnicode_AsUTF8(PyList_GET_ITEM(uniforms, i));
-        if (!name) return false;
-        ProgramMetadataEntry e = {.kind = PROGRAM_UNIFORM, .location = gpu_pipeline_uniform_slot(pipeline, name)};
-        insert_program_metadata(program, name, e);
-    }
-
     PyObject *textures = metadata_item(metadata, "textures", &PyDict_Type);
     if (!textures) return false;
     pos = 0;
@@ -370,7 +551,7 @@ set_program_layout(int program, PyObject *metadata) {
     while (PyDict_Next(blocks, &pos, &key, &val)) {
         const char *block_name = PyUnicode_AsUTF8(key);
         if (!block_name) return false;
-        int32_t size, slot;
+        uint32_t size, slot;
         if (!metadata_uint(val, "size", &size) || !metadata_uint(val, "slot", &slot)) return false;
         GPUUniformBlockInfo info;
         if (!gpu_pipeline_uniform_block(pipeline, block_name, &info)) {
@@ -379,17 +560,17 @@ set_program_layout(int program, PyObject *metadata) {
         }
         // The layout of the block is taken from the reflection data, so
         // verify that it matches what the driver actually uses
-        if ((uint32_t)size != info.size) {
+        if (size != info.size) {
             PyErr_Format(
                 PyExc_ValueError,
-                "The uniform block: %s in GPU program: %d has size %u according to the GPU driver but %d according to the shader reflection data",
+                "The uniform block: %s in GPU program: %d has size %u according to the GPU driver but %u according to the shader reflection data",
                 block_name,
                 program,
                 info.size,
                 size);
             return false;
         }
-        ProgramMetadataEntry be = {.kind = PROGRAM_BLOCK, .block = {.index = (int32_t)info.index, .size = size, .slot = (uint32_t)slot}};
+        ProgramMetadataEntry be = {.kind = PROGRAM_BLOCK, .block = {.index = (int32_t)info.index, .size = (int32_t)size, .slot = slot}};
         insert_program_metadata(program, block_name, be);
 
         PyObject *arrays = metadata_item(val, "arrays", &PyDict_Type);
@@ -399,35 +580,199 @@ set_program_layout(int program, PyObject *metadata) {
         while (PyDict_Next(arrays, &apos, &akey, &aval)) {
             const char *array_name = PyUnicode_AsUTF8(akey);
             if (!array_name) return false;
-            ArrayInformation ai;
-            if (!metadata_uint(aval, "offset", &ai.offset) || !metadata_uint(aval, "stride", &ai.stride) || !metadata_uint(aval, "count", &ai.size))
-                return false;
-            ProgramMetadataEntry ae = {.kind = PROGRAM_ARRAY, .array = ai};
+            int32_t offset, stride, count;
+            if (!metadata_int(aval, "offset", &offset) || !metadata_int(aval, "stride", &stride) || !metadata_int(aval, "count", &count)) return false;
+            ProgramMetadataEntry ae = {.kind = PROGRAM_ARRAY, .array = {.offset = offset, .stride = stride, .size = count}};
             insert_program_metadata(program, array_name, ae);
         }
+    }
+    return parse_param_blocks(metadata, program_params + program) && index_params(program, program_params + program);
+}
+// }}}
+
+bool
+compile_gpu_program(int program, const char *vertex, size_t vertex_size, const char *fragment, size_t fragment_size, PyObject *metadata) {
+    free_program(program);
+    // The shaders must have been compiled for the target of the loaded driver
+    const char *target = metadata_str(metadata, "target");
+    if (!target) return false;
+    if (strcmp(target, gpu_shader_target()) != 0) {
+        PyErr_Format(PyExc_ValueError, "The shaders were compiled for the target: %s but the GPU driver needs: %s", target, gpu_shader_target());
+        return false;
+    }
+    GPUShaderLanguage language;
+    if (strncmp(target, "glsl-", 5) == 0) language = GPU_SHADER_LANGUAGE_GLSL;
+    else if (strncmp(target, "spirv-", 6) == 0) language = GPU_SHADER_LANGUAGE_SPIRV;
+    else if (strncmp(target, "msl-", 4) == 0) language = GPU_SHADER_LANGUAGE_MSL;
+    else {
+        PyErr_Format(PyExc_ValueError, "Unknown shader target: %s", target);
+        return false;
+    }
+    // The strings referenced below remain valid as long as the metadata does
+    PyObject *native_names = metadata_item(metadata, "native_names", &PyDict_Type);
+    PyObject *textures = metadata_item(metadata, "textures", &PyDict_Type);
+    PyObject *blocks = metadata_item(metadata, "blocks", &PyDict_Type);
+    if (!native_names || !textures || !blocks) return false;
+    RAII_ALLOC(GPUNativeName, names, calloc(MAX(1, PyDict_GET_SIZE(native_names)), sizeof(GPUNativeName)));
+    RAII_ALLOC(GPUBinding, bindings, calloc(MAX(1, PyDict_GET_SIZE(textures) + PyDict_GET_SIZE(blocks)), sizeof(GPUBinding)));
+    if (!names || !bindings) {
+        PyErr_NoMemory();
+        return false;
+    }
+    size_t num_names = 0, num_bindings = 0;
+    PyObject *key, *val;
+    Py_ssize_t pos = 0;
+    while (PyDict_Next(native_names, &pos, &key, &val)) {
+        if (!(names[num_names].name = PyUnicode_AsUTF8(key)) || !(names[num_names].native_name = PyUnicode_AsUTF8(val))) return false;
+        num_names++;
+    }
+    pos = 0;
+    while (PyDict_Next(textures, &pos, &key, &val)) {
+        GPUBinding *b = bindings + num_bindings++;
+        b->kind = GPU_BINDING_TEXTURE;
+        if (!(b->name = PyUnicode_AsUTF8(key))) return false;
+        b->slot = (uint32_t)PyLong_AsUnsignedLong(val);
+        if (PyErr_Occurred()) return false;
+    }
+    pos = 0;
+    while (PyDict_Next(blocks, &pos, &key, &val)) {
+        GPUBinding *b = bindings + num_bindings++;
+        b->kind = GPU_BINDING_UNIFORM_BLOCK;
+        if (!(b->name = PyUnicode_AsUTF8(key)) || !metadata_uint(val, "slot", &b->slot)) return false;
+    }
+    // Parse the parameter blocks first, to pass their layout to the driver
+    ProgramParams pp = {0};
+    if (!parse_param_blocks(metadata, &pp)) {
+        free_program_params(&pp);
+        return false;
+    }
+    size_t total_fields = 0;
+    for (size_t b = 0; b < pp.num_blocks; b++) total_fields += pp.blocks[b].num_fields;
+    RAII_ALLOC(GPUParamBlock, gpb, calloc(MAX(1u, pp.num_blocks), sizeof(GPUParamBlock)));
+    RAII_ALLOC(GPUParamField, gpf, calloc(MAX(1u, total_fields), sizeof(GPUParamField)));
+    if (!gpb || !gpf) {
+        free_program_params(&pp);
+        PyErr_NoMemory();
+        return false;
+    }
+    for (size_t b = 0, fi = 0; b < pp.num_blocks; b++) {
+        const ParamBlock *pb = pp.blocks + b;
+        gpb[b] = (GPUParamBlock){.name = pb->name, .stage = pb->stage, .slot = pb->slot, .size = pb->size, .fields = gpf + fi, .num_fields = pb->num_fields};
+        for (size_t i = 0; i < pb->num_fields; i++, fi++) {
+            const ParamField *f = pb->fields + i;
+            gpf[fi] =
+                (GPUParamField){.name = f->name, .offset = f->offset, .scalar = f->scalar, .components = f->components, .count = f->count, .stride = f->stride};
+        }
+    }
+    const GPUShaderSource sources[2] = {
+        {.stage = GPU_SHADER_VERTEX, .language = language, .code = vertex, .size = vertex_size},
+        {.stage = GPU_SHADER_FRAGMENT, .language = language, .code = fragment, .size = fragment_size},
+    };
+    programs[program] = gpu_pipeline_create(sources, arraysz(sources), gpb, pp.num_blocks, bindings, num_bindings, names, num_names);
+    free_program_params(&pp);
+    if (!programs[program]) {
+        PyErr_SetString(PyExc_ValueError, gpu_last_error());
+        return false;
+    }
+    if (!set_program_layout(program, metadata)) {
+        free_program(program);
+        return false;
     }
     return true;
 }
 
+// Parameters {{{
 int32_t
-program_uniform_location(int program, const char *name) {
-    ProgramMetadataEntry *e = program_metadata_entry(program, name, PROGRAM_UNIFORM);
-    // Setting a uniform at location -1 is a silent no-op, so a uniform the driver
-    // does not report as active leaves whatever value it was last set to,
-    // rendering incorrectly with no other indication that anything is wrong.
-    if (e->location < 0 && !e->missing_location_logged) {
-        e->missing_location_logged = true;
-        log_error("The uniform: %s is not active in the linked GPU program: %d. Setting it will have no effect and rendering may be incorrect.", name, program);
-    }
-    return e->location;
+try_program_param(int program, const char *name) {
+    ProgramMetadataEntry *e;
+    if (!find_program_metadata(program, name, PROGRAM_PARAM, &e)) return -1;
+    return (int32_t)(((uint32_t)program << 16) | (uint32_t)e->location);
 }
 
 int32_t
-try_program_uniform_location(int program, const char *name) {
-    program_metadata_map_itr itr = vt_get(program_layouts + program, name);
-    if (vt_is_end(itr) || itr.data->val.kind != PROGRAM_UNIFORM) return -1;
-    return itr.data->val.location;
+program_param(int program, const char *name) {
+    int32_t ans = try_program_param(program, name);
+    if (ans < 0) log_error("The GPU program: %d has no parameter named: %s", program, name);
+    return ans;
 }
+
+static void
+write_param(int32_t handle, GPUParamScalar scalar, uint32_t components, uint32_t count, const void *values) {
+    if (handle < 0) return;
+    const int program = handle >> 16;
+    const uint32_t r = handle & 0xffff;
+    ProgramParams *pp = program_params + program;
+    if (r >= pp->num_refs) return;
+    const ParamRef *ref = pp->refs + r;
+    const size_t elem = 4u * components;
+    for (uint8_t i = 0; i < ref->num; i++) {
+        ParamBlock *pb = pp->blocks + ref->items[i].block;
+        ParamField *f = pb->fields + ref->items[i].field;
+        const bool scalar_ok = f->scalar == scalar || (f->scalar == GPU_PARAM_BOOL && scalar == GPU_PARAM_INT);
+        if (!scalar_ok || f->components != components || count > f->count) {
+            if (!f->type_error_logged) {
+                f->type_error_logged = true;
+                log_error("Setting the shader parameter: %s in GPU program: %d with a value of the wrong type", f->name, program);
+            }
+            continue;
+        }
+        for (uint32_t e = 0; e < count; e++) memcpy(pb->data + f->offset + (size_t)e * f->stride, (const uint8_t *)values + e * elem, elem);
+        pb->dirty = true;
+    }
+}
+
+void
+param_floats(int32_t handle, uint32_t components, uint32_t count, const float *values) {
+    write_param(handle, GPU_PARAM_FLOAT, components, count, values);
+}
+
+void
+param_1f(int32_t handle, float a) {
+    write_param(handle, GPU_PARAM_FLOAT, 1, 1, &a);
+}
+
+void
+param_2f(int32_t handle, float a, float b) {
+    const float v[2] = {a, b};
+    write_param(handle, GPU_PARAM_FLOAT, 2, 1, v);
+}
+
+void
+param_3f(int32_t handle, float a, float b, float c) {
+    const float v[3] = {a, b, c};
+    write_param(handle, GPU_PARAM_FLOAT, 3, 1, v);
+}
+
+void
+param_4f(int32_t handle, float a, float b, float c, float d) {
+    const float v[4] = {a, b, c, d};
+    write_param(handle, GPU_PARAM_FLOAT, 4, 1, v);
+}
+
+void
+param_1i(int32_t handle, int32_t a) {
+    write_param(handle, GPU_PARAM_INT, 1, 1, &a);
+}
+
+void
+param_1ui(int32_t handle, uint32_t a) {
+    write_param(handle, GPU_PARAM_UINT, 1, 1, &a);
+}
+
+// Pass changed parameters of the current program to the driver, done just before drawing
+static void
+flush_params(void) {
+    if (current_program < 0 || !programs[current_program]) return;
+    ProgramParams *pp = program_params + current_program;
+    for (size_t b = 0; b < pp->num_blocks; b++) {
+        ParamBlock *pb = pp->blocks + b;
+        if (pb->dirty) {
+            gpu_set_params(programs[current_program], (uint32_t)b, pb->data, pb->size);
+            pb->dirty = false;
+        }
+    }
+}
+// }}}
 
 int32_t
 program_attribute_location(int program, const char *name) {
@@ -443,7 +788,6 @@ ArrayInformation
 program_uniform_array(int program, const char *name) {
     return program_metadata_entry(program, name, PROGRAM_ARRAY)->array;
 }
-// }}}
 
 uint32_t
 program_texture_slot(int program, const char *name) {
@@ -452,20 +796,21 @@ program_texture_slot(int program, const char *name) {
 
 bool
 try_program_texture_slot(int program, const char *name, uint32_t *slot) {
-    if (!program_layouts_initialized[program]) return false;
-    program_metadata_map_itr itr = vt_get(program_layouts + program, name);
-    if (vt_is_end(itr) || itr.data->val.kind != PROGRAM_TEXTURE) return false;
-    *slot = (uint32_t)itr.data->val.location;
+    ProgramMetadataEntry *e;
+    if (!find_program_metadata(program, name, PROGRAM_TEXTURE, &e)) return false;
+    *slot = (uint32_t)e->location;
     return true;
 }
 
 void
 bind_program(int program) {
+    current_program = program;
     gpu_use_pipeline(programs[program]);
 }
 
 void
 unbind_program(void) {
+    current_program = -1;
     gpu_use_pipeline(GPU_NULL_HANDLE);
 }
 // }}}
