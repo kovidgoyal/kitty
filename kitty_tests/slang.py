@@ -11,10 +11,12 @@ import sys
 import tempfile
 from unittest.mock import patch
 
-from kitty.constants import slangc
+from kitty.constants import gpu_driver_path, slangc
+from kitty.fast_data_types import gpu_shader_target, load_gpu_driver
 from kitty.shaders.slang import (
     EntryPoint,
     LoadShaderPrograms,
+    ShaderTarget,
     SlangFile,
     SlangShaderQuery,
     Stage,
@@ -43,6 +45,13 @@ from kitty.shaders.slang import (
 from .base import BaseTest
 
 _SUPPORT_SHADER_NAMES = frozenset(('types', 'pipeline'))
+
+
+def driver_shader_target() -> ShaderTarget:
+    # The shader target of the GPU driver, loading the driver does not need a window
+    if not gpu_shader_target():
+        load_gpu_driver(gpu_driver_path())
+    return ShaderTarget.parse(gpu_shader_target())
 
 
 class TestSlang(BaseTest):
@@ -269,6 +278,7 @@ class TestSlang(BaseTest):
         with (
             patch('kitty.shaders.slang.parse_pipeline', return_value=pipeline),
             patch('kitty.shaders.slang.build_custom_shader_pipeline_glsl', return_value=('vertex', 'fragment', {})),
+            patch('kitty.shaders.slang.current_shader_target', return_value=driver_shader_target()),
             patch('kitty.shaders.slang.compile_program') as compile_program,
         ):
             for shaders in (('test',), (), ('test',)):
@@ -760,9 +770,9 @@ float f() { static const float SCAN = 2; return SCAN; }
                 'test',
             )
             try:
-                vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)
+                vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, driver_shader_target(), cache_dir=cache_dir)
                 invocation_tracker = set()
-                build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir, invocation_tracker=invocation_tracker)
+                build_custom_shader_pipeline_glsl(p, driver_shader_target(), cache_dir=cache_dir, invocation_tracker=invocation_tracker)
             finally:
                 clear_caches()
 
@@ -793,7 +803,7 @@ float f() { static const float SCAN = 2; return SCAN; }
                 'test',
             )
             try:
-                _, pm_frag_src, pm_metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)
+                _, pm_frag_src, pm_metadata = build_custom_shader_pipeline_glsl(p, driver_shader_target(), cache_dir=cache_dir)
             finally:
                 clear_caches()
         self.assertTrue(pm_metadata['has_pointer_map'])
@@ -867,7 +877,7 @@ float f() { static const float SCAN = 2; return SCAN; }
                     name,
                 )
                 try:
-                    vert_src, frag_src, _ = build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
+                    vert_src, frag_src, _ = build_custom_shader_pipeline_glsl(pipeline, driver_shader_target(), cache_dir=cache_dir)
                 except Exception as e:
                     failures.append(f'{name}: {e}')
                     continue
@@ -882,7 +892,7 @@ float f() { static const float SCAN = 2; return SCAN; }
             for name in pipeline_names:
                 try:
                     pipeline = parse_pipeline_definition(get_custom_pipeline_src(name).decode().splitlines(), name)
-                    build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
+                    build_custom_shader_pipeline_glsl(pipeline, driver_shader_target(), cache_dir=cache_dir)
                 except Exception as e:
                     failures.append(f'{name}.pipeline: {e}')
             clear_caches()

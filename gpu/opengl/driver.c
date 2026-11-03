@@ -42,10 +42,17 @@ typedef struct Uniform {
     GLint location;
 } Uniform;
 
+typedef struct NativeName {
+    char *name, *native_name;
+} NativeName;
+
 typedef struct Pipeline {
     GLuint id;
     Uniform *uniforms;
     GLint num_uniforms;
+    // Maps Slang names to GLSL identifiers
+    NativeName *native_names;
+    size_t num_native_names;
 } Pipeline;
 
 typedef struct Driver {
@@ -151,6 +158,14 @@ version_string(void *driver) {
     const char *gvs = (const char *)glGetString(GL_VERSION);
     snprintf(d->version_string, sizeof(d->version_string), "'%s' Detected version: %d.%d", gvs, gl_major, gl_minor);
     return d->version_string;
+}
+
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
+
+static const char *
+shader_target(void *driver UNUSED) {
+    return "glsl-" STRINGIFY(GLSL_VERSION);
 }
 
 static bool
@@ -645,6 +660,11 @@ pipeline_destroy(void *driver UNUSED, gpu_pipeline_t pipeline) {
     if (!p) return;
     if (p->id) glDeleteProgram(p->id);
     free(p->uniforms);
+    for (size_t i = 0; i < p->num_native_names; i++) {
+        free(p->native_names[i].name);
+        free(p->native_names[i].native_name);
+    }
+    free(p->native_names);
     free(p);
 }
 
@@ -669,12 +689,53 @@ read_active_uniforms(Driver *d, Pipeline *p) {
     return true;
 }
 
+static char *
+dup_string(const char *src) {
+    const size_t n = strlen(src) + 1;
+    char *ans = malloc(n);
+    if (ans) memcpy(ans, src, n);
+    return ans;
+}
+
+static bool
+copy_native_names(Driver *d, Pipeline *p, const GPUNativeName *names, size_t count) {
+    if (!count) return true;
+    p->native_names = calloc(count, sizeof(NativeName));
+    if (!p->native_names) {
+        set_error(d, "Out of memory allocating a GPU program");
+        return false;
+    }
+    for (size_t i = 0; i < count; i++) {
+        p->native_names[i].name = dup_string(names[i].name);
+        p->native_names[i].native_name = dup_string(names[i].native_name);
+        p->num_native_names++;
+        if (!p->native_names[i].name || !p->native_names[i].native_name) {
+            set_error(d, "Out of memory allocating a GPU program");
+            return false;
+        }
+    }
+    return true;
+}
+
+// The GLSL identifier for a Slang name
+static const char *
+native_name(const Pipeline *p, const char *name) {
+    for (size_t i = 0; i < p->num_native_names; i++) {
+        if (strcmp(p->native_names[i].name, name) == 0) return p->native_names[i].native_name;
+    }
+    return name;
+}
+
 static gpu_pipeline_t
-pipeline_create(void *driver, const GPUShaderSource *sources, size_t num_sources) {
+pipeline_create(void *driver, const GPUShaderSource *sources, size_t num_sources, const GPUNativeName *native_names, size_t num_native_names) {
     Driver *d = driver;
     Pipeline *p = calloc(1, sizeof(Pipeline));
     if (!p) {
         set_error(d, "Out of memory allocating a GPU program");
+        return GPU_NULL_HANDLE;
+    }
+    if (!copy_native_names(d, p, native_names, num_native_names)) {
+        pipeline_destroy(d, AS_HANDLE(p));
         return GPU_NULL_HANDLE;
     }
     p->id = glCreateProgram();
@@ -714,6 +775,7 @@ use_pipeline(void *driver UNUSED, gpu_pipeline_t pipeline) {
 static int32_t
 pipeline_uniform_slot(void *driver UNUSED, gpu_pipeline_t pipeline, const char *name) {
     const Pipeline *p = AS_PIPELINE(pipeline);
+    name = native_name(p, name);
     const size_t n = strlen(name) + 1;
     for (GLint i = 0; i < p->num_uniforms; i++) {
         const Uniform *u = p->uniforms + i;
@@ -725,6 +787,7 @@ pipeline_uniform_slot(void *driver UNUSED, gpu_pipeline_t pipeline, const char *
 static bool
 pipeline_uniform_block(void *driver, gpu_pipeline_t pipeline, const char *name, GPUUniformBlockInfo *ans) {
     const Pipeline *p = AS_PIPELINE(pipeline);
+    name = native_name(p, name);
     GLuint index = glGetUniformBlockIndex(p->id, name);
     if (index == GL_INVALID_INDEX) {
         set_error(driver, "Could not find block index for %s", name);
@@ -737,26 +800,6 @@ pipeline_uniform_block(void *driver, gpu_pipeline_t pipeline, const char *name, 
     return true;
 }
 
-static bool
-pipeline_uniform_array(void *driver, gpu_pipeline_t pipeline, const char *name, GPUUniformArrayInfo *ans) {
-    const Pipeline *p = AS_PIPELINE(pipeline);
-    const GLchar *names[1] = {name};
-    GLuint t;
-    glGetUniformIndices(p->id, 1, names, &t);
-    if (t == GL_INVALID_INDEX) {
-        set_error(driver, "Could not find the index for uniform array: %s", name);
-        return false;
-    }
-    GLint stride, offset, size;
-    glGetActiveUniformsiv(p->id, 1, &t, GL_UNIFORM_ARRAY_STRIDE, &stride);
-    glGetActiveUniformsiv(p->id, 1, &t, GL_UNIFORM_OFFSET, &offset);
-    glGetActiveUniformsiv(p->id, 1, &t, GL_UNIFORM_SIZE, &size);
-    ans->stride = stride > 0 ? (uint32_t)stride : 0;
-    ans->offset = offset > 0 ? (uint32_t)offset : 0;
-    ans->count = size > 0 ? (uint32_t)size : 0;
-    return true;
-}
-
 static void
 pipeline_bind_uniform_block(void *driver UNUSED, gpu_pipeline_t pipeline, uint32_t block_index, uint32_t binding_point) {
     glUniformBlockBinding(AS_PIPELINE(pipeline)->id, block_index, binding_point);
@@ -764,7 +807,8 @@ pipeline_bind_uniform_block(void *driver UNUSED, gpu_pipeline_t pipeline, uint32
 
 static int32_t
 pipeline_attribute_location(void *driver UNUSED, gpu_pipeline_t pipeline, const char *name) {
-    return glGetAttribLocation(AS_PIPELINE(pipeline)->id, name);
+    const Pipeline *p = AS_PIPELINE(pipeline);
+    return glGetAttribLocation(p->id, native_name(p, name));
 }
 
 static void
@@ -1195,7 +1239,9 @@ kitty_gpu_driver_load(uint32_t api_version, const GPUDriverInitParams *params, G
     the_driver = d;
     *api = (GPUDriverAPI){
         .api_version = KITTY_GPU_API_VERSION,
+        .name = "OpenGL",
 #define F(name) .name = name
+        F(shader_target),
         F(initialize),
         F(destroy),
         F(last_error),
@@ -1224,7 +1270,6 @@ kitty_gpu_driver_load(uint32_t api_version, const GPUDriverInitParams *params, G
         F(use_pipeline),
         F(pipeline_uniform_slot),
         F(pipeline_uniform_block),
-        F(pipeline_uniform_array),
         F(pipeline_bind_uniform_block),
         F(pipeline_attribute_location),
         F(set_uniform_floats),

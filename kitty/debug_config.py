@@ -19,7 +19,16 @@ from .child import cmdline_of_pid
 from .cli import version
 from .colors import theme_colors
 from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
-from .fast_data_types import Color, SingleKey, current_fonts, glfw_get_system_color_theme, gpu_driver_version_string, num_users, wayland_compositor_data
+from .fast_data_types import (
+    Color,
+    SingleKey,
+    current_fonts,
+    glfw_get_system_color_theme,
+    gpu_driver_name,
+    gpu_driver_version_string,
+    num_users,
+    wayland_compositor_data,
+)
 from .options.types import Options as KittyOpts
 from .options.types import defaults, secret_options
 from .options.utils import KeyboardMode, KeyDefinition
@@ -310,7 +319,7 @@ def debug_config(opts: KittyOpts | None = None, global_shortcuts: dict[str, Sing
         p(f.read().strip())
     if not is_macos:
         p('Running under:', green(compositor_name()))
-    p(green('OpenGL:'), gpu_driver_version_string())
+    p(green(f'{gpu_driver_name() or "GPU"}:'), gpu_driver_version_string())
     p(green('Frozen:'), 'True' if getattr(sys, 'frozen', False) else 'False')
     p(green('Fonts:'))
     for k, font in current_fonts().items():
