@@ -30,8 +30,18 @@ driver_fatal(const char *msg) {
     fatal("%s", msg);
 }
 
+static void
+driver_x11_push_error_trap(void) {
+    if (glfwX11PushErrorTrap_impl) glfwX11PushErrorTrap();
+}
+
+static int
+driver_x11_pop_error_trap(void) {
+    return glfwX11PopErrorTrap_impl ? glfwX11PopErrorTrap() : 0;
+}
+
 const char *
-load_gpu_driver(const char *path, bool debug_rendering, gpu_get_proc_address_func get_proc_address) {
+load_gpu_driver(const char *path, bool debug_rendering) {
     static char errbuf[2048];
     if (gpu_driver.driver) return NULL;
     void *handle = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
@@ -48,11 +58,12 @@ load_gpu_driver(const char *path, bool debug_rendering, gpu_get_proc_address_fun
         return errbuf;
     }
     const GPUDriverInitParams params = {
-        .get_proc_address = get_proc_address,
         .debug_rendering = debug_rendering,
         .log_error = driver_log_error,
         .debug_print = driver_debug_print,
         .fatal = driver_fatal,
+        .x11_push_error_trap = driver_x11_push_error_trap,
+        .x11_pop_error_trap = driver_x11_pop_error_trap,
     };
     GPUDriverAPI api = {0};
     void *driver = NULL;

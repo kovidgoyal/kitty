@@ -679,7 +679,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
     }
     [currentScreenStates release];
 
-    if (window->context.client != GLFW_NO_API) [window->context.nsgl.object update];
+    _glfwInputNativeSurfaceChanged(window);
 
     if (_glfw.ns.disabledCursorWindow == window) _glfwCenterCursorInContentArea(window);
 
@@ -711,7 +711,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 
 - (void)windowDidMove:(NSNotification *)notification {
     (void)notification;
-    if (window->context.client != GLFW_NO_API) [window->context.nsgl.object update];
+    _glfwInputNativeSurfaceChanged(window);
 
     if (_glfw.ns.disabledCursorWindow == window) _glfwCenterCursorInContentArea(window);
 
@@ -1024,13 +1024,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 
 - (void)updateLayer {
     if (!window) return;
-    if (window->context.client != GLFW_NO_API) {
-        @try {
-            [window->context.nsgl.object update];
-        } @catch (NSException *e) {
-            _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to update NSGL Context object with error: %s (%s)", [[e name] UTF8String], [[e reason] UTF8String]);
-        }
-    }
+    _glfwInputNativeSurfaceChanged(window);
 
     _glfwInputWindowDamage(window);
 }
@@ -2705,8 +2699,7 @@ createNativeWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _
 //////////////////////////////////////////////////////////////////////////
 
 int
-_glfwPlatformCreateWindow(
-    _GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig, const GLFWLayerShellConfig *lsc) {
+_glfwPlatformCreateWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _GLFWfbconfig *fbconfig, const GLFWLayerShellConfig *lsc) {
     window->ns.deadKeyState = 0;
     if (lsc) {
         window->ns.layer_shell.is_active = true;
@@ -2722,24 +2715,6 @@ _glfwPlatformCreateWindow(
         case SRGB_COLORSPACE: [window->ns.object setColorSpace:[NSColorSpace sRGBColorSpace]]; break;
         case DISPLAY_P3_COLORSPACE: [window->ns.object setColorSpace:[NSColorSpace displayP3ColorSpace]]; break;
         case DEFAULT_COLORSPACE: break;
-    }
-
-    if (ctxconfig->client != GLFW_NO_API) {
-        if (ctxconfig->source == GLFW_NATIVE_CONTEXT_API) {
-            if (!_glfwInitNSGL()) return false;
-            if (!_glfwCreateContextNSGL(window, ctxconfig, fbconfig)) return false;
-        } else if (ctxconfig->source == GLFW_EGL_CONTEXT_API) {
-            // EGL implementation on macOS use CALayer* EGLNativeWindowType so we
-            // need to get the layer for EGL window surface creation.
-            [window->ns.view setWantsLayer:YES];
-            window->ns.layer = [window->ns.view layer];
-
-            if (!_glfwInitEGL()) return false;
-            if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig)) return false;
-        } else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API) {
-            if (!_glfwInitOSMesa()) return false;
-            if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig)) return false;
-        }
     }
 
     if (window->monitor) {
@@ -2767,8 +2742,6 @@ _glfwPlatformDestroyWindow(_GLFWwindow *window) {
     [w orderOut:nil];
 
     if (window->monitor) releaseMonitor(window);
-
-    if (window->context.destroy) window->context.destroy(window);
 
     [w setDelegate:nil];
     [window->ns.delegate cleanup];
@@ -3978,40 +3951,8 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
 }
 // }}}
 
-EGLenum
-_glfwPlatformGetEGLPlatform(EGLint **attribs) {
-    if (_glfw.egl.ANGLE_platform_angle) {
-        int type = 0;
-
-        if (_glfw.egl.ANGLE_platform_angle_opengl) {
-            if (_glfw.hints.init.angleType == GLFW_ANGLE_PLATFORM_TYPE_OPENGL) type = EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE;
-        }
-
-        if (_glfw.egl.ANGLE_platform_angle_metal) {
-            if (_glfw.hints.init.angleType == GLFW_ANGLE_PLATFORM_TYPE_METAL) type = EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE;
-        }
-
-        if (type) {
-            *attribs = calloc(3, sizeof(EGLint));
-            (*attribs)[0] = EGL_PLATFORM_ANGLE_TYPE_ANGLE;
-            (*attribs)[1] = type;
-            (*attribs)[2] = EGL_NONE;
-            return EGL_PLATFORM_ANGLE_ANGLE;
-        }
-    }
-
-    return 0;
-}
-
-EGLNativeDisplayType
-_glfwPlatformGetEGLNativeDisplay(void) {
-    return EGL_DEFAULT_DISPLAY;
-}
-
-EGLNativeWindowType
-_glfwPlatformGetEGLNativeWindow(_GLFWwindow *window) {
-    return window->ns.layer;
-}
+void
+_glfwPlatformWindowContentsPresented(_GLFWwindow *window UNUSED) {}
 
 void
 _glfwPlatformGetRequiredInstanceExtensions(char **extensions) {
@@ -4118,6 +4059,15 @@ glfwGetCocoaWindow(GLFWwindow *handle) {
 
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
     return window->ns.object;
+}
+
+GLFWAPI id
+glfwGetCocoaView(GLFWwindow *handle) {
+    _GLFWwindow *window = (_GLFWwindow *)handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(nil);
+    return window->ns.view;
 }
 
 GLFWAPI GLFWcocoatextinputfilterfun

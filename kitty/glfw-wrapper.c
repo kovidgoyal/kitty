@@ -287,6 +287,12 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetFramebufferSizeCallback_impl) = dlsym(handle, "glfwSetFramebufferSizeCallback");
     if (glfwSetFramebufferSizeCallback_impl == NULL) fail("Failed to load glfw function glfwSetFramebufferSizeCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetNativeSurfaceChangedCallback_impl) = dlsym(handle, "glfwSetNativeSurfaceChangedCallback");
+    if (glfwSetNativeSurfaceChangedCallback_impl == NULL) fail("Failed to load glfw function glfwSetNativeSurfaceChangedCallback with error: %s", dlerror());
+
+    *(void **) (&glfwWindowContentsPresented_impl) = dlsym(handle, "glfwWindowContentsPresented");
+    if (glfwWindowContentsPresented_impl == NULL) fail("Failed to load glfw function glfwWindowContentsPresented with error: %s", dlerror());
+
     *(void **) (&glfwSetWindowContentScaleCallback_impl) = dlsym(handle, "glfwSetWindowContentScaleCallback");
     if (glfwSetWindowContentScaleCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowContentScaleCallback with error: %s", dlerror());
 
@@ -437,24 +443,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetTime_impl) = dlsym(handle, "glfwGetTime");
     if (glfwGetTime_impl == NULL) fail("Failed to load glfw function glfwGetTime with error: %s", dlerror());
 
-    *(void **) (&glfwMakeContextCurrent_impl) = dlsym(handle, "glfwMakeContextCurrent");
-    if (glfwMakeContextCurrent_impl == NULL) fail("Failed to load glfw function glfwMakeContextCurrent with error: %s", dlerror());
-
-    *(void **) (&glfwGetCurrentContext_impl) = dlsym(handle, "glfwGetCurrentContext");
-    if (glfwGetCurrentContext_impl == NULL) fail("Failed to load glfw function glfwGetCurrentContext with error: %s", dlerror());
-
-    *(void **) (&glfwSwapBuffers_impl) = dlsym(handle, "glfwSwapBuffers");
-    if (glfwSwapBuffers_impl == NULL) fail("Failed to load glfw function glfwSwapBuffers with error: %s", dlerror());
-
-    *(void **) (&glfwSwapInterval_impl) = dlsym(handle, "glfwSwapInterval");
-    if (glfwSwapInterval_impl == NULL) fail("Failed to load glfw function glfwSwapInterval with error: %s", dlerror());
-
-    *(void **) (&glfwExtensionSupported_impl) = dlsym(handle, "glfwExtensionSupported");
-    if (glfwExtensionSupported_impl == NULL) fail("Failed to load glfw function glfwExtensionSupported with error: %s", dlerror());
-
-    *(void **) (&glfwGetProcAddress_impl) = dlsym(handle, "glfwGetProcAddress");
-    if (glfwGetProcAddress_impl == NULL) fail("Failed to load glfw function glfwGetProcAddress with error: %s", dlerror());
-
     *(void **) (&glfwVulkanSupported_impl) = dlsym(handle, "glfwVulkanSupported");
     if (glfwVulkanSupported_impl == NULL) fail("Failed to load glfw function glfwVulkanSupported with error: %s", dlerror());
 
@@ -464,8 +452,8 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetCocoaWindow_impl) = dlsym(handle, "glfwGetCocoaWindow");
     if (glfwGetCocoaWindow_impl == NULL) dlerror(); // clear error indicator
 
-    *(void **) (&glfwGetNSGLContext_impl) = dlsym(handle, "glfwGetNSGLContext");
-    if (glfwGetNSGLContext_impl == NULL) dlerror(); // clear error indicator
+    *(void **) (&glfwGetCocoaView_impl) = dlsym(handle, "glfwGetCocoaView");
+    if (glfwGetCocoaView_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetCocoaMonitor_impl) = dlsym(handle, "glfwGetCocoaMonitor");
     if (glfwGetCocoaMonitor_impl == NULL) dlerror(); // clear error indicator
@@ -491,9 +479,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwCocoaRequestRenderFrame_impl) = dlsym(handle, "glfwCocoaRequestRenderFrame");
     if (glfwCocoaRequestRenderFrame_impl == NULL) dlerror(); // clear error indicator
 
-    *(void **) (&glfwCocoaRecreateGLDrawable_impl) = dlsym(handle, "glfwCocoaRecreateGLDrawable");
-    if (glfwCocoaRecreateGLDrawable_impl == NULL) dlerror(); // clear error indicator
-
     *(void **) (&glfwCocoaSetWindowResizeCallback_impl) = dlsym(handle, "glfwCocoaSetWindowResizeCallback");
     if (glfwCocoaSetWindowResizeCallback_impl == NULL) dlerror(); // clear error indicator
 
@@ -502,6 +487,18 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetX11Window_impl) = dlsym(handle, "glfwGetX11Window");
     if (glfwGetX11Window_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwX11PushErrorTrap_impl) = dlsym(handle, "glfwX11PushErrorTrap");
+    if (glfwX11PushErrorTrap_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwX11PopErrorTrap_impl) = dlsym(handle, "glfwX11PopErrorTrap");
+    if (glfwX11PopErrorTrap_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwGetWaylandDisplay_impl) = dlsym(handle, "glfwGetWaylandDisplay");
+    if (glfwGetWaylandDisplay_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwGetWaylandWindow_impl) = dlsym(handle, "glfwGetWaylandWindow");
+    if (glfwGetWaylandWindow_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwSetPrimarySelectionString_impl) = dlsym(handle, "glfwSetPrimarySelectionString");
     if (glfwSetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
