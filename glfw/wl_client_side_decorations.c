@@ -132,8 +132,10 @@ create_shadow_tile(_GLFWwindow *window) {
     free(st.data);
     st.data = NULL;
     if (!mask) return margin;
-    st.data = malloc(sizeof(st.data[0]) * st.stride * st.stride);
-    if (st.data)
+    // Fill a local buffer and only publish it to st.data once complete, this
+    // also avoids a false positive use-after-free warning from CodeQL
+    uint32_t *data = malloc(sizeof(data[0]) * st.stride * st.stride);
+    if (data)
         for (size_t y = 0; y < st.stride; y++)
             for (size_t x = 0; x < st.stride; x++) {
                 double alpha = mask[y * st.stride + x];
@@ -148,9 +150,10 @@ create_shadow_tile(_GLFWwindow *window) {
                 if (dx > 0 && dy > 0) distance = radius - hypot(dx, dy);
                 double coverage = fmax(0, fmin(1, distance / feather));
                 alpha *= coverage * coverage * (3 - 2 * coverage);
-                st.data[y * st.stride + x] = ((uint32_t)(alpha * 255)) << 24;
+                data[y * st.stride + x] = ((uint32_t)(alpha * 255)) << 24;
             }
     free(mask);
+    st.data = data;
     return margin;
 }
 
