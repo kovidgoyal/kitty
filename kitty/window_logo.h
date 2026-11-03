@@ -9,13 +9,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "../gpu/api.h"
 
 typedef unsigned int window_logo_id_t;
 
 typedef struct WindowLogo {
     unsigned int height, width;
     bool load_from_disk_ok;
-    uint32_t texture_id;
+    gpu_texture_t texture_id;
     uint8_t *bitmap;
     size_t mmap_size;
 } WindowLogo;
