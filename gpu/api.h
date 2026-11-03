@@ -251,6 +251,44 @@ typedef struct GPUBinding {
     uint32_t slot;
 } GPUBinding;
 
+// Parameter blocks hold the small, frequently changing, parameters of a
+// pipeline: the uniform parameters of each entry point, and uniform blocks
+// whose contents are constant for the lifetime of the pipeline. Their layout
+// comes from the reflection data. kitty writes their contents into memory it
+// owns, laid out as described here, and passes it to set_params() before
+// drawing. Values persist with the pipeline until set again. Drivers are free
+// to implement them as they see fit, for example as loose uniforms in OpenGL,
+// push constants in Vulkan or set*Bytes() in Metal.
+typedef enum {
+    GPU_PARAM_FLOAT = 1, // 32 bit float
+    GPU_PARAM_INT,       // 32 bit signed integer
+    GPU_PARAM_UINT,      // 32 bit unsigned integer
+    GPU_PARAM_BOOL,      // 32 bit, zero is false
+} GPUParamScalar;
+
+typedef struct GPUParamField {
+    const char *name; // name in the Slang source
+    uint32_t offset;  // byte offset from the start of the block
+    GPUParamScalar scalar;
+    uint32_t components; // number of components in each element, 1 to 4
+    uint32_t count;      // number of elements, greater than one for arrays
+    uint32_t stride;     // bytes between consecutive elements
+} GPUParamField;
+
+typedef struct GPUParamBlock {
+    // For the uniform parameters of an entry point name is NULL and stage is
+    // the stage of the entry point. For uniform blocks name is the name of the
+    // type of the block in the Slang source, stage is zero and slot is the
+    // binding slot of the block, which drivers that implement it as a
+    // uniform buffer must use.
+    const char *name;
+    GPUShaderStage stage;
+    int32_t slot;
+    uint32_t size; // size in bytes of the block
+    const GPUParamField *fields;
+    size_t num_fields;
+} GPUParamBlock;
+
 typedef struct GPUNativeName {
     const char *name;        // the name of a parameter, vertex input or uniform block type in the Slang source
     const char *native_name; // the corresponding identifier in the compiled code
@@ -336,14 +374,18 @@ typedef struct GPUDriverAPI {
 
     // Pipelines {{{
     // Create a pipeline from shader sources compiled for the shader target of
-    // the driver. bindings are the binding slots of its textures and uniform
-    // blocks, see GPUBinding. native_names maps Slang names to identifiers in
-    // the compiled code, see GPUNativeName, and may be empty for targets that
-    // do not need it. On failure last_error() contains the compiler output.
+    // the driver. param_blocks describe its parameter blocks, see
+    // GPUParamBlock, and are identified by their index in this array.
+    // bindings are the binding slots of its textures and uniform blocks, see
+    // GPUBinding. native_names maps Slang names to identifiers in the compiled
+    // code, see GPUNativeName, and may be empty for targets that do not need
+    // it. On failure last_error() contains the compiler output.
     gpu_pipeline_t (*pipeline_create)(
         void *driver,
         const GPUShaderSource *sources,
         size_t num_sources,
+        const GPUParamBlock *param_blocks,
+        size_t num_param_blocks,
         const GPUBinding *bindings,
         size_t num_bindings,
         const GPUNativeName *native_names,
@@ -352,21 +394,15 @@ typedef struct GPUDriverAPI {
     // Make a pipeline current, GPU_NULL_HANDLE for none
     void (*use_pipeline)(void *driver, gpu_pipeline_t pipeline);
     // All names below are names in the Slang source.
-    // The slot used to set the named loose uniform with the set_uniform_*()
-    // functions, or -1 if the pipeline does not use that uniform. For arrays,
-    // name must not include a subscript.
-    int32_t (*pipeline_uniform_slot)(void *driver, gpu_pipeline_t pipeline, const char *name);
     // name is the name of the type of the uniform block. The size reported
     // by the driver is used to verify the layout from the reflection data.
     bool (*pipeline_uniform_block)(void *driver, gpu_pipeline_t pipeline, const char *name, GPUUniformBlockInfo *ans);
     // The location of the named vertex input, -1 if it is not used
     int32_t (*pipeline_attribute_location)(void *driver, gpu_pipeline_t pipeline, const char *name);
-    // Set the value of a loose uniform of the current pipeline. components is
-    // the number of components in each element (1 to 4) and count the number
-    // of elements. Slots that are negative are ignored.
-    void (*set_uniform_floats)(void *driver, int32_t slot, uint32_t components, uint32_t count, const float *values);
-    void (*set_uniform_ints)(void *driver, int32_t slot, uint32_t components, uint32_t count, const int32_t *values);
-    void (*set_uniform_uints)(void *driver, int32_t slot, uint32_t components, uint32_t count, const uint32_t *values);
+    // Set the contents of a parameter block of the pipeline, which must be
+    // the current pipeline. block is the index of the block in the array
+    // passed to pipeline_create() and data is laid out as described there.
+    void (*set_params)(void *driver, gpu_pipeline_t pipeline, uint32_t block, const void *data, size_t size);
     // }}}
 
     // Vertex layouts {{{
