@@ -6,6 +6,7 @@
  */
 
 #include "cleanup.h"
+#include "gpu.h"
 #include "dnd.h"
 #include "options/to-c-generated.h"
 #include <math.h>

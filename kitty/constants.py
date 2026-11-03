@@ -232,6 +232,11 @@ def glfw_path(module: str) -> str:
     return os.path.join(extensions_dir, f'{prefix}glfw-{module}.so')
 
 
+def gpu_driver_path(driver: str = 'opengl') -> str:
+    prefix = 'kitty.' if getattr(sys, 'frozen', False) else ''
+    return os.path.join(extensions_dir, f'{prefix}{driver}.so')
+
+
 def detect_if_wayland_ok() -> bool:
     if not os.environ.get('WAYLAND_DISPLAY') and not os.environ.get('WAYLAND_SOCKET'):
         return False

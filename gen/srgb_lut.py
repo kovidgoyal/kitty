@@ -33,7 +33,7 @@ def generate_srgb_lut(line_prefix: str = '    ') -> list[str]:
     return lines
 
 
-def generate_srgb_gamma(declaration: str = 'static const GLfloat srgb_lut[256] = {', close: str = '};') -> str:
+def generate_srgb_gamma(declaration: str = 'static const float srgb_lut[256] = {', close: str = '};') -> str:
     lines: list[str] = []
     a = lines.append
 
