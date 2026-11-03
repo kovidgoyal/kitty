@@ -342,7 +342,6 @@ thickness_as_float(const OSWindow *os_window, unsigned level) {
 static void
 draw_rounded_rect(
     Viewport rect,
-    unsigned framebuffer_height,
     float thickness,
     unsigned corner_radius_px,
     color_type srgb_color,
@@ -354,11 +353,9 @@ draw_rounded_rect(
     color_vec4(program_param(ROUNDED_RECT_PROGRAM, "color"), srgb_color, 1.f);
     color_vec4(program_param(ROUNDED_RECT_PROGRAM, "background_color"), srgb_background, bg_alpha);
     color_vec4(program_param(ROUNDED_RECT_PROGRAM, "outer_color"), srgb_outer, outer_alpha);
-    // y co-ord has to be changed to co-ord system with origin at bottom left
-    float y = (float)framebuffer_height - (float)(rect.top + rect.height);
-    param_4f(program_param(ROUNDED_RECT_PROGRAM, "rect"), rect.left, y, rect.width, rect.height);
+    param_2f(program_param(ROUNDED_RECT_PROGRAM, "size"), rect.width, rect.height);
     param_2f(program_param(ROUNDED_RECT_PROGRAM, "params"), thickness, corner_radius_px);
-    save_viewport_using_top_left_origin(rect.left, rect.top, rect.width, rect.height, framebuffer_height);
+    save_viewport(rect.left, rect.top, rect.width, rect.height);
     draw_quad(true, 0);
     restore_viewport();
 }
@@ -1278,7 +1275,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
         screen->scrolled_by,                    \
         scroll_offset_lines_for_screen(screen), \
         -1.f,                                   \
-        1.f,                                    \
+        -1.f,                                   \
         2.f / screen->columns,                  \
         2.f / screen->lines,                    \
         screen->columns,                        \
@@ -1434,7 +1431,7 @@ draw_visual_bell_flash(float intensity, const color_type flash) {
     if (max_channel > 0.45) attenuation = 0.6f; // light color
     param_4f(program_param(TINT_PROGRAM, "tint_color"), C(r), C(g), C(b), C(1));
 #undef C
-    param_4f(program_param(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
+    param_4f(program_param(TINT_PROGRAM, "edges"), -1, -1, 1, 1);
     draw_quad(true, 0);
 }
 
@@ -1467,7 +1464,7 @@ draw_drag_preview_overlay(const UIRenderData *ui) {
     const monotonic_t elapsed = monotonic() - screen->start_drag_overlay_at;
     const monotonic_t fade_ms = ms_to_monotonic_t(150ll);
     float intensity = elapsed >= fade_ms ? 1.0f : (float)elapsed / (float)fade_ms;
-    float left = -1.f, top = 1.f, right = 1.f, bottom = -1.f;
+    float left = -1.f, top = -1.f, right = 1.f, bottom = 1.f;
     switch (screen->drag_overlay_quadrant) {
         case 1: right = 0.f; break;  // left half
         case 2: left = 0.f; break;   // right half
@@ -1577,7 +1574,7 @@ draw_bar(const UIRenderData *ui, const WindowBarData *bar, Viewport border_rect,
     // bleed onto the rendered title.
     const float drawn_thickness = (float)MIN(thickness, border_width - 0.5);
     static ImageRenderData data = {.group_count = 1};
-    gpu_data_for_image(&data, -1, 1, 1, -1);
+    gpu_data_for_image(&data, -1, -1, 1, 1);
     const GPUTextureDesc desc = {
         .kind = GPU_TEXTURE_2D,
         .format = GPU_FORMAT_SRGB8_ALPHA8,
@@ -1588,18 +1585,17 @@ draw_bar(const UIRenderData *ui, const WindowBarData *bar, Viewport border_rect,
     const GPUPixelData pixels = {.layout = GPU_PIXELS_RGBA8, .row_alignment = 1, .data = bar->buf};
     data.texture_id = create_texture_or_die(&desc, &pixels);
     bind_program(GRAPHICS_PROGRAM);
-    const unsigned sh = ui->full_framebuffer_height;
     // first blank the area to be drawn to background
-    enable_scissor_using_top_left_origin(border_rect, sh);
+    enable_scissor(border_rect);
     blank_canvas(ui->bg_alpha, bg, false);
     disable_scissor();
     // then draw the rendered text
-    save_viewport_using_top_left_origin(border_rect.left + border_width, border_rect.top + border_width, bar->width, bar->height, sh);
+    save_viewport(border_rect.left + border_width, border_rect.top + border_width, bar->width, bar->height);
     draw_graphics(GRAPHICS_PROGRAM, &data, 0, 1, 1.f);
     restore_viewport();
     free_texture(&data.texture_id);
     // finally draw border with transparent bg
-    draw_rounded_rect(border_rect, sh, drawn_thickness, ui->cell_width, fg, bg, 0.f, 0, 0.f);
+    draw_rounded_rect(border_rect, drawn_thickness, ui->cell_width, fg, bg, 0.f, 0, 0.f);
 }
 
 static unsigned
@@ -1726,7 +1722,7 @@ draw_window_number(const UIRenderData *ui) {
     if (lr.height_px + title_bar_height < ui->screen_height) letter_y += (ui->screen_height - lr.height_px - title_bar_height) / 2;
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
-    gpu_data_for_image(ird, -1, 1, 1, -1);
+    gpu_data_for_image(ird, -1, -1, 1, 1);
     color_type digit_color = colorprofile_to_color_with_fallback(
         ui->screen->color_profile,
         ui->screen->color_profile->overridden.highlight_bg,
@@ -1735,7 +1731,7 @@ draw_window_number(const UIRenderData *ui) {
         ui->screen->color_profile->configured.default_fg);
     color_vec3(program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), digit_color);
     param_4f(program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), 0.f, 0.f, 0.f, 0.f);
-    save_viewport_using_top_left_origin(ui->screen_left + letter_x, ui->screen_top + letter_y, lr.width_px, lr.height_px, ui->full_framebuffer_height);
+    save_viewport(ui->screen_left + letter_x, ui->screen_top + letter_y, lr.width_px, lr.height_px);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, ird, 0, 1, 1.f);
     restore_viewport();
 #undef lr
@@ -1793,29 +1789,29 @@ draw_scrollbar(const UIRenderData *ui) {
     float min_thumb_height_fraction = (OPT(scrollbar_min_handle_height) * ui->cell_height) / (float)window_height;
     float thumb_height_fraction = MAX(min_thumb_height_fraction, visible_fraction);
 
-    // Convert to OpenGL coordinates (range -1.0 to 1.0, total span = 2.0)
+    // Convert to NDC (range -1.0 to 1.0, total span = 2.0, -1 is the top)
     const float GL_COORD_SPAN = 2.0f;
     float thumb_height_gl = thumb_height_fraction * GL_COORD_SPAN;
     float available_space = GL_COORD_SPAN - thumb_height_gl;
-    float thumb_bottom_gl = -1.0f + available_space * bar_frac;
-    float thumb_top_gl = thumb_bottom_gl + thumb_height_gl;
+    float thumb_bottom_gl = 1.0f - available_space * bar_frac;
+    float thumb_top_gl = thumb_bottom_gl - thumb_height_gl;
 
     // Store thumb position for mouse interaction (normalized window coordinates)
     float scrollbar_top_in_window = (float)(window_top_edge + scrollbar_gap_px) / (float)ui->full_framebuffer_height;
     float scrollbar_height_in_window = (float)(window_height - 2 * scrollbar_gap_px) / (float)ui->full_framebuffer_height;
-    float thumb_top_fraction = (1.0f - thumb_top_gl) / 2.0f;
-    float thumb_bottom_fraction = (1.0f - thumb_bottom_gl) / 2.0f;
+    float thumb_top_fraction = (1.0f + thumb_top_gl) / 2.0f;
+    float thumb_bottom_fraction = (1.0f + thumb_bottom_gl) / 2.0f;
     window->scrollbar.thumb_top = scrollbar_top_in_window + thumb_top_fraction * scrollbar_height_in_window;
     window->scrollbar.thumb_bottom = scrollbar_top_in_window + thumb_bottom_fraction * scrollbar_height_in_window;
 
     // Set viewport for scrollbar area
-    save_viewport_using_top_left_origin(scrollbar_left, scrollbar_top, scrollbar_width_px, scrollbar_height, ui->full_framebuffer_height);
+    save_viewport(scrollbar_left, scrollbar_top, scrollbar_width_px, scrollbar_height);
 
     // Draw scrollbar track (background)
     if (track_opacity > 0) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
-        param_4f(program_param(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
+        param_4f(program_param(TINT_PROGRAM, "edges"), -1.f, -1.f, 1.f, 1.f);
         draw_quad(true, 0);
     }
 
@@ -1832,13 +1828,12 @@ draw_scrollbar(const UIRenderData *ui) {
         color_vec4(program_param(ROUNDED_RECT_PROGRAM, "background_color"), 0, 0.0f);
         color_vec4(program_param(ROUNDED_RECT_PROGRAM, "outer_color"), 0, 0.0f);
 
-        float y = (float)ui->full_framebuffer_height - (float)(thumb_top_px + thumb_height_px);
-        param_4f(program_param(ROUNDED_RECT_PROGRAM, "rect"), (float)scrollbar_left, y, (float)scrollbar_width_px, (float)thumb_height_px);
+        param_2f(program_param(ROUNDED_RECT_PROGRAM, "size"), (float)scrollbar_width_px, (float)thumb_height_px);
 
         float thickness = (float)MAX(scrollbar_width_px, thumb_height_px);
         param_2f(program_param(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)scrollbar_radius);
 
-        save_viewport_using_top_left_origin(scrollbar_left, thumb_top_px, scrollbar_width_px, thumb_height_px, ui->full_framebuffer_height);
+        save_viewport(scrollbar_left, thumb_top_px, scrollbar_width_px, thumb_height_px);
         draw_quad(true, 0);
         restore_viewport();
     } else {
@@ -1857,7 +1852,6 @@ has_progress_bar(Screen *screen) {
 
 static void
 draw_progress_handle(
-    const UIRenderData *ui,
     color_type bar_color,
     float opacity,
     unsigned bar_radius,
@@ -1899,13 +1893,12 @@ draw_progress_handle(
         color_vec4(program_param(ROUNDED_RECT_PROGRAM, "background_color"), 0, 0.0f);
         color_vec4(program_param(ROUNDED_RECT_PROGRAM, "outer_color"), 0, 0.0f);
 
-        float y = (float)ui->full_framebuffer_height - (float)(handle_top + handle_h);
-        param_4f(program_param(ROUNDED_RECT_PROGRAM, "rect"), (float)handle_left, y, (float)handle_w, (float)handle_h);
+        param_2f(program_param(ROUNDED_RECT_PROGRAM, "size"), (float)handle_w, (float)handle_h);
 
         float thickness = (float)(is_horizontal ? handle_h : handle_w);
         param_2f(program_param(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)bar_radius);
 
-        save_viewport_using_top_left_origin(handle_left, handle_top, handle_w, handle_h, ui->full_framebuffer_height);
+        save_viewport(handle_left, handle_top, handle_w, handle_h);
         draw_quad(true, 0);
         restore_viewport();
     } else {
@@ -1919,12 +1912,12 @@ draw_progress_handle(
         set_color_uniform_with_opacity(bar_color, opacity);
         if (is_horizontal) {
             // edges: left, top, right, bottom
-            save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
-            param_4f(program_param(TINT_PROGRAM, "edges"), start_gl, 1.f, end_gl, -1.f);
+            save_viewport(track_left, track_top, track_width, track_height);
+            param_4f(program_param(TINT_PROGRAM, "edges"), start_gl, -1.f, end_gl, 1.f);
         } else {
-            save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
-            // For vertical: start_gl is top in GL coords (inverted y), so bottom_gl = -end_gl, top_gl = -start_gl
-            param_4f(program_param(TINT_PROGRAM, "edges"), -1.f, -start_gl, 1.f, -end_gl);
+            save_viewport(track_left, track_top, track_width, track_height);
+            // For vertical: the handle moves top to bottom, as NDC y does
+            param_4f(program_param(TINT_PROGRAM, "edges"), -1.f, start_gl, 1.f, end_gl);
         }
         draw_quad(true, 0);
         restore_viewport();
@@ -1997,11 +1990,11 @@ draw_progress_bar(const UIRenderData *ui) {
     }
 
     // Draw track (background)
-    save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
+    save_viewport(track_left, track_top, track_width, track_height);
     if (track_opacity > 0) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
-        param_4f(program_param(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
+        param_4f(program_param(TINT_PROGRAM, "edges"), -1.f, -1.f, 1.f, 1.f);
         draw_quad(true, 0);
     }
     restore_viewport();
@@ -2019,12 +2012,11 @@ draw_progress_bar(const UIRenderData *ui) {
         if (!is_horizontal) pos_frac = 1.0f - pos_frac; // vertical: bounce bottom-to-top first
         float handle_start = pos_frac * (1.0f - handle_size);
         if (opacity > 0.0f) {
-            draw_progress_handle(
-                ui, bar_color, opacity, bar_radius, track_left, track_top, track_width, track_height, handle_start, handle_size, is_horizontal);
+            draw_progress_handle(bar_color, opacity, bar_radius, track_left, track_top, track_width, track_height, handle_start, handle_size, is_horizontal);
         }
     } else if (fill_fraction > 0.0f && opacity > 0.0f) {
         float handle_start = is_horizontal ? 0.0f : 1.0f - fill_fraction;
-        draw_progress_handle(ui, bar_color, opacity, bar_radius, track_left, track_top, track_width, track_height, handle_start, fill_fraction, is_horizontal);
+        draw_progress_handle(bar_color, opacity, bar_radius, track_left, track_top, track_width, track_height, handle_start, fill_fraction, is_horizontal);
     }
 }
 
@@ -2073,7 +2065,7 @@ draw_window_logo(const UIRenderData *ui) {
     w.top = (int)(ui->screen_height * wl->position.canvas_y - w.height * wl->position.image_y);
     float left = gl_pos_x(w.left, ui->screen_width), top = gl_pos_y(w.top, ui->screen_height);
     ImageRenderData d = {.texture_id = wl->instance->texture_id};
-    gpu_data_for_image(&d, left, top, left + gl_size(w.width, ui->screen_width), top - gl_size(w.height, ui->screen_height));
+    gpu_data_for_image(&d, left, top, left + gl_size(w.width, ui->screen_width), top + gl_size(w.height, ui->screen_height));
     draw_graphics(GRAPHICS_PROGRAM, &d, 0, 1, ui->inactive_text_alpha * OPT(window_logo_alpha));
 }
 
@@ -2185,7 +2177,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     const float fL = (float)ui->screen_left, T = (float)ui->screen_top;
     const float R = fL + (float)ui->screen_width, B = T + (float)ui->screen_height;
 #define NX(px) (2.f * (px) / fbw - 1.f)
-#define NY(px) (1.f - 2.f * (px) / fbh)
+#define NY(px) (2.f * (px) / fbh - 1.f)
     const float dx = 2.f * cw / fbw, dy = 2.f * ch / fbh;
 
     bind_program(PADDING_PROGRAM);
@@ -2304,7 +2296,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
         param_2f(PL(across), cl ? NX(fL - cl) : NX(R), cl ? NX(fL) : NX(R + cr));
         param_2f(PL(across2), NX(R), NX(R + cr));
         param_1f(PL(along_start), NY(T));
-        param_1f(PL(along_step), -dy);
+        param_1f(PL(along_step), dy);
         param_2f(PL(along_clamp), NY(T - ct), NY(B + cb));
         draw_quad(!for_final_output, nV * lines);
     }
@@ -2322,7 +2314,7 @@ static void
 draw_tint(const UIRenderData *ui) {
     bind_program(TINT_PROGRAM);
     color_vec4_premult(program_param(TINT_PROGRAM, "tint_color"), ui->background_color, OPT(background_tint));
-    param_4f(program_param(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
+    param_4f(program_param(TINT_PROGRAM, "edges"), -1, -1, 1, 1);
     draw_quad(true, 0);
 }
 
@@ -2456,7 +2448,7 @@ draw_cells(
         .now = now,
     };
     screen->reload_all_gpu_data = false;
-    save_viewport_using_top_left_origin(ui.screen_left, ui.screen_top, ui.screen_width, ui.screen_height, ui.full_framebuffer_height);
+    save_viewport(ui.screen_left, ui.screen_top, ui.screen_width, ui.screen_height);
     if (ui.os_window->needs_layers) draw_cells_with_layers(&ui, srd->vao_idx);
     else draw_cells_without_layers(&ui, srd->vao_idx);
     restore_viewport();
@@ -2578,7 +2570,7 @@ draw_rounded_borders(BorderRects *br, color_type active_window_bg, unsigned int 
         unsigned radius = MIN(r->radius, MIN(rect.width, rect.height) / 2);
         unsigned color_index = r->color & 0xff;
         color_type color = color_index == 3 ? r->color >> 8 : colors[MIN(color_index, 8u)];
-        draw_rounded_rect(rect, w->viewport_height, (float)r->thickness, radius, color, 0, 0.f, colors[0], corner_bg_alpha);
+        draw_rounded_rect(rect, (float)r->thickness, radius, color, 0, 0.f, colors[0], corner_bg_alpha);
     }
     if (!w->needs_layers) gpu_set_srgb_output(false);
     unbind_program();
@@ -2643,7 +2635,7 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
     }
     float tiled = 0.f;
     ;
-    float left = -1.0, top = 1.0, right = 1.0, bottom = -1.0;
+    float left = -1.0, top = -1.0, right = 1.0, bottom = 1.0;
     switch (layout) {
         case TILING:
         case MIRRORED:
@@ -2655,8 +2647,8 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
             float hfrac = (vheight - iheight) / vheight;
             left += wfrac;
             right -= wfrac;
-            top -= hfrac;
-            bottom += hfrac;
+            top += hfrac;
+            bottom -= hfrac;
         } break;
     }
     bind_program(BGIMAGE_PROGRAM);
@@ -2676,7 +2668,7 @@ gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, 
     float width_frac = 2 * MIN(1, width / (float)screen_width_px), height_frac = 2 * MIN(1, height / (float)screen_height_px);
     float hmargin = (2 - width_frac) / 2;
     float vmargin = (2 - height_frac) / 2;
-    gpu_data_for_image(ans, -1 + hmargin, 1 - vmargin, -1 + hmargin + width_frac, 1 - vmargin - height_frac);
+    gpu_data_for_image(ans, -1 + hmargin, -1 + vmargin, -1 + hmargin + width_frac, -1 + vmargin + height_frac);
 }
 
 static void
@@ -2821,7 +2813,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
         }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
-        save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
+        save_viewport(0, 0, os_window->viewport_width, os_window->viewport_height);
         clear_current_framebuffer();
         draw_bg_image(os_window, tab);
     }
@@ -2915,11 +2907,17 @@ update_pointer_map(OSWindow *os_window, int32_t group_loc) {
     draw_quad(false, 0);
     static uint8_t pixels[POINTER_MAP_SIZE * POINTER_MAP_SIZE * 4];
     gpu_read_pixels(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE, pixels);
-    // See encode_pointer_map() in pipeline.slang
-    for (size_t i = 0; i < POINTER_MAP_SIZE * POINTER_MAP_SIZE; i++) {
-        const uint8_t *p = pixels + 4 * i;
-        os_window->pointer_map.data[2 * i] = (float)(p[0] * 256 + p[2]) / 65535.f;
-        os_window->pointer_map.data[2 * i + 1] = (float)(p[1] * 256 + p[3]) / 65535.f;
+    // See encode_pointer_map() in pipeline.slang. Rows are read back top to
+    // bottom, while rows of the pointer map are in order of increasing UV y,
+    // that is, bottom to top.
+    for (size_t row = 0; row < POINTER_MAP_SIZE; row++) {
+        const uint8_t *src = pixels + 4 * POINTER_MAP_SIZE * row;
+        float *dst = os_window->pointer_map.data + 2 * POINTER_MAP_SIZE * (POINTER_MAP_SIZE - 1 - row);
+        for (size_t col = 0; col < POINTER_MAP_SIZE; col++) {
+            const uint8_t *p = src + 4 * col;
+            dst[2 * col] = (float)(p[0] * 256 + p[2]) / 65535.f;
+            dst[2 * col + 1] = (float)(p[1] * 256 + p[3]) / 65535.f;
+        }
     }
     os_window->pointer_map.groups = groups;
 }
@@ -2985,12 +2983,13 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     }
     struct GPUCustomEndData *d = (struct GPUCustomEndData *)map_vao_buffer_for_write_only(custom_end_vao_idx, 0, 0, data_block.size);
     memset(d, 0, sizeof(struct GPUCustomEndData));
-    d->src_rect[1] = sy;
+    // The viewport is in the top left corner of the texture, see gpu/api.h
     d->src_rect[2] = sx;
+    d->src_rect[3] = sy;
     d->dest_rect[0] = -1;
-    d->dest_rect[1] = 1;
+    d->dest_rect[1] = -1;
     d->dest_rect[2] = 1;
-    d->dest_rect[3] = -1;
+    d->dest_rect[3] = 1;
 #define FILL_COLOR(dst, c)                         \
     do {                                           \
         (dst)[0] = srgb_color(((c) >> 16) & 0xFF); \
@@ -3047,7 +3046,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     }
     FILL_COLOR(d->active_window_background, active_bg);
 #undef FILL_COLOR
+    // NDC y increases downwards while UV y, as seen by custom shaders, increases upwards
 #define NDC_TO_UV(v) (((v) + 1.0f) * 0.5f)
+#define NDC_Y_TO_UV(v) ((1.0f - (v)) * 0.5f)
     // Convert to seconds via double, as float32 cannot represent times since
     // kitty started precisely once kitty has been running for a few hours.
 #define SECONDS(t) ((float)monotonic_t_to_s_double(t))
@@ -3064,9 +3065,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
                 if (!m->at) break;
                 for (int k = 0; k < 2; k++) {
                     d->cursor_trail_history_from[i][k] = NDC_TO_UV(m->from_x[k]);
-                    d->cursor_trail_history_from[i][k + 2] = NDC_TO_UV(m->from_y[k]);
+                    d->cursor_trail_history_from[i][k + 2] = NDC_Y_TO_UV(m->from_y[k]);
                     d->cursor_trail_history_to[i][k] = NDC_TO_UV(m->to_x[k]);
-                    d->cursor_trail_history_to[i][k + 2] = NDC_TO_UV(m->to_y[k]);
+                    d->cursor_trail_history_to[i][k + 2] = NDC_Y_TO_UV(m->to_y[k]);
                 }
                 d->cursor_trail_history_age[i / 4][i % 4] = SECONDS(now - m->at);
             }
@@ -3074,19 +3075,19 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         if (ct) {
             for (int i = 0; i < 4; i++) {
                 d->cursor_trail_corners_x[i] = NDC_TO_UV(ct->corner_x[i]);
-                d->cursor_trail_corners_y[i] = NDC_TO_UV(ct->corner_y[i]);
+                d->cursor_trail_corners_y[i] = NDC_Y_TO_UV(ct->corner_y[i]);
                 d->cursor_trail_prev_corners_x[i] = NDC_TO_UV(ct->previous_corner_x[i]);
-                d->cursor_trail_prev_corners_y[i] = NDC_TO_UV(ct->previous_corner_y[i]);
+                d->cursor_trail_prev_corners_y[i] = NDC_Y_TO_UV(ct->previous_corner_y[i]);
             }
-            d->cursor_trail_edge[0] = NDC_TO_UV(ct->cursor_edge_x[0]); // left
-            d->cursor_trail_edge[1] = NDC_TO_UV(ct->cursor_edge_x[1]); // right
-            d->cursor_trail_edge[2] = NDC_TO_UV(ct->cursor_edge_y[0]); // top
-            d->cursor_trail_edge[3] = NDC_TO_UV(ct->cursor_edge_y[1]); // bottom
+            d->cursor_trail_edge[0] = NDC_TO_UV(ct->cursor_edge_x[0]);   // left
+            d->cursor_trail_edge[1] = NDC_TO_UV(ct->cursor_edge_x[1]);   // right
+            d->cursor_trail_edge[2] = NDC_Y_TO_UV(ct->cursor_edge_y[0]); // top
+            d->cursor_trail_edge[3] = NDC_Y_TO_UV(ct->cursor_edge_y[1]); // bottom
             if (ct->prev_edge_valid) {
-                d->cursor_trail_prev_edge[0] = NDC_TO_UV(ct->prev_cursor_edge_x[0]); // left
-                d->cursor_trail_prev_edge[1] = NDC_TO_UV(ct->prev_cursor_edge_x[1]); // right
-                d->cursor_trail_prev_edge[2] = NDC_TO_UV(ct->prev_cursor_edge_y[0]); // top
-                d->cursor_trail_prev_edge[3] = NDC_TO_UV(ct->prev_cursor_edge_y[1]); // bottom
+                d->cursor_trail_prev_edge[0] = NDC_TO_UV(ct->prev_cursor_edge_x[0]);   // left
+                d->cursor_trail_prev_edge[1] = NDC_TO_UV(ct->prev_cursor_edge_x[1]);   // right
+                d->cursor_trail_prev_edge[2] = NDC_Y_TO_UV(ct->prev_cursor_edge_y[0]); // top
+                d->cursor_trail_prev_edge[3] = NDC_Y_TO_UV(ct->prev_cursor_edge_y[1]); // bottom
             }
             d->cursor_trail_color[3] = ct->opacity;
             d->cursor_trail_state = 1.0f;
@@ -3097,6 +3098,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         }
     }
 #undef NDC_TO_UV
+#undef NDC_Y_TO_UV
 #define FILL_COLOR3(dst, c)                        \
     do {                                           \
         (dst)[0] = srgb_color(((c) >> 16) & 0xFF); \
@@ -3268,7 +3270,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         if (is_last) {
             // Last group always covers the full screen region
             if (os_window->live_resize.in_progress) {
-                gpu_set_viewport(0, os_window->live_resize.height - vh, vw, vh);
+                gpu_set_viewport(0, 0, vw, vh); // the top left corner of the larger framebuffer
             } else {
                 gpu_set_viewport(0, 0, vw, vh);
             }
@@ -3280,12 +3282,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             float px = cg->viewport_pos.x, py = cg->viewport_pos.y;
             float sw = cg->viewport_size.w, sh = cg->viewport_size.h;
             // viewport_pos/size are standard UV (origin at bottom-left, y increasing
-            // upward), which matches GL pixel coords directly — no y-flip needed.
+            // upward), while the GPU viewport has its origin at the top left.
             int32_t x0 = MAX(0, (int32_t)(px * vw));
-            int32_t y0 = MAX(0, (int32_t)(py * vh));
+            int32_t y0 = MAX(0, (int32_t)(py * vh)); // from the bottom
             int32_t x1 = MIN(vw, (int32_t)((px + sw) * vw));
-            int32_t y1 = MIN(vh, (int32_t)((py + sh) * vh));
-            gpu_set_viewport(x0, y0, MAX(0, x1 - x0), MAX(0, y1 - y0));
+            int32_t y1 = MIN(vh, (int32_t)((py + sh) * vh)); // from the bottom
+            gpu_set_viewport(x0, vh - y1, MAX(0, x1 - x0), MAX(0, y1 - y0));
             vp_x = px;
             vp_y = py;
             vp_w = sw;
@@ -3311,8 +3313,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
         if (custom_shaders.end.active && os_window->shader_anim.has_active_shaders) {
             // debug_rendering("Custom end shader running (groups=%zu)\n", custom_shaders.end.num_groups);
             restore_viewport();
-            if (os_window->live_resize.in_progress)
-                save_viewport_using_top_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+            if (os_window->live_resize.in_progress) save_viewport(0, 0, os_window->viewport_width, os_window->viewport_height);
             run_custom_end_shader(os_window, sx, sy, now);
         } else {
             // debug_rendering("Custom shaders inactive, falling back to blit\n");
@@ -3320,11 +3321,10 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
             bind_framebuffer_for_output(0);
             bind_program(BLIT_PROGRAM);
             gpu_bind_texture(program_texture_slot(BLIT_PROGRAM, "image"), global_state.layers_render_texture.texture_id);
-            param_4f(program_param(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
-            param_4f(program_param(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
+            param_4f(program_param(BLIT_PROGRAM, "src_rect"), 0, 0, sx, sy);
+            param_4f(program_param(BLIT_PROGRAM, "dest_rect"), -1, -1, 1, 1);
             restore_viewport();
-            if (os_window->live_resize.in_progress)
-                save_viewport_using_top_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+            if (os_window->live_resize.in_progress) save_viewport(0, 0, os_window->viewport_width, os_window->viewport_height);
             draw_quad(false, 0);
         }
         if (os_window->live_resize.in_progress) {
@@ -3353,8 +3353,7 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 // Setting the thumbnail dimensions to zero disables scaling.
 // If no_scaling is true, thumb_w/thumb_h are ignored and the region is read
 // back directly from the framebuffer with no GPU resampling, for a pixel
-// perfect capture (the output is in GL's native bottom-up row order, unlike
-// the scaled path below which flips to top-down).
+// perfect capture. In both cases rows are output top to bottom.
 void
 take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling) {
     unsigned vh = os_window->viewport_height;
@@ -3366,7 +3365,7 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
     if (no_scaling) {
         *thumb_w = src_width;
         *thumb_h = src_height;
-        gpu_read_pixels((int32_t)region.left, (int32_t)(vh - region.bottom), src_width, src_height, dst_buf);
+        gpu_read_pixels((int32_t)region.left, (int32_t)region.top, src_width, src_height, dst_buf);
         return;
     }
 
@@ -3394,18 +3393,16 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
 
     // Bind our temporary framebuffer for rendering
     bind_framebuffer_for_output(temp_framebuffer);
-    save_viewport_using_bottom_left_origin(0, 0, *thumb_w, *thumb_h);
+    save_viewport(0, 0, *thumb_w, *thumb_h);
 
     // Use the screenshot program to render the scaled framebuffer with proper color space handling
     bind_program(SCREENSHOT_PROGRAM);
 
-    // Set source rectangle (normalized coordinates: 0 to 1)
-    // Note: OpenGL texture origin is bottom-left, but Region uses top-left origin
-    // Convert from screen coordinates (top-left origin) to OpenGL texture coordinates (bottom-left origin)
+    // Set source rectangle (normalized texture coordinates: 0 to 1, origin at top-left, like Region)
     float src_left_norm = (float)region.left / (float)vw;
     float src_right_norm = (float)region.right / (float)vw;
-    float src_bottom_norm = (float)(vh - region.bottom) / (float)vh;
-    float src_top_norm = (float)(vh - region.top) / (float)vh;
+    float src_bottom_norm = (float)region.bottom / (float)vh;
+    float src_top_norm = (float)region.top / (float)vh;
     param_4f(program_param(SCREENSHOT_PROGRAM, "src_rect"), src_left_norm, src_top_norm, src_right_norm, src_bottom_norm);
 
     // Set destination rectangle (NDC coordinates: -1 to 1)

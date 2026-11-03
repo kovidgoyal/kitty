@@ -75,6 +75,15 @@ class TestSlang(BaseTest):
                 self.assertLessEqual(b['size'], PUSH_CONSTANTS_MAX_SIZE, name)
             for b in m['param_blocks']:
                 self.assertNotIn('stage', b, name)
+        if target.family == 'glsl':
+            # OpenGL window framebuffers have their origin at the bottom left,
+            # vertex shaders flip y when kitty_flip_y is -1, see fixup_opengl_code()
+            for name in os.listdir(tdir):
+                if name.endswith('.vert.glsl'):
+                    with open(os.path.join(tdir, name)) as f:
+                        src = f.read()
+                    self.assertIn('uniform float kitty_flip_y;', src, name)
+                    self.assertIn('gl_Position.y *= kitty_flip_y;', src, name)
         if 'trail.json' in names:
             with open(os.path.join(tdir, 'trail.json')) as f:
                 m = json.load(f)

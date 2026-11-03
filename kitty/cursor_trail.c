@@ -20,22 +20,22 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
         case CURSOR_BEAM:
-        case CURSOR_UNDERLINE: left = g.xstart + WD.screen->cursor_render_info.x * g.dx; bottom = g.ystart - (WD.screen->cursor_render_info.y + 1) * g.dy;
+        case CURSOR_UNDERLINE: left = g.xstart + WD.screen->cursor_render_info.x * g.dx; bottom = g.ystart + (WD.screen->cursor_render_info.y + 1) * g.dy;
         default: break;
     }
     switch (WD.screen->cursor_render_info.shape) {
         case CURSOR_BLOCK:
         case CURSOR_HOLLOW:
             right = left + g.dx;
-            top = bottom + g.dy;
+            top = bottom - g.dy;
             break;
         case CURSOR_BEAM:
             right = left + g.dx / WD.screen->cell_size.width * OPT(cursor_beam_thickness);
-            top = bottom + g.dy;
+            top = bottom - g.dy;
             break;
         case CURSOR_UNDERLINE:
             right = left + g.dx;
-            top = bottom + g.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
+            top = bottom - g.dy / WD.screen->cell_size.height * OPT(cursor_underline_thickness);
             break;
         default: break;
     }

@@ -104,7 +104,7 @@ class Screenshot(RemoteCommand):
                 responder.send_error('Failed to take screenshot, the OS window may have been closed')
                 return
             try:
-                png_data = png_from_32bit_rgba_data(pixels, width, height, True)
+                png_data = png_from_32bit_rgba_data(pixels, width, height)
                 if output_path:
                     with open(os.path.expanduser(output_path), 'wb') as f:
                         f.write(png_data)

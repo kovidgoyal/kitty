@@ -23,11 +23,15 @@
 //   functions that can fail return false. In both cases a description of the
 //   failure is available from last_error(). Errors from which the driver
 //   cannot recover are reported via the fatal() callback in GPUDriverInitParams.
-// * Pixel coordinates for viewports, scissor rectangles and reading back pixels
-//   have their origin at the bottom left corner of the current render target,
-//   with y increasing upwards. Rows of pixel data read back from the GPU are
-//   ordered bottom to top. Pixel data uploaded to textures is ordered with the
-//   first row at texture coordinate t=0.
+// * Coordinates follow the conventions of Vulkan and Metal. Pixel coordinates
+//   for viewports, scissor rectangles and reading back pixels have their
+//   origin at the top left corner of the current render target, with y
+//   increasing downwards. Rows of pixel data read back from the GPU are
+//   ordered top to bottom. In normalized device coordinates, y=-1 is the top
+//   of the viewport and y=1 the bottom. The first row of a texture, at
+//   texture coordinate t=0, is the first row of uploaded pixel data and the
+//   top row of a render target drawing into the texture. Drivers for APIs with
+//   other conventions, such as OpenGL, must convert.
 // * The driver tracks a small amount of "current" state: the pipeline,
 //   vertex layout, render target, viewport, scissor rectangle, sRGB output
 //   mode and textures bound to texture units. Draw calls use this state. This

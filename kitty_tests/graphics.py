@@ -171,7 +171,7 @@ def put_helpers(self, cw, ch, cols=10, lines=5):
         cmd = 'a=p,i=%d,%s' % (imgid, put_cmd(**kw))
         return imgid, parse_response_with_ids(send_command(screen, cmd))
 
-    def layers(screen, scrolled_by=0, xstart=-1, ystart=1):
+    def layers(screen, scrolled_by=0, xstart=-1, ystart=-1):
         return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines, cw, ch)
 
     def rect_eq(r, left, top, right, bottom):
@@ -929,7 +929,7 @@ class TestGraphics(BaseTest):
         l0 = layers(s)
         self.ae(len(l0), 1)
         rect_eq(l0[0]['src_rect'], 0, 0, 1, 1)
-        rect_eq(l0[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
+        rect_eq(l0[0]['dest_rect'], -1, -1, -1 + dx, -1 + dy)
         self.ae(l0[0]['group_count'], 1)
         self.ae(s.cursor.x, 1), self.ae(s.cursor.y, 0)
         src_width, src_height = 3, 5
@@ -942,9 +942,9 @@ class TestGraphics(BaseTest):
         self.ae(l2[1], l0[0])
         rect_eq(l2[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5) / 20)
         self.ae(l2[0]['group_count'], 2)
-        left, top = -1 + dx + 3 * dx / cw, 1 - 1 * dy / ch
+        left, top = -1 + dx + 3 * dx / cw, -1 + 1 * dy / ch
         right = -1 + (1 + s.columns) * dx
-        bottom = 1 - dy
+        bottom = -1 + dy
         rect_eq(l2[0]['dest_rect'], left, top, right, bottom)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         self.ae(put_image(s, 10, 20, cursor_movement=1)[1], 'OK')
@@ -953,7 +953,7 @@ class TestGraphics(BaseTest):
         self.assertEqual(s.grman.disk_cache.total_size, 0)
         self.ae(put_image(s, 2 * cw, 2 * ch, num_cols=3)[1], 'OK')
         self.ae((s.cursor.x, s.cursor.y), (3, 2))
-        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + 3 * dx, 1 - 3 * dy)
+        rect_eq(layers(s)[0]['dest_rect'], -1, -1, -1 + 3 * dx, -1 + 3 * dy)
 
     def test_graphics_put_with_pixel_offsets(self):
         cw, ch = 10, 20
@@ -1044,7 +1044,7 @@ class TestGraphics(BaseTest):
                 return round(((x + 1) / 2) * s.columns)
 
             def y(y):
-                return int(((-y + 1) / 2) * s.lines)
+                return int(((y + 1) / 2) * s.lines)
 
             for i in layers(s):
                 d = i['dest_rect']
@@ -1310,7 +1310,7 @@ class TestGraphics(BaseTest):
         self.ae(len(refs), 8)
         for i in range(8):
             self.ae(refs[i]['src_rect'], {'left': 0.0, 'top': 0.125 * i, 'right': 1.0, 'bottom': 0.125 * (i + 1)})
-            self.ae(refs[i]['dest_rect']['top'], 1 - 0.25 * i)
+            self.ae(refs[i]['dest_rect']['top'], -1 + 0.25 * i)
         # Now set margins to lines 3 and 6.
         s.set_margins(3, 6)  # 1-based indexing
         # Scroll two lines down (i.e. move lines 3..6 up).
@@ -1324,20 +1324,20 @@ class TestGraphics(BaseTest):
         self.ae(len(refs), 6)
         # Lines 1 and 2 are outside of the region, not scrolled.
         self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.125})
-        self.ae(refs[0]['dest_rect']['top'], 1.0)
+        self.ae(refs[0]['dest_rect']['top'], -1.0)
         self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125 * 1, 'right': 1.0, 'bottom': 0.125 * 2})
-        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25 * 1)
+        self.ae(refs[1]['dest_rect']['top'], -1.0 + 0.25 * 1)
         # Lines 3 and 4 are erased.
         # Lines 5 and 6 are now higher.
         self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125 * 4, 'right': 1.0, 'bottom': 0.125 * 5})
-        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25 * 2)
+        self.ae(refs[2]['dest_rect']['top'], -1.0 + 0.25 * 2)
         self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125 * 5, 'right': 1.0, 'bottom': 0.125 * 6})
-        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25 * 3)
+        self.ae(refs[3]['dest_rect']['top'], -1.0 + 0.25 * 3)
         # Lines 7 and 8 are outside of the region.
         self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125 * 6, 'right': 1.0, 'bottom': 0.125 * 7})
-        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25 * 6)
+        self.ae(refs[4]['dest_rect']['top'], -1.0 + 0.25 * 6)
         self.ae(refs[5]['src_rect'], {'left': 0.0, 'top': 0.125 * 7, 'right': 1.0, 'bottom': 0.125 * 8})
-        self.ae(refs[5]['dest_rect']['top'], 1.0 - 0.25 * 7)
+        self.ae(refs[5]['dest_rect']['top'], -1.0 + 0.25 * 7)
         # Now scroll three lines up (i.e. move lines 5..6 down).
         # Line 6 will be erased.
         s.cursor_position(3, 0)
@@ -1350,18 +1350,18 @@ class TestGraphics(BaseTest):
         self.ae(len(refs), 5)
         # Lines 1 and 2 are outside of the region, not scrolled.
         self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.125})
-        self.ae(refs[0]['dest_rect']['top'], 1.0)
+        self.ae(refs[0]['dest_rect']['top'], -1.0)
         self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125 * 1, 'right': 1.0, 'bottom': 0.125 * 2})
-        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25 * 1)
+        self.ae(refs[1]['dest_rect']['top'], -1.0 + 0.25 * 1)
         # Lines 3, 4 and 6 are erased.
         # Line 5 is now lower.
         self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125 * 4, 'right': 1.0, 'bottom': 0.125 * 5})
-        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25 * 5)
+        self.ae(refs[2]['dest_rect']['top'], -1.0 + 0.25 * 5)
         # Lines 7 and 8 are outside of the region.
         self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125 * 6, 'right': 1.0, 'bottom': 0.125 * 7})
-        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25 * 6)
+        self.ae(refs[3]['dest_rect']['top'], -1.0 + 0.25 * 6)
         self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125 * 7, 'right': 1.0, 'bottom': 0.125 * 8})
-        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25 * 7)
+        self.ae(refs[4]['dest_rect']['top'], -1.0 + 0.25 * 7)
 
     def test_unicode_placeholders_reverse_scroll(self):
         # A cell image pushed off the bottom of the screen by a reverse scroll
@@ -1445,7 +1445,7 @@ class TestGraphics(BaseTest):
         index_lines(s.lines, 5)
 
         def ref_rows(refs):
-            return sorted(round((1 - r['dest_rect']['top']) / dy) - s.scrolled_by for r in refs)
+            return sorted(round((r['dest_rect']['top'] + 1) / dy) - s.scrolled_by for r in refs)
 
         before = ref_rows(scroll_view(6, True))
         self.ae(before, [-3, -2])
@@ -1465,7 +1465,7 @@ class TestGraphics(BaseTest):
 
         def ref_rows(scrolled_by=0):
             s.update_only_line_graphics_data()
-            return sorted(round((1 - r['dest_rect']['top']) / dy) - scrolled_by for r in layers(s, scrolled_by))
+            return sorted(round((r['dest_rect']['top'] + 1) / dy) - scrolled_by for r in layers(s, scrolled_by))
 
         def rows_in_history():
             # Render the history lines as when the view is scrolled back
@@ -1581,14 +1581,14 @@ class TestGraphics(BaseTest):
         put_image(s, cw, 4 * ch, num_cols=1, num_lines=2, no_id=True)  # 10x80 px image scaled into 1x2 cells at (0, 0)
         self.ae(s.grman.image_count, 1)
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
-        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + dx, 1 - 2 * dy)
+        rect_eq(layers(s)[0]['dest_rect'], -1, -1, -1 + dx, -1 + 2 * dy)
         while s.cursor.y != 2:
             s.index()
         s.index()  # scroll up, the top row of the image is clipped
         l0 = layers(s)
         self.ae(len(l0), 1)
         self.ae(l0[0]['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
-        rect_eq(l0[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
+        rect_eq(l0[0]['dest_rect'], -1, -1, -1 + dx, -1 + dy)
         s.index()
         self.ae(s.grman.image_count, 0)
         # Now check clipping of a scaled image at the bottom margin
@@ -1602,20 +1602,20 @@ class TestGraphics(BaseTest):
         l0 = layers(s)
         self.ae(len(l0), 1)
         self.ae(l0[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
-        rect_eq(l0[0]['dest_rect'], -1, 1 - 2 * dy, -1 + dx, 1 - 3 * dy)
+        rect_eq(l0[0]['dest_rect'], -1, -1 + 2 * dy, -1 + dx, -1 + 3 * dy)
         s.reverse_index()
         self.ae(s.grman.image_count, 0)
         # Scaling specified via c= only, with the height derived from the aspect ratio
         s.reset()
         s.set_margins(1, 3)
         put_image(s, 2 * cw, 4 * ch, num_cols=1, no_id=True)  # 20x80 px image scaled into 1 col => 10x40 px => 1x2 cells
-        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + dx, 1 - 2 * dy)
+        rect_eq(layers(s)[0]['dest_rect'], -1, -1, -1 + dx, -1 + 2 * dy)
         while s.cursor.y != 2:
             s.index()
         s.index()  # scroll up, the top row of the image is clipped
         l0 = layers(s)
         self.ae(l0[0]['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
-        rect_eq(l0[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
+        rect_eq(l0[0]['dest_rect'], -1, -1, -1 + dx, -1 + dy)
         s.index()
         self.ae(s.grman.image_count, 0)
         s.reset()
