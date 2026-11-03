@@ -33,11 +33,15 @@
 //   mode and textures bound to texture units. Draw calls use this state. This
 //   is cheap to implement on top of OpenGL and straightforward to record into
 //   command buffers for Vulkan and Metal.
+// * Rendering happens into surfaces, created from native windows supplied by
+//   the windowing system (see GPUNativeWindow). The driver owns everything
+//   needed to render to and present a surface, such as OpenGL contexts or
+//   Vulkan swapchains. The windowing system owns only the window itself.
 // * On APIs where some objects are bound to a context or device queue, such
 //   as framebuffers and vertex array objects in OpenGL, vertex layouts and
-//   render targets are only valid in the context that was current when they
+//   render targets are only valid with the surface that was current when they
 //   were created. Textures, buffers and pipelines are shared between all
-//   contexts.
+//   surfaces.
 
 #pragma once
 
@@ -45,7 +49,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KITTY_GPU_API_VERSION 1u
+#define KITTY_GPU_API_VERSION 2u
 #define KITTY_GPU_DRIVER_ENTRY_POINT "kitty_gpu_driver_load"
 #define GPU_NULL_HANDLE ((uint64_t)0)
 
@@ -54,17 +58,13 @@ typedef uint64_t gpu_buffer_t;
 typedef uint64_t gpu_pipeline_t;
 typedef uint64_t gpu_vertex_layout_t;
 typedef uint64_t gpu_render_target_t;
+typedef uint64_t gpu_surface_t;
 
 // Initialization {{{
 
-typedef void (*gpu_proc)(void);
-typedef gpu_proc (*gpu_get_proc_address_func)(const char *name);
 typedef void (*gpu_message_func)(const char *message);
 
 typedef struct GPUDriverInitParams {
-    // Used by drivers that load their API entry points at runtime, such as
-    // OpenGL. Must be callable once a context is current, see initialize().
-    gpu_get_proc_address_func get_proc_address;
     // Enable extra error checking and debug output
     bool debug_rendering;
     // Report a non-fatal error to the user
@@ -73,6 +73,18 @@ typedef struct GPUDriverInitParams {
     gpu_message_func debug_print;
     // Report an unrecoverable error, must not return
     gpu_message_func fatal;
+    // X11: The windowing system installs a process wide X error handler, so
+    // drivers must not install their own. Instead, to detect errors caused by
+    // their requests, they call x11_push_error_trap() before making the
+    // requests and x11_pop_error_trap() after. Errors caused by requests made
+    // on the display connection while a trap is open are captured by it
+    // rather than being reported. x11_pop_error_trap() waits for the X server
+    // to process the requests, if needed, and returns the code of the first
+    // error caused by them, or zero (Success) if there were none. Traps nest
+    // and every push must be matched by a pop. Both may only be called on the
+    // main thread, with surfaces on X11 displays.
+    void (*x11_push_error_trap)(void);
+    int (*x11_pop_error_trap)(void);
 } GPUDriverInitParams;
 
 typedef struct GPUCapabilities {
@@ -81,6 +93,36 @@ typedef struct GPUCapabilities {
     // Whether render targets can encode linear colors to sRGB on output, see set_srgb_output()
     bool supports_srgb_output;
 } GPUCapabilities;
+// }}}
+
+// Surfaces {{{
+
+typedef enum {
+    GPU_PLATFORM_X11 = 1,
+    GPU_PLATFORM_WAYLAND,
+    GPU_PLATFORM_COCOA,
+} GPUPlatform;
+
+// A native window, or just the native display connection when used with
+// choose_native_visual()
+typedef struct GPUNativeWindow {
+    GPUPlatform platform;
+    void *display;       // X11: Display*, Wayland: struct wl_display*, Cocoa: unused
+    int screen;          // X11: the screen number, negative for the default screen, unused on other platforms
+    uint64_t x11_window; // X11: the Window, unused on other platforms
+    void *handle;        // Wayland: struct wl_surface*, Cocoa: the NSView* to render into, unused on X11
+} GPUNativeWindow;
+
+typedef struct GPUSurfaceConfig {
+    // The window is semi-transparent and composited using the alpha channel of its contents
+    bool transparent;
+    // Request a framebuffer that supports encoding to sRGB on output
+    bool srgb;
+    // macOS: allow rendering on, and automatically switching to, offline or low power GPUs
+    bool allow_offline_renderers;
+    // macOS: render at the full resolution of high DPI (retina) displays
+    bool high_resolution;
+} GPUSurfaceConfig;
 // }}}
 
 // Textures {{{
@@ -211,9 +253,9 @@ typedef struct GPUDriverAPI {
     uint32_t api_version;
 
     // Lifecycle {{{
-    // Called once, when the first context or surface the driver will render
-    // to is current. Must be called before any other function except
-    // destroy() and last_error().
+    // Called once, when the first surface has been created and made current.
+    // Must be called before any other function except destroy(),
+    // last_error() and the surface functions.
     bool (*initialize)(void *driver);
     void (*destroy)(void *driver);
     // A description of the last error, never NULL
@@ -305,6 +347,43 @@ typedef struct GPUDriverAPI {
         uint32_t stride,
         size_t offset,
         uint32_t instance_divisor);
+    // }}}
+
+    // Surfaces {{{
+    // Some platforms, such as X11, require the visual of a window to be
+    // chosen before the window is created. native must describe only the
+    // display. Sets visual_id to the id of the visual the window must use,
+    // or zero if the driver has no preference.
+    bool (*choose_native_visual)(void *driver, const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint64_t *visual_id);
+    // Create a surface to render into the native window. width and height
+    // are the size of the window framebuffer in pixels. Does not change the
+    // current surface.
+    gpu_surface_t (*surface_create)(void *driver, const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint32_t width, uint32_t height);
+    // Destroy a surface, must be called before its native window is destroyed
+    void (*surface_destroy)(void *driver, gpu_surface_t surface);
+    // Make a surface current, all subsequent rendering goes to it.
+    // GPU_NULL_HANDLE for no surface.
+    bool (*make_surface_current)(void *driver, gpu_surface_t surface);
+    gpu_surface_t (*get_current_surface)(void *driver);
+    // Inform the driver that the framebuffer of the native window was resized
+    void (*surface_resize)(void *driver, gpu_surface_t surface, uint32_t width, uint32_t height);
+    // Present the rendered contents of the surface on screen
+    bool (*surface_present)(void *driver, gpu_surface_t surface);
+    // Set the number of display refreshes to wait for when presenting the
+    // surface, zero to present immediately. The surface must be current.
+    void (*surface_set_swap_interval)(void *driver, gpu_surface_t surface, int interval);
+    // Inform the driver that the geometry or screen of the native window
+    // changed, needed on platforms such as Cocoa where the driver must update
+    // the drawable it renders into
+    void (*surface_native_changed)(void *driver, gpu_surface_t surface);
+    // Recreate the drawable of the surface, used to recover when the platform
+    // invalidates it. Makes the surface current. Per surface state, such as
+    // vertex layouts and render targets must be recreated.
+    bool (*surface_recreate)(void *driver, gpu_surface_t surface);
+    // Destroy all surfaces and release all connections to the windowing
+    // system. Must be called before the windowing system is shut down.
+    // After this only destroy() may be called.
+    void (*release_native_resources)(void *driver);
     // }}}
 
     // Render targets {{{

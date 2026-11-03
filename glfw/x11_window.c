@@ -29,6 +29,7 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
+#include <X11/Xutil.h>
 #include "math.h"
 #include "backend_utils.h"
 #include "linux_notify.h"
@@ -2317,43 +2318,33 @@ _glfwPushSelectionToManagerX11(void) {
 //////////////////////////////////////////////////////////////////////////
 
 int
-_glfwPlatformCreateWindow(
-    _GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig, const GLFWLayerShellConfig *lsc) {
+_glfwPlatformCreateWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _GLFWfbconfig *fbconfig UNUSED, const GLFWLayerShellConfig *lsc) {
     Visual *visual = NULL;
-    int depth;
+    int depth = 0;
     if (lsc) {
         window->x11.layer_shell.is_active = true;
         window->x11.layer_shell.config = *lsc;
     } else window->x11.layer_shell.is_active = false;
 
-    if (ctxconfig->client != GLFW_NO_API) {
-        if (ctxconfig->source == GLFW_NATIVE_CONTEXT_API) {
-            if (!_glfwInitGLX()) return false;
-            if (!_glfwChooseVisualGLX(wndconfig, ctxconfig, fbconfig, &visual, &depth)) return false;
-        } else if (ctxconfig->source == GLFW_EGL_CONTEXT_API) {
-            if (!_glfwInitEGL()) return false;
-            if (!_glfwChooseVisualEGL(wndconfig, ctxconfig, fbconfig, &visual, &depth)) return false;
-        } else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API) {
-            if (!_glfwInitOSMesa()) return false;
+    if (wndconfig->x11.visualID) {
+        // The visual chosen by the GPU driver
+        XVisualInfo desired = {.visualid = wndconfig->x11.visualID, .screen = _glfw.x11.screen};
+        int count = 0;
+        XVisualInfo *result = XGetVisualInfo(_glfw.x11.display, VisualIDMask | VisualScreenMask, &desired, &count);
+        if (!result || !count) {
+            if (result) XFree(result);
+            _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to find the visual with id: 0x%lx", wndconfig->x11.visualID);
+            return false;
         }
-    }
-
-    if (!visual) {
+        visual = result->visual;
+        depth = result->depth;
+        XFree(result);
+    } else {
         visual = DefaultVisual(_glfw.x11.display, _glfw.x11.screen);
         depth = DefaultDepth(_glfw.x11.display, _glfw.x11.screen);
     }
 
     if (!createNativeWindow(window, wndconfig, visual, depth)) return false;
-
-    if (ctxconfig->client != GLFW_NO_API) {
-        if (ctxconfig->source == GLFW_NATIVE_CONTEXT_API) {
-            if (!_glfwCreateContextGLX(window, ctxconfig, fbconfig)) return false;
-        } else if (ctxconfig->source == GLFW_EGL_CONTEXT_API) {
-            if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig)) return false;
-        } else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API) {
-            if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig)) return false;
-        }
-    }
 
     if (window->monitor) {
         _glfwPlatformShowWindow(window, false);
@@ -2370,8 +2361,6 @@ _glfwPlatformDestroyWindow(_GLFWwindow *window) {
     if (_glfw.x11.disabledCursorWindow == window) _glfw.x11.disabledCursorWindow = NULL;
 
     if (window->monitor) releaseMonitor(window);
-
-    if (window->context.destroy) window->context.destroy(window);
 
     if (window->x11.handle) {
         XDeleteContext(_glfw.x11.display, window->x11.handle, _glfw.x11.context);
@@ -3270,45 +3259,8 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char *mime_typ
     getSelectionString(which, atoms, count, write_data, object, true);
 }
 
-EGLenum
-_glfwPlatformGetEGLPlatform(EGLint **attribs) {
-    if (_glfw.egl.ANGLE_platform_angle) {
-        int type = 0;
-
-        if (_glfw.egl.ANGLE_platform_angle_opengl) {
-            if (_glfw.hints.init.angleType == GLFW_ANGLE_PLATFORM_TYPE_OPENGL) type = EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE;
-        }
-
-        if (_glfw.egl.ANGLE_platform_angle_vulkan) {
-            if (_glfw.hints.init.angleType == GLFW_ANGLE_PLATFORM_TYPE_VULKAN) type = EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE;
-        }
-
-        if (type) {
-            *attribs = calloc(5, sizeof(EGLint));
-            (*attribs)[0] = EGL_PLATFORM_ANGLE_TYPE_ANGLE;
-            (*attribs)[1] = type;
-            (*attribs)[2] = EGL_PLATFORM_ANGLE_NATIVE_PLATFORM_TYPE_ANGLE;
-            (*attribs)[3] = EGL_PLATFORM_X11_EXT;
-            (*attribs)[4] = EGL_NONE;
-            return EGL_PLATFORM_ANGLE_ANGLE;
-        }
-    }
-
-    if (_glfw.egl.EXT_platform_base && _glfw.egl.EXT_platform_x11) return EGL_PLATFORM_X11_EXT;
-
-    return 0;
-}
-
-EGLNativeDisplayType
-_glfwPlatformGetEGLNativeDisplay(void) {
-    return _glfw.x11.display;
-}
-
-EGLNativeWindowType
-_glfwPlatformGetEGLNativeWindow(_GLFWwindow *window) {
-    if (_glfw.egl.platform) return &window->x11.handle;
-    else return (EGLNativeWindowType)window->x11.handle;
-}
+void
+_glfwPlatformWindowContentsPresented(_GLFWwindow *window UNUSED) {}
 
 void
 _glfwPlatformGetRequiredInstanceExtensions(char **extensions) {
@@ -3460,6 +3412,18 @@ glfwGetX11Window(GLFWwindow *handle) {
 
     _GLFW_REQUIRE_INIT_OR_RETURN(None);
     return window->x11.handle;
+}
+
+GLFWAPI void
+glfwX11PushErrorTrap(void) {
+    _GLFW_REQUIRE_INIT();
+    _glfwPushErrorTrapX11();
+}
+
+GLFWAPI int
+glfwX11PopErrorTrap(void) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(Success);
+    return _glfwPopErrorTrapX11();
 }
 
 GLFWAPI int

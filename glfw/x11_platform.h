@@ -182,7 +182,6 @@ typedef VkResult(APIENTRY *PFN_vkCreateXcbSurfaceKHR)(VkInstance, const VkXcbSur
 typedef VkBool32(APIENTRY *PFN_vkGetPhysicalDeviceXcbPresentationSupportKHR)(VkPhysicalDevice, uint32_t, xcb_connection_t *, xcb_visualid_t);
 
 #include "posix_thread.h"
-#include "glx_context.h"
 #if defined(__linux__)
 #include "linux_joystick.h"
 #else

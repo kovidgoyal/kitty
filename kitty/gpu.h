@@ -24,8 +24,9 @@ typedef struct GPUDriver {
 extern GPUDriver gpu_driver;
 
 // Load the GPU driver shared library at path. Returns NULL on success or an error message.
-const char *load_gpu_driver(const char *path, bool debug_rendering, gpu_get_proc_address_func get_proc_address);
-// Must be called once a context is current, before any other GPU functions are used
+const char *load_gpu_driver(const char *path, bool debug_rendering);
+// Must be called once a surface has been created and made current, before any
+// other GPU functions, except the surface functions, are used
 void initialize_gpu_driver(void);
 void unload_gpu_driver(void);
 
@@ -46,6 +47,61 @@ gpu_version_string(void) {
 static inline void
 gpu_get_capabilities(GPUCapabilities *ans) {
     A.get_capabilities(D, ans);
+}
+
+static inline bool
+gpu_choose_native_visual(const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint64_t *visual_id) {
+    return A.choose_native_visual(D, native, config, visual_id);
+}
+
+static inline gpu_surface_t
+gpu_surface_create(const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint32_t width, uint32_t height) {
+    return A.surface_create(D, native, config, width, height);
+}
+
+static inline void
+gpu_surface_destroy(gpu_surface_t surface) {
+    A.surface_destroy(D, surface);
+}
+
+static inline bool
+gpu_make_surface_current(gpu_surface_t surface) {
+    return A.make_surface_current(D, surface);
+}
+
+static inline gpu_surface_t
+gpu_get_current_surface(void) {
+    return A.get_current_surface(D);
+}
+
+static inline void
+gpu_surface_resize(gpu_surface_t surface, uint32_t width, uint32_t height) {
+    A.surface_resize(D, surface, width, height);
+}
+
+static inline bool
+gpu_surface_present(gpu_surface_t surface) {
+    return A.surface_present(D, surface);
+}
+
+static inline void
+gpu_surface_set_swap_interval(gpu_surface_t surface, int interval) {
+    A.surface_set_swap_interval(D, surface, interval);
+}
+
+static inline void
+gpu_surface_native_changed(gpu_surface_t surface) {
+    A.surface_native_changed(D, surface);
+}
+
+static inline bool
+gpu_surface_recreate(gpu_surface_t surface) {
+    return A.surface_recreate(D, surface);
+}
+
+static inline void
+gpu_release_native_resources(void) {
+    A.release_native_resources(D);
 }
 
 static inline gpu_texture_t

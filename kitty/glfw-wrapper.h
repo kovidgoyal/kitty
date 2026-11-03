@@ -453,16 +453,6 @@ typedef struct GLFWTouchEvent {
  *  function that requires initialization.
  */
 #define GLFW_NOT_INITIALIZED 0x00010001
-/*! @brief No context is current for this thread.
- *
- *  This occurs if a GLFW function was called that needs and operates on the
- *  current OpenGL or OpenGL ES context but no context is current on the calling
- *  thread.  One such function is @ref glfwSwapInterval.
- *
- *  @analysis Application programmer error.  Ensure a context is current before
- *  calling functions that require a current context.
- */
-#define GLFW_NO_CURRENT_CONTEXT 0x00010002
 /*! @brief One of the arguments to the function was an invalid enum value.
  *
  *  One of the arguments to the function was an invalid enum value, for example
@@ -553,14 +543,6 @@ typedef struct GLFWTouchEvent {
  *  the user, as appropriate.
  */
 #define GLFW_FORMAT_UNAVAILABLE 0x00010009
-/*! @brief The specified window does not have an OpenGL or OpenGL ES context.
- *
- *  A window that does not have an OpenGL or OpenGL ES context was passed to
- *  a function that requires it to have one.
- *
- *  @analysis Application programmer error.  Fix the offending call.
- */
-#define GLFW_NO_WINDOW_CONTEXT 0x0001000A
 /*! @brief The requested feature is not provided by the platform.
  *
  *  The requested feature is not provided by the platform, so GLFW is unable to
@@ -675,158 +657,12 @@ typedef struct GLFWTouchEvent {
  *  Occlusion [window attribute](@ref GLFW_OCCLUDED_attrib).
  */
 #define GLFW_OCCLUDED 0x0002000E
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_RED_BITS).
- */
-#define GLFW_RED_BITS 0x00021001
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_GREEN_BITS).
- */
-#define GLFW_GREEN_BITS 0x00021002
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_BLUE_BITS).
- */
-#define GLFW_BLUE_BITS 0x00021003
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ALPHA_BITS).
- */
-#define GLFW_ALPHA_BITS 0x00021004
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_DEPTH_BITS).
- */
-#define GLFW_DEPTH_BITS 0x00021005
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_STENCIL_BITS).
- */
-#define GLFW_STENCIL_BITS 0x00021006
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_RED_BITS).
- */
-#define GLFW_ACCUM_RED_BITS 0x00021007
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_GREEN_BITS).
- */
-#define GLFW_ACCUM_GREEN_BITS 0x00021008
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_BLUE_BITS).
- */
-#define GLFW_ACCUM_BLUE_BITS 0x00021009
-/*! @brief Framebuffer bit depth hint.
- *
- *  Framebuffer bit depth [hint](@ref GLFW_ACCUM_ALPHA_BITS).
- */
-#define GLFW_ACCUM_ALPHA_BITS 0x0002100A
-/*! @brief Framebuffer auxiliary buffer hint.
- *
- *  Framebuffer auxiliary buffer [hint](@ref GLFW_AUX_BUFFERS).
- */
-#define GLFW_AUX_BUFFERS 0x0002100B
-/*! @brief OpenGL stereoscopic rendering hint.
- *
- *  OpenGL stereoscopic rendering [hint](@ref GLFW_STEREO).
- */
-#define GLFW_STEREO 0x0002100C
-/*! @brief Framebuffer MSAA samples hint.
- *
- *  Framebuffer MSAA samples [hint](@ref GLFW_SAMPLES).
- */
-#define GLFW_SAMPLES 0x0002100D
-/*! @brief Framebuffer sRGB hint.
- *
- *  Framebuffer sRGB [hint](@ref GLFW_SRGB_CAPABLE).
- */
-#define GLFW_SRGB_CAPABLE 0x0002100E
 /*! @brief Monitor refresh rate hint.
  *
  *  Monitor refresh rate [hint](@ref GLFW_REFRESH_RATE).
  */
 #define GLFW_REFRESH_RATE 0x0002100F
-/*! @brief Framebuffer double buffering hint.
- *
- *  Framebuffer double buffering [hint](@ref GLFW_DOUBLEBUFFER).
- */
-#define GLFW_DOUBLEBUFFER 0x00021010
 
-/*! @brief Context client API hint and attribute.
- *
- *  Context client API [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
- */
-#define GLFW_CLIENT_API 0x00022001
-/*! @brief Context client API major version hint and attribute.
- *
- *  Context client API major version [hint](@ref GLFW_CONTEXT_VERSION_MAJOR_hint)
- *  and [attribute](@ref GLFW_CONTEXT_VERSION_MAJOR_attrib).
- */
-#define GLFW_CONTEXT_VERSION_MAJOR 0x00022002
-/*! @brief Context client API minor version hint and attribute.
- *
- *  Context client API minor version [hint](@ref GLFW_CONTEXT_VERSION_MINOR_hint)
- *  and [attribute](@ref GLFW_CONTEXT_VERSION_MINOR_attrib).
- */
-#define GLFW_CONTEXT_VERSION_MINOR 0x00022003
-/*! @brief Context client API revision number hint and attribute.
- *
- *  Context client API revision number
- *  [attribute](@ref GLFW_CONTEXT_REVISION_attrib).
- */
-#define GLFW_CONTEXT_REVISION 0x00022004
-/*! @brief Context robustness hint and attribute.
- *
- *  Context client API revision number [hint](@ref GLFW_CONTEXT_ROBUSTNESS_hint)
- *  and [attribute](@ref GLFW_CONTEXT_ROBUSTNESS_attrib).
- */
-#define GLFW_CONTEXT_ROBUSTNESS 0x00022005
-/*! @brief OpenGL forward-compatibility hint and attribute.
- *
- *  OpenGL forward-compatibility [hint](@ref GLFW_OPENGL_FORWARD_COMPAT_hint)
- *  and [attribute](@ref GLFW_OPENGL_FORWARD_COMPAT_attrib).
- */
-#define GLFW_OPENGL_FORWARD_COMPAT 0x00022006
-/*! @brief Debug mode context hint and attribute.
- *
- *  Debug mode context [hint](@ref GLFW_CONTEXT_DEBUG_hint) and
- *  [attribute](@ref GLFW_CONTEXT_DEBUG_attrib).
- */
-#define GLFW_CONTEXT_DEBUG 0x00022007
-/*! @brief Legacy name for compatibility.
- *
- *  This is an alias for compatibility with earlier versions.
- */
-#define GLFW_OPENGL_DEBUG_CONTEXT GLFW_CONTEXT_DEBUG
-/*! @brief OpenGL profile hint and attribute.
- *
- *  OpenGL profile [hint](@ref GLFW_OPENGL_PROFILE_hint) and
- *  [attribute](@ref GLFW_OPENGL_PROFILE_attrib).
- */
-#define GLFW_OPENGL_PROFILE 0x00022008
-/*! @brief Context flush-on-release hint and attribute.
- *
- *  Context flush-on-release [hint](@ref GLFW_CONTEXT_RELEASE_BEHAVIOR_hint) and
- *  [attribute](@ref GLFW_CONTEXT_RELEASE_BEHAVIOR_attrib).
- */
-#define GLFW_CONTEXT_RELEASE_BEHAVIOR 0x00022009
-/*! @brief Context error suppression hint and attribute.
- *
- *  Context error suppression [hint](@ref GLFW_CONTEXT_NO_ERROR_hint) and
- *  [attribute](@ref GLFW_CONTEXT_NO_ERROR_attrib).
- */
-#define GLFW_CONTEXT_NO_ERROR 0x0002200A
-/*! @brief Context creation API hint and attribute.
- *
- *  Context creation API [hint](@ref GLFW_CONTEXT_CREATION_API_hint) and
- *  [attribute](@ref GLFW_CONTEXT_CREATION_API_attrib).
- */
-#define GLFW_CONTEXT_CREATION_API 0x0002200B
 /*! @brief Window content area scaling window
  *  [window hint](@ref GLFW_SCALE_TO_MONITOR).
  */
@@ -839,10 +675,6 @@ typedef struct GLFWTouchEvent {
  *  [window hint](@ref GLFW_COCOA_FRAME_NAME_hint).
  */
 #define GLFW_COCOA_FRAME_NAME 0x00023002
-/*! @brief macOS specific
- *  [window hint](@ref GLFW_COCOA_GRAPHICS_SWITCHING_hint).
- */
-#define GLFW_COCOA_GRAPHICS_SWITCHING 0x00023003
 /*! @brief macOS specific
  *  [window hint](@ref GLFW_COCOA_COLOR_SPACE_hint).
  */
@@ -865,23 +697,17 @@ typedef enum {
  *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
  */
 #define GLFW_X11_INSTANCE_NAME 0x00024002
+/*! @brief X11 specific
+ *  The id of the X11 visual to use for the window, as chosen by the GPU driver,
+ *  zero for the default visual.
+ */
+#define GLFW_X11_VISUAL_ID 0x00024003
 
 #define GLFW_WAYLAND_APP_ID 0x00025001
 #define GLFW_WAYLAND_BGCOLOR 0x00025002
 #define GLFW_WAYLAND_WINDOW_TAG 0x00025003
 /*! @} */
 
-#define GLFW_NO_API 0
-#define GLFW_OPENGL_API 0x00030001
-#define GLFW_OPENGL_ES_API 0x00030002
-
-#define GLFW_NO_ROBUSTNESS 0
-#define GLFW_NO_RESET_NOTIFICATION 0x00031001
-#define GLFW_LOSE_CONTEXT_ON_RESET 0x00031002
-
-#define GLFW_OPENGL_ANY_PROFILE 0
-#define GLFW_OPENGL_CORE_PROFILE 0x00032001
-#define GLFW_OPENGL_COMPAT_PROFILE 0x00032002
 
 #define GLFW_CURSOR 0x00033001
 #define GLFW_STICKY_KEYS 0x00033002
@@ -893,21 +719,6 @@ typedef enum {
 #define GLFW_CURSOR_HIDDEN 0x00034002
 #define GLFW_CURSOR_DISABLED 0x00034003
 
-#define GLFW_ANY_RELEASE_BEHAVIOR 0
-#define GLFW_RELEASE_BEHAVIOR_FLUSH 0x00035001
-#define GLFW_RELEASE_BEHAVIOR_NONE 0x00035002
-
-#define GLFW_NATIVE_CONTEXT_API 0x00036001
-#define GLFW_EGL_CONTEXT_API 0x00036002
-#define GLFW_OSMESA_CONTEXT_API 0x00036003
-
-#define GLFW_ANGLE_PLATFORM_TYPE_NONE 0x00037001
-#define GLFW_ANGLE_PLATFORM_TYPE_OPENGL 0x00037002
-#define GLFW_ANGLE_PLATFORM_TYPE_OPENGLES 0x00037003
-#define GLFW_ANGLE_PLATFORM_TYPE_D3D9 0x00037004
-#define GLFW_ANGLE_PLATFORM_TYPE_D3D11 0x00037005
-#define GLFW_ANGLE_PLATFORM_TYPE_VULKAN 0x00037007
-#define GLFW_ANGLE_PLATFORM_TYPE_METAL 0x00037008
 
 /*! @defgroup shapes Standard cursor shapes
  *  @brief Standard system cursor shapes.
@@ -964,11 +775,6 @@ typedef enum {
  *  Joystick hat buttons [init hint](@ref GLFW_JOYSTICK_HAT_BUTTONS).
  */
 #define GLFW_JOYSTICK_HAT_BUTTONS 0x00050001
-/*! @brief ANGLE rendering backend init hint.
- *
- *  ANGLE rendering backend [init hint](@ref GLFW_ANGLE_PLATFORM_TYPE_hint).
- */
-#define GLFW_ANGLE_PLATFORM_TYPE 0x00050002
 #define GLFW_DEBUG_KEYBOARD 0x00050003
 #define GLFW_DEBUG_RENDERING 0x00050004
 /*! @brief macOS specific init hint.
@@ -990,20 +796,6 @@ typedef enum {
 /*************************************************************************
  * GLFW API types
  *************************************************************************/
-
-/*! @brief Client API function pointer type.
- *
- *  Generic function pointer used for returning client API function pointers
- *  without forcing a cast from a regular pointer.
- *
- *  @sa @ref context_glext
- *  @sa @ref glfwGetProcAddress
- *
- *  @since Added in version 3.0.
- *
- *  @ingroup context
- */
-typedef void (*GLFWglproc)(void);
 
 /*! @brief Vulkan API function pointer type.
  *
@@ -1467,6 +1259,14 @@ typedef void (*GLFWwindowmaximizefun)(GLFWwindow *, int);
  *  @ingroup window
  */
 typedef void (*GLFWframebuffersizefun)(GLFWwindow *, int, int);
+
+/*! @brief The function pointer type for native surface change callbacks.
+ *
+ *  Called when the native surface a window renders into changes in a way that
+ *  requires the GPU driver to update its drawable, such as on macOS when the
+ *  view is resized or moved to a different screen.
+ */
+typedef void (*GLFWnativesurfacechangedfun)(GLFWwindow *);
 
 /*! @brief The function pointer type for window content scale callbacks.
  *
@@ -2100,7 +1900,7 @@ typedef void (*glfwWindowHintString_func)(int, const char*);
 GFW_EXTERN glfwWindowHintString_func glfwWindowHintString_impl;
 #define glfwWindowHintString glfwWindowHintString_impl
 
-typedef GLFWwindow* (*glfwCreateWindow_func)(int, int, const char*, GLFWmonitor*, GLFWwindow*, const GLFWLayerShellConfig*);
+typedef GLFWwindow* (*glfwCreateWindow_func)(int, int, const char*, GLFWmonitor*, const GLFWLayerShellConfig*);
 GFW_EXTERN glfwCreateWindow_func glfwCreateWindow_impl;
 #define glfwCreateWindow glfwCreateWindow_impl
 
@@ -2312,6 +2112,14 @@ typedef GLFWframebuffersizefun (*glfwSetFramebufferSizeCallback_func)(GLFWwindow
 GFW_EXTERN glfwSetFramebufferSizeCallback_func glfwSetFramebufferSizeCallback_impl;
 #define glfwSetFramebufferSizeCallback glfwSetFramebufferSizeCallback_impl
 
+typedef GLFWnativesurfacechangedfun (*glfwSetNativeSurfaceChangedCallback_func)(GLFWwindow*, GLFWnativesurfacechangedfun);
+GFW_EXTERN glfwSetNativeSurfaceChangedCallback_func glfwSetNativeSurfaceChangedCallback_impl;
+#define glfwSetNativeSurfaceChangedCallback glfwSetNativeSurfaceChangedCallback_impl
+
+typedef void (*glfwWindowContentsPresented_func)(GLFWwindow*);
+GFW_EXTERN glfwWindowContentsPresented_func glfwWindowContentsPresented_impl;
+#define glfwWindowContentsPresented glfwWindowContentsPresented_impl
+
 typedef GLFWwindowcontentscalefun (*glfwSetWindowContentScaleCallback_func)(GLFWwindow*, GLFWwindowcontentscalefun);
 GFW_EXTERN glfwSetWindowContentScaleCallback_func glfwSetWindowContentScaleCallback_impl;
 #define glfwSetWindowContentScaleCallback glfwSetWindowContentScaleCallback_impl
@@ -2512,30 +2320,6 @@ typedef monotonic_t (*glfwGetTime_func)(void);
 GFW_EXTERN glfwGetTime_func glfwGetTime_impl;
 #define glfwGetTime glfwGetTime_impl
 
-typedef void (*glfwMakeContextCurrent_func)(GLFWwindow*);
-GFW_EXTERN glfwMakeContextCurrent_func glfwMakeContextCurrent_impl;
-#define glfwMakeContextCurrent glfwMakeContextCurrent_impl
-
-typedef GLFWwindow* (*glfwGetCurrentContext_func)(void);
-GFW_EXTERN glfwGetCurrentContext_func glfwGetCurrentContext_impl;
-#define glfwGetCurrentContext glfwGetCurrentContext_impl
-
-typedef void (*glfwSwapBuffers_func)(GLFWwindow*);
-GFW_EXTERN glfwSwapBuffers_func glfwSwapBuffers_impl;
-#define glfwSwapBuffers glfwSwapBuffers_impl
-
-typedef void (*glfwSwapInterval_func)(int);
-GFW_EXTERN glfwSwapInterval_func glfwSwapInterval_impl;
-#define glfwSwapInterval glfwSwapInterval_impl
-
-typedef int (*glfwExtensionSupported_func)(const char*);
-GFW_EXTERN glfwExtensionSupported_func glfwExtensionSupported_impl;
-#define glfwExtensionSupported glfwExtensionSupported_impl
-
-typedef GLFWglproc (*glfwGetProcAddress_func)(const char*);
-GFW_EXTERN glfwGetProcAddress_func glfwGetProcAddress_impl;
-#define glfwGetProcAddress glfwGetProcAddress_impl
-
 typedef int (*glfwVulkanSupported_func)(void);
 GFW_EXTERN glfwVulkanSupported_func glfwVulkanSupported_impl;
 #define glfwVulkanSupported glfwVulkanSupported_impl
@@ -2548,9 +2332,9 @@ typedef void* (*glfwGetCocoaWindow_func)(GLFWwindow*);
 GFW_EXTERN glfwGetCocoaWindow_func glfwGetCocoaWindow_impl;
 #define glfwGetCocoaWindow glfwGetCocoaWindow_impl
 
-typedef void* (*glfwGetNSGLContext_func)(GLFWwindow*);
-GFW_EXTERN glfwGetNSGLContext_func glfwGetNSGLContext_impl;
-#define glfwGetNSGLContext glfwGetNSGLContext_impl
+typedef void* (*glfwGetCocoaView_func)(GLFWwindow*);
+GFW_EXTERN glfwGetCocoaView_func glfwGetCocoaView_impl;
+#define glfwGetCocoaView glfwGetCocoaView_impl
 
 typedef uint32_t (*glfwGetCocoaMonitor_func)(GLFWmonitor*);
 GFW_EXTERN glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
@@ -2584,10 +2368,6 @@ typedef void (*glfwCocoaRequestRenderFrame_func)(GLFWwindow*, GLFWcocoarenderfra
 GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 #define glfwCocoaRequestRenderFrame glfwCocoaRequestRenderFrame_impl
 
-typedef bool (*glfwCocoaRecreateGLDrawable_func)(GLFWwindow*);
-GFW_EXTERN glfwCocoaRecreateGLDrawable_func glfwCocoaRecreateGLDrawable_impl;
-#define glfwCocoaRecreateGLDrawable glfwCocoaRecreateGLDrawable_impl
-
 typedef GLFWcocoarenderframefun (*glfwCocoaSetWindowResizeCallback_func)(GLFWwindow*, GLFWcocoarenderframefun);
 GFW_EXTERN glfwCocoaSetWindowResizeCallback_func glfwCocoaSetWindowResizeCallback_impl;
 #define glfwCocoaSetWindowResizeCallback glfwCocoaSetWindowResizeCallback_impl
@@ -2599,6 +2379,22 @@ GFW_EXTERN glfwGetX11Display_func glfwGetX11Display_impl;
 typedef unsigned long (*glfwGetX11Window_func)(GLFWwindow*);
 GFW_EXTERN glfwGetX11Window_func glfwGetX11Window_impl;
 #define glfwGetX11Window glfwGetX11Window_impl
+
+typedef void (*glfwX11PushErrorTrap_func)(void);
+GFW_EXTERN glfwX11PushErrorTrap_func glfwX11PushErrorTrap_impl;
+#define glfwX11PushErrorTrap glfwX11PushErrorTrap_impl
+
+typedef int (*glfwX11PopErrorTrap_func)(void);
+GFW_EXTERN glfwX11PopErrorTrap_func glfwX11PopErrorTrap_impl;
+#define glfwX11PopErrorTrap glfwX11PopErrorTrap_impl
+
+typedef void* (*glfwGetWaylandDisplay_func)(void);
+GFW_EXTERN glfwGetWaylandDisplay_func glfwGetWaylandDisplay_impl;
+#define glfwGetWaylandDisplay glfwGetWaylandDisplay_impl
+
+typedef void* (*glfwGetWaylandWindow_func)(GLFWwindow*);
+GFW_EXTERN glfwGetWaylandWindow_func glfwGetWaylandWindow_impl;
+#define glfwGetWaylandWindow glfwGetWaylandWindow_impl
 
 typedef void (*glfwSetPrimarySelectionString_func)(GLFWwindow*, const char*);
 GFW_EXTERN glfwSetPrimarySelectionString_func glfwSetPrimarySelectionString_impl;
