@@ -59,6 +59,9 @@ typedef struct NativeName {
 
 typedef struct Pipeline {
     GLuint id;
+    // The location of the kitty_flip_y uniform, see flip_y_for_window(), and its current value, zero if unset
+    GLint flip_y_location;
+    GLfloat flip_y;
     ParamBlock *param_blocks;
     size_t num_param_blocks;
     // Maps Slang names to GLSL identifiers
@@ -66,10 +69,27 @@ typedef struct Pipeline {
     size_t num_native_names;
 } Pipeline;
 
+// OpenGL puts the origin of window framebuffers at the bottom left, unlike
+// the GPU API, see gpu/api.h, while framebuffer objects have the first row of
+// their texture at the origin, which matches the API. So when rendering to a
+// window the driver flips: shaders negate gl_Position.y (see
+// fixup_opengl_code() in kitty/shaders/slang.py), y co-ordinates of
+// viewports, scissor rectangles and read back pixels are converted and rows
+// of read back pixels are reversed. This needs the height of the window
+// framebuffer, which is tracked here.
+typedef struct Surface {
+    GLSurface *gl;
+    uint32_t width, height;
+    // The framebuffer object bound in the context of this surface by
+    // set_render_target(), zero for the window
+    GLuint render_target;
+} Surface;
+
 typedef struct Driver {
     GPUDriverInitParams params;
     const GLPlatform *platform;
-    GLSurface *current_surface;
+    Surface *current_surface;
+    Pipeline *current_pipeline;
     bool initialized, supports_srgb_output;
     int gl_version;
     GLint max_texture_size, max_array_texture_layers;
@@ -85,7 +105,7 @@ static Driver *the_driver = NULL;
 #define AS_TEXTURE(handle) ((Texture *)(uintptr_t)(handle))
 #define AS_BUFFER(handle) ((Buffer *)(uintptr_t)(handle))
 #define AS_PIPELINE(handle) ((Pipeline *)(uintptr_t)(handle))
-#define AS_SURFACE(handle) ((GLSurface *)(uintptr_t)(handle))
+#define AS_SURFACE(handle) ((Surface *)(uintptr_t)(handle))
 #define AS_HANDLE(ptr) ((uint64_t)(uintptr_t)(ptr))
 // Framebuffers and vertex array objects need no extra state, so their handles are the OpenGL names
 #define AS_GL_NAME(handle) ((GLuint)(handle))
@@ -828,13 +848,16 @@ pipeline_create(
         return GPU_NULL_HANDLE;
     }
     apply_bindings(p, bindings, num_bindings);
+    p->flip_y_location = glGetUniformLocation(p->id, "kitty_flip_y");
     return AS_HANDLE(p);
 }
 
 static void
-use_pipeline(void *driver UNUSED, gpu_pipeline_t pipeline) {
-    const Pipeline *p = AS_PIPELINE(pipeline);
+use_pipeline(void *driver, gpu_pipeline_t pipeline) {
+    Driver *d = driver;
+    Pipeline *p = AS_PIPELINE(pipeline);
     glUseProgram(p ? p->id : 0);
+    d->current_pipeline = p;
 }
 
 static bool
@@ -1073,33 +1096,46 @@ static gpu_surface_t
 surface_create(void *driver, const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint32_t width, uint32_t height) {
     Driver *d = driver;
     if (!ensure_platform(d, native->platform)) return GPU_NULL_HANDLE;
-    GLSurface *s = d->platform->surface_create(native, config, width, height);
-    if (s) host_debug("Created %s OpenGL context for window of size: %ux%u", d->platform->name, width, height);
+    Surface *s = calloc(1, sizeof(Surface));
+    if (!s) {
+        set_error(d, "Out of memory allocating a surface");
+        return GPU_NULL_HANDLE;
+    }
+    if (!(s->gl = d->platform->surface_create(native, config, width, height))) {
+        free(s);
+        return GPU_NULL_HANDLE;
+    }
+    s->width = width;
+    s->height = height;
+    host_debug("Created %s OpenGL context for window of size: %ux%u", d->platform->name, width, height);
     return AS_HANDLE(s);
 }
 
 static void
 surface_destroy(void *driver, gpu_surface_t surface) {
     Driver *d = driver;
-    GLSurface *s = AS_SURFACE(surface);
+    Surface *s = AS_SURFACE(surface);
     if (!s || !d->platform) return;
     if (d->current_surface == s) {
         d->platform->make_current(NULL);
         d->current_surface = NULL;
+        d->current_pipeline = NULL;
     }
-    d->platform->surface_destroy(s);
+    d->platform->surface_destroy(s->gl);
+    free(s);
 }
 
 static bool
 make_surface_current(void *driver, gpu_surface_t surface) {
     Driver *d = driver;
-    GLSurface *s = AS_SURFACE(surface);
+    Surface *s = AS_SURFACE(surface);
     if (!d->platform) {
         if (!s) return true;
         set_error(d, "Cannot make a surface current before any surface is created");
         return false;
     }
-    if (!d->platform->make_current(s)) return false;
+    if (!d->platform->make_current(s ? s->gl : NULL)) return false;
+    if (d->current_surface != s) d->current_pipeline = NULL; // the current program is per context
     d->current_surface = s;
     return true;
 }
@@ -1112,34 +1148,40 @@ get_current_surface(void *driver) {
 static void
 surface_resize(void *driver, gpu_surface_t surface, uint32_t width, uint32_t height) {
     Driver *d = driver;
-    if (surface && d->platform) d->platform->surface_resize(AS_SURFACE(surface), width, height);
+    Surface *s = AS_SURFACE(surface);
+    if (!s || !d->platform) return;
+    s->width = width;
+    s->height = height;
+    d->platform->surface_resize(s->gl, width, height);
 }
 
 static bool
 surface_present(void *driver, gpu_surface_t surface) {
     Driver *d = driver;
     if (!surface || !d->platform) return false;
-    return d->platform->present(AS_SURFACE(surface));
+    return d->platform->present(AS_SURFACE(surface)->gl);
 }
 
 static void
 surface_set_swap_interval(void *driver, gpu_surface_t surface, int interval) {
     Driver *d = driver;
-    if (surface && d->platform) d->platform->set_swap_interval(AS_SURFACE(surface), interval);
+    if (surface && d->platform) d->platform->set_swap_interval(AS_SURFACE(surface)->gl, interval);
 }
 
 static void
 surface_native_changed(void *driver, gpu_surface_t surface) {
     Driver *d = driver;
-    if (surface && d->platform) d->platform->native_changed(AS_SURFACE(surface));
+    if (surface && d->platform) d->platform->native_changed(AS_SURFACE(surface)->gl);
 }
 
 static bool
 surface_recreate(void *driver, gpu_surface_t surface) {
     Driver *d = driver;
     if (!surface || !d->platform) return false;
-    if (!d->platform->recreate(AS_SURFACE(surface))) return false;
+    if (!d->platform->recreate(AS_SURFACE(surface)->gl)) return false;
     d->current_surface = AS_SURFACE(surface);
+    d->current_surface->render_target = 0;
+    d->current_pipeline = NULL;
     return true;
 }
 
@@ -1149,6 +1191,7 @@ release_native_resources(void *driver) {
     if (!d->platform) return;
     d->platform->make_current(NULL);
     d->current_surface = NULL;
+    d->current_pipeline = NULL;
     d->platform->terminate();
     d->platform = NULL;
 }
@@ -1201,14 +1244,48 @@ render_target_create(void *driver UNUSED, gpu_texture_t color_texture) {
 }
 
 static void
-render_target_destroy(void *driver UNUSED, gpu_render_target_t target) {
+render_target_destroy(void *driver, gpu_render_target_t target) {
+    Driver *d = driver;
     GLuint fbo = AS_GL_NAME(target);
-    if (fbo) glDeleteFramebuffers(1, &fbo);
+    if (!fbo) return;
+    glDeleteFramebuffers(1, &fbo);
+    // Deleting a bound framebuffer object binds the window framebuffer
+    if (d->current_surface && d->current_surface->render_target == fbo) d->current_surface->render_target = 0;
+}
+
+// The height of the window framebuffer if the window is the current render
+// target, see Surface, otherwise zero
+static uint32_t
+window_height(const Driver *d) {
+    const Surface *s = d->current_surface;
+    return s && !s->render_target ? s->height : 0;
+}
+
+// Convert the y co-ordinate of a rectangle between the top left origin of
+// the API and the bottom left origin of OpenGL window framebuffers. The
+// conversion is its own inverse. window_height is from window_height().
+static int32_t
+convert_y(uint32_t window_height, int32_t y, uint32_t height) {
+    return window_height ? (int32_t)window_height - y - (int32_t)height : y;
 }
 
 static void
-set_render_target(void *driver UNUSED, gpu_render_target_t target) {
+set_render_target(void *driver, gpu_render_target_t target) {
+    // The viewport and scissor rectangle are relative to the top left of the
+    // render target, so must be converted when switching between a window
+    // and a framebuffer object
+    const uint32_t before = window_height(driver);
+    GLint vp[4], sc[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    glGetIntegerv(GL_SCISSOR_BOX, sc);
     glBindFramebuffer(GL_FRAMEBUFFER, AS_GL_NAME(target));
+    Driver *d = driver;
+    if (d->current_surface) d->current_surface->render_target = AS_GL_NAME(target);
+    const uint32_t after = window_height(driver);
+    if (before != after) {
+        glViewport(vp[0], convert_y(after, convert_y(before, vp[1], vp[3]), vp[3]), vp[2], vp[3]);
+        glScissor(sc[0], convert_y(after, convert_y(before, sc[1], sc[3]), sc[3]), sc[2], sc[3]);
+    }
 }
 
 static gpu_render_target_t
@@ -1236,20 +1313,21 @@ clear(void *driver UNUSED, float r, float g, float b, float a) {
 }
 
 static void
-set_viewport(void *driver UNUSED, int32_t x, int32_t y, uint32_t width, uint32_t height) {
-    glViewport(x, y, width, height);
+set_viewport(void *driver, int32_t x, int32_t y, uint32_t width, uint32_t height) {
+    glViewport(x, convert_y(window_height(driver), y, height), width, height);
 }
 
 static void
-get_viewport(void *driver UNUSED, int32_t ans[4]) {
+get_viewport(void *driver, int32_t ans[4]) {
     glGetIntegerv(GL_VIEWPORT, ans);
+    ans[1] = convert_y(window_height(driver), ans[1], (uint32_t)ans[3]);
 }
 
 static void
-set_scissor(void *driver UNUSED, bool enabled, int32_t x, int32_t y, uint32_t width, uint32_t height) {
+set_scissor(void *driver, bool enabled, int32_t x, int32_t y, uint32_t width, uint32_t height) {
     if (enabled) {
         glEnable(GL_SCISSOR_TEST);
-        glScissor(x, y, width, height);
+        glScissor(x, convert_y(window_height(driver), y, height), width, height);
     } else glDisable(GL_SCISSOR_TEST);
 }
 
@@ -1260,23 +1338,70 @@ set_srgb_output(void *driver UNUSED, bool enabled) {
 }
 
 static void
-read_pixels(void *driver UNUSED, int32_t x, int32_t y, uint32_t width, uint32_t height, void *dst) {
+read_pixels(void *driver, int32_t x, int32_t y, uint32_t width, uint32_t height, void *dst) {
+    const uint32_t wh = window_height(driver);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, dst);
+    glReadPixels(x, convert_y(wh, y, height), width, height, GL_RGBA, GL_UNSIGNED_BYTE, dst);
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    if (wh && height > 1) {
+        // Window framebuffer rows are read bottom to top, reverse them
+        const size_t stride = 4u * (size_t)width;
+        uint8_t row[4096], *top = dst, *bottom = (uint8_t *)dst + stride * (height - 1);
+        for (; top < bottom; top += stride, bottom -= stride) {
+            for (size_t done = 0; done < stride; done += sizeof(row)) {
+                const size_t n = stride - done < sizeof(row) ? stride - done : sizeof(row);
+                memcpy(row, top + done, n);
+                memcpy(top + done, bottom + done, n);
+                memcpy(bottom + done, row, n);
+            }
+        }
+    }
 }
 
 static void
-copy_to_texture(void *driver UNUSED, gpu_texture_t dst, int32_t x, int32_t y, uint32_t width, uint32_t height) {
+copy_to_texture(void *driver, gpu_texture_t dst, int32_t x, int32_t y, uint32_t width, uint32_t height) {
     const Texture *t = AS_TEXTURE(dst);
-    bind_for_management(t);
-    glCopyTexSubImage2D(t->target, 0, 0, 0, x, y, width, height);
+    const uint32_t wh = window_height(driver);
+    if (!wh) {
+        // The first row of the texture of a framebuffer object is at the origin, as in the API
+        bind_for_management(t);
+        glCopyTexSubImage2D(t->target, 0, 0, 0, x, y, width, height);
+        return;
+    }
+    // Copy from the window with a blit that flips the rows, so that the top
+    // of the rectangle ends up in the first row of the texture
+    SavedFramebuffers saved = save_framebuffers();
+    const GLboolean srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB), scissor = glIsEnabled(GL_SCISSOR_TEST);
+    glDisable(GL_FRAMEBUFFER_SRGB); // copy the stored values, without any conversion
+    glDisable(GL_SCISSOR_TEST);
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, t->id, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    const GLint sy = convert_y(wh, y, height);
+    glBlitFramebuffer(x, sy, x + (GLint)width, sy + (GLint)height, 0, (GLint)height, (GLint)width, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    restore_framebuffers(saved);
+    glDeleteFramebuffers(1, &fbo);
+    if (srgb) glEnable(GL_FRAMEBUFFER_SRGB);
+    if (scissor) glEnable(GL_SCISSOR_TEST);
 }
 // }}}
 
 // Drawing {{{
 static void
-draw_quad(void *driver UNUSED, uint32_t instance_count, GPUBlendMode blend) {
+draw_quad(void *driver, uint32_t instance_count, GPUBlendMode blend) {
+    Driver *d = driver;
+    Pipeline *p = d->current_pipeline;
+    if (p && p->flip_y_location >= 0) {
+        // Shaders produce y co-ordinates for a top left origin, flip them for
+        // window framebuffers, which have a bottom left origin, see Surface
+        const GLfloat flip_y = window_height(d) ? -1.f : 1.f;
+        if (p->flip_y != flip_y) {
+            glUniform1f(p->flip_y_location, flip_y);
+            p->flip_y = flip_y;
+        }
+    }
     if (blend == GPU_BLEND_PREMULTIPLIED_ALPHA) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);

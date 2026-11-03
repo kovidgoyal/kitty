@@ -4725,7 +4725,7 @@ screen_update_graphics_layers(Screen *self) {
         rendered_scrolled_by(self),
         scroll_offset_lines_for_screen(self),
         -1.f,
-        1.f,
+        -1.f,
         2.f / self->columns,
         2.f / self->lines,
         self->columns,

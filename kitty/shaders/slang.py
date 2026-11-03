@@ -1293,6 +1293,17 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
         return replacements[m.group(1)]
 
     ans = re.sub(r'\b(' + '|'.join(re.escape(word) for word in replacements) + r')\b', sub, ans)
+    if not is_fragment_shader:
+        # Shaders produce positions for a render target with its origin at
+        # the top left, so NDC y=-1 is the top. OpenGL window framebuffers
+        # have their origin at the bottom left, the OpenGL driver sets
+        # kitty_flip_y to -1 when rendering to them, see Surface in
+        # gpu/opengl/driver.c
+        ans, n = re.subn(r'^void main\(\)$', 'void kitty_vertex_main()', ans, flags=re.MULTILINE)
+        if n != 1:
+            raise ValueError(f'Could not find the main() function in the vertex shader: {shader_name}')
+        ans += '\n\nuniform float kitty_flip_y;\n\nvoid main()\n{\n    kitty_vertex_main();\n    gl_Position.y *= kitty_flip_y;\n}\n'
+
     # Slang emits `{ }` style struct initializers which aren't valid in GLSL 140;
     # convert them to GLSL constructor call syntax.
     ans = re.sub(
