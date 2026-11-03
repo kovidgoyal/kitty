@@ -224,6 +224,10 @@ typedef struct GPUShaderSource {
     GPUShaderLanguage language;
     const char *code;
     size_t size; // size of code in bytes, may be zero for null terminated text
+    // The name of the entry point function for this stage in code. Modules,
+    // such as SPIR-V ones, can contain the entry points of several stages, in
+    // which case the same code is passed for each stage.
+    const char *entry_point;
 } GPUShaderSource;
 
 typedef struct GPUUniformBlockInfo {

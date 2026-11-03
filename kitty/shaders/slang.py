@@ -207,9 +207,11 @@ def variant_name(variant: dict[str, str], default: dict[str, str]) -> str:
 
 class ShaderTarget(NamedTuple):
     # The shader target consumed by a GPU driver, identified by strings of the
-    # form family-version, for example glsl-140. Built-in shaders are compiled
-    # for the targets of the drivers being built, at build time, and custom
-    # shaders for the target of the loaded driver, at runtime.
+    # form family-version, for example glsl-140 or spirv-16 (SPIR-V 1.6).
+    # Built-in shaders are compiled for the targets of the drivers being built,
+    # at build time, and custom shaders for the target of the loaded driver, at
+    # runtime. GLSL targets produce one text file per stage, SPIR-V targets a
+    # single binary module containing all the entry points of the program.
     family: str
     version: int
 
@@ -222,12 +224,22 @@ class ShaderTarget(NamedTuple):
         family, sep, version = spec.partition('-')
         if not sep or not version.isdigit():
             raise ValueError(f'Invalid shader target: {spec!r}')
-        if family not in ('glsl',):
+        if family not in ('glsl', 'spirv'):
             raise ValueError(f'Unsupported shader target: {spec!r}')
         return cls(family, int(version))
 
     @property
+    def is_spirv(self) -> bool:
+        return self.family == 'spirv'
+
+    @property
     def slangc_args(self) -> list[str]:
+        if self.is_spirv:
+            major, minor = divmod(self.version, 10)
+            # The GLSL 450 profile provides the shader capabilities, such as
+            # texture gathering, without it slangc warns that it implicitly
+            # upgrades the profile
+            return ['-target', 'spirv', '-profile', 'glsl_450', '-capability', f'spirv_{major}_{minor}', '-fvk-use-entrypoint-name']
         # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
         return ['-target', 'glsl', '-profile', f'glsl_{max(150, self.version)}']
 
@@ -239,17 +251,22 @@ def current_shader_target() -> ShaderTarget:
     return ShaderTarget.parse(spec)
 
 
-def builtin_program(target: ShaderTarget, name: str, variant_name: str = '') -> tuple[str, str, dict[str, Any]]:
+def builtin_program(target: ShaderTarget, name: str, variant_name: str = '') -> tuple[str | bytes, str | bytes, dict[str, Any]]:
     # Returns the vertex and fragment shaders and the metadata for a built-in program
     if variant_name:
         variant_name = '.' + variant_name
     base = os.path.join(shaders_dir, target.id, f'{name}{variant_name}')
+    with open(f'{base}.json') as f:
+        metadata = json.load(f)
+    if target.is_spirv:
+        # A single module contains the entry points for all stages
+        with open(f'{base}.spv', 'rb') as b:
+            spirv = b.read()
+        return spirv, spirv, metadata
     with open(f'{base}.vert.glsl') as f:
         vert = f.read()
     with open(f'{base}.frag.glsl') as f:
         frag = f.read()
-    with open(f'{base}.json') as f:
-        metadata = json.load(f)
     return vert, frag, metadata
 
 
@@ -265,7 +282,7 @@ class LoadShaderPrograms:
     def __init__(self) -> None:
         # Per-instance because it is mutable: the sources most recently compiled
         # into each program, used to skip redundant recompiles.
-        self.last_built_custom_shaders: dict[int, tuple[str, str, dict[str, Any]]] = {}
+        self.last_built_custom_shaders: dict[int, tuple[str | bytes, str | bytes, dict[str, Any]]] = {}
         # Errors from the most recent attempt to build the shaders named by the
         # custom_shaders option. A failure here disables the shader silently as
         # far as rendering is concerned, so the Boss displays these to the user.
@@ -386,7 +403,7 @@ class LoadShaderPrograms:
             else:
                 try:
                     pipeline = merge_pipelines(slot_pipelines)
-                    vert, frag, metadata = build_custom_shader_pipeline_glsl(pipeline, current_shader_target())
+                    vert, frag, metadata = build_custom_shader_pipeline(pipeline, current_shader_target())
                     # print(vert, file=open('/tmp/sample.vert', 'w'))
                     # print(frag, file=open('/tmp/sample.frag', 'w'))
                 except FileNotFoundError as e:
@@ -1053,22 +1070,44 @@ def serialize_source_metadata(sources: dict[str, SlangFile], dest_dir: str) -> N
             f.write(json.dumps(sfile.asdict(skip_source=True), indent=2, sort_keys=True))
 
 
-def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_files: list[str]) -> Iterator[Command]:
-    # glsl 450 is vulkan 1.1 and spirv 1.3 released 2008
-    base_cmd = ['-target', 'spirv', '-profile', 'glsl_450', '-capability', 'vk_mem_model', '-fvk-use-entrypoint-name']
-    for base_dest, base_build, slang_module, scmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
+def commands_to_compile_to_spirv(
+    sources: dict[str, SlangFile], build_dir: str, dest_dir: str, target: ShaderTarget, built_files: list[str]
+) -> Iterator[Command]:
+    # One module containing all the entry points of each program
+    os.makedirs(os.path.join(dest_dir, target.id), exist_ok=True)
+    os.makedirs(os.path.join(build_dir, target.id), exist_ok=True)
+    for base_dest, base_build, slang_module, scmd, sfile in iter_entry_point_shaders(sources, build_dir, os.path.join(dest_dir, target.id)):
         for x in sfile.specializations:
             cmd = list(scmd)
-            dest = f'{base_dest}.{x.name}.spv' if x.name else f'{base_dest}.spv'
+            dest = f'{base_dest}{x.filename_insert}.spv' if x.name else f'{base_dest}.spv'
             if x.variables:
                 cmd.insert(-1, f'{base_build}{x.filename_insert}.slang-module')
-            cmd += base_cmd + ['-o', dest, '-reflection-json', dest + '.json']
+            cmd += target.slangc_args + ['-o', dest, '-reflection-json', reflection_path(target, build_dir, dest)]
             output_mtime = safe_mtime(dest)
             module_mtime = os.path.getmtime(slang_module)
             needs_build = output_mtime < module_mtime
             if needs_build:
                 built_files.append(dest)
             yield Command(needs_build, f'Linking |{os.path.basename(dest)}| ...', cmd)
+
+
+def write_spirv_metadata(paths: Iterable[str], target: ShaderTarget, reflection_dir: str) -> None:
+    "Write the program metadata for compiled SPIR-V modules"
+    for path in paths:
+        with open(reflection_path(target, reflection_dir, path)) as f:
+            reflection = json.load(f)
+        try:
+            metadata = program_metadata(target, [reflection], GLSLMetadata())
+        except Exception:
+            os.unlink(path)
+            raise
+        write_if_changed(path.removesuffix('.spv') + '.json', json.dumps(metadata, indent=2, sort_keys=True))
+
+
+def spirv_validation_command(target: ShaderTarget, path: str) -> list[str]:
+    # The Vulkan version whose environment the SPIR-V is validated against
+    env = {16: 'vulkan1.3', 15: 'vulkan1.2', 13: 'vulkan1.1'}.get(target.version, 'vulkan1.3')
+    return ['spirv-val', '--target-env', env, path]
 
 
 # GLSL {{{
@@ -1424,8 +1463,12 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
     # parameters of the program and the pipeline constant blocks. kitty sets their contents with set_params()
     # rather than via uniform buffers.
     param_blocks: dict[str, dict[str, Any]] = {}
-    # Uniform blocks that are emitted as uniform blocks rather than as loose uniforms by the target
+    # Uniform blocks that are emitted as uniform blocks rather than as loose
+    # uniforms by the target. For SPIR-V all of them, other than the pipeline
+    # constant blocks, and the reflection data lists only those present in the
+    # compiled code.
     real_blocks = set(native.uniform_struct_names)
+    entry_points: dict[str, str] = {}
     for refl in reflections:
         for p in refl['parameters']:
             t = p['type']
@@ -1453,7 +1496,7 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                             'size': evl['binding']['size'],
                             'fields': [param_field(f['name'], f['binding']['offset'], f['type']) for f in et['fields']],
                         }
-                    elif tname in real_blocks:
+                    elif tname in real_blocks or target.is_spirv:
                         arrays = {}
                         for f in et['fields']:
                             ft = f['type']
@@ -1468,6 +1511,8 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                     raise ValueError(f'Unsupported shader parameter: {p["name"]} of kind: {t["kind"]}')
         for ep in refl['entryPoints']:
             stage = ep['stage']
+            # GLSL shaders always use main(), so the name is needed only for other targets
+            entry_points[stage] = 'main' if target.family == 'glsl' else ep['name']
             for p in ep.get('parameters', ()):
                 b = p.get('binding') or {}
                 match b.get('kind'):
@@ -1484,6 +1529,7 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
     native_names.update(native.native_inputs)
     return {
         'target': target.id,
+        'entry_points': entry_points,
         'inputs': inputs,
         'textures': textures,
         'blocks': blocks,
@@ -1575,18 +1621,23 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
         parallel_run(commands_to_compile_dir_to_ir(layer_sources, src_dir, build_dir))
     # Create the specializations
     parallel_run(create_specialisations(source_tree, build_dir))
-    # Now Vulkan shaders
-    built_spirv_files: list[str] = []
-    spirv_commands = commands_to_compile_to_spirv(source_tree, build_dir, dest_dir, built_spirv_files)
     # Now the shaders for the targets of the GPU drivers
-    built_glsl_files: dict[ShaderTarget, list[str]] = {}
+    built_files: dict[ShaderTarget, list[str]] = {}
     target_commands: list[Iterator[Command]] = []
     for target in targets:
-        built_glsl_files[target] = []
-        target_commands.append(commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, target, built_glsl_files[target]))
+        built_files[target] = []
+        if target.is_spirv:
+            target_commands.append(commands_to_compile_to_spirv(source_tree, build_dir, dest_dir, target, built_files[target]))
+        else:
+            target_commands.append(commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, target, built_files[target]))
     # Now run all commands
-    parallel_run(chain(spirv_commands, *target_commands))
-    for target, built in built_glsl_files.items():
+    parallel_run(chain(*target_commands))
+    for target, built in built_files.items():
+        if target.is_spirv:
+            write_spirv_metadata(built, target, build_dir)
+            if shutil.which('spirv-val'):
+                parallel_run((True, f'Validating |{os.path.basename(x)}| ...', spirv_validation_command(target, x)) for x in built)
+            continue
         fixup_opengl_files(built, target, build_dir)
         if shutil.which('glslangValidator'):
             from kitty.shaders.validate_shaders import validation_command_for_file
@@ -2311,9 +2362,14 @@ float4 fmain_wrap(float2 texcoord : TEXCOORD) : SV_Target {
         """.replace('MODULE', slot.replace('-', '_')).encode()
 
 
-def build_custom_shader_pipeline_glsl(
+def build_custom_shader_pipeline(
     pipeline: Pipeline, target: ShaderTarget, cache_dir: str = '', invocation_tracker: set[tuple[str, ...]] | None = None
-) -> tuple[str, str, dict[str, Any]]:
+) -> tuple[str | bytes, str | bytes, dict[str, Any]]:
+    """
+    Build the program for a custom shader pipeline, for the specified shader
+    target. Returns the vertex and fragment shaders, which are the same module
+    for SPIR-V, and the program metadata.
+    """
     import kitty.constants as kc
 
     cache_dir = os.path.join(cache_dir or kc.cache_dir(), 'shaders')
@@ -2321,63 +2377,66 @@ def build_custom_shader_pipeline_glsl(
     if invocation_tracker is None:
         invocation_tracker = set()
 
+    def run(cmds: Sequence[tuple[str, list[str]]], src: bytes) -> None:
+        procs = []
+        try:
+            for name, cmd in cmds:
+                invocation_tracker.add(tuple(cmd))
+                p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+                procs.append((name, cmd, p))
+                assert p.stdin is not None
+                p.stdin.write(src), p.stdin.close()
+            for name, cmd, p in procs:
+                assert p.stderr is not None
+                if (rc := p.wait()) != 0:
+                    raise SlangFailed(name, subprocess.CompletedProcess(cmd, rc, stderr=p.stderr.read()))
+        finally:
+            for _, _, p in procs:
+                if p.stderr is not None:
+                    p.stderr.close()
+
     with lock_with_file(
         os.path.join(cache_dir, 'lock'),
     ):
         pipeline_ir = build_custom_shader_pipeline_ir(pipeline, cache_dir, invocation_tracker)
         import_dirs, slang_module_path = pipeline_ir.import_dirs, pipeline_ir.module_path
-        glsl_dir = os.path.join(os.path.dirname(os.path.dirname(slang_module_path)), target.id)
-        os.makedirs(glsl_dir, exist_ok=True)
-        os.makedirs(os.path.join(glsl_dir, target.id), exist_ok=True)
+        out_dir = os.path.join(os.path.dirname(os.path.dirname(slang_module_path)), target.id)
+        os.makedirs(out_dir, exist_ok=True)
+        os.makedirs(os.path.join(out_dir, target.id), exist_ok=True)
         module_mtime = safe_mtime(slang_module_path)
         slot = pipeline['slot']
-        vertex = os.path.join(glsl_dir, f'{slot}.vert.glsl')
-        fragment = os.path.join(glsl_dir, f'{slot}.frag.glsl')
-        metadata = os.path.join(glsl_dir, f'{slot}.json')
-        if module_mtime > safe_mtime(metadata):
-            inc = []
-            for x in import_dirs:
-                inc.extend(('-I', x))
-            cmd = (
-                list(slangc())
-                + inc
-                + [
-                    '-warnings-as-errors',
-                    'all',
-                    '-line-directive-mode',
-                    'none',
-                    '-lang',
-                    'slang',
-                ]
-                + target.slangc_args
-            )
-            vrefl, frefl = reflection_path(target, glsl_dir, vertex), reflection_path(target, glsl_dir, fragment)
-            vcmd = cmd + ['-stage', 'vertex', '-entry', 'vmain_wrap', '-o', vertex, '-reflection-json', vrefl, '--', '-']
-            fcmd = cmd + ['-stage', 'fragment', '-entry', 'fmain_wrap', '-o', fragment, '-reflection-json', frefl, '--', '-']
-            src = module_wrapper_for_slot(slot)
-            invocation_tracker.add(tuple(vcmd))
-            invocation_tracker.add(tuple(fcmd))
-            v = subprocess.Popen(vcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
-            f = subprocess.Popen(fcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
-            assert v.stdin is not None and f.stdin is not None
-            assert v.stderr is not None and f.stderr is not None
-            v.stdin.write(src), v.stdin.close()
-            f.stdin.write(src), f.stdin.close()
-            try:
-                if (rc := v.wait()) != 0:
-                    raise SlangFailed(f'{slot}.vert.glsl', subprocess.CompletedProcess(vcmd, rc, stderr=v.stderr.read()))
-                if (rc := f.wait()) != 0:
-                    raise SlangFailed(f'{slot}.frag.glsl', subprocess.CompletedProcess(fcmd, rc, stderr=f.stderr.read()))
-            finally:
-                v.stderr.close()
-                f.stderr.close()
-            fixup_opengl_files((fragment, vertex), target, glsl_dir)
-        with open(vertex) as vf, open(fragment) as ff, open(metadata) as mf:
+        metadata = os.path.join(out_dir, f'{slot}.json')
+        inc = []
+        for x in import_dirs:
+            inc.extend(('-I', x))
+        cmd = list(slangc()) + inc + ['-warnings-as-errors', 'all', '-line-directive-mode', 'none', '-lang', 'slang'] + target.slangc_args
+        src = module_wrapper_for_slot(slot)
+        if target.is_spirv:
+            # A single module containing both entry points
+            module = os.path.join(out_dir, f'{slot}.spv')
+            if module_mtime > safe_mtime(metadata):
+                run(((f'{slot}.spv', cmd + ['-o', module, '-reflection-json', reflection_path(target, out_dir, module), '--', '-']),), src)
+                write_spirv_metadata((module,), target, out_dir)
+            with open(module, 'rb') as sf:
+                vcode: str | bytes = sf.read()
+            fcode = vcode
+        else:
+            vertex = os.path.join(out_dir, f'{slot}.vert.glsl')
+            fragment = os.path.join(out_dir, f'{slot}.frag.glsl')
+            if module_mtime > safe_mtime(metadata):
+                vrefl, frefl = reflection_path(target, out_dir, vertex), reflection_path(target, out_dir, fragment)
+                vcmd = cmd + ['-stage', 'vertex', '-entry', 'vmain_wrap', '-o', vertex, '-reflection-json', vrefl, '--', '-']
+                fcmd = cmd + ['-stage', 'fragment', '-entry', 'fmain_wrap', '-o', fragment, '-reflection-json', frefl, '--', '-']
+                run(((f'{slot}.vert.glsl', vcmd), (f'{slot}.frag.glsl', fcmd)), src)
+                fixup_opengl_files((fragment, vertex), target, out_dir)
+            with open(vertex) as vf, open(fragment) as ff:
+                vcode, fcode = vf.read(), ff.read()
+        with open(metadata) as mf:
             m = json.load(mf)
-            m['pipeline'] = pipeline
-            m['has_pointer_map'] = bool(pipeline_ir.pointer_map_shaders)
-            m['pointer_map_groups'] = sorted({g for g, _ in pipeline_ir.pointer_map_shaders})
-            return vf.read(), ff.read(), m
+        m['pipeline'] = pipeline
+        m['has_pointer_map'] = bool(pipeline_ir.pointer_map_shaders)
+        m['pointer_map_groups'] = sorted({g for g, _ in pipeline_ir.pointer_map_shaders})
+        return vcode, fcode, m
 
 
 def clear_caches() -> None:
@@ -2391,9 +2450,10 @@ def test_slang_build() -> None:
 
     if shutil.which(slangc()[0]) is None:
         raise AssertionError(f'The shader slang compiler ({slangc()[0]}) not in PATH: {os.environ.get("PATH")}')
-    q = os.path.join(shaders_dir, 'graphics.spv')
-    if not os.path.isfile(q):
-        raise AssertionError(f'The compiled graphics shader {q} does not exist')
+    # The built-in shaders are compiled for the shader target of every GPU driver in the build
+    targets = [x for x in os.listdir(shaders_dir) if os.path.isfile(os.path.join(shaders_dir, x, 'graphics.json'))]
+    if not targets:
+        raise AssertionError(f'The compiled graphics shader does not exist for any shader target in {shaders_dir}')
     if not get_shader_src('graphics'):
         raise AssertionError('Could not load graphics.slang shader source')
     src = b"""
