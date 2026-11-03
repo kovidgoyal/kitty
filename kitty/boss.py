@@ -827,7 +827,9 @@ class Boss:
                 if swid > 0:
                     self_window = self.window_id_map.get(swid)
 
-        extra_data: dict[str, Any] = {}
+        # self_window is the window the command will act on as "self", for
+        # commands received over sockets it is specified by the client
+        extra_data: dict[str, Any] = {'self_window': self_window}
         try:
             allowed_unconditionally = (
                 self.allow_remote_control == 'y'
@@ -2760,7 +2762,9 @@ class Boss:
                     from secrets import token_hex
 
                     p = token_hex(16)
-                    remote_control_passwords = {p: end_kitten.remote_control_password if isinstance(end_kitten.remote_control_password, str) else ''}
+                    from .remote_control import kitten_password_restrictions
+
+                    remote_control_passwords = {p: kitten_password_restrictions(end_kitten.remote_control_password)}
                     initial_data = p.encode() + b'\n'
                 remote = self.add_fd_based_remote_control(remote_control_passwords, initial_data)
                 remote_control_fd = remote.fileno()

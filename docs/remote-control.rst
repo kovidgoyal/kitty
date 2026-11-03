@@ -244,6 +244,12 @@ as shown below:
     def is_cmd_allowed(pcmd, window, from_socket, extra_data):
         cmd_name = pcmd['cmd']  # the name of the command
         cmd_payload = pcmd['payload']  # the arguments to the command
+        # window is the window the command was received from, it is None
+        # for commands received over a socket. extra_data['self_window'] is
+        # the window the command will treat as "self", for commands received
+        # over a socket, this is specified by the client and so is not trusted
+        # and can be None.
+        self_window = extra_data['self_window']
         # examine the cmd_name and cmd_payload and return True to allow
         # the command or False to disallow it. Return None to have no
         # effect on the command.

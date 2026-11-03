@@ -2,12 +2,14 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from typing import TYPE_CHECKING, Optional
+from weakref import WeakValueDictionary
 
 from kitty.types import AsyncResponse
 
 from .base import MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
 if TYPE_CHECKING:
+    from kitty.boss import VisualSelect
     from kitty.cli_stub import SelectWindowRCOptions as CLIOptions
     from kitty.tabs import Tab
 
@@ -56,6 +58,7 @@ be refocused.
 """
     )
     is_asynchronous = True
+    visual_selects: 'WeakValueDictionary[str, VisualSelect]' = WeakValueDictionary()
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         ans = {
@@ -69,8 +72,10 @@ be refocused.
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         responder = self.create_async_responder(payload_get, window)
+        async_id: str = payload_get('async_id', missing='')
 
         def callback(tab: Optional['Tab'], window: Window | None) -> None:
+            self.visual_selects.pop(async_id, None)
             if window:
                 responder.send_data(window.id)
             else:
@@ -82,11 +87,18 @@ be refocused.
                 boss.visual_window_select_action(
                     tab, callback, payload_get('title') or 'Choose window', only_window_ids=wids, reactivate_prev_tab=payload_get('reactivate_prev_tab')
                 )
+                if async_id and boss.current_visual_select is not None:
+                    self.visual_selects[async_id] = boss.current_visual_select
                 break
         return AsyncResponse()
 
     def cancel_async_request(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> None:
-        boss.cancel_current_visual_select()
+        # Cancellations are not authenticated, so only cancel the visual
+        # select started by the request being cancelled, which requires
+        # knowing its random async_id, never some other visual select.
+        vs = self.visual_selects.pop(payload_get('async_id', missing=''), None)
+        if vs is not None and vs is boss.current_visual_select:
+            boss.cancel_current_visual_select()
 
 
 select_window = SelectWindow()

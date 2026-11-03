@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2026 Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import os
 import subprocess
 import tempfile
@@ -209,6 +210,132 @@ class TestRemoteControl(BaseTest):
         self.ae(len(active_streams), 32)
         self.assertNotIn('many-0', active_streams)
         self.assertIn('many-39', active_streams)
+
+    def test_kitten_password_restrictions(self):
+        from kitty.remote_control import kitten_password_restrictions, remote_control_allowed
+
+        def allowed_cmds(rcp: str | bool) -> list[str]:
+            passwords = {'pw': kitten_password_restrictions(rcp)}
+            ans = []
+            for cmd in ('ls', 'set-colors', 'set-font-size', 'launch', 'send-text'):
+                try:
+                    if remote_control_allowed({'cmd': cmd, 'password': 'pw'}, passwords, None, {}):
+                        ans.append(cmd)
+                except PermissionError:
+                    pass
+            return ans
+
+        self.ae(allowed_cmds('ls set-colors'), ['ls', 'set-colors'])
+        # a glob must match whole command names not be split into characters
+        self.ae(allowed_cmds('set-*'), ['set-colors', 'set-font-size'])
+        self.ae(allowed_cmds(''), ['ls', 'set-colors', 'set-font-size', 'launch', 'send-text'])
+        self.ae(allowed_cmds(True), ['ls', 'set-colors', 'set-font-size', 'launch', 'send-text'])
+
+    def test_encrypted_command_replay(self):
+        from kitty.constants import RC_ENCRYPTION_PROTOCOL_VERSION
+        from kitty.fast_data_types import EllipticCurveKey
+        from kitty.remote_control import CommandEncrypter, parse_cmd, seen_encrypted_commands
+
+        seen_encrypted_commands.clear()
+        self.addCleanup(seen_encrypted_commands.clear)
+        key = EllipticCurveKey()
+        encrypter = CommandEncrypter(key.public, RC_ENCRYPTION_PROTOCOL_VERSION, 'pw')
+
+        def serialize(cmd: dict[str, Any]) -> memoryview:
+            return memoryview(json.dumps(encrypter(cmd)).encode())
+
+        def cmd() -> dict[str, Any]:
+            return {'cmd': 'ls', 'version': [0, 26, 0]}
+
+        with patch('kitty.remote_control.log_error') as log_error:
+            c1, c2 = serialize(cmd()), serialize(cmd())
+            self.ae(parse_cmd(c1, key)['password'], 'pw')
+            self.ae(parse_cmd(c2, key)['password'], 'pw')
+            log_error.assert_not_called()
+            # replaying an accepted command is rejected
+            self.ae(parse_cmd(c1, key), {})
+            self.assertIn('already been received', log_error.call_args.args[0])
+            # passwords that are not strings are rejected
+            log_error.reset_mock()
+            for bad in (1, None, ['pw'], {'a': 1}):
+                encrypter.password = cast(str, bad)
+                self.ae(parse_cmd(serialize(cmd()), key), {})
+                self.assertIn('not a string', log_error.call_args.args[0])
+        # expired commands are forgotten
+        self.assertTrue(seen_encrypted_commands.seen)
+        self.ae(seen_encrypted_commands.check_and_add(b'x', 0, 10), '')
+        self.ae(seen_encrypted_commands.check_and_add(b'y', 0, 1 << 62), '')
+        self.ae(seen_encrypted_commands.seen, {b'y'})
+        # the number of remembered commands is bounded and unexpired commands
+        # are never forgotten to make room
+        seen_encrypted_commands.clear()
+        with patch('kitty.remote_control.MAX_SEEN_ENCRYPTED_CMDS', 4):
+            for i in range(4):
+                self.ae(seen_encrypted_commands.check_and_add(bytes([i]), 100, 0), '')
+            self.assertIn('too many', seen_encrypted_commands.check_and_add(b'z', 100, 0))
+            self.assertIn('already', seen_encrypted_commands.check_and_add(bytes([0]), 100, 0))
+
+    def test_password_lookup_non_ascii(self):
+        from kitty.remote_control import constant_time_lookup, is_cmd_allowed
+
+        passwords = {'pässword': 1, 'secret': 2, '\ud800': 3}
+        self.ae(constant_time_lookup(passwords, 'pässword'), 1)
+        self.ae(constant_time_lookup(passwords, 'secret'), 2)
+        self.ae(constant_time_lookup(passwords, '\ud800'), 3)
+        self.assertIsNone(constant_time_lookup(passwords, 'pässwort'))
+        self.assertIsNone(constant_time_lookup(passwords, '€'))
+        self.set_options({'remote_control_password': {'pässword': frozenset(('ls',))}})
+        self.assertIs(is_cmd_allowed({'cmd': 'ls', 'password': 'pässword'}, None, True, {}), True)
+        self.assertIs(is_cmd_allowed({'cmd': 'launch', 'password': 'pässword'}, None, True, {}), False)
+        self.assertIsNone(is_cmd_allowed({'cmd': 'ls', 'password': 'ü'}, None, True, {}))
+
+    def test_select_window_cancel_only_own_request(self):
+        from kitty.boss import Boss as KittyBoss
+        from kitty.boss import VisualSelect
+
+        command = command_for_name('select-window')
+        boss = Mock(spec=KittyBoss)
+        boss.current_visual_select = None
+
+        def start_select(*a: Any, **kw: Any) -> None:
+            boss.current_visual_select = VisualSelect(1, 1, None, None, 'x', a[1], False)
+
+        boss.visual_window_select_action.side_effect = start_select
+        boss.match_tabs.return_value = iter(())
+        tab = Mock()
+        boss.active_tab = tab
+        payload = {'async_id': 'mine', 'peer_id': 3, 'match': None, 'self': False}
+        with patch.object(command, 'create_async_responder'):
+            command.response_from_kitty(boss, None, PayloadGetter(command, payload))
+        vs = boss.current_visual_select
+        self.assertIsNotNone(vs)
+        # cancelling some other async request does not cancel the visual select
+        for async_id in ('other', ''):
+            command.cancel_async_request(boss, None, PayloadGetter(command, {'async_id': async_id}))
+            boss.cancel_current_visual_select.assert_not_called()
+        # a visual select started by someone else is not cancelled either
+        boss.current_visual_select = Mock()
+        command.cancel_async_request(boss, None, PayloadGetter(command, {'async_id': 'mine'}))
+        boss.cancel_current_visual_select.assert_not_called()
+        # the request that started the visual select can cancel it
+        with patch.object(command, 'create_async_responder'):
+            command.response_from_kitty(boss, None, PayloadGetter(command, payload))
+        command.cancel_async_request(boss, None, PayloadGetter(command, {'async_id': 'mine'}))
+        boss.cancel_current_visual_select.assert_called_once()
+
+    def test_custom_auth_function_gets_self_window(self):
+        from kitty.boss import Boss as KittyBoss
+
+        target = Mock(id=5)
+        boss = Mock(spec=KittyBoss)
+        boss.allow_remote_control = 'password'
+        boss.peer_data_map = {}
+        boss.window_id_map = {5: target}
+        boss.encryption_key = None
+        pcmd = {'cmd': 'ls', 'version': [0, 26, 0], 'kitty_window_id': 5, 'password': 'pw'}
+        with patch('kitty.remote_control.parse_cmd', return_value=pcmd), patch('kitty.remote_control.is_cmd_allowed', return_value=False) as ica:
+            KittyBoss._handle_remote_command(boss, memoryview(b''), None, 3)
+        self.assertIs(ica.call_args.args[3]['self_window'], target)
 
     def test_combine_parse_error_reporting(self):
         from kitty.boss import Boss as KittyBoss

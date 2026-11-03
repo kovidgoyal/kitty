@@ -10,6 +10,7 @@ import sys
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import lru_cache, partial
+from heapq import heappop, heappush
 from time import time_ns
 from types import GeneratorType
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional, TypeVar, cast
@@ -30,7 +31,7 @@ from .fast_data_types import (
 from .rc.base import NoResponse, PayloadGetter, all_command_names, command_for_name
 from .types import AsyncResponse
 from .typing_compat import BossType, WindowType
-from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
+from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file, shlex_split
 
 active_async_requests: dict[str, float] = {}
 
@@ -55,6 +56,44 @@ def encode_response_for_peer(response: Any) -> bytes:
     return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
 
 
+# Encrypted commands are accepted if their timestamp is within this many
+# nanoseconds of the current time
+ENCRYPTED_CMD_MAX_AGE = 5 * 60 * 10**9
+# Upper bound on the number of encrypted commands remembered for replay
+# detection. Every chunk of a streamed command is a separate encrypted command.
+MAX_SEEN_ENCRYPTED_CMDS = 1 << 16
+
+
+class SeenEncryptedCommands:
+    """Remembers recently accepted encrypted commands so that they cannot be
+    replayed while their timestamps are still acceptable."""
+
+    def __init__(self) -> None:
+        self.seen: set[bytes] = set()
+        self.expiry_heap: list[tuple[int, bytes]] = []
+
+    def clear(self) -> None:
+        self.seen.clear()
+        self.expiry_heap.clear()
+
+    def check_and_add(self, key: bytes, timestamp: int, now: int) -> str:
+        "Return an error message if the command must be rejected, otherwise remember it and return an empty string"
+        heap = self.expiry_heap
+        while heap and heap[0][0] < now:
+            self.seen.discard(heappop(heap)[1])
+        if key in self.seen:
+            return 'Ignoring encrypted rc command that has already been received. Could be an attempt at a replay attack.'
+        if len(self.seen) >= MAX_SEEN_ENCRYPTED_CMDS:
+            # Forgetting unexpired commands would allow them to be replayed, so refuse new ones instead
+            return 'Ignoring encrypted rc command as too many encrypted commands have been received recently.'
+        self.seen.add(key)
+        heappush(heap, (timestamp + ENCRYPTED_CMD_MAX_AGE, key))
+        return ''
+
+
+seen_encrypted_commands = SeenEncryptedCommands()
+
+
 def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> dict[str, Any]:
     # See https://github.com/python/cpython/issues/74379 for why we cant use
     # memoryview directly :((
@@ -75,17 +114,32 @@ def parse_cmd(serialized_cmd: memoryview, encryption_key: EllipticCurveKey) -> d
         if not pubkey:
             log_error('Ignoring encrypted rc command without a public key')
             return {}
-        d = AES256GCMDecrypt(encryption_key.derive_secret(base64.b85decode(pubkey)), base64.b85decode(pcmd['iv']), base64.b85decode(pcmd['tag']))
+        iv, tag = base64.b85decode(pcmd['iv']), base64.b85decode(pcmd['tag'])
+        d = AES256GCMDecrypt(encryption_key.derive_secret(base64.b85decode(pubkey)), iv, tag)
         data = d.add_data_to_be_decrypted(base64.b85decode(pcmd['encrypted']), True)
         pcmd = json.loads(data)
         if not isinstance(pcmd, dict) or 'version' not in pcmd:
             return {}
-        delta = time_ns() - pcmd.pop('timestamp')
-        if abs(delta) > 5 * 60 * 1e9:
+        timestamp = pcmd.pop('timestamp', None)
+        if not isinstance(timestamp, int) or isinstance(timestamp, bool):
+            log_error('Ignoring encrypted rc command without a valid timestamp')
+            return {}
+        now = time_ns()
+        delta = now - timestamp
+        if abs(delta) > ENCRYPTED_CMD_MAX_AGE:
             log_error(
                 f'Ignoring encrypted rc command with timestamp {delta / 1e9:.1f} seconds from now.'
                 ' Could be an attempt at a replay attack or an incorrect clock on a remote machine.'
             )
+            return {}
+        # The GCM tag authenticates the ciphertext, so an attacker cannot
+        # change it without knowing the key, while a replayed command has
+        # the same iv and tag as the original.
+        if err := seen_encrypted_commands.check_and_add(iv + tag, timestamp, now):
+            log_error(err)
+            return {}
+        if not isinstance(pcmd.get('password', ''), str):
+            log_error('Ignoring encrypted rc command with a password that is not a string')
             return {}
     return pcmd
 
@@ -115,11 +169,18 @@ def fnmatch_pattern(pat: str) -> 're.Pattern[str]':
     return re.compile(translate(pat))
 
 
+def password_as_bytes(pw: str) -> bytes:
+    # surrogatepass as JSON can contain lone surrogates
+    return pw.encode('utf-8', 'surrogatepass')
+
+
 def constant_time_lookup(passwords: dict[str, T], pw: str) -> T | None:
+    # Compare as bytes, since hmac.compare_digest() raises for str with non-ASCII characters
     result = None
     c = hmac.compare_digest
+    q = password_as_bytes(pw)
     for k, v in passwords.items():
-        if c(k, pw):
+        if c(password_as_bytes(k), q):
             result = v
     return result
 
@@ -143,6 +204,15 @@ def remote_control_allowed(
     if not pa.is_cmd_allowed(pcmd, window, False, extra_data):
         raise PermissionError()
     return True
+
+
+def kitten_password_restrictions(remote_control_password: str | bool) -> tuple[str, ...]:
+    # A string is a space separated list of allowed actions, same as for
+    # remote_control_password in kitty.conf. It must not be passed as is to
+    # PasswordAuthorizer as that would treat every character as a pattern.
+    if isinstance(remote_control_password, str):
+        return tuple(x for x in shlex_split(remote_control_password) if x)
+    return ()
 
 
 class PasswordAuthorizer:
@@ -196,8 +266,10 @@ def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket
         # we allow these without authentication as they are sent on error
         # conditions and we can't have users prompted for these. The worst side
         # effect of a malicious cancel_async request is that it can prevent
-        # another async request from getting a result, if it knows the async_id
-        # of that request. The condition here must match the one in
+        # another async request from getting a result or cancel it, if it knows
+        # the async_id of that request. Implementations of
+        # cancel_async_request() must therefore only cancel the request with
+        # the specified async_id. The condition here must match the one in
         # handle_cmd() exactly, so that these requests are guaranteed to only
         # cancel and never execute the command.
         return True
