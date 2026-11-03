@@ -35,6 +35,16 @@ void unload_gpu_driver(void);
 #define A gpu_driver.api
 
 static inline const char *
+gpu_driver_name(void) {
+    return gpu_driver.driver ? A.name : "";
+}
+
+static inline const char *
+gpu_shader_target(void) {
+    return gpu_driver.driver ? A.shader_target(D) : "";
+}
+
+static inline const char *
 gpu_last_error(void) {
     return A.last_error(D);
 }
@@ -180,8 +190,8 @@ gpu_bind_uniform_buffer(uint32_t binding_point, gpu_buffer_t buffer) {
 }
 
 static inline gpu_pipeline_t
-gpu_pipeline_create(const GPUShaderSource *sources, size_t num_sources) {
-    return A.pipeline_create(D, sources, num_sources);
+gpu_pipeline_create(const GPUShaderSource *sources, size_t num_sources, const GPUNativeName *native_names, size_t num_native_names) {
+    return A.pipeline_create(D, sources, num_sources, native_names, num_native_names);
 }
 
 static inline void
@@ -202,11 +212,6 @@ gpu_pipeline_uniform_slot(gpu_pipeline_t pipeline, const char *name) {
 static inline bool
 gpu_pipeline_uniform_block(gpu_pipeline_t pipeline, const char *name, GPUUniformBlockInfo *ans) {
     return A.pipeline_uniform_block(D, pipeline, name, ans);
-}
-
-static inline bool
-gpu_pipeline_uniform_array(gpu_pipeline_t pipeline, const char *name, GPUUniformArrayInfo *ans) {
-    return A.pipeline_uniform_array(D, pipeline, name, ans);
 }
 
 static inline void
@@ -405,7 +410,8 @@ gpu_pipeline_t program_pipeline(int program);
 // Replace the pipeline of program, freeing any existing pipeline. Steals the reference to pipeline.
 void set_program_pipeline(int program, gpu_pipeline_t pipeline);
 int32_t attrib_location(int program, const char *name);
-void set_program_layout(int program, PyObject *metadata);
+// Returns false with a Python exception set on failure
+bool set_program_layout(int program, PyObject *metadata);
 void free_program_layouts(void);
 int32_t program_uniform_location(int program, const char *name);
 int32_t try_program_uniform_location(int program, const char *name);

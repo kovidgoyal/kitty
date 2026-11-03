@@ -3470,6 +3470,29 @@ pygpu_driver_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyUnicode_FromString(gpu_version_string());
 }
 
+static PyObject *
+pygpu_driver_name(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyUnicode_FromString(gpu_driver_name());
+}
+
+static PyObject *
+pygpu_shader_target(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyUnicode_FromString(gpu_shader_target());
+}
+
+static PyObject *
+pyload_gpu_driver(PyObject *self UNUSED, PyObject *args) {
+    const char *path;
+    int debug_rendering = 0;
+    if (!PyArg_ParseTuple(args, "s|p", &path, &debug_rendering)) return NULL;
+    const char *err = load_gpu_driver(path, debug_rendering != 0);
+    if (err) {
+        PyErr_SetString(PyExc_OSError, err);
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static void
 free_custom_shader_pipeline(CustomShaderPipeline *p) {
     for (size_t i = 0; i < p->num_groups; i++) {
@@ -3669,6 +3692,42 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
             return NULL;
         }
     }
+    // The shaders must have been compiled for the target of the loaded driver
+    PyObject *target = PyDict_GetItemString(metadata, "target");
+    const char *target_name = target && PyUnicode_Check(target) ? PyUnicode_AsUTF8(target) : NULL;
+    if (!target_name || strcmp(target_name, gpu_shader_target()) != 0) {
+        PyErr_Format(
+            PyExc_ValueError,
+            "The shaders were compiled for the target: %s but the GPU driver needs: %s",
+            target_name ? target_name : "unknown",
+            gpu_shader_target());
+        return NULL;
+    }
+    GPUShaderLanguage language;
+    if (strncmp(target_name, "glsl-", 5) == 0) language = GPU_SHADER_LANGUAGE_GLSL;
+    else if (strncmp(target_name, "spirv-", 6) == 0) language = GPU_SHADER_LANGUAGE_SPIRV;
+    else if (strncmp(target_name, "msl-", 4) == 0) language = GPU_SHADER_LANGUAGE_MSL;
+    else {
+        PyErr_Format(PyExc_ValueError, "Unknown shader target: %s", target_name);
+        return NULL;
+    }
+    PyObject *native_names = PyDict_GetItemString(metadata, "native_names");
+    if (!native_names || !PyDict_Check(native_names)) {
+        PyErr_SetString(PyExc_KeyError, "The shader program metadata has no native_names dict");
+        return NULL;
+    }
+    RAII_ALLOC(GPUNativeName, names, calloc(MAX(1, PyDict_GET_SIZE(native_names)), sizeof(GPUNativeName)));
+    if (!names) return PyErr_NoMemory();
+    size_t num_names = 0;
+    {
+        PyObject *key, *val;
+        Py_ssize_t pos = 0;
+        while (PyDict_Next(native_names, &pos, &key, &val)) {
+            // The strings remain valid as long as the metadata dict does
+            if (!(names[num_names].name = PyUnicode_AsUTF8(key)) || !(names[num_names].native_name = PyUnicode_AsUTF8(val))) return NULL;
+            num_names++;
+        }
+    }
     RAII_PyObject(vertex_source, join_shader_sources(vertex_shaders));
     if (!vertex_source) return NULL;
     RAII_PyObject(fragment_source, join_shader_sources(fragment_shaders));
@@ -3679,10 +3738,10 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     const char *fcode = PyUnicode_AsUTF8AndSize(fragment_source, &fsz);
     if (!fcode) return NULL;
     const GPUShaderSource sources[2] = {
-        {.stage = GPU_SHADER_VERTEX, .language = GPU_SHADER_LANGUAGE_GLSL, .code = vcode, .size = (size_t)vsz},
-        {.stage = GPU_SHADER_FRAGMENT, .language = GPU_SHADER_LANGUAGE_GLSL, .code = fcode, .size = (size_t)fsz},
+        {.stage = GPU_SHADER_VERTEX, .language = language, .code = vcode, .size = (size_t)vsz},
+        {.stage = GPU_SHADER_FRAGMENT, .language = language, .code = fcode, .size = (size_t)fsz},
     };
-    gpu_pipeline_t pipeline = gpu_pipeline_create(sources, arraysz(sources));
+    gpu_pipeline_t pipeline = gpu_pipeline_create(sources, arraysz(sources), names, num_names);
     if (!pipeline) {
         PyErr_SetString(PyExc_ValueError, gpu_last_error());
         return NULL;
@@ -3712,7 +3771,10 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         }
         custom_shaders.generation++;
     }
-    set_program_layout(which, metadata);
+    if (!set_program_layout(which, metadata)) {
+        set_program_pipeline(which, GPU_NULL_HANDLE);
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
@@ -3874,6 +3936,9 @@ static PyMethodDef module_methods[] = {
     M(compile_program, METH_VARARGS),
     M(sprite_map_set_limits, METH_VARARGS),
     MW(gpu_driver_version_string, METH_NOARGS),
+    MW(gpu_driver_name, METH_NOARGS),
+    MW(gpu_shader_target, METH_NOARGS),
+    MW(load_gpu_driver, METH_VARARGS),
     MW(custom_shader_needs_render, METH_VARARGS),
     MW(decorations_map_new_size, METH_VARARGS),
     MW(simulate_custom_shader_render_ticks, METH_VARARGS),
@@ -3943,7 +4008,6 @@ init_shaders(PyObject *module) {
     C(MAX_SHADER_ANIM_USER_EVENTS);
     C(MAX_SHADER_ANIM_USER_EVENT_NAME_LEN);
     C(POINTER_MAP_SIZE);
-    C(GLSL_VERSION);
     C(ANIMATION_SAMPLE_WAIT);
 
 #undef C

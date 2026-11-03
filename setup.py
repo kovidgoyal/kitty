@@ -1326,6 +1326,19 @@ def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
     return ans
 
 
+def gpu_driver_shader_targets(driver: str = 'opengl') -> List[str]:
+    # The shader targets consumed by a GPU driver, the built-in shaders are
+    # compiled for these. Must match what the driver returns from its
+    # shader_target() function.
+    if driver == 'opengl':
+        with open('gpu/opengl/version.h') as f:
+            m = re.search(r'^#define GLSL_VERSION (\d+)', f.read(), flags=re.MULTILINE)
+        if m is None:
+            raise SystemExit('Could not find GLSL_VERSION in gpu/opengl/version.h')
+        return [f'glsl-{m.group(1)}']
+    raise KeyError(f'Unknown GPU driver: {driver}')
+
+
 def gpu_driver_sources(driver: str) -> List[str]:
     if driver == 'opengl':
         common = ['driver.c', 'gl-wrapper.c']
@@ -1491,6 +1504,7 @@ def generate_shaders(kitty_exe: str) -> None:
             '+launch',
             os.path.join(src_base, 'kitty/shaders/slang.py'),
             'verbose' if verbose else '',
+            '--targets=' + ','.join(t for driver in ('opengl',) for t in gpu_driver_shader_targets(driver)),
             'build/shaders',
             'shaders',
         ],

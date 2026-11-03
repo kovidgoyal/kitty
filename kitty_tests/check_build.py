@@ -161,6 +161,18 @@ class TestBuild(BaseTest):
         lib = ctypes.CDLL(path)
         self.assertTrue(hasattr(lib, 'kitty_gpu_driver_load'), f'{path} does not export kitty_gpu_driver_load')
 
+    def test_gpu_driver_shaders(self) -> None:
+        # The built-in shaders must have been compiled for the shader target of the driver
+        from kitty.constants import gpu_driver_path, shaders_dir
+        from kitty.fast_data_types import gpu_shader_target, load_gpu_driver
+
+        if not gpu_shader_target():
+            load_gpu_driver(gpu_driver_path('opengl'))
+        target = gpu_shader_target()
+        self.assertTrue(target, 'The GPU driver did not report a shader target')
+        q = os.path.join(shaders_dir, target, 'cell.json')
+        self.assertTrue(os.path.isfile(q), f'The built-in shaders have not been compiled for the {target} shader target of the GPU driver')
+
     def test_all_kitten_names(self) -> None:
         from kittens.runner import all_kitten_names
 
