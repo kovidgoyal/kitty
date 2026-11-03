@@ -1890,7 +1890,9 @@ init_ColorProfile(PyObject *module) {
     Py_INCREF(&Color_Type);
 
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-    PyModule_AddIntMacro(module, NULL_COLOR_VALUE);
+    // PyModule_AddIntMacro converts to signed long, which overflows on 32-bit platforms.
+    RAII_PyObject(null_color_value, PyLong_FromUnsignedLong(NULL_COLOR_VALUE));
+    if (!null_color_value || PyModule_AddObjectRef(module, "NULL_COLOR_VALUE", null_color_value) != 0) return 0;
     PyModule_AddIntMacro(module, COLOR_LAYER_OVERRIDE);
     PyModule_AddIntMacro(module, COLOR_LAYER_GLOBAL);
     PyModule_AddIntMacro(module, COLOR_LAYER_WINDOW);
