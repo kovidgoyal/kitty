@@ -8,6 +8,7 @@
 // The OpenGL implementation of the kitty GPU driver API, see ../api.h
 
 #include "../api.h"
+#include "platform.h"
 #include "version.h"
 #include "gl-wrapper.h"
 #include <stdarg.h>
@@ -49,6 +50,8 @@ typedef struct Pipeline {
 
 typedef struct Driver {
     GPUDriverInitParams params;
+    const GLPlatform *platform;
+    GLSurface *current_surface;
     bool initialized, supports_srgb_output;
     int gl_version;
     GLint max_texture_size, max_array_texture_layers;
@@ -64,6 +67,7 @@ static Driver *the_driver = NULL;
 #define AS_TEXTURE(handle) ((Texture *)(uintptr_t)(handle))
 #define AS_BUFFER(handle) ((Buffer *)(uintptr_t)(handle))
 #define AS_PIPELINE(handle) ((Pipeline *)(uintptr_t)(handle))
+#define AS_SURFACE(handle) ((GLSurface *)(uintptr_t)(handle))
 #define AS_HANDLE(ptr) ((uint64_t)(uintptr_t)(ptr))
 // Framebuffers and vertex array objects need no extra state, so their handles are the OpenGL names
 #define AS_GL_NAME(handle) ((GLuint)(handle))
@@ -153,7 +157,11 @@ static bool
 initialize(void *driver) {
     Driver *d = driver;
     if (d->initialized) return true;
-    d->gl_version = gladLoadGL((GLADloadfunc)d->params.get_proc_address);
+    if (!d->platform || !d->current_surface) {
+        set_error(d, "The OpenGL driver must have a current surface before it can be initialized");
+        return false;
+    }
+    d->gl_version = gladLoadGL((GLADloadfunc)d->platform->get_proc_address);
     if (!d->gl_version) {
         set_error(d, "Loading the OpenGL library failed");
         return false;
@@ -201,8 +209,11 @@ initialize(void *driver) {
     return true;
 }
 
+static void release_native_resources(void *driver);
+
 static void
 destroy(void *driver) {
+    release_native_resources(driver);
     if (the_driver == driver) the_driver = NULL;
     free(driver);
 }
@@ -836,6 +847,196 @@ vertex_layout_set_attribute(
 }
 // }}}
 
+// Surfaces {{{
+bool
+gl_extension_in_string(const char *name, const char *extensions) {
+    const size_t len = strlen(name);
+    for (const char *start = extensions;;) {
+        const char *where = strstr(start, name);
+        if (!where) return false;
+        const char *terminator = where + len;
+        if ((where == start || *(where - 1) == ' ') && (*terminator == ' ' || *terminator == '\0')) return true;
+        start = terminator;
+    }
+}
+
+static void host_set_error(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+static void
+host_set_error(const char *fmt, ...) {
+    if (!the_driver) return;
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(the_driver->last_error, sizeof(the_driver->last_error), fmt, ap);
+    va_end(ap);
+}
+
+static void host_log_error(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+static void
+host_log_error(const char *fmt, ...) {
+    if (!the_driver) return;
+    char buf[4096];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    the_driver->params.log_error(buf);
+}
+
+static void host_debug(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+static void
+host_debug(const char *fmt, ...) {
+    if (!the_driver || !the_driver->params.debug_rendering) return;
+    char buf[4096];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    the_driver->params.debug_print(buf);
+}
+
+static void
+host_x11_push_error_trap(void) {
+    if (the_driver && the_driver->params.x11_push_error_trap) the_driver->params.x11_push_error_trap();
+}
+
+static int
+host_x11_pop_error_trap(void) {
+    if (the_driver && the_driver->params.x11_pop_error_trap) return the_driver->params.x11_pop_error_trap();
+    return 0;
+}
+
+static const GLPlatformHost platform_host = {
+    .set_error = host_set_error,
+    .log_error = host_log_error,
+    .debug = host_debug,
+    .x11_push_error_trap = host_x11_push_error_trap,
+    .x11_pop_error_trap = host_x11_pop_error_trap,
+};
+
+// Select the platform API used to create contexts for windows of the
+// specified type. All windows must be of the same type.
+static bool
+ensure_platform(Driver *d, GPUPlatform type) {
+    const GLPlatform *p = NULL;
+    switch (type) {
+#ifdef __APPLE__
+        case GPU_PLATFORM_COCOA: p = nsgl_platform(&platform_host); break;
+        case GPU_PLATFORM_X11:
+        case GPU_PLATFORM_WAYLAND: break;
+#else
+        case GPU_PLATFORM_X11: p = glx_platform(&platform_host); break;
+        case GPU_PLATFORM_WAYLAND: p = egl_platform(&platform_host); break;
+        case GPU_PLATFORM_COCOA: break;
+#endif
+    }
+    if (!p) {
+        set_error(d, "The OpenGL driver does not support windows of type: %d on this platform", (int)type);
+        return false;
+    }
+    if (d->platform && d->platform != p) {
+        set_error(d, "The OpenGL driver cannot render to windows using both %s and %s", d->platform->name, p->name);
+        return false;
+    }
+    d->platform = p;
+    return true;
+}
+
+static bool
+choose_native_visual(void *driver, const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint64_t *visual_id) {
+    Driver *d = driver;
+    *visual_id = 0;
+    if (!ensure_platform(d, native->platform)) return false;
+    return d->platform->choose_native_visual(native, config, visual_id);
+}
+
+static gpu_surface_t
+surface_create(void *driver, const GPUNativeWindow *native, const GPUSurfaceConfig *config, uint32_t width, uint32_t height) {
+    Driver *d = driver;
+    if (!ensure_platform(d, native->platform)) return GPU_NULL_HANDLE;
+    GLSurface *s = d->platform->surface_create(native, config, width, height);
+    if (s) host_debug("Created %s OpenGL context for window of size: %ux%u", d->platform->name, width, height);
+    return AS_HANDLE(s);
+}
+
+static void
+surface_destroy(void *driver, gpu_surface_t surface) {
+    Driver *d = driver;
+    GLSurface *s = AS_SURFACE(surface);
+    if (!s || !d->platform) return;
+    if (d->current_surface == s) {
+        d->platform->make_current(NULL);
+        d->current_surface = NULL;
+    }
+    d->platform->surface_destroy(s);
+}
+
+static bool
+make_surface_current(void *driver, gpu_surface_t surface) {
+    Driver *d = driver;
+    GLSurface *s = AS_SURFACE(surface);
+    if (!d->platform) {
+        if (!s) return true;
+        set_error(d, "Cannot make a surface current before any surface is created");
+        return false;
+    }
+    if (!d->platform->make_current(s)) return false;
+    d->current_surface = s;
+    return true;
+}
+
+static gpu_surface_t
+get_current_surface(void *driver) {
+    return AS_HANDLE(((Driver *)driver)->current_surface);
+}
+
+static void
+surface_resize(void *driver, gpu_surface_t surface, uint32_t width, uint32_t height) {
+    Driver *d = driver;
+    if (surface && d->platform) d->platform->surface_resize(AS_SURFACE(surface), width, height);
+}
+
+static bool
+surface_present(void *driver, gpu_surface_t surface) {
+    Driver *d = driver;
+    if (!surface || !d->platform) return false;
+    return d->platform->present(AS_SURFACE(surface));
+}
+
+static void
+surface_set_swap_interval(void *driver, gpu_surface_t surface, int interval) {
+    Driver *d = driver;
+    if (surface && d->platform) d->platform->set_swap_interval(AS_SURFACE(surface), interval);
+}
+
+static void
+surface_native_changed(void *driver, gpu_surface_t surface) {
+    Driver *d = driver;
+    if (surface && d->platform) d->platform->native_changed(AS_SURFACE(surface));
+}
+
+static bool
+surface_recreate(void *driver, gpu_surface_t surface) {
+    Driver *d = driver;
+    if (!surface || !d->platform) return false;
+    if (!d->platform->recreate(AS_SURFACE(surface))) return false;
+    d->current_surface = AS_SURFACE(surface);
+    return true;
+}
+
+static void
+release_native_resources(void *driver) {
+    Driver *d = driver;
+    if (!d->platform) return;
+    d->platform->make_current(NULL);
+    d->current_surface = NULL;
+    d->platform->terminate();
+    d->platform = NULL;
+}
+// }}}
+
 // Render targets {{{
 static const char *
 framebuffer_status_string(GLenum status) {
@@ -977,7 +1178,7 @@ kitty_gpu_driver_load(uint32_t api_version, const GPUDriverInitParams *params, G
         snprintf(errbuf, errbuf_size, "The OpenGL driver supports GPU API version %u but version %u was requested", KITTY_GPU_API_VERSION, api_version);
         return false;
     }
-    if (!params->get_proc_address || !params->log_error || !params->fatal || !params->debug_print) {
+    if (!params->log_error || !params->fatal || !params->debug_print) {
         snprintf(errbuf, errbuf_size, "The OpenGL driver was not passed all required callbacks");
         return false;
     }
@@ -1034,6 +1235,18 @@ kitty_gpu_driver_load(uint32_t api_version, const GPUDriverInitParams *params, G
         F(vertex_layout_destroy),
         F(bind_vertex_layout),
         F(vertex_layout_set_attribute),
+
+        F(choose_native_visual),
+        F(surface_create),
+        F(surface_destroy),
+        F(make_surface_current),
+        F(get_current_surface),
+        F(surface_resize),
+        F(surface_present),
+        F(surface_set_swap_interval),
+        F(surface_native_changed),
+        F(surface_recreate),
+        F(release_native_resources),
 
         F(render_target_create),
         F(render_target_destroy),

@@ -912,17 +912,12 @@ _glfwPlatformTerminate(void) {
         _glfw.x11.xi.handle = NULL;
     }
 
-    // NOTE: These need to be unloaded after XCloseDisplay, as they register
-    //       cleanup callbacks that get called by that function
-    _glfwTerminateEGL();
-    _glfwTerminateGLX();
-
     finalizePollData(&_glfw.x11.eventLoopData);
 }
 
 const char *
 _glfwPlatformGetVersionString(void) {
-    return _GLFW_VERSION_NUMBER " X11 GLX EGL OSMesa"
+    return _GLFW_VERSION_NUMBER " X11"
 #if defined(_POSIX_TIMERS) && defined(_POSIX_MONOTONIC_CLOCK)
                                 " clock_gettime"
 #else
