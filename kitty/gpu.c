@@ -261,20 +261,6 @@ attrib_location(int program, const char *name) {
     return gpu_pipeline_attribute_location(programs[program], name);
 }
 
-static UniformBlock
-block_info(int program, const char *name) {
-    GPUUniformBlockInfo info;
-    if (!gpu_pipeline_uniform_block(programs[program], name, &info)) fatal("%s", gpu_last_error());
-    return (UniformBlock){.index = (int32_t)info.index, .size = (int32_t)info.size};
-}
-
-static ArrayInformation
-get_uniform_array_information(int program, const char *name) {
-    GPUUniformArrayInfo info;
-    if (!gpu_pipeline_uniform_array(programs[program], name, &info)) fatal("%s", gpu_last_error());
-    return (ArrayInformation){.offset = (int32_t)info.offset, .stride = (int32_t)info.stride, .size = (int32_t)info.count};
-}
-
 // Program metadata (uniform/attribute locations and UBO/array info, looked up by name) {{{
 #define NAME program_metadata_map
 #define KEY_TY const char *
@@ -312,62 +298,106 @@ program_metadata_entry(int program, const char *name, ProgramMetadataKind expect
     return &itr.data->val;
 }
 
-void
+// Fetches a required item from a dict in the program metadata, setting a
+// Python exception if it is missing or of the wrong type
+static PyObject *
+metadata_item(PyObject *d, const char *key, PyTypeObject *type) {
+    PyObject *ans = PyDict_GetItemString(d, key);
+    if (!ans) {
+        PyErr_Format(PyExc_KeyError, "The shader program metadata has no %s entry", key);
+        return NULL;
+    }
+    if (!PyObject_TypeCheck(ans, type)) {
+        PyErr_Format(PyExc_TypeError, "The %s entry in the shader program metadata is not a %s", key, type->tp_name);
+        return NULL;
+    }
+    return ans;
+}
+
+static bool
+metadata_uint(PyObject *d, const char *key, int32_t *ans) {
+    PyObject *v = metadata_item(d, key, &PyLong_Type);
+    if (!v) return false;
+    long val = PyLong_AsLong(v);
+    if (PyErr_Occurred()) return false;
+    *ans = (int32_t)val;
+    return true;
+}
+
+// The metadata is generated from the reflection data produced by the Slang
+// compiler, see program_metadata() in shaders/slang.py. It is backend neutral,
+// all names are names from the Slang source.
+bool
 set_program_layout(int program, PyObject *metadata) {
     clear_program_layout(program);
     vt_init(program_layouts + program);
     program_layouts_initialized[program] = true;
+    const gpu_pipeline_t pipeline = programs[program];
 
     PyObject *key, *val;
     Py_ssize_t pos;
 
-    PyObject *loose_uniforms = PyDict_GetItemString(metadata, "loose_uniforms");
+    PyObject *inputs = metadata_item(metadata, "inputs", &PyDict_Type);
+    if (!inputs) return false;
     pos = 0;
-    while (PyDict_Next(loose_uniforms, &pos, &key, &val)) {
-        const char *actual_name = PyUnicode_AsUTF8(val);
-        // The metadata records array uniforms with a [0] subscript to mark them
-        // as arrays, but the driver looks them up by their bare name.
-        char without_subscript[256];
-        const char *bracket = strchr(actual_name, '[');
-        if (bracket) {
-            size_t n = MIN(sizeof(without_subscript) - 1, (size_t)(bracket - actual_name));
-            memcpy(without_subscript, actual_name, n);
-            without_subscript[n] = 0;
-            actual_name = without_subscript;
-        }
-        ProgramMetadataEntry e = {.kind = PROGRAM_UNIFORM, .location = gpu_pipeline_uniform_slot(programs[program], actual_name)};
-        insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
-    }
-
-    PyObject *input_locations = PyDict_GetItemString(metadata, "input_locations");
-    pos = 0;
-    while (PyDict_Next(input_locations, &pos, &key, &val)) {
+    while (PyDict_Next(inputs, &pos, &key, &val)) {
         ProgramMetadataEntry e = {.kind = PROGRAM_ATTRIBUTE, .location = (int32_t)PyLong_AsLong(val)};
+        if (PyErr_Occurred()) return false;
         insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
     }
 
-    PyObject *uniform_structs = PyDict_GetItemString(metadata, "uniform_structs");
-    PyObject *uniform_struct_names = PyDict_GetItemString(metadata, "uniform_struct_names");
-    pos = 0;
-    while (PyDict_Next(uniform_structs, &pos, &key, &val)) {
-        const char *glsl_block_name = PyUnicode_AsUTF8(PyDict_GetItem(uniform_struct_names, key));
-        ProgramMetadataEntry be = {.kind = PROGRAM_BLOCK, .block = block_info(program, glsl_block_name)};
-        insert_program_metadata(program, PyUnicode_AsUTF8(key), be);
+    PyObject *uniforms = metadata_item(metadata, "uniforms", &PyList_Type);
+    if (!uniforms) return false;
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(uniforms); i++) {
+        const char *name = PyUnicode_AsUTF8(PyList_GET_ITEM(uniforms, i));
+        if (!name) return false;
+        ProgramMetadataEntry e = {.kind = PROGRAM_UNIFORM, .location = gpu_pipeline_uniform_slot(pipeline, name)};
+        insert_program_metadata(program, name, e);
+    }
 
-        PyObject *mkey, *mval;
-        Py_ssize_t mpos = 0;
-        while (PyDict_Next(val, &mpos, &mkey, &mval)) {
-            const char *decl = PyUnicode_AsUTF8(mval);
-            const char *bracket = strchr(decl, '[');
-            if (!bracket) continue; // scalar block members are hand-mirrored in C structs, not queried here
-            char actual_name[256];
-            size_t n = MIN(sizeof(actual_name) - 1, (size_t)(bracket - decl));
-            memcpy(actual_name, decl, n);
-            actual_name[n] = 0;
-            ProgramMetadataEntry ae = {.kind = PROGRAM_ARRAY, .array = get_uniform_array_information(program, actual_name)};
-            insert_program_metadata(program, PyUnicode_AsUTF8(mkey), ae);
+    PyObject *blocks = metadata_item(metadata, "blocks", &PyDict_Type);
+    if (!blocks) return false;
+    pos = 0;
+    while (PyDict_Next(blocks, &pos, &key, &val)) {
+        const char *block_name = PyUnicode_AsUTF8(key);
+        if (!block_name) return false;
+        int32_t size;
+        if (!metadata_uint(val, "size", &size)) return false;
+        GPUUniformBlockInfo info;
+        if (!gpu_pipeline_uniform_block(pipeline, block_name, &info)) {
+            PyErr_Format(PyExc_ValueError, "The GPU program: %d has no uniform block: %s with error: %s", program, block_name, gpu_last_error());
+            return false;
+        }
+        // The layout of the block is taken from the reflection data, so
+        // verify that it matches what the driver actually uses
+        if ((uint32_t)size != info.size) {
+            PyErr_Format(
+                PyExc_ValueError,
+                "The uniform block: %s in GPU program: %d has size %u according to the GPU driver but %d according to the shader reflection data",
+                block_name,
+                program,
+                info.size,
+                size);
+            return false;
+        }
+        ProgramMetadataEntry be = {.kind = PROGRAM_BLOCK, .block = {.index = (int32_t)info.index, .size = size}};
+        insert_program_metadata(program, block_name, be);
+
+        PyObject *arrays = metadata_item(val, "arrays", &PyDict_Type);
+        if (!arrays) return false;
+        PyObject *akey, *aval;
+        Py_ssize_t apos = 0;
+        while (PyDict_Next(arrays, &apos, &akey, &aval)) {
+            const char *array_name = PyUnicode_AsUTF8(akey);
+            if (!array_name) return false;
+            ArrayInformation ai;
+            if (!metadata_uint(aval, "offset", &ai.offset) || !metadata_uint(aval, "stride", &ai.stride) || !metadata_uint(aval, "count", &ai.size))
+                return false;
+            ProgramMetadataEntry ae = {.kind = PROGRAM_ARRAY, .array = ai};
+            insert_program_metadata(program, array_name, ae);
         }
     }
+    return true;
 }
 
 int32_t
