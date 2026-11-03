@@ -5,6 +5,7 @@
  */
 
 #include "state.h"
+#include "gpu.h"
 #include "cleanup.h"
 #include "monotonic.h"
 #include "dnd.h"
@@ -2782,10 +2783,10 @@ dbus_monitor_session_state(PyObject *self UNUSED, PyObject *callback) {
 
 static PyObject *
 glfw_init(PyObject UNUSED *self, PyObject *args) {
-    const char *path;
+    const char *path, *gpu_driver_path;
     int debug_keyboard = 0, debug_rendering = 0, wayland_enable_ime = 0;
     PyObject *edge_sf;
-    if (!PyArg_ParseTuple(args, "sO|ppp", &path, &edge_sf, &debug_keyboard, &debug_rendering, &wayland_enable_ime)) return NULL;
+    if (!PyArg_ParseTuple(args, "ssO|ppp", &path, &gpu_driver_path, &edge_sf, &debug_keyboard, &debug_rendering, &wayland_enable_ime)) return NULL;
     if (!PyCallable_Check(edge_sf)) {
         PyErr_SetString(PyExc_TypeError, "edge_spacing_func must be a callable");
         return NULL;
@@ -2800,6 +2801,11 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         return NULL;
     }
     glfw_is_loaded = true;
+    err = load_gpu_driver(gpu_driver_path, debug_rendering != 0, glfwGetProcAddress);
+    if (err) {
+        PyErr_SetString(PyExc_RuntimeError, err);
+        return NULL;
+    }
     push_modifier_remap_to_glfw();
     glfwSetErrorCallback(error_callback);
     glfwInitHint(GLFW_DEBUG_KEYBOARD, debug_keyboard);
