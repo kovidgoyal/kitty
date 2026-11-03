@@ -16,6 +16,18 @@ import alpha_blend;
 // See https://github.com/kovidgoyal/kitty/issues/10549
 static const float2 vertex_pos_map[4] = { float2(1, 1), float2(1, -1), float2(-1, -1), float2(-1, 1) };
 
+// The uniform parameters of the program, shared by all its stages. See
+// PUSH_CONSTANTS_MAX_SIZE in slang.py for why they are declared this way.
+struct Params {
+    float4 rect;
+    float2 params;
+    float4 color;
+    float4 background_color;
+    float4 outer_color;
+};
+[[vk::push_constant]]
+ConstantBuffer<Params> uniforms;
+
 [shader("vertex")]
 float4
 vertex_main(uint vertex_id: SV_VertexID)
@@ -35,18 +47,13 @@ rounded_rectangle_sdf(float2 p, float2 b, float r) {
 [shader("fragment")]
 float4
 fragment_main(
-    uniform float4 rect,
-    uniform float2 params,
-    uniform float4 color,
-    uniform float4 background_color,
-    uniform float4 outer_color,
     float4 frag_coord: SV_Position // SV_Position provides gl_FragCoord equivalent in Slang
     )
     : SV_Target {
-    float2 size = rect.zw; // GLSL .ba maps to .zw or .ba in Slang (using .zw is typical)
-    float2 origin = rect.xy;
-    float thickness = params[0];
-    float corner_radius = params[1];
+    float2 size = uniforms.rect.zw; // GLSL .ba maps to .zw or .ba in Slang (using .zw is typical)
+    float2 origin = uniforms.rect.xy;
+    float thickness = uniforms.params[0];
+    float corner_radius = uniforms.params[1];
 
     // Position must be relative to the center of the rectangle of (size) located at (origin)
     // frag_coord.xy maps directly to gl_FragCoord.xy
@@ -64,12 +71,12 @@ fragment_main(
     float outer_coverage = smoothstep(-step_size, step_size, outer_edge);
     float alpha = outer_coverage - smoothstep(-step_size, step_size, inner_edge);
 
-    float4 ans = color;
+    float4 ans = uniforms.color;
     ans.a *= alpha;
 
     // background_color shows under and inside the border, outer_color fills
     // the corner regions between the rounded outline and the bounding rect
-    float4 under = lerp(outer_color, background_color, outer_coverage);
+    float4 under = lerp(uniforms.outer_color, uniforms.background_color, outer_coverage);
     // pre-multiplied output
     return alpha_blend(ans, under);
 }

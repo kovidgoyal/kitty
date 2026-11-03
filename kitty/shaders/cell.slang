@@ -34,6 +34,16 @@ static const uint SPRITE_COLORED_SHIFT = 31u;
 // background. Packed into an existing flat varying to not use another slot.
 static const uint SKIP_TEXT_FLAG = 0x80000000u;
 
+// The uniform parameters of the program, shared by all its stages. See
+// PUSH_CONSTANTS_MAX_SIZE in slang.py for why they are declared this way.
+struct Params {
+    uint draw_bg_bitfield;
+    float text_contrast;
+    float text_gamma_adjustment;
+};
+[[vk::push_constant]]
+ConstantBuffer<Params> uniforms;
+
 struct VertexOutput {
     float4 position : SV_Position;
 
@@ -148,8 +158,7 @@ vertex_main(
     [[vk::location(1)]] uint2 sprite_idx,
     [[vk::location(2)]] uint is_selected,
     uint vertex_id: SV_VertexID,
-    uint instance_id: SV_InstanceID,
-    uniform uint draw_bg_bitfield, ) {
+    uint instance_id: SV_InstanceID) {
     VertexOutput vo;
 
     BackgroundOutput bo = compute_background(colors, sprite_idx, is_selected, instance_id, vertex_id);
@@ -208,7 +217,7 @@ vertex_main(
         // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
         float cell_has_non_default_bg = 1.f - bo.cell_has_default_bg;
         uint draw_bg_mask = uint(2.f * cell_has_non_default_bg + bo.cell_has_default_bg); // 1 if has default bg else 2
-        float draw_bg = step(0.5, float(draw_bg_bitfield & draw_bg_mask));
+        float draw_bg = step(0.5, float(uniforms.draw_bg_bitfield & draw_bg_mask));
         bgpremul *= draw_bg;
         vo.effective_background_premul = bgpremul;
     }
@@ -308,7 +317,7 @@ adjust_foreground_contrast_with_background(float4 text_fg, float3 bg, float text
 
 [shader("fragment")]
 float4
-fragment_main(VertexOutput vo, uniform float text_contrast, uniform float text_gamma_adjustment, )
+fragment_main(VertexOutput vo)
     : SV_Target {
     float4 ans_premul = 0;
     if (!ONLY_FOREGROUND) ans_premul = vo.effective_background_premul;
@@ -319,7 +328,7 @@ fragment_main(VertexOutput vo, uniform float text_contrast, uniform float text_g
     if (!ONLY_BACKGROUND && (vo.underline_exclusion_pos & SKIP_TEXT_FLAG) == 0u) {
         // blend in the foreground color
         float4 text_fg = load_text_foreground_color(vo.sprite_pos, vo.colored_sprite, vo.cell_foreground);
-        text_fg = adjust_foreground_contrast_with_background(text_fg, vo.background, text_contrast, text_gamma_adjustment);
+        text_fg = adjust_foreground_contrast_with_background(text_fg, vo.background, uniforms.text_contrast, uniforms.text_gamma_adjustment);
         float4 text_fg_premul = calculate_premul_foreground_from_sprites(
             vo.sprite_pos,
             vo.underline_pos,
