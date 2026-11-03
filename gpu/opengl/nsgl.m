@@ -59,9 +59,9 @@ surface_destroy(GLSurface *s) {
 
 static void
 attach_to_view(GLSurface *s, NSOpenGLContext *context) {
-    [s->view setWantsBestResolutionOpenGLSurface:(s->high_resolution ? YES : NO)];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    [s->view setWantsBestResolutionOpenGLSurface:(s->high_resolution ? YES : NO)];
     [context setView:s->view];
 #pragma clang diagnostic pop
 }
