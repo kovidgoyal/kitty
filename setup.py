@@ -1303,7 +1303,35 @@ def build_wayland_protocols(
 
 
 def gpu_api_headers() -> List[str]:
-    return ['gpu/api.h', 'gpu/opengl/version.h']
+    return ['gpu/api.h', 'gpu/opengl/version.h', 'gpu/vulkan/version.h']
+
+
+@lru_cache(maxsize=2)
+def vulkan_headers_available() -> bool:
+    # The Vulkan driver needs only the Vulkan headers to build, libvulkan is loaded at runtime
+    cflags = env.cflags + pkg_config('x11', '--cflags-only-I', fatal=False)
+    src = '\n'.join(
+        (
+            '#define VK_NO_PROTOTYPES',
+            '#define VK_USE_PLATFORM_XLIB_KHR',
+            '#define VK_USE_PLATFORM_WAYLAND_KHR',
+            '#include <vulkan/vulkan.h>',
+            'int main(void) { return VK_API_VERSION_1_3 ? 0 : 1; }',
+        )
+    )
+    return bool(test_compile(env.cc, *cflags, src=src, link_also=False))
+
+
+def gpu_drivers_to_build() -> List[str]:
+    # The GPU drivers built for this platform. OpenGL is built on all platforms
+    # and Vulkan on platforms other than macOS, when its headers are available.
+    ans = ['opengl']
+    if not is_macos:
+        if vulkan_headers_available():
+            ans.insert(0, 'vulkan')
+        else:
+            print(error('The Vulkan headers were not found, the Vulkan GPU driver will not be built'), file=sys.stderr)
+    return ans
 
 
 def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
@@ -1323,6 +1351,11 @@ def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
             for dep in ('x11', 'xrender'):
                 ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.append('-ldl')
+    elif driver == 'vulkan':
+        # The X11 headers are needed for the Xlib surface functions. libvulkan
+        # and libX11 are loaded at runtime.
+        ans.cflags.extend(pkg_config('x11', '--cflags-only-I'))
+        ans.ldpaths.append('-ldl')
     return ans
 
 
@@ -1336,6 +1369,12 @@ def gpu_driver_shader_targets(driver: str = 'opengl') -> List[str]:
         if m is None:
             raise SystemExit('Could not find GLSL_VERSION in gpu/opengl/version.h')
         return [f'glsl-{m.group(1)}']
+    if driver == 'vulkan':
+        with open('gpu/vulkan/version.h') as f:
+            m = re.search(r'^#define SPIRV_VERSION (\d+)', f.read(), flags=re.MULTILINE)
+        if m is None:
+            raise SystemExit('Could not find SPIRV_VERSION in gpu/vulkan/version.h')
+        return [f'spirv-{m.group(1)}']
     raise KeyError(f'Unknown GPU driver: {driver}')
 
 
@@ -1344,11 +1383,13 @@ def gpu_driver_sources(driver: str) -> List[str]:
         common = ['driver.c', 'gl-wrapper.c']
         platform = ['nsgl.m'] if is_macos else ['egl.c', 'glx.c']
         return [f'gpu/{driver}/{x}' for x in common + platform]
+    if driver == 'vulkan':
+        return [f'gpu/{driver}/{x}' for x in ('driver.c', 'memory.c', 'commands.c', 'textures.c', 'pipelines.c', 'surfaces.c')]
     raise KeyError(f'Unknown GPU driver: {driver}')
 
 
 def compile_gpu_drivers(compilation_database: CompilationDatabase, build_dsym: bool = False) -> None:
-    for driver in ('opengl',):
+    for driver in gpu_drivers_to_build():
         denv = gpu_driver_init_env(env, driver)
         sources = gpu_driver_sources(driver)
         headers = sorted(set(glob.glob(f'gpu/{driver}/*.h') + gpu_api_headers()))
@@ -1504,7 +1545,7 @@ def generate_shaders(kitty_exe: str) -> None:
             '+launch',
             os.path.join(src_base, 'kitty/shaders/slang.py'),
             'verbose' if verbose else '',
-            '--targets=' + ','.join(t for driver in ('opengl',) for t in gpu_driver_shader_targets(driver)),
+            '--targets=' + ','.join(t for driver in gpu_drivers_to_build() for t in gpu_driver_shader_targets(driver)),
             'build/shaders',
             'shaders',
         ],
