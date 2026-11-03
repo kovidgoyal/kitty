@@ -1317,6 +1317,44 @@ def shader_name_from_path(path: str) -> str:
     return '.'.join(parts[:2])
 
 
+# The binding slots of every texture and uniform block in kitty's shaders,
+# declared in the shaders with [[vk::binding(N)]]. Slots are unique across all
+# shaders and kinds of resource, which is required by Vulkan where textures and
+# uniform blocks share a single namespace of bindings. Unique slots also mean
+# that resources bound once and used by many programs, such as the sprite
+# textures, which are bound once per frame while drawing both cells and
+# images, are never displaced by binding the resources of another program.
+# The C code never hard codes slots, it gets them from the program metadata, so
+# drivers for targets that assign slots differently, such as Metal, work too.
+SHADER_BINDING_SLOTS = MappingProxyType(
+    {
+        # textures
+        'sprites': 0,
+        'image': 1,
+        'backbuffer': 1,  # the custom shader equivalent of image, both are bound before every draw
+        'sprite_decorations_map': 2,
+        'a': 3,
+        'b': 4,
+        'persist': 5,
+        # uniform blocks, identified by the name of their type
+        'CellRenderData': 6,
+        'ColorTable': 7,
+        'GammaLUT': 8,
+        'Colors': 9,
+        'KittyCustomShaderData': 10,
+    }
+)
+
+
+def check_binding_slot(name: str, slot: int) -> int:
+    expected = SHADER_BINDING_SLOTS.get(name)
+    if expected is None:
+        raise ValueError(f'The shader resource {name} has no binding slot in SHADER_BINDING_SLOTS')
+    if slot != expected:
+        raise ValueError(f'The shader resource {name} uses binding slot {slot} instead of {expected}, declare it with [[vk::binding({expected})]]')
+    return slot
+
+
 def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]], native: GLSLMetadata) -> dict[str, Any]:
     """
     The metadata about a program passed to the C code. It is generated from the
@@ -1327,6 +1365,7 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
     """
     inputs: dict[str, int] = {}
     uniforms: set[str] = set()
+    textures: dict[str, int] = {}
     blocks: dict[str, dict[str, Any]] = {}
     params: dict[str, dict[str, dict[str, int]]] = {}
     # Uniform blocks that are emitted as uniform blocks rather than as loose uniforms by the target
@@ -1339,17 +1378,18 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                     evl = t['elementVarLayout']
                     et = evl['type']
                     tname = et['name']
+                    slot = check_binding_slot(tname, p['binding']['index'])
                     if tname in real_blocks:
                         arrays = {}
                         for f in et['fields']:
                             ft = f['type']
                             if ft['kind'] == 'array':
                                 arrays[f['name']] = {'offset': f['binding']['offset'], 'stride': ft['uniformStride'], 'count': ft['elementCount']}
-                        blocks[tname] = {'size': evl['binding']['size'], 'arrays': arrays}
+                        blocks[tname] = {'size': evl['binding']['size'], 'arrays': arrays, 'slot': slot}
                     else:
                         uniforms.update(f['name'] for f in et['fields'])
                 case 'resource':
-                    uniforms.add(p['name'])
+                    textures[p['name']] = check_binding_slot(p['name'], p['binding']['index'])
                 case _:
                     raise ValueError(f'Unsupported shader parameter: {p["name"]} of kind: {t["kind"]}')
         for ep in refl['entryPoints']:
@@ -1372,6 +1412,7 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
         'target': target.id,
         'inputs': inputs,
         'uniforms': sorted(uniforms),
+        'textures': textures,
         'blocks': blocks,
         'params': params,
         'native_names': native_names,

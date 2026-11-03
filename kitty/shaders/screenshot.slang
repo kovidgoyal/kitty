@@ -18,7 +18,8 @@ vertex_main(uint vertex_id: SV_VertexID, uniform float4 src_rect, uniform float4
     return { ans.texcoord, float4(ans.position[0], ans.position[1], 0.0, 1.0) };
 }
 
-uniform Sampler2D image;
+[[vk::binding(1)]]
+uniform Sampler2D image; // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
 float3
 safe_unpremult_to_linear(float4 s) {

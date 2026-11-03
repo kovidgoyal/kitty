@@ -43,7 +43,8 @@ enum {
     NUM_PROGRAMS
 };
 static_assert(NUM_PROGRAMS <= MAX_GPU_PROGRAMS, "Too many GPU programs");
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT, CUSTOM_END_TEXTURE_A_UNIT, CUSTOM_END_TEXTURE_B_UNIT, CUSTOM_END_TEXTURE_PERSIST_UNIT };
+// The binding slots of textures and uniform blocks come from the program
+// metadata, see SHADER_BINDING_SLOTS in shaders/slang.py
 
 typedef struct UIRenderData {
     unsigned screen_width, screen_height, cell_width, cell_height, screen_left, screen_top, full_framebuffer_width, full_framebuffer_height;
@@ -234,8 +235,13 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
 
 static void
 bind_sprite_map(const SpriteMap *sprite_map) {
-    gpu_bind_texture(SPRITE_DECORATIONS_MAP_UNIT, sprite_map->decorations_map.texture_id);
-    gpu_bind_texture(SPRITE_MAP_UNIT, sprite_map->texture_id);
+    // The sprite textures are bound once and used by all the cell programs,
+    // which share the same layout. They have binding slots distinct from those
+    // of every other program, so drawing images in between does not displace them.
+    uint32_t slot;
+    // The cell programs are compiled only once the first OS window is created
+    if (try_program_texture_slot(CELL_PROGRAM, "sprite_decorations_map", &slot)) gpu_bind_texture(slot, sprite_map->decorations_map.texture_id);
+    if (try_program_texture_slot(CELL_PROGRAM, "sprites", &slot)) gpu_bind_texture(slot, sprite_map->texture_id);
 }
 
 static void
@@ -360,7 +366,6 @@ draw_rounded_rect(
 
 // Cell {{{
 
-enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1, BORDER_COLORS_BINDING_POINT = 2, CUSTOM_END_DATA_BINDING_POINT = 3 };
 enum { BORDER_COLORS_GLOBAL_BUFFER };
 // VAOs used only to hold buffers for UBOs that are shared amongst programs/windows,
 // their vertex attribute/array facilities are unused.
@@ -452,13 +457,6 @@ upload_gamma_lut(void) {
 
 static void
 init_cell_program(void) {
-    for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
-        UniformBlock crd = program_uniform_block(i, "CellRenderData");
-        gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)crd.index, CELL_RENDER_DATA_BINDING_POINT);
-        UniformBlock ct = program_uniform_block(i, "ColorTable");
-        gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)ct.index, COLOR_TABLE_BINDING_POINT);
-    }
-
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected)                                                                                                             \
     {                                                                                                                                    \
@@ -473,16 +471,7 @@ init_cell_program(void) {
     }
 #undef C
     UniformBlock border_colors = program_uniform_block(BORDERS_PROGRAM, "Colors");
-    gpu_pipeline_bind_uniform_block(program_pipeline(BORDERS_PROGRAM), (uint32_t)border_colors.index, BORDER_COLORS_BINDING_POINT);
 
-    // The padding program shares the cell background computation and so uses the
-    // same uniform blocks bound to the same binding points as the cell programs.
-    {
-        UniformBlock crd = program_uniform_block(PADDING_PROGRAM, "CellRenderData");
-        gpu_pipeline_bind_uniform_block(program_pipeline(PADDING_PROGRAM), (uint32_t)crd.index, CELL_RENDER_DATA_BINDING_POINT);
-        UniformBlock ct = program_uniform_block(PADDING_PROGRAM, "ColorTable");
-        gpu_pipeline_bind_uniform_block(program_pipeline(PADDING_PROGRAM), (uint32_t)ct.index, COLOR_TABLE_BINDING_POINT);
-    }
 #define C(name, expected)                                                                                                                     \
     {                                                                                                                                         \
         int aloc = attrib_location(PADDING_PROGRAM, #name);                                                                                   \
@@ -492,10 +481,11 @@ init_cell_program(void) {
     C(sprite_idx, 1);
     C(is_selected, 2);
 #undef C
-    // Indexed color images get their colors from the color table of the window they are in
-    for (int i = GRAPHICS_INDEXED_PROGRAM; i <= GRAPHICS_INDEXED_UNSCALED_PROGRAM; i++) {
-        UniformBlock ct = program_uniform_block(i, "ColorTable");
-        gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)ct.index, COLOR_TABLE_BINDING_POINT);
+    // The sprite textures are bound once for all cell programs, see bind_sprite_map()
+    for (int i = CELL_PROGRAM + 1; i < CELL_PROGRAM_SENTINEL; i++) {
+        uint32_t a, b;
+        if (try_program_texture_slot(i, "sprites", &a) && (!try_program_texture_slot(CELL_PROGRAM, "sprites", &b) || a != b))
+            fatal("The cell programs use different binding slots for the sprites texture");
     }
 
     if (shader_globals_vao_idx == -1) {
@@ -651,16 +641,6 @@ init_custom_programs(void) {
             custom_shaders.count++;
             if (i == CUSTOM_END_PROGRAM) {
                 bind_program(i);
-                gpu_uniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
-#define set_optional_sampler(name, unit)                     \
-    {                                                        \
-        int32_t loc = try_program_uniform_location(i, name); \
-        if (loc >= 0) gpu_uniform1i(loc, unit);              \
-    }
-                set_optional_sampler("a", CUSTOM_END_TEXTURE_A_UNIT);
-                set_optional_sampler("b", CUSTOM_END_TEXTURE_B_UNIT);
-                set_optional_sampler("persist", CUSTOM_END_TEXTURE_PERSIST_UNIT);
-#undef set_optional_sampler
                 int32_t group_loc = try_program_uniform_location(i, "group");
                 if (group_loc >= 0) gpu_uniform1i(group_loc, 0);
                 else if (custom_shaders.end.num_groups > 1) {
@@ -673,7 +653,6 @@ init_custom_programs(void) {
                         custom_shaders.end.num_groups);
                 }
                 UniformBlock ubd = program_uniform_block(i, "KittyCustomShaderData");
-                gpu_pipeline_bind_uniform_block(program_pipeline(i), (uint32_t)ubd.index, CUSTOM_END_DATA_BINDING_POINT);
                 if (custom_end_vao_idx == -1) {
                     custom_end_vao_idx = create_vao();
                     add_buffer_to_vao(custom_end_vao_idx, GPU_BUFFER_UNIFORM);
@@ -946,7 +925,7 @@ custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState 
 void
 bind_shader_globals_to_current_context(void) {
     if (shader_globals_vao_idx == -1) return;
-    bind_vao_uniform_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, BORDER_COLORS_BINDING_POINT);
+    bind_vao_uniform_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, program_uniform_block(BORDERS_PROGRAM, "Colors").slot);
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, color_table_buffer, padding_cell_data_buffer, padding_selection_buffer };
@@ -1335,9 +1314,10 @@ draw_graphics(int program, ImageRenderData *data, uint32_t start, uint32_t count
     int32_t dest_rect_loc = program_uniform_location(program, "dest_rect");
     const bool is_indexed = program == GRAPHICS_INDEXED_PROGRAM || program == GRAPHICS_INDEXED_UNSCALED_PROGRAM;
     const int32_t has_alpha_loc = is_indexed ? program_uniform_location(program, "has_alpha") : -1;
+    const uint32_t image_slot = program_texture_slot(program, "image");
     for (uint32_t i = 0; i < count;) {
         ImageRenderData *group = data + start + i;
-        gpu_bind_texture(GRAPHICS_UNIT, group->texture_id);
+        gpu_bind_texture(image_slot, group->texture_id);
         if (has_alpha_loc > -1) gpu_uniform1ui(has_alpha_loc, group->indexed_px_sz == 2);
         if (group->group_count == 0) {
             i++;
@@ -1401,10 +1381,6 @@ set_cell_uniforms(bool force) {
     if (!constants_set || force) {
         float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
         float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
-        for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_INDEXED_UNSCALED_PROGRAM; i++) {
-            bind_program(i);
-            gpu_uniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
-        }
         // These are set for every cell program, but the background program draws no
         // text and so does not have them.
 #define set_optional(setter, name, value)                    \
@@ -1414,16 +1390,10 @@ set_cell_uniforms(bool force) {
     }
         for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
             bind_program(i);
-            set_optional(gpu_uniform1i, "sprites", SPRITE_MAP_UNIT);
-            set_optional(gpu_uniform1i, "sprite_decorations_map", SPRITE_DECORATIONS_MAP_UNIT);
             set_optional(gpu_uniform1f, "text_contrast", text_contrast);
             set_optional(gpu_uniform1f, "text_gamma_adjustment", text_gamma_adjustment);
         }
 #undef set_optional
-        bind_program(BLIT_PROGRAM);
-        gpu_uniform1i(program_uniform_location(BLIT_PROGRAM, "image"), GRAPHICS_UNIT);
-        bind_program(SCREENSHOT_PROGRAM);
-        gpu_uniform1i(program_uniform_location(SCREENSHOT_PROGRAM, "image"), GRAPHICS_UNIT);
         constants_set = true;
     }
 }
@@ -1757,7 +1727,6 @@ draw_window_number(const UIRenderData *ui) {
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
     gpu_data_for_image(ird, -1, 1, 1, -1);
-    gpu_uniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(
         ui->screen->color_profile,
         ui->screen->color_profile->overridden.highlight_bg,
@@ -2129,8 +2098,8 @@ static void
 call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for_final_output, unsigned draw_bg_bitfield) {
     bind_program(program);
     CELL_BUFFERS;
-    bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
-    bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, program_uniform_block(program, "CellRenderData").slot);
+    bind_vao_uniform_buffer(vao_idx, color_table_buffer, program_uniform_block(program, "ColorTable").slot);
     gpu_uniform1ui(program_uniform_location(program, "draw_bg_bitfield"), draw_bg_bitfield);
     if (for_final_output) gpu_set_srgb_output(true);
     draw_quad(!for_final_output, render_lines_for_screen(ui->screen) * ui->screen->columns);
@@ -2222,8 +2191,8 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     bind_program(PADDING_PROGRAM);
     bind_vertex_array(vao_idx);
     CELL_BUFFERS;
-    bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
-    bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, program_uniform_block(PADDING_PROGRAM, "CellRenderData").slot);
+    bind_vao_uniform_buffer(vao_idx, color_table_buffer, program_uniform_block(PADDING_PROGRAM, "ColorTable").slot);
     if (for_final_output) gpu_set_srgb_output(true);
 
     // Point instanced attributes at the padding-specific buffers once for both draws.
@@ -2375,7 +2344,7 @@ draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, uint32_t start, uint32
     }
     CELL_BUFFERS;
     // The color table may not be bound yet, for example, when the window has a background image
-    bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
+    bind_vao_uniform_buffer(vao_idx, color_table_buffer, program_uniform_block(GRAPHICS_INDEXED_PROGRAM, "ColorTable").slot);
     const ImageRenderData *data = ui->grd.images;
     for (uint32_t run_start = start, end = start + count; run_start < end;) {
         const int program = program_for_image(data + run_start);
@@ -2696,9 +2665,8 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
     gpu_uniform4f(program_uniform_location(BGIMAGE_PROGRAM, "sizes"), vwidth, vheight, iwidth, iheight);
     gpu_uniform1f(program_uniform_location(BGIMAGE_PROGRAM, "tiled"), tiled);
     gpu_uniform4f(program_uniform_location(BGIMAGE_PROGRAM, "positions"), left, top, right, bottom);
-    gpu_uniform1i(program_uniform_location(BGIMAGE_PROGRAM, "image"), GRAPHICS_UNIT);
     color_vec4(program_uniform_location(BGIMAGE_PROGRAM, "background"), s.bgcolor, s.opacity);
-    gpu_bind_texture(GRAPHICS_UNIT, bg->texture_id);
+    gpu_bind_texture(program_texture_slot(BGIMAGE_PROGRAM, "image"), bg->texture_id);
     draw_quad(false, 0);
     unbind_program();
 }
@@ -2716,7 +2684,6 @@ draw_centered_alpha_mask(size_t screen_width, size_t screen_height, size_t width
     ImageRenderData *data = load_alpha_mask_texture(width, height, canvas);
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-    gpu_uniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
     color_vec3(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), OPT(foreground));
     color_vec4_premult(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), OPT(background), background_opacity);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, data, 0, 1, 1.0);
@@ -2934,8 +2901,11 @@ update_pointer_map(OSWindow *os_window, int32_t group_loc) {
     if (!pointer_map_target.framebuffer_id)
         setup_texture_as_render_target(POINTER_MAP_SIZE, POINTER_MAP_SIZE, &pointer_map_target.texture_id, &pointer_map_target.framebuffer_id);
     // The pointer map does not sample any textures, but every sampler must be bound to a valid one
-    static const int units[] = {GRAPHICS_UNIT, CUSTOM_END_TEXTURE_A_UNIT, CUSTOM_END_TEXTURE_B_UNIT, CUSTOM_END_TEXTURE_PERSIST_UNIT};
-    for (size_t i = 0; i < arraysz(units); i++) { gpu_bind_texture(units[i], global_state.layers_render_texture.texture_id); }
+    static const char *const names[] = {"backbuffer", "a", "b", "persist"};
+    for (size_t i = 0; i < arraysz(names); i++) {
+        uint32_t slot;
+        if (try_program_texture_slot(CUSTOM_END_PROGRAM, names[i], &slot)) gpu_bind_texture(slot, global_state.layers_render_texture.texture_id);
+    }
     bind_framebuffer_for_output(pointer_map_target.framebuffer_id);
     gpu_set_viewport(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE);
     gpu_uniform1i(group_loc, -1);
@@ -3201,7 +3171,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         }
     }
     unmap_vao_buffer(custom_end_vao_idx, 0);
-    bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
+    bind_vao_uniform_buffer(custom_end_vao_idx, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").slot);
 
     // A custom shader need not reference any of these, in which case the driver
     // drops them and glUniform*() on the resulting -1 location is a no-op.
@@ -3227,12 +3197,13 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         os_window->indirect_output.fbo_b_id,
         os_window->persist_fbo_id,
     };
-    static const int named_tex_units[4] = {
-        GRAPHICS_UNIT, // DEFAULT maps to backbuffer slot
-        CUSTOM_END_TEXTURE_A_UNIT,
-        CUSTOM_END_TEXTURE_B_UNIT,
-        CUSTOM_END_TEXTURE_PERSIST_UNIT,
-    };
+    // The binding slots of the named textures, indexed by NamedTexture enum
+    // value, false in has_named_tex_slot when the program does not use the texture
+    static const char *const named_tex_names[4] = {"backbuffer", "a", "b", "persist"};
+    uint32_t named_tex_slots[4] = {0};
+    bool has_named_tex_slot[4];
+    for (size_t i = 0; i < arraysz(named_tex_names); i++)
+        has_named_tex_slot[i] = try_program_texture_slot(CUSTOM_END_PROGRAM, named_tex_names[i], named_tex_slots + i);
 
     // Pre-scan to find the last group that will actually run this frame.
     // That group gets convert_to_srgb=true so its draw call replaces the
@@ -3262,7 +3233,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
 
         // Bind backbuffer to the backbuffer texture unit
-        gpu_bind_texture(GRAPHICS_UNIT, backbuffer);
+        if (has_named_tex_slot[CUSTOM_SHADER_TEXTURE_DEFAULT]) gpu_bind_texture(named_tex_slots[CUSTOM_SHADER_TEXTURE_DEFAULT], backbuffer);
 
         // Bind each named texture to its own unit.
         // If the texture is the output for this group, or is not declared in the
@@ -3276,7 +3247,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             } else {
                 tex = backbuffer; // not present — fall back to backbuffer
             }
-            gpu_bind_texture(named_tex_units[t], tex);
+            if (has_named_tex_slot[t]) gpu_bind_texture(named_tex_slots[t], tex);
         }
 
         // Set the output framebuffer
@@ -3348,7 +3319,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
             set_framebuffer_to_use_for_output(0);
             bind_framebuffer_for_output(0);
             bind_program(BLIT_PROGRAM);
-            gpu_bind_texture(GRAPHICS_UNIT, global_state.layers_render_texture.texture_id);
+            gpu_bind_texture(program_texture_slot(BLIT_PROGRAM, "image"), global_state.layers_render_texture.texture_id);
             gpu_uniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
             gpu_uniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
             restore_viewport();
@@ -3444,7 +3415,7 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
     gpu_uniform2f(program_uniform_location(SCREENSHOT_PROGRAM, "src_size"), (float)vw, (float)vh);
 
     // Bind the source texture
-    gpu_bind_texture(GRAPHICS_UNIT, src_texture);
+    gpu_bind_texture(program_texture_slot(SCREENSHOT_PROGRAM, "image"), src_texture);
 
     // Draw the scaled quad
     draw_quad(false, 0);
@@ -3728,6 +3699,39 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
             num_names++;
         }
     }
+    // The binding slots of textures and uniform blocks
+    PyObject *textures = PyDict_GetItemString(metadata, "textures"), *blocks = PyDict_GetItemString(metadata, "blocks");
+    if (!textures || !PyDict_Check(textures) || !blocks || !PyDict_Check(blocks)) {
+        PyErr_SetString(PyExc_KeyError, "The shader program metadata has no textures or blocks dict");
+        return NULL;
+    }
+    RAII_ALLOC(GPUBinding, bindings, calloc(MAX(1, PyDict_GET_SIZE(textures) + PyDict_GET_SIZE(blocks)), sizeof(GPUBinding)));
+    if (!bindings) return PyErr_NoMemory();
+    size_t num_bindings = 0;
+    {
+        PyObject *key, *val;
+        Py_ssize_t pos = 0;
+        while (PyDict_Next(textures, &pos, &key, &val)) {
+            GPUBinding *b = bindings + num_bindings++;
+            b->kind = GPU_BINDING_TEXTURE;
+            if (!(b->name = PyUnicode_AsUTF8(key))) return NULL;
+            b->slot = (uint32_t)PyLong_AsUnsignedLong(val);
+            if (PyErr_Occurred()) return NULL;
+        }
+        pos = 0;
+        while (PyDict_Next(blocks, &pos, &key, &val)) {
+            GPUBinding *b = bindings + num_bindings++;
+            b->kind = GPU_BINDING_UNIFORM_BLOCK;
+            if (!(b->name = PyUnicode_AsUTF8(key))) return NULL;
+            PyObject *slot = PyDict_Check(val) ? PyDict_GetItemString(val, "slot") : NULL;
+            if (!slot) {
+                PyErr_Format(PyExc_KeyError, "The uniform block %s in the shader program metadata has no slot", b->name);
+                return NULL;
+            }
+            b->slot = (uint32_t)PyLong_AsUnsignedLong(slot);
+            if (PyErr_Occurred()) return NULL;
+        }
+    }
     RAII_PyObject(vertex_source, join_shader_sources(vertex_shaders));
     if (!vertex_source) return NULL;
     RAII_PyObject(fragment_source, join_shader_sources(fragment_shaders));
@@ -3741,7 +3745,7 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         {.stage = GPU_SHADER_VERTEX, .language = language, .code = vcode, .size = (size_t)vsz},
         {.stage = GPU_SHADER_FRAGMENT, .language = language, .code = fcode, .size = (size_t)fsz},
     };
-    gpu_pipeline_t pipeline = gpu_pipeline_create(sources, arraysz(sources), names, num_names);
+    gpu_pipeline_t pipeline = gpu_pipeline_create(sources, arraysz(sources), bindings, num_bindings, names, num_names);
     if (!pipeline) {
         PyErr_SetString(PyExc_ValueError, gpu_last_error());
         return NULL;

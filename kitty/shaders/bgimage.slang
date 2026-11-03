@@ -59,7 +59,8 @@ vertex_main(uint vertex_id: SV_VertexID, uniform float tiled, uniform float4 siz
 }
 
 // Global Texture Bindings
-uniform Sampler2D image;
+[[vk::binding(1)]]
+uniform Sampler2D image; // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
 // Main Fragment Shader Entry Point
 [shader("fragment")]
