@@ -228,7 +228,7 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
-0.50.0 [future]
+0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow docking kitty windows to the edges of other windows or of the tab, for
@@ -247,12 +247,6 @@ Detailed list of changes
   alphabetical order and new options for `kitten @ detach-window` and the
   :ac:`detach_window` action to send windows to a named tab, creating it if
   needed (:iss:`10627`)
-
-- Support the `Program Status Protocol (OSC 7501)
-  <https://www.superlogical.com/rex/docs/build/program-status>`__ that lets
-  programs report whether they are working, finished, failed or blocked waiting
-  on the user. Shown in the tab bar via a new :code:`tab.program_status` field
-  for :opt:`tab_title_template`, see :ref:`program_status`
 
 - Wayland: The client side window decorations used on compositors such as
   GNOME now look like native GNOME decorations and follow the desktop titlebar
@@ -282,6 +276,12 @@ Detailed list of changes
   clients to detect support for individual protocol features, such as
   animation and Unicode placeholders, via the new ``e`` query key, see
   :ref:`graphics_query_features` (:iss:`9379`, :iss:`10732`)
+
+- Support the `Program Status Protocol (OSC 7501)
+  <https://www.superlogical.com/rex/docs/build/program-status>`__ that lets
+  programs report whether they are working, finished, failed or blocked waiting
+  on the user. Shown in the tab bar via a new :code:`tab.program_status` field
+  for :opt:`tab_title_template`, see :ref:`program_status`
 
 - :ref:`Automatic color themes <auto_color_scheme>`: When the system switches
   between light and dark, keep colors set by programs running in a window, by
