@@ -299,6 +299,16 @@
     },
 
     {
+        "name": "vulkan-headers 1.4.363",
+        "os": "linux",
+        "unix": {
+            "file_extension": "tar.gz",
+            "hash": "sha256:cbaf687d3c59b9666fe080e7f8396b6b4f4d344a768ee6b337c59852f4526b68",
+            "urls": ["https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v{version}.{file_extension}"]
+        }
+    },
+
+    {
         "name": "wayland-protocols 1.49",
         "os": "linux",
         "unix": {
