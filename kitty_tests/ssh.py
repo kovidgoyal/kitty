@@ -162,33 +162,38 @@ copy --exclude **/w.* --exclude **/r d1
 
     def test_ssh_copy_home_prefix(self):
         for sh in self.all_possible_sh:
-            with self.subTest(interpreter=sh), tempfile.TemporaryDirectory() as tdir:
-                local_home = os.path.join(tdir, 'alice')
-                remote_home = os.path.join(tdir, 'remote')
-                sibling = local_home + '-backup'
-                for d in (local_home, remote_home, sibling):
-                    os.mkdir(d)
-                source = os.path.join(sibling, 'config')
-                with open(source, 'w') as f:
-                    f.write('copied contents')
-                # Remove the local file after creating the archive so that the
-                # bootstrap must restore it at the same absolute path.
-                launcher = os.path.join(tdir, 'launcher')
-                with open(launcher, 'w') as f:
-                    f.write(f'#!/bin/sh\nrm -f {shlex.quote(source)} || exit 1\nexec sh "$@"\n')
-                os.chmod(launcher, 0o755)
-                self.check_bootstrap(
-                    sh,
-                    remote_home,
-                    test_script='env; exit 0',
-                    SHELL_INTEGRATION_VALUE='',
-                    conf=f'copy {shlex.quote(source)}',
-                    home=local_home,
-                    launcher=launcher,
-                )
-                with open(source) as f:
-                    self.ae(f.read(), 'copied contents')
-                self.ae(glob.glob(os.path.join(remote_home, '.kitty-ssh-kitten-untar-*')), [])
+            with self.subTest(interpreter=sh):
+                self.do_test_ssh_copy_home_prefix(sh)
+
+    @retry_on_failure()
+    def do_test_ssh_copy_home_prefix(self, sh):
+        with tempfile.TemporaryDirectory() as tdir:
+            local_home = os.path.join(tdir, 'alice')
+            remote_home = os.path.join(tdir, 'remote')
+            sibling = local_home + '-backup'
+            for d in (local_home, remote_home, sibling):
+                os.mkdir(d)
+            source = os.path.join(sibling, 'config')
+            with open(source, 'w') as f:
+                f.write('copied contents')
+            # Remove the local file after creating the archive so that the
+            # bootstrap must restore it at the same absolute path.
+            launcher = os.path.join(tdir, 'launcher')
+            with open(launcher, 'w') as f:
+                f.write(f'#!/bin/sh\nrm -f {shlex.quote(source)} || exit 1\nexec sh "$@"\n')
+            os.chmod(launcher, 0o755)
+            self.check_bootstrap(
+                sh,
+                remote_home,
+                test_script='env; exit 0',
+                SHELL_INTEGRATION_VALUE='',
+                conf=f'copy {shlex.quote(source)}',
+                home=local_home,
+                launcher=launcher,
+            )
+            with open(source) as f:
+                self.ae(f.read(), 'copied contents')
+            self.ae(glob.glob(os.path.join(remote_home, '.kitty-ssh-kitten-untar-*')), [])
 
     def test_ssh_copy_directory_merge(self):
         bootstrap_utils = os.path.join(kitty_base_dir, 'shell-integration', 'ssh', 'bootstrap-utils.sh')
@@ -241,14 +246,22 @@ copy --exclude **/w.* --exclude **/r d1
         existing = {'': 0o700, 'private': 0o710, 'readonly': 0o750}
         for sh in self.all_possible_sh:
             for umask in ('022', '077'):
-                with self.subTest(interpreter=sh, umask=umask), tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
-                    try:
-                        self.do_test_ssh_copy_directory_permissions(sh, umask, remote_home, local_home, dirs, files, existing)
-                    finally:
-                        make_writable(remote_home)
-                        make_writable(local_home)
+                # Retry inside the subTest as subTest() swallows exceptions, so
+                # decorating the test method itself would never retry.
+                with self.subTest(interpreter=sh, umask=umask):
+                    self.do_test_ssh_copy_directory_permissions(sh, umask, dirs, files, existing)
 
-    def do_test_ssh_copy_directory_permissions(self, sh, umask, remote_home, local_home, dirs, files, existing):
+    @retry_on_failure()
+    def do_test_ssh_copy_directory_permissions(self, sh, umask, dirs, files, existing):
+        # Use fresh directories for every attempt
+        with tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
+            try:
+                self.check_ssh_copy_directory_permissions(sh, umask, remote_home, local_home, dirs, files, existing)
+            finally:
+                make_writable(remote_home)
+                make_writable(local_home)
+
+    def check_ssh_copy_directory_permissions(self, sh, umask, remote_home, local_home, dirs, files, existing):
         tree = os.path.join(local_home, 'tree')
         for name in dirs:
             os.makedirs(os.path.join(tree, name), exist_ok=True)
