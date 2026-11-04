@@ -164,6 +164,9 @@ class TestBuild(BaseTest):
             self.assertTrue(hasattr(lib, 'kitty_gpu_driver_load'), f'{path} does not export kitty_gpu_driver_load')
 
         check('opengl')
+        if is_macos:
+            check('metal')
+            self.assertTrue(glob.glob(os.path.join(shaders_dir, 'msl-*', 'cell.json')), 'The built-in shaders have not been compiled for the Metal GPU driver')
         # The Vulkan driver is built only when the Vulkan headers are available
         if not is_macos and os.path.exists(gpu_driver_path('vulkan')):
             check('vulkan')

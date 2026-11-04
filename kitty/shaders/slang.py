@@ -207,11 +207,13 @@ def variant_name(variant: dict[str, str], default: dict[str, str]) -> str:
 
 class ShaderTarget(NamedTuple):
     # The shader target consumed by a GPU driver, identified by strings of the
-    # form family-version, for example glsl-140 or spirv-16 (SPIR-V 1.6).
-    # Built-in shaders are compiled for the targets of the drivers being built,
-    # at build time, and custom shaders for the target of the loaded driver, at
-    # runtime. GLSL targets produce one text file per stage, SPIR-V targets a
-    # single binary module containing all the entry points of the program.
+    # form family-version, for example glsl-140, spirv-16 (SPIR-V 1.6) or
+    # msl-24 (Metal Shading Language 2.4). Built-in shaders are compiled for
+    # the targets of the drivers being built, at build time, and custom
+    # shaders for the target of the loaded driver, at runtime. GLSL targets
+    # produce one text file per stage, SPIR-V and MSL targets a single module,
+    # binary for SPIR-V and source code for MSL, containing all the entry
+    # points of the program.
     family: str
     version: int
 
@@ -224,7 +226,7 @@ class ShaderTarget(NamedTuple):
         family, sep, version = spec.partition('-')
         if not sep or not version.isdigit():
             raise ValueError(f'Invalid shader target: {spec!r}')
-        if family not in ('glsl', 'spirv'):
+        if family not in ('glsl', 'spirv', 'msl'):
             raise ValueError(f'Unsupported shader target: {spec!r}')
         return cls(family, int(version))
 
@@ -233,13 +235,29 @@ class ShaderTarget(NamedTuple):
         return self.family == 'spirv'
 
     @property
+    def is_msl(self) -> bool:
+        return self.family == 'msl'
+
+    @property
+    def is_single_module(self) -> bool:
+        # Whether a program is compiled to a single module containing the entry points of all its stages
+        return self.family in ('spirv', 'msl')
+
+    @property
+    def module_extension(self) -> str:
+        # The file extension of single modules, see is_single_module
+        return '.spv' if self.is_spirv else '.metal'
+
+    @property
     def slangc_args(self) -> list[str]:
+        major, minor = divmod(self.version, 10)
         if self.is_spirv:
-            major, minor = divmod(self.version, 10)
             # The GLSL 450 profile provides the shader capabilities, such as
             # texture gathering, without it slangc warns that it implicitly
             # upgrades the profile
             return ['-target', 'spirv', '-profile', 'glsl_450', '-capability', f'spirv_{major}_{minor}', '-fvk-use-entrypoint-name']
+        if self.is_msl:
+            return ['-target', 'metal', '-capability', f'METAL_{major}_{minor}', '-line-directive-mode', 'none']
         # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
         return ['-target', 'glsl', '-profile', f'glsl_{max(150, self.version)}']
 
@@ -263,6 +281,10 @@ def builtin_program(target: ShaderTarget, name: str, variant_name: str = '') -> 
         with open(f'{base}.spv', 'rb') as b:
             spirv = b.read()
         return spirv, spirv, metadata
+    if target.is_msl:
+        with open(f'{base}.metal') as f:
+            msl = f.read()
+        return msl, msl, metadata
     with open(f'{base}.vert.glsl') as f:
         vert = f.read()
     with open(f'{base}.frag.glsl') as f:
@@ -1070,16 +1092,18 @@ def serialize_source_metadata(sources: dict[str, SlangFile], dest_dir: str) -> N
             f.write(json.dumps(sfile.asdict(skip_source=True), indent=2, sort_keys=True))
 
 
-def commands_to_compile_to_spirv(
+def commands_to_compile_to_module(
     sources: dict[str, SlangFile], build_dir: str, dest_dir: str, target: ShaderTarget, built_files: list[str]
 ) -> Iterator[Command]:
-    # One module containing all the entry points of each program
+    # One module containing all the entry points of each program, for targets
+    # where is_single_module is True
     os.makedirs(os.path.join(dest_dir, target.id), exist_ok=True)
     os.makedirs(os.path.join(build_dir, target.id), exist_ok=True)
+    ext = target.module_extension
     for base_dest, base_build, slang_module, scmd, sfile in iter_entry_point_shaders(sources, build_dir, os.path.join(dest_dir, target.id)):
         for x in sfile.specializations:
             cmd = list(scmd)
-            dest = f'{base_dest}{x.filename_insert}.spv' if x.name else f'{base_dest}.spv'
+            dest = f'{base_dest}{x.filename_insert}{ext}' if x.name else f'{base_dest}{ext}'
             if x.variables:
                 cmd.insert(-1, f'{base_build}{x.filename_insert}.slang-module')
             cmd += target.slangc_args + ['-o', dest, '-reflection-json', reflection_path(target, build_dir, dest)]
@@ -1091,23 +1115,103 @@ def commands_to_compile_to_spirv(
             yield Command(needs_build, f'Linking |{os.path.basename(dest)}| ...', cmd)
 
 
-def write_spirv_metadata(paths: Iterable[str], target: ShaderTarget, reflection_dir: str) -> None:
-    "Write the program metadata for compiled SPIR-V modules"
+def write_module_metadata(paths: Iterable[str], target: ShaderTarget, reflection_dir: str) -> None:
+    "Write the program metadata for compiled single modules, see ShaderTarget.is_single_module, fixing up MSL code as needed"
     for path in paths:
         with open(reflection_path(target, reflection_dir, path)) as f:
             reflection = json.load(f)
         try:
             metadata = program_metadata(target, [reflection], GLSLMetadata())
+            if target.is_msl:
+                with open(path) as f:
+                    msl = f.read()
+                write_if_changed(path, fixup_metal_code(msl, metadata['entry_points'], os.path.basename(path)))
         except Exception:
             os.unlink(path)
             raise
-        write_if_changed(path.removesuffix('.spv') + '.json', json.dumps(metadata, indent=2, sort_keys=True))
+        write_if_changed(path.removesuffix(target.module_extension) + '.json', json.dumps(metadata, indent=2, sort_keys=True))
 
 
 def spirv_validation_command(target: ShaderTarget, path: str) -> list[str]:
     # The Vulkan version whose environment the SPIR-V is validated against
     env = {16: 'vulkan1.3', 15: 'vulkan1.2', 13: 'vulkan1.1'}.get(target.version, 'vulkan1.3')
     return ['spirv-val', '--target-env', env, path]
+
+
+# MSL {{{
+
+# Marks MSL code that has been fixed up by fixup_metal_code()
+METAL_FIXUP_MARKER = '// kitty: fixed up for the Metal GPU driver'
+
+
+def _matching_close(code: str, start: int, open_char: str, close_char: str) -> int:
+    # The index of the character closing the bracket at code[start]
+    depth = 0
+    for i in range(start, len(code)):
+        c = code[i]
+        if c == open_char:
+            depth += 1
+        elif c == close_char:
+            depth -= 1
+            if depth == 0:
+                return i
+    raise ValueError(f'Unbalanced {open_char}{close_char} in MSL code')
+
+
+def fixup_metal_code(msl: str, entry_points: dict[str, str], shader_name: str) -> str:
+    """
+    Make the MSL output of slangc follow the coordinate conventions of the
+    GPU API, see gpu/api.h. Shaders produce positions with NDC y=-1 at the
+    top of the viewport, as in Vulkan, while in Metal y=1 is the top, so the
+    y coordinate of the position output by the vertex entry point is negated.
+    Everything else, viewports, scissor rectangles and texture coordinates,
+    already has its origin at the top left in Metal.
+    """
+    if METAL_FIXUP_MARKER in msl:
+        return msl
+    for stage, attr in (('vertex', '[[vertex]]'), ('fragment', '[[fragment]]')):
+        name = entry_points.get(stage, '')
+        if not re.search(r'^' + re.escape(attr) + r'\s+[^(]*?\b' + re.escape(name) + r'\s*\(', msl, flags=re.MULTILINE):
+            raise ValueError(f'Could not find the {stage} entry point {name!r} in the MSL shader: {shader_name}')
+    vertex = entry_points['vertex']
+    m = re.search(r'^\[\[vertex\]\]\s+(\w+)\s+' + re.escape(vertex) + r'\s*\(', msl, flags=re.MULTILINE)
+    assert m is not None
+    result_type = m.group(1)
+    if result_type == 'float4':
+        flip = 'r.y = -r.y;'
+    else:
+        sm = re.search(r'^struct ' + re.escape(result_type) + r'\s*\{(.*?)^\};', msl, flags=re.MULTILINE | re.DOTALL)
+        if sm is None:
+            raise ValueError(f'Could not find the definition of the result type {result_type} of the vertex entry point in the MSL shader: {shader_name}')
+        fm = re.search(r'(\w+)\s*\[\[position\]\]', sm.group(1))
+        if fm is None:
+            raise ValueError(f'The result type of the vertex entry point in the MSL shader: {shader_name} has no position')
+        flip = f'r.{fm.group(1)}.y = -r.{fm.group(1)}.y;'
+    params_end = _matching_close(msl, m.end() - 1, '(', ')')
+    body_start = msl.index('{', params_end)
+    body_end = _matching_close(msl, body_start, '{', '}')
+    body, n = re.subn(r'\breturn\s+([^;]+);', r'return kitty_flip_y(\1);', msl[body_start : body_end + 1])
+    if not n:
+        raise ValueError(f'The vertex entry point in the MSL shader: {shader_name} has no return statement')
+    helper = f'{METAL_FIXUP_MARKER}\nstatic inline {result_type} kitty_flip_y({result_type} r) {{ {flip} return r; }}\n\n'
+    return msl[: m.start()] + helper + msl[m.start() : body_start] + body + msl[body_end + 1 :]
+
+
+@lru_cache(maxsize=2)
+def metal_compiler_available() -> bool:
+    # The Metal compiler is part of Xcode, it is not available on other platforms
+    if sys.platform != 'darwin' or not shutil.which('xcrun'):
+        return False
+    return subprocess.run(['xcrun', '-sdk', 'macosx', '-f', 'metal'], capture_output=True).returncode == 0
+
+
+def msl_validation_command(target: ShaderTarget, path: str) -> list[str]:
+    # Compile the MSL with the Metal compiler, discarding the output
+    major, minor = divmod(target.version, 10)
+    return ['xcrun', '-sdk', 'macosx', 'metal', f'-std=macos-metal{major}.{minor}', '-c', path, '-o', os.devnull]
+
+
+# }}}
 
 
 # GLSL {{{
@@ -1397,13 +1501,14 @@ SHADER_BINDING_SLOTS = MappingProxyType(
 )
 
 
-def check_binding_slot(name: str, slot: int) -> int:
+def check_binding_slot(name: str, slot: int | None) -> int:
+    # Pass slot as None for targets that ignore [[vk::binding]], such as MSL
     expected = SHADER_BINDING_SLOTS.get(name)
     if expected is None:
         raise ValueError(f'The shader resource {name} has no binding slot in SHADER_BINDING_SLOTS')
-    if slot != expected:
+    if slot is not None and slot != expected:
         raise ValueError(f'The shader resource {name} uses binding slot {slot} instead of {expected}, declare it with [[vk::binding({expected})]]')
-    return slot
+    return expected
 
 
 # The uniform parameters of every program are declared as a single struct,
@@ -1420,6 +1525,19 @@ def check_binding_slot(name: str, slot: int) -> int:
 # loose uniforms for OpenGL. Vulkan guarantees only this many bytes of push
 # constants.
 PUSH_CONSTANTS_MAX_SIZE = 128
+# The name of the type of the push constant block in the Slang source. Targets
+# without push constants, such as MSL, emit the block as an ordinary constant
+# buffer, which is recognized by the name of its type.
+PUSH_CONSTANTS_TYPE_NAME = 'Params'
+
+# For MSL, Slang assigns indices in the buffer, texture and sampler argument
+# tables of Metal itself, ignoring [[vk::binding]]. They are passed to the
+# driver as native names, see GPUNativeName in gpu/api.h, of the forms
+# "buffer(N)" for uniform and parameter blocks and "texture(N) sampler(M)" for
+# textures, the attributes of the parameters in the MSL code. The native name
+# of the push constant block is stored under this name, which must match
+# MSL_PUSH_CONSTANTS_NAME in gpu/metal/internal.h.
+MSL_PUSH_CONSTANTS_NAME = 'push_constants'
 
 
 _PARAM_SCALARS = MappingProxyType({'float32': 'float', 'int32': 'int', 'uint32': 'uint', 'bool': 'bool'})
@@ -1448,6 +1566,25 @@ def param_field(name: str, offset: int, t: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def check_msl_bools(fields: Sequence[dict[str, Any]]) -> None:
+    # kitty writes bool parameters as 32 bit values, see GPU_PARAM_BOOL, but
+    # in MSL bool is a single byte. Since all parameters are 32 bit scalars,
+    # a lone bool works on the little endian machines Metal runs on, its byte
+    # is the first one of the 32 bit value and the next field is aligned to
+    # four bytes either way. Vectors and arrays of bool and consecutive bools
+    # would be laid out differently, so are not allowed.
+    for i, f in enumerate(fields):
+        if f['scalar'] != 'bool':
+            continue
+        if f['components'] != 1 or f['count'] != 1:
+            raise ValueError(f'The shader parameter {f["name"]} is a vector or array of bool, which is not supported by Metal, use uint instead')
+        if i + 1 < len(fields) and fields[i + 1]['scalar'] == 'bool':
+            raise ValueError(
+                f'The shader parameters {f["name"]} and {fields[i + 1]["name"]} are consecutive bools, which are not supported by Metal,'
+                ' use uint instead, or separate them with other parameters'
+            )
+
+
 def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]], native: GLSLMetadata) -> dict[str, Any]:
     """
     The metadata about a program passed to the C code. It is generated from the
@@ -1469,11 +1606,25 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
     # compiled code.
     real_blocks = set(native.uniform_struct_names)
     entry_points: dict[str, str] = {}
+    # The argument table indices assigned by Slang for MSL, see MSL_PUSH_CONSTANTS_NAME
+    msl_names: dict[str, str] = {}
+
+    def msl_bindings(p: dict[str, Any]) -> dict[str, int]:
+        bindings = p['bindings'] if 'bindings' in p else [p['binding']]
+        return {b['kind']: b['index'] for b in bindings}
+
+    def is_push_constants(p: dict[str, Any]) -> bool:
+        if target.is_msl:
+            return p['type']['elementVarLayout']['type'].get('name') == PUSH_CONSTANTS_TYPE_NAME
+        return bool(p['binding']['kind'] == 'pushConstantBuffer')
+
     for refl in reflections:
         for p in refl['parameters']:
             t = p['type']
             match t['kind']:
-                case 'constantBuffer' if p['binding']['kind'] == 'pushConstantBuffer':
+                case 'constantBuffer' if is_push_constants(p):
+                    if target.is_msl:
+                        msl_names[MSL_PUSH_CONSTANTS_NAME] = f'buffer({msl_bindings(p)["constantBuffer"]})'
                     evl = t['elementVarLayout']
                     size = evl['binding']['size']
                     if size > PUSH_CONSTANTS_MAX_SIZE:
@@ -1488,7 +1639,11 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                     evl = t['elementVarLayout']
                     et = evl['type']
                     tname = et['name']
-                    slot = check_binding_slot(tname, p['binding']['index'])
+                    if target.is_msl:
+                        slot = check_binding_slot(tname, None)
+                        msl_names[tname] = f'buffer({msl_bindings(p)["constantBuffer"]})'
+                    else:
+                        slot = check_binding_slot(tname, p['binding']['index'])
                     if tname in PIPELINE_CONSTANT_BLOCKS:
                         param_blocks[tname] = {
                             'name': tname,
@@ -1496,7 +1651,7 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                             'size': evl['binding']['size'],
                             'fields': [param_field(f['name'], f['binding']['offset'], f['type']) for f in et['fields']],
                         }
-                    elif tname in real_blocks or target.is_spirv:
+                    elif tname in real_blocks or target.is_single_module:
                         arrays = {}
                         for f in et['fields']:
                             ft = f['type']
@@ -1506,7 +1661,14 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                     # Otherwise the block is declared in an imported module but not
                     # used by this program, so it is not present in the compiled code
                 case 'resource':
-                    textures[p['name']] = check_binding_slot(p['name'], p['binding']['index'])
+                    if target.is_msl:
+                        textures[p['name']] = check_binding_slot(p['name'], None)
+                        b = msl_bindings(p)
+                        if 'shaderResource' not in b or 'samplerState' not in b:
+                            raise ValueError(f'The texture {p["name"]} must be a combined texture and sampler, such as Sampler2D')
+                        msl_names[p['name']] = f'texture({b["shaderResource"]}) sampler({b["samplerState"]})'
+                    else:
+                        textures[p['name']] = check_binding_slot(p['name'], p['binding']['index'])
                 case _:
                     raise ValueError(f'Unsupported shader parameter: {p["name"]} of kind: {t["kind"]}')
         for ep in refl['entryPoints']:
@@ -1524,9 +1686,13 @@ def program_metadata(target: ShaderTarget, reflections: Sequence[dict[str, Any]]
                             f'The {stage} entry point has the uniform parameter: {p["name"]}, uniform parameters must be declared'
                             ' in a push constant block, see PUSH_CONSTANTS_MAX_SIZE'
                         )
+    if target.is_msl:
+        for pb in param_blocks.values():
+            check_msl_bools(pb['fields'])
     native_names = {k: v.partition('[')[0] for k, v in native.loose_uniforms.items()}  # ]
     native_names.update(native.uniform_struct_names)
     native_names.update(native.native_inputs)
+    native_names.update(msl_names)
     return {
         'target': target.id,
         'entry_points': entry_points,
@@ -1626,17 +1792,19 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     target_commands: list[Iterator[Command]] = []
     for target in targets:
         built_files[target] = []
-        if target.is_spirv:
-            target_commands.append(commands_to_compile_to_spirv(source_tree, build_dir, dest_dir, target, built_files[target]))
+        if target.is_single_module:
+            target_commands.append(commands_to_compile_to_module(source_tree, build_dir, dest_dir, target, built_files[target]))
         else:
             target_commands.append(commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, target, built_files[target]))
     # Now run all commands
     parallel_run(chain(*target_commands))
     for target, built in built_files.items():
-        if target.is_spirv:
-            write_spirv_metadata(built, target, build_dir)
-            if shutil.which('spirv-val'):
+        if target.is_single_module:
+            write_module_metadata(built, target, build_dir)
+            if target.is_spirv and shutil.which('spirv-val'):
                 parallel_run((True, f'Validating |{os.path.basename(x)}| ...', spirv_validation_command(target, x)) for x in built)
+            if target.is_msl and metal_compiler_available():
+                parallel_run((True, f'Validating |{os.path.basename(x)}| ...', msl_validation_command(target, x)) for x in built)
             continue
         fixup_opengl_files(built, target, build_dir)
         if shutil.which('glslangValidator'):
@@ -2368,7 +2536,7 @@ def build_custom_shader_pipeline(
     """
     Build the program for a custom shader pipeline, for the specified shader
     target. Returns the vertex and fragment shaders, which are the same module
-    for SPIR-V, and the program metadata.
+    for SPIR-V and MSL, and the program metadata.
     """
     import kitty.constants as kc
 
@@ -2411,14 +2579,20 @@ def build_custom_shader_pipeline(
             inc.extend(('-I', x))
         cmd = list(slangc()) + inc + ['-warnings-as-errors', 'all', '-line-directive-mode', 'none', '-lang', 'slang'] + target.slangc_args
         src = module_wrapper_for_slot(slot)
-        if target.is_spirv:
+        if target.is_single_module:
             # A single module containing both entry points
-            module = os.path.join(out_dir, f'{slot}.spv')
+            mname = f'{slot}{target.module_extension}'
+            module = os.path.join(out_dir, mname)
             if module_mtime > safe_mtime(metadata):
-                run(((f'{slot}.spv', cmd + ['-o', module, '-reflection-json', reflection_path(target, out_dir, module), '--', '-']),), src)
-                write_spirv_metadata((module,), target, out_dir)
-            with open(module, 'rb') as sf:
-                vcode: str | bytes = sf.read()
+                run(((mname, cmd + ['-o', module, '-reflection-json', reflection_path(target, out_dir, module), '--', '-']),), src)
+                write_module_metadata((module,), target, out_dir)
+            vcode: str | bytes
+            if target.is_msl:
+                with open(module) as tf:
+                    vcode = tf.read()
+            else:
+                with open(module, 'rb') as sf:
+                    vcode = sf.read()
             fcode = vcode
         else:
             vertex = os.path.join(out_dir, f'{slot}.vert.glsl')
