@@ -127,6 +127,22 @@ def copy_libs(env) -> None:
     shutil.copy2(os.path.join(BIN, 'slangc'), env.bin_dir)
 
 
+def check_gpu_drivers(env) -> None:
+    # Both GPU drivers must be part of the build, along with the built-in
+    # shaders compiled for their shader targets, otherwise kitty silently
+    # falls back to whichever driver is present
+    print('Checking GPU drivers...')
+    ext_dir = os.path.join(env.lib_dir, 'kitty-extensions')
+    shaders_dir = os.path.join(env.lib_dir, 'kitty', 'shaders')
+    for driver, target_prefix in (('opengl', 'glsl-'), ('vulkan', 'spirv-')):
+        path = os.path.join(ext_dir, f'kitty.{driver}.so')
+        if not os.path.isfile(path):
+            raise SystemExit(f'The {driver} GPU driver was not built, {path} does not exist')
+        targets = [x for x in os.listdir(shaders_dir) if x.startswith(target_prefix) and os.path.isfile(os.path.join(shaders_dir, x, 'cell.json'))]
+        if not targets:
+            raise SystemExit(f'The built-in shaders were not compiled for the {driver} GPU driver in {shaders_dir}')
+
+
 def add_ca_certs(env) -> None:
     print('Downloading CA certs...')
     from urllib.request import urlopen
@@ -258,6 +274,7 @@ def main() -> None:
     env = Env(os.path.join(ext_dir, kitty_constants['appname']))
     copy_libs(env)
     copy_python(env)
+    check_gpu_drivers(env)
     iv['build_frozen_launcher']([path_to_freeze_dir(), env.obj_dir])
     files = find_binaries(env)
     fix_permissions(files)
