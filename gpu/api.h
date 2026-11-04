@@ -53,7 +53,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KITTY_GPU_API_VERSION 4u
+#define KITTY_GPU_API_VERSION 5u
 #define KITTY_GPU_DRIVER_ENTRY_POINT "kitty_gpu_driver_load"
 #define GPU_NULL_HANDLE ((uint64_t)0)
 
@@ -96,6 +96,11 @@ typedef struct GPUCapabilities {
     uint32_t max_array_texture_layers; // max number of layers in an array texture
     // Whether render targets can encode linear colors to sRGB on output, see set_srgb_output()
     bool supports_srgb_output;
+    // The offsets and strides of vertex inputs must be multiples of this
+    // many bytes, a power of two. Per instance data with elements smaller than
+    // this, such as the one byte selection state of cells, must be stored
+    // with each element padded to this size.
+    uint32_t vertex_input_alignment;
 } GPUCapabilities;
 // }}}
 

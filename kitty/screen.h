@@ -352,7 +352,9 @@ void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start
 void select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_group, Region *r);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
 void report_mode_status(Screen *self, unsigned int which, bool);
-void screen_apply_selection(Screen *self, void *address, size_t size);
+// Write the selection state of num_cells cells, one byte per cell, to the
+// first byte of consecutive elements of stride bytes starting at address
+void screen_apply_selection(Screen *self, void *address, size_t num_cells, size_t stride);
 bool screen_update_graphics_layers(Screen *self);
 void screen_scrollbar_geometry(const Screen *self, float *handle_position, float *visible_fraction);
 bool screen_has_scrollbar(const Screen *self, bool is_hovering);

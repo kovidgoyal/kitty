@@ -538,6 +538,8 @@ get_capabilities(void *driver, GPUCapabilities *ans) {
     ans->max_array_texture_layers = d->properties.limits.maxImageArrayLayers;
     // Encoding to sRGB needs both UNORM and SRGB views of swapchain images
     ans->supports_srgb_output = d->has_swapchain_mutable_format;
+    // Vulkan places no alignment requirements on vertex input offsets and strides
+    ans->vertex_input_alignment = 1;
 }
 // }}}
 

@@ -446,7 +446,17 @@ pipeline_for_current_state(Driver *d, bool blend, PipelineVariantKey *key) {
             log_error(d, "The vertex input at location: %u has an unsupported format", loc);
             return nil;
         }
-        k->stride = vertex_buffer_stride(a, vertex_attribute_size(a->components, a->type));
+        if ((a->offset % VERTEX_INPUT_ALIGNMENT) != 0 || (a->stride % VERTEX_INPUT_ALIGNMENT) != 0) {
+            log_error(
+                d,
+                "The vertex input at location: %u has offset: %zu and stride: %u which are not multiples of: %u bytes",
+                loc,
+                a->offset,
+                a->stride,
+                VERTEX_INPUT_ALIGNMENT);
+            return nil;
+        }
+        k->stride = a->stride;
         k->per_instance = a->divisor > 0;
         k->step_rate = a->divisor > 0 ? a->divisor : 1;
     }
