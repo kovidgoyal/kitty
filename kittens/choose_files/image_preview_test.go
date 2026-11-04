@@ -128,3 +128,49 @@ func TestImagePreviewConcurrentRender(t *testing.T) {
 		t.Fatal("worker did not mark the preview as ready")
 	}
 }
+
+func TestCmdPreviewConcurrentRendering(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "preview.sh")
+	body := "#!/bin/sh\nIFS= read -r content < \"$2\"\nprintf '{\"lines\":[\"%s\",\"%s\"]}\\n' \"$1\" \"$content\"\n"
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Configured preview commands can have spare capacity shared by workers.
+	backing := []string{script, "fixed argument", "unused"}
+	renderer := cmd_renderer{cmdline: backing[:2]}
+	start := make(chan struct{})
+	errors := make(chan error, 2)
+	for i := range 2 {
+		path := filepath.Join(dir, fmt.Sprintf("file %d λ.txt", i))
+		content := fmt.Sprintf("contents of file %d", i)
+		if err := os.WriteFile(path, []byte(content+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		go func() {
+			<-start
+			for range 16 {
+				_, md, _, err := renderer.Render(path)
+				if err != nil {
+					errors <- fmt.Errorf("preview %q: %w", path, err)
+					return
+				}
+				result, ok := md.custom.(*CmdResult)
+				if !ok || len(result.Lines) != 2 || result.Lines[0] != "fixed argument" || result.Lines[1] != content {
+					errors <- fmt.Errorf("preview %q returned %#v, expected %q", path, md.custom, content)
+					return
+				}
+			}
+			errors <- nil
+		}()
+	}
+	close(start)
+	for range 2 {
+		if err := <-errors; err != nil {
+			t.Error(err)
+		}
+	}
+	if backing[2] != "unused" {
+		t.Errorf("rendering modified shared command arguments: %q", backing)
+	}
+}
