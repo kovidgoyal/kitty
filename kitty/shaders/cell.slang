@@ -93,12 +93,10 @@ to_underline_exclusion_pos(uint2 sprite_idx) {
 uint
 read_sprite_decorations_idx(uint2 sprite_idx) {
     int idx = int(sprite_idx[0] & SPRITE_INDEX_MASK);
-    int width, height;
-    sprite_decorations_map.GetDimensions(width, height);
-    int2 sz = int2(width, height);
+    int2 sz = texture_size(sprite_decorations_map);
     int y = idx / sz[0];
     int x = idx - y * sz[0];
-    return sprite_decorations_map[int2(x, y)];
+    return texel_fetch(sprite_decorations_map, int2(x, y));
 }
 
 uint2
@@ -291,13 +289,11 @@ calculate_premul_foreground_from_sprites(
     float4 cursor_color_premult,
     float effective_text_alpha, ) {
     // Return premul foreground color from decorations (cursor, underline, strikethrough)
-    int width, height, layer;
-    sprites.GetDimensions(width, height, layer);
-    float3 sz = float3(float(width), float(height), float(layer));
+    float3 sz = float3(texture_size(sprites));
 
     float underline_alpha = sprites.SampleLevel(underline_pos, 0).w;
     int3 fetch_coord = int3(int(sprite_pos.x * sz.x), int(underline_exclusion_pos), int(sprite_pos.z));
-    float underline_exclusion = sprites[fetch_coord].w;
+    float underline_exclusion = texel_fetch(sprites, fetch_coord).w;
 
     underline_alpha *= 1.0 - underline_exclusion;
     float strike_alpha = sprites.SampleLevel(strike_pos, 0).w;

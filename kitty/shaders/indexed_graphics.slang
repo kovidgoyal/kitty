@@ -9,6 +9,7 @@
 
 import blit_common;
 import background;
+import utils;
 
 // False for the variant used when the image is drawn at its natural size,
 // which needs only a single pixel read per fragment.
@@ -44,7 +45,7 @@ uniform Sampler2D<uint2> image; // a two channel RG8UI texture // binding slots:
 
 float4
 premult_color_at(int2 pos, uint has_alpha) {
-    uint2 px = image[pos];
+    uint2 px = texel_fetch(image, pos);
     float alpha = has_alpha != 0 ? float(px.g) / 255.0 : 1.0;
     return float4(indexed_image_color(px.r) * alpha, alpha);
 }
@@ -55,9 +56,9 @@ fragment_main(float2 texcoord: TEXCOORD)
     : SV_Target {
     // Integer textures cannot be filtered and anyway the palette lookup must
     // happen before interpolation, so do bilinear filtering here.
-    int width, height;
-    image.GetDimensions(width, height);
-    const int2 limit = int2(width - 1, height - 1);
+    const int2 size = texture_size(image);
+    const int width = size.x, height = size.y;
+    const int2 limit = size - 1;
     // When the image is drawn at its natural size every fragment is at the
     // center of a pixel, so just read that pixel. is_scaled is a compile time
     // constant so this is not a branch in the shader.

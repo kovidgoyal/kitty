@@ -120,8 +120,13 @@ connect_to_display(void *driver, const GPUNativeWindow *display) {
             set_error(d, "No Metal capable GPU found");
             return false;
         }
-        // MSL 2.4 needs macOS 12, every Mac that can run it supports the Mac2 or Apple7 GPU families
-        if (![d->device supportsFamily:MTLGPUFamilyMac2] && ![d->device supportsFamily:MTLGPUFamilyApple7]) {
+        // MSL 2.4 needs macOS 12, every Mac that can run it supports the Mac2 or Apple7 GPU families.
+        // Mac2 is deprecated from macOS 27, which no longer supports the Intel Macs that need it.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        const bool supported = [d->device supportsFamily:MTLGPUFamilyApple7] || [d->device supportsFamily:MTLGPUFamilyMac2];
+#pragma clang diagnostic pop
+        if (!supported) {
             set_error(d, "The GPU %s does not support the Metal features needed by kitty", [[d->device name] UTF8String]);
             return false;
         }

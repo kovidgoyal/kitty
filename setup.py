@@ -1337,19 +1337,9 @@ def gpu_drivers_to_build() -> List[str]:
     return ans
 
 
-# TODO: Remove once the Metal GPU driver is complete. The shaders for the
-# Metal driver are needed only on macOS, they are also built on other
-# platforms, where the slangc output can be checked but not run, while the
-# Metal driver is being developed.
-BUILD_METAL_SHADERS_ON_ALL_PLATFORMS = True
-
-
 def gpu_shader_targets_to_build() -> List[str]:
     # The shader targets the built-in shaders are compiled for, those of the GPU drivers being built
-    drivers = gpu_drivers_to_build()
-    if BUILD_METAL_SHADERS_ON_ALL_PLATFORMS and 'metal' not in drivers:
-        drivers.append('metal')
-    return [t for driver in drivers for t in gpu_driver_shader_targets(driver)]
+    return [t for driver in gpu_drivers_to_build() for t in gpu_driver_shader_targets(driver)]
 
 
 def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
