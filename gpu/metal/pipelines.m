@@ -128,15 +128,20 @@ compile_library(Driver *d, const GPUShaderSource *s) {
         }
         MTLCompileOptions *opts = [[[MTLCompileOptions alloc] init] autorelease];
         [opts setLanguageVersion:MTLLanguageVersion2_4];
-        // Without fast math, so that rendering matches the other drivers
+        // OpenGL on Apple GPUs is implemented on top of Metal and uses fast
+        // math, so that is needed for rendering to match it exactly, for
+        // example in the pow() of the gamma adjustments of text. Relaxed math
+        // does the same optimizations but keeps NaN and infinity working, which
+        // custom shaders might rely on. Before macOS 15, fast math, the default,
+        // is the only choice.
 #if defined(__MAC_15_0) && __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_15_0
-        if (@available(macOS 15.0, *)) [opts setMathMode:MTLMathModeSafe];
+        if (@available(macOS 15.0, *)) [opts setMathMode:MTLMathModeRelaxed];
         else
 #endif
         {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            [opts setFastMathEnabled:NO];
+            [opts setFastMathEnabled:YES];
 #pragma clang diagnostic pop
         }
         NSError *err = nil;

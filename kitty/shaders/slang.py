@@ -1199,10 +1199,12 @@ def fixup_metal_code(msl: str, entry_points: dict[str, str], shader_name: str) -
 
 @lru_cache(maxsize=2)
 def metal_compiler_available() -> bool:
-    # The Metal compiler is part of Xcode, it is not available on other platforms
+    # The Metal compiler is part of Xcode, it is not available on other
+    # platforms. Recent versions of Xcode ship it as a separate component,
+    # without which xcrun finds a stub that fails, so actually run it.
     if sys.platform != 'darwin' or not shutil.which('xcrun'):
         return False
-    return subprocess.run(['xcrun', '-sdk', 'macosx', '-f', 'metal'], capture_output=True).returncode == 0
+    return subprocess.run(['xcrun', '-sdk', 'macosx', 'metal', '--version'], capture_output=True).returncode == 0
 
 
 def msl_validation_command(target: ShaderTarget, path: str) -> list[str]:
@@ -1798,19 +1800,33 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
             target_commands.append(commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, target, built_files[target]))
     # Now run all commands
     parallel_run(chain(*target_commands))
+    # Write the metadata of every target before validating any of them, as
+    # outputs are only rebuilt when out of date, so metadata not written
+    # because validation of another target failed would never be written.
     for target, built in built_files.items():
         if target.is_single_module:
             write_module_metadata(built, target, build_dir)
-            if target.is_spirv and shutil.which('spirv-val'):
-                parallel_run((True, f'Validating |{os.path.basename(x)}| ...', spirv_validation_command(target, x)) for x in built)
-            if target.is_msl and metal_compiler_available():
-                parallel_run((True, f'Validating |{os.path.basename(x)}| ...', msl_validation_command(target, x)) for x in built)
-            continue
-        fixup_opengl_files(built, target, build_dir)
-        if shutil.which('glslangValidator'):
+        else:
+            fixup_opengl_files(built, target, build_dir)
+    for target, built in built_files.items():
+        cmds: list[tuple[bool, str, list[str]]] = []
+        if target.is_spirv and shutil.which('spirv-val'):
+            cmds = [(True, f'Validating |{os.path.basename(x)}| ...', spirv_validation_command(target, x)) for x in built]
+        elif target.is_msl and metal_compiler_available():
+            cmds = [(True, f'Validating |{os.path.basename(x)}| ...', msl_validation_command(target, x)) for x in built]
+        elif not target.is_single_module and shutil.which('glslangValidator'):
             from kitty.shaders.validate_shaders import validation_command_for_file
 
-            parallel_run((True, f'Validating |{os.path.basename(x)}| ...', validation_command_for_file(x)) for x in built)
+            cmds = [(True, f'Validating |{os.path.basename(x)}| ...', validation_command_for_file(x)) for x in built]
+        try:
+            parallel_run(cmds)
+        except BaseException:
+            # Remove the outputs that failed validation, so that they are
+            # built, and validated, again by the next build
+            for x in built:
+                with suppress(FileNotFoundError):
+                    os.remove(x)
+            raise
 
 
 def main() -> None:
