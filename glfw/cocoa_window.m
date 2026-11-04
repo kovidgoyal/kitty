@@ -777,7 +777,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 - (void)windowDidChangeScreen:(NSNotification *)notification {
     (void)notification;
     if (window->ns.renderFrameRequested && window->ns.renderFrameCallback) {
-        // Ensure that if the window changed its monitor, CVDisplayLink
+        // Ensure that if the window changed its monitor, the display link
         // is running for the new monitor
         requestRenderFrame(window, window->ns.renderFrameCallback);
     }
