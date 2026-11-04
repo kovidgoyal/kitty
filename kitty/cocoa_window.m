@@ -437,8 +437,7 @@ do_notification_callback(const char *identifier, const char *event, const char *
     (void)(center);
     (void)notification;
     UNNotificationPresentationOptions options = UNNotificationPresentationOptionSound;
-    if (@available(macOS 11.0, *)) options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
-    else options |= (1 << 2); // UNNotificationPresentationOptionAlert avoid deprecated warning
+    options |= UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner;
     completionHandler(options);
 }
 
@@ -540,20 +539,11 @@ schedule_notification(
         if (appname) content.threadIdentifier = @(appname);
         if (category_id) content.categoryIdentifier = @(category_id);
         if (!muted) content.sound = [UNNotificationSound defaultSound];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
         switch (urgency) {
             case 0: content.interruptionLevel = UNNotificationInterruptionLevelPassive;
             case 2: content.interruptionLevel = UNNotificationInterruptionLevelCritical;
             default: content.interruptionLevel = UNNotificationInterruptionLevelActive;
         }
-#else
-        if ([content respondsToSelector:@selector(interruptionLevel)]) {
-            NSUInteger level = 1;
-            if (urgency == 0) level = 0;
-            else if (urgency == 2) level = 3;
-            [content setValue:@(level) forKey:@"interruptionLevel"];
-        }
-#endif
         if (image_path) {
             @try {
                 NSError *error;
@@ -1396,12 +1386,7 @@ bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             } break;
             case 2: return render_emoji(@(b), image_size, output_path);
             default:
-                if (@available(macOS 11.0, *)) {
-                    icon = [NSImage imageWithSystemSymbolName:@(b) accessibilityDescription:@""]; // autoreleased
-                } else {
-                    PyErr_SetString(PyExc_ValueError, "Your version of macOS is too old to use symbol images, need >= 11.0");
-                    return NULL;
-                }
+                icon = [NSImage imageWithSystemSymbolName:@(b) accessibilityDescription:@""]; // autoreleased
                 break;
         }
         if (!icon) {
