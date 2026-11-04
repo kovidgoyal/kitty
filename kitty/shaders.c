@@ -2678,15 +2678,18 @@ gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, 
     gpu_data_for_image(ans, -1 + hmargin, -1 + vmargin, -1 + hmargin + width_frac, -1 + vmargin + height_frac);
 }
 
-// Colors are passed to the shader as linear values, unless linear is false,
-// for render targets that do not encode the output to sRGB.
+// Draw an alpha mask directly into the window, after any layers have been
+// composited. The output is encoded to sRGB if the window supports it,
+// otherwise the colors are passed to the shader without linearizing them.
 static void
-draw_alpha_mask(ImageRenderData *data, color_type fg, color_type bg, float background_opacity, bool linear) {
+draw_alpha_mask(ImageRenderData *data, color_type fg, color_type bg, float background_opacity) {
+    const bool srgb = global_state.supports_framebuffer_srgb;
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     const int32_t fg_loc = program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), bg_loc = program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult");
-    if (linear) {
+    if (srgb) {
         color_vec3(fg_loc, fg);
         color_vec4_premult(bg_loc, bg, background_opacity);
+        gpu_set_srgb_output(true);
     } else {
 #define C(color, shift) (((color >> shift) & 0xff) / 255.f)
         param_3f(fg_loc, C(fg, 16), C(fg, 8), C(fg, 0));
@@ -2694,13 +2697,14 @@ draw_alpha_mask(ImageRenderData *data, color_type fg, color_type bg, float backg
 #undef C
     }
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, data, 0, 1, 1.0);
+    if (srgb) gpu_set_srgb_output(false);
 }
 
 static void
 draw_centered_alpha_mask(size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float background_opacity) {
     ImageRenderData *data = load_alpha_mask_texture(width, height, canvas);
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
-    draw_alpha_mask(data, OPT(foreground), OPT(background), background_opacity, true);
+    draw_alpha_mask(data, OPT(foreground), OPT(background), background_opacity);
 }
 
 // Render lines of text, each centered horizontally, into a single alpha mask
@@ -2764,12 +2768,8 @@ draw_software_rendering_banner(OSWindow *w, monotonic_t now) {
         const float top = MIN(1.f, -1.f + 2.f * padding / vh), bottom = MIN(1.f, top + 2.f * banner.height / vh);
         gpu_data_for_image(data, -half_width, top, half_width, bottom);
         save_viewport(0, 0, w->viewport_width, w->viewport_height);
-        // Drawn directly into the window, after any layers have been composited
-        const bool srgb = global_state.supports_framebuffer_srgb;
-        if (srgb) gpu_set_srgb_output(true);
         // Inverted colors, so that it stands out from the terminal contents
-        draw_alpha_mask(data, OPT(background), OPT(foreground), 1.f, srgb);
-        if (srgb) gpu_set_srgb_output(false);
+        draw_alpha_mask(data, OPT(background), OPT(foreground), 1.f);
         restore_viewport();
     }
     free(banner.canvas);
