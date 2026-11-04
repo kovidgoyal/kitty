@@ -237,14 +237,23 @@ def gpu_driver_path(driver: str = 'opengl') -> str:
     return os.path.join(extensions_dir, f'{prefix}{driver}.so')
 
 
-def available_gpu_drivers(names: Iterable[str]) -> list[tuple[str, str]]:
-    # The (name, path) of the specified GPU drivers that are present in this
-    # build of kitty, in the specified order
+# The drivers that can render using a software renderer, used for the software
+# value of the gpu_driver option, in order of preference. macOS has no
+# software renderers for Metal and modern OpenGL.
+SOFTWARE_GPU_DRIVERS = () if is_macos else ('vulkan', 'opengl')
+
+
+def available_gpu_drivers(names: Iterable[str]) -> list[tuple[str, str, bool]]:
+    # The (name, path, software) of the specified GPU drivers that are present
+    # in this build of kitty, in the specified order. software is True for the
+    # drivers that must use a software renderer, from the software value.
     ans = []
     for name in names:
-        path = gpu_driver_path(name)
-        if os.path.exists(path):
-            ans.append((name, path))
+        software = name == 'software'
+        for driver in SOFTWARE_GPU_DRIVERS if software else (name,):
+            path = gpu_driver_path(driver)
+            if os.path.exists(path):
+                ans.append((driver, path, software))
     return ans
 
 

@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import tempfile
 
-from kitty.constants import kitty_exe
+from kitty.constants import SOFTWARE_GPU_DRIVERS, available_gpu_drivers, gpu_driver_path, kitty_exe
 from kitty.fast_data_types import Color, test_cursor_blink_easing_function
 from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, build_action_aliases, to_color
 from kitty.utils import log_error, shlex_split
@@ -404,8 +404,15 @@ def conf_parsing(self):
 
     opts = p('font_size 11.37', 'clear_all_shortcuts y', 'color23 red')
     self.ae(opts.font_size, 11.37)
-    self.ae(defaults.gpu_driver, ('metal', 'vulkan', 'opengl'))
+    self.ae(defaults.gpu_driver, ('metal', 'vulkan', 'opengl', 'software'))
     self.ae(p('gpu_driver vulkan, opengl  opengl').gpu_driver, ('vulkan', 'opengl'))
+    self.ae(p('gpu_driver software opengl').gpu_driver, ('software', 'opengl'))
+    present = {name for name in ('metal', 'vulkan', 'opengl') if os.path.exists(gpu_driver_path(name))}
+    self.ae(
+        available_gpu_drivers(defaults.gpu_driver),
+        [(name, gpu_driver_path(name), False) for name in ('metal', 'vulkan', 'opengl') if name in present]
+        + [(name, gpu_driver_path(name), True) for name in SOFTWARE_GPU_DRIVERS if name in present],
+    )
     self.ae(p('gpu_driver opengl,vulkan').gpu_driver, ('opengl', 'vulkan'))
     self.ae(p('gpu_driver directx opengl', bad_line_num=1).gpu_driver, defaults.gpu_driver)
     radius_opts = p('window_border_radius 7px')

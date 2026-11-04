@@ -7,10 +7,12 @@
 
 // The OpenGL implementation of the kitty GPU driver API, see ../api.h
 
+#define _GNU_SOURCE // for setenv(), unsetenv() and strdup() with glibc, has no effect on Darwin
 #include "../api.h"
 #include "platform.h"
 #include "version.h"
 #include "gl-wrapper.h"
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,7 +92,7 @@ typedef struct Driver {
     const GLPlatform *platform;
     Surface *current_surface;
     Pipeline *current_pipeline;
-    bool initialized, supports_srgb_output;
+    bool initialized, supports_srgb_output, is_software;
     int gl_version;
     GLint max_texture_size, max_array_texture_layers;
     char last_error[8192];
@@ -199,9 +201,112 @@ shader_target(void *driver UNUSED) {
     return "glsl-" STRINGIFY(GLSL_VERSION);
 }
 
+// Software renderers {{{
+// Mesa chooses its software renderer, llvmpipe, when LIBGL_ALWAYS_SOFTWARE is
+// set. With libglvnd, other vendors, such as NVIDIA, can claim the X11 screen
+// first unless the vendor is forced to be Mesa. These variables are read when
+// EGL or GLX is initialized for the display and when contexts are created, so
+// they are set in connect() and restored once the driver is initialized, to
+// avoid passing them on to programs run by kitty. Both libglvnd and Mesa cache
+// GLX state per X11 display connection, so they have no effect if GLX was
+// already used on the display, for example by a previous OpenGL driver that
+// was rejected.
+typedef struct EnvOverride {
+    const char *name, *value;
+    char *saved;
+    bool was_set;
+} EnvOverride;
+
+static EnvOverride software_env[] = {
+    {.name = "LIBGL_ALWAYS_SOFTWARE", .value = "1"},
+    {.name = "__GLX_VENDOR_LIBRARY_NAME", .value = "mesa"},
+};
+static bool software_env_applied = false;
+
+static void
+restore_software_env(Driver *d) {
+    if (!software_env_applied) return;
+    for (size_t i = 0; i < arraysz(software_env); i++) {
+        EnvOverride *e = software_env + i;
+        const int ret = e->was_set ? setenv(e->name, e->saved, 1) : unsetenv(e->name);
+        if (ret != 0) log_error(d, "Failed to restore the environment variable %s with error: %s", e->name, strerror(errno));
+        free(e->saved);
+        e->saved = NULL;
+        e->was_set = false;
+    }
+    software_env_applied = false;
+}
+
+#ifndef __APPLE__
 static bool
-initialize(void *driver) {
-    Driver *d = driver;
+apply_software_env(Driver *d) {
+    if (software_env_applied) return true;
+    for (size_t i = 0; i < arraysz(software_env); i++) {
+        EnvOverride *e = software_env + i;
+        const char *current = getenv(e->name);
+        e->was_set = current != NULL;
+        e->saved = NULL;
+        if (current && !(e->saved = strdup(current))) {
+            set_error(d, "Out of memory saving the environment variable %s", e->name);
+            software_env_applied = true; // restore the variables already set
+            restore_software_env(d);
+            return false;
+        }
+        software_env_applied = true;
+        if (setenv(e->name, e->value, 1) != 0) {
+            set_error(d, "Failed to set the environment variable %s with error: %s", e->name, strerror(errno));
+            restore_software_env(d);
+            return false;
+        }
+    }
+    return true;
+}
+#endif
+
+static bool
+is_software_renderer(const char *renderer) {
+    // The GL_RENDERER strings of the software renderers from Mesa and Apple
+    static const char *const names[] = {"llvmpipe", "softpipe", "swrast", "Software Rasterizer", "Apple Software Renderer"};
+    for (size_t i = 0; i < arraysz(names); i++) {
+        if (strstr(renderer, names[i])) return true;
+    }
+    return false;
+}
+// }}}
+
+static bool
+check_renderer_kind(Driver *d) {
+    const char *renderer = (const char *)glGetString(GL_RENDERER);
+    if (!renderer) {
+        set_error(d, "Failed to query the OpenGL renderer");
+        return false;
+    }
+    d->is_software = is_software_renderer(renderer);
+    if (d->params.debug_rendering) {
+        char buf[1024];
+        snprintf(buf, sizeof(buf), "GL renderer: %s%s", renderer, d->is_software ? " (software)" : "");
+        d->params.debug_print(buf);
+    }
+    switch (d->params.renderer) {
+        case GPU_RENDERER_ANY: break;
+        case GPU_RENDERER_HARDWARE:
+            if (d->is_software) {
+                set_error(d, "The OpenGL renderer: %s is a software renderer", renderer);
+                return false;
+            }
+            break;
+        case GPU_RENDERER_SOFTWARE:
+            if (!d->is_software) {
+                set_error(d, "The OpenGL renderer: %s is not a software renderer, the Mesa llvmpipe driver may not be installed", renderer);
+                return false;
+            }
+            break;
+    }
+    return true;
+}
+
+static bool
+initialize_impl(Driver *d) {
     if (d->initialized) return true;
     if (!d->platform || !d->current_surface) {
         set_error(d, "The OpenGL driver must have a current surface before it can be initialized");
@@ -244,6 +349,10 @@ initialize(void *driver) {
         d->initialized = false;
         return false;
     }
+    if (!check_renderer_kind(d)) {
+        d->initialized = false;
+        return false;
+    }
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &d->max_texture_size);
     glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &d->max_array_texture_layers);
 #ifdef __APPLE__
@@ -255,10 +364,20 @@ initialize(void *driver) {
     return true;
 }
 
+static bool
+initialize(void *driver) {
+    Driver *d = driver;
+    const bool ok = initialize_impl(d);
+    // The renderer has been chosen, see apply_software_env()
+    restore_software_env(d);
+    return ok;
+}
+
 static void release_native_resources(void *driver);
 
 static void
 destroy(void *driver) {
+    restore_software_env(driver);
     release_native_resources(driver);
     if (the_driver == driver) the_driver = NULL;
     free(driver);
@@ -271,6 +390,7 @@ get_capabilities(void *driver, GPUCapabilities *ans) {
     ans->max_array_texture_layers = d->max_array_texture_layers > 0 ? (uint32_t)d->max_array_texture_layers : 0;
     ans->supports_srgb_output = d->supports_srgb_output;
     ans->vertex_input_alignment = 1;
+    ans->is_software = d->is_software;
 }
 // }}}
 
@@ -1082,7 +1202,17 @@ ensure_platform(Driver *d, GPUPlatform type) {
 
 static bool
 connect_to_display(void *driver, const GPUNativeWindow *display) {
-    return ensure_platform(driver, display->platform);
+    Driver *d = driver;
+    if (!ensure_platform(d, display->platform)) return false;
+    if (d->params.renderer == GPU_RENDERER_SOFTWARE) {
+#ifdef __APPLE__
+        set_error(d, "Software rendering with OpenGL is not supported on macOS");
+        return false;
+#else
+        return apply_software_env(d);
+#endif
+    }
+    return true;
 }
 
 static bool
