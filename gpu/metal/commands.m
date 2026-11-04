@@ -506,14 +506,13 @@ bind_vertex_buffers(Driver *d, id<MTLRenderCommandEncoder> enc, const PipelineVa
     for (uint32_t loc = 0; loc < MAX_VERTEX_ATTRIBUTES; loc++) {
         if (key->inputs[loc].format == MTLVertexFormatInvalid) continue;
         const VertexAttribute *a = d->vertex_layout->attributes + loc;
-        size_t offset;
-        uint32_t stride;
-        id<MTLBuffer> buf = vertex_buffer_for(d, a, vertex_attribute_size(a->components, a->type), &offset, &stride);
-        if (buf == nil) {
+        Buffer *b = a->buffer;
+        if (!b || b->storage.buffer == nil) {
             log_error(d, "The vertex buffer for the vertex input at location: %u has no storage", loc);
             return false;
         }
-        [enc setVertexBuffer:buf offset:offset atIndex:VERTEX_BUFFER_INDEX(loc)];
+        use_buffer(d, b);
+        [enc setVertexBuffer:b->storage.buffer offset:a->offset atIndex:VERTEX_BUFFER_INDEX(loc)];
     }
     return true;
 }

@@ -36,8 +36,6 @@ free_buffer(Buffer *b) {
     destroy_storage(&b->storage);
     for (size_t i = 0; i < b->num_retired; i++) destroy_storage(b->retired + i);
     b->num_retired = 0;
-    [b->repacked.buffer release];
-    b->repacked.buffer = nil;
 }
 
 // Get storage of the specified size that no commands use, reusing retired storage if possible
@@ -72,7 +70,6 @@ retire_storage(Buffer *b, BufferStorage *s) {
 // preserving its contents if preserve is true
 static void
 make_writable(Driver *d, Buffer *b, bool preserve) {
-    b->generation++;
     if (b->storage.last_use_serial <= completed_serial(d)) return;
     BufferStorage s;
     if (!fresh_storage(d, b, b->storage.size, &s)) fatal(d, "Failed to allocate a GPU buffer with error: %s", d->last_error);
@@ -124,7 +121,6 @@ buffer_allocate(void *driver, gpu_buffer_t buffer, size_t size, GPUUpdateFrequen
     if (b->storage.buffer != nil && b->storage.size == size) return;
     // Retired storage of a different size is useless
     free_buffer(b);
-    b->generation++;
     if (!size) return;
     if (!create_storage(d, size, &b->storage)) fatal(d, "Failed to allocate a GPU buffer of size %zu with error: %s", size, d->last_error);
 }
@@ -186,61 +182,5 @@ bind_uniform_buffer(void *driver, uint32_t slot, gpu_buffer_t buffer) {
 void
 use_buffer(Driver *d, Buffer *b) {
     b->storage.last_use_serial = recording_serial(d);
-}
-// }}}
-
-// Vertex buffers {{{
-// Metal requires the offsets and strides of vertex buffers to be multiples
-// of four bytes. kitty has vertex inputs with one byte elements that are
-// tightly packed, such as the selection state of cells, whose elements are
-// copied into a buffer where each element starts at a multiple of four bytes.
-// The copy is cached with the buffer, it is made again only when the
-// contents of the buffer change.
-static bool
-needs_repack(const VertexAttribute *a) {
-    return (a->offset % 4) != 0 || (a->stride % 4) != 0;
-}
-
-uint32_t
-vertex_buffer_stride(const VertexAttribute *a, size_t element_size) {
-    return needs_repack(a) ? (uint32_t)((element_size + 3u) / 4u * 4u) : a->stride;
-}
-
-id<MTLBuffer>
-vertex_buffer_for(Driver *d, const VertexAttribute *a, size_t element_size, size_t *offset, uint32_t *stride) {
-    Buffer *b = a->buffer;
-    if (!b || b->storage.buffer == nil) return nil;
-    use_buffer(d, b);
-    if (!needs_repack(a)) {
-        *offset = a->offset;
-        *stride = a->stride;
-        return b->storage.buffer;
-    }
-    const uint32_t new_stride = vertex_buffer_stride(a, element_size);
-    *offset = 0;
-    *stride = new_stride;
-    if (b->repacked.buffer != nil && b->repacked.generation == b->generation && b->repacked.offset == a->offset && b->repacked.stride == a->stride &&
-        b->repacked.element_size == element_size && b->repacked.size == b->storage.size)
-        return b->repacked.buffer;
-    // The number of whole elements in the buffer
-    size_t count = 0;
-    if (b->storage.size >= a->offset + element_size) count = (b->storage.size - a->offset - element_size) / a->stride + 1;
-    // The previous copy may still be used by commands, which retain it, so a new one is made
-    id<MTLBuffer> buf = [d->device newBufferWithLength:MAX((size_t)16u, count * new_stride) options:MTLResourceStorageModeShared];
-    if (buf == nil) {
-        log_error(d, "Failed to allocate a GPU buffer of size %zu for repacking vertex data", count * new_stride);
-        return nil;
-    }
-    const uint8_t *src = (const uint8_t *)[b->storage.buffer contents] + a->offset;
-    uint8_t *dst = [buf contents];
-    for (size_t i = 0; i < count; i++) memcpy(dst + i * new_stride, src + i * a->stride, element_size);
-    [b->repacked.buffer release];
-    b->repacked.buffer = buf;
-    b->repacked.generation = b->generation;
-    b->repacked.offset = a->offset;
-    b->repacked.stride = a->stride;
-    b->repacked.element_size = (uint32_t)element_size;
-    b->repacked.size = b->storage.size;
-    return buf;
 }
 // }}}
