@@ -21,6 +21,7 @@
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
 #include <crt_externs.h>
+#include <libproc.h>
 #include <objc/runtime.h>
 
 static inline void
@@ -402,6 +403,8 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
 }
 
 static PyObject *notification_activated_callback = NULL;
+static monotonic_t last_notification_response_at = 0;
+static struct { pid_t pid; monotonic_t at; } last_other_instance_activation = {0};
 
 static PyObject *
 set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
@@ -440,6 +443,7 @@ do_notification_callback(const char *identifier, const char *event, const char *
     didReceiveNotificationResponse:(UNNotificationResponse *)response
              withCompletionHandler:(void (^)(void))completionHandler {
     (void)(center);
+    last_notification_response_at = monotonic();
     char *identifier = strdup(response.notification.request.identifier.UTF8String);
     char *action_identifier = strdup(response.actionIdentifier.UTF8String);
     const char *event = "button";
@@ -1800,5 +1804,55 @@ init_cocoa(PyObject *module) {
                                                       object:nil
                                                        queue:[NSOperationQueue mainQueue]
                                                   usingBlock:^(NSNotification *note UNUSED) { cocoa_set_dock_badge(NULL); }];
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserverForName:NSWorkspaceDidActivateApplicationNotification
+                                                                    object:nil
+                                                                     queue:[NSOperationQueue mainQueue]
+                                                                usingBlock:^(NSNotification *note) {
+        NSRunningApplication *app = note.userInfo[NSWorkspaceApplicationKey];
+        // LaunchServices activates us before sending the reopen event, so ignore our own activation
+        if (!app || app.processIdentifier == getpid()) return;
+        NSString *our_id = [[NSBundle mainBundle] bundleIdentifier];
+        if (our_id && [app.bundleIdentifier isEqualToString:our_id]) {
+            last_other_instance_activation.pid = app.processIdentifier;
+            last_other_instance_activation.at = monotonic();
+        } else {
+            last_other_instance_activation.pid = 0;
+        }
+    }];
+    return true;
+}
+
+bool
+cocoa_yield_reopen_to_other_instance(void) {
+    // When a notification is clicked, macOS delivers the response to the kitty
+    // instance that posted it, which brings itself forward. Then usernoted asks
+    // LaunchServices to bring the application forward by bundle URL, which
+    // picks an arbitrary running instance and sends it a reopen event, stealing
+    // focus. Detect that and hand activation back to the posting instance.
+    NSAppleEventDescriptor *event = [[NSAppleEventManager sharedAppleEventManager] currentAppleEvent];
+    if (!event) return false;
+    NSData *token = [[event attributeDescriptorForKeyword:keySenderAuditTokenAttr] data];
+    if (!token || token.length != sizeof(audit_token_t)) return false;
+    audit_token_t t; memcpy(&t, token.bytes, sizeof(t));
+    char name[256] = {0};
+    // val[5] is the pid, see audit_token_to_pid() in libbsm
+    if (proc_name((pid_t)t.val[5], name, sizeof(name)) <= 0 || strcmp(name, "usernoted") != 0) return false;
+    const monotonic_t now = monotonic(), threshold = s_double_to_monotonic_t(2.0);
+    // We received the notification response so this reopen is for us
+    if (last_notification_response_at && now - last_notification_response_at < threshold) return false;
+    if (!last_other_instance_activation.pid || now - last_other_instance_activation.at > threshold) return false;
+    NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:last_other_instance_activation.pid];
+    if (!app || app.terminated) return false;
+    debug_rendering("Yielding activation to kitty instance: %d that owns the clicked notification\n", app.processIdentifier);
+    // yieldActivationToApplication was introduced in macOS 14 (Sonoma)
+    SEL selector = NSSelectorFromString(@"yieldActivationToApplication:");
+    if ([NSApp respondsToSelector:selector]) {
+        [NSApp performSelector:selector withObject:app];
+        [app activateWithOptions:0];
+    } else {
+#define NSApplicationActivateIgnoringOtherApps 2
+        [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+#undef NSApplicationActivateIgnoringOtherApps
+    }
     return true;
 }

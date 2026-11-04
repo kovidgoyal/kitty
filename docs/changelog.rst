@@ -225,6 +225,10 @@ Detailed list of changes
 - :doc:`choose-files <kittens/choose-files>`: Fix concurrent custom preview
   commands occasionally receiving the path of a different file.
 
+- macOS: Add a workaround for clicking notifications not focusing the correct
+  OS Window when there are multiple kitty instances because of Cocoa
+  limitations (:iss:`10805`)
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

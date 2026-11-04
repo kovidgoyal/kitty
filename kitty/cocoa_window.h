@@ -71,3 +71,4 @@ void set_cocoa_pending_action(CocoaPendingAction action, const char *);
 void cocoa_report_live_notifications(const char *ident);
 void cocoa_set_dock_badge(const char *label);
 void cocoa_clear_dock_badge_if_set(void);
+bool cocoa_yield_reopen_to_other_instance(void);

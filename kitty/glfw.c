@@ -1926,6 +1926,7 @@ filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned
 
 static bool
 on_application_reopen(int has_visible_windows) {
+    if (cocoa_yield_reopen_to_other_instance()) return false;
     if (has_visible_windows) return true;
     set_cocoa_pending_action(NEW_OS_WINDOW, NULL);
     return false;
