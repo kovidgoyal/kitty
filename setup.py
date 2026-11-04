@@ -1247,7 +1247,7 @@ def glfw_init_env(
 
     elif module == 'cocoa':
         ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
-        for f_ in 'Cocoa IOKit CoreFoundation CoreVideo QuartzCore UniformTypeIdentifiers'.split():
+        for f_ in 'Cocoa IOKit CoreFoundation QuartzCore UniformTypeIdentifiers'.split():
             ans.ldpaths.extend(('-framework', f_))
 
     elif module == 'wayland':
@@ -2129,7 +2129,7 @@ def macos_info_plist(for_quake: str = '') -> bytes:
         NSHumanReadableCopyright=time.strftime('Copyright %Y, Kovid Goyal'),
         CFBundleGetInfoString='kitty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/kitty/',
         # Operating System Version
-        LSMinimumSystemVersion='12.0.0',
+        LSMinimumSystemVersion='14.0.0',
         # Categorization
         CFBundlePackageType='APPL',
         CFBundleSignature='????',
