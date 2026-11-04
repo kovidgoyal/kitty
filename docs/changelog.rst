@@ -9,34 +9,25 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
-Choose an edge when resizing [unreleased]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Docked windows [0.50]
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The resize page now offers two strategies: Window retains the usual
-width/height controls, while Edge lets you choose an internal pane edge in
-the Splits layout and move its divider in a physical direction.
+kitty windows can now be :ref:`docked <docks>` to an edge of another window or
+of the tab. Docked windows are placed outside the layout, making them perfect
+for status bars, file trees or a shell kept next to your editor. A dock
+attached to a window follows it around, moving with it to other tabs and closing
+when it closes. Create docks with :code:`launch --type=window-dock` or
+:code:`launch --type=tab-dock`. Docks are saved in :doc:`sessions <sessions>` too.
 
-.. figure:: screenshots/resize-edge-select.png
-    :alt: Resize mode showing a middle pane's selectable left and right edges
-    :align: center
-    :width: 100%
+Restore after logout [0.50]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Press H to select the middle pane's left edge. Gray edges are outside
-    the layout and cannot be selected.
-
-.. figure:: screenshots/resize-edge-move.png
-    :alt: The selected left divider moved left while the right divider stays in place
-    :align: center
-    :width: 100%
-
-    After selecting H, Alt+H moves the left divider by one third of the
-    remaining resize steps. The right divider stays in place.
-
-Switch strategies with 1/2 inside the page. Each strategy remembers its own
-Alt/Shift modifier and fraction, configurable with M and F. A sole internal
-edge is selected automatically. In Splits, either strategy uses R to restore
-the proportions saved when resize mode opened. See :ref:`window_resizing` for
-the controls and configuration options.
+Like other applications, kitty can now save its state when you log out, restart or
+shut down your computer, and restore it the next time it starts. Simply set
+:opt:`restore_session_after_logout` and every kitty instance comes back with all
+its OS Windows, tabs and windows in place, including their scrollback. On
+macOS, the saved state is encrypted using a key stored in your keychain. See
+:ref:`restore_after_logout` for details.
 
 Custom shaders [0.49]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

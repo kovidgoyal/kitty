@@ -398,10 +398,28 @@ First press :kbd:`H`, :kbd:`J`, :kbd:`K`, or :kbd:`L` to select the left,
 bottom, top, or right edge of the current pane. Arrow keys also work.
 This first key only selects the edge. Outside edges have no internal divider
 and cannot be selected. If there is exactly one internal edge, it is selected
-automatically on entering this strategy. Then use :kbd:`H`/:kbd:`L` for a left or right edge,
+automatically on entering this strategy.
+
+.. figure:: screenshots/resize-edge-select.png
+    :alt: Resize mode showing a middle pane's selectable left and right edges
+    :align: center
+    :width: 100%
+
+    Press H to select the middle pane's left edge. Gray edges are outside
+    the layout and cannot be selected.
+
+Then use :kbd:`H`/:kbd:`L` for a left or right edge,
 or :kbd:`J`/:kbd:`K` for a top or bottom edge, to move the selected divider
 in the direction of the key. Neighboring parallel dividers stay in place;
 perpendicular subtrees resize as units.
+
+.. figure:: screenshots/resize-edge-move.png
+    :alt: The selected left divider moved left while the right divider stays in place
+    :align: center
+    :width: 100%
+
+    After selecting H, Alt+H moves the left divider by one third of the
+    remaining resize steps. The right divider stays in place.
 
 The chosen Alt/Shift modifier takes the configured fraction of the remaining
 steps; :kbd:`Ctrl` doubles the normal step. The other modifier retains the
