@@ -1210,6 +1210,14 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
         needs_render = true;
     if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
     if (w->render_calls < 3 && background_image_for_os_window(w) != NULL) needs_render = true;
+    if (w->software_rendering_banner.shown && !w->software_rendering_banner.done) {
+        // Redraw the window without the banner once it expires
+        const monotonic_t expires_at = w->software_rendering_banner.shown_at + SOFTWARE_RENDERING_BANNER_DURATION;
+        if (now >= expires_at) {
+            w->software_rendering_banner.done = true;
+            needs_render = true;
+        } else set_maximum_wait(expires_at - now);
+    }
     if (needs_render) render_prepared_os_window(w, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg, now);
     if (w->is_focused) change_menubar_title(w->window_title);
     return needs_render;

@@ -2678,14 +2678,101 @@ gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, 
     gpu_data_for_image(ans, -1 + hmargin, -1 + vmargin, -1 + hmargin + width_frac, -1 + vmargin + height_frac);
 }
 
+// Colors are passed to the shader as linear values, unless linear is false,
+// for render targets that do not encode the output to sRGB.
+static void
+draw_alpha_mask(ImageRenderData *data, color_type fg, color_type bg, float background_opacity, bool linear) {
+    bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+    const int32_t fg_loc = program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), bg_loc = program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult");
+    if (linear) {
+        color_vec3(fg_loc, fg);
+        color_vec4_premult(bg_loc, bg, background_opacity);
+    } else {
+#define C(color, shift) (((color >> shift) & 0xff) / 255.f)
+        param_3f(fg_loc, C(fg, 16), C(fg, 8), C(fg, 0));
+        param_4f(bg_loc, C(bg, 16) * background_opacity, C(bg, 8) * background_opacity, C(bg, 0) * background_opacity, background_opacity);
+#undef C
+    }
+    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, data, 0, 1, 1.0);
+}
+
 static void
 draw_centered_alpha_mask(size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas, float background_opacity) {
     ImageRenderData *data = load_alpha_mask_texture(width, height, canvas);
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
-    bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-    color_vec3(program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), OPT(foreground));
-    color_vec4_premult(program_param(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), OPT(background), background_opacity);
-    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, data, 0, 1, 1.0);
+    draw_alpha_mask(data, OPT(foreground), OPT(background), background_opacity, true);
+}
+
+// Render lines of text, each centered horizontally, into a single alpha mask
+// surrounded by padding pixels on every side. Returns a canvas with a NULL
+// pointer on failure.
+static StringCanvas
+render_centered_lines(FONTS_DATA_HANDLE fonts_data, const char *const *lines, size_t num_lines, size_t padding) {
+    StringCanvas ans = {0}, rendered[4] = {0};
+    if (num_lines > arraysz(rendered)) return ans;
+    size_t width = 0, height = 0;
+    bool ok = true;
+    for (size_t i = 0; i < num_lines && ok; i++) {
+        rendered[i] = render_simple_text(fonts_data, lines[i]);
+        if (!rendered[i].canvas) ok = false;
+        else {
+            width = MAX(width, rendered[i].width);
+            height += rendered[i].height;
+        }
+    }
+    if (ok) {
+        ans.width = width + 2 * padding;
+        ans.height = height + 2 * padding;
+        ans.canvas = calloc(ans.width * ans.height, 1);
+        if (ans.canvas) {
+            size_t y = padding;
+            for (size_t i = 0; i < num_lines; i++) {
+                const size_t x = padding + (width - rendered[i].width) / 2;
+                for (size_t r = 0; r < rendered[i].height; r++, y++)
+                    memcpy(ans.canvas + y * ans.width + x, rendered[i].canvas + r * rendered[i].width, rendered[i].width);
+            }
+        }
+    }
+    for (size_t i = 0; i < num_lines; i++) free(rendered[i].canvas);
+    if (!ans.canvas) ans = (StringCanvas){0};
+    return ans;
+}
+
+// Tell the user that software rendering is in use, see the gpu_driver option.
+// Shown at the top of every OS window for SOFTWARE_RENDERING_BANNER_DURATION
+// after it is first rendered, render_os_window() redraws the window to remove it.
+static void
+draw_software_rendering_banner(OSWindow *w, monotonic_t now) {
+    if (!global_state.software_rendering || w->software_rendering_banner.done || w->live_resize.in_progress || !w->fonts_data) return;
+    if (!w->software_rendering_banner.shown) {
+        w->software_rendering_banner.shown = true;
+        w->software_rendering_banner.shown_at = now;
+    }
+    static const char *const lines[] = {"Software rendering is in use,", "so kitty will be slow"};
+    const size_t padding = MAX(4u, w->fonts_data->fcm.cell_height / 2);
+    StringCanvas banner = render_centered_lines(w->fonts_data, lines, arraysz(lines), padding);
+    if (!banner.canvas) {
+        log_error("Failed to render the software rendering banner");
+        w->software_rendering_banner.done = true;
+        return;
+    }
+    const float vw = (float)w->viewport_width, vh = (float)w->viewport_height;
+    if (vw > 0 && vh > 0) {
+        ImageRenderData *data = load_alpha_mask_texture(banner.width, banner.height, banner.canvas);
+        // In normalized device coordinates, horizontally centered, a little below the top edge
+        const float half_width = MIN(1.f, banner.width / vw);
+        const float top = MIN(1.f, -1.f + 2.f * padding / vh), bottom = MIN(1.f, top + 2.f * banner.height / vh);
+        gpu_data_for_image(data, -half_width, top, half_width, bottom);
+        save_viewport(0, 0, w->viewport_width, w->viewport_height);
+        // Drawn directly into the window, after any layers have been composited
+        const bool srgb = global_state.supports_framebuffer_srgb;
+        if (srgb) gpu_set_srgb_output(true);
+        // Inverted colors, so that it stands out from the terminal contents
+        draw_alpha_mask(data, OPT(background), OPT(foreground), 1.f, srgb);
+        if (srgb) gpu_set_srgb_output(false);
+        restore_viewport();
+    }
+    free(banner.canvas);
 }
 
 static void
@@ -3339,6 +3426,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
             draw_resizing_text(os_window);
         }
     }
+    draw_software_rendering_banner(os_window, now);
     os_window->last_rendered_at = now;
     os_window->frame_counter++;
 }
@@ -3460,7 +3548,7 @@ pyload_gpu_driver(PyObject *self UNUSED, PyObject *args) {
     const char *path;
     int debug_rendering = 0;
     if (!PyArg_ParseTuple(args, "s|p", &path, &debug_rendering)) return NULL;
-    const char *err = load_gpu_driver(path, debug_rendering != 0);
+    const char *err = load_gpu_driver(path, debug_rendering != 0, GPU_RENDERER_ANY);
     if (err) {
         PyErr_SetString(PyExc_OSError, err);
         return NULL;
@@ -3889,14 +3977,17 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
-void
+bool
 initialize_gpu(void) {
-    initialize_gpu_driver();
-    GPUCapabilities caps;
+    if (initialize_gpu_driver()) return false;
+    GPUCapabilities caps = {0};
     gpu_get_capabilities(&caps);
     global_state.supports_framebuffer_srgb = caps.supports_srgb_output;
+    global_state.software_rendering = caps.is_software;
+    if (caps.is_software) log_error("Using software rendering with the %s GPU driver, kitty will be slow", gpu_driver_name());
     selection_stride = MAX((size_t)1u, (size_t)caps.vertex_input_alignment);
     query_gpu_texture_limits();
+    return true;
 }
 
 void

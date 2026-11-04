@@ -114,6 +114,10 @@ connect_to_display(void *driver, const GPUNativeWindow *display) {
         set_error(d, "The Metal driver supports only Cocoa");
         return false;
     }
+    if (d->params.renderer == GPU_RENDERER_SOFTWARE) {
+        set_error(d, "Metal has no software renderer");
+        return false;
+    }
     @autoreleasepool {
         d->device = choose_device(d);
         if (d->device == nil) {
@@ -199,6 +203,7 @@ get_capabilities(void *driver, GPUCapabilities *ans) {
     // Any texture can be viewed with the sRGB variant of its pixel format, including drawables
     ans->supports_srgb_output = d->device != nil;
     ans->vertex_input_alignment = VERTEX_INPUT_ALIGNMENT;
+    ans->is_software = false; // Metal always renders on a GPU
 }
 // }}}
 

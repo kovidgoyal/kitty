@@ -584,6 +584,11 @@ typedef struct OSWindow {
         int x, y, w, h;
         bool is_set, was_maximized;
     } before_fullscreen;
+    // The message shown when software rendering is used, see draw_software_rendering_banner()
+    struct {
+        monotonic_t shown_at;
+        bool shown, done;
+    } software_rendering_banner;
     int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
@@ -718,6 +723,8 @@ typedef struct GlobalState {
     bool ime_used;
     WindowLogoTable *all_window_logos;
     bool supports_framebuffer_srgb;
+    // Rendering is done on the CPU, see the software value of the gpu_driver option
+    bool software_rendering;
     PyObject *options_object;
 
     struct {
@@ -787,7 +794,10 @@ sprite_index_to_pos(unsigned idx, unsigned xnum, unsigned ynum, unsigned *x, uns
 }
 
 
-void initialize_gpu(void);
+// How long the message shown when software rendering is used stays up
+#define SOFTWARE_RENDERING_BANNER_DURATION s_double_to_monotonic_t(5.0)
+// Initialize the GPU driver, returns false on failure, with the error available from gpu_last_error()
+bool initialize_gpu(void);
 void free_vao(ssize_t vao_idx);
 void cleanup_shader_resources_on_terminate(void);
 bool remove_os_window(id_type os_window_id);
