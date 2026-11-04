@@ -540,9 +540,9 @@ schedule_notification(
         if (category_id) content.categoryIdentifier = @(category_id);
         if (!muted) content.sound = [UNNotificationSound defaultSound];
         switch (urgency) {
-            case 0: content.interruptionLevel = UNNotificationInterruptionLevelPassive;
-            case 2: content.interruptionLevel = UNNotificationInterruptionLevelCritical;
-            default: content.interruptionLevel = UNNotificationInterruptionLevelActive;
+            case 0: content.interruptionLevel = UNNotificationInterruptionLevelPassive; break;
+            case 2: content.interruptionLevel = UNNotificationInterruptionLevelTimeSensitive; break;
+            default: content.interruptionLevel = UNNotificationInterruptionLevelActive; break;
         }
         if (image_path) {
             @try {
