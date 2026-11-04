@@ -270,6 +270,7 @@ get_capabilities(void *driver, GPUCapabilities *ans) {
     ans->max_texture_size = d->max_texture_size > 0 ? (uint32_t)d->max_texture_size : 0;
     ans->max_array_texture_layers = d->max_array_texture_layers > 0 ? (uint32_t)d->max_array_texture_layers : 0;
     ans->supports_srgb_output = d->supports_srgb_output;
+    ans->vertex_input_alignment = 1;
 }
 // }}}
 

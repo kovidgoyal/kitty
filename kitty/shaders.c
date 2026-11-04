@@ -85,6 +85,10 @@ typedef struct {
 
 static const SpriteMap NEW_SPRITE_MAP = {.xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1};
 static int32_t max_texture_size = 0, max_array_texture_layers = 0;
+// The number of bytes per cell in the buffers holding the selection state of
+// cells. The state is a single byte, padded to the vertex input alignment
+// required by the GPU driver, set in initialize_gpu().
+static size_t selection_stride = 1;
 
 static float
 srgb_color(uint8_t color) {
@@ -940,7 +944,7 @@ create_cell_vao(void) {
     A1("colors", 3, GPU_ATTRIB_U32, fg);
 
     add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX);
-    A("is_selected", 1, GPU_ATTRIB_U8, 0, 0);
+    A("is_selected", 1, GPU_ATTRIB_U8, 0, (uint32_t)selection_stride);
 
     size_t bufnum = add_buffer_to_vao(vao_idx, GPU_BUFFER_UNIFORM);
     alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "CellRenderData").size, bufnum, GPU_UPDATE_EVERY_USE);
@@ -1258,15 +1262,15 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     } else if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || (disable_ligatures && cursor_pos_changed))
         update_cell_data;
 
-#define update_selection_data                                                               \
-    {                                                                                       \
-        const unsigned int render_lines = render_lines_for_screen(screen);                  \
-        sz = (size_t)render_lines * screen->columns;                                        \
-        address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, selection_buffer); \
-        screen_apply_selection(screen, address, sz);                                        \
-        unmap_vao_buffer(vao_idx, selection_buffer);                                        \
-        address = NULL;                                                                     \
-        changed = true;                                                                     \
+#define update_selection_data                                                                                  \
+    {                                                                                                          \
+        const unsigned int render_lines = render_lines_for_screen(screen);                                     \
+        sz = (size_t)render_lines * screen->columns;                                                           \
+        address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz * selection_stride, selection_buffer); \
+        screen_apply_selection(screen, address, sz, selection_stride);                                         \
+        unmap_vao_buffer(vao_idx, selection_buffer);                                                           \
+        address = NULL;                                                                                        \
+        changed = true;                                                                                        \
     }
 
 #define update_graphics_data(grman)             \
@@ -2129,8 +2133,8 @@ configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned 
         program_attribute_location(CELL_PROGRAM, "is_selected"),
         1,
         GPU_ATTRIB_U8,
-        (uint32_t)(cell_step * sizeof(uint8_t)),
-        (size_t)base_cell * sizeof(uint8_t),
+        (uint32_t)(cell_step * selection_stride),
+        (size_t)base_cell * selection_stride,
         1);
 }
 
@@ -2151,7 +2155,8 @@ configure_padding_vao_attributes(ssize_t vao_idx) {
         1);
     set_vao_attribute(
         vao_idx, padding_cell_data_buffer, program_attribute_location(CELL_PROGRAM, "colors"), 3, GPU_ATTRIB_U32, sizeof(GPUCell), offsetof(GPUCell, fg), 1);
-    set_vao_attribute(vao_idx, padding_selection_buffer, program_attribute_location(CELL_PROGRAM, "is_selected"), 1, GPU_ATTRIB_U8, sizeof(uint8_t), 0, 1);
+    set_vao_attribute(
+        vao_idx, padding_selection_buffer, program_attribute_location(CELL_PROGRAM, "is_selected"), 1, GPU_ATTRIB_U8, (uint32_t)selection_stride, 0, 1);
 }
 
 static void
@@ -2197,7 +2202,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     if (ct || cb) {
         const unsigned int nH = (ct ? 1u : 0u) + (cb ? 1u : 0u);
         alloc_vao_buffer(vao_idx, (size_t)(sizeof(GPUCell) * nH * columns), padding_cell_data_buffer, GPU_UPDATE_OFTEN);
-        alloc_vao_buffer(vao_idx, (size_t)(sizeof(uint8_t) * nH * columns), padding_selection_buffer, GPU_UPDATE_OFTEN);
+        alloc_vao_buffer(vao_idx, selection_stride * nH * columns, padding_selection_buffer, GPU_UPDATE_OFTEN);
 
         unsigned int sidx = 0u;
         if (ct) {
@@ -2211,10 +2216,10 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
-                (size_t)(sizeof(uint8_t) * top_row * columns),
+                selection_stride * top_row * columns,
                 padding_selection_buffer,
-                (size_t)(sizeof(uint8_t) * sidx * columns),
-                (size_t)(columns * sizeof(uint8_t)));
+                selection_stride * sidx * columns,
+                selection_stride * columns);
             sidx++;
         }
         if (cb) {
@@ -2228,10 +2233,10 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
-                (size_t)(sizeof(uint8_t) * bottom_row * columns),
+                selection_stride * bottom_row * columns,
                 padding_selection_buffer,
-                (size_t)(sizeof(uint8_t) * sidx * columns),
-                (size_t)(columns * sizeof(uint8_t)));
+                selection_stride * sidx * columns,
+                selection_stride * columns);
         }
 
         // Strip-0 is top (or bottom when only bottom exists); strip-1 is bottom.
@@ -2259,7 +2264,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
         const unsigned int nV = (cl ? 1u : 0u) + (cr ? 1u : 0u);
         // VLA sizes: lines is bounded by the window height / cell height (~<500).
         GPUCell gathered_cells[2 * lines];
-        uint8_t gathered_sel[2 * lines];
+        uint8_t gathered_sel[2 * lines * selection_stride];
 
         const unsigned int strip0_col = cl ? 0u : (columns - 1u);
         const unsigned int strip1_col = columns - 1u;
@@ -2272,18 +2277,20 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
         unmap_vao_buffer(vao_idx, cell_data_buffer);
 
         const uint8_t *sel = (const uint8_t *)map_vao_buffer_for_reading(vao_idx, selection_buffer);
+#define SEL(idx) (sel + selection_stride * (idx))
         for (unsigned int i = 0; i < lines; i++) {
-            gathered_sel[i] = sel[(top_row + i) * columns + strip0_col];
-            if (nV == 2u) gathered_sel[lines + i] = sel[(top_row + i) * columns + strip1_col];
+            memcpy(gathered_sel + selection_stride * i, SEL((top_row + i) * columns + strip0_col), selection_stride);
+            if (nV == 2u) memcpy(gathered_sel + selection_stride * (lines + i), SEL((top_row + i) * columns + strip1_col), selection_stride);
         }
+#undef SEL
         unmap_vao_buffer(vao_idx, selection_buffer);
 
         void *dst = alloc_and_map_vao_buffer(vao_idx, (size_t)(sizeof(GPUCell) * nV * lines), padding_cell_data_buffer);
         memcpy(dst, gathered_cells, sizeof(GPUCell) * nV * lines);
         unmap_vao_buffer(vao_idx, padding_cell_data_buffer);
 
-        dst = alloc_and_map_vao_buffer(vao_idx, (size_t)(sizeof(uint8_t) * nV * lines), padding_selection_buffer);
-        memcpy(dst, gathered_sel, sizeof(uint8_t) * nV * lines);
+        dst = alloc_and_map_vao_buffer(vao_idx, selection_stride * nV * lines, padding_selection_buffer);
+        memcpy(dst, gathered_sel, selection_stride * nV * lines);
         unmap_vao_buffer(vao_idx, padding_selection_buffer);
 
         const unsigned int base0 = top_row * columns + (cl ? 0u : (columns - 1u));
@@ -3888,6 +3895,7 @@ initialize_gpu(void) {
     GPUCapabilities caps;
     gpu_get_capabilities(&caps);
     global_state.supports_framebuffer_srgb = caps.supports_srgb_output;
+    selection_stride = MAX((size_t)1u, (size_t)caps.vertex_input_alignment);
     query_gpu_texture_limits();
 }
 

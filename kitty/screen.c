@@ -4417,7 +4417,7 @@ render_iteration_data(const Screen *self, const Selection *s, IterationData *ans
 }
 
 static void
-apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int extra_leading_rows, int scrolled_by) {
+apply_selection(Screen *self, uint8_t *data, size_t stride, Selection *s, uint8_t set_mask, int extra_leading_rows, int scrolled_by) {
     render_iteration_data(self, s, &s->last_rendered);
     Line *line;
     const int y_min = MAX(-extra_leading_rows - scrolled_by, s->last_rendered.y), y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - scrolled_by);
@@ -4433,15 +4433,15 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int
             if (!line) continue;
         }
         const int y_in_data = (y + extra_leading_rows + scrolled_by);
-        uint8_t *line_start = data + self->columns * y_in_data;
+        uint8_t *line_start = data + stride * self->columns * y_in_data;
         XRange xr = xrange_for_iteration_with_multicells(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
-            line_start[x] |= set_mask;
+            line_start[stride * x] |= set_mask;
             CPUCell *c = &line->cpu_cells[x];
             if (c->is_multicell && c->scale > 1) {
-                for (int ym = MAX(0, y_in_data - c->y); ym < y_in_data; ym++) data[self->columns * ym + x] |= set_mask;
+                for (int ym = MAX(0, y_in_data - c->y); ym < y_in_data; ym++) data[stride * (self->columns * ym + x)] |= set_mask;
                 for (int ym = y_in_data + 1; ym < MIN((int)self->lines + extra_leading_rows, y_in_data + c->scale - c->y); ym++)
-                    data[self->columns * ym + x] |= set_mask;
+                    data[stride * (self->columns * ym + x)] |= set_mask;
             }
         }
     }
@@ -4488,26 +4488,26 @@ screen_is_cell_selected(Screen *self, index_type x, index_type y) {
 }
 
 void
-screen_apply_selection(Screen *self, void *address_, size_t size) {
+screen_apply_selection(Screen *self, void *address_, size_t num_cells, size_t stride) {
     uint8_t *address = address_;
-    memset(address, 0, size);
+    memset(address, 0, num_cells * stride);
     const unsigned offset = pixel_scroll_enabled(self);
     const unsigned scrolled_by = self->paused_rendering.expires_at ? self->paused_rendering.scrolled_by : self->scrolled_by;
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
-    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, offset, scrolled_by);
+    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, stride, sel->items + i, 1, offset, scrolled_by);
     sel->last_rendered_count = sel->count;
     sel = self->paused_rendering.expires_at ? &self->paused_rendering.url_ranges : &self->url_ranges;
     for (size_t i = 0; i < sel->count; i++) {
         Selection *s = sel->items + i;
         if (OPT(underline_hyperlinks) == UNDERLINE_NEVER && s->is_hyperlink) continue;
-        apply_selection(self, address, s, 2, offset, scrolled_by);
+        apply_selection(self, address, stride, s, 2, offset, scrolled_by);
     }
     sel->last_rendered_count = sel->count;
-    address += (size_t)offset * self->columns;
-    size -= (size_t)offset * self->columns;
+    address += (size_t)offset * self->columns * stride;
+    num_cells -= (size_t)offset * self->columns;
     ExtraCursors *ec = self->paused_rendering.expires_at ? &self->paused_rendering.extra_cursors : &self->extra_cursors;
     for (unsigned i = 0; i < ec->count; i++) {
-        if (ec->locations[i].cell < size) address[ec->locations[i].cell] |= (ec->locations[i].shape & 7) << 2;
+        if (ec->locations[i].cell < num_cells) address[(size_t)ec->locations[i].cell * stride] |= (ec->locations[i].shape & 7) << 2;
     }
     ec->dirty = false;
 }
@@ -7163,7 +7163,7 @@ static PyObject *
 current_selections(Screen *self, PyObject *a UNUSED) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)render_lines_for_screen(self) * self->columns);
     if (!ans) return NULL;
-    screen_apply_selection(self, PyBytes_AS_STRING(ans), PyBytes_GET_SIZE(ans));
+    screen_apply_selection(self, PyBytes_AS_STRING(ans), PyBytes_GET_SIZE(ans), 1);
     self->last_rendered.scrolled_by = self->scrolled_by; // mimic what the renderer does
     return ans;
 }
