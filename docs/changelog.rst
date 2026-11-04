@@ -219,6 +219,13 @@ you use a decent Wayland compositor.
 Detailed list of changes
 -------------------------------------
 
+0.50.1 [unreleased]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- :doc:`choose-files <kittens/choose-files>`: Fix concurrent custom preview
+  commands occasionally receiving the path of a different file.
+
+
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
