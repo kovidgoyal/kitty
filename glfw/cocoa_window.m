@@ -81,10 +81,8 @@ uti_to_mime(NSString *uti) {
         buf[j] = 0;
         return buf;
     }
-    if (@available(macOS 11.0, *)) {
-        UTType *t = [UTType typeWithIdentifier:uti]; // auto-released
-        if (t.preferredMIMEType != nil) return [t.preferredMIMEType UTF8String];
-    }
+    UTType *t = [UTType typeWithIdentifier:uti]; // auto-released
+    if (t.preferredMIMEType != nil) return [t.preferredMIMEType UTF8String];
     return "";
 }
 
@@ -2352,13 +2350,9 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     return NO;
 }
 
-#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400)
-
 - (NSAccessibilityRole)accessibilityRole {
     return NSAccessibilityTextAreaRole;
 }
-
-#endif
 
 - (NSString *)accessibilitySelectedText {
     NSString *text = nil;
@@ -3243,16 +3237,8 @@ _glfwPlatformHideWindow(_GLFWwindow *window) {
             if (_glfwPlatformWindowVisible(w)) num_visible++;
         }
         if (!num_visible) {
-            // yieldActivationToApplication was introduced in macOS 14 (Sonoma)
-            SEL selector = NSSelectorFromString(@"yieldActivationToApplication:");
-            if ([NSApp respondsToSelector:selector]) {
-                [NSApp performSelector:selector withObject:app];
-                [app activateWithOptions:0];
-            } else {
-#define NSApplicationActivateIgnoringOtherApps 2
-                [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
-#undef NSApplicationActivateIgnoringOtherApps
-            }
+            [NSApp yieldActivationToApplication:app];
+            [app activateWithOptions:0];
         }
     }
 }
@@ -3689,9 +3675,7 @@ bool
 _glfwPlatformIsFullscreen(_GLFWwindow *w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool traditional = !(flags & 1);
-    if (traditional) {
-        if (@available(macOS 10.15.7, *)) return w->ns.in_traditional_fullscreen;
-    }
+    if (traditional) return w->ns.in_traditional_fullscreen;
     NSWindowStyleMask sm = [window styleMask];
     return sm & NSWindowStyleMaskFullScreen;
 }
@@ -3720,30 +3704,28 @@ _glfwUpdateNotchCover(_GLFWwindow *w) {
         w->ns.notch_cover_window = nil;
     }
     if (!w->ns.in_traditional_fullscreen) return;
-    if (@available(macOS 12.0, *)) {
-        CGFloat insetTop = window.screen.safeAreaInsets.top;
-        if (insetTop <= 0) return;
-        NSRect sf = [window.screen frame];
-        NSWindow *bg_window = [[NSWindow alloc] initWithContentRect:sf styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
-        [bg_window setBackgroundColor:[NSColor clearColor]];
-        [bg_window setHasShadow:NO];
-        [bg_window setOpaque:NO];
-        [bg_window setIgnoresMouseEvents:YES];
-        [bg_window setReleasedWhenClosed:NO];
-        [bg_window setColorSpace:[window colorSpace]];
-        // Add a colored subview only in the notch strip area
-        NSView *notchView = [[NSView alloc] initWithFrame:NSMakeRect(0, sf.size.height - insetTop, sf.size.width, insetTop)];
-        notchView.wantsLayer = YES;
-        unsigned int c = w->ns.notch_cover_color;
-        float a = w->ns.notch_cover_opacity;
-        notchView.layer.backgroundColor =
-            [NSColor colorWithSRGBRed:((c >> 16) & 0xFF) / 255.0 green:((c >> 8) & 0xFF) / 255.0 blue:(c & 0xFF) / 255.0 alpha:a].CGColor;
-        [bg_window.contentView addSubview:notchView];
-        // must be above otherwise shadow of main window is rendered over bg_window
-        [window addChildWindow:bg_window ordered:NSWindowAbove];
-        w->ns.notch_cover_window = bg_window;
-        [notchView release];
-    }
+    CGFloat insetTop = window.screen.safeAreaInsets.top;
+    if (insetTop <= 0) return;
+    NSRect sf = [window.screen frame];
+    NSWindow *bg_window = [[NSWindow alloc] initWithContentRect:sf styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
+    [bg_window setBackgroundColor:[NSColor clearColor]];
+    [bg_window setHasShadow:NO];
+    [bg_window setOpaque:NO];
+    [bg_window setIgnoresMouseEvents:YES];
+    [bg_window setReleasedWhenClosed:NO];
+    [bg_window setColorSpace:[window colorSpace]];
+    // Add a colored subview only in the notch strip area
+    NSView *notchView = [[NSView alloc] initWithFrame:NSMakeRect(0, sf.size.height - insetTop, sf.size.width, insetTop)];
+    notchView.wantsLayer = YES;
+    unsigned int c = w->ns.notch_cover_color;
+    float a = w->ns.notch_cover_opacity;
+    notchView.layer.backgroundColor =
+        [NSColor colorWithSRGBRed:((c >> 16) & 0xFF) / 255.0 green:((c >> 8) & 0xFF) / 255.0 blue:(c & 0xFF) / 255.0 alpha:a].CGColor;
+    [bg_window.contentView addSubview:notchView];
+    // must be above otherwise shadow of main window is rendered over bg_window
+    [window addChildWindow:bg_window ordered:NSWindowAbove];
+    w->ns.notch_cover_window = bg_window;
+    [notchView release];
 }
 
 bool
@@ -3754,60 +3736,43 @@ _glfwPlatformToggleFullscreen(_GLFWwindow *w, unsigned int flags) {
     bool ignore_safe_area_insets = flags & 2;
     NSWindowStyleMask sm = [window styleMask];
     if (traditional) {
-        if (@available(macOS 10.15.7, *)) {
-            // As of Big Turd NSWindowStyleMaskFullScreen is no longer usable
-            // Also no longer compatible after a minor release of macOS 10.15.7
-            if (!w->ns.in_traditional_fullscreen) {
-                // Apple throws NSGenericException if setStyleMask: clears
-                // NSWindowStyleMaskFullScreen outside a transition (see #9572).
-                // Split View sets this flag via the system, so fall back to
-                // Cocoa fullscreen toggle instead of the traditional path.
-                if (sm & NSWindowStyleMaskFullScreen) {
-                    [window toggleFullScreen:nil];
-                    return false;
-                }
-                w->ns.pre_full_screen_style_mask = sm;
-                w->ns.pre_traditional_fullscreen_frame = [window frame];
-                [window setStyleMask:NSWindowStyleMaskBorderless];
-                [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
-                NSRect screenFrame = [window.screen frame];
-                if (!ignore_safe_area_insets) {
-                    if (@available(macOS 12.0, *)) { screenFrame.size.height -= window.screen.safeAreaInsets.top; }
-                }
-                [window setFrame:screenFrame display:YES];
-                w->ns.in_traditional_fullscreen = true;
-                if (!ignore_safe_area_insets) _glfwUpdateNotchCover(w);
-            } else {
-                made_fullscreen = false;
-                if (sm & NSWindowStyleMaskFullScreen) {
-                    // Split View added NSWindowStyleMaskFullScreen on top of our
-                    // traditional fullscreen. We can't clear that flag directly
-                    // (NSGenericException), so trigger a Cocoa exit and defer the
-                    // traditional fullscreen cleanup to windowDidExitFullScreen:
-                    // which fires after macOS finishes its async transition (#9572).
-                    // Return true to prevent the caller from setting the window
-                    // frame during the Cocoa exit animation.
-                    [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationDefault];
-                    [window toggleFullScreen:nil];
-                    return true;
-                } else {
-                    [window setStyleMask:w->ns.pre_full_screen_style_mask];
-                    [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationDefault];
-                    w->ns.in_traditional_fullscreen = false;
-                    _glfwUpdateNotchCover(w);
-                }
+        if (!w->ns.in_traditional_fullscreen) {
+            // Apple throws NSGenericException if setStyleMask: clears
+            // NSWindowStyleMaskFullScreen outside a transition (see #9572).
+            // Split View sets this flag via the system, so fall back to
+            // Cocoa fullscreen toggle instead of the traditional path.
+            if (sm & NSWindowStyleMaskFullScreen) {
+                [window toggleFullScreen:nil];
+                return false;
             }
+            w->ns.pre_full_screen_style_mask = sm;
+            w->ns.pre_traditional_fullscreen_frame = [window frame];
+            [window setStyleMask:NSWindowStyleMaskBorderless];
+            [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
+            NSRect screenFrame = [window.screen frame];
+            if (!ignore_safe_area_insets) screenFrame.size.height -= window.screen.safeAreaInsets.top;
+            [window setFrame:screenFrame display:YES];
+            w->ns.in_traditional_fullscreen = true;
+            if (!ignore_safe_area_insets) _glfwUpdateNotchCover(w);
         } else {
-            bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
-            if (!(in_fullscreen)) {
-                sm |= NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen;
-                [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
-            } else {
-                made_fullscreen = false;
-                sm &= ~(NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen);
+            made_fullscreen = false;
+            if (sm & NSWindowStyleMaskFullScreen) {
+                // Split View added NSWindowStyleMaskFullScreen on top of our
+                // traditional fullscreen. We can't clear that flag directly
+                // (NSGenericException), so trigger a Cocoa exit and defer the
+                // traditional fullscreen cleanup to windowDidExitFullScreen:
+                // which fires after macOS finishes its async transition (#9572).
+                // Return true to prevent the caller from setting the window
+                // frame during the Cocoa exit animation.
                 [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationDefault];
+                [window toggleFullScreen:nil];
+                return true;
+            } else {
+                [window setStyleMask:w->ns.pre_full_screen_style_mask];
+                [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationDefault];
+                w->ns.in_traditional_fullscreen = false;
+                _glfwUpdateNotchCover(w);
             }
-            [window setStyleMask:sm];
         }
         // Changing the style mask causes the first responder to be cleared
         [window makeFirstResponder:w->ns.view];
