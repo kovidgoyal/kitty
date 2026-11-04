@@ -124,7 +124,7 @@ connect_to_display(void *driver, const GPUNativeWindow *display) {
             set_error(d, "No Metal capable GPU found");
             return false;
         }
-        // MSL 2.4 needs macOS 12, every Mac that can run it supports the Mac2 or Apple7 GPU families.
+        // MSL 3.1 needs macOS 14, every Mac that can run it supports the Mac2 or Apple7 GPU families.
         // Mac2 is deprecated from macOS 27, which no longer supports the Intel Macs that need it.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"

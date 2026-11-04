@@ -162,7 +162,7 @@ struct vertex_main_Result_0
 
         # Slang assigns Metal argument table indices itself, they are passed
         # as native names, while the slots remain those of SHADER_BINDING_SLOTS
-        target = ShaderTarget.parse('msl-24')
+        target = ShaderTarget.parse('msl-31')
         self.assertTrue(target.is_msl and target.is_single_module)
         scalar = {'kind': 'scalar', 'scalarType': 'float32'}
 
@@ -197,7 +197,7 @@ struct vertex_main_Result_0
             'entryPoints': [{'name': 'vertex_main', 'stage': 'vertex', 'parameters': []}, {'name': 'fragment_main', 'stage': 'fragment', 'parameters': []}],
         }
         m = program_metadata(target, [refl], GLSLMetadata())
-        self.ae(m['target'], 'msl-24')
+        self.ae(m['target'], 'msl-31')
         self.ae(m['entry_points'], {'vertex': 'vertex_main', 'fragment': 'fragment_main'})
         self.ae(m['textures'], {'sprites': 0})
         self.ae(m['blocks']['CellRenderData']['slot'], 6)
