@@ -198,6 +198,7 @@ get_capabilities(void *driver, GPUCapabilities *ans) {
     ans->max_array_texture_layers = MAX_TEXTURE_LAYERS;
     // Any texture can be viewed with the sRGB variant of its pixel format, including drawables
     ans->supports_srgb_output = d->device != nil;
+    ans->vertex_input_alignment = VERTEX_INPUT_ALIGNMENT;
 }
 // }}}
 

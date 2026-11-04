@@ -103,6 +103,9 @@
 #define MAX_TEXTURE_LAYERS 2048u
 // The maximum number of render target pixel formats for the utility pipelines, see Driver
 #define MAX_UTILITY_FORMATS 8
+// Metal requires the offsets and strides of vertex buffers to be multiples of
+// four bytes, reported to kitty in GPUCapabilities
+#define VERTEX_INPUT_ALIGNMENT 4u
 
 // Resources {{{
 typedef struct BufferStorage {
@@ -118,17 +121,6 @@ typedef struct Buffer {
     // Storage that commands might still use, reusable once the serial completes
     BufferStorage retired[4];
     size_t num_retired;
-    // Incremented whenever the contents of the buffer change
-    uint64_t generation;
-    // A copy of the contents with the elements of a vertex input moved to
-    // offsets and strides that are multiples of four bytes, as required by
-    // Metal, see repacked_vertex_buffer()
-    struct {
-        id<MTLBuffer> buffer;
-        uint64_t generation;
-        size_t offset, size;
-        uint32_t stride, element_size;
-    } repacked;
     struct Buffer *prev, *next;
 } Buffer;
 
@@ -369,12 +361,6 @@ void bind_uniform_buffer(void *driver, uint32_t slot, gpu_buffer_t buffer);
 void use_buffer(Driver *d, Buffer *b);
 // Write data to the start of the buffer, giving it new storage if commands might still use the current one
 bool write_buffer(Driver *d, Buffer *b, const void *data, size_t size);
-// The buffer and offset to use for a vertex input, repacking its elements if
-// their offset or stride are not multiples of four bytes. Sets stride to the
-// stride of the elements in the returned buffer. nil on failure.
-id<MTLBuffer> vertex_buffer_for(Driver *d, const VertexAttribute *a, size_t element_size, size_t *offset, uint32_t *stride);
-// The stride of the elements of a vertex input in the buffer returned by vertex_buffer_for()
-uint32_t vertex_buffer_stride(const VertexAttribute *a, size_t element_size);
 void destroy_all_buffers(Driver *d);
 
 // textures.m
