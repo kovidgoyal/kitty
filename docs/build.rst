@@ -106,6 +106,8 @@ Build-time dependencies:
 * ``gcc`` or ``clang``
 * ``simde``
 * ``shader-slang``
+* ``vulkan-headers`` (needed only on Linux and BSD, to build the Vulkan GPU driver,
+  without them kitty uses only OpenGL)
 * ``go`` >= _build_go_version (see :file:`go.mod` for go packages used during building)
 * ``pkg-config``
 * Symbols NERD Font Mono either installed system-wide or placed in :file:`fonts/SymbolsNerdFontMono-Regular.ttf`
