@@ -1303,7 +1303,7 @@ def build_wayland_protocols(
 
 
 def gpu_api_headers() -> List[str]:
-    return ['gpu/api.h', 'gpu/opengl/version.h', 'gpu/vulkan/version.h']
+    return ['gpu/api.h', 'gpu/opengl/version.h', 'gpu/vulkan/version.h', 'gpu/metal/version.h']
 
 
 @lru_cache(maxsize=2)
@@ -1323,15 +1323,33 @@ def vulkan_headers_available() -> bool:
 
 
 def gpu_drivers_to_build() -> List[str]:
-    # The GPU drivers built for this platform. OpenGL is built on all platforms
-    # and Vulkan on platforms other than macOS, when its headers are available.
+    # The GPU drivers built for this platform. OpenGL is built on all
+    # platforms, Metal on macOS and Vulkan on other platforms, when its headers
+    # are available.
     ans = ['opengl']
-    if not is_macos:
+    if is_macos:
+        ans.insert(0, 'metal')
+    else:
         if vulkan_headers_available():
             ans.insert(0, 'vulkan')
         else:
             print(error('The Vulkan headers were not found, the Vulkan GPU driver will not be built'), file=sys.stderr)
     return ans
+
+
+# TODO: Remove once the Metal GPU driver is complete. The shaders for the
+# Metal driver are needed only on macOS, they are also built on other
+# platforms, where the slangc output can be checked but not run, while the
+# Metal driver is being developed.
+BUILD_METAL_SHADERS_ON_ALL_PLATFORMS = True
+
+
+def gpu_shader_targets_to_build() -> List[str]:
+    # The shader targets the built-in shaders are compiled for, those of the GPU drivers being built
+    drivers = gpu_drivers_to_build()
+    if BUILD_METAL_SHADERS_ON_ALL_PLATFORMS and 'metal' not in drivers:
+        drivers.append('metal')
+    return [t for driver in drivers for t in gpu_driver_shader_targets(driver)]
 
 
 def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
@@ -1356,6 +1374,9 @@ def gpu_driver_init_env(env: Env, driver: str = 'opengl') -> Env:
         # and libX11 are loaded at runtime.
         ans.cflags.extend(pkg_config('x11', '--cflags-only-I'))
         ans.ldpaths.append('-ldl')
+    elif driver == 'metal':
+        for f_ in ('Metal', 'QuartzCore', 'CoreGraphics', 'Cocoa'):
+            ans.ldpaths.extend(('-framework', f_))
     return ans
 
 
@@ -1375,6 +1396,12 @@ def gpu_driver_shader_targets(driver: str = 'opengl') -> List[str]:
         if m is None:
             raise SystemExit('Could not find SPIRV_VERSION in gpu/vulkan/version.h')
         return [f'spirv-{m.group(1)}']
+    if driver == 'metal':
+        with open('gpu/metal/version.h') as f:
+            m = re.search(r'^#define MSL_VERSION (\d+)', f.read(), flags=re.MULTILINE)
+        if m is None:
+            raise SystemExit('Could not find MSL_VERSION in gpu/metal/version.h')
+        return [f'msl-{m.group(1)}']
     raise KeyError(f'Unknown GPU driver: {driver}')
 
 
@@ -1385,6 +1412,8 @@ def gpu_driver_sources(driver: str) -> List[str]:
         return [f'gpu/{driver}/{x}' for x in common + platform]
     if driver == 'vulkan':
         return [f'gpu/{driver}/{x}' for x in ('driver.c', 'memory.c', 'commands.c', 'textures.c', 'pipelines.c', 'surfaces.c')]
+    if driver == 'metal':
+        return [f'gpu/{driver}/{x}' for x in ('driver.m', 'commands.m', 'buffers.m', 'textures.m', 'pipelines.m', 'surfaces.m')]
     raise KeyError(f'Unknown GPU driver: {driver}')
 
 
@@ -1545,7 +1574,7 @@ def generate_shaders(kitty_exe: str) -> None:
             '+launch',
             os.path.join(src_base, 'kitty/shaders/slang.py'),
             'verbose' if verbose else '',
-            '--targets=' + ','.join(t for driver in gpu_drivers_to_build() for t in gpu_driver_shader_targets(driver)),
+            '--targets=' + ','.join(gpu_shader_targets_to_build()),
             'build/shaders',
             'shaders',
         ],
