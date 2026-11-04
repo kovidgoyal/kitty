@@ -404,7 +404,10 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
 
 static PyObject *notification_activated_callback = NULL;
 static monotonic_t last_notification_response_at = 0;
-static struct { pid_t pid; monotonic_t at; } last_other_instance_activation = {0};
+static struct {
+    pid_t pid;
+    monotonic_t at;
+} last_other_instance_activation = {0};
 
 static PyObject *
 set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
@@ -1808,17 +1811,17 @@ init_cocoa(PyObject *module) {
                                                                     object:nil
                                                                      queue:[NSOperationQueue mainQueue]
                                                                 usingBlock:^(NSNotification *note) {
-        NSRunningApplication *app = note.userInfo[NSWorkspaceApplicationKey];
-        // LaunchServices activates us before sending the reopen event, so ignore our own activation
-        if (!app || app.processIdentifier == getpid()) return;
-        NSString *our_id = [[NSBundle mainBundle] bundleIdentifier];
-        if (our_id && [app.bundleIdentifier isEqualToString:our_id]) {
-            last_other_instance_activation.pid = app.processIdentifier;
-            last_other_instance_activation.at = monotonic();
-        } else {
-            last_other_instance_activation.pid = 0;
-        }
-    }];
+                                                                  NSRunningApplication *app = note.userInfo[NSWorkspaceApplicationKey];
+                                                                  // LaunchServices activates us before sending the reopen event, so ignore our own activation
+                                                                  if (!app || app.processIdentifier == getpid()) return;
+                                                                  NSString *our_id = [[NSBundle mainBundle] bundleIdentifier];
+                                                                  if (our_id && [app.bundleIdentifier isEqualToString:our_id]) {
+                                                                      last_other_instance_activation.pid = app.processIdentifier;
+                                                                      last_other_instance_activation.at = monotonic();
+                                                                  } else {
+                                                                      last_other_instance_activation.pid = 0;
+                                                                  }
+                                                                }];
     return true;
 }
 
@@ -1833,7 +1836,8 @@ cocoa_yield_reopen_to_other_instance(void) {
     if (!event) return false;
     NSData *token = [[event attributeDescriptorForKeyword:keySenderAuditTokenAttr] data];
     if (!token || token.length != sizeof(audit_token_t)) return false;
-    audit_token_t t; memcpy(&t, token.bytes, sizeof(t));
+    audit_token_t t;
+    memcpy(&t, token.bytes, sizeof(t));
     char name[256] = {0};
     // val[5] is the pid, see audit_token_to_pid() in libbsm
     if (proc_name((pid_t)t.val[5], name, sizeof(name)) <= 0 || strcmp(name, "usernoted") != 0) return false;

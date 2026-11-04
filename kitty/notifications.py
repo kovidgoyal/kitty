@@ -556,7 +556,7 @@ class MacOSIntegration(DesktopIntegration):
     def from_ident(self, ident: str) -> int | None:
         if ident.startswith(self.ident_prefix):
             try:
-                return int(ident[len(self.ident_prefix):])
+                return int(ident[len(self.ident_prefix) :])
             except Exception:
                 pass
         return None
