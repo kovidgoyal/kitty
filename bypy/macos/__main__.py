@@ -410,6 +410,7 @@ class Freeze(object):
         os.mkdir(pdir)
         print('Extracting extension modules from', self.python_stdlib, 'to', pdir)
         ext_map = extract_extension_modules(self.python_stdlib, pdir)
+        self.check_gpu_drivers(pdir, join(kitty_dir, 'shaders'))
         shutil.copy(join(os.path.dirname(self_dir), 'site.py'), join(self.python_stdlib, 'site.py'))
         for x in bases:
             iv['sanitize_source_folder'](join(self.python_stdlib, x))
@@ -426,6 +427,20 @@ class Freeze(object):
         for f in walk(pdir):
             if f.endswith('.so') or f.endswith('.dylib'):
                 self.fix_dependencies_in_lib(f)
+
+    @flush
+    def check_gpu_drivers(self, ext_dir: str, shaders_dir: str) -> None:
+        # Both GPU drivers must be part of the build, along with the built-in
+        # shaders compiled for their shader targets, otherwise kitty silently
+        # falls back to whichever driver is present
+        print('\nChecking GPU drivers...')
+        for driver, target_prefix in (('opengl', 'glsl-'), ('metal', 'msl-')):
+            path = join(ext_dir, f'kitty.{driver}.so')
+            if not os.path.isfile(path):
+                raise SystemExit(f'The {driver} GPU driver was not built, {path} does not exist')
+            targets = [x for x in os.listdir(shaders_dir) if x.startswith(target_prefix) and os.path.isfile(join(shaders_dir, x, 'cell.json'))]
+            if not targets:
+                raise SystemExit(f'The built-in shaders were not compiled for the {driver} GPU driver in {shaders_dir}')
 
     @flush
     def build_frozen_tools(self) -> None:
