@@ -208,7 +208,7 @@ def variant_name(variant: dict[str, str], default: dict[str, str]) -> str:
 class ShaderTarget(NamedTuple):
     # The shader target consumed by a GPU driver, identified by strings of the
     # form family-version, for example glsl-140, spirv-16 (SPIR-V 1.6) or
-    # msl-24 (Metal Shading Language 2.4). Built-in shaders are compiled for
+    # msl-31 (Metal Shading Language 3.1). Built-in shaders are compiled for
     # the targets of the drivers being built, at build time, and custom
     # shaders for the target of the loaded driver, at runtime. GLSL targets
     # produce one text file per stage, SPIR-V and MSL targets a single module,
@@ -1208,9 +1208,12 @@ def metal_compiler_available() -> bool:
 
 
 def msl_validation_command(target: ShaderTarget, path: str) -> list[str]:
-    # Compile the MSL with the Metal compiler, discarding the output
+    # Compile the MSL with the Metal compiler, discarding the output. From
+    # Metal 3.0 the language standard is shared by all platforms and so has no
+    # platform prefix.
     major, minor = divmod(target.version, 10)
-    return ['xcrun', '-sdk', 'macosx', 'metal', f'-std=macos-metal{major}.{minor}', '-c', path, '-o', os.devnull]
+    std = f'metal{major}.{minor}' if major >= 3 else f'macos-metal{major}.{minor}'
+    return ['xcrun', '-sdk', 'macosx', 'metal', f'-std={std}', '-c', path, '-o', os.devnull]
 
 
 # }}}

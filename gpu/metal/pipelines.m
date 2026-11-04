@@ -16,7 +16,7 @@
 #include "version.h"
 
 // The language version passed to the MSL compiler, see compile_library()
-_Static_assert(MSL_VERSION == 24, "Update the MTLLanguageVersion used for compiling shaders");
+_Static_assert(MSL_VERSION == 31, "Update the MTLLanguageVersion used for compiling shaders");
 
 #define AS_PIPELINE(handle) ((Pipeline *)(uintptr_t)(handle))
 #define AS_LAYOUT(handle) ((VertexLayout *)(uintptr_t)(handle))
@@ -127,7 +127,7 @@ compile_library(Driver *d, const GPUShaderSource *s) {
             return nil;
         }
         MTLCompileOptions *opts = [[[MTLCompileOptions alloc] init] autorelease];
-        [opts setLanguageVersion:MTLLanguageVersion2_4];
+        [opts setLanguageVersion:MTLLanguageVersion3_1];
         // OpenGL on Apple GPUs is implemented on top of Metal and uses fast
         // math, so that is needed for rendering to match it exactly, for
         // example in the pow() of the gamma adjustments of text. Relaxed math
