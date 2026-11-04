@@ -95,7 +95,7 @@ surface_create(void *driver, const GPUNativeWindow *native, const GPUSurfaceConf
         [s->layer setOpaque:config->transparent ? NO : YES];
         [s->layer setMaximumDrawableCount:3];
         [s->layer setAllowsNextDrawableTimeout:YES];
-        // kitty paces rendering itself, using CVDisplayLink, as with OpenGL,
+        // kitty paces rendering itself, using CADisplayLink, as with OpenGL,
         // where the swap interval is zero, see surface_set_swap_interval()
         [s->layer setDisplaySyncEnabled:NO];
         configure_layer(s);

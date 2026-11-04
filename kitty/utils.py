@@ -1032,29 +1032,6 @@ def path_from_osc7_url(url: str | bytes) -> str:
     return ans.replace('\0', '')
 
 
-@run_once
-def macos_version() -> tuple[int, ...]:
-    # platform.mac_ver does not work thanks to Apple's stupid "hardening", so just use sw_vers
-    import subprocess
-
-    try:
-        o = subprocess.check_output(['sw_vers', '-productVersion'], stderr=subprocess.STDOUT).decode()
-    except Exception:
-        return 0, 0, 0
-    return tuple(map(int, o.strip().split('.')))
-
-
-@lru_cache(maxsize=2)
-def less_version(less_exe: str = 'less') -> int:
-    import subprocess
-
-    o = subprocess.check_output([less_exe, '-V'], stderr=subprocess.STDOUT).decode()
-    m = re.match(r'less (\d+)', o)
-    if m is None:
-        raise ValueError(f'Invalid version string for less: {o}')
-    return int(m.group(1))
-
-
 def is_pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
