@@ -2589,8 +2589,15 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
             return NULL;
         }
     }
+    if (is_first_window && !initialize_gpu()) {
+        GPUFailure failure;
+        describe_gpu_failure(failure, "initialize the GPU");
+        gpu_surface_destroy(gpu_surface);
+        glfwDestroyWindow(glfw_window);
+        if (switch_gpu_driver_after_failure(is_first_window, failure)) return create_os_window(self, args, kw);
+        return NULL;
+    }
     glfwSetNativeSurfaceChangedCallback(glfw_window, native_surface_changed_callback);
-    if (is_first_window) initialize_gpu();
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
@@ -2877,10 +2884,10 @@ dbus_monitor_session_state(PyObject *self UNUSED, PyObject *callback) {
 }
 #endif
 
-// Parse a sequence of (name, path) pairs of GPU drivers into candidates
+// Parse a sequence of (name, path, software) tuples of GPU drivers into candidates
 static bool
 set_gpu_drivers(PyObject *gpu_drivers, bool debug_rendering) {
-    RAII_PyObject(seq, PySequence_Fast(gpu_drivers, "gpu_drivers must be a sequence of (name, path) pairs"));
+    RAII_PyObject(seq, PySequence_Fast(gpu_drivers, "gpu_drivers must be a sequence of (name, path, software) tuples"));
     if (!seq) return false;
     const Py_ssize_t n = PySequence_Fast_GET_SIZE(seq);
     RAII_ALLOC(GPUDriverCandidate, items, calloc(MAX(1, n), sizeof(GPUDriverCandidate)));
@@ -2889,7 +2896,9 @@ set_gpu_drivers(PyObject *gpu_drivers, bool debug_rendering) {
         return false;
     }
     for (Py_ssize_t i = 0; i < n; i++) {
-        if (!PyArg_ParseTuple(PySequence_Fast_GET_ITEM(seq, i), "ss", &items[i].name, &items[i].path)) return false;
+        int software = 0;
+        if (!PyArg_ParseTuple(PySequence_Fast_GET_ITEM(seq, i), "ssp", &items[i].name, &items[i].path, &software)) return false;
+        items[i].software = software != 0;
     }
     if (!set_gpu_driver_candidates(items, (size_t)n, debug_rendering)) {
         PyErr_NoMemory();
