@@ -288,6 +288,10 @@ unsuitable_device(Driver *d, VkPhysicalDevice dev, uint32_t *queue_family, bool 
     static char reason[512];
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(dev, &props);
+    // Software renderers, such as lavapipe, report themselves as CPU devices
+    const bool is_software = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
+    if (d->params.renderer == GPU_RENDERER_HARDWARE && is_software) return "it is a software renderer";
+    if (d->params.renderer == GPU_RENDERER_SOFTWARE && !is_software) return "it is not a software renderer";
     if (props.apiVersion < VK_MAKE_API_VERSION(0, VULKAN_REQUIRED_VERSION_MAJOR, VULKAN_REQUIRED_VERSION_MINOR, 0)) {
         snprintf(reason, sizeof(reason), "it supports only Vulkan %u.%u", VK_API_VERSION_MAJOR(props.apiVersion), VK_API_VERSION_MINOR(props.apiVersion));
         return reason;
@@ -540,6 +544,7 @@ get_capabilities(void *driver, GPUCapabilities *ans) {
     ans->supports_srgb_output = d->has_swapchain_mutable_format;
     // Vulkan places no alignment requirements on vertex input offsets and strides
     ans->vertex_input_alignment = 1;
+    ans->is_software = d->properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
 }
 // }}}
 
