@@ -326,34 +326,6 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
     if (finish_launching_callback) finish_launching_callback(false);
 }
 
-- (BOOL)application:(NSApplication *)sender openFile:(NSString *)filename {
-    (void)sender;
-    if (!filename || !_glfw.ns.url_open_callback) return NO;
-    const char *url = NULL;
-    @try {
-        url = [[[NSURL fileURLWithPath:filename] absoluteString] UTF8String];
-    } @catch (NSException *exc) {
-        NSLog(@"Converting openFile filename: %@ failed with error: %@", filename, exc.reason);
-        return NO;
-    }
-    if (!url) return NO;
-    return _glfw.ns.url_open_callback(url);
-}
-
-- (void)application:(NSApplication *)sender openFiles:(NSArray *)filenames {
-    (void)sender;
-    if (!_glfw.ns.url_open_callback || !filenames) return;
-    for (id x in filenames) {
-        NSString *filename = x;
-        const char *url = NULL;
-        @try {
-            url = [[[NSURL fileURLWithPath:filename] absoluteString] UTF8String];
-        } @catch (NSException *exc) { NSLog(@"Converting openFiles filename: %@ failed with error: %@", filename, exc.reason); }
-        if (url) _glfw.ns.url_open_callback(url);
-    }
-}
-
-// Remove openFile and openFiles when the minimum supported macOS version is 10.13
 - (void)application:(NSApplication *)sender openURLs:(NSArray<NSURL *> *)urls {
     (void)sender;
     if (!_glfw.ns.url_open_callback || !urls) return;

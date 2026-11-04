@@ -46,7 +46,6 @@ from .config import common_opts_as_dict, prepare_config_file_for_editing, store_
 from .constants import (
     RC_ENCRYPTION_PROTOCOL_VERSION,
     appname,
-    cache_dir,
     clear_handled_signals,
     config_dir,
     handled_signals,
@@ -167,9 +166,7 @@ from .utils import (
     is_ok_to_read_image_file,
     is_ok_to_read_image_path,
     is_path_in_temp_dir,
-    less_version,
     log_error,
-    macos_version,
     open_url,
     parse_address_spec,
     parse_os_window_state,
@@ -2637,15 +2634,6 @@ class Boss:
         tab = self.active_tab
         if tab is not None:
             bdata = data.encode('utf-8') if isinstance(data, str) else data
-            if is_macos and cmd[0] == '/usr/bin/less' and macos_version()[:2] < (12, 3):
-                # the system less before macOS 12.3 barfs up OSC codes, so sanitize them ourselves
-                sentinel = os.path.join(cache_dir(), 'less-is-new-enough')
-                if not os.path.exists(sentinel):
-                    if less_version(cmd[0]) >= 581:
-                        open(sentinel, 'w').close()
-                    else:
-                        bdata = re.sub(rb'\x1b\].*?\x1b\\', b'', bdata)
-
             return tab.new_special_window(
                 SpecialWindow(cmd, bdata, title or _('History'), overlay_for=window.id, cwd=window.cwd_of_child), copy_colors_from=self.active_window
             )

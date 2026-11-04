@@ -35,7 +35,6 @@
 #include <assert.h>
 
 #include <IOKit/graphics/IOGraphicsLib.h>
-#include <CoreVideo/CVBase.h>
 #include <ApplicationServices/ApplicationServices.h>
 
 
@@ -43,14 +42,11 @@
 //
 static char *
 getDisplayName(CGDirectDisplayID displayID, NSScreen *screen) {
-    // IOKit doesn't work on Apple Silicon anymore
-    // Luckily, 10.15 introduced -[NSScreen localizedName].
-    // Use it if available, and fall back to IOKit otherwise.
+    // IOKit doesn't work on Apple Silicon anymore, so use
+    // -[NSScreen localizedName] and fall back to IOKit if there is no screen.
     if (screen) {
-        if ([screen respondsToSelector:@selector(localizedName)]) {
-            NSString *name = [screen valueForKey:@"localizedName"];
-            if (name) { return _glfw_strdup([name UTF8String]); }
-        }
+        NSString *name = screen.localizedName;
+        if (name) { return _glfw_strdup([name UTF8String]); }
     }
     io_iterator_t it;
     io_service_t service;

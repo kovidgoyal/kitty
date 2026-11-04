@@ -145,7 +145,7 @@ surface_create(const GPUNativeWindow *native, const GPUSurfaceConfig *config, ui
         GLint opaque = 0;
         [s->context setValues:&opaque forParameter:NSOpenGLContextParameterSurfaceOpacity];
     }
-    // Swap intervals do not work as of Mojave, kitty uses CVDisplayLink instead
+    // Swap intervals do not work as of Mojave, kitty uses CADisplayLink instead
     GLint interval = 0;
     [s->context setValues:&interval forParameter:NSOpenGLContextParameterSwapInterval];
     attach_to_view(s, s->context);
@@ -168,7 +168,7 @@ present(GLSurface *s) {
 
 static void
 set_swap_interval(GLSurface *s, int interval) {
-    // As of Mojave this does not work so kitty uses CVDisplayLink instead
+    // As of Mojave this does not work so kitty uses CADisplayLink instead
     (void)s;
     (void)interval;
 }
