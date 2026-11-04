@@ -53,7 +53,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KITTY_GPU_API_VERSION 5u
+#define KITTY_GPU_API_VERSION 6u
 #define KITTY_GPU_DRIVER_ENTRY_POINT "kitty_gpu_driver_load"
 #define GPU_NULL_HANDLE ((uint64_t)0)
 
@@ -68,6 +68,20 @@ typedef uint64_t gpu_surface_t;
 
 typedef void (*gpu_message_func)(const char *message);
 
+// The kinds of renderer a driver may use. Software renderers run on the CPU,
+// for example llvmpipe for OpenGL and lavapipe for Vulkan from Mesa. They work
+// without a GPU, such as in virtual machines, but are slow.
+typedef enum {
+    GPU_RENDERER_ANY = 1, // use whatever renderer the system provides
+    // Use only hardware renderers. connect() or initialize() must fail if
+    // only a software renderer is available, so that kitty can try the next
+    // driver, see the gpu_driver option.
+    GPU_RENDERER_HARDWARE,
+    // Use only software renderers, failing in connect() or initialize() if
+    // none is available
+    GPU_RENDERER_SOFTWARE,
+} GPURendererKind;
+
 typedef struct GPUDriverInitParams {
     // Enable extra error checking and debug output
     bool debug_rendering;
@@ -77,6 +91,8 @@ typedef struct GPUDriverInitParams {
     gpu_message_func debug_print;
     // Report an unrecoverable error, must not return
     gpu_message_func fatal;
+    // The kind of renderer to use
+    GPURendererKind renderer;
     // X11: The windowing system installs a process wide X error handler, so
     // drivers must not install their own. Instead, to detect errors caused by
     // their requests, they call x11_push_error_trap() before making the
@@ -101,6 +117,8 @@ typedef struct GPUCapabilities {
     // this, such as the one byte selection state of cells, must be stored
     // with each element padded to this size.
     uint32_t vertex_input_alignment;
+    // Whether rendering is done on the CPU by a software renderer
+    bool is_software;
 } GPUCapabilities;
 // }}}
 
@@ -346,7 +364,9 @@ typedef struct GPUDriverAPI {
     bool (*connect)(void *driver, const GPUNativeWindow *display);
     // Called once, when the first surface has been created and made current.
     // Must be called before any other function except connect(), destroy(),
-    // last_error() and the surface functions.
+    // last_error() and the surface functions. If it returns false,
+    // last_error() describes the problem and kitty destroys the surface,
+    // unloads the driver and tries the next one.
     bool (*initialize)(void *driver);
     void (*destroy)(void *driver);
     // A description of the last error, never NULL

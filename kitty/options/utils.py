@@ -1035,7 +1035,7 @@ def clipboard_control(x: str) -> tuple[str, ...]:
     return tuple(x.lower().split())
 
 
-GPU_DRIVERS = ('metal', 'vulkan', 'opengl')
+GPU_DRIVERS = ('metal', 'vulkan', 'opengl', 'software')
 
 
 def gpu_driver(x: str) -> tuple[str, ...]:

@@ -1572,7 +1572,7 @@ some slight input latency. If so, set this to :code:`no`.
 
 opt(
     'gpu_driver',
-    'metal vulkan opengl',
+    'metal vulkan opengl software',
     option_type='gpu_driver',
     long_text="""
 The GPU drivers kitty uses to render, as a space or comma separated list, in
@@ -1580,6 +1580,18 @@ order of preference. kitty uses the first driver in the list that works on your
 system, skipping drivers that are not available on your platform or were not
 included in the build of kitty. The available drivers are: :code:`metal`
 (macOS), :code:`vulkan` (Linux and BSD) and :code:`opengl` (all platforms).
+
+The special value :code:`software` renders on the CPU, without a GPU, using
+the software renderers of the Mesa graphics library, lavapipe for Vulkan and
+llvmpipe for OpenGL, which must be installed. This is useful in virtual
+machines and on systems without a GPU or with broken GPU drivers, but is
+slow. It is available only on Linux and BSD. The other drivers skip
+software renderers, so that a working GPU is always preferred, unless they
+are last in the list. Remove :code:`software` from the list to never use
+software rendering, or put it first to always use it. When software rendering
+is used, kitty shows a message saying so for a few seconds in every new OS
+window.
+
 Use :option:`kitty --debug-rendering` to see which driver is used and why
 others were rejected. Changing this option by reloading the config is not
 supported.

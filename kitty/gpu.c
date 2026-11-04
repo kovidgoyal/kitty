@@ -41,7 +41,7 @@ driver_x11_pop_error_trap(void) {
 }
 
 const char *
-load_gpu_driver(const char *path, bool debug_rendering) {
+load_gpu_driver(const char *path, bool debug_rendering, GPURendererKind renderer) {
     static char errbuf[2048];
     if (gpu_driver.driver) return NULL;
     void *handle = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
@@ -62,6 +62,7 @@ load_gpu_driver(const char *path, bool debug_rendering) {
         .log_error = driver_log_error,
         .debug_print = driver_debug_print,
         .fatal = driver_fatal,
+        .renderer = renderer,
         .x11_push_error_trap = driver_x11_push_error_trap,
         .x11_pop_error_trap = driver_x11_pop_error_trap,
     };
@@ -104,6 +105,7 @@ set_gpu_driver_candidates(const GPUDriverCandidate *items, size_t count, bool de
         GPUDriverCandidate *c = candidates.items + candidates.count++;
         c->name = strdup(items[i].name);
         c->path = strdup(items[i].path);
+        c->software = items[i].software;
         if (!c->name || !c->path) return false;
     }
     return true;
@@ -132,29 +134,35 @@ load_next_gpu_driver(const GPUNativeWindow *display) {
     }
     while (candidates.next < candidates.count) {
         const GPUDriverCandidate *c = candidates.items + candidates.next++;
-        const char *err = load_gpu_driver(c->path, candidates.debug_rendering);
+        const bool is_last = candidates.next >= candidates.count;
+        // Hardware candidates skip software renderers, so that a GPU usable
+        // by a later candidate is preferred to rendering on the CPU. The last
+        // candidate takes whatever is available rather than failing.
+        const GPURendererKind renderer = c->software ? GPU_RENDERER_SOFTWARE : (is_last ? GPU_RENDERER_ANY : GPU_RENDERER_HARDWARE);
+        const char *kind = c->software ? " (software)" : "";
+        const char *err = load_gpu_driver(c->path, candidates.debug_rendering, renderer);
         if (!err) {
             if (gpu_driver.api.connect(gpu_driver.driver, display)) {
-                if (candidates.debug_rendering) timed_debug_print("Using the %s GPU driver\n", c->name);
+                if (candidates.debug_rendering) timed_debug_print("Using the %s%s GPU driver\n", c->name, kind);
                 return NULL;
             }
             err = gpu_last_error();
         }
-        if (candidates.debug_rendering) timed_debug_print("The %s GPU driver is not usable: %s\n", c->name, err);
-        add_error("%sThe %s GPU driver is not usable: %s", pos ? "\n" : "", c->name, err);
+        if (candidates.debug_rendering) timed_debug_print("The %s%s GPU driver is not usable: %s\n", c->name, kind, err);
+        add_error("%sThe %s%s GPU driver is not usable: %s", pos ? "\n" : "", c->name, kind, err);
         if (gpu_driver.driver) unload_gpu_driver();
     }
 #undef add_error
     return errbuf;
 }
 
-void
+const char *
 initialize_gpu_driver(void) {
-    if (gpu_driver.initialized) return;
-    if (!gpu_driver.driver) fatal("Cannot initialize the GPU as no GPU driver has been loaded");
-    if (!gpu_driver.api.initialize(gpu_driver.driver))
-        fatal("Failed to initialize the GPU driver with error: %s", gpu_driver.api.last_error(gpu_driver.driver));
+    if (gpu_driver.initialized) return NULL;
+    if (!gpu_driver.driver) return "Cannot initialize the GPU as no GPU driver has been loaded";
+    if (!gpu_driver.api.initialize(gpu_driver.driver)) return gpu_driver.api.last_error(gpu_driver.driver);
     gpu_driver.initialized = true;
+    return NULL;
 }
 
 void

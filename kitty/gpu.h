@@ -24,12 +24,16 @@ typedef struct GPUDriver {
 extern GPUDriver gpu_driver;
 
 // Load the GPU driver shared library at path. Returns NULL on success or an error message.
-const char *load_gpu_driver(const char *path, bool debug_rendering);
+const char *load_gpu_driver(const char *path, bool debug_rendering, GPURendererKind renderer);
 
 // Choosing between GPU drivers {{{
 // The drivers to try, in order of preference, see the gpu_driver option
 typedef struct GPUDriverCandidate {
     const char *name, *path;
+    // Use only a software renderer with this driver. Candidates that are not
+    // software are restricted to hardware renderers, unless they are the
+    // last candidate.
+    bool software;
 } GPUDriverCandidate;
 
 // Remember the drivers to try. Copies the strings.
@@ -43,8 +47,9 @@ const char *load_next_gpu_driver(const GPUNativeWindow *display);
 bool has_untried_gpu_drivers(void);
 // }}}
 // Must be called once a surface has been created and made current, before any
-// other GPU functions, except the surface functions, are used
-void initialize_gpu_driver(void);
+// other GPU functions, except the surface functions, are used. Returns NULL on
+// success or an error message.
+const char *initialize_gpu_driver(void);
 void unload_gpu_driver(void);
 
 // Driver API wrappers {{{
