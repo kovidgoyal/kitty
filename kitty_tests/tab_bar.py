@@ -285,17 +285,34 @@ class TestTabBar(BaseTest):
 
     def test_vertical_tab_bar_tab_spacing(self) -> None:
         # a blank line is left between tabs while there is room for it, but not
-        # above the first tab, and the gaps are not part of any tab's extent so
-        # clicking one activates nothing
+        # above the first tab. The gaps are not part of any tab's drawn extent,
+        # but for clicks the gap after a tab belongs to that tab.
         tb = self.vertical_tab_bar(num_tabs=3)
         self.ae(self.screen_lines(tb)[:6], ['t0', '', 't1', '', 't2', ''])
         self.ae(tuple(te.y for te in tb.tab_extents), (CellRange(0, 0), CellRange(2, 2), CellRange(4, 4)))
         self.ae(tb.tab_id_at(5, 10), 1)
-        self.ae(tb.tab_id_at(5, 30), 0)
+        self.ae(tb.tab_id_at(5, 30), 1)
         self.ae(tb.tab_id_at(5, 50), 2)
+        self.ae(tb.tab_id_at(5, 90), 3)
+        self.ae(tb.tab_id_at(5, 110), 3)
+        self.ae(tb.tab_id_at(5, 130), 0)
 
         # the gap uses the tab bar background, not the neighbouring tab's
         self.ae(int(tb.screen.line(1).cursor_from(0).bg), 0)
+
+        # the gap above the new tab button belongs to the tab above it, while
+        # the line below the button is empty tab bar space
+        tb = self.vertical_tab_bar(num_tabs=2)
+        with patch('kitty.tab_bar.update_tab_bar_edge_colors', return_value=None), patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
+            tb.update(tuple(tb.last_laid_out_tabs) + (TabBarData(title='+'),))
+        self.ae(tuple(te.tab_id for te in tb.tab_extents)[:2], (1, 2))
+        self.ae(tb.tab_id_at(5, 70), 2)
+        self.assertLess(tb.tab_id_at(5, 90), 0)
+        self.ae(tb.tab_id_at(5, 110), 0)
+
+        # no gaps, no extra hit area
+        tb = self.vertical_tab_bar(num_tabs=8, height=160)
+        self.ae(tb.tab_id_at(5, 150), 8)
 
         # spacing applies between multi-line tabs too
         tb = self.vertical_tab_bar(num_tabs=2, tab_title_max_lines=2, tab_title_template='{title}\\nbr')

@@ -811,6 +811,8 @@ class TabBar:
         self.data_buffer_size = 0
         self.blank_rects: tuple[Border, ...] = ()
         self.tab_extents: Sequence[TabExtent] = ()
+        # Number of blank lines left after each tab in a vertical tab bar
+        self.vertical_tab_spacing = 0
         self.window_drop_insert_before: int | None = None
         self.tab_drop_insert_before: int | None = None
         self.laid_out_once = False
@@ -1164,6 +1166,7 @@ class TabBar:
         s = self.screen
         self.last_laid_out_tabs = data
         self.tab_extents = ()
+        self.vertical_tab_spacing = 0
         s.cursor.x = s.cursor.y = 0
         s.erase_in_display(2, False)
         if not data:
@@ -1255,6 +1258,7 @@ class TabBar:
             s.cursor.fg = as_rgb(0xFF0000)
             s.draw('…')
         self.tab_extents = tuple(cr)
+        self.vertical_tab_spacing = spacing
         self.draw_drop_insert_marker()
         return self._update_edge_defaults(True)
 
@@ -1310,6 +1314,12 @@ class TabBar:
             for te in self.tab_extents:
                 if te.contains(x, y):
                     return te.tab_id
+            if self.is_vertical and self.vertical_tab_spacing:
+                # The blank line after a tab belongs to it, so that clicking
+                # just below a tab's title still activates the tab.
+                for te in self.tab_extents:
+                    if te.tab_id > 0 and te.x.start <= x <= te.x.end and te.y.end < y <= te.y.end + self.vertical_tab_spacing:
+                        return te.tab_id
         return 0
 
     def drag_axis_coordinate(self, x: int, y: int) -> int:
