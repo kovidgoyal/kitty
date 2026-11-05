@@ -42,19 +42,17 @@ func ffmpeg_thumbnail_cmd(path, outpath string) *exec.Cmd {
 	)
 }
 
-func ffmpeg_thumbnail(path, tempath string, wg *sync.WaitGroup) (ans *images.ImageData, err error) {
-	defer wg.Done()
+func ffmpeg_thumbnail(path, tempath string) error {
 	cmd := ffmpeg_thumbnail_cmd(path, tempath)
 	cmd.Stdin = nil
 	cmd.SysProcAttr = &unix.SysProcAttr{Setsid: true}
 	var stderr bytes.Buffer
 	cmd.Stdout = nil
 	cmd.Stderr = &stderr
-	if err = cmd.Run(); err != nil {
-		return ans, fmt.Errorf("failed to use ffmpeg to render video from %s with error: %w and stderr: %s", path, err, stderr.String())
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to use ffmpeg to render video from %s with error: %w and stderr: %s", path, err, stderr.String())
 	}
-	ans, err = images.OpenImageFromPath(tempath)
-	return
+	return nil
 }
 
 type FFMpegFormat struct {
@@ -80,8 +78,7 @@ func ffmpeg_metadata_cmd(path string) *exec.Cmd {
 	)
 }
 
-func ffmpeg_metadata(path string, wg *sync.WaitGroup) (ans FFMpegMetadata, err error) {
-	defer wg.Done()
+func ffmpeg_metadata(path string) (ans FFMpegMetadata, err error) {
 	cmd := ffmpeg_metadata_cmd(path)
 	cmd.Stdin = nil
 	cmd.SysProcAttr = &unix.SysProcAttr{Setsid: true}
@@ -106,13 +103,21 @@ func (c ffmpeg_renderer) Render(path string) (m map[string][]byte, mi metadata, 
 	defer func() { _ = os.Remove(tempfile.Name()); tempfile.Close() }()
 	var metadata FFMpegMetadata
 	var metadata_error error
-	wg.Add(1)
-	go func() { metadata, metadata_error = ffmpeg_metadata(path, &wg) }()
-	wg.Add(1)
-	go func() { img, err = ffmpeg_thumbnail(path, tempfile.Name(), &wg) }()
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		metadata, metadata_error = ffmpeg_metadata(path)
+	}()
+	go func() {
+		defer wg.Done()
+		err = ffmpeg_thumbnail(path, tempfile.Name())
+	}()
 	wg.Wait()
 	if metadata_error != nil {
 		return nil, mi, nil, metadata_error
+	}
+	if err != nil {
+		return nil, mi, nil, err
 	}
 	var ip ImagePreviewRenderer
 	if m, mi, img, err = ip.Render(tempfile.Name()); err != nil {
