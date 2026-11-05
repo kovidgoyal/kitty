@@ -1,7 +1,7 @@
 {pkgs ? import <nixpkgs> {}}:
 with pkgs; let
   inherit (lib) optional optionals;
-  inherit (xorg) libX11 libXrandr libXinerama libXcursor libXi libXext;
+  inherit (xorg) libX11 libXrandr libXinerama libXcursor libXi libXext libXrender;
   harfbuzzWithCoreText = harfbuzz.override {withCoreText = stdenv.isDarwin;};
 in
   with python3Packages;
@@ -32,6 +32,10 @@ in
           libxkbcommon
           libXi
           libXext
+          libXrender
+          vulkan-headers
+          vulkan-loader
+          vulkan-validation-layers
           wayland-protocols
           wayland
           openssl
@@ -83,6 +87,10 @@ in
           export KITTY_STARTUP_NOTIFICATION_LIBRARY='${libstartup_notification}/lib/libstartup-notification-1.so'
           export KITTY_CANBERRA_LIBRARY='${libcanberra}/lib/libcanberra.so'
           export KITTY_FONTCONFIG_LIBRARY='${fontconfig.lib}/lib/libfontconfig.so'
+          # The Vulkan GPU driver dlopen()s libvulkan at runtime
+          export LD_LIBRARY_PATH="${lib.makeLibraryPath [vulkan-loader]}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          # Make the validation layer available, used with --debug-rendering
+          export VK_ADD_LAYER_PATH="${vulkan-validation-layers}/share/vulkan/explicit_layer.d''${VK_ADD_LAYER_PATH:+:$VK_ADD_LAYER_PATH}"
 
           # Add fonts by hand
           if [ ! -e ./fonts/SymbolsNerdFontMono-Regular.ttf ]; then
