@@ -234,6 +234,8 @@ Detailed list of changes
   OS Window when there are multiple kitty instances because of Cocoa
   limitations (:iss:`10805`)
 
+- IME: Move cursor position within pre-edit text (:iss:`10807`)
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
