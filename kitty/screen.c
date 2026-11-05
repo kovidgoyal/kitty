@@ -3201,6 +3201,28 @@ screen_invert_colors(Screen *self) {
     return self->paused_rendering.expires_at ? self->paused_rendering.inverted : (self->modes.mDECSCNM ? true : false);
 }
 
+// Fire the custom shader bell event, independently of the visual bell, but
+// only if the window is visible, i.e. in the active tab and not hidden by an
+// overlay or the layout, as otherwise the shader has nothing to draw over.
+static void
+fire_bell_shader_event(id_type window_id) {
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *osw = global_state.os_windows + o;
+        if (osw->active_tab >= osw->num_tabs) continue;
+        Tab *tab = osw->tabs + osw->active_tab;
+        for (size_t i = 0; i < tab->num_windows; i++) {
+            if (tab->windows[i].id == window_id) {
+                if (tab->windows[i].visible) {
+                    osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW);
+                    osw->last_bell_window_id = window_id;
+                    wakeup_main_loop();
+                }
+                return;
+            }
+        }
+    }
+}
+
 void
 screen_bell(Screen *self) {
     if (self->ignore_bells.start) {
@@ -3213,6 +3235,7 @@ screen_bell(Screen *self) {
     }
     request_window_attention(self->window_id, OPT(enable_audio_bell));
     if (OPT(visual_bell_duration) > 0.0f) self->start_visual_bell_at = monotonic();
+    if (self->window_id) fire_bell_shader_event(self->window_id);
     CALLBACK("on_bell", NULL);
 }
 

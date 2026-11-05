@@ -586,12 +586,17 @@ be combined with ``|`` — any one of them will trigger the action.
      - The active tab changes.
 
    * - ``bell-in-window``
-     - A bell (BEL character) is received in any kitty window.
+     - A bell (BEL character) is received in a visible kitty window. Bells
+       in windows in inactive tabs or hidden by overlays or the layout do not
+       trigger this event. This fires regardless of
+       :opt:`visual_bell_duration`, so a shader can be used as a replacement
+       for the builtin visual bell flash, by setting that option to zero.
        The geometry of the window in which the most recent bell occurred is
        available in ``d.bell_window_geometry`` (UV co-ordinates, origin
        bottom-left; ``.xy`` = lower-left corner, ``.zw`` = width and height).
-       If that window is not currently visible in the active tab or layout,
-       ``d.bell_window_geometry`` equals ``d.central_area``.
+       If that window is no longer visible, for example because it was closed
+       or the active tab changed, ``d.bell_window_geometry`` equals
+       ``d.central_area``.
 
    * - ``user-activity``
      - Any keyboard or mouse input is received.
