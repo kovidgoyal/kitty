@@ -226,7 +226,7 @@ func (c calibre_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 		w(fmt.Sprintf("Series: Book %g of %s", r.Metadata.Series_index, r.Metadata.Series), false)
 	}
 	if len(r.Metadata.Tags) > 0 {
-		w("Tags: "+strings.Join(r.Metadata.Authors, ", "), false)
+		w("Tags: "+strings.Join(r.Metadata.Tags, ", "), false)
 	}
 	return
 }
