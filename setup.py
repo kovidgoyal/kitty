@@ -555,6 +555,8 @@ def test_compile(
     ldflags: Iterable[str] = (),
     get_output_arch: bool = False,
 ) -> Union[bool, BinaryArch]:
+    if not cc:
+        raise SystemExit('test_compile() called with no C compiler, the build environment has not been initialized')
     src = src or 'int main(void) { return 0; }'
     with tempfile.TemporaryDirectory(prefix='kitty-test-compile-') as tdir:
         with open(os.path.join(tdir, f'source.{source_ext}'), 'w', encoding='utf-8') as srcf:
@@ -2675,6 +2677,8 @@ def do_build(args: Options) -> None:
             bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
             build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
         elif args.action == 'build-frozen-tools':
+            # The env is needed to detect which GPU drivers, and hence shader targets, to build
+            init_env_from_args(args, False)
             build_static_kittens(args, launcher_dir=args.prefix, for_freeze=True)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)

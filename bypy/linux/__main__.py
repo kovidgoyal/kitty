@@ -127,17 +127,29 @@ def copy_libs(env) -> None:
     shutil.copy2(os.path.join(BIN, 'slangc'), env.bin_dir)
 
 
+GPU_DRIVERS = {'opengl': 'glsl-', 'vulkan': 'spirv-'}  # driver name -> shader target prefix
+
+
 def check_gpu_drivers(env) -> None:
-    # Both GPU drivers must be part of the build, along with the built-in
-    # shaders compiled for their shader targets, otherwise kitty silently
+    # Both GPU drivers must be part of the build, otherwise kitty silently
     # falls back to whichever driver is present
     print('Checking GPU drivers...')
     ext_dir = os.path.join(env.lib_dir, 'kitty-extensions')
-    shaders_dir = os.path.join(env.lib_dir, 'kitty', 'shaders')
-    for driver, target_prefix in (('opengl', 'glsl-'), ('vulkan', 'spirv-')):
+    for driver in GPU_DRIVERS:
         path = os.path.join(ext_dir, f'kitty.{driver}.so')
         if not os.path.isfile(path):
             raise SystemExit(f'The {driver} GPU driver was not built, {path} does not exist')
+
+
+def check_builtin_shaders(env) -> None:
+    # The built-in shaders must be compiled for the shader targets of both GPU
+    # drivers. They are compiled by build_frozen_tools() so this must be called
+    # after it.
+    print('Checking built-in shaders...')
+    shaders_dir = os.path.join(env.lib_dir, 'kitty', 'shaders')
+    if not os.path.isdir(shaders_dir):
+        raise SystemExit(f'The built-in shaders were not compiled, {shaders_dir} does not exist')
+    for driver, target_prefix in GPU_DRIVERS.items():
         targets = [x for x in os.listdir(shaders_dir) if x.startswith(target_prefix) and os.path.isfile(os.path.join(shaders_dir, x, 'cell.json'))]
         if not targets:
             raise SystemExit(f'The built-in shaders were not compiled for the {driver} GPU driver in {shaders_dir}')
@@ -281,6 +293,7 @@ def main() -> None:
     add_ca_certs(env)
     kitty_exe = os.path.join(env.base, 'bin', 'kitty')
     iv['build_frozen_tools'](kitty_exe)
+    check_builtin_shaders(env)
     if not args.dont_strip:
         strip_binaries(files)
     if not args.skip_tests:
