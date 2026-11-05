@@ -73,13 +73,23 @@ outputHandleMode(void *data, struct wl_output *output UNUSED, uint32_t flags, in
     if (flags & WL_OUTPUT_MODE_CURRENT) monitor->wl.currentMode = monitor->modeCount - 1;
 }
 
+static bool
+removePendingMonitor(_GLFWmonitor *monitor) {
+    for (int i = 0; i < _glfw.wl.pending_monitors.count; i++) {
+        if (_glfw.wl.pending_monitors.array[i] == monitor) {
+            remove_i_from_array(_glfw.wl.pending_monitors.array, i, _glfw.wl.pending_monitors.count);
+            return true;
+        }
+    }
+    return false;
+}
+
 static void
 outputHandleDone(void *data, struct wl_output *output UNUSED) {
     struct _GLFWmonitor *monitor = data;
-    for (int i = 0; i < _glfw.monitorCount; i++) {
-        if (_glfw.monitors[i] == monitor) return;
-    }
-    _glfwInputMonitor(monitor, GLFW_CONNECTED, _GLFW_INSERT_LAST);
+    // Only monitors still pending need to be announced, done is re-sent
+    // whenever output properties change.
+    if (removePendingMonitor(monitor)) _glfwInputMonitor(monitor, GLFW_CONNECTED, _GLFW_INSERT_LAST);
 }
 
 static void
@@ -217,8 +227,67 @@ _glfwAddOutputWayland(uint32_t name, uint32_t version) {
     monitor->wl.output = output;
     monitor->wl.name = name;
 
+    _GLFWmonitor **pending = realloc(_glfw.wl.pending_monitors.array, sizeof(pending[0]) * ((size_t)_glfw.wl.pending_monitors.count + 1));
+    if (!pending) {
+        _glfwInputError(GLFW_OUT_OF_MEMORY, "Wayland: Out of memory while adding output");
+        _glfwFreeMonitor(monitor);
+        return;
+    }
+    _glfw.wl.pending_monitors.array = pending;
+    _glfw.wl.pending_monitors.array[_glfw.wl.pending_monitors.count++] = monitor;
+
     wl_output_add_listener(output, &outputListener, monitor);
     _glfwCreateXdgOutputWayland(monitor);
+}
+
+// Handle removal of the wl_output global with the specified registry name.
+// Returns true if an output was found and removed.
+bool
+_glfwRemoveOutputWayland(uint32_t name) {
+    // The global may be removed before wl_output.done is received, for
+    // example when an output is unplugged right after being plugged in. Such
+    // monitors were never announced, so just free them, otherwise they would
+    // be announced on a later done event despite being dead.
+    for (int i = 0; i < _glfw.wl.pending_monitors.count; i++) {
+        _GLFWmonitor *monitor = _glfw.wl.pending_monitors.array[i];
+        if (monitor->wl.name == name) {
+            remove_i_from_array(_glfw.wl.pending_monitors.array, i, _glfw.wl.pending_monitors.count);
+            _glfwFreeMonitor(monitor);
+            return true;
+        }
+    }
+    for (int i = 0; i < _glfw.monitorCount; ++i) {
+        _GLFWmonitor *monitor = _glfw.monitors[i];
+        if (monitor->wl.name == name) {
+            for (_GLFWwindow *window = _glfw.windowListHead; window; window = window->next) {
+                bool was_on_monitor = false;
+                for (int m = window->wl.monitorsCount - 1; m >= 0; m--) {
+                    if (window->wl.monitors[m] == monitor) {
+                        remove_i_from_array(window->wl.monitors, m, window->wl.monitorsCount);
+                        was_on_monitor = true;
+                    }
+                }
+                if (was_on_monitor) _glfwWaylandSurfaceOutputsChanged(window);
+            }
+            _glfwInputMonitor(monitor, GLFW_DISCONNECTED, 0);
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+_glfwFreePendingOutputsWayland(void) {
+    for (int i = 0; i < _glfw.wl.pending_monitors.count; i++) _glfwFreeMonitor(_glfw.wl.pending_monitors.array[i]);
+    free(_glfw.wl.pending_monitors.array);
+    _glfw.wl.pending_monitors.array = NULL;
+    _glfw.wl.pending_monitors.count = 0;
+}
+
+void
+_glfwCreateXdgOutputsWayland(void) {
+    for (int i = 0; i < _glfw.monitorCount; i++) _glfwCreateXdgOutputWayland(_glfw.monitors[i]);
+    for (int i = 0; i < _glfw.wl.pending_monitors.count; i++) _glfwCreateXdgOutputWayland(_glfw.wl.pending_monitors.array[i]);
 }
 
 
@@ -293,6 +362,53 @@ glfwGetWaylandMonitor(GLFWmonitor *handle) {
     return monitor->wl.output;
 }
 
+static _GLFWmonitor *
+monitorForRegistryName(uint32_t name) {
+    for (int i = 0; i < _glfw.monitorCount; i++) {
+        if (_glfw.monitors[i]->wl.name == name) return _glfw.monitors[i];
+    }
+    return NULL;
+}
+
+static bool
+needsXdgGeometry(const _GLFWmonitor *m) {
+    return m->wl.xdg_output && !m->wl.xdg_geometry_wait_abandoned && !(m->wl.xdg_size_received && m->wl.xdg_position_received);
+}
+
+// The compositor sends xdg_output logical geometry in response to
+// get_xdg_output, so it is guaranteed to have arrived after a roundtrip,
+// unless the compositor never sends it at all, for instance for an
+// xdg_output created on an output that has just been removed. Use a few
+// extra roundtrips for robustness, but never wait indefinitely.
+#define MAX_XDG_GEOMETRY_ROUNDTRIPS 4
+
+// Wait for xdg_output geometry for all monitors, or just the monitor with the
+// specified registry name if only_name is non-zero. Monitors can be freed by
+// events dispatched during a roundtrip, so they are looked up afresh after
+// every roundtrip rather than holding pointers across them.
+static void
+waitForXdgGeometry(uint32_t only_name) {
+    for (int roundtrips = 0;; roundtrips++) {
+        bool waiting = false;
+        for (int i = 0; i < _glfw.monitorCount && !waiting; i++) {
+            _GLFWmonitor *m = _glfw.monitors[i];
+            if ((!only_name || m->wl.name == only_name) && needsXdgGeometry(m)) waiting = true;
+        }
+        if (!waiting) return;
+        if (roundtrips >= MAX_XDG_GEOMETRY_ROUNDTRIPS || wl_display_roundtrip(_glfw.wl.display) < 0) break;
+    }
+    for (int i = 0; i < _glfw.monitorCount; i++) {
+        _GLFWmonitor *m = _glfw.monitors[i];
+        if ((!only_name || m->wl.name == only_name) && needsXdgGeometry(m)) {
+            m->wl.xdg_geometry_wait_abandoned = true;
+            _glfwInputError(
+                GLFW_PLATFORM_ERROR,
+                "Wayland: compositor did not send xdg_output logical geometry for output %s, ignoring it",
+                m->name ? m->name : "(unnamed)");
+        }
+    }
+}
+
 GLFWAPI double
 glfwGetWaylandCurrentMonitorFractionalScale(void) {
     _GLFW_REQUIRE_INIT_OR_RETURN(1.0);
@@ -318,12 +434,7 @@ glfwGetWaylandCurrentMonitorFractionalScale(void) {
         // it does, so wait for every monitor's logical geometry before trusting
         // the reported positions (otherwise an as-yet-unpositioned output would
         // spuriously match (0, 0)).
-        for (int i = 0; i < _glfw.monitorCount; i++) {
-            _GLFWmonitor *m = _glfw.monitors[i];
-            while (m->wl.xdg_output && !(m->wl.xdg_size_received && m->wl.xdg_position_received)) {
-                if (wl_display_roundtrip(_glfw.wl.display) < 0) break;
-            }
-        }
+        waitForXdgGeometry(0);
         for (int i = 0; i < _glfw.monitorCount; i++) {
             _GLFWmonitor *m = _glfw.monitors[i];
             if (m->wl.xdg_output && m->wl.xdg_size_received && m->wl.xdg_position_received && m->wl.x == 0 && m->wl.y == 0) {
@@ -331,15 +442,22 @@ glfwGetWaylandCurrentMonitorFractionalScale(void) {
                 break;
             }
         }
-        if (!monitor) monitor = _glfw.monitors[0];
+        if (!monitor) {
+            // Monitors may have been removed during the roundtrips
+            if (_glfw.monitorCount == 0) return 1.0;
+            monitor = _glfw.monitors[0];
+        }
     }
 
     if (!monitor->wl.xdg_output) return monitor->wl.scale > 0 ? (double)monitor->wl.scale : 1.0;
 
-    // Block until the compositor has delivered xdg_output logical size and position.
-    while (!(monitor->wl.xdg_size_received && monitor->wl.xdg_position_received)) {
-        if (wl_display_roundtrip(_glfw.wl.display) < 0) break;
-    }
+    // Wait for the compositor to deliver xdg_output logical size and position.
+    // The monitor may be removed while waiting, so look it up again afterwards.
+    const uint32_t name = monitor->wl.name;
+    const int fallback_scale = monitor->wl.scale > 0 ? monitor->wl.scale : 1;
+    waitForXdgGeometry(name);
+    monitor = monitorForRegistryName(name);
+    if (!monitor) return (double)fallback_scale;
 
     if (monitor->wl.fractional_scale <= 0.0) computeXdgFractionalScale(monitor);
 

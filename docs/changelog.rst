@@ -236,6 +236,10 @@ Detailed list of changes
 
 - IME: Move cursor position within pre-edit text (:iss:`10807`)
 
+- Wayland: Fix kitty hanging when creating a new OS window if an output was
+  plugged and unplugged quickly and the compositor never sent its logical
+  geometry
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

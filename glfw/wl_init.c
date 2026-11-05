@@ -861,7 +861,7 @@ registryHandleGlobal(void *data UNUSED, struct wl_registry *registry, uint32_t n
         _glfw.wl.xdg_toplevel_drag_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_drag_manager_v1_interface, 1);
     } else if (is(zxdg_output_manager_v1)) {
         _glfw.wl.xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, MIN(version, 3u));
-        for (int i = 0; i < _glfw.monitorCount; i++) _glfwCreateXdgOutputWayland(_glfw.monitors[i]);
+        _glfwCreateXdgOutputsWayland();
     } else if (is(zwlr_virtual_pointer_manager_v1)) {
         _glfw.wl.virtual_pointer_manager = wl_registry_bind(registry, name, &zwlr_virtual_pointer_manager_v1_interface, 1);
     } else if (is(zwp_virtual_keyboard_manager_v1)) {
@@ -872,25 +872,7 @@ registryHandleGlobal(void *data UNUSED, struct wl_registry *registry, uint32_t n
 
 static void
 registryHandleGlobalRemove(void *data UNUSED, struct wl_registry *registry UNUSED, uint32_t name) {
-    _GLFWmonitor *monitor;
-
-    for (int i = 0; i < _glfw.monitorCount; ++i) {
-        monitor = _glfw.monitors[i];
-        if (monitor->wl.name == name) {
-            for (_GLFWwindow *window = _glfw.windowListHead; window; window = window->next) {
-                bool was_on_monitor = false;
-                for (int m = window->wl.monitorsCount - 1; m >= 0; m--) {
-                    if (window->wl.monitors[m] == monitor) {
-                        remove_i_from_array(window->wl.monitors, m, window->wl.monitorsCount);
-                        was_on_monitor = true;
-                    }
-                }
-                if (was_on_monitor) _glfwWaylandSurfaceOutputsChanged(window);
-            }
-            _glfwInputMonitor(monitor, GLFW_DISCONNECTED, 0);
-            return;
-        }
-    }
+    _glfwRemoveOutputWayland(name);
 }
 
 
@@ -1100,6 +1082,7 @@ _glfwPlatformTerminate(void) {
         }
         free(_glfw.wl.activation_requests.array);
     }
+    _glfwFreePendingOutputsWayland();
     glfw_xkb_release(&_glfw.wl.xkb);
     glfw_dbus_terminate(&_glfw.wl.dbus);
 
