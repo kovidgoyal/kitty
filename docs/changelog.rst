@@ -416,6 +416,11 @@ Detailed list of changes
 - Fix render jitter when scrolled back with a partial line and the client is
   using the synchronised rendering escape code (:iss:`10794`)
 
+- IME: Show the cursor at the position reported by the input method inside the
+  pre-edit text, instead of always at its end, so that one can see which
+  character is being edited, and size the cursor correctly over wide pre-edit
+  characters (:iss:`10807`)
+
 - Fix bold or italic Nerd Font icons sometimes being rendered using glyphs
   from an unrelated font, the cursor trail not always being shown when focus
   moves to a different window, :opt:`watcher` entries not being removed on

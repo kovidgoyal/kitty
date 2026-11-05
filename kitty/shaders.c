@@ -1226,7 +1226,7 @@ cell_update_uniform_block(
     }
     rd->use_cell_for_selection_bg = IS_SPECIAL_COLOR(highlight_bg) ? 1. : 0.;
     // Cursor position
-    Line *line_for_cursor = NULL;
+    Line *line_for_cursor = NULL, overlay_line_for_cursor;
     rd->cursor_opacity = MAX(0, MIN(cursor->cursor_opacity, 1));
     rd->blink_opacity = MAX(0, MIN(cursor->text_blink_opacity, 1));
     // The extra cursors inherit the colors of the main cursor and, optionally,
@@ -1251,6 +1251,15 @@ cell_update_uniform_block(
             } else {
                 linebuf_init_line(screen->linebuf, cursor->y);
                 line_for_cursor = screen->linebuf->line;
+                if (screen_is_overlay_active(screen) && cursor->y == screen->overlay_line.ynum) {
+                    // The linebuf holds the original line, the pre-edit text is
+                    // drawn over it only in the overlay cells, so use those to size
+                    // and color the cursor, for example when it is over a wide character.
+                    overlay_line_for_cursor = *line_for_cursor;
+                    overlay_line_for_cursor.cpu_cells = screen->overlay_line.cpu_cells;
+                    overlay_line_for_cursor.gpu_cells = screen->overlay_line.gpu_cells;
+                    line_for_cursor = &overlay_line_for_cursor;
+                }
             }
         }
         if (line_for_cursor) {

@@ -205,15 +205,29 @@ handle_ibus_forward_key_event(DBusMessage *msg) {
     glfw_xkb_forwarded_key_from_ime(keysym, mods);
 }
 
+static bool
+get_ibus_preedit_cursor_from_message(DBusMessage *msg, uint32_t *cursor_pos) {
+    // UpdatePreeditText has the signature (v text, u cursor_pos, b visible),
+    // where cursor_pos is in unicode code points
+    DBusMessageIter iter;
+    if (!dbus_message_iter_init(msg, &iter) || !dbus_message_iter_next(&iter)) return false;
+    if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32) return false;
+    dbus_message_iter_get_basic(&iter, cursor_pos);
+    return true;
+}
+
 static void
-send_text(const char *text, GLFWIMEState ime_state) {
+send_text_with_cursor(const char *text, GLFWIMEState ime_state, bool has_ime_cursor, uint32_t ime_cursor) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
-        GLFWkeyevent fake_ev = {.action = GLFW_PRESS};
-        fake_ev.text = text;
-        fake_ev.ime_state = ime_state;
+        GLFWkeyevent fake_ev = {.action = GLFW_PRESS, .text = text, .ime_state = ime_state, .has_ime_cursor = has_ime_cursor, .ime_cursor = ime_cursor};
         w->callbacks.keyboard((GLFWwindow *)w, &fake_ev);
     }
+}
+
+static void
+send_text(const char *text, GLFWIMEState ime_state) {
+    send_text_with_cursor(text, ime_state, false, 0);
 }
 
 // Connection handling {{{
@@ -232,11 +246,13 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
             debug("IBUS: CommitText: '%s'\n", text ? text : "(nil)");
             send_text(text, GLFW_IME_COMMIT_TEXT);
             break;
-        case 1:
+        case 1: {
+            uint32_t cursor_pos = 0;
             text = get_ibus_text_from_message(msg);
-            debug("IBUS: UpdatePreeditText: '%s'\n", text ? text : "(nil)");
-            send_text(text, GLFW_IME_PREEDIT_CHANGED);
-            break;
+            const bool has_cursor = get_ibus_preedit_cursor_from_message(msg, &cursor_pos);
+            debug("IBUS: UpdatePreeditText: '%s' cursor: %ld\n", text ? text : "(nil)", has_cursor ? (long)cursor_pos : -1L);
+            send_text_with_cursor(text, GLFW_IME_PREEDIT_CHANGED, has_cursor, cursor_pos);
+        } break;
         case 2:
             debug("IBUS: HidePreeditText\n");
             send_text("", GLFW_IME_PREEDIT_CHANGED);

@@ -16,6 +16,8 @@ static struct zwp_text_input_v3 *text_input;
 static struct zwp_text_input_manager_v3 *text_input_manager;
 static char *pending_pre_edit = NULL;
 static char *current_pre_edit = NULL;
+// Byte offsets of the cursor in the pre-edit text, negative when there is no cursor
+static int32_t pending_pre_edit_cursor = -1, current_pre_edit_cursor = -1;
 static char *pending_commit = NULL;
 static bool ime_focused = false;
 static int last_cursor_left = 0, last_cursor_top = 0, last_cursor_width = 0, last_cursor_height = 0;
@@ -54,14 +56,25 @@ text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *txt_input, struct 
 }
 
 static void
-send_text(const char *text, GLFWIMEState ime_state) {
+send_text_with_cursor(const char *text, GLFWIMEState ime_state, int32_t cursor_byte_offset) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
-        GLFWkeyevent fake_ev = {.action = text ? GLFW_PRESS : GLFW_RELEASE};
-        fake_ev.text = text;
-        fake_ev.ime_state = ime_state;
+        GLFWkeyevent fake_ev = {.action = text ? GLFW_PRESS : GLFW_RELEASE, .text = text, .ime_state = ime_state};
+        if (text && cursor_byte_offset >= 0) {
+            // Convert the byte offset into an offset in unicode code points by
+            // counting the bytes that are not UTF-8 continuation bytes
+            fake_ev.has_ime_cursor = true;
+            for (int32_t i = 0; i < cursor_byte_offset && text[i]; i++) {
+                if ((text[i] & 0xc0) != 0x80) fake_ev.ime_cursor++;
+            }
+        }
         w->callbacks.keyboard((GLFWwindow *)w, &fake_ev);
     }
+}
+
+static void
+send_text(const char *text, GLFWIMEState ime_state) {
+    send_text_with_cursor(text, ime_state, -1);
 }
 
 static void
@@ -69,6 +82,9 @@ text_input_preedit_string(void *data UNUSED, struct zwp_text_input_v3 *txt_input
     debug("text-input: preedit_string event: text: %s cursor_begin: %d cursor_end: %d\n", text, cursor_begin, cursor_end);
     free(pending_pre_edit);
     pending_pre_edit = text ? _glfw_strdup(text) : NULL;
+    // cursor_begin == cursor_end is a cursor, otherwise a selection, place the cursor at its start.
+    // Both being -1 means the cursor should be hidden, which we treat as no cursor information.
+    pending_pre_edit_cursor = pending_pre_edit ? cursor_begin : -1;
 }
 
 static void
@@ -91,15 +107,19 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
     // for handling of bad events. As best as I can tell spec says we perform all client side actions as usual
     // but send nothing back to the compositor, aka no cursor position update.
     // See https://github.com/kovidgoyal/kitty/pull/7283 for discussion
-    if ((pending_pre_edit == NULL && current_pre_edit == NULL) || (pending_pre_edit && current_pre_edit && strcmp(pending_pre_edit, current_pre_edit) == 0)) {
+    // The cursor is compared as well as the text, as moving the cursor inside the
+    // pre-edit text, as is done with Chewing, does not change the text.
+    if ((pending_pre_edit == NULL && current_pre_edit == NULL) ||
+        (pending_pre_edit && current_pre_edit && strcmp(pending_pre_edit, current_pre_edit) == 0 && pending_pre_edit_cursor == current_pre_edit_cursor)) {
         free(pending_pre_edit);
         pending_pre_edit = NULL;
     } else {
         free(current_pre_edit);
         current_pre_edit = pending_pre_edit;
+        current_pre_edit_cursor = pending_pre_edit_cursor;
         pending_pre_edit = NULL;
         if (current_pre_edit) {
-            send_text(current_pre_edit, bad_event ? GLFW_IME_WAYLAND_DONE_EVENT : GLFW_IME_PREEDIT_CHANGED);
+            send_text_with_cursor(current_pre_edit, bad_event ? GLFW_IME_WAYLAND_DONE_EVENT : GLFW_IME_PREEDIT_CHANGED, current_pre_edit_cursor);
         } else {
             // Clear pre-edit text
             send_text(NULL, GLFW_IME_WAYLAND_DONE_EVENT);

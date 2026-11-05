@@ -90,6 +90,7 @@ init_overlay_line(Screen *self, index_type columns, bool keep_active) {
     if (!keep_active) {
         self->overlay_line.is_active = false;
         self->overlay_line.xnum = 0;
+        self->overlay_line.preedit_cursor = -1;
     }
     self->overlay_line.is_dirty = true;
     self->overlay_line.ynum = 0;
@@ -5033,10 +5034,34 @@ deactivate_overlay_line(Screen *self) {
     self->overlay_line.ynum = 0;
     self->overlay_line.xstart = 0;
     self->overlay_line.cursor_x = 0;
+    self->overlay_line.preedit_cursor = -1;
+}
+
+static index_type
+overlay_line_cursor_x(const Screen *self) {
+    // The column at which the cursor is shown while the pre-edit text is
+    // active: at the IME cursor if known, otherwise after the pre-edit text.
+    // This is computed without drawing the pre-edit text as the cursor
+    // position is collected for rendering before the overlay is drawn.
+    const OverlayLine *ol = &self->overlay_line;
+    const index_type columns_exceeded = ol->text_len <= self->columns ? 0 : ol->text_len - self->columns;
+    const index_type start = screen_overlay_line_start(self);
+    index_type width_before_cursor = ol->text_len;
+    if (ol->overlay_text && ol->preedit_cursor >= 0 && ol->preedit_cursor < PyUnicode_GET_LENGTH(ol->overlay_text)) {
+        RAII_PyObject(prefix, PyUnicode_Substring(ol->overlay_text, 0, ol->preedit_cursor));
+        RAII_PyObject(width, prefix ? wcswidth_std(NULL, prefix) : NULL);
+        if (width) {
+            const long w = PyLong_AsLong(width);
+            if (w >= 0) width_before_cursor = MIN((index_type)w, ol->text_len);
+        }
+        if (PyErr_Occurred()) PyErr_Print();
+    }
+    if (width_before_cursor < columns_exceeded) return 0;
+    return MIN(start + width_before_cursor - columns_exceeded, self->columns);
 }
 
 void
-screen_update_overlay_text(Screen *self, const char *utf8_text) {
+screen_update_overlay_text(Screen *self, const char *utf8_text, int preedit_cursor) {
     if (screen_is_overlay_active(self)) deactivate_overlay_line(self);
     if (!utf8_text || !utf8_text[0]) return;
     PyObject *text = PyUnicode_FromString(utf8_text);
@@ -5050,7 +5075,8 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
     self->overlay_line.xstart = self->cursor->x;
     self->overlay_line.xnum = !text_len ? 0 : PyLong_AsLong(text_len);
     self->overlay_line.text_len = self->overlay_line.xnum;
-    self->overlay_line.cursor_x = MIN(self->overlay_line.xstart + self->overlay_line.xnum, self->columns);
+    self->overlay_line.preedit_cursor = preedit_cursor;
+    self->overlay_line.cursor_x = overlay_line_cursor_x(self);
     self->overlay_line.ynum = self->cursor->y;
     cursor_copy_to(self->cursor, &(self->overlay_line.original_line.cursor));
     linebuf_mark_line_dirty(self->linebuf, self->overlay_line.ynum);
@@ -5159,7 +5185,7 @@ screen_draw_overlay_line(Screen *self) {
         }
         self->overlay_line.xnum += len;
     }
-    self->overlay_line.cursor_x = self->cursor->x;
+    self->overlay_line.cursor_x = overlay_line_cursor_x(self);
     self->cursor->sgr.italic = orig_italic;
     self->cursor->sgr.decoration = orig_decoration;
     self->cursor->sgr.decoration_fg = orig_decoration_fg;
@@ -5176,7 +5202,7 @@ update_overlay_position(Screen *self) {
         if (self->cursor->x != self->overlay_line.xstart) {
             cursor_update = true;
             self->overlay_line.xstart = self->cursor->x;
-            self->overlay_line.cursor_x = MIN(self->overlay_line.xstart + self->overlay_line.xnum, self->columns);
+            self->overlay_line.cursor_x = overlay_line_cursor_x(self);
         }
         if (self->cursor->y != self->overlay_line.ynum) {
             cursor_update = true;
@@ -7131,20 +7157,39 @@ static PyObject *
 test_draw_overlay_line(Screen *self, PyObject *args) {
     PyObject *text;
     unsigned int xstart, ynum;
-    if (!PyArg_ParseTuple(args, "UII", &text, &xstart, &ynum)) return NULL;
+    int preedit_cursor = -1;
+    if (!PyArg_ParseTuple(args, "UII|i", &text, &xstart, &ynum, &preedit_cursor)) return NULL;
     if (ynum >= self->lines || xstart >= self->columns) {
         PyErr_SetString(PyExc_IndexError, "ynum or xstart out of range");
+        return NULL;
+    }
+    RAII_PyObject(text_width, wcswidth_std(NULL, text));
+    if (!text_width) return NULL;
+    const long width = PyLong_AsLong(text_width);
+    if (width < 0) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "pre-edit text has negative width");
         return NULL;
     }
     Py_INCREF(text);
     Py_XDECREF(self->overlay_line.overlay_text);
     self->overlay_line.overlay_text = text;
-    self->overlay_line.text_len = (index_type)PyUnicode_GET_LENGTH(text);
+    self->overlay_line.text_len = (index_type)width;
     self->overlay_line.xstart = xstart;
     self->overlay_line.ynum = ynum;
+    self->overlay_line.preedit_cursor = preedit_cursor;
     self->overlay_line.is_active = true;
     screen_draw_overlay_line(self);
-    Py_RETURN_NONE;
+    return PyLong_FromUnsignedLong(self->overlay_line.cursor_x);
+}
+
+static PyObject *
+test_update_overlay_text(Screen *self, PyObject *args) {
+    const char *text;
+    int preedit_cursor = -1;
+    if (!PyArg_ParseTuple(args, "s|i", &text, &preedit_cursor)) return NULL;
+    screen_update_overlay_text(self, text, preedit_cursor);
+    // Nothing is drawn here, the cursor position must be correct without drawing
+    return PyLong_FromUnsignedLong(self->overlay_line.cursor_x);
 }
 
 static PyObject *
@@ -7299,6 +7344,7 @@ static PyMethodDef methods[] = {
     METHODB(test_commit_write_buffer, METH_VARARGS),
     METHODB(test_parse_written_data, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
+    METHODB(test_update_overlay_text, METH_VARARGS),
     METHODB(restore_scrollback, METH_O),
     METHODB(cursor_prompt_line, METH_NOARGS),
     MND(overlay_line_start, METH_NOARGS) MND(line_edge_colors, METH_NOARGS) MND(ime_text_around_cursor, METH_NOARGS) MND(line, METH_O)

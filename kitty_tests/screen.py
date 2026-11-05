@@ -2998,6 +2998,37 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.decoration, before.decoration)
         self.ae(s.cursor.decoration_fg, before.decoration_fg)
 
+    def test_ime_preedit_cursor(self):
+        # The cursor is placed where the IME says it is inside the pre-edit
+        # text (in code points), so that one can see which character is being
+        # edited when moving inside the pre-edit text, as with Chewing. See :iss:`10807`
+        s = self.create_screen(cols=20, lines=3)
+        self.ae(s.test_draw_overlay_line('新酷音', 2, 0), 8)  # no cursor information: after the text
+        self.ae(s.test_draw_overlay_line('新酷音', 2, 0, 0), 2)
+        self.ae(s.test_draw_overlay_line('新酷音', 2, 0, 1), 4)
+        self.ae(s.test_draw_overlay_line('新酷音', 2, 0, 2), 6)
+        self.ae(s.test_draw_overlay_line('新酷音', 2, 0, 3), 8)
+        self.ae(s.test_draw_overlay_line('a新b', 0, 1, 2), 3)
+        self.ae(s.test_draw_overlay_line('ab', 0, 1, 99), 2)  # out of range: after the text
+
+        # The cursor position must be correct as soon as the pre-edit text is
+        # updated, as it is collected for rendering before the overlay is drawn
+        s = self.create_screen(cols=20, lines=3)
+        s.draw('ab')
+        self.ae(s.test_update_overlay_text('官大為'), 8)
+        for cursor, x in ((0, 2), (1, 4), (2, 6), (3, 8), (1, 4)):
+            self.ae(s.test_update_overlay_text('官大為', cursor), x)
+        self.ae(s.test_update_overlay_text('官大ㄨㄟ', 2), 6)
+        # pre-edit text that does not fit after the cursor is shifted left
+        s.cursor.x = 16
+        self.ae(s.test_update_overlay_text('官大為', 1), 16)
+        # pre-edit text wider than the screen is right aligned and clipped on the left
+        s = self.create_screen(cols=6, lines=3)
+        self.ae(s.test_update_overlay_text('官大為好和', 4), 4)
+        self.ae(s.test_update_overlay_text('官大為好和', 2), 0)
+        self.ae(s.test_update_overlay_text('官大為好和', 0), 0)
+        self.ae(s.test_update_overlay_text('官大為好和'), 6)
+
     def test_ime_overlay_line_start(self):
         # The IME is anchored at the start of the pre-edit text as drawn,
         # which is shifted left when it would otherwise not fit on the line

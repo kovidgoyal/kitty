@@ -288,18 +288,20 @@ on_key_input(const GLFWkeyevent *ev) {
     Screen *screen = w->render_data.screen;
     id_type active_window_id = w->id;
 
+    // Position of the cursor inside the pre-edit text in code points, negative if unknown
+    const int preedit_cursor = ev->has_ime_cursor && ev->ime_cursor <= INT_MAX ? (int)ev->ime_cursor : -1;
     switch (ev->ime_state) {
         case GLFW_IME_WAYLAND_DONE_EVENT:
             // If we update IME position here it sends GNOME's text input system into
             // an infinite loop. See https://github.com/kovidgoyal/kitty/issues/5105
             // and also: https://github.com/kovidgoyal/kitty/pull/7283
-            screen_update_overlay_text(screen, text);
+            screen_update_overlay_text(screen, text, preedit_cursor);
             debug("handled wayland IME done event\n");
             return;
         case GLFW_IME_PREEDIT_CHANGED:
             // Empty pre-edit events are also sent without an IME, for example on focus loss
             if (*text) global_state.ime_used = true;
-            screen_update_overlay_text(screen, text);
+            screen_update_overlay_text(screen, text, preedit_cursor);
             update_ime_position(w, screen);
             debug("updated pre-edit text: '%s'\n", text);
             return;
@@ -308,7 +310,7 @@ on_key_input(const GLFWkeyevent *ev) {
                 schedule_write_to_child(w->id, 1, text, strlen(text));
                 debug("committed pre-edit text: %s sent to child as text.\n", text);
             } else debug("committed pre-edit text: (null)\n");
-            screen_update_overlay_text(screen, NULL);
+            screen_update_overlay_text(screen, NULL, -1);
             return;
         case GLFW_IME_NONE:
             // for macOS, update ime position on every key input
