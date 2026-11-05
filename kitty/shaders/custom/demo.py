@@ -143,6 +143,13 @@ def tab_change(window_id: str, geometry: tuple[int, int, int, int]) -> None:
     remote_control('focus-tab', '-m', 'id:1')
 
 
+def screen_shake(window_id: str, geometry: tuple[int, int, int, int]) -> None:
+    # Ring the bell in different windows to show that only that window shakes
+    for wid in (1, 2, 3, 1):
+        time.sleep(0.6)
+        remote_control('send-text', '-m', f'id:{wid}', "printf '\\\\a'\r")
+
+
 metadata: dict[str, dict[str, Any]] = {
     # Background
     'inside-the-matrix': {'category': 'background', 'tagline': 'See the bones of reality.'},
@@ -182,6 +189,19 @@ metadata: dict[str, dict[str, Any]] = {
         'animate': window_focus,
         'category': 'navigation',
         'tagline': 'Briefly highlight the active window on focus change.',
+        'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
+    },
+    # Bell
+    'screen-shake': {
+        'animate': screen_shake,
+        'category': 'bell',
+        'tagline': 'Shake the window that rang the bell, for example, when a command fails.',
+        'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
+    },
+    'screen-shake-random': {
+        'animate': screen_shake,
+        'category': 'bell',
+        'tagline': 'Shake the window that rang the bell in random directions.',
         'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
     },
     # Retro terminals

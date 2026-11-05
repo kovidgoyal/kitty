@@ -130,6 +130,10 @@ Detailed list of changes
   events and uniforms for whether a command is running and whether the
   alternate screen is in use in the active window
 
+- :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
+  ``screen-shake-random`` shaders that shake the window in which a bell occurs,
+  for example, to shake the window when a shell command fails
+
 - :doc:`Custom shaders <custom-shaders>`: Fix the ``bell-in-window`` event only
   firing when :opt:`visual_bell_duration` is non-zero. Bells in hidden windows,
   such as those in inactive tabs, no longer trigger the event late, when the

@@ -1,0 +1,9 @@
+# Shake the window in which a bell occurs from side to side
+startgroup
+    animation_start bell-in-window
+    animation_stop 300
+    # the shader computes the decay of the shake itself
+    animation_curve linear
+    animation_step 16
+    shaders screen-shake
+endgroup

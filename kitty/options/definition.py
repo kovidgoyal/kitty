@@ -1599,6 +1599,8 @@ if unspecified is to use :code:`ease-in-out` which fades slowly at the start, mi
 You can specify different easing functions for the fade-in and fade-out parts, like this:
 :code:`2.0 ease-in linear`. kitty
 supports all the :link:`CSS easing functions <https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function>`.
+For different effects, such as shaking the screen on a bell, you can instead use :opt:`custom_shaders`, for example,
+:code:`custom_shaders screen-shake`.
 """,
 )
 

@@ -60,6 +60,51 @@ Navigation
 
 .. include:: generated/custom-shaders-navigation.rst
 
+Bell effects
+---------------
+
+These shaders run when a bell (the BEL character) is received in a window.
+The ``screen-shake`` shader shakes only the window in which the bell occurred,
+other windows in the tab are left alone. Use ``screen-shake-random`` for a
+jittery shake in random directions instead of side to side. The amount, speed
+and style of the shake can be changed, as explained at the top of the
+:repo_file:`shader file <kitty/shaders/custom/screen-shake.slang>`.
+
+To shake the window whenever a shell command fails, have your shell print a
+bell character when the last command exits with an error.
+
+.. highlight:: sh
+
+.. tab-set::
+
+   .. tab-item:: zsh
+
+        Add the following to :file:`~/.zshrc`::
+
+            autoload -Uz add-zsh-hook
+            bell_on_error() { local s=$?; (( s )) && printf '\a'; return $s }
+            add-zsh-hook precmd bell_on_error
+
+   .. tab-item:: bash
+
+        Add the following to :file:`~/.bashrc`::
+
+            bell_on_error() { local s=$?; (( s )) && printf '\a'; return $s; }
+            PROMPT_COMMAND="bell_on_error${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+
+   .. tab-item:: fish
+
+        Add the following to :file:`~/.config/fish/config.fish`::
+
+            function bell_on_error --on-event fish_postexec
+                test $status -ne 0; and printf '\a'
+            end
+
+
+.. highlight:: hlsl
+
+.. include:: generated/custom-shaders-bell.rst
+
 Retro Terminals
 -----------------
 

@@ -1,0 +1,12 @@
+# Shake the window in which a bell occurs in random directions
+startgroup
+    animation_start bell-in-window
+    animation_stop 400
+    # the shader computes the decay of the shake itself
+    animation_curve linear
+    animation_step 16
+    var int SHAKE_MODE = 1
+    var float AMPLITUDE_PIXELS = 10
+    var float SHAKES = 6
+    shaders screen-shake
+endgroup
