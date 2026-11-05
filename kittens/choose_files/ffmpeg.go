@@ -101,12 +101,12 @@ func (c ffmpeg_renderer) Render(path string) (m map[string][]byte, mi metadata, 
 		return nil, mi, nil, err
 	}
 	defer func() { _ = os.Remove(tempfile.Name()); tempfile.Close() }()
-	var metadata FFMpegMetadata
+	var info FFMpegMetadata
 	var metadata_error error
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		metadata, metadata_error = ffmpeg_metadata(path)
+		info, metadata_error = ffmpeg_metadata(path)
 	}()
 	go func() {
 		defer wg.Done()
@@ -123,8 +123,11 @@ func (c ffmpeg_renderer) Render(path string) (m map[string][]byte, mi metadata, 
 	if m, mi, img, err = ip.Render(tempfile.Name()); err != nil {
 		return
 	}
-	mi.custom = &metadata
-
+	// Store the metadata so that Unmarshall can restore it from the disk cache.
+	if m[FFMPEG_METADATA_KEY], err = json.Marshal(&info); err != nil {
+		return nil, metadata{}, nil, fmt.Errorf("could not serialize ffprobe metadata for %s: %w", path, err)
+	}
+	mi.custom = &info
 	return
 }
 

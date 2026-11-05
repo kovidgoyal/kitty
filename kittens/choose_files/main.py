@@ -163,7 +163,8 @@ The command must output preview data to STDOUT, as a JSON object:
 
 The lines can contain SGR formatting escape codes and will be displayed as is at the
 top of the preview panel. The image is optional and must be in one of the JPEG, PNG, GIF, WEBP, APNG
-formats.
+formats. Generated previews are cached, so when changing the program or its output you should
+also use the :code:`--clear-cache` flag otherwise it will not affect already cached previews.
 """,
 )
 egr()  # }}}

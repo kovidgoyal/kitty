@@ -179,61 +179,190 @@ func TestCmdPreviewConcurrentRendering(t *testing.T) {
 	}
 }
 
-func TestFFMpegPreviewSingleDecode(t *testing.T) {
+// render_through_cache renders path with renderer the way the UI does, using
+// (and populating) the disk cache in cache_dir.
+func render_through_cache(t *testing.T, path, cache_dir string, renderer PreviewRenderer) render_data {
+	t.Helper()
+	st, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dc, err := disk_cache.NewDiskCache(cache_dir, 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &ImagePreview{abspath: path, metadata: st, disk_cache: dc, renderer: renderer, WakeupMainThread: func() bool { return true }}
+	output := make(chan render_data, 1)
+	p.start_rendering(output)
+	hd, ok := <-output
+	if !ok {
+		t.Fatal("no result from preview worker")
+	}
+	if hd.err != nil {
+		t.Fatalf("preview rendering failed: %s", hd.err)
+	}
+	return hd
+}
+
+// count_runs returns the number of lines in path, used to count how many
+// times a stub program was run.
+func count_runs(t *testing.T, path string) int {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	return strings.Count(string(data), "\n")
+}
+
+type fake_ffmpeg struct {
+	dir, video, runs_log string
+	decodes              *atomic.Int32
+}
+
+// The thumbnail content that the image loader recognizes as a valid image.
+func (f fake_ffmpeg) valid_thumbnail() string { return f.dir }
+
+// install_fake_ffmpeg puts stub ffmpeg and ffprobe programs first in PATH. The
+// ffmpeg stub writes $KITTY_TEST_THUMBNAIL to its output file, then runs
+// $KITTY_TEST_FFMPEG_FAILURE, if set. Thumbnails are decoded by a private image
+// format registered with the real image loader, so decodes can be counted.
+func install_fake_ffmpeg(t *testing.T) fake_ffmpeg {
+	t.Helper()
 	dir := t.TempDir()
+	f := fake_ffmpeg{dir: dir, video: filepath.Join(dir, "video.mp4"), runs_log: filepath.Join(dir, "ffmpeg-runs"), decodes: &atomic.Int32{}}
 	thumbnail := image.NewNRGBA(image.Rect(0, 0, 2, 1))
-	var decodes atomic.Int32
-	// A private image format counts full decodes through the real image loader.
-	// Its magic is unique even when the test is repeated in the same process.
-	image.RegisterFormat("choose-files-test", dir, func(io.Reader) (image.Image, error) {
-		decodes.Add(1)
+	// The magic is unique even when the test is repeated in the same process.
+	image.RegisterFormat("choose-files-test", f.valid_thumbnail(), func(io.Reader) (image.Image, error) {
+		f.decodes.Add(1)
 		return thumbnail, nil
 	}, func(io.Reader) (image.Config, error) {
 		return image.Config{ColorModel: thumbnail.ColorModel(), Width: 2, Height: 1}, nil
 	})
-	write_script := func(t *testing.T, name, body string) {
-		t.Helper()
-		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+body), 0o700); err != nil {
+	scripts := map[string]string{
+		"ffprobe": `printf '%s' '{"streams":[{"codec_type":"video","width":2,"height":1}],"format":{"duration":"1.0"}}'`,
+		// The output file is the last argument.
+		"ffmpeg": `echo run >> "$KITTY_TEST_FFMPEG_RUNS"
+for output; do :; done
+printf '%s' "$KITTY_TEST_THUMBNAIL" > "$output"
+eval "$KITTY_TEST_FFMPEG_FAILURE"`,
+	}
+	for name, body := range scripts {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+body+"\n"), 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	write_script(t, "ffprobe", `printf '%s' '{"streams":[{"codec_type":"video","width":2,"height":1}],"format":{"duration":"1.0"}}'`)
+	if err := os.WriteFile(f.video, []byte("not really a video"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("KITTY_TEST_FFMPEG_RUNS", f.runs_log)
+	t.Setenv("KITTY_TEST_THUMBNAIL", f.valid_thumbnail())
+	t.Setenv("KITTY_TEST_FFMPEG_FAILURE", "")
+	return f
+}
+
+func check_ffmpeg_metadata(t *testing.T, custom any) {
+	t.Helper()
+	if info, ok := custom.(*FFMpegMetadata); !ok || info.Format.Duration != "1.0" || len(info.Streams) != 1 || info.Streams[0].Width != 2 {
+		t.Errorf("missing video metadata: %#v", custom)
+	}
+}
+
+func TestFFMpegPreviewRender(t *testing.T) {
+	f := install_fake_ffmpeg(t)
 	for _, tc := range []struct {
-		name, content, failure string
-		want_error             bool
-		want_decodes           int32
+		name, thumbnail, failure string
+		want_error               bool
+		error_contains           string
+		want_decodes             int32
 	}{
-		{name: "success", content: dir, want_decodes: 1},
-		{name: "ffmpeg-error", content: dir, failure: "printf 'thumbnail generation failed' >&2\nexit 7\n", want_error: true},
-		{name: "invalid-thumbnail", content: "not an image", want_error: true},
+		{name: "success", thumbnail: f.valid_thumbnail(), want_decodes: 1},
+		{name: "ffmpeg-error", thumbnail: f.valid_thumbnail(), failure: "echo 'thumbnail generation failed' >&2; exit 7", want_error: true, error_contains: "thumbnail generation failed"},
+		{name: "invalid-thumbnail", thumbnail: "not an image", want_error: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			decodes.Store(0)
-			t.Setenv("KITTY_TEST_THUMBNAIL", tc.content)
-			write_script(t, "ffmpeg", "for output; do :; done\nprintf '%s' \"$KITTY_TEST_THUMBNAIL\" > \"$output\"\n"+tc.failure)
-			data, md, img, err := ffmpeg_renderer(0).Render(filepath.Join(dir, "video.mp4"))
-			if (err != nil) != tc.want_error {
-				t.Fatalf("unexpected render error: %v", err)
-			}
-			if tc.failure != "" && !strings.Contains(err.Error(), "thumbnail generation failed") {
-				t.Errorf("ffmpeg stderr was lost: %v", err)
-			}
-			if got := decodes.Load(); got != tc.want_decodes {
+			f.decodes.Store(0)
+			t.Setenv("KITTY_TEST_THUMBNAIL", tc.thumbnail)
+			t.Setenv("KITTY_TEST_FFMPEG_FAILURE", tc.failure)
+			data, md, img, err := ffmpeg_renderer(0).Render(f.video)
+			if got := f.decodes.Load(); got != tc.want_decodes {
 				t.Errorf("decoded thumbnail %d times, expected %d", got, tc.want_decodes)
 			}
 			if tc.want_error {
+				if err == nil || !strings.Contains(err.Error(), tc.error_contains) {
+					t.Fatalf("expected an error containing %q, got: %v", tc.error_contains, err)
+				}
 				if data != nil || img != nil {
 					t.Fatal("failed rendering returned an image")
 				}
 				return
 			}
-			if img == nil || img.Width != 2 || img.Height != 1 || len(img.Frames) != 1 || md.image == nil || len(data[IMAGE_METADATA_KEY]) == 0 || len(data[IMAGE_DATA_PREFIX+"0"]) == 0 {
-				t.Fatalf("missing rendered image or serialized data: %#v, %#v", img, data)
+			if err != nil {
+				t.Fatalf("unexpected render error: %v", err)
 			}
-			if info, ok := md.custom.(*FFMpegMetadata); !ok || info.Format.Duration != "1.0" || len(info.Streams) != 1 || info.Streams[0].Width != 2 {
-				t.Errorf("missing video metadata: %#v", md.custom)
+			if img == nil || img.Width != 2 || img.Height != 1 || len(img.Frames) != 1 || md.image == nil {
+				t.Fatalf("missing rendered image: %#v", img)
 			}
+			for _, key := range []string{IMAGE_METADATA_KEY, IMAGE_DATA_PREFIX + "0", FFMPEG_METADATA_KEY} {
+				if len(data[key]) == 0 {
+					t.Errorf("rendered data is missing %s", key)
+				}
+			}
+			check_ffmpeg_metadata(t, md.custom)
 		})
+	}
+}
+
+func TestFFMpegPreviewDiskCache(t *testing.T) {
+	f := install_fake_ffmpeg(t)
+	cache_dir := filepath.Join(t.TempDir(), "cache")
+	first := render_through_cache(t, f.video, cache_dir, ffmpeg_renderer(0))
+	check_ffmpeg_metadata(t, first.metadata.custom)
+	second := render_through_cache(t, f.video, cache_dir, ffmpeg_renderer(0))
+	if n := count_runs(t, f.runs_log); n != 1 {
+		t.Errorf("ffmpeg was run %d times, expected the second preview to come from the disk cache", n)
+	}
+	check_ffmpeg_metadata(t, second.metadata.custom)
+	if second.metadata.image == nil || second.metadata.image.Width != 2 || len(second.cached_data[IMAGE_DATA_PREFIX+"0"]) == 0 {
+		t.Errorf("cached preview is missing the thumbnail: %#v", second)
+	}
+}
+
+func TestCmdPreviewDiskCache(t *testing.T) {
+	dir := t.TempDir()
+	runs_log := filepath.Join(dir, "runs")
+	script := filepath.Join(dir, "preview.sh")
+	body := fmt.Sprintf("#!/bin/sh\necho run >> '%s'\nprintf '{\"lines\":[\"hello\"],\"title_extra\":\"extra\"}'\n", runs_log)
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(path, []byte("contents"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cache_dir := filepath.Join(dir, "cache")
+	renderer := cmd_renderer{cmdline: []string{script}}
+	for i := range 2 {
+		hd := render_through_cache(t, path, cache_dir, renderer)
+		if r, ok := hd.metadata.custom.(*CmdResult); !ok || len(r.Lines) != 1 || r.Lines[0] != "hello" || r.TitleExtra != "extra" {
+			t.Errorf("preview %d returned unexpected result: %#v", i, hd.metadata.custom)
+		}
+	}
+	if n := count_runs(t, runs_log); n != 1 {
+		t.Errorf("preview command was run %d times, expected the second preview to come from the disk cache", n)
+	}
+}
+
+func TestCmdPreviewInvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "preview.sh")
+	// A type error still populates image, which must not hide the decode error.
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '{\"image\":\"/nonexistent.png\",\"lines\":7}'\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err := cmd_renderer{cmdline: []string{script}}.Render(filepath.Join(dir, "file.txt"))
+	if err == nil || !strings.Contains(err.Error(), "could not decode JSON") {
+		t.Fatalf("expected a JSON decode error, got: %v", err)
 	}
 }

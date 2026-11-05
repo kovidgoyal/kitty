@@ -49,13 +49,18 @@ func (c cmd_renderer) Render(path string) (m map[string][]byte, mi metadata, img
 	var md CmdResult
 	if err = json.Unmarshal(stdout.Bytes(), &md); err != nil {
 		err = fmt.Errorf("could not decode JSON response from %v for %s: %w", c.cmdline, path, err)
+		return
 	}
 	if md.Image != "" {
 		var ip ImagePreviewRenderer
 		if m, mi, img, err = ip.Render(md.Image); err != nil {
 			return
 		}
+	} else {
+		m = make(map[string][]byte, 1)
 	}
+	// Store the result so that Unmarshall can restore it from the disk cache.
+	m[CMD_METADATA_KEY] = stdout.Bytes()
 	mi.custom = &md
 	return
 }

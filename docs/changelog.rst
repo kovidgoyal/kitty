@@ -145,6 +145,9 @@ Detailed list of changes
 - :doc:`choose-files <kittens/choose-files>`: Avoid decoding video preview
   thumbnails twice and preserve errors from ffmpeg when generating them.
 
+- :doc:`choose-files <kittens/choose-files>`: Fix previews of videos and
+  previews from custom preview commands not being cached
+
 - macOS: Add a workaround for clicking notifications not focusing the correct
   OS Window when there are multiple kitty instances because of Cocoa
   limitations (:iss:`10805`)
