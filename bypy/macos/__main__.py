@@ -54,7 +54,7 @@ def flipwritable(fn, mode=None):
     return old_mode
 
 
-STRIPCMD = ('/usr/bin/strip', '-x', '-S', '-')
+STRIPCMD = ('/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip', '-x', '-S', '-')
 
 
 def strip_files(files, argv_max=(256 * 1024)) -> None:
