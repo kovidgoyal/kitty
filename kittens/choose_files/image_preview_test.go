@@ -2,8 +2,12 @@ package choose_files
 
 import (
 	"fmt"
+	"image"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -172,5 +176,64 @@ func TestCmdPreviewConcurrentRendering(t *testing.T) {
 	}
 	if backing[2] != "unused" {
 		t.Errorf("rendering modified shared command arguments: %q", backing)
+	}
+}
+
+func TestFFMpegPreviewSingleDecode(t *testing.T) {
+	dir := t.TempDir()
+	thumbnail := image.NewNRGBA(image.Rect(0, 0, 2, 1))
+	var decodes atomic.Int32
+	// A private image format counts full decodes through the real image loader.
+	// Its magic is unique even when the test is repeated in the same process.
+	image.RegisterFormat("choose-files-test", dir, func(io.Reader) (image.Image, error) {
+		decodes.Add(1)
+		return thumbnail, nil
+	}, func(io.Reader) (image.Config, error) {
+		return image.Config{ColorModel: thumbnail.ColorModel(), Width: 2, Height: 1}, nil
+	})
+	write_script := func(t *testing.T, name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+body), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write_script(t, "ffprobe", `printf '%s' '{"streams":[{"codec_type":"video","width":2,"height":1}],"format":{"duration":"1.0"}}'`)
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	for _, tc := range []struct {
+		name, content, failure string
+		want_error             bool
+		want_decodes           int32
+	}{
+		{name: "success", content: dir, want_decodes: 1},
+		{name: "ffmpeg-error", content: dir, failure: "printf 'thumbnail generation failed' >&2\nexit 7\n", want_error: true},
+		{name: "invalid-thumbnail", content: "not an image", want_error: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			decodes.Store(0)
+			t.Setenv("KITTY_TEST_THUMBNAIL", tc.content)
+			write_script(t, "ffmpeg", "for output; do :; done\nprintf '%s' \"$KITTY_TEST_THUMBNAIL\" > \"$output\"\n"+tc.failure)
+			data, md, img, err := ffmpeg_renderer(0).Render(filepath.Join(dir, "video.mp4"))
+			if (err != nil) != tc.want_error {
+				t.Fatalf("unexpected render error: %v", err)
+			}
+			if tc.failure != "" && !strings.Contains(err.Error(), "thumbnail generation failed") {
+				t.Errorf("ffmpeg stderr was lost: %v", err)
+			}
+			if got := decodes.Load(); got != tc.want_decodes {
+				t.Errorf("decoded thumbnail %d times, expected %d", got, tc.want_decodes)
+			}
+			if tc.want_error {
+				if data != nil || img != nil {
+					t.Fatal("failed rendering returned an image")
+				}
+				return
+			}
+			if img == nil || img.Width != 2 || img.Height != 1 || len(img.Frames) != 1 || md.image == nil || len(data[IMAGE_METADATA_KEY]) == 0 || len(data[IMAGE_DATA_PREFIX+"0"]) == 0 {
+				t.Fatalf("missing rendered image or serialized data: %#v, %#v", img, data)
+			}
+			if info, ok := md.custom.(*FFMpegMetadata); !ok || info.Format.Duration != "1.0" || len(info.Streams) != 1 || info.Streams[0].Width != 2 {
+				t.Errorf("missing video metadata: %#v", md.custom)
+			}
+		})
 	}
 }
