@@ -1194,8 +1194,12 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     w->render_calls++;
     make_os_window_context_current(w);
     bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress || global_state.thumbnail_callback.os_window == w->id;
+    // The viewport is driver state shared by all surfaces with some GPU
+    // drivers, such as Vulkan, so it must be set for this window every time,
+    // as it may have been changed while another OS Window was current, for
+    // example, by a resize of another OS Window.
+    set_gpu_viewport(w->viewport_width, w->viewport_height);
     if (w->viewport_size_dirty) {
-        set_gpu_viewport(w->viewport_width, w->viewport_height);
         w->viewport_size_dirty = false;
         needs_render = true;
     }
