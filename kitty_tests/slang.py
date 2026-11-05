@@ -118,6 +118,9 @@ class TestSlang(BaseTest):
         g = pipeline('animation_start user:find-cursor|tab-change\nanimation_stop user:x.y_z')['groups'][0]
         self.ae(g['animation_start'], ('user:find-cursor', 'tab-change'))
         self.ae(g['animation_end_events'], ('user:x.y_z',))
+        g = pipeline('animation_start command-start|alternate-screen-exit\nanimation_stop command-finish|alternate-screen-enter')['groups'][0]
+        self.ae(g['animation_start'], ('command-start', 'alternate-screen-exit'))
+        self.ae(g['animation_end_events'], ('command-finish', 'alternate-screen-enter'))
         # Trailing comments, including empty ones
         for comment in ('# ', '#', '# some comment', '\t#x'):
             g = pipeline(f'animation_toggle user:toggle-notch {comment}\nanimation_duration 600 {comment}')['groups'][0]

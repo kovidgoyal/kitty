@@ -860,6 +860,10 @@ shader_anim_event_mask_str(ShaderAnimEventMask mask) {
         {1u << SHADER_ANIM_EVENT_USER_IDLE, "user-idle"},
         {1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE, "cursor-trail-move"},
         {1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP, "cursor-trail-stop"},
+        {1u << SHADER_ANIM_EVENT_COMMAND_START, "command-start"},
+        {1u << SHADER_ANIM_EVENT_COMMAND_FINISH, "command-finish"},
+        {1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_ENTER, "alternate-screen-enter"},
+        {1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_EXIT, "alternate-screen-exit"},
     };
     bool first = true;
     for (size_t i = 0; i < sizeof(events) / sizeof(events[0]); i++) {
@@ -3125,6 +3129,10 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float timestamp_fraction;
         float time_since_last_render;
         float cursor_trail_age;
+        float active_window_alternate_screen;
+        float active_window_command_running;
+        float active_window_alternate_screen_age;
+        float active_window_command_state_age;
     };
     // This struct is a hand written mirror of the std140 layout of
     // KittyCustomShaderData in types.slang, so check that they match once.
@@ -3159,6 +3167,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     color_type cursor_color = OPT(foreground);
     float cursor_opacity = 0.f;
     WindowGeometry active_win_geom = {0};
+    d->active_window_alternate_screen_age = -1.f;
+    d->active_window_command_state_age = -1.f;
     if (os_window->num_tabs > 0) {
         Tab *t = os_window->tabs + os_window->active_tab;
         if (t->num_windows) {
@@ -3189,6 +3199,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
                 active_bg = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
                 cursor_color = s->last_rendered.cursor_bg;
                 cursor_opacity = MAX(0.f, MIN(s->cursor_render_info.cursor_opacity, 1.f));
+                d->active_window_alternate_screen = s->linebuf == s->alt_linebuf ? 1.f : 0.f;
+                d->active_window_command_running = s->command_state.running ? 1.f : 0.f;
+                const monotonic_t alt_changed_at = MAX(s->alternate_screen.entered_at, s->alternate_screen.exited_at);
+                if (alt_changed_at) d->active_window_alternate_screen_age = (float)monotonic_t_to_s_double(now - alt_changed_at);
+                const monotonic_t cmd_changed_at = MAX(s->command_state.started_at, s->command_state.finished_at);
+                if (cmd_changed_at) d->active_window_command_state_age = (float)monotonic_t_to_s_double(now - cmd_changed_at);
             }
         }
     }
@@ -3627,6 +3643,10 @@ shader_anim_event_bit(const char *s, CustomShaderPipeline *p) {
     if (strcmp(s, "user-idle") == 0) return 1u << SHADER_ANIM_EVENT_USER_IDLE;
     if (strcmp(s, "cursor-trail-move") == 0) return 1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE;
     if (strcmp(s, "cursor-trail-stop") == 0) return 1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP;
+    if (strcmp(s, "command-start") == 0) return 1u << SHADER_ANIM_EVENT_COMMAND_START;
+    if (strcmp(s, "command-finish") == 0) return 1u << SHADER_ANIM_EVENT_COMMAND_FINISH;
+    if (strcmp(s, "alternate-screen-enter") == 0) return 1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_ENTER;
+    if (strcmp(s, "alternate-screen-exit") == 0) return 1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_EXIT;
     static const char user_prefix[] = "user:";
     if (strncmp(s, user_prefix, sizeof(user_prefix) - 1) == 0) {
         const char *name = s + sizeof(user_prefix) - 1;

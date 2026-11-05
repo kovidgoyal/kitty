@@ -222,6 +222,11 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :doc:`Custom shaders <custom-shaders>`: Add the ``command-start``,
+  ``command-finish``, ``alternate-screen-enter`` and ``alternate-screen-exit``
+  events and uniforms for whether a command is running and whether the
+  alternate screen is in use in the active window
+
 - :doc:`choose-files <kittens/choose-files>`: Fix concurrent custom preview
   commands occasionally receiving the path of a different file.
 

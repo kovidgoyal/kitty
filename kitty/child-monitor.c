@@ -962,6 +962,26 @@ prepare_to_render_os_window(
                 if (global_state.ime_used && os_window->is_focused) sync_ime_position_with_cursor(os_window, w);
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
+                {
+                    // Fire events for shell integration command and alternate screen changes
+                    // in the active window that happened since the last check. This is just
+                    // a few integer comparisons per frame. The check time includes the
+                    // change times seen, as input can be parsed after now was captured.
+                    const Screen *scr = WD.screen;
+                    const monotonic_t since = os_window->screen_state_checked_at;
+                    monotonic_t latest = now;
+#define CHECK(field, event)                                                         \
+    if (scr->field > since) {                                                       \
+        os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_##event); \
+        latest = MAX(latest, scr->field);                                           \
+    }
+                    CHECK(command_state.started_at, COMMAND_START);
+                    CHECK(command_state.finished_at, COMMAND_FINISH);
+                    CHECK(alternate_screen.entered_at, ALTERNATE_SCREEN_ENTER);
+                    CHECK(alternate_screen.exited_at, ALTERNATE_SCREEN_EXIT);
+#undef CHECK
+                    os_window->screen_state_checked_at = MAX(since, latest);
+                }
                 if (OPT(cursor_trail)) {
                     if (os_window->last_active_tab != os_window->active_tab && os_window->last_active_tab < os_window->num_tabs) {
                         tab->cursor_trail = os_window->tabs[os_window->last_active_tab].cursor_trail;

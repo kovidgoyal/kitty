@@ -2336,6 +2336,44 @@ class TestScreen(BaseTest):
         s.erase_last_command()
         self.ae('before\nl1\npartial', at().rstrip())
 
+    def test_command_and_alternate_screen_state(self):
+        # Used by custom shaders
+        s = self.create_screen()
+        self.assertFalse(s.command_running)
+        self.ae((s.command_started_at, s.command_finished_at), (0, 0))
+        parse_bytes(s, b'\033]133;A\007')  # a prompt with no running command finishes nothing
+        self.ae(s.command_finished_at, 0)
+        parse_bytes(s, b'\033]133;C\007')
+        self.assertTrue(s.command_running)
+        started = s.command_started_at
+        self.assertGreater(started, 0)
+        self.ae(s.command_finished_at, 0)
+        parse_bytes(s, b'\033]133;A;k=s\007')  # a secondary prompt does not finish the command
+        self.assertTrue(s.command_running)
+        parse_bytes(s, b'\033]133;D;0\007')
+        self.assertFalse(s.command_running)
+        finished = s.command_finished_at
+        self.assertGreaterEqual(finished, started)
+        parse_bytes(s, b'\033]133;A\007')  # the prompt after D does not finish it again
+        self.ae(s.command_finished_at, finished)
+        parse_bytes(s, b'\033]133;C\007')
+        self.assertTrue(s.command_running)
+        parse_bytes(s, b'\033]133;A\007')  # a shell that does not send D
+        self.assertFalse(s.command_running)
+        self.assertGreaterEqual(s.command_finished_at, s.command_started_at)
+
+        self.ae((s.alternate_screen_entered_at, s.alternate_screen_exited_at), (0, 0))
+        parse_bytes(s, b'\033[?1049h')
+        self.assertTrue(s.is_using_alternate_linebuf())
+        entered = s.alternate_screen_entered_at
+        self.assertGreater(entered, 0)
+        self.ae(s.alternate_screen_exited_at, 0)
+        parse_bytes(s, b'\033[?1049h')  # already on the alternate screen
+        self.ae(s.alternate_screen_entered_at, entered)
+        parse_bytes(s, b'\033[?1049l')
+        self.assertFalse(s.is_using_alternate_linebuf())
+        self.assertGreaterEqual(s.alternate_screen_exited_at, entered)
+
     def test_pointer_shapes(self):
         from kitty.window import set_pointer_shape
 

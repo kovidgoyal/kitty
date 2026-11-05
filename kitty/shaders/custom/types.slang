@@ -104,6 +104,23 @@ public struct KittyCustomShaderData {
     // Seconds since cursor_trail_change_time, negative when cursor_trail_change_time is zero.
     public float cursor_trail_age;
 
+    // State of the active window in the active tab. All are zero when there is no active window.
+    // 1.0 when the active window is showing the alternate screen, as used by
+    // full screen programs such as editors and pagers, 0.0 otherwise.
+    public float active_window_alternate_screen;
+    // 1.0 while a command is running in the active window, 0.0 otherwise.
+    // Requires shell integration, see https://sw.kovidgoyal.net/kitty/shell-integration/
+    // A command starts when its output starts (OSC 133;C) and finishes when the
+    // shell reports it finished (OSC 133;D) or draws the next prompt.
+    public float active_window_command_running;
+    // Seconds since the active window last entered or left the alternate screen,
+    // negative if it never has. Use with the alternate-screen-enter and
+    // alternate-screen-exit events to fade effects in and out.
+    public float active_window_alternate_screen_age;
+    // Seconds since a command last started or finished in the active window,
+    // negative if none has. Use with the command-start and command-finish events.
+    public float active_window_command_state_age;
+
     // Seconds since kitty was started, wrapped to [0, period_seconds). Unlike
     // timestamp, this keeps sub-millisecond precision however long kitty runs,
     // as long as period_seconds is at most an hour or so. The value jumps back

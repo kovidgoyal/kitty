@@ -560,11 +560,16 @@ typedef enum {
     SHADER_ANIM_EVENT_USER_IDLE,
     SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE,
     SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP,
+    SHADER_ANIM_EVENT_COMMAND_START,
+    SHADER_ANIM_EVENT_COMMAND_FINISH,
+    SHADER_ANIM_EVENT_ALTERNATE_SCREEN_ENTER,
+    SHADER_ANIM_EVENT_ALTERNATE_SCREEN_EXIT,
     NUM_SHADER_ANIM_EVENTS
 } ShaderAnimationEvent;
 // Events named by the pipeline itself, with the user: prefix, and fired by the
 // shader_event action occupy the bits above the builtin events
 #define SHADER_ANIM_FIRST_USER_EVENT 16
+_Static_assert(NUM_SHADER_ANIM_EVENTS <= SHADER_ANIM_FIRST_USER_EVENT, "Too many builtin shader animation events");
 #define MAX_SHADER_ANIM_USER_EVENTS (64 - SHADER_ANIM_FIRST_USER_EVENT)
 #define MAX_SHADER_ANIM_USER_EVENT_NAME_LEN 63
 // Bitmask of ShaderAnimationEvent values and user events
@@ -652,6 +657,8 @@ typedef struct OSWindow {
     } scroll;
     ShaderAnimEventMask shader_anim_event_registry;
     id_type last_bell_window_id; // ID of the most recent window that received a bell event
+    // Time up to which command and alternate screen changes in the active window have been turned into shader events
+    monotonic_t screen_state_checked_at;
     ShaderGroupAnimState shader_group_anim[MAX_CUSTOM_SHADER_GROUPS];
     ShaderAnimState shader_anim;
     struct {

@@ -612,11 +612,49 @@ be combined with ``|`` — any one of them will trigger the action.
      - The cursor trail stops moving. Typically used as an ``animation_stop``
        event paired with ``cursor-trail-move`` as the start event.
 
+   * - ``command-start``
+     - A command starts running in the active window. Requires
+       :ref:`shell integration <shell_integration>`. Whether a command is
+       running is available in ``d.active_window_command_running`` and the
+       time since it started in ``d.active_window_command_state_age``.
+
+   * - ``command-finish``
+     - A command finishes running in the active window. Requires
+       :ref:`shell integration <shell_integration>`.
+
+   * - ``alternate-screen-enter``
+     - The active window switches to the alternate screen, which is used by
+       full screen programs such as editors and pagers. Whether the
+       alternate screen is in use is available in
+       ``d.active_window_alternate_screen``.
+
+   * - ``alternate-screen-exit``
+     - The active window switches back to the main screen.
+
    * - ``user:<name>``
      - Sent by the :ac:`shader_event` action, typically from a mapping, see
        :ref:`custom_shader_mappings`. ``<name>`` can be any combination of
        letters, digits, underscores, hyphens and periods, up to 63 characters.
        A pipeline can use up to 48 different user events.
+
+The command and alternate screen events only fire for changes in the active
+window. Switching to another window fires ``window-focus-in`` instead, after
+which ``d.active_window_command_running`` and
+``d.active_window_alternate_screen`` describe the new window. For example, to
+fade in an effect while a command runs and fade it out when the command
+finishes::
+
+    startgroup
+        animation_start command-start
+        animation_stop command-finish
+        animation_duration 300
+        animation_reverse yes
+        shaders my-command-running-effect
+    endgroup
+
+The shader can multiply its effect by ``1 - d.active_window_alternate_screen``
+to hide it while a full screen program such as an editor or a pager, even one
+started by another program as with ``git log``, is running.
 
 Note that if both a start event and a focus-out event fire in the same frame
 (for example, a mouse click that simultaneously moves focus away), the

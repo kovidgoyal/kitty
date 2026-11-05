@@ -153,6 +153,15 @@ typedef struct {
     ScreenModes modes, saved_modes;
     ColorProfile *color_profile;
     monotonic_t start_visual_bell_at;
+    // Shell integration (OSC 133) command state and alternate screen
+    // changes, used by custom shaders. Times are zero until the first change.
+    struct {
+        monotonic_t started_at, finished_at;
+        bool running;
+    } command_state;
+    struct {
+        monotonic_t entered_at, exited_at;
+    } alternate_screen;
     monotonic_t start_drag_overlay_at; // 0 = inactive
     uint8_t drag_overlay_quadrant;     // 1=left 2=right 3=top 4=bottom 0=none
 

@@ -1137,6 +1137,11 @@ class Screen:
     cursor_visible: bool
     scrolled_by: int
     pixel_scroll_offset_y: int
+    command_running: bool
+    command_started_at: int
+    command_finished_at: int
+    alternate_screen_entered_at: int
+    alternate_screen_exited_at: int
     cursor: Cursor
     disable_ligatures: int
     cursor_key_mode: bool
