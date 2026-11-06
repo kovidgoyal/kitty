@@ -11,12 +11,15 @@
 #include <fontconfig/fontconfig.h>
 #include <dlfcn.h>
 #include "freetype_render_ui_text.h"
+#include "font-select.h"
+#include <pthread.h>
 #ifndef FC_COLOR
 #define FC_COLOR "color"
 #endif
 
 
 static bool initialized = false;
+static pthread_mutex_t init_lock = PTHREAD_MUTEX_INITIALIZER;
 static void *libfontconfig_handle = NULL;
 static struct {
     PyObject *face, *descriptor;
@@ -51,6 +54,8 @@ static struct {
 #define FcPatternGetCharSet dynamically_loaded_fc_symbol.PatternGetCharSet
 #define FcCharSetHasChar dynamically_loaded_fc_symbol.CharSetHasChar
 #define FcConfigGetCurrent dynamically_loaded_fc_symbol.ConfigGetCurrent
+#define FcPatternReference dynamically_loaded_fc_symbol.PatternReference
+#define FcPatternEqualSubset dynamically_loaded_fc_symbol.PatternEqualSubset
 
 static struct {
     FcBool (*Init)(void);
@@ -82,6 +87,8 @@ static struct {
     FcResult (*PatternGetCharSet)(const FcPattern *p, const char *object, int n, FcCharSet **c);
     FcBool (*CharSetHasChar)(const FcCharSet *fcs, FcChar32 ucs4);
     FcConfig *(*ConfigGetCurrent)(void);
+    void (*PatternReference)(FcPattern *p);
+    FcBool (*PatternEqualSubset)(const FcPattern *pa, const FcPattern *pb, const FcObjectSet *os);
 } dynamically_loaded_fc_symbol = {0};
 #define LOAD_FUNC(name)                                                                           \
     {                                                                                             \
@@ -139,22 +146,29 @@ load_fontconfig_lib(void) {
     LOAD_FUNC(PatternGetCharSet);
     LOAD_FUNC(CharSetHasChar);
     LOAD_FUNC(ConfigGetCurrent);
+    LOAD_FUNC(PatternReference);
+    LOAD_FUNC(PatternEqualSubset);
 }
 #undef LOAD_FUNC
 
+// Can be called from the font selection thread, see font-select.c
 static void
 ensure_initialized(void) {
+    if (__atomic_load_n(&initialized, __ATOMIC_ACQUIRE)) return;
+    pthread_mutex_lock(&init_lock);
     if (!initialized) {
         load_fontconfig_lib();
         if (!FcInit()) fatal("Failed to initialize fontconfig library");
-        initialized = true;
+        __atomic_store_n(&initialized, true, __ATOMIC_RELEASE);
     }
+    pthread_mutex_unlock(&init_lock);
 }
 
 static void clear_fallback_candidates(void);
 
 static void
 finalize(void) {
+    fs_finalize_selection();
     if (initialized) {
         Py_CLEAR(builtin_nerd_font.face);
         Py_CLEAR(builtin_nerd_font.descriptor);
@@ -896,6 +910,7 @@ end:
 static PyObject *
 add_font_file(PyObject UNUSED *self, PyObject *args) {
     ensure_initialized();
+    fs_wait_for_selection_thread();
     const char *path = NULL;
     if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
     if (FcConfigAppFontAddFile(NULL, (const unsigned char *)path)) {
@@ -935,6 +950,310 @@ fc_match_fallback(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 
 
 #undef AP
+
+// Font selection backend, see font-select.h {{{
+static char *
+pattern_string(FcPattern *pat, const char *object) {
+    FcChar8 *out = NULL;
+    if (FcPatternGetString(pat, object, 0, &out) != FcResultMatch || !out) out = (FcChar8 *)"";
+    char *ans = strdup((const char *)out);
+    if (!ans) fatal("Out of memory");
+    return ans;
+}
+
+static int
+pattern_int(FcPattern *pat, const char *object, int def) {
+    int ans;
+    return FcPatternGetInteger(pat, object, 0, &ans) == FcResultMatch ? ans : def;
+}
+
+static bool
+pattern_bool(FcPattern *pat, const char *object) {
+    FcBool ans;
+    return FcPatternGetBool(pat, object, 0, &ans) == FcResultMatch && ans;
+}
+
+// Takes a new reference to pat
+static FSCandidate *
+candidate_from_pattern(FSContext *ctx, FcPattern *pat, bool from_match) {
+    FSCandidate *c = fs_new_candidate(ctx);
+    FcPatternReference(pat);
+    c->handle = pat;
+    c->from_match = from_match;
+    c->path = pattern_string(pat, FC_FILE);
+    c->family = pattern_string(pat, FC_FAMILY);
+    c->style = pattern_string(pat, FC_STYLE);
+    c->full_name = pattern_string(pat, FC_FULLNAME);
+    c->postscript_name = pattern_string(pat, FC_POSTSCRIPT_NAME);
+    c->index = pattern_int(pat, FC_INDEX, 0);
+    c->weight = pattern_int(pat, FC_WEIGHT, 0);
+    c->slant = pattern_int(pat, FC_SLANT, 0);
+    c->width = pattern_int(pat, FC_WIDTH, 0);
+    c->variable = pattern_bool(pat, FC_VARIABLE);
+    const int spacing = pattern_int(pat, FC_SPACING, 0);
+    c->monospace = spacing == FC_MONO || spacing == FC_DUAL;
+    c->spacing_is_mono = spacing == FC_MONO;
+    FcMatrix *mtx = NULL;
+    if (FcPatternGetMatrix(pat, FC_MATRIX, 0, &mtx) == FcResultMatch && mtx) {
+        c->has_matrix = true;
+        c->matrix[0] = mtx->xx;
+        c->matrix[1] = mtx->xy;
+        c->matrix[2] = mtx->yx;
+        c->matrix[3] = mtx->yy;
+    }
+    return c;
+}
+
+// Listing fonts with FcFontList() is dominated by scanning all fonts, so
+// list all fonts once and filter them in C, instead of listing the fonts
+// matching each name.
+typedef struct FCListEntry {
+    const FSCandidate *candidate;
+    char *keys[3]; // indexed by FSListKind
+} FCListEntry;
+
+typedef struct FCFontList {
+    bool loaded;
+    FCListEntry *items;
+    size_t count, capacity;
+} FCFontList;
+
+typedef struct FCBackendData {
+    FCFontList lists[2]; // indexed by monospaced
+} FCBackendData;
+
+bool
+fs_backend_init(FSContext *ctx UNUSED) {
+    ensure_initialized();
+    return true;
+}
+
+void
+fs_backend_free_context_data(void *data) {
+    FCBackendData *d = data;
+    for (size_t l = 0; l < arraysz(d->lists); l++) {
+        for (size_t i = 0; i < d->lists[l].count; i++) {
+            for (size_t k = 0; k < arraysz(d->lists[l].items[i].keys); k++) free(d->lists[l].items[i].keys[k]);
+        }
+        free(d->lists[l].items);
+    }
+    free(d);
+}
+
+void
+fs_backend_free_candidate(FSCandidate *c) {
+    if (c->handle) FcPatternDestroy((FcPattern *)c->handle);
+    c->handle = NULL;
+}
+
+static bool
+list_with_spacing(FSContext *ctx, int spacing, bool allow_bitmapped_fonts, FCFontList *out) {
+    FcPattern *pat = FcPatternCreate();
+    FcObjectSet *os = NULL;
+    FcFontSet *fs = NULL;
+    bool ok = false;
+    if (!pat) {
+        fs_set_error(ctx, "Out of memory creating fontconfig pattern");
+        return false;
+    }
+#define A(func, which, val)                                                 \
+    if (!func(pat, which, val)) {                                           \
+        fs_set_error(ctx, "Failed to add %s to fontconfig pattern", which); \
+        goto end;                                                           \
+    }
+    if (!allow_bitmapped_fonts) {
+        A(FcPatternAddBool, FC_OUTLINE, FcTrue);
+        A(FcPatternAddBool, FC_SCALABLE, FcTrue);
+    }
+    if (spacing > -1) A(FcPatternAddInteger, FC_SPACING, spacing);
+#undef A
+    // Must be kept in sync with fc_list()
+    os = FcObjectSetBuild(
+        FC_FILE,
+        FC_POSTSCRIPT_NAME,
+        FC_FAMILY,
+        FC_STYLE,
+        FC_FULLNAME,
+        FC_WEIGHT,
+        FC_WIDTH,
+        FC_SLANT,
+        FC_HINT_STYLE,
+        FC_INDEX,
+        FC_HINTING,
+        FC_SCALABLE,
+        FC_OUTLINE,
+        FC_COLOR,
+        FC_SPACING,
+        FC_VARIABLE,
+#ifdef FC_NAMED_INSTANCE
+        FC_NAMED_INSTANCE,
+#endif
+        NULL);
+    if (!os) {
+        fs_set_error(ctx, "Failed to create fontconfig object set");
+        goto end;
+    }
+    fs = FcFontList(NULL, pat, os);
+    if (!fs) {
+        fs_set_error(ctx, "Failed to create fontconfig font set");
+        goto end;
+    }
+    for (int i = 0; i < fs->nfont; i++) {
+        FcPattern *p = fs->fonts[i];
+        FcChar8 *path = NULL;
+        // Only fonts with a path are usable
+        if (FcPatternGetString(p, FC_FILE, 0, &path) != FcResultMatch || !path || !path[0]) continue;
+        const FSCandidate *c = candidate_from_pattern(ctx, p, false);
+        if (out->count >= out->capacity) {
+            out->capacity = out->capacity ? 2 * out->capacity : 256;
+            out->items = realloc(out->items, out->capacity * sizeof(out->items[0]));
+            if (!out->items) fatal("Out of memory");
+        }
+        // fontconfig patterns can have multiple values for these, use only the first, like the Python fc_list()
+        FCListEntry *e = out->items + out->count++;
+        e->candidate = c;
+        e->keys[FS_LIST_FAMILY] = fs_name_to_key(c->family);
+        e->keys[FS_LIST_POSTSCRIPT_NAME] = fs_name_to_key(c->postscript_name);
+        e->keys[FS_LIST_FULL_NAME] = fs_name_to_key(c->full_name);
+    }
+    ok = true;
+end:
+    FcPatternDestroy(pat);
+    if (os) FcObjectSetDestroy(os);
+    if (fs) FcFontSetDestroy(fs);
+    return ok;
+}
+
+bool
+fs_backend_list(FSContext *ctx, FSListKind kind, const char *name UNUSED, const char *key, bool monospaced, FSCandidateList *out) {
+    FCBackendData **d = (FCBackendData **)fs_backend_data(ctx);
+    if (!*d) {
+        *d = calloc(1, sizeof(FCBackendData));
+        if (!*d) fatal("Out of memory");
+    }
+    FCFontList *l = (*d)->lists + (monospaced ? 1 : 0);
+    if (!l->loaded) {
+        l->loaded = true;
+        if (monospaced) {
+            if (!list_with_spacing(ctx, FC_DUAL, false, l) || !list_with_spacing(ctx, FC_MONO, false, l)) return false;
+        } else {
+            // allow non-monospaced and bitmapped fonts as these are used for symbol_map
+            if (!list_with_spacing(ctx, -1, true, l)) return false;
+        }
+    }
+    for (size_t i = 0; i < l->count; i++) {
+        if (strcmp(l->items[i].keys[kind], key) == 0) fs_list_append(out, l->items[i].candidate);
+    }
+    return true;
+}
+
+const FSCandidate *
+fs_backend_fc_match(FSContext *ctx, const char *family, bool bold, bool italic, int spacing) {
+    FcPattern *pat = FcPatternCreate(), *match = NULL;
+    const FSCandidate *ans = NULL;
+    if (!pat) {
+        fs_set_error(ctx, "Out of memory creating fontconfig pattern");
+        return NULL;
+    }
+#define A(func, which, val)                                                 \
+    if (!func(pat, which, val)) {                                           \
+        fs_set_error(ctx, "Failed to add %s to fontconfig pattern", which); \
+        goto end;                                                           \
+    }
+    // Must be kept in sync with fc_match()
+    if (family && family[0]) A(FcPatternAddString, FC_FAMILY, (const FcChar8 *)family);
+    if (spacing >= FC_DUAL) {
+        // pass the family,monospace as the family parameter to fc-match,
+        // which will fallback to using monospace if the family does not match.
+        A(FcPatternAddString, FC_FAMILY, (const FcChar8 *)"monospace");
+        A(FcPatternAddInteger, FC_SPACING, spacing);
+    }
+    A(FcPatternAddBool, FC_OUTLINE, FcTrue);
+    A(FcPatternAddBool, FC_SCALABLE, FcTrue);
+    if (bold) A(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD);
+    if (italic) A(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC);
+#undef A
+    FcResult result;
+    FcConfigSubstitute(NULL, pat, FcMatchPattern);
+    FcDefaultSubstitute(pat);
+    match = FcFontMatch(NULL, pat, &result);
+    if (!match) {
+        fs_set_error(ctx, "FcFontMatch() failed for family: %s", family ? family : "");
+        goto end;
+    }
+    ans = candidate_from_pattern(ctx, match, true);
+end:
+    FcPatternDestroy(pat);
+    if (match) FcPatternDestroy(match);
+    return ans;
+}
+
+bool
+fs_backend_fc_match_equal(const FSCandidate *a, const FSCandidate *b) {
+    // The properties used by pattern_as_dict()
+    FcObjectSet *os = FcObjectSetBuild(
+        FC_FILE,
+        FC_FAMILY,
+        FC_STYLE,
+        FC_FULLNAME,
+        FC_POSTSCRIPT_NAME,
+        FC_FONT_FEATURES,
+        FC_VARIABLE,
+#ifdef FC_NAMED_INSTANCE
+        FC_NAMED_INSTANCE,
+#endif
+        FC_WEIGHT,
+        FC_WIDTH,
+        FC_SLANT,
+        FC_HINT_STYLE,
+        FC_INDEX,
+        FC_RGBA,
+        FC_LCD_FILTER,
+        FC_HINTING,
+        FC_SCALABLE,
+        FC_OUTLINE,
+        FC_COLOR,
+        FC_SPACING,
+        FC_MATRIX,
+        NULL);
+    if (!os) return a == b;
+    const bool ans = FcPatternEqualSubset((const FcPattern *)a->handle, (const FcPattern *)b->handle, os);
+    FcObjectSetDestroy(os);
+    return ans;
+}
+
+bool
+fs_backend_font_tables(FSContext *ctx UNUSED, const FSCandidate *c, FSFontTables *out) {
+    if (!c->path || !c->path[0]) return false;
+    return fs_read_font_tables_from_file(c->path, c->index, out);
+}
+
+PyObject *
+fs_backend_descriptor(const FSFont *f) {
+    RAII_PyObject(ans, pattern_as_dict((FcPattern *)f->base->handle));
+    if (!ans) return NULL;
+    if (f->named_style > -1) {
+        RAII_PyObject(ns, PyLong_FromLong(f->named_style));
+        if (!ns || PyDict_SetItemString(ans, "named_style", ns) != 0) return NULL;
+    }
+    if (f->has_axes) {
+        RAII_PyObject(axes, PyTuple_New(f->num_axes));
+        if (!axes) return NULL;
+        for (size_t i = 0; i < f->num_axes; i++) {
+            PyObject *v = PyFloat_FromDouble(f->axes[i].value);
+            if (!v) return NULL;
+            PyTuple_SET_ITEM(axes, i, v);
+        }
+        if (PyDict_SetItemString(ans, "axes", axes) != 0) return NULL;
+    }
+    if (f->has_matrix) {
+        RAII_PyObject(t, Py_BuildValue("(dddd)", f->matrix[0], f->matrix[1], f->matrix[2], f->matrix[3]));
+        if (!t || PyDict_SetItemString(ans, "matrix", t) != 0) return NULL;
+    }
+    Py_INCREF(ans);
+    return ans;
+}
+// }}}
 
 static PyMethodDef module_methods[] = {
     {"fc_list", (PyCFunction)(void (*)(void))(fc_list), METH_VARARGS | METH_KEYWORDS, NULL},
