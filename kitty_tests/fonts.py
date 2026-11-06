@@ -222,7 +222,8 @@ class Selection(BaseTest):
         self.ae(expected, keys(threaded(opts)[0]))
         # Fonts for symbol_map
         symbol_families = ('monospace', families[0]) if is_macos else ('monospace', families[0], 'NoSuchFontXYZ')
-        ff, symbols = threaded(opts, symbol_families)
+        ff, symbols, nerd_font = threaded(opts, symbol_families)
+        self.assertIsNone(nerd_font)
         self.ae(expected, keys(ff))
         self.ae(len(symbols), len(symbol_families))
         for d, bold, italic in symbols:
@@ -234,6 +235,37 @@ class Selection(BaseTest):
         ff = get_font_files(opts)
         for x in ('medium', 'bold', 'italic', 'bi'):
             self.ae(ff[x].get('features'), (ParsedFontFeature('+zero'),))
+
+    def test_builtin_nerd_font(self):
+        # The builtin NERD font is prepared by the font selection thread and is
+        # used for symbol_map entries for it and for fallback
+        from kitty.constants import fonts_dir
+        from kitty.fast_data_types import create_test_font_group, set_send_sprite_to_gpu, sprite_map_set_limits
+        from kitty.fonts import render
+
+        path = os.path.join(fonts_dir, 'SymbolsNerdFontMono-Regular.ttf')
+        if not os.path.exists(path):
+            self.skipTest('The builtin NERD font is not present')
+        opts = self.set_options({'symbol_map': {(0xE0B0, 0xE0B0): 'Symbols Nerd Font Mono'}})
+        sprite_map_set_limits(100000, 100)
+        set_send_sprite_to_gpu(lambda *a: None)
+        try:
+            render.set_font_family(opts, add_builtin_nerd_font=True, threaded=True)
+            create_test_font_group(11.0, 96.0, 96.0)  # uses the results of the selection
+            d = render.builtin_nerd_font_descriptor
+            self.assertIsNotNone(d)
+            self.ae(d['path'], path)  # type: ignore
+            self.ae(len(render.current_faces), 5)
+            self.ae(face_from_descriptor(render.current_faces[4][0]).postscript_name(), 'SymbolsNFM')  # type: ignore
+            # The builtin NERD font is used for fallback for NERD font icons,
+            # unless a font installed on the system has them, which is preferred
+            face = get_fallback_font('\U000f0001', False, False)
+            if face.path != path:
+                self.assertIn('NerdFont', os.path.basename(face.path), f'Unexpected fallback font for a NERD font icon: {face.path}')
+            else:
+                self.ae(face.postscript_name(), 'SymbolsNFM')
+        finally:
+            set_send_sprite_to_gpu(None)
 
     def test_variable_data_from_font_file(self):
         # The pure C reading of variable font data used by font selection must
