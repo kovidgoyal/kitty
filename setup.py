@@ -979,7 +979,7 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     elif src == 'kitty/simd-string-512.c':
         # uses native AVX-512 intrinsics, only compiled on x86-64, selected at runtime only when the CPU supports these features
         if env.binary_arch.isa is ISA.AMD64:
-            ans.extend(('-mavx512f', '-mavx512bw', '-mavx512vl', '-mavx512vbmi2'))
+            ans.extend(('-mavx512f', '-mavx512bw', '-mavx512vl'))
             # We have manual vzeroupper so prevent compiler from emitting it causing duplicates
             if env.compiler_type is CompilerType.clang:
                 ans.append('-mllvm')
