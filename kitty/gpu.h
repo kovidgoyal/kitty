@@ -45,6 +45,19 @@ bool set_gpu_driver_candidates(const GPUDriverCandidate *candidates, size_t coun
 const char *load_next_gpu_driver(const GPUNativeWindow *display);
 // Whether there are candidates that have not yet been tried
 bool has_untried_gpu_drivers(void);
+// Like load_next_gpu_driver() but the driver is loaded in a thread, the
+// result is available from wait_for_gpu_driver(), which must be called before
+// the driver is used or any other driver loading function is called. Use
+// only with connections to the display that can be used from multiple threads,
+// such as Wayland ones, as GPU drivers use the connection, for example, to
+// check they can render to windows. Returns NULL if the load was started,
+// or, if loading synchronously, as for load_next_gpu_driver().
+const char *load_next_gpu_driver_async(const GPUNativeWindow *display);
+// Wait for a load started by load_next_gpu_driver_async() to finish, trying
+// the remaining candidates if it failed. Returns NULL on success, or if no
+// load was started, otherwise a description of why every candidate failed,
+// until another driver is loaded.
+const char *wait_for_gpu_driver(void);
 // }}}
 // Must be called once a surface has been created and made current, before any
 // other GPU functions, except the surface functions, are used. Returns NULL on

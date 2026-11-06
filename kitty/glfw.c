@@ -2364,6 +2364,14 @@ switch_gpu_driver_after_failure(bool is_first_window, const GPUFailure failure) 
 
 static PyObject *
 create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
+    {
+        // The GPU driver may still be loading, see glfw_init()
+        const char *err = wait_for_gpu_driver();
+        if (err) {
+            PyErr_Format(PyExc_RuntimeError, "Failed to load a GPU driver:\n%s", err);
+            return NULL;
+        }
+    }
     int x = INT_MIN, y = INT_MIN, window_state = WINDOW_NORMAL, disallow_override_title = 0;
     char *wm_class_class, *wm_class_name;
     PyObject *title, *optional_window_state = NULL, *load_programs = NULL, *get_window_size, *pre_show_callback, *optional_x = NULL, *optional_y = NULL,
@@ -2968,7 +2976,11 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         const GPUNativeWindow display = wl_display ? (GPUNativeWindow){.platform = GPU_PLATFORM_WAYLAND, .display = wl_display}
                                                    : (GPUNativeWindow){.platform = GPU_PLATFORM_X11, .display = glfwGetX11Display(), .screen = -1};
 #endif
-        if ((err = load_next_gpu_driver(&display))) {
+        // On Wayland, load the driver in a thread, as it is slow, it is waited
+        // for when the first window is created, see wait_for_gpu_driver().
+        // libwayland supports using the connection from multiple threads, X11
+        // connections are not thread safe unless XInitThreads() is called.
+        if ((err = display.platform == GPU_PLATFORM_WAYLAND ? load_next_gpu_driver_async(&display) : load_next_gpu_driver(&display))) {
             PyErr_Format(PyExc_RuntimeError, "Failed to load a GPU driver:\n%s", err);
             return NULL;
         }
@@ -2978,6 +2990,9 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject *
 glfw_terminate(PYNOARG) {
+    // The GPU driver may still be loading, it uses the connection to the
+    // windowing system, which is closed below. Failures are irrelevant here.
+    wait_for_gpu_driver();
     cleanup_shader_resources_on_terminate();
     // Must be done before glfwTerminate() closes the connection to the windowing system
     if (gpu_driver.driver) gpu_release_native_resources();
