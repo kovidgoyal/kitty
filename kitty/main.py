@@ -10,6 +10,7 @@ import sys
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from gettext import gettext as _
+from threading import Thread
 
 from . import logout_session
 from .child import set_default_env, set_LANG_in_default_env
@@ -99,7 +100,7 @@ def set_custom_ibeam_cursor() -> None:
 
 
 def load_all_shaders() -> None:
-    from .shaders.slang import load_shader_programs  # see _run_app() for why this is not imported at the top
+    from .shaders.slang import load_shader_programs  # see import_slow_modules() for why this is not imported at the top
 
     try:
         load_shader_programs()
@@ -315,15 +316,29 @@ def logout_snapshot_to_restore(opts: Options, args: CLIOptions) -> RestoredSnaps
     return None
 
 
+def import_slow_modules() -> None:
+    # These modules are slow to import, so they are imported in a thread, while
+    # init_glfw() runs with the GIL released, see glfw_init() in glfw.c. On
+    # Wayland, they are also imported while the GPU driver is loaded in a thread.
+    try:
+        from . import boss, session  # noqa: F401
+        from .shaders import slang  # noqa: F401
+    except Exception:
+        pass  # The modules are imported again in the main thread, which reports the error
+
+
+slow_modules_importer: Thread | None = None
+
+
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
-    # These modules are slow to import and are imported here rather than at
-    # the top of this module, so that they are imported after init_glfw(),
-    # which on Wayland loads the GPU driver in a thread, see glfw_init()
-    # in glfw.c, while they are being imported.
+    # Joined here rather than in kitty_main() so that font selection, started
+    # in AppRunner.__call__(), runs in parallel with the imports
+    if slow_modules_importer is not None:
+        slow_modules_importer.join()
+        startup_timing('Imported the boss and session modules')
     from .boss import Boss
     from .session import create_sessions, get_os_window_sizing_data
 
-    startup_timing('Imported the boss and session modules')
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
     if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name in ('list', 'listjson'):
@@ -713,6 +728,10 @@ def kitty_main(called_from_panel: bool = False) -> None:
     # threads. These threads must not handle the masked signals, to ensure
     # kitty can handle them. See https://github.com/kovidgoyal/kitty/issues/4636
     mask_kitty_signals_process_wide()
+    # Started after masking signals, so the thread inherits the mask
+    global slow_modules_importer
+    slow_modules_importer = Thread(target=import_slow_modules, name='ImportSlowModules', daemon=True)
+    slow_modules_importer.start()
     init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
     startup_timing('GLFW initialized')
     try:

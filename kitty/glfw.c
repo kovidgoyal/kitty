@@ -2501,11 +2501,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     uint32_t bgcolor = OPT(background);
     uint32_t bgalpha = (uint32_t)((MAX(0.f, MIN((OPT(background_opacity) * 255), 255.f))));
     glfwWindowHint(GLFW_WAYLAND_BGCOLOR, ((bgalpha & 0xff) << 24) | bgcolor);
-    // We use a temp window to avoid the need to set the window size after
-    // creation, which causes a resize event and all the associated processing.
-    // The temp window is used to get the DPI. On Wayland no temp window can be
-    // used, so start with window visible unless hidden window requested.
-    GLFWwindow *temp_window = NULL;
+    // The DPI is needed before the window is created to calculate its size, to
+    // avoid the need to set the window size after creation, which causes a
+    // resize event and all the associated processing. On Wayland start with
+    // the window visible unless a hidden window is requested.
     glfwWindowHint(GLFW_VISIBLE, window_state != WINDOW_HIDDEN && global_state.is_wayland);
     float xscale, yscale;
     double xdpi, ydpi;
@@ -2541,17 +2540,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #undef QUERY_MONITOR
         }
     } else {
-#define glfw_failure(is_panel)               \
-    {                                        \
-        set_window_creation_error(is_panel); \
-        return NULL;                         \
-    }
-
-        glfwGetError(NULL); // clear any stale error
-        temp_window = glfwCreateWindow(640, 480, "temp", NULL, NULL);
-        if (temp_window == NULL) glfw_failure(false);
-        get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
-        startup_timing("Temporary window for DPI created");
+        // On X11 the scale is the same for all monitors. On macOS new windows
+        // are placed on the primary monitor, if the window ends up on a
+        // monitor with a different scale, the fonts are reloaded below.
+        // Creating a temporary window to get the scale is slow, particularly on
+        // macOS where destroying it alone takes ~10ms.
+        get_window_content_scale(NULL, &xscale, &yscale, &xdpi, &ydpi);
     }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
     startup_timing("Fonts loaded");
@@ -2583,12 +2577,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwGetError(NULL); // clear any stale error
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title_utf8, NULL, lsc);
     initial_window_size_py_callback = NULL;
-    if (temp_window) {
-        glfwDestroyWindow(temp_window);
-        temp_window = NULL;
+    if (glfw_window == NULL) {
+        set_window_creation_error(lsc != NULL);
+        return NULL;
     }
-    if (glfw_window == NULL) glfw_failure(lsc != NULL);
-#undef glfw_failure
     // Set titlebar-only mode before the window becomes visible
     if (global_state.is_wayland && (OPT(hide_window_decorations) & 2) && glfwWaylandSetTitlebarHidden) { glfwWaylandSetTitlebarHidden(glfw_window, true); }
     gpu_surface_t gpu_surface;
@@ -2941,31 +2933,40 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
     cocoa_set_uncaught_exception_handler();
 #endif
-    const char *err = load_glfw(path);
+    // Loading and initializing glfw is slow, particularly on macOS, where it
+    // is mostly spent waiting for the window server, so release the GIL to
+    // allow other Python threads to run, see init_glfw() in main.py. Nothing
+    // here must use Python, until the GIL is re-acquired.
+    const char *err;
+    bool ok = false, supports_window_occlusion = false;
+    Py_BEGIN_ALLOW_THREADS;
+    err = load_glfw(path);
+    if (!err) {
+        glfw_is_loaded = true;
+        push_modifier_remap_to_glfw();
+        glfwSetErrorCallback(error_callback);
+        glfwInitHint(GLFW_DEBUG_KEYBOARD, debug_keyboard);
+        glfwInitHint(GLFW_DEBUG_RENDERING, debug_rendering);
+        OPT(debug_keyboard) = debug_keyboard != 0;
+        glfwInitHint(GLFW_WAYLAND_IME, wayland_enable_ime != 0);
+#ifdef __APPLE__
+        glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
+        glfwInitHint(GLFW_COCOA_MENUBAR, 0);
+#endif
+        ok = glfwInit(monotonic_start_time, &supports_window_occlusion);
+    }
+    Py_END_ALLOW_THREADS;
     if (err) {
         PyErr_SetString(PyExc_RuntimeError, err);
         return NULL;
     }
-    glfw_is_loaded = true;
-    push_modifier_remap_to_glfw();
-    glfwSetErrorCallback(error_callback);
-    glfwInitHint(GLFW_DEBUG_KEYBOARD, debug_keyboard);
-    glfwInitHint(GLFW_DEBUG_RENDERING, debug_rendering);
-    OPT(debug_keyboard) = debug_keyboard != 0;
-    glfwInitHint(GLFW_WAYLAND_IME, wayland_enable_ime != 0);
-#ifdef __APPLE__
-    glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
-    glfwInitHint(GLFW_COCOA_MENUBAR, 0);
-#else
-    if (glfwDBusSetUserNotificationHandler) { glfwDBusSetUserNotificationHandler(dbus_user_notification_activated); }
-#endif
-    bool supports_window_occlusion = false;
-    bool ok = glfwInit(monotonic_start_time, &supports_window_occlusion);
     if (ok) {
 #ifdef __APPLE__
         glfwSetCocoaURLOpenCallback(apple_url_open_callback);
 #else
         glfwSetDrawTextFunction(draw_text_callback);
+        // Set only now as it calls Python
+        if (glfwDBusSetUserNotificationHandler) { glfwDBusSetUserNotificationHandler(dbus_user_notification_activated); }
 #endif
         get_window_dpi(NULL, &global_state.default_dpi.x, &global_state.default_dpi.y);
         edge_spacing_func = edge_sf;
@@ -2985,7 +2986,13 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         // for when the first window is created, see wait_for_gpu_driver().
         // libwayland supports using the connection from multiple threads, X11
         // connections are not thread safe unless XInitThreads() is called.
-        if ((err = display.platform == GPU_PLATFORM_WAYLAND ? load_next_gpu_driver_async(&display) : load_next_gpu_driver(&display))) {
+        if (display.platform == GPU_PLATFORM_WAYLAND) err = load_next_gpu_driver_async(&display);
+        else {
+            Py_BEGIN_ALLOW_THREADS;
+            err = load_next_gpu_driver(&display);
+            Py_END_ALLOW_THREADS;
+        }
+        if (err) {
             PyErr_Format(PyExc_RuntimeError, "Failed to load a GPU driver:\n%s", err);
             return NULL;
         }

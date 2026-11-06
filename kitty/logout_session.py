@@ -26,9 +26,7 @@ import fcntl
 import json
 import os
 import re
-import secrets
 import shutil
-import tempfile
 import time
 from collections.abc import Callable, Mapping
 from contextlib import suppress
@@ -203,6 +201,8 @@ def delete_key(key_store: KeyStore, key_id: str, path: str) -> None:
 
 
 def new_key_id() -> str:
+    import secrets  # slow to import and not needed at startup
+
     return secrets.token_hex(KEY_ID_BYTES)
 
 
@@ -367,6 +367,8 @@ def save_snapshot(base: str, pid: int, session: str, scrollback: Mapping[int, by
     tdir = ''
     try:
         os.makedirs(base, mode=0o700, exist_ok=True)
+        import tempfile  # not needed at startup
+
         tdir = tempfile.mkdtemp(dir=base, prefix=f'{pid}.', suffix='.tmp')
         if key_id:
             write_private_file(os.path.join(tdir, KEY_ID_FILE), key_id.encode())
