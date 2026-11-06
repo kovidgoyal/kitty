@@ -328,7 +328,7 @@ surface_create(void *driver, const GPUNativeWindow *native, const GPUSurfaceConf
     s->config = *config;
     s->width = width;
     s->height = height;
-    s->swap_interval = 1;
+    s->swap_interval = config->swap_interval;
     VkResult r;
     if (native->platform == GPU_PLATFORM_WAYLAND) {
         const VkWaylandSurfaceCreateInfoKHR info = {
