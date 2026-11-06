@@ -147,7 +147,6 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
         case 1: func = utf8_decode_to_esc_scalar; break;
         case 2: func = utf8_decode_to_esc_128; break;
         case 3: func = utf8_decode_to_esc_256; break;
-        case 4: func = utf8_decode_to_esc_512; break;
     }
     RAII_PyObject(ans, PyUnicode_FromString(""));
     ssize_t p = 0;
@@ -396,7 +395,9 @@ init_simd(void *x) {
 #undef do_check
     if (has_avx512) {
         A(has_avx512, True);
-        utf8_decode_to_esc_impl = utf8_decode_to_esc_512;
+        // The AVX2 UTF-8 decoder, which decodes blocks of valid UTF-8 using
+        // the approach of simdutf, is much faster than the AVX-512 one, so it
+        // is used by the has_avx2 branch below.
         find_either_of_two_bytes_impl = find_either_of_two_bytes_512;
         xor_data64_impl = xor_data64_512;
         printable_ascii_run_length_impl = printable_ascii_run_length_512;

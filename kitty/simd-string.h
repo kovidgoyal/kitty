@@ -112,7 +112,6 @@ blend_pixel_over_straight(uint8_t *dst, const uint8_t *src) {
 // SIMD implementations, internal use
 bool utf8_decode_to_esc_128(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
 bool utf8_decode_to_esc_256(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
-bool utf8_decode_to_esc_512(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
 const uint8_t *find_either_of_two_bytes_128(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
 const uint8_t *find_either_of_two_bytes_256(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
 const uint8_t *find_either_of_two_bytes_512(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
