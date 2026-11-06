@@ -521,12 +521,41 @@ nuke_multiline_char_intersecting_with(Screen *self, index_type x_start, index_ty
     }
 }
 
+static bool
+has_multicell_in_range(const CPUCell *cells, index_type x_start, index_type x_limit) {
+    // Lines rarely contain multicell chars, so check for them before looking for them
+    // cell by cell. This reads only the 32 bit word of each cell that contains the
+    // is_multicell flag, via memcpy() to avoid aliasing issues, into independent
+    // accumulators so that there is no dependency between consecutive cells.
+    static_assert(sizeof(CPUCell) == 3 * sizeof(uint32_t), "has_multicell_in_range() needs updating");
+    const CPUCell probe = {.is_multicell = true};
+    uint32_t mask[3];
+    memcpy(mask, &probe, sizeof(mask));
+    const unsigned word = mask[0] ? 0 : (mask[1] ? 1 : 2);
+    const uint8_t *p = (const uint8_t *)(cells + x_start) + word * sizeof(uint32_t);
+    const uint8_t *limit = (const uint8_t *)(cells + x_limit) + word * sizeof(uint32_t);
+    uint32_t a = 0, b = 0, c = 0, d = 0, v;
+#define W(acc, i)                                     \
+    memcpy(&v, p + (i) * sizeof(CPUCell), sizeof(v)); \
+    acc |= v;
+    for (; p + 4 * sizeof(CPUCell) <= limit; p += 4 * sizeof(CPUCell)) {
+        W(a, 0);
+        W(b, 1);
+        W(c, 2);
+        W(d, 3);
+    }
+    for (; p < limit; p += sizeof(CPUCell)) { W(a, 0); }
+#undef W
+    return ((a | b | c | d) & mask[word]) != 0;
+}
+
 static void
 nuke_multicell_char_intersecting_with(Screen *self, index_type x_start, index_type x_limit, index_type y_start, index_type y_limit, bool replace_with_spaces) {
     for (index_type y = y_start; y < y_limit; y++) {
         CPUCell *cp;
         GPUCell *gp;
         linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        if (!has_multicell_in_range(cp, x_start, x_limit)) continue;
         for (index_type x = x_start; x < x_limit; x++) {
             if (cp[x].is_multicell) nuke_multicell_char_at(self, x, y, replace_with_spaces);
         }

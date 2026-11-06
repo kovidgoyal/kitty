@@ -1029,6 +1029,67 @@ class TestParser(BaseTest):
         pb('\033[' + '1;' * 255 + '1:2m\033[31m', too_many, ('select_graphic_rendition', '31'))
         pb('\033[' + '1;' * 256 + 'm\033[31m', ('select_graphic_rendition', ';'.join('1' * 256)), ('select_graphic_rendition', '31'))
 
+    def test_csi_parse_simple(self):
+        # The fast path for simple CSI codes must give the same results as the
+        # generic CSI parser, including for codes it does not handle
+        import random
+
+        from kitty.fast_data_types import test_set_csi_parse_simple
+
+        def param(rng):
+            r = rng.random()
+            if r < 0.7:
+                return str(rng.randint(0, 300))
+            if r < 0.8:
+                return ''
+            if r < 0.85:
+                return '9' * rng.randint(15, 20)
+            if r < 0.9:
+                return '-' + str(rng.randint(0, 9))
+            return rng.choice(('\n', '\x08', '\r', ' ', '$', '\x07')) + str(rng.randint(0, 9))
+
+        def csi(rng):
+            ans = '\x1b['
+            if rng.random() < 0.3:
+                ans += rng.choice('?><=')
+            n = rng.choice((0, 1, 1, 2, 3, 5, 8)) if rng.random() < 0.99 else rng.randint(250, 260)
+            for i in range(n):
+                if i:
+                    ans += rng.choice(';;;:')
+                ans += param(rng)
+            if rng.random() < 0.05:
+                ans += rng.choice(' $"!')
+            return ans + rng.choice('mmmHJKABCDEGbrhlsun@`dXPLMSTx~q')
+
+        def data_for(seed):
+            rng = random.Random(seed)
+            return ''.join(csi(rng) if rng.random() < 0.7 else 'ab日' * rng.randint(0, 3) for _ in range(rng.randint(1, 60))).encode()
+
+        def run(data, chunk_sizes, dump):
+            s = self.create_screen(cols=20, lines=10, scrollback=10)
+            cd = CmdDump() if dump else None
+            pos = 0
+            for sz in chunk_sizes:
+                parse_bytes(s, data[pos : pos + sz], cd)
+                pos += sz
+            parse_bytes(s, data[pos:], cd)
+            lines = tuple(s.linebuf.line(i).as_ansi() for i in range(s.lines))
+            return (cd.get_result() if dump else None), lines, (s.cursor.x, s.cursor.y), s.cursor.fg, s.cursor.bg
+
+        try:
+            for seed in range(500):
+                data = data_for(seed)
+                rng = random.Random(seed)
+                chunk_sizes = [rng.randint(1, 16) for _ in range(rng.randint(0, 8))]
+                for dump in (True, False):
+                    test_set_csi_parse_simple(True)
+                    a = run(data, chunk_sizes, dump)
+                    test_set_csi_parse_simple(False)
+                    b = run(data, chunk_sizes, dump)
+                    self.ae(a, b, f'seed={seed} dump={dump} data={data!r}')
+        finally:
+            test_set_csi_parse_simple(True)
+
     def test_csi_code_rep(self):
         s = self.create_screen(8)
         pb = partial(self.parse_bytes_dump, s)

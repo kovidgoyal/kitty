@@ -956,7 +956,70 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
 }
 
 static bool
+csi_parse_simple(ParsedCSI *csi, const uint8_t *buf, size_t *pos, const size_t sz) {
+    // Fast path for the common form of CSI codes: an optional private marker, then
+    // non-empty numeric params separated by ; or : and then the final byte, all already
+    // in the buffer. Parses them in one pass with no per byte state machine transitions.
+    // Leaves csi and *pos as csi_parse_loop() would, and returns true, only when the
+    // complete code has this form, otherwise returns false and the caller must fall
+    // back to csi_parse_loop(), which handles everything else, including reporting
+    // errors. Must only be called in the CSI_START state.
+    size_t p = *pos;
+    if (p >= sz) return false;
+    char primary = 0;
+    switch (buf[p]) {
+        case '?':
+        case '>':
+        case '<':
+        case '=': primary = buf[p++]; break;
+    }
+    unsigned num_params = 0;
+    while (true) {
+        if (p >= sz) return false;
+        uint8_t ch = buf[p];
+        if ((uint8_t)(ch - '0') <= 9) {
+            uint64_t accumulator = 0;
+            const size_t digits_start = p;
+            do {
+                accumulator = accumulator * 10 + (ch - '0');
+                if (++p >= sz) return false;
+                ch = buf[p];
+            } while ((uint8_t)(ch - '0') <= 9);
+            if (p - digits_start > MAX_CSI_DIGITS || num_params >= MAX_CSI_PARAMS) return false;
+            csi->params[num_params++] = (int64_t)accumulator;
+            if (ch == ';' || ch == ':') {
+                // An empty param, which is not of this form, is detected by the next iteration
+                if (num_params >= MAX_CSI_PARAMS) return false;
+                csi->is_sub_param[num_params] = ch == ':';
+                p++;
+                if (p >= sz || (uint8_t)(buf[p] - '0') > 9) return false;
+                continue;
+            }
+        } else if (num_params) return false;
+        switch (ch) {
+            case CSI_TRAILER:
+                csi->primary = primary;
+                csi->num_params = num_params;
+                csi->trailer = ch;
+                csi->is_valid = true;
+                if (primary || num_params) csi->state = CSI_BODY;
+                *pos = p + 1;
+                return true;
+            default: return false;
+        }
+    }
+}
+
+#ifdef DUMP_COMMANDS
+extern bool csi_parse_simple_disabled_for_tests;
+#else
+bool csi_parse_simple_disabled_for_tests = false;
+#endif
+
+static bool
 consume_csi(PS *self) {
+    if (self->csi.state == CSI_START && !csi_parse_simple_disabled_for_tests && csi_parse_simple(&self->csi, self->buf, &self->read.pos, self->read.sz))
+        return true;
     return csi_parse_loop(self, &self->csi, self->buf, &self->read.pos, self->read.sz, self->read.consumed);
 }
 
@@ -1539,12 +1602,20 @@ consume_input(PS *self, PyObject *dump_callback UNUSED, id_type window_id UNUSED
 
     switch (self->vte_state) {
         case VTE_NORMAL:
-            consume_normal(self);
+            if (self->buf[self->read.pos] == ESC && self->utf8_decoder.state.cur == UTF8_ACCEPT) {
+                // Escape codes often follow each other directly, avoid calling the UTF-8
+                // decoder for no text. This is what it does on seeing ESC.
+                zero_at_ptr(&self->utf8_decoder.state);
+                self->read.pos++;
+                SET_STATE(ESC);
+            } else consume_normal(self);
             self->read.consumed = self->read.pos;
             break;
         case VTE_ESC:
             if (consume_esc(self)) { self->read.consumed = self->read.pos; }
-            break;
+            // Start parsing a CSI code right away rather than in the next call
+            if (self->vte_state != VTE_CSI || self->read.pos >= self->read.sz) break;
+            /* fallthrough */
         case VTE_CSI:
             if (consume_csi(self)) {
                 self->read.consumed = self->read.pos;
@@ -1755,6 +1826,17 @@ static PyMethodDef methods[] = {
     {NULL},
 };
 
+static PyObject *
+test_set_csi_parse_simple(PyObject *self UNUSED, PyObject *val) {
+    csi_parse_simple_disabled_for_tests = !PyObject_IsTrue(val);
+    Py_RETURN_NONE;
+}
+
+static PyMethodDef module_methods[] = {
+    {"test_set_csi_parse_simple", test_set_csi_parse_simple, METH_O, ""},
+    {NULL},
+};
+
 PyTypeObject Parser_Type = {
     PyVarObject_HEAD_INIT(NULL, 0).tp_name = "fast_data_types.Parser",
     .tp_basicsize = sizeof(Parser),
@@ -1799,7 +1881,8 @@ alloc_vt_parser(id_type window_id) {
 #define EXTRA_INIT                                                                                                \
     if (0 != PyModule_AddIntConstant(module, "VT_PARSER_BUFFER_SIZE", BUF_SZ)) return 0;                          \
     if (0 != PyModule_AddIntConstant(module, "VT_PARSER_MAX_ESCAPE_CODE_SIZE", MAX_ESCAPE_CODE_LENGTH)) return 0; \
-    if (!init_simd(module)) return 0;
+    if (!init_simd(module)) return 0;                                                                             \
+    if (PyModule_AddFunctions(module, module_methods) != 0) return 0;
 
 INIT_TYPE(Parser)
 

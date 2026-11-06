@@ -929,6 +929,24 @@ class TestScreen(BaseTest):
         finally:
             test_set_history_reuse(True)
 
+    def test_erase_in_line_removes_intersecting_multicell_chars(self):
+        for how, wide_expected in ((0, 'ab'), (1, '    cd'), (2, '')):
+            s = self.create_screen(cols=8, lines=3)
+            s.draw('ab日cd')
+            s.cursor.x = 3  # second cell of the wide char
+            parse_bytes(s, f'\x1b[{how}K'.encode())
+            self.ae(str(s.line(0)), wide_expected, f'how={how}')
+            self.assertFalse(any(c['mcd'] for c in s.cpu_cells(0)), f'how={how}')
+            # Erasing part of a char that spans two lines must remove all of it
+            s = self.create_screen(cols=8, lines=3)
+            s.draw('ab')
+            draw_multicell(s, 'X', scale=2)
+            s.draw('cd')
+            s.cursor.x, s.cursor.y = 3, 1
+            parse_bytes(s, f'\x1b[{how}K'.encode())
+            self.ae(str(s.line(0)), 'ab  cd', f'how={how}')
+            self.assertFalse(any(c['mcd'] for y in range(2) for c in s.cpu_cells(y)), f'how={how}')
+
     def test_batched_non_ascii_draw(self):
         import random
 
