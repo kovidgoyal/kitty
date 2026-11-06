@@ -432,7 +432,9 @@ class AppRunner:
             theme_colors.patch_opts(opts, args.debug_rendering)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
         try:
-            set_font_family(opts, add_builtin_nerd_font=True)
+            # Fonts are selected in a thread, while the rest of startup happens,
+            # the results are used when the first OS Window is created
+            set_font_family(opts, add_builtin_nerd_font=True, threaded=True)
             _run_app(opts, args, bad_lines, talk_fd)
         finally:
             set_options(None)
