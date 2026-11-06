@@ -6,10 +6,8 @@
 
 
 import os
-from collections.abc import Callable, Sequence
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import context, get_all_start_methods, get_context, spawn, util
-from typing import Any
+from collections.abc import Sequence
+from multiprocessing import spawn, util
 
 from .constants import kitty_exe
 
@@ -38,20 +36,6 @@ def monkey_patch_multiprocessing() -> None:
 def unmonkey_patch_multiprocessing() -> None:
     spawn.set_executable(orig_executable)
     util.spawnv_passfds = orig_spawn_passfds
-
-
-def get_process_pool_executor(
-    prefer_fork: bool = False, max_workers: int | None = None, initializer: Callable[..., None] | None = None, initargs: tuple[Any, ...] = ()
-) -> ProcessPoolExecutor:
-    if prefer_fork and 'fork' in get_all_start_methods():
-        ctx: context.DefaultContext | context.ForkContext = get_context('fork')
-    else:
-        monkey_patch_multiprocessing()
-        ctx = get_context()
-    try:
-        return ProcessPoolExecutor(max_workers=max_workers, initializer=initializer, initargs=initargs, mp_context=ctx)
-    except TypeError:
-        return ProcessPoolExecutor(max_workers=max_workers, initializer=initializer, initargs=initargs)
 
 
 def test_spawn() -> None:
