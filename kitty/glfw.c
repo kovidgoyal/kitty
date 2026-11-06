@@ -2551,6 +2551,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         temp_window = glfwCreateWindow(640, 480, "temp", NULL, NULL);
         if (temp_window == NULL) glfw_failure(false);
         get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
+        startup_timing("Temporary window for DPI created");
     }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
     startup_timing("Fonts loaded");

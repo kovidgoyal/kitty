@@ -1633,6 +1633,22 @@ append_matching(FSContext *ctx, CFStringRef attribute, const char *value, FSList
             num++;
         }
     }
+    // CoreText makes a descriptor for the default instance of a variable font,
+    // with an empty variation dictionary, and one for each named instance. The
+    // default descriptor's style name is often Regular even when the default
+    // instance is, for example, ExtraLight. Put it before the named instances
+    // from the same file, so that weight_range_for_family() uses the weight of
+    // the actual Regular named instance. The order otherwise differs from
+    // that of coretext_all_fonts(), which is the font registry's internal order.
+    const FSCandidate **items = out->items + (out->count - num);
+    for (size_t i = 0; i < num; i++) {
+        const FSCandidate *c = items[i];
+        if (!c->variable || c->variation_count) continue;
+        size_t first = 0;
+        while (first < i && strcmp(items[first]->path, c->path) != 0) first++;
+        memmove(items + first + 1, items + first, (i - first) * sizeof(items[0]));
+        items[first] = c;
+    }
     return num;
 }
 
@@ -1643,8 +1659,12 @@ fs_backend_list(FSContext *ctx, FSListKind kind, const char *name, const char *k
     switch (kind) {
         case FS_LIST_POSTSCRIPT_NAME: append_matching(ctx, kCTFontNameAttribute, name, kind, key, monospaced, out); break;
         case FS_LIST_FAMILY:
-            if (!append_matching(ctx, kCTFontFamilyNameAttribute, name, kind, key, monospaced, out)) {
-                // The name may differ from the actual family name in case or whitespace
+            // CoreText matches family names case insensitively, but not whitespace insensitively.
+            // Symbols Nerd Font Mono is often used in symbol_map without being installed, as it
+            // is bundled with kitty, and its name is known, so avoid the ~25ms cost of listing
+            // all family names for it.
+            if (!append_matching(ctx, kCTFontFamilyNameAttribute, name, kind, key, monospaced, out) && strcmp(key, "symbols nerd font mono") != 0) {
+                // The name may differ from the actual family name in whitespace
                 CTBackendData *d = ct_backend_data(ctx);
                 load_family_names(d);
                 for (size_t i = 0; i < d->num_family_names; i++) {
