@@ -12,10 +12,9 @@ rendering, to improve smoothness. Parsing of the byte stream is done using
 maximum performance. Updates to the screen typically require sending just a few
 bytes to the GPU.
 
-There are two config options you can tune to adjust the performance,
-:opt:`repaint_delay` and :opt:`input_delay`. These control the artificial delays
-introduced into the render loop to reduce CPU usage. See
-:ref:`conf-kitty-performance` for details. See also the :opt:`sync_to_monitor`
+Output from programs is parsed as soon as it is received. The config option
+:opt:`repaint_delay` controls the artificial delay introduced into the render
+loop to reduce CPU usage. See :ref:`conf-kitty-performance` for details. See also the :opt:`sync_to_monitor`
 option to further decrease latency at the cost of some `screen tearing
 <https://en.wikipedia.org/wiki/Screen_tearing>`__ while scrolling.
 
@@ -37,7 +36,6 @@ class keyboard to screen latency.
 Note that to minimize latency at the expense of more energy usage, use the
 following settings in kitty.conf::
 
-    input_delay 0
     repaint_delay 2
     sync_to_monitor no
     wayland_enable_ime no
@@ -45,8 +43,8 @@ following settings in kitty.conf::
 `Hardware based measurement on macOS
 <https://thume.ca/2020/05/20/making-a-latency-tester/>`__ show that kitty and
 Apple's Terminal.app share the crown for best latency. These
-measurements were done with :opt:`input_delay` at its default value of ``3 ms``
-which means kitty's actual numbers would be even lower.
+measurements were done with the now removed ``input_delay`` option at its
+default value of ``3 ms`` which means kitty's actual numbers would be even lower.
 
 `Typometer based measurements on Linux
 <https://github.com/kovidgoyal/kitty/issues/2701#issuecomment-911089374>`__

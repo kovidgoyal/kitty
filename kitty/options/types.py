@@ -385,7 +385,6 @@ option_names = (
     'inactive_text_alpha',
     'initial_window_height',
     'initial_window_width',
-    'input_delay',
     'italic_font',
     'kitten_alias',
     'kitty_mod',
@@ -612,7 +611,6 @@ class Options:
     inactive_text_alpha: float = 1.0
     initial_window_height: tuple[int, str] = (400, 'px')
     initial_window_width: tuple[int, str] = (640, 'px')
-    input_delay: int = 3
     italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     kitty_mod: int = 5
     linux_bell_theme: str = '__custom'
