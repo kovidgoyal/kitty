@@ -658,6 +658,238 @@ scalar_decode_all(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 
 #undef do_one_byte
 
+// Fast decoding of blocks of valid UTF-8 {{{
+// Uses the approach of simdutf (https://github.com/simdutf/simdutf): blocks are
+// validated with the lookup tables of Keiser and Lemire, "Validating UTF-8 In
+// Less Than One Instruction Per Byte" and converted twelve bytes at a time with
+// the shuffles from utf8-decode-tables.h, see gen/utf8_decode_tables.py.
+
+#include "utf8-decode-tables.h"
+
+#if KITTY_SIMD_LEVEL == 128
+#define utf8_lookup16(...) simde_mm_loadu_si128((const simde__m128i *)(const uint8_t[16]){__VA_ARGS__})
+// The bytes of cur preceded by the last n bytes of prev
+#define utf8_prev(cur, prev, n) simde_mm_alignr_epi8(cur, prev, 16 - (n))
+#define utf8_high_nibbles(v) simde_mm_and_si128(simde_mm_srli_epi16(v, 4), simde_mm_set1_epi8(0x0f))
+#define UTF8_VECS_PER_BLOCK 4
+#else
+#define utf8_lookup16(...) simde_mm256_broadcastsi128_si256(simde_mm_loadu_si128((const simde__m128i *)(const uint8_t[16]){__VA_ARGS__}))
+#define utf8_prev(cur, prev, n) simde_mm256_alignr_epi8(cur, simde_mm256_permute2x128_si256(prev, cur, 0x21), 16 - (n))
+#define utf8_high_nibbles(v) simde_mm256_and_si256(simde_mm256_srli_epi16(v, 4), simde_mm256_set1_epi8(0x0f))
+#define UTF8_VECS_PER_BLOCK 2
+#endif
+
+static inline integer_t
+FUNC(utf8_errors)(const integer_t input, const integer_t prev_input) {
+    // Returns a vector that is non-zero if input is not valid UTF-8, given that
+    // prev_input are the bytes before it. Validates every byte using its
+    // preceding three bytes.
+    enum {
+        TOO_SHORT = 1 << 0,  // 11______ 0_______ or 11______ 11______
+        TOO_LONG = 1 << 1,   // 0_______ 10______
+        OVERLONG_3 = 1 << 2, // 11100000 100_____
+        TOO_LARGE = 1 << 3,  // 11110100 1001____ etc.
+        SURROGATE = 1 << 4,  // 11101101 101_____
+        OVERLONG_2 = 1 << 5, // 1100000_ 10______
+        TOO_LARGE_1000 = 1 << 6,
+        OVERLONG_4 = 1 << 6, // 11110000 1000____
+        TWO_CONTS = 1 << 7,  // 10______ 10______
+        CARRY = TOO_SHORT | TOO_LONG | TWO_CONTS,
+    };
+    const integer_t prev1 = utf8_prev(input, prev_input, 1);
+    const integer_t byte_1_high = shuffle_epi8(
+        utf8_lookup16(
+            TOO_LONG,
+            TOO_LONG,
+            TOO_LONG,
+            TOO_LONG,
+            TOO_LONG,
+            TOO_LONG,
+            TOO_LONG,
+            TOO_LONG,
+            TWO_CONTS,
+            TWO_CONTS,
+            TWO_CONTS,
+            TWO_CONTS,
+            TOO_SHORT | OVERLONG_2,
+            TOO_SHORT,
+            TOO_SHORT | OVERLONG_3 | SURROGATE,
+            TOO_SHORT | TOO_LARGE | TOO_LARGE_1000 | OVERLONG_4),
+        utf8_high_nibbles(prev1));
+    const integer_t byte_1_low = shuffle_epi8(
+        utf8_lookup16(
+            CARRY | OVERLONG_3 | OVERLONG_2 | OVERLONG_4,
+            CARRY | OVERLONG_2,
+            CARRY,
+            CARRY,
+            CARRY | TOO_LARGE,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000 | SURROGATE,
+            CARRY | TOO_LARGE | TOO_LARGE_1000,
+            CARRY | TOO_LARGE | TOO_LARGE_1000),
+        and_si(prev1, set1_epi8(0x0f)));
+    const integer_t byte_2_high = shuffle_epi8(
+        utf8_lookup16(
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_LONG | OVERLONG_2 | TWO_CONTS | OVERLONG_3 | TOO_LARGE_1000 | OVERLONG_4,
+            TOO_LONG | OVERLONG_2 | TWO_CONTS | OVERLONG_3 | TOO_LARGE,
+            TOO_LONG | OVERLONG_2 | TWO_CONTS | SURROGATE | TOO_LARGE,
+            TOO_LONG | OVERLONG_2 | TWO_CONTS | SURROGATE | TOO_LARGE,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT,
+            TOO_SHORT),
+        utf8_high_nibbles(input));
+    const integer_t special_cases = and_si(and_si(byte_1_high, byte_1_low), byte_2_high);
+    // The third and fourth bytes of three and four byte sequences must be
+    // continuations, which special_cases flags as TWO_CONTS, so these cancel out
+    const integer_t is_third_byte = subtract_saturate_epu8(utf8_prev(input, prev_input, 2), set1_epi8(0xe0 - 0x80));
+    const integer_t is_fourth_byte = subtract_saturate_epu8(utf8_prev(input, prev_input, 3), set1_epi8(0xf0 - 0x80));
+    const integer_t must_be_continuation = and_si(or_si(is_third_byte, is_fourth_byte), set1_epi8(0x80));
+    return xor_si(must_be_continuation, special_cases);
+}
+
+static inline void
+FUNC(store_u16_as_u32)(uint32_t *out, const simde__m128i v) {
+    // Writes the eight 16 bit values in v as 32 bit values
+#if KITTY_SIMD_LEVEL == 128
+    simde_mm_storeu_si128((simde__m128i *)out, simde_mm_cvtepu16_epi32(v));
+    simde_mm_storeu_si128((simde__m128i *)(out + 4), simde_mm_cvtepu16_epi32(simde_mm_srli_si128(v, 8)));
+#else
+    simde_mm256_storeu_si256((simde__m256i *)out, simde_mm256_cvtepu16_epi32(v));
+#endif
+}
+
+static inline unsigned
+FUNC(utf8_convert_twelve_bytes)(const uint8_t *input, const uint64_t end_of_code_point_mask, uint32_t **output) {
+    // Converts the code points that end in the first twelve bytes of input (or
+    // sixteen bytes for some fast paths), returning the number of bytes
+    // consumed. Reads sixteen bytes from input and writes up to sixteen code
+    // points to output, though fewer may be valid.
+    const simde__m128i in = simde_mm_loadu_si128((const simde__m128i *)input);
+    uint32_t *out = *output;
+    const unsigned mask12 = end_of_code_point_mask & 0xfff;
+    if (mask12 == 0xfff) { // twelve ASCII bytes
+        FUNC(store_u16_as_u32)(out, simde_mm_cvtepu8_epi16(in));
+        FUNC(store_u16_as_u32)(out + 8, simde_mm_cvtepu8_epi16(simde_mm_srli_si128(in, 8)));
+        *output = out + 12;
+        return 12;
+    }
+    if ((end_of_code_point_mask & 0xffff) == 0xaaaa) { // eight two byte sequences
+        const simde__m128i perm = simde_mm_shuffle_epi8(in, simde_mm_setr_epi8(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14));
+        const simde__m128i composed = simde_mm_or_si128(
+            simde_mm_and_si128(perm, simde_mm_set1_epi16(0x7f)), simde_mm_srli_epi16(simde_mm_and_si128(perm, simde_mm_set1_epi16(0x1f00)), 2));
+        FUNC(store_u16_as_u32)(out, composed);
+        *output = out + 8;
+        return 16;
+    }
+    // Combines the bytes of three byte sequences shuffled into 32 bit lanes
+#define compose_three_byte_lanes(perm)                                                                                                                         \
+    simde_mm_or_si128(                                                                                                                                         \
+        simde_mm_or_si128(simde_mm_and_si128(perm, simde_mm_set1_epi32(0x7f)), simde_mm_srli_epi32(simde_mm_and_si128(perm, simde_mm_set1_epi32(0x3f00)), 2)), \
+        simde_mm_srli_epi32(simde_mm_and_si128(perm, simde_mm_set1_epi32(0x0f0000)), 4))
+    if (mask12 == 0x924) { // four three byte sequences, such as CJK text
+        const simde__m128i perm = simde_mm_shuffle_epi8(in, simde_mm_setr_epi8(2, 1, 0, -1, 5, 4, 3, -1, 8, 7, 6, -1, 11, 10, 9, -1));
+        simde_mm_storeu_si128((simde__m128i *)out, compose_three_byte_lanes(perm));
+        *output = out + 4;
+        return 12;
+    }
+    const unsigned row = utf8_decode_index[mask12][0], consumed = utf8_decode_index[mask12][1];
+    const simde__m128i perm = simde_mm_shuffle_epi8(in, simde_mm_loadu_si128((const simde__m128i *)utf8_decode_shuffles[row]));
+    if (row < UTF8_DECODE_FOUR_CODE_POINTS_START) { // six sequences of one or two bytes
+        const simde__m128i composed = simde_mm_or_si128(
+            simde_mm_and_si128(perm, simde_mm_set1_epi16(0x7f)), simde_mm_srli_epi16(simde_mm_and_si128(perm, simde_mm_set1_epi16(0x1f00)), 2));
+        FUNC(store_u16_as_u32)(out, composed);
+        *output = out + 6;
+    } else if (row < UTF8_DECODE_THREE_CODE_POINTS_START) { // four sequences of one to three bytes
+        simde_mm_storeu_si128((simde__m128i *)out, compose_three_byte_lanes(perm));
+        *output = out + 4;
+    } else if (row < UTF8_DECODE_NUM_SHUFFLES) { // three sequences of one to four bytes
+        const simde__m128i middle = simde_mm_srli_epi32(simde_mm_and_si128(perm, simde_mm_set1_epi32(0x3f00)), 2);
+        simde__m128i middle_high = simde_mm_and_si128(perm, simde_mm_set1_epi32(0x3f0000));
+        // remove the spurious high bit of the lead byte of three byte sequences
+        middle_high = simde_mm_xor_si128(simde_mm_srli_epi32(simde_mm_and_si128(perm, simde_mm_set1_epi32(0x400000)), 1), middle_high);
+        const simde__m128i high = simde_mm_srli_epi32(simde_mm_and_si128(perm, simde_mm_set1_epi32(0x07000000)), 6);
+        const simde__m128i composed = simde_mm_or_si128(
+            simde_mm_or_si128(simde_mm_and_si128(perm, simde_mm_set1_epi32(0x7f)), middle), simde_mm_or_si128(high, simde_mm_srli_epi32(middle_high, 4)));
+        simde_mm_storeu_si128((simde__m128i *)out, composed);
+        *output = out + 3;
+    }
+#undef compose_three_byte_lanes
+    return consumed;
+}
+
+static inline size_t
+FUNC(utf8_decode_valid_blocks)(UTF8Decoder *d, const uint8_t *src, const size_t src_sz) {
+    // Decodes 64 byte blocks of src while they are valid UTF-8 and contain no
+    // ESC, returning the number of bytes consumed, which always ends at a code
+    // point boundary. src must start at a code point boundary. The caller must
+    // ensure the output has capacity for src_sz plus 64 code points. Blocks are
+    // validated with zero preceding bytes, which is correct at a code point
+    // boundary, and only the code points that end within the block before its
+    // last twelve bytes are converted, the rest are part of the next block.
+    // Converting reads up to 16 bytes from the start of the last conversion,
+    // so blocks are only used when they are followed by 16 more bytes.
+    if (src_sz < 64 + 16) return 0;
+    const uint8_t *p = src, *const last_block_start = src + src_sz - (64 + 16);
+    uint32_t *out = d->output.storage + d->output.pos;
+    const integer_t esc_vec = set1_epi8(0x1b), zero = create_zero_integer(), max_continuation = set1_epi8(-65 + 1);
+    while (p <= last_block_start) {
+        integer_t v[UTF8_VECS_PER_BLOCK];
+        integer_t any_esc = zero, all_bits = zero;
+        for (unsigned i = 0; i < UTF8_VECS_PER_BLOCK; i++) {
+            v[i] = load_unaligned((const integer_t *)(p + i * sizeof(integer_t)));
+            any_esc = or_si(any_esc, cmpeq_epi8(v[i], esc_vec));
+            all_bits = or_si(all_bits, v[i]);
+        }
+        if (movemask_epi8(any_esc)) break;
+        if (!movemask_epi8(all_bits)) { // all ASCII
+            for (unsigned i = 0; i < 64; i += 16)
+                FUNC(store_u16_as_u32)(out + i, simde_mm_cvtepu8_epi16(simde_mm_loadu_si128((const simde__m128i *)(p + i)))),
+                    FUNC(store_u16_as_u32)(out + i + 8, simde_mm_cvtepu8_epi16(simde_mm_loadu_si128((const simde__m128i *)(p + i + 8))));
+            out += 64;
+            p += 64;
+            continue;
+        }
+        integer_t errors = FUNC(utf8_errors)(v[0], zero);
+        uint64_t continuation_mask = (uint32_t)movemask_epi8(cmplt_epi8(v[0], max_continuation));
+        for (unsigned i = 1; i < UTF8_VECS_PER_BLOCK; i++) {
+            errors = or_si(errors, FUNC(utf8_errors)(v[i], v[i - 1]));
+            continuation_mask |= (uint64_t)(uint32_t)movemask_epi8(cmplt_epi8(v[i], max_continuation)) << (i * sizeof(integer_t));
+        }
+        if (!is_zero(errors)) break;
+        // A byte is the last byte of a code point if the next byte is not a continuation
+        uint64_t end_of_code_point_mask = ~continuation_mask >> 1;
+        const uint8_t *const block_end = p + 64 - 12;
+        while (p < block_end) {
+            const unsigned consumed = FUNC(utf8_convert_twelve_bytes)(p, end_of_code_point_mask, &out);
+            p += consumed;
+            end_of_code_point_mask >>= consumed;
+        }
+    }
+    d->output.pos = out - d->output.storage;
+    return p - src;
+}
+#undef utf8_lookup16
+#undef utf8_prev
+#undef utf8_high_nibbles
+#undef UTF8_VECS_PER_BLOCK
+// }}}
+
 bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len) {
     // Based on the algorithm described in: https://woboq.com/blog/utf-8-processing-using-simd.html
@@ -675,6 +907,12 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         src_len -= d->num_consumed;
     }
     utf8_decoder_ensure_capacity(d, src_len + 64);
+    {
+        const size_t consumed = FUNC(utf8_decode_valid_blocks)(d, src_data, src_len);
+        d->num_consumed += consumed;
+        src_data += consumed;
+        src_len -= consumed;
+    }
     const integer_t esc_vec = set1_epi8(0x1b);
     const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3), four = set1_epi8(4),
                     numbered = numbered_bytes(), numbered_in_lane = numbered_bytes_in_lane();

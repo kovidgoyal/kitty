@@ -41,6 +41,10 @@ def main(args: list[str] = sys.argv) -> None:
         from gen.cursors import main
 
         main(args)
+    elif which == 'utf8-decode-tables':
+        from gen.utf8_decode_tables import main
+
+        main(args)
     elif which == 'color-names':
         from gen.color_names import main
 
