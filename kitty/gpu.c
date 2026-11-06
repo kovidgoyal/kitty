@@ -8,7 +8,10 @@
 #include "gpu.h"
 #include "state.h"
 #include "png-reader.h"
+#include "threading.h"
 #include <dlfcn.h>
+#include <errno.h>
+#include <stdint.h>
 #include <math.h>
 #include <string.h>
 
@@ -116,13 +119,13 @@ has_untried_gpu_drivers(void) {
     return candidates.next < candidates.count;
 }
 
-const char *
-load_next_gpu_driver(const GPUNativeWindow *display) {
-    static char errbuf[8192];
-    size_t pos = 0;
-    errbuf[0] = 0;
+// Try the remaining candidates in order, at most max_attempts of them,
+// until one can render to windows on display. Returns true on success,
+// otherwise the reasons the candidates failed are appended to errbuf.
+static bool
+load_gpu_driver_candidates(const GPUNativeWindow *display, size_t max_attempts, char *errbuf, size_t errbuf_sz, size_t *pos) {
 #define add_error(...) \
-    if (pos < sizeof(errbuf)) pos += snprintf(errbuf + pos, sizeof(errbuf) - pos, __VA_ARGS__);
+    if (*pos < errbuf_sz) *pos += snprintf(errbuf + *pos, errbuf_sz - *pos, __VA_ARGS__);
     if (gpu_driver.driver) {
         if (gpu_driver.initialized) fatal("Cannot switch GPU drivers after the driver has been initialized");
         gpu_release_native_resources();
@@ -130,9 +133,9 @@ load_next_gpu_driver(const GPUNativeWindow *display) {
     }
     if (!candidates.count) {
         add_error("No GPU drivers are available");
-        return errbuf;
+        return false;
     }
-    while (candidates.next < candidates.count) {
+    for (size_t attempt = 0; attempt < max_attempts && candidates.next < candidates.count; attempt++) {
         const GPUDriverCandidate *c = candidates.items + candidates.next++;
         const bool is_last = candidates.next >= candidates.count;
         // Hardware candidates skip software renderers, so that a GPU usable
@@ -144,17 +147,83 @@ load_next_gpu_driver(const GPUNativeWindow *display) {
         if (!err) {
             if (gpu_driver.api.connect(gpu_driver.driver, display)) {
                 if (candidates.debug_rendering) timed_debug_print("Using the %s%s GPU driver\n", c->name, kind);
-                return NULL;
+                return true;
             }
             err = gpu_last_error();
         }
         if (candidates.debug_rendering) timed_debug_print("The %s%s GPU driver is not usable: %s\n", c->name, kind, err);
-        add_error("%sThe %s%s GPU driver is not usable: %s", pos ? "\n" : "", c->name, kind, err);
+        add_error("%sThe %s%s GPU driver is not usable: %s", *pos ? "\n" : "", c->name, kind, err);
         if (gpu_driver.driver) unload_gpu_driver();
     }
+    return false;
 #undef add_error
-    return errbuf;
 }
+
+const char *
+load_next_gpu_driver(const GPUNativeWindow *display) {
+    static char errbuf[8192];
+    size_t pos = 0;
+    errbuf[0] = 0;
+    return load_gpu_driver_candidates(display, SIZE_MAX, errbuf, sizeof(errbuf), &pos) ? NULL : errbuf;
+}
+
+// Asynchronous loading {{{
+// Connecting to the GPU driver takes tens of milliseconds, mostly in the
+// Vulkan loader and the GPU drivers it loads, so it is done in a thread, while
+// kitty does other work, such as loading fonts. Only the first candidate is
+// tried in the thread, the remaining ones, if any, are tried synchronously in
+// wait_for_gpu_driver(). Software candidates are never tried in the thread, as
+// the OpenGL driver changes environment variables to use software rendering,
+// which is not thread safe.
+static struct {
+    pthread_t thread;
+    bool pending;
+    GPUNativeWindow display;
+    char errbuf[8192];
+    size_t pos;
+    bool loaded, failed;
+} async_load = {0};
+
+static void *
+async_load_thread(void *x UNUSED) {
+    set_thread_name("KittyGPULoad");
+    async_load.loaded = load_gpu_driver_candidates(&async_load.display, 1, async_load.errbuf, sizeof(async_load.errbuf), &async_load.pos);
+    return NULL;
+}
+
+const char *
+load_next_gpu_driver_async(const GPUNativeWindow *display) {
+    if (async_load.pending) fatal("Cannot load GPU drivers while an asynchronous load is in progress");
+    if (candidates.next >= candidates.count || candidates.items[candidates.next].software) return load_next_gpu_driver(display);
+    async_load.display = *display;
+    async_load.errbuf[0] = 0;
+    async_load.pos = 0;
+    async_load.loaded = false;
+    async_load.failed = false;
+    int ret = pthread_create(&async_load.thread, NULL, async_load_thread, NULL);
+    if (ret != 0) {
+        log_error("Failed to start thread to load the GPU driver, loading synchronously, with error: %s", strerror(ret));
+        return load_next_gpu_driver(display);
+    }
+    async_load.pending = true;
+    return NULL;
+}
+
+const char *
+wait_for_gpu_driver(void) {
+    if (!async_load.pending) return async_load.failed && !gpu_driver.driver ? async_load.errbuf : NULL;
+    int ret = pthread_join(async_load.thread, NULL);
+    async_load.pending = false;
+    if (ret != 0) fatal("Failed to join the thread loading the GPU driver with error: %s", strerror(ret));
+    if (candidates.debug_rendering) timed_debug_print("Finished waiting for the GPU driver to load\n");
+    if (async_load.loaded) return NULL;
+    // Try the remaining candidates, appending to the reasons the first failed
+    if (has_untried_gpu_drivers() && load_gpu_driver_candidates(&async_load.display, SIZE_MAX, async_load.errbuf, sizeof(async_load.errbuf), &async_load.pos))
+        return NULL;
+    async_load.failed = true;
+    return async_load.errbuf;
+}
+// }}}
 
 const char *
 initialize_gpu_driver(void) {
