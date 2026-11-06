@@ -78,20 +78,22 @@ def spec_for_selection(spec: FontSpec) -> 'FontSelectionSpec':
     return spec.family, spec.style, spec.postscript_name, spec.full_name, spec.system, spec.variable_name, tuple(spec.axes), bool(spec.features)
 
 
-def start_font_files_selection(opts: Options, symbol_map_families: tuple[str, ...] = (), threaded: bool = False) -> None:
+def start_font_files_selection(opts: Options, symbol_map_families: tuple[str, ...] = (), threaded: bool = False, builtin_nerd_font_path: str = '') -> None:
     """
     Start selecting the fonts specified in opts. The selection is done by C
     code, in a thread if threaded is True. Call finish_font_files_selection()
-    to get the results.
+    to get the results. If builtin_nerd_font_path is specified the builtin
+    NERD font is prepared as well and made the font used for fallback when
+    the selection finishes.
     """
     specs = cast(
         'tuple[FontSelectionSpec, FontSelectionSpec, FontSelectionSpec, FontSelectionSpec]',
         tuple(spec_for_selection(getattr(opts, attr)) for attr in attr_map.values()),
     )
-    start_font_selection(specs, symbol_map_families, threaded)
+    start_font_selection(specs, symbol_map_families, threaded, builtin_nerd_font_path or None)
 
 
-def finish_font_files_selection(opts: Options) -> tuple[FontFiles, tuple[SelectedSymbolFont, ...]]:
+def finish_font_files_selection(opts: Options) -> tuple[FontFiles, tuple[SelectedSymbolFont, ...], Descriptor | None]:
     r = finish_font_selection()
 
     def with_features(font: Descriptor, spec: FontSpec) -> Descriptor:
@@ -113,7 +115,7 @@ def finish_font_files_selection(opts: Options) -> tuple[FontFiles, tuple[Selecte
                 font['features'] = medium_font['features']
             ans[key] = font
     ff: FontFiles = {'medium': ans['medium'], 'bold': ans['bold'], 'italic': ans['italic'], 'bi': ans['bi']}
-    return ff, r['symbols']
+    return ff, r['symbols'], r['builtin_nerd_font']
 
 
 def get_font_files(opts: Options) -> FontFiles:

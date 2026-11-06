@@ -21,9 +21,21 @@
 static bool initialized = false;
 static pthread_mutex_t init_lock = PTHREAD_MUTEX_INITIALIZER;
 static void *libfontconfig_handle = NULL;
+// The face is created lazily, when it is first needed for fallback, see builtin_nerd_font_face()
 static struct {
     PyObject *face, *descriptor;
+    char *path;
+    bool face_failed;
 } builtin_nerd_font = {0};
+
+static void
+clear_builtin_nerd_font(void) {
+    Py_CLEAR(builtin_nerd_font.face);
+    Py_CLEAR(builtin_nerd_font.descriptor);
+    free(builtin_nerd_font.path);
+    builtin_nerd_font.path = NULL;
+    builtin_nerd_font.face_failed = false;
+}
 
 #define FcInit dynamically_loaded_fc_symbol.Init
 #define FcFini dynamically_loaded_fc_symbol.Fini
@@ -170,8 +182,7 @@ static void
 finalize(void) {
     fs_finalize_selection();
     if (initialized) {
-        Py_CLEAR(builtin_nerd_font.face);
-        Py_CLEAR(builtin_nerd_font.descriptor);
+        clear_builtin_nerd_font();
         clear_fallback_candidates();
         FcFini();
         dlclose(libfontconfig_handle);
@@ -777,6 +788,19 @@ end:
     return NULL;
 }
 
+static PyObject *
+builtin_nerd_font_face(void) {
+    if (!builtin_nerd_font.face && builtin_nerd_font.path && !builtin_nerd_font.face_failed) {
+        builtin_nerd_font.face = face_from_path(builtin_nerd_font.path, 0, NULL);
+        if (!builtin_nerd_font.face) {
+            builtin_nerd_font.face_failed = true;
+            log_error("Failed to load the builtin NERD font from: %s", builtin_nerd_font.path);
+            if (PyErr_Occurred()) PyErr_Print();
+        }
+    }
+    return builtin_nerd_font.face;
+}
+
 bool
 fallback_font(char_type ch, const char *family, bool bold, bool italic, bool prefer_color, FontConfigFace *ans) {
     ensure_initialized();
@@ -787,7 +811,7 @@ fallback_font(char_type ch, const char *family, bool bold, bool italic, bool pre
         ok = extract_face_from_pattern(match, ans);
         FcPatternDestroy(match);
     }
-    if (!ok && builtin_nerd_font.face && builtin_nerd_font.descriptor && glyph_id_for_codepoint(builtin_nerd_font.face, ch) > 0) {
+    if (!ok && builtin_nerd_font.descriptor && builtin_nerd_font_face() && glyph_id_for_codepoint(builtin_nerd_font.face, ch) > 0) {
         PyObject *pypath = PyDict_GetItemString(builtin_nerd_font.descriptor, "path");
         PyObject *pyindex = PyDict_GetItemString(builtin_nerd_font.descriptor, "index");
         PyObject *pyhinting = PyDict_GetItemString(builtin_nerd_font.descriptor, "hinting");
@@ -844,7 +868,7 @@ face_from_descriptor:
 end:
     Py_CLEAR(d);
     if (!glyph_found && !PyErr_Occurred()) {
-        if (builtin_nerd_font.face && has_cell_text(face_has_codepoint, builtin_nerd_font.face, false, lc)) {
+        if (builtin_nerd_font.descriptor && builtin_nerd_font_face() && has_cell_text(face_has_codepoint, builtin_nerd_font.face, false, lc)) {
             Py_CLEAR(ans);
             d = builtin_nerd_font.descriptor;
             Py_INCREF(d);
@@ -858,52 +882,6 @@ end:
         }
     }
     return ans;
-}
-
-
-static PyObject *
-set_builtin_nerd_font(PyObject UNUSED *self, PyObject *pypath) {
-    if (!PyUnicode_Check(pypath)) {
-        PyErr_SetString(PyExc_TypeError, "path must be a string");
-        return NULL;
-    }
-    ensure_initialized();
-    const char *path = PyUnicode_AsUTF8(pypath);
-    FcPattern *pat = FcPatternCreate();
-    if (pat == NULL) return PyErr_NoMemory();
-    Py_CLEAR(builtin_nerd_font.face);
-    Py_CLEAR(builtin_nerd_font.descriptor);
-
-    builtin_nerd_font.face = face_from_path(path, 0, NULL);
-    if (builtin_nerd_font.face) {
-        // Copy whatever hinting settings fontconfig returns for the nerd font postscript name
-        AP(FcPatternAddString, FC_POSTSCRIPT_NAME, (const unsigned char *)postscript_name_for_face(builtin_nerd_font.face), "postscript_name");
-        RAII_PyObject(d, _fc_match(pat));
-        if (!d) goto end;
-        builtin_nerd_font.descriptor = PyDict_New();
-        if (!builtin_nerd_font.descriptor) goto end;
-#define copy(key)                                                                           \
-    {                                                                                       \
-        PyObject *t = PyDict_GetItemString(d, #key);                                        \
-        if (t) {                                                                            \
-            if (PyDict_SetItemString(builtin_nerd_font.descriptor, #key, t) != 0) goto end; \
-        }                                                                                   \
-    }
-        copy(hinting);
-        copy(hint_style);
-#undef copy
-        if (PyDict_SetItemString(builtin_nerd_font.descriptor, "path", pypath) != 0) goto end;
-        if (PyDict_SetItemString(builtin_nerd_font.descriptor, "index", PyLong_FromLong(0)) != 0) goto end;
-    }
-end:
-    if (pat) FcPatternDestroy(pat);
-    if (PyErr_Occurred()) {
-        Py_CLEAR(builtin_nerd_font.face);
-        Py_CLEAR(builtin_nerd_font.descriptor);
-        return NULL;
-    }
-    Py_INCREF(builtin_nerd_font.descriptor);
-    return builtin_nerd_font.descriptor;
 }
 
 
@@ -1228,6 +1206,48 @@ fs_backend_font_tables(FSContext *ctx UNUSED, const FSCandidate *c, FSFontTables
     return fs_read_font_tables_from_file(c->path, c->index, out);
 }
 
+void
+fs_backend_prepare_builtin_nerd_font(FSContext *ctx, FSBuiltinNerdFont *nf) {
+    FSFontTables t = {0};
+    if (!fs_read_font_tables_from_file(nf->path, 0, &t)) {
+        fs_add_message(ctx, "Failed to read the builtin NERD font from: %s", nf->path);
+        return;
+    }
+    char *psname = fs_postscript_name_from_tables(&t);
+    fs_free_font_tables(&t);
+    // Use whatever hinting settings fontconfig specifies for the nerd font postscript name
+    FcPattern *pat = FcPatternCreate(), *match = NULL;
+    if (pat && FcPatternAddString(pat, FC_POSTSCRIPT_NAME, (const FcChar8 *)psname)) {
+        FcResult result;
+        FcConfigSubstitute(NULL, pat, FcMatchPattern);
+        FcDefaultSubstitute(pat);
+        match = FcFontMatch(NULL, pat, &result);
+    }
+    if (match) {
+        nf->hinting = pattern_bool(match, FC_HINTING);
+        nf->hint_style = pattern_int(match, FC_HINT_STYLE, 0);
+        FcPatternDestroy(match);
+    } else fs_add_message(ctx, "Failed to get the hinting settings for the builtin NERD font: %s from fontconfig, using defaults", psname);
+    if (pat) FcPatternDestroy(pat);
+    free(psname);
+    nf->prepared = true;
+}
+
+void
+fs_backend_free_builtin_nerd_font(FSBuiltinNerdFont *nf UNUSED) {}
+
+PyObject *
+fs_backend_install_builtin_nerd_font(const FSBuiltinNerdFont *nf) {
+    RAII_PyObject(d, Py_BuildValue("{sO si ss si}", "hinting", nf->hinting ? Py_True : Py_False, "hint_style", nf->hint_style, "path", nf->path, "index", 0));
+    if (!d) return NULL;
+    char *path = strdup(nf->path);
+    if (!path) return PyErr_NoMemory();
+    clear_builtin_nerd_font();
+    builtin_nerd_font.path = path;
+    builtin_nerd_font.descriptor = Py_NewRef(d);
+    return Py_NewRef(d);
+}
+
 PyObject *
 fs_backend_descriptor(const FSFont *f) {
     RAII_PyObject(ans, pattern_as_dict((FcPattern *)f->base->handle));
@@ -1262,7 +1282,6 @@ static PyMethodDef module_methods[] = {
     METHODB(add_font_file, METH_VARARGS),
     METHODB(clear_fallback_font_cache, METH_NOARGS),
     {"fc_match_fallback", (PyCFunction)(void (*)(void))(fc_match_fallback), METH_VARARGS | METH_KEYWORDS, NULL},
-    METHODB(set_builtin_nerd_font, METH_O),
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
