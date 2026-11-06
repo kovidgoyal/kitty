@@ -124,12 +124,23 @@ bool fs_read_font_tables_from_file(const char *path, int index, FSFontTables *t)
 
 typedef struct FSContext FSContext;
 
+// The nerd font bundled with kitty, prepared by the selection thread
+typedef struct FSBuiltinNerdFont {
+    char *path;    // the font file, NULL if not wanted
+    bool prepared; // set by the backend when the font was successfully prepared
+    void *handle;  // CoreText: CTFontDescriptorRef owned by this struct
+    bool hinting;  // fontconfig: the hinting settings fontconfig specifies for the font
+    int hint_style;
+} FSBuiltinNerdFont;
+
 // Helpers for backends {{{
 // The key used to compare font names: whitespace collapsed and stripped, lowercased. Caller must free.
 char *fs_name_to_key(const char *name);
 // Allocate a new candidate owned by the context
 FSCandidate *fs_new_candidate(FSContext *ctx);
 bool fs_list_append(FSCandidateList *l, const FSCandidate *c);
+// The postscript name from the name table, caller must free
+char *fs_postscript_name_from_tables(const FSFontTables *t);
 void fs_set_error(FSContext *ctx, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 void fs_add_message(FSContext *ctx, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 // Backend private data, freed with fs_backend_free_context_data()
@@ -146,6 +157,9 @@ void fs_backend_free_candidate(FSCandidate *c);
 // CoreText the full name is the family name followed by the style name.
 bool fs_backend_list(FSContext *ctx, FSListKind kind, const char *name, const char *key, bool monospaced, FSCandidateList *out);
 bool fs_backend_font_tables(FSContext *ctx, const FSCandidate *c, FSFontTables *out);
+// Prepare the builtin nerd font, called in the selection thread
+void fs_backend_prepare_builtin_nerd_font(FSContext *ctx, FSBuiltinNerdFont *nf);
+void fs_backend_free_builtin_nerd_font(FSBuiltinNerdFont *nf);
 #ifndef __APPLE__
 // Equivalent to the Python fc_match(), returns NULL on failure
 const FSCandidate *fs_backend_fc_match(FSContext *ctx, const char *family, bool bold, bool italic, int spacing);

@@ -436,7 +436,6 @@ def clear_fallback_font_cache() -> None: ...
 def fc_match_fallback(
     text: str, bold: bool = False, italic: bool = False, prefer_color: bool = False, use_candidate_cache: bool = True
 ) -> FontConfigPattern: ...
-def set_builtin_nerd_font(path: str) -> Union[CoreTextFont, FontConfigPattern]: ...
 
 # family, style, postscript_name, full_name, system, variable_name, axes, has_features
 FontSelectionSpec = Tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], Tuple[Tuple[str, float], ...], bool]
@@ -448,9 +447,14 @@ class FontSelectionResult(TypedDict):
     bi: Union[CoreTextFont, FontConfigPattern]
     # The descriptor and whether it is bold and italic for each symbol_map family
     symbols: Tuple[Tuple[Union[CoreTextFont, FontConfigPattern], bool, bool], ...]
+    # The descriptor of the builtin NERD font, if it was requested and could be loaded
+    builtin_nerd_font: Optional[Union[CoreTextFont, FontConfigPattern]]
 
 def start_font_selection(
-    specs: Tuple[FontSelectionSpec, FontSelectionSpec, FontSelectionSpec, FontSelectionSpec], symbol_map_families: Tuple[str, ...], threaded: bool = True
+    specs: Tuple[FontSelectionSpec, FontSelectionSpec, FontSelectionSpec, FontSelectionSpec],
+    symbol_map_families: Tuple[str, ...],
+    threaded: bool = True,
+    builtin_nerd_font_path: Optional[str] = None,
 ) -> None: ...
 def finish_font_selection() -> FontSelectionResult: ...
 def variable_data_from_font_file(path: str, index: int = 0) -> VariableData: ...
