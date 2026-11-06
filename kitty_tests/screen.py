@@ -974,6 +974,15 @@ class TestScreen(BaseTest):
             '\x9b',
             '￿',
             '\U000e0001',
+            # runs of combining chars, including more than fit in a cell
+            'a\u0300\u0301',
+            'e\u0301\u0302\u0303\u0304',
+            'x' + '\u0300\u0310\u0320' * 10,
+            '日\u0300\u0301',
+            '\u0301\u0302',
+            '\u0300\ufe0f\u0301',
+            '👍\u0300\u200d',
+            'ก\u0e33\u0300',
         )
 
         def ops_for(seed, cols):
@@ -1026,13 +1035,16 @@ class TestScreen(BaseTest):
             return s
 
         def compare(a, b, msg):
+            # Cells are compared by content rather than raw value, as cells with
+            # multiple codepoints store indices into the text cache, which can
+            # differ, since batched drawing does not add the intermediate texts
+            # of runs of combining chars to the cache.
             self.ae((a.cursor.x, a.cursor.y), (b.cursor.x, b.cursor.y), msg)
             self.ae(a.historybuf.count, b.historybuf.count, msg)
             for i in range(a.historybuf.count):
-                self.assertTrue(a.historybuf.line(i) == b.historybuf.line(i), f'{msg} history line {i}')
                 self.ae(a.historybuf.line(i).as_ansi(), b.historybuf.line(i).as_ansi(), f'{msg} history line {i}')
+                self.ae(a.cpu_cells(-1 - i), b.cpu_cells(-1 - i), f'{msg} history line {i}')
             for i in range(a.lines):
-                self.assertTrue(a.linebuf.line(i) == b.linebuf.line(i), f'{msg} line {i}')
                 self.ae(a.linebuf.line(i).as_ansi(), b.linebuf.line(i).as_ansi(), f'{msg} line {i}')
                 self.ae(a.cpu_cells(i), b.cpu_cells(i), f'{msg} line {i}')
                 self.ae(a.linebuf.is_continued(i), b.linebuf.is_continued(i), f'{msg} line {i}')

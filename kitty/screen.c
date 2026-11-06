@@ -941,6 +941,11 @@ init_segmentation_state(Screen *self, text_loop_state *s) {
 
 static void
 init_text_loop_line(Screen *self, text_loop_state *s) {
+    // Also collect garbage in the text cache when starting a new line, not just
+    // when starting to draw text, as a single draw can add a great many entries,
+    // for example, when drawing a long stream of unique multi-codepoint cells,
+    // making the cache slower to use the larger it grows.
+    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);
     linebuf_init_cells(self->linebuf, self->cursor->y, &s->cp, &s->gp);
     clear_intersecting_selections(self, self->cursor->y);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
@@ -1145,14 +1150,17 @@ screen_garbage_collect_text_cache(Screen *self) {
 }
 
 static bool
-add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
+add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, index_type x, index_type y) {
+    // Adds num_chars combining chars to the cell at x, y with a single lookup in the text cache
     CPUCell *cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, y);
     CPUCell *cell = cpu_cells + x;
     if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return false; // don't allow adding combining chars to a null cell
     text_in_cell(cell, self->text_cache, self->lc);
     if (self->lc->count >= MAX_NUM_CODEPOINTS_PER_CELL) return false; // don't allow too many combining chars to prevent DoS attacks
-    ensure_space_for_chars(self->lc, self->lc->count + 1);
-    self->lc->chars[self->lc->count++] = ch;
+    num_chars = MIN(num_chars, MAX_NUM_CODEPOINTS_PER_CELL - self->lc->count);
+    ensure_space_for_chars(self->lc, self->lc->count + num_chars);
+    memcpy(self->lc->chars + self->lc->count, chars, num_chars * sizeof(chars[0]));
+    self->lc->count += num_chars;
     cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
     cell->ch_is_idx = true;
     if (cell->is_multicell) {
@@ -1166,6 +1174,11 @@ add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
         }
     }
     return true;
+}
+
+static bool
+add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
+    return add_combining_chars(self, &ch, 1, x, y);
 }
 
 
@@ -1343,6 +1356,51 @@ map_char(Screen *self, const uint32_t ch) {
     return UNLIKELY(self->charset.current && ch < 256) ? self->charset.current[ch] : ch;
 }
 
+static bool batched_non_ascii_draw_disabled_for_tests = false;
+
+static bool
+is_plain_combining_char(char_type ch, GraphemeSegmentationResult seg, CharProps props) {
+    // A combining char that only adds to the text of a cell, see draw_combining_char()
+    return ch != VS15 && ch != VS16 && !(seg.grapheme_break == GBP_SpacingMark && wcwidth_std(props) > 0);
+}
+
+static size_t
+draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProps props, const uint32_t *rest, size_t num_rest) {
+    // ch has been through grapheme segmentation, which added it to the previous
+    // cell. Plain combining chars directly following it are added along with it,
+    // with a single lookup in the text cache, rather than one for each char.
+    // Returns the number of chars from rest that were drawn.
+#define MAX_RUN 32u
+    char_type run[MAX_RUN];
+    size_t n = 0;
+    GraphemeSegmentationResult seg = s->seg;
+    if (!batched_non_ascii_draw_disabled_for_tests && is_plain_combining_char(ch, seg, props)) {
+        run[n++] = ch;
+        for (size_t k = 0; k < num_rest && n < MAX_RUN; k++) {
+            const char_type c = map_char(self, rest[k]);
+            const CharProps p = char_props_for(c);
+            if (p.is_invalid) break;
+            const GraphemeSegmentationResult next = grapheme_segmentation_step(seg, p);
+            if (!next.add_to_current_cell || !is_plain_combining_char(c, next, p)) break;
+            seg = next;
+            run[n++] = c;
+        }
+    }
+#undef MAX_RUN
+    if (n < 2) {
+        draw_combining_char(self, s, ch);
+        return 0;
+    }
+    CPUCell *cp;
+    GPUCell *gp;
+    linebuf_init_cells(self->linebuf, s->prev.y, &cp, &gp);
+    index_type xpos = s->prev.x;
+    while (xpos && cp[xpos].is_multicell && cp[xpos].x) xpos--;
+    add_combining_chars(self, run, n, xpos, s->prev.y);
+    s->seg = seg;
+    return n - 1;
+}
+
 static void
 draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
     switch (ch) {
@@ -1385,8 +1443,6 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
         default: break;
     }
 }
-
-static bool batched_non_ascii_draw_disabled_for_tests = false;
 
 static_assert(sizeof(CPUCell) == 3 * sizeof(uint32_t), "draw_non_ascii_run() needs updating");
 
@@ -1605,7 +1661,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             }
             s->seg = grapheme_segmentation_step(s->seg, cp);
             if (UNLIKELY(s->seg.add_to_current_cell && s->prev.cc)) {
-                draw_combining_char(self, s, ch);
+                i += draw_combining_char_run(self, s, ch, cp, chars + i + 1, num_chars - i - 1);
                 continue;
             }
             char_width = wcwidth_std(cp);
