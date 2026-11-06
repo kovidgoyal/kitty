@@ -53,7 +53,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KITTY_GPU_API_VERSION 6u
+#define KITTY_GPU_API_VERSION 7u
 #define KITTY_GPU_DRIVER_ENTRY_POINT "kitty_gpu_driver_load"
 #define GPU_NULL_HANDLE ((uint64_t)0)
 
@@ -149,6 +149,11 @@ typedef struct GPUSurfaceConfig {
     bool allow_offline_renderers;
     // macOS: render at the full resolution of high DPI (retina) displays
     bool high_resolution;
+    // The swap interval the surface starts with, as for
+    // surface_set_swap_interval(). Drivers for which changing the swap
+    // interval is expensive, such as Vulkan, where it requires recreating the
+    // swapchain, use it to configure the surface correctly at creation.
+    int swap_interval;
 } GPUSurfaceConfig;
 // }}}
 
