@@ -84,7 +84,7 @@ typedef struct Options {
     char_type *select_by_word_characters_forward;
     color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color,
         window_title_bar_active_foreground, window_title_bar_active_background, window_title_bar_inactive_foreground, window_title_bar_inactive_background;
-    monotonic_t repaint_delay, input_delay;
+    monotonic_t repaint_delay;
     struct {
         bool on_cross, on_drop;
     } focus_follows_mouse;
@@ -613,7 +613,7 @@ typedef struct OSWindow {
     gpu_render_target_t persist_fbo_id;
     uint32_t persist_texture_generation;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
-    bool focused_at_last_render, needs_render, needs_layers, input_held;
+    bool focused_at_last_render, needs_render, needs_layers;
     unsigned keep_rendering_till_swap;
     WindowRenderData tab_bar_render_data;
     struct {

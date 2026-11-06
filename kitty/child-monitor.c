@@ -87,17 +87,10 @@ static const Child EMPTY_CHILD = {0};
 static Child children[MAX_CHILDREN] = {{0}};
 static Child scratch[MAX_CHILDREN] = {{0}};
 static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}}, remove_notify[MAX_CHILDREN] = {{0}};
-// Pending input of each child, as the I/O thread last saw it. Parallel to children and
-// only used by the I/O thread, so it needs no lock.
-typedef struct {
-    ParserInputWake pending;
-    // The chunk the main loop was last woken for. Its next parse accepts that chunk, so
-    // more reads of it must not wake it again.
-    uint64_t woken_chunk;
-    // Bytes were committed since pending was queried
-    bool stale;
-} ChildInputWake;
-static ChildInputWake child_input_wake[MAX_CHILDREN] = {{{0}}};
+// Set by the I/O thread when it wakes the main loop to parse input, cleared by the main
+// thread before it parses. While set, newly read input needs no further wakeup, since
+// the parse the main loop was woken for will consume it.
+static atomic_bool input_wakeup_pending = false;
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd children_fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock, talk_lock;
@@ -549,49 +542,32 @@ parse_input_once(ChildMonitor *self, PyObject *a UNUSED) {
     Py_RETURN_FALSE;
 }
 
+static void
+wakeup_io_loop_for_write_space(void *self) {
+    wakeup_io_loop((ChildMonitor *)self, false);
+}
+
 static bool
 do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
-    ParseData pd = {.dump_callback = self->dump_callback, .now = now};
+    ParseData pd = {.dump_callback = self->dump_callback, .now = now, .write_space_created = wakeup_io_loop_for_write_space, .write_space_created_data = self};
     const bool had_url_highlight = screen->url_ranges.count > 0;
     self->parse_func(screen, &pd, flush);
     if (had_url_highlight && !screen->url_ranges.count) link_hover_cleared_by_output(screen);
-    if (pd.input_read) {
-        if (pd.write_space_created) wakeup_io_loop(self, false);
-        if (screen->paused_rendering.expires_at) set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
-    }
-    // Bytes held until input_delay has passed. The I/O thread wakes the main loop when they are ready.
-    screen->input_held = !pd.input_read && pd.has_pending_input;
-    screen->input_parsed = pd.input_read;
+    if (pd.input_read && screen->paused_rendering.expires_at) set_maximum_wait(MAX(0, screen->paused_rendering.expires_at - now));
+    // A pass parses a bounded amount of input, so that rendering and event handling
+    // happen during a continuous stream. Parse the rest on the next loop iteration.
+    if (pd.has_pending_input) set_maximum_wait(0);
     return pd.input_read;
-}
-
-static void
-mark_os_windows_with_held_input(void) {
-    // Painting an OS window whose only new output is held draws the old frame, and the
-    // turn that parses the held bytes paints again because it ignores repaint_delay.
-    // A window that parsed new output this turn is painted anyway.
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        OSWindow *w = global_state.os_windows + i;
-        bool held = false, parsed = false;
-        for (size_t t = 0; t < w->num_tabs; t++) {
-            Tab *tab = w->tabs + t;
-            for (size_t c = 0; c < tab->num_windows; c++) {
-                Screen *screen = tab->windows[c].render_data.screen;
-                if (!screen) continue;
-                held |= screen->input_held;
-                parsed |= screen->input_parsed;
-            }
-        }
-        w->input_held = held && !parsed;
-    }
 }
 
 static bool
 parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
-    bool input_read = false, reload_config_called = false, input_held = false;
+    bool input_read = false, reload_config_called = false;
     monotonic_t now = monotonic();
+    // Must happen before the input is parsed, see input_wakeup_pending
+    atomic_store(&input_wakeup_pending, false);
     children_mutex(lock);
     while (remove_queue_count) {
         remove_queue_count--;
@@ -679,15 +655,9 @@ parse_input(ChildMonitor *self) {
     }
 
     for (size_t i = 0; i < count; i++) {
-        if (!scratch[i].needs_removal) {
-            if (do_parse(self, scratch[i].screen, now, false)) input_read = true;
-            else if (scratch[i].screen->input_held) input_held = true;
-        } else scratch[i].screen->input_held = scratch[i].screen->input_parsed = false;
+        if (!scratch[i].needs_removal && do_parse(self, scratch[i].screen, now, false)) input_read = true;
         DECREF_CHILD(scratch[i]);
     }
-    if (input_held) mark_os_windows_with_held_input();
-    else
-        for (size_t i = 0; i < global_state.num_os_windows; i++) global_state.os_windows[i].input_held = false;
     if (reload_config_called) { call_boss(load_config_file, NULL); }
     return input_read;
 }
@@ -1252,12 +1222,6 @@ render(monotonic_t now, bool input_read) {
         // rendering is done in cocoa_os_window_resized()
         if (w->live_resize.in_progress) continue;
 #endif
-        // Held bytes are not on this window yet. Painting it draws the old frame, and the
-        // turn that parses them paints again because it ignores repaint_delay.
-        if (w->input_held && w->id != global_state.thumbnail_callback.os_window) {
-            if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
-            continue;
-        }
         // A window waiting for a render frame cannot paint now, so it must not delay the
         // paint when the frame arrives, otherwise the next output paints it mid-burst
         if (!w->keep_rendering_till_swap && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY && should_os_window_be_rendered(w))
@@ -1725,7 +1689,6 @@ add_children(ChildMonitor *self) {
     for (; add_queue_count > 0 && self->count < MAX_CHILDREN;) {
         add_queue_count--;
         children[self->count] = add_queue[add_queue_count];
-        child_input_wake[self->count] = (ChildInputWake){0};
         add_queue[add_queue_count] = EMPTY_CHILD;
         children_fds[EXTRA_FDS + self->count].fd = children[self->count].fd;
         children_fds[EXTRA_FDS + self->count].events = POLLIN;
@@ -1775,7 +1738,6 @@ remove_children(ChildMonitor *self) {
                 if (num_to_right > 0) {
                     memmove(children + i, children + i + 1, num_to_right * sizeof(Child));
                     memmove(children_fds + EXTRA_FDS + i, children_fds + EXTRA_FDS + i + 1, num_to_right * sizeof(struct pollfd));
-                    memmove(child_input_wake + i, child_input_wake + i + 1, num_to_right * sizeof(ChildInputWake));
                 }
             }
         }
@@ -1952,80 +1914,28 @@ write_to_child(int fd, Screen *screen) {
     screen_mutex(unlock, write);
 }
 
-static bool
-input_needs_wake(const ChildInputWake *c) {
-    return c->pending.chunk && c->pending.chunk != c->woken_chunk && (c->pending.small_pending || c->pending.large_ready);
-}
-
-static ParserInputWake
-pending_input_wake_info(ChildMonitor *self, monotonic_t now) {
-    ParserInputWake info = {0};
-    for (size_t i = 0; i < self->count; i++) {
-        ChildInputWake *c = child_input_wake + i;
-        // Only this thread commits bytes, so a child with nothing pending at its last
-        // query and no reads since still has nothing pending.
-        if (c->stale || c->pending.chunk) {
-            c->pending = vt_parser_input_wake(children[i].screen->vt_parser, now);
-            c->stale = false;
-        }
-        if (input_needs_wake(c)) {
-            if (c->pending.small_pending) info.small_pending = true;
-            if (c->pending.large_ready) info.large_ready = true;
-        }
-        monotonic_t held_until = c->pending.large_held_until;
-        if (held_until && (!info.large_held_until || held_until < info.large_held_until)) info.large_held_until = held_until;
-    }
-    return info;
-}
-
-static void
-remember_woken_input(ChildMonitor *self) {
-    // Uses the state the wake was decided on, so a chunk that arrives after the
-    // main thread has parsed is not marked as woken. Must run before the main loop
-    // is woken, so that a small chunk which grows in the meantime is still accepted.
-    for (size_t i = 0; i < self->count; i++) {
-        ChildInputWake *c = child_input_wake + i;
-        if (!input_needs_wake(c)) continue;
-        if (c->pending.small_pending) vt_parser_accept_input(children[i].screen->vt_parser, c->pending.chunk);
-        c->woken_chunk = c->pending.chunk;
-    }
-}
-
 static void *
 io_loop(void *data) {
     // The I/O thread loop
     size_t i;
     int ret;
-    bool has_more, child_data_received, has_pending_wakeups = false, last_wakeup_was_early = false;
-    // A signal or a removed child that needs the main loop. Latched until WAKEUP, since
-    // signalfd is drained on receipt and a removed child is no longer polled.
-    bool wake_latched = false;
-    monotonic_t last_main_loop_wakeup_at = -1, now = -1, pending_wake_at = 0;
+    bool has_more, child_data_received, wake_needed;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor *)data;
     set_thread_name("KittyChildMon");
 #define WAKEUP                                                                               \
     {                                                                                        \
-        remember_woken_input(self);                                                          \
         if (self->benchmark_wakeup_fd >= 0) {                                                \
             static const char _wakeup_byte = 1;                                              \
             ssize_t _wakeup_ret UNUSED = write(self->benchmark_wakeup_fd, &_wakeup_byte, 1); \
         } else wakeup_main_loop();                                                           \
-        last_main_loop_wakeup_at = now;                                                      \
-        last_wakeup_was_early = false;                                                       \
-        wake_latched = false;                                                                \
     }
 
     while (LIKELY(!self->shutting_down)) {
         children_mutex(lock);
-        // A child that exited is no longer polled, so its held output has no deadline here.
         // The main thread flush-parses the remove queue. It does not need a wake for a
         // child it closed itself, the SIGCHLD from the hangup wakes it.
-        if (remove_children(self)) {
-            wake_latched = true;
-            has_pending_wakeups = true;
-            pending_wake_at = 0;
-        }
+        wake_needed = remove_children(self) > 0;
         add_children(self);
         children_mutex(unlock);
         child_data_received = false;
@@ -2039,19 +1949,14 @@ io_loop(void *data) {
             children_fds[EXTRA_FDS + i].events |= (screen->write_buf_used ? POLLOUT : 0);
             screen_mutex(unlock, write);
         }
-        if (has_pending_wakeups) {
-            now = monotonic();
-            monotonic_t time_delta = pending_wake_at - now;
-            if (time_delta > 0) ret = poll(children_fds, self->count + EXTRA_FDS, monotonic_t_to_ms_ceil(time_delta));
-            else ret = 0;
-        } else {
-            ret = poll(children_fds, self->count + EXTRA_FDS, -1);
-        }
+        // A removed child needs the main loop now, as it is no longer polled
+        if (wake_needed) ret = 0;
+        else ret = poll(children_fds, self->count + EXTRA_FDS, -1);
         if (ret > 0) {
             if (children_fds[0].revents & POLLIN) drain_fd(children_fds[0].fd); // wakeup
             if (children_fds[1].revents & POLLIN) {
                 SignalSet ss = {0};
-                wake_latched = true;
+                wake_needed = true;
                 read_signals(children_fds[1].fd, handle_signal, &ss);
                 if (ss.kill_signal || ss.reload_config) {
                     children_mutex(lock);
@@ -2064,7 +1969,6 @@ io_loop(void *data) {
             for (i = 0; i < self->count; i++) {
                 if (children_fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
                     child_data_received = true;
-                    child_input_wake[i].stale = true;
                     has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen);
                     if (!has_more) {
                         // child is dead. The next iteration queues it and wakes the main thread.
@@ -2098,47 +2002,11 @@ io_loop(void *data) {
         } else if (ret < 0) {
             if (errno != EAGAIN && errno != EINTR) { perror("Call to poll() failed"); }
         }
-        // we only wakeup the main loop after input_delay as wakeup is an expensive operation
-        // on some platforms, such as cocoa. Small pending input, typically the echo of typed
-        // characters, wakes immediately, but at most once per input_delay so that continuous
-        // streams of small writes are still coalesced.
-        if (child_data_received || wake_latched || has_pending_wakeups) {
-            now = monotonic();
-            ParserInputWake pending = pending_input_wake_info(self, now);
-            // rate_open is the gap since the previous wakeup. A large chunk the
-            // parser will accept now (large_ready) wakes inside that gap, once per chunk.
-            // A large chunk still inside input_delay waits until new_input_at + input_delay,
-            // stored in wait_until, rather than until the next rate-limit slot.
-            bool rate_open = now - last_main_loop_wakeup_at > OPT(input_delay);
-            bool wake_now = pending.large_ready;
-            bool early_small = false;
-            bool need_rate_slot = false;
-            // The main thread does not arm a timer for a held chunk, this deadline is the only one
-            monotonic_t wait_until = pending.large_held_until;
-            if (pending.small_pending) {
-                if (rate_open) wake_now = true;
-                else if (!last_wakeup_was_early) {
-                    wake_now = true;
-                    // This wake is the one early small wake unless a large chunk
-                    // was ready anyway. Marking that would swallow the next echo.
-                    early_small = !pending.large_ready;
-                } else need_rate_slot = true;
-            }
-            // A latched wake uses the same rate limit as a small write that already woke early.
-            if (wake_latched) {
-                if (rate_open) wake_now = true;
-                else need_rate_slot = true;
-            }
-            if (wake_now) {
-                WAKEUP;
-                if (early_small) last_wakeup_was_early = true;
-            } else if (need_rate_slot) {
-                monotonic_t rate_at = last_main_loop_wakeup_at + OPT(input_delay);
-                if (!wait_until || rate_at < wait_until) wait_until = rate_at;
-            }
-            has_pending_wakeups = wait_until != 0;
-            pending_wake_at = wait_until;
-        }
+        // Input is parsed as soon as it is read. Waking the main loop is expensive on some
+        // platforms, such as cocoa, so it is woken only if it is not already due to parse,
+        // which coalesces the wakeups of a continuous stream of output into one per parse.
+        if (child_data_received && !atomic_exchange(&input_wakeup_pending, true)) wake_needed = true;
+        if (wake_needed) WAKEUP;
     }
 #undef WAKEUP
     children_mutex(lock);
