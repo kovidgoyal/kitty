@@ -258,10 +258,12 @@ class Selection(BaseTest):
             self.ae(len(render.current_faces), 5)
             self.ae(face_from_descriptor(render.current_faces[4][0]).postscript_name(), 'SymbolsNFM')  # type: ignore
             # The builtin NERD font is used for fallback for NERD font icons,
-            # unless a font installed on the system has them, which is preferred
+            # unless a font installed on the system has them, which is
+            # preferred. Such fonts need not have NERD in their names, for
+            # example, PragmataPro has the NERD font icons.
             face = get_fallback_font('\U000f0001', False, False)
             if face.path != path:
-                self.assertIn('NerdFont', os.path.basename(face.path), f'Unexpected fallback font for a NERD font icon: {face.path}')
+                self.assertNotIn('LastResort', face.postscript_name(), f'Unexpected fallback font for a NERD font icon: {face.path}')
             else:
                 self.ae(face.postscript_name(), 'SymbolsNFM')
         finally:
