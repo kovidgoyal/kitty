@@ -727,13 +727,17 @@ class GlobalWatchers:
         raw_spec = get_options().watcher
         if raw_spec == self.options_spec:
             return self.ans
-        from .launch import load_watch_modules
-
         spec = raw_spec.copy()
         if self.extra:
             spec[self.extra] = self.extra
-        ans = load_watch_modules(spec.keys())
-        self.ans = Watchers() if ans is None else ans
+        if spec:
+            # Importing launch is slow, so do it only when there are watchers
+            from .launch import load_watch_modules
+
+            ans = load_watch_modules(spec.keys())
+            self.ans = Watchers() if ans is None else ans
+        else:
+            self.ans = Watchers()
         self.options_spec = raw_spec.copy()
         return self.ans
 

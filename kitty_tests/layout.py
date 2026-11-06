@@ -1603,10 +1603,12 @@ class TestWindowHelpers(BaseTest):
             opts.watcher = {'a.py': 'a.py'}
             self.assertIs(g(), w1)
             opts.watcher = {}
+            num_calls = len(calls)
             ans = g()
             self.assertIsNot(ans, w1)
             self.assertIsInstance(ans, Watchers)
-            self.ae(calls[-1], ())
+            # with no watchers, the slow to import launch module is not used
+            self.ae(len(calls), num_calls)
             # changing the extra watcher after first use must take effect
             g.set_extra('y.py')
             self.assertIs(g(), w1)
