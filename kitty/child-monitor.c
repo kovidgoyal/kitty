@@ -1197,8 +1197,12 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     // The viewport is driver state shared by all surfaces with some GPU
     // drivers, such as Vulkan, so it must be set for this window every time,
     // as it may have been changed while another OS Window was current, for
-    // example, by a resize of another OS Window.
-    set_gpu_viewport(w->viewport_width, w->viewport_height);
+    // example, by a resize of another OS Window. During a live resize the
+    // viewport size is not updated until the resize completes, but the
+    // surface already has the new size, which the overlay showing the
+    // resizing text must cover.
+    if (w->live_resize.in_progress && w->live_resize.width > 0 && w->live_resize.height > 0) set_gpu_viewport(w->live_resize.width, w->live_resize.height);
+    else set_gpu_viewport(w->viewport_width, w->viewport_height);
     if (w->viewport_size_dirty) {
         w->viewport_size_dirty = false;
         needs_render = true;
