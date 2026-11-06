@@ -220,6 +220,10 @@ tc_gc_begin(TextCache *self) {
     zero_at_ptr(&self->arena);
     vt_cleanup(&self->map);
     vt_init(&self->map);
+    // Avoid rehashing repeatedly as the live entries are re-inserted, the live
+    // set of the previous collection is the best estimate of their number.
+    // Failing to do so is harmless, the map grows as needed.
+    if (self->adds_between_gcs) (void)vt_reserve(&self->map, self->adds_between_gcs);
     return gc;
 }
 
@@ -241,6 +245,10 @@ tc_gc_end(TextCache *self, TextCacheGCData *gc) {
     self->adds_since_last_gc = 0;
     // scale with the live set so remapping cost stays amortized
     self->adds_between_gcs = self->array.count;
+    // Size the map for the entries that will be added before the next
+    // collection, to avoid rehashing repeatedly as it grows. Failing to do so
+    // is harmless, the map grows as needed.
+    (void)vt_reserve(&self->map, self->array.count + MAX(TEXT_CACHE_ADDS_BETWEEN_GCS, self->array.count));
     free(gc->map);
     free(gc->old_items);
     Chars_free_all(&gc->old_arena);
