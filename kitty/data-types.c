@@ -946,6 +946,7 @@ PyInit_fast_data_types(void) {
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
     init_monotonic();
+    init_char_props();
 
     if (!init_logging(m)) return NULL;
     if (!init_LineBuf(m)) return NULL;

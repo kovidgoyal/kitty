@@ -1038,7 +1038,24 @@ class TestScreen(BaseTest):
                 self.ae(a.linebuf.is_continued(i), b.linebuf.is_continued(i), f'{msg} line {i}')
             self.ae(a.linebuf.dirty_lines(), b.linebuf.dirty_lines(), msg)
 
+        # A run drawn up to an existing multicell char must leave the grapheme
+        # segmentation state as it is after the last char drawn: here an unpaired
+        # regional indicator precedes the run and another one is drawn onto the
+        # wide char by the scalar path
+        ri_a, ri_b = '\U0001f1fa', '\U0001f1f8'
+        fixed = []
+        for prefix in ('', 'é', 'éü', '日'):
+            for x in range(1, 6):
+                fixed.append(
+                    (10, 2, [('bytes', f'\x1b[1;{x + 1}H'.encode()), ('draw', '日'), ('bytes', b'\x1b[H'), ('draw', ri_a), ('draw', prefix + ri_b + 'é')])
+                )
         try:
+            for i, (cols, lines, ops) in enumerate(fixed):
+                test_set_batched_non_ascii_draw(True)
+                a = build(ops, cols, lines)
+                test_set_batched_non_ascii_draw(False)
+                b = build(ops, cols, lines)
+                compare(a, b, f'fixed={i} ops={ops}')
             for seed in range(400):
                 rng = random.Random(seed)
                 cols, lines = rng.randint(1, 14), rng.randint(1, 6)

@@ -1440,16 +1440,13 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
     for (; i < num_chars; i++) {
         const char_type ch = chars[i];
         if (ch < DEL || ch == IMAGE_PLACEHOLDER_CHAR) break;
-        const CharProps props = char_props_for(ch);
-        if (props.is_invalid) break;
-        // Negative widths are East Asian ambiguous width chars, which are drawn as narrow
-        int width = wcwidth_std(props);
-        if (width < 0) width = 1;
-        if (width == 0 || x + (index_type)width > columns || cp[x].is_multicell) break;
+        const CharDrawInfo info = char_draw_info_for(ch);
+        const index_type width = info.cells;
+        if (width == 0 || x + width > columns || cp[x].is_multicell) break;
         if (width == 2 && cp[x + 1].is_multicell) break;
-        const uint32_t seg_key = ((uint32_t)seg.val << 8) | props.grapheme_segmentation_property;
+        const uint32_t seg_key = ((uint32_t)seg.val << 8) | info.grapheme_segmentation_property;
         if (seg_key != cached_seg_key) {
-            cached_seg = grapheme_segmentation_step(seg, props);
+            cached_seg = grapheme_segmentation_step_for_property(seg, info.grapheme_segmentation_property);
             cached_seg_key = seg_key;
         }
         if (cached_seg.add_to_current_cell) break;
