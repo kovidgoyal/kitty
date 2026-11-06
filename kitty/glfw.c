@@ -11,6 +11,7 @@
 #include "dnd.h"
 #include "charsets.h"
 #include "control-codes.h"
+#include "startup-timing.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
 #ifdef __APPLE__
@@ -2371,6 +2372,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
             PyErr_Format(PyExc_RuntimeError, "Failed to load a GPU driver:\n%s", err);
             return NULL;
         }
+        startup_timing("GPU driver loaded");
     }
     int x = INT_MIN, y = INT_MIN, window_state = WINDOW_NORMAL, disallow_override_title = 0;
     char *wm_class_class, *wm_class_name;
@@ -2551,6 +2553,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
     }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
+    startup_timing("Fonts loaded");
     PyObject *ret = PyObject_CallFunction(
         get_window_size,
         "IIddff",
@@ -2646,6 +2649,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         PyObject *ret = PyObject_CallNoArgs(load_programs);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
+        startup_timing("Shaders loaded");
         get_platform_dependent_config_values(glfw_window);
         if (!global_state.supports_framebuffer_srgb) {
             log_error("The OpenGL drivers dont support GL_FRAMEBUFFER_SRGB this will cause a small rendering performance penalty");
@@ -3464,6 +3468,7 @@ swap_window_buffers(OSWindow *os_window) {
             log_error("Failed to present the GPU surface of OS Window: %llu with error: %s", os_window->id, gpu_last_error());
         glfwWindowContentsPresented(os_window->handle);
         os_window->keep_rendering_till_swap = 0;
+        startup_timing_frame_presented();
     }
 }
 

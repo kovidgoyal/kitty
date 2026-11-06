@@ -13,6 +13,7 @@
 #include "data-types.h"
 #include "font-select.h"
 #include "state.h"
+#include "startup-timing.h"
 #include "threading.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -1686,12 +1687,15 @@ static struct {
     FSContext *ctx;
     pthread_t thread;
     bool thread_running;
+    monotonic_t started_at, finished_at;
 } pending = {0};
 
 static void *
 selection_thread(void *x) {
     set_thread_name("KittyFontSelect");
+    pending.started_at = monotonic_clock_now();
     run_selection((FSContext *)x);
+    pending.finished_at = monotonic_clock_now();
     return NULL;
 }
 
@@ -1703,6 +1707,8 @@ wait_for_thread(void) {
     pending.thread_running = false;
     if (ret != 0) fatal("Failed to join the font selection thread with error: %s", strerror(ret));
     debug_rendering("Waited %.2f ms for the font selection thread to finish\n", monotonic_t_to_s_double(monotonic() - start) * 1000);
+    startup_timing_thread("Font selection", pending.started_at, pending.finished_at);
+    startup_timing("Font selection finished, waited %.2f ms for it", monotonic_t_to_s_double(monotonic() - start) * 1000);
 }
 
 void

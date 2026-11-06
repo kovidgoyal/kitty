@@ -550,6 +550,13 @@ Print out information about the selection of fallback fonts for characters not
 present in the main font.
 
 
+--debug-startup
+type=bool-set
+Print out the time taken by the various phases of startup, such as loading the
+configuration, selecting fonts, loading the GPU driver and creating the first
+OS Window. Times are measured from when the {appname} process started.
+
+
 --watcher
 completion=type:file ext:py relative:conf group:"Watcher files"
 This option is deprecated in favor of the :opt:`watcher` option in
