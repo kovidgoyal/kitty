@@ -1390,6 +1390,13 @@ static bool batched_non_ascii_draw_disabled_for_tests = false;
 
 static_assert(sizeof(CPUCell) == 3 * sizeof(uint32_t), "draw_non_ascii_run() needs updating");
 
+static inline uint32_t
+cell_word(const CPUCell *c, unsigned which) {
+    uint32_t ans;
+    memcpy(&ans, (const uint8_t *)c + which * sizeof(ans), sizeof(ans));
+    return ans;
+}
+
 static inline uint64_t
 pack_cell_words(uint32_t first, uint32_t second) {
     // Two consecutive 32 bit words of cell memory as one 64 bit value
@@ -1398,6 +1405,42 @@ pack_cell_words(uint32_t first, uint32_t second) {
 #else
     return ((uint64_t)first << 32) | second;
 #endif
+}
+
+// The words of the two cells of a wide char except their first words, which are the char
+typedef struct WideCellWords {
+    uint32_t first1, first2;
+    uint64_t second12;
+} WideCellWords;
+
+static inline WideCellWords
+wide_cell_words(const CPUCell *cc) {
+    // Built from constants, as building cells with bitfield assignments makes
+    // compilers do partial stores to the stack and reload them with wider loads,
+    // which stall on store forwarding. Only the hyperlink is taken from cc.
+    static const CPUCell first = {.is_multicell = true, .width = 2, .scale = 1, .natural_width = true};
+    static const CPUCell second = {.is_multicell = true, .width = 2, .scale = 1, .natural_width = true, .x = 1};
+    static const CPUCell hyperlink = {.hyperlink_id = (hyperlink_id_type)~0u};
+#define W(cell, which) cell_word(cell, which)
+#define HL(which) (W(cc, which) & W(&hyperlink, which))
+    return (WideCellWords){
+        .first1 = W(&first, 1) | HL(1),
+        .first2 = W(&first, 2) | HL(2),
+        .second12 = pack_cell_words(W(&second, 1) | HL(1), W(&second, 2) | HL(2)),
+    };
+#undef HL
+#undef W
+}
+
+static inline void
+write_wide_cells(CPUCell *dest, char_type ch, const WideCellWords *w) {
+    // Writes the two cells of a wide char as 64 bit values built in registers
+    const uint32_t ch_word = ch & 0x7fffffff;
+    const uint64_t first = pack_cell_words(ch_word, w->first1), second = pack_cell_words(w->first2, ch_word);
+    uint8_t *d = (uint8_t *)dest;
+    memcpy(d, &first, sizeof(first));
+    memcpy(d + sizeof(first), &second, sizeof(second));
+    memcpy(d + 2 * sizeof(first), &w->second12, sizeof(w->second12));
 }
 
 // Not inlined, so that it gets its own register allocation rather than competing
@@ -1420,15 +1463,10 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
     // The first word of a cell is its char. Assembling cells as CPUCell values or
     // word arrays makes compilers build them on the stack with partial stores and
     // reload them with wider loads, which stall on store forwarding.
-    uint32_t narrow[3], wide_first[3], wide_second[3];
-    {
-        const CPUCell wide = {.is_multicell = true, .width = 2, .scale = 1, .natural_width = true, .hyperlink_id = s->cc.hyperlink_id};
-        CPUCell second = wide;
-        second.x = 1;
-        memcpy(narrow, &s->cc, sizeof(narrow));
-        memcpy(wide_first, &wide, sizeof(wide_first));
-        memcpy(wide_second, &second, sizeof(wide_second));
-    }
+    // The words are kept in scalars rather than arrays, which compilers place on
+    // the stack. The first word of a cell is its char, written separately.
+    const uint32_t narrow1 = cell_word(&s->cc, 1), narrow2 = cell_word(&s->cc, 2);
+    const WideCellWords wide = wide_cell_words(&s->cc);
     GraphemeSegmentationResult seg = s->seg;
     // The segmentation step depends only on the current state and the grapheme
     // segmentation property of the char, and in a run of text the same pair
@@ -1455,16 +1493,12 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
         const uint32_t ch_word = ch & 0x7fffffff;
         uint8_t *dest = (uint8_t *)(cp + x);
         if (width == 1) {
-            const uint64_t first = pack_cell_words(ch_word, narrow[1]);
+            const uint64_t first = pack_cell_words(ch_word, narrow1);
             memcpy(dest, &first, sizeof(first));
-            memcpy(dest + sizeof(first), &narrow[2], sizeof(narrow[2]));
+            memcpy(dest + sizeof(first), &narrow2, sizeof(narrow2));
             gp[x++] = g;
         } else {
-            const uint64_t first = pack_cell_words(ch_word, wide_first[1]), second = pack_cell_words(wide_first[2], ch_word),
-                           third = pack_cell_words(wide_second[1], wide_second[2]);
-            memcpy(dest, &first, sizeof(first));
-            memcpy(dest + sizeof(first), &second, sizeof(second));
-            memcpy(dest + 2 * sizeof(first), &third, sizeof(third));
+            write_wide_cells(cp + x, ch, &wide);
             gp[x] = g;
             gp[x + 1] = g;
             x += 2;
@@ -1627,11 +1661,10 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                     second = fc + 1;
                 } else nuke_multicell_char_at(self, self->cursor->x + 1, self->cursor->y, true);
             }
-            zero_cells(s, fc, s->gp + self->cursor->x);
-            *fc = (CPUCell){.ch_or_idx = ch, .is_multicell = true, .width = 2, .scale = 1, .natural_width = true, .hyperlink_id = s->cc.hyperlink_id};
-            *second = *fc;
-            second->x = 1;
-            s->gp[self->cursor->x + 1] = s->gp[self->cursor->x];
+            const WideCellWords wide = wide_cell_words(&s->cc);
+            write_wide_cells(fc, ch, &wide);
+            s->gp[self->cursor->x] = s->g;
+            s->gp[self->cursor->x + 1] = s->g;
             s->prev.y = self->cursor->y;
             s->prev.x = self->cursor->x;
             s->prev.cc = fc;
