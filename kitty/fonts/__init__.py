@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from enum import Enum, IntEnum, auto
 from typing import TYPE_CHECKING, Literal, NamedTuple, TypedDict, Union
 
@@ -206,29 +205,6 @@ class FontSpec(NamedTuple):
 
 
 Descriptor = Union[FontConfigPattern, CoreTextFont]
-
-
-class Score(NamedTuple):
-    variable_score: int
-    style_score: float
-    monospace_score: int
-    width_score: int
-
-
-class Scorer[T]:
-    def __init__(self, bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> None:
-        self.bold = bold
-        self.italic = italic
-        self.monospaced = monospaced
-        self.prefer_variable = prefer_variable
-
-    def sorted_candidates(self, candidates: Sequence[T], dump: bool = False) -> list[T]:
-        raise NotImplementedError()
-
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}(bold={self.bold}, italic={self.italic}, monospaced={self.monospaced}, prefer_variable={self.prefer_variable})'
-
-    __str__ = __repr__
 
 
 @run_once
