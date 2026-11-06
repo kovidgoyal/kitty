@@ -93,6 +93,7 @@ Run-time dependencies:
 * ``pixman`` (not needed on macOS)
 * ``cairo`` (not needed on macOS)
 * ``freetype`` (not needed on macOS)
+* ``libbrotli`` (not needed on macOS)
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
 * ``libsystemd`` (optional, not needed on non systemd systems)
