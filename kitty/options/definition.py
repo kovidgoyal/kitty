@@ -25,6 +25,7 @@ definition.add_deprecation('deprecated_macos_show_window_title_in_menubar_alias'
 definition.add_deprecation('deprecated_send_text', 'send_text')
 definition.add_deprecation('deprecated_adjust_line_height', 'adjust_line_height', 'adjust_column_width', 'adjust_baseline')
 definition.add_deprecation('deprecated_scrollback_indicator_opacity', 'scrollback_indicator_opacity')
+definition.add_deprecation('deprecated_input_delay', 'input_delay')
 
 agr = definition.add_group
 egr = definition.end_group
@@ -1536,23 +1537,6 @@ frames-per-second (FPS) at the cost of more CPU usage. The default value yields
 achieve 100 FPS, you have to either set :opt:`sync_to_monitor` to :code:`no` or
 use a monitor with a high refresh rate. Also, to minimize latency when there is
 pending input to be processed, this option is ignored.
-""",
-)
-
-opt(
-    'input_delay',
-    '3',
-    option_type='positive_int',
-    ctype='time-ms',
-    long_text="""
-Delay before input from the program running in the terminal is processed (in
-milliseconds). Note that decreasing it will increase responsiveness, but also
-increase CPU usage and might cause flicker in full screen programs that redraw
-the entire screen on each loop, because kitty is so fast that partial screen
-updates will be drawn. This setting is ignored when the input buffer is almost
-full. It is also ignored when less than 1 KB of input is pending, such as when
-the program echoes typed characters, but at most once per delay period, so
-continuous streams of small writes are still coalesced.
 """,
 )
 

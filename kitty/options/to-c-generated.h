@@ -798,19 +798,6 @@ convert_from_opts_repaint_delay(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_input_delay(PyObject *val, Options *opts) {
-    opts->input_delay = parse_ms_long_to_monotonic_t(val);
-}
-
-static void
-convert_from_opts_input_delay(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "input_delay");
-    if (ret == NULL) return;
-    convert_from_python_input_delay(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
 convert_from_python_sync_to_monitor(PyObject *val, Options *opts) {
     opts->sync_to_monitor = PyObject_IsTrue(val);
 }
@@ -1713,8 +1700,6 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_drag_threshold(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_repaint_delay(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_input_delay(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_sync_to_monitor(py_opts, opts);
     if (PyErr_Occurred()) return false;
