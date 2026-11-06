@@ -183,6 +183,81 @@ class Selection(BaseTest):
             self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
             self.ae(face_from_descriptor(ff['bold']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
+    def test_font_selection_api(self):
+        # Font selection is done in C, optionally in a thread, see font-select.c
+        from kitty.fast_data_types import finish_font_selection
+        from kitty.fonts.common import finish_font_files_selection, start_font_files_selection
+
+        def key(d):
+            return tuple((k, d.get(k)) for k in ('path', 'index', 'named_style', 'axes', 'axis_map', 'matrix', 'postscript_name'))
+
+        def keys(ff):
+            return tuple(key(ff[x]) for x in ('medium', 'bold', 'italic', 'bi'))
+
+        def threaded(opts, symbol_map_families=()):
+            start_font_files_selection(opts, symbol_map_families, threaded=True)
+            return finish_font_files_selection(opts)
+
+        with self.assertRaises(RuntimeError):
+            finish_font_selection()
+        families = sorted({v[0]['family'] for v in all_fonts_map(True)['family_map'].values()})[:6]
+        opts = Options()
+        for family in families + ['NoSuchFontXYZ']:
+            with self.subTest(family=family):
+                opts.font_family = parse_font_spec(f'family="{family}"')
+                expected = keys(get_font_files(opts))
+                self.ae(expected, keys(threaded(opts)[0]))
+                if family.isascii():
+                    # names are matched ignoring case and extra whitespace
+                    opts.font_family = parse_font_spec(f'family="  {family.swapcase().replace(" ", "  ")} "')
+                    self.ae(expected, keys(get_font_files(opts)))
+        # A system font specification
+        opts.font_family = parse_font_spec('monospace')
+        expected = keys(get_font_files(opts))
+        self.ae(expected, keys(threaded(opts)[0]))
+        # Starting a new selection discards a running one
+        other = Options()
+        other.font_family = parse_font_spec('family="NoSuchFontXYZ"')
+        start_font_files_selection(other, threaded=True)
+        self.ae(expected, keys(threaded(opts)[0]))
+        # Fonts for symbol_map
+        symbol_families = ('monospace', families[0]) if is_macos else ('monospace', families[0], 'NoSuchFontXYZ')
+        ff, symbols = threaded(opts, symbol_families)
+        self.ae(expected, keys(ff))
+        self.ae(len(symbols), len(symbol_families))
+        for d, bold, italic in symbols:
+            self.assertTrue(d['path'])
+            self.assertIsInstance(bold, bool)
+            self.assertIsInstance(italic, bool)
+        # features are applied to the selected faces
+        opts.font_family = parse_font_spec(f'family="{families[0]}" features="+zero"')
+        ff = get_font_files(opts)
+        for x in ('medium', 'bold', 'italic', 'bi'):
+            self.ae(ff[x].get('features'), (ParsedFontFeature('+zero'),))
+
+    def test_variable_data_from_font_file(self):
+        # The pure C reading of variable font data used by font selection must
+        # match the data read via the platform font APIs
+        from kitty.fast_data_types import variable_data_from_font_file
+
+        seen = set()
+        count = 0
+        for descriptors in all_fonts_map(False)['variable_map'].values():
+            for d in descriptors:
+                path = d['path']
+                if path in seen or (is_macos and not path.lower().endswith(('.ttf', '.otf'))):
+                    continue
+                seen.add(path)
+                index = d.get('index', 0) & 0xFFFF  # type: ignore
+                expected = dict(face_from_descriptor(d).get_variable_data())
+                expected.pop('multi_axis_styles', None)  # type: ignore
+                expected['axes'] = tuple({k: v for k, v in ax.items() if k != 'name'} for ax in expected['axes'])  # type: ignore
+                with self.subTest(path=path):
+                    self.ae(expected, variable_data_from_font_file(path, index))
+                count += 1
+        if self.is_ci and not count:
+            raise AssertionError('No variable fonts found')
+
     def test_invalid_font_feature(self):
         with self.assertRaises(ValueError) as cm:
             ParsedFontFeature('!!bad!!')
