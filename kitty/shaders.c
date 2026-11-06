@@ -3530,16 +3530,19 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
 
 static PyObject *
 pygpu_driver_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
+    wait_for_gpu_driver(); // the driver may still be loading, see glfw_init()
     return PyUnicode_FromString(gpu_version_string());
 }
 
 static PyObject *
 pygpu_driver_name(PyObject *self UNUSED, PyObject *args UNUSED) {
+    wait_for_gpu_driver(); // the driver may still be loading, see glfw_init()
     return PyUnicode_FromString(gpu_driver_name());
 }
 
 static PyObject *
 pygpu_shader_target(PyObject *self UNUSED, PyObject *args UNUSED) {
+    wait_for_gpu_driver(); // the driver may still be loading, see glfw_init()
     return PyUnicode_FromString(gpu_shader_target());
 }
 
