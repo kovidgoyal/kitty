@@ -14,7 +14,6 @@ from kitty.fast_data_types import (
     current_fonts,
     get_fallback_font,
     render_decoration,
-    set_builtin_nerd_font,
     set_font_data,
     set_options,
     set_send_sprite_to_gpu,
@@ -150,15 +149,9 @@ def resolve_pending_font_selection() -> None:
         return
     opts, families, add_builtin_nerd_font = pending_selection
     pending_selection = None
-    font_map, symbol_fonts = finish_font_files_selection(opts)
-    if add_builtin_nerd_font:
-        # This is done after the selection finishes, as it uses fontconfig,
-        # whose initialization by the selection thread it would otherwise wait for
-        builtin_nerd_font_path = os.path.join(fonts_dir, 'SymbolsNerdFontMono-Regular.ttf')
-        if os.path.exists(builtin_nerd_font_path):
-            builtin_nerd_font_descriptor = set_builtin_nerd_font(builtin_nerd_font_path)
-        else:
-            log_error(f'No builtin NERD font found in {fonts_dir}')
+    font_map, symbol_fonts, nerd_font = finish_font_files_selection(opts)
+    if add_builtin_nerd_font and nerd_font is not None:
+        builtin_nerd_font_descriptor = nerd_font
     faces: list[tuple[FontObject, bool, bool]] = [
         (font_map['medium'], False, False),
         (font_map['bold'], True, False),
@@ -225,7 +218,14 @@ def set_font_family(opts: Options | None = None, override_font_size: float | Non
     ns = create_narrow_symbols(opts)
     current_faces = []
     pending_selection = opts, families, add_builtin_nerd_font
-    start_font_files_selection(opts, families, threaded)
+    builtin_nerd_font_path = ''
+    if add_builtin_nerd_font:
+        # The builtin NERD font is prepared by the font selection thread too
+        builtin_nerd_font_path = os.path.join(fonts_dir, 'SymbolsNerdFontMono-Regular.ttf')
+        if not os.path.exists(builtin_nerd_font_path):
+            log_error(f'No builtin NERD font found in {fonts_dir}')
+            builtin_nerd_font_path = ''
+    start_font_files_selection(opts, families, threaded, builtin_nerd_font_path)
     # The descriptors for the bold, italic and bold-italic faces are at indices 1, 2 and 3
     set_font_data(descriptor_for_idx, 1, 2, 3, len(families), sm, sz, ns)
 
