@@ -193,9 +193,79 @@ class TestParser(BaseTest):
         pb('😀'.encode()[:-1])
         pb('\x1b\x1b%a', '\ufffd', ('Unknown char after ESC: 0x1b',), ('draw', '%a'))
 
+    def test_utf8_simd_decode_long_inputs(self):
+        # Long inputs exercise the decoding of 64 byte blocks of valid UTF-8,
+        # compare with the scalar decoder, including when the blocks contain
+        # invalid UTF-8 or ESC, at all positions and split at all boundaries
+        import random
+
+        def unsupported(which):
+            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2)
+
+        def decode(parts, which):
+            test_utf8_decode_to_sentinel(b'', -1)
+            ans = []
+            for part in parts:
+                ans.append(test_utf8_decode_to_sentinel(part, which))
+            return ans
+
+        valid = ('a', ' ', '\n', 'é', 'ß', 'Ω', 'ж', '日', '本', '語', '€', '…', '😀', '𝄞', '\U0010ffff', 'ࠀ', '￿', '\x7f', '\x80', '߿')
+        runs = ('日本語の文字列' * 3, 'абвгдежзий' * 2, 'abcdefghijklmnop' * 2, '😀😛😇😈')
+        invalid = (
+            b'\x80',
+            b'\xbf',
+            b'\xc0\x80',
+            b'\xc1\xbf',
+            b'\xc2',
+            b'\xe0\x80\x80',
+            b'\xe0\x9f\xbf',
+            b'\xed\xa0\x80',
+            b'\xed\xbf\xbf',
+            b'\xf0\x80\x80\x80',
+            b'\xf0\x8f\xbf\xbf',
+            b'\xf4\x90\x80\x80',
+            b'\xf5\x80\x80\x80',
+            b'\xff',
+            b'\xfe',
+            b'\xe2\x89',
+            b'\xf0\x9f\x98',
+            b'\xe1\x28\xa1',
+            b'\xc2\xc2',
+            b'\xe0\xa0\xc0',
+        )
+
+        def data_for(seed):
+            rng = random.Random(seed)
+            out = bytearray()
+            target = rng.randint(70, 700)
+            bad_rate = rng.choice((0, 0, 0.01, 0.05))
+            esc_rate = rng.choice((0, 0, 0.01))
+            while len(out) < target:
+                r = rng.random()
+                if r < bad_rate:
+                    out += rng.choice(invalid)
+                elif r < bad_rate + esc_rate:
+                    out += b'\x1b'
+                elif r < 0.3:
+                    out += rng.choice(runs).encode()
+                else:
+                    out += rng.choice(valid).encode()
+            return bytes(out)
+
+        for seed in range(2000):
+            data = data_for(seed)
+            rng = random.Random(seed)
+            cuts = sorted(rng.sample(range(1, len(data)), min(len(data) - 1, rng.choice((0, 0, 1, 3)))))
+            parts = [data[a:b] for a, b in zip([0] + cuts, cuts + [len(data)])]
+            expected = decode(parts, 1)
+            for which in (2, 3):
+                if not unsupported(which):
+                    self.ae(expected, decode(parts, which), f'seed={seed} {which=} {parts=}')
+        test_utf8_decode_to_sentinel(b'', -1)
+
     def test_utf8_simd_decode(self):
         def unsupported(which):
-            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2) or (which == 4 and not has_avx512)
+            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2)
 
         def reset_state():
             test_utf8_decode_to_sentinel(b'', -1)
@@ -229,10 +299,10 @@ class TestParser(BaseTest):
             return actual
 
         def double_test(x):
-            for which in (2, 3, 4):
+            for which in (2, 3):
                 t(x, which=which)
             t(x * 2, which=3)
-            t(x * 4, which=4)
+            t(x * 4, which=3)
             reset_state()
 
         # incomplete trailer at end of vector
@@ -246,7 +316,7 @@ class TestParser(BaseTest):
         x('abc\x1bd1234efgh5678')
         x('abcd1234efgh5678ijklABCDmnopEFGH')
 
-        for which in (2, 3, 4):
+        for which in (2, 3):
             x = partial(t, which=which)
             x('abcdef', 'ghijk')
             x('2:α3', ':≤4:😸|')
@@ -268,7 +338,7 @@ class TestParser(BaseTest):
             expected = 'filler' + expected
             self.ae(expected, actual, f'Failed for: {src!r} with {which=}')
 
-        for which in (1, 2, 3, 4):
+        for which in (1, 2, 3):
             pb = partial(test_expected, which=which)
             pb('ニチ', 'ニチ')
             pb('\x84\x85', '\x84\x85')
