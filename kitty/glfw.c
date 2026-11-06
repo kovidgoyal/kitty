@@ -29,13 +29,18 @@ typedef struct mouse_cursor {
 
 static mouse_cursor cursors[GLFW_INVALID_CURSOR + 1] = {0};
 
+static int
+default_swap_interval(void) {
+    return OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0;
+}
+
 // Must be called with the surface current
 static void
 apply_swap_interval(gpu_surface_t surface, int val) {
     (void)val;
     (void)surface;
 #ifndef __APPLE__
-    if (val < 0) val = OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0;
+    if (val < 0) val = default_swap_interval();
     gpu_surface_set_swap_interval(surface, val);
 #endif
 }
@@ -68,6 +73,7 @@ gpu_surface_config(bool transparent) {
         .srgb = !global_state.is_wayland,
         .allow_offline_renderers = true,
         .high_resolution = true,
+        .swap_interval = default_swap_interval(),
     };
 }
 
