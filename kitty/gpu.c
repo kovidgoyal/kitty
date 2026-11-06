@@ -9,6 +9,7 @@
 #include "state.h"
 #include "png-reader.h"
 #include "threading.h"
+#include "startup-timing.h"
 #include <dlfcn.h>
 #include <errno.h>
 #include <stdint.h>
@@ -182,12 +183,15 @@ static struct {
     char errbuf[8192];
     size_t pos;
     bool loaded, failed;
+    monotonic_t started_at, finished_at;
 } async_load = {0};
 
 static void *
 async_load_thread(void *x UNUSED) {
     set_thread_name("KittyGPULoad");
+    async_load.started_at = monotonic_clock_now();
     async_load.loaded = load_gpu_driver_candidates(&async_load.display, 1, async_load.errbuf, sizeof(async_load.errbuf), &async_load.pos);
+    async_load.finished_at = monotonic_clock_now();
     return NULL;
 }
 
@@ -216,6 +220,7 @@ wait_for_gpu_driver(void) {
     async_load.pending = false;
     if (ret != 0) fatal("Failed to join the thread loading the GPU driver with error: %s", strerror(ret));
     if (candidates.debug_rendering) timed_debug_print("Finished waiting for the GPU driver to load\n");
+    startup_timing_thread("Loading the GPU driver", async_load.started_at, async_load.finished_at);
     if (async_load.loaded) return NULL;
     // Try the remaining candidates, appending to the reasons the first failed
     if (has_untried_gpu_drivers() && load_gpu_driver_candidates(&async_load.display, SIZE_MAX, async_load.errbuf, sizeof(async_load.errbuf), &async_load.pos))

@@ -54,7 +54,9 @@ from .fast_data_types import (
     set_custom_cursor,
     set_default_window_icon,
     set_options,
+    set_startup_timing,
     set_use_os_log,
+    startup_timing,
 )
 from .fonts.render import dump_font_debug, set_font_family
 from .logout_session import (
@@ -321,6 +323,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
     from .boss import Boss
     from .session import create_sessions, get_os_window_sizing_data
 
+    startup_timing('Imported the boss and session modules')
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
     if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name in ('list', 'listjson'):
@@ -352,6 +355,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
                 if getattr(args, 'session', ''):
                     args.session = ''
                 startup_sessions = tuple(create_sessions(opts, args))
+        startup_timing('Startup sessions created')
         if not _is_panel_kitten and not is_wayland():
             if opts.remember_window_position:
                 cached_workarea = tuple(tuple(x) for x in cached_values.get('monitor-workarea', ()))
@@ -388,8 +392,10 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
                 x=pos_x,
                 y=pos_y,
             )
+        startup_timing('First OS Window created')
         boss = Boss(opts, args, cached_values, global_shortcuts, talk_fd)
         boss.start(window_id, startup_sessions)
+        startup_timing('Boss created and started')
         if restored is not None:
             try:
                 finish_restore(restored.path)
@@ -414,6 +420,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         # that they are not repeatedly scanned and re-enable it.
         gc.freeze()
         gc.enable()
+        startup_timing('Entering the main loop')
         try:
             boss.child_monitor.main_loop()
         finally:
@@ -435,6 +442,7 @@ class AppRunner:
             # Fonts are selected in a thread, while the rest of startup happens,
             # the results are used when the first OS Window is created
             set_font_family(opts, add_builtin_nerd_font=True, threaded=True)
+            startup_timing('Font selection started')
             _run_app(opts, args, bad_lines, talk_fd)
         finally:
             set_options(None)
@@ -659,6 +667,10 @@ def kitty_main(called_from_panel: bool = False) -> None:
         cli_opts.args = []
     else:
         cli_opts.args = rest
+    if cli_opts.debug_startup:
+        krd = getattr(sys, 'kitty_run_data', {})
+        set_startup_timing(krd.get('launch_time', 0), krd.get('python_initialized_time', 0))
+        startup_timing('Command line parsed')
     talk_fd = -1
     if cli_opts.single_instance:
         si_data = os.environ.pop('KITTY_SI_DATA', '')
@@ -678,6 +690,7 @@ def kitty_main(called_from_panel: bool = False) -> None:
     set_ignore_config_dir_files('NONE' in cli_opts.config)
     bad_lines: list[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
+    startup_timing('Configuration loaded')
     if is_quick_access_terminal_app:
         opts.macos_hide_from_tasks = True
     setup_environment(opts, cli_opts)
@@ -701,6 +714,7 @@ def kitty_main(called_from_panel: bool = False) -> None:
     # kitty can handle them. See https://github.com/kovidgoyal/kitty/issues/4636
     mask_kitty_signals_process_wide()
     init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
+    startup_timing('GLFW initialized')
     try:
         with setup_profiling():
             # Avoid needing to launch threads to reap zombies
