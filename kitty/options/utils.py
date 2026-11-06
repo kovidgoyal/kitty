@@ -2001,6 +2001,12 @@ def deprecated_adjust_line_height(key: str, x: str, opts_dict: dict[str, Any]) -
         opts_dict['modify_font'][fm] = FontModification(mtype, ModificationValue(int(x), ModificationUnit.pixel))
 
 
+def deprecated_input_delay(key: str, val: str, ans: dict[str, Any]) -> None:
+    if not hasattr(deprecated_input_delay, key):
+        setattr(deprecated_input_delay, key, True)
+        log_error(f'The option {key} has been removed, output from programs is now always processed immediately.')
+
+
 def deprecated_scrollback_indicator_opacity(key: str, val: str, ans: dict[str, Any]) -> None:
     if not hasattr(deprecated_scrollback_indicator_opacity, key):
         setattr(deprecated_scrollback_indicator_opacity, key, True)
