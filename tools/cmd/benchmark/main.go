@@ -200,6 +200,65 @@ func ascii_with_csi() (r result, err error) {
 	return result{desc, data_sz, duration, reps}, nil
 }
 
+type rgb struct{ r, g, b int }
+
+func random_color() rgb {
+	// Components in [100, 255] so that every color has the same encoded length
+	return rgb{100 + rand.IntN(156), 100 + rand.IntN(156), 100 + rand.IntN(156)}
+}
+
+func colored_text_benchmark(desc string, next_color func() rgb) (r result, err error) {
+	alphabet := ascii_printable + control_chars
+	var b strings.Builder
+	b.Grow(2 * 1024 * 1024)
+	for b.Len() < 2*1024*1024 {
+		c := next_color()
+		fmt.Fprintf(&b, "\x1b[38;2;%d;%d;%dm%c", c.r, c.g, c.b, alphabet[rand.IntN(len(alphabet))])
+	}
+	b.WriteString("\x1b[m")
+	duration, data_sz, reps, err := benchmark_data(desc, b.String(), opts)
+	if err != nil {
+		return result{}, err
+	}
+	return result{desc, data_sz, duration, reps}, nil
+}
+
+func truecolor_text() (r result, err error) {
+	// Every char has a random 24-bit foreground, like lolcat output, so nearly every
+	// cell has a distinct style and terminals that intern styles cannot reuse them.
+	return colored_text_benchmark("Truecolor text", random_color)
+}
+
+func palette16_text() (r result, err error) {
+	// The same as truecolor_text except that only 16 distinct colors are used, so
+	// styles can be reused. Comparing the two isolates the cost of many distinct styles.
+	colors := make([]rgb, 16)
+	for i := range colors {
+		colors[i] = random_color()
+	}
+	return colored_text_benchmark("16 color text", func() rgb { return colors[rand.IntN(len(colors))] })
+}
+
+func halfblocks() (r result, err error) {
+	// Rows of upper half blocks each with random 24-bit foreground and background,
+	// as written by terminal image viewers that use half blocks.
+	var b strings.Builder
+	b.Grow(2 * 1024 * 1024)
+	for b.Len() < 2*1024*1024 {
+		for range 200 {
+			fg, bg := random_color(), random_color()
+			fmt.Fprintf(&b, "\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm\u2580", fg.r, fg.g, fg.b, bg.r, bg.g, bg.b)
+		}
+		b.WriteString("\x1b[m\r\n")
+	}
+	const desc = "Truecolor half blocks"
+	duration, data_sz, reps, err := benchmark_data(desc, b.String(), opts)
+	if err != nil {
+		return result{}, err
+	}
+	return result{desc, data_sz, duration, reps}, nil
+}
+
 func images() (r result, err error) {
 	g := graphics.GraphicsCommand{}
 	g.SetImageId(12345)
@@ -261,7 +320,7 @@ func present_result(r result, col_width int) {
 
 func all_benchamrks() []string {
 	return []string{
-		"ascii", "unicode", "unique_unicode", "csi", "images", "long_escape_codes",
+		"ascii", "unicode", "unique_unicode", "csi", "images", "long_escape_codes", "truecolor_text", "palette16_text", "halfblocks",
 	}
 }
 
@@ -330,6 +389,27 @@ func main(args []string) (err error) {
 
 	if slices.Index(args, "long_escape_codes") >= 0 {
 		if r, err = long_escape_codes(); err != nil {
+			return err
+		}
+		results = append(results, r)
+	}
+
+	if slices.Index(args, "truecolor_text") >= 0 {
+		if r, err = truecolor_text(); err != nil {
+			return err
+		}
+		results = append(results, r)
+	}
+
+	if slices.Index(args, "palette16_text") >= 0 {
+		if r, err = palette16_text(); err != nil {
+			return err
+		}
+		results = append(results, r)
+	}
+
+	if slices.Index(args, "halfblocks") >= 0 {
+		if r, err = halfblocks(); err != nil {
 			return err
 		}
 		results = append(results, r)
