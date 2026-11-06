@@ -1444,27 +1444,6 @@ add_font_file(PyObject UNUSED *_self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
-static PyObject *
-set_builtin_nerd_font(PyObject UNUSED *self, PyObject *pypath) {
-    if (!PyUnicode_Check(pypath)) {
-        PyErr_SetString(PyExc_TypeError, "path must be a string");
-        return NULL;
-    }
-    const char *path = NULL;
-    Py_ssize_t sz;
-    path = PyUnicode_AsUTF8AndSize(pypath, &sz);
-    RAII_CoreFoundation(CFURLRef, url, CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (const unsigned char *)path, sz, false));
-    RAII_CoreFoundation(CFArrayRef, descriptors, CTFontManagerCreateFontDescriptorsFromURL(url));
-    if (!descriptors || CFArrayGetCount(descriptors) == 0) {
-        PyErr_SetString(PyExc_OSError, "Failed to create descriptor from nerd font path");
-        return NULL;
-    }
-    if (builtin_nerd_font_descriptor) CFRelease(builtin_nerd_font_descriptor);
-    builtin_nerd_font_descriptor = CFArrayGetValueAtIndex(descriptors, 0);
-    CFRetain(builtin_nerd_font_descriptor);
-    return font_descriptor_to_python(builtin_nerd_font_descriptor);
-}
-
 // Font selection backend, see font-select.h {{{
 // This code runs in the font selection thread, so it must not use Python.
 // CoreText font descriptors and fonts are thread safe.
@@ -1711,6 +1690,33 @@ fs_backend_font_tables(FSContext *ctx UNUSED, const FSCandidate *c, FSFontTables
     return true;
 }
 
+void
+fs_backend_prepare_builtin_nerd_font(FSContext *ctx, FSBuiltinNerdFont *nf) {
+    RAII_CoreFoundation(CFURLRef, url, CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (const UInt8 *)nf->path, (CFIndex)strlen(nf->path), false));
+    RAII_CoreFoundation(CFArrayRef, descriptors, url ? CTFontManagerCreateFontDescriptorsFromURL(url) : NULL);
+    if (!descriptors || CFArrayGetCount(descriptors) == 0) {
+        fs_add_message(ctx, "Failed to create a font descriptor for the builtin NERD font from: %s", nf->path);
+        return;
+    }
+    nf->handle = (void *)CFRetain(CFArrayGetValueAtIndex(descriptors, 0));
+    nf->prepared = true;
+}
+
+void
+fs_backend_free_builtin_nerd_font(FSBuiltinNerdFont *nf) {
+    if (nf->handle) CFRelease((CTFontDescriptorRef)nf->handle);
+    nf->handle = NULL;
+}
+
+PyObject *
+fs_backend_install_builtin_nerd_font(const FSBuiltinNerdFont *nf) {
+    CTFontDescriptorRef d = (CTFontDescriptorRef)nf->handle;
+    if (builtin_nerd_font_descriptor) CFRelease(builtin_nerd_font_descriptor);
+    builtin_nerd_font_descriptor = d;
+    CFRetain(builtin_nerd_font_descriptor);
+    return font_descriptor_to_python(builtin_nerd_font_descriptor);
+}
+
 PyObject *
 fs_backend_descriptor(const FSFont *f) {
     RAII_PyObject(ans, font_descriptor_to_python((CTFontDescriptorRef)f->base->handle));
@@ -1731,7 +1737,7 @@ fs_backend_descriptor(const FSFont *f) {
 // }}}
 
 static PyMethodDef module_methods[] = {
-    METHODB(coretext_all_fonts, METH_O), METHODB(add_font_file, METH_VARARGS), METHODB(set_builtin_nerd_font, METH_O), {NULL, NULL, 0, NULL} /* Sentinel */
+    METHODB(coretext_all_fonts, METH_O), METHODB(add_font_file, METH_VARARGS), {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 static PyMemberDef members[] = {

@@ -492,6 +492,15 @@ read_stat(const uint8_t *table, size_t table_len, const NameTable *nt, FSVariabl
     }
 }
 
+char *
+fs_postscript_name_from_tables(const FSFontTables *t) {
+    NameTable nt;
+    parse_name_table(t->name, t->name_len, &nt);
+    char *ans = get_best_name(&nt, 6);
+    free(nt.records);
+    return ans;
+}
+
 bool
 fs_variable_data_from_tables(const FSFontTables *t, FSVariableData *vd) {
     memset(vd, 0, sizeof(*vd));
@@ -584,6 +593,7 @@ struct FSContext {
     FSFont results[4];
     FSFont *symbols;
     bool *symbol_bold, *symbol_italic;
+    FSBuiltinNerdFont nerd_font;
 };
 
 void **
@@ -691,6 +701,8 @@ free_context(FSContext *ctx) {
     free(ctx->symbols);
     free(ctx->symbol_bold);
     free(ctx->symbol_italic);
+    fs_backend_free_builtin_nerd_font(&ctx->nerd_font);
+    free(ctx->nerd_font.path);
     free(ctx);
 }
 
@@ -1677,11 +1689,14 @@ run_selection(FSContext *ctx) {
         return;
     }
     if (get_font_files(ctx)) select_symbol_fonts(ctx);
+    if (ctx->nerd_font.path) fs_backend_prepare_builtin_nerd_font(ctx, &ctx->nerd_font);
 }
 // }}}
 
 // Python interface {{{
 PyObject *fs_backend_descriptor(const FSFont *f);
+// Make the prepared builtin nerd font the one used for fallback and return its descriptor, runs in the main thread
+PyObject *fs_backend_install_builtin_nerd_font(const FSBuiltinNerdFont *nf);
 
 static struct {
     FSContext *ctx;
@@ -1769,7 +1784,8 @@ static PyObject *
 start_font_selection(PyObject *self UNUSED, PyObject *args) {
     PyObject *specs, *families;
     int threaded = 1;
-    if (!PyArg_ParseTuple(args, "O!O!|p", &PyTuple_Type, &specs, &PyTuple_Type, &families, &threaded)) return NULL;
+    const char *builtin_nerd_font_path = NULL;
+    if (!PyArg_ParseTuple(args, "O!O!|pz", &PyTuple_Type, &specs, &PyTuple_Type, &families, &threaded, &builtin_nerd_font_path)) return NULL;
     if (PyTuple_GET_SIZE(specs) != 4) {
         PyErr_SetString(PyExc_ValueError, "Must specify exactly four font specifications");
         return NULL;
@@ -1801,6 +1817,7 @@ start_font_selection(PyObject *self UNUSED, PyObject *args) {
         }
         ctx->symbol_families[i] = xstrdup(s);
     }
+    if (builtin_nerd_font_path && builtin_nerd_font_path[0]) ctx->nerd_font.path = xstrdup(builtin_nerd_font_path);
     pending.ctx = ctx;
     if (threaded) {
         int ret = pthread_create(&pending.thread, NULL, selection_thread, ctx);
@@ -1837,7 +1854,9 @@ selection_result(const FSContext *ctx) {
     if (!italic) return NULL;
     RAII_PyObject(bi, fs_backend_descriptor(ctx->results + 3));
     if (!bi) return NULL;
-    return Py_BuildValue("{sO sO sO sO sO}", "medium", medium, "bold", bold, "italic", italic, "bi", bi, "symbols", symbols);
+    RAII_PyObject(nerd_font, ctx->nerd_font.prepared ? fs_backend_install_builtin_nerd_font(&ctx->nerd_font) : Py_NewRef(Py_None));
+    if (!nerd_font) return NULL;
+    return Py_BuildValue("{sO sO sO sO sO sO}", "medium", medium, "bold", bold, "italic", italic, "bi", bi, "symbols", symbols, "builtin_nerd_font", nerd_font);
 }
 
 static PyObject *
