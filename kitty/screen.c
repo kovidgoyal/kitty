@@ -1357,6 +1357,104 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
     }
 }
 
+static bool batched_non_ascii_draw_disabled_for_tests = false;
+
+static_assert(sizeof(CPUCell) == 3 * sizeof(uint32_t), "draw_non_ascii_run() needs updating");
+
+static inline uint64_t
+pack_cell_words(uint32_t first, uint32_t second) {
+    // Two consecutive 32 bit words of cell memory as one 64 bit value
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    return first | ((uint64_t)second << 32);
+#else
+    return ((uint64_t)first << 32) | second;
+#endif
+}
+
+// Not inlined, so that it gets its own register allocation rather than competing
+// with the rest of draw_text_loop() for registers. It is called once per run.
+__attribute__((noinline)) static size_t
+draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size_t num_chars) {
+    // Batched fast path: draw a run of non-ASCII chars each of which starts a new cell
+    // of width one or two in the current line, keeping all state in locals so it is
+    // not reloaded for every char. Stops at the first char needing the scalar path:
+    // ASCII, invalid, zero width, a char that combines with the previous cell, the
+    // image placeholder, a char that does not fit in the line or an existing multicell
+    // cell. The caller must ensure there is no charset translation or insert mode and
+    // that the cursor is within the line. Returns the number of chars drawn.
+    const index_type columns = self->columns;
+    index_type x = self->cursor->x, last_x = x;
+    CPUCell *cp = s->cp;
+    GPUCell *gp = s->gp;
+    const GPUCell g = s->g;
+    // Cells are written from these templates as 64 bit values built in registers.
+    // The first word of a cell is its char. Assembling cells as CPUCell values or
+    // word arrays makes compilers build them on the stack with partial stores and
+    // reload them with wider loads, which stall on store forwarding.
+    uint32_t narrow[3], wide_first[3], wide_second[3];
+    {
+        const CPUCell wide = {.is_multicell = true, .width = 2, .scale = 1, .natural_width = true, .hyperlink_id = s->cc.hyperlink_id};
+        CPUCell second = wide;
+        second.x = 1;
+        memcpy(narrow, &s->cc, sizeof(narrow));
+        memcpy(wide_first, &wide, sizeof(wide_first));
+        memcpy(wide_second, &second, sizeof(wide_second));
+    }
+    GraphemeSegmentationResult seg = s->seg;
+    // The segmentation step depends only on the current state and the grapheme
+    // segmentation property of the char, and in a run of text the same pair
+    // repeats, so cache the last step. This breaks the chain of dependent table
+    // lookups that otherwise links every char to the previous one.
+    uint32_t cached_seg_key = UINT32_MAX;
+    GraphemeSegmentationResult cached_seg = {0};
+    size_t i = 0;
+    for (; i < num_chars; i++) {
+        const char_type ch = chars[i];
+        if (ch < DEL || ch == IMAGE_PLACEHOLDER_CHAR) break;
+        const CharProps props = char_props_for(ch);
+        if (props.is_invalid) break;
+        // Negative widths are East Asian ambiguous width chars, which are drawn as narrow
+        int width = wcwidth_std(props);
+        if (width < 0) width = 1;
+        if (width == 0 || x + (index_type)width > columns || cp[x].is_multicell) break;
+        if (width == 2 && cp[x + 1].is_multicell) break;
+        const uint32_t seg_key = ((uint32_t)seg.val << 8) | props.grapheme_segmentation_property;
+        if (seg_key != cached_seg_key) {
+            cached_seg = grapheme_segmentation_step(seg, props);
+            cached_seg_key = seg_key;
+        }
+        if (cached_seg.add_to_current_cell) break;
+        seg = cached_seg;
+        last_x = x;
+        const uint32_t ch_word = ch & 0x7fffffff;
+        uint8_t *dest = (uint8_t *)(cp + x);
+        if (width == 1) {
+            const uint64_t first = pack_cell_words(ch_word, narrow[1]);
+            memcpy(dest, &first, sizeof(first));
+            memcpy(dest + sizeof(first), &narrow[2], sizeof(narrow[2]));
+            gp[x++] = g;
+        } else {
+            const uint64_t first = pack_cell_words(ch_word, wide_first[1]), second = pack_cell_words(wide_first[2], ch_word),
+                           third = pack_cell_words(wide_second[1], wide_second[2]);
+            memcpy(dest, &first, sizeof(first));
+            memcpy(dest + sizeof(first), &second, sizeof(second));
+            memcpy(dest + 2 * sizeof(first), &third, sizeof(third));
+            gp[x] = g;
+            gp[x + 1] = g;
+            x += 2;
+        }
+    }
+    if (i) {
+        self->cursor->x = x;
+        self->last_graphic_char = chars[i - 1];
+        s->seg = seg;
+        s->prev.y = self->cursor->y;
+        s->prev.x = last_x;
+        s->prev.cc = cp + last_x;
+    }
+    return i;
+}
+
 static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
@@ -1432,6 +1530,14 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             char_width = 1;
             s->seg = (GraphemeSegmentationResult){.grapheme_break = GBP_None};
         } else {
+            if (ch > DEL && LIKELY(!self->charset.current && !self->modes.mIRM && self->cursor->x < self->columns) &&
+                !batched_non_ascii_draw_disabled_for_tests) {
+                const size_t n = draw_non_ascii_run(self, s, chars + i, num_chars - i);
+                if (n) {
+                    i += n - 1;
+                    continue;
+                }
+            }
             CharProps cp = char_props_for(ch);
             if (cp.is_invalid) {
                 if (ch < ' ') draw_control_char(self, s, ch);
@@ -7478,11 +7584,18 @@ test_set_history_reuse(PyObject *self UNUSED, PyObject *val) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+test_set_batched_non_ascii_draw(PyObject *self UNUSED, PyObject *val) {
+    batched_non_ascii_draw_disabled_for_tests = !PyObject_IsTrue(val);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     {"is_emoji_presentation_base", (PyCFunction)screen_is_emoji_presentation_base, METH_O, ""},
     {"truncate_point_for_length", (PyCFunction)screen_truncate_point_for_length, METH_VARARGS, ""},
     {"test_ch_and_idx", test_ch_and_idx, METH_O, ""},
     {"test_set_history_reuse", test_set_history_reuse, METH_O, ""},
+    {"test_set_batched_non_ascii_draw", test_set_batched_non_ascii_draw, METH_O, ""},
     {NULL} /* Sentinel */
 };
 

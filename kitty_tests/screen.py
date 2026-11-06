@@ -929,6 +929,110 @@ class TestScreen(BaseTest):
         finally:
             test_set_history_reuse(True)
 
+    def test_batched_non_ascii_draw(self):
+        import random
+
+        from kitty.fast_data_types import test_set_batched_non_ascii_draw
+
+        texts = (
+            '日本語の文字列',
+            'éàüñ',
+            'αβγ',
+            'é',
+            '😀',
+            '👍🏽',
+            '👨‍👩‍👧',
+            '❤️',
+            '😀︎',
+            '\U0001f1fa\U0001f1f8',
+            'กำ',
+            '각',
+            '\U0010eeee̅',
+            'abc',
+            ' ',
+            '̀',
+            '‍',
+            '\x85',
+            '\x9b',
+            '￿',
+            '\U000e0001',
+        )
+
+        def ops_for(seed, cols):
+            rng = random.Random(seed)
+            ops = []
+            for i in range(rng.randint(20, 100)):
+                r = rng.random()
+                if r < 0.5:
+                    ops.append(('draw', ''.join(rng.choice(texts) for _ in range(rng.randint(1, 2 * cols)))))
+                elif r < 0.6:
+                    ops.append(
+                        (
+                            'bytes',
+                            rng.choice(
+                                (
+                                    b'\x1b[1;31m',
+                                    b'\x1b[4:3;48;2;1;2;3m',
+                                    b'\x1b[m',
+                                    b'\x1b]8;;http://x\x1b\\',
+                                    b'\x1b]8;;\x1b\\',
+                                )
+                            ),
+                        )
+                    )
+                elif r < 0.65:
+                    ops.append(('bytes', rng.choice((b'\x1b[4h', b'\x1b[4l', b'\x1b(0', b'\x1b(B', b'\x1b[3b'))))
+                elif r < 0.75:
+                    ops.append(('bytes', f'\x1b[{rng.randint(1, 3)}{rng.choice("CDAB")}'.encode()))
+                elif r < 0.8:
+                    ops.append(('mc', rng.choice('A日'), rng.randint(2, 3)))
+                elif r < 0.85:
+                    ops.append(('bytes', f'\x1b[{rng.randint(1, 4)};{rng.randint(1, cols)}H'.encode()))
+                else:
+                    ops.append(('nl',))
+            return ops
+
+        def build(ops, cols, lines):
+            s = self.create_screen(cols=cols, lines=lines, scrollback=20)
+            for op in ops:
+                if op[0] == 'draw':
+                    s.draw(op[1])
+                elif op[0] == 'bytes':
+                    parse_bytes(s, op[1])
+                elif op[0] == 'mc':
+                    draw_multicell(s, op[1], scale=op[2])
+                else:
+                    s.carriage_return(), s.linefeed()
+            # makes last_graphic_char observable
+            parse_bytes(s, b'\x1b[4l\x1b(B\x1b[2b')
+            return s
+
+        def compare(a, b, msg):
+            self.ae((a.cursor.x, a.cursor.y), (b.cursor.x, b.cursor.y), msg)
+            self.ae(a.historybuf.count, b.historybuf.count, msg)
+            for i in range(a.historybuf.count):
+                self.assertTrue(a.historybuf.line(i) == b.historybuf.line(i), f'{msg} history line {i}')
+                self.ae(a.historybuf.line(i).as_ansi(), b.historybuf.line(i).as_ansi(), f'{msg} history line {i}')
+            for i in range(a.lines):
+                self.assertTrue(a.linebuf.line(i) == b.linebuf.line(i), f'{msg} line {i}')
+                self.ae(a.linebuf.line(i).as_ansi(), b.linebuf.line(i).as_ansi(), f'{msg} line {i}')
+                self.ae(a.cpu_cells(i), b.cpu_cells(i), f'{msg} line {i}')
+                self.ae(a.linebuf.is_continued(i), b.linebuf.is_continued(i), f'{msg} line {i}')
+            self.ae(a.linebuf.dirty_lines(), b.linebuf.dirty_lines(), msg)
+
+        try:
+            for seed in range(400):
+                rng = random.Random(seed)
+                cols, lines = rng.randint(1, 14), rng.randint(1, 6)
+                ops = ops_for(seed, cols)
+                test_set_batched_non_ascii_draw(True)
+                a = build(ops, cols, lines)
+                test_set_batched_non_ascii_draw(False)
+                b = build(ops, cols, lines)
+                compare(a, b, f'seed={seed} cols={cols} lines={lines}')
+        finally:
+            test_set_batched_non_ascii_draw(True)
+
     def test_tab_stops(self):
         # Taken from vttest/main.c
         s = self.create_screen(cols=80, lines=2)
