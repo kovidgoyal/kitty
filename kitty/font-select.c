@@ -233,9 +233,18 @@ pread_all(int fd, uint8_t *buf, size_t sz, off_t offset) {
 // Return the location in t for storing the table with the specified tag or NULL if the table is not needed
 static uint8_t **
 table_slot(FSFontTables *t, const uint8_t *tag, size_t **len) {
-    if (memcmp(tag, "fvar", 4) == 0) { *len = &t->fvar_len; return &t->fvar; }
-    if (memcmp(tag, "STAT", 4) == 0) { *len = &t->stat_len; return &t->stat; }
-    if (memcmp(tag, "name", 4) == 0) { *len = &t->name_len; return &t->name; }
+    if (memcmp(tag, "fvar", 4) == 0) {
+        *len = &t->fvar_len;
+        return &t->fvar;
+    }
+    if (memcmp(tag, "STAT", 4) == 0) {
+        *len = &t->stat_len;
+        return &t->stat;
+    }
+    if (memcmp(tag, "name", 4) == 0) {
+        *len = &t->name_len;
+        return &t->name;
+    }
     return NULL;
 }
 
@@ -264,8 +273,10 @@ read_woff_tables(int fd, FSFontTables *t) {
             good = pread_all(fd, comp, comp_length, offset) && uncompress(data, &sz, comp, comp_length) == Z_OK && sz == orig_length;
             free(comp);
         }
-        if (good) { *dest = data; *dest_len = orig_length; }
-        else free(data);
+        if (good) {
+            *dest = data;
+            *dest_len = orig_length;
+        } else free(data);
     }
     ok = true;
 end:
@@ -299,14 +310,16 @@ br_u8(ByteReader *r, uint8_t *v) {
 static bool
 br_u16(ByteReader *r, uint16_t *v) {
     if (r->end - r->p < 2) return false;
-    *v = be16(r->p); r->p += 2;
+    *v = be16(r->p);
+    r->p += 2;
     return true;
 }
 
 static bool
 br_u32(ByteReader *r, uint32_t *v) {
     if (r->end - r->p < 4) return false;
-    *v = be32(r->p); r->p += 4;
+    *v = be32(r->p);
+    r->p += 4;
     return true;
 }
 
@@ -317,7 +330,10 @@ br_base128(ByteReader *r, uint32_t *v) {
         uint8_t b;
         if (!br_u8(r, &b) || (i == 0 && b == 0x80) || (acc & 0xFE000000)) return false;
         acc = (acc << 7) | (b & 0x7f);
-        if (!(b & 0x80)) { *v = acc; return true; }
+        if (!(b & 0x80)) {
+            *v = acc;
+            return true;
+        }
     }
     return false;
 }
@@ -328,8 +344,14 @@ br_255uint16(ByteReader *r, uint16_t *v) {
     if (!br_u8(r, &code)) return false;
     switch (code) {
         case 253: return br_u16(r, v);
-        case 254: if (!br_u8(r, &b)) return false; *v = 253 * 2 + b; return true;
-        case 255: if (!br_u8(r, &b)) return false; *v = 253 + b; return true;
+        case 254:
+            if (!br_u8(r, &b)) return false;
+            *v = 253 * 2 + b;
+            return true;
+        case 255:
+            if (!br_u8(r, &b)) return false;
+            *v = 253 + b;
+            return true;
         default: *v = code; return true;
     }
 }
@@ -337,16 +359,22 @@ br_255uint16(ByteReader *r, uint16_t *v) {
 typedef struct Woff2Table {
     uint8_t tag[4];
     bool transformed;
-    uint32_t src_offset, src_length;  // location in the decompressed stream
+    uint32_t src_offset, src_length; // location in the decompressed stream
 } Woff2Table;
 
 // Parse the table directory and collection directory. Returns false if buf is
 // too short or the data is invalid.
 static bool
 parse_woff2_directories(
-    const uint8_t *buf, size_t sz, uint16_t num_tables, bool is_collection, unsigned face,
-    Woff2Table *tables, uint16_t *font_tables, uint16_t *num_font_tables, size_t *dirs_size
-) {
+    const uint8_t *buf,
+    size_t sz,
+    uint16_t num_tables,
+    bool is_collection,
+    unsigned face,
+    Woff2Table *tables,
+    uint16_t *font_tables,
+    uint16_t *num_font_tables,
+    size_t *dirs_size) {
     ByteReader r = {.p = buf, .end = buf + sz};
     uint64_t src_offset = 0;
     for (uint16_t i = 0; i < num_tables; i++) {
@@ -356,7 +384,8 @@ parse_woff2_directories(
         const unsigned tag_idx = flags & 0x3f, xform_version = (flags >> 6) & 3;
         if (tag_idx == 63) {
             if (r.end - r.p < 4) return false;
-            memcpy(tt->tag, r.p, 4); r.p += 4;
+            memcpy(tt->tag, r.p, 4);
+            r.p += 4;
         } else memcpy(tt->tag, woff2_known_tags[tag_idx], 4);
         uint32_t orig_length, length;
         if (!br_base128(&r, &orig_length)) return false;
@@ -366,7 +395,8 @@ parse_woff2_directories(
         tt->transformed = is_glyf_or_loca ? xform_version != 3 : xform_version != 0;
         if (tt->transformed && !br_base128(&r, &length)) return false;
         if (src_offset + length > UINT32_MAX) return false;
-        tt->src_offset = (uint32_t)src_offset; tt->src_length = length;
+        tt->src_offset = (uint32_t)src_offset;
+        tt->src_length = length;
         src_offset += length;
     }
     if (is_collection) {
@@ -426,12 +456,16 @@ read_woff2_tables(int fd, int index, FSFontTables *t) {
         uint8_t **dest = table_slot(t, tt->tag, &dest_len);
         if (!dest || tt->transformed || tt->src_length > MAX_FONT_TABLE_SIZE) continue;
         bool seen = false;
-        for (size_t j = 0; j < num_needed; j++) if (memcmp(needed[j]->tag, tt->tag, 4) == 0) seen = true;
+        for (size_t j = 0; j < num_needed; j++)
+            if (memcmp(needed[j]->tag, tt->tag, 4) == 0) seen = true;
         if (seen) continue;
         needed[num_needed++] = tt;
         if (tt->src_offset + (size_t)tt->src_length > needed_end) needed_end = tt->src_offset + (size_t)tt->src_length;
     }
-    if (!needed_end) { ok = true; goto end; }
+    if (!needed_end) {
+        ok = true;
+        goto end;
+    }
     // Decompress the prefix of the stream that contains the needed tables in
     // fixed size chunks, copying out the parts of the needed tables. The
     // table buffers are allocated only when the stream reaches them, so that
@@ -453,7 +487,10 @@ read_woff2_tables(int fd, int index, FSFontTables *t) {
             if (!remaining) goto end;
             const size_t n = remaining < CHUNK_SIZE ? remaining : CHUNK_SIZE;
             if (!pread_all(fd, inbuf, n, pos)) goto end;
-            pos += n; remaining -= n; avail_in = n; next_in = inbuf;
+            pos += n;
+            remaining -= n;
+            avail_in = n;
+            next_in = inbuf;
         }
         uint8_t *next_out = out;
         size_t avail_out = needed_end - stream_pos < CHUNK_SIZE ? needed_end - stream_pos : CHUNK_SIZE;
@@ -465,7 +502,10 @@ read_woff2_tables(int fd, int index, FSFontTables *t) {
             if (tend <= stream_pos || tstart >= chunk_end) continue;
             size_t *dest_len;
             uint8_t **dest = table_slot(t, needed[i]->tag, &dest_len);
-            if (!*dest) { *dest = xcalloc(needed[i]->src_length, 1); *dest_len = needed[i]->src_length; }
+            if (!*dest) {
+                *dest = xcalloc(needed[i]->src_length, 1);
+                *dest_len = needed[i]->src_length;
+            }
             const size_t from = tstart > stream_pos ? tstart : stream_pos, to = tend < chunk_end ? tend : chunk_end;
             memcpy(*dest + (from - tstart), out + (from - stream_pos), to - from);
         }
@@ -475,7 +515,11 @@ read_woff2_tables(int fd, int index, FSFontTables *t) {
     ok = true;
 end:
     if (dec) BrotliDecoderDestroyInstance(dec);
-    free(tables); free(font_tables); free(dirs); free(out); free(inbuf);
+    free(tables);
+    free(font_tables);
+    free(dirs);
+    free(out);
+    free(inbuf);
     return ok;
 }
 #endif
@@ -495,7 +539,7 @@ fs_read_font_tables_from_file(const char *path, int index, FSFontTables *t) {
     }
     if (memcmp(header, "wOF2", 4) == 0) {
 #ifdef __APPLE__
-        ok = true;  // brotli is not available on macOS, treat as having no variable font data
+        ok = true; // brotli is not available on macOS, treat as having no variable font data
 #else
         ok = read_woff2_tables(fd, index, t);
 #endif
