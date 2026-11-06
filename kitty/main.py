@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import gc
 import json
 import locale
 import os
@@ -401,6 +402,12 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
                 _('The startup session was invalid'),
                 _('Loading the start session file {0} failed, with error:\n{1}').format(startup_session_error[1], startup_session_error[0]),
             )
+        # Garbage collection is disabled during startup, see main() in
+        # entry_points.py. Move all objects created during startup, which are
+        # mostly long lived, out of the purview of the garbage collector, so
+        # that they are not repeatedly scanned and re-enable it.
+        gc.freeze()
+        gc.enable()
         try:
             boss.child_monitor.main_loop()
         finally:
