@@ -19,8 +19,11 @@
 #include <fcntl.h>
 #include <math.h>
 #include <stdarg.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <zlib.h>
 #ifndef __APPLE__
+#include <brotli/decode.h>
 #include <fontconfig/fontconfig.h>
 #endif
 
@@ -225,6 +228,258 @@ pread_all(int fd, uint8_t *buf, size_t sz, off_t offset) {
     return true;
 }
 
+#define MAX_FONT_TABLE_SIZE (64u * 1024u * 1024u)
+
+// Return the location in t for storing the table with the specified tag or NULL if the table is not needed
+static uint8_t **
+table_slot(FSFontTables *t, const uint8_t *tag, size_t **len) {
+    if (memcmp(tag, "fvar", 4) == 0) { *len = &t->fvar_len; return &t->fvar; }
+    if (memcmp(tag, "STAT", 4) == 0) { *len = &t->stat_len; return &t->stat; }
+    if (memcmp(tag, "name", 4) == 0) { *len = &t->name_len; return &t->name; }
+    return NULL;
+}
+
+// WOFF: https://www.w3.org/TR/WOFF/ each table is individually compressed with zlib
+static bool
+read_woff_tables(int fd, FSFontTables *t) {
+    uint8_t header[44];
+    if (!pread_all(fd, header, sizeof(header), 0)) return false;
+    const uint16_t num_tables = be16(header + 12);
+    uint8_t *records = xcalloc(num_tables, 20);
+    bool ok = false;
+    if (!pread_all(fd, records, (size_t)num_tables * 20, sizeof(header))) goto end;
+    for (uint16_t i = 0; i < num_tables; i++) {
+        const uint8_t *r = records + 20 * i;
+        size_t *dest_len;
+        uint8_t **dest = table_slot(t, r, &dest_len);
+        if (!dest || *dest) continue;
+        const uint32_t offset = be32(r + 4), comp_length = be32(r + 8), orig_length = be32(r + 12);
+        if (orig_length > MAX_FONT_TABLE_SIZE || comp_length > orig_length) continue;
+        uint8_t *data = xcalloc(orig_length, 1);
+        bool good;
+        if (comp_length == orig_length) good = pread_all(fd, data, orig_length, offset);
+        else {
+            uint8_t *comp = xcalloc(comp_length, 1);
+            uLongf sz = orig_length;
+            good = pread_all(fd, comp, comp_length, offset) && uncompress(data, &sz, comp, comp_length) == Z_OK && sz == orig_length;
+            free(comp);
+        }
+        if (good) { *dest = data; *dest_len = orig_length; }
+        else free(data);
+    }
+    ok = true;
+end:
+    free(records);
+    return ok;
+}
+
+#ifndef __APPLE__
+// WOFF2: https://www.w3.org/TR/WOFF2/ all tables are concatenated into a
+// single brotli compressed stream. Only the prefix of the stream containing
+// the needed tables is decompressed.
+
+static const char woff2_known_tags[63][5] = {
+    "cmap", "head", "hhea", "hmtx", "maxp", "name", "OS/2", "post", "cvt ", "fpgm", "glyf", "loca", "prep", "CFF ", "VORG", "EBDT",
+    "EBLC", "gasp", "hdmx", "kern", "LTSH", "PCLT", "VDMX", "vhea", "vmtx", "BASE", "GDEF", "GPOS", "GSUB", "EBSC", "JSTF", "MATH",
+    "CBDT", "CBLC", "COLR", "CPAL", "SVG ", "sbix", "acnt", "avar", "bdat", "bloc", "bsln", "cvar", "fdsc", "feat", "fmtx", "fvar",
+    "gvar", "hsty", "just", "lcar", "mort", "morx", "opbd", "prop", "trak", "Zapf", "Silf", "Glat", "Gloc", "Feat", "Sill",
+};
+
+typedef struct ByteReader {
+    const uint8_t *p, *end;
+} ByteReader;
+
+static bool
+br_u8(ByteReader *r, uint8_t *v) {
+    if (r->p >= r->end) return false;
+    *v = *r->p++;
+    return true;
+}
+
+static bool
+br_u16(ByteReader *r, uint16_t *v) {
+    if (r->end - r->p < 2) return false;
+    *v = be16(r->p); r->p += 2;
+    return true;
+}
+
+static bool
+br_u32(ByteReader *r, uint32_t *v) {
+    if (r->end - r->p < 4) return false;
+    *v = be32(r->p); r->p += 4;
+    return true;
+}
+
+static bool
+br_base128(ByteReader *r, uint32_t *v) {
+    uint32_t acc = 0;
+    for (unsigned i = 0; i < 5; i++) {
+        uint8_t b;
+        if (!br_u8(r, &b) || (i == 0 && b == 0x80) || (acc & 0xFE000000)) return false;
+        acc = (acc << 7) | (b & 0x7f);
+        if (!(b & 0x80)) { *v = acc; return true; }
+    }
+    return false;
+}
+
+static bool
+br_255uint16(ByteReader *r, uint16_t *v) {
+    uint8_t code, b;
+    if (!br_u8(r, &code)) return false;
+    switch (code) {
+        case 253: return br_u16(r, v);
+        case 254: if (!br_u8(r, &b)) return false; *v = 253 * 2 + b; return true;
+        case 255: if (!br_u8(r, &b)) return false; *v = 253 + b; return true;
+        default: *v = code; return true;
+    }
+}
+
+typedef struct Woff2Table {
+    uint8_t tag[4];
+    bool transformed;
+    uint32_t src_offset, src_length;  // location in the decompressed stream
+} Woff2Table;
+
+// Parse the table directory and collection directory. Returns false if buf is
+// too short or the data is invalid.
+static bool
+parse_woff2_directories(
+    const uint8_t *buf, size_t sz, uint16_t num_tables, bool is_collection, unsigned face,
+    Woff2Table *tables, uint16_t *font_tables, uint16_t *num_font_tables, size_t *dirs_size
+) {
+    ByteReader r = {.p = buf, .end = buf + sz};
+    uint64_t src_offset = 0;
+    for (uint16_t i = 0; i < num_tables; i++) {
+        Woff2Table *tt = tables + i;
+        uint8_t flags;
+        if (!br_u8(&r, &flags)) return false;
+        const unsigned tag_idx = flags & 0x3f, xform_version = (flags >> 6) & 3;
+        if (tag_idx == 63) {
+            if (r.end - r.p < 4) return false;
+            memcpy(tt->tag, r.p, 4); r.p += 4;
+        } else memcpy(tt->tag, woff2_known_tags[tag_idx], 4);
+        uint32_t orig_length, length;
+        if (!br_base128(&r, &orig_length)) return false;
+        length = orig_length;
+        // For glyf and loca version 3 is the null transform, for all other tables it is version 0
+        const bool is_glyf_or_loca = memcmp(tt->tag, "glyf", 4) == 0 || memcmp(tt->tag, "loca", 4) == 0;
+        tt->transformed = is_glyf_or_loca ? xform_version != 3 : xform_version != 0;
+        if (tt->transformed && !br_base128(&r, &length)) return false;
+        if (src_offset + length > UINT32_MAX) return false;
+        tt->src_offset = (uint32_t)src_offset; tt->src_length = length;
+        src_offset += length;
+    }
+    if (is_collection) {
+        uint32_t version;
+        uint16_t num_fonts;
+        if (!br_u32(&r, &version) || !br_255uint16(&r, &num_fonts) || face >= num_fonts) return false;
+        // All font entries must be parsed as the compressed stream starts after them
+        for (unsigned f = 0; f < num_fonts; f++) {
+            uint16_t n;
+            uint32_t flavor;
+            if (!br_255uint16(&r, &n) || !br_u32(&r, &flavor)) return false;
+            for (uint16_t i = 0; i < n; i++) {
+                uint16_t idx;
+                if (!br_255uint16(&r, &idx) || idx >= num_tables) return false;
+                if (f == face && i < num_tables) font_tables[(*num_font_tables)++] = idx;
+            }
+        }
+    } else {
+        for (uint16_t i = 0; i < num_tables; i++) font_tables[(*num_font_tables)++] = i;
+    }
+    *dirs_size = r.p - buf;
+    return true;
+}
+
+static bool
+read_woff2_tables(int fd, int index, FSFontTables *t) {
+    uint8_t header[48];
+    struct stat st;
+    if (fstat(fd, &st) != 0 || st.st_size < (off_t)sizeof(header) || !pread_all(fd, header, sizeof(header), 0)) return false;
+    const bool is_collection = memcmp(header + 4, "ttcf", 4) == 0;
+    const uint16_t num_tables = be16(header + 12);
+    const uint32_t total_compressed_size = be32(header + 20);
+    const size_t available = (size_t)st.st_size - sizeof(header);
+    if (!num_tables || total_compressed_size > available) return false;
+    Woff2Table *tables = xcalloc(num_tables, sizeof(tables[0]));
+    uint16_t *font_tables = xcalloc(num_tables, sizeof(font_tables[0])), num_font_tables = 0;
+    uint8_t *dirs = NULL, *out = NULL, *inbuf = NULL;
+    BrotliDecoderState *dec = NULL;
+    bool ok = false;
+    // The size of the directories is unknown till they are parsed, so read
+    // successively larger chunks
+    size_t dirs_size = 0;
+    for (size_t sz = 4096 + (size_t)num_tables * 16;; sz *= 2) {
+        if (sz > available) sz = available;
+        dirs = xrealloc(dirs, sz);
+        if (!pread_all(fd, dirs, sz, sizeof(header))) goto end;
+        num_font_tables = 0;
+        if (parse_woff2_directories(dirs, sz, num_tables, is_collection, index & 0xffff, tables, font_tables, &num_font_tables, &dirs_size)) break;
+        if (sz == available) goto end;
+    }
+    // Find the needed tables
+    const Woff2Table *needed[3] = {0};
+    size_t num_needed = 0, needed_end = 0;
+    for (uint16_t i = 0; i < num_font_tables; i++) {
+        const Woff2Table *tt = tables + font_tables[i];
+        size_t *dest_len;
+        uint8_t **dest = table_slot(t, tt->tag, &dest_len);
+        if (!dest || tt->transformed || tt->src_length > MAX_FONT_TABLE_SIZE) continue;
+        bool seen = false;
+        for (size_t j = 0; j < num_needed; j++) if (memcmp(needed[j]->tag, tt->tag, 4) == 0) seen = true;
+        if (seen) continue;
+        needed[num_needed++] = tt;
+        if (tt->src_offset + (size_t)tt->src_length > needed_end) needed_end = tt->src_offset + (size_t)tt->src_length;
+    }
+    if (!needed_end) { ok = true; goto end; }
+    // Decompress the prefix of the stream that contains the needed tables in
+    // fixed size chunks, copying out the parts of the needed tables. The
+    // table buffers are allocated only when the stream reaches them, so that
+    // memory use is bounded by the actual decompressed data, not by the
+    // offsets in the directory, which could be corrupt.
+    if (!(dec = BrotliDecoderCreateInstance(NULL, NULL, NULL))) goto end;
+    enum { CHUNK_SIZE = 64 * 1024 };
+    inbuf = xcalloc(CHUNK_SIZE, 1);
+    out = xcalloc(CHUNK_SIZE, 1);
+    off_t pos = sizeof(header) + dirs_size;
+    size_t remaining = total_compressed_size, avail_in = 0, stream_pos = 0;
+    if ((size_t)pos + remaining > (size_t)st.st_size) goto end;
+    const uint8_t *next_in = inbuf;
+    // The decoder can have pending output even when all input is consumed,
+    // so read more input only when it asks for it
+    BrotliDecoderResult res = BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT;
+    while (stream_pos < needed_end) {
+        if (res == BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT && !avail_in) {
+            if (!remaining) goto end;
+            const size_t n = remaining < CHUNK_SIZE ? remaining : CHUNK_SIZE;
+            if (!pread_all(fd, inbuf, n, pos)) goto end;
+            pos += n; remaining -= n; avail_in = n; next_in = inbuf;
+        }
+        uint8_t *next_out = out;
+        size_t avail_out = needed_end - stream_pos < CHUNK_SIZE ? needed_end - stream_pos : CHUNK_SIZE;
+        res = BrotliDecoderDecompressStream(dec, &avail_in, &next_in, &avail_out, &next_out, NULL);
+        if (res == BROTLI_DECODER_RESULT_ERROR) goto end;
+        const size_t produced = next_out - out, chunk_end = stream_pos + produced;
+        for (size_t i = 0; i < num_needed; i++) {
+            const size_t tstart = needed[i]->src_offset, tend = tstart + needed[i]->src_length;
+            if (tend <= stream_pos || tstart >= chunk_end) continue;
+            size_t *dest_len;
+            uint8_t **dest = table_slot(t, needed[i]->tag, &dest_len);
+            if (!*dest) { *dest = xcalloc(needed[i]->src_length, 1); *dest_len = needed[i]->src_length; }
+            const size_t from = tstart > stream_pos ? tstart : stream_pos, to = tend < chunk_end ? tend : chunk_end;
+            memcpy(*dest + (from - tstart), out + (from - stream_pos), to - from);
+        }
+        stream_pos = chunk_end;
+        if (res == BROTLI_DECODER_RESULT_SUCCESS && stream_pos < needed_end) goto end;
+    }
+    ok = true;
+end:
+    if (dec) BrotliDecoderDestroyInstance(dec);
+    free(tables); free(font_tables); free(dirs); free(out); free(inbuf);
+    return ok;
+}
+#endif
+
 bool
 fs_read_font_tables_from_file(const char *path, int index, FSFontTables *t) {
     memset(t, 0, sizeof(*t));
@@ -234,6 +489,18 @@ fs_read_font_tables_from_file(const char *path, int index, FSFontTables *t) {
     uint8_t header[12];
     uint8_t *records = NULL;
     if (!pread_all(fd, header, sizeof(header), 0)) goto end;
+    if (memcmp(header, "wOFF", 4) == 0) {
+        ok = read_woff_tables(fd, t);
+        goto end;
+    }
+    if (memcmp(header, "wOF2", 4) == 0) {
+#ifdef __APPLE__
+        ok = true;  // brotli is not available on macOS, treat as having no variable font data
+#else
+        ok = read_woff2_tables(fd, index, t);
+#endif
+        goto end;
+    }
     off_t dir_offset = 0;
     if (memcmp(header, "ttcf", 4) == 0) {
         const uint32_t num_fonts = be32(header + 8), face = index & 0xffff;
@@ -253,21 +520,11 @@ fs_read_font_tables_from_file(const char *path, int index, FSFontTables *t) {
     if (!pread_all(fd, records, (size_t)num_tables * 16, dir_offset + 12)) goto end;
     for (uint16_t i = 0; i < num_tables; i++) {
         const uint8_t *r = records + 16 * i;
-        uint8_t **dest = NULL;
-        size_t *dest_len = NULL;
-        if (memcmp(r, "fvar", 4) == 0) {
-            dest = &t->fvar;
-            dest_len = &t->fvar_len;
-        } else if (memcmp(r, "STAT", 4) == 0) {
-            dest = &t->stat;
-            dest_len = &t->stat_len;
-        } else if (memcmp(r, "name", 4) == 0) {
-            dest = &t->name;
-            dest_len = &t->name_len;
-        }
+        size_t *dest_len;
+        uint8_t **dest = table_slot(t, r, &dest_len);
         if (!dest || *dest) continue;
         const uint32_t offset = be32(r + 8), length = be32(r + 12);
-        if (length > 64 * 1024 * 1024) continue;
+        if (length > MAX_FONT_TABLE_SIZE) continue;
         *dest = xcalloc(length, 1);
         if (!pread_all(fd, *dest, length, offset)) {
             free(*dest);
