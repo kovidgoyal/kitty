@@ -894,8 +894,7 @@ FUNC(utf8_continuation_mask)(const utf8_vec_t v[UTF8_VECS_PER_BLOCK]) {
 #else
     const integer_t max_continuation = set1_epi8(-65 + 1);
     uint64_t ans = 0;
-    for (unsigned i = 0; i < UTF8_VECS_PER_BLOCK; i++)
-        ans |= (uint64_t)(uint32_t)movemask_epi8(cmplt_epi8(v[i], max_continuation)) << (i * sizeof(integer_t));
+    for (unsigned i = 0; i < UTF8_VECS_PER_BLOCK; i++) ans |= (uint64_t)(uint32_t)movemask_epi8(cmplt_epi8(v[i], max_continuation)) << (i * sizeof(integer_t));
     return ans;
 #endif
 }

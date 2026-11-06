@@ -148,6 +148,13 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
         case 2: func = utf8_decode_to_esc_128; break;
         case 3: func = utf8_decode_to_esc_256; break;
     }
+    // The SIMD decoders read up to a vector beyond the end of the input, as
+    // real callers have slack after their data, so copy into a padded buffer
+    RAII_ALLOC(uint8_t, padded, malloc(src_sz + 128));
+    if (!padded) return PyErr_NoMemory();
+    memcpy(padded, src, src_sz);
+    memset(padded + src_sz, 0, 128);
+    src = padded;
     RAII_PyObject(ans, PyUnicode_FromString(""));
     ssize_t p = 0;
     while (p < src_sz && !found_sentinel) {

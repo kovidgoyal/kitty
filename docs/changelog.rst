@@ -316,7 +316,7 @@ Detailed list of changes
   with many small partial updates (:iss:`10749`)
 
 - Performance: Faster growing of the GPU sprite cache, particularly on macOS,
-  less CPU usage with a non-zero :opt:`input_delay` and no continuous
+  less CPU usage with a non-zero ``input_delay`` and no continuous
   re-rendering when a selection is present and the window is scrolled back
   (:iss:`10714`)
 
@@ -472,7 +472,7 @@ Detailed list of changes
 
 - Reduce input latency by processing small amounts of program output, such as
   the echo of typed characters, immediately instead of waiting for
-  :opt:`input_delay` (:pull:`10560`)
+  ``input_delay`` (:pull:`10560`)
 
 - Drag and drop: Restore the previously active tab after dropping a dragged tab
   on the same OS window's tab bar, even if it was reordered after a hover switch
