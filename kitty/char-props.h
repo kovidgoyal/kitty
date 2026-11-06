@@ -163,6 +163,17 @@ typedef enum UnicodeCategory {
 CharProps char_props_for(char_type ch);
 void grapheme_segmentation_reset(GraphemeSegmentationResult *s);
 GraphemeSegmentationResult grapheme_segmentation_step(GraphemeSegmentationResult r, CharProps ch);
+GraphemeSegmentationResult grapheme_segmentation_step_for_property(GraphemeSegmentationResult r, uint8_t grapheme_segmentation_property);
+
+// The parts of CharProps needed to draw a char, cheaper to look up and use than
+// CharProps itself. cells is the number of cells the char occupies, with East Asian
+// ambiguous width chars being narrow, or zero for chars that are invalid, zero width or
+// wider than two cells.
+typedef struct CharDrawInfo {
+    uint8_t cells, grapheme_segmentation_property;
+} CharDrawInfo;
+CharDrawInfo char_draw_info_for(char_type ch);
+void init_char_props(void);
 static inline int
 wcwidth_std(CharProps ch) {
     return (int)ch.shifted_width - 4 /*=width_shift*/;
