@@ -9,6 +9,7 @@
 #include "cleanup.h"
 #include "fonts.h"
 #include "unicode-data.h"
+#include "font-select.h"
 #include <structmember.h>
 #include <stdint.h>
 #include <math.h>
@@ -792,6 +793,7 @@ static struct RenderBuffers buffers = {0};
 
 static void
 finalize(void) {
+    fs_finalize_selection();
     free(ft_buffer.buf);
     ft_buffer.buf = NULL;
     ft_buffer.capacity = 0;
@@ -1436,6 +1438,7 @@ add_font_file(PyObject UNUSED *_self, PyObject *args) {
     const unsigned char *path = NULL;
     Py_ssize_t sz;
     if (!PyArg_ParseTuple(args, "s#", &path, &sz)) return NULL;
+    fs_wait_for_selection_thread();
     RAII_CoreFoundation(CFURLRef, url, CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, path, sz, false));
     if (CTFontManagerRegisterFontsForURL(url, kCTFontManagerScopeProcess, NULL)) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
@@ -1461,6 +1464,271 @@ set_builtin_nerd_font(PyObject UNUSED *self, PyObject *pypath) {
     CFRetain(builtin_nerd_font_descriptor);
     return font_descriptor_to_python(builtin_nerd_font_descriptor);
 }
+
+// Font selection backend, see font-select.h {{{
+// This code runs in the font selection thread, so it must not use Python.
+// CoreText font descriptors and fonts are thread safe.
+
+static char *
+ct_strdup(const char *s) {
+    char *ans = strdup(s ? s : "");
+    if (!ans) fatal("Out of memory");
+    return ans;
+}
+
+static char *
+cfstring_to_cstr(CFTypeRef src) {
+    if (!src || CFGetTypeID(src) != CFStringGetTypeID()) return ct_strdup("");
+    CFStringRef s = (CFStringRef)src;
+    const char *fast = CFStringGetCStringPtr(s, kCFStringEncodingUTF8);
+    if (fast) return ct_strdup(fast);
+    const CFIndex sz = CFStringGetMaximumSizeForEncoding(CFStringGetLength(s), kCFStringEncodingUTF8) + 1;
+    char *buf = malloc(sz);
+    if (!buf) fatal("Out of memory");
+    if (!CFStringGetCString(s, buf, sz, kCFStringEncodingUTF8)) buf[0] = 0;
+    return buf;
+}
+
+static char *
+copy_string_attribute(CTFontDescriptorRef desc, CFStringRef attribute) {
+    RAII_CoreFoundation(CFTypeRef, val, CTFontDescriptorCopyAttribute(desc, attribute));
+    return cfstring_to_cstr(val);
+}
+
+static bool
+descriptor_is_monospace(CTFontDescriptorRef desc) {
+    // Same as coretext_all_fonts(), fonts without symbolic traits are considered monospace
+    RAII_CoreFoundation(CFDictionaryRef, traits, CTFontDescriptorCopyAttribute(desc, kCTFontTraitsAttribute));
+    if (!traits) return true;
+    CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(traits, kCTFontSymbolicTrait);
+    if (!value) return true;
+    unsigned long symbolic_traits = 0;
+    CFNumberGetValue(value, kCFNumberLongType, &symbolic_traits);
+    return (symbolic_traits & kCTFontTraitMonoSpace) != 0;
+}
+
+// Must be kept in sync with font_descriptor_to_python()
+static FSCandidate *
+candidate_from_descriptor(FSContext *ctx, CTFontDescriptorRef desc) {
+    FSCandidate *c = fs_new_candidate(ctx);
+    CFRetain(desc);
+    c->handle = (void *)desc;
+    RAII_CoreFoundation(CFURLRef, url, CTFontDescriptorCopyAttribute(desc, kCTFontURLAttribute));
+    uint8_t buf[4096];
+    c->path = ct_strdup((url && CFURLGetFileSystemRepresentation(url, true, buf, sizeof(buf))) ? (const char *)buf : "");
+    c->postscript_name = copy_string_attribute(desc, kCTFontNameAttribute);
+    c->family = copy_string_attribute(desc, kCTFontFamilyNameAttribute);
+    c->style = copy_string_attribute(desc, kCTFontStyleNameAttribute);
+    c->full_name = copy_string_attribute(desc, kCTFontDisplayNameAttribute);
+    RAII_CoreFoundation(CFDictionaryRef, traits, CTFontDescriptorCopyAttribute(desc, kCTFontTraitsAttribute));
+    unsigned long symbolic_traits = 0;
+    float weight = 0, width = 0, slant = 0;
+    if (traits) {
+#define get_number(key, output, type_)                                      \
+    {                                                                       \
+        CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(traits, key); \
+        if (value) CFNumberGetValue(value, type_, &output);                 \
+    }
+        get_number(kCTFontSymbolicTrait, symbolic_traits, kCFNumberLongType);
+        get_number(kCTFontWeightTrait, weight, kCFNumberFloatType);
+        get_number(kCTFontWidthTrait, width, kCFNumberFloatType);
+        get_number(kCTFontSlantTrait, slant, kCFNumberFloatType);
+#undef get_number
+    }
+    c->weight = weight;
+    c->width = width;
+    c->slant = slant;
+    c->bold = (symbolic_traits & kCTFontBoldTrait) != 0;
+    c->italic = (symbolic_traits & kCTFontItalicTrait) != 0;
+    c->monospace = (symbolic_traits & kCTFontTraitMonoSpace) != 0;
+    c->spacing_is_mono = c->monospace;
+    c->expanded = (symbolic_traits & kCTFontExpandedTrait) != 0;
+    c->condensed = (symbolic_traits & kCTFontCondensedTrait) != 0;
+    RAII_CoreFoundation(CFDictionaryRef, variation, CTFontDescriptorCopyAttribute(desc, kCTFontVariationAttribute));
+    c->variable = variation != NULL;
+    c->variation_count = variation ? (unsigned)CFDictionaryGetCount(variation) : 0;
+    return c;
+}
+
+typedef struct CTBackendData {
+    bool family_names_loaded;
+    size_t num_family_names;
+    char **family_names, **family_keys;
+} CTBackendData;
+
+bool
+fs_backend_init(FSContext *ctx UNUSED) {
+    return true;
+}
+
+void
+fs_backend_free_context_data(void *data) {
+    CTBackendData *d = data;
+    for (size_t i = 0; i < d->num_family_names; i++) {
+        free(d->family_names[i]);
+        free(d->family_keys[i]);
+    }
+    free(d->family_names);
+    free(d->family_keys);
+    free(d);
+}
+
+void
+fs_backend_free_candidate(FSCandidate *c) {
+    if (c->handle) CFRelease((CTFontDescriptorRef)c->handle);
+    c->handle = NULL;
+}
+
+static CTBackendData *
+ct_backend_data(FSContext *ctx) {
+    CTBackendData **d = (CTBackendData **)fs_backend_data(ctx);
+    if (!*d) {
+        *d = calloc(1, sizeof(CTBackendData));
+        if (!*d) fatal("Out of memory");
+    }
+    return *d;
+}
+
+static void
+load_family_names(CTBackendData *d) {
+    if (d->family_names_loaded) return;
+    d->family_names_loaded = true;
+    RAII_CoreFoundation(CFArrayRef, names, CTFontManagerCopyAvailableFontFamilyNames());
+    if (!names) return;
+    const CFIndex count = CFArrayGetCount(names);
+    d->family_names = calloc(count + 1, sizeof(char *));
+    d->family_keys = calloc(count + 1, sizeof(char *));
+    if (!d->family_names || !d->family_keys) fatal("Out of memory");
+    for (CFIndex i = 0; i < count; i++) {
+        d->family_names[d->num_family_names] = cfstring_to_cstr(CFArrayGetValueAtIndex(names, i));
+        d->family_keys[d->num_family_names] = fs_name_to_key(d->family_names[d->num_family_names]);
+        d->num_family_names++;
+    }
+}
+
+static bool
+key_matches(const char *val, const char *key) {
+    char *k = fs_name_to_key(val);
+    const bool ans = strcmp(k, key) == 0;
+    free(k);
+    return ans;
+}
+
+// Append the fonts whose attribute is value, that match key for kind
+static size_t
+append_matching(FSContext *ctx, CFStringRef attribute, const char *value, FSListKind kind, const char *key, bool monospaced, FSCandidateList *out) {
+    RAII_CoreFoundation(CFStringRef, v, CFStringCreateWithCString(NULL, value, kCFStringEncodingUTF8));
+    if (!v) return 0;
+    const void *keys[] = {attribute}, *values[] = {v};
+    RAII_CoreFoundation(CFDictionaryRef, attrs, CFDictionaryCreate(NULL, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    if (!attrs) return 0;
+    RAII_CoreFoundation(CTFontDescriptorRef, desc, CTFontDescriptorCreateWithAttributes(attrs));
+    RAII_CoreFoundation(CFSetRef, mandatory, CFSetCreate(NULL, keys, 1, &kCFTypeSetCallBacks));
+    if (!desc || !mandatory) return 0;
+    RAII_CoreFoundation(CFArrayRef, matches, CTFontDescriptorCreateMatchingFontDescriptors(desc, mandatory));
+    if (!matches) return 0;
+    size_t num = 0;
+    for (CFIndex i = 0; i < CFArrayGetCount(matches); i++) {
+        CTFontDescriptorRef d = (CTFontDescriptorRef)CFArrayGetValueAtIndex(matches, i);
+        if (monospaced && !descriptor_is_monospace(d)) continue;
+        const FSCandidate *c = candidate_from_descriptor(ctx, d);
+        bool ok = false;
+        switch (kind) {
+            case FS_LIST_FAMILY: ok = key_matches(c->family, key); break;
+            case FS_LIST_POSTSCRIPT_NAME: ok = key_matches(c->postscript_name, key); break;
+            case FS_LIST_FULL_NAME: {
+                // The same key as the full_map in the Python create_font_map()
+                char *f = fs_name_to_key(c->family), *s = fs_name_to_key(c->style);
+                const size_t sz = strlen(f) + strlen(s) + 2;
+                char *full = malloc(sz);
+                if (!full) fatal("Out of memory");
+                snprintf(full, sz, "%s %s", f, s);
+                ok = strcmp(full, key) == 0;
+                free(f);
+                free(s);
+                free(full);
+            } break;
+        }
+        if (ok) {
+            fs_list_append(out, c);
+            num++;
+        }
+    }
+    return num;
+}
+
+bool
+fs_backend_list(FSContext *ctx, FSListKind kind, const char *name, const char *key, bool monospaced, FSCandidateList *out) {
+    // monospace is not a font family on macOS, it is mapped to Menlo by the selection code
+    if (strcmp(key, "monospace") == 0) return true;
+    switch (kind) {
+        case FS_LIST_POSTSCRIPT_NAME: append_matching(ctx, kCTFontNameAttribute, name, kind, key, monospaced, out); break;
+        case FS_LIST_FAMILY:
+            if (!append_matching(ctx, kCTFontFamilyNameAttribute, name, kind, key, monospaced, out)) {
+                // The name may differ from the actual family name in case or whitespace
+                CTBackendData *d = ct_backend_data(ctx);
+                load_family_names(d);
+                for (size_t i = 0; i < d->num_family_names; i++) {
+                    if (strcmp(d->family_keys[i], key) == 0 && strcmp(d->family_names[i], name) != 0)
+                        append_matching(ctx, kCTFontFamilyNameAttribute, d->family_names[i], kind, key, monospaced, out);
+                }
+            }
+            break;
+        case FS_LIST_FULL_NAME: {
+            // The full name is the family name followed by the style name, so try every split point
+            char *family = ct_strdup(name);
+            for (size_t i = 0; name[i]; i++) {
+                if (name[i] != ' ') continue;
+                family[i] = 0;
+                append_matching(ctx, kCTFontFamilyNameAttribute, family, kind, key, monospaced, out);
+                family[i] = ' ';
+            }
+            free(family);
+        } break;
+    }
+    return true;
+}
+
+static void
+copy_font_table(CTFontRef font, CTFontTableTag tag, uint8_t **out, size_t *len) {
+    RAII_CoreFoundation(CFDataRef, data, CTFontCopyTable(font, tag, kCTFontTableOptionNoOptions));
+    if (!data) return;
+    const CFIndex n = CFDataGetLength(data);
+    *out = malloc(n ? n : 1);
+    if (!*out) fatal("Out of memory");
+    memcpy(*out, CFDataGetBytePtr(data), n);
+    *len = n;
+}
+
+bool
+fs_backend_font_tables(FSContext *ctx UNUSED, const FSCandidate *c, FSFontTables *out) {
+    memset(out, 0, sizeof(*out));
+    RAII_CoreFoundation(CTFontRef, font, CTFontCreateWithFontDescriptor((CTFontDescriptorRef)c->handle, 12, NULL));
+    if (!font) return false;
+    copy_font_table(font, kCTFontTableFvar, &out->fvar, &out->fvar_len);
+    copy_font_table(font, kCTFontTableSTAT, &out->stat, &out->stat_len);
+    copy_font_table(font, kCTFontTableName, &out->name, &out->name_len);
+    return true;
+}
+
+PyObject *
+fs_backend_descriptor(const FSFont *f) {
+    RAII_PyObject(ans, font_descriptor_to_python((CTFontDescriptorRef)f->base->handle));
+    if (!ans) return NULL;
+    if (f->has_axes) {
+        RAII_PyObject(axis_map, PyDict_New());
+        if (!axis_map) return NULL;
+        for (size_t i = 0; i < f->num_axes; i++) {
+            uint8_t tag[5];
+            RAII_PyObject(val, PyFloat_FromDouble(f->axes[i].value));
+            if (!val || PyDict_SetItemString(axis_map, tag_to_string(f->axes[i].tag, tag), val) != 0) return NULL;
+        }
+        if (PyDict_SetItemString(ans, "axis_map", axis_map) != 0) return NULL;
+    }
+    Py_INCREF(ans);
+    return ans;
+}
+// }}}
 
 static PyMethodDef module_methods[] = {
     METHODB(coretext_all_fonts, METH_O), METHODB(add_font_file, METH_VARARGS), METHODB(set_builtin_nerd_font, METH_O), {NULL, NULL, 0, NULL} /* Sentinel */

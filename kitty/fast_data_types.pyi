@@ -438,6 +438,23 @@ def fc_match_fallback(
 ) -> FontConfigPattern: ...
 def set_builtin_nerd_font(path: str) -> Union[CoreTextFont, FontConfigPattern]: ...
 
+# family, style, postscript_name, full_name, system, variable_name, axes, has_features
+FontSelectionSpec = Tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], Tuple[Tuple[str, float], ...], bool]
+
+class FontSelectionResult(TypedDict):
+    medium: Union[CoreTextFont, FontConfigPattern]
+    bold: Union[CoreTextFont, FontConfigPattern]
+    italic: Union[CoreTextFont, FontConfigPattern]
+    bi: Union[CoreTextFont, FontConfigPattern]
+    # The descriptor and whether it is bold and italic for each symbol_map family
+    symbols: Tuple[Tuple[Union[CoreTextFont, FontConfigPattern], bool, bool], ...]
+
+def start_font_selection(
+    specs: Tuple[FontSelectionSpec, FontSelectionSpec, FontSelectionSpec, FontSelectionSpec], symbol_map_families: Tuple[str, ...], threaded: bool = True
+) -> None: ...
+def finish_font_selection() -> FontSelectionResult: ...
+def variable_data_from_font_file(path: str, index: int = 0) -> VariableData: ...
+
 class FeatureData(TypedDict):
     name: NotRequired[str]
     tooltip: NotRequired[str]

@@ -4,7 +4,7 @@
 import os
 import sys
 from collections.abc import Callable, Generator
-from typing import TYPE_CHECKING, Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from kitty.constants import fonts_dir, is_macos
 from kitty.fast_data_types import (
@@ -29,12 +29,7 @@ from kitty.typing_compat import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
 from . import family_name_to_key
-from .common import get_font_files
-
-if is_macos:
-    from .core_text import font_for_family as font_for_family_macos
-else:
-    from .fontconfig import font_for_family as font_for_family_fontconfig
+from .common import finish_font_files_selection, start_font_files_selection
 
 if TYPE_CHECKING:
     from kitty.fast_data_types import CTFace, DecorationTypes, Face
@@ -44,12 +39,9 @@ else:
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: list[tuple[FontObject, bool, bool]] = []
 builtin_nerd_font_descriptor: FontObject | None = None
-
-
-def font_for_family(family: str) -> tuple[FontObject, bool, bool]:
-    if is_macos:
-        return font_for_family_macos(family)
-    return font_for_family_fontconfig(family)
+# The options and symbol map families of a font selection started by
+# set_font_family() whose results have not yet been used.
+pending_selection: tuple[Options, tuple[str, ...], bool] | None = None
 
 
 def merge_ranges[_T](
@@ -142,22 +134,44 @@ def coalesce_symbol_maps[_T](maps: dict[tuple[int, int], _T]) -> dict[tuple[int,
     return dict(ans)
 
 
-def create_symbol_map(opts: Options) -> tuple[tuple[int, int, int], ...]:
+def create_symbol_map(opts: Options) -> tuple[tuple[tuple[int, int, int], ...], tuple[str, ...]]:
     val = coalesce_symbol_maps(opts.symbol_map)
     family_map: dict[str, int] = {}
-    count = 0
     for family in val.values():
         if family not in family_map:
-            font, bold, italic = font_for_family(family)
-            fkey = family_name_to_key(family)
-            if fkey in ('symbolsnfm', 'symbols nerd font mono') and font['postscript_name'] != 'SymbolsNFM' and builtin_nerd_font_descriptor:
-                font = builtin_nerd_font_descriptor
-                bold = italic = False
-            family_map[family] = count
-            count += 1
-            current_faces.append((font, bold, italic))
+            family_map[family] = len(family_map)
     sm = tuple((a, b, family_map[f]) for (a, b), f in val.items())
-    return sm
+    return sm, tuple(family_map)
+
+
+def resolve_pending_font_selection() -> None:
+    global pending_selection, current_faces, builtin_nerd_font_descriptor
+    if pending_selection is None:
+        return
+    opts, families, add_builtin_nerd_font = pending_selection
+    pending_selection = None
+    font_map, symbol_fonts = finish_font_files_selection(opts)
+    if add_builtin_nerd_font:
+        # This is done after the selection finishes, as it uses fontconfig,
+        # whose initialization by the selection thread it would otherwise wait for
+        builtin_nerd_font_path = os.path.join(fonts_dir, 'SymbolsNerdFontMono-Regular.ttf')
+        if os.path.exists(builtin_nerd_font_path):
+            builtin_nerd_font_descriptor = set_builtin_nerd_font(builtin_nerd_font_path)
+        else:
+            log_error(f'No builtin NERD font found in {fonts_dir}')
+    faces: list[tuple[FontObject, bool, bool]] = [
+        (font_map['medium'], False, False),
+        (font_map['bold'], True, False),
+        (font_map['italic'], False, True),
+        (font_map['bi'], True, True),
+    ]
+    for family, (font, bold, italic) in zip(families, symbol_fonts):
+        fkey = family_name_to_key(family)
+        if fkey in ('symbolsnfm', 'symbols nerd font mono') and font['postscript_name'] != 'SymbolsNFM' and builtin_nerd_font_descriptor:
+            font = builtin_nerd_font_descriptor
+            bold = italic = False
+        faces.append((font, bold, italic))
+    current_faces = faces
 
 
 def create_narrow_symbols(opts: Options) -> tuple[tuple[int, int, int], ...]:
@@ -170,6 +184,7 @@ descriptor_overrides: dict[int, tuple[str, bool, bool]] = {}
 def descriptor_for_idx(idx: int) -> tuple[FontObject | str, bool, bool]:
     ans = descriptor_overrides.get(idx)
     if ans is None:
+        resolve_pending_font_selection()
         return current_faces[idx]
     return ans
 
@@ -197,29 +212,22 @@ def clear_font_caches() -> None:
     clear_platform_caches()
 
 
-def set_font_family(opts: Options | None = None, override_font_size: float | None = None, add_builtin_nerd_font: bool = False) -> None:
-    global current_faces, builtin_nerd_font_descriptor
+def set_font_family(opts: Options | None = None, override_font_size: float | None = None, add_builtin_nerd_font: bool = False, threaded: bool = False) -> None:
+    """
+    Select the fonts specified in opts. With threaded=True the selection is
+    done in a thread and its results are used when the first font group is
+    created, so that other startup work can happen in parallel.
+    """
+    global current_faces, pending_selection
     opts = opts or defaults
     sz = override_font_size or opts.font_size
-    font_map = get_font_files(opts)
-    current_faces = [(font_map['medium'], False, False)]
-    ftypes: list[Literal['bold', 'italic', 'bi']] = ['bold', 'italic', 'bi']
-    indices = {k: 0 for k in ftypes}
-    for k in ftypes:
-        if k in font_map:
-            indices[k] = len(current_faces)
-            current_faces.append((font_map[k], 'b' in k, 'i' in k))
-    before = len(current_faces)
-    if add_builtin_nerd_font:
-        builtin_nerd_font_path = os.path.join(fonts_dir, 'SymbolsNerdFontMono-Regular.ttf')
-        if os.path.exists(builtin_nerd_font_path):
-            builtin_nerd_font_descriptor = set_builtin_nerd_font(builtin_nerd_font_path)
-        else:
-            log_error(f'No builtin NERD font found in {fonts_dir}')
-    sm = create_symbol_map(opts)
+    sm, families = create_symbol_map(opts)
     ns = create_narrow_symbols(opts)
-    num_symbol_fonts = len(current_faces) - before
-    set_font_data(descriptor_for_idx, indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts, sm, sz, ns)
+    current_faces = []
+    pending_selection = opts, families, add_builtin_nerd_font
+    start_font_files_selection(opts, families, threaded)
+    # The descriptors for the bold, italic and bold-italic faces are at indices 1, 2 and 3
+    set_font_data(descriptor_for_idx, 1, 2, 3, len(families), sm, sz, ns)
 
 
 if TYPE_CHECKING:
