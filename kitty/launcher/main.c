@@ -18,6 +18,7 @@
 #include <limits.h>
 #endif
 #include "launcher.h"
+#include "../monotonic.h"
 #include "utils.h"
 #define FOR_LAUNCHER
 #include "cli-parser-data_generated.h"
@@ -46,6 +47,9 @@ safe_realpath(const char *src, char *buf, size_t buf_sz) {
     return true;
 }
 #endif
+
+// The time at which the launcher started, used by --debug-startup
+static monotonic_t launch_time = 0;
 
 typedef struct {
     const char *exe, *exe_dir, *lc_ctype, *lib_dir, *config_dir;
@@ -121,6 +125,10 @@ set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir)
         return false;
     }
     S(cli_flags, cli_flags);
+    PyObject *lt = PyLong_FromLongLong(launch_time);
+    S(launch_time, lt);
+    PyObject *pit = PyLong_FromLongLong(monotonic_clock_now());
+    S(python_initialized_time, pit);
 
 #undef S
     int ret = PySys_SetObject("kitty_run_data", ans);
@@ -567,6 +575,7 @@ output_test_data(RunData *rd) {
 
 int
 main(int argc_, char *argv_[], char *envp[]) {
+    launch_time = monotonic_clock_now();
     if (argc_ < 1 || !argv_) {
         fprintf(stderr, "Invalid argc/argv\n");
         return 1;

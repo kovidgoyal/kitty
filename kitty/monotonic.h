@@ -74,21 +74,11 @@ init_monotonic(void) {
 
 extern int timed_debug_print(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
-#ifdef MONOTONIC_IMPLEMENTATION
+// The current time of the clock used by monotonic(). This is used by both the
+// launcher and the fast_data_types module so that times can be compared.
 #include <time.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-
-monotonic_t monotonic_start_time = 0;
-
 static inline monotonic_t
-calc_nano_time(struct timespec time) {
-    return ((monotonic_t)time.tv_sec * MONOTONIC_T_1e9) + (monotonic_t)time.tv_nsec;
-}
-
-monotonic_t
-monotonic_(void) {
+monotonic_clock_now(void) {
     struct timespec ts = {0};
 #ifdef CLOCK_HIGHRES
     clock_gettime(CLOCK_HIGHRES, &ts);
@@ -97,7 +87,20 @@ monotonic_(void) {
 #else
     clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
-    return calc_nano_time(ts);
+    return ((monotonic_t)ts.tv_sec * MONOTONIC_T_1e9) + (monotonic_t)ts.tv_nsec;
+}
+
+#ifdef MONOTONIC_IMPLEMENTATION
+#include <time.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
+monotonic_t monotonic_start_time = 0;
+
+monotonic_t
+monotonic_(void) {
+    return monotonic_clock_now();
 }
 
 int

@@ -902,6 +902,7 @@ extern bool init_crypto_library(PyObject *);
 extern bool init_desktop(PyObject *);
 extern bool init_fonts(PyObject *);
 extern bool init_font_select(PyObject *);
+extern bool init_startup_timing(PyObject *);
 extern bool init_glfw(PyObject *m);
 extern bool init_dnd(PyObject *m);
 extern bool init_child(PyObject *m);
@@ -979,6 +980,7 @@ PyInit_fast_data_types(void) {
 #endif
     if (!init_fonts(m)) return NULL;
     if (!init_font_select(m)) return NULL;
+    if (!init_startup_timing(m)) return NULL;
     if (!init_utmp(m)) return NULL;
     if (!init_loop_utils(m)) return NULL;
     if (!init_crypto_library(m)) return NULL;
