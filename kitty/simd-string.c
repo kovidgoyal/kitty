@@ -347,12 +347,11 @@ init_simd(void *x) {
         Py_INCREF(Py_##val);                                             \
         if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; \
     }
-#define do_check()                                                                                                                    \
-    {                                                                                                                                 \
-        has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0;                                                                           \
-        has_avx2 = __builtin_cpu_supports("avx2") != 0;                                                                               \
-        has_avx512 = __builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx512bw") && __builtin_cpu_supports("avx512vl") && \
-                     __builtin_cpu_supports("avx512vbmi2");                                                                           \
+#define do_check()                                                                                                                  \
+    {                                                                                                                               \
+        has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0;                                                                         \
+        has_avx2 = __builtin_cpu_supports("avx2") != 0;                                                                             \
+        has_avx512 = __builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx512bw") && __builtin_cpu_supports("avx512vl"); \
     }
 
 #ifdef __APPLE__
