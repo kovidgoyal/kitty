@@ -12,7 +12,6 @@ from contextlib import contextmanager, suppress
 from gettext import gettext as _
 
 from . import logout_session
-from .boss import Boss
 from .child import set_default_env, set_LANG_in_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
@@ -69,8 +68,6 @@ from .logout_session import (
 from .options.types import Options, defaults
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
-from .session import create_sessions, get_os_window_sizing_data
-from .shaders.slang import load_shader_programs
 from .types import LayerShellConfig
 from .utils import (
     cleanup_ssh_control_masters,
@@ -100,6 +97,8 @@ def set_custom_ibeam_cursor() -> None:
 
 
 def load_all_shaders() -> None:
+    from .shaders.slang import load_shader_programs  # see _run_app() for why this is not imported at the top
+
     try:
         load_shader_programs()
     except ValueError as err:
@@ -315,6 +314,13 @@ def logout_snapshot_to_restore(opts: Options, args: CLIOptions) -> RestoredSnaps
 
 
 def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (), talk_fd: int = -1) -> None:
+    # These modules are slow to import and are imported here rather than at
+    # the top of this module, so that they are imported after init_glfw(),
+    # which on Wayland loads the GPU driver in a thread, see glfw_init()
+    # in glfw.c, while they are being imported.
+    from .boss import Boss
+    from .session import create_sessions, get_os_window_sizing_data
+
     global _is_panel_kitten
     _is_panel_kitten = run_app.cached_values_name == 'panel'
     if _is_panel_kitten and run_app.layer_shell_config and run_app.layer_shell_config.output_name in ('list', 'listjson'):
