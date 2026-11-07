@@ -655,6 +655,9 @@ typedef struct OSWindow {
     // Whether to wake up the main loop when the next render frame arrives, as
     // something is waiting for it, see is_render_deferred_by_frame_pacing()
     bool tick_on_render_frame;
+    // Whether a stall in the delivery of render frames has been reported since
+    // the last render frame was received, see no_render_frame_received_recently()
+    bool render_frame_stall_reported;
     uint64_t render_calls;
     uint32_t frame_counter;
     id_type last_focused_counter;
