@@ -466,8 +466,9 @@ Directives inside a group:
 ``animation_step <ms>``
     How many milliseconds between animation frames. Lower values produce
     smoother animation at the cost of more GPU draws. Defaults to ``50`` ms
-    (20 fps). The value is clamped to be no smaller than
-    :opt:`repaint_delay`. Set this to ``0`` for static effects that should
+    (20 fps). Frames are never drawn faster than allowed by
+    :opt:`render_interval`, which, by default, is the refresh rate of the
+    monitor. Set this to ``0`` for static effects that should
     redraw only when content or shader events change, without periodic frames.
     Animation stop events and duration limits still apply.
 

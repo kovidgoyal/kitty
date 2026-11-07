@@ -2504,6 +2504,18 @@ typedef int (*glfwSetX11LaunchCommand_func)(GLFWwindow*, char**, int);
 GFW_EXTERN glfwSetX11LaunchCommand_func glfwSetX11LaunchCommand_impl;
 #define glfwSetX11LaunchCommand glfwSetX11LaunchCommand_impl
 
+typedef bool (*glfwX11SupportsFrameEvents_func)(void);
+GFW_EXTERN glfwX11SupportsFrameEvents_func glfwX11SupportsFrameEvents_impl;
+#define glfwX11SupportsFrameEvents glfwX11SupportsFrameEvents_impl
+
+typedef monotonic_t (*glfwX11GetFramePeriod_func)(GLFWwindow*);
+GFW_EXTERN glfwX11GetFramePeriod_func glfwX11GetFramePeriod_impl;
+#define glfwX11GetFramePeriod glfwX11GetFramePeriod_impl
+
+typedef bool (*glfwX11RequestFrameEvent_func)(GLFWwindow*, unsigned long long, GLFWwaylandframecallbackfunc);
+GFW_EXTERN glfwX11RequestFrameEvent_func glfwX11RequestFrameEvent_impl;
+#define glfwX11RequestFrameEvent glfwX11RequestFrameEvent_impl
+
 typedef bool (*glfwWaylandCreateVirtualDevices_func)(void);
 GFW_EXTERN glfwWaylandCreateVirtualDevices_func glfwWaylandCreateVirtualDevices_impl;
 #define glfwWaylandCreateVirtualDevices glfwWaylandCreateVirtualDevices_impl

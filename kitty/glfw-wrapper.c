@@ -581,6 +581,15 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetX11LaunchCommand_impl) = dlsym(handle, "glfwSetX11LaunchCommand");
     if (glfwSetX11LaunchCommand_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwX11SupportsFrameEvents_impl) = dlsym(handle, "glfwX11SupportsFrameEvents");
+    if (glfwX11SupportsFrameEvents_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwX11GetFramePeriod_impl) = dlsym(handle, "glfwX11GetFramePeriod");
+    if (glfwX11GetFramePeriod_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwX11RequestFrameEvent_impl) = dlsym(handle, "glfwX11RequestFrameEvent");
+    if (glfwX11RequestFrameEvent_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwWaylandCreateVirtualDevices_impl) = dlsym(handle, "glfwWaylandCreateVirtualDevices");
     if (glfwWaylandCreateVirtualDevices_impl == NULL) dlerror(); // clear error indicator
 

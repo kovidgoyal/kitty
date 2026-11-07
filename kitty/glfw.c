@@ -32,7 +32,9 @@ static mouse_cursor cursors[GLFW_INVALID_CURSOR + 1] = {0};
 
 static int
 default_swap_interval(void) {
-    return OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0;
+    // On Wayland, syncing to the monitor is done using frame callbacks, a swap
+    // interval would block rendering indefinitely when the window is hidden.
+    return OPT(render_interval.sync_to_monitor) && !global_state.is_wayland ? 1 : 0;
 }
 
 // Must be called with the surface current
@@ -448,6 +450,21 @@ cocoa_os_window_resized(GLFWwindow *w) {
 }
 #endif
 
+
+// Apply a changed value of the render_interval option to an existing OS Window
+void
+apply_render_interval_to_os_window(OSWindow *w) {
+#ifdef __APPLE__
+    (void)w;
+#else
+    // The swap interval is zero during a live resize, it is restored when the resize ends
+    if (!w->handle || !w->gpu_surface || w->live_resize.in_progress) return;
+    gpu_surface_t orig_surface = make_os_window_context_current(w);
+    apply_swap_interval(w->gpu_surface, -1);
+    if (orig_surface) gpu_make_surface_current(orig_surface);
+#endif
+    w->needs_render = true;
+}
 
 void
 change_live_resize_state(OSWindow *w, bool in_progress) {
@@ -2979,6 +2996,8 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         const GPUNativeWindow display = {.platform = GPU_PLATFORM_COCOA};
 #else
         void *wl_display = glfwGetWaylandDisplay ? glfwGetWaylandDisplay() : NULL;
+        // On X11, render frames need the Present extension, see glfwX11RequestFrameEvent()
+        if (!wl_display && glfwX11SupportsFrameEvents && glfwX11SupportsFrameEvents()) global_state.has_render_frames = true;
         const GPUNativeWindow display = wl_display ? (GPUNativeWindow){.platform = GPU_PLATFORM_WAYLAND, .display = wl_display}
                                                    : (GPUNativeWindow){.platform = GPU_PLATFORM_X11, .display = glfwGetX11Display(), .screen = -1};
 #endif
@@ -3738,6 +3757,19 @@ set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static void
+render_frame_received(OSWindow *w) {
+    w->render_state = RENDER_FRAME_READY;
+    w->last_render_frame_received_at = monotonic();
+    // Frames are often requested after every render, so only wake up the main
+    // loop if something is waiting for this frame, otherwise animations would
+    // be sampled at the monitor refresh rate.
+    if (w->tick_on_render_frame) {
+        w->tick_on_render_frame = false;
+        request_tick_callback();
+    }
+}
+
 #ifdef __APPLE__
 void
 get_cocoa_key_equivalent(uint32_t key, int mods, char *cocoa_key, size_t key_sz, int *cocoa_mods) {
@@ -3760,9 +3792,7 @@ static void
 cocoa_frame_request_callback(GLFWwindow *window) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         if (global_state.os_windows[i].handle == window) {
-            global_state.os_windows[i].render_state = RENDER_FRAME_READY;
-            global_state.os_windows[i].last_render_frame_received_at = monotonic();
-            request_tick_callback();
+            render_frame_received(global_state.os_windows + i);
             break;
         }
     }
@@ -3772,6 +3802,7 @@ void
 request_frame_render(OSWindow *w) {
     glfwCocoaRequestRenderFrame(w->handle, cocoa_frame_request_callback);
     w->render_state = RENDER_FRAME_REQUESTED;
+    w->render_frame_requested_at = monotonic();
 }
 
 static PyObject *
@@ -3788,12 +3819,10 @@ py_clear_global_shortcuts(PyObject *self UNUSED, PyObject *args UNUSED) {
 #else
 
 static void
-wayland_frame_request_callback(id_type os_window_id) {
+frame_request_callback(id_type os_window_id) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         if (global_state.os_windows[i].id == os_window_id) {
-            global_state.os_windows[i].render_state = RENDER_FRAME_READY;
-            global_state.os_windows[i].last_render_frame_received_at = monotonic();
-            request_tick_callback();
+            render_frame_received(global_state.os_windows + i);
             break;
         }
     }
@@ -3801,12 +3830,32 @@ wayland_frame_request_callback(id_type os_window_id) {
 
 void
 request_frame_render(OSWindow *w) {
-    // Some Wayland compositors are too fragile to handle multiple
-    // render frame requests, see https://github.com/kovidgoyal/kitty/issues/2329
-    if (w->render_state != RENDER_FRAME_REQUESTED) {
+    if (global_state.is_wayland) {
+        // Some Wayland compositors are too fragile to handle multiple
+        // render frame requests, see https://github.com/kovidgoyal/kitty/issues/2329
+        if (w->render_state != RENDER_FRAME_REQUESTED) {
+            w->render_state = RENDER_FRAME_REQUESTED;
+            w->render_frame_requested_at = monotonic();
+            glfwRequestWaylandFrameEvent(w->handle, w->id, frame_request_callback);
+        }
+    } else {
+        // On X11 a frame is the next vertical blank of the monitor the window
+        // is on, as reported by the Present extension. A request supersedes
+        // any previous pending request.
         w->render_state = RENDER_FRAME_REQUESTED;
-        glfwRequestWaylandFrameEvent(w->handle, w->id, wayland_frame_request_callback);
+        w->render_frame_requested_at = monotonic();
+        if (!glfwX11RequestFrameEvent || !glfwX11RequestFrameEvent(w->handle, w->id, frame_request_callback)) {
+            // Never block rendering on a frame that will not arrive
+            w->render_state = RENDER_FRAME_READY;
+        }
     }
+}
+
+monotonic_t
+os_window_frame_period(OSWindow *w) {
+    const monotonic_t ans = glfwX11GetFramePeriod && !global_state.is_wayland ? glfwX11GetFramePeriod(w->handle) : 0;
+    // Assume 60Hz if unknown
+    return ans > 0 ? ans : 16667 * MONOTONIC_T_1e3;
 }
 
 void
