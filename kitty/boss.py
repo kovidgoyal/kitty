@@ -3818,12 +3818,22 @@ class Boss:
             if file:
                 a(f'In file {file}:')
             [a(format_bad_line(x)) for x in groups[file]]
+        # misc_errors are errors that happen during startup that are not
+        # caused by invalid lines in the config, such as failing to listen on
+        # the remote control socket
         if misc_errors := tuple(misc_errors):
-            a('In final effective configuration:')
+            if groups:
+                a('Other errors:')
             for line in misc_errors:
                 a(line)
         msg = '\n'.join(ans).rstrip()
-        self.show_error(_('Errors parsing configuration'), msg)
+        if groups and misc_errors:
+            title = _('Errors parsing configuration and during startup')
+        elif misc_errors:
+            title = _('Errors during startup')
+        else:
+            title = _('Errors parsing configuration')
+        self.show_error(title, msg)
 
     @ac(
         'misc',

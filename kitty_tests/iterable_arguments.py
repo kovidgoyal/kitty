@@ -48,12 +48,27 @@ class IterableArgumentsTest(BaseTest):
 
     def test_config_error_iterable(self):
         for container in (list, tuple, iter):
-            for values in ((), ('configuration error',)):
+            for values in ((), ('startup error',)):
                 with self.subTest(container=container, values=values):
                     boss = SimpleNamespace(show_error=Mock())
                     Boss.show_bad_config_lines(boss, (), container(values))
-                    message = boss.show_error.call_args.args[1]
-                    self.ae(message, 'In final effective configuration:\nconfiguration error' if values else '')
+                    title, message = boss.show_error.call_args.args[:2]
+                    self.ae(message, 'startup error' if values else '')
+                    self.ae(title, 'Errors during startup' if values else 'Errors parsing configuration')
+
+    def test_config_error_titles(self):
+        from kitty.conf.utils import BadLine
+
+        bad = BadLine(3, 'font_size x', ValueError('invalid'), '/some/kitty.conf')
+        boss = SimpleNamespace(show_error=Mock())
+        Boss.show_bad_config_lines(boss, (bad,))
+        title, message = boss.show_error.call_args.args[:2]
+        self.ae(title, 'Errors parsing configuration')
+        self.ae(message, 'In file /some/kitty.conf:\n3:invalid in line: font_size x')
+        Boss.show_bad_config_lines(boss, (bad,), ('startup error',))
+        title, message = boss.show_error.call_args.args[:2]
+        self.ae(title, 'Errors parsing configuration and during startup')
+        self.ae(message, 'In file /some/kitty.conf:\n3:invalid in line: font_size x\n\nOther errors:\nstartup error')
 
     def test_watcher_iterable(self):
         for container in (list, tuple, iter):
