@@ -130,6 +130,9 @@ set_maximum_wait(monotonic_t val) {
 }
 
 // Frame pacing {{{
+// The minimum interval between renders of an OS Window that are not paced by
+// render frames, as happens soon after a resize on Wayland (120 FPS)
+#define POST_RESIZE_MIN_RENDER_INTERVAL (MONOTONIC_T_1e9 / 120)
 // How often to retry rendering an OS Window whose buffers could not be swapped
 #define SWAP_RETRY_INTERVAL (10 * MONOTONIC_T_1e6)
 // The minimum interval between redraws used when syncing to the monitor
@@ -251,7 +254,15 @@ is_render_deferred_by_frame_pacing(OSWindow *w, monotonic_t now) {
         if (is_thumbnail) return false;
         // dont respect render frames soon after a resize on Wayland as they cause flicker because
         // we want to fill the newly resized buffer ASAP, not at compositors convenience
-        if (global_state.is_wayland && (now - w->viewport_resized_at) <= s_double_to_monotonic_t(1)) return false;
+        if (global_state.is_wayland && (now - w->viewport_resized_at) <= s_double_to_monotonic_t(1)) {
+            // The first render after the resize is immediate, subsequent ones
+            // are limited to a reasonable rate, otherwise continuous output
+            // would be rendered as fast as possible during this period.
+            if (w->last_rendered_at <= w->viewport_resized_at) return false;
+            const monotonic_t since_last_render = now - w->last_rendered_at;
+            if (since_last_render >= POST_RESIZE_MIN_RENDER_INTERVAL) return false;
+            set_maximum_wait(POST_RESIZE_MIN_RENDER_INTERVAL - since_last_render);
+        }
         w->tick_on_render_frame = true;
         return true;
     }
