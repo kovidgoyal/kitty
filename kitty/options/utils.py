@@ -1876,6 +1876,88 @@ def mouse_hide_wait(x: str) -> MouseHideWait:
         return MouseHideWait(float(parts[0]), float(parts[1]), int(parts[2]), to_bool(parts[3]))
 
 
+class RenderInterval(NamedTuple):
+    # Whether to pace redraws using render frames from the windowing system
+    sync_to_monitor: bool = True
+    # The minimum interval between redraws in milliseconds, zero for no limit
+    min_interval: float = 0
+
+    def __str__(self) -> str:
+        num = f'{self.min_interval:g}'
+        if self.sync_to_monitor:
+            return f'monitor {num}' if self.min_interval > 0 else 'monitor'
+        return num
+
+
+def render_interval(x: str) -> RenderInterval:
+    parts = x.lower().split()
+    sync_to_monitor = bool(parts) and parts[0] == 'monitor'
+    if sync_to_monitor:
+        parts = parts[1:]
+    if len(parts) > 1 or (not sync_to_monitor and not parts):
+        raise ValueError(f'{x!r} is not a valid value for render_interval')
+    min_interval = float(parts[0]) if parts else 0.0
+    if not isfinite(min_interval) or min_interval < 0:
+        raise ValueError(f'{x!r} is not a valid value for render_interval')
+    return RenderInterval(sync_to_monitor, min_interval)
+
+
+# The key in the dict of parsed config values used to collect the values of
+# the removed sync_to_monitor and repaint_delay options. It is not an option
+# name so it is dropped when the dicts are merged, see
+# merge_deprecated_render_options() for how it is preserved.
+DEPRECATED_RENDER_OPTIONS_KEY = '_deprecated_render_options'
+# The value of the removed repaint_delay option used when only sync_to_monitor no is specified
+OLD_REPAINT_DELAY_DEFAULT = 10.0
+
+
+def deprecated_render_options(key: str, val: str, ans: dict[str, Any]) -> None:
+    if not hasattr(deprecated_render_options, key):
+        setattr(deprecated_render_options, key, True)
+        log_error(f'The option {key} has been removed, use render_interval instead.')
+    d = ans.setdefault(DEPRECATED_RENDER_OPTIONS_KEY, {})
+    if key == 'sync_to_monitor':
+        d[key] = to_bool(val)
+    else:
+        d[key] = float(positive_int(val))
+
+
+def merge_deprecated_render_options(defaults: dict[str, Any], vals: dict[str, Any], merged: dict[str, Any]) -> None:
+    """Carry the values of the removed render options and whether render_interval was set
+    across config files, since merging only preserves option values. Values from later
+    files override values from earlier ones, as for every other option."""
+    prev: dict[str, Any] = defaults.get(DEPRECATED_RENDER_OPTIONS_KEY, {})
+    new: dict[str, Any] = vals.get(DEPRECATED_RENDER_OPTIONS_KEY, {})
+    combined = prev | new
+    if prev.get('render_interval_was_set') or 'render_interval' in vals:
+        combined['render_interval_was_set'] = True
+    if combined:
+        merged[DEPRECATED_RENDER_OPTIONS_KEY] = combined
+
+
+def apply_deprecated_render_options(opts_dict: dict[str, Any]) -> None:
+    """Convert the values of the removed sync_to_monitor and repaint_delay options
+    into a value for render_interval. If render_interval is specified anywhere, it takes
+    precedence and the removed options are ignored, regardless of order."""
+    d: dict[str, Any] | None = opts_dict.pop(DEPRECATED_RENDER_OPTIONS_KEY, None)
+    if not d:
+        return
+    sync: bool | None = d.get('sync_to_monitor')
+    delay: float | None = d.get('repaint_delay')
+    if sync is None and delay is None:
+        return
+    if d.get('render_interval_was_set'):
+        log_error('Ignoring sync_to_monitor and repaint_delay as render_interval is also specified')
+        return
+    if sync is None:
+        sync = True
+    if delay is None:
+        # With sync_to_monitor the old default delay only throttled redraws to
+        # ~100 FPS. Without it, the delay was the only limit on the redraw rate.
+        delay = 0.0 if sync else OLD_REPAINT_DELAY_DEFAULT
+    opts_dict['render_interval'] = RenderInterval(sync, delay)
+
+
 def visual_bell_duration(spec: str) -> tuple[float, EasingFunction, EasingFunction]:
     return parse_animation(spec, interval=0.0)
 

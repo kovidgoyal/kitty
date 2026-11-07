@@ -738,6 +738,18 @@ tab_bar_margin_height(PyObject *val, Options *opts) {
 }
 
 static inline void
+render_interval(PyObject *val, Options *opts) {
+    if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 2) {
+        PyErr_SetString(PyExc_TypeError, "render_interval is not a 2-item tuple");
+        return;
+    }
+    opts->render_interval.sync_to_monitor = PyObject_IsTrue(PyTuple_GET_ITEM(val, 0));
+    const double ms = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 1));
+    if (PyErr_Occurred()) return;
+    opts->render_interval.min_interval = ms > 0 ? ms_double_to_monotonic_t(ms) : 0;
+}
+
+static inline void
 window_logo_scale(PyObject *src, Options *opts) {
     opts->window_logo_scale.width = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 0));
     opts->window_logo_scale.height = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));

@@ -35,6 +35,9 @@ class TestConfParsing(BaseTest):
     def test_cli_parsing(self):
         cli_parsing(self)
 
+    def test_render_interval(self):
+        render_interval_parsing(self)
+
     def test_font_size_clamping(self):
         font_size_clamping(self)
 
@@ -157,6 +160,75 @@ class TestConfParsing(BaseTest):
         self.ae(window.screen.color_profile.as_dict().get('transparent_background_colors', ()), ((Color(255, 255, 255), 0.5),))
         apply_colors(window, ('transparent_background_colors=',))
         self.ae(window.screen.color_profile.as_dict().get('transparent_background_colors', ()), ())
+
+
+def render_interval_parsing(self) -> None:
+    from kitty.config import load_config
+    from kitty.options.types import defaults
+    from kitty.options.utils import RenderInterval
+
+    bad_lines: list = []
+
+    def p(*lines: str, paths: tuple[str, ...] = (), bad_line_num: int = 0) -> RenderInterval:
+        del bad_lines[:]
+        del self.error_messages[:]
+        opts = load_config(*paths, overrides=lines, accumulate_bad_lines=bad_lines)
+        self.ae(len(bad_lines), bad_line_num, bad_lines)
+        return opts.render_interval
+
+    def write_conf(name: str, *lines: str) -> str:
+        path = os.path.join(self.tdir, name)
+        with open(path, 'w') as f:
+            f.write('\n'.join(lines))
+        return path
+
+    def warned_about_conflict() -> bool:
+        return any('as render_interval is also specified' in m for m in self.error_messages)
+
+    self.ae(defaults.render_interval, RenderInterval(True, 0))
+    self.ae(p(), RenderInterval(True, 0))
+    self.ae(p('render_interval monitor'), RenderInterval(True, 0))
+    self.ae(p('render_interval Monitor 16.5'), RenderInterval(True, 16.5))
+    self.ae(p('render_interval 8'), RenderInterval(False, 8))
+    self.ae(p('render_interval 0'), RenderInterval(False, 0))
+    for bad in ('xyz', 'monitor 1 2', '-1', 'monitor -3', 'nan', '1 monitor'):
+        self.ae(p(f'render_interval {bad}', bad_line_num=1), defaults.render_interval, bad)
+    for ri in (RenderInterval(True, 0), RenderInterval(True, 16.5), RenderInterval(False, 8)):
+        self.ae(p(f'render_interval {ri}'), ri)
+
+    # The removed options are converted to render_interval
+    self.ae(p('sync_to_monitor yes'), RenderInterval(True, 0))
+    self.ae(p('sync_to_monitor no'), RenderInterval(False, 10))
+    self.ae(p('repaint_delay 5'), RenderInterval(True, 5))
+    self.ae(p('repaint_delay 0'), RenderInterval(True, 0))
+    self.ae(p('sync_to_monitor no', 'repaint_delay 3'), RenderInterval(False, 3))
+    self.ae(p('repaint_delay 3', 'sync_to_monitor no'), RenderInterval(False, 3))
+    self.ae(p('sync_to_monitor no', 'repaint_delay 3', 'sync_to_monitor yes'), RenderInterval(True, 3))
+    self.ae(p('repaint_delay 3', 'repaint_delay 7'), RenderInterval(True, 7))
+    self.ae(p('repaint_delay x', bad_line_num=1), defaults.render_interval)
+    self.assertFalse(warned_about_conflict())
+    # render_interval takes precedence over the removed options regardless of order
+    for lines in (('render_interval monitor', 'sync_to_monitor no'), ('sync_to_monitor no', 'repaint_delay 2', 'render_interval monitor')):
+        self.ae(p(*lines), RenderInterval(True, 0))
+        self.assertTrue(warned_about_conflict())
+    self.ae(p('repaint_delay 2', 'render_interval 6'), RenderInterval(False, 6))
+    self.assertTrue(warned_about_conflict())
+
+    # Precedence and conversion work across config files and overrides
+    new_conf = write_conf('new.conf', 'render_interval 8')
+    old_conf = write_conf('old.conf', 'sync_to_monitor no')
+    included = write_conf('included.conf', 'include old.conf', 'repaint_delay 4')
+    self.ae(p(paths=(new_conf,)), RenderInterval(False, 8))
+    self.ae(p('sync_to_monitor yes', 'repaint_delay 2', paths=(new_conf,)), RenderInterval(False, 8))
+    self.assertTrue(warned_about_conflict())
+    self.ae(p(paths=(new_conf, old_conf)), RenderInterval(False, 8))
+    self.ae(p(paths=(old_conf, new_conf)), RenderInterval(False, 8))
+    self.ae(p('render_interval monitor 20', paths=(old_conf,)), RenderInterval(True, 20))
+    self.ae(p(paths=(old_conf,)), RenderInterval(False, 10))
+    self.ae(p('repaint_delay 4', paths=(old_conf,)), RenderInterval(False, 4))
+    self.ae(p('sync_to_monitor yes', paths=(old_conf,)), RenderInterval(True, 0))
+    self.ae(p(paths=(included,)), RenderInterval(False, 4))
+    self.assertFalse(warned_about_conflict())
 
 
 def cli_parsing(self):
