@@ -241,6 +241,101 @@ func fish_setup_func(shell_integration_dir string, argv []string, env map[string
 var debugprintln = tty.DebugPrintln
 var _ = debugprintln
 
+// bash is compiled with the paths to the system wide profile and bashrc
+// files (SYS_PROFILE and SYS_BASHRC) as string literals. There is no way to
+// query bash for them, so find them by looking for NUL terminated absolute
+// paths in the binary. bashrc is empty if bash was built without SYS_BASHRC.
+// found is false if no system profile was found, since SYS_PROFILE is always
+// defined, this means the scan failed.
+func bash_sys_startup_files_from_binary_data(data []byte) (profile, bashrc string, found bool) {
+	var profiles, bashrcs []string
+	add := func(dest *[]string, x string) {
+		if !slices.Contains(*dest, x) {
+			*dest = append(*dest, x)
+		}
+	}
+	for _, suffix := range []string{"profile\x00", "bashrc\x00"} {
+		s := []byte(suffix)
+		offset := 0
+		for {
+			idx := bytes.Index(data[offset:], s)
+			if idx < 0 {
+				break
+			}
+			pos := offset + idx
+			end := pos + len(s) - 1
+			offset = end + 1
+			start := pos
+			for start > 0 && data[start-1] >= 0x20 && data[start-1] <= 0x7e {
+				start--
+			}
+			raw := data[start:end]
+			if len(raw) == 0 || raw[0] != '/' || bytes.IndexByte(raw, ' ') > -1 {
+				continue
+			}
+			path := string(raw)
+			base := path[strings.LastIndexByte(path, '/')+1:]
+			if base == "profile" {
+				add(&profiles, path)
+			} else if strings.HasSuffix(base, "bashrc") && !strings.HasPrefix(base, ".") {
+				add(&bashrcs, path)
+			}
+		}
+	}
+	if len(profiles) == 0 {
+		return "", "", false
+	}
+	pick := func(candidates []string) string {
+		// In case a patched bash has multiple candidates use the first that exists
+		for _, x := range candidates {
+			if s, err := os.Stat(x); err == nil && s.Mode().IsRegular() {
+				return x
+			}
+		}
+		if len(candidates) > 0 {
+			return candidates[0]
+		}
+		return ""
+	}
+	return pick(profiles), pick(bashrcs), true
+}
+
+func bash_sys_startup_files(exe string) (profile, bashrc string, found bool, err error) {
+	if exe, err = filepath.EvalSymlinks(exe); err != nil {
+		return
+	}
+	s, err := os.Stat(exe)
+	if err != nil {
+		return
+	}
+	if s.Size() >= 64*1024*1024 { // ignore anything implausibly large
+		return
+	}
+	data, err := os.ReadFile(exe)
+	if err != nil {
+		return
+	}
+	profile, bashrc, found = bash_sys_startup_files_from_binary_data(data)
+	return
+}
+
+func setup_bash_sys_startup_files(env map[string]string, argv0 string) {
+	// Explicitly specified locations override the probing
+	if _, found := env[`KITTY_BASH_ETC_LOCATION`]; found {
+		return
+	}
+	if _, found := env[`KITTY_BASH_SYS_PROFILE`]; found {
+		return
+	}
+	profile, bashrc, found, err := bash_sys_startup_files(utils.FindExe(strings.TrimLeft(argv0, "-")))
+	if err != nil || !found {
+		// kitty.bash falls back to checking well known locations
+		return
+	}
+	env[`KITTY_BASH_SYS_PROFILE`] = profile
+	env[`KITTY_BASH_SYS_BASHRC`] = bashrc
+}
+
 func bash_setup_func(shell_integration_dir string, argv []string, env map[string]string) ([]string, map[string]string, error) {
 	inject := utils.NewSetWithItems(`1`)
 	var posix_env, rcfile string
@@ -320,6 +415,7 @@ func bash_setup_func(shell_integration_dir string, argv []string, env map[string
 	if rcfile != "" {
 		env[`KITTY_BASH_RCFILE`] = rcfile
 	}
+	setup_bash_sys_startup_files(env, argv[0])
 	sorted := remove_args.AsSlice()
 	slices.Sort(sorted)
 	for _, i := range utils.Reverse(sorted) {

@@ -15,7 +15,7 @@ from functools import lru_cache, partial
 from kitty.bash import decode_ansi_c_quoted_string
 from kitty.constants import is_macos, kitten_exe, kitty_base_dir, shell_integration_dir, terminfo_dir
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
-from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_env
+from kitty.shell_integration import bash_sys_startup_files_from_binary_data, setup_bash_env, setup_fish_env, setup_zsh_env
 
 from .base import BaseTest
 
@@ -171,6 +171,16 @@ class ShellIntegration(BaseTest):
         self.sudo_parser_tests(['zsh', '--no-rcs', '-c'], func)
 
     @unittest.skipUnless(bash_ok(), 'bash not installed, too old, or debug build')
+    def test_bash_sys_startup_files_scan(self):
+        def t(data, expected):
+            self.ae(bash_sys_startup_files_from_binary_data(data), expected, repr(data))
+
+        t(b'\x00/etc/bash.bash_logout\x00/etc/bash.bashrc\x00~/.bashrc\x00/etc/profile\x00~/.bash_profile\x00', ('/etc/profile', '/etc/bash.bashrc'))
+        t(b'xx\x01/usr/share/defaults/etc/profile\x00/usr/share/defaults/etc/bashrc\x00', ('/usr/share/defaults/etc/profile', '/usr/share/defaults/etc/bashrc'))
+        t(b'\x00/etc/profile\x00/etc/skel/.bashrc\x00', ('/etc/profile', ''))
+        t(b'\x00/etc/bash/bashrc\x00use /etc/profile\x00/etc/profile.d\x00', None)
+        t(b'', None)
+
     def test_bash_sudo_parser(self):
         if self.with_kitten:
             return
@@ -588,22 +598,29 @@ PS1="{ps1}"
             self.assertTrue(pty.screen_contents().startswith('pre-start'))
         # test startup file sourcing
 
-        def setup_env(excluded, argv, home_dir, rc='', shell='bash', with_kitten=self.with_kitten):
+        def setup_env(excluded, sys_files, argv, home_dir, rc='', shell='bash', with_kitten=self.with_kitten):
             ans = basic_shell_env(home_dir)
+            # Prevent probing the bash binary for its system startup files
+            if sys_files is None:
+                ans['KITTY_BASH_ETC_LOCATION'] = home_dir
+            else:
+                ans['KITTY_BASH_SYS_PROFILE'], ans['KITTY_BASH_SYS_BASHRC'] = (os.path.join(home_dir, x) if x else '' for x in sys_files)
             if not with_kitten:
                 setup_bash_env(ans, argv)
-            for x in {'profile', 'bash.bashrc', '.bash_profile', '.bash_login', '.profile', '.bashrc', 'rcfile'} - excluded:
+            for x in {'profile', 'bash.bashrc', 'sysprofile', 'sysbashrc', '.bash_profile', '.bash_login', '.profile', '.bashrc', 'rcfile'} - excluded:
                 with open(os.path.join(home_dir, x), 'w') as f:
                     if x == '.bashrc' and rc:
                         print(rc, file=f)
                     else:
                         print(f'echo [{x}]', file=f)
-            ans['KITTY_BASH_ETC_LOCATION'] = home_dir
             ans['PS1'] = 'PROMPT $ '
             return ans
 
-        def run_test(argv, *expected, excluded=(), rc='', wait_string='PROMPT $', assert_not_in=False):
-            with self.subTest(argv=argv), self.run_shell(shell='bash', setup_env=partial(setup_env, set(excluded)), cmd=argv, rc=rc) as pty:
+        def run_test(argv, *expected, excluded=(), rc='', wait_string='PROMPT $', assert_not_in=False, sys_files=None):
+            with (
+                self.subTest(argv=argv, sys_files=sys_files),
+                self.run_shell(shell='bash', setup_env=partial(setup_env, set(excluded), sys_files), cmd=argv, rc=rc) as pty,
+            ):
                 pty.wait_till(lambda: wait_string in pty.screen_contents())
                 q = pty.screen_contents()
                 for x in expected:
@@ -621,6 +638,15 @@ PS1="{ps1}"
         run_test('bash -l', 'profile', '.bash_login', excluded=('.bash_profile',))
         run_test('bash -l', 'profile', '.profile', excluded=('.bash_profile', '.bash_login'))
 
+        # test system startup files found by scanning the bash binary
+        sf = 'sysprofile', 'sysbashrc'
+        run_test('bash', 'sysbashrc', '.bashrc', sys_files=sf)
+        run_test('bash', 'bash.bashrc', 'profile', 'sysprofile', sys_files=sf, assert_not_in=True)
+        run_test('bash -l', 'sysprofile', '.bash_profile', sys_files=sf)
+        run_test('bash -l', 'profile', 'sysbashrc', sys_files=sf, assert_not_in=True)
+        run_test('bash', '.bashrc', sys_files=('sysprofile', ''))
+        run_test('bash', 'bash.bashrc', 'sysbashrc', sys_files=('sysprofile', ''), assert_not_in=True)
+
         # test argument parsing and non-interactive shell
         run_test('bash -s arg1 --rcfile rcfile', 'rcfile', rc='echo ok;read', wait_string='ok', assert_not_in=True)
         run_test('bash +O login_shell -ic "echo ok;read"', 'bash.bashrc', excluded=('.bash_profile'), wait_string='ok', assert_not_in=True)
@@ -628,7 +654,7 @@ PS1="{ps1}"
         run_test('bash -il -- .bashrc', 'profile', rc='echo ok;read', wait_string='ok')
 
         with self.run_shell(
-            shell='bash', setup_env=partial(setup_env, set()), cmd='bash', rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d'\nexport ES2="XXX" '''
+            shell='bash', setup_env=partial(setup_env, set(), None), cmd='bash', rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d'\nexport ES2="XXX" '''
         ) as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('clone-in-kitty')

@@ -69,6 +69,83 @@ def setup_zsh_env(env: dict[str, str], argv: list[str]) -> None:
     env['ZDOTDIR'] = os.path.join(shell_integration_dir, 'zsh')
 
 
+BashSysStartupFiles = tuple[str, str]
+bash_sys_startup_files_cache: dict[tuple[str, int, int], BashSysStartupFiles | None] = {}
+
+
+def bash_sys_startup_files_from_binary_data(data: bytes) -> BashSysStartupFiles | None:
+    """
+    bash is compiled with the paths to the system wide profile and bashrc
+    files (SYS_PROFILE and SYS_BASHRC) as string literals. There is no way to
+    query bash for them, so find them by looking for NUL terminated absolute
+    paths in the binary. Returns (profile, bashrc) where bashrc is empty if bash
+    was built without SYS_BASHRC. Returns None if no system profile was found,
+    since SYS_PROFILE is always defined, this means the scan failed.
+    """
+    profiles: dict[str, None] = {}
+    bashrcs: dict[str, None] = {}
+    for suffix in (b'profile\x00', b'bashrc\x00'):
+        pos = data.find(suffix)
+        while pos > -1:
+            end = pos + len(suffix) - 1
+            start = pos
+            while start > 0 and 0x20 <= data[start - 1] <= 0x7E:
+                start -= 1
+            pos = data.find(suffix, end + 1)
+            raw = data[start:end]
+            if not raw.startswith(b'/') or b' ' in raw:
+                continue
+            path = raw.decode('ascii')
+            base = path.rpartition('/')[2]
+            if base == 'profile':
+                profiles[path] = None
+            elif base.endswith('bashrc') and not base.startswith('.'):
+                bashrcs[path] = None
+    if not profiles:
+        return None
+
+    def pick(candidates: dict[str, None]) -> str:
+        # In case a patched bash has multiple candidates use the first that exists
+        for x in candidates:
+            if os.path.isfile(x):
+                return x
+        return next(iter(candidates), '')
+
+    return pick(profiles), pick(bashrcs)
+
+
+def bash_sys_startup_files(exe: str) -> BashSysStartupFiles | None:
+    try:
+        exe = os.path.realpath(exe)
+        st = os.stat(exe)
+    except OSError:
+        return None  # the shell will fail to launch anyway
+    key = exe, st.st_mtime_ns, st.st_size
+    if key in bash_sys_startup_files_cache:
+        return bash_sys_startup_files_cache[key]
+    ans: BashSysStartupFiles | None = None
+    if st.st_size < 64 * 1024 * 1024:  # ignore anything implausibly large
+        try:
+            with open(exe, 'rb') as f:
+                data = f.read()
+        except OSError as e:
+            log_error(f'Failed to read bash executable {exe} to find its system startup files with error: {e}')
+        else:
+            ans = bash_sys_startup_files_from_binary_data(data)
+    bash_sys_startup_files_cache[key] = ans
+    return ans
+
+
+def setup_bash_sys_startup_files(env: dict[str, str], argv0: str) -> None:
+    # Explicitly specified locations override the probing
+    if 'KITTY_BASH_ETC_LOCATION' in env or 'KITTY_BASH_SYS_PROFILE' in env:
+        return
+    exe = which(argv0.lstrip('-')) or argv0
+    files = bash_sys_startup_files(exe)
+    if files is not None:
+        env['KITTY_BASH_SYS_PROFILE'], env['KITTY_BASH_SYS_BASHRC'] = files
+
+
 def setup_bash_env(env: dict[str, str], argv: list[str]) -> None:
     inject = {'1'}
     posix_env = rcfile = ''
@@ -139,6 +216,7 @@ def setup_bash_env(env: dict[str, str], argv: list[str]) -> None:
         env['KITTY_BASH_POSIX_ENV'] = posix_env
     if rcfile:
         env['KITTY_BASH_RCFILE'] = rcfile
+    setup_bash_sys_startup_files(env, argv[0])
     for i in sorted(remove_args, reverse=True):
         del argv[i]
     if 'HISTFILE' not in env and 'posix' not in inject:

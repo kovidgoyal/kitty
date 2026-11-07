@@ -129,6 +129,11 @@ Detailed list of changes
   groups inside lookarounds that overlap later matches finding no matches at all
   when the text contains non-ASCII characters
 
+- Bash integration: Source the system wide profile and bashrc files that bash
+  was actually built to use, found by scanning the bash executable, instead of
+  guessing their locations in :file:`/etc`. Fixes system startup files not
+  being sourced on distros that keep them elsewhere (:iss:`10819`)
+
 - Vertical tab bar: Fix clicking the blank line below a tab not activating the tab (:iss:`10810`)
 
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
