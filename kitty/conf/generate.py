@@ -130,7 +130,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
                 params = dict(inspect.signature(func).parameters)
             except Exception:
                 params = {}
-            assert isinstance(func, types.FunctionType)
+            assert isinstance(func, (types.FunctionType, type))
             if 'dict_with_parse_results' in params:
                 t(f'        {func.__name__}(val, ans)')
             else:

@@ -180,9 +180,18 @@ def parse_config(
 effective_config_lines: list[str] = []
 
 
-def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_bad_lines: list[BadLine] | None = None) -> Options:
+def merge_configs(defaults: dict[str, Any], vals: dict[str, Any]) -> dict[str, Any]:
     from .options.parse import merge_result_dicts
+    from .options.utils import merge_deprecated_render_options
+
+    ans = merge_result_dicts(defaults, vals)
+    merge_deprecated_render_options(defaults, vals, ans)
+    return ans
+
+
+def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_bad_lines: list[BadLine] | None = None) -> Options:
     from .options.types import secret_options
+    from .options.utils import apply_deprecated_render_options
 
     del effective_config_lines[:]
 
@@ -195,10 +204,11 @@ def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_
     opts_dict, found_paths = _load_config(
         defaults,
         partial(parse_config, accumulate_bad_lines=accumulate_bad_lines, effective_config_lines=add_effective_config_line),
-        merge_result_dicts,
+        merge_configs,
         *paths,
         overrides=overrides,
     )
+    apply_deprecated_render_options(opts_dict)
     opts = Options(opts_dict)
 
     opts.alias_map = build_action_aliases(opts.kitten_alias, 'kitten')

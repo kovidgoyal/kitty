@@ -785,28 +785,15 @@ convert_from_opts_drag_threshold(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_repaint_delay(PyObject *val, Options *opts) {
-    opts->repaint_delay = parse_ms_long_to_monotonic_t(val);
+convert_from_python_render_interval(PyObject *val, Options *opts) {
+    render_interval(val, opts);
 }
 
 static void
-convert_from_opts_repaint_delay(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "repaint_delay");
+convert_from_opts_render_interval(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "render_interval");
     if (ret == NULL) return;
-    convert_from_python_repaint_delay(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_sync_to_monitor(PyObject *val, Options *opts) {
-    opts->sync_to_monitor = PyObject_IsTrue(val);
-}
-
-static void
-convert_from_opts_sync_to_monitor(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "sync_to_monitor");
-    if (ret == NULL) return;
-    convert_from_python_sync_to_monitor(ret, opts);
+    convert_from_python_render_interval(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1699,9 +1686,7 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_drag_threshold(py_opts, opts);
     if (PyErr_Occurred()) return false;
-    convert_from_opts_repaint_delay(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_sync_to_monitor(py_opts, opts);
+    convert_from_opts_render_interval(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_enable_audio_bell(py_opts, opts);
     if (PyErr_Occurred()) return false;

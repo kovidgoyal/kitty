@@ -157,6 +157,46 @@ typedef void (*PFN_XShapeCombineMask)(Display *, Window, int, int, int, Pixmap, 
 #define XShapeCombineRegion _glfw.x11.xshape.ShapeCombineRegion
 #define XShapeCombineMask _glfw.x11.xshape.ShapeCombineMask
 
+// The parts of the Present extension used to receive render frames, see
+// glfwX11RequestFrameEvent(). They are defined here and libxcb-present is
+// loaded at runtime, so that it is not needed to build or run.
+#define GLFW_XCB_PRESENT_COMPLETE_NOTIFY 1
+#define GLFW_XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY 2
+#define GLFW_XCB_PRESENT_COMPLETE_KIND_NOTIFY_MSC 1
+
+typedef struct {
+    uint8_t response_type;
+    uint8_t extension;
+    uint16_t sequence;
+    uint32_t length;
+    uint16_t event_type;
+    uint8_t kind;
+    uint8_t mode;
+    uint32_t event;
+    uint32_t window;
+    uint32_t serial;
+    uint64_t ust;
+    uint32_t full_sequence;
+    uint64_t msc;
+} __attribute__((packed)) GLFWXcbPresentCompleteNotifyEvent;
+
+typedef struct {
+    uint8_t response_type;
+    uint8_t pad0;
+    uint16_t sequence;
+    uint32_t length;
+    uint32_t major_version;
+    uint32_t minor_version;
+} GLFWXcbPresentQueryVersionReply;
+
+typedef xcb_void_cookie_t (*PFN_xcb_present_select_input)(xcb_connection_t *, uint32_t, xcb_window_t, uint32_t);
+typedef xcb_void_cookie_t (*PFN_xcb_present_notify_msc)(xcb_connection_t *, xcb_window_t, uint32_t, uint64_t, uint64_t, uint64_t);
+typedef struct {
+    unsigned int sequence;
+} GLFWXcbPresentQueryVersionCookie;
+typedef GLFWXcbPresentQueryVersionCookie (*PFN_xcb_present_query_version)(xcb_connection_t *, uint32_t, uint32_t);
+typedef GLFWXcbPresentQueryVersionReply *(*PFN_xcb_present_query_version_reply)(xcb_connection_t *, GLFWXcbPresentQueryVersionCookie, xcb_generic_error_t **);
+
 typedef VkFlags VkXlibSurfaceCreateFlagsKHR;
 typedef VkFlags VkXcbSurfaceCreateFlagsKHR;
 
@@ -230,6 +270,23 @@ typedef struct _GLFWwindowX11 {
         bool is_active;
         GLFWLayerShellConfig config;
     } layer_shell;
+
+    // Render frames using Present extension MSC notifications, see glfwX11RequestFrameEvent()
+    struct {
+        xcb_special_event_t *special_event;
+        uint32_t eid, serial;
+        // querying is true while waiting for the current MSC, see glfwX11RequestFrameEvent()
+        bool pending, querying, failed;
+        // The MSC reported by the query, the frame is the first MSC after it
+        uint64_t query_msc;
+        // The MSC and UST (in microseconds) of the last frame, used to estimate the frame period
+        uint64_t last_msc, last_ust;
+        // Recent estimates of the frame period in nanoseconds, see glfwX11GetFramePeriod()
+        monotonic_t period_samples[8];
+        unsigned num_period_samples, next_period_sample;
+        unsigned long long id;
+        void (*callback)(unsigned long long id);
+    } frame;
 } _GLFWwindowX11;
 
 typedef struct MimeAtom {
@@ -542,6 +599,19 @@ typedef struct _GLFWlibraryX11 {
         PFN_XShapeQueryVersion QueryVersion;
         PFN_XShapeCombineMask ShapeCombineMask;
     } xshape;
+
+    struct {
+        bool available;
+        void *handle;
+        xcb_extension_t *id;
+        // Some X servers, such as Xwayland, complete NotifyMSC requests one MSC
+        // before the target MSC, this is the number of extra MSCs to request.
+        uint64_t extra_target_msc;
+        PFN_xcb_present_select_input select_input, select_input_checked;
+        PFN_xcb_present_notify_msc notify_msc;
+        PFN_xcb_present_query_version query_version;
+        PFN_xcb_present_query_version_reply query_version_reply;
+    } present;
 
     EventLoopData eventLoopData;
 

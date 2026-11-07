@@ -109,6 +109,141 @@ static void handle_xdnd_finished(const XClientMessageEvent *event);
 static bool create_drag_thumbnail(const GLFWimage *thumbnail, int x, int y);
 static bool render_drag_thumbnail_to_pixmap(const GLFWimage *thumbnail);
 
+// Render frames using the Present extension {{{
+// A render frame is requested with a PresentNotifyMSC request for the next
+// vertical blank (MSC) of the CRTC the window is on. The X server answers it
+// with a PresentCompleteNotify event. These events are delivered to a special
+// event queue rather than to the Xlib event queue, as Xlib cannot parse them.
+// Since X servers differ in how they interpret a request for "the next MSC"
+// (Xwayland completes it immediately), the current MSC is first queried with
+// a request that completes immediately, and then the frame is requested for
+// the MSC after it. Xwayland also completes requests for a specific MSC one
+// MSC early, which is detected and compensated for.
+
+static void
+sendNotifyMSC(_GLFWwindow *window, uint64_t target_msc) {
+    xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);
+    window->x11.frame.serial++;
+    _glfw.x11.present.notify_msc(conn, window->x11.handle, window->x11.frame.serial, target_msc, 0, 0);
+    xcb_flush(conn);
+}
+
+static void
+destroyPresentEvents(_GLFWwindow *window) {
+    if (!window->x11.frame.special_event) return;
+    xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);
+    // Stop the X server sending events before removing the queue, so that they
+    // dont end up in the Xlib event queue
+    if (window->x11.handle) _glfw.x11.present.select_input(conn, window->x11.frame.eid, window->x11.handle, 0);
+    xcb_unregister_for_special_event(conn, window->x11.frame.special_event);
+    window->x11.frame.special_event = NULL;
+    window->x11.frame.pending = false;
+}
+
+static bool
+ensurePresentEvents(_GLFWwindow *window) {
+    if (window->x11.frame.special_event) return true;
+    if (window->x11.frame.failed || !window->x11.handle) return false;
+    xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);
+    const uint32_t eid = xcb_generate_id(conn);
+    // Register the queue before selecting the events so that none are missed
+    xcb_special_event_t *special_event = xcb_register_for_special_xge(conn, _glfw.x11.present.id, eid, NULL);
+    if (!special_event) {
+        window->x11.frame.failed = true;
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to register for Present events");
+        return false;
+    }
+    xcb_generic_error_t *err =
+        xcb_request_check(conn, _glfw.x11.present.select_input_checked(conn, eid, window->x11.handle, GLFW_XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY));
+    if (err) {
+        window->x11.frame.failed = true;
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to select Present events with error code: %d", err->error_code);
+        free(err);
+        xcb_unregister_for_special_event(conn, special_event);
+        return false;
+    }
+    window->x11.frame.special_event = special_event;
+    window->x11.frame.eid = eid;
+    return true;
+}
+
+// Estimate the frame period from consecutive frames. Frames separated by a
+// period of inactivity can give wildly wrong estimates, as some X servers,
+// such as Xwayland, dont increment the MSC when the window is idle, so
+// implausible values are discarded and the median of recent estimates is used.
+static void
+recordFramePeriod(_GLFWwindow *window, uint64_t msc, uint64_t ust) {
+    if (window->x11.frame.last_msc && msc > window->x11.frame.last_msc && ust > window->x11.frame.last_ust) {
+        const monotonic_t period = (monotonic_t)((ust - window->x11.frame.last_ust) * 1000ull / (msc - window->x11.frame.last_msc));
+        if (period >= ms_to_monotonic_t(1ll) && period <= ms_to_monotonic_t(50ll)) {
+            const unsigned n = arraysz(window->x11.frame.period_samples);
+            window->x11.frame.period_samples[window->x11.frame.next_period_sample] = period;
+            window->x11.frame.next_period_sample = (window->x11.frame.next_period_sample + 1) % n;
+            if (window->x11.frame.num_period_samples < n) window->x11.frame.num_period_samples++;
+        }
+    }
+    window->x11.frame.last_msc = msc;
+    window->x11.frame.last_ust = ust;
+}
+
+static int
+compareMonotonic(const void *a, const void *b) {
+    const monotonic_t x = *(const monotonic_t *)a, y = *(const monotonic_t *)b;
+    return (x > y) - (x < y);
+}
+
+// Dispatch render frames to the callbacks. Must be called whenever data could
+// have been read from the X connection, as that is when events are moved to
+// the special event queues, after which the X connection does not poll ready.
+static unsigned
+dispatchPresentEvents(void) {
+    if (!_glfw.x11.present.available) return 0;
+    unsigned dispatched = 0;
+    xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);
+    for (_GLFWwindow *window = _glfw.windowListHead; window; window = window->next) {
+        if (!window->x11.frame.special_event) continue;
+        bool frame_ready = false;
+        xcb_generic_event_t *ev;
+        while ((ev = xcb_poll_for_special_event(conn, window->x11.frame.special_event)) != NULL) {
+            const GLFWXcbPresentCompleteNotifyEvent *ce = (const GLFWXcbPresentCompleteNotifyEvent *)ev;
+            // The events for buffers presented to the window by the GPU driver
+            // are also received and are ignored, as are responses to superseded
+            // requests, since the response to the latest request arrives at the
+            // same or the next vertical blank
+            if (ce->event_type == GLFW_XCB_PRESENT_COMPLETE_NOTIFY && ce->kind == GLFW_XCB_PRESENT_COMPLETE_KIND_NOTIFY_MSC &&
+                ce->serial == window->x11.frame.serial && window->x11.frame.pending) {
+                if (window->x11.frame.querying) {
+                    window->x11.frame.querying = false;
+                    window->x11.frame.query_msc = ce->msc;
+                    sendNotifyMSC(window, ce->msc + 1 + _glfw.x11.present.extra_target_msc);
+                } else if (ce->msc > window->x11.frame.query_msc) {
+                    window->x11.frame.pending = false;
+                    frame_ready = true;
+                    recordFramePeriod(window, ce->msc, ce->ust);
+                } else {
+                    // Completed before the MSC changed, so the X server completes
+                    // requests early, compensate for it. Limit the compensation
+                    // so that a broken server cannot cause a request storm.
+                    if (_glfw.x11.present.extra_target_msc < 2) {
+                        _glfw.x11.present.extra_target_msc++;
+                        debug_rendering(
+                            "X server completes PresentNotifyMSC early, requesting %llu extra MSC(s)\n",
+                            (unsigned long long)_glfw.x11.present.extra_target_msc);
+                    }
+                    sendNotifyMSC(window, window->x11.frame.query_msc + 1 + _glfw.x11.present.extra_target_msc);
+                }
+            }
+            free(ev);
+        }
+        if (frame_ready && window->x11.frame.callback) {
+            dispatched++;
+            window->x11.frame.callback(window->x11.frame.id);
+        }
+    }
+    return dispatched;
+}
+// }}}
+
 static void
 handleEvents(monotonic_t timeout) {
     EVDBG("starting handleEvents(%.2f)", monotonic_t_to_s_double(timeout));
@@ -2362,6 +2497,9 @@ _glfwPlatformDestroyWindow(_GLFWwindow *window) {
 
     if (window->monitor) releaseMonitor(window);
 
+    destroyPresentEvents(window);
+    window->x11.frame.callback = NULL;
+
     if (window->x11.handle) {
         XDeleteContext(_glfw.x11.display, window->x11.handle, _glfw.x11.context);
         XUnmapWindow(_glfw.x11.display, window->x11.handle);
@@ -2937,6 +3075,8 @@ _glfwDispatchX11Events(void) {
 #if defined(__linux__)
     if (_glfw.joysticksInitialized) _glfwDetectJoystickConnectionLinux();
 #endif
+    // Events may have been read from the X connection since the last dispatch, for example, during rendering
+    dispatched += dispatchPresentEvents();
     dispatched += dispatch_x11_queued_events(XEventsQueued(_glfw.x11.display, QueuedAfterFlush));
 
     window = _glfw.x11.disabledCursorWindow;
@@ -2956,6 +3096,7 @@ _glfwDispatchX11Events(void) {
     // as something might have inserted events into the queue, but we want to guarantee
     // a flush.
     dispatched += dispatch_x11_queued_events(XEventsQueued(_glfw.x11.display, QueuedAlready));
+    dispatched += dispatchPresentEvents();
     return dispatched;
 }
 
@@ -3444,6 +3585,42 @@ glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {
 GLFWAPI bool
 glfwDBusMonitorSessionState(GLFWDBussessionstatefun callback) {
     return glfw_dbus_monitor_session_state(callback);
+}
+
+// The estimated interval between frames of the monitor the window is on, or zero if unknown
+GLFWAPI monotonic_t
+glfwX11GetFramePeriod(GLFWwindow *handle) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(0);
+    _GLFWwindow *window = (_GLFWwindow *)handle;
+    const unsigned n = window->x11.frame.num_period_samples;
+    if (!n) return 0;
+    monotonic_t samples[arraysz(window->x11.frame.period_samples)];
+    memcpy(samples, window->x11.frame.period_samples, n * sizeof(samples[0]));
+    qsort(samples, n, sizeof(samples[0]), compareMonotonic);
+    return samples[n / 2];
+}
+
+GLFWAPI bool
+glfwX11SupportsFrameEvents(void) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(false);
+    return _glfw.x11.present.available;
+}
+
+// Request a callback at the next vertical blank of the monitor the window is
+// on. Returns false if this is not supported, in which case the callback will
+// not be called. A request supersedes any previous pending request.
+GLFWAPI bool
+glfwX11RequestFrameEvent(GLFWwindow *handle, unsigned long long id, void (*callback)(unsigned long long id)) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(false);
+    _GLFWwindow *window = (_GLFWwindow *)handle;
+    if (!_glfw.x11.present.available || !ensurePresentEvents(window)) return false;
+    window->x11.frame.id = id;
+    window->x11.frame.callback = callback;
+    window->x11.frame.pending = true;
+    window->x11.frame.querying = true;
+    // A target MSC of zero with a divisor of zero completes immediately, reporting the current MSC
+    sendNotifyMSC(window, 0);
+    return true;
 }
 
 GLFWAPI int
