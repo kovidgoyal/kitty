@@ -125,6 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :doc:`Hints kitten </kittens/hints>`: Fix custom regex patterns with capture
+  groups inside lookarounds that overlap later matches finding no matches at all
+  when the text contains non-ASCII characters
+
 - Vertical tab bar: Fix clicking the blank line below a tab not activating the tab (:iss:`10810`)
 
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and

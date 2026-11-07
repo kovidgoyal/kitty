@@ -142,6 +142,9 @@ func TestHintMarking(t *testing.T) {
 	r(`* 2b687c2 - test1`, `2b687c2`)
 	opts.Regex = `(?<=got:    )sha256.{4}`
 	r(`got:    sha256-L8=`, `sha256-L8=`)
+	// captures inside lookarounds can overlap subsequent matches
+	opts.Regex = `([αβγ])(?=([αβγ]+))`
+	r(`αβγ`, `α`, `β`)
 
 	reset()
 	opts.Type = "word"
