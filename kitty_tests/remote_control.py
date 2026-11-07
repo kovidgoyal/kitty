@@ -4,6 +4,7 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from types import MethodType
 from typing import Any, cast
@@ -75,11 +76,13 @@ class TestRemoteControl(BaseTest):
                 with self.assertRaisesRegex(OSError, 'not a socket'):
                     listen(f'unix:{fpath}')
                 self.assertTrue(os.path.exists(fpath))
-                # Abstract sockets have no file and are unaffected
-                name = f'@kitty-test-listen-{os.getpid()}'
-                listen(f'unix:{name}')
-                with self.assertRaises(OSError):
+                if sys.platform.startswith('linux'):
+                    # Abstract sockets have no file and are unaffected. They
+                    # are only supported on Linux.
+                    name = f'@kitty-test-listen-{os.getpid()}'
                     listen(f'unix:{name}')
+                    with self.assertRaises(OSError):
+                        listen(f'unix:{name}')
             finally:
                 for close in closers:
                     close()
