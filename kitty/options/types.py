@@ -12,7 +12,7 @@ from kitty.fonts import FontSpec
 import kitty.fonts
 from kitty.options.utils import (
     AliasMap, KeyDefinition, KeyFallbackType, KeyMapOptions, KeyboardModeMap, MouseHideWait, MouseMap,
-    MouseMapping, NotifyOnCmdFinish, TabBarMarginHeight, URLMappings
+    MouseMapping, NotifyOnCmdFinish, RenderInterval, TabBarMarginHeight, URLMappings
 )
 import kitty.options.utils
 from kitty.types import FloatEdges
@@ -434,7 +434,7 @@ option_names = (
     'remember_window_position',
     'remember_window_size',
     'remote_control_password',
-    'repaint_delay',
+    'render_interval',
     'resize_debounce_time',
     'resize_in_steps',
     'restore_session_after_logout',
@@ -468,7 +468,6 @@ option_names = (
     'startup_session',
     'strip_trailing_spaces',
     'symbol_map',
-    'sync_to_monitor',
     'tab_activity_symbol',
     'tab_bar_align',
     'tab_bar_background',
@@ -653,7 +652,7 @@ class Options:
     remap_modifiers: dict[int, int] = {}
     remember_window_position: bool = False
     remember_window_size: bool = True
-    repaint_delay: int = 10
+    render_interval: RenderInterval = RenderInterval(sync_to_monitor=True, min_interval=0.0)
     resize_debounce_time: tuple[float, float] = (0.1, 0.5)
     resize_in_steps: bool = False
     restore_session_after_logout: bool = False
@@ -686,7 +685,6 @@ class Options:
     single_window_padding_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
     startup_session: str | None = None
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'
-    sync_to_monitor: bool = True
     tab_activity_symbol: str = ''
     tab_bar_align: choices_for_tab_bar_align = 'start'
     tab_bar_background: kitty.fast_data_types.Color | None = None

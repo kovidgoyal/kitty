@@ -3682,7 +3682,9 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
 
         PyObject *astep = PyDict_GetItemString(g, "animation_step");
         cg->animation_step = (astep && PyLong_Check(astep)) ? (monotonic_t)PyLong_AsLong(astep) : ANIMATION_SAMPLE_WAIT;
-        cg->animation_step = cg->animation_step == 0 ? MONOTONIC_T_MAX : MAX(cg->animation_step, OPT(repaint_delay));
+        // The rate at which frames are actually drawn is limited by the render_interval option,
+        // see animation_wakeup_floor()
+        cg->animation_step = cg->animation_step == 0 ? MONOTONIC_T_MAX : MAX(cg->animation_step, ms_to_monotonic_t(1ll));
 
         PyObject *ae_events = PyDict_GetItemString(g, "animation_end_events");
         if (is_seq(ae_events)) cg->animation_end_events = parse_anim_event_sequence(ae_events, p);

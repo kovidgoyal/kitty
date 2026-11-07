@@ -39,7 +39,9 @@ extern PyTypeObject Screen_Type;
 // Apple does not implement MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
-#define USE_RENDER_FRAMES (global_state.has_render_frames && OPT(sync_to_monitor))
+// Whether rendering is paced by render frames from the windowing system, see
+// the render_interval option
+#define USE_RENDER_FRAMES (global_state.has_render_frames && OPT(render_interval.sync_to_monitor))
 
 typedef struct {
     char *data;
@@ -126,6 +128,145 @@ static void
 set_maximum_wait(monotonic_t val) {
     if (val >= 0 && (val < maximum_wait || maximum_wait < 0)) maximum_wait = val;
 }
+
+// Frame pacing {{{
+// How often to retry rendering an OS Window whose buffers could not be swapped
+#define SWAP_RETRY_INTERVAL (10 * MONOTONIC_T_1e6)
+// The minimum interval between redraws used when syncing to the monitor
+// without render frames, which is the default value of the removed
+// repaint_delay option.
+#define NO_RENDER_FRAMES_MIN_INTERVAL (10 * MONOTONIC_T_1e6)
+
+// The minimum time between redraws of an OS Window
+static monotonic_t
+min_render_interval(void) {
+    monotonic_t ans = OPT(render_interval.min_interval);
+    // Without render frames, syncing to the monitor is done by blocking
+    // buffer swaps, so throttle rendering to avoid the main loop spending
+    // most of its time blocked in swaps.
+    if (OPT(render_interval.sync_to_monitor) && !global_state.has_render_frames) ans = MAX(ans, NO_RENDER_FRAMES_MIN_INTERVAL);
+    return ans;
+}
+
+// The smallest delay to use when waking up the main loop to draw the next frame of an animation.
+// A max wait of zero causes key input processing to be slow, see https://github.com/kovidgoyal/kitty/pull/8066
+static monotonic_t
+animation_wakeup_floor(void) {
+    return MAX(min_render_interval(), ms_to_monotonic_t(1ll));
+}
+
+// Ensure the main loop ticks again in time to draw the next frame of a continuous animation
+static void
+request_animation_frame(OSWindow *w) {
+    // When syncing to the monitor, the next render frame wakes up the main
+    // loop when it is time to draw the next frame.
+    if (USE_RENDER_FRAMES) w->tick_on_render_frame = true;
+    else set_maximum_wait(animation_wakeup_floor());
+}
+
+// Whether a render frame is requested after every render. On X11 frames are
+// requested only when needed, since a pending frame request interferes with
+// the GPU driver presenting buffers on some X servers, notably Xwayland,
+// increasing latency.
+#ifdef __APPLE__
+#define RENDER_FRAMES_REQUESTED_LAZILY false
+#else
+#define RENDER_FRAMES_REQUESTED_LAZILY (!global_state.is_wayland)
+#endif
+
+#ifndef __APPLE__
+// The time after which to render even if a frame requested lazily, see
+// RENDER_FRAMES_REQUESTED_LAZILY, has not arrived. Some X servers, notably
+// Xwayland, can fail to report vertical blanks for long periods. If frames
+// have been arriving, a missing frame is a glitch, so wait only two frame
+// periods, otherwise the window is likely hidden, so wait longer.
+static monotonic_t
+lazy_render_frame_deadline(OSWindow *w) {
+    const monotonic_t period = os_window_frame_period(w);
+    const bool frames_arriving = w->last_render_frame_received_at > 0 && w->render_frame_requested_at - w->last_render_frame_received_at < 4 * period;
+    return w->render_frame_requested_at + (frames_arriving ? 2 * period : RENDER_FRAME_STALL_TIMEOUT);
+}
+#endif
+
+static bool
+no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_wait) {
+    bool ans = now - w->last_render_frame_received_at > max_wait;
+    if (ans && global_state.debug_rendering) {
+        if (global_state.is_wayland) {
+            log_error("No render frame received in %.2f seconds", monotonic_t_to_s_double(max_wait));
+        } else {
+            log_error("No render frame received in %.2f seconds, re-requesting", monotonic_t_to_s_double(max_wait));
+        }
+    }
+    return ans;
+}
+
+// Returns true if the OS Window must not be rendered now, because of the render_interval option
+static bool
+is_render_deferred_by_frame_pacing(OSWindow *w, monotonic_t now) {
+    // Rendering must be retried till the buffers are swapped successfully,
+    // for example, when the window is first shown.
+    if (w->keep_rendering_till_swap) return false;
+    const bool is_thumbnail = w->id == global_state.thumbnail_callback.os_window;
+    if (!is_thumbnail) {
+        const monotonic_t min_interval = min_render_interval();
+        if (min_interval > 0 && w->last_rendered_at) {
+            const monotonic_t since_last_render = now - w->last_rendered_at;
+            if (since_last_render < min_interval) {
+                set_maximum_wait(min_interval - since_last_render);
+                return true;
+            }
+        }
+    }
+    if (USE_RENDER_FRAMES) {
+        if (w->render_state == RENDER_FRAME_READY) return false;
+#ifndef __APPLE__
+        if (RENDER_FRAMES_REQUESTED_LAZILY) {
+            if (w->render_state == RENDER_FRAME_NOT_REQUESTED) {
+                // Render immediately if at least a frame period has elapsed
+                // since the last render, as then a vertical blank has happened since it.
+                if (now - w->last_rendered_at >= os_window_frame_period(w)) return false;
+                request_frame_render(w);
+                if (w->render_state == RENDER_FRAME_READY) return false;
+            }
+            const monotonic_t deadline = lazy_render_frame_deadline(w);
+            if (now >= deadline || is_thumbnail) return false;
+            set_maximum_wait(deadline - now);
+            w->tick_on_render_frame = true;
+            return true;
+        }
+#endif
+        if (global_state.is_wayland) {
+            // Never re-request frames on Wayland, as compositors legitimately withhold them
+            // for hidden windows, see https://github.com/kovidgoyal/kitty/issues/10597
+            if (w->render_state == RENDER_FRAME_NOT_REQUESTED) request_frame_render(w);
+            else (void)no_render_frame_received_recently(w, now, RENDER_FRAME_STALL_TIMEOUT);
+        } else {
+            if (w->render_state == RENDER_FRAME_NOT_REQUESTED ||
+                (now - w->render_frame_requested_at > RENDER_FRAME_STALL_TIMEOUT && no_render_frame_received_recently(w, now, RENDER_FRAME_STALL_TIMEOUT)))
+                request_frame_render(w);
+            // Ensure the main loop wakes up to re-request the frame if it is lost
+            set_maximum_wait(RENDER_FRAME_STALL_TIMEOUT);
+        }
+        if (is_thumbnail) return false;
+        // dont respect render frames soon after a resize on Wayland as they cause flicker because
+        // we want to fill the newly resized buffer ASAP, not at compositors convenience
+        if (global_state.is_wayland && (now - w->viewport_resized_at) <= s_double_to_monotonic_t(1)) return false;
+        w->tick_on_render_frame = true;
+        return true;
+    }
+    if (global_state.is_wayland && !is_thumbnail) {
+        // When not syncing to the monitor, frames are still requested after every render on Wayland,
+        // since the compositor withholding them is how it signals that the window is hidden. Stop
+        // rendering till it sends a frame, which wakes up the main loop.
+        if (w->render_state == RENDER_FRAME_REQUESTED && now - w->render_frame_requested_at > RENDER_FRAME_STALL_TIMEOUT) {
+            w->tick_on_render_frame = true;
+            return true;
+        }
+    }
+    return false;
+}
+// }}}
 
 #define KITTY_HANDLED_SIGNALS SIGINT, SIGHUP, SIGTERM, SIGCHLD, SIGUSR1, SIGUSR2, 0
 
@@ -963,9 +1104,7 @@ prepare_to_render_os_window(
                     bool was_rendering = tab->cursor_trail.needs_render;
                     if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
                         needs_render = true;
-                        // A max wait of zero causes key input processing to be
-                        // slow so handle the case of OPT(repaint_delay) == 0, see https://github.com/kovidgoyal/kitty/pull/8066
-                        set_maximum_wait(MAX(OPT(repaint_delay), ms_to_monotonic_t(1ll)));
+                        request_animation_frame(os_window);
                     } else if (OPT(cursor_trail) > now - WD.screen->cursor->position_changed_by_client_at) {
                         // If update_cursor_trail failed due to time threshold, the trail animation
                         // should be evaluated again shortly. Schedule next update when enough time
@@ -1034,7 +1173,7 @@ prepare_to_render_os_window(
         // Wake up for the next animation frame and for the moment a duration
         // bounded animation expires. Static groups (animation_step 0) have
         // min_step == MONOTONIC_T_MAX and so schedule no periodic wakeup.
-        if (min_step < MONOTONIC_T_MAX) set_maximum_wait(min_step);
+        if (min_step < MONOTONIC_T_MAX) set_maximum_wait(MAX(min_step, animation_wakeup_floor()));
         if (os_window->shader_anim.next_end_at < MONOTONIC_T_MAX) set_maximum_wait(os_window->shader_anim.next_end_at - now);
     }
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
@@ -1127,22 +1266,24 @@ render_prepared_os_window(
     os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
     if (os_window->redraw_count) os_window->redraw_count--;
-    if (USE_RENDER_FRAMES) request_frame_render(os_window);
+#ifndef __APPLE__
+    if (USE_RENDER_FRAMES && RENDER_FRAMES_REQUESTED_LAZILY) {
+        // Request the next frame now only if an animation is waiting for it
+        if (os_window->tick_on_render_frame) {
+            request_frame_render(os_window);
+            // Render the next frame even if the frame is never reported
+            set_maximum_wait(MAX(0, lazy_render_frame_deadline(os_window) - monotonic()));
+        } else os_window->render_state = RENDER_FRAME_NOT_REQUESTED;
+    } else
+#endif
+        if (USE_RENDER_FRAMES || global_state.is_wayland) {
+        // On Wayland, render frames are also requested when not syncing to the
+        // monitor, as the compositor withholding them is how it signals that the
+        // window is hidden, see is_render_deferred_by_frame_pacing()
+        request_frame_render(os_window);
+    }
 #undef WD
 #undef TD
-}
-
-static bool
-no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_wait) {
-    bool ans = now - w->last_render_frame_received_at > max_wait;
-    if (ans && global_state.debug_rendering) {
-        if (global_state.is_wayland) {
-            log_error("No render frame received in %.2f seconds", monotonic_t_to_s_double(max_wait));
-        } else {
-            log_error("No render frame received in %.2f seconds, re-requesting", monotonic_t_to_s_double(max_wait));
-        }
-    }
-    return ans;
 }
 
 bool
@@ -1153,14 +1294,7 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
         if (w->is_focused) change_menubar_title(w->window_title);
         return false;
     }
-    if (!w->keep_rendering_till_swap && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
-        if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
-        if (w->id != global_state.thumbnail_callback.os_window) {
-            // dont respect render frames soon after a resize on Wayland as they cause flicker because
-            // we want to fill the newly resized buffer ASAP, not at compositors convenience
-            if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) { return false; }
-        }
-    }
+    if (is_render_deferred_by_frame_pacing(w, now)) return false;
     w->render_calls++;
     make_os_window_context_current(w);
     bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress || global_state.thumbnail_callback.os_window == w->id;
@@ -1202,19 +1336,11 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
 }
 
 static void
-render(monotonic_t now, bool input_read) {
-    EVDBG("input_read: %d, check_for_active_animated_images: %d\n", input_read, global_state.check_for_active_animated_images);
-    static monotonic_t last_render_at = MONOTONIC_T_MIN;
-    monotonic_t time_since_last_render = last_render_at == MONOTONIC_T_MIN ? OPT(repaint_delay) : now - last_render_at;
-    if (!input_read && time_since_last_render < OPT(repaint_delay) && !global_state.thumbnail_callback.os_window) {
-        set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
-        return;
-    }
-
+render(monotonic_t now) {
+    EVDBG("check_for_active_animated_images: %d\n", global_state.check_for_active_animated_images);
     const bool scan_for_animated_images = global_state.check_for_active_animated_images;
     global_state.check_for_active_animated_images = false;
     call_boss(cache_process_data, "O", Py_True);
-    bool waiting_for_frame = false;
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
@@ -1222,22 +1348,17 @@ render(monotonic_t now, bool input_read) {
         // rendering is done in cocoa_os_window_resized()
         if (w->live_resize.in_progress) continue;
 #endif
-        // A window waiting for a render frame cannot paint now, so it must not delay the
-        // paint when the frame arrives, otherwise the next output paints it mid-burst
-        if (!w->keep_rendering_till_swap && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY && should_os_window_be_rendered(w))
-            waiting_for_frame = true;
         if (!render_os_window(w, now, scan_for_animated_images)) {
             // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
             if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
         }
         if (w->keep_rendering_till_swap) {
             debug_rendering("Re-rendering window %llu on the %u attempt since swap did not happen\n", w->id, w->keep_rendering_till_swap);
-            set_maximum_wait(OPT(repaint_delay));
+            set_maximum_wait(MAX(min_render_interval(), SWAP_RETRY_INTERVAL));
             w->needs_render = true;
             w->keep_rendering_till_swap--;
         }
     }
-    if (!waiting_for_frame) last_render_at = now;
     call_boss(cache_process_data, "O", Py_False);
 #undef TD
 }
@@ -1639,15 +1760,11 @@ process_global_state(void *data) {
     ChildMonitor *self = data;
     maximum_wait = -1;
     bool state_check_timer_enabled = false;
-    bool input_read = false;
 
     monotonic_t now = monotonic();
-    if (global_state.has_pending_resizes) {
-        process_pending_resizes(now);
-        input_read = true;
-    }
-    if (parse_input(self)) input_read = true;
-    render(now, input_read);
+    if (global_state.has_pending_resizes) process_pending_resizes(now);
+    parse_input(self);
+    render(now);
 #ifdef __APPLE__
     if (has_cocoa_pending_actions) {
         process_cocoa_pending_actions();

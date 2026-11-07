@@ -84,7 +84,12 @@ typedef struct Options {
     char_type *select_by_word_characters_forward;
     color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color,
         window_title_bar_active_foreground, window_title_bar_active_background, window_title_bar_inactive_foreground, window_title_bar_inactive_background;
-    monotonic_t repaint_delay;
+    struct {
+        // When true redraws are paced by render frames from the windowing system
+        bool sync_to_monitor;
+        // The minimum time between redraws of an OS window, zero for no limit
+        monotonic_t min_interval;
+    } render_interval;
     struct {
         bool on_cross, on_drop;
     } focus_follows_mouse;
@@ -129,7 +134,6 @@ typedef struct Options {
     DisableLigature disable_ligatures;
     bool force_ltr;
     bool resize_in_steps;
-    bool sync_to_monitor;
     bool close_on_child_death;
     // remap_modifier: modifier_remap[i] is the mask that the modifier at bit i
     // is presented as, or 0 to leave it alone. modifier_remap_mask is the OR of
@@ -484,6 +488,9 @@ typedef struct Tab {
 } Tab;
 
 enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
+// How long to wait for a requested render frame before assuming it is lost, or
+// on Wayland, that the compositor is withholding frames because the window is hidden
+#define RENDER_FRAME_STALL_TIMEOUT (250 * MONOTONIC_T_1e6)
 typedef enum { NO_CLOSE_REQUESTED, CONFIRMABLE_CLOSE_REQUESTED, CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED } CloseRequest;
 
 typedef struct LiveResizeInfo {
@@ -644,7 +651,10 @@ typedef struct OSWindow {
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
     enum RENDER_STATE render_state;
-    monotonic_t last_render_frame_received_at, last_rendered_at;
+    monotonic_t last_render_frame_received_at, render_frame_requested_at, last_rendered_at;
+    // Whether to wake up the main loop when the next render frame arrives, as
+    // something is waiting for it, see is_render_deferred_by_frame_pacing()
+    bool tick_on_render_frame;
     uint64_t render_calls;
     uint32_t frame_counter;
     id_type last_focused_counter;
@@ -849,6 +859,10 @@ void send_prerendered_sprites_for_window(OSWindow *w);
 #endif
 void request_frame_render(OSWindow *w);
 void request_tick_callback(void);
+void apply_render_interval_to_os_window(OSWindow *w);
+#ifndef __APPLE__
+monotonic_t os_window_frame_period(OSWindow *w);
+#endif
 typedef void (*timer_callback_fun)(id_type, void *);
 typedef void (*tick_callback_fun)(void *);
 id_type add_main_loop_timer(monotonic_t interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback);
