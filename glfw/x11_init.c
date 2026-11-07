@@ -303,6 +303,39 @@ read_xi_scroll_devices(void) {
     _glfwPopErrorTrapIgnoredX11();
 }
 
+// The Present extension is used only for render frames, so it is optional.
+// libxcb-present is loaded at runtime so that it is not a build or runtime dependency.
+static void
+initPresentExtension(void) {
+    _glfw.x11.present.handle = _glfw_dlopen("libxcb-present.so.0");
+    if (!_glfw.x11.present.handle) return;
+    glfw_dlsym(_glfw.x11.present.id, _glfw.x11.present.handle, "xcb_present_id");
+    glfw_dlsym(_glfw.x11.present.select_input, _glfw.x11.present.handle, "xcb_present_select_input");
+    glfw_dlsym(_glfw.x11.present.select_input_checked, _glfw.x11.present.handle, "xcb_present_select_input_checked");
+    glfw_dlsym(_glfw.x11.present.notify_msc, _glfw.x11.present.handle, "xcb_present_notify_msc");
+    glfw_dlsym(_glfw.x11.present.query_version, _glfw.x11.present.handle, "xcb_present_query_version");
+    glfw_dlsym(_glfw.x11.present.query_version_reply, _glfw.x11.present.handle, "xcb_present_query_version_reply");
+    if (!_glfw.x11.present.id || !_glfw.x11.present.select_input || !_glfw.x11.present.select_input_checked || !_glfw.x11.present.notify_msc ||
+        !_glfw.x11.present.query_version || !_glfw.x11.present.query_version_reply) {
+        debug_rendering("libxcb-present is missing required functions, not using the Present extension\n");
+        return;
+    }
+    xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);
+    const xcb_query_extension_reply_t *ext = xcb_get_extension_data(conn, _glfw.x11.present.id);
+    if (!ext || !ext->present) {
+        debug_rendering("The X server does not support the Present extension\n");
+        return;
+    }
+    xcb_generic_error_t *err = NULL;
+    GLFWXcbPresentQueryVersionReply *reply = _glfw.x11.present.query_version_reply(conn, _glfw.x11.present.query_version(conn, 1, 0), &err);
+    if (reply) {
+        _glfw.x11.present.available = true;
+        debug_rendering("Using the X11 Present extension version %u.%u for render frames\n", reply->major_version, reply->minor_version);
+        free(reply);
+    }
+    free(err);
+}
+
 // Look for and initialize supported X11 extensions
 //
 static bool
@@ -447,6 +480,8 @@ initExtensions(void) {
             if (XShapeQueryVersion(_glfw.x11.display, &_glfw.x11.xshape.major, &_glfw.x11.xshape.minor)) { _glfw.x11.xshape.available = true; }
         }
     }
+
+    initPresentExtension();
 
     _glfw.x11.xkb.major = 1;
     _glfw.x11.xkb.minor = 0;
@@ -911,6 +946,12 @@ _glfwPlatformTerminate(void) {
         _glfw_dlclose(_glfw.x11.xi.handle);
         _glfw.x11.xi.handle = NULL;
     }
+
+    if (_glfw.x11.present.handle) {
+        _glfw_dlclose(_glfw.x11.present.handle);
+        _glfw.x11.present.handle = NULL;
+    }
+    _glfw.x11.present.available = false;
 
     finalizePollData(&_glfw.x11.eventLoopData);
 }

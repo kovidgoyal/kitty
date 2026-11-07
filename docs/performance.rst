@@ -12,11 +12,21 @@ rendering, to improve smoothness. Parsing of the byte stream is done using
 maximum performance. Updates to the screen typically require sending just a few
 bytes to the GPU.
 
-Output from programs is parsed as soon as it is received. The config option
-:opt:`repaint_delay` controls the artificial delay introduced into the render
-loop to reduce CPU usage. See :ref:`conf-kitty-performance` for details. See also the :opt:`sync_to_monitor`
-option to further decrease latency at the cost of some `screen tearing
-<https://en.wikipedia.org/wiki/Screen_tearing>`__ while scrolling.
+Output from programs is parsed as soon as it is received. kitty redraws the
+screen only when something changes and the pacing of redraws is controlled by
+the :opt:`render_interval` option. By default, redraws are synced to the
+refresh rate of the monitor, using the render frames provided by the windowing
+system: the Wayland frame callbacks, the macOS display link, or on X11, the
+vertical blank notifications of the Present extension. This means kitty never
+draws frames that cannot be displayed, does not cause `screen tearing
+<https://en.wikipedia.org/wiki/Screen_tearing>`__, and stops drawing when its
+window is hidden. The first redraw after the screen has been idle happens
+immediately, so syncing to the monitor does not add latency to typing.
+
+You can also ask kitty to redraw on a schedule instead, using a fixed minimum
+interval between frames, or cap the frame rate while still syncing to the
+monitor, for example, to save energy on high refresh rate monitors. See
+:ref:`conf-kitty-performance` for details.
 
 Benchmarks
 -------------
@@ -36,9 +46,19 @@ class keyboard to screen latency.
 Note that to minimize latency at the expense of more energy usage, use the
 following settings in kitty.conf::
 
-    repaint_delay 2
-    sync_to_monitor no
+    render_interval 2
     wayland_enable_ime no
+
+This makes kitty redraw as soon as possible after something changes, rather
+than waiting for the next refresh of the monitor, while drawing at most 500
+frames a second. On X11 without a compositor, this can cause screen tearing.
+On Wayland, the compositor will still only show one frame per refresh of the
+monitor, so the gains are small.
+
+To reduce energy usage instead, you can limit the frame rate, while still
+syncing to the monitor, for example, to about 30 frames a second, with::
+
+    render_interval monitor 33
 
 `Hardware based measurement on macOS
 <https://thume.ca/2020/05/20/making-a-latency-tester/>`__ show that kitty and
