@@ -40,6 +40,50 @@ class Boss:
 
 
 class TestRemoteControl(BaseTest):
+    def test_listen_on_stale_socket(self):
+        import socket
+        from collections.abc import Callable
+
+        from kitty.boss import listen_on
+
+        unlinked: list[str] = []
+        closers: list[Callable[[], None]] = []
+        fake_atexit = cast(Any, Mock(unlink=unlinked.append))
+
+        def listen(spec: str) -> str:
+            return listen_on(spec, fake_atexit)[1]
+
+        with patch('atexit.register', closers.append), tempfile.TemporaryDirectory() as tdir:
+            try:
+                path = os.path.join(tdir, 'sock')
+                # A socket left behind by a process that was killed
+                stale = socket.socket(socket.AF_UNIX)
+                stale.bind(path)
+                stale.close()
+                self.assertTrue(os.path.exists(path))
+                self.ae(listen(f'unix:{path}'), f'unix:{path}')
+                self.ae(unlinked, [path])
+                # The socket is now live, so a second listener must fail and not remove it
+                with self.assertRaisesRegex(OSError, 'Another process is already listening'):
+                    listen(f'unix:{path}')
+                with socket.socket(socket.AF_UNIX) as c:
+                    c.connect(path)
+                # A file that is not a socket must never be removed
+                fpath = os.path.join(tdir, 'file')
+                with open(fpath, 'w') as f:
+                    f.write('x')
+                with self.assertRaisesRegex(OSError, 'not a socket'):
+                    listen(f'unix:{fpath}')
+                self.assertTrue(os.path.exists(fpath))
+                # Abstract sockets have no file and are unaffected
+                name = f'@kitty-test-listen-{os.getpid()}'
+                listen(f'unix:{name}')
+                with self.assertRaises(OSError):
+                    listen(f'unix:{name}')
+            finally:
+                for close in closers:
+                    close()
+
     def test_set_font_size_mapping(self):
         from kitty.boss import Boss as KittyBoss
         from kitty.rc.base import RemoteControlErrorWithoutTraceback
