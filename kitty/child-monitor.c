@@ -194,16 +194,24 @@ lazy_render_frame_deadline(OSWindow *w) {
 }
 #endif
 
+// Report a stall in the delivery of render frames, at most once per stall, since
+// stalls can last indefinitely, for example, while a Wayland window is hidden,
+// during which this is called on every main loop wakeup
+static void
+report_render_frame_stall(OSWindow *w, monotonic_t waited) {
+    if (!global_state.debug_rendering || w->render_frame_stall_reported) return;
+    w->render_frame_stall_reported = true;
+    if (global_state.is_wayland) {
+        log_error("No render frame received in %.2f seconds", monotonic_t_to_s_double(waited));
+    } else {
+        log_error("No render frame received in %.2f seconds, rendering without them", monotonic_t_to_s_double(waited));
+    }
+}
+
 static bool
 no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_wait) {
     bool ans = now - w->last_render_frame_received_at > max_wait;
-    if (ans && global_state.debug_rendering) {
-        if (global_state.is_wayland) {
-            log_error("No render frame received in %.2f seconds", monotonic_t_to_s_double(max_wait));
-        } else {
-            log_error("No render frame received in %.2f seconds, rendering without them", monotonic_t_to_s_double(max_wait));
-        }
-    }
+    if (ans) report_render_frame_stall(w, max_wait);
     return ans;
 }
 
@@ -236,7 +244,13 @@ is_render_deferred_by_frame_pacing(OSWindow *w, monotonic_t now) {
                 if (w->render_state == RENDER_FRAME_READY) return false;
             }
             const monotonic_t deadline = lazy_render_frame_deadline(w);
-            if (now >= deadline || is_thumbnail) return false;
+            if (now >= deadline) {
+                // Missing a frame while they are arriving is a glitch, only
+                // report when the X server has stopped reporting vertical blanks
+                if (deadline - w->render_frame_requested_at >= RENDER_FRAME_STALL_TIMEOUT) report_render_frame_stall(w, now - w->render_frame_requested_at);
+                return false;
+            }
+            if (is_thumbnail) return false;
             set_maximum_wait(deadline - now);
             w->tick_on_render_frame = true;
             return true;

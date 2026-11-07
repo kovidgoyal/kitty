@@ -3763,6 +3763,7 @@ static void
 render_frame_received(OSWindow *w) {
     w->render_state = RENDER_FRAME_READY;
     w->last_render_frame_received_at = monotonic();
+    w->render_frame_stall_reported = false;
     // Frames are often requested after every render, so only wake up the main
     // loop if something is waiting for this frame, otherwise animations would
     // be sampled at the monitor refresh rate.
