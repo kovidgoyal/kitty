@@ -19,6 +19,8 @@ typedef struct _GLFWDisplayLinkNS {
     CADisplayLink *displayLink;
     CGDirectDisplayID displayID;
     monotonic_t lastRenderFrameRequestedAt, first_unserviced_render_frame_request_at;
+    // Whether the link being stuck has been reported since it last delivered a frame
+    bool stuck_reported;
 } _GLFWDisplayLinkNS;
 
 static struct {
@@ -185,7 +187,12 @@ _glfwRequestRenderFrame(_GLFWwindow *w) {
                     destroy_display_link(dl);
                     create_display_link(dl);
                     if (dl->displayLink) link_start(dl->displayLink);
-                    _glfwInputError(GLFW_PLATFORM_ERROR, "Display link stuck possibly because of sleep/screensaver + Apple's incompetence, recreating.");
+                    // The link is recreated every second while stuck, which can be for long
+                    // periods, for example, while the display is asleep, so report it only once
+                    if (!dl->stuck_reported) {
+                        dl->stuck_reported = true;
+                        _glfwInputError(GLFW_PLATFORM_ERROR, "Display link stuck possibly because of sleep/screensaver + Apple's incompetence, recreating.");
+                    }
                 }
             }
         } else if (dl->displayLink && dl->lastRenderFrameRequestedAt && now - dl->lastRenderFrameRequestedAt >= DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL) {
@@ -218,7 +225,10 @@ _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
     // Reset before calling the callbacks so that any render frame requests
     // they make are tracked as unserviced.
     for (size_t i = 0; i < displayLinks.count; i++) {
-        if (displayLinks.entries[i].displayID == displayID) displayLinks.entries[i].first_unserviced_render_frame_request_at = 0;
+        if (displayLinks.entries[i].displayID == displayID) {
+            displayLinks.entries[i].first_unserviced_render_frame_request_at = 0;
+            displayLinks.entries[i].stuck_reported = false;
+        }
     }
     for (_GLFWwindow *w = _glfw.windowListHead; w; w = w->next) {
         if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
