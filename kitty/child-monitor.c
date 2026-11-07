@@ -133,6 +133,9 @@ set_maximum_wait(monotonic_t val) {
 // The minimum interval between renders of an OS Window that are not paced by
 // render frames, as happens soon after a resize on Wayland (120 FPS)
 #define POST_RESIZE_MIN_RENDER_INTERVAL (MONOTONIC_T_1e9 / 120)
+// The minimum interval between renders of an OS Window on macOS when the
+// display link has stopped delivering render frames (60 FPS)
+#define STALLED_RENDER_FRAMES_MIN_RENDER_INTERVAL (MONOTONIC_T_1e9 / 60)
 // How often to retry rendering an OS Window whose buffers could not be swapped
 #define SWAP_RETRY_INTERVAL (10 * MONOTONIC_T_1e6)
 // The minimum interval between redraws used when syncing to the monitor
@@ -198,7 +201,7 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
         if (global_state.is_wayland) {
             log_error("No render frame received in %.2f seconds", monotonic_t_to_s_double(max_wait));
         } else {
-            log_error("No render frame received in %.2f seconds, re-requesting", monotonic_t_to_s_double(max_wait));
+            log_error("No render frame received in %.2f seconds, rendering without them", monotonic_t_to_s_double(max_wait));
         }
     }
     return ans;
@@ -244,12 +247,27 @@ is_render_deferred_by_frame_pacing(OSWindow *w, monotonic_t now) {
             // for hidden windows, see https://github.com/kovidgoyal/kitty/issues/10597
             if (w->render_state == RENDER_FRAME_NOT_REQUESTED) request_frame_render(w);
             else (void)no_render_frame_received_recently(w, now, RENDER_FRAME_STALL_TIMEOUT);
+        } else if (w->render_state == RENDER_FRAME_NOT_REQUESTED) {
+            request_frame_render(w);
         } else {
-            if (w->render_state == RENDER_FRAME_NOT_REQUESTED ||
-                (now - w->render_frame_requested_at > RENDER_FRAME_STALL_TIMEOUT && no_render_frame_received_recently(w, now, RENDER_FRAME_STALL_TIMEOUT)))
-                request_frame_render(w);
-            // Ensure the main loop wakes up to re-request the frame if it is lost
-            set_maximum_wait(RENDER_FRAME_STALL_TIMEOUT);
+            // Only reached on macOS, as frames are requested lazily on X11. Here
+            // render_frame_requested_at is the time of the oldest unanswered request,
+            // see request_frame_render()
+            const monotonic_t stalled_at = w->render_frame_requested_at + RENDER_FRAME_STALL_TIMEOUT;
+            if (now >= stalled_at) {
+                // The display link has stopped delivering frames, for example, while the display
+                // is asleep. Render without waiting for them, at a limited rate. Frames are
+                // re-requested after every render, which lets glfw recreate a stuck display link.
+                // No wakeup is scheduled here, so an idle window does not cause periodic wakeups.
+                (void)no_render_frame_received_recently(w, now, RENDER_FRAME_STALL_TIMEOUT);
+                if (is_thumbnail) return false;
+                const monotonic_t since_last_render = now - w->last_rendered_at;
+                if (since_last_render >= STALLED_RENDER_FRAMES_MIN_RENDER_INTERVAL) return false;
+                set_maximum_wait(STALLED_RENDER_FRAMES_MIN_RENDER_INTERVAL - since_last_render);
+                return true;
+            }
+            // Ensure the main loop wakes up to render if the frame never arrives
+            set_maximum_wait(stalled_at - now);
         }
         if (is_thumbnail) return false;
         // dont respect render frames soon after a resize on Wayland as they cause flicker because
@@ -1298,14 +1316,14 @@ render_prepared_os_window(
 }
 
 bool
-render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
+render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images, bool ignore_frame_pacing) {
     if (!w->num_tabs) return false;
     if (!should_os_window_be_rendered(w) && global_state.thumbnail_callback.os_window != w->id) {
         update_os_window_title(w);
         if (w->is_focused) change_menubar_title(w->window_title);
         return false;
     }
-    if (is_render_deferred_by_frame_pacing(w, now)) return false;
+    if (!ignore_frame_pacing && is_render_deferred_by_frame_pacing(w, now)) return false;
     w->render_calls++;
     make_os_window_context_current(w);
     bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress || global_state.thumbnail_callback.os_window == w->id;
@@ -1359,7 +1377,7 @@ render(monotonic_t now) {
         // rendering is done in cocoa_os_window_resized()
         if (w->live_resize.in_progress) continue;
 #endif
-        if (!render_os_window(w, now, scan_for_animated_images)) {
+        if (!render_os_window(w, now, scan_for_animated_images, false)) {
             // since we didn't scan the window for animations, force a rescan on next wakeup/render frame
             if (scan_for_animated_images) global_state.check_for_active_animated_images = true;
         }

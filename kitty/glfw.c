@@ -430,8 +430,10 @@ cocoa_out_of_sequence_render(OSWindow *window) {
     bool rendered = false;
     if (window->fonts_data->sprite_map) {
         window->needs_render = true;
-        window->render_state = RENDER_FRAME_READY;
-        rendered = render_os_window(window, monotonic(), true);
+        // The window must be drawn now, as the OS expects its contents to be
+        // updated synchronously, for example, during a live resize, otherwise
+        // it is blanked below. Ignore both render frames and render_interval.
+        rendered = render_os_window(window, monotonic(), true, true);
     }
     if (!rendered) {
         debug_rendering("Cocoa out of sequence render did not happen\n");
@@ -3801,8 +3803,11 @@ cocoa_frame_request_callback(GLFWwindow *window) {
 void
 request_frame_render(OSWindow *w) {
     glfwCocoaRequestRenderFrame(w->handle, cocoa_frame_request_callback);
+    // Track the oldest unanswered request, so that a display link that has
+    // stopped delivering frames is detected even though frames are
+    // re-requested after every render, see is_render_deferred_by_frame_pacing()
+    if (w->render_state != RENDER_FRAME_REQUESTED) w->render_frame_requested_at = monotonic();
     w->render_state = RENDER_FRAME_REQUESTED;
-    w->render_frame_requested_at = monotonic();
 }
 
 static PyObject *

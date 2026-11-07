@@ -897,7 +897,7 @@ bool set_wheel_mappings(PyObject *py_opts, Options *opts);
 bool set_url_mappings(PyObject *py_opts, Options *opts);
 void update_menu_bar_title(PyObject *title UNUSED);
 void change_live_resize_state(OSWindow *, bool);
-bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images);
+bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images, bool ignore_frame_pacing);
 void update_mouse_pointer_shape(void);
 bool update_link_hover_for_modifiers(int old_mods, int new_mods);
 void link_hover_cleared_by_output(Screen *screen);
