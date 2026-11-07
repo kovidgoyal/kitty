@@ -4692,7 +4692,7 @@ Detailed list of changes
 - macOS: When closing a top-level window only switch focus to the previous kitty
   window if it is on the same workspace (:iss:`1379`)
 
-- macOS: Fix :opt:`sync_to_monitor` not working on Mojave.
+- macOS: Fix `sync_to_monitor` not working on Mojave.
 
 - macOS: Use the system cursor blink interval by default
   :opt:`cursor_blink_interval`.
