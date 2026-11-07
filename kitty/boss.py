@@ -3,6 +3,7 @@
 
 # Imports {{{
 import base64
+import errno
 import json
 import os
 import re
@@ -244,12 +245,56 @@ class Atexit:
         self._write_line(f'rmtree {path}')
 
 
+def remove_stale_unix_socket(socket_path: str) -> bool:
+    """Remove the UNIX socket at socket_path if no process is listening on
+    it, for example, because the kitty that created it was killed. Returns True
+    if the socket was removed."""
+    import stat
+
+    try:
+        if not stat.S_ISSOCK(os.lstat(socket_path).st_mode):
+            return False
+    except FileNotFoundError:
+        return True
+    with socket.socket(socket.AF_UNIX) as probe:
+        try:
+            probe.connect(socket_path)
+        except ConnectionRefusedError:
+            pass  # stale
+        except OSError:
+            return False
+        else:
+            return False  # some process is listening on it
+    try:
+        os.unlink(socket_path)
+    except FileNotFoundError:
+        pass
+    return True
+
+
 def listen_on(spec: str, robust_atexit: Atexit) -> tuple[int, str]:
     import socket
 
     family, address, socket_path = parse_address_spec(spec)
     s = socket.socket(family)
-    s.bind(address)
+    try:
+        s.bind(address)
+    except OSError as err:
+        if err.errno != errno.EADDRINUSE or not socket_path:
+            s.close()
+            raise
+        if not remove_stale_unix_socket(socket_path):
+            s.close()
+            import stat
+
+            try:
+                is_socket = stat.S_ISSOCK(os.lstat(socket_path).st_mode)
+            except OSError:
+                is_socket = False
+            if is_socket:
+                raise OSError(err.errno, f'Another process is already listening on {socket_path}') from err
+            raise OSError(err.errno, f'A file that is not a socket already exists at {socket_path}') from err
+        s.bind(address)
     if family == socket.AF_UNIX and socket_path:
         robust_atexit.unlink(socket_path)
     s.listen()
@@ -452,8 +497,8 @@ class Boss:
         if args.listen_on and self.allow_remote_control in ('y', 'socket', 'socket-only', 'password'):
             try:
                 listen_fd, self.listening_on = listen_on(args.listen_on, self.atexit)
-            except Exception:
-                self.misc_config_errors.append(f'Invalid listen_on={args.listen_on}, ignoring')
+            except Exception as err:
+                self.misc_config_errors.append(f'Failed to listen on listen_on={args.listen_on} with error: {err}, ignoring')
                 log_error(self.misc_config_errors[-1])
         self.child_monitor: ChildMonitor = ChildMonitor(
             self.on_child_death,
