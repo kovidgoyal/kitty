@@ -125,17 +125,6 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :doc:`Hints kitten </kittens/hints>`: Fix custom regex patterns with capture
-  groups inside lookarounds that overlap later matches finding no matches at all
-  when the text contains non-ASCII characters
-
-- Bash integration: Source the system wide profile and bashrc files that bash
-  was actually built to use, found by scanning the bash executable, instead of
-  guessing their locations in :file:`/etc`. Fixes system startup files not
-  being sourced on distros that keep them elsewhere (:iss:`10819`)
-
-- Vertical tab bar: Fix clicking the blank line below a tab not activating the tab (:iss:`10810`)
-
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
   ``screen-shake-random`` shaders that shake the window in which a bell occurs,
   for example, to shake the window when a shell command fails
@@ -149,6 +138,17 @@ Detailed list of changes
   firing when :opt:`visual_bell_duration` is non-zero. Bells in hidden windows,
   such as those in inactive tabs, no longer trigger the event late, when the
   window next becomes visible
+
+- :doc:`Hints kitten </kittens/hints>`: Fix custom regex patterns with capture
+  groups inside lookarounds that overlap later matches finding no matches at all
+  when the text contains non-ASCII characters
+
+- Bash integration: Source the system wide profile and bashrc files that bash
+  was actually built to use, found by scanning the bash executable, instead of
+  guessing their locations in :file:`/etc`. Fixes system startup files not
+  being sourced on distros that keep them elsewhere (:iss:`10819`)
+
+- Vertical tab bar: Fix clicking the blank line below a tab not activating the tab (:iss:`10810`)
 
 - :doc:`choose-files <kittens/choose-files>`: Fix concurrent custom preview
   commands occasionally receiving the path of a different file.
