@@ -324,3 +324,39 @@ class TestStyles(BaseTest):
         hb.push(src.line(1))
         self.ae(hb.line(0).cursor_from(0).fg, (1 << 8) | 1)
         self.ae(hb.line(0).cursor_from(3).fg, 0)
+
+    def test_style_table_reset_when_unused(self):
+        s = self.create_screen(cols=6, lines=3, scrollback=4)
+        for i in range(5):
+            parse_bytes(s, f'\x1b[38;5;{i + 1}m'.encode())
+            s.draw('x')
+        info = s.style_table_info()
+        self.ae(info['count'], 6)
+        # Erasing with a style still in use on screen does not reset
+        s.erase_in_display(2)
+        self.ae(s.style_table_info()['count'], 6)
+        parse_bytes(s, RESET)
+        s.erase_in_display(2)
+        info2 = s.style_table_info()
+        self.ae(info2['count'], 1)
+        self.assertNotEqual(info2['generation'], info['generation'])
+        # Styles in the scrollback prevent a reset
+        parse_bytes(s, RED_BOLD)
+        s.draw('abc')
+        for i in range(4):
+            s.carriage_return(), s.linefeed()
+        parse_bytes(s, RESET)
+        s.erase_in_display(2)
+        self.assertGreater(s.style_table_info()['count'], 1)
+        s.erase_in_display(3)
+        self.ae(s.style_table_info()['count'], 1)
+        # A hard reset
+        parse_bytes(s, RED_BOLD)
+        s.draw('abc')
+        parse_bytes(s, b'\x1bc')
+        self.ae(s.style_table_info()['count'], 1)
+        # Drawing after a reset works, including with the cached cursor style
+        parse_bytes(s, RED_BOLD)
+        s.draw('d')
+        self.assertTrue(s.line(0).cursor_from(0).bold)
+        self.assert_styles_consistent(s)

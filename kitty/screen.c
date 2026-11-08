@@ -209,6 +209,8 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 static Line *range_line_(Screen *self, int y);
 
+static void reset_style_table_if_unused(Screen *self);
+
 static void
 clamp_scroll_position(Screen *self) {
     // Ensure the scroll position is valid after the scrollback has shrunk
@@ -277,6 +279,7 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
     screen_cursor_position(self, 1, 1);
     set_dynamic_color(self, 111, NULL); // does default_bg_changed processing
     colorprofile_reset(self->color_profile);
+    if (is_hard_reset) reset_style_table_if_unused(self);
     CALLBACK("on_reset", "O", is_hard_reset ? Py_True : Py_False);
 }
 
@@ -1324,6 +1327,29 @@ garbage_collect_style_table(Screen *self, unsigned quantize_bits, bool degraded_
     const bool still_full = t->count > style_table_max_count(t) - style_table_max_count(t) / 8;
     style_table_gc_end(t, gc, degraded_if_full && still_full);
     return true;
+}
+
+static bool
+cells_use_styles(const CPUCell *cells, size_t count) {
+    for (size_t i = 0; i < count; i++)
+        if (cells[i].style_idx) return true;
+    return false;
+}
+
+static void
+reset_style_table_if_unused(Screen *self) {
+    // When the scrollback is empty and no cell has a style, empty the style
+    // table, which frees the memory used by styles from, for example, a burst
+    // of output with many colors. Checking is cheap as only the screen
+    // buffers need to be scanned, so this is done on resets and erasing.
+    if (self->historybuf->count || self->style_table->count < 2) return;
+    LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, self->paused_rendering.linebuf};
+    for (unsigned i = 0; i < arraysz(bufs); i++) {
+        if (bufs[i] && cells_use_styles(bufs[i]->cpu_cell_buf, (size_t)bufs[i]->xnum * bufs[i]->ynum)) return;
+    }
+    if (self->overlay_line.cpu_cells && cells_use_styles(self->overlay_line.cpu_cells, self->columns)) return;
+    if (self->overlay_line.original_line.cpu_cells && cells_use_styles(self->overlay_line.original_line.cpu_cells, self->columns)) return;
+    style_table_reset(self->style_table);
 }
 
 void
@@ -3485,6 +3511,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         if (how == 1) linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
     }
     if (how == 3 && self->linebuf == self->main_linebuf) { screen_clear_scrollback(self); }
+    if (how >= 2) reset_style_table_if_unused(self);
 }
 
 void

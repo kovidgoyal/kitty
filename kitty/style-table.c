@@ -130,6 +130,31 @@ bump_generation(StyleTableImpl *self) {
 }
 
 void
+style_table_reset(StyleTable *pub) {
+    // Remove all styles except the default style, freeing memory
+    StyleTableImpl *self = (StyleTableImpl *)pub;
+    if (self->capacity > INITIAL_CAPACITY) {
+        Style *n = realloc(self->pub.styles, INITIAL_CAPACITY * sizeof(Style));
+        if (n) {
+            self->pub.styles = n;
+            self->capacity = INITIAL_CAPACITY;
+        }
+    }
+    self->pub.count = 1;
+    vt_cleanup(&self->map);
+    vt_init(&self->map);
+    invalidate_approx(self);
+    vt_cleanup(&self->approx.fine);
+    vt_init(&self->approx.fine);
+    vt_cleanup(&self->approx.coarse);
+    vt_init(&self->approx.coarse);
+    bump_generation(self);
+    self->misses_since_gc = 0;
+    self->last_gc_quantize_bits = 0;
+    self->degraded = false;
+}
+
+void
 style_table_set_max_count(StyleTable *pub, uint32_t max_count) {
     StyleTableImpl *self = (StyleTableImpl *)pub;
     self->max_count = MAX(2u, MIN(max_count, MAX_NUM_OF_STYLES));
