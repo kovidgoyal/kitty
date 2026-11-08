@@ -1020,7 +1020,7 @@ handleSelectionClear(XEvent *event) {
 }
 
 static void
-handleSelectionRequest(XEvent *event) {
+answerSelectionRequest(XEvent *event) {
     const XSelectionRequestEvent *request = &event->xselectionrequest;
 
     XEvent reply = {SelectionNotify};
@@ -1106,6 +1106,16 @@ handleSelectionRequest(XEvent *event) {
         reply.xselection.property = writeTargetToProperty(request);
     }
     XSendEvent(_glfw.x11.display, request->requestor, False, 0, &reply);
+}
+
+static void
+handleSelectionRequest(XEvent *event) {
+    // The requestor owns its window and may destroy it before our reply
+    // arrives. The resulting BadWindow errors must not reach Xlib's default
+    // error handler, which exits the process.
+    _glfwGrabErrorHandlerX11();
+    answerSelectionRequest(event);
+    _glfwReleaseErrorHandlerX11();
 }
 
 static void
@@ -4074,7 +4084,9 @@ _glfwPlatformDragDataReady(const char *mime_type, const char *data UNUSED, size_
 
             _glfwInputDragSourceRequest(window, &ev);
 
-            // Send the data
+            // The requestor may have destroyed its window in the meantime,
+            // see handleSelectionRequest()
+            _glfwGrabErrorHandlerX11();
             send_drag_data(
                 mime_type,
                 ev.data,
@@ -4095,6 +4107,7 @@ _glfwPlatformDragDataReady(const char *mime_type, const char *data UNUSED, size_
             reply.xselection.time = CurrentTime;
 
             XSendEvent(_glfw.x11.display, _glfw.x11.drag.pending_requests[i].requestor, False, 0, &reply);
+            _glfwReleaseErrorHandlerX11();
 
             _glfw.x11.drag.pending_requests[i].inflight = false;
             break;
