@@ -299,6 +299,13 @@ class BaseTest(TestCase):
             print('Failed to delete the directory:', tdir, 'with error:', err, file=sys.stderr)
 
     def tearDown(self):
+        # Check that every cell of every screen created by the test has a
+        # valid index into the style table of the screen
+        screens, self._screens_to_verify_styles = getattr(self, '_screens_to_verify_styles', []), []
+        for s in screens:
+            mismatches = s.test_verify_styles()
+            if mismatches:
+                self.fail(f'Cell style mismatches: {mismatches}')
         set_options(None)
 
     def set_options(self, options=None):
@@ -321,6 +328,9 @@ class BaseTest(TestCase):
         c = Callbacks()
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
         c.color_profile = s.color_profile
+        if not hasattr(self, '_screens_to_verify_styles'):
+            self._screens_to_verify_styles = []
+        self._screens_to_verify_styles.append(s)
         return s
 
     def create_pty(

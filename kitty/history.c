@@ -20,9 +20,10 @@ static void
 add_segment(HistoryBuf *self, index_type num) {
     self->segments = realloc(self->segments, sizeof(HistoryBufSegment) * (self->num_segments + num));
     if (self->segments == NULL) fatal("Out of memory allocating new history buffer segment");
+    // Only CPUCells are stored, the style of cells is in their CPUCell and
+    // render data for lines being displayed is in the render cache.
     const size_t cpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(CPUCell);
-    const size_t gpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(GPUCell);
-    const size_t segment_size = cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs);
+    const size_t segment_size = cpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs);
     if (num > SIZE_MAX / segment_size) fatal("History buffer segment allocation is too large");
     const size_t mmap_size = num * segment_size;
     // We use mmap to avoid fragmentation in libc malloc pool, see
@@ -32,8 +33,7 @@ add_segment(HistoryBuf *self, index_type num) {
     char *needs_free = mem;
     for (HistoryBufSegment *s = self->segments + self->num_segments; s < self->segments + self->num_segments + num; s++, mem += segment_size) {
         s->cpu_cells = (CPUCell *)mem;
-        s->gpu_cells = (GPUCell *)(((uint8_t *)s->cpu_cells) + cpu_cells_size);
-        s->line_attrs = (LineAttrs *)(((uint8_t *)s->gpu_cells) + gpu_cells_size);
+        s->line_attrs = (LineAttrs *)(((uint8_t *)s->cpu_cells) + cpu_cells_size);
         s->mem = NULL;
         s->mmap_size = 0;
     }
@@ -66,11 +66,6 @@ segment_for(HistoryBuf *self, index_type y) {
 static CPUCell *
 cpu_lineptr(HistoryBuf *self, index_type y) {
     seg_ptr(cpu_cells, self->xnum);
-}
-
-static GPUCell *
-gpu_lineptr(HistoryBuf *self, index_type y) {
-    seg_ptr(gpu_cells, self->xnum);
 }
 
 
@@ -170,6 +165,8 @@ dealloc(HistoryBuf *self) {
     Py_CLEAR(self->line);
     for (size_t i = 0; i < self->num_segments; i++) free_segment(self->segments + i);
     free(self->segments);
+    free(self->render_cache.cells);
+    free(self->render_cache.keys);
     free_pagerhist(self);
     tc_decref(self->text_cache);
     Py_TYPE(self)->tp_free((PyObject *)self);
@@ -201,13 +198,45 @@ static void
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cpu_cells = cpu_lineptr(self, num);
-    l->gpu_cells = gpu_lineptr(self, num);
+    l->render_cells = NULL;
     l->attrs = *attrptr(self, num);
 }
 
 void
 historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
+}
+
+static void
+invalidate_render_cache(HistoryBuf *self) {
+    if (self->render_cache.keys) memset(self->render_cache.keys, 0, self->render_cache.num_rows * sizeof(self->render_cache.keys[0]));
+}
+
+bool
+historybuf_init_line_for_render(HistoryBuf *self, index_type lnum, Line *l, index_type num_rows) {
+    // Initialize l with render data from the render cache, which has room for
+    // num_rows lines. Returns true if the render data is not for this line and
+    // so the line must be rendered. The render data must also be re-computed
+    // if the line is dirty, as when its contents change it is marked dirty.
+    num_rows = MAX(1u, num_rows);
+    if (num_rows != self->render_cache.num_rows) {
+        free(self->render_cache.cells);
+        free(self->render_cache.keys);
+        self->render_cache.cells = calloc((size_t)num_rows * self->xnum, sizeof(RenderCell));
+        self->render_cache.keys = calloc(num_rows, sizeof(self->render_cache.keys[0]));
+        if (!self->render_cache.cells || !self->render_cache.keys) fatal("Out of memory allocating history render cache");
+        self->render_cache.num_rows = num_rows;
+    }
+    init_line(self, index_of(self, lnum), l);
+    // The lines on screen have consecutive absolute line numbers and so map
+    // to distinct rows and do not evict each other. If a line is removed and
+    // another pushed with the same absolute line number, it is marked dirty.
+    const uint64_t key = self->num_pushed - MIN(self->num_pushed, (uint64_t)lnum);
+    const index_type row = key % num_rows;
+    l->render_cells = self->render_cache.cells + (size_t)row * self->xnum;
+    if (self->render_cache.keys[row] == key) return false;
+    self->render_cache.keys[row] = key;
+    return true;
 }
 
 bool
@@ -250,6 +279,7 @@ historybuf_clear(HistoryBuf *self) {
     self->segments = NULL;
     self->num_segments = 0;
     add_segment(self, 1);
+    invalidate_render_cache(self);
 }
 
 static bool
@@ -317,6 +347,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
 static index_type
 historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, bool *needs_clear) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
+    self->num_pushed++;
     if (self->count == self->ynum) {
         pagerhist_push(self, as_ansi_buf);
         self->start_of_data = (self->start_of_data + 1) % self->ynum;
@@ -337,10 +368,8 @@ prefetch_line_for_write(HistoryBuf *self, index_type y) {
     // line, speeding up bulk text throughput by ~35% (see benchmark.py).
     if (y / SEGMENT_SIZE >= self->num_segments) return; // must not trigger segment allocation
     const char *cpu = (const char *)cpu_lineptr(self, y);
-    const char *gpu = (const char *)gpu_lineptr(self, y);
     const size_t cache_line_sz = 64;
     for (size_t i = 0; i < self->xnum * sizeof(CPUCell); i += cache_line_sz) __builtin_prefetch(cpu + i, 1, 0);
-    for (size_t i = 0; i < self->xnum * sizeof(GPUCell); i += cache_line_sz) __builtin_prefetch(gpu + i, 1, 0);
 }
 
 void
@@ -349,7 +378,10 @@ historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     index_type idx = historybuf_push(self, as_ansi_buf, &needs_clear);
     init_line(self, idx, self->line);
     copy_line(line, self->line);
-    *attrptr(self, idx) = line->attrs;
+    LineAttrs *attrs = attrptr(self, idx);
+    *attrs = line->attrs;
+    // the render data of the line is not stored, so it must be rendered if displayed
+    attrs->has_dirty_text = true;
     prefetch_line_for_write(self, (self->start_of_data + self->count) % self->ynum);
 }
 
@@ -359,22 +391,25 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
     index_type idx = (self->start_of_data + self->count - 1) % self->ynum;
     init_line(self, idx, line);
     self->count--;
+    self->num_pushed--;
     return true;
 }
 
 static void
 clear_multicell_cell(HistoryBuf *self, index_type lnum, index_type x) {
-    init_line(self, index_of(self, lnum), self->line);
+    const index_type idx = index_of(self, lnum);
+    init_line(self, idx, self->line);
     CPUCell *c = self->line->cpu_cells + x;
     cell_set_char(c, 0);
     cell_clear_multicell(c);
-    clear_sprite_position(self->line->gpu_cells[x]);
+    attrptr(self, idx)->has_dirty_text = true;
 }
 
 void
 historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
     if (!count) return;
     count = MIN(self->count, count);
+    self->num_pushed -= count;
     self->count -= count - 1;
     // now nuke multi cell chars that overlap onto the last line
     index_type idx = (self->start_of_data + self->count - 1) % self->ynum;
@@ -435,11 +470,13 @@ historybuf_delete_lines(HistoryBuf *self, index_type num_newer, index_type count
     for (index_type i = num_newer; i-- > 0;) {
         const index_type src = index_of(self, i), dest = index_of(self, i + count);
         memcpy(cpu_lineptr(self, dest), cpu_lineptr(self, src), sizeof(CPUCell) * self->xnum);
-        memcpy(gpu_lineptr(self, dest), gpu_lineptr(self, src), sizeof(GPUCell) * self->xnum);
         *attrptr(self, dest) = *attrptr(self, src);
         attrptr(self, dest)->has_dirty_text = true;
     }
     self->count -= count;
+    // Lines older than the deleted ones keep their absolute line numbers and
+    // so their render cache rows, the moved newer lines are marked dirty above.
+    self->num_pushed -= count;
 }
 
 static PyObject *
@@ -488,6 +525,10 @@ push(HistoryBuf *self, PyObject *args) {
     ANSIBuf as_ansi_buf = {0};
     historybuf_add_line(self, line, &as_ansi_buf);
     free(as_ansi_buf.buf);
+    if (line->text_cache != self->text_cache) {
+        historybuf_init_line(self, 0, self->line);
+        remap_style_idx_range(tc_style_table(self->text_cache), tc_style_table(line->text_cache), self->line->cpu_cells, self->line->xnum);
+    }
     Py_RETURN_NONE;
 }
 
@@ -768,7 +809,6 @@ historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line
     init_line(self, idx, dest_line);
     // the slot may hold a stale line from stolen segments
     zero_at_ptr_count(dest_line->cpu_cells, dest_line->xnum);
-    zero_at_ptr_count(dest_line->gpu_cells, dest_line->xnum);
     return dest_y + 1;
 }
 
@@ -796,6 +836,7 @@ void
 historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src, index_type count, bool steal) {
     // dest must have been created by historybuf_alloc_for_rewrap() with the same width as src
     dest->count = MIN(count, src->count);
+    dest->num_pushed = dest->count;
     dest->start_of_data = src->start_of_data;
     if (steal) {
         SWAP(dest->segments, src->segments);
@@ -805,7 +846,6 @@ historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src, index_type count, bool
     } else {
         for (index_type i = 0; i < src->num_segments; i++) {
             memcpy(dest->segments[i].cpu_cells, src->segments[i].cpu_cells, SEGMENT_SIZE * src->xnum * sizeof(CPUCell));
-            memcpy(dest->segments[i].gpu_cells, src->segments[i].gpu_cells, SEGMENT_SIZE * src->xnum * sizeof(GPUCell));
             memcpy(dest->segments[i].line_attrs, src->segments[i].line_attrs, SEGMENT_SIZE * sizeof(LineAttrs));
         }
     }

@@ -2071,6 +2071,25 @@ shaped_groups_as_python(void) {
     return ans;
 }
 
+static struct {
+    GPUCell *cells;
+    index_type capacity;
+} render_scratch = {0};
+
+static GPUCell *
+expanded_line_for_render(const Line *line) {
+    // Rendering uses the style of cells and stores sprites in GPUCells, so
+    // render into a scratch line of GPUCells built from the line.
+    if (render_scratch.capacity < line->xnum) {
+        GPUCell *n = realloc(render_scratch.cells, line->xnum * sizeof(GPUCell));
+        if (!n) fatal("Out of memory allocating render scratch space");
+        render_scratch.cells = n;
+        render_scratch.capacity = line->xnum;
+    }
+    expand_cells_for_gpu(line_style_table(line), line->cpu_cells, line->render_cells, line->xnum, render_scratch.cells);
+    return render_scratch.cells;
+}
+
 static PyObject *
 test_shape(PyObject UNUSED *self, PyObject *args) {
     Line *line;
@@ -2111,10 +2130,11 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     }
     RunFont rf = {0};
     RAII_ListOfChars(lc);
-    shape_run(line->cpu_cells, line->gpu_cells, num, font, rf, fg, false, line->text_cache, &lc);
+    GPUCell *gpu_cells = expanded_line_for_render(line);
+    shape_run(line->cpu_cells, gpu_cells, num, font, rf, fg, false, line->text_cache, &lc);
     PyObject *ans = shaped_groups_as_python();
     if (!ans) goto done;
-    shape_run(line->cpu_cells, line->gpu_cells, num, font, rf, fg, false, line->text_cache, &lc);
+    shape_run(line->cpu_cells, gpu_cells, num, font, rf, fg, false, line->text_cache, &lc);
     PyObject *cached = shaped_groups_as_python();
     if (!cached) {
         Py_CLEAR(ans);
@@ -2246,7 +2266,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         render_run(                                                                                                     \
             fg,                                                                                                         \
             line->cpu_cells + first_cell_in_run,                                                                        \
-            line->gpu_cells + first_cell_in_run,                                                                        \
+            gpu_cells + first_cell_in_run,                                                                              \
             i - first_cell_in_run,                                                                                      \
             run_font,                                                                                                   \
             false,                                                                                                      \
@@ -2256,7 +2276,10 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             line->text_cache,                                                                                           \
             lc);                                                                                                        \
     }
+    if (!line->render_cells) return; // lines without render data cannot be rendered
     FontGroup *fg = (FontGroup *)fg_;
+    GPUCell *gpu_cells = expanded_line_for_render(line);
+    StyleTable *style_table = line_style_table(line);
     RunFont basic_font = {.scale = 1, .font_idx = NO_FONT}, run_font = basic_font, cell_font = basic_font;
     bool center_glyph = false;
     bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR;
@@ -2278,7 +2301,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         }
         text_in_cell(cpu_cell, line->text_cache, lc);
         bool is_main_font, is_emoji_presentation;
-        GPUCell *gpu_cell = line->gpu_cells + i;
+        GPUCell *gpu_cell = gpu_cells + i;
         const char_type first_ch = lc->chars[0];
         cell_font.font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_main_font, &is_emoji_presentation, line->text_cache, lc);
         CharProps cp = char_props_for(first_ch);
@@ -2300,30 +2323,26 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                    && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA && num_spaces + 1 < desired_cells) {
                 num_spaces++;
                 // We have a private use char followed by space(s), render it as a multi-cell ligature.
-                GPUCell *space_cell = line->gpu_cells + i + num_spaces;
+                GPUCell *space_cell = gpu_cells + i + num_spaces;
                 // Ensure the space cell uses the foreground color from the PUA cell.
                 // This is needed because there are applications like
                 // Powerline that use PUA+space with different foreground colors
                 // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
                 space_cell->fg = gpu_cell->fg;
                 space_cell->decoration_fg = gpu_cell->decoration_fg;
+                // The style is also changed in the CPUCell as GPUCells are rebuilt from it when uploading
+                CPUCell *space_cpu_cell = line->cpu_cells + i + num_spaces;
+                Style st = *style_table_get(style_table, space_cpu_cell->style_idx);
+                st.fg = gpu_cell->fg;
+                st.decoration_fg = gpu_cell->decoration_fg;
+                space_cpu_cell->style_idx = style_table_intern(style_table, &st);
             }
             if (num_spaces) {
                 center_glyph = true;
                 RENDER
                 center_glyph = false;
                 render_run(
-                    fg,
-                    line->cpu_cells + i,
-                    line->gpu_cells + i,
-                    num_spaces + 1,
-                    cell_font,
-                    true,
-                    center_glyph,
-                    -1,
-                    disable_ligature_strategy,
-                    line->text_cache,
-                    lc);
+                    fg, line->cpu_cells + i, gpu_cells + i, num_spaces + 1, cell_font, true, center_glyph, -1, disable_ligature_strategy, line->text_cache, lc);
                 run_font = basic_font;
                 first_cell_in_run = i + num_spaces + 1;
                 i += num_spaces;
@@ -2338,6 +2357,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
     }
     RENDER
 #undef RENDER
+    for (index_type x = 0; x < line->xnum; x++) line->render_cells[x].sprite_idx = gpu_cells[x].sprite_idx;
 }
 
 StringCanvas
@@ -2529,6 +2549,8 @@ load_fonts_data(double font_sz_in_pts, double dpi_x, double dpi_y) {
 static void
 finalize(void) {
     Py_CLEAR(python_send_to_gpu_impl);
+    free(render_scratch.cells);
+    zero_at_ptr(&render_scratch);
     clear_symbol_maps();
     Py_CLEAR(descriptor_for_idx);
     free_font_groups();
