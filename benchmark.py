@@ -25,7 +25,19 @@ from kitty.fast_data_types import ChildMonitor, Region, Screen, safe_pipe, set_o
 from kitty.utils import read_screen_size
 
 BENCHMARK_WINDOW_ID = 1
-PARSING_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes', 'truecolor_text', 'palette16_text', 'halfblocks')
+PARSING_BENCHMARKS = (
+    'ascii',
+    'unicode',
+    'scrollback',
+    'render',
+    'unique_unicode',
+    'csi',
+    'images',
+    'long_escape_codes',
+    'truecolor_text',
+    'palette16_text',
+    'halfblocks',
+)
 ALL_BENCHMARKS = PARSING_BENCHMARKS + ('tab_bar',)
 TAB_BAR_STYLES = ('fade', 'separator', 'powerline', 'slant')
 TAB_BAR_NUM_TABS = (10, 50, 200)
@@ -91,7 +103,6 @@ def run_perf_reports(perf_exe: str) -> None:
 
 def run_parsing_benchmark(
     benchmarks: tuple[str, ...] = PARSING_BENCHMARKS,
-    with_scrollback: bool = True,
     cell_width: int = 10,
     cell_height: int = 20,
     scrollback: int = 20000,
@@ -105,11 +116,7 @@ def run_parsing_benchmark(
         columns, rows = 80, 25
     child_pid, master_fd = fork()
     is_child = child_pid == CHILD
-    # we add render as we aren't rendering anyway and it means the synchronized
-    # escape codes are no longer needed.
-    argv = [kitten_exe(), '__benchmark__', '--render']
-    if with_scrollback:
-        argv.append('--with-scrollback')
+    argv = [kitten_exe(), '__benchmark__']
     if repetitions is not None:
         argv.extend(['--repetitions', str(repetitions)])
     argv.extend(benchmarks)
@@ -281,13 +288,6 @@ def main() -> None:
         help=f'Benchmarks to run (default: all). Choose from: {", ".join(ALL_BENCHMARKS)}',
     )
     p.add_argument(
-        '--with-scrollback',
-        dest='with_scrollback',
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help='Use the main screen instead of the alt screen so scrollback speed is also tested (default: enabled)',
-    )
-    p.add_argument(
         '--perf',
         action='store_true',
         default=False,
@@ -328,7 +328,7 @@ def main() -> None:
 
     benchmarks = tuple(args.benchmarks) if args.benchmarks else ALL_BENCHMARKS
     if parsing_benchmarks := tuple(b for b in benchmarks if b in PARSING_BENCHMARKS):
-        run_parsing_benchmark(benchmarks=parsing_benchmarks, with_scrollback=args.with_scrollback, repetitions=args.repetitions)
+        run_parsing_benchmark(benchmarks=parsing_benchmarks, repetitions=args.repetitions)
     if 'tab_bar' in benchmarks:
         run_tab_bar_benchmark(compare_with=args.compare_with, repetitions=args.repetitions)
 
