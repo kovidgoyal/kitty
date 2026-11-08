@@ -111,6 +111,10 @@ typedef struct {
     bool needs_free;
     LineAttrs attrs;
     TextCache *text_cache;
+    // For lines that are copies, the generation of the style table when the
+    // copy was made, zero for lines that are views into a buffer. The style
+    // indices in a copy are invalid after the style table is garbage collected.
+    uint32_t style_generation;
 } Line;
 
 typedef struct MultiCellCommand {
@@ -235,6 +239,16 @@ cell_first_char(const CPUCell *c, const TextCache *tc) {
 static inline StyleTable *
 line_style_table(const Line *l) {
     return tc_style_table(l->text_cache);
+}
+
+static inline bool
+line_styles_are_valid(const Line *l) {
+    // Sets a Python exception and returns false if l is a copy made before the style table was garbage collected
+    if (l->style_generation && l->style_generation != line_style_table(l)->generation) {
+        PyErr_SetString(PyExc_ValueError, "The formatting of this copy of a line is no longer valid, as the style table changed after it was copied");
+        return false;
+    }
+    return true;
 }
 
 static inline const Style *

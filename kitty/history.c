@@ -522,6 +522,7 @@ push(HistoryBuf *self, PyObject *args) {
 #define push_doc "Push a line into this buffer, removing the oldest line, if necessary"
     Line *line;
     if (!PyArg_ParseTuple(args, "O!", &Line_Type, &line)) return NULL;
+    if (!line_styles_are_valid(line)) return NULL;
     ANSIBuf as_ansi_buf = {0};
     historybuf_add_line(self, line, &as_ansi_buf);
     free(as_ansi_buf.buf);
