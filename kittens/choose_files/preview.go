@@ -2,6 +2,7 @@ package choose_files
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils/humanize"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
@@ -257,8 +259,25 @@ func (p *TextFilePreview) Render(h *Handler, x, y, width, height int) {
 	h.lp.QueueWriteString(buf.String())
 }
 
+func read_regular_text_file(path string) ([]byte, error) {
+	// Opening a FIFO can block before we can inspect the opened file's mode.
+	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%q is not a regular file", path)
+	}
+	return io.ReadAll(f)
+}
+
 func NewTextFilePreview(abspath string, metadata fs.FileInfo, highlighted_chan chan highlighed_data, sanitize func(string) string) Preview {
-	data, err := os.ReadFile(abspath)
+	data, err := read_regular_text_file(abspath)
 	if err != nil {
 		return NewFileMetadataPreview(abspath, metadata)
 	}
@@ -282,7 +301,7 @@ func (s style_resolver) StyleName() string {
 func (s style_resolver) UseLightColors() bool             { return s.light }
 func (s style_resolver) SyntaxAliases() map[string]string { return s.syntax_aliases }
 func (s style_resolver) TextForPath(path string) (string, error) {
-	ans, err := os.ReadFile(path)
+	ans, err := read_regular_text_file(path)
 	if err == nil {
 		return utils.UnsafeBytesToString(ans), nil
 	}
