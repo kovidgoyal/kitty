@@ -2087,7 +2087,7 @@ expanded_line_for_render(const Line *line) {
         render_scratch.capacity = line->xnum;
     }
     // Only the attributes (for font selection) and sprites are used when rendering
-    const StyleTable *t = line_style_table(line);
+    const CellStyleTable *t = line_style_table(line);
     for (index_type i = 0; i < line->xnum; i++) {
         render_scratch.cells[i] = (GPUCell){
             .attrs = style_table_get(t, line->cpu_cells[i].style_idx)->attrs, .sprite_idx = line->render_cells ? line->render_cells[i].sprite_idx : 0};
@@ -2284,7 +2284,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
     if (!line->render_cells) return; // lines without render data cannot be rendered
     FontGroup *fg = (FontGroup *)fg_;
     GPUCell *gpu_cells = expanded_line_for_render(line);
-    StyleTable *style_table = line_style_table(line);
+    CellStyleTable *style_table = line_style_table(line);
     RunFont basic_font = {.scale = 1, .font_idx = NO_FONT}, run_font = basic_font, cell_font = basic_font;
     bool center_glyph = false;
     bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR;
@@ -2334,8 +2334,8 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
                 // The colors are changed in the style of the cell, as the GPU gets colors from it
                 CPUCell *space_cpu_cell = line->cpu_cells + i + num_spaces;
-                const Style *pua_style = style_table_get(style_table, cpu_cell->style_idx);
-                Style st = *style_table_get(style_table, space_cpu_cell->style_idx);
+                const CellStyle *pua_style = style_table_get(style_table, cpu_cell->style_idx);
+                CellStyle st = *style_table_get(style_table, space_cpu_cell->style_idx);
                 st.fg = pua_style->fg;
                 st.decoration_fg = pua_style->decoration_fg;
                 space_cpu_cell->style_idx = style_table_intern(style_table, &st);

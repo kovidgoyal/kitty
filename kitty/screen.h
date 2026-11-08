@@ -151,7 +151,7 @@ typedef struct {
     Savepoint main_savepoint, alt_savepoint;
     PyObject *callbacks, *test_child;
     TextCache *text_cache;
-    StyleTable *style_table; // owned by text_cache
+    CellStyleTable *style_table; // owned by text_cache
     uint32_t hyperlink_style_idx_cache;
     // The texture holding the style table for the shaders, see sync_style_texture() in shaders.c
     struct {

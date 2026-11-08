@@ -9,18 +9,18 @@
 #include <xxhash.h>
 
 static uint64_t
-hash_style(Style k) {
+hash_style(CellStyle k) {
     return XXH3_64bits(&k, sizeof(k));
 }
 
 static bool
-cmpr_style(Style a, Style b) {
+cmpr_style(CellStyle a, CellStyle b) {
     return style_eq(&a, &b);
 }
 
 // Maps styles to indices, used only to find approximate matches when the table is full
 #define NAME style_map
-#define KEY_TY Style
+#define KEY_TY CellStyle
 #define VAL_TY uint32_t
 #define HASH_FN hash_style
 #define CMPR_FN cmpr_style
@@ -35,17 +35,17 @@ cmpr_style(Style a, Style b) {
 // before every operation on the set. Tables are only used on the main thread.
 // A style not in the table is looked up using the PROBE_KEY index which refers to probe_style.
 #define PROBE_KEY UINT32_MAX
-static const Style *ctx_styles = NULL;
-static Style probe_style = {0};
+static const CellStyle *ctx_styles = NULL;
+static CellStyle probe_style = {0};
 
-static inline const Style *
+static inline const CellStyle *
 resolve_key(uint32_t k) {
     return k == PROBE_KEY ? &probe_style : ctx_styles + k;
 }
 
 static uint64_t
 hash_style_idx(uint32_t k) {
-    return XXH3_64bits(resolve_key(k), sizeof(Style));
+    return XXH3_64bits(resolve_key(k), sizeof(CellStyle));
 }
 
 static bool
@@ -63,7 +63,7 @@ cmpr_style_idx(uint32_t a, uint32_t b) {
 #define RECENT_CACHE_BITS 6u
 
 typedef struct StyleTableImpl {
-    StyleTable pub; // must be first
+    CellStyleTable pub; // must be first
     uint32_t capacity, max_count;
     style_set map;
     // Indices of recently interned styles, indexed by a cheap hash of the
@@ -85,12 +85,12 @@ typedef struct StyleTableImpl {
 #define FINE_BITS 4u
 #define COARSE_BITS 2u
 
-StyleTable *
+CellStyleTable *
 style_table_alloc(void) {
     StyleTableImpl *self = calloc(1, sizeof(StyleTableImpl));
     if (!self) return NULL;
     self->capacity = INITIAL_CAPACITY;
-    self->pub.styles = calloc(self->capacity, sizeof(Style));
+    self->pub.styles = calloc(self->capacity, sizeof(CellStyle));
     if (!self->pub.styles) {
         free(self);
         return NULL;
@@ -105,7 +105,7 @@ style_table_alloc(void) {
 }
 
 void
-style_table_free(StyleTable *pub) {
+style_table_free(CellStyleTable *pub) {
     if (!pub) return;
     StyleTableImpl *self = (StyleTableImpl *)pub;
     vt_cleanup(&self->map);
@@ -130,11 +130,11 @@ bump_generation(StyleTableImpl *self) {
 }
 
 void
-style_table_reset(StyleTable *pub) {
+style_table_reset(CellStyleTable *pub) {
     // Remove all styles except the default style, freeing memory
     StyleTableImpl *self = (StyleTableImpl *)pub;
     if (self->capacity > INITIAL_CAPACITY) {
-        Style *n = realloc(self->pub.styles, INITIAL_CAPACITY * sizeof(Style));
+        CellStyle *n = realloc(self->pub.styles, INITIAL_CAPACITY * sizeof(CellStyle));
         if (n) {
             self->pub.styles = n;
             self->capacity = INITIAL_CAPACITY;
@@ -155,13 +155,13 @@ style_table_reset(StyleTable *pub) {
 }
 
 void
-style_table_set_max_count(StyleTable *pub, uint32_t max_count) {
+style_table_set_max_count(CellStyleTable *pub, uint32_t max_count) {
     StyleTableImpl *self = (StyleTableImpl *)pub;
     self->max_count = MAX(2u, MIN(max_count, MAX_NUM_OF_STYLES));
 }
 
 uint32_t
-style_table_max_count(const StyleTable *pub) {
+style_table_max_count(const CellStyleTable *pub) {
     return ((const StyleTableImpl *)pub)->max_count;
 }
 
@@ -176,10 +176,10 @@ quantize_color(color_type c, unsigned bits) {
     return ans;
 }
 
-Style
-style_quantize(const Style *s, unsigned bits) {
+CellStyle
+style_quantize(const CellStyle *s, unsigned bits) {
     if (!bits || bits >= 8) return *s;
-    Style ans = *s;
+    CellStyle ans = *s;
     ans.fg = quantize_color(s->fg, bits);
     ans.bg = quantize_color(s->bg, bits);
     ans.decoration_fg = quantize_color(s->decoration_fg, bits);
@@ -189,8 +189,8 @@ style_quantize(const Style *s, unsigned bits) {
 static void
 build_approx(StyleTableImpl *self) {
     for (uint32_t i = 0; i < self->pub.count; i++) {
-        const Style *s = self->pub.styles + i;
-        Style q = style_quantize(s, FINE_BITS);
+        const CellStyle *s = self->pub.styles + i;
+        CellStyle q = style_quantize(s, FINE_BITS);
         if (vt_is_end(vt_get_or_insert(&self->approx.fine, q, i))) fatal("Out of memory building approximate style map");
         q = style_quantize(s, COARSE_BITS);
         if (vt_is_end(vt_get_or_insert(&self->approx.coarse, q, i))) fatal("Out of memory building approximate style map");
@@ -199,7 +199,7 @@ build_approx(StyleTableImpl *self) {
 }
 
 static uint32_t
-approximate_match(StyleTableImpl *self, const Style *style) {
+approximate_match(StyleTableImpl *self, const CellStyle *style) {
     // The table is full, use an existing style with the same attributes and close colors
     if (!self->approx.valid) build_approx(self);
     style_map_itr itr = vt_get(&self->approx.fine, style_quantize(style, FINE_BITS));
@@ -210,14 +210,14 @@ approximate_match(StyleTableImpl *self, const Style *style) {
 }
 
 static inline uint32_t
-recent_slot(const Style *s) {
+recent_slot(const CellStyle *s) {
     const uint32_t h = (s->fg * 0x9E3779B1u) ^ (s->bg * 0x85EBCA77u) ^ (s->decoration_fg * 0xC2B2AE3Du) ^ (s->attrs.val * 0x27D4EB2Fu);
     return h >> (32 - RECENT_CACHE_BITS);
 }
 
 uint32_t
-style_table_intern(StyleTable *pub, const Style *style) {
-    static const Style default_style = {0};
+style_table_intern(CellStyleTable *pub, const CellStyle *style) {
+    static const CellStyle default_style = {0};
     if (style_eq(style, &default_style)) return 0;
     StyleTableImpl *self = (StyleTableImpl *)pub;
     const uint32_t slot = recent_slot(style), recent = self->recent[slot];
@@ -233,7 +233,7 @@ style_table_intern(StyleTable *pub, const Style *style) {
     }
     if (self->pub.count >= self->capacity) {
         const uint32_t new_capacity = MIN(self->capacity * 2, MAX_NUM_OF_STYLES);
-        Style *n = realloc(self->pub.styles, new_capacity * sizeof(Style));
+        CellStyle *n = realloc(self->pub.styles, new_capacity * sizeof(CellStyle));
         if (!n) fatal("Out of memory growing the style table");
         self->pub.styles = n;
         self->capacity = new_capacity;
@@ -248,7 +248,7 @@ style_table_intern(StyleTable *pub, const Style *style) {
 // Garbage collection {{{
 
 bool
-style_table_needs_gc(const StyleTable *pub) {
+style_table_needs_gc(const CellStyleTable *pub) {
     const StyleTableImpl *self = (const StyleTableImpl *)pub;
     if (self->pub.count < self->max_count) return false;
     // When even the styles on screen do not fit, collecting cannot free much,
@@ -258,19 +258,19 @@ style_table_needs_gc(const StyleTable *pub) {
 }
 
 struct StyleTableGC {
-    Style *old_styles;
+    CellStyle *old_styles;
     uint32_t old_count, *remap, *quantized_remap; // old index -> new index + 1, 0 means not yet remapped
     unsigned quantize_bits;
 };
 
 StyleTableGC *
-style_table_gc_begin(StyleTable *pub, unsigned quantize_bits) {
+style_table_gc_begin(CellStyleTable *pub, unsigned quantize_bits) {
     StyleTableImpl *self = (StyleTableImpl *)pub;
     StyleTableGC *gc = calloc(1, sizeof(StyleTableGC));
     if (!gc) return NULL;
     gc->old_count = self->pub.count;
     gc->quantize_bits = quantize_bits;
-    gc->old_styles = malloc(gc->old_count * sizeof(Style));
+    gc->old_styles = malloc(gc->old_count * sizeof(CellStyle));
     gc->remap = calloc(gc->old_count, sizeof(uint32_t));
     if (quantize_bits) gc->quantized_remap = calloc(gc->old_count, sizeof(uint32_t));
     if (!gc->old_styles || !gc->remap || (quantize_bits && !gc->quantized_remap)) {
@@ -280,7 +280,7 @@ style_table_gc_begin(StyleTable *pub, unsigned quantize_bits) {
         free(gc);
         return NULL;
     }
-    memcpy(gc->old_styles, self->pub.styles, gc->old_count * sizeof(Style));
+    memcpy(gc->old_styles, self->pub.styles, gc->old_count * sizeof(CellStyle));
     vt_clear(&self->map);
     self->pub.count = 1;
     invalidate_approx(self);
@@ -288,7 +288,7 @@ style_table_gc_begin(StyleTable *pub, unsigned quantize_bits) {
 }
 
 uint32_t
-style_table_gc_map(StyleTable *pub, StyleTableGC *gc, uint32_t old_idx, bool quantize) {
+style_table_gc_map(CellStyleTable *pub, StyleTableGC *gc, uint32_t old_idx, bool quantize) {
     // Called for every live cell, returns its new style index. quantize is ignored unless
     // the GC was started with quantize_bits. Cannot overflow the table as the number of
     // styles re-interned is at most the number there were before.
@@ -296,14 +296,14 @@ style_table_gc_map(StyleTable *pub, StyleTableGC *gc, uint32_t old_idx, bool qua
     uint32_t *map = gc->remap;
     if (quantize && gc->quantized_remap) map = gc->quantized_remap;
     if (!map[old_idx]) {
-        const Style s = map == gc->remap ? gc->old_styles[old_idx] : style_quantize(gc->old_styles + old_idx, gc->quantize_bits);
+        const CellStyle s = map == gc->remap ? gc->old_styles[old_idx] : style_quantize(gc->old_styles + old_idx, gc->quantize_bits);
         map[old_idx] = style_table_intern(pub, &s) + 1;
     }
     return map[old_idx] - 1;
 }
 
 void
-style_table_gc_end(StyleTable *pub, StyleTableGC *gc, bool degraded) {
+style_table_gc_end(CellStyleTable *pub, StyleTableGC *gc, bool degraded) {
     StyleTableImpl *self = (StyleTableImpl *)pub;
     bump_generation(self);
     self->misses_since_gc = 0;
@@ -321,17 +321,17 @@ style_table_gc_end(StyleTable *pub, StyleTableGC *gc, bool degraded) {
 }
 
 unsigned
-style_table_last_gc_quantize_bits(const StyleTable *pub) {
+style_table_last_gc_quantize_bits(const CellStyleTable *pub) {
     return ((const StyleTableImpl *)pub)->last_gc_quantize_bits;
 }
 
 uint64_t
-style_table_gc_count(const StyleTable *pub) {
+style_table_gc_count(const CellStyleTable *pub) {
     return ((const StyleTableImpl *)pub)->gc_count;
 }
 
 bool
-style_table_is_degraded(const StyleTable *pub) {
+style_table_is_degraded(const CellStyleTable *pub) {
     return ((const StyleTableImpl *)pub)->degraded;
 }
 // }}}
