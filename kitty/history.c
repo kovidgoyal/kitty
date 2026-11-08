@@ -392,7 +392,15 @@ copy_cells_to_history(CPUCell *dest, const CPUCell *src, index_type num) {
     memcpy(d, s, n);
 }
 
-#ifndef __SSE2__
+// On Apple Silicon prefetching is slower than plain stores, which are faster
+// than non temporal stores there too, see benchmark.py scrollback
+#if !defined(__SSE2__) && !(defined(__APPLE__) && defined(__aarch64__))
+#define PREFETCH_HISTORY_LINES 1
+#else
+#define PREFETCH_HISTORY_LINES 0
+#endif
+
+#if PREFETCH_HISTORY_LINES
 static void
 prefetch_line_for_write(HistoryBuf *self, index_type y) {
     // The history buffer is typically much larger than the CPU cache, so the
@@ -417,7 +425,7 @@ historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     *attrs = line->attrs;
     // the render data of the line is not stored, so it must be rendered if displayed
     attrs->has_dirty_text = true;
-#ifndef __SSE2__
+#if PREFETCH_HISTORY_LINES
     prefetch_line_for_write(self, (self->start_of_data + self->count) % self->ynum);
 #endif
 }
