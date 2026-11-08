@@ -76,7 +76,6 @@ typedef union CPUCell {
         char_type x : WIDTH_BITS + SCALE_BITS;
         char_type y : SCALE_BITS;
         char_type width : WIDTH_BITS;
-        char_type temp_flag : 1;
         // Index of the formatting of this cell in the StyleTable of the screen
         char_type style_idx : STYLE_IDX_BITS;
     };
