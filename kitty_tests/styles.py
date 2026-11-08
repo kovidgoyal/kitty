@@ -328,16 +328,30 @@ class TestStyles(BaseTest):
 
     def test_style_table_reset_when_unused(self):
         s = self.create_screen(cols=6, lines=3, scrollback=4)
-        for i in range(5):
-            parse_bytes(s, f'\x1b[38;5;{i + 1}m'.encode())
-            s.draw('x')
+
+        def add_styles():
+            for i in range(5):
+                parse_bytes(s, f'\x1b[38;5;{i + 1}m'.encode())
+                s.draw('x')
+            parse_bytes(s, RESET)
+
+        # Small tables are not worth resetting
+        add_styles()
+        s.erase_in_display(3)
+        self.ae(s.style_table_info()['count'], 6)
+        # Lower the threshold, a small fraction of the limit
+        s.test_set_style_table_limit(64)
         info = s.style_table_info()
-        self.ae(info['count'], 6)
-        # Erasing with a style still in use on screen does not reset
+        # Erasing the screen never resets, as full screen programs do it on every redraw
         s.erase_in_display(2)
         self.ae(s.style_table_info()['count'], 6)
+        # Erasing with a style still in use on screen does not reset
+        add_styles()
+        parse_bytes(s, RED_BOLD)
+        s.erase_in_display(3)
+        self.ae(s.style_table_info()['count'], 7)
         parse_bytes(s, RESET)
-        s.erase_in_display(2)
+        s.erase_in_display(3)
         info2 = s.style_table_info()
         self.ae(info2['count'], 1)
         self.assertNotEqual(info2['generation'], info['generation'])
@@ -348,8 +362,12 @@ class TestStyles(BaseTest):
             s.carriage_return(), s.linefeed()
         parse_bytes(s, RESET)
         s.erase_in_display(2)
+        # In the alternate screen, erasing does not clear the scrollback
+        parse_bytes(s, b'\x1b[?1049h\x1b[3J')
         self.assertGreater(s.style_table_info()['count'], 1)
-        s.erase_in_display(3)
+        parse_bytes(s, b'\x1b[?1049l')
+        # Clearing the scrollback resets
+        s.clear_scrollback()
         self.ae(s.style_table_info()['count'], 1)
         # A hard reset
         parse_bytes(s, RED_BOLD)
