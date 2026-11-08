@@ -1134,7 +1134,7 @@ cell_update_uniform_block(
                     // and color the cursor, for example when it is over a wide character.
                     overlay_line_for_cursor = *line_for_cursor;
                     overlay_line_for_cursor.cpu_cells = screen->overlay_line.cpu_cells;
-                    overlay_line_for_cursor.gpu_cells = screen->overlay_line.gpu_cells;
+                    overlay_line_for_cursor.render_cells = screen->overlay_line.render_cells;
                     line_for_cursor = &overlay_line_for_cursor;
                 }
             }
@@ -1163,7 +1163,7 @@ cell_update_uniform_block(
         }
         // If you change the following algorithm remember to change it in the cell shader for extra cursors too
         if (rd->main_cursor_is_special) {
-            if (line_for_cursor && line_for_cursor->gpu_cells[cell_color_x].attrs.dim) {
+            if (line_for_cursor && line_cell_style(line_for_cursor, cell_color_x)->attrs.dim) {
                 cell_fg = dimmed_cursor_color(cell_fg, cell_bg, OPT(dim_opacity));
                 pick_cursor_color(cell_fg, cell_bg, &main_cursor_fg, &main_cursor_bg, rd->default_fg, rd->bg_colors0);
             } else if (cell_bg == cell_fg) {

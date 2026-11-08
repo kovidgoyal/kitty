@@ -57,6 +57,8 @@ typedef struct {
 #endif
 
 TextCache *tc_alloc(void);
+// The style table of the screen the text cache belongs to
+struct StyleTable *tc_style_table(const TextCache *self);
 TextCache *tc_incref(TextCache *self);
 TextCache *tc_decref(TextCache *self);
 void tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans);

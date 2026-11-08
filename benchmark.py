@@ -25,7 +25,7 @@ from kitty.fast_data_types import ChildMonitor, Region, Screen, safe_pipe, set_o
 from kitty.utils import read_screen_size
 
 BENCHMARK_WINDOW_ID = 1
-PARSING_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes')
+PARSING_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes', 'truecolor_text', 'palette16_text', 'halfblocks')
 ALL_BENCHMARKS = PARSING_BENCHMARKS + ('tab_bar',)
 TAB_BAR_STYLES = ('fade', 'separator', 'powerline', 'slant')
 TAB_BAR_NUM_TABS = (10, 50, 200)

@@ -25,7 +25,7 @@ dealloc(Cursor *self) {
 #define EQ(x) (a->x == b->x)
 static int
 __eq__(Cursor *a, Cursor *b) {
-    return memcmp(&a->sgr, &b->sgr, sizeof(a->sgr)) == 0 && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
+    return memcmp(&a->style, &b->style, sizeof(a->style)) == 0 && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
 }
 #undef EQ
 
@@ -41,21 +41,21 @@ repr(Cursor *self) {
         self->y,
         (self->shape < NUM_OF_CURSOR_SHAPES ? cursor_names[self->shape] : "INVALID"),
         BOOL(!self->non_blinking),
-        self->sgr.fg,
-        self->sgr.bg,
-        BOOL(self->sgr.bold),
-        BOOL(self->sgr.italic),
-        BOOL(self->sgr.reverse),
-        BOOL(self->sgr.strikethrough),
-        BOOL(self->sgr.dim),
-        self->sgr.decoration,
-        self->sgr.decoration_fg,
-        BOOL(self->sgr.blink));
+        self->style.fg,
+        self->style.bg,
+        BOOL(self->style.attrs.bold),
+        BOOL(self->style.attrs.italic),
+        BOOL(self->style.attrs.reverse),
+        BOOL(self->style.attrs.strike),
+        BOOL(self->style.attrs.dim),
+        (int)self->style.attrs.decoration,
+        self->style.decoration_fg,
+        BOOL(self->style.attrs.blink));
 }
 
 void
 cursor_reset_display_attrs(Cursor *self) {
-    zero_at_ptr(&self->sgr);
+    zero_at_ptr(&self->style);
 }
 
 
@@ -100,40 +100,40 @@ cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group) {
         attr = params[i++];
         switch (attr) {
             case 0: cursor_reset_display_attrs(self); break;
-            case 1: self->sgr.bold = true; break;
-            case 2: self->sgr.dim = true; break;
-            case 3: self->sgr.italic = true; break;
+            case 1: self->style.attrs.bold = true; break;
+            case 2: self->style.attrs.dim = true; break;
+            case 3: self->style.attrs.italic = true; break;
             case 4:
                 if (is_group && i < count) {
-                    self->sgr.decoration = MIN(5, params[i]);
+                    self->style.attrs.decoration = MIN(5, params[i]);
                     i++;
-                } else self->sgr.decoration = 1;
+                } else self->style.attrs.decoration = 1;
                 break;
-            case 5: self->sgr.blink = true; break;
-            case 7: self->sgr.reverse = true; break;
-            case 9: self->sgr.strikethrough = true; break;
-            case 21: self->sgr.decoration = 2; break;
-            case 221: self->sgr.bold = false; break;
-            case 222: self->sgr.dim = false; break;
+            case 5: self->style.attrs.blink = true; break;
+            case 7: self->style.attrs.reverse = true; break;
+            case 9: self->style.attrs.strike = true; break;
+            case 21: self->style.attrs.decoration = 2; break;
+            case 221: self->style.attrs.bold = false; break;
+            case 222: self->style.attrs.dim = false; break;
             case 22:
-                self->sgr.bold = false;
-                self->sgr.dim = false;
+                self->style.attrs.bold = false;
+                self->style.attrs.dim = false;
                 break;
-            case 23: self->sgr.italic = false; break;
-            case 24: self->sgr.decoration = 0; break;
-            case 25: self->sgr.blink = false; break;
-            case 27: self->sgr.reverse = false; break;
-            case 29: self->sgr.strikethrough = false; break;
-            case 30 ... 37: self->sgr.fg = ((attr - 30) << 8) | 1; break;
-            case 38: SET_COLOR(sgr.fg);
-            case 39: self->sgr.fg = 0; break;
-            case 40 ... 47: self->sgr.bg = ((attr - 40) << 8) | 1; break;
-            case 48: SET_COLOR(sgr.bg);
-            case 49: self->sgr.bg = 0; break;
-            case 90 ... 97: self->sgr.fg = ((attr - 90 + 8) << 8) | 1; break;
-            case 100 ... 107: self->sgr.bg = ((attr - 100 + 8) << 8) | 1; break;
-            case DECORATION_FG_CODE: SET_COLOR(sgr.decoration_fg);
-            case DECORATION_FG_CODE + 1: self->sgr.decoration_fg = 0; break;
+            case 23: self->style.attrs.italic = false; break;
+            case 24: self->style.attrs.decoration = 0; break;
+            case 25: self->style.attrs.blink = false; break;
+            case 27: self->style.attrs.reverse = false; break;
+            case 29: self->style.attrs.strike = false; break;
+            case 30 ... 37: self->style.fg = ((attr - 30) << 8) | 1; break;
+            case 38: SET_COLOR(style.fg);
+            case 39: self->style.fg = 0; break;
+            case 40 ... 47: self->style.bg = ((attr - 40) << 8) | 1; break;
+            case 48: SET_COLOR(style.bg);
+            case 49: self->style.bg = 0; break;
+            case 90 ... 97: self->style.fg = ((attr - 90 + 8) << 8) | 1; break;
+            case 100 ... 107: self->style.bg = ((attr - 100 + 8) << 8) | 1; break;
+            case DECORATION_FG_CODE: SET_COLOR(style.decoration_fg);
+            case DECORATION_FG_CODE + 1: self->style.decoration_fg = 0; break;
         }
         if (is_group) break;
     }
@@ -141,43 +141,28 @@ cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group) {
     END_ALLOW_CASE_RANGE
 }
 
-void
-apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group) {
-#define RANGE for (unsigned c = 0; c < cell_count; c++, cell++)
+static void
+apply_sgr_to_style(Style *st, int *params, unsigned int count, bool is_group) {
+    // Apply SGR params to a style as DECCARA does
 #define SET_COLOR(which)                        \
     {                                           \
         color_type color = 0;                   \
         parse_color(params, &i, count, &color); \
-        if (color) {                            \
-            RANGE { cell->which = color; }      \
-        }                                       \
+        if (color) st->which = color;           \
     }                                           \
     break;
-#define SIMPLE(which, val)         \
-    RANGE { cell->which = (val); } \
+#define SIMPLE(which, val) \
+    st->which = (val);     \
     break;
-#define S(which, val)                    \
-    RANGE { cell->attrs.which = (val); } \
+#define S(which, val)        \
+    st->attrs.which = (val); \
     break;
 
     unsigned int i = 0, attr;
-    if (!count) {
-        params[0] = 0;
-        count = 1;
-    }
     while (i < count) {
-        GPUCell *cell = first_cell;
         attr = params[i++];
         switch (attr) {
-            case 0: {
-                const CellAttrs remove_sgr_mask = {.val = ~SGR_MASK};
-                RANGE {
-                    cell->attrs.val &= remove_sgr_mask.val;
-                    cell->fg = 0;
-                    cell->bg = 0;
-                    cell->decoration_fg = 0;
-                }
-            } break;
+            case 0: zero_at_ptr(st); break;
             case 1: S(bold, true);
             case 2: S(dim, true);
             case 3: S(italic, true);
@@ -196,10 +181,8 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
             case 221: S(bold, false);
             case 222: S(dim, false);
             case 22:
-                RANGE {
-                    cell->attrs.bold = false;
-                    cell->attrs.dim = false;
-                }
+                st->attrs.bold = false;
+                st->attrs.dim = false;
                 break;
             case 23: S(italic, false);
             case 24: S(decoration, 0);
@@ -220,20 +203,34 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
         if (is_group) break;
     }
 #undef SET_COLOR
-#undef RANGE
 #undef SIMPLE
 #undef S
 }
 
+void
+apply_sgr_to_cells(StyleTable *t, CPUCell *cells, unsigned int cell_count, int *params, unsigned int count, bool is_group) {
+    if (!count) {
+        params[0] = 0;
+        count = 1;
+    }
+    // Cells in a region usually have only a few distinct styles, remember the last mapping
+    uint32_t last_old = UINT32_MAX, last_new = 0;
+    for (unsigned c = 0; c < cell_count; c++) {
+        const uint32_t old = cells[c].style_idx;
+        if (old != last_old) {
+            Style st = *style_table_get(t, old);
+            apply_sgr_to_style(&st, params, count, is_group);
+            last_old = old;
+            last_new = style_table_intern(t, &st);
+        }
+        cells[c].style_idx = last_new;
+    }
+}
+
 const char *
 cursor_as_sgr(const Cursor *self) {
-    GPUCell blank_cell = {0}, cursor_cell = {
-                                  .attrs = cursor_to_attrs(self),
-                                  .fg = self->sgr.fg & COL_MASK,
-                                  .bg = self->sgr.bg & COL_MASK,
-                                  .decoration_fg = self->sgr.decoration_fg & COL_MASK,
-                              };
-    return cell_as_sgr(&cursor_cell, &blank_cell);
+    static const Style blank = {0};
+    return style_as_sgr(&self->style, &blank);
 }
 
 static PyObject *
@@ -260,7 +257,8 @@ cursor_copy_to(Cursor *src, Cursor *dest) {
     CCY(shape);
     CCY(non_blinking);
 #undef CCY
-    memcpy(&dest->sgr, &src->sgr, sizeof(dest->sgr));
+    dest->style = src->style;
+    dest->style_idx = src->style_idx;
 }
 
 static PyObject *copy(Cursor *self, PyObject *);
@@ -268,26 +266,24 @@ static PyObject *copy(Cursor *self, PyObject *);
 
 // Boilerplate {{{
 
-#define SGR_BOOL_GETSET(x)                                                    \
-    static PyObject *x##_get(Cursor *self, void UNUSED *closure) {            \
-        PyObject *ans = self->sgr.x ? Py_True : Py_False;                     \
-        Py_INCREF(ans);                                                       \
-        return ans;                                                           \
-    }                                                                         \
-    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) { \
-        if (value == NULL) {                                                  \
-            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");      \
-            return -1;                                                        \
-        }                                                                     \
-        self->sgr.x = PyObject_IsTrue(value) ? true : false;                  \
-        return 0;                                                             \
+#define SGR_BOOL_GETSET(x, field)                                                                                                    \
+    static PyObject *x##_get(Cursor *self, void UNUSED *closure) { return Py_NewRef(self->style.attrs.field ? Py_True : Py_False); } \
+    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) {                                                        \
+        if (value == NULL) {                                                                                                         \
+            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                             \
+            return -1;                                                                                                               \
+        }                                                                                                                            \
+        int q = PyObject_IsTrue(value);                                                                                              \
+        if (q < 0) return -1;                                                                                                        \
+        self->style.attrs.field = q ? 1 : 0;                                                                                         \
+        return 0;                                                                                                                    \
     }
 
-SGR_BOOL_GETSET(bold)
-SGR_BOOL_GETSET(italic)
-SGR_BOOL_GETSET(reverse)
-SGR_BOOL_GETSET(strikethrough)
-SGR_BOOL_GETSET(dim)
+SGR_BOOL_GETSET(bold, bold)
+SGR_BOOL_GETSET(italic, italic)
+SGR_BOOL_GETSET(reverse, reverse)
+SGR_BOOL_GETSET(strikethrough, strike)
+SGR_BOOL_GETSET(dim, dim)
 #undef SGR_BOOL_GETSET
 
 static PyObject *
@@ -309,7 +305,7 @@ blink_set(Cursor *self, PyObject *value, void UNUSED *closure) {
 
 static PyObject *
 text_blink_get(Cursor *self, void UNUSED *closure) {
-    return Py_NewRef(self->sgr.blink ? Py_True : Py_False);
+    return Py_NewRef(self->style.attrs.blink ? Py_True : Py_False);
 }
 
 static int
@@ -320,30 +316,32 @@ text_blink_set(Cursor *self, PyObject *value, void UNUSED *closure) {
     }
     int blink = PyObject_IsTrue(value);
     if (blink < 0) return -1;
-    self->sgr.blink = blink;
+    self->style.attrs.blink = blink;
     return 0;
 }
 
 
-#define SGR_UINT_GETSET(x)                                                                                                       \
-    static PyObject *x##_get(Cursor *self, void UNUSED *closure) { return PyLong_FromUnsignedLong((unsigned long)self->sgr.x); } \
-    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) {                                                    \
-        if (value == NULL) {                                                                                                     \
-            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                         \
-            return -1;                                                                                                           \
-        }                                                                                                                        \
-        if (!PyLong_Check(value)) {                                                                                              \
-            PyErr_SetString(PyExc_TypeError, "value must be an int");                                                            \
-            return -1;                                                                                                           \
-        }                                                                                                                        \
-        self->sgr.x = PyLong_AsUnsignedLong(value);                                                                              \
-        return 0;                                                                                                                \
+#define SGR_UINT_GETSET(x, field)                                                                                                      \
+    static PyObject *x##_get(Cursor *self, void UNUSED *closure) { return PyLong_FromUnsignedLong((unsigned long)self->style.field); } \
+    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) {                                                          \
+        if (value == NULL) {                                                                                                           \
+            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                               \
+            return -1;                                                                                                                 \
+        }                                                                                                                              \
+        if (!PyLong_Check(value)) {                                                                                                    \
+            PyErr_SetString(PyExc_TypeError, "value must be an int");                                                                  \
+            return -1;                                                                                                                 \
+        }                                                                                                                              \
+        unsigned long v = PyLong_AsUnsignedLong(value);                                                                                \
+        if (v == (unsigned long)-1 && PyErr_Occurred()) return -1;                                                                     \
+        self->style.field = v;                                                                                                         \
+        return 0;                                                                                                                      \
     }
 
-SGR_UINT_GETSET(decoration)
-SGR_UINT_GETSET(fg)
-SGR_UINT_GETSET(bg)
-SGR_UINT_GETSET(decoration_fg)
+SGR_UINT_GETSET(decoration, attrs.decoration)
+SGR_UINT_GETSET(fg, fg)
+SGR_UINT_GETSET(bg, bg)
+SGR_UINT_GETSET(decoration_fg, decoration_fg)
 
 static PyMemberDef members[] = {
     {"x", T_UINT, offsetof(Cursor, x), 0, "x"},

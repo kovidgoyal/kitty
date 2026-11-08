@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "style-table.h"
 typedef struct Chars {
     const char_type *chars;
     size_t count;
@@ -36,6 +37,7 @@ typedef struct TextCache {
     unsigned refcnt;
     CharsMonotonicArena arena;
     unsigned adds_since_last_gc, adds_between_gcs;
+    StyleTable *style_table;
 } TextCache;
 static uint64_t
 hash_chars(Chars k) {
@@ -60,6 +62,12 @@ tc_alloc(void) {
         ans = NULL;
         return ans;
     }
+    ans->style_table = style_table_alloc();
+    if (!ans->style_table) {
+        free(ans->array.items);
+        free(ans);
+        return NULL;
+    }
     vt_init(&ans->map);
     ans->refcnt = 1;
     return ans;
@@ -70,7 +78,13 @@ free_text_cache(TextCache *self) {
     vt_cleanup(&self->map);
     Chars_free_all(&self->arena);
     free(self->array.items);
+    style_table_free(self->style_table);
     free(self);
+}
+
+StyleTable *
+tc_style_table(const TextCache *self) {
+    return self->style_table;
 }
 
 TextCache *

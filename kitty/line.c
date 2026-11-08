@@ -19,7 +19,7 @@ static void
 dealloc(Line *self) {
     if (self->needs_free) {
         PyMem_Free(self->cpu_cells);
-        PyMem_Free(self->gpu_cells);
+        PyMem_Free(self->render_cells);
     }
     tc_decref(self->text_cache);
     Py_TYPE(self)->tp_free((PyObject *)self);
@@ -525,8 +525,11 @@ sprite_at(Line *self, PyObject *x) {
         PyErr_SetString(PyExc_IndexError, "Column number out of bounds");
         return NULL;
     }
-    GPUCell *c = self->gpu_cells + xval;
-    return Py_BuildValue("I", (unsigned int)c->sprite_idx);
+    if (!self->render_cells) {
+        PyErr_SetString(PyExc_ValueError, "This line has no render data");
+        return NULL;
+    }
+    return Py_BuildValue("I", (unsigned int)self->render_cells[xval].sprite_idx);
 }
 
 static void
@@ -634,27 +637,27 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
         return s->escape_code_written;
     }
 
-    static const GPUCell blank_cell = {0};
-    GPUCell *cell;
-    if (s->prev_gpu_cell == NULL) s->prev_gpu_cell = &blank_cell;
-    const CellAttrs mask_for_sgr = {.val = SGR_MASK};
-
-#define CMP_ATTRS (cell->attrs.val & mask_for_sgr.val) != (s->prev_gpu_cell->attrs.val & mask_for_sgr.val)
-#define CMP(x) (cell->x != s->prev_gpu_cell->x)
+    const StyleTable *style_table = line_style_table(self);
+    uint32_t prev_style_idx = UINT32_MAX;
 
     for (s->pos = start_at; s->pos < s->limit; s->pos++) {
         if (s->output_buf->hyperlink_pool) {
             hyperlink_id_type hid = self->cpu_cells[s->pos].hyperlink_id;
             if (hid != s->output_buf->active_hyperlink_id) write_hyperlink_to_ansi_buf(s, hid);
         }
-        cell = &self->gpu_cells[s->pos];
-        if (CMP_ATTRS || CMP(fg) || CMP(bg) || CMP(decoration_fg)) {
-            const char *sgr = cell_as_sgr(cell, s->prev_gpu_cell);
-            if (*sgr) write_sgr_to_ansi_buf(s, sgr);
+        const uint32_t style_idx = self->cpu_cells[s->pos].style_idx;
+        if (style_idx != prev_style_idx) {
+            // consecutive cells usually have the same style
+            prev_style_idx = style_idx;
+            const Style *cs = style_table_get(style_table, style_idx);
+            if (!style_eq(cs, &s->prev_style)) {
+                const char *sgr = style_as_sgr(cs, &s->prev_style);
+                if (*sgr) write_sgr_to_ansi_buf(s, sgr);
+                s->prev_style = *cs;
+            }
         }
 
         index_type num_cells_to_skip_for_tab = text_in_cell_ansi(s, self->cpu_cells + s->pos, self->text_cache, skip_multiline_non_zero_lines);
-        s->prev_gpu_cell = cell;
         const CPUCell *next = self->cpu_cells + s->pos + 1;
         while (num_cells_to_skip_for_tab && s->pos + 1 < s->limit && cell_is_char(next, ' ')) {
             num_cells_to_skip_for_tab--;
@@ -665,8 +668,6 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
     close_multicell(s);
     if (s->output_buf->active_hyperlink_id && s->limit < self->xnum && !self->cpu_cells[s->limit].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
     return s->escape_code_written;
-#undef CMP_ATTRS
-#undef CMP
 }
 
 static PyObject *
@@ -769,17 +770,11 @@ set_text(Line *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds offset/sz");
         return NULL;
     }
-    CellAttrs attrs = cursor_to_attrs(cursor);
-    color_type fg = (cursor->sgr.fg & COL_MASK), bg = cursor->sgr.bg & COL_MASK;
-    color_type dfg = cursor->sgr.decoration_fg & COL_MASK;
+    const uint32_t style_idx = style_table_intern_cached(line_style_table(self), &cursor->style, &cursor->style_idx);
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
-        self->cpu_cells[i] = (CPUCell){0};
+        self->cpu_cells[i] = (CPUCell){.style_idx = style_idx};
         self->cpu_cells[i].ch_or_idx = PyUnicode_READ(kind, buf, offset);
-        self->gpu_cells[i].attrs = attrs;
-        self->gpu_cells[i].fg = fg;
-        self->gpu_cells[i].bg = bg;
-        self->gpu_cells[i].decoration_fg = dfg;
     }
 
     Py_RETURN_NONE;
@@ -804,19 +799,15 @@ cursor_from(Line *self, PyObject *args) {
     }
     ans->x = x;
     ans->y = y;
-    attrs_to_cursor(self->gpu_cells[x].attrs, ans);
-    ans->sgr.fg = self->gpu_cells[x].fg;
-    ans->sgr.bg = self->gpu_cells[x].bg;
-    ans->sgr.decoration_fg = self->gpu_cells[x].decoration_fg & COL_MASK;
+    ans->style = *line_cell_style(self, x);
 
     return (PyObject *)ans;
 }
 
 void
 line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
-    const CPUCell cc = {.ch_or_idx = ch};
     if (at + num > self->xnum) num = self->xnum > at ? self->xnum - at : 0;
-    memset_array(self->cpu_cells + at, cc, num);
+    for (CPUCell *c = self->cpu_cells + at, *limit = c + num; c < limit; c++) *c = (CPUCell){.ch_or_idx = ch, .style_idx = c->style_idx};
 }
 
 static PyObject *
@@ -831,20 +822,16 @@ clear_text(Line *self, PyObject *args) {
 
 void
 line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
-    GPUCell gc = cursor_as_gpu_cell(cursor);
+    const uint32_t style_idx = cursor_style_idx_in(line_style_table(self), cursor);
     if (clear_char) {
 #if BLANK_CHAR != 0
 #error This implementation is incorrect for BLANK_CHAR != 0
 #endif
         if (at + num > self->xnum) { num = at < self->xnum ? self->xnum - at : 0; }
-        memset(self->cpu_cells + at, 0, num * sizeof(CPUCell));
-        memset_array(self->gpu_cells + at, gc, num);
+        fill_blank_cpu_cells(self->cpu_cells + at, num, style_idx);
+        if (self->render_cells) memset(self->render_cells + at, 0, num * sizeof(RenderCell));
     } else {
-        for (index_type i = at; i < self->xnum && i < at + num; i++) {
-            gc.attrs.mark = self->gpu_cells[i].attrs.mark;
-            gc.sprite_idx = self->gpu_cells[i].sprite_idx;
-            memcpy(self->gpu_cells + i, &gc, sizeof(gc));
-        }
+        for (index_type i = at; i < self->xnum && i < at + num; i++) self->cpu_cells[i].style_idx = style_idx;
     }
 }
 
@@ -873,9 +860,10 @@ bool
 colors_for_cell(Line *self, const ColorProfile *cp, index_type *x, color_type *fg, color_type *bg, bool *reversed) {
     if (*x >= self->xnum) return false;
     while (self->cpu_cells[*x].is_multicell && self->cpu_cells[*x].x && *x) (*x)--;
-    *fg = resolve_color(cp, self->gpu_cells[*x].fg, *fg);
-    *bg = resolve_color(cp, self->gpu_cells[*x].bg, *bg);
-    if (self->gpu_cells[*x].attrs.reverse) {
+    const Style *st = line_cell_style(self, *x);
+    *fg = resolve_color(cp, st->fg, *fg);
+    *bg = resolve_color(cp, st->bg, *bg);
+    if (st->attrs.reverse) {
         color_type t = *fg;
         *fg = *bg;
         *bg = t;
@@ -897,21 +885,17 @@ line_get_char(Line *self, index_type at) {
 
 static void
 line_set_char(Line *self, unsigned int at, uint32_t ch, Cursor *cursor, hyperlink_id_type hyperlink_id) {
-    GPUCell *g = self->gpu_cells + at;
-    if (cursor != NULL) {
-        g->attrs = cursor_to_attrs(cursor);
-        g->fg = cursor->sgr.fg & COL_MASK;
-        g->bg = cursor->sgr.bg & COL_MASK;
-        g->decoration_fg = cursor->sgr.decoration_fg & COL_MASK;
-    }
+    StyleTable *t = line_style_table(self);
     CPUCell *c = self->cpu_cells + at;
+    Style st = cursor ? cursor->style : *style_table_get(t, c->style_idx);
     *c = (CPUCell){0};
     cell_set_char(c, ch);
     c->hyperlink_id = hyperlink_id;
     if (OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && hyperlink_id) {
-        g->decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;
-        g->attrs.decoration = OPT(url_style);
+        st.decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;
+        st.attrs.decoration = OPT(url_style);
     }
+    c->style_idx = style_table_intern(t, &st);
 }
 
 static PyObject *
@@ -943,7 +927,7 @@ set_attribute(Line *self, PyObject *args) {
     unsigned int val;
     char *which;
     if (!PyArg_ParseTuple(args, "sI", &which, &val)) return NULL;
-    if (!set_named_attribute_on_line(self->gpu_cells, which, val, self->xnum)) {
+    if (!set_named_attribute_on_line(line_style_table(self), self->cpu_cells, self->render_cells, which, val, self->xnum)) {
         PyErr_SetString(PyExc_KeyError, "Unknown cell attribute");
         return NULL;
     }
@@ -976,7 +960,7 @@ decoration_as_sgr(uint8_t decoration) {
 
 
 const char *
-cell_as_sgr(const GPUCell *cell, const GPUCell *prev) {
+style_as_sgr(const Style *cell, const Style *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
 #define P(s)                    \
@@ -1026,14 +1010,24 @@ __len__(PyObject *self) {
 
 static int
 __eq__(Line *a, Line *b) {
-    return a->xnum == b->xnum && memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0 &&
-           memcmp(a->gpu_cells, b->gpu_cells, sizeof(GPUCell) * a->xnum) == 0;
+    if (a->xnum != b->xnum) return false;
+    if (a->text_cache == b->text_cache) return memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0;
+    // Lines from different screens, compare styles by value
+    const StyleTable *ta = line_style_table(a), *tb = line_style_table(b);
+    for (index_type x = 0; x < a->xnum; x++) {
+        CPUCell ca = a->cpu_cells[x], cb = b->cpu_cells[x];
+        if (!style_eq(style_table_get(ta, ca.style_idx), style_table_get(tb, cb.style_idx))) return false;
+        ca.style_idx = 0;
+        cb.style_idx = 0;
+        if (memcmp(&ca, &cb, sizeof(ca)) != 0) return false;
+    }
+    return true;
 }
 
 bool
 line_has_mark(Line *line, uint16_t mark) {
     for (index_type x = 0; x < line->xnum; x++) {
-        const uint16_t m = line->gpu_cells[x].attrs.mark;
+        const uint16_t m = line->render_cells ? line->render_cells[x].mark : 0;
         if (m && (!mark || mark == m)) return true;
     }
     return false;
@@ -1050,7 +1044,7 @@ report_marker_error(PyObject *marker) {
 static void
 apply_mark(Line *line, const uint16_t mark, index_type *cell_pos, unsigned int *match_pos) {
 #define MARK \
-    { line->gpu_cells[x].attrs.mark = mark; }
+    { line->render_cells[x].mark = mark; }
     index_type x = *cell_pos;
     MARK;
     (*match_pos)++;
@@ -1103,21 +1097,22 @@ apply_marker(PyObject *marker, Line *line, const PyObject *text) {
         while (x < line->xnum && match_pos <= r) { apply_mark(line, am, &x, &match_pos); }
     }
     Py_DECREF(iter);
-    while (x < line->xnum) line->gpu_cells[x++].attrs.mark = 0;
+    while (x < line->xnum) line->render_cells[x++].mark = 0;
     if (PyErr_Occurred()) report_marker_error(marker);
 }
 
 void
 mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf) {
+    if (!line->render_cells) return; // marks are render data
     if (!marker) {
-        for (index_type i = 0; i < line->xnum; i++) line->gpu_cells[i].attrs.mark = 0;
+        for (index_type i = 0; i < line->xnum; i++) line->render_cells[i].mark = 0;
         return;
     }
     PyObject *text = line_as_unicode(line, false, buf);
     if (PyUnicode_GET_LENGTH(text) > 0) {
         apply_marker(marker, line, text);
     } else {
-        for (index_type i = 0; i < line->xnum; i++) line->gpu_cells[i].attrs.mark = 0;
+        for (index_type i = 0; i < line->xnum; i++) line->render_cells[i].mark = 0;
     }
     Py_DECREF(text);
 }
@@ -1166,7 +1161,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
             // pretty sad performance wise, but I guess it will remain as it
             // makes writing pagers easier.
             // see https://github.com/kovidgoyal/kitty/issues/2381
-            s.prev_gpu_cell = NULL;
+            zero_at_ptr(&s.prev_style);
             line_as_ansi(line, &s, 0, line->xnum, 0, true);
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
             if (t && ansibuf->len > 0) APPEND(sgr_reset);
@@ -1248,6 +1243,7 @@ copy_char(Line *self, PyObject *args) {
         return NULL;
     }
     COPY_CELL(self, src, to, dest);
+    if (self->text_cache != to->text_cache) remap_style_idx_range(line_style_table(to), line_style_table(self), to->cpu_cells + dest, 1);
     Py_RETURN_NONE;
 }
 

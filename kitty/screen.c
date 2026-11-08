@@ -75,15 +75,15 @@ init_tabstops(bool *tabstops, index_type count) {
 static bool
 init_overlay_line(Screen *self, index_type columns, bool keep_active) {
     PyMem_Free(self->overlay_line.cpu_cells);
-    PyMem_Free(self->overlay_line.gpu_cells);
+    PyMem_Free(self->overlay_line.render_cells);
     PyMem_Free(self->overlay_line.original_line.cpu_cells);
-    PyMem_Free(self->overlay_line.original_line.gpu_cells);
+    PyMem_Free(self->overlay_line.original_line.render_cells);
     self->overlay_line.cpu_cells = PyMem_Calloc(columns, sizeof(CPUCell));
-    self->overlay_line.gpu_cells = PyMem_Calloc(columns, sizeof(GPUCell));
+    self->overlay_line.render_cells = PyMem_Calloc(columns, sizeof(RenderCell));
     self->overlay_line.original_line.cpu_cells = PyMem_Calloc(columns, sizeof(CPUCell));
-    self->overlay_line.original_line.gpu_cells = PyMem_Calloc(columns, sizeof(GPUCell));
-    if (!self->overlay_line.cpu_cells || !self->overlay_line.gpu_cells || !self->overlay_line.original_line.cpu_cells ||
-        !self->overlay_line.original_line.gpu_cells) {
+    self->overlay_line.original_line.render_cells = PyMem_Calloc(columns, sizeof(RenderCell));
+    if (!self->overlay_line.cpu_cells || !self->overlay_line.render_cells || !self->overlay_line.original_line.cpu_cells ||
+        !self->overlay_line.original_line.render_cells) {
         PyErr_NoMemory();
         return false;
     }
@@ -141,6 +141,7 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             Py_CLEAR(self);
             return PyErr_NoMemory();
         }
+        self->style_table = tc_style_table(self->text_cache);
         self->reload_all_gpu_data = true;
         self->cell_size.width = cell_width;
         self->cell_size.height = cell_height;
@@ -538,11 +539,11 @@ last_visited_prompt_viewport(const Screen *self, index_type *y, unsigned int *sc
 
 
 static void
-nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit, char_type ch) {
+nuke_in_line(CPUCell *cp, index_type start, index_type x_limit, char_type ch) {
+    // The line must be marked dirty after this
     for (index_type x = start; x < x_limit; x++) {
         cell_set_char(cp + x, ch);
         cell_clear_multicell(cp + x);
-        clear_sprite_position(gp[x]);
     }
 }
 
@@ -588,7 +589,7 @@ nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_
     const char_type ch = replace_with_spaces ? ' ' : 0;
     for (int y = rows.start; y < rows.limit; y++) {
         Line *line = range_line_(self, y);
-        nuke_in_line(line->cpu_cells, line->gpu_cells, x_, x_limit, ch);
+        nuke_in_line(line->cpu_cells, x_, x_limit, ch);
         mark_range_line_dirty(self, y);
     }
     self->is_dirty = true;
@@ -598,8 +599,7 @@ static void
 nuke_multiline_char_intersecting_with(Screen *self, index_type x_start, index_type x_limit, index_type y_start, index_type y_limit, bool replace_with_spaces) {
     for (index_type y = y_start; y < y_limit; y++) {
         CPUCell *cp;
-        GPUCell *gp;
-        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        linebuf_init_cells(self->linebuf, y, &cp, NULL);
         for (index_type x = x_start; x < x_limit; x++) {
             if (cp[x].is_multicell && cp[x].scale > 1) nuke_multicell_char_at(self, x, y, replace_with_spaces);
         }
@@ -701,8 +701,7 @@ static void
 nuke_multicell_char_intersecting_with(Screen *self, index_type x_start, index_type x_limit, index_type y_start, index_type y_limit, bool replace_with_spaces) {
     for (index_type y = y_start; y < y_limit; y++) {
         CPUCell *cp;
-        GPUCell *gp;
-        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        linebuf_init_cells(self->linebuf, y, &cp, NULL);
         if (!has_multicell_in_range(cp, x_start, x_limit)) continue;
         for (index_type x = x_start; x < x_limit; x++) {
             if (cp[x].is_multicell) nuke_multicell_char_at(self, x, y, replace_with_spaces);
@@ -732,15 +731,17 @@ nuke_split_multicell_char_at_right_boundary(Screen *self, index_type x, index_ty
 static void
 nuke_incomplete_single_line_multicell_chars_in_range(Screen *self, index_type start, index_type limit, index_type y, bool replace_with_spaces) {
     CPUCell *cpu_cells;
-    GPUCell *gpu_cells;
-    linebuf_init_cells(self->linebuf, y, &cpu_cells, &gpu_cells);
+    linebuf_init_cells(self->linebuf, y, &cpu_cells, NULL);
     for (index_type x = start; x < limit; x++) {
         if (cpu_cells[x].is_multicell) {
             // The end of the char, at least x + 1, so that the loop always makes
             // progress, even for fragments of chars whose first cell is missing
             const index_type w = mcd_x_limit(cpu_cells + x);
             const index_type char_limit = x + (w > cpu_cells[x].x ? w - cpu_cells[x].x : 1);
-            if (cpu_cells[x].x || char_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(char_limit, limit), replace_with_spaces ? ' ' : 0);
+            if (cpu_cells[x].x || char_limit > limit) {
+                nuke_in_line(cpu_cells, x, MIN(char_limit, limit), replace_with_spaces ? ' ' : 0);
+                linebuf_mark_line_dirty(self->linebuf, y);
+            }
             x = char_limit - 1;
         }
     }
@@ -992,9 +993,9 @@ dealloc(Screen *self) {
     Py_CLEAR(self->color_profile);
     Py_CLEAR(self->marker);
     PyMem_Free(self->overlay_line.cpu_cells);
-    PyMem_Free(self->overlay_line.gpu_cells);
+    PyMem_Free(self->overlay_line.render_cells);
     PyMem_Free(self->overlay_line.original_line.cpu_cells);
-    PyMem_Free(self->overlay_line.original_line.gpu_cells);
+    PyMem_Free(self->overlay_line.original_line.render_cells);
     Py_CLEAR(self->overlay_line.overlay_text);
     PyMem_Free(self->main_tabstops);
     Py_CLEAR(self->paused_rendering.linebuf);
@@ -1020,9 +1021,7 @@ dealloc(Screen *self) {
 typedef struct text_loop_state {
     bool image_placeholder_marked;
     const CPUCell cc;
-    const GPUCell g;
     CPUCell *cp;
-    GPUCell *gp;
     GraphemeSegmentationResult seg;
     struct {
         index_type x, y;
@@ -1108,7 +1107,7 @@ init_text_loop_line(Screen *self, text_loop_state *s) {
     // for example, when drawing a long stream of unique multi-codepoint cells,
     // making the cache slower to use the larger it grows.
     if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);
-    linebuf_init_cells(self->linebuf, self->cursor->y, &s->cp, &s->gp);
+    linebuf_init_cells(self->linebuf, self->cursor->y, &s->cp, NULL);
     clear_intersecting_selections(self, self->cursor->y);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     s->image_placeholder_marked = false;
@@ -1122,12 +1121,6 @@ reinit_text_loop_line(Screen *self, text_loop_state *s) {
     const GraphemeSegmentationResult seg = s->seg;
     init_text_loop_line(self, s);
     s->seg = seg;
-}
-
-static void
-zero_cells(text_loop_state *s, CPUCell *c, GPUCell *g) {
-    *c = s->cc;
-    *g = s->g;
 }
 
 typedef Line *(linefunc_t)(Screen *, int);
@@ -1218,13 +1211,10 @@ insert_characters(Screen *self, index_type at, index_type num, index_type y, boo
     nuke_multiline_char_intersecting_with(self, at, self->columns, y, y + 1, replace_with_spaces);
     nuke_split_multicell_char_at_left_boundary(self, at, y, replace_with_spaces);
     CPUCell *cp;
-    GPUCell *gp;
-    linebuf_init_cells(self->linebuf, y, &cp, &gp);
+    linebuf_init_cells(self->linebuf, y, &cp, NULL);
     // right shift
-    for (index_type i = self->columns - 1; i >= at + num; i--) {
-        cp[i] = cp[i - num];
-        gp[i] = gp[i - num];
-    }
+    for (index_type i = self->columns - 1; i >= at + num; i--) cp[i] = cp[i - num];
+    linebuf_mark_line_dirty(self->linebuf, y);
     nuke_incomplete_single_line_multicell_chars_in_range(self, at, at + num, y, replace_with_spaces);
     nuke_split_multicell_char_at_right_boundary(self, self->columns - 1, y, replace_with_spaces);
 }
@@ -1241,12 +1231,8 @@ halve_multicell_width(Screen *self, index_type x_, index_type y_) {
     for (int y = rows.start; y < rows.limit; y++) {
         Line *line = range_line_(self, y);
         CPUCell *c = line->cpu_cells;
-        GPUCell *g = line->gpu_cells;
         for (index_type x = x_; x < half_x_limit; x++) c[x].width = new_width;
-        for (index_type x = half_x_limit; x < x_limit; x++) {
-            c[x] = (CPUCell){0};
-            clear_sprite_position(g[x]);
-        }
+        for (index_type x = half_x_limit; x < x_limit; x++) c[x] = (CPUCell){.style_idx = c[x].style_idx};
         mark_range_line_dirty(self, y);
     }
     self->is_dirty = true;
@@ -1295,12 +1281,69 @@ screen_garbage_collect_text_cache(Screen *self) {
     text_cache_gc_process_linebuf(self->text_cache, gc, self->main_linebuf);
     text_cache_gc_process_linebuf(self->text_cache, gc, self->alt_linebuf);
     text_cache_gc_process_linebuf(self->text_cache, gc, self->paused_rendering.linebuf);
-    if (self->overlay_line.cpu_cells) text_cache_gc_process_cells(self->text_cache, gc, self->overlay_line.cpu_cells, self->overlay_line.xnum);
+    // The overlay buffers have columns cells, overlay_line.xnum is the length of the overlay text, which can be larger
+    if (self->overlay_line.cpu_cells) text_cache_gc_process_cells(self->text_cache, gc, self->overlay_line.cpu_cells, self->columns);
     if (self->overlay_line.original_line.cpu_cells)
-        text_cache_gc_process_cells(self->text_cache, gc, self->overlay_line.original_line.cpu_cells, self->overlay_line.xnum);
+        text_cache_gc_process_cells(self->text_cache, gc, self->overlay_line.original_line.cpu_cells, self->columns);
     tc_gc_end(self->text_cache, gc);
     // the GC remaps all cache indices so the memoized tab indices are stale
     memset(&self->tab_cache, 0, sizeof(self->tab_cache));
+}
+
+static void
+style_gc_process_cells(StyleTable *t, StyleTableGC *gc, CPUCell *cells, size_t count, bool quantize) {
+    for (size_t i = 0; i < count; i++) cells[i].style_idx = style_table_gc_map(t, gc, cells[i].style_idx, quantize);
+}
+
+static void
+style_gc_process_linebuf(StyleTable *t, StyleTableGC *gc, LineBuf *lb) {
+    if (lb) style_gc_process_cells(t, gc, lb->cpu_cell_buf, (size_t)lb->ynum * lb->xnum, false);
+}
+
+static bool
+garbage_collect_style_table(Screen *self, unsigned quantize_bits, bool degraded_if_full) {
+    // Remap the style index of every live cell onto a fresh table, so styles
+    // that are no longer used are freed. With quantize_bits, styles of cells
+    // in the scrollback get colors of reduced precision. Must only be called
+    // when no style indices are held outside of cells.
+    StyleTable *t = self->style_table;
+    StyleTableGC *gc = style_table_gc_begin(t, quantize_bits);
+    if (!gc) return false; // allocation failure, table left unchanged
+    // Screen cells first, so they get exact styles even if the table overflows
+    style_gc_process_linebuf(t, gc, self->main_linebuf);
+    style_gc_process_linebuf(t, gc, self->alt_linebuf);
+    style_gc_process_linebuf(t, gc, self->paused_rendering.linebuf);
+    // The overlay buffers have columns cells, overlay_line.xnum is the length of the overlay text
+    if (self->overlay_line.cpu_cells) style_gc_process_cells(t, gc, self->overlay_line.cpu_cells, self->columns, false);
+    if (self->overlay_line.original_line.cpu_cells) style_gc_process_cells(t, gc, self->overlay_line.original_line.cpu_cells, self->columns, false);
+    for (index_type y = self->historybuf->count; y-- > 0;) {
+        style_gc_process_cells(t, gc, historybuf_cpu_cells(self->historybuf, y), self->historybuf->xnum, true);
+    }
+    const bool still_full = t->count > style_table_max_count(t) - style_table_max_count(t) / 8;
+    style_table_gc_end(t, gc, degraded_if_full && still_full);
+    return true;
+}
+
+void
+screen_garbage_collect_style_table(Screen *self) {
+    // Called when the style table is full. Tries collecting without loss of
+    // precision first and if that does not free at least an eighth of the
+    // table, reduces the color precision of cells in the scrollback. Cells on
+    // screen always keep their exact styles.
+    StyleTable *t = self->style_table;
+    const uint32_t threshold = style_table_max_count(t) - style_table_max_count(t) / 8;
+    // If the last collection had to reduce precision, start there, as the
+    // scrollback is likely still full of distinct styles
+    unsigned bits = style_table_last_gc_quantize_bits(t);
+    static const unsigned ladder[] = {0, 4, 3, 2};
+    unsigned start = 0;
+    for (unsigned i = 0; i < arraysz(ladder); i++)
+        if (ladder[i] == bits) start = i;
+    for (unsigned i = start; i < arraysz(ladder); i++) {
+        const bool last = i + 1 == arraysz(ladder);
+        if (!garbage_collect_style_table(self, ladder[i], last)) return;
+        if (t->count <= threshold) break;
+    }
 }
 
 static bool
@@ -1392,27 +1435,22 @@ move_cursor_past_multicell(Screen *self, index_type required_width) {
 }
 
 static void
-move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell *cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
+move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell *cpu_cell, index_type xpos, index_type ypos) {
     index_type before = self->cursor->y;
     // Remove the char from its current cell before moving it, so that it is
     // not removed as a multicell char in the way and the cells it is moved to
     // can include its current cell
     const CPUCell c = *cpu_cell;
-    GPUCell g = *gpu_cell;
     *cpu_cell = (CPUCell){0};
-    *gpu_cell = (GPUCell){0};
     self->cursor->x = xpos;
     self->cursor->y = ypos;
     if (move_cursor_past_multicell(self, 2)) {
         CPUCell *cp;
-        GPUCell *gp;
-        clear_sprite_position(g);
-        linebuf_init_cells(self->linebuf, self->cursor->y, &cp, &gp);
+        linebuf_init_cells(self->linebuf, self->cursor->y, &cp, NULL);
+        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         cp[self->cursor->x] = c;
-        gp[self->cursor->x] = g;
         self->cursor->x++;
         cp[self->cursor->x] = c;
-        gp[self->cursor->x] = g;
         cp[self->cursor->x].x = 1;
         self->cursor->x++;
     }
@@ -1421,9 +1459,8 @@ move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell
 }
 
 static void
-widen_cell_to_two(Screen *self, text_loop_state *s, CPUCell *cp, GPUCell *gp, index_type xpos) {
+widen_cell_to_two(Screen *self, text_loop_state *s, CPUCell *cp, index_type xpos) {
     CPUCell *cpu_cell = cp + xpos;
-    GPUCell *gpu_cell = gp + xpos;
     cpu_cell->is_multicell = true;
     cpu_cell->width = 2;
     cpu_cell->natural_width = true;
@@ -1432,17 +1469,17 @@ widen_cell_to_two(Screen *self, text_loop_state *s, CPUCell *cp, GPUCell *gp, in
         CPUCell *second = cp + xpos + 1;
         if (second->is_multicell) {
             if (second->y) {
-                move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
+                move_widened_char_past_multiline_chars(self, s, cpu_cell, xpos, s->prev.y);
                 return;
             }
             nuke_multicell_char_at(self, xpos + 1, s->prev.y, false);
         }
-        zero_cells(s, second, gp + xpos + 1);
+        // both halves of the widened char have the style of the original cell
         self->cursor->x++;
         *second = *cpu_cell;
         second->x = 1;
     } else {
-        move_widened_char_past_multiline_chars(self, s, cpu_cell, gpu_cell, xpos, s->prev.y);
+        move_widened_char_past_multiline_chars(self, s, cpu_cell, xpos, s->prev.y);
     }
 }
 
@@ -1454,15 +1491,14 @@ is_emoji_presentation_base(char_type ch) {
 static void
 draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     CPUCell *cp;
-    GPUCell *gp;
-    linebuf_init_cells(self->linebuf, s->prev.y, &cp, &gp);
+    linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
     index_type xpos = s->prev.x;
     while (xpos && cp[xpos].is_multicell && cp[xpos].x) xpos--;
     if (!add_combining_char(self, ch, xpos, s->prev.y) || self->lc->count < 2) return;
     unsigned base_pos = self->lc->count - 2;
     if (ch == VS16) { // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
         if (self->lc->chars[base_pos + 1] == VS16 && !cp[xpos].is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
-            widen_cell_to_two(self, s, cp, gp, xpos);
+            widen_cell_to_two(self, s, cp, xpos);
         }
     } else if (ch == VS15) {
         const CPUCell *cpu_cell = cp + xpos;
@@ -1481,7 +1517,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
         // s->seg was just stepped with ch, and grapheme_segmentation_step() copies the
         // grapheme break property of ch into it, so no extra char_props_for() lookup is
         // needed to reject the overwhelmingly common case of a zero width combining char.
-        widen_cell_to_two(self, s, cp, gp, xpos);
+        widen_cell_to_two(self, s, cp, xpos);
     }
 }
 
@@ -1572,8 +1608,7 @@ draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProp
         return 0;
     }
     CPUCell *cp;
-    GPUCell *gp;
-    linebuf_init_cells(self->linebuf, s->prev.y, &cp, &gp);
+    linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
     index_type xpos = s->prev.x;
     while (xpos && cp[xpos].is_multicell && cp[xpos].x) xpos--;
     add_combining_chars(self, run, n, xpos, s->prev.y);
@@ -1653,10 +1688,10 @@ static inline WideCellWords
 wide_cell_words(const CPUCell *cc) {
     // Built from constants, as building cells with bitfield assignments makes
     // compilers do partial stores to the stack and reload them with wider loads,
-    // which stall on store forwarding. Only the hyperlink is taken from cc.
+    // which stall on store forwarding. Only the hyperlink and style are taken from cc.
     static const CPUCell first = {.is_multicell = true, .width = 2, .scale = 1, .natural_width = true};
     static const CPUCell second = {.is_multicell = true, .width = 2, .scale = 1, .natural_width = true, .x = 1};
-    static const CPUCell hyperlink = {.hyperlink_id = (hyperlink_id_type)~0u};
+    static const CPUCell hyperlink = {.hyperlink_id = (hyperlink_id_type)~0u, .style_idx = MAX_NUM_OF_STYLES - 1};
 #define W(cell, which) cell_word(cell, which)
 #define HL(which) (W(cc, which) & W(&hyperlink, which))
     return (WideCellWords){
@@ -1693,8 +1728,6 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
     const index_type columns = self->columns;
     index_type x = self->cursor->x, last_x = x;
     CPUCell *cp = s->cp;
-    GPUCell *gp = s->gp;
-    const GPUCell g = s->g;
     // Cells are written from these templates as 64 bit values built in registers.
     // The first word of a cell is its char. Assembling cells as CPUCell values or
     // word arrays makes compilers build them on the stack with partial stores and
@@ -1732,11 +1765,9 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
             const uint64_t first = pack_cell_words(ch_word, narrow1);
             memcpy(dest, &first, sizeof(first));
             memcpy(dest + sizeof(first), &narrow2, sizeof(narrow2));
-            gp[x++] = g;
+            x++;
         } else {
             write_wide_cells(cp + x, ch, &wide);
-            gp[x] = g;
-            gp[x + 1] = g;
             x += 2;
         }
     }
@@ -1757,7 +1788,6 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
     int char_width;
 #define TEMPLATE_CELLS 16
     CPUCell cpu_template[TEMPLATE_CELLS];
-    GPUCell gpu_template[TEMPLATE_CELLS];
     bool templates_initialized = false;
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = map_char(self, chars[i]);
@@ -1780,18 +1810,13 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 while (m < n && !cp[m].is_multicell) m++;
                 n = m;
                 if (n) {
-                    GPUCell *gp = s->gp + self->cursor->x;
                     const CPUCell cc = s->cc;
-                    const GPUCell g = s->g;
                     // fill full blocks of cells from templates, the constant sized
                     // memcpy is inlined by the compiler as wide stores, the chars
                     // then need only a single 32-bit store per cell
                     if (n >= TEMPLATE_CELLS / 4 && !templates_initialized) {
                         templates_initialized = true;
-                        for (unsigned k = 0; k < TEMPLATE_CELLS; k++) {
-                            cpu_template[k] = cc;
-                            gpu_template[k] = g;
-                        }
+                        for (unsigned k = 0; k < TEMPLATE_CELLS; k++) cpu_template[k] = cc;
                     }
 #define copy_template(dest, template, elem)                                                                \
     {                                                                                                      \
@@ -1809,7 +1834,6 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
     }
                     size_t j;
                     copy_template(cp, cpu_template, cc);
-                    copy_template(gp, gpu_template, g);
 #undef copy_template
                     for (j = 0; j < n; j++) cell_set_char(cp + j, chars[i + j]);
                     self->last_graphic_char = chars[i + n - 1];
@@ -1899,14 +1923,12 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             }
             const WideCellWords wide = wide_cell_words(&s->cc);
             write_wide_cells(fc, ch, &wide);
-            s->gp[self->cursor->x] = s->g;
-            s->gp[self->cursor->x + 1] = s->g;
             s->prev.y = self->cursor->y;
             s->prev.x = self->cursor->x;
             s->prev.cc = fc;
             self->cursor->x += 2;
         } else {
-            zero_cells(s, fc, s->gp + self->cursor->x);
+            *fc = s->cc;
             cell_set_char(fc, ch);
             s->prev.y = self->cursor->y;
             s->prev.x = self->cursor->x;
@@ -1919,19 +1941,20 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
 #undef TEMPLATE_CELLS
 }
 
-#define PREPARE_FOR_DRAW_TEXT                                                                                                       \
-    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);                                                    \
-    const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0;                   \
-    CellAttrs attrs = cursor_to_attrs(self->cursor);                                                                                \
-    if (force_underline) attrs.decoration = OPT(url_style);                                                                         \
-    text_loop_state s = {                                                                                                           \
-        .cc = (CPUCell){.hyperlink_id = self->active_hyperlink_id},                                                                 \
-        .g = (GPUCell){                                                                                                             \
-            .attrs = attrs,                                                                                                         \
-            .fg = self->cursor->sgr.fg & COL_MASK,                                                                                  \
-            .bg = self->cursor->sgr.bg & COL_MASK,                                                                                  \
-            .decoration_fg = force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->sgr.decoration_fg & COL_MASK, \
-        }};
+#define PREPARE_FOR_DRAW_TEXT                                                                                         \
+    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);                                      \
+    if (style_table_needs_gc(self->style_table)) screen_garbage_collect_style_table(self);                            \
+    const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0;     \
+    Style draw_style = self->cursor->style;                                                                           \
+    uint32_t draw_style_idx;                                                                                          \
+    if (force_underline) {                                                                                            \
+        draw_style.attrs.decoration = OPT(url_style);                                                                 \
+        draw_style.decoration_fg = ((OPT(url_color) & COL_MASK) << 8) | 2;                                            \
+        draw_style_idx = style_table_intern_cached(self->style_table, &draw_style, &self->hyperlink_style_idx_cache); \
+    } else draw_style_idx = screen_cursor_style_idx(self);                                                            \
+    text_loop_state s = {                                                                                             \
+        .cc = (CPUCell){.hyperlink_id = self->active_hyperlink_id, .style_idx = draw_style_idx},                      \
+    };
 
 static void
 draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
@@ -1992,6 +2015,7 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc)
     lc->count = MIN(lc->count, MAX_NUM_CODEPOINTS_PER_CELL);
     PREPARE_FOR_DRAW_TEXT;
     mcd.hyperlink_id = s.cc.hyperlink_id;
+    mcd.style_idx = s.cc.style_idx;
     cell_set_chars(&mcd, self->text_cache, lc);
     move_cursor_past_multicell(self, width);
     if (height > 1) {
@@ -2016,14 +2040,13 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc)
         }
     }
     for (index_type y = self->cursor->y; y < self->cursor->y + height; y++) {
-        linebuf_init_cells(self->linebuf, y, &s.cp, &s.gp);
+        linebuf_init_cells(self->linebuf, y, &s.cp, NULL);
         linebuf_mark_line_dirty(self->linebuf, y);
         mcd.x = 0;
         mcd.y = y - self->cursor->y;
         for (index_type x = self->cursor->x; x < self->cursor->x + width; x++, mcd.x++) {
             if (s.cp[x].is_multicell) nuke_multicell_char_at(self, x, y, s.cp[x].x + s.cp[x].y > 0);
             s.cp[x] = mcd;
-            s.gp[x] = s.g;
         }
     }
     self->cursor->x += width;
@@ -2128,7 +2151,7 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_
             num = MIN(num, self->columns - x);
             for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
                 linebuf_init_line(self->linebuf, y);
-                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
+                apply_sgr_to_cells(self->style_table, self->linebuf->line->cpu_cells + x, num, params, count, is_group);
             }
         } else {
             index_type x, num;
@@ -2138,7 +2161,7 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_
                     x = MIN(region.left, self->columns - 1);
                     num = region.right >= x ? region.right - x + 1 : 0;
                     num = MIN(self->columns - x, num);
-                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
+                    apply_sgr_to_cells(self->style_table, self->linebuf->line->cpu_cells + x, num, params, count, is_group);
                 }
             } else {
                 for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
@@ -2153,13 +2176,13 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_
                         num = self->columns;
                     }
                     linebuf_init_line(self->linebuf, y);
-                    apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count, is_group);
+                    apply_sgr_to_cells(self->style_table, self->linebuf->line->cpu_cells + x, num, params, count, is_group);
                 }
             }
         }
     } else {
         cursor_from_sgr(self->cursor, params, count, is_group);
-        self->sgr_blink_was_used |= self->cursor->sgr.blink;
+        self->sgr_blink_was_used |= self->cursor->style.attrs.blink;
     }
 }
 
@@ -3388,9 +3411,8 @@ nuke_multiline_chars_split_by_erase(Screen *self, unsigned int how, index_type a
     for (int top = 1; top >= 0; top--) {
         if (top ? how == 3 : how != 1) continue;
         CPUCell *cp;
-        GPUCell *gp;
         index_type y = top ? a : b - 1;
-        linebuf_init_cells(self->linebuf, y, &cp, &gp);
+        linebuf_init_cells(self->linebuf, y, &cp, NULL);
         for (index_type x = 0; x < self->columns; x++) {
             if (!cp[x].is_multicell) continue;
             if (top ? cp[x].y > 0 : cp[x].y + 1 < cp[x].scale) nuke_multicell_char_at(self, x, y, false);
@@ -3571,13 +3593,10 @@ remove_characters(Screen *self, index_type at, index_type num, index_type y, boo
     nuke_multiline_char_intersecting_with(self, at, self->columns, y, y + 1, replace_with_spaces);
     nuke_split_multicell_char_at_left_boundary(self, at, y, replace_with_spaces);
     CPUCell *cp;
-    GPUCell *gp;
-    linebuf_init_cells(self->linebuf, y, &cp, &gp);
+    linebuf_init_cells(self->linebuf, y, &cp, NULL);
     // left shift
-    for (index_type i = at; i < self->columns - num; i++) {
-        cp[i] = cp[i + num];
-        gp[i] = gp[i + num];
-    }
+    for (index_type i = at; i < self->columns - num; i++) cp[i] = cp[i + num];
+    linebuf_mark_line_dirty(self->linebuf, y);
     nuke_incomplete_single_line_multicell_chars_in_range(self, at, self->columns, y, replace_with_spaces);
 }
 
@@ -4435,13 +4454,13 @@ get_line_edge_colors_at_row(Screen *self, index_type y, color_type *left, color_
     char_type left_char = line_get_char(line, cell_color_x);
     bool reversed = false;
     colors_for_cell(line, self->color_profile, &cell_color_x, &left_cell_fg, &left_cell_bg, &reversed);
-    if (left_is_default) *left_is_default = (line->gpu_cells[cell_color_x].bg & 0xff) == 0;
+    if (left_is_default) *left_is_default = (line_cell_style(line, cell_color_x)->bg & 0xff) == 0;
     if (left) *left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
     if (line->xnum > 0) cell_color_x = line->xnum - 1;
     char_type right_char = line_get_char(line, cell_color_x);
     reversed = false; // reset: colors_for_cell only sets this flag, never clears it
     colors_for_cell(line, self->color_profile, &cell_color_x, &right_cell_fg, &right_cell_bg, &reversed);
-    if (right_is_default) *right_is_default = (line->gpu_cells[cell_color_x].bg & 0xff) == 0;
+    if (right_is_default) *right_is_default = (line_cell_style(line, cell_color_x)->bg & 0xff) == 0;
     if (right) *right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
     return true;
 }
@@ -4455,8 +4474,8 @@ get_line_edge_colors(Screen *self, color_type *left, color_type *right) {
 
 static void
 update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
-    size_t base = sizeof(GPUCell) * dest_y * line->xnum;
-    memcpy(data + base, line->gpu_cells, line->xnum * sizeof(GPUCell));
+    GPUCell *dest = (GPUCell *)(data + sizeof(GPUCell) * dest_y * line->xnum);
+    expand_cells_for_gpu(line_style_table(line), line->cpu_cells, line->render_cells, line->xnum, dest);
 }
 
 static void
@@ -4471,7 +4490,7 @@ render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, boo
     if (y < (int)self->scrolled_by) {
         int idx = (int)self->scrolled_by - 1 - y;
         if (idx >= 0 && (unsigned)idx < self->historybuf->count) {
-            historybuf_init_line(self->historybuf, idx, line);
+            if (historybuf_init_line_for_render(self->historybuf, idx, line, render_lines_for_screen(self))) line->attrs.has_dirty_text = true;
             line->xnum = self->columns;
             line->ynum = (index_type)MIN(MAX(y, 0), (int)self->lines - 1);
             *lnum = (index_type)idx;
@@ -4533,7 +4552,6 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
     uint32_t prev_img_col = 0;
     for (i = 0; i < line->xnum; i++) {
         CPUCell *cpu_cell = line->cpu_cells + i;
-        GPUCell *gpu_cell = line->gpu_cells + i;
         uint32_t cur_img_id_lower24bits = 0;
         uint32_t cur_placement_id = 0;
         uint32_t cur_img_id_higher8bits = 0;
@@ -4543,8 +4561,9 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
             line->attrs.has_image_placeholders = true;
             // The lower 24 bits of the image id are encoded in the foreground
             // color, and the placement id is (optionally) in the underline color.
-            cur_img_id_lower24bits = color_to_id(gpu_cell->fg);
-            cur_placement_id = color_to_id(gpu_cell->decoration_fg);
+            const Style *st = style_table_get(self->style_table, cpu_cell->style_idx);
+            cur_img_id_lower24bits = color_to_id(st->fg);
+            cur_placement_id = color_to_id(st->decoration_fg);
             text_in_cell(cpu_cell, self->text_cache, self->lc);
             // If the char has diacritics, use them as row and column indices.
             if (self->lc->count > 1 && self->lc->chars[1]) cur_img_row = diacritic_to_rowcolumn(self->lc->chars[1]);
@@ -5650,20 +5669,18 @@ screen_draw_overlay_line(Screen *self) {
     // dashed avoids colliding with the styles applications already use: curly
     // for spell checking and straight for hyperlinks. Saved and restored around
     // the draw, like the modes above.
-    const bool orig_italic = self->cursor->sgr.italic;
-    const uint8_t orig_decoration = self->cursor->sgr.decoration;
-    const color_type orig_decoration_fg = self->cursor->sgr.decoration_fg;
-    self->cursor->sgr.italic = true;
-    self->cursor->sgr.decoration = 5; // dashed
-    self->cursor->sgr.decoration_fg = ((colorprofile_to_color_with_fallback(
-                                            self->color_profile,
-                                            self->color_profile->overridden.highlight_bg,
-                                            self->color_profile->configured.highlight_bg,
-                                            self->color_profile->overridden.default_fg,
-                                            self->color_profile->configured.default_fg) &
-                                        COL_MASK)
-                                       << 8) |
-                                      2;
+    const Style orig_style = self->cursor->style;
+    self->cursor->style.attrs.italic = true;
+    self->cursor->style.attrs.decoration = 5; // dashed
+    self->cursor->style.decoration_fg = ((colorprofile_to_color_with_fallback(
+                                              self->color_profile,
+                                              self->color_profile->overridden.highlight_bg,
+                                              self->color_profile->configured.highlight_bg,
+                                              self->color_profile->overridden.default_fg,
+                                              self->color_profile->configured.default_fg) &
+                                          COL_MASK)
+                                         << 8) |
+                                        2;
     self->cursor->x = xstart;
     self->cursor->y = self->overlay_line.ynum;
     self->overlay_line.xnum = 0;
@@ -5715,9 +5732,7 @@ screen_draw_overlay_line(Screen *self) {
         self->overlay_line.xnum += len;
     }
     self->overlay_line.cursor_x = overlay_line_cursor_x(self);
-    self->cursor->sgr.italic = orig_italic;
-    self->cursor->sgr.decoration = orig_decoration;
-    self->cursor->sgr.decoration_fg = orig_decoration_fg;
+    self->cursor->style = orig_style;
     self->cursor = orig_cursor;
     self->modes.mDECAWM = orig_line_wrap_mode;
     self->modes.mDECTCEM = orig_cursor_enable_mode;
@@ -5749,11 +5764,11 @@ update_overlay_position(Screen *self) {
 static void
 render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
 #define ol self->overlay_line
-    line_save_cells(line, 0, line->xnum, ol.original_line.gpu_cells, ol.original_line.cpu_cells);
+    line_save_cells(line, 0, line->xnum, ol.original_line.render_cells, ol.original_line.cpu_cells);
     screen_draw_overlay_line(self);
     render_line(fonts_data, line, ol.ynum, self->cursor, self->disable_ligatures, self->lc);
-    line_save_cells(line, 0, line->xnum, ol.gpu_cells, ol.cpu_cells);
-    line_reset_cells(line, 0, line->xnum, ol.original_line.gpu_cells, ol.original_line.cpu_cells);
+    line_save_cells(line, 0, line->xnum, ol.render_cells, ol.cpu_cells);
+    line_reset_cells(line, 0, line->xnum, ol.original_line.render_cells, ol.original_line.cpu_cells);
     ol.is_dirty = false;
     const index_type x = screen_overlay_line_start(self), y = MIN(ol.ynum + self->scrolled_by, self->lines - 1);
     // The IME is anchored at the start of the pre-edit text, see prepare_ime_position_update_event()
@@ -5769,7 +5784,7 @@ static void
 update_overlay_line_data(Screen *self, uint8_t *data) {
     const int render_row_offset = pixel_scroll_enabled(self);
     const size_t base = sizeof(GPUCell) * (self->overlay_line.ynum + self->scrolled_by + render_row_offset) * self->columns;
-    memcpy(data + base, self->overlay_line.gpu_cells, self->columns * sizeof(GPUCell));
+    expand_cells_for_gpu(self->style_table, self->overlay_line.cpu_cells, self->overlay_line.render_cells, self->columns, (GPUCell *)(data + base));
 }
 
 // }}}
@@ -6014,7 +6029,6 @@ remove_multicell_fragments_cut_off_above_screen(Screen *self, index_type num_lin
                 found = true;
                 cell_set_char(c, 0);
                 cell_clear_multicell(c);
-                clear_sprite_position(line->gpu_cells[x]);
             }
         }
         if (!found) break; // a multicell char cannot skip a line
@@ -7402,10 +7416,8 @@ screen_mark_all(Screen *self) {
         linebuf_init_line(self->alt_linebuf, y);
         mark_text_in_line(self->marker, self->alt_linebuf->line, &self->as_ansi_buf);
     }
-    for (index_type y = 0; y < self->historybuf->count; y++) {
-        historybuf_init_line(self->historybuf, y, self->historybuf->line);
-        mark_text_in_line(self->marker, self->historybuf->line, &self->as_ansi_buf);
-    }
+    // Marks are render data, history lines are marked when rendered
+    for (index_type y = 0; y < self->historybuf->count; y++) historybuf_mark_line_dirty(self->historybuf, y);
     self->is_dirty = true;
 }
 
@@ -7437,10 +7449,20 @@ scroll_to_next_mark(Screen *self, PyObject *args) {
     unsigned int mark = 0;
     if (!PyArg_ParseTuple(args, "|Ip", &mark, &backwards)) return NULL;
     if (!screen_has_marker(self) || self->linebuf == self->alt_linebuf) Py_RETURN_FALSE;
+    // History lines have no render data and so no marks, compute them in a scratch buffer
+    RAII_ALLOC(RenderCell, scratch, calloc(self->historybuf->xnum, sizeof(RenderCell)));
+    if (!scratch) return PyErr_NoMemory();
+    bool found;
+#define history_line_has_mark(y)                                                  \
+    (historybuf_init_line(self->historybuf, y, self->historybuf->line),           \
+     self->historybuf->line->render_cells = scratch,                              \
+     mark_text_in_line(self->marker, self->historybuf->line, &self->as_ansi_buf), \
+     found = line_has_mark(self->historybuf->line, mark),                         \
+     self->historybuf->line->render_cells = NULL,                                 \
+     found)
     if (backwards) {
         for (unsigned int y = self->scrolled_by; y < self->historybuf->count; y++) {
-            historybuf_init_line(self->historybuf, y, self->historybuf->line);
-            if (line_has_mark(self->historybuf->line, mark)) {
+            if (history_line_has_mark(y)) {
                 screen_history_scroll(self, y - self->scrolled_by + 1, true);
                 Py_RETURN_TRUE;
             }
@@ -7449,8 +7471,11 @@ scroll_to_next_mark(Screen *self, PyObject *args) {
         Line *line;
         for (unsigned int y = self->scrolled_by; y > 0; y--) {
             if (y > self->lines) {
-                historybuf_init_line(self->historybuf, y - self->lines, self->historybuf->line);
-                line = self->historybuf->line;
+                if (history_line_has_mark(y - self->lines)) {
+                    screen_history_scroll(self, self->scrolled_by - y + 1, false);
+                    Py_RETURN_TRUE;
+                }
+                continue;
             } else {
                 linebuf_init_line(self->linebuf, self->lines - y);
                 line = self->linebuf->line;
@@ -7461,6 +7486,7 @@ scroll_to_next_mark(Screen *self, PyObject *args) {
             }
         }
     }
+#undef history_line_has_mark
     Py_RETURN_FALSE;
 }
 
@@ -7471,8 +7497,7 @@ marked_cells(Screen *self, PyObject *o UNUSED) {
     for (index_type y = 0; y < self->lines; y++) {
         linebuf_init_line(self->linebuf, y);
         for (index_type x = 0; x < self->columns; x++) {
-            GPUCell *gpu_cell = self->linebuf->line->gpu_cells + x;
-            const unsigned int mark = gpu_cell->attrs.mark;
+            const unsigned int mark = self->linebuf->line->render_cells[x].mark;
             if (mark) {
                 RAII_PyObject(t, Py_BuildValue("III", x, y, mark));
                 if (!t) { return NULL; }
@@ -7808,6 +7833,43 @@ test_commit_write_buffer(Screen *screen, PyObject *args) {
     return PyLong_FromSize_t(s);
 }
 
+static bool
+verify_styles_in_line(const StyleTable *t, const char *which, index_type y, const CPUCell *c, index_type xnum, PyObject *ans) {
+    for (index_type x = 0; x < xnum; x++) {
+        if (c[x].style_idx >= t->count) {
+            RAII_PyObject(e, Py_BuildValue("sIII", which, y, x, (unsigned)c[x].style_idx));
+            if (!e || PyList_Append(ans, e) != 0) return false;
+            if (PyList_GET_SIZE(ans) > 16) return true;
+        }
+    }
+    return true;
+}
+
+static PyObject *
+test_verify_styles(Screen *self, PyObject *a UNUSED) {
+    // Check that the style index of every cell is valid. Returns a list of invalid cells.
+    RAII_PyObject(ans, PyList_New(0));
+    if (!ans) return NULL;
+    const StyleTable *t = self->style_table;
+    LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, self->paused_rendering.linebuf};
+    const char *names[3] = {"main", "alt", "paused"};
+    for (unsigned b = 0; b < arraysz(bufs); b++) {
+        LineBuf *lb = bufs[b];
+        if (!lb) continue;
+        for (index_type y = 0; y < lb->ynum; y++) {
+            if (!verify_styles_in_line(t, names[b], y, linebuf_cpu_cells_for_line(lb, y), lb->xnum, ans)) return NULL;
+        }
+    }
+    for (index_type y = 0; y < self->historybuf->count; y++) {
+        if (!verify_styles_in_line(t, "history", y, historybuf_cpu_cells(self->historybuf, y), self->historybuf->xnum, ans)) return NULL;
+    }
+    if (self->overlay_line.cpu_cells && !verify_styles_in_line(t, "overlay", 0, self->overlay_line.cpu_cells, self->columns, ans)) return NULL;
+    if (self->overlay_line.original_line.cpu_cells &&
+        !verify_styles_in_line(t, "overlay_original", 0, self->overlay_line.original_line.cpu_cells, self->columns, ans))
+        return NULL;
+    return Py_NewRef(ans);
+}
+
 static PyObject *
 test_parse_written_data(Screen *screen, PyObject *args) {
     ParseData pd = {.now = monotonic()};
@@ -7931,6 +7993,68 @@ cpu_cells(Screen *self, PyObject *args) {
 }
 
 static PyObject *
+cell_style_idx(Screen *self, PyObject *args) {
+    int y;
+    unsigned int x;
+    if (!PyArg_ParseTuple(args, "iI", &y, &x)) return NULL;
+    if (y >= (int)self->lines || x >= self->columns) {
+        PyErr_SetString(PyExc_IndexError, "out of bounds");
+        return NULL;
+    }
+    CPUCell *cells;
+    if (y >= 0) cells = linebuf_cpu_cells_for_line(self->linebuf, y);
+    else {
+        Line *l = self->linebuf == self->main_linebuf ? checked_range_line(self, y) : NULL;
+        if (!l) {
+            PyErr_SetString(PyExc_IndexError, "y out of bounds");
+            return NULL;
+        }
+        cells = l->cpu_cells;
+    }
+    return PyLong_FromUnsignedLong(cells[x].style_idx);
+}
+
+static PyObject *
+style_table_info(Screen *self, PyObject *a UNUSED) {
+    return Py_BuildValue(
+        "{sI sI sI sK sO}",
+        "count",
+        self->style_table->count,
+        "max_count",
+        style_table_max_count(self->style_table),
+        "generation",
+        self->style_table->generation,
+        "gc_count",
+        (unsigned long long)style_table_gc_count(self->style_table),
+        "degraded",
+        style_table_is_degraded(self->style_table) ? Py_True : Py_False);
+}
+
+static PyObject *
+test_gc_style_table(Screen *self, PyObject *args) {
+    unsigned int quantize_bits = 0;
+    if (!PyArg_ParseTuple(args, "|I", &quantize_bits)) return NULL;
+    if (quantize_bits > 7) {
+        PyErr_SetString(PyExc_ValueError, "quantize_bits must be less than 8");
+        return NULL;
+    }
+    if (!garbage_collect_style_table(self, quantize_bits, false)) return PyErr_NoMemory();
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+test_set_style_table_limit(Screen *self, PyObject *val) {
+    if (!PyLong_Check(val)) {
+        PyErr_SetString(PyExc_TypeError, "limit must be an int");
+        return NULL;
+    }
+    unsigned long limit = PyLong_AsUnsignedLong(val);
+    if (PyErr_Occurred()) return NULL;
+    style_table_set_max_count(self->style_table, limit > UINT32_MAX ? UINT32_MAX : (uint32_t)limit);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
 test_ch_and_idx(PyObject *self UNUSED, PyObject *val) {
     CPUCell c = {0};
     if (PyLong_Check(val)) {
@@ -7948,6 +8072,11 @@ static PyMethodDef methods[] = {
     METHODB(test_create_write_buffer, METH_NOARGS),
     METHODB(test_commit_write_buffer, METH_VARARGS),
     METHODB(test_parse_written_data, METH_VARARGS),
+    METHODB(test_verify_styles, METH_NOARGS),
+    METHODB(cell_style_idx, METH_VARARGS),
+    METHODB(style_table_info, METH_NOARGS),
+    METHODB(test_set_style_table_limit, METH_O),
+    METHODB(test_gc_style_table, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
     METHODB(test_update_overlay_text, METH_VARARGS),
     METHODB(restore_scrollback, METH_O),

@@ -92,6 +92,31 @@ typedef uint16_t glyph_index;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
 typedef uint32_t sprite_index;
+typedef union CellAttrs {
+    struct {
+        uint16_t decoration : 3;
+        uint16_t bold : 1;
+        uint16_t italic : 1;
+        uint16_t reverse : 1;
+        uint16_t strike : 1;
+        uint16_t dim : 1;
+        uint16_t blink : 1;
+        uint16_t mark : 2;
+        // named so that initializers zero it, see CPUCell
+        uint32_t padding : 21;
+    };
+    uint32_t val;
+} CellAttrs;
+static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAttrs");
+
+// The SGR formatting of a cell. All zero is the default style. Styles are
+// interned per screen in a StyleTable, see style-table.h
+typedef struct Style {
+    color_type fg, bg, decoration_fg;
+    CellAttrs attrs; // the mark bits are always zero
+} Style;
+static_assert(sizeof(Style) == 4 * sizeof(uint32_t), "Style must have no padding as it is compared and hashed bytewise");
+
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, CURSOR_HOLLOW, NUM_OF_CURSOR_SHAPES } CursorShape;
 typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATURES_ALWAYS } DisableLigature;
 
@@ -163,7 +188,7 @@ typedef struct ImageAnchorPosition {
 
 #define COPY_CELL(src, s, dest, d)              \
     (dest)->cpu_cells[d] = (src)->cpu_cells[s]; \
-    (dest)->gpu_cells[d] = (src)->gpu_cells[s];
+    if ((dest)->render_cells && (src)->render_cells) (dest)->render_cells[d] = (src)->render_cells[s];
 
 #define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
 
@@ -258,11 +283,9 @@ typedef struct {
     bool non_blinking;
     CursorShape shape;
 
-    struct {
-        bool bold, italic, reverse, strikethrough, dim, blink;
-        uint8_t decoration;
-        color_type fg, bg, decoration_fg;
-    } sgr;
+    Style style;
+    // A cache of the index of style in the StyleTable of the screen, see screen_cursor_style_idx()
+    uint32_t style_idx;
 } Cursor;
 
 typedef struct {

@@ -10,7 +10,6 @@
 #include "line.h"
 
 typedef struct {
-    GPUCell *gpu_cells;
     CPUCell *cpu_cells;
     LineAttrs *line_attrs;
     void *mem;
@@ -34,6 +33,16 @@ typedef struct {
     Line *line;
     TextCache *text_cache;
     index_type start_of_data, count;
+    // The number of lines pushed minus the number popped, so that the newest
+    // line has the absolute line number num_pushed - 1, which does not change
+    // while it is in the buffer.
+    uint64_t num_pushed;
+    // Render data for history lines being displayed, see historybuf_init_line_for_render()
+    struct {
+        RenderCell *cells;
+        uint64_t *keys; // absolute line number + 1 of the line whose data is in each row, 0 if none
+        index_type num_rows;
+    } render_cache;
 } HistoryBuf;
 
 

@@ -8,23 +8,8 @@
 #pragma once
 
 #include "text-cache.h"
+#include "style-table.h"
 
-typedef union CellAttrs {
-    struct {
-        uint16_t decoration : 3;
-        uint16_t bold : 1;
-        uint16_t italic : 1;
-        uint16_t reverse : 1;
-        uint16_t strike : 1;
-        uint16_t dim : 1;
-        uint16_t blink : 1;
-        uint16_t mark : 2;
-        // named so that initializers zero it, see CPUCell
-        uint32_t padding : 21;
-    };
-    uint32_t val;
-} CellAttrs;
-static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAttrs");
 
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
@@ -41,6 +26,16 @@ typedef struct {
     CellAttrs attrs;
 } GPUCell;
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
+// GPUCell is the format of cell data uploaded to the GPU, it is built from the
+// CPUCell, the Style of the cell and the RenderCell of the cell.
+
+// Data computed when rendering a cell. The style of a cell is stored in its CPUCell.
+typedef struct RenderCell {
+    sprite_index sprite_idx;
+    uint8_t mark;
+    uint8_t padding[3];
+} RenderCell;
+static_assert(sizeof(RenderCell) == 8, "Fix the ordering of RenderCell");
 
 #define SCALE_BITS 3
 #define WIDTH_BITS 3
@@ -60,7 +55,7 @@ typedef union CPUCell {
 #error "Unsupported endianness"
 #endif
         // the fields below are ordered so that none of them straddles a 32
-        // bit boundary, leaving all padding at the end
+        // bit boundary, the style index uses all the bits remaining at the end
         char_type hyperlink_id : sizeof(hyperlink_id_type) * 8;
         char_type scale : SCALE_BITS;
         char_type subscale_n : SUBSCALE_BITS;
@@ -74,10 +69,8 @@ typedef union CPUCell {
         char_type y : SCALE_BITS;
         char_type width : WIDTH_BITS;
         char_type temp_flag : 1;
-        // The padding is named because unnamed bit-fields are left
-        // indeterminate by initializers, and clang on arm64 fills them with
-        // stack garbage, making cells with identical contents compare unequal.
-        char_type padding : 17;
+        // Index of the formatting of this cell in the StyleTable of the screen
+        char_type style_idx : STYLE_IDX_BITS;
     };
     struct {
         char_type ch_and_idx : sizeof(char_type) * 8;
@@ -103,7 +96,8 @@ static_assert(sizeof(LineAttrs) == sizeof(uint8_t), "Fix the ordering of LineAtt
 typedef struct {
     PyObject_HEAD
 
-        GPUCell *gpu_cells;
+        // Render data, NULL for lines in the history buffer that are not being rendered
+        RenderCell *render_cells;
     CPUCell *cpu_cells;
     index_type xnum, ynum;
     bool needs_free;
@@ -117,7 +111,7 @@ typedef struct MultiCellCommand {
 } MultiCellCommand;
 
 typedef struct ANSILineOutput {
-    const GPUCell *prev_gpu_cell;
+    Style prev_style; // style of the previous cell output, zero (the default style) at the start
     const CPUCell *current_multicell_state;
     index_type pos, limit;
     ANSIBuf *output_buf;
@@ -132,8 +126,8 @@ cleanup_ansibuf(ANSIBuf *b) {
 #define RAII_ANSIBuf(name) __attribute__((cleanup(cleanup_ansibuf))) ANSIBuf name = {0}
 
 Line *alloc_line(TextCache *text_cache);
-void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);
-const char *cell_as_sgr(const GPUCell *, const GPUCell *);
+void apply_sgr_to_cells(StyleTable *t, CPUCell *cells, unsigned int cell_count, int *params, unsigned int count, bool is_group);
+const char *style_as_sgr(const Style *, const Style *);
 static inline bool
 cell_has_text(const CPUCell *c) {
     return c->ch_and_idx != 0;
@@ -230,32 +224,53 @@ cell_first_char(const CPUCell *c, const TextCache *tc) {
     return c->ch_or_idx;
 }
 
-static inline CellAttrs
-cursor_to_attrs(const Cursor *c) {
-    CellAttrs ans = {
-        .decoration = c->sgr.decoration,
-        .bold = c->sgr.bold,
-        .italic = c->sgr.italic,
-        .reverse = c->sgr.reverse,
-        .strike = c->sgr.strikethrough,
-        .dim = c->sgr.dim,
-        .blink = c->sgr.blink};
+static inline StyleTable *
+line_style_table(const Line *l) {
+    return tc_style_table(l->text_cache);
+}
+
+static inline const Style *
+line_cell_style(const Line *l, index_type x) {
+    return style_table_get(line_style_table(l), l->cpu_cells[x].style_idx);
+}
+
+static inline uint32_t
+cursor_style_idx_in(StyleTable *t, const Cursor *cursor) {
+    // Uses the cache in the cursor without updating it
+    uint32_t idx = cursor->style_idx;
+    return style_table_intern_cached(t, &cursor->style, &idx);
+}
+
+static inline void
+fill_blank_cpu_cells(CPUCell *c, index_type num, uint32_t style_idx) {
+    if (style_idx) {
+        const CPUCell blank = {.style_idx = style_idx};
+        for (index_type i = 0; i < num; i++) c[i] = blank;
+    } else memset(c, 0, num * sizeof(CPUCell));
+}
+
+static inline void
+remap_style_idx_range(StyleTable *dest, const StyleTable *src, CPUCell *c, index_type num) {
+    // Change the style indices of cells copied from a buffer with a different style table
+    uint32_t cache = 0;
+    for (index_type i = 0; i < num; i++) c[i].style_idx = style_table_intern_cached(dest, style_table_get(src, c[i].style_idx), &cache);
+}
+
+static inline GPUCell
+gpu_cell_for(const Style *st, const RenderCell *r) {
+    GPUCell ans = {.fg = st->fg, .bg = st->bg, .decoration_fg = st->decoration_fg, .attrs = st->attrs};
+    if (r) {
+        ans.sprite_idx = r->sprite_idx;
+        ans.attrs.mark = r->mark;
+    }
     return ans;
 }
 
 static inline void
-attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
-    c->sgr.decoration = attrs.decoration;
-    c->sgr.bold = attrs.bold;
-    c->sgr.italic = attrs.italic;
-    c->sgr.reverse = attrs.reverse;
-    c->sgr.strikethrough = attrs.strike;
-    c->sgr.dim = attrs.dim;
-    c->sgr.blink = attrs.blink;
+expand_cells_for_gpu(const StyleTable *t, const CPUCell *c, const RenderCell *r, index_type num, GPUCell *dest) {
+    // Build the cell data uploaded to the GPU. dest may be write combined memory so it is only written to, sequentially.
+    for (index_type i = 0; i < num; i++) {
+        const GPUCell g = gpu_cell_for(style_table_get(t, c[i].style_idx), r ? r + i : NULL);
+        memcpy(dest + i, &g, sizeof(g));
+    }
 }
-
-#define cursor_as_gpu_cell(cursor)      \
-    {.attrs = cursor_to_attrs(cursor),  \
-     .fg = (cursor->sgr.fg & COL_MASK), \
-     .bg = (cursor->sgr.bg & COL_MASK), \
-     .decoration_fg = cursor->sgr.decoration_fg & COL_MASK}
