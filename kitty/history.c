@@ -359,6 +359,40 @@ historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, bool *needs_clear) {
     return idx;
 }
 
+#ifdef __SSE2__
+#include <emmintrin.h>
+#endif
+
+static void
+copy_cells_to_history(CPUCell *dest, const CPUCell *src, index_type num) {
+    // The history buffer is typically much larger than the CPU cache and lines
+    // added to it are not read again soon, so the cells are written with non
+    // temporal stores where available. Normal stores to it stall acquiring
+    // ownership of the destination cache lines, filling the store buffer, and
+    // stalling the parsing and drawing of the next line, see benchmark.py.
+    // Non temporal stores are only fast when they write whole cache lines, so
+    // the partial cache lines at either end are written with normal stores.
+    uint8_t *d = (uint8_t *)dest;
+    const uint8_t *s = (const uint8_t *)src;
+    size_t n = (size_t)num * sizeof(CPUCell);
+#ifdef __SSE2__
+    enum { CACHE_LINE = 64 };
+    const size_t head = (CACHE_LINE - ((uintptr_t)d & (CACHE_LINE - 1))) & (CACHE_LINE - 1);
+    if (n >= head + CACHE_LINE) {
+        memcpy(d, s, head);
+        d += head;
+        s += head;
+        n -= head;
+        // The stores are made visible to other threads by historybuf_finish_writes()
+        for (; n >= CACHE_LINE; n -= CACHE_LINE, d += CACHE_LINE, s += CACHE_LINE) {
+            for (unsigned i = 0; i < CACHE_LINE; i += 16) _mm_stream_si128((__m128i *)(d + i), _mm_loadu_si128((const __m128i *)(s + i)));
+        }
+    }
+#endif
+    memcpy(d, s, n);
+}
+
+#ifndef __SSE2__
 static void
 prefetch_line_for_write(HistoryBuf *self, index_type y) {
     // The history buffer is typically much larger than the CPU cache, so the
@@ -371,18 +405,21 @@ prefetch_line_for_write(HistoryBuf *self, index_type y) {
     const size_t cache_line_sz = 64;
     for (size_t i = 0; i < self->xnum * sizeof(CPUCell); i += cache_line_sz) __builtin_prefetch(cpu + i, 1, 0);
 }
+#endif
 
 void
 historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     bool needs_clear;
     index_type idx = historybuf_push(self, as_ansi_buf, &needs_clear);
     init_line(self, idx, self->line);
-    copy_line(line, self->line);
+    copy_cells_to_history(self->line->cpu_cells, line->cpu_cells, MIN(line->xnum, self->line->xnum));
     LineAttrs *attrs = attrptr(self, idx);
     *attrs = line->attrs;
     // the render data of the line is not stored, so it must be rendered if displayed
     attrs->has_dirty_text = true;
+#ifndef __SSE2__
     prefetch_line_for_write(self, (self->start_of_data + self->count) % self->ynum);
+#endif
 }
 
 bool

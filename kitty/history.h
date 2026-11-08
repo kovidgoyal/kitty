@@ -47,6 +47,21 @@ typedef struct {
 
 
 HistoryBuf *alloc_historybuf(unsigned int, unsigned int, unsigned int, TextCache *tc);
+
+#ifdef __SSE2__
+#include <emmintrin.h>
+#endif
+static inline void
+historybuf_finish_writes(void) {
+    // Lines are added to the history buffer with non-temporal stores, which
+    // are weakly ordered. Order them before any later stores, so that they
+    // are visible to other threads once later stores, such as the unlocking
+    // of a mutex, are. Called once per parse pass, as fencing after every
+    // line is costly. The thread that added the lines always sees them.
+#ifdef __SSE2__
+    _mm_sfence();
+#endif
+}
 HistoryBuf *historybuf_alloc_for_rewrap(unsigned int columns, HistoryBuf *self);
 void historybuf_finish_rewrap(HistoryBuf *dest, HistoryBuf *src);
 void historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src, index_type count, bool steal);
