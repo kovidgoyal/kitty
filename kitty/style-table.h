@@ -25,6 +25,9 @@ typedef struct StyleTable {
 StyleTable *style_table_alloc(void);
 void style_table_free(StyleTable *self);
 uint32_t style_table_intern(StyleTable *self, const Style *style);
+// Remove all styles except the default style, invalidating all indices and freeing memory.
+// Must only be called when no cells use a style other than the default style.
+void style_table_reset(StyleTable *self);
 // For testing
 void style_table_set_max_count(StyleTable *self, uint32_t max_count);
 uint32_t style_table_max_count(const StyleTable *self);
