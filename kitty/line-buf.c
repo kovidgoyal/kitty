@@ -289,6 +289,7 @@ create_line_copy_inner(LineBuf *self, index_type y) {
     line->attrs = self->line_attrs[y];
     init_line(self, &src, self->line_map[y]);
     copy_line(&src, line);
+    line->style_generation = tc_style_table(self->text_cache)->generation;
     return (PyObject *)line;
 }
 
@@ -323,6 +324,8 @@ copy_line_to(LineBuf *self, PyObject *args) {
     copy_line(&src, dest);
     if (self->text_cache != dest->text_cache)
         remap_style_idx_range(tc_style_table(dest->text_cache), tc_style_table(self->text_cache), dest->cpu_cells, dest->xnum);
+    // all the cells of dest now have current style indices
+    if (dest->style_generation) dest->style_generation = tc_style_table(dest->text_cache)->generation;
     Py_RETURN_NONE;
 }
 
