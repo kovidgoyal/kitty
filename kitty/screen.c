@@ -1296,12 +1296,12 @@ screen_garbage_collect_text_cache(Screen *self) {
 }
 
 static void
-style_gc_process_cells(StyleTable *t, StyleTableGC *gc, CPUCell *cells, size_t count, bool quantize) {
+style_gc_process_cells(CellStyleTable *t, StyleTableGC *gc, CPUCell *cells, size_t count, bool quantize) {
     for (size_t i = 0; i < count; i++) cells[i].style_idx = style_table_gc_map(t, gc, cells[i].style_idx, quantize);
 }
 
 static void
-style_gc_process_linebuf(StyleTable *t, StyleTableGC *gc, LineBuf *lb) {
+style_gc_process_linebuf(CellStyleTable *t, StyleTableGC *gc, LineBuf *lb) {
     if (lb) style_gc_process_cells(t, gc, lb->cpu_cell_buf, (size_t)lb->ynum * lb->xnum, false);
 }
 
@@ -1311,7 +1311,7 @@ garbage_collect_style_table(Screen *self, unsigned quantize_bits, bool degraded_
     // that are no longer used are freed. With quantize_bits, styles of cells
     // in the scrollback get colors of reduced precision. Must only be called
     // when no style indices are held outside of cells.
-    StyleTable *t = self->style_table;
+    CellStyleTable *t = self->style_table;
     StyleTableGC *gc = style_table_gc_begin(t, quantize_bits);
     if (!gc) return false; // allocation failure, table left unchanged
     // Screen cells first, so they get exact styles even if the table overflows
@@ -1358,7 +1358,7 @@ screen_garbage_collect_style_table(Screen *self) {
     // precision first and if that does not free at least an eighth of the
     // table, reduces the color precision of cells in the scrollback. Cells on
     // screen always keep their exact styles.
-    StyleTable *t = self->style_table;
+    CellStyleTable *t = self->style_table;
     const uint32_t threshold = style_table_max_count(t) - style_table_max_count(t) / 8;
     // If the last collection had to reduce precision, start there, as the
     // scrollback is likely still full of distinct styles
@@ -1973,7 +1973,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
     if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);                                      \
     if (style_table_needs_gc(self->style_table)) screen_garbage_collect_style_table(self);                            \
     const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0;     \
-    Style draw_style = self->cursor->style;                                                                           \
+    CellStyle draw_style = self->cursor->style;                                                                       \
     uint32_t draw_style_idx;                                                                                          \
     if (force_underline) {                                                                                            \
         draw_style.attrs.decoration = OPT(url_style);                                                                 \
@@ -4590,7 +4590,7 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
             line->attrs.has_image_placeholders = true;
             // The lower 24 bits of the image id are encoded in the foreground
             // color, and the placement id is (optionally) in the underline color.
-            const Style *st = style_table_get(self->style_table, cpu_cell->style_idx);
+            const CellStyle *st = style_table_get(self->style_table, cpu_cell->style_idx);
             cur_img_id_lower24bits = color_to_id(st->fg);
             cur_placement_id = color_to_id(st->decoration_fg);
             text_in_cell(cpu_cell, self->text_cache, self->lc);
@@ -5734,7 +5734,7 @@ screen_draw_overlay_line(Screen *self) {
     // dashed avoids colliding with the styles applications already use: curly
     // for spell checking and straight for hyperlinks. Saved and restored around
     // the draw, like the modes above.
-    const Style orig_style = self->cursor->style;
+    const CellStyle orig_style = self->cursor->style;
     self->cursor->style.attrs.italic = true;
     self->cursor->style.attrs.decoration = 5; // dashed
     self->cursor->style.decoration_fg = ((colorprofile_to_color_with_fallback(
@@ -7899,7 +7899,7 @@ test_commit_write_buffer(Screen *screen, PyObject *args) {
 }
 
 static bool
-verify_styles_in_line(const StyleTable *t, const char *which, index_type y, const CPUCell *c, index_type xnum, PyObject *ans) {
+verify_styles_in_line(const CellStyleTable *t, const char *which, index_type y, const CPUCell *c, index_type xnum, PyObject *ans) {
     for (index_type x = 0; x < xnum; x++) {
         if (c[x].style_idx >= t->count) {
             RAII_PyObject(e, Py_BuildValue("sIII", which, y, x, (unsigned)c[x].style_idx));
@@ -7915,7 +7915,7 @@ test_verify_styles(Screen *self, PyObject *a UNUSED) {
     // Check that the style index of every cell is valid. Returns a list of invalid cells.
     RAII_PyObject(ans, PyList_New(0));
     if (!ans) return NULL;
-    const StyleTable *t = self->style_table;
+    const CellStyleTable *t = self->style_table;
     LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, self->paused_rendering.linebuf};
     const char *names[3] = {"main", "alt", "paused"};
     for (unsigned b = 0; b < arraysz(bufs); b++) {

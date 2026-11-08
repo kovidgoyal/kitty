@@ -37,7 +37,7 @@ typedef struct TextCache {
     unsigned refcnt;
     CharsMonotonicArena arena;
     unsigned adds_since_last_gc, adds_between_gcs;
-    StyleTable *style_table;
+    CellStyleTable *style_table;
 } TextCache;
 static uint64_t
 hash_chars(Chars k) {
@@ -82,7 +82,7 @@ free_text_cache(TextCache *self) {
     free(self);
 }
 
-StyleTable *
+CellStyleTable *
 tc_style_table(const TextCache *self) {
     return self->style_table;
 }

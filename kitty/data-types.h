@@ -110,12 +110,12 @@ typedef union CellAttrs {
 static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAttrs");
 
 // The SGR formatting of a cell. All zero is the default style. Styles are
-// interned per screen in a StyleTable, see style-table.h
-typedef struct Style {
+// interned per screen in a CellStyleTable, see style-table.h
+typedef struct CellStyle {
     color_type fg, bg, decoration_fg;
     CellAttrs attrs; // the mark bits are always zero
-} Style;
-static_assert(sizeof(Style) == 4 * sizeof(uint32_t), "Style must have no padding as it is compared and hashed bytewise");
+} CellStyle;
+static_assert(sizeof(CellStyle) == 4 * sizeof(uint32_t), "CellStyle must have no padding as it is compared and hashed bytewise");
 
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, CURSOR_HOLLOW, NUM_OF_CURSOR_SHAPES } CursorShape;
 typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATURES_ALWAYS } DisableLigature;
@@ -283,8 +283,8 @@ typedef struct {
     bool non_blinking;
     CursorShape shape;
 
-    Style style;
-    // A cache of the index of style in the StyleTable of the screen, see screen_cursor_style_idx()
+    CellStyle style;
+    // A cache of the index of style in the CellStyleTable of the screen, see screen_cursor_style_idx()
     uint32_t style_idx;
 } Cursor;
 
