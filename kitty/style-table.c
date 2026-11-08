@@ -154,6 +154,12 @@ style_table_reset(CellStyleTable *pub) {
     self->degraded = false;
 }
 
+bool
+style_table_is_worth_resetting(const CellStyleTable *pub) {
+    const StyleTableImpl *self = (const StyleTableImpl *)pub;
+    return self->pub.count > MAX(1u, self->max_count / 64);
+}
+
 void
 style_table_set_max_count(CellStyleTable *pub, uint32_t max_count) {
     StyleTableImpl *self = (StyleTableImpl *)pub;
