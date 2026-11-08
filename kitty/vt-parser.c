@@ -1727,6 +1727,7 @@ run_worker(void *p, ParseData *pd, bool flush) {
             if (compact_buffer(self)) write_space_created = true;
         }
         pd->has_pending_input = self->read.pos < self->read.sz;
+        historybuf_finish_writes();
     }
     end_with_lock;
     if (write_space_created && pd->write_space_created) pd->write_space_created(pd->write_space_created_data);
