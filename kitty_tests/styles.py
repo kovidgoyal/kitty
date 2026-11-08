@@ -21,6 +21,7 @@ class TestStyles(BaseTest):
     def test_style_interning(self):
         s = self.create_screen(cols=10, lines=3)
         self.ae(s.style_table_info()['count'], 1)
+        self.ae(s.style_table_info()['max_count'], 1 << 18)
         s.draw('ab')
         self.ae(s.cell_style_idx(0, 0), 0)
         parse_bytes(s, RED_BOLD)
