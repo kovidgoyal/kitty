@@ -1340,9 +1340,12 @@ static void
 reset_style_table_if_unused(Screen *self) {
     // When the scrollback is empty and no cell has a style, empty the style
     // table, which frees the memory used by styles from, for example, a burst
-    // of output with many colors. Checking is cheap as only the screen
-    // buffers need to be scanned, so this is done on resets and erasing.
-    if (self->historybuf->count || self->style_table->count < 2) return;
+    // of output with many colors. Done only on hard resets and clearing of the
+    // scrollback, not on erasing the screen, as full screen programs erase the
+    // screen on every redraw, and resetting would then force all their styles
+    // to be interned again and the style texture to be uploaded again every
+    // frame. Small tables are not worth emptying for the same reason.
+    if (self->historybuf->count || !style_table_is_worth_resetting(self->style_table)) return;
     LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, self->paused_rendering.linebuf};
     for (unsigned i = 0; i < arraysz(bufs); i++) {
         if (bufs[i] && cells_use_styles(bufs[i]->cpu_cell_buf, (size_t)bufs[i]->xnum * bufs[i]->ynum)) return;
@@ -3410,6 +3413,7 @@ screen_clear_scrollback(Screen *self) {
         }
     }
     self->linebuf = orig;
+    reset_style_table_if_unused(self);
 }
 
 static void
@@ -3511,7 +3515,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         if (how == 1) linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
     }
     if (how == 3 && self->linebuf == self->main_linebuf) { screen_clear_scrollback(self); }
-    if (how >= 2) reset_style_table_if_unused(self);
+    if (how == 3) reset_style_table_if_unused(self);
 }
 
 void

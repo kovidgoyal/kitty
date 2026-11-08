@@ -28,6 +28,9 @@ uint32_t style_table_intern(CellStyleTable *self, const CellStyle *style);
 // Remove all styles except the default style, invalidating all indices and freeing memory.
 // Must only be called when no cells use a style other than the default style.
 void style_table_reset(CellStyleTable *self);
+// Whether the table has enough styles that emptying it frees a worthwhile amount of
+// memory, a small fraction of the maximum number of styles
+bool style_table_is_worth_resetting(const CellStyleTable *self);
 // For testing
 void style_table_set_max_count(CellStyleTable *self, uint32_t max_count);
 uint32_t style_table_max_count(const CellStyleTable *self);
