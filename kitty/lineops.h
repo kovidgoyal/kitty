@@ -9,23 +9,27 @@
 #include "history.h"
 #include "line-buf.h"
 
-#define set_attribute_on_line(cells, which, val, xnum)                            \
-    {                                                                             \
-        for (index_type i__ = 0; i__ < xnum; i__++) cells[i__].attrs.which = val; \
-    }
-
 static inline bool
-set_named_attribute_on_line(GPUCell *cells, const char *which, uint16_t val, index_type xnum) {
+set_named_attribute_on_line(StyleTable *t, CPUCell *cells, RenderCell *render_cells, const char *which, uint16_t val, index_type xnum) {
     // Set a single attribute on all cells in the line
-#define s(q)                                        \
-    if (strcmp(#q, which) == 0) {                   \
-        set_attribute_on_line(cells, q, val, xnum); \
-        return true;                                \
+    if (strcmp("mark", which) == 0) {
+        if (render_cells)
+            for (index_type i = 0; i < xnum; i++) render_cells[i].mark = val;
+        return true;
+    }
+    uint32_t cache = 0;
+#define s(q)                                                                \
+    if (strcmp(#q, which) == 0) {                                           \
+        for (index_type i = 0; i < xnum; i++) {                             \
+            Style st = *style_table_get(t, cells[i].style_idx);             \
+            st.attrs.q = val;                                               \
+            cells[i].style_idx = style_table_intern_cached(t, &st, &cache); \
+        }                                                                   \
+        return true;                                                        \
     }
     s(reverse);
     s(strike);
     s(dim);
-    s(mark);
     s(bold);
     s(italic);
     s(decoration);
@@ -36,20 +40,22 @@ set_named_attribute_on_line(GPUCell *cells, const char *which, uint16_t val, ind
 
 static inline void
 copy_line(const Line *src, Line *dest) {
-    memcpy(dest->cpu_cells, src->cpu_cells, sizeof(CPUCell) * MIN(src->xnum, dest->xnum));
-    memcpy(dest->gpu_cells, src->gpu_cells, sizeof(GPUCell) * MIN(src->xnum, dest->xnum));
+    // Copies the render data only if both lines have it, otherwise the render
+    // data of dest is stale and dest must be marked dirty.
+    const index_type n = MIN(src->xnum, dest->xnum);
+    memcpy(dest->cpu_cells, src->cpu_cells, sizeof(CPUCell) * n);
+    if (dest->render_cells) {
+        if (src->render_cells) memcpy(dest->render_cells, src->render_cells, sizeof(RenderCell) * n);
+        else memset(dest->render_cells, 0, sizeof(RenderCell) * n);
+    }
 }
 
 static inline void
-clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, char_type ch) {
+clear_chars_in_line(CPUCell *cpu_cells, index_type xnum, char_type ch) {
     // Clear only the char part of each cell, the rest must have been cleared by a memset or similar
     if (ch) {
-        static const CellAttrs empty = {0};
         const CPUCell c = {.ch_or_idx = ch};
-        for (index_type i = 0; i < xnum; i++) {
-            cpu_cells[i] = c;
-            gpu_cells[i].attrs = empty;
-        }
+        for (index_type i = 0; i < xnum; i++) cpu_cells[i] = c;
     }
 }
 
@@ -61,14 +67,15 @@ xlimit_for_line(const Line *line) {
 }
 
 static inline void
-line_save_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cells, CPUCell *cpu_cells) {
-    memcpy(gpu_cells + start, line->gpu_cells + start, sizeof(GPUCell) * num);
+line_save_cells(Line *line, index_type start, index_type num, RenderCell *render_cells, CPUCell *cpu_cells) {
+    if (line->render_cells) memcpy(render_cells + start, line->render_cells + start, sizeof(RenderCell) * num);
+    else memset(render_cells + start, 0, sizeof(RenderCell) * num);
     memcpy(cpu_cells + start, line->cpu_cells + start, sizeof(CPUCell) * num);
 }
 
 static inline void
-line_reset_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cells, CPUCell *cpu_cells) {
-    memcpy(line->gpu_cells + start, gpu_cells + start, sizeof(GPUCell) * num);
+line_reset_cells(Line *line, index_type start, index_type num, RenderCell *render_cells, CPUCell *cpu_cells) {
+    if (line->render_cells) memcpy(line->render_cells + start, render_cells + start, sizeof(RenderCell) * num);
     memcpy(line->cpu_cells + start, cpu_cells + start, sizeof(CPUCell) * num);
 }
 
@@ -111,7 +118,7 @@ PyObject *line_as_unicode(Line *, bool, ANSIBuf *);
 
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_init_line_at(LineBuf *, index_type, Line *);
-void linebuf_init_cells(LineBuf *lb, index_type ynum, CPUCell **c, GPUCell **g);
+void linebuf_init_cells(LineBuf *lb, index_type ynum, CPUCell **c, RenderCell **r);
 CPUCell *linebuf_cpu_cells_for_line(LineBuf *lb, index_type idx);
 void linebuf_clear(LineBuf *, char_type ch);
 void linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index_type end);
@@ -133,6 +140,7 @@ void historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *);
 bool cells_have_multiline_chars(const CPUCell *cells, index_type count);
 bool historybuf_pop_line(HistoryBuf *, Line *);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
+bool historybuf_init_line_for_render(HistoryBuf *self, index_type lnum, Line *l, index_type num_rows);
 bool history_buf_endswith_wrap(HistoryBuf *self);
 CPUCell *historybuf_cpu_cells(HistoryBuf *self, index_type num);
 void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
