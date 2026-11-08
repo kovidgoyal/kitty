@@ -11,7 +11,7 @@ import background;
 // This shader colors the compensatory window padding (the thin strips that
 // appear when the window size is not an exact multiple of the cell size) so
 // that each strip matches the background of its neighboring cell. It re-uses
-// the cell VAO (colors/sprite_idx/is_selected instanced attributes) and the
+// the cell VAO (cell_input/is_selected instanced attributes) and the
 // background module's padding_background_premul() to compute the color.
 //
 // Each draw call covers one or two parallel strips (e.g. top+bottom or
@@ -64,12 +64,7 @@ struct VertexOutput {
 
 [shader("vertex")]
 VertexOutput
-vertex_main(
-    [[vk::location(0)]] uint3 colors,
-    [[vk::location(1)]] uint2 sprite_idx,
-    [[vk::location(2)]] uint is_selected,
-    uint vertex_id: SV_VertexID,
-    uint instance_id: SV_InstanceID) {
+vertex_main([[vk::location(0)]] uint2 cell_input, [[vk::location(2)]] uint is_selected, uint vertex_id: SV_VertexID, uint instance_id: SV_InstanceID) {
     VertexOutput vo;
 
     // Branchless strip selector: 0.0 for strip 0, 1.0 for strip 1.
@@ -82,7 +77,8 @@ vertex_main(
     uint real_id = uint(fbase) + strip_i * uniforms.instance_step;
     float2 chosen_across = lerp(uniforms.across, uniforms.across2, strip_f);
 
-    vo.color_premul = padding_background_premul(colors, sprite_idx, is_selected, real_id);
+    const CellInput ci = load_cell(cell_input);
+    vo.color_premul = padding_background_premul(ci.colors, ci.sprite_idx, is_selected, real_id);
 
     uint2 p = pad_pos_map[vertex_id];
     float along_lo = uniforms.along_start + float(strip_i) * uniforms.along_step;
