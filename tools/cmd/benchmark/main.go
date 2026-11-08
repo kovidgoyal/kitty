@@ -16,6 +16,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 
 	"golang.org/x/sys/unix"
 )
@@ -124,26 +125,108 @@ type result struct {
 	data_sz     int
 	duration    time.Duration
 	repetitions int
+	// The number of cells drawn per repetition, for text benchmarks, zero otherwise
+	cells int
+}
+
+// The ASCII and Unicode text benchmarks use text with the same structure: the
+// same lines, of the same widths in cells, ending in CRLF and with tabs at the
+// same positions. They differ only in the characters used to fill the lines,
+// so that they are comparable. Since non-ASCII characters are encoded in more
+// bytes, compare them by the rate at which cells are drawn rather than bytes.
+type text_line struct {
+	width, tab_at int // tab_at is -1 for lines without a tab
+}
+
+const num_text_lines = 16000
+
+func text_layout() []text_line {
+	r := rand.New(rand.NewPCG(1, 2)) // the same layout every time
+	lines := make([]text_line, num_text_lines)
+	for i := range lines {
+		// Lines wider than the screen wrap
+		lines[i] = text_line{width: r.IntN(101), tab_at: -1}
+		if lines[i].width > 8 && r.IntN(4) == 0 {
+			lines[i].tab_at = r.IntN(lines[i].width)
+		}
+	}
+	return lines
+}
+
+// next returns a character, which may be a multi-codepoint grapheme, and its
+// width in cells, which must not be more than remaining
+func text_with_layout(next func(remaining int) (string, int)) (text string, cells int) {
+	var b strings.Builder
+	b.Grow(num_text_lines * 128)
+	for _, line := range text_layout() {
+		tab_done := line.tab_at < 0
+		for filled := 0; filled < line.width; {
+			if !tab_done && filled >= line.tab_at {
+				b.WriteByte('\t')
+				tab_done = true
+			}
+			limit := line.width
+			if !tab_done {
+				limit = line.tab_at // do not let a wide char step over the tab position
+			}
+			ch, w := next(limit - filled)
+			b.WriteString(ch)
+			filled += w
+		}
+		b.WriteString("\r\n")
+		cells += line.width
+	}
+	return b.String(), cells
+}
+
+func text_benchmark(desc string, data string, cells int) (r result, err error) {
+	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
+	if err != nil {
+		return result{}, err
+	}
+	return result{desc, data_sz, duration, reps, cells}, nil
+}
+
+func ascii_text() (string, int) {
+	return text_with_layout(func(int) (string, int) {
+		i := rand.IntN(len(ascii_printable))
+		return ascii_printable[i : i+1], 1
+	})
 }
 
 func simple_ascii() (r result, err error) {
-	const desc = "Only ASCII chars"
-	data := random_string_of_bytes(1024*2048+13, ascii_printable+control_chars)
-	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
-	if err != nil {
-		return result{}, err
+	data, cells := ascii_text()
+	return text_benchmark("ASCII text", data, cells)
+}
+
+func unicode_text() (string, int) {
+	// Half the characters are wide: CJK and emoji, half narrow: accented
+	// letters, symbols and letters with combining marks
+	var narrow, wide []string
+	for _, g := range wcswidth.SplitIntoGraphemes(chinese_lorem_ipsum + misc_unicode) {
+		switch wcswidth.Stringwidth(g) {
+		case 1:
+			if g != " " {
+				narrow = append(narrow, g)
+			}
+		case 2:
+			wide = append(wide, g)
+		}
 	}
-	return result{desc, data_sz, duration, reps}, nil
+	return text_with_layout(func(remaining int) (string, int) {
+		if remaining > 1 && rand.IntN(2) == 0 {
+			return wide[rand.IntN(len(wide))], 2
+		}
+		if rand.IntN(16) == 0 {
+			return " ", 1
+		}
+		return narrow[rand.IntN(len(narrow))], 1
+	})
 }
 
 func unicode() (r result, err error) {
-	const desc = "Unicode chars"
-	data := strings.Repeat(chinese_lorem_ipsum+misc_unicode+control_chars, 1024)
-	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
-	if err != nil {
-		return result{}, err
-	}
-	return result{desc, data_sz, duration, reps}, nil
+	data, cells := unicode_text()
+	return text_benchmark("Unicode text", data, cells)
 }
 
 func unique_unicode() (r result, err error) {
@@ -164,7 +247,7 @@ func unique_unicode() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{desc, data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps, 0}, nil
 }
 
 func ascii_with_csi() (r result, err error) {
@@ -197,7 +280,7 @@ func ascii_with_csi() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{desc, data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps, 0}, nil
 }
 
 type rgb struct{ r, g, b int }
@@ -220,7 +303,7 @@ func colored_text_benchmark(desc string, next_color func() rgb) (r result, err e
 	if err != nil {
 		return result{}, err
 	}
-	return result{desc, data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps, 0}, nil
 }
 
 func truecolor_text() (r result, err error) {
@@ -256,7 +339,7 @@ func halfblocks() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{desc, data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps, 0}, nil
 }
 
 func images() (r result, err error) {
@@ -281,7 +364,7 @@ func images() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{desc, data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps, 0}, nil
 }
 
 func long_escape_codes() (r result, err error) {
@@ -293,7 +376,7 @@ func long_escape_codes() (r result, err error) {
 	if err != nil {
 		return result{}, err
 	}
-	return result{desc, data_sz, duration, reps}, nil
+	return result{desc, data_sz, duration, reps, 0}, nil
 }
 
 var divs = []time.Duration{
@@ -315,7 +398,11 @@ func present_result(r result, col_width int) {
 	rate := float64(r.data_sz) / r.duration.Seconds()
 	rate /= 1024. * 1024.
 	f := fmt.Sprintf("%%-%ds", col_width)
-	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%-7.1f\x1b[m MB/s\n", r.desc, round(r.duration, 2), rate)
+	cells := ""
+	if r.cells > 0 {
+		cells = fmt.Sprintf(" @ \x1b[32m%.1f\x1b[m Mcells/s", float64(r.cells*r.repetitions)/r.duration.Seconds()/1e6)
+	}
+	fmt.Printf("  "+f+" : %-10v @ \x1b[32m%-7.1f\x1b[m MB/s%s\n", r.desc, round(r.duration, 2), rate, cells)
 }
 
 func all_benchamrks() []string {
