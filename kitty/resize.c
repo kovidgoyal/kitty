@@ -153,10 +153,8 @@ next_dest_line(Rewrap *r, bool continued) {
     }
     if (r->sb->line_attrs[0].has_dirty_text) {
         CPUCell *cpu_cells;
-        GPUCell *gpu_cells;
-        linebuf_init_cells(r->sb, 0, &cpu_cells, &gpu_cells);
+        linebuf_init_cells(r->sb, 0, &cpu_cells, NULL);
         memcpy(r->dest.line.cpu_cells, cpu_cells, dest_xnum * sizeof(cpu_cells[0]));
-        memcpy(r->dest.line.gpu_cells, gpu_cells, dest_xnum * sizeof(gpu_cells[0]));
         r->current_dest_line_has_multiline_cells = true;
     }
     linebuf_index(r->sb, 0, r->sb->ynum - 1);
@@ -219,8 +217,8 @@ find_space_in_dest(Rewrap *r, index_type num_cells) {
 
 static void
 copy_range(Line *src, index_type src_at, Line *dest, index_type dest_at, index_type num) {
+    // render data is not copied as all rewrapped lines are marked dirty
     memcpy(dest->cpu_cells + dest_at, src->cpu_cells + src_at, num * sizeof(CPUCell));
-    memcpy(dest->gpu_cells + dest_at, src->gpu_cells + src_at, num * sizeof(GPUCell));
 }
 
 static void
@@ -317,7 +315,7 @@ rewrap(Rewrap *r) {
         memcpy(r->dest.lb->line_map, r->src.lb->line_map, sizeof(index_type) * r->src.lb->ynum);
         memcpy(r->dest.lb->line_attrs, r->src.lb->line_attrs, sizeof(LineAttrs) * r->src.lb->ynum);
         memcpy(r->dest.lb->cpu_cell_buf, r->src.lb->cpu_cell_buf, (size_t)r->src.lb->xnum * r->src.lb->ynum * sizeof(CPUCell));
-        memcpy(r->dest.lb->gpu_cell_buf, r->src.lb->gpu_cell_buf, (size_t)r->src.lb->xnum * r->src.lb->ynum * sizeof(GPUCell));
+        memcpy(r->dest.lb->render_cell_buf, r->src.lb->render_cell_buf, (size_t)r->src.lb->xnum * r->src.lb->ynum * sizeof(RenderCell));
         r->num_content_lines_before = r->src.lb->ynum;
         if (r->dest.hb && r->src.hb) historybuf_fast_rewrap(r->dest.hb, r->src.hb, r->src.hb->count, r->consume_src_hb);
         r->dest.y = r->src.lb->ynum - 1;
@@ -376,7 +374,6 @@ clear_trailing_blanks(HistoryBuf *hb, index_type count) {
         index_type limit = l.xnum;
         while (limit && l.cpu_cells[limit - 1].ch_and_idx == BLANK_CHAR) limit--;
         zero_at_ptr_count(l.cpu_cells + limit, l.xnum - limit);
-        zero_at_ptr_count(l.gpu_cells + limit, l.xnum - limit);
     }
 }
 
@@ -451,19 +448,17 @@ resize_screen_buffers(
 }
 
 static void
-nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit) {
+nuke_in_line(CPUCell *cp, index_type start, index_type x_limit) {
     for (index_type x = start; x < x_limit; x++) {
         cell_set_char(cp + x, 0);
         cell_clear_multicell(cp + x);
-        clear_sprite_position(gp[x]);
     }
 }
 
 static void
 nuke_multicell_char_at(LineBuf *lb, index_type x_, index_type y_) {
     CPUCell *cp;
-    GPUCell *gp;
-    linebuf_init_cells(lb, y_, &cp, &gp);
+    linebuf_init_cells(lb, y_, &cp, NULL);
     const CPUCell ref = cp[x_];
     // only the adjacent rows that continue the char, as it may be partial or torn
     index_type y_start = y_, y_limit = y_ + 1;
@@ -475,8 +470,9 @@ nuke_multicell_char_at(LineBuf *lb, index_type x_, index_type y_) {
     while (cp[x_].x && x_ > 0) x_--;
     index_type x_limit = MIN(lb->xnum, x_ + mcd_x_limit(&cp[x_]));
     for (index_type y = y_start; y < y_limit; y++) {
-        linebuf_init_cells(lb, y, &cp, &gp);
-        nuke_in_line(cp, gp, x_, x_limit);
+        linebuf_init_cells(lb, y, &cp, NULL);
+        nuke_in_line(cp, x_, x_limit);
+        linebuf_mark_line_dirty(lb, y);
     }
 }
 
@@ -500,19 +496,18 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
         ans.lb->line_attrs[y] = lb->line_attrs[y];
         ans.lb->line_attrs[y].has_dirty_text = true;
         memcpy(ans.lb->line->cpu_cells, lb->line->cpu_cells, xcommon * sizeof(lb->line->cpu_cells[0]));
-        memcpy(ans.lb->line->gpu_cells, lb->line->gpu_cells, xcommon * sizeof(lb->line->gpu_cells[0]));
+        memcpy(ans.lb->line->render_cells, lb->line->render_cells, xcommon * sizeof(lb->line->render_cells[0]));
         if (xcommon > lb->line->xnum) {
             // extend the colors/styles of the last cell to edge
-            GPUCell e = lb->line->gpu_cells[xcommon - 1];
-            clear_sprite_position(e);
-            for (index_type x = xcommon; x < ans.lb->line->xnum; x++) ans.lb->line->gpu_cells[x] = e;
+            const uint32_t style_idx = lb->line->cpu_cells[xcommon - 1].style_idx;
+            for (index_type x = xcommon; x < ans.lb->line->xnum; x++) ans.lb->line->cpu_cells[x].style_idx = style_idx;
         } else if (xcommon < lb->line->xnum) {
             // remove multicell chars that were split at the right edge
             index_type last_x = xcommon - 1;
             CPUCell *c = ans.lb->line->cpu_cells + last_x;
             if (c->is_multicell && c->x + 1u < mcd_x_limit(c)) {
                 while (ans.lb->line->cpu_cells[last_x].x && last_x > 0) last_x--;
-                nuke_in_line(ans.lb->line->cpu_cells, ans.lb->line->gpu_cells, last_x, ans.lb->line->xnum);
+                nuke_in_line(ans.lb->line->cpu_cells, last_x, ans.lb->line->xnum);
             }
         }
     }
@@ -523,12 +518,12 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
         uint32_t fill_bg = 0;
         bg_freq_map freq;
         vt_init(&freq);
+        const StyleTable *t = tc_style_table(lb->text_cache);
         for (index_type y = 0; y < ans.num_content_lines_after; y++) {
             CPUCell *cp;
-            GPUCell *gp;
-            linebuf_init_cells(lb, y, &cp, &gp);
+            linebuf_init_cells(lb, y, &cp, NULL);
             for (index_type x = 0; x < lb->xnum; x++) {
-                bg_freq_map_itr itr = vt_get_or_insert(&freq, gp[x].bg, 0);
+                bg_freq_map_itr itr = vt_get_or_insert(&freq, style_table_get(t, cp[x].style_idx)->bg, 0);
                 if (!vt_is_end(itr)) itr.data->val++;
             }
         }
@@ -541,9 +536,15 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
         }
         vt_cleanup(&freq);
         if (fill_bg) {
+            StyleTable *t = tc_style_table(ans.lb->text_cache);
+            uint32_t style_cache = 0;
             for (index_type y = ans.num_content_lines_after; y < ans.lb->ynum; y++) {
                 linebuf_init_line(ans.lb, y);
-                for (index_type x = 0; x < ans.lb->xnum; x++) ans.lb->line->gpu_cells[x].bg = fill_bg;
+                for (index_type x = 0; x < ans.lb->xnum; x++) {
+                    Style st = *style_table_get(t, ans.lb->line->cpu_cells[x].style_idx);
+                    st.bg = fill_bg;
+                    ans.lb->line->cpu_cells[x].style_idx = style_table_intern_cached(t, &st, &style_cache);
+                }
             }
         }
     }

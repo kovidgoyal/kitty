@@ -89,7 +89,7 @@ typedef struct {
 typedef struct {
     PyObject *overlay_text;
     CPUCell *cpu_cells;
-    GPUCell *gpu_cells;
+    RenderCell *render_cells;
     index_type xstart, ynum, xnum, cursor_x, text_len;
     // Position of the IME cursor inside the pre-edit text in unicode code points, negative if unknown
     int preedit_cursor;
@@ -97,7 +97,7 @@ typedef struct {
     bool is_dirty;
     struct {
         CPUCell *cpu_cells;
-        GPUCell *gpu_cells;
+        RenderCell *render_cells;
         Cursor cursor;
     } original_line;
     struct {
@@ -151,6 +151,8 @@ typedef struct {
     Savepoint main_savepoint, alt_savepoint;
     PyObject *callbacks, *test_child;
     TextCache *text_cache;
+    StyleTable *style_table; // owned by text_cache
+    uint32_t hyperlink_style_idx_cache;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     GraphicsManager *grman, *main_grman, *alt_grman;
     HistoryBuf *historybuf;
@@ -277,6 +279,7 @@ typedef struct {
 
 void screen_align(Screen *);
 void screen_garbage_collect_text_cache(Screen *screen);
+void screen_garbage_collect_style_table(Screen *screen);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_restore_modes(Screen *);
@@ -417,3 +420,8 @@ DECLARE_CH_SCREEN_HANDLER(tab)
 DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
 #undef DECLARE_CH_SCREEN_HANDLER
+
+static inline uint32_t
+screen_cursor_style_idx(Screen *self) {
+    return style_table_intern_cached(self->style_table, &self->cursor->style, &self->cursor->style_idx);
+}
