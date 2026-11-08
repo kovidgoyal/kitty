@@ -142,7 +142,7 @@ cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group) {
 }
 
 static void
-apply_sgr_to_style(Style *st, int *params, unsigned int count, bool is_group) {
+apply_sgr_to_style(CellStyle *st, int *params, unsigned int count, bool is_group) {
     // Apply SGR params to a style as DECCARA does
 #define SET_COLOR(which)                        \
     {                                           \
@@ -208,7 +208,7 @@ apply_sgr_to_style(Style *st, int *params, unsigned int count, bool is_group) {
 }
 
 void
-apply_sgr_to_cells(StyleTable *t, CPUCell *cells, unsigned int cell_count, int *params, unsigned int count, bool is_group) {
+apply_sgr_to_cells(CellStyleTable *t, CPUCell *cells, unsigned int cell_count, int *params, unsigned int count, bool is_group) {
     if (!count) {
         params[0] = 0;
         count = 1;
@@ -218,7 +218,7 @@ apply_sgr_to_cells(StyleTable *t, CPUCell *cells, unsigned int cell_count, int *
     for (unsigned c = 0; c < cell_count; c++) {
         const uint32_t old = cells[c].style_idx;
         if (old != last_old) {
-            Style st = *style_table_get(t, old);
+            CellStyle st = *style_table_get(t, old);
             apply_sgr_to_style(&st, params, count, is_group);
             last_old = old;
             last_new = style_table_intern(t, &st);
@@ -229,7 +229,7 @@ apply_sgr_to_cells(StyleTable *t, CPUCell *cells, unsigned int cell_count, int *
 
 const char *
 cursor_as_sgr(const Cursor *self) {
-    static const Style blank = {0};
+    static const CellStyle blank = {0};
     return style_as_sgr(&self->style, &blank);
 }
 

@@ -29,7 +29,7 @@ static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 // GPUCell is used when rendering lines, see render_line()
 
 // The data for a cell uploaded to the GPU. The shaders get the style of the
-// cell from a texture holding the StyleTable of the screen.
+// cell from a texture holding the CellStyleTable of the screen.
 typedef struct CellGPUData {
     sprite_index sprite_idx;
     uint32_t style_and_mark; // style_idx << CELL_GPU_STYLE_SHIFT | mark
@@ -76,7 +76,7 @@ typedef union CPUCell {
         char_type x : WIDTH_BITS + SCALE_BITS;
         char_type y : SCALE_BITS;
         char_type width : WIDTH_BITS;
-        // Index of the formatting of this cell in the StyleTable of the screen
+        // Index of the formatting of this cell in the CellStyleTable of the screen
         char_type style_idx : STYLE_IDX_BITS;
     };
     struct {
@@ -122,7 +122,7 @@ typedef struct MultiCellCommand {
 } MultiCellCommand;
 
 typedef struct ANSILineOutput {
-    Style prev_style; // style of the previous cell output, zero (the default style) at the start
+    CellStyle prev_style; // style of the previous cell output, zero (the default style) at the start
     const CPUCell *current_multicell_state;
     index_type pos, limit;
     ANSIBuf *output_buf;
@@ -137,8 +137,8 @@ cleanup_ansibuf(ANSIBuf *b) {
 #define RAII_ANSIBuf(name) __attribute__((cleanup(cleanup_ansibuf))) ANSIBuf name = {0}
 
 Line *alloc_line(TextCache *text_cache);
-void apply_sgr_to_cells(StyleTable *t, CPUCell *cells, unsigned int cell_count, int *params, unsigned int count, bool is_group);
-const char *style_as_sgr(const Style *, const Style *);
+void apply_sgr_to_cells(CellStyleTable *t, CPUCell *cells, unsigned int cell_count, int *params, unsigned int count, bool is_group);
+const char *style_as_sgr(const CellStyle *, const CellStyle *);
 static inline bool
 cell_has_text(const CPUCell *c) {
     return c->ch_and_idx != 0;
@@ -235,7 +235,7 @@ cell_first_char(const CPUCell *c, const TextCache *tc) {
     return c->ch_or_idx;
 }
 
-static inline StyleTable *
+static inline CellStyleTable *
 line_style_table(const Line *l) {
     return tc_style_table(l->text_cache);
 }
@@ -250,13 +250,13 @@ line_styles_are_valid(const Line *l) {
     return true;
 }
 
-static inline const Style *
+static inline const CellStyle *
 line_cell_style(const Line *l, index_type x) {
     return style_table_get(line_style_table(l), l->cpu_cells[x].style_idx);
 }
 
 static inline uint32_t
-cursor_style_idx_in(StyleTable *t, const Cursor *cursor) {
+cursor_style_idx_in(CellStyleTable *t, const Cursor *cursor) {
     // Uses the cache in the cursor without updating it
     uint32_t idx = cursor->style_idx;
     return style_table_intern_cached(t, &cursor->style, &idx);
@@ -271,7 +271,7 @@ fill_blank_cpu_cells(CPUCell *c, index_type num, uint32_t style_idx) {
 }
 
 static inline void
-remap_style_idx_range(StyleTable *dest, const StyleTable *src, CPUCell *c, index_type num) {
+remap_style_idx_range(CellStyleTable *dest, const CellStyleTable *src, CPUCell *c, index_type num) {
     // Change the style indices of cells copied from a buffer with a different style table
     uint32_t cache = 0;
     for (index_type i = 0; i < num; i++) c[i].style_idx = style_table_intern_cached(dest, style_table_get(src, c[i].style_idx), &cache);
