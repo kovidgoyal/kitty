@@ -360,3 +360,22 @@ class TestStyles(BaseTest):
         s.draw('d')
         self.assertTrue(s.line(0).cursor_from(0).bold)
         self.assert_styles_consistent(s)
+
+    def test_style_of_line_copies_after_gc(self):
+        s = self.create_screen(cols=6, lines=3, scrollback=2)
+        parse_bytes(s, RED_BOLD)
+        s.draw('abc')
+        copy = s.linebuf.create_line_copy(0)
+        self.assertTrue(copy.cursor_from(0).bold)
+        view = s.line(0)
+        s.test_gc_style_table()
+        # Views into the screen are remapped by the collection
+        self.assertTrue(view.cursor_from(0).bold)
+        # Copies are not, so using their formatting is an error
+        for f in (lambda: copy.cursor_from(0), copy.as_ansi, lambda: copy.apply_cursor(Cursor(), 0, 1), lambda: copy.set_attribute('bold', 1)):
+            self.assertRaises(ValueError, f)
+        self.ae(str(copy), 'abc')  # the text is still usable
+        # Copying a whole line into the copy makes its formatting valid again
+        s.linebuf.copy_line_to(0, copy)
+        self.assertTrue(copy.cursor_from(0).bold)
+        self.assert_styles_consistent(s)

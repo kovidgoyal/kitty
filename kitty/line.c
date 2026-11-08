@@ -673,6 +673,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
 static PyObject *
 as_ansi(Line *self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
+    if (!line_styles_are_valid(self)) return NULL;
     ANSIBuf output = {0};
     ANSILineState s = {.output_buf = &output};
     line_as_ansi(self, &s, 0, self->xnum, 0, true);
@@ -759,6 +760,7 @@ set_text(Line *self, PyObject *args) {
     void *buf;
 
     if (!PyArg_ParseTuple(args, "UnnO!", &src, &offset, &sz, &Cursor_Type, &cursor)) return NULL;
+    if (!line_styles_are_valid(self)) return NULL;
     if (PyUnicode_READY(src) != 0) {
         PyErr_NoMemory();
         return NULL;
@@ -788,6 +790,7 @@ cursor_from(Line *self, PyObject *args) {
     unsigned int x, y = 0;
     Cursor *ans;
     if (!PyArg_ParseTuple(args, "I|I", &x, &y)) return NULL;
+    if (!line_styles_are_valid(self)) return NULL;
     if (x >= self->xnum) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds x");
         return NULL;
@@ -843,6 +846,7 @@ apply_cursor(Line *self, PyObject *args) {
     unsigned int at = 0, num = 1;
     int clear_char = 0;
     if (!PyArg_ParseTuple(args, "O!|IIp", &Cursor_Type, &cursor, &at, &num, &clear_char)) return NULL;
+    if (!line_styles_are_valid(self)) return NULL;
     line_apply_cursor(self, cursor, at, num, clear_char & 1);
     Py_RETURN_NONE;
 }
@@ -909,6 +913,7 @@ set_char(Line *self, PyObject *args) {
     unsigned int hyperlink_id = 0;
 
     if (!PyArg_ParseTuple(args, "IC|IO!I", &at, &ch, &width, &Cursor_Type, &cursor, &hyperlink_id)) return NULL;
+    if (!line_styles_are_valid(self)) return NULL;
     if (at >= self->xnum) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds");
         return NULL;
@@ -927,6 +932,7 @@ set_attribute(Line *self, PyObject *args) {
     unsigned int val;
     char *which;
     if (!PyArg_ParseTuple(args, "sI", &which, &val)) return NULL;
+    if (!line_styles_are_valid(self)) return NULL;
     if (!set_named_attribute_on_line(line_style_table(self), self->cpu_cells, self->render_cells, which, val, self->xnum)) {
         PyErr_SetString(PyExc_KeyError, "Unknown cell attribute");
         return NULL;
@@ -1238,6 +1244,7 @@ copy_char(Line *self, PyObject *args) {
     unsigned int src, dest;
     Line *to;
     if (!PyArg_ParseTuple(args, "IO!I", &src, &Line_Type, &to, &dest)) return NULL;
+    if (!line_styles_are_valid(self) || !line_styles_are_valid(to)) return NULL;
     if (src >= self->xnum || dest >= to->xnum) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds");
         return NULL;
