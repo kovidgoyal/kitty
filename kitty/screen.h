@@ -153,6 +153,11 @@ typedef struct {
     TextCache *text_cache;
     StyleTable *style_table; // owned by text_cache
     uint32_t hyperlink_style_idx_cache;
+    // The texture holding the style table for the shaders, see sync_style_texture() in shaders.c
+    struct {
+        gpu_texture_t texture;
+        uint32_t width, height, count, generation;
+    } style_texture;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     GraphicsManager *grman, *main_grman, *alt_grman;
     HistoryBuf *historybuf;

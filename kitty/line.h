@@ -26,8 +26,16 @@ typedef struct {
     CellAttrs attrs;
 } GPUCell;
 static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
-// GPUCell is the format of cell data uploaded to the GPU, it is built from the
-// CPUCell, the Style of the cell and the RenderCell of the cell.
+// GPUCell is used when rendering lines, see render_line()
+
+// The data for a cell uploaded to the GPU. The shaders get the style of the
+// cell from a texture holding the StyleTable of the screen.
+typedef struct CellGPUData {
+    sprite_index sprite_idx;
+    uint32_t style_and_mark; // style_idx << CELL_GPU_STYLE_SHIFT | mark
+} CellGPUData;
+static_assert(sizeof(CellGPUData) == 8, "Fix the ordering of CellGPUData");
+#define CELL_GPU_STYLE_SHIFT 2u
 
 // Data computed when rendering a cell. The style of a cell is stored in its CPUCell.
 typedef struct RenderCell {
@@ -256,21 +264,12 @@ remap_style_idx_range(StyleTable *dest, const StyleTable *src, CPUCell *c, index
     for (index_type i = 0; i < num; i++) c[i].style_idx = style_table_intern_cached(dest, style_table_get(src, c[i].style_idx), &cache);
 }
 
-static inline GPUCell
-gpu_cell_for(const Style *st, const RenderCell *r) {
-    GPUCell ans = {.fg = st->fg, .bg = st->bg, .decoration_fg = st->decoration_fg, .attrs = st->attrs};
-    if (r) {
-        ans.sprite_idx = r->sprite_idx;
-        ans.attrs.mark = r->mark;
-    }
-    return ans;
-}
-
 static inline void
-expand_cells_for_gpu(const StyleTable *t, const CPUCell *c, const RenderCell *r, index_type num, GPUCell *dest) {
+cells_for_gpu(const CPUCell *c, const RenderCell *r, index_type num, CellGPUData *dest) {
     // Build the cell data uploaded to the GPU. dest may be write combined memory so it is only written to, sequentially.
+    static_assert(MARK_MASK < (1u << CELL_GPU_STYLE_SHIFT), "Increase CELL_GPU_STYLE_SHIFT");
     for (index_type i = 0; i < num; i++) {
-        const GPUCell g = gpu_cell_for(style_table_get(t, c[i].style_idx), r ? r + i : NULL);
-        memcpy(dest + i, &g, sizeof(g));
+        const CellGPUData d = {.sprite_idx = r[i].sprite_idx, .style_and_mark = (c[i].style_idx << CELL_GPU_STYLE_SHIFT) | r[i].mark};
+        memcpy(dest + i, &d, sizeof(d));
     }
 }

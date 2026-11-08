@@ -459,8 +459,7 @@ init_cell_program(void) {
         if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); \
     }
     for (int p = CELL_PROGRAM; p < CELL_PROGRAM_SENTINEL; p++) {
-        C(p, colors, 0);
-        C(p, sprite_idx, 1);
+        C(p, cell_input, 0);
         C(p, is_selected, 2);
         C(p, decorations_sprite_map, 3);
     }
@@ -472,8 +471,7 @@ init_cell_program(void) {
         int aloc = attrib_location(PADDING_PROGRAM, #name);                                                                                   \
         if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in the padding program", #name, aloc, expected); \
     }
-    C(colors, 0);
-    C(sprite_idx, 1);
+    C(cell_input, 0);
     C(is_selected, 2);
 #undef C
     // The sprite textures are bound once for all cell programs, see bind_sprite_map()
@@ -931,11 +929,9 @@ create_cell_vao(void) {
 #define A(name, size, dtype, offset, stride) \
     add_attribute_to_vao(                    \
         vao_idx, program_attribute_location(CELL_PROGRAM, name), /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
-#define A1(name, size, dtype, offset) A(name, size, dtype, offsetof(GPUCell, offset), sizeof(GPUCell))
 
     add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX);
-    A1("sprite_idx", 2, GPU_ATTRIB_U32, sprite_idx);
-    A1("colors", 3, GPU_ATTRIB_U32, fg);
+    A("cell_input", 2, GPU_ATTRIB_U32, 0, sizeof(CellGPUData));
 
     add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX);
     A("is_selected", 1, GPU_ATTRIB_U8, 0, (uint32_t)selection_stride);
@@ -1226,6 +1222,70 @@ cell_update_uniform_block(
     return default_bg;
 }
 
+// Style table texture {{{
+// The cell shaders get the style of each cell from a texture holding the style
+// table of its screen. Each Style is four R32UI texels, fg, bg, decoration_fg
+// and attrs, in the same layout as the C struct, so styles are uploaded
+// directly from the table. The texture width is a multiple of four, so the
+// texels of a style are always in a single row.
+#define TEXELS_PER_STYLE (sizeof(Style) / sizeof(uint32_t))
+static_assert(sizeof(Style) == 4 * sizeof(uint32_t), "Fix TEXELS_PER_STYLE and the shaders");
+
+static void
+upload_style_texels(gpu_texture_t texture, uint32_t width, const uint32_t *texels, uint32_t start, uint32_t limit) {
+    // Upload the texels in [start, limit) as a partial first row, full rows and a partial last row
+    while (start < limit) {
+        const uint32_t y = start / width, x = start % width;
+        uint32_t w, h;
+        if (x || limit - start < width) {
+            w = MIN(width - x, limit - start);
+            h = 1;
+        } else {
+            w = width;
+            h = (limit - start) / width;
+        }
+        const GPUPixelData pixels = {.layout = GPU_PIXELS_R32UI, .row_alignment = 4, .data = texels + start};
+        gpu_texture_upload(texture, x, y, 0, w, h, &pixels);
+        start += w * h;
+    }
+}
+
+static void
+sync_style_texture(Screen *screen) {
+    // Upload styles added to the table since the last upload, or all of them
+    // if the table was garbage collected since then
+    const StyleTable *t = screen->style_table;
+    __typeof__(screen->style_texture) *st = &screen->style_texture;
+    bool upload_all = st->generation != t->generation || !st->texture;
+    const uint32_t needed = t->count * TEXELS_PER_STYLE;
+    if (!st->texture || needed > st->width * st->height) {
+        const uint32_t width = (uint32_t)MIN(4096, max_texture_size) & ~(uint32_t)(TEXELS_PER_STYLE - 1);
+        const uint32_t max_texels = MAX_NUM_OF_STYLES * TEXELS_PER_STYLE;
+        const uint32_t capacity = MIN(MAX(needed * 2, 1024u * TEXELS_PER_STYLE), max_texels);
+        const uint32_t height = (capacity + width - 1) / width;
+        if ((int32_t)height > max_texture_size) fatal("Max texture size too small for the style table");
+        const GPUTextureDesc desc = {
+            .kind = GPU_TEXTURE_2D, .format = GPU_FORMAT_R32UI, .width = width, .height = height, .filter = GPU_FILTER_NEAREST, .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+        if (st->texture) {
+            if (!gpu_texture_reset(st->texture, &desc, NULL)) fatal("Failed to re-allocate the style table texture with error: %s", gpu_last_error());
+        } else st->texture = create_texture_or_die(&desc, NULL);
+        st->width = width;
+        st->height = height;
+        upload_all = true;
+    }
+    const uint32_t start = upload_all ? 0 : st->count * TEXELS_PER_STYLE;
+    upload_style_texels(st->texture, st->width, (const uint32_t *)t->styles, start, needed);
+    st->count = t->count;
+    st->generation = t->generation;
+}
+
+static void
+bind_style_texture(int program, const Screen *screen) {
+    uint32_t slot;
+    if (screen->style_texture.texture && try_program_texture_slot(program, "cell_styles", &slot)) gpu_bind_texture(slot, screen->style_texture.texture);
+}
+// }}}
+
 static bool
 cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_data) {
     size_t sz;
@@ -1239,11 +1299,14 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     bool cursor_pos_changed = cursor->x != screen->last_rendered.cursor.x || cursor->y != screen->last_rendered.cursor.y;
     bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
     bool screen_resized = screen->last_rendered.columns != screen->columns || screen->last_rendered.lines != screen->lines;
+    // Garbage collecting the style table changes the style indices of cells, so all cell data must be uploaded again
+    const bool styles_remapped = screen->style_texture.texture && screen->style_texture.generation != screen->style_table->generation;
+    if (styles_remapped) screen->paused_rendering.cell_data_updated = false;
 
 #define update_cell_data                                                                               \
     {                                                                                                  \
         const unsigned int render_lines = render_lines_for_screen(screen);                             \
-        sz = sizeof(GPUCell) * render_lines * screen->columns;                                         \
+        sz = sizeof(CellGPUData) * render_lines * screen->columns;                                     \
         address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, cell_data_buffer);            \
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
         unmap_vao_buffer(vao_idx, cell_data_buffer);                                                   \
@@ -1253,8 +1316,16 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) update_cell_data;
-    } else if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || (disable_ligatures && cursor_pos_changed))
+    } else if (
+        screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || styles_remapped ||
+        (disable_ligatures && cursor_pos_changed))
         update_cell_data;
+    // After updating cell data as rendering lines can add styles
+    if (!screen->style_texture.texture || screen->style_texture.count != screen->style_table->count ||
+        screen->style_texture.generation != screen->style_table->generation) {
+        sync_style_texture(screen);
+        changed = true;
+    }
 
 #define update_selection_data                                                                                  \
     {                                                                                                          \
@@ -2062,6 +2133,7 @@ enum { DRAW_NEITHER_BG = 0, DRAW_DEFAULT_BG = 1, DRAW_NON_DEFAULT_BG = 2, DRAW_B
 static void
 call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for_final_output, unsigned draw_bg_bitfield) {
     bind_program(program);
+    bind_style_texture(program, ui->screen);
     CELL_BUFFERS;
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, program_uniform_block(program, "CellRenderData").slot);
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, program_uniform_block(program, "ColorTable").slot);
@@ -2083,19 +2155,9 @@ configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned 
     // layout after padding draws (base_cell=0, cell_step=1). The VAO must be
     // bound before calling this.
     CELL_BUFFERS;
-    const uint32_t cell_stride = (uint32_t)(cell_step * sizeof(GPUCell));
-    const size_t cell_base = (size_t)base_cell * sizeof(GPUCell);
-    set_vao_attribute(
-        vao_idx,
-        cell_data_buffer,
-        program_attribute_location(CELL_PROGRAM, "sprite_idx"),
-        2,
-        GPU_ATTRIB_U32,
-        cell_stride,
-        cell_base + offsetof(GPUCell, sprite_idx),
-        1);
-    set_vao_attribute(
-        vao_idx, cell_data_buffer, program_attribute_location(CELL_PROGRAM, "colors"), 3, GPU_ATTRIB_U32, cell_stride, cell_base + offsetof(GPUCell, fg), 1);
+    const uint32_t cell_stride = (uint32_t)(cell_step * sizeof(CellGPUData));
+    const size_t cell_base = (size_t)base_cell * sizeof(CellGPUData);
+    set_vao_attribute(vao_idx, cell_data_buffer, program_attribute_location(CELL_PROGRAM, "cell_input"), 2, GPU_ATTRIB_U32, cell_stride, cell_base, 1);
     set_vao_attribute(
         vao_idx,
         selection_buffer,
@@ -2110,20 +2172,10 @@ configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned 
 static void
 configure_padding_vao_attributes(ssize_t vao_idx) {
     // Point the instanced cell attributes at the dedicated padding buffers
-    // (base=0, stride=sizeof(GPUCell)), which are pre-packed before each
+    // (base=0, stride=sizeof(CellGPUData)), which are pre-packed before each
     // combined draw. The VAO must be bound before calling this.
     CELL_BUFFERS;
-    set_vao_attribute(
-        vao_idx,
-        padding_cell_data_buffer,
-        program_attribute_location(CELL_PROGRAM, "sprite_idx"),
-        2,
-        GPU_ATTRIB_U32,
-        sizeof(GPUCell),
-        offsetof(GPUCell, sprite_idx),
-        1);
-    set_vao_attribute(
-        vao_idx, padding_cell_data_buffer, program_attribute_location(CELL_PROGRAM, "colors"), 3, GPU_ATTRIB_U32, sizeof(GPUCell), offsetof(GPUCell, fg), 1);
+    set_vao_attribute(vao_idx, padding_cell_data_buffer, program_attribute_location(CELL_PROGRAM, "cell_input"), 2, GPU_ATTRIB_U32, sizeof(CellGPUData), 0, 1);
     set_vao_attribute(
         vao_idx, padding_selection_buffer, program_attribute_location(CELL_PROGRAM, "is_selected"), 1, GPU_ATTRIB_U8, (uint32_t)selection_stride, 0, 1);
 }
@@ -2155,6 +2207,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     const float dx = 2.f * cw / fbw, dy = 2.f * ch / fbh;
 
     bind_program(PADDING_PROGRAM);
+    bind_style_texture(PADDING_PROGRAM, ui->screen);
     bind_vertex_array(vao_idx);
     CELL_BUFFERS;
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, program_uniform_block(PADDING_PROGRAM, "CellRenderData").slot);
@@ -2170,7 +2223,7 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     // Cell data is packed contiguously via GPU-side copies (no CPU round-trip).
     if (ct || cb) {
         const unsigned int nH = (ct ? 1u : 0u) + (cb ? 1u : 0u);
-        alloc_vao_buffer(vao_idx, (size_t)(sizeof(GPUCell) * nH * columns), padding_cell_data_buffer, GPU_UPDATE_OFTEN);
+        alloc_vao_buffer(vao_idx, (size_t)(sizeof(CellGPUData) * nH * columns), padding_cell_data_buffer, GPU_UPDATE_OFTEN);
         alloc_vao_buffer(vao_idx, selection_stride * nH * columns, padding_selection_buffer, GPU_UPDATE_OFTEN);
 
         unsigned int sidx = 0u;
@@ -2178,10 +2231,10 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
             copy_vao_buffer_region(
                 vao_idx,
                 cell_data_buffer,
-                (size_t)(sizeof(GPUCell) * top_row * columns),
+                (size_t)(sizeof(CellGPUData) * top_row * columns),
                 padding_cell_data_buffer,
-                (size_t)(sizeof(GPUCell) * sidx * columns),
-                (size_t)(columns * sizeof(GPUCell)));
+                (size_t)(sizeof(CellGPUData) * sidx * columns),
+                (size_t)(columns * sizeof(CellGPUData)));
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
@@ -2195,10 +2248,10 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
             copy_vao_buffer_region(
                 vao_idx,
                 cell_data_buffer,
-                (size_t)(sizeof(GPUCell) * bottom_row * columns),
+                (size_t)(sizeof(CellGPUData) * bottom_row * columns),
                 padding_cell_data_buffer,
-                (size_t)(sizeof(GPUCell) * sidx * columns),
-                (size_t)(sizeof(GPUCell) * columns));
+                (size_t)(sizeof(CellGPUData) * sidx * columns),
+                (size_t)(sizeof(CellGPUData) * columns));
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
@@ -2232,13 +2285,13 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
     if (cl || cr) {
         const unsigned int nV = (cl ? 1u : 0u) + (cr ? 1u : 0u);
         // VLA sizes: lines is bounded by the window height / cell height (~<500).
-        GPUCell gathered_cells[2 * lines];
+        CellGPUData gathered_cells[2 * lines];
         uint8_t gathered_sel[2 * lines * selection_stride];
 
         const unsigned int strip0_col = cl ? 0u : (columns - 1u);
         const unsigned int strip1_col = columns - 1u;
 
-        const GPUCell *cells = (const GPUCell *)map_vao_buffer_for_reading(vao_idx, cell_data_buffer);
+        const CellGPUData *cells = (const CellGPUData *)map_vao_buffer_for_reading(vao_idx, cell_data_buffer);
         for (unsigned int i = 0; i < lines; i++) {
             gathered_cells[i] = cells[(top_row + i) * columns + strip0_col];
             if (nV == 2u) gathered_cells[lines + i] = cells[(top_row + i) * columns + strip1_col];
@@ -2254,8 +2307,8 @@ draw_window_padding(const UIRenderData *ui, unsigned int cl, unsigned int ct, un
 #undef SEL
         unmap_vao_buffer(vao_idx, selection_buffer);
 
-        void *dst = alloc_and_map_vao_buffer(vao_idx, (size_t)(sizeof(GPUCell) * nV * lines), padding_cell_data_buffer);
-        memcpy(dst, gathered_cells, sizeof(GPUCell) * nV * lines);
+        void *dst = alloc_and_map_vao_buffer(vao_idx, (size_t)(sizeof(CellGPUData) * nV * lines), padding_cell_data_buffer);
+        memcpy(dst, gathered_cells, sizeof(CellGPUData) * nV * lines);
         unmap_vao_buffer(vao_idx, padding_cell_data_buffer);
 
         dst = alloc_and_map_vao_buffer(vao_idx, selection_stride * nV * lines, padding_selection_buffer);

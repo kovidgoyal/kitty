@@ -2086,7 +2086,12 @@ expanded_line_for_render(const Line *line) {
         render_scratch.cells = n;
         render_scratch.capacity = line->xnum;
     }
-    expand_cells_for_gpu(line_style_table(line), line->cpu_cells, line->render_cells, line->xnum, render_scratch.cells);
+    // Only the attributes (for font selection) and sprites are used when rendering
+    const StyleTable *t = line_style_table(line);
+    for (index_type i = 0; i < line->xnum; i++) {
+        render_scratch.cells[i] = (GPUCell){
+            .attrs = style_table_get(t, line->cpu_cells[i].style_idx)->attrs, .sprite_idx = line->render_cells ? line->render_cells[i].sprite_idx : 0};
+    }
     return render_scratch.cells;
 }
 
@@ -2323,18 +2328,16 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                    && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA && num_spaces + 1 < desired_cells) {
                 num_spaces++;
                 // We have a private use char followed by space(s), render it as a multi-cell ligature.
-                GPUCell *space_cell = gpu_cells + i + num_spaces;
                 // Ensure the space cell uses the foreground color from the PUA cell.
                 // This is needed because there are applications like
                 // Powerline that use PUA+space with different foreground colors
                 // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
-                space_cell->fg = gpu_cell->fg;
-                space_cell->decoration_fg = gpu_cell->decoration_fg;
-                // The style is also changed in the CPUCell as GPUCells are rebuilt from it when uploading
+                // The colors are changed in the style of the cell, as the GPU gets colors from it
                 CPUCell *space_cpu_cell = line->cpu_cells + i + num_spaces;
+                const Style *pua_style = style_table_get(style_table, cpu_cell->style_idx);
                 Style st = *style_table_get(style_table, space_cpu_cell->style_idx);
-                st.fg = gpu_cell->fg;
-                st.decoration_fg = gpu_cell->decoration_fg;
+                st.fg = pua_style->fg;
+                st.decoration_fg = pua_style->decoration_fg;
                 space_cpu_cell->style_idx = style_table_intern(style_table, &st);
             }
             if (num_spaces) {

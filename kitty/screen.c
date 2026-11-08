@@ -29,6 +29,7 @@
 #include "charsets.h"
 #include "lineops.h"
 #include "hyperlink.h"
+#include "gpu.h"
 #include <structmember.h>
 #include <limits.h>
 #include <sys/types.h>
@@ -1000,6 +1001,7 @@ dealloc(Screen *self) {
     PyMem_Free(self->main_tabstops);
     Py_CLEAR(self->paused_rendering.linebuf);
     Py_CLEAR(self->paused_rendering.grman);
+    if (self->style_texture.texture) free_texture(&self->style_texture.texture);
     free(self->selections.items);
     free(self->url_ranges.items);
     free(self->paused_rendering.url_ranges.items);
@@ -4474,13 +4476,13 @@ get_line_edge_colors(Screen *self, color_type *left, color_type *right) {
 
 static void
 update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
-    GPUCell *dest = (GPUCell *)(data + sizeof(GPUCell) * dest_y * line->xnum);
-    expand_cells_for_gpu(line_style_table(line), line->cpu_cells, line->render_cells, line->xnum, dest);
+    CellGPUData *dest = (CellGPUData *)(data + sizeof(CellGPUData) * dest_y * line->xnum);
+    cells_for_gpu(line->cpu_cells, line->render_cells, line->xnum, dest);
 }
 
 static void
 update_line_data_blank(unsigned xnum, unsigned int dest_y, uint8_t *data) {
-    const size_t sz = xnum * sizeof(GPUCell);
+    const size_t sz = xnum * sizeof(CellGPUData);
     memset(data + sz * dest_y, 0, sz);
 }
 
@@ -5783,8 +5785,8 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
 static void
 update_overlay_line_data(Screen *self, uint8_t *data) {
     const int render_row_offset = pixel_scroll_enabled(self);
-    const size_t base = sizeof(GPUCell) * (self->overlay_line.ynum + self->scrolled_by + render_row_offset) * self->columns;
-    expand_cells_for_gpu(self->style_table, self->overlay_line.cpu_cells, self->overlay_line.render_cells, self->columns, (GPUCell *)(data + base));
+    const size_t base = sizeof(CellGPUData) * (self->overlay_line.ynum + self->scrolled_by + render_row_offset) * self->columns;
+    cells_for_gpu(self->overlay_line.cpu_cells, self->overlay_line.render_cells, self->columns, (CellGPUData *)(data + base));
 }
 
 // }}}

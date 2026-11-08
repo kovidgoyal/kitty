@@ -1502,6 +1502,8 @@ SHADER_BINDING_SLOTS = MappingProxyType(
         'GammaLUT': 8,
         'Colors': 9,
         'KittyCustomShaderData': 10,
+        # textures added after the uniform blocks
+        'cell_styles': 11,
     }
 )
 

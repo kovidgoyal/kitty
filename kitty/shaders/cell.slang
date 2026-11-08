@@ -151,13 +151,11 @@ override_foreground_color(float3 over, float3 under, float colored_sprite) {
 
 [shader("vertex")]
 VertexOutput
-vertex_main(
-    [[vk::location(0)]] uint3 colors,
-    [[vk::location(1)]] uint2 sprite_idx,
-    [[vk::location(2)]] uint is_selected,
-    uint vertex_id: SV_VertexID,
-    uint instance_id: SV_InstanceID) {
+vertex_main([[vk::location(0)]] uint2 cell_input, [[vk::location(2)]] uint is_selected, uint vertex_id: SV_VertexID, uint instance_id: SV_InstanceID) {
     VertexOutput vo;
+    const CellInput ci = load_cell(cell_input);
+    const uint3 colors = ci.colors;
+    const uint2 sprite_idx = ci.sprite_idx;
 
     BackgroundOutput bo = compute_background(colors, sprite_idx, is_selected, instance_id, vertex_id);
     vo.position = bo.position;

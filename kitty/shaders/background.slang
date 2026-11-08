@@ -56,6 +56,34 @@ public struct ColorTable {
 public ConstantBuffer<ColorTable> ctb;
 #define color_table ctb.color_table
 
+// The style table of the screen, each style is four texels: fg, bg,
+// decoration_fg and attrs. The texture width is a multiple of four.
+[[vk::binding(11)]]
+uniform Sampler2D<uint> cell_styles; // a single channel R32UI texture
+
+// The data uploaded per cell: the sprite index and the style index shifted
+// left by CELL_STYLE_SHIFT with the mark in the low bits
+static const uint CELL_STYLE_SHIFT = 2u;
+
+public struct CellInput {
+    public uint3 colors;     // fg, bg, decoration_fg
+    public uint2 sprite_idx; // sprite index, text attributes including the mark
+};
+
+public CellInput
+load_cell(uint2 cell_data) {
+    CellInput ans;
+    uint style_idx = cell_data[1] >> CELL_STYLE_SHIFT;
+    uint mark = cell_data[1] & ((1u << CELL_STYLE_SHIFT) - 1u);
+    int width = texture_size(cell_styles)[0];
+    int texel = int(style_idx) * 4;
+    int y = texel / width;
+    int x = texel - y * width;
+    ans.colors = uint3(texel_fetch(cell_styles, int2(x, y)), texel_fetch(cell_styles, int2(x + 1, y)), texel_fetch(cell_styles, int2(x + 2, y)));
+    ans.sprite_idx = uint2(cell_data[0], texel_fetch(cell_styles, int2(x + 3, y)) | (mark << MARK_SHIFT));
+    return ans;
+}
+
 // The gamma LUT is a compile time constant and, unlike every other block
 // here, it is emitted into the default uniform block for OpenGL rather than
 // into a UBO, see GLSL_LOOSE_UNIFORM_BLOCKS in slang.py for why.
