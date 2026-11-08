@@ -5074,21 +5074,54 @@ limit_without_trailing_whitespace(const Line *line, index_type limit) {
     return limit;
 }
 
+// The cells whose text is extracted for a selection, one bit per cell for the lines in [y_start, y_limit)
+typedef struct SelectedCells {
+    int y_start, y_limit;
+    index_type columns;
+    uint8_t *bits;
+} SelectedCells;
+
 static void
-flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int *y_limit) {
+free_selected_cells(SelectedCells *sc) {
+    free(sc->bits);
+    sc->bits = NULL;
+}
+#define RAII_SelectedCells(name) __attribute__((cleanup(free_selected_cells))) SelectedCells name = {0}
+
+static inline size_t
+selected_cell_pos(const SelectedCells *sc, int y, index_type x) {
+    return (size_t)(y - sc->y_start) * sc->columns + x;
+}
+
+static inline bool
+is_cell_selected(const SelectedCells *sc, int y, index_type x) {
+    const size_t pos = selected_cell_pos(sc, y, x);
+    return (sc->bits[pos >> 3] >> (pos & 7)) & 1;
+}
+
+static inline void
+select_cell(SelectedCells *sc, int y, index_type x) {
+    const size_t pos = selected_cell_pos(sc, y, x);
+    sc->bits[pos >> 3] |= 1u << (pos & 7);
+}
+
+static bool
+flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int *y_limit, SelectedCells *sc) {
+    // Find the cells whose text is in the selection. Returns false on allocation failure.
     IterationData idata;
     bool has_history = self->linebuf == self->main_linebuf;
     iteration_data(s, &idata, self->columns, has_history ? -self->historybuf->count : 0, 0);
     Line *line;
     *miny = idata.y;
     *y_limit = MIN(idata.y_limit, (int)self->lines);
-    if (*miny >= *y_limit) return;
+    if (*miny >= *y_limit) return true;
+    // Multiline chars can extend above the first line of the selection
     static const int max_scale = ((1u << SCALE_BITS) - 1u);
-    for (int y = idata.y - max_scale; y < *y_limit; y++) {
-        line = checked_range_line(self, y);
-        if (line)
-            for (index_type x = 0; x < line->xnum; x++) line->cpu_cells[x].temp_flag = 0;
-    }
+    sc->y_start = idata.y - max_scale;
+    sc->y_limit = *y_limit;
+    sc->columns = self->columns;
+    sc->bits = calloc(((size_t)(sc->y_limit - sc->y_start) * sc->columns + 7) / 8, 1);
+    if (!sc->bits) return false;
     Line temp = {.xnum = self->columns, .text_cache = self->text_cache};
     for (int y = idata.y; y < *y_limit; y++) {
         range_line(self, y, &temp);
@@ -5096,12 +5129,12 @@ flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int 
         XRange xr = xrange_for_iteration_with_multicells(&idata, y, &temp);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
             c = temp.cpu_cells + x;
-            c->temp_flag = 1;
+            select_cell(sc, y, x);
             if (c->is_multicell && c->y) {
                 for (int ym = y - c->y; ym < y; ym++) {
                     line = checked_range_line(self, ym);
                     if (line) {
-                        line->cpu_cells[x].temp_flag = 1;
+                        select_cell(sc, ym, x);
                         *miny = MIN(*miny, ym);
                     }
                 }
@@ -5112,16 +5145,18 @@ flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int 
     while (*y_limit > *miny) {
         range_line(self, *y_limit - 1, &temp);
         for (index_type x = 0; x < temp.xnum; x++) {
-            if (temp.cpu_cells[x].temp_flag && temp.cpu_cells[x].ch_and_idx && (!temp.cpu_cells[x].is_multicell || !temp.cpu_cells[x].y)) return;
+            if (is_cell_selected(sc, *y_limit - 1, x) && temp.cpu_cells[x].ch_and_idx && (!temp.cpu_cells[x].is_multicell || !temp.cpu_cells[x].y)) return true;
         }
         (*y_limit)--;
     }
+    return true;
 }
 
 static PyObject *
 text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool strip_trailing_whitespace) {
     int min_y, y_limit;
-    flag_selection_to_extract_text(self, sel, &min_y, &y_limit);
+    RAII_SelectedCells(sc);
+    if (!flag_selection_to_extract_text(self, sel, &min_y, &y_limit, &sc)) return PyErr_NoMemory();
     if (min_y >= y_limit) return PyTuple_New(0);
     size_t before = self->as_ansi_buf.len;
     RAII_PyObject(ans, PyTuple_New(y_limit - min_y));
@@ -5131,8 +5166,8 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     for (int i = 0, y = min_y; y < y_limit; y++, i++) {
         Line *line = range_line_(self, y);
         index_type x_limit = line->xnum, x_start = 0;
-        while (x_limit && !line->cpu_cells[x_limit - 1].temp_flag) x_limit--;
-        while (x_start < x_limit && !line->cpu_cells[x_start].temp_flag) x_start++;
+        while (x_limit && !is_cell_selected(&sc, y, x_limit - 1)) x_limit--;
+        while (x_start < x_limit && !is_cell_selected(&sc, y, x_start)) x_start++;
         bool is_only_whitespace_line = false;
         // Don't strip trailing whitespace from soft-wrapped lines as those spaces
         // are part of the original text content that continues on the next line
@@ -5154,7 +5189,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         } else {
             while (x_start < x_limit) {
                 index_type end = x_start;
-                while (end < x_limit && line->cpu_cells[end].temp_flag) end++;
+                while (end < x_limit && is_cell_selected(&sc, y, end)) end++;
                 if (!unicode_in_range(line, x_start, end, true, add_trailing_newline, false, !is_first_line, &self->as_ansi_buf)) return PyErr_NoMemory();
                 x_start = MAX(x_start + 1, end);
             }
@@ -5170,7 +5205,8 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
 static PyObject *
 ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool strip_trailing_whitespace) {
     int min_y, y_limit;
-    flag_selection_to_extract_text(self, sel, &min_y, &y_limit);
+    RAII_SelectedCells(sc);
+    if (!flag_selection_to_extract_text(self, sel, &min_y, &y_limit, &sc)) return PyErr_NoMemory();
     if (min_y >= y_limit) return PyTuple_New(0);
     ANSILineState s = {.output_buf = &self->as_ansi_buf};
     s.output_buf->active_hyperlink_id = 0;
@@ -5186,8 +5222,8 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         s.output_buf->len = 0;
         Line *line = range_line_(self, y);
         index_type x_limit = line->xnum, x_start = 0;
-        while (x_limit && !line->cpu_cells[x_limit - 1].temp_flag) x_limit--;
-        while (x_start < x_limit && !line->cpu_cells[x_start].temp_flag) x_start++;
+        while (x_limit && !is_cell_selected(&sc, y, x_limit - 1)) x_limit--;
+        while (x_start < x_limit && !is_cell_selected(&sc, y, x_start)) x_start++;
         bool is_only_whitespace_line = false;
         // Don't strip trailing whitespace from soft-wrapped lines as those spaces
         // are part of the original text content that continues on the next line
@@ -5208,7 +5244,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
             char_type prefix_char = need_newline ? '\n' : 0;
             while (x_start < x_limit) {
                 index_type end = x_start;
-                while (end < x_limit && line->cpu_cells[end].temp_flag) end++;
+                while (end < x_limit && is_cell_selected(&sc, y, end)) end++;
                 if (line_as_ansi(line, &s, x_start, end, prefix_char, !is_first_line)) has_escape_codes = true;
                 need_newline = insert_newlines && !line->cpu_cells[line->xnum - 1].next_char_was_wrapped;
                 prefix_char = 0;

@@ -12,7 +12,7 @@
 // The formatting (Style) of cells is interned per screen in a StyleTable and
 // cells store only the index of their style. Index zero is always the default
 // (all zero) style, so zeroed cells have the default style.
-#define STYLE_IDX_BITS 17u
+#define STYLE_IDX_BITS 18u
 #define MAX_NUM_OF_STYLES (1u << STYLE_IDX_BITS)
 
 typedef struct StyleTable {
