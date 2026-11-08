@@ -1222,14 +1222,14 @@ cell_update_uniform_block(
     return default_bg;
 }
 
-// Style table texture {{{
+// CellStyle table texture {{{
 // The cell shaders get the style of each cell from a texture holding the style
-// table of its screen. Each Style is four R32UI texels, fg, bg, decoration_fg
+// table of its screen. Each CellStyle is four R32UI texels, fg, bg, decoration_fg
 // and attrs, in the same layout as the C struct, so styles are uploaded
 // directly from the table. The texture width is a multiple of four, so the
 // texels of a style are always in a single row.
-#define TEXELS_PER_STYLE (sizeof(Style) / sizeof(uint32_t))
-static_assert(sizeof(Style) == 4 * sizeof(uint32_t), "Fix TEXELS_PER_STYLE and the shaders");
+#define TEXELS_PER_STYLE (sizeof(CellStyle) / sizeof(uint32_t))
+static_assert(sizeof(CellStyle) == 4 * sizeof(uint32_t), "Fix TEXELS_PER_STYLE and the shaders");
 
 static void
 upload_style_texels(gpu_texture_t texture, uint32_t width, const uint32_t *texels, uint32_t start, uint32_t limit) {
@@ -1254,7 +1254,7 @@ static void
 sync_style_texture(Screen *screen) {
     // Upload styles added to the table since the last upload, or all of them
     // if the table was garbage collected since then
-    const StyleTable *t = screen->style_table;
+    const CellStyleTable *t = screen->style_table;
     __typeof__(screen->style_texture) *st = &screen->style_texture;
     bool upload_all = st->generation != t->generation || !st->texture;
     const uint32_t needed = t->count * TEXELS_PER_STYLE;

@@ -518,7 +518,7 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
         uint32_t fill_bg = 0;
         bg_freq_map freq;
         vt_init(&freq);
-        const StyleTable *t = tc_style_table(lb->text_cache);
+        const CellStyleTable *t = tc_style_table(lb->text_cache);
         for (index_type y = 0; y < ans.num_content_lines_after; y++) {
             CPUCell *cp;
             linebuf_init_cells(lb, y, &cp, NULL);
@@ -536,12 +536,12 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
         }
         vt_cleanup(&freq);
         if (fill_bg) {
-            StyleTable *t = tc_style_table(ans.lb->text_cache);
+            CellStyleTable *t = tc_style_table(ans.lb->text_cache);
             uint32_t style_cache = 0;
             for (index_type y = ans.num_content_lines_after; y < ans.lb->ynum; y++) {
                 linebuf_init_line(ans.lb, y);
                 for (index_type x = 0; x < ans.lb->xnum; x++) {
-                    Style st = *style_table_get(t, ans.lb->line->cpu_cells[x].style_idx);
+                    CellStyle st = *style_table_get(t, ans.lb->line->cpu_cells[x].style_idx);
                     st.bg = fill_bg;
                     ans.lb->line->cpu_cells[x].style_idx = style_table_intern_cached(t, &st, &style_cache);
                 }

@@ -10,7 +10,7 @@
 #include "line-buf.h"
 
 static inline bool
-set_named_attribute_on_line(StyleTable *t, CPUCell *cells, RenderCell *render_cells, const char *which, uint16_t val, index_type xnum) {
+set_named_attribute_on_line(CellStyleTable *t, CPUCell *cells, RenderCell *render_cells, const char *which, uint16_t val, index_type xnum) {
     // Set a single attribute on all cells in the line
     if (strcmp("mark", which) == 0) {
         if (render_cells)
@@ -21,7 +21,7 @@ set_named_attribute_on_line(StyleTable *t, CPUCell *cells, RenderCell *render_ce
 #define s(q)                                                                \
     if (strcmp(#q, which) == 0) {                                           \
         for (index_type i = 0; i < xnum; i++) {                             \
-            Style st = *style_table_get(t, cells[i].style_idx);             \
+            CellStyle st = *style_table_get(t, cells[i].style_idx);         \
             st.attrs.q = val;                                               \
             cells[i].style_idx = style_table_intern_cached(t, &st, &cache); \
         }                                                                   \

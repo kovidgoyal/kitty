@@ -637,7 +637,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
         return s->escape_code_written;
     }
 
-    const StyleTable *style_table = line_style_table(self);
+    const CellStyleTable *style_table = line_style_table(self);
     uint32_t prev_style_idx = UINT32_MAX;
 
     for (s->pos = start_at; s->pos < s->limit; s->pos++) {
@@ -649,7 +649,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
         if (style_idx != prev_style_idx) {
             // consecutive cells usually have the same style
             prev_style_idx = style_idx;
-            const Style *cs = style_table_get(style_table, style_idx);
+            const CellStyle *cs = style_table_get(style_table, style_idx);
             if (!style_eq(cs, &s->prev_style)) {
                 const char *sgr = style_as_sgr(cs, &s->prev_style);
                 if (*sgr) write_sgr_to_ansi_buf(s, sgr);
@@ -864,7 +864,7 @@ bool
 colors_for_cell(Line *self, const ColorProfile *cp, index_type *x, color_type *fg, color_type *bg, bool *reversed) {
     if (*x >= self->xnum) return false;
     while (self->cpu_cells[*x].is_multicell && self->cpu_cells[*x].x && *x) (*x)--;
-    const Style *st = line_cell_style(self, *x);
+    const CellStyle *st = line_cell_style(self, *x);
     *fg = resolve_color(cp, st->fg, *fg);
     *bg = resolve_color(cp, st->bg, *bg);
     if (st->attrs.reverse) {
@@ -889,9 +889,9 @@ line_get_char(Line *self, index_type at) {
 
 static void
 line_set_char(Line *self, unsigned int at, uint32_t ch, Cursor *cursor, hyperlink_id_type hyperlink_id) {
-    StyleTable *t = line_style_table(self);
+    CellStyleTable *t = line_style_table(self);
     CPUCell *c = self->cpu_cells + at;
-    Style st = cursor ? cursor->style : *style_table_get(t, c->style_idx);
+    CellStyle st = cursor ? cursor->style : *style_table_get(t, c->style_idx);
     *c = (CPUCell){0};
     cell_set_char(c, ch);
     c->hyperlink_id = hyperlink_id;
@@ -966,7 +966,7 @@ decoration_as_sgr(uint8_t decoration) {
 
 
 const char *
-style_as_sgr(const Style *cell, const Style *prev) {
+style_as_sgr(const CellStyle *cell, const CellStyle *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
 #define P(s)                    \
@@ -1019,7 +1019,7 @@ __eq__(Line *a, Line *b) {
     if (a->xnum != b->xnum) return false;
     if (a->text_cache == b->text_cache) return memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0;
     // Lines from different screens, compare styles by value
-    const StyleTable *ta = line_style_table(a), *tb = line_style_table(b);
+    const CellStyleTable *ta = line_style_table(a), *tb = line_style_table(b);
     for (index_type x = 0; x < a->xnum; x++) {
         CPUCell ca = a->cpu_cells[x], cb = b->cpu_cells[x];
         if (!style_eq(style_table_get(ta, ca.style_idx), style_table_get(tb, cb.style_idx))) return false;
