@@ -107,11 +107,11 @@ ASCII only text.
 
 .. note::
 
-   By default, the benchmark kitten suppresses actual rendering, to better
-   focus on parser speed, you can pass it the ``--render`` flag to not suppress
-   rendering. However, modern terminals typically render asynchronously,
-   therefore the numbers are not really useful for comparison, as it is just a
-   game about how much input to *batch* before rendering the next frame.
+   The benchmark kitten suppresses actual rendering, to better focus on parser
+   speed, except in its ``render`` benchmark. However, modern terminals
+   typically render asynchronously, therefore the numbers from that benchmark
+   are not really useful for comparison, as it is just a game about how much
+   input to *batch* before rendering the next frame.
    However, even with rendering enabled kitty is still faster than all the
    rest. For brevity those numbers are not included.
 
