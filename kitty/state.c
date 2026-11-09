@@ -1681,19 +1681,25 @@ PYWRAP1(patch_global_colors) {
     PyObject *spec;
     int configured;
     if (!PyArg_ParseTuple(args, "Op", &spec, &configured)) return NULL;
-#define P(name, convert)                                          \
-    {                                                             \
-        PyObject *val = PyDict_GetItemString(spec, #name);        \
-        if (val) {                                                \
-            if (val == Py_None) OPT(name) = 0;                    \
-            else if (PyLong_Check(val)) OPT(name) = convert(val); \
-        }                                                         \
+#define P(name, convert)                                                 \
+    {                                                                    \
+        PyObject *val = PyDict_GetItemString(spec, #name);               \
+        if (val) {                                                       \
+            if (val == Py_None) OPT(name) = 0;                           \
+            else if (PyLong_Check(val)) {                                \
+                const __typeof__(convert(val)) converted = convert(val); \
+                if (PyErr_Occurred()) return NULL;                       \
+                OPT(name) = converted;                                   \
+            }                                                            \
+        }                                                                \
     }
     P(active_border_color, PyLong_AsLong);
     P(inactive_border_color, PyLong_AsLong);
     P(bell_border_color, PyLong_AsLong);
     P(tab_bar_background, PyLong_AsLong);
     P(tab_bar_margin_color, PyLong_AsLong);
+    // Signed because of the negative light/dark sentinels. An RGB payload with
+    // bit 31 set would overflow a 32-bit long, but macOS is 64-bit only.
     P(macos_titlebar_color, PyLong_AsLong);
     // The RGB payload of these options can set bit 31.
     P(wayland_titlebar_color, PyLong_AsUnsignedLong);
@@ -1706,7 +1712,6 @@ PYWRAP1(patch_global_colors) {
         if (OPT(url_color) != prev_url_color) mark_all_color_profiles_dirty();
     }
 #undef P
-    if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
 
