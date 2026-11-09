@@ -157,6 +157,72 @@ func TestSSHTarfile(t *testing.T) {
 	}
 }
 
+func TestSSHTarfileDirectoryModes(t *testing.T) {
+	// Regression test for https://github.com/kovidgoyal/kitty/issues/10834
+	// The bootstrap script extracts the tarball with umask 0, so any
+	// directory not present in the tarball is created by tar with mode
+	// 0777. The tarball must therefore contain directory entries with
+	// sane modes, and this test measures the extracted directories'
+	// own modes, not just that the files extract.
+	tdir := t.TempDir()
+	cd := basic_connection_data()
+	data, err := make_tarfile(cd, func(key string) (val string, found bool) { return })
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Mirror bootstrap.sh: umask 000; tar "xpzf" "-" "-C" "$tdir"
+	cmd := exec.Command("sh", "-c", "umask 0; exec tar xpzf - -C \"$1\"", "sh", tdir)
+	cmd.Stderr = os.Stderr
+	inp, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = inp.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	inp.Close()
+	if err = cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	dirs_seen := 0
+	err = filepath.WalkDir(tdir, func(name string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			return werr
+		}
+		rname, werr := filepath.Rel(tdir, name)
+		if werr != nil {
+			return werr
+		}
+		if rname == "." || !d.IsDir() {
+			return nil
+		}
+		dirs_seen++
+		fi, werr := d.Info()
+		if werr != nil {
+			return werr
+		}
+		if fi.Mode().Perm() != 0o755 {
+			return fmt.Errorf("directory %s has mode %o, expected 0755", rname, fi.Mode().Perm())
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dirs_seen == 0 {
+		t.Fatalf("no directories extracted, test is vacuous")
+	}
+	// Sanity check that a deeply nested directory is covered
+	nested := filepath.Join(tdir, "home", cd.host_opts.Remote_dir, "shell-integration", "fish", "vendor_completions.d")
+	if s, err := os.Stat(nested); err != nil || !s.IsDir() {
+		t.Fatalf("nested directory %s missing", nested)
+	}
+}
+
 func TestSSHChangeColors(t *testing.T) {
 	tdir := t.TempDir()
 	write_conf := func(name, text string) string {

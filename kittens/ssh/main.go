@@ -294,7 +294,37 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 	tw := tar.NewWriter(gw)
 	rd := strings.TrimRight(cd.host_opts.Remote_dir, "/")
 	seen := make(map[file_unique_id]string, 32)
+	now := time.Now()
+	seen_dirs := make(map[string]bool, 32)
 	add := func(h *tar.Header, data []byte) (err error) {
+		// Ensure parent directories are present in the tarball with sane
+		// permissions. Without directory entries, tar creates missing
+		// directories as needed with mode 0777 restricted only by the
+		// umask, and the bootstrap script extracts with umask 0, so the
+		// created directories end up with mode 0777. See
+		// https://github.com/kovidgoyal/kitty/issues/10834
+		name := strings.TrimSuffix(h.Name, "/")
+		if h.Typeflag == tar.TypeDir {
+			seen_dirs[name] = true
+		}
+		var missing []string
+		for d := path.Dir(name); d != "." && d != "/" && d != ""; d = path.Dir(d) {
+			if seen_dirs[d] {
+				break
+			}
+			missing = append(missing, d)
+		}
+		for i := len(missing) - 1; i >= 0; i-- {
+			d := missing[i]
+			seen_dirs[d] = true
+			err = tw.WriteHeader(&tar.Header{
+				Typeflag: tar.TypeDir, Name: d + "/", Format: tar.FormatPAX,
+				Mode: 0o755, ModTime: now, ChangeTime: now, AccessTime: now,
+			})
+			if err != nil {
+				return err
+			}
+		}
 		// some distro's like nix mess with installed file permissions so ensure
 		// files are at least readable and writable by owning user
 		h.Mode |= 0o600
@@ -320,7 +350,6 @@ func make_tarfile(cd *connection_data, get_local_env func(string) (string, bool)
 		arcname string
 		data    []byte
 	}
-	now := time.Now()
 	add_data := func(items ...fe) error {
 		for _, item := range items {
 			err := add(
