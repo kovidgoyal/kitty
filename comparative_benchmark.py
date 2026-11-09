@@ -24,7 +24,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import ExitStack, contextmanager, suppress
 from dataclasses import dataclass, field
 from typing import Any
@@ -377,7 +377,7 @@ def write_sysfs_values(values: dict[str, str]) -> str:
 
 
 @contextmanager
-def performance_governor(enabled: bool) -> Iterator[str]:
+def performance_governor(enabled: bool) -> Generator[str]:
     """Yields a description of what was done"""
     if not enabled:
         yield 'not changed (disabled on command line)'
@@ -460,7 +460,7 @@ def sway_float(pid: int, marker: str, width: int, height: int, timeout: float = 
 
 
 @contextmanager
-def private_xwayland(width: int, height: int) -> Iterator[tuple[str, int]]:
+def private_xwayland(width: int, height: int) -> Generator[tuple[str, int]]:
     """Start a rootful Xwayland, yields (DISPLAY, pid)"""
     if not os.environ.get('WAYLAND_DISPLAY') or not shutil.which('Xwayland'):
         raise RuntimeError('DISPLAY is not set and Xwayland is not available to create one')
