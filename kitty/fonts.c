@@ -2101,6 +2101,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     char *path = NULL;
     int index = 0;
     if (!PyArg_ParseTuple(args, "O!|zi", &Line_Type, &line, &path, &index)) return NULL;
+    if (!line_styles_are_valid(line)) return NULL;
     index_type num = 0;
     const CPUCell *c;
     while (num < line->xnum && cell_has_text(line->cpu_cells + num)) {
@@ -2631,6 +2632,7 @@ static PyObject *
 test_render_line(PyObject UNUSED *self, PyObject *args) {
     PyObject *line;
     if (!PyArg_ParseTuple(args, "O!", &Line_Type, &line)) return NULL;
+    if (!line_styles_are_valid((Line *)line)) return NULL;
     if (!num_font_groups) {
         PyErr_SetString(PyExc_RuntimeError, "must create font group first");
         return NULL;

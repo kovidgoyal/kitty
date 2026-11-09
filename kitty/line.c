@@ -1235,7 +1235,17 @@ alloc_line(TextCache *tc) {
     return ans;
 }
 
-RICHCMP(Line)
+static PyObject *
+richcmp(PyObject *obj1, PyObject *obj2, int op) {
+    // Like RICHCMP() but fails for copies whose formatting is no longer valid
+    if (op != Py_EQ && op != Py_NE) Py_RETURN_NOTIMPLEMENTED;
+    if (!PyObject_TypeCheck(obj1, &Line_Type) || !PyObject_TypeCheck(obj2, &Line_Type)) Py_RETURN_FALSE;
+    Line *a = (Line *)obj1, *b = (Line *)obj2;
+    if (!line_styles_are_valid(a) || !line_styles_are_valid(b)) return NULL;
+    const bool eq = __eq__(a, b);
+    return Py_NewRef((op == Py_EQ) == eq ? Py_True : Py_False);
+}
+
 INIT_TYPE(Line)
 // }}}
 
