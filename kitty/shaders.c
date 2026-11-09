@@ -1249,7 +1249,9 @@ cell_update_uniform_block(
         index_type cell_color_x = cursor->x;
         bool reversed = false;
         if (cursor->x < screen->columns && cursor->y < screen->lines) {
-            if (screen->paused_rendering.expires_at) {
+            if (screen->vi_cursor.active && !screen->paused_rendering.expires_at) {
+                line_for_cursor = screen_visual_line(screen, cursor->y);
+            } else if (screen->paused_rendering.expires_at) {
                 linebuf_init_line(screen->paused_rendering.linebuf, cursor->y);
                 line_for_cursor = screen->paused_rendering.linebuf->line;
             } else {

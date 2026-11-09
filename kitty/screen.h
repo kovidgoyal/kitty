@@ -170,6 +170,7 @@ typedef struct {
     pthread_mutex_t write_buf_lock;
 
     CursorRenderInfo cursor_render_info;
+    struct { bool active; index_type x, y; } vi_cursor;  // y is a viewport row
 
     DisableLigature disable_ligatures;
     PyObject *marker;

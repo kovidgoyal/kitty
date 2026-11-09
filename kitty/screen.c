@@ -6001,7 +6001,56 @@ start_selection(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyObject *
+static PyObject*
+set_vi_cursor(Screen *self, PyObject *args) {
+    // set_vi_cursor(active, x, viewport_y)
+    int active = 0; unsigned int x = 0, y = 0;
+    if (!PyArg_ParseTuple(args, "p|II", &active, &x, &y)) return NULL;
+    self->vi_cursor.active = active;
+    self->vi_cursor.x = MIN(x, self->columns ? self->columns - 1 : 0);
+    self->vi_cursor.y = MIN(y, self->lines ? self->lines - 1 : 0);
+    self->is_dirty = true;
+    Py_RETURN_NONE;
+}
+
+static void
+vi_boundary(SelectionBoundary *b, unsigned int *scrolled_by, unsigned int x, int abs_y, bool left) {
+    b->x = x; b->in_left_half_of_cell = left;
+    if (abs_y >= 0) { b->y = abs_y; *scrolled_by = 0; }
+    else { b->y = 0; *scrolled_by = -abs_y; }
+}
+
+static PyObject*
+set_vi_selection(Screen *self, PyObject *args) {
+    // set_vi_selection(x1, abs_y1, x2, abs_y2, rectangle)
+    // Inclusive selection of both endpoints. abs_y is relative to the top of
+    // the screen, negative values are in the scrollback.
+    unsigned int x1, x2; int y1, y2, rect = 0;
+    if (!PyArg_ParseTuple(args, "IiIi|p", &x1, &y1, &x2, &y2, &rect)) return NULL;
+    if (rect) {
+        unsigned int lx = MIN(x1, x2), rx = MAX(x1, x2);
+        int ty = MIN(y1, y2), by = MAX(y1, y2);
+        x1 = lx; x2 = rx; y1 = ty; y2 = by;
+    } else if (y1 > y2 || (y1 == y2 && x1 > x2)) {
+        SWAP(x1, x2); SWAP(y1, y2);
+    }
+    ensure_space_for(&self->selections, items, Selection, 1, capacity, 1, false);
+    Selection *s = self->selections.items;
+    memset(s, 0, sizeof(Selection));
+    self->selections.count = 1;
+    self->selections.in_progress = false;
+    self->selections.extend_mode = EXTEND_CELL;
+    s->last_rendered.y = INT_MAX;
+    s->rectangle_select = rect;
+    vi_boundary(&s->start, &s->start_scrolled_by, x1, y1, true);
+    vi_boundary(&s->end, &s->end_scrolled_by, x2, y2, false);
+    s->input_start = s->start; s->input_current = s->end;
+    s->initial_extent.start = s->start; s->initial_extent.end = s->end;
+    self->is_dirty = true;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 is_rectangle_select(Screen *self, PyObject *a UNUSED) {
     if (self->selections.count && self->selections.items[0].rectangle_select) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
@@ -7409,7 +7458,7 @@ static PyMethodDef methods[] = {
     MND(reverse_index, METH_NOARGS) MND(mark_as_dirty, METH_NOARGS) MND(reload_all_gpu_data, METH_NOARGS) MND(resize, METH_VARARGS)
         MND(ignore_bells_for, METH_VARARGS) MND(set_margins, METH_VARARGS) MND(detect_url, METH_VARARGS) MND(rescale_images, METH_NOARGS)
             MND(current_key_encoding_flags, METH_NOARGS) MND(text_for_selection, METH_VARARGS) MND(text_for_marked_url, METH_VARARGS)
-                MND(is_rectangle_select, METH_NOARGS) MND(scroll, METH_VARARGS) MND(scroll_to_absolute, METH_O) MND(fractional_scroll, METH_O)
+                MND(is_rectangle_select, METH_NOARGS) MND(set_vi_cursor, METH_VARARGS) MND(set_vi_selection, METH_VARARGS) MND(scroll, METH_VARARGS) MND(scroll_to_absolute, METH_O) MND(fractional_scroll, METH_O)
                     MND(scroll_to_prompt, METH_VARARGS) MND(set_last_visited_prompt, METH_VARARGS) MND(send_escape_code_to_child, METH_VARARGS)
                         MND(pause_rendering, METH_VARARGS) MND(hyperlink_at, METH_VARARGS) MND(toggle_alt_screen, METH_NOARGS) MND(reset_callbacks, METH_NOARGS)
                             MND(paste, METH_O) MND(paste_bytes, METH_O) MND(focus_changed, METH_O) MND(has_focus, METH_NOARGS)

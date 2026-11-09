@@ -1231,6 +1231,12 @@ class Screen:
     def is_rectangle_select(self) -> bool:
         pass
 
+    def set_vi_cursor(self, active: bool, x: int = 0, y: int = 0) -> None:
+        pass
+
+    def set_vi_selection(self, x1: int, y1: int, x2: int, y2: int, rectangle: bool = False) -> None:
+        pass
+
     def is_using_alternate_linebuf(self) -> bool:
         pass
 

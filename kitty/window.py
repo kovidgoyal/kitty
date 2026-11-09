@@ -148,6 +148,7 @@ if TYPE_CHECKING:
     from .fast_data_types import MousePosition
     from .file_transmission import FileTransmission
     from .notifications import OnlyWhen
+    from .vi_mode import ViMode
 
 
 class CwdRequestType(Enum):
@@ -845,6 +846,7 @@ class Window:
         self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
         self.screen.track_activity = bool(opts.tab_activity_symbol)
         self.session_color_schemes = SessionColorSchemes()
+        self.vi_mode: Optional['ViMode'] = None
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)
             self.session_color_schemes.copy_from(copy_colors_from.session_color_schemes)
@@ -2622,6 +2624,17 @@ class Window:
     # }}}
 
     # actions {{{
+
+    @ac('cp', '''
+        Enter an Alacritty style vi mode to move a cursor over the screen and scrollback,
+        select text and copy it. Keys: hjkl w b 0 $ gg G ctrl+u ctrl+d v V ctrl+v y, Esc/q to exit.
+        ''')
+    def toggle_vi_mode(self) -> None:
+        if self.vi_mode is not None:
+            self.vi_mode.exit()
+        else:
+            from .vi_mode import ViMode
+            self.vi_mode = ViMode(self)
 
     @ac('sc', 'Show scrollback in a pager like less')
     def show_scrollback(self) -> Optional['Window']:

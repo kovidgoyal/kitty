@@ -815,6 +815,13 @@ static bool
 collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow *os_window) {
     WindowRenderData *rd = &w->render_data;
     const Cursor *cursor;
+    if (rd->screen->vi_cursor.active) {
+        ans->x = rd->screen->vi_cursor.x; ans->y = rd->screen->vi_cursor.y;
+        ans->is_visible = true; ans->multicursor_count = 0;
+        ans->cursor_opacity = 1; ans->text_blink_opacity = 1;
+        ans->shape = CURSOR_BLOCK; ans->is_focused = os_window->is_focused;
+        return cursor_needs_render(w);
+    }
     if (screen_is_overlay_active(rd->screen)) {
         // Do not force the cursor to be visible here for the sake of some programs that prefer it hidden
         cursor = &(rd->screen->overlay_line.original_line.cursor);

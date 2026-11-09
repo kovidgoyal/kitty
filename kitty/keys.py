@@ -210,6 +210,18 @@ class Mappings:
 
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
         # Handles shortcuts, return True if the key was consumed
+        if not self.keyboard_mode_stack:
+            w = self.get_active_window()
+            vm = getattr(w, 'vi_mode', None)
+            if vm is not None and vm.handle_key(ev):
+                return True
+            if vm is not None:
+                # unhandled modified key: allow normal kitty shortcuts, never send to the shell
+                self._dispatch_shortcut(ev)
+                return True
+        return self._dispatch_shortcut(ev)
+
+    def _dispatch_shortcut(self, ev: KeyEvent) -> bool:
         is_root_mode = not self.keyboard_mode_stack
         mode = self.keyboard_modes[''] if is_root_mode else self.keyboard_mode_stack[-1]
         key_action = get_shortcut(mode.keymap, ev)
