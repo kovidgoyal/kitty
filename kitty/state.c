@@ -1681,29 +1681,31 @@ PYWRAP1(patch_global_colors) {
     PyObject *spec;
     int configured;
     if (!PyArg_ParseTuple(args, "Op", &spec, &configured)) return NULL;
-#define P(name)                                                         \
-    {                                                                   \
-        PyObject *val = PyDict_GetItemString(spec, #name);              \
-        if (val) {                                                      \
-            if (val == Py_None) OPT(name) = 0;                          \
-            else if (PyLong_Check(val)) OPT(name) = PyLong_AsLong(val); \
-        }                                                               \
+#define P(name, convert)                                          \
+    {                                                             \
+        PyObject *val = PyDict_GetItemString(spec, #name);        \
+        if (val) {                                                \
+            if (val == Py_None) OPT(name) = 0;                    \
+            else if (PyLong_Check(val)) OPT(name) = convert(val); \
+        }                                                         \
     }
-    P(active_border_color);
-    P(inactive_border_color);
-    P(bell_border_color);
-    P(tab_bar_background);
-    P(tab_bar_margin_color);
-    P(macos_titlebar_color);
-    P(wayland_titlebar_color);
-    P(scrollbar_handle_color);
-    P(scrollbar_track_color);
+    P(active_border_color, PyLong_AsLong);
+    P(inactive_border_color, PyLong_AsLong);
+    P(bell_border_color, PyLong_AsLong);
+    P(tab_bar_background, PyLong_AsLong);
+    P(tab_bar_margin_color, PyLong_AsLong);
+    P(macos_titlebar_color, PyLong_AsLong);
+    // The RGB payload of these options can set bit 31.
+    P(wayland_titlebar_color, PyLong_AsUnsignedLong);
+    P(scrollbar_handle_color, PyLong_AsUnsignedLong);
+    P(scrollbar_track_color, PyLong_AsUnsignedLong);
     if (configured) {
-        P(background);
+        P(background, PyLong_AsLong);
         const color_type prev_url_color = OPT(url_color);
-        P(url_color);
+        P(url_color, PyLong_AsLong);
         if (OPT(url_color) != prev_url_color) mark_all_color_profiles_dirty();
     }
+#undef P
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }

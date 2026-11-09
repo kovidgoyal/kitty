@@ -38,6 +38,20 @@ class TestConfParsing(BaseTest):
     def test_font_size_clamping(self):
         font_size_clamping(self)
 
+    def test_patch_global_special_colors(self):
+        from kitty.fast_data_types import patch_global_colors
+
+        self.set_options()
+        for name, value in (
+            ('wayland_titlebar_color', 0x80000002),
+            ('scrollbar_handle_color', 0xFF000002),
+            ('scrollbar_track_color', 0xFFFFFF02),
+            ('macos_titlebar_color', -1),
+            ('macos_titlebar_color', -2),
+        ):
+            with self.subTest(name=name, value=value):
+                patch_global_colors({name: value}, False)
+
     def test_session_launch_option_expansion(self) -> None:
         from kitty.launch import LaunchSpec
         from kitty.options.types import defaults
