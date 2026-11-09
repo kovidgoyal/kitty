@@ -1320,6 +1320,15 @@ style_gc_process_linebuf(CellStyleTable *t, StyleTableGC *gc, LineBuf *lb) {
     if (lb) style_gc_process_cells(t, gc, lb->cpu_cell_buf, (size_t)lb->ynum * lb->xnum, false);
 }
 
+static LineBuf *
+paused_linebuf_in_use(const Screen *self) {
+    // The snapshot of the screen taken when rendering was paused, NULL when
+    // rendering is not paused. The snapshot is kept after rendering resumes,
+    // but is unused then and entirely overwritten when rendering is next
+    // paused, so its cells must not keep styles alive.
+    return self->paused_rendering.expires_at ? self->paused_rendering.linebuf : NULL;
+}
+
 static bool
 garbage_collect_style_table(Screen *self, unsigned quantize_bits, bool degraded_if_full) {
     // Remap the style index of every live cell onto a fresh table, so styles
@@ -1332,7 +1341,7 @@ garbage_collect_style_table(Screen *self, unsigned quantize_bits, bool degraded_
     // Screen cells first, so they get exact styles even if the table overflows
     style_gc_process_linebuf(t, gc, self->main_linebuf);
     style_gc_process_linebuf(t, gc, self->alt_linebuf);
-    style_gc_process_linebuf(t, gc, self->paused_rendering.linebuf);
+    style_gc_process_linebuf(t, gc, paused_linebuf_in_use(self));
     // The overlay buffers have columns cells, overlay_line.xnum is the length of the overlay text
     if (self->overlay_line.cpu_cells) style_gc_process_cells(t, gc, self->overlay_line.cpu_cells, self->columns, false);
     if (self->overlay_line.original_line.cpu_cells) style_gc_process_cells(t, gc, self->overlay_line.original_line.cpu_cells, self->columns, false);
@@ -1361,7 +1370,7 @@ reset_style_table_if_unused(Screen *self) {
     // to be interned again and the style texture to be uploaded again every
     // frame. Small tables are not worth emptying for the same reason.
     if (self->historybuf->count || !style_table_is_worth_resetting(self->style_table)) return;
-    LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, self->paused_rendering.linebuf};
+    LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, paused_linebuf_in_use(self)};
     for (unsigned i = 0; i < arraysz(bufs); i++) {
         if (bufs[i] && cells_use_styles(bufs[i]->cpu_cell_buf, (size_t)bufs[i]->xnum * bufs[i]->ynum)) return;
     }
@@ -7944,7 +7953,7 @@ test_verify_styles(Screen *self, PyObject *a UNUSED) {
     RAII_PyObject(ans, PyList_New(0));
     if (!ans) return NULL;
     const CellStyleTable *t = self->style_table;
-    LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, self->paused_rendering.linebuf};
+    LineBuf *bufs[3] = {self->main_linebuf, self->alt_linebuf, paused_linebuf_in_use(self)};
     const char *names[3] = {"main", "alt", "paused"};
     for (unsigned b = 0; b < arraysz(bufs); b++) {
         LineBuf *lb = bufs[b];
