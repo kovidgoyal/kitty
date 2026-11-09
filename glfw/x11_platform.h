@@ -270,6 +270,18 @@ typedef struct XdndSelectionRequest {
 
 // X11-specific global data
 //
+// A range of request serial numbers whose X errors are captured rather than
+// reported, see _glfwPushErrorTrapX11()
+typedef struct _GLFWerrortrapX11 {
+    // Serial of the first request covered by this trap
+    unsigned long start_serial;
+    // Serial of the last request covered by this trap, valid once closed
+    unsigned long end_serial;
+    bool closed;
+    // The first error received for a request covered by this trap
+    int error_code;
+} _GLFWerrortrapX11;
+
 typedef struct _GLFWlibraryX11 {
     Display *display;
     int screen;
@@ -283,8 +295,14 @@ typedef struct _GLFWlibraryX11 {
     Cursor hiddenCursorHandle;
     // Context for mapping window XIDs to _GLFWwindow pointers
     XContext context;
-    // Most recent error code received by X error handler
-    int errorCode;
+    // X error handling, see _glfwPushErrorTrapX11()
+    struct {
+        // Traps, in the order they were pushed. Closed traps stay here until
+        // the server has processed all of their requests.
+        _GLFWerrortrapX11 *items;
+        size_t count, capacity;
+        XErrorHandler previous_handler;
+    } error_traps;
     // Where to place the cursor when re-enabled
     double restoreCursorPosX, restoreCursorPosY;
     // The window whose disabled cursor mode is active
@@ -560,9 +578,10 @@ Cursor _glfwCreateCursorX11(const GLFWimage *image, int xhot, int yhot);
 unsigned long _glfwGetWindowPropertyX11(Window window, Atom property, Atom type, unsigned char **value);
 bool _glfwIsVisualTransparentX11(Visual *visual);
 
-void _glfwGrabErrorHandlerX11(void);
-void _glfwReleaseErrorHandlerX11(void);
-void _glfwInputErrorX11(int error, const char *message);
+void _glfwPushErrorTrapX11(void);
+int _glfwPopErrorTrapX11(void);
+void _glfwPopErrorTrapIgnoredX11(void);
+void _glfwInputErrorX11(int error, int x_error_code, const char *message);
 
 void _glfwGetSystemContentScaleX11(float *xscale, float *yscale, bool bypass_cache);
 void _glfwPushSelectionToManagerX11(void);

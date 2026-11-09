@@ -358,6 +358,7 @@ _glfwTerminateGLX(void) {
 bool
 _glfwCreateContextGLX(_GLFWwindow *window, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig) {
     int attribs[40];
+    int x_error = Success;
     GLXFBConfig native = NULL;
     GLXContext share = NULL;
 
@@ -389,7 +390,7 @@ _glfwCreateContextGLX(_GLFWwindow *window, const _GLFWctxconfig *ctxconfig, cons
         }
     }
 
-    _glfwGrabErrorHandlerX11();
+    _glfwPushErrorTrapX11();
 
     if (_glfw.glx.ARB_create_context) {
         int index = 0, mask = 0, flags = 0;
@@ -444,25 +445,27 @@ _glfwCreateContextGLX(_GLFWwindow *window, const _GLFWctxconfig *ctxconfig, cons
         setAttrib(None, None);
 
         window->context.glx.handle = _glfw.glx.CreateContextAttribsARB(_glfw.x11.display, native, share, True, attribs);
+        x_error = _glfwPopErrorTrapX11();
 
         // HACK: This is a fallback for broken versions of the Mesa
         //       implementation of GLX_ARB_create_context_profile that fail
         //       default 1.0 context creation with a GLXBadProfileARB error in
         //       violation of the extension spec
         if (!window->context.glx.handle) {
-            if (_glfw.x11.errorCode == _glfw.glx.errorBase + GLXBadProfileARB && ctxconfig->client == GLFW_OPENGL_API &&
-                ctxconfig->profile == GLFW_OPENGL_ANY_PROFILE && ctxconfig->forward == false) {
+            if (x_error == _glfw.glx.errorBase + GLXBadProfileARB && ctxconfig->client == GLFW_OPENGL_API && ctxconfig->profile == GLFW_OPENGL_ANY_PROFILE &&
+                ctxconfig->forward == false) {
+                _glfwPushErrorTrapX11();
                 window->context.glx.handle = createLegacyContextGLX(window, native, share);
+                x_error = _glfwPopErrorTrapX11();
             }
         }
     } else {
         window->context.glx.handle = createLegacyContextGLX(window, native, share);
+        x_error = _glfwPopErrorTrapX11();
     }
 
-    _glfwReleaseErrorHandlerX11();
-
     if (!window->context.glx.handle) {
-        _glfwInputErrorX11(GLFW_VERSION_UNAVAILABLE, "GLX: Failed to create context");
+        _glfwInputErrorX11(GLFW_VERSION_UNAVAILABLE, x_error, "GLX: Failed to create context");
         return false;
     }
 

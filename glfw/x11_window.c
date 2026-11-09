@@ -325,7 +325,7 @@ set_fullscreen(_GLFWwindow *window, bool on) {
         static bool warned = false;
         if (!warned) {
             warned = true;
-            _glfwInputErrorX11(GLFW_PLATFORM_ERROR, "X11: Failed to toggle fullscreen, the window manager does not support it");
+            _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to toggle fullscreen, the window manager does not support it");
         }
     }
 }
@@ -785,7 +785,7 @@ createNativeWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, Visual 
     wa.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask |
                     FocusChangeMask | VisibilityChangeMask | EnterWindowMask | LeaveWindowMask | PropertyChangeMask;
 
-    _glfwGrabErrorHandlerX11();
+    _glfwPushErrorTrapX11();
 
     window->x11.parent = _glfw.x11.root;
     debug_rendering("Creating window with geometry: %dx%d@%dx%d\n", wg.width, wg.height, wg.x, wg.y);
@@ -803,10 +803,10 @@ createNativeWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, Visual 
         CWBorderPixel | CWColormap | CWEventMask,
         &wa);
 
-    _glfwReleaseErrorHandlerX11();
+    const int x_error = _glfwPopErrorTrapX11();
 
-    if (!window->x11.handle) {
-        _glfwInputErrorX11(GLFW_PLATFORM_ERROR, "X11: Failed to create window");
+    if (!window->x11.handle || x_error != Success) {
+        _glfwInputErrorX11(GLFW_PLATFORM_ERROR, x_error, "X11: Failed to create window");
         return false;
     }
 
@@ -903,19 +903,36 @@ get_clipboard_data(const _GLFWClipboardData *cd, const char *mime, char **data) 
 
 static void
 get_atom_names(const Atom *atoms, int count, char **atom_names) {
-    _glfwGrabErrorHandlerX11();
-    XGetAtomNames(_glfw.x11.display, (Atom *)atoms, count, atom_names);
-    _glfwReleaseErrorHandlerX11();
-    if (_glfw.x11.errorCode != Success) {
+    // The atoms come from other clients and may be invalid
+    _glfwPushErrorTrapX11();
+    const Status ok = XGetAtomNames(_glfw.x11.display, (Atom *)atoms, count, atom_names);
+    if (_glfwPopErrorTrapX11() != Success || !ok) {
         for (int i = 0; i < count; i++) {
-            _glfwGrabErrorHandlerX11();
+            _glfwPushErrorTrapX11();
             atom_names[i] = XGetAtomName(_glfw.x11.display, atoms[i]);
-            _glfwReleaseErrorHandlerX11();
-            if (_glfw.x11.errorCode != Success) atom_names[i] = NULL;
+            if (_glfwPopErrorTrapX11() != Success) atom_names[i] = NULL;
         }
     }
 }
 
+// Requests targeting windows owned by other clients, such as selection
+// requestors and drag and drop peers. These clients can destroy their windows
+// at any time, so the resulting errors are expected and ignored. Use these
+// only around the X requests themselves, not around calls into the
+// application, so as not to ignore errors in unrelated requests.
+static void
+change_foreign_property(Window w, Atom property, Atom type, int format, const unsigned char *data, int nelements) {
+    _glfwPushErrorTrapX11();
+    XChangeProperty(_glfw.x11.display, w, property, type, format, PropModeReplace, data, nelements);
+    _glfwPopErrorTrapIgnoredX11();
+}
+
+static void
+send_foreign_event(Window w, XEvent *event) {
+    _glfwPushErrorTrapX11();
+    XSendEvent(_glfw.x11.display, w, False, NoEventMask, event);
+    _glfwPopErrorTrapIgnoredX11();
+}
 
 // Set the specified property to the selection converted to the requested target
 //
@@ -945,7 +962,7 @@ writeTargetToProperty(const XSelectionRequestEvent *request) {
         targets[0] = _glfw.x11.TARGETS;
         targets[1] = _glfw.x11.MULTIPLE;
         for (size_t i = 0; i < aa->sz; i++) targets[i + 2] = aa->array[i].atom;
-        XChangeProperty(_glfw.x11.display, request->requestor, request->property, XA_ATOM, 32, PropModeReplace, (unsigned char *)targets, aa->sz + 2);
+        change_foreign_property(request->requestor, request->property, XA_ATOM, 32, (unsigned char *)targets, aa->sz + 2);
         free(targets);
         return request->property;
     }
@@ -953,10 +970,14 @@ writeTargetToProperty(const XSelectionRequestEvent *request) {
     if (request->target == _glfw.x11.MULTIPLE) {
         // Multiple conversions were requested
 
-        Atom *targets;
+        Atom *targets = NULL;
         size_t i, j, count;
 
         count = _glfwGetWindowPropertyX11(request->requestor, request->property, _glfw.x11.ATOM_PAIR, (unsigned char **)&targets);
+        // Fails if the requestor has destroyed its window or set a malformed property
+        if (!targets) return None;
+        // The property is a list of (target, property) pairs
+        count -= count % 2;
 
         for (i = 0; i < count; i += 2) {
             for (j = 0; j < aa->sz; j++) {
@@ -967,12 +988,12 @@ writeTargetToProperty(const XSelectionRequestEvent *request) {
                 char *data = NULL;
                 size_t sz = get_clipboard_data(cd, aa->array[j].mime, &data);
 
-                if (data) XChangeProperty(_glfw.x11.display, request->requestor, targets[i + 1], targets[i], 8, PropModeReplace, (unsigned char *)data, sz);
+                if (data) change_foreign_property(request->requestor, targets[i + 1], targets[i], 8, (unsigned char *)data, sz);
                 free(data);
             } else targets[i + 1] = None;
         }
 
-        XChangeProperty(_glfw.x11.display, request->requestor, request->property, _glfw.x11.ATOM_PAIR, 32, PropModeReplace, (unsigned char *)targets, count);
+        change_foreign_property(request->requestor, request->property, _glfw.x11.ATOM_PAIR, 32, (unsigned char *)targets, count);
 
         XFree(targets);
 
@@ -983,7 +1004,7 @@ writeTargetToProperty(const XSelectionRequestEvent *request) {
         // The request is a check whether we support SAVE_TARGETS
         // It should be handled as a no-op side effect target
 
-        XChangeProperty(_glfw.x11.display, request->requestor, request->property, _glfw.x11.NULL_, 32, PropModeReplace, NULL, 0);
+        change_foreign_property(request->requestor, request->property, _glfw.x11.NULL_, 32, NULL, 0);
 
         return request->property;
     }
@@ -996,7 +1017,7 @@ writeTargetToProperty(const XSelectionRequestEvent *request) {
 
             char *data = NULL;
             size_t sz = get_clipboard_data(cd, aa->array[i].mime, &data);
-            if (data) XChangeProperty(_glfw.x11.display, request->requestor, request->property, request->target, 8, PropModeReplace, (unsigned char *)data, sz);
+            if (data) change_foreign_property(request->requestor, request->property, request->target, 8, (unsigned char *)data, sz);
             free(data);
 
             return request->property;
@@ -1020,7 +1041,7 @@ handleSelectionClear(XEvent *event) {
 }
 
 static void
-answerSelectionRequest(XEvent *event) {
+handleSelectionRequest(XEvent *event) {
     const XSelectionRequestEvent *request = &event->xselectionrequest;
 
     XEvent reply = {SelectionNotify};
@@ -1041,15 +1062,7 @@ answerSelectionRequest(XEvent *event) {
                 targets[0] = _glfw.x11.TARGETS;
                 targets[1] = _glfw.x11.MULTIPLE;
                 for (size_t i = 0; i < _glfw.x11.drag.type_count; i++) targets[i + 2] = _glfw.x11.drag.type_atoms[i];
-                XChangeProperty(
-                    _glfw.x11.display,
-                    request->requestor,
-                    request->property,
-                    XA_ATOM,
-                    32,
-                    PropModeReplace,
-                    (unsigned char *)targets,
-                    _glfw.x11.drag.type_count + 2);
+                change_foreign_property(request->requestor, request->property, XA_ATOM, 32, (unsigned char *)targets, _glfw.x11.drag.type_count + 2);
                 free(targets);
                 reply.xselection.property = request->property;
             }
@@ -1105,17 +1118,7 @@ answerSelectionRequest(XEvent *event) {
         // Handle regular clipboard/primary selection
         reply.xselection.property = writeTargetToProperty(request);
     }
-    XSendEvent(_glfw.x11.display, request->requestor, False, 0, &reply);
-}
-
-static void
-handleSelectionRequest(XEvent *event) {
-    // The requestor owns its window and may destroy it before our reply
-    // arrives. The resulting BadWindow errors must not reach Xlib's default
-    // error handler, which exits the process.
-    _glfwGrabErrorHandlerX11();
-    answerSelectionRequest(event);
-    _glfwReleaseErrorHandlerX11();
+    send_foreign_event(request->requestor, &reply);
 }
 
 static void
@@ -1441,7 +1444,7 @@ end_drop(_GLFWwindow *window, GLFWDragOperationType op) {
             case GLFW_DRAG_OPERATION_NONE: reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy; break;
         }
     }
-    XSendEvent(_glfw.x11.display, dnd.source, False, NoEventMask, &reply);
+    send_foreign_event(dnd.source, &reply);
     XFlush(_glfw.x11.display);
 }
 
@@ -1475,7 +1478,7 @@ update_drop_state(_GLFWwindow *window, size_t accepted_count) {
     // Always send XdndStatus (accepted or rejected). XdndFinished must only be
     // sent after XdndDrop, never during drag motion — sending it here was
     // prematurely terminating the drag source when no MIME type was accepted.
-    XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source, False, NoEventMask, &reply);
+    send_foreign_event(_glfw.x11.xdnd.source, &reply);
     XFlush(_glfw.x11.display);
 }
 
@@ -1634,10 +1637,10 @@ drop_move(_GLFWwindow *window, XEvent *event) {
     const int yabs = (event->xclient.data.l[2]) & 0xffff;
     Window dummy;
     int xpos = 0, ypos = 0;
-    _glfwGrabErrorHandlerX11();
+    _glfwPushErrorTrapX11();
     XTranslateCoordinates(_glfw.x11.display, _glfw.x11.root, window->x11.handle, xabs, yabs, &xpos, &ypos, &dummy);
-    _glfwReleaseErrorHandlerX11();
-    if (_glfw.x11.errorCode != Success) _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to get DND event position");
+    int x_error = _glfwPopErrorTrapX11();
+    if (x_error != Success) _glfwInputErrorX11(GLFW_PLATFORM_ERROR, x_error, "X11: Failed to get DND event position");
     _glfwInputCursorPos(window, xpos, ypos);
     if (reset_dnd_copy_mimes()) {
         size_t mimes_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
@@ -2096,11 +2099,11 @@ processEvent(XEvent *event) {
             //       the position into root (screen) coordinates
             if (!event->xany.send_event && window->x11.parent != _glfw.x11.root) {
                 Window dummy;
-                _glfwGrabErrorHandlerX11();
+                _glfwPushErrorTrapX11();
                 XTranslateCoordinates(_glfw.x11.display, window->x11.parent, _glfw.x11.root, xpos, ypos, &xpos, &ypos, &dummy);
-                _glfwReleaseErrorHandlerX11();
-                if (_glfw.x11.errorCode != Success) {
-                    _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to translate ConfigureNotiy co-ords for reparented window");
+                int x_error = _glfwPopErrorTrapX11();
+                if (x_error != Success) {
+                    _glfwInputErrorX11(GLFW_PLATFORM_ERROR, x_error, "X11: Failed to translate ConfigureNotify co-ords for reparented window");
                     return;
                 }
             }
@@ -2250,10 +2253,19 @@ unsigned long
 _glfwGetWindowPropertyX11(Window window, Atom property, Atom type, unsigned char **value) {
     Atom actualType;
     int actualFormat;
-    unsigned long itemCount, bytesAfter;
+    unsigned long itemCount = 0, bytesAfter;
+    *value = NULL;
 
-    XGetWindowProperty(_glfw.x11.display, window, property, 0, LONG_MAX, False, type, &actualType, &actualFormat, &itemCount, &bytesAfter, value);
-
+    // The window may belong to another client and have been destroyed. Xlib
+    // leaves the output parameters unset on failure.
+    _glfwPushErrorTrapX11();
+    const int status =
+        XGetWindowProperty(_glfw.x11.display, window, property, 0, LONG_MAX, False, type, &actualType, &actualFormat, &itemCount, &bytesAfter, value);
+    _glfwPopErrorTrapIgnoredX11();
+    if (status != Success) {
+        *value = NULL;
+        return 0;
+    }
     return itemCount;
 }
 
@@ -2444,10 +2456,10 @@ _glfwPlatformGetWindowPos(_GLFWwindow *window, int *xpos, int *ypos) {
     Window dummy;
     int x = 0, y = 0;
 
-    _glfwGrabErrorHandlerX11();
+    _glfwPushErrorTrapX11();
     XTranslateCoordinates(_glfw.x11.display, window->x11.handle, _glfw.x11.root, 0, 0, &x, &y, &dummy);
-    _glfwReleaseErrorHandlerX11();
-    if (_glfw.x11.errorCode != Success) _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to get window position");
+    int x_error = _glfwPopErrorTrapX11();
+    if (x_error != Success) _glfwInputErrorX11(GLFW_PLATFORM_ERROR, x_error, "X11: Failed to get window position");
 
     if (xpos) *xpos = x;
     if (ypos) *ypos = y;
@@ -2785,13 +2797,13 @@ _glfwPlatformWindowHovered(_GLFWwindow *window) {
         int rootX, rootY, childX, childY;
         unsigned int mask;
 
-        _glfwGrabErrorHandlerX11();
-
+        // The child window found in the previous iteration may have been
+        // destroyed in the meantime
+        _glfwPushErrorTrapX11();
         const Bool result = XQueryPointer(_glfw.x11.display, w, &root, &w, &rootX, &rootY, &childX, &childY, &mask);
+        const int x_error = _glfwPopErrorTrapX11();
 
-        _glfwReleaseErrorHandlerX11();
-
-        if (_glfw.x11.errorCode == BadWindow) w = _glfw.x11.root;
+        if (x_error == BadWindow) w = _glfw.x11.root;
         else if (!result) return false;
         else if (w == window->x11.handle) return true;
     }
@@ -3504,7 +3516,7 @@ window_supports_xdnd(Window win, int *version_out) {
 
 // Find the XdndAware window at the given coordinates
 static Window
-find_xdnd_aware_target(Window root, int root_x, int root_y, int *version_out) {
+find_xdnd_aware_target_unsafe(Window root, int root_x, int root_y, int *version_out) {
     Window target = None;
     Window child = root;
     Window parent = root;
@@ -3556,6 +3568,17 @@ find_xdnd_aware_target(Window root, int root_x, int root_y, int *version_out) {
     return None;
 }
 
+static Window
+find_xdnd_aware_target(Window root, int root_x, int root_y, int *version_out) {
+    // The windows being examined belong to other clients and may be destroyed
+    // at any time. All requests used have replies, so the failures are
+    // handled by checking their return values.
+    _glfwPushErrorTrapX11();
+    Window ans = find_xdnd_aware_target_unsafe(root, root_x, root_y, version_out);
+    _glfwPopErrorTrapIgnoredX11();
+    return ans;
+}
+
 // Send XdndEnter message to target window
 static void
 send_xdnd_enter(Window target, int version) {
@@ -3587,11 +3610,9 @@ send_xdnd_enter(Window target, int version) {
         for (size_t i = 0; i < _glfw.x11.drag.type_count && i < 3; i++) { event.xclient.data.l[2 + i] = _glfw.x11.drag.type_atoms[i]; }
     }
 
-    _glfwGrabErrorHandlerX11();
+    _glfwPushErrorTrapX11();
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
-    XFlush(_glfw.x11.display);
-    _glfwReleaseErrorHandlerX11();
-    if (_glfw.x11.errorCode == BadWindow) _glfw.x11.drag.current_target = None;
+    if (_glfwPopErrorTrapX11() == BadWindow) _glfw.x11.drag.current_target = None;
 }
 
 // Send XdndPosition message to target window
@@ -3610,11 +3631,9 @@ send_xdnd_position(Window target, int root_x, int root_y, Time timestamp) {
     event.xclient.data.l[3] = timestamp;
     event.xclient.data.l[4] = _glfw.x11.drag.action_atom;
 
-    _glfwGrabErrorHandlerX11();
+    _glfwPushErrorTrapX11();
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
-    XFlush(_glfw.x11.display);
-    _glfwReleaseErrorHandlerX11();
-    if (_glfw.x11.errorCode == BadWindow) _glfw.x11.drag.current_target = None;
+    if (_glfwPopErrorTrapX11() == BadWindow) _glfw.x11.drag.current_target = None;
     else _glfw.x11.drag.waiting_for_status = true;
 }
 
@@ -3630,11 +3649,9 @@ send_xdnd_leave(Window target) {
     event.xclient.format = 32;
     event.xclient.data.l[0] = _glfw.x11.drag.source_window;
 
-    _glfwGrabErrorHandlerX11();
-    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
-    XFlush(_glfw.x11.display);
-    _glfwReleaseErrorHandlerX11();
     // BadWindow on leave is benign – the target window is already gone
+    send_foreign_event(target, &event);
+    XFlush(_glfw.x11.display);
 }
 
 // Send XdndDrop message to target window
@@ -3651,11 +3668,9 @@ send_xdnd_drop(Window target, Time timestamp) {
     event.xclient.data.l[1] = 0; // Reserved
     event.xclient.data.l[2] = timestamp;
 
-    _glfwGrabErrorHandlerX11();
+    _glfwPushErrorTrapX11();
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
-    XFlush(_glfw.x11.display);
-    _glfwReleaseErrorHandlerX11();
-    if (_glfw.x11.errorCode == BadWindow) {
+    if (_glfwPopErrorTrapX11() == BadWindow) {
         // Target window was destroyed; cancel the drag gracefully
         _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
         if (window) {
@@ -3899,10 +3914,10 @@ static void
 send_drag_data(const char *mime_type, const char *data, size_t data_sz, Window requestor, Atom property, Atom target) {
     (void)mime_type; // Parameter kept for consistency with other platforms
     if (data && data_sz > 0) {
-        XChangeProperty(_glfw.x11.display, requestor, property, target, 8, PropModeReplace, (unsigned char *)data, data_sz);
+        change_foreign_property(requestor, property, target, 8, (const unsigned char *)data, data_sz);
     } else {
         // Send empty property to indicate no data
-        XChangeProperty(_glfw.x11.display, requestor, property, target, 8, PropModeReplace, (unsigned char *)"", 0);
+        change_foreign_property(requestor, property, target, 8, (const unsigned char *)"", 0);
     }
 }
 
@@ -4084,9 +4099,8 @@ _glfwPlatformDragDataReady(const char *mime_type, const char *data UNUSED, size_
 
             _glfwInputDragSourceRequest(window, &ev);
 
-            // The requestor may have destroyed its window in the meantime,
-            // see handleSelectionRequest()
-            _glfwGrabErrorHandlerX11();
+            // The requestor may have destroyed its window in the meantime
+            _glfwPushErrorTrapX11();
             send_drag_data(
                 mime_type,
                 ev.data,
@@ -4106,10 +4120,14 @@ _glfwPlatformDragDataReady(const char *mime_type, const char *data UNUSED, size_
             reply.xselection.property = _glfw.x11.drag.pending_requests[i].property;
             reply.xselection.time = CurrentTime;
 
-            XSendEvent(_glfw.x11.display, _glfw.x11.drag.pending_requests[i].requestor, False, 0, &reply);
-            _glfwReleaseErrorHandlerX11();
+            XSendEvent(_glfw.x11.display, _glfw.x11.drag.pending_requests[i].requestor, False, NoEventMask, &reply);
+            const int x_error = _glfwPopErrorTrapX11();
 
             _glfw.x11.drag.pending_requests[i].inflight = false;
+            if (x_error != Success) {
+                _glfwInputErrorX11(GLFW_PLATFORM_ERROR, x_error, "X11: Failed to deliver drag data to drop target");
+                return EPIPE;
+            }
             break;
         }
     }

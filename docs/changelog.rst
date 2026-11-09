@@ -165,6 +165,10 @@ Detailed list of changes
   plugged and unplugged quickly and the compositor never sent its logical
   geometry
 
+- X11: Fix kitty exiting when a program requesting the clipboard or primary
+  selection destroys its window before kitty can reply. X errors no longer
+  cause kitty to exit, they are reported instead (:iss:`9248`)
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

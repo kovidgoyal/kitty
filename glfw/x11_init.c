@@ -62,18 +62,15 @@ detectEWMH(void) {
     Window *windowFromRoot = NULL;
     if (!_glfwGetWindowPropertyX11(_glfw.x11.root, _glfw.x11.NET_SUPPORTING_WM_CHECK, XA_WINDOW, (unsigned char **)&windowFromRoot)) { return; }
 
-    _glfwGrabErrorHandlerX11();
-
     // If it exists, it should be the XID of a top-level window
-    // Then we look for the same property on that window
+    // Then we look for the same property on that window. The window may be
+    // stale, _glfwGetWindowPropertyX11() handles the resulting BadWindow.
 
     Window *windowFromChild = NULL;
     if (!_glfwGetWindowPropertyX11(*windowFromRoot, _glfw.x11.NET_SUPPORTING_WM_CHECK, XA_WINDOW, (unsigned char **)&windowFromChild)) {
         XFree(windowFromRoot);
         return;
     }
-
-    _glfwReleaseErrorHandlerX11();
 
     // If the property exists, it should contain the XID of the window
 
@@ -165,12 +162,12 @@ read_xi_scroll_devices(void) {
     if (!xi.available || xi.major < 2 || (xi.major == 2 && xi.minor < 1) || !xi.LIBINPUT_SCROLL_METHOD_ENABLED) return;
 #undef xi
     int deviceCount;
-    // Grab the error handler to prevent XI_BadDevice errors from killing kitty
-    // when a device is removed between XIQueryDevice and XIGetProperty calls.
-    _glfwGrabErrorHandlerX11();
+    // A device can be removed between the XIQueryDevice and XIGetProperty
+    // calls, the resulting XI_BadDevice errors are expected
+    _glfwPushErrorTrapX11();
     XIDeviceInfo *devices = XIQueryDevice(_glfw.x11.display, XIAllDevices, &deviceCount);
     if (!devices) {
-        _glfwReleaseErrorHandlerX11();
+        _glfwPopErrorTrapIgnoredX11();
         return;
     }
     for (int i = 0; i < deviceCount; i++) {
@@ -303,7 +300,7 @@ read_xi_scroll_devices(void) {
         }
     }
     XIFreeDeviceInfo(devices);
-    _glfwReleaseErrorHandlerX11();
+    _glfwPopErrorTrapIgnoredX11();
 }
 
 // Look for and initialize supported X11 extensions
@@ -613,47 +610,158 @@ createHelperWindow(void) {
     return XCreateWindow(_glfw.x11.display, _glfw.x11.root, 0, 0, 1, 1, 0, 0, InputOnly, DefaultVisual(_glfw.x11.display, _glfw.x11.screen), CWEventMask, &wa);
 }
 
-// X error handler
+// X error handling {{{
 //
+// A single error handler is installed for the lifetime of the display. Xlib's
+// default handler exits the process on any error, which is never acceptable
+// as many requests legitimately fail, for instance because they reference a
+// window owned by another client that has destroyed it.
+//
+// Code that expects errors brackets the relevant requests with
+// _glfwPushErrorTrapX11() and _glfwPopErrorTrapX11() or
+// _glfwPopErrorTrapIgnoredX11(). Traps are identified by request serial
+// numbers so they nest correctly and only capture errors from requests made
+// while they were open. Errors from requests not covered by any trap indicate
+// bugs and are reported, but do not exit the process.
+
+#define traps _glfw.x11.error_traps
+
+static void
+remove_error_trap(size_t idx) {
+    traps.count--;
+    if (idx < traps.count) memmove(traps.items + idx, traps.items + idx + 1, (traps.count - idx) * sizeof(traps.items[0]));
+}
+
+// Remove closed traps whose requests have all been processed by the server,
+// as no more errors can arrive for them
+static void
+prune_error_traps(void) {
+    const unsigned long processed = XLastKnownRequestProcessed(_glfw.x11.display);
+    for (size_t i = traps.count; i-- > 0;) {
+        if (traps.items[i].closed && traps.items[i].end_serial <= processed) remove_error_trap(i);
+    }
+}
+
 static int
 errorHandler(Display *display, XErrorEvent *event) {
-    if (_glfw.x11.display != display) return 0;
-
-    _glfw.x11.errorCode = event->error_code;
+    if (_glfw.x11.display != display) { return traps.previous_handler ? traps.previous_handler(display, event) : 0; }
+    // Search innermost first, nested traps cover a subset of their parent's range
+    for (size_t i = traps.count; i-- > 0;) {
+        _GLFWerrortrapX11 *t = traps.items + i;
+        if (event->serial >= t->start_serial && (!t->closed || event->serial <= t->end_serial)) {
+            if (t->error_code == Success) t->error_code = event->error_code;
+            return 0;
+        }
+    }
+    char buffer[_GLFW_MESSAGE_SIZE];
+    XGetErrorText(display, event->error_code, buffer, sizeof(buffer));
+    _glfwInputError(
+        GLFW_PLATFORM_ERROR,
+        "X11: Unhandled X error: %s (request: %u.%u, resource: 0x%lx, serial: %lu)",
+        buffer,
+        (unsigned)event->request_code,
+        (unsigned)event->minor_code,
+        event->resourceid,
+        event->serial);
     return 0;
 }
 
+static void
+install_error_handler(void) {
+    traps.previous_handler = XSetErrorHandler(errorHandler);
+}
+
+static void
+uninstall_error_handler(void) {
+    XSetErrorHandler(traps.previous_handler);
+    traps.previous_handler = NULL;
+    free(traps.items);
+    traps.items = NULL;
+    traps.count = 0;
+    traps.capacity = 0;
+}
+
+// Closes the innermost open trap, returning its index or traps.count if there
+// is no open trap
+static size_t
+close_error_trap(void) {
+    for (size_t i = traps.count; i-- > 0;) {
+        if (!traps.items[i].closed) {
+            traps.items[i].closed = true;
+            traps.items[i].end_serial = XNextRequest(_glfw.x11.display) - 1;
+            return i;
+        }
+    }
+    _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Popping an X error trap that was never pushed, this is a bug");
+    return traps.count;
+}
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-// Sets the X error handler callback
+// Starts capturing X errors caused by subsequent requests. Every call must be
+// matched by a call to _glfwPopErrorTrapX11() or _glfwPopErrorTrapIgnoredX11().
 //
 void
-_glfwGrabErrorHandlerX11(void) {
-    _glfw.x11.errorCode = Success;
-    XSetErrorHandler(errorHandler);
+_glfwPushErrorTrapX11(void) {
+    prune_error_traps();
+    if (traps.count >= traps.capacity) {
+        const size_t capacity = traps.capacity ? traps.capacity * 2 : 16;
+        _GLFWerrortrapX11 *items = realloc(traps.items, capacity * sizeof(traps.items[0]));
+        if (!items) {
+            // Callers rely on every push being matched by a pop, so there is
+            // no way to recover from this
+            _glfwInputError(GLFW_OUT_OF_MEMORY, "X11: Failed to allocate memory for X error trap");
+            abort();
+        }
+        traps.items = items;
+        traps.capacity = capacity;
+    }
+    traps.items[traps.count++] = (_GLFWerrortrapX11){.start_serial = XNextRequest(_glfw.x11.display)};
 }
 
-// Clears the X error handler callback
+// Stops capturing X errors for the innermost trap, waiting for the server to
+// process its requests if needed. Returns the code of the first error caused
+// by a request made while the trap was open, or Success.
 //
-void
-_glfwReleaseErrorHandlerX11(void) {
-    // Synchronize to make sure all commands are processed
-    XSync(_glfw.x11.display, False);
-    XSetErrorHandler(NULL);
+int
+_glfwPopErrorTrapX11(void) {
+    const size_t i = close_error_trap();
+    if (i >= traps.count) return Success;
+    // Requests that return a reply are processed synchronously, so a round
+    // trip is only needed if the trap covers requests without one
+    if (traps.items[i].end_serial >= traps.items[i].start_serial && XLastKnownRequestProcessed(_glfw.x11.display) < traps.items[i].end_serial) {
+        XSync(_glfw.x11.display, False);
+    }
+    const int code = traps.items[i].error_code;
+    remove_error_trap(i);
+    return code;
 }
 
-// Reports the specified error, appending information about the last X error
+// Stops capturing X errors for the innermost trap, discarding any errors
+// caused by its requests without waiting for the server to process them. Use
+// it for requests whose failure is expected and harmless, such as replies to
+// windows owned by other clients, which may have been destroyed.
 //
 void
-_glfwInputErrorX11(int error, const char *message) {
+_glfwPopErrorTrapIgnoredX11(void) {
+    close_error_trap();
+    prune_error_traps();
+}
+
+#undef traps
+
+// Reports the specified error, appending a description of the specified X error
+//
+void
+_glfwInputErrorX11(int error, int x_error_code, const char *message) {
     char buffer[_GLFW_MESSAGE_SIZE];
-    XGetErrorText(_glfw.x11.display, _glfw.x11.errorCode, buffer, sizeof(buffer));
+    XGetErrorText(_glfw.x11.display, x_error_code, buffer, sizeof(buffer));
 
     _glfwInputError(error, "%s: %s", message, buffer);
 }
+// }}}
 
 // Creates a native cursor object from the specified image and hotspot
 //
@@ -716,6 +824,7 @@ _glfwPlatformInit(bool *supports_window_occlusion) {
 
         return false;
     }
+    install_error_handler();
 
     if (!initPollData(&_glfw.x11.eventLoopData, ConnectionNumber(_glfw.x11.display))) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to initialize event loop data");
@@ -769,6 +878,7 @@ _glfwPlatformTerminate(void) {
     if (_glfw.x11.display) {
         XCloseDisplay(_glfw.x11.display);
         _glfw.x11.display = NULL;
+        uninstall_error_handler();
         _glfw.x11.eventLoopData.fds[0].fd = -1;
     }
 
