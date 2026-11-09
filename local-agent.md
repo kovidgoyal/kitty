@@ -86,5 +86,5 @@ Before declaring a task complete, you must follow this exact verification lifecy
 4. If errors occur, analyze the stdout logs completely before writing a fix. Do not guess.
 5. If your changes involve rendering changes to kitty manually verify
    them by running kitty and using the remote control API as described above.
-6. If the change you have made is user facing, update the docs/changelog.rst
+6. If the change you have made is user facing, and you are on master, update the docs/changelog.rst
    file with a brief description of your changes
