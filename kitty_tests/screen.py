@@ -171,6 +171,17 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(0)), 'X')
         self.ae((s.cursor.x, s.cursor.y), (4, 1))
 
+        # a line scrolled in by a line feed is known to have no multicell
+        # chars, which must stop being assumed once one is drawn on it, all
+        # in a single draw
+        s = self.create_screen()
+        parse_bytes(s, b'x\r\n' * s.lines + 'ニチ\ra'.encode())
+        self.ae(str(s.line(s.lines - 1)), 'a チ')
+        self.ae((s.cursor.x, s.cursor.y), (1, s.lines - 1))
+        s = self.create_screen()
+        parse_bytes(s, b'x\r\n' * s.lines + 'ニチ\r\t\ra'.encode())
+        self.ae(str(s.line(s.lines - 1)), 'a チ')
+
         # REP must repeat the last char of a batched run
         s = self.create_screen()
         s.draw('abc')

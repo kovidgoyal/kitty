@@ -351,6 +351,23 @@ linebuf_clear_line(LineBuf *self, index_type y, bool clear_attrs) {
     if (clear_attrs) self->line_attrs[y].val = 0;
 }
 
+void
+linebuf_clear_line_text(LineBuf *self, index_type y) {
+    // Clears the line, like linebuf_clear_line(), except for its render data,
+    // which is left stale and recomputed when the line is next rendered, as
+    // the line is marked dirty. This reduces the memory written to clear a
+    // line by 40%, which matters when scrolling, as every new line is cleared.
+    // Must only be used for lines whose render data is used only after they
+    // are rendered, which is the case for the lines of the screen when there
+    // is no marker, as marks are render data that is used without rendering.
+#if BLANK_CHAR != 0
+#error This implementation is incorrect for BLANK_CHAR != 0
+#endif
+    zero_at_ptr_count(cpu_lineptr(self, self->line_map[y]), self->xnum);
+    self->line_attrs[y].val = 0;
+    self->line_attrs[y].has_dirty_text = true;
+}
+
 static PyObject *
 clear_line(LineBuf *self, PyObject *val) {
 #define clear_line_doc "clear_line(y) -> Clear the specified line"

@@ -510,6 +510,24 @@ class Rendering(FontBaseTest):
         test_render_line(line)
         self.assertEqual(len(self.sprites) - prerendered, len(box_chars))
 
+    def test_render_lines_scrolled_in(self):
+        # lines cleared by scrolling keep stale render data, so they must be
+        # dirty, so that rendering them replaces it
+        s = self.create_screen(cols=5, lines=3, scrollback=0)
+        s.draw('abcde' * s.lines)
+        for y in range(s.lines):
+            test_render_line(s.line(y))
+        self.assertTrue(all(s.line(y).sprite_at(x) for y in range(s.lines) for x in range(s.columns)))
+        for reverse in (False, True):
+            s.reverse_index() if reverse else s.index()
+            y = 0 if reverse else s.lines - 1
+            self.ae(str(s.line(y)), '')
+            self.assertIn(y, s.linebuf.dirty_lines())
+            line = s.line(y)
+            test_render_line(line)
+            self.ae([line.sprite_at(x) for x in range(s.columns)], [0] * s.columns)
+            s.cursor_position(1, 1)
+
     def test_line_thickness_scales_with_font_size(self):
         from kitty.fast_data_types import create_test_font_group, render_box_char
         from kitty.fonts.render import set_font_family

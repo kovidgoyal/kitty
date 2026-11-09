@@ -1211,6 +1211,19 @@ class TestDataTypes(BaseTest):
         s.set_marker()
         self.ae(s.marked_cells(), [])
 
+        # lines cleared by scrolling must not keep marks
+        s = self.create_screen()
+        for y in range(s.lines):
+            s.draw('a' * s.columns)
+        s.set_marker(marker_from_regex('a', 3))
+        self.ae(len(s.marked_cells()), s.lines * s.columns)
+        s.index()
+        self.ae(len(s.marked_cells()), (s.lines - 1) * s.columns)
+        s.cursor_position(1, 1)
+        s.reverse_index()
+        self.ae(len(s.marked_cells()), (s.lines - 1) * s.columns)
+        self.ae([c for c in s.marked_cells() if c[1] == 0], [])
+
         s = self.create_screen()
         s.draw('aXbX')
         s.set_marker(marker_from_multiple_regex([(1, 'a'), (2, 'X')]))

@@ -532,9 +532,17 @@ last_visited_prompt_viewport(const Screen *self, index_type *y, unsigned int *sc
     }
 
 
+static void
+clear_scrolled_in_line(Screen *self, index_type y) {
+    // Marks are render data that is used without rendering, so the render
+    // data can be left to be recomputed by rendering only without a marker
+    if (LIKELY(self->marker == NULL)) linebuf_clear_line_text(self->linebuf, y);
+    else linebuf_clear_line(self->linebuf, y, true);
+}
+
 #define INDEX_DOWN(scroll_history)                                                                      \
     linebuf_reverse_index(self->linebuf, top, bottom);                                                  \
-    linebuf_clear_line(self->linebuf, top, true);                                                       \
+    clear_scrolled_in_line(self, top);                                                                  \
     last_visited_prompt_index(self, top, bottom, false, scroll_history);                                \
     INDEX_GRAPHICS(1, scroll_history)                                                                   \
     self->is_dirty = true;                                                                              \
@@ -1032,6 +1040,12 @@ typedef struct text_loop_state {
         index_type x, y;
         CPUCell *cc;
     } prev;
+    // True when the line being drawn into is known to contain no multicell
+    // cells, which lets the ASCII fast path skip checking for them. This is
+    // the case for a line that was just cleared by scrolling, until something
+    // other than the ASCII fast path, CR or HT, which never create multicell
+    // cells, happens.
+    bool line_has_no_multicell;
 } text_loop_state;
 
 static void
@@ -1116,6 +1130,7 @@ init_text_loop_line(Screen *self, text_loop_state *s) {
     clear_intersecting_selections(self, self->cursor->y);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     s->image_placeholder_marked = false;
+    s->line_has_no_multicell = false;
     init_segmentation_state(self, s);
 }
 
@@ -1678,16 +1693,21 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
         case SO: screen_change_charset(self, 1); break;
         case LF:
         case VT:
-        case FF:
+        case FF: {
+            // When the cursor is on the bottom margin, the line feed scrolls
+            // and the cursor ends up on the bottom line, which is cleared
+            const bool scrolls = self->cursor->y == self->margin_bottom;
             screen_linefeed(self);
             init_text_loop_line(self, s);
-            break;
+            s->line_has_no_multicell = scrolls && self->cursor->y == self->margin_bottom;
+        } break;
         case CR:
             screen_carriage_return(self);
             init_segmentation_state(self, s);
             break;
         default: break;
     }
+    if (ch != LF && ch != VT && ch != FF && ch != CR && ch != HT) s->line_has_no_multicell = false;
 }
 
 static_assert(sizeof(CPUCell) == 3 * sizeof(uint32_t), "draw_non_ascii_run() needs updating");
@@ -1836,10 +1856,12 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 CPUCell *cp = s->cp + self->cursor->x;
                 size_t n = printable_ascii_run_length(chars + i, limit);
                 // clamp the run at the first multicell cell, it needs the scalar path
-                size_t m = 0;
-                while (m + 4 <= n && !(cp[m].is_multicell | cp[m + 1].is_multicell | cp[m + 2].is_multicell | cp[m + 3].is_multicell)) m += 4;
-                while (m < n && !cp[m].is_multicell) m++;
-                n = m;
+                if (!s->line_has_no_multicell) {
+                    size_t m = 0;
+                    while (m + 4 <= n && !(cp[m].is_multicell | cp[m + 1].is_multicell | cp[m + 2].is_multicell | cp[m + 3].is_multicell)) m += 4;
+                    while (m < n && !cp[m].is_multicell) m++;
+                    n = m;
+                }
                 if (n) {
                     const CPUCell cc = s->cc;
                     // fill full blocks of cells from templates, the constant sized
@@ -1880,7 +1902,9 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             }
             char_width = 1;
             s->seg = (GraphemeSegmentationResult){.grapheme_break = GBP_None};
+            s->line_has_no_multicell = false;
         } else {
+            s->line_has_no_multicell = false;
             if (ch > DEL && LIKELY(!self->charset.current && !self->modes.mIRM && self->cursor->x < self->columns) &&
                 !batched_non_ascii_draw_disabled_for_tests) {
                 const size_t n = draw_non_ascii_run(self, s, chars + i, num_chars - i);
@@ -2999,7 +3023,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         }                                                                                              \
     }                                                                                                  \
     last_visited_prompt_index(self, top, bottom, true, add_to_history);                                \
-    linebuf_clear_line(self->linebuf, bottom, true);                                                   \
+    clear_scrolled_in_line(self, bottom);                                                              \
     self->is_dirty = true;                                                                             \
     if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, true, top, bottom); \
     if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);

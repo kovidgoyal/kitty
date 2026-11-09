@@ -88,21 +88,22 @@ The measurements below were taken with the same font (DejaVu Sans Mono 11pt),
 window size (120x40 cells) and otherwise default settings for all terminals,
 on the same computer, running Linux 7.2 under Wayland  with an ``AMD
 Ryzen AI 7 PRO 360``, with the terminals pinned to its fast cores. The numbers
-are megabytes per second of data that the terminal processes, higher is better.
+are megabytes per second of data that the terminal processes, higher is better,
+and are the median of several runs.
 Entries are in order of decreasing average performance.
 
 ===========================  =====  =======  =====  ======  ======  =======
 Terminal                     ASCII  Unicode  CSI    Colors  Images  Average
 ===========================  =====  =======  =====  ======  ======  =======
-ghostty 1.4.0                525.8  148.9    156.9  198.0   836.3   373.2
-kitty 1.0.0                  385.7  140.8    116.5  188.4   805.3   327.3
-foot 1.28.0                  316.6  103.1    63.5   331.8   491.3   261.3
-alacritty 0.17.0             162.4  117.7    78.6   240.1   419.5   203.7
-ptyxis 50.1                  272.4  95.0     39.1   148.6   263.0   163.6
-wezterm 20260716             31.7   38.7     15.4   45.7    274.8   81.2
-konsole 26.08.3              46.8   62.7     46.1   113.1   31.8    60.1
-xterm 411                    61.8   48.2     < 2.8  53.5    117.3   < 56.7
-alacritty 0.17.0 + tmux 3.8  57.2   9.5      24.9   35.6    53.8    36.2
+kitty 1.0.0                  564.3  178.4    200.1  282.4   794.5   403.9
+ghostty 1.4.0                496.7  145.4    151.7  185.6   792.6   354.4
+foot 1.28.0                  284.8  99.5     62.0   318.3   488.5   250.6
+alacritty 0.17.0             159.0  117.2    75.9   236.0   414.5   200.5
+ptyxis 50.1                  271.9  95.4     38.4   145.6   249.2   160.1
+wezterm 20260716             29.1   37.3     14.2   43.9    268.1   78.5
+konsole 26.08.3              44.1   60.6     45.4   110.9   31.0    58.4
+xterm 411                    58.7   44.7     < 2.8  41.0    91.2    < 47.7
+alacritty 0.17.0 + tmux 3.8  54.8   9.0      24.3   33.2    53.2    34.9
 ===========================  =====  =======  =====  ======  ======  =======
 
 In this table, each column represents different types of data. The CSI column
@@ -118,17 +119,17 @@ four fastest terminals are below.
       =================  =====  =======  ========  =========
       Benchmark          MB/s   Cells/s  Time (s)  Data (MB)
       =================  =====  =======  ========  =========
-      ascii              385.7  387.3 M  1.04      399
-      unicode            140.8  81.6 M   4.91      692
-      scrollback         270.0  271.1 M  1.48      399
-      render             370.0  371.5 M  1.08      399
-      unique_unicode     51.3   -        17.07     875
-      csi                116.5  -        4.29      500
-      long_escape_codes  812.4  -        4.83      3920
-      truecolor_text     188.4  -        5.31      1000
-      palette16_text     223.3  -        4.48      1000
-      halfblocks         261.5  -        3.83      1001
-      images             805.3  -        3.31      2667
+      ascii              564.3  566.6 M  0.71      399
+      unicode            178.4  103.3 M  3.88      693
+      scrollback         415.9  417.6 M  0.96      399
+      render             541.7  543.9 M  0.74      399
+      unique_unicode     78.2   -        11.19     875
+      csi                200.1  -        2.50      500
+      long_escape_codes  818.3  -        4.79      3920
+      truecolor_text     282.4  -        3.54      1000
+      palette16_text     336.9  -        2.97      1000
+      halfblocks         362.3  -        2.76      1001
+      images             794.5  -        3.36      2667
       =================  =====  =======  ========  =========
 
 
@@ -137,17 +138,17 @@ four fastest terminals are below.
       =================  =====  =======  ========  =========
       Benchmark          MB/s   Cells/s  Time (s)  Data (MB)
       =================  =====  =======  ========  =========
-      ascii              525.8  527.9 M  0.76      399
-      unicode            148.9  86.2 M   4.65      693
-      scrollback         384.0  385.5 M  1.04      399
-      render             406.6  408.2 M  0.98      399
-      unique_unicode     65.3   -        13.39     875
-      csi                156.9  -        3.19      500
-      long_escape_codes  829.0  -        4.73      3920
-      truecolor_text     198.0  -        5.05      1000
-      palette16_text     256.2  -        3.90      1000
-      halfblocks         199.7  -        5.01      1001
-      images             836.3  -        3.19      2667
+      ascii              496.7  498.7 M  0.80      399
+      unicode            145.4  84.2 M   4.76      692
+      scrollback         369.9  371.4 M  1.08      399
+      render             385.3  386.8 M  1.04      399
+      unique_unicode     62.7   -        13.95     875
+      csi                151.7  -        3.30      500
+      long_escape_codes  808.0  -        4.85      3920
+      truecolor_text     185.6  -        5.39      1000
+      palette16_text     248.5  -        4.02      1000
+      halfblocks         189.2  -        5.29      1001
+      images             792.6  -        3.37      2667
       =================  =====  =======  ========  =========
 
    .. tab-item:: foot
@@ -155,17 +156,17 @@ four fastest terminals are below.
       =================  =====  =======  ========  =========
       Benchmark          MB/s   Cells/s  Time (s)  Data (MB)
       =================  =====  =======  ========  =========
-      ascii              316.6  317.9 M  1.26      399
-      unicode            103.1  59.7 M   6.71      692
-      scrollback         295.6  296.8 M  1.35      399
-      render             294.1  295.3 M  1.36      399
-      unique_unicode     11.3   -        77.68     875
-      csi                63.5   -        7.87      500
-      long_escape_codes  283.8  -        13.81     3920
-      truecolor_text     331.8  -        3.01      1000
-      palette16_text     329.4  -        3.04      1000
-      halfblocks         306.1  -        3.27      1001
-      images             491.3  -        5.43      2667
+      ascii              284.8  286.0 M  1.40      399
+      unicode            99.5   57.6 M   6.96      693
+      scrollback         275.4  276.5 M  1.45      399
+      render             249.3  250.3 M  1.60      399
+      unique_unicode     9.8    -        89.35     875
+      csi                62.0   -        8.06      500
+      long_escape_codes  266.8  -        14.69     3920
+      truecolor_text     318.3  -        3.14      1000
+      palette16_text     311.3  -        3.21      1000
+      halfblocks         296.3  -        3.38      1001
+      images             488.5  -        5.46      2667
       =================  =====  =======  ========  =========
 
    .. tab-item:: alacritty
@@ -173,17 +174,17 @@ four fastest terminals are below.
       =================  =====  =======  ========  =========
       Benchmark          MB/s   Cells/s  Time (s)  Data (MB)
       =================  =====  =======  ========  =========
-      ascii              162.4  163.1 M  2.46      399
-      unicode            117.7  68.2 M   5.88      692
-      scrollback         82.0   82.4 M   4.87      399
-      render             158.5  159.1 M  2.52      399
-      unique_unicode     59.8   -        14.64     875
-      csi                78.6   -        6.36      500
-      long_escape_codes  146.2  -        26.82     3920
-      truecolor_text     240.1  -        4.16      1000
-      palette16_text     236.5  -        4.23      1000
-      halfblocks         259.2  -        3.86      1001
-      images             419.5  -        6.36      2667
+      ascii              159.0  159.7 M  2.51      399
+      unicode            117.2  67.9 M   5.91      692
+      scrollback         80.3   80.7 M   4.97      399
+      render             155.1  155.7 M  2.57      399
+      unique_unicode     57.2   -        15.30     875
+      csi                75.9   -        6.58      500
+      long_escape_codes  158.9  -        24.67     3920
+      truecolor_text     236.0  -        4.24      1000
+      palette16_text     236.3  -        4.23      1000
+      halfblocks         254.2  -        3.94      1001
+      images             414.5  -        6.43      2667
       =================  =====  =======  ========  =========
 
 .. note::
@@ -206,7 +207,8 @@ four fastest terminals are below.
 
    Each benchmark was given a maximum of 180 seconds per terminal. xterm did
    not complete the CSI benchmark in that time, so its number for that
-   benchmark is an upper bound. The Images column is only meaningful for
+   benchmark is an upper bound. konsole did not complete the unique_unicode
+   benchmark in that time. The Images column is only meaningful for
    terminals that support the :doc:`kitty graphics protocol
    <graphics-protocol>`, other terminals simply discard the image data.
 
