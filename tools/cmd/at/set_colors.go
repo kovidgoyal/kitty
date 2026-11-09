@@ -297,7 +297,7 @@ var special_color_values = map[string]map[string]int{
 // Encode a color that accepts special values the same way as
 // color_with_special_values() in kitty/options/utils.py: special values are
 // stored in the lowest byte and actual colors are shifted into the upper bytes.
-func encode_special_color(key, val string) (int, error) {
+func encode_special_color(key, val string) (int64, error) {
 	special_values, found := special_color_values[key]
 	if !found {
 		return 0, fmt.Errorf("The special values for the color %s are not known", key)
@@ -312,13 +312,13 @@ func encode_special_color(key, val string) (int, error) {
 		}
 	}
 	if ans, found := special_values[val]; found {
-		return ans, nil
+		return int64(ans), nil
 	}
 	col, err := style.ParseColor(val)
 	if err != nil {
 		return 0, fmt.Errorf("%s is not a valid color", val)
 	}
-	return int(col.AsRGB())<<8 | len(special_values), nil
+	return int64(col.AsRGB())<<8 | int64(len(special_values)), nil
 }
 
 func set_color_in_color_map(key, val string, ans map[string]any, check_nullable, skip_nullable bool) error {

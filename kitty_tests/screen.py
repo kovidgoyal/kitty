@@ -2581,8 +2581,9 @@ class TestScreen(BaseTest):
         self.assertNotIn('mark1_background', cp.as_dict())
 
     def test_color_profile(self):
-        from kitty.fast_data_types import patch_color_profiles
+        from kitty.fast_data_types import NULL_COLOR_VALUE, patch_color_profiles
 
+        self.ae(NULL_COLOR_VALUE, 0xFFFFFFFF)
         opts = self.set_options({'palette_generate': 'fixed'})
         c = ColorProfile(opts)
         for i in range(8):

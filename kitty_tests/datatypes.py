@@ -116,7 +116,10 @@ class TestDataTypes(BaseTest):
             (rgba, 2**32 + 2, 2),
             (rgba, -2, -2),
         ):
-            with self.assertRaises(ValueError, msg=repr(args[1:])):
+            # Dimensions outside Py_ssize_t fail during argument parsing, before
+            # the buffer length and dimension validation can raise ValueError.
+            error = OverflowError if any(x > sys.maxsize for x in args[1:]) else ValueError
+            with self.assertRaises(error, msg=repr(args[1:])):
                 png_from_32bit_rgba_data(*args)
         with self.assertRaises(OverflowError):
             png_from_32bit_rgba_data(rgba, 2, 2**64 + 2)

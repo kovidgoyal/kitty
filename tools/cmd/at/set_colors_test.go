@@ -74,7 +74,7 @@ func TestSetColorsConfFiles(t *testing.T) {
 	expected := map[string]any{
 		"foreground": uint32(0xff0000), "background": uint32(0xff), "cursor": nil,
 		"selection_background": uint32(0xff00), "color1": uint32(0xaaaaaa),
-		"wayland_titlebar_color": 1,
+		"wayland_titlebar_color": int64(1),
 	}
 	if len(payload.Colors) != len(expected) {
 		t.Fatalf("unexpected colors parsed from conf file: %#v", payload.Colors)
@@ -101,7 +101,7 @@ func TestSetColorsSpecialColors(t *testing.T) {
 	// expected values are from kitty.colors.parse_colors()
 	for _, test := range []struct {
 		arg      string
-		expected int
+		expected int64
 	}{
 		{"wayland_titlebar_color=#123456", 0x12345602},
 		{"wayland_titlebar_color=system", 0},
