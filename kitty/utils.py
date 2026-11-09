@@ -2,7 +2,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import fcntl
-import math
 import os
 import re
 import string
@@ -151,10 +150,6 @@ def suppress_error_logging() -> Generator[None, None, None]:
             delattr(log_error, 'redirect')
         else:
             setattr(log_error, 'redirect', before)
-
-
-def ceil_int(x: float) -> int:
-    return int(math.ceil(x))
 
 
 def sanitize_title(x: str) -> str:
