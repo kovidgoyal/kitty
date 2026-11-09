@@ -146,16 +146,12 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     int handled_signals[16] = {0}, num_handled_signals = MIN((int)arraysz(handled_signals), PyTuple_GET_SIZE(handled_signals_p));
     for (Py_ssize_t i = 0; i < num_handled_signals; i++) handled_signals[i] = PyLong_AsLong(PyTuple_GET_ITEM(handled_signals_p, i));
 
-#if PY_VERSION_HEX >= 0x03070000
     PyOS_BeforeFork();
-#endif
     pid_t pid = fork();
     switch (pid) {
         case 0: {
             // child
-#if PY_VERSION_HEX >= 0x03070000
             PyOS_AfterFork_Child();
-#endif
             const struct sigaction act = {.sa_handler = SIG_DFL};
 
 #define SA(which) \
@@ -256,19 +252,13 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             break;
         }
         case -1: {
-#if PY_VERSION_HEX >= 0x03070000
             int saved_errno = errno;
             PyOS_AfterFork_Parent();
             errno = saved_errno;
-#endif
             PyErr_SetFromErrno(PyExc_OSError);
             break;
         }
-        default:
-#if PY_VERSION_HEX >= 0x03070000
-            PyOS_AfterFork_Parent();
-#endif
-            break;
+        default: PyOS_AfterFork_Parent(); break;
     }
 #undef exit_on_err
     free(argv);

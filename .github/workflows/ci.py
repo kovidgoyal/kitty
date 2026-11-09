@@ -160,10 +160,7 @@ def install_deps() -> None:
     if is_bundle:
         install_bundle()
     else:
-        cmd = 'python3 -m pip install Pillow pygments'
-        if sys.version_info[:2] < (3, 7):
-            cmd += ' importlib-resources dataclasses'
-        run(cmd)
+        run('python3 -m pip install Pillow pygments')
         install_slang_compiler()
     install_fonts()
 
