@@ -126,7 +126,8 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :doc:`choose-files <kittens/choose-files>`: Fix a hang when previewing named
-  pipes as text
+  pipes and other special files, or when an ignore file is a named pipe. Also
+  respect the maximum size for text previews of files accessed via symlinks
 
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
   ``screen-shake-random`` shaders that shake the window in which a bell occurs,

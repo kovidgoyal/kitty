@@ -1,6 +1,7 @@
 package choose_files
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -259,8 +260,15 @@ func (p *TextFilePreview) Render(h *Handler, x, y, width, height int) {
 	h.lp.QueueWriteString(buf.String())
 }
 
-func read_regular_text_file(path string) ([]byte, error) {
-	// Opening a FIFO can block before we can inspect the opened file's mode.
+// The maximum size of a file that will be read for a text preview
+const MAX_TEXT_FILE_SIZE = 16 * 1024 * 1024
+
+// Read the contents of path, failing if it is not a regular file or if it is
+// larger than max_size bytes. A negative max_size means no limit. The file is
+// opened in non-blocking mode and its type is checked on the opened
+// descriptor, as opening a FIFO can otherwise block indefinitely and the path
+// can be replaced by a special file after any earlier stat() calls.
+func read_regular_file(path string, max_size int64) ([]byte, error) {
 	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
@@ -273,11 +281,31 @@ func read_regular_text_file(path string) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%q is not a regular file", path)
 	}
-	return io.ReadAll(f)
+	too_large := func(size int64) error {
+		return fmt.Errorf("%q is too large (%s > %s)", path, humanize.Bytes(uint64(size)), humanize.Bytes(uint64(max_size)))
+	}
+	var r io.Reader = f
+	if max_size > -1 {
+		if info.Size() > max_size {
+			return nil, too_large(info.Size())
+		}
+		// Guard against the file growing after the fstat() above
+		r = io.LimitReader(f, max_size+1)
+	}
+	// Pre-allocate based on the size, with some slack so that a file that is
+	// read completely does not need a final re-allocation to detect EOF.
+	buf := bytes.NewBuffer(make([]byte, 0, max(0, info.Size())+bytes.MinRead))
+	if _, err = buf.ReadFrom(r); err != nil {
+		return nil, err
+	}
+	if max_size > -1 && int64(buf.Len()) > max_size {
+		return nil, too_large(int64(buf.Len()))
+	}
+	return buf.Bytes(), nil
 }
 
 func NewTextFilePreview(abspath string, metadata fs.FileInfo, highlighted_chan chan highlighed_data, sanitize func(string) string) Preview {
-	data, err := read_regular_text_file(abspath)
+	data, err := read_regular_file(abspath, MAX_TEXT_FILE_SIZE)
 	if err != nil {
 		return NewFileMetadataPreview(abspath, metadata)
 	}
@@ -301,7 +329,7 @@ func (s style_resolver) StyleName() string {
 func (s style_resolver) UseLightColors() bool             { return s.light }
 func (s style_resolver) SyntaxAliases() map[string]string { return s.syntax_aliases }
 func (s style_resolver) TextForPath(path string) (string, error) {
-	ans, err := read_regular_text_file(path)
+	ans, err := read_regular_file(path, MAX_TEXT_FILE_SIZE)
 	if err == nil {
 		return utils.UnsafeBytesToString(ans), nil
 	}
@@ -351,6 +379,18 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 		}
 		return NewDirectoryPreview(abspath, s)
 	}
+	// Only regular files (or symlinks to them) have previewable contents.
+	// Bail out before any previewer opens the file, as opening special files
+	// such as FIFOs can block or have side effects on other processes.
+	target := s
+	if s.Mode()&fs.ModeSymlink != 0 {
+		if target, err = os.Stat(abspath); err != nil {
+			return NewFileMetadataPreview(abspath, s)
+		}
+	}
+	if !target.Mode().IsRegular() {
+		return NewFileMetadataPreview(abspath, s)
+	}
 	fname := filepath.Base(abspath)
 	mt := utils.GuessMimeType(fname)
 	for _, q := range previewers {
@@ -358,8 +398,7 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 			return NewCmdPreview(abspath, s, pm.settings, pm.WakeupMainThread, q)
 		}
 	}
-	const MAX_TEXT_FILE_SIZE = 16 * 1024 * 1024
-	if s.Size() <= MAX_TEXT_FILE_SIZE && (utils.KnownTextualMimes[mt] || strings.HasPrefix(mt, "text/")) {
+	if target.Size() <= MAX_TEXT_FILE_SIZE && (utils.KnownTextualMimes[mt] || strings.HasPrefix(mt, "text/")) {
 		ch := make(chan highlighed_data, 2)
 		ans := NewTextFilePreview(abspath, s, ch, pm.highlighter.Sanitize)
 		if p, ok := ans.(*TextFilePreview); ok {

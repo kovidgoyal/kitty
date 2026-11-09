@@ -93,7 +93,9 @@ func new_filesystem_scanner(root_dir string, notify chan bool, filter_func func(
 	ans.in_progress.Store(true)
 	ans.keep_going.Store(true)
 	ans.dir_reader = os.ReadDir
-	ans.file_reader = os.ReadFile
+	// Ignore files are read via a non-blocking open so that a FIFO with the
+	// name of an ignore file cannot stall the scan
+	ans.file_reader = func(path string) ([]byte, error) { return read_regular_file(path, -1) }
 	ans.filter_func = utils.IfElse(filter_func == nil, accept_all, filter_func)
 	ans.global_gitignore = ignorefiles.NewGitignore()
 	ans.global_ignore = ignorefiles.NewGitignore()
