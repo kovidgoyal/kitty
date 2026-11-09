@@ -125,10 +125,6 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :doc:`choose-files <kittens/choose-files>`: Fix a hang when previewing named
-  pipes and other special files, or when an ignore file is a named pipe. Also
-  respect the maximum size for text previews of files accessed via symlinks
-
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
   ``screen-shake-random`` shaders that shake the window in which a bell occurs,
   for example, to shake the window when a shell command fails
@@ -147,21 +143,17 @@ Detailed list of changes
   groups inside lookarounds that overlap later matches finding no matches at all
   when the text contains non-ASCII characters
 
+- :doc:`choose-files <kittens/choose-files>`: Fix hangs when previewing named
+  pipes and other special files, fix previews of videos and custom preview
+  commands not being cached or receiving the wrong path, and respect the
+  maximum text preview size for symlinks
+
 - Bash integration: Source the system wide profile and bashrc files that bash
   was actually built to use, found by scanning the bash executable, instead of
   guessing their locations in :file:`/etc`. Fixes system startup files not
   being sourced on distros that keep them elsewhere (:iss:`10819`)
 
 - Vertical tab bar: Fix clicking the blank line below a tab not activating the tab (:iss:`10810`)
-
-- :doc:`choose-files <kittens/choose-files>`: Fix concurrent custom preview
-  commands occasionally receiving the path of a different file.
-
-- :doc:`choose-files <kittens/choose-files>`: Avoid decoding video preview
-  thumbnails twice and preserve errors from ffmpeg when generating them.
-
-- :doc:`choose-files <kittens/choose-files>`: Fix previews of videos and
-  previews from custom preview commands not being cached
 
 - macOS: Add a workaround for clicking notifications not focusing the correct
   OS Window when there are multiple kitty instances because of Cocoa
