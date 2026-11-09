@@ -125,6 +125,9 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :doc:`choose-files <kittens/choose-files>`: Fix a hang when previewing named
+  pipes as text
+
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
   ``screen-shake-random`` shaders that shake the window in which a bell occurs,
   for example, to shake the window when a shell command fails
