@@ -8,10 +8,10 @@ github.com/alecthomas/repr v0.5.2 h1:SU73FTI9D1P5UNtvseffFSGmdNci/O6RsqzeXJtP0Qs
 github.com/alecthomas/repr v0.5.2/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
 github.com/bmatcuk/doublestar/v4 v4.10.4 h1:oTKkRmRuOsKMqFe1AQazd9gGBFNEpOmgKp/xzB97dnA=
 github.com/bmatcuk/doublestar/v4 v4.10.4/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
-github.com/dlclark/regexp2/v2 v2.2.1 h1:mf4KkFUj0gJuarK8P+LgiS+Lit7m9N1yAwEfPbee7R0=
-github.com/dlclark/regexp2/v2 v2.2.1/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
-github.com/ebitengine/purego v0.11.2 h1:WWiTx8rD8zYdOwSj8O/NiNbsOvSAgJMTlyV1XlbUSeU=
-github.com/ebitengine/purego v0.11.2/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
+github.com/dlclark/regexp2/v2 v2.12.0 h1:GsCgDZZeHluUDHASr2yqQonZk4Tma5LFmLH9CSsFFEE=
+github.com/dlclark/regexp2/v2 v2.12.0/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
+github.com/ebitengine/purego v0.11.3 h1:OB+JLpdm7ioymhyA+6s5kbb/uOuYycAgL8NNTFc5MLg=
+github.com/ebitengine/purego v0.11.3/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
 github.com/emmansun/base64 v0.11.0 h1:KOeJvjOSdJUv44Kb94Fmbc4nuhyQCPWbJRDv1aHhsn0=
 github.com/emmansun/base64 v0.11.0/go.mod h1:jq2ZxTcOc2bziUruYo+dcfpq/blP2VX8h/1s7GjYr1Y=
 github.com/go-ole/go-ole v1.2.6 h1:/Fpf6oFPoeFik9ty7siob0G6Ke8QvQEuVcuChpwXzpY=
@@ -50,8 +50,8 @@ github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd h1:CmH9+J6ZSsIjUK
 github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd/go.mod h1:hPqNNc0+uJM6H+SuU8sEs5K5IQeKccPqeSjfgcKGgPk=
 github.com/seancfoley/bintree v1.4.0 h1:Voxh1yBkOMWTXR4dP/hOrLYVq/yVwxaRVPc6pIj3kME=
 github.com/seancfoley/bintree v1.4.0/go.mod h1:hIUabL8OFYyFVTQ6azeajbopogQc2l5C/hiXMcemWNU=
-github.com/seancfoley/ipaddress-go v1.8.4 h1:o1pxYJ0hsxgjtBVYJfqtyIZlsDIjNaePJyYYrI9eCjU=
-github.com/seancfoley/ipaddress-go v1.8.4/go.mod h1:82ztygvPl5HAjSoz/mBcJNjTgTpCGH5hL/m8XeXFU3g=
+github.com/seancfoley/ipaddress-go v1.8.5 h1:y+GPoQLmKdrY8vmYsFsjFNVGu6i43kjCeuFFQRh3Z5E=
+github.com/seancfoley/ipaddress-go v1.8.5/go.mod h1:Nf25Bsxf4cbCN5YiQNJE/4BF5OoXumlFXhpqevFXl00=
 github.com/sgtdi/fswatcher v1.3.0 h1:2tFEnBml5EipRF4TvUP0x+T4ty2OSYlmvcnQ6dSTp04=
 github.com/sgtdi/fswatcher v1.3.0/go.mod h1:I4FUeG0e27WFw+ogs5OjZSgPKobnGrUa17EwjRjZQaY=
 github.com/shirou/gopsutil/v4 v4.26.10 h1:MJN6euesJx53MVEjscYeyRSRcrdIcy3sz5k9nosjldg=
