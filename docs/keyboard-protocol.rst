@@ -41,6 +41,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `iTerm2 terminal <https://gitlab.com/gnachman/iterm2/-/issues/10017>`__
 * The `Microsoft terminal <https://github.com/microsoft/terminal/pull/19817>`__
 * The `rio terminal <https://github.com/raphamorim/rio/commit/cd463ca37677a0fc48daa8795ea46dadc92b1e95>`__
+* The `T1K terminal <https://github.com/erango/t1k/blob/main/crates/t1k-terminal/src/input.rs>`__
 * The `TuiOS terminal (multiplexer) <https://github.com/Gaurav-Gosain/tuios/issues/26>`__
 * The `Warp terminal <https://github.com/warpdotdev/Warp/issues/8462#issuecomment-3857779488>`__
 * The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_kitty_keyboard.html>`__
