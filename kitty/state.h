@@ -345,6 +345,7 @@ typedef struct Window {
         bool is_dragging;
         double drag_start_y;
         double drag_start_scrolled_by;
+        unsigned int drag_last_scrolled_by;
         bool is_hovering;
     } scrollbar;
     struct {

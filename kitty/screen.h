@@ -148,7 +148,6 @@ typedef struct {
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     GraphicsManager *grman, *main_grman, *alt_grman;
     HistoryBuf *historybuf;
-    unsigned int history_line_added_count;
     bool *tabstops, *main_tabstops, *alt_tabstops;
     ScreenModes modes, saved_modes;
     ColorProfile *color_profile;

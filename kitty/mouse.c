@@ -598,6 +598,7 @@ start_scrollbar_drag(Window *w, double mouse_y) {
     w->scrollbar.is_dragging = true;
     w->scrollbar.drag_start_y = mouse_pane_fraction;
     w->scrollbar.drag_start_scrolled_by = screen->scrolled_by;
+    w->scrollbar.drag_last_scrolled_by = screen->scrolled_by;
 }
 
 static void
@@ -605,6 +606,9 @@ handle_scrollbar_drag(Window *w, double mouse_y) {
     if (!w || !w->scrollbar.is_dragging || !validate_scrollbar_state(w)) return;
     Screen *screen = w->render_data.screen;
     finish_scroll_animation(screen);
+    // Follow changes to scrolled_by not made by this drag, such as the viewport
+    // being kept anchored while new output is added to the scrollback
+    w->scrollbar.drag_start_scrolled_by += (double)screen->scrolled_by - (double)w->scrollbar.drag_last_scrolled_by;
     ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
     double scrollbar_height = geom.bottom - geom.top;
     double mouse_pane_fraction = (mouse_y - geom.top) / scrollbar_height;
@@ -624,6 +628,7 @@ handle_scrollbar_drag(Window *w, double mouse_y) {
         else new_scrolled_by = target;
         screen_history_scroll_to_absolute(screen, new_scrolled_by);
     }
+    w->scrollbar.drag_last_scrolled_by = screen->scrolled_by;
 }
 
 static const MouseShape scrollbar_drag_mouse_cursor = NS_RESIZE_POINTER;

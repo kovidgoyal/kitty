@@ -185,6 +185,13 @@ Detailed list of changes
 - :doc:`Pointer shapes <pointer-shapes>`: Fix the mouse pointer shape not being
   updated when a program switches to or from the alternate screen
 
+- Fix the scrolled back view sometimes jumping when new output arrives, for
+  example with programs that use synchronized output or when scrolling while
+  output is being received (:pull:`10841`)
+
+- Fix erasing the last command (``clear_terminal last_command``) doing nothing
+  when the window is scrolled back far enough, and moving the scrolled back view
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
