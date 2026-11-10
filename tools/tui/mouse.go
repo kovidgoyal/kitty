@@ -326,7 +326,10 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 		}
 	}
 	if is_hovered {
+		// Replace rather than push so the shape stack does not grow as the
+		// mouse moves between regions with different pointer shapes.
 		if s, has := lp.CurrentPointerShape(); !has || s != ps {
+			lp.PopPointerShape()
 			lp.PushPointerShape(ps)
 		}
 	} else {

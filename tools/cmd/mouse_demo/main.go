@@ -318,9 +318,16 @@ func Run(args []string) (rc int, err error) {
 				y++
 				lp.Println()
 			}
-			lp.PopPointerShape()
+			// Only change the pointer shape when it actually changes, as
+			// changing it restarts animated pointers.
+			cur, has_shape := lp.CurrentPointerShape()
 			if is_on_name {
-				lp.PushPointerShape(ps)
+				if !has_shape || cur != ps {
+					lp.PopPointerShape()
+					lp.PushPointerShape(ps)
+				}
+			} else if has_shape {
+				lp.PopPointerShape()
 			}
 		}
 

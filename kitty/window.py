@@ -96,7 +96,6 @@ from .fast_data_types import (
     set_window_title_bar_render_data,
     start_drag_with_data,
     update_ime_position_for_window,
-    update_pointer_shape,
     update_window_title,
     update_window_visibility,
     wakeup_main_loop,
@@ -1750,7 +1749,7 @@ class Window:
         if isinstance(value, (bytes, memoryview)):
             value = str(value, 'utf-8', 'replace')
         if code == 22:
-            ret = set_pointer_shape(self.screen, value, self.os_window_id)
+            ret = set_pointer_shape(self.screen, value)
             if ret:
                 self.screen.send_escape_code_to_child(ESC_OSC, '22;' + ret)
             return
@@ -3026,7 +3025,9 @@ class Window:
     # }}}
 
 
-def set_pointer_shape(screen: Screen, value: str, os_window_id: int = 0) -> str:
+def set_pointer_shape(screen: Screen, value: str) -> str:
+    # The OS pointer shape is updated once after the current batch of child
+    # output is parsed, see do_parse() in child-monitor.c
     op, ret = '=', ''
     if value and value[0] in '><=?':
         op = value[0]
@@ -3038,12 +3039,8 @@ def set_pointer_shape(screen: Screen, value: str, os_window_id: int = 0) -> str:
                     screen.change_pointer_shape(op, v)
                 except KeyError:
                     log_error(f'Ignoring unknown pointer shape name: {v!r}')
-        if os_window_id and current_focused_os_window_id() == os_window_id:
-            update_pointer_shape(os_window_id)
     elif op == '<':
         screen.change_pointer_shape('<', '')
-        if os_window_id and current_focused_os_window_id() == os_window_id:
-            update_pointer_shape(os_window_id)
     elif op == '?':
         ans = []
         for q in value.split(','):

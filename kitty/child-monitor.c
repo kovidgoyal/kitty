@@ -552,7 +552,14 @@ static bool
 do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     ParseData pd = {.dump_callback = self->dump_callback, .now = now};
     const bool had_url_highlight = screen->url_ranges.count > 0;
+    const MouseShape pointer_shape_before = screen_pointer_shape(screen);
     self->parse_func(screen, &pd, flush);
+    // Apply pointer shape changes once per parse and only if the shape
+    // actually changed, so that a program doing a pop followed by a push of
+    // the same shape does not touch the OS pointer, which would restart
+    // animated pointers. This also handles switching to/from the alternate
+    // screen, which has its own pointer shape stack.
+    if (screen_pointer_shape(screen) != pointer_shape_before) update_pointer_shape_for_kitty_window(screen->window_id);
     if (had_url_highlight && !screen->url_ranges.count) link_hover_cleared_by_output(screen);
     if (pd.input_read) {
         if (pd.write_space_created) wakeup_io_loop(self, false);

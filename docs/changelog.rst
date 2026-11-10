@@ -178,6 +178,13 @@ Detailed list of changes
 - Remote control: Fix ``kitten @ get-colors`` reporting a window's cursor text
   color as ``cursor_text`` instead of ``cursor_text_color``
 
+- :doc:`Pointer shapes <pointer-shapes>`: Fix animated mouse pointers restarting
+  their animation on every mouse movement in ``kitten mouse-demo`` and when
+  programs pop and push the same pointer shape in a single write (:iss:`10838`)
+
+- :doc:`Pointer shapes <pointer-shapes>`: Fix the mouse pointer shape not being
+  updated when a program switches to or from the alternate screen
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
