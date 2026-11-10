@@ -62,6 +62,7 @@ func TestSetColorsConfFiles(t *testing.T) {
 		"  background   #0000ff",
 		"font_size 12",
 		"cursor none",
+		"cursor_text_color background",
 		"background_opacity 0.5",
 		"wayland_titlebar_color background",
 		"include base.conf",
@@ -72,7 +73,7 @@ func TestSetColorsConfFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := map[string]any{
-		"foreground": uint32(0xff0000), "background": uint32(0xff), "cursor": nil,
+		"foreground": uint32(0xff0000), "background": uint32(0xff), "cursor": nil, "cursor_text_color": nil,
 		"selection_background": uint32(0xff00), "color1": uint32(0xaaaaaa),
 		"wayland_titlebar_color": int64(1),
 	}

@@ -322,6 +322,10 @@ func encode_special_color(key, val string) (int64, error) {
 }
 
 func set_color_in_color_map(key, val string, ans map[string]any, check_nullable, skip_nullable bool) error {
+	if key == "cursor_text_color" && val == "background" {
+		// matches cursor_text_color() in kitty/options/utils.py
+		val = "none"
+	}
 	if val == "none" {
 		if check_nullable && !nullable_colors[key] {
 			if skip_nullable {

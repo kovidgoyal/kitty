@@ -172,6 +172,9 @@ Detailed list of changes
 - ssh kitten: Fix directories such as :file:`~/.terminfo` being created world
   writable on the remote host on first connect (:iss:`10834`)
 
+- Remote control: Fix ``kitten @ set-colors`` failing on color files containing
+  ``cursor_text_color background`` (:iss:`10832`)
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
