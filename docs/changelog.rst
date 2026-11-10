@@ -148,6 +148,9 @@ Detailed list of changes
   commands not being cached or receiving the wrong path, and respect the
   maximum text preview size for symlinks
 
+- :doc:`choose-files <kittens/choose-files>`: Fix e-book previews sometimes
+  showing the metadata and cover of a different book (:pull:`10843`)
+
 - Bash integration: Source the system wide profile and bashrc files that bash
   was actually built to use, found by scanning the bash executable, instead of
   guessing their locations in :file:`/etc`. Fixes system startup files not

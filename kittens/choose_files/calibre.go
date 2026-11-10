@@ -88,15 +88,24 @@ def serve():
     read_metadata = cli.one
 
     def reply_with_id(line, lock):
-        request_id = json.loads(line)['id']
+        request = json.loads(line)
+        request_id = request['id']
         stdout = sys.__stdout__
-        with io.StringIO() as output:
-            try:
-                sys.__stdout__ = output
-                read_metadata(line, nullcontext())
-            finally:
-                sys.__stdout__ = stdout
-            response = json.loads(output.getvalue())
+        # Always reply, otherwise the request blocks until it times out.
+        try:
+            with io.StringIO() as output:
+                try:
+                    sys.__stdout__ = output
+                    read_metadata(line, nullcontext())
+                finally:
+                    sys.__stdout__ = stdout
+                # The response is the last line, ignore any stray output before it.
+                lines = output.getvalue().splitlines()
+            response = json.loads(lines[-1]) if lines else None
+            if not isinstance(response, dict):
+                raise ValueError('no metadata response from calibre')
+        except Exception as e:
+            response = {'path': request['path'], 'error': f'reading metadata failed: {e}'}
         with lock:
             print(json.dumps({'id': request_id, 'response': response}), file=stdout, flush=True)
 
@@ -259,11 +268,15 @@ type calibre_renderer struct {
 }
 
 func unmarshal_calibre_response(data []byte, path string) (*CalibreResponse, error) {
+	return unmarshal_calibre_response_for(data, path, func(p string) bool { return p == path })
+}
+
+func unmarshal_calibre_response_for(data []byte, path string, is_for_path func(string) bool) (*CalibreResponse, error) {
 	var ans CalibreResponse
 	if err := json.Unmarshal(data, &ans); err != nil {
 		return nil, err
 	}
-	if ans.Path != path {
+	if !is_for_path(ans.Path) {
 		return nil, fmt.Errorf("calibre metadata is for %q, expected %q", ans.Path, path)
 	}
 	if ans.Error != "" {
@@ -272,12 +285,34 @@ func unmarshal_calibre_response(data []byte, path string) (*CalibreResponse, err
 	return &ans, nil
 }
 
+// resolve_path resolves a path the same way the disk cache does when
+// computing its key, so that paths sharing a cache entry compare equal.
+func resolve_path(path string) (string, error) {
+	path, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Abs(path)
+}
+
 func (c calibre_renderer) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[CALIBRE_METADATA_KEY])
 	if err != nil {
 		return nil, err
 	}
-	ans, err := unmarshal_calibre_response(data, c.path)
+	// The disk cache key resolves symlinks, so the cached metadata may
+	// have been generated for a different path to the same file.
+	ans, err := unmarshal_calibre_response_for(data, c.path, func(cached_path string) bool {
+		if cached_path == c.path {
+			return true
+		}
+		a, err := resolve_path(cached_path)
+		if err != nil {
+			return false
+		}
+		b, err := resolve_path(c.path)
+		return err == nil && a == b
+	})
 	if err != nil {
 		return nil, err
 	}

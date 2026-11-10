@@ -116,3 +116,34 @@ func TestCalibreCachedMetadataPath(t *testing.T) {
 		t.Fatalf("expected cached title %q, got %q", "Book", title)
 	}
 }
+
+func TestCalibreCachedMetadataSymlink(t *testing.T) {
+	tdir := t.TempDir()
+	book := filepath.Join(tdir, "book.epub")
+	link := filepath.Join(tdir, "link.epub")
+	other := filepath.Join(tdir, "other.epub")
+	for _, p := range []string{book, other} {
+		if err := os.WriteFile(p, []byte("x"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(book, link); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(CalibreResponse{Path: link, Metadata: CalibreMetadata{Title: "Book"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(tdir, CALIBRE_METADATA_KEY)
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{CALIBRE_METADATA_KEY: path}
+	// The disk cache shares one entry between a symlink and its target
+	if _, err := (calibre_renderer{path: book}).Unmarshall(files); err != nil {
+		t.Fatalf("rejected metadata cached via a symlink: %v", err)
+	}
+	if _, err := (calibre_renderer{path: other}).Unmarshall(files); err == nil {
+		t.Fatal("accepted metadata for another book")
+	}
+}
