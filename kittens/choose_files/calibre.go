@@ -32,6 +32,27 @@ type calibre_server_process struct {
 	stdout          io.ReadCloser
 	stdin           io.WriteCloser
 	file_extensions *utils.Set[string]
+	reader_done     chan struct{}
+	lock            sync.Mutex
+	request_id      uint64
+	pending         map[uint64]chan calibre_result
+	read_err        error
+}
+
+type calibre_request struct {
+	ID    uint64 `json:"id"`
+	Path  string `json:"path"`
+	Cover string `json:"cover,omitempty"`
+}
+
+type calibre_reply struct {
+	ID       uint64          `json:"id"`
+	Response json.RawMessage `json:"response"`
+}
+
+type calibre_result struct {
+	data json.RawMessage
+	err  error
 }
 
 type CalibreMetadata struct {
@@ -53,85 +74,163 @@ type CalibreResponse struct {
 	Metadata  CalibreMetadata `json:"metadata"`
 }
 
-func ReadLineWithTimeout(r io.Reader, timeout time.Duration) (string, error) {
-	type result struct {
-		line string
-		err  error
+// The path can be reused, and calibre only echoes the cover path if it writes
+// a cover. Attach a request ID to every response in the forked worker.
+const calibre_server_program = `
+def serve():
+    # calibre-debug runs -c with exec() inside a function. Keep imports local.
+    import io
+    import json
+    import sys
+    from contextlib import nullcontext
+    from calibre.ebooks.metadata import cli
+
+    read_metadata = cli.one
+
+    def reply_with_id(line, lock):
+        request_id = json.loads(line)['id']
+        stdout = sys.__stdout__
+        with io.StringIO() as output:
+            try:
+                sys.__stdout__ = output
+                read_metadata(line, nullcontext())
+            finally:
+                sys.__stdout__ = stdout
+            response = json.loads(output.getvalue())
+        with lock:
+            print(json.dumps({'id': request_id, 'response': response}), file=stdout, flush=True)
+
+    cli.one = reply_with_id
+    cli.simple_metadata_server()
+
+serve()
+`
+
+func new_calibre_server_process(proc *exec.Cmd, stdin io.WriteCloser, stdout io.ReadCloser) *calibre_server_process {
+	s := &calibre_server_process{
+		proc: proc, stdin: stdin, stdout: stdout, reader_done: make(chan struct{}),
+		pending: make(map[uint64]chan calibre_result),
 	}
-	ch := make(chan result, 1)
+	go s.read_replies()
+	return s
+}
 
-	go func() {
-		br := bufio.NewReader(r)
-		line, err := br.ReadString('\n')
-		ch <- result{strings.TrimRight(line, "\n"), err}
-	}()
-
-	select {
-	case res := <-ch:
-		return res.line, res.err
-	case <-time.After(timeout):
-		return "", os.ErrDeadlineExceeded
+func (s *calibre_server_process) read_replies() {
+	defer close(s.reader_done)
+	reader := bufio.NewReader(s.stdout)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			s.lock.Lock()
+			s.read_err = fmt.Errorf("error reading from calibre metadata server: %w", err)
+			for _, ch := range s.pending {
+				ch <- calibre_result{err: s.read_err}
+			}
+			clear(s.pending)
+			s.lock.Unlock()
+			return
+		}
+		var reply calibre_reply
+		if err := json.Unmarshal(line, &reply); err != nil {
+			continue
+		}
+		s.lock.Lock()
+		if ch := s.pending[reply.ID]; ch != nil {
+			delete(s.pending, reply.ID)
+			ch <- calibre_result{data: reply.Response}
+		}
+		s.lock.Unlock()
 	}
 }
 
-var calibre_server = sync.OnceValues(func() (ans *calibre_server_process, err error) {
+func (s *calibre_server_process) request(path, cover string, timeout time.Duration) (json.RawMessage, error) {
+	s.lock.Lock()
+	if err := s.read_err; err != nil {
+		s.lock.Unlock()
+		return nil, err
+	}
+	s.request_id++
+	id := s.request_id
+	ch := make(chan calibre_result, 1)
+	s.pending[id] = ch
+	s.lock.Unlock()
+	defer func() {
+		s.lock.Lock()
+		delete(s.pending, id)
+		s.lock.Unlock()
+	}()
+
+	payload, err := json.Marshal(calibre_request{ID: id, Path: path, Cover: cover})
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.stdin.Write(append(payload, '\n')); err != nil {
+		return nil, fmt.Errorf("error writing to calibre metadata server: %w", err)
+	}
+	select {
+	case reply := <-ch:
+		return reply.data, reply.err
+	case <-time.After(timeout):
+		return nil, os.ErrDeadlineExceeded
+	}
+}
+
+func (s *calibre_server_process) close() {
+	s.stdin.Close()
+	s.stdout.Close()
+	// The request workers share the server's process group and can outlive it.
+	unix.Kill(-s.proc.Process.Pid, unix.SIGKILL)
+	<-s.reader_done
+	s.proc.Wait()
+}
+
+var calibre_server = sync.OnceValues(func() (_ *calibre_server_process, err error) {
 	defer func() { calibre_server_load_finished.Store(true) }()
-	ans = &calibre_server_process{}
-	ans.proc = exec.Command("calibre-debug", "-c", "from calibre.ebooks.metadata.cli import *; simple_metadata_server()")
-	ans.proc.Stderr = nil
-	if ans.stdout, err = ans.proc.StdoutPipe(); err != nil {
+	cmd := exec.Command("calibre-debug", "-c", calibre_server_program)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
 		return nil, err
 	}
-	if ans.stdin, err = ans.proc.StdinPipe(); err != nil {
-		ans.stdout.Close()
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		stdout.Close()
 		return nil, err
 	}
-	ans.proc.SysProcAttr = &unix.SysProcAttr{Setsid: true}
-	if err = ans.proc.Start(); err != nil {
-		err = fmt.Errorf("calibre-debug executable not found in PATH, you must install the calibre program to preview these file types: %w", err)
-		return
+	cmd.SysProcAttr = &unix.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("calibre-debug executable not found in PATH, you must install the calibre program to preview these file types: %w", err)
 	}
+	server := new_calibre_server_process(cmd, stdin, stdout)
 	calibre_needs_cleanup.Store(true)
-	payload, _ := json.Marshal(map[string]string{"path": ""})
-	if _, err = ans.stdin.Write(append(payload, '\n')); err != nil {
-		err = fmt.Errorf("error writing to calibre metadata server: %w", err)
-		return
-	}
-	line, err := ReadLineWithTimeout(ans.stdout, 2*time.Second)
+	defer func() {
+		if err != nil {
+			server.close()
+		}
+	}()
+	data, err := server.request("", "", 2*time.Second)
 	if err != nil {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
-			err = fmt.Errorf("timed out waiting for response from calibre metadata server, make sure you are using calibre version >= 8.16")
-		} else {
-			err = fmt.Errorf("error reading from calibre metadata server: %w", err)
+			return nil, fmt.Errorf("timed out waiting for response from calibre metadata server, make sure you are using calibre version >= 8.16")
 		}
-		return
+		return nil, err
 	}
-	var r CalibreResponse
-	if err = json.Unmarshal([]byte(line), &r); err != nil {
-		err = fmt.Errorf("unexpected response from calibre metadata server: %#v", line)
-		return
+	r, err := unmarshal_calibre_response(data, "")
+	if err != nil {
+		return nil, fmt.Errorf("unexpected response from calibre metadata server: %w", err)
 	}
-	ans.file_extensions = utils.NewSet[string](len(r.Filetypes))
+	server.file_extensions = utils.NewSet[string](len(r.Filetypes))
 	for _, ft := range r.Filetypes {
-		ans.file_extensions.Add("." + ft)
+		server.file_extensions.Add("." + ft)
 	}
-	return
+	return server, nil
 })
 
 func calibre_cleanup() {
-	if !calibre_needs_cleanup.Load() {
+	if !calibre_needs_cleanup.Swap(false) {
 		return
 	}
-	calibre_needs_cleanup.Store(false)
-	calibre, _ := calibre_server()
-	if calibre.stdin != nil {
-		calibre.stdin.Close()
-	}
-	if calibre.stdout != nil {
-		calibre.stdout.Close()
-	}
-	if calibre.proc != nil {
-		calibre.proc.Wait()
+	if calibre, err := calibre_server(); err == nil {
+		calibre.close()
 	}
 }
 
@@ -155,57 +254,66 @@ func IsSupportedByCalibre(path string) bool {
 
 const CALIBRE_METADATA_KEY = "calibre-metadata.json"
 
-type calibre_renderer int
+type calibre_renderer struct {
+	path string
+}
+
+func unmarshal_calibre_response(data []byte, path string) (*CalibreResponse, error) {
+	var ans CalibreResponse
+	if err := json.Unmarshal(data, &ans); err != nil {
+		return nil, err
+	}
+	if ans.Path != path {
+		return nil, fmt.Errorf("calibre metadata is for %q, expected %q", ans.Path, path)
+	}
+	if ans.Error != "" {
+		return nil, errors.New(ans.Error)
+	}
+	return &ans, nil
+}
 
 func (c calibre_renderer) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[CALIBRE_METADATA_KEY])
 	if err != nil {
 		return nil, err
 	}
-	var ans CalibreResponse
-	if err = json.Unmarshal(data, &ans); err != nil {
+	ans, err := unmarshal_calibre_response(data, c.path)
+	if err != nil {
 		return nil, err
 	}
-	return &ans, nil
+	return ans, nil
 }
 
 func (c calibre_renderer) Render(path string) (m map[string][]byte, mi metadata, img *images.ImageData, err error) {
-	cpath, err := os.CreateTemp("", "")
-	if err != nil {
-		return
-	}
-	defer func() {
-		cpath.Close()
-		os.Remove(cpath.Name())
-	}()
 	calibre, err := calibre_server()
 	if err != nil {
 		return
 	}
-	payload, err := json.Marshal(map[string]string{"path": path, "cover": cpath.Name()})
+	cover_dir, err := os.MkdirTemp("", "kitty-calibre-")
 	if err != nil {
 		return
 	}
-	calibre.stdin.Write(append(payload, '\n'))
-	line, err := ReadLineWithTimeout(calibre.stdout, 30*time.Second)
+	// A worker finishing after the request times out cannot recreate this directory.
+	defer os.RemoveAll(cover_dir)
+	cover_path := filepath.Join(cover_dir, "cover")
+	data, err := calibre.request(path, cover_path, 30*time.Second)
 	if err != nil {
 		return
 	}
-	lb := []byte(line)
-	var reply CalibreResponse
-	if err = json.Unmarshal(lb, &reply); err != nil {
+	reply, err := unmarshal_calibre_response(data, path)
+	if err != nil {
 		return
 	}
-	if reply.Cover == cpath.Name() {
+	if reply.Cover == cover_path {
 		var ip ImagePreviewRenderer
-		if m, mi, img, err = ip.Render(cpath.Name()); err != nil {
+		if m, mi, img, err = ip.Render(cover_path); err != nil {
 			return
 		}
 	} else {
 		m = make(map[string][]byte)
 	}
-	mi.custom = &reply
-	m[CALIBRE_METADATA_KEY] = lb
+	mi.custom = reply
+	m[CALIBRE_METADATA_KEY] = data
 	return
 }
 
@@ -238,7 +346,7 @@ func (c calibre_renderer) String() string {
 func NewCalibrePreview(
 	abspath string, metadata fs.FileInfo, opts Settings, WakeupMainThread func() bool,
 ) Preview {
-	c := calibre_renderer(0)
+	c := calibre_renderer{path: abspath}
 	if ans, err := NewImagePreview(abspath, metadata, opts, WakeupMainThread, c); err == nil {
 		return ans
 	} else {
