@@ -2581,7 +2581,7 @@ class TestScreen(BaseTest):
         self.assertNotIn('mark1_background', cp.as_dict())
 
     def test_color_profile(self):
-        from kitty.fast_data_types import NULL_COLOR_VALUE, patch_color_profiles
+        from kitty.fast_data_types import COLOR_LAYER_WINDOW, NULL_COLOR_VALUE, patch_color_profiles
 
         self.ae(NULL_COLOR_VALUE, 0xFFFFFFFF)
         opts = self.set_options({'palette_generate': 'fixed'})
@@ -2641,6 +2641,11 @@ class TestScreen(BaseTest):
         # the generated colors are re-generated from the new configured colors
         opts.background, opts.foreground = Color(255, 255, 255), Color(0, 0, 0)
         q({'213': '?'}, {'213': ColorProfile(opts).as_color(213 << 8 | 1)})
+        # as_dict() uses the same names as kitty.conf
+        patch_color_profiles({'cursor_text_color': 0x123456, 'cursor': 0xABCDEF}, None, (s.color_profile,), COLOR_LAYER_WINDOW)
+        d = s.color_profile.as_dict()
+        self.ae((d['cursor_text_color'], d['cursor']), (0x123456, 0xABCDEF))
+        self.assertNotIn('cursor_text', d)
 
     def test_color_layers(self):
         from kitty.fast_data_types import COLOR_LAYER_GLOBAL, COLOR_LAYER_OVERRIDE, COLOR_LAYER_WINDOW, patch_color_profiles

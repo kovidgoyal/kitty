@@ -797,7 +797,7 @@ as_dict(ColorProfile *self, PyObject *args UNUSED) {
     D(default_fg, foreground);
     D(default_bg, background);
     D(cursor_color, cursor);
-    D(cursor_text_color, cursor_text);
+    D(cursor_text_color, cursor_text_color);
     D(highlight_fg, selection_foreground);
     D(highlight_bg, selection_background);
     D(visual_bell_color, visual_bell_color);

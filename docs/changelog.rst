@@ -175,6 +175,9 @@ Detailed list of changes
 - Remote control: Fix ``kitten @ set-colors`` failing on color files containing
   ``cursor_text_color background`` (:iss:`10832`)
 
+- Remote control: Fix ``kitten @ get-colors`` reporting a window's cursor text
+  color as ``cursor_text`` instead of ``cursor_text_color``
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
