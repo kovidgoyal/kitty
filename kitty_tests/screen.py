@@ -1215,6 +1215,40 @@ class TestScreen(BaseTest):
         self.ae(s.text_for_selection(False, True), ('1234 ', '5'))
         self.ae(s.text_for_selection(True, True), ('1234 ', '5', ''))
 
+    def test_scrollback_snapshot_after_pending_output(self):
+        for position in (0.5, 10, 10.5):
+            with self.subTest(position=position):
+                s = self.create_screen(cols=10, lines=3, scrollback=50, options={'pixel_scroll': True})
+                for i in range(40):
+                    parse_bytes(s, f'row{i:03d}\r\n'.encode())
+                s.update_only_line_graphics_data()
+                s.scroll_to_absolute(position)
+                old_scroll, old_pixel = s.scrolled_by, s.pixel_scroll_offset_y
+                # Two synchronized frames can arrive before the GPU renders.
+                parse_bytes(s, b'\x1b[?2026hnext\r\n\x1b[?2026l\x1b[?2026h')
+                self.ae(s.scrolled_by, old_scroll + 1)
+                self.ae(s.pixel_scroll_offset_y, old_pixel)
+                s.pause_rendering(False, 0)
+                s.update_only_line_graphics_data()
+                self.ae(s.scrolled_by, old_scroll + 1)
+
+    def test_scrollback_navigation_after_pending_output(self):
+        for position in (0, 0.5, 10, 10.5):
+            with self.subTest(position=position):
+                s = self.create_screen(cols=10, lines=3, scrollback=50, options={'pixel_scroll': True})
+                for i in range(40):
+                    parse_bytes(s, f'row{i:03d}\r\n'.encode())
+                s.update_only_line_graphics_data()
+                s.scroll_to_absolute(5)
+                parse_bytes(s, b'next\r\n')
+                s.scroll_to_absolute(position)
+                scroll, pixel = s.scrolled_by, s.pixel_scroll_offset_y
+                self.assertTrue(s.pause_rendering(True, 5000))
+                self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (scroll, pixel))
+                s.pause_rendering(False, 0)
+                s.update_only_line_graphics_data()
+                self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (scroll, pixel))
+
     def test_apply_selection_with_paused_rendering_and_scrollback(self):
         # Regression test: in 0.46.2 the paused-rendering branch of
         # apply_selection passed the (possibly negative) loop variable y

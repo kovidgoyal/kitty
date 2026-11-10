@@ -2921,6 +2921,9 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
 static void
 dirty_scroll(Screen *self) {
     self->scroll_changed = true;
+    // Navigation establishes a position in the current history, including any
+    // output received before it. Do not compensate for those lines again.
+    self->history_line_added_count = 0;
     screen_pause_rendering(self, false, 0);
 }
 
@@ -3871,6 +3874,14 @@ copy_selections(Selections *dest, const Selections *src) {
 
 static Line *render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, bool *is_history);
 
+static void
+update_scroll_position(Screen *self) {
+    // A snapshot can precede the next GPU frame. Keep it anchored to the
+    // same history even when another synchronized frame arrives first.
+    if (self->scrolled_by || self->pixel_scroll_offset_y) self->scrolled_by = MIN(self->scrolled_by + self->history_line_added_count, self->historybuf->count);
+    self->history_line_added_count = 0;
+}
+
 bool
 screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (!pause) {
@@ -3893,6 +3904,7 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     if (!self->paused_rendering.grman) self->paused_rendering.grman = grman_alloc(true);
     if (!self->paused_rendering.grman) return false;
     if (for_in_ms <= 0) for_in_ms = 2000;
+    update_scroll_position(self);
     self->paused_rendering.expires_at = monotonic() + ms_to_monotonic_t(for_in_ms);
     self->paused_rendering.inverted = self->modes.mDECSCNM;
     self->paused_rendering.scrolled_by = self->scrolled_by;
@@ -4149,9 +4161,8 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
 // exclusively for testing unicode placeholders.
 static void
 screen_update_only_line_graphics_data(Screen *self) {
-    unsigned int history_line_added_count = self->history_line_added_count;
     index_type lnum = 0;
-    if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
+    update_scroll_position(self);
     screen_reset_dirty(self);
     self->scroll_changed = false;
     const unsigned int render_lines = render_lines_for_screen(self);
@@ -4195,11 +4206,10 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         return;
     }
     const bool is_overlay_active = screen_is_overlay_active(self);
-    unsigned int history_line_added_count = self->history_line_added_count;
+    update_scroll_position(self);
     screen_reset_dirty(self);
     update_overlay_position(self);
     const bool force_history_render = pixel_scroll_enabled(self) && self->scroll_changed;
-    if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     self->scroll_changed = false;
     const unsigned int render_lines = render_lines_for_screen(self);
     const int render_row_offset = pixel_scroll_enabled(self);

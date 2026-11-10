@@ -185,6 +185,9 @@ Detailed list of changes
 - :doc:`Pointer shapes <pointer-shapes>`: Fix the mouse pointer shape not being
   updated when a program switches to or from the alternate screen
 
+- Keep scrolled-back content stable when consecutive synchronized output
+  updates arrive before the next render.
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
