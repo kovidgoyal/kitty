@@ -169,6 +169,9 @@ Detailed list of changes
   selection destroys its window before kitty can reply. X errors no longer
   cause kitty to exit, they are reported instead (:iss:`9248`)
 
+- ssh kitten: Fix directories such as :file:`~/.terminfo` being created world
+  writable on the remote host on first connect (:iss:`10834`)
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

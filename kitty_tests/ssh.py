@@ -303,6 +303,10 @@ copy --exclude **/w.* --exclude **/r d1
             self.ae(os.readlink(os.path.join(dest, 'link')), 'private/nested')
             self.ae(os.readlink(os.path.join(dest, 'broken')), 'missing')
         self.ae(glob.glob(os.path.join(remote_home, '.kitty-ssh-kitten-untar-*')), [])
+        # directories not present in the tarball must be created respecting the umask
+        # https://github.com/kovidgoyal/kitty/issues/10834
+        for name in ('.terminfo', '.terminfo/x'):
+            self.ae(stat.S_IMODE(os.lstat(os.path.join(remote_home, name)).st_mode), 0o777 & ~int(umask, 8), (sh, umask, name))
 
     @retry_on_failure()
     def test_ssh_env_vars(self):

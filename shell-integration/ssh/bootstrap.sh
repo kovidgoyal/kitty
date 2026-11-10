@@ -114,10 +114,9 @@ untar_and_read_env() {
     tdir=$(command mktemp -d "$HOME/.kitty-ssh-kitten-untar-XXXXXXXXXXXX")
     [ $? = 0 ] || die "Creating temp directory failed"
     # suppress STDERR for tar as tar prints various warnings if for instance, timestamps are in the future
-    old_umask=$(umask)
-    umask 000
+    # -p makes tar restore the exact permissions of the entries in the tarball,
+    # directories not in the tarball are created respecting the user's umask
     read_base64_from_tty | base64_decode | command tar "xpzf" "-" "-C" "$tdir" 2> /dev/null
-    umask "$old_umask"
     . "$tdir/bootstrap-utils.sh"
     . "$tdir/data.sh"
     [ -z "$KITTY_SSH_KITTEN_DATA_DIR" ] && die "Failed to read SSH data from tty"
