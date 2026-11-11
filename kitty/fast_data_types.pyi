@@ -1123,6 +1123,22 @@ class Cursor:
     text_blink: bool
     shape: int
 
+class ImageLayerRect(TypedDict):
+    left: float
+    top: float
+    right: float
+    bottom: float
+
+class ImageLayer(TypedDict):
+    src_rect: ImageLayerRect
+    dest_rect: ImageLayerRect
+    group_count: int
+    z_index: int
+    image_id: int
+    ref_id: int
+    indexed_px_sz: int
+    is_unscaled: bool
+
 class Screen:
     color_profile: ColorProfile
     columns: int
@@ -1327,6 +1343,10 @@ class Screen:
     def change_pointer_shape(self, op: str, name: str) -> None: ...
     def bell(self) -> None: ...
     def pause_rendering(self, pause: bool = True, for_how_long_in_ms: int = 100) -> bool: ...
+    def rendered_scroll_state(self) -> Tuple[int, int, int]: ...
+    def scrollbar_geometry(self) -> Tuple[float, float]: ...
+    def has_scrollbar(self, is_hovering: bool) -> bool: ...
+    def update_graphics_layers(self) -> Tuple[ImageLayer, ...]: ...
 
 def set_tab_bar_render_data(os_window_id: int, screen: Screen, left: int, top: int, right: int, bottom: int) -> None:
     pass

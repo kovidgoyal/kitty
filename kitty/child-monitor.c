@@ -836,7 +836,8 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     ans->multicursor_count = 0;
     ans->cursor_opacity = 1;
     ans->text_blink_opacity = 1;
-    if (!rd->screen->scrolled_by) {
+    // Use the scroll position of the rendered frame so the cursor matches the frozen text while rendering is paused
+    if (!rendered_scrolled_by(rd->screen)) {
         ans->multicursor_count = screen_multi_cursor_count(rd->screen);
         ans->is_visible = screen_is_cursor_visible(rd->screen);
     }

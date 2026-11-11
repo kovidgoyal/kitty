@@ -3971,6 +3971,8 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     self->paused_rendering.expires_at = monotonic() + ms_to_monotonic_t(for_in_ms);
     self->paused_rendering.inverted = self->modes.mDECSCNM;
     self->paused_rendering.scrolled_by = self->scrolled_by;
+    self->paused_rendering.history_count = self->historybuf->count;
+    self->paused_rendering.on_main_screen = self->linebuf == self->main_linebuf;
     self->paused_rendering.cell_data_updated = false;
     self->paused_rendering.cursor_visible = self->modes.mDECTCEM;
     // Preserve the pixel scroll geometry so that pausing does not cause the rendered content to jump, see #10794
@@ -4559,12 +4561,53 @@ screen_is_cell_selected(Screen *self, index_type x, index_type y) {
     return false;
 }
 
+bool
+screen_update_graphics_layers(Screen *self) {
+    // While rendering is paused, the frozen image placements must be positioned using the
+    // scroll position captured with the frozen text, not the live one, which new output may have changed
+    GraphicsManager *grman = self->paused_rendering.expires_at ? self->paused_rendering.grman : self->grman;
+    return grman_update_layers(
+        grman,
+        rendered_scrolled_by(self),
+        scroll_offset_lines_for_screen(self),
+        -1.f,
+        1.f,
+        2.f / self->columns,
+        2.f / self->lines,
+        self->columns,
+        self->lines,
+        self->cell_size);
+}
+
+bool
+screen_has_scrollbar(const Screen *self, bool is_hovering) {
+    if (!rendered_on_main_screen(self) || !rendered_history_count(self)) return false;
+    const bool scrolled = rendered_scrolled_by(self) > 0;
+    switch (OPT(scrollbar)) {
+        case SCROLLBAR_NEVER: return false;
+        case SCROLLBAR_ALWAYS: return true;
+        case SCROLLBAR_ON_SCROLLED: return scrolled;
+        case SCROLLBAR_ON_HOVERED: return is_hovering;
+        case SCROLLBAR_ON_SCROLL_AND_HOVER: return scrolled && is_hovering;
+        case SCROLLBAR_ON_SCROLL_OR_HOVER: return scrolled || is_hovering;
+    }
+    return false;
+}
+
+void
+screen_scrollbar_geometry(const Screen *self, float *handle_position, float *visible_fraction) {
+    // handle_position is 0 at the bottom of the scrollback and 1 at the top
+    const unsigned history_count = rendered_history_count(self);
+    *handle_position = (float)((rendered_scrolled_by(self) + (double)scroll_offset_lines_for_screen(self)) / MAX(1u, history_count));
+    *visible_fraction = (float)self->lines / (float)(self->lines + history_count);
+}
+
 void
 screen_apply_selection(Screen *self, void *address_, size_t size) {
     uint8_t *address = address_;
     memset(address, 0, size);
     const unsigned offset = pixel_scroll_enabled(self);
-    const unsigned scrolled_by = self->paused_rendering.expires_at ? self->paused_rendering.scrolled_by : self->scrolled_by;
+    const unsigned scrolled_by = rendered_scrolled_by(self);
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
     for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, offset, scrolled_by);
     sel->last_rendered_count = sel->count;
@@ -7287,8 +7330,33 @@ current_selections(Screen *self, PyObject *a UNUSED) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)render_lines_for_screen(self) * self->columns);
     if (!ans) return NULL;
     screen_apply_selection(self, PyBytes_AS_STRING(ans), PyBytes_GET_SIZE(ans));
-    self->last_rendered.scrolled_by = self->scrolled_by; // mimic what the renderer does
+    self->last_rendered.scrolled_by = rendered_scrolled_by(self); // mimic what the renderer does
     return ans;
+}
+
+static PyObject *
+update_graphics_layers(Screen *self, PyObject *a UNUSED) {
+    screen_update_graphics_layers(self);
+    return grman_render_data_as_python(self->paused_rendering.expires_at ? self->paused_rendering.grman : self->grman);
+}
+
+static PyObject *
+rendered_scroll_state(Screen *self, PyObject *a UNUSED) {
+    return Py_BuildValue("III", rendered_scrolled_by(self), rendered_pixel_scroll_offset_y(self), rendered_history_count(self));
+}
+
+static PyObject *
+has_scrollbar(Screen *self, PyObject *is_hovering) {
+    const int hovering = PyObject_IsTrue(is_hovering);
+    if (hovering < 0) return NULL;
+    return Py_NewRef(screen_has_scrollbar(self, hovering) ? Py_True : Py_False);
+}
+
+static PyObject *
+scrollbar_geometry(Screen *self, PyObject *a UNUSED) {
+    float handle_position, visible_fraction;
+    screen_scrollbar_geometry(self, &handle_position, &visible_fraction);
+    return Py_BuildValue("ff", handle_position, visible_fraction);
 }
 
 static PyObject *
@@ -7538,8 +7606,10 @@ static PyMethodDef methods[] = {
                             MND(paste, METH_O) MND(paste_bytes, METH_O) MND(focus_changed, METH_O) MND(has_focus, METH_NOARGS)
                                 MND(has_activity_since_last_focus, METH_NOARGS) MND(copy_colors_from, METH_O) MND(set_marker, METH_VARARGS)
                                     MND(marked_cells, METH_NOARGS) MND(scroll_to_next_mark, METH_VARARGS) MND(update_only_line_graphics_data, METH_NOARGS)
-                                        MND(bell, METH_NOARGS) MND(current_selections, METH_NOARGS) MND(is_selection_dirty, METH_NOARGS){
-                                            "select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
+                                        MND(bell, METH_NOARGS) MND(current_selections, METH_NOARGS) MND(update_graphics_layers, METH_NOARGS)
+                                            MND(rendered_scroll_state, METH_NOARGS) MND(scrollbar_geometry, METH_NOARGS) MND(has_scrollbar, METH_O)
+                                                MND(is_selection_dirty,
+                                                    METH_NOARGS){"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL} /* Sentinel */
 };

@@ -3071,12 +3071,8 @@ W(shm_unlink) {
     Py_RETURN_NONE;
 }
 
-W(update_layers) {
-    unsigned int scrolled_by, sx, sy;
-    float xstart, ystart, dx, dy, scroll_offset_lines = 0.0f;
-    CellPixelSize cell;
-    PA("IffffIIII|f", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy, &cell.width, &cell.height, &scroll_offset_lines);
-    grman_update_layers(self, scrolled_by, scroll_offset_lines, xstart, ystart, dx, dy, sx, sy, cell);
+PyObject *
+grman_render_data_as_python(GraphicsManager *self) {
     PyObject *ans = PyTuple_New(self->render_data.count);
     for (size_t i = 0; i < self->render_data.count; i++) {
         ImageRenderData *r = self->render_data.item + i;
@@ -3105,6 +3101,15 @@ W(update_layers) {
 #undef R
     }
     return ans;
+}
+
+W(update_layers) {
+    unsigned int scrolled_by, sx, sy;
+    float xstart, ystart, dx, dy, scroll_offset_lines = 0.0f;
+    CellPixelSize cell;
+    PA("IffffIIII|f", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy, &cell.width, &cell.height, &scroll_offset_lines);
+    grman_update_layers(self, scrolled_by, scroll_offset_lines, xstart, ystart, dx, dy, sx, sy, cell);
+    return grman_render_data_as_python(self);
 }
 
 #define M(x, va) {#x, (PyCFunction)py##x, va, ""}

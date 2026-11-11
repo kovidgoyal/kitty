@@ -63,12 +63,6 @@ row_offset_for_screen(const Screen *screen) {
     return -1.f + (float)(rendered_pixel_scroll_offset_y(screen) / (double)screen->cell_size.height);
 }
 
-static inline float
-scroll_offset_lines_for_screen(const Screen *screen) {
-    if (!pixel_scroll_enabled(screen) || !screen->cell_size.height) return 0.f;
-    return (float)(rendered_pixel_scroll_offset_y(screen) / (double)screen->cell_size.height);
-}
-
 // Sprites {{{
 typedef struct {
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
@@ -1394,31 +1388,17 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
         changed = true;                                                                     \
     }
 
-#define update_graphics_data(grman)             \
-    grman_update_layers(                        \
-        grman,                                  \
-        screen->scrolled_by,                    \
-        scroll_offset_lines_for_screen(screen), \
-        -1.f,                                   \
-        1.f,                                    \
-        2.f / screen->columns,                  \
-        2.f / screen->lines,                    \
-        screen->columns,                        \
-        screen->lines,                          \
-        screen->cell_size)
-
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) {
             update_selection_data;
-            update_graphics_data(screen->paused_rendering.grman);
+            screen_update_graphics_layers(screen);
         }
         screen->paused_rendering.cell_data_updated = true;
-        screen->last_rendered.scrolled_by = screen->paused_rendering.scrolled_by;
     } else {
         if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen)) update_selection_data;
-        if (update_graphics_data(screen->grman)) changed = true;
-        screen->last_rendered.scrolled_by = screen->scrolled_by;
+        if (screen_update_graphics_layers(screen)) changed = true;
     }
+    screen->last_rendered.scrolled_by = rendered_scrolled_by(screen);
 #undef update_selection_data
 #undef update_cell_data
     screen->last_rendered.columns = screen->columns;
@@ -1631,16 +1611,7 @@ draw_drag_preview_overlay(const UIRenderData *ui) {
 
 static bool
 has_scrollbar(Window *w, Screen *screen) {
-    if (screen->linebuf != screen->main_linebuf || !screen->historybuf->count) return false;
-    switch (OPT(scrollbar)) {
-        case SCROLLBAR_NEVER: return false;
-        case SCROLLBAR_ALWAYS: return true;
-        case SCROLLBAR_ON_SCROLLED: return screen->scrolled_by > 0;
-        case SCROLLBAR_ON_HOVERED: return w->scrollbar.is_hovering;
-        case SCROLLBAR_ON_SCROLL_AND_HOVER: return screen->scrolled_by > 0 && w->scrollbar.is_hovering;
-        case SCROLLBAR_ON_SCROLL_OR_HOVER: return screen->scrolled_by > 0 || w->scrollbar.is_hovering;
-    }
-    return false;
+    return screen_has_scrollbar(screen, w->scrollbar.is_hovering);
 }
 
 static unsigned
@@ -1910,9 +1881,8 @@ draw_scrollbar(const UIRenderData *ui) {
     if (!window || !screen || !has_scrollbar(window, screen)) return;
 
     color_type bar_color = scrollbar_color(screen, OPT(scrollbar_handle_color)), track_color = scrollbar_color(screen, OPT(scrollbar_track_color));
-    double cell_frac = (double)screen->pixel_scroll_offset_y / screen->cell_size.height;
-    if (!OPT(pixel_scroll)) cell_frac = 0;
-    float bar_frac = (float)(screen->scrolled_by + cell_frac) / MAX(1u, (float)screen->historybuf->count);
+    float bar_frac, visible_fraction;
+    screen_scrollbar_geometry(screen, &bar_frac, &visible_fraction);
     float opacity = OPT(scrollbar_handle_opacity);
     float track_opacity = window->scrollbar.is_hovering ? OPT(scrollbar_track_hover_opacity) : OPT(scrollbar_track_opacity);
     GLsizei scrollbar_width_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
@@ -1931,7 +1901,6 @@ draw_scrollbar(const UIRenderData *ui) {
     GLsizei scrollbar_height = window_height - 2 * scrollbar_gap_px;
 
     // Calculate thumb size and position
-    float visible_fraction = (float)screen->lines / (float)(screen->lines + screen->historybuf->count);
     float min_thumb_height_fraction = (OPT(scrollbar_min_handle_height) * ui->cell_height) / (float)window_height;
     float thumb_height_fraction = MAX(min_thumb_height_fraction, visible_fraction);
 

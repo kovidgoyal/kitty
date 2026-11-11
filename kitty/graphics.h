@@ -271,6 +271,7 @@ png_from_data(void *png_data, size_t png_data_sz, const char *path_for_error_mes
 bool image_path_to_bitmap(const char *path, uint8_t **data, unsigned int *width, unsigned int *height, size_t *sz);
 bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set);
 void grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest);
+PyObject *grman_render_data_as_python(GraphicsManager *self);
 void grman_mark_layers_dirty(GraphicsManager *self);
 void grman_set_window_id(GraphicsManager *self, id_type id);
 bool grman_has_images(GraphicsManager *self);

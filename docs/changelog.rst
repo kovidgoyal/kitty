@@ -138,6 +138,9 @@ Detailed list of changes
   ``clear_terminal last_command`` not working or moving the view when scrolled
   back (:pull:`10841`)
 
+- Fix images, the cursor and the scrollbar not matching the text during
+  synchronized output when new output arrives while scrolled back (:pull:`10847`)
+
 - Fix jumping back to the last visited prompt and
   :ac:`show_last_visited_command_output` failing or using the wrong lines after
   ``clear_terminal last_command`` or after output scrolls only part of the

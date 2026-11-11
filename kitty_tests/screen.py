@@ -1352,6 +1352,248 @@ class TestScreen(BaseTest):
         # marked (set_mask = 1 for plain selections).
         self.assertIn(1, result)
 
+    def test_rendered_scroll_state_with_paused_rendering(self):
+        # While rendering is paused, everything drawn over the frozen text
+        # (images, cursor, scrollbar) must use the scroll state captured at
+        # pause time, not the live one, which output can change during the pause.
+        def screen(pixel_scroll=False):
+            s = self.create_screen(cols=10, lines=3, scrollback=50, cell_height=20, options={'pixel_scroll': pixel_scroll})
+            for i in range(40):
+                parse_bytes(s, f'row{i:03d}\r\n'.encode())
+            return s
+
+        def live(s):
+            return s.scrolled_by, s.pixel_scroll_offset_y, s.historybuf.count
+
+        # Not paused: the rendered state is the live state
+        s = screen()
+        self.ae(s.rendered_scroll_state(), live(s))
+        s.scroll(5, True)
+        self.ae(s.rendered_scroll_state(), live(s))
+
+        # Output arriving while scrolled back moves the live view to keep it anchored
+        s = screen()
+        s.scroll(5, True)
+        captured = live(s)
+        parse_bytes(s, b'\x1b[?2026h')
+        for i in range(4):
+            parse_bytes(s, f'new{i}\r\n'.encode())
+        self.ae(s.scrolled_by, 9)
+        self.ae(s.rendered_scroll_state(), captured)
+        parse_bytes(s, b'\x1b[?2026l')
+        self.ae(s.rendered_scroll_state(), live(s))
+        self.ae(s.scrolled_by, 9)
+
+        # Filling from the scrollback can bring the live view to the bottom
+        # while the frozen frame still shows the scrollback
+        s = screen()
+        s.scroll(1, True)
+        captured = live(s)
+        parse_bytes(s, b'\x1b[?2026h\x1b[+T')
+        self.ae((s.scrolled_by, s.historybuf.count), (0, captured[2] - 1))
+        self.ae(s.rendered_scroll_state(), captured)
+        self.assertTrue(s.pause_rendering(False))
+        self.ae(s.rendered_scroll_state(), live(s))
+
+        # Clearing the scrollback while at the bottom does not end the pause
+        s = screen()
+        captured = live(s)
+        self.assertGreater(captured[2], 0)
+        parse_bytes(s, b'\x1b[?2026h\x1b[3J')
+        self.ae(s.historybuf.count, 0)
+        self.ae(s.rendered_scroll_state(), captured)
+
+        # Scrolling the view ends the pause, so the rendered state follows it
+        s = screen()
+        parse_bytes(s, b'\x1b[?2026h')
+        s.scroll(3, True)
+        self.ae(s.rendered_scroll_state(), live(s))
+        self.ae(s.scrolled_by, 3)
+
+        # Pausing at the bottom, with output that scrolls the screen
+        s = screen()
+        captured = live(s)
+        parse_bytes(s, b'\x1b[?2026h')
+        for i in range(4):
+            parse_bytes(s, f'new{i}\r\n'.encode())
+        self.ae(s.scrolled_by, 0)
+        self.ae(s.rendered_scroll_state(), captured)
+
+        # The pixel scroll offset is captured with the scroll position
+        s = screen(pixel_scroll=True)
+        s.scroll_to_absolute(10.5)
+        captured = live(s)
+        self.ae(captured[:2], (10, 10))
+        parse_bytes(s, b'\x1b[?2026h')
+        for i in range(3):
+            parse_bytes(s, f'new{i}\r\n'.encode())
+        self.ae((s.scrolled_by, s.pixel_scroll_offset_y), (13, 10))
+        self.ae(s.rendered_scroll_state(), captured)
+        self.assertTrue(s.pause_rendering(False))
+        self.ae(s.rendered_scroll_state(), live(s))
+
+        # Without pixel scroll the rendered pixel offset is always zero
+        s = screen()
+        s.scroll(4, True)
+        parse_bytes(s, b'\x1b[?2026h')
+        self.ae(s.rendered_scroll_state(), (4, 0, s.historybuf.count))
+
+    def test_selection_uses_rendered_scroll_state(self):
+        # A selection rendered during a pause must match the frozen frame even
+        # though output has moved the live view
+        s = self.create_screen(cols=10, lines=3, scrollback=50)
+        for i in range(40):
+            parse_bytes(s, f'row{i:03d}\r\n'.encode())
+        s.scroll(5, True)
+        s.start_selection(0, 0)
+        s.update_selection(2, 1)
+        before = s.current_selections()
+        parse_bytes(s, b'\x1b[?2026h')
+        for i in range(3):
+            parse_bytes(s, f'new{i}\r\n'.encode())
+        self.ae(s.scrolled_by, 8)
+        self.ae(s.current_selections(), before)
+        parse_bytes(s, b'\x1b[?2026l')
+        after = s.current_selections()
+        self.assertFalse(s.is_selection_dirty())
+        self.ae(after, before)
+
+    def test_scrollbar_geometry(self):
+        def screen(pixel_scroll=False, scrollback=50):
+            s = self.create_screen(cols=10, lines=3, scrollback=scrollback, cell_height=20, options={'pixel_scroll': pixel_scroll})
+            for i in range(40):
+                parse_bytes(s, f'row{i:03d}\r\n'.encode())
+            return s
+
+        def expected(scrolled_by, pixel_offset, count, lines=3, cell_height=20):
+            return (scrolled_by + pixel_offset / cell_height) / max(1, count), lines / (lines + count)
+
+        def check(s, scrolled_by, pixel_offset, count, msg=''):
+            actual = s.scrollbar_geometry()
+            exp = expected(scrolled_by, pixel_offset, count)
+            for a, e in zip(actual, exp):
+                self.assertAlmostEqual(a, e, places=5, msg=msg)
+
+        # No scrollback
+        s = self.create_screen(cols=10, lines=3, scrollback=50)
+        self.ae(s.scrollbar_geometry(), (0, 1))
+
+        # Live geometry at the bottom, scrolled back and at the top
+        s = screen()
+        count = s.historybuf.count
+        self.ae(count, 38)
+        check(s, 0, 0, count, 'bottom')
+        s.scroll(5, True)
+        check(s, 5, 0, count, 'scrolled')
+        s.scroll(count, True)
+        check(s, count, 0, count, 'top')
+        self.assertAlmostEqual(s.scrollbar_geometry()[0], 1, places=5)
+
+        # The pixel scroll offset contributes a fraction of a line
+        s = screen(pixel_scroll=True)
+        s.scroll_to_absolute(10.5)
+        check(s, 10, 10, s.historybuf.count, 'pixel scroll')
+
+        # Output arriving during a pause does not move the handle
+        for pixel_scroll in (False, True):
+            with self.subTest(pixel_scroll=pixel_scroll):
+                s = screen(pixel_scroll=pixel_scroll)
+                s.scroll_to_absolute(5.5 if pixel_scroll else 5)
+                before = s.scrollbar_geometry()
+                parse_bytes(s, b'\x1b[?2026h')
+                for i in range(6):
+                    parse_bytes(s, f'new{i}\r\n'.encode())
+                self.assertGreater(s.scrolled_by, 5)
+                self.ae(s.scrollbar_geometry(), before)
+                parse_bytes(s, b'\x1b[?2026l')
+                check(s, s.scrolled_by, s.pixel_scroll_offset_y if pixel_scroll else 0, s.historybuf.count, 'after pause')
+                self.assertNotEqual(s.scrollbar_geometry(), before)
+
+        # Full scrollback: the view stops being anchored once it reaches the top
+        s = screen(scrollback=20)
+        s.scroll(15, True)
+        before = s.scrollbar_geometry()
+        parse_bytes(s, b'\x1b[?2026h')
+        for i in range(10):
+            parse_bytes(s, f'new{i}\r\n'.encode())
+        self.ae(s.scrollbar_geometry(), before)
+
+        # Changes to the scrollback size during a pause
+        s = screen()
+        s.scroll(1, True)
+        before = s.scrollbar_geometry()
+        parse_bytes(s, b'\x1b[?2026h\x1b[+T')
+        self.ae(s.scrolled_by, 0)
+        self.ae(s.scrollbar_geometry(), before)
+        s = screen()
+        before = s.scrollbar_geometry()
+        parse_bytes(s, b'\x1b[?2026h\x1b[3J')
+        self.ae(s.historybuf.count, 0)
+        self.ae(s.scrollbar_geometry(), before)
+        parse_bytes(s, b'\x1b[?2026l')
+        self.ae(s.scrollbar_geometry(), (0, 1))
+
+    def test_scrollbar_visibility(self):
+        def screen(policy, history=True):
+            s = self.create_screen(cols=10, lines=3, scrollback=50, options={'scrollbar': policy})
+            for i in range(40 if history else 1):
+                parse_bytes(s, f'row{i:03d}\r\n'.encode())
+            return s
+
+        def visibility(s):
+            return s.has_scrollbar(False), s.has_scrollbar(True)
+
+        # (not scrolled, scrolled) -> (not hovering, hovering)
+        policies = {
+            'never': ((False, False), (False, False)),
+            'always': ((True, True), (True, True)),
+            'scrolled': ((False, False), (True, True)),
+            'hovered': ((False, True), (False, True)),
+            'scrolled-and-hovered': ((False, False), (False, True)),
+            'scrolled-or-hovered': ((False, True), (True, True)),
+        }
+        for policy, (at_bottom, scrolled) in policies.items():
+            with self.subTest(policy=policy):
+                s = screen(policy)
+                self.ae(visibility(s), at_bottom)
+                s.scroll(3, True)
+                self.ae(visibility(s), scrolled)
+                # No scrollback or the alternate screen: never a scrollbar
+                self.ae(visibility(screen(policy, history=False)), (False, False))
+                s = screen(policy)
+                parse_bytes(s, b'\x1b[?1049h')
+                self.ae(visibility(s), (False, False))
+
+        # Filling from the scrollback during a pause brings the live view to
+        # the bottom, but the frozen frame is still scrolled back
+        s = screen('scrolled')
+        s.scroll(1, True)
+        self.assertTrue(s.has_scrollbar(False))
+        parse_bytes(s, b'\x1b[?2026h\x1b[+T')
+        self.ae(s.scrolled_by, 0)
+        self.assertTrue(s.has_scrollbar(False))
+        parse_bytes(s, b'\x1b[?2026l')
+        self.assertFalse(s.has_scrollbar(False))
+
+        # Clearing the scrollback during a pause
+        s = screen('always')
+        parse_bytes(s, b'\x1b[?2026h\x1b[3J')
+        self.ae(s.historybuf.count, 0)
+        self.assertTrue(s.has_scrollbar(False))
+        parse_bytes(s, b'\x1b[?2026l')
+        self.assertFalse(s.has_scrollbar(False))
+
+        # Switching screens during a pause
+        s = screen('always')
+        parse_bytes(s, b'\x1b[?2026h\x1b[?1049h')
+        self.assertTrue(s.has_scrollbar(False))
+        parse_bytes(s, b'\x1b[?2026l')
+        self.assertFalse(s.has_scrollbar(False))
+        parse_bytes(s, b'\x1b[?2026h\x1b[?1049l')
+        self.assertFalse(s.has_scrollbar(False))
+        parse_bytes(s, b'\x1b[?2026l')
+        self.assertTrue(s.has_scrollbar(False))
+
     def test_selection_not_dirty_after_render(self):
         # Regression test for https://github.com/kovidgoyal/kitty/issues/10714
         # selections were considered dirty on every frame when scrolled back,

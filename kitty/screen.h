@@ -227,8 +227,8 @@ typedef struct {
         monotonic_t expires_at;
         Cursor cursor;
         ColorProfile color_profile;
-        bool inverted, cell_data_updated, cursor_visible, pixel_scroll;
-        unsigned int scrolled_by, pixel_scroll_offset_y;
+        bool inverted, cell_data_updated, cursor_visible, pixel_scroll, on_main_screen;
+        unsigned int scrolled_by, pixel_scroll_offset_y, history_count;
         LineBuf *linebuf;
         GraphicsManager *grman;
         Selections selections, url_ranges;
@@ -258,7 +258,19 @@ typedef struct {
 #define pixel_scroll_enabled(screen) ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.pixel_scroll : live_pixel_scroll_enabled(screen))
 #define rendered_pixel_scroll_offset_y(screen) \
     ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.pixel_scroll_offset_y : (screen)->pixel_scroll_offset_y)
+// The scroll position and scrollback size of the frame being rendered. While
+// rendering is paused these are the values captured at pause time, so that
+// everything drawn over the frozen text (images, cursor, scrollbar, etc.)
+// stays aligned with it even as new output changes the live values.
+#define rendered_scrolled_by(screen) ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.scrolled_by : (screen)->scrolled_by)
+#define rendered_history_count(screen) ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.history_count : (screen)->historybuf->count)
+#define rendered_on_main_screen(screen) \
+    ((screen)->paused_rendering.expires_at ? (screen)->paused_rendering.on_main_screen : (screen)->linebuf == (screen)->main_linebuf)
 #define render_lines_for_screen(screen) (screen->lines + pixel_scroll_enabled(screen))
+
+// The fraction of a line by which the rendered content is scrolled when pixel scrolling
+#define scroll_offset_lines_for_screen(screen) \
+    ((pixel_scroll_enabled(screen) && (screen)->cell_size.height) ? (float)(rendered_pixel_scroll_offset_y(screen) / (double)(screen)->cell_size.height) : 0.f)
 
 void screen_align(Screen *);
 void screen_garbage_collect_text_cache(Screen *screen);
@@ -335,6 +347,9 @@ void select_graphic_rendition(Screen *self, int *params, unsigned int count, boo
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
 void report_mode_status(Screen *self, unsigned int which, bool);
 void screen_apply_selection(Screen *self, void *address, size_t size);
+bool screen_update_graphics_layers(Screen *self);
+void screen_scrollbar_geometry(const Screen *self, float *handle_position, float *visible_fraction);
+bool screen_has_scrollbar(const Screen *self, bool is_hovering);
 bool screen_is_selection_dirty(Screen *self);
 bool screen_has_selection(Screen *);
 bool screen_is_cell_selected(Screen *, index_type x, index_type y);
