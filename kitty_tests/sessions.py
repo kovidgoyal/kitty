@@ -95,6 +95,19 @@ class TestSessions(BaseTest):
         sessions = list(parse_session('\n'.join(self.save_as_session_match(2, (0, [b]), (0, [a]))), self.set_options()))
         self.ae(len(sessions), 1)
 
+    def test_save_as_session_match_focus_tab(self) -> None:
+        # focus_tab is the index among the saved tabs, which are all that loading the session creates
+        tabs = [[('b', 9)], [('a', 1), ('b', 9)], [('b', 0)], [('a', 5)], [('a', 2)]]
+        lines = self.save_as_session_match(1, (3, tabs))
+        self.ae([x for x in lines if x.startswith(('new_tab', 'focus_tab'))], ['new_tab 1.1', 'new_tab 1.3', 'new_tab 1.4', 'focus_tab 1'])
+        (s,) = parse_session('\n'.join(lines), self.set_options())
+        self.ae((len(s.tabs), s.focus_tab_spec), (3, '1'))
+        # When the active tab is not saved, the saved tab with the most recently focused saved window
+        for active_tab_idx in (0, 2):
+            self.ae(self.save_as_session_match(1, (active_tab_idx, tabs))[-1], 'focus_tab 1')
+        tabs[4] = [('a', 7)]
+        self.ae(self.save_as_session_match(1, (2, tabs))[-1], 'focus_tab 2')
+
     def test_scrollback_for_restore(self) -> None:
         from kitty.logout_session import sanitize_restored_output, scrollback_for_restore
         from kitty.window import as_text

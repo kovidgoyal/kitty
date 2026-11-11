@@ -1772,11 +1772,11 @@ class TabManager:  # {{{
         self, session_path: str, matched_windows: frozenset[Window] | None, ser_opts: SaveAsSessionOptions, is_first: bool = False
     ) -> list[str]:
         ans = []
-        active_tab_index = -1
-        for i, tab in enumerate(self.tabs):
-            if tab is self.active_tab:
-                active_tab_index = i
-            ans.extend(tab.serialize_state_as_session(session_path, matched_windows, ser_opts))
+        saved_tabs: list[Tab] = []
+        for tab in self.tabs:
+            if lines := tab.serialize_state_as_session(session_path, matched_windows, ser_opts):
+                saved_tabs.append(tab)
+                ans.extend(lines)
         if ans:
             prefix = [] if is_first else ['', '', 'new_os_window']
             if self.wm_class and self.wm_class != appname:
@@ -1786,10 +1786,18 @@ class TabManager:  # {{{
             if ser_opts.os_window_geometry:
                 prefix.extend(self.serialize_geometry_as_session())
             ans = prefix + ans
-            # Add focus_tab command to preserve the active tab
-            if active_tab_index >= 0:
-                ans.append('')
-                ans.append(f'focus_tab {active_tab_index}')
+            # focus_tab counts only the tabs created by the session. If the active tab
+            # is not saved, focus the saved tab with the most recently focused saved
+            # window, the tab that switching to the session focuses while it is open.
+            focus_tab = self.active_tab
+            if focus_tab is None or focus_tab not in saved_tabs:
+
+                def last_focused_at(tab: Tab) -> float:
+                    return max((w.last_focused_at for w in tab if matched_windows is None or w in matched_windows), default=0)
+
+                focus_tab = max(saved_tabs, key=last_focused_at)
+            ans.append('')
+            ans.append(f'focus_tab {saved_tabs.index(focus_tab)}')
         return ans
 
     def serialize_geometry_as_session(self) -> list[str]:
