@@ -2375,6 +2375,42 @@ class TestScreen(BaseTest):
                 self.ae(s.scrolled_by, s.historybuf.count)
                 self.ae(str(s.visual_line(lines_before_prompt)), '$ a')
 
+    def test_scroll_to_prompt_offset_tracks_target_command(self):
+        # With a scroll offset the top of the viewport is in the output of the
+        # command above the target, which must not be used as the last visited prompt
+        def create():
+            s = self.create_screen(cols=12, lines=5, scrollback=50)
+            for i in range(4):
+                parse_bytes(s, f'\x1b]133;A\x07$ c{i}\r\n'.encode())
+                parse_bytes(s, f'\x1b]133;C\x07o{i}a\r\no{i}b\r\no{i}c\r\no{i}d\r\n'.encode())
+            parse_bytes(s, b'\x1b]133;A\x07$ live')
+            return s
+
+        def last_visited_output(s):
+            output = []
+            s.cmd_output(2, output.append)
+            return ''.join(output).split()
+
+        expected = ['o3a', 'o3b', 'o3c', 'o3d']
+        for offset in range(5):
+            with self.subTest(offset=offset):
+                s = create()
+                self.assertTrue(s.scroll_to_prompt(-1, offset))
+                self.ae(s.scrolled_by, offset + 1)
+                self.ae(str(s.visual_line(offset)), '$ c3')
+                self.ae(last_visited_output(s), expected)
+                s.scroll_to_absolute(0)
+                self.assertTrue(s.scroll_to_prompt(0))
+                self.ae(s.scrolled_by, offset + 1)
+                self.ae(str(s.visual_line(offset)), '$ c3')
+
+        # Jumping forward with an offset records the prompt jumped to
+        s = create()
+        self.assertTrue(s.scroll_to_prompt(-2, 0))
+        self.assertTrue(s.scroll_to_prompt(1, 2))
+        self.ae(str(s.visual_line(2)), '$ c3')
+        self.ae(last_visited_output(s), expected)
+
     def test_prompt_marking(self):
         # ]]]]]]]]]]]]]]]]}}}}}}}}}}}}}}}}))))))))))))))))))))))
 
