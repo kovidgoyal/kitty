@@ -1542,7 +1542,7 @@ class TestGraphics(BaseTest):
         before = s.update_graphics_layers()
         parse_bytes(s, b'\x1b[?2026hnew\r\n\x1b[?2026l\x1b[?2026hmore\r\n')
         self.ae(s.scrolled_by, 21)
-        self.ae(s.update_graphics_layers(), before)
+        assert_layers_close(s.update_graphics_layers(), before)  # the second pause re-snapshots from a different scroll state
         self.assertTrue(s.pause_rendering(False))
         assert_aligned(s, s.update_graphics_layers(), 'after consecutive updates')
 
