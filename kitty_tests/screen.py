@@ -2504,6 +2504,218 @@ class TestScreen(BaseTest):
         self.assertTrue(s.scroll_to_prompt(0))
         self.ae(visible()[3], '$ live')  # the row it was visited at
 
+    def test_last_visited_prompt_tracking(self):
+        # The last visited prompt is stored as a single content row and must
+        # stay on the same content as lines move, whatever the scroll offset
+        # it was visited at.
+        s = None
+
+        def new_screen(lines=6, scrollback=20):
+            nonlocal s
+            s = self.create_screen(cols=10, lines=lines, scrollback=scrollback)
+
+        def mark_prompt():
+            parse_bytes(s, b'\x1b]133;A\a')
+
+        def cmd(name, num_output_lines=1):
+            mark_prompt(), s.draw(f'$ {name}\r\n')
+            parse_bytes(s, b'\x1b]133;C\a')
+            for i in range(num_output_lines):
+                s.draw(f'{name}{i}\r\n')
+
+        def lvco():
+            ans = []
+            s.cmd_output(2, ans.append)
+            return ''.join(ans).rstrip()
+
+        def visible():
+            return tuple(str(s.visual_line(y)) for y in range(s.lines))
+
+        def assert_visited(prompt, at_row, output=None):
+            if output is not None:
+                self.ae(lvco(), output)
+            # jump from both ends of the scrollback so the jump always has to
+            # compute the position rather than happen to already be there
+            for start in (0, s.historybuf.count):
+                s.scroll_to_absolute(start)
+                s.scroll_to_prompt(0)
+                self.ae(visible()[at_row], prompt, f'jumping from scrolled_by={start}')
+            s.scroll_to_absolute(0)
+
+        def assert_unset():
+            self.ae(lvco(), '')
+            for start in (0, s.historybuf.count):
+                s.scroll_to_absolute(start)
+                self.assertFalse(s.scroll_to_prompt(0))
+                self.ae(s.scrolled_by, start)
+            s.scroll_to_absolute(0)
+
+        def visit(prompt):
+            # visit the prompt at the first viewport position it is shown at
+            for sb in range(s.historybuf.count + 1):
+                s.scroll_to_absolute(sb)
+                for y, text in enumerate(visible()):
+                    if text == prompt:
+                        self.assertTrue(s.set_last_visited_prompt(y))
+                        s.scroll_to_absolute(0)
+                        return sb, y
+            raise AssertionError(f'{prompt} not found')
+
+        def set_region_and_scroll(top, bottom, csi):
+            # top and bottom are one based, as in DECSTBM
+            parse_bytes(s, f'\x1b[{top};{bottom}r\x1b[{csi}'.encode())
+            parse_bytes(s, b'\x1b[r')
+
+        # Erasing a command can leave less scrollback than the scroll offset
+        # the prompt was visited at. The prompt must still be reachable, shown
+        # as close to the row it was visited at as the scrollback allows.
+        for remaining_history in (0, 1, 2, 5):
+            for scrolled_by in (0, 2):
+                with self.subTest(remaining_history=remaining_history, scrolled_by=scrolled_by):
+                    new_screen(lines=10)
+                    for i in range(remaining_history):
+                        s.draw(f'h{i}\r\n')
+                    cmd('old', 7)
+                    cmd('live', 1)  # the live prompt, with the cursor below it
+                    s.draw('\r\n\r\n')
+                    self.ae(s.historybuf.count, remaining_history + 3)
+                    s.scroll_to_absolute(scrolled_by)
+                    preferred_y = 5 + scrolled_by
+                    self.ae(str(s.visual_line(preferred_y)), '$ live')
+                    self.assertTrue(s.set_last_visited_prompt(preferred_y))
+                    s.scroll_to_absolute(0)
+                    self.assertTrue(s.erase_last_command())
+                    self.ae(s.historybuf.count, remaining_history)
+                    self.ae(visible()[0], '$ live')
+                    self.ae(lvco(), 'live0')
+                    expected_scrolled_by = min(preferred_y, remaining_history)
+                    for start in sorted({0, remaining_history}):
+                        s.scroll_to_absolute(start)
+                        s.scroll_to_prompt(0)
+                        self.ae(s.scrolled_by, expected_scrolled_by)
+                        self.ae(str(s.visual_line(expected_scrolled_by)), '$ live')
+
+        # Erasing a command keeps prompts in the scrollback above it on the
+        # same content, even though fewer lines are left in the scrollback
+        new_screen(lines=5)
+        cmd('a', 3), cmd('b', 6), cmd('live', 0)
+        self.ae(s.historybuf.count, 8)
+        sb, y = visit('$ a')
+        self.assertTrue(s.erase_last_command())
+        self.ae(s.historybuf.count, 4)
+        assert_visited('$ a', y, 'a0\na1\na2')
+
+        # Scrolling a region with a bottom margin adds the lines scrolled off
+        # its top to the scrollback but must not move lines below the region
+        new_screen()
+        cmd('a', 0), cmd('b', 0), s.draw('x\r\ny\r\n'), mark_prompt(), s.draw('$ c')
+        self.ae(visible()[:5], ('$ a', '$ b', 'x', 'y', '$ c'))
+        self.assertTrue(s.set_last_visited_prompt(4))
+        set_region_and_scroll(1, 4, '2S')
+        self.ae(s.historybuf.count, 2)
+        self.ae(visible()[:5], ('x', 'y', '', '', '$ c'))
+        assert_visited('$ c', 4)
+        self.assertTrue(s.set_last_visited_prompt(0))  # x
+        set_region_and_scroll(1, 4, '1S')
+        assert_visited('x', 0)
+        self.ae(s.historybuf.count, 3)
+
+        # Scrolling a region with a top margin discards the line scrolled off
+        # the top of the region, moves the lines in the region up and leaves
+        # lines above the region alone
+        for visited, expected in ((0, ('$ a', 0)), (1, None), (3, ('$ c', 2))):
+            with self.subTest(top_margin_visited=visited):
+                new_screen(lines=5)
+                cmd('a', 0), cmd('b', 0), s.draw('x\r\n'), cmd('c', 0)
+                self.ae(visible()[:4], ('$ a', '$ b', 'x', '$ c'))
+                self.assertTrue(s.set_last_visited_prompt(visited))
+                set_region_and_scroll(2, 5, '1S')
+                self.ae(s.historybuf.count, 0)
+                self.ae(visible()[:3], ('$ a', 'x', '$ c'))
+                if expected is None:
+                    assert_unset()
+                else:
+                    assert_visited(*expected)
+
+        # Reverse index moves the screen lines down and discards the bottom
+        # line, without touching the scrollback
+        new_screen(lines=4)
+        cmd('a', 0), cmd('b', 0), cmd('c', 0), cmd('d', 0), cmd('e', 0), s.draw('z')
+        self.ae(s.historybuf.count, 2)
+        self.ae(visible(), ('$ c', '$ d', '$ e', 'z'))
+        self.ae(visit('$ a'), (2, 0))
+        s.cursor_position(1, 1), s.reverse_index()
+        self.ae(visible(), ('', '$ c', '$ d', '$ e'))
+        assert_visited('$ a', 0)
+        self.assertTrue(s.set_last_visited_prompt(1))  # $ c
+        s.reverse_index()
+        assert_visited('$ c', 2)
+        self.assertTrue(s.set_last_visited_prompt(3))  # $ d, now on the bottom line
+        s.reverse_index()
+        assert_unset()
+
+        # Reverse scrolling that pulls lines back from the scrollback moves
+        # everything in the scrollback and on screen down
+        new_screen(lines=4)
+        cmd('a', 0), cmd('b', 0), cmd('c', 0), cmd('d', 0), cmd('e', 0), s.draw('z')
+        self.ae(visit('$ a'), (2, 0))
+        s.reverse_scroll(1, True)
+        self.ae(s.historybuf.count, 1)
+        self.ae(visible(), ('$ b', '$ c', '$ d', '$ e'))
+        assert_visited('$ a', 0)
+        s.reverse_scroll(1, True)
+        self.ae(s.historybuf.count, 0)
+        self.ae(visible()[0], '$ a')
+        assert_visited('$ a', 0)
+
+        # A prompt that falls off the end of the scrollback is forgotten, even
+        # though the scrollback still has as many lines as before
+        new_screen(lines=3, scrollback=2)
+        cmd('a', 0)
+        i = 0
+        while s.historybuf.count < s.historybuf.ynum:  # fill the scrollback with $ a as its oldest line
+            s.draw(f'f{i}\r\n')
+            i += 1
+        self.ae(str(s.historybuf.line(s.historybuf.count - 1)), '$ a')
+        self.ae(visit('$ a'), (s.historybuf.count, 0))
+        assert_visited('$ a', 0)
+        s.draw('last\r\n')
+        self.ae(s.historybuf.count, s.historybuf.ynum)
+        assert_unset()
+
+        # In a full scrollback, prompts that are not the oldest line stay on
+        # their content as old lines are dropped
+        new_screen(lines=3, scrollback=2)
+        s.draw('f\r\n'), cmd('a', 0)
+        while s.historybuf.count < s.historybuf.ynum:
+            s.draw('f\r\n')
+        self.ae(str(s.historybuf.line(s.historybuf.count - 2)), '$ a')
+        self.ae(visit('$ a'), (s.historybuf.count - 1, 0))
+        s.draw('last\r\n')
+        self.ae(str(s.historybuf.line(s.historybuf.count - 1)), '$ a')
+        assert_visited('$ a', 0)
+        s.draw('last\r\n')
+        assert_unset()
+
+        # Clearing the scrollback forgets a prompt that was in it
+        new_screen(lines=3)
+        cmd('a', 1), cmd('b', 1)
+        self.assertTrue(s.historybuf.count)
+        visit('$ a')
+        s.clear_scrollback()
+        assert_unset()
+
+        # Output arriving while scrolled back keeps the visited prompt on the
+        # same content and jumping back shows it at the row it was visited at
+        new_screen(lines=5, scrollback=50)
+        cmd('a', 2), cmd('b', 2), cmd('c', 2)
+        sb, y = visit('$ b')
+        for i in range(7):
+            s.draw(f'n{i}\r\n')
+        self.ae(lvco(), 'b0\nb1')
+        self.assertTrue(s.scroll_to_prompt(0))
+        self.ae((s.scrolled_by, str(s.visual_line(y))), (sb + 7, '$ b'))
+
     def test_command_and_alternate_screen_state(self):
         # Used by custom shaders
         s = self.create_screen()

@@ -138,6 +138,11 @@ Detailed list of changes
   ``clear_terminal last_command`` not working or moving the view when scrolled
   back (:pull:`10841`)
 
+- Fix jumping back to the last visited prompt and
+  :ac:`show_last_visited_command_output` failing or using the wrong lines after
+  ``clear_terminal last_command`` or after output scrolls only part of the
+  screen
+
 - :doc:`choose-files <kittens/choose-files>`: Fix hangs previewing special
   files, various preview caching bugs and e-book previews showing the wrong book
   (:pull:`10843`)

@@ -203,8 +203,14 @@ typedef struct {
         size_t requested_height, width_px, height_px;
     } last_rendered_window_char;
     struct {
-        unsigned int scrolled_by;
-        index_type y;
+        // The row of the visited line in the coordinate system used by
+        // range_line_(): 0 is the top of the live screen and negative rows are
+        // in the scrollback. This is the only position that is kept up to date
+        // as lines move, the scroll offset is derived from it when needed.
+        int row;
+        // The viewport row the line was visited at, used only as a hint for
+        // where to show it when jumping back to it.
+        index_type preferred_y;
         bool is_set;
     } last_visited_prompt;
     PyObject *last_reported_cwd;
