@@ -5563,22 +5563,6 @@ erase_last_command(Screen *self, PyObject *args UNUSED) {
     index_type num_lines_to_erase_in_screen = start >= 0 ? num_lines : num_lines + start;
     num_lines_to_erase_in_screen = MIN(self->cursor->y, num_lines_to_erase_in_screen);
     const index_type num_deleted_from_history = num_lines - num_lines_to_erase_in_screen;
-    if (self->last_visited_prompt.is_set) {
-        // Move the last visited prompt with the lines that remain: lines above
-        // the erased region move down by the number of lines removed from the
-        // scrollback, lines below it move up by the number removed from the screen.
-        int r = (int)self->last_visited_prompt.y - (int)self->last_visited_prompt.scrolled_by;
-        if (start <= r && r < live_prompt_start) self->last_visited_prompt.is_set = false;
-        else {
-            r += r < start ? (int)num_deleted_from_history : -(int)num_lines_to_erase_in_screen;
-            const int new_scrolled_by = (int)self->last_visited_prompt.y - r;
-            if (new_scrolled_by >= 0) self->last_visited_prompt.scrolled_by = new_scrolled_by;
-            else {
-                self->last_visited_prompt.scrolled_by = 0;
-                self->last_visited_prompt.y = r;
-            }
-        }
-    }
     if (num_lines_to_erase_in_screen) {
         // Anchor the on-screen deletion at the top of the region, not at
         // cursor->y - count: a multi-line prompt or rows skipped above would
@@ -5603,6 +5587,24 @@ erase_last_command(Screen *self, PyObject *args UNUSED) {
         clamp_scroll_position(self);
         self->is_dirty = true;
         dirty_scroll(self);
+    }
+    if (self->last_visited_prompt.is_set) {
+        // Move the last visited prompt with the lines that remain: lines above
+        // the erased region move down by the number of lines removed from the
+        // scrollback, lines below it move up by the number removed from the screen.
+        int r = (int)self->last_visited_prompt.y - (int)self->last_visited_prompt.scrolled_by;
+        if (start <= r && r < live_prompt_start) self->last_visited_prompt.is_set = false;
+        else {
+            r += r < start ? (int)num_deleted_from_history : -(int)num_lines_to_erase_in_screen;
+            const int history_count = (int)self->historybuf->count;
+            if (r < -history_count || r >= (int)self->lines) self->last_visited_prompt.is_set = false;
+            else {
+                // Keep the visited row at the same viewport position when possible.
+                const int scrolled_by = MAX(0, MIN((int)self->last_visited_prompt.y - r, history_count));
+                self->last_visited_prompt.scrolled_by = scrolled_by;
+                self->last_visited_prompt.y = r + scrolled_by;
+            }
+        }
     }
     Py_RETURN_TRUE;
 }

@@ -2504,6 +2504,27 @@ class TestScreen(BaseTest):
         self.assertTrue(s.scroll_to_prompt(0))
         self.ae(visible()[3], '$ live')  # the row it was visited at
 
+    def test_erase_last_command_with_short_scrollback(self):
+        for remaining_history, erased_history, scrolled_by in ((0, 0, 0), (2, 0, 0), (2, 0, 2), (5, 2, 2)):
+            with self.subTest(remaining_history=remaining_history, erased_history=erased_history, scrolled_by=scrolled_by):
+                s = self.create_screen(cols=10, lines=10, scrollback=10)
+                s.draw('history\r\n' * remaining_history)
+                parse_bytes(s, b'\x1b]133;A\a$ old\r\n\x1b]133;C\a')
+                s.draw('output\r\n' * (4 + erased_history))
+                parse_bytes(s, b'\x1b]133;A\a$ live\r\n\x1b]133;C\akept\r\n\r\n\r\n')
+                s.cursor_position(7, 1)
+                self.ae(s.historybuf.count, remaining_history + erased_history)
+                s.scroll_to_absolute(scrolled_by)
+                self.assertTrue(s.set_last_visited_prompt(5 + scrolled_by))
+                self.assertTrue(s.erase_last_command())
+                self.ae(s.historybuf.count, remaining_history)
+
+                output = []
+                s.cmd_output(2, output.append)
+                s.scroll_to_absolute(0)
+                self.ae((s.scroll_to_prompt(0), s.scrolled_by, ''.join(output).rstrip()), (bool(remaining_history), remaining_history, 'kept'))
+                self.ae(str(s.visual_line(remaining_history)), '$ live')
+
     def test_command_and_alternate_screen_state(self):
         # Used by custom shaders
         s = self.create_screen()
