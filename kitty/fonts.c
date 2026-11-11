@@ -1482,7 +1482,21 @@ typedef struct {
 typedef ShapeGroup Group;
 
 typedef struct {
+    uint32_t first_codepoint;  // offset of the cell's first codepoint in the shaped text
+    unsigned width;  // number of cells it occupies
+} HeadCell;
+
+typedef struct {
+    // HarfBuzz returns the glyphs of an RTL buffer in visual order, that is
+    // with decreasing clusters, so cells are completed from the logical end
+    bool active;
+    HeadCell *cells;
+    size_t capacity, num_cells, num_remaining;
+} BackwardRun;
+
+typedef struct {
     uint32_t previous_cluster;
+    BackwardRun backward;
     bool prev_was_special, prev_was_empty;
     CellData current_cell_data;
     Group *groups;
@@ -1552,6 +1566,23 @@ restore_shaped_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type 
 }
 
 static void
+load_backward_run(CPUCell *cpu_cell, index_type num_cells, const TextCache *tc, ListOfChars *lc) {
+    // Same cells as load_hb_buffer() puts into the buffer, in the same order
+    BackwardRun *b = &group_state.backward;
+    b->num_cells = 0;
+    uint32_t offset = 0;
+    for (; num_cells; cpu_cell++, num_cells--) {
+        if (cpu_cell->is_multicell && cpu_cell->x) continue;
+        ensure_space_for(b, cells, HeadCell, b->num_cells + 1, capacity, 64, false);
+        text_in_cell(cpu_cell, tc, lc);
+        b->cells[b->num_cells++] = (HeadCell){
+            .first_codepoint = offset, .width = cpu_cell->is_multicell ? cpu_cell->width * cpu_cell->scale : 1};
+        offset += lc->count;
+    }
+    b->num_remaining = b->num_cells;
+}
+
+static void
 shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb_font_t *font, Font *fobj, bool disable_ligature, const TextCache *tc) {
     if (!ensure_group_capacity(num_cells, 0)) fatal("Out of memory");
     RAII_ListOfChars(lc);
@@ -1574,6 +1605,8 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.last_cpu_cell = first_cpu_cell + (num_cells ? num_cells - 1 : 0);
     group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     load_hb_buffer(first_cpu_cell, num_cells, tc, &lc);
+    group_state.backward.active = hb_buffer_get_direction(harfbuzz_buffer) == HB_DIRECTION_RTL;
+    if (group_state.backward.active) load_backward_run(first_cpu_cell, num_cells, tc, &lc);
 
     size_t num_features = fobj->num_ffs_hb_features;
     if (num_features && !disable_ligature) num_features--; // the last feature is always -calt
@@ -1659,6 +1692,33 @@ ligature_type_from_glyph_name(const char *glyph_name, SpacerStrategy strategy) {
 }
 
 #define G(x) (group_state.x)
+
+// Called per glyph from group_normal(): when gcc outlines it, every shaped run pays the call
+static inline __attribute__((always_inline)) unsigned int
+consume_cells_for_glyph(uint32_t cluster, uint32_t num_codepoints_used_by_glyph, const TextCache *tc, ListOfChars *lc) {
+    // Returns the number of cells completed by the glyph, which is the last
+    // glyph of its cluster when num_codepoints_used_by_glyph is non-zero
+    unsigned int num_cells_consumed = 0;
+    if (G(backward).active) {
+        // Clusters only decrease, so once the glyph is done every codepoint
+        // from cluster to the end of the text has been used, completing every
+        // remaining cell that starts there
+        if (!num_codepoints_used_by_glyph) return 0;
+        BackwardRun *b = &G(backward);
+        while (b->num_remaining && b->cells[b->num_remaining - 1].first_codepoint >= cluster)
+            num_cells_consumed += b->cells[--b->num_remaining].width;
+        num_cells_consumed = MIN(num_cells_consumed, G(num_cells) - G(cell_idx));
+        G(cell_idx) += num_cells_consumed;
+        return num_cells_consumed;
+    }
+    while (num_codepoints_used_by_glyph && G(cell_idx) < G(num_cells)) {
+        unsigned int w = check_cell_consumed(&G(current_cell_data), G(last_cpu_cell), tc, lc);
+        G(cell_idx) += w;
+        num_cells_consumed += w;
+        num_codepoints_used_by_glyph--;
+    }
+    return num_cells_consumed;
+}
 
 static bool
 shaped_glyphs_have_iosevka_join_names(hb_font_t *hbf) {
@@ -1768,7 +1828,8 @@ group_iosevka(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) 
             next_cluster = 0;
         } else {
             next_cluster = G(info)[G(glyph_idx) + 1].cluster;
-            // RTL languages like Arabic have decreasing cluster numbers
+            // RTL buffers have decreasing cluster numbers, where this is only
+            // used as a flag, see consume_cells_for_glyph()
             if (next_cluster != cluster) num_codepoints_used_by_glyph = cluster > next_cluster ? cluster - next_cluster : next_cluster - cluster;
         }
         const LigatureType before = G(glyph_idx) ? ligature_types[G(glyph_idx - 1)] : LIGATURE_UNKNOWN;
@@ -1797,16 +1858,7 @@ group_iosevka(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) 
                 current_group->num_cells += num_left;
                 G(cell_idx) += num_left;
             }
-        } else {
-            unsigned int num_cells_consumed = 0;
-            while (num_codepoints_used_by_glyph && G(cell_idx) < G(num_cells)) {
-                unsigned int w = check_cell_consumed(&G(current_cell_data), G(last_cpu_cell), tc, lc);
-                G(cell_idx) += w;
-                num_cells_consumed += w;
-                num_codepoints_used_by_glyph--;
-            }
-            current_group->num_cells += num_cells_consumed;
-        }
+        } else current_group->num_cells += consume_cells_for_glyph(cluster, num_codepoints_used_by_glyph, tc, lc);
         if (end_current_group && current_group->num_cells) G(group_idx)++;
         G(glyph_idx)++;
     }
@@ -1839,6 +1891,11 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
         glyph_index glyph_id = G(info)[G(glyph_idx)].codepoint;
         LigatureType ligature_type = ligature_type_for_glyph(hbf, glyph_id, font->spacer_strategy);
         cluster = G(info)[G(glyph_idx)].cluster;
+        if (G(backward).active) {
+            // the cell cursor does not follow the glyphs, use the first codepoint of the glyph's cluster
+            char_type cc = shape_buffer.codepoints[cluster];
+            G(current_cell_data).current_codepoint = (cc == VS15 || cc == VS16) ? 0 : cc;
+        }
         bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
         bool is_empty = is_special && is_empty_glyph(glyph_id, font);
         uint32_t num_codepoints_used_by_glyph = 0;
@@ -1850,7 +1907,8 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
             next_cluster = 0;
         } else {
             next_cluster = G(info)[G(glyph_idx) + 1].cluster;
-            // RTL languages like Arabic have decreasing cluster numbers
+            // RTL buffers have decreasing cluster numbers, where this is only
+            // used as a flag, see consume_cells_for_glyph()
             if (next_cluster != cluster) num_codepoints_used_by_glyph = cluster > next_cluster ? cluster - next_cluster : next_cluster - cluster;
         }
         if (!current_group->num_glyphs) {
@@ -1892,13 +1950,7 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
                 G(cell_idx) += num_left;
             }
         } else {
-            unsigned int num_cells_consumed = 0;
-            while (num_codepoints_used_by_glyph && G(cell_idx) < G(num_cells)) {
-                unsigned int w = check_cell_consumed(&G(current_cell_data), G(last_cpu_cell), tc, lc);
-                G(cell_idx) += w;
-                num_cells_consumed += w;
-                num_codepoints_used_by_glyph--;
-            }
+            unsigned int num_cells_consumed = consume_cells_for_glyph(cluster, num_codepoints_used_by_glyph, tc, lc);
             if (num_cells_consumed) {
                 current_group->num_cells += num_cells_consumed;
                 if (!is_special) { // not a ligature, end the group
@@ -2566,6 +2618,8 @@ finalize(void) {
     free(group_state.groups);
     free(group_state.info_storage);
     free(group_state.pos_storage);
+    free(group_state.backward.cells);
+    group_state.backward = (BackwardRun){0};
     group_state.groups = NULL;
     group_state.info_storage = NULL;
     group_state.pos_storage = NULL;
