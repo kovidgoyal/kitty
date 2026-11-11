@@ -452,3 +452,26 @@ class TestSessions(BaseTest):
                 patch('kitty.logout_session.monotonic', return_value=now),
             ):
                 self.ae(is_logout_in_progress(), expected)
+
+    def test_moved_tab_keeps_session(self) -> None:
+        # A tab moved to another OS window is a new tab there that takes over the old one, its session too
+        from kitty.tabs import Tab
+        from kitty.window_list import WindowList
+
+        class FakeTab:
+            id = os_window_id = 1
+            enabled_layouts, _last_used_layout, _current_layout_name = ['tall'], None, ''
+
+            def __init__(self, name: str, session: str) -> None:
+                self.name, self.cwd, self.created_in_session_name = name, '/' + name, session
+                self.windows = WindowList(cast(Tab, self))
+
+            def active_window_changed(self) -> None:
+                pass
+
+            def relayout(self) -> None:
+                pass
+
+        src, dest = FakeTab('a1', 'a'), FakeTab('', '')
+        Tab.take_over_from(cast(Tab, dest), cast(Tab, src))
+        self.ae((dest.name, dest.cwd, dest.created_in_session_name), ('a1', '/a1', 'a'))
