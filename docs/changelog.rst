@@ -125,6 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Optionally restore the last session when kitty starts, asking whether to save it when quitting and saving it periodically in the background to recover from crashes, see :opt:`restore_last_session`
+
+- :ac:`save_as_session`: A new :code:`--allow-foreground-process` option to only save some foreground programs
+
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window and can be resized by dragging its inner border or with the

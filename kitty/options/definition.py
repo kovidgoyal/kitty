@@ -3231,6 +3231,52 @@ session state. See :ref:`restore_after_logout` for details.
 )
 
 opt(
+    'restore_last_session',
+    'no',
+    option_type='to_bool',
+    long_text="""
+Remember the state of kitty (OS windows, tabs, splits, layouts, working
+directories and some running programs) and automatically restore it the next
+time kitty is started. When you quit kitty, or close its last OS window, you are
+asked whether to save the session. In addition, the session is saved in the
+background periodically (see :opt:`restore_last_session_interval`) so that it
+can be recovered even if kitty or the computer crashes. The saved session is
+not used when kitty is started with a command to run, with :option:`kitty
+--session`, or when :opt:`startup_session` is set. Terminal output
+(scrollback) is not restored. See :ref:`restore_last_session` for details.
+Changing this option by reloading the config is not supported.
+""",
+)
+
+opt(
+    'restore_last_session_interval',
+    '30',
+    option_type='positive_float',
+    long_text="""
+The number of seconds between background saves of the session when
+:opt:`restore_last_session` is enabled. The session is only written when it has
+changed. A value of zero disables background saving, the session is then only
+saved when you choose to save it on quit. Changing this option by reloading the
+config is not supported.
+""",
+)
+
+opt(
+    'restore_last_session_programs',
+    'vim nvim vi nano emacs hx helix micro less man more htop btop top ssh',
+    option_type='restore_last_session_programs',
+    long_text="""
+A space separated list of programs that are re-started when restoring the last
+session with :opt:`restore_last_session`. When a window was running some
+other program at its shell prompt, it is restored as just the shell in the
+same working directory. This prevents commands such as :file:`rm` or
+:code:`make deploy` from being re-run automatically. The names are matched
+against the name of the program executable. Use :code:`*` to restart all
+programs. Use :code:`none` to never restart any programs.
+""",
+)
+
+opt(
     'clipboard_control',
     'write-clipboard write-primary read-clipboard-ask read-primary-ask',
     option_type='clipboard_control',

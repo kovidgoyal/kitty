@@ -153,6 +153,7 @@ from .options.types import Options, nullable_colors
 from .options.utils import KeyboardMode, KeyDefinition, MapType, clamp_font_size
 from .os_window_size import initial_window_size_func
 from .session import (
+    LastSessionSaver,
     Session,
     close_session_with_confirm,
     create_sessions,
@@ -544,6 +545,9 @@ class Boss:
             wname = self.args.name or self.args.cls or appname
             wclass = self.args.cls or appname
         tm = TabManager(os_window_id, self.args, wclass, wname, startup_session)
+        if not self.os_window_map and self.last_session_saver is not None:
+            # A fresh OS window after all were closed (macOS keeps running) starts a new session to remember
+            self.last_session_saver.disabled = False
         self.os_window_map[os_window_id] = tm
         return os_window_id
 
@@ -1592,6 +1596,7 @@ class Boss:
                 self.launch_urls(*urls)
             else:
                 self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
+            self.start_last_session_saver()
 
         if (opts := get_options()).update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
@@ -1604,6 +1609,47 @@ class Boss:
                 [kitten_exe(), '__watch_conf__', str(os.getpid()), str(int(opts.auto_reload_config * 1000))] + list(opts.all_config_paths),
                 stdin=subprocess.PIPE,
             )
+
+    last_session_saver: LastSessionSaver | None = None
+
+    def start_last_session_saver(self) -> None:
+        from .main import is_panel_kitten
+        from .session import is_last_session_instance
+
+        opts = get_options()
+        if self.last_session_saver is not None or not is_last_session_instance(opts, self.args, is_panel_kitten()):
+            return
+        self.last_session_saver = LastSessionSaver()
+        if opts.restore_last_session_interval > 0:
+            add_timer(self.autosave_last_session, opts.restore_last_session_interval, True)
+
+    def autosave_last_session(self, timer_id: int | None = None) -> None:
+        if self.last_session_saver is not None and not self.shutting_down:
+            self.last_session_saver.save(self)
+
+    def ask_to_save_last_session(self, on_done: Callable[[bool], None], window: Window | None = None) -> Window | None:
+        '''Show the Save / Don't save / Cancel prompt. on_done is called with True to proceed with
+        closing and False if the user cancelled. Returns the prompt window.'''
+        saver = self.last_session_saver
+        assert saver is not None
+
+        def callback(choice: str) -> None:
+            if choice == 's':
+                saver.save(self, force=True)
+            elif choice == 'd':
+                saver.discard()
+            on_done(choice in ('s', 'd'))
+
+        return self.choose(
+            _('Save the current session so that it is restored the next time kitty starts?'),
+            callback,
+            's;green:Save',
+            'd;red:Don\'t save',
+            'c;yellow:Cancel',
+            window=window,
+            default='s',
+            title=_('Save session?'),
+        )
 
     def handle_window_title_bar_mouse(self, os_window_id: int, window_id: int, x: float, y: float, button: int, modifiers: int, action: int) -> None:
         if tm := self.os_window_map.get(os_window_id):
@@ -2479,6 +2525,9 @@ class Boss:
             return
         if self.current_visual_select is not None and self.current_visual_select.os_window_id == os_window_id:
             self.cancel_current_visual_select()
+        if self.last_session_saver is not None and not self.last_session_saver.disabled and len(self.os_window_map) == 1:
+            self.confirm_last_os_window_close_with_save(tm)
+            return
         active_window = tm.active_window
         windows = []
         for tab in tm:
@@ -2506,6 +2555,19 @@ class Boss:
         msg = _('Are you sure you want to close this OS Window?') + ' ' + msg
         w = self.confirm(msg, self.handle_close_os_window_confirmation, os_window_id, window=tm.active_window, title=_('Close OS window'))
         tm.confirm_close_window_id = w.id
+
+    def confirm_last_os_window_close_with_save(self, tm: TabManager) -> None:
+        if tm.confirm_close_window_id:
+            for tab in tm:
+                for w in tab:
+                    if w.id == tm.confirm_close_window_id:
+                        self.set_active_window(w, switch_os_window_if_needed=True)
+                        return
+        w = self.ask_to_save_last_session(partial(self.handle_close_os_window_confirmation, os_window_id=tm.os_window_id), window=tm.active_window)
+        if w is None:
+            self.mark_os_window_for_close(tm.os_window_id, NO_CLOSE_REQUESTED)
+        else:
+            tm.confirm_close_window_id = w.id
 
     def handle_close_os_window_confirmation(self, confirmed: bool, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
@@ -2590,6 +2652,16 @@ class Boss:
         x = get_options().confirm_os_window_close[0]
         num = num_active_windows if x < 0 else len(windows)
         needs_confirmation = x != 0 and num >= abs(x)
+        ask_to_save = self.last_session_saver is not None and not self.last_session_saver.disabled and bool(self.os_window_map)
+        if ask_to_save and self.last_session_saver is not None:
+            from .logout_session import is_logout_in_progress
+
+            if is_logout_in_progress():
+                # Do not hold up the OS logout with a prompt, save silently as is done for crashes
+                self.last_session_saver.save(self, force=True)
+                ask_to_save = False
+            else:
+                needs_confirmation = True
         if not needs_confirmation:
             if not self._call_on_quit_watchers({'confirmed': True}):
                 set_application_quit_request(NO_CLOSE_REQUESTED)
@@ -2612,6 +2684,13 @@ class Boss:
             return
         if not self._call_on_quit_watchers({'confirmed': False}):
             set_application_quit_request(NO_CLOSE_REQUESTED)
+            return
+        if ask_to_save:
+            sw = self.ask_to_save_last_session(self.handle_quit_confirmation, window=active_window)
+            if sw is None:
+                return
+            self.quit_confirmation_window_id = sw.id
+            set_application_quit_request(CLOSE_BEING_CONFIRMED, cause)
             return
         msg = msg or _('It has {} windows.').format(num)
         w = self.confirm(_('Are you sure you want to quit kitty?') + ' ' + msg, self.handle_quit_confirmation, window=active_window, title=_('Quit kitty?'))

@@ -2659,6 +2659,7 @@ class Window:
                         if self.screen.last_reported_cwd:
                             set_cwd_in_cmdline(path_from_osc7_url(self.screen.last_reported_cwd), cmd)
         unserialize_data: dict[str, int | list[str] | str] = {'id': self.id}
+        kssh_cmdline: list[str] | None = None
         if not cmd and ser_opts.use_foreground_process:
 
             def make_exe_absolute(cmd: list[str], pid: int) -> None:
@@ -2688,6 +2689,11 @@ class Window:
                         if fcmd:
                             make_exe_absolute(fcmd, pid)
                             unserialize_data['cmd_at_shell_startup'] = fcmd
+        if (fg := unserialize_data.get('cmd_at_shell_startup')) and not isinstance(fg, int):
+            from .session import foreground_process_allowed
+
+            if not foreground_process_allowed(ser_opts, 'ssh' if kssh_cmdline else fg):
+                del unserialize_data['cmd_at_shell_startup']
         ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
         ans.extend(cmd)
         return ans

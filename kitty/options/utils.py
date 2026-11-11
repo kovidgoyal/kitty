@@ -1226,6 +1226,13 @@ def shell_integration(x: str) -> frozenset[str]:
     return q
 
 
+def restore_last_session_programs(x: str) -> frozenset[str]:
+    q = frozenset(x.split())
+    if 'none' in q:
+        return frozenset()
+    return q
+
+
 def confirm_close(x: str) -> tuple[int, bool]:
     parts = x.split(maxsplit=1)
     num = int(parts[0])

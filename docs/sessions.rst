@@ -446,3 +446,50 @@ directories, etc. into a session file. It is a convenient way to
 :ref:`complex_sessions`. The options this action takes are documented below.
 
 .. include:: generated/save-as-session.rst
+
+
+.. _restore_last_session:
+
+Automatically restoring the last session
+-------------------------------------------
+
+kitty can remember its state and reopen it the next time it starts, by
+setting :opt:`restore_last_session` in :file:`kitty.conf`::
+
+    restore_last_session yes
+
+When you quit kitty, or close its last OS window, it asks whether to
+:guilabel:`Save` the session, :guilabel:`Don't save` it or :guilabel:`Cancel`
+closing. Choosing :guilabel:`Don't save` deletes any previously saved session,
+so the next start is a fresh one. This prompt replaces the usual confirmation
+shown when closing.
+
+To recover from crashes or the computer losing power, kitty also saves the
+session in the background every :opt:`restore_last_session_interval` seconds,
+when something has changed. If the last window simply exits, for example by
+typing :code:`exit` in the shell, there is no prompt and the most recently
+saved session is kept.
+
+The session is saved to :file:`last-session.kitty-session` in the kitty cache
+directory and is restored only when kitty is started without a command to run,
+without :option:`kitty --session` and when :opt:`startup_session` is not set.
+kitty instances started with a command or a session neither restore nor save
+the last session, so running something like :code:`kitty htop` does not
+replace it.
+
+Restored windows get back their size and position, tabs, layouts, splits and
+working directories.
+Programs that were running at the shell prompt are only restarted if they are
+listed in :opt:`restore_last_session_programs`, which by default contains
+common editors, pagers, system monitors and :program:`ssh`. Other windows are
+restored as a shell in the same working directory, so that commands such as
+:code:`make deploy` are never re-run unexpectedly. Restarting programs
+requires :ref:`shell_integration`. The terminal output (scrollback) of windows
+is not restored.
+
+This complements :opt:`restore_session_after_logout` (see
+:ref:`restore_after_logout`), which saves kitty, including scrollback, only when
+you log out, restart or shut down the computer. When both are enabled, the state
+saved at logout is restored first. While logging out, kitty does not ask whether
+to save the last session, it saves it silently, so that the logout is not held
+up waiting for an answer.
