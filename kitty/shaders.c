@@ -1394,29 +1394,31 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
         changed = true;                                                                     \
     }
 
-#define update_graphics_data(grman)             \
-    grman_update_layers(                        \
-        grman,                                  \
-        screen->scrolled_by,                    \
-        scroll_offset_lines_for_screen(screen), \
-        -1.f,                                   \
-        1.f,                                    \
-        2.f / screen->columns,                  \
-        2.f / screen->lines,                    \
-        screen->columns,                        \
-        screen->lines,                          \
+#define update_graphics_data(grman, scroll_position) \
+    grman_update_layers(                             \
+        grman,                                       \
+        scroll_position,                             \
+        scroll_offset_lines_for_screen(screen),      \
+        -1.f,                                        \
+        1.f,                                         \
+        2.f / screen->columns,                       \
+        2.f / screen->lines,                         \
+        screen->columns,                             \
+        screen->lines,                               \
         screen->cell_size)
 
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) {
             update_selection_data;
-            update_graphics_data(screen->paused_rendering.grman);
+            // Keep frozen image placements aligned with the captured text even
+            // when new output has advanced the live scroll position.
+            update_graphics_data(screen->paused_rendering.grman, screen->paused_rendering.scrolled_by);
         }
         screen->paused_rendering.cell_data_updated = true;
         screen->last_rendered.scrolled_by = screen->paused_rendering.scrolled_by;
     } else {
         if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen)) update_selection_data;
-        if (update_graphics_data(screen->grman)) changed = true;
+        if (update_graphics_data(screen->grman, screen->scrolled_by)) changed = true;
         screen->last_rendered.scrolled_by = screen->scrolled_by;
     }
 #undef update_selection_data
