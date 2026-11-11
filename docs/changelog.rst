@@ -125,6 +125,9 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :ac:`save_as_session`: Fix sessions saved with ``--match`` opening in a new
+  OS Window when loaded, depending on which OS Window had focus when saving
+
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
   ``screen-shake-random`` shaders that shake the window in which a bell occurs,
   for example, to shake the window when a shell command fails

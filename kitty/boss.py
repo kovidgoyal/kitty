@@ -577,9 +577,14 @@ class Boss:
             ser_opts = default_save_as_session_opts()
         matched_windows = frozenset(self.match_windows(ser_opts.match)) if ser_opts.match else None
         s = {current_focused_os_window_id(): 2, last_focused_os_window_id(): 1}
-        for i, os_window_id in enumerate(sorted(self.os_window_map, key=lambda wid: s.get(wid, 0))):
+        is_first = True
+        for os_window_id in sorted(self.os_window_map, key=lambda wid: s.get(wid, 0)):
             tm = self.os_window_map[os_window_id]
-            yield from tm.serialize_state_as_session(session_path, matched_windows, is_first=i == 0, ser_opts=ser_opts)
+            # With --match, OS windows may have nothing to save. The first one that does is
+            # loaded into the current OS window, not a new one.
+            if lines := tm.serialize_state_as_session(session_path, matched_windows, is_first=is_first, ser_opts=ser_opts):
+                is_first = False
+                yield from lines
 
     @property
     def all_tab_managers(self) -> Iterator[TabManager]:
