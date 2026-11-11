@@ -95,19 +95,23 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	return ans, nil
 }
 
-func key_for_path(path string) (key string, err error) {
-	if path, err = filepath.EvalSymlinks(path); err != nil {
-		return
-	}
-	if path, err = filepath.Abs(path); err != nil {
-		return
-	}
-
-	s, err := os.Stat(path)
+func key_for_path(path string, include_alias bool) (key string, err error) {
+	resolved_path, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		return
 	}
-	data := fmt.Sprintf("%s\x00%d\x00%d", path, s.Size(), s.ModTime().UnixNano())
+	if resolved_path, err = filepath.Abs(resolved_path); err != nil {
+		return
+	}
+
+	s, err := os.Stat(resolved_path)
+	if err != nil {
+		return
+	}
+	data := fmt.Sprintf("%s\x00%d\x00%d", resolved_path, s.Size(), s.ModTime().UnixNano())
+	if include_alias {
+		data += "\x00" + path
+	}
 	sum := sha256.Sum256(utils.UnsafeStringToBytes(data))
 	return hex.EncodeToString(sum[:]), nil
 }

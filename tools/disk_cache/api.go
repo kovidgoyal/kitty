@@ -58,11 +58,20 @@ func (dc *DiskCache) Get(key string, items ...string) (ans map[string]string, er
 }
 
 func (dc *DiskCache) GetPath(path string, items ...string) (key string, ans map[string]string, err error) {
+	return dc.get_path(path, false, items...)
+}
+
+// GetPathWithAlias includes the supplied path as well as the resolved file in the cache key.
+func (dc *DiskCache) GetPathWithAlias(path string, items ...string) (key string, ans map[string]string, err error) {
+	return dc.get_path(path, true, items...)
+}
+
+func (dc *DiskCache) get_path(path string, include_alias bool, items ...string) (key string, ans map[string]string, err error) {
 	if err = dc.lock(); err != nil {
 		return
 	}
 	defer dc.unlock_and_set_err(&err)
-	if key, err = key_for_path(path); err != nil {
+	if key, err = key_for_path(path, include_alias); err != nil {
 		return "", nil, err
 	}
 	ans, err = dc.get(key, items)

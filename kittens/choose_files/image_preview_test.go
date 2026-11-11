@@ -354,6 +354,64 @@ func TestCmdPreviewDiskCache(t *testing.T) {
 	}
 }
 
+func TestCmdPreviewDiskCacheSymlinks(t *testing.T) {
+	dir := t.TempDir()
+	first_target := filepath.Join(dir, "first.txt")
+	other_target := filepath.Join(dir, "other.txt")
+	mtime := time.Unix(1700000000, 0)
+	for _, path := range []string{first_target, other_target} {
+		// Give both targets identical sizes and mtimes so retargeting must change the cache key.
+		if err := os.WriteFile(path, []byte(filepath.Base(path)+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, mtime, mtime); err != nil {
+			t.Fatal(err)
+		}
+	}
+	one, two := filepath.Join(dir, "one.txt"), filepath.Join(dir, "two.txt")
+	for _, path := range []string{one, two} {
+		if err := os.Symlink(first_target, path); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	runs_log := filepath.Join(dir, "runs")
+	t.Setenv("KITTY_TEST_CMD_PREVIEW_RUNS", runs_log)
+	script := filepath.Join(dir, "preview.sh")
+	body := `#!/bin/sh
+echo run >> "$KITTY_TEST_CMD_PREVIEW_RUNS"
+IFS= read -r target < "$1"
+printf '{"lines":["%s:%s"]}\n' "${1##*/}" "$target"
+`
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cache_dir := filepath.Join(dir, "cache")
+	renderer := cmd_renderer{cmdline: []string{script}}
+	check := func(path, target string) {
+		t.Helper()
+		hd := render_through_cache(t, path, cache_dir, renderer)
+		want := filepath.Base(path) + ":" + filepath.Base(target)
+		if r, ok := hd.metadata.custom.(*CmdResult); !ok || len(r.Lines) != 1 || r.Lines[0] != want {
+			t.Errorf("preview for %q should contain %q, got %#v", filepath.Base(path), want, hd.metadata.custom)
+		}
+	}
+	for _, path := range []string{one, two, one, two} {
+		check(path, first_target)
+	}
+	if err := os.Remove(one); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(other_target, one); err != nil {
+		t.Fatal(err)
+	}
+	check(one, other_target)
+	check(two, first_target)
+	if n := count_runs(t, runs_log); n != 3 {
+		t.Errorf("preview command ran %d times, want 3 for the two links and the retargeted link", n)
+	}
+}
+
 func TestCmdPreviewInvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	script := filepath.Join(dir, "preview.sh")

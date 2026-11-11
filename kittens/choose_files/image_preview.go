@@ -186,7 +186,12 @@ func (p *ImagePreview) start_rendering(output chan<- render_data) {
 		p.ready.Store(true)
 		p.WakeupMainThread()
 	}()
-	key, ans, err := p.disk_cache.GetPath(p.abspath)
+	get_path := p.disk_cache.GetPath
+	if _, is_command := p.renderer.(cmd_renderer); is_command {
+		// A custom preview command sees the selected path and can produce different output for each alias.
+		get_path = p.disk_cache.GetPathWithAlias
+	}
+	key, ans, err := get_path(p.abspath)
 	if err != nil {
 		output <- render_data{err: err}
 		return

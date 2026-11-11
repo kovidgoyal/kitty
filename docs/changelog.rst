@@ -157,6 +157,9 @@ Detailed list of changes
   files, various preview caching bugs and e-book previews showing the wrong book
   (:pull:`10843`)
 
+- :doc:`choose-files <kittens/choose-files>`: Fix custom previews being shared
+  between different symlinks to the same file
+
 - :doc:`Pointer shapes <pointer-shapes>`: Fix animated pointers restarting
   unnecessarily (:iss:`10838`) and the shape not updating when switching to or
   from the alternate screen
