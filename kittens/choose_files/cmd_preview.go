@@ -28,6 +28,13 @@ func (c cmd_renderer) String() string {
 	return c.cmdline[0]
 }
 
+// CacheKeyExtra returns the command line, including the path argument exactly
+// as the command receives it. The command may produce different output for a
+// different command line or for different symlinks to the same file.
+func (c cmd_renderer) CacheKeyExtra(path string) string {
+	return fmt.Sprintf("%q", append(slices.Clone(c.cmdline), path))
+}
+
 type CmdResult struct {
 	Lines      []string `json:"lines"`
 	Image      string   `json:"image"`

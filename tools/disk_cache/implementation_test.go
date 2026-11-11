@@ -91,28 +91,29 @@ func TestDiskCache(t *testing.T) {
 		ensure_entries()
 	}
 	add(dc, "k1", map[string]string{"1": "abcd", "2": "efgh"})
-	arc(0, 1)
+	// dc2 reads the entries file dc created on construction, then re-reads it after dc.Add()
+	arc(0, 2)
 	ad("k1", map[string]string{"1": "abcd", "2": "efgh"})
-	arc(1, 2) // the two gets cause two updates
+	arc(1, 3) // the two gets cause two updates
 	add(dc, "k1", map[string]string{"3": "ijk", "4": "lmo"})
-	arc(1, 3) // dc.Add() causes re-read in dc2
+	arc(1, 4) // dc.Add() causes re-read in dc2
 	ak("k1")
-	arc(1, 3)
+	arc(1, 4)
 	add(dc2, "k2", map[string]string{"1": "123456789"})
-	arc(2, 3) // dc2.Add() causes re-read in dc
+	arc(2, 4) // dc2.Add() causes re-read in dc
 	ak("k1", "k2")
-	arc(2, 3)
+	arc(2, 4)
 	ad("k1", map[string]string{"1": "abcd", "2": "efgh", "3": "ijk"})
 	if dc.entries.TotalSize != 14+9 {
 		t.Fatalf("TotalSize: %d != %d", dc.entries.TotalSize, 14+9)
 	}
-	arc(3, 4) // the two gets cause two updates
+	arc(3, 5) // the two gets cause two updates
 	ak("k2", "k1")
 	dc.Get("k2")
-	arc(3, 5) // dc.Get() causes dc2 to read
+	arc(3, 6) // dc.Get() causes dc2 to read
 	ak("k1", "k2")
 	add(dc, "k3", map[string]string{"1": strings.Repeat("a", int(dc.MaxSize)-10)})
-	arc(3, 6) // dc.Add() causes dc2 to read
+	arc(3, 7) // dc.Add() causes dc2 to read
 	ak("k2", "k3")
 	// check that creating a new disk cache prunes
 	_, err = NewDiskCache(tdir, dc.MaxSize-8)
@@ -120,15 +121,15 @@ func TestDiskCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	ak("k3")
-	arc(4, 7) // NewDiskCache()
+	arc(4, 8) // NewDiskCache()
 
 	// test the path api
 	path := filepath.Join(tdir, "source")
 	if err = os.WriteFile(path, []byte("abcdfjrof"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	key, _, err := dc.GetPath(path)
-	if _, err = dc.AddPath(path, key, map[string][]byte{"1": []byte("1")}); err != nil {
+	key, _, err := dc.GetPath(path, "")
+	if _, err = dc.AddPath(path, "", key, map[string][]byte{"1": []byte("1")}); err != nil {
 		t.Fatal(err)
 	}
 	_, _, entries_before, _ := dc.entries_from_folders()
@@ -138,7 +139,7 @@ func TestDiskCache(t *testing.T) {
 	if err = os.WriteFile(path, []byte("changed contents"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = dc.AddPath(path, key, map[string][]byte{"1": []byte("2")}); err != nil {
+	if _, err = dc.AddPath(path, "", key, map[string][]byte{"1": []byte("2")}); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(1, len(dc.entries.PathMap)); diff != "" {
@@ -148,7 +149,7 @@ func TestDiskCache(t *testing.T) {
 	if len(entries_before) != len(entries_after) {
 		t.Fatalf("unexpected entries: %s", entries_after)
 	}
-	arc(4, 8) // dc.AddPath() causes dc2 to read
+	arc(4, 9) // dc.AddPath() causes dc2 to read
 }
 
 func TestDiskCacheLock(t *testing.T) {
@@ -275,13 +276,13 @@ func TestDiskCacheLockErrors(t *testing.T) {
 			return err
 		}, true},
 		{"GetPath", func(dc *DiskCache) error {
-			_, _, err := dc.GetPath(source, "data")
+			_, _, err := dc.GetPath(source, "", "data")
 			return err
 		}, true},
 		{"Remove", func(dc *DiskCache) error { return dc.Remove("key") }, true},
 		{"Clear", func(dc *DiskCache) error { return dc.Clear() }, true},
 		{"AddPath", func(dc *DiskCache) error {
-			_, err := dc.AddPath(source, "key", map[string][]byte{"data": []byte("updated")})
+			_, err := dc.AddPath(source, "", "key", map[string][]byte{"data": []byte("updated")})
 			return err
 		}, true},
 		{"Add", func(dc *DiskCache) error {
@@ -332,5 +333,182 @@ func TestDiskCacheLockErrors(t *testing.T) {
 				t.Fatalf("cache data changed after a failed lock attempt: %q, %v", data, err)
 			}
 		})
+	}
+}
+
+func TestDiskCachePathExtraKey(t *testing.T) {
+	tdir := t.TempDir()
+	dc, err := NewDiskCache(filepath.Join(tdir, "cache"), 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(tdir, "source")
+	if err = os.WriteFile(path, []byte("contents"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	keys := map[string]string{}
+	for _, extra := range []string{"", "a", "b"} {
+		key, _, err := dc.GetPath(path, extra)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if prev, found := keys[key]; found {
+			t.Fatalf("extra keys %q and %q gave the same key", prev, extra)
+		}
+		keys[key] = extra
+		again, _, err := dc.GetPath(path, extra)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if again != key {
+			t.Fatalf("extra key %q did not give a stable key", extra)
+		}
+	}
+}
+
+func TestDiskCacheSharedPathEntries(t *testing.T) {
+	tdir := t.TempDir()
+	dc, err := NewDiskCache(filepath.Join(tdir, "cache"), 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, other := filepath.Join(tdir, "target"), filepath.Join(tdir, "other")
+	for _, x := range []string{target, other} {
+		if err = os.WriteFile(x, []byte(filepath.Base(x)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	one, two := filepath.Join(tdir, "one"), filepath.Join(tdir, "two")
+	for _, x := range []string{one, two} {
+		if err = os.Symlink(target, x); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// get returns the key for path and whether it was a cache hit, adding an
+	// entry for path on a miss.
+	get := func(path string) (string, bool) {
+		t.Helper()
+		key, ans, err := dc.GetPath(path, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ans) > 0 {
+			return key, true
+		}
+		if _, err = dc.AddPath(path, "", key, map[string][]byte{"data": []byte(path)}); err != nil {
+			t.Fatal(err)
+		}
+		return key, false
+	}
+	shared, _ := get(one)
+	if key, hit := get(two); !hit || key != shared {
+		t.Fatal("symlinks to the same file did not share a cache entry")
+	}
+	retarget := func(link string) {
+		t.Helper()
+		if err = os.Remove(link); err != nil {
+			t.Fatal(err)
+		}
+		if err = os.Symlink(other, link); err != nil {
+			t.Fatal(err)
+		}
+	}
+	retarget(one)
+	if _, hit := get(one); hit {
+		t.Fatal("retargeted symlink got a cache hit")
+	}
+	if _, hit := get(two); !hit {
+		t.Fatal("retargeting one symlink removed the entry still used by another")
+	}
+	retarget(two)
+	if _, hit := get(two); !hit {
+		t.Fatal("symlinks to the same file did not share a cache entry")
+	}
+	if ans, err := dc.Get(shared); err != nil {
+		t.Fatal(err)
+	} else if len(ans) > 0 {
+		t.Fatal("entry no longer used by any path was not removed")
+	}
+}
+
+// The first path added to a new cache must be recorded, so that its entry is
+// removed when the file changes.
+func TestDiskCacheFirstPathRecorded(t *testing.T) {
+	tdir := t.TempDir()
+	dc, err := NewDiskCache(filepath.Join(tdir, "cache"), 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(tdir, "source")
+	var keys []string
+	for _, data := range []string{"first", "second version"} {
+		if err = os.WriteFile(path, []byte(data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		key, _, err := dc.GetPath(path, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = dc.AddPath(path, "", key, map[string][]byte{"data": []byte(data)}); err != nil {
+			t.Fatal(err)
+		}
+		keys = append(keys, key)
+	}
+	if ans, err := dc.Get(keys[0]); err != nil {
+		t.Fatal(err)
+	} else if len(ans) > 0 {
+		t.Fatal("entry for the previous version of the file was not removed")
+	}
+}
+
+// Failing to remove an entry no longer used must not turn a cache hit into an error.
+func TestDiskCacheHitWithFailedCleanup(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("permissions are not enforced for root")
+	}
+	tdir := t.TempDir()
+	dc, err := NewDiskCache(filepath.Join(tdir, "cache"), 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, other, link := filepath.Join(tdir, "target"), filepath.Join(tdir, "other"), filepath.Join(tdir, "link")
+	for _, x := range []string{target, other} {
+		if err = os.WriteFile(x, []byte(filepath.Base(x)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	add := func(path string) string {
+		t.Helper()
+		key, _, err := dc.GetPath(path, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = dc.AddPath(path, "", key, map[string][]byte{"data": []byte(path)}); err != nil {
+			t.Fatal(err)
+		}
+		return key
+	}
+	orphan := add(link)
+	add(other)
+	if err = os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Symlink(other, link); err != nil {
+		t.Fatal(err)
+	}
+	parent := filepath.Dir(dc.folder_for_key(orphan))
+	if err = os.Chmod(parent, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(parent, 0o700) })
+	_, ans, err := dc.GetPath(link, "")
+	if err != nil {
+		t.Fatalf("cache hit failed because of a failed cleanup: %s", err)
+	}
+	if len(ans) == 0 {
+		t.Fatal("expected a cache hit for the retargeted symlink")
 	}
 }

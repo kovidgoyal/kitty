@@ -27,6 +27,7 @@ func (r fake_preview_renderer) Render(string) (map[string][]byte, metadata, *ima
 	return map[string][]byte{"rendered": []byte("data")}, metadata{custom: "rendered"}, nil, nil
 }
 func (r fake_preview_renderer) ShowMetadata(*Handler, ShowData) int { return 0 }
+func (r fake_preview_renderer) CacheKeyExtra(string) string         { return "" }
 
 func new_test_image_preview(t *testing.T) *ImagePreview {
 	t.Helper()
@@ -360,7 +361,8 @@ func TestCmdPreviewDiskCacheSymlinks(t *testing.T) {
 	other_target := filepath.Join(dir, "other.txt")
 	mtime := time.Unix(1700000000, 0)
 	for _, path := range []string{first_target, other_target} {
-		// Give both targets identical sizes and mtimes so retargeting must change the cache key.
+		// Give both targets identical sizes and mtimes so that only the resolved
+		// target path distinguishes them in the cache key.
 		if err := os.WriteFile(path, []byte(filepath.Base(path)+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -409,6 +411,36 @@ printf '{"lines":["%s:%s"]}\n' "${1##*/}" "$target"
 	check(two, first_target)
 	if n := count_runs(t, runs_log); n != 3 {
 		t.Errorf("preview command ran %d times, want 3 for the two links and the retargeted link", n)
+	}
+}
+
+func TestCmdPreviewDiskCacheCommandChange(t *testing.T) {
+	dir := t.TempDir()
+	runs_log := filepath.Join(dir, "runs")
+	t.Setenv("KITTY_TEST_CMD_PREVIEW_RUNS", runs_log)
+	script := filepath.Join(dir, "preview.sh")
+	body := `#!/bin/sh
+echo run >> "$KITTY_TEST_CMD_PREVIEW_RUNS"
+printf '{"lines":["%s"]}\n' "$1"
+`
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(path, []byte("contents"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cache_dir := filepath.Join(dir, "cache")
+	for _, arg := range []string{"first", "second", "first"} {
+		hd := render_through_cache(t, path, cache_dir, cmd_renderer{cmdline: []string{script, arg}})
+		if r, ok := hd.metadata.custom.(*CmdResult); !ok || len(r.Lines) != 1 || r.Lines[0] != arg {
+			t.Errorf("preview with argument %q returned: %#v", arg, hd.metadata.custom)
+		}
+	}
+	// Each command has its own cache entry, so switching back to the first
+	// command does not run it again.
+	if n := count_runs(t, runs_log); n != 2 {
+		t.Errorf("preview command ran %d times, want 2", n)
 	}
 }
 

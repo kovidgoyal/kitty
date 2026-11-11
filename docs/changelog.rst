@@ -158,7 +158,9 @@ Detailed list of changes
   (:pull:`10843`)
 
 - :doc:`choose-files <kittens/choose-files>`: Fix custom previews being shared
-  between different symlinks to the same file
+  between different symlinks to the same file and previews not being refreshed
+  when the preview command or the :code:`video_preview` setting is changed
+  (:pull:`10850`)
 
 - :doc:`Pointer shapes <pointer-shapes>`: Fix animated pointers restarting
   unnecessarily (:iss:`10838`) and the shape not updating when switching to or

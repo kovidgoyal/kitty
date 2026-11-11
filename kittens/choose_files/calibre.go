@@ -295,6 +295,10 @@ func resolve_path(path string) (string, error) {
 	return filepath.Abs(path)
 }
 
+// The book metadata depends only on the file contents, and Unmarshall already
+// checks that cached metadata belongs to the selected book.
+func (c calibre_renderer) CacheKeyExtra(string) string { return "" }
+
 func (c calibre_renderer) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[CALIBRE_METADATA_KEY])
 	if err != nil {
