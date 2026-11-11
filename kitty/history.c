@@ -362,6 +362,15 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
     return true;
 }
 
+static void
+clear_multicell_cell(HistoryBuf *self, index_type lnum, index_type x) {
+    init_line(self, index_of(self, lnum), self->line);
+    CPUCell *c = self->line->cpu_cells + x;
+    cell_set_char(c, 0);
+    c->is_multicell = false;
+    clear_sprite_position(self->line->gpu_cells[x]);
+}
+
 void
 historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
     if (!count) return;
@@ -375,16 +384,54 @@ historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
     for (index_type x = 0; x < self->line->xnum; x++) {
         CPUCell *c = cells + x;
         if (c->is_multicell && c->y) {
-            for (index_type i = 0, pos = self->count; i < c->y && pos; i++, pos--) {
-                index_type idx = (self->start_of_data + pos - 1) % self->ynum;
-                init_line(self, idx, self->line);
-                CPUCell *m = self->line->cpu_cells + x;
-                cell_set_char(m, 0);
-                m->is_multicell = false;
-                clear_sprite_position(self->line->gpu_cells[x]);
-            }
+            for (index_type i = 0, pos = self->count; i < c->y && pos; i++, pos--) clear_multicell_cell(self, self->count - pos, x);
         }
     }
+}
+
+void
+historybuf_delete_lines(HistoryBuf *self, index_type num_newer, index_type count) {
+    // Delete count lines that have num_newer more recently added lines after
+    // them, i.e. the lines with line numbers [num_newer, num_newer + count),
+    // moving the num_newer lines up to take their place.
+    if (!count || num_newer >= self->count) return;
+    count = MIN(count, self->count - num_newer);
+    const index_type oldest_deleted = num_newer + count - 1;
+    // Remove the parts of multicell chars that are cut by the deletion: those
+    // that start above the deleted lines and extend into them...
+    init_line(self, index_of(self, oldest_deleted), self->line);
+    for (index_type x = 0; x < self->xnum; x++) {
+        const CPUCell c = self->line->cpu_cells[x];
+        if (c.is_multicell && c.y) {
+            const index_type limit = MIN(oldest_deleted + c.y + 1, self->count);
+            for (index_type lnum = oldest_deleted + 1; lnum < limit; lnum++) clear_multicell_cell(self, lnum, x);
+            init_line(self, index_of(self, oldest_deleted), self->line);
+        }
+    }
+    // ...and those that start in or above the deleted lines and extend below them
+    for (index_type below = 0; below < num_newer; below++) {
+        const index_type lnum = num_newer - 1 - below;
+        init_line(self, index_of(self, lnum), self->line);
+        bool found = false;
+        for (index_type x = 0; x < self->xnum; x++) {
+            const CPUCell c = self->line->cpu_cells[x];
+            if (c.is_multicell && c.y > below) {
+                found = true;
+                clear_multicell_cell(self, lnum, x);
+                init_line(self, index_of(self, lnum), self->line);
+            }
+        }
+        if (!found) break; // a multicell char cannot skip a line
+    }
+    // Move the newer lines up, oldest first so that no source is overwritten before it is copied
+    for (index_type i = num_newer; i-- > 0;) {
+        const index_type src = index_of(self, i), dest = index_of(self, i + count);
+        memcpy(cpu_lineptr(self, dest), cpu_lineptr(self, src), sizeof(CPUCell) * self->xnum);
+        memcpy(gpu_lineptr(self, dest), gpu_lineptr(self, src), sizeof(GPUCell) * self->xnum);
+        *attrptr(self, dest) = *attrptr(self, src);
+        attrptr(self, dest)->has_dirty_text = true;
+    }
+    self->count -= count;
 }
 
 static PyObject *

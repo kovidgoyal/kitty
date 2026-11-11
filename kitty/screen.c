@@ -246,6 +246,7 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
     if (is_hard_reset) {
         linebuf_clear(self->linebuf, BLANK_CHAR);
         historybuf_clear(self->historybuf);
+        self->last_visited_prompt.is_set = false;
         self->scrolled_by = 0;
         self->pixel_scroll_offset_y = 0;
         self->scroll_changed = true;
@@ -473,6 +474,23 @@ last_visited_prompt_index(Screen *self, index_type top, index_type bottom, bool 
     } else {
         if (*row == b) self->last_visited_prompt.is_set = false;
         else (*row)++;
+    }
+}
+
+static void
+last_visited_prompt_insert_or_delete_lines(Screen *self, index_type at, index_type bottom, index_type count, bool insert) {
+    // Keep the last visited prompt on the same content when count lines are
+    // inserted or deleted at row at, moving the lines in [at, bottom].
+    if (!self->last_visited_prompt.is_set || self->linebuf != self->main_linebuf) return;
+    int *row = &self->last_visited_prompt.row;
+    if (*row < (int)at || *row > (int)bottom) return;
+    const index_type r = *row;
+    if (insert) {
+        if (count > bottom - r) self->last_visited_prompt.is_set = false; // pushed out of the region
+        else *row += count;
+    } else {
+        if (count > r - at) self->last_visited_prompt.is_set = false; // deleted
+        else *row -= count;
     }
 }
 
@@ -2640,7 +2658,9 @@ static void
 _reverse_scroll(Screen *self, unsigned int count, bool fill_from_scrollback) {
     // Scroll the screen down by count lines, not moving the cursor
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
-    fill_from_scrollback = fill_from_scrollback && self->linebuf == self->main_linebuf;
+    // The scrollback only adjoins the scroll region when the region starts at
+    // the top of the screen, otherwise the lines must come in blank, as with SD
+    fill_from_scrollback = fill_from_scrollback && self->linebuf == self->main_linebuf && top == 0;
     if (fill_from_scrollback) {
         unsigned limit = MAX(self->lines, self->historybuf->count);
         count = MIN(limit, count);
@@ -3110,6 +3130,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
         }
         screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
+        last_visited_prompt_insert_or_delete_lines(self, self->cursor->y, bottom, count, true);
         self->is_dirty = true;
         clear_all_selections(self);
         screen_carriage_return(self);
@@ -3164,6 +3185,7 @@ screen_delete_lines(Screen *self, unsigned int count) {
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         screen_delete_lines_impl(self, self->cursor->y, count, top, bottom);
+        last_visited_prompt_insert_or_delete_lines(self, self->cursor->y, bottom, count, false);
         screen_carriage_return(self);
     }
 }
@@ -5559,6 +5581,29 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
     return oo->num_lines > 0;
 }
 
+static void
+remove_multicell_fragments_cut_off_above_screen(Screen *self, index_type num_lines_above_screen) {
+    // Lines were deleted from the scrollback leaving num_lines_above_screen
+    // lines between them and the top of the screen. Remove the parts of
+    // multicell chars on screen whose top was in the deleted lines.
+    for (index_type y = 0; y < self->lines; y++) {
+        linebuf_init_line(self->linebuf, y);
+        Line *line = self->linebuf->line;
+        bool found = false;
+        for (index_type x = 0; x < self->columns; x++) {
+            CPUCell *c = line->cpu_cells + x;
+            if (c->is_multicell && c->y > num_lines_above_screen + y) {
+                found = true;
+                cell_set_char(c, 0);
+                c->is_multicell = false;
+                clear_sprite_position(line->gpu_cells[x]);
+            }
+        }
+        if (!found) break; // a multicell char cannot skip a line
+        linebuf_mark_line_dirty(self->linebuf, y);
+    }
+}
+
 static PyObject *
 erase_last_command(Screen *self, PyObject *args UNUSED) {
     if (self->linebuf != self->main_linebuf) Py_RETURN_FALSE;
@@ -5589,10 +5634,15 @@ erase_last_command(Screen *self, PyObject *args UNUSED) {
     }
     if (!found) Py_RETURN_FALSE; // nothing above the current prompt to erase
     const int start = y;
-    const index_type num_lines = (index_type)(live_prompt_start - start);
-    index_type num_lines_to_erase_in_screen = start >= 0 ? num_lines : num_lines + start;
-    num_lines_to_erase_in_screen = MIN(self->cursor->y, num_lines_to_erase_in_screen);
-    const index_type num_deleted_from_history = num_lines - num_lines_to_erase_in_screen;
+    // The erased region is [start, live_prompt_start). Its part in the
+    // scrollback is [start, history_end) and its part on screen is
+    // [screen_start, live_prompt_start). Either can be empty, the screen part
+    // is when a long live prompt has itself scrolled into the scrollback.
+    const int history_end = MIN(live_prompt_start, 0), screen_start = MAX(start, 0);
+    const index_type num_deleted_from_history = start < history_end ? (index_type)(history_end - start) : 0;
+    const index_type num_lines_to_erase_in_screen = live_prompt_start > screen_start ? (index_type)(live_prompt_start - screen_start) : 0;
+    // The lines of the live prompt that are in the scrollback, newer than the erased lines
+    const index_type num_newer_in_history = (index_type)(-history_end);
     if (self->last_visited_prompt.is_set) {
         // Move the last visited prompt with the lines that remain: lines above
         // the erased region move down by the number of lines removed from the
@@ -5601,24 +5651,29 @@ erase_last_command(Screen *self, PyObject *args UNUSED) {
         if (start <= *r && *r < live_prompt_start) self->last_visited_prompt.is_set = false;
         else *r += *r < start ? (int)num_deleted_from_history : -(int)num_lines_to_erase_in_screen;
     }
+    // The line above the erased region no longer wraps into the line after it
+    if ((line = checked_range_line(self, start - 1))) line->cpu_cells[line->xnum - 1].next_char_was_wrapped = false;
     if (num_lines_to_erase_in_screen) {
         // Anchor the on-screen deletion at the top of the region, not at
         // cursor->y - count: a multi-line prompt or rows skipped above would
         // otherwise shift the deletion and leave residual lines on screen.
-        index_type screen_erase_start = start >= 0 ? (index_type)start : 0;
-        screen_delete_lines_impl(self, screen_erase_start, num_lines_to_erase_in_screen, 0, self->lines - 1);
+        screen_delete_lines_impl(self, (index_type)screen_start, num_lines_to_erase_in_screen, 0, self->lines - 1);
         self->cursor->y -= num_lines_to_erase_in_screen;
     }
     if (num_deleted_from_history) {
-        historybuf_delete_newest_lines(self->historybuf, num_deleted_from_history);
-        // The newest lines were removed from the scrollback, so keep a scrolled
-        // back viewport anchored on the same content. If the top of the viewport
-        // was among the removed lines, there is nothing to anchor to, so go to
-        // the bottom. Signal a redraw, otherwise the deletion of off-screen lines
-        // is not reflected until the next scroll event forces the history
-        // viewport to be recomputed.
-        if (self->scrolled_by > num_deleted_from_history) self->scrolled_by -= num_deleted_from_history;
-        else if (self->scrolled_by) {
+        if (num_newer_in_history) historybuf_delete_lines(self->historybuf, num_newer_in_history, num_deleted_from_history);
+        else historybuf_delete_newest_lines(self->historybuf, num_deleted_from_history);
+        if (!num_lines_to_erase_in_screen) remove_multicell_fragments_cut_off_above_screen(self, num_newer_in_history);
+        clear_all_selections(self);
+        // Keep a scrolled back viewport anchored on the same content: lines
+        // above the removed ones move down, lines below them do not move. If
+        // the top of the viewport was among the removed lines, there is
+        // nothing to anchor to, so go to the bottom. Signal a redraw, otherwise
+        // the deletion of off-screen lines is not reflected until the next
+        // scroll event forces the history viewport to be recomputed.
+        const int viewport_top = -(int)self->scrolled_by;
+        if (viewport_top < start) self->scrolled_by -= num_deleted_from_history;
+        else if (viewport_top < history_end) {
             self->scrolled_by = 0;
             reset_pixel_scroll(self, 0);
         }

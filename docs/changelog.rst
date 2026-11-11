@@ -143,6 +143,13 @@ Detailed list of changes
   ``clear_terminal last_command`` or after output scrolls only part of the
   screen
 
+- Fix ``clear_terminal last_command`` erasing the wrong lines when the command
+  being typed is so long that its start has scrolled off the screen
+
+- :ref:`Unscrolling <unscroll>` the screen no longer overwrites the top line of
+  the screen when a top margin is set, the new lines are now blank, as with
+  ``SD``
+
 - :doc:`choose-files <kittens/choose-files>`: Fix hangs previewing special
   files, various preview caching bugs and e-book previews showing the wrong book
   (:pull:`10843`)
