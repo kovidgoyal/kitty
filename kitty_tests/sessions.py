@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import cast
+from unittest.mock import patch
 
 from kitty.fast_data_types import Screen
 from kitty.os_window_size import WindowSize, WindowSizes, initial_window_size_func
@@ -43,70 +44,46 @@ class TestSessions(BaseTest):
         for state, name in ((WINDOW_FULLSCREEN, 'fullscreen'), (WINDOW_NORMAL, 'normal')):
             self.ae(os_window_geometry_as_session({**g, 'state': state})[-1], f'os_window_state {name}')
 
-    def save_as_session_match(self, focused_os_window_id: int, *os_windows: tuple[int, list[list[tuple[str, float]]]], session: str = 'a') -> list[str]:
-        # Serializes OS windows given as (active tab index, tabs), where each tab is a list of
-        # (session name, last focused at) for its windows, as save_as_session --match=session:{session}
-        from unittest.mock import patch
-
+    def test_save_as_session_first_os_window(self) -> None:
+        # Only the first OS window that has something to save is loaded into the
+        # current OS window, the rest go into new OS windows
         from kitty.boss import Boss
-        from kitty.session import parse_save_as_options_spec_args
-        from kitty.tabs import TabManager
+        from kitty.session import default_save_as_session_opts
 
-        class FakeWindow:
-            def __init__(self, session: str, last_focused_at: float) -> None:
-                self.session, self.last_focused_at = session, last_focused_at
+        def serialize(focused_os_window_id: int, *os_windows: list[str]) -> list[str]:
+            def tab_manager(lines: list[str]) -> SimpleNamespace:
+                def serialize_state_as_session(session_path: str, matched_windows: frozenset[object] | None, is_first: bool, ser_opts: object) -> list[str]:
+                    return (lines if is_first else ['', '', 'new_os_window'] + lines) if lines else []
 
-        class FakeTab:
-            def __init__(self, name: str, windows: list[FakeWindow]) -> None:
-                self.name, self.windows = name, windows
+                return SimpleNamespace(serialize_state_as_session=serialize_state_as_session)
 
-            def __iter__(self) -> Iterator[FakeWindow]:
-                return iter(self.windows)
+            boss = SimpleNamespace(os_window_map={i: tab_manager(lines) for i, lines in enumerate(os_windows, start=1)})
+            with (
+                patch('kitty.boss.current_focused_os_window_id', return_value=focused_os_window_id),
+                patch('kitty.boss.last_focused_os_window_id', return_value=focused_os_window_id),
+            ):
+                return list(Boss.serialize_state_as_session(cast(Boss, boss), '', default_save_as_session_opts()))
 
-            def serialize_state_as_session(self, session_path: str, matched_windows: frozenset[FakeWindow], ser_opts: object) -> list[str]:
-                return ['', f'new_tab {self.name}', 'launch'] if any(w in matched_windows for w in self.windows) else []
+        tab = ['', 'new_tab', 'launch']
+        # The focused OS window is serialized last
+        lines = serialize(2, [], tab)
+        self.ae(lines, tab)
+        self.ae(len(list(parse_session('\n'.join(lines), self.set_options()))), 1)
+        self.ae(serialize(3, [], tab, tab), tab + ['', '', 'new_os_window'] + tab)
+        self.ae(serialize(1, tab, []), tab)
 
-        tms = []
-        for os_window_id, (active_tab_idx, tabs) in enumerate(os_windows, start=1):
-            tm = TabManager.__new__(TabManager)
-            tm.os_window_id, tm._active_tab_idx, tm.wm_class, tm.wm_name = os_window_id, active_tab_idx, '', ''
-            tm.tabs = [FakeTab(f'{os_window_id}.{i}', [FakeWindow(*w) for w in t]) for i, t in enumerate(tabs)]  # type: ignore[misc]
-            tms.append(tm)
-        boss = SimpleNamespace(
-            os_window_map={tm.os_window_id: tm for tm in tms},
-            match_windows=lambda match: (w for tm in tms for t in tm for w in t if w.session == session),
-        )
-        opts, _ = parse_save_as_options_spec_args([f'--match=session:{session}'])
-        with (
-            patch('kitty.boss.current_focused_os_window_id', return_value=focused_os_window_id),
-            patch('kitty.boss.last_focused_os_window_id', return_value=focused_os_window_id),
-        ):
-            return list(Boss.serialize_state_as_session(boss, '', opts))  # type: ignore[arg-type]
+    def test_save_as_session_focus_tab(self) -> None:
+        from kitty.tabs import index_of_tab_to_focus_in_session as f
 
-    def test_save_as_session_match_os_windows(self) -> None:
-        # The focused OS window is serialized last. Its tabs must not go into a new OS window
-        # when no OS window before it has any matched windows.
-        a, b = [('a', 0)], [('b', 0)]
-        self.ae(self.save_as_session_match(2, (0, [b]), (0, [a])), ['', 'new_tab 2.0', 'launch', '', 'focus_tab 0'])
-        self.ae(self.save_as_session_match(3, (0, [b]), (0, [a]), (0, [a])), [
-            '', 'new_tab 2.0', 'launch', '', 'focus_tab 0',
-            '', '', 'new_os_window', '', 'new_tab 3.0', 'launch', '', 'focus_tab 0',
-        ])
-        sessions = list(parse_session('\n'.join(self.save_as_session_match(2, (0, [b]), (0, [a]))), self.set_options()))
-        self.ae(len(sessions), 1)
-
-    def test_save_as_session_match_focus_tab(self) -> None:
-        # focus_tab is the index among the saved tabs, which are all that loading the session creates
-        tabs = [[('b', 9)], [('a', 1), ('b', 9)], [('b', 0)], [('a', 5)], [('a', 2)]]
-        lines = self.save_as_session_match(1, (3, tabs))
-        self.ae([x for x in lines if x.startswith(('new_tab', 'focus_tab'))], ['new_tab 1.1', 'new_tab 1.3', 'new_tab 1.4', 'focus_tab 1'])
+        # The active tab, as an index among the saved tabs, when it is saved
+        self.ae(f(1, [5, 1, 2]), 1)
+        # Otherwise the saved tab with the most recently focused saved window
+        self.ae(f(-1, [1, 5, 2]), 1)
+        self.ae(f(-1, [1, 5, 7]), 2)
+        self.ae(f(-1, [0, 0]), 0)
+        lines = ['', 'new_tab a', 'launch', '', 'new_tab b', 'launch', '', 'focus_tab 1']
         (s,) = parse_session('\n'.join(lines), self.set_options())
-        self.ae((len(s.tabs), s.focus_tab_spec), (3, '1'))
-        # When the active tab is not saved, the saved tab with the most recently focused saved window
-        for active_tab_idx in (0, 2):
-            self.ae(self.save_as_session_match(1, (active_tab_idx, tabs))[-1], 'focus_tab 1')
-        tabs[4] = [('a', 7)]
-        self.ae(self.save_as_session_match(1, (2, tabs))[-1], 'focus_tab 2')
+        self.ae((len(s.tabs), s.focus_tab_spec), (2, '1'))
 
     def test_scrollback_for_restore(self) -> None:
         from kitty.logout_session import sanitize_restored_output, scrollback_for_restore

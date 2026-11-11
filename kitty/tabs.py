@@ -190,6 +190,20 @@ def os_window_geometry_as_session(g: 'OSWindowGeometry', include_position: bool 
     return ans
 
 
+def index_of_tab_to_focus_in_session(active_tab_idx: int, last_focused_at: Sequence[float]) -> int:
+    """
+    The focus_tab index for a saved session, which counts only the tabs the session
+    creates. active_tab_idx is the index of the active tab among the saved tabs, or
+    -1 if it was not saved, in which case the saved tab with the most recently
+    focused saved window is used. With --match=session:NAME that is the tab
+    goto_session switches to while the session is open. last_focused_at has one
+    entry per saved tab.
+    """
+    if 0 <= active_tab_idx < len(last_focused_at):
+        return active_tab_idx
+    return max(range(len(last_focused_at)), key=last_focused_at.__getitem__, default=0)
+
+
 def add_active_id_to_history(items: Deque[int], item_id: int, maxlen: int = 64) -> None:
     with suppress(ValueError):
         items.remove(item_id)
@@ -457,7 +471,14 @@ class Tab:  # {{{
             'name': self.name,
         }
 
-    def serialize_state_as_session(self, session_path: str, matched_windows: frozenset[Window] | None, ser_opts: SaveAsSessionOptions) -> list[str]:
+    def serialize_state_as_session(
+        self,
+        session_path: str,
+        matched_windows: frozenset[Window] | None,
+        ser_opts: SaveAsSessionOptions,
+        saved_windows: list[Window] | None = None,
+    ) -> list[str]:
+        """If saved_windows is not None, the windows written to the session are appended to it"""
         import shlex
 
         launch_cmds = []
@@ -504,6 +525,8 @@ class Tab:  # {{{
                 )
                 if lc:
                     gw.append(shlex.join(lc))
+                    if saved_windows is not None:
+                        saved_windows.append(window)
             if gw:
                 emitted_group_ids.add(g.id)
                 launch_cmds.extend(gw)
@@ -1771,11 +1794,15 @@ class TabManager:  # {{{
     def serialize_state_as_session(
         self, session_path: str, matched_windows: frozenset[Window] | None, ser_opts: SaveAsSessionOptions, is_first: bool = False
     ) -> list[str]:
-        ans = []
-        saved_tabs: list[Tab] = []
+        ans: list[str] = []
+        active_tab_idx = -1
+        last_focused_at: list[float] = []
         for tab in self.tabs:
-            if lines := tab.serialize_state_as_session(session_path, matched_windows, ser_opts):
-                saved_tabs.append(tab)
+            saved_windows: list[Window] = []
+            if lines := tab.serialize_state_as_session(session_path, matched_windows, ser_opts, saved_windows):
+                if tab is self.active_tab:
+                    active_tab_idx = len(last_focused_at)
+                last_focused_at.append(max((w.last_focused_at for w in saved_windows), default=0))
                 ans.extend(lines)
         if ans:
             prefix = [] if is_first else ['', '', 'new_os_window']
@@ -1786,18 +1813,8 @@ class TabManager:  # {{{
             if ser_opts.os_window_geometry:
                 prefix.extend(self.serialize_geometry_as_session())
             ans = prefix + ans
-            # focus_tab counts only the tabs created by the session. If the active tab
-            # is not saved, focus the saved tab with the most recently focused saved
-            # window, the tab that switching to the session focuses while it is open.
-            focus_tab = self.active_tab
-            if focus_tab is None or focus_tab not in saved_tabs:
-
-                def last_focused_at(tab: Tab) -> float:
-                    return max((w.last_focused_at for w in tab if matched_windows is None or w in matched_windows), default=0)
-
-                focus_tab = max(saved_tabs, key=last_focused_at)
             ans.append('')
-            ans.append(f'focus_tab {saved_tabs.index(focus_tab)}')
+            ans.append(f'focus_tab {index_of_tab_to_focus_in_session(active_tab_idx, last_focused_at)}')
         return ans
 
     def serialize_geometry_as_session(self) -> list[str]:

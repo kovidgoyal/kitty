@@ -126,10 +126,9 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - :ac:`save_as_session`: Fix sessions saved with ``--match`` opening in a new
-  OS Window when loaded, depending on which OS Window had focus when saving
-
-- :ac:`save_as_session`: Fix sessions saved with ``--match`` focusing the
-  wrong tab when loaded, if the OS Window had tabs that were not saved
+  OS Window and focusing the wrong tab when loaded, if some OS Windows or tabs
+  had nothing to save. This also affected sessions saved for
+  :ref:`restore_after_logout` that contained windows that cannot be saved
 
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
   ``screen-shake-random`` shaders that shake the window in which a bell occurs,
