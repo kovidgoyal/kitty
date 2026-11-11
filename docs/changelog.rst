@@ -125,80 +125,51 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :ac:`save_as_session`: Fix sessions saved with ``--match`` opening in a new
-  OS Window and focusing the wrong tab when loaded, if some OS Windows or tabs
-  had nothing to save. This also affected sessions saved for
-  :ref:`restore_after_logout` that contained windows that cannot be saved
+- :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders to shake
+  a window on bell, add command start/finish and alternate screen enter/exit
+  events and uniforms, and fix ``bell-in-window`` needing a non-zero
+  :opt:`visual_bell_duration` and firing late for hidden windows
 
-- :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` and
-  ``screen-shake-random`` shaders that shake the window in which a bell occurs,
-  for example, to shake the window when a shell command fails
+- :ac:`save_as_session`: Fix saved sessions opening in a new OS Window or
+  focusing the wrong tab when some OS Windows or tabs had nothing to save,
+  also affecting :ref:`restore_after_logout`
 
-- :doc:`Custom shaders <custom-shaders>`: Add the ``command-start``,
-  ``command-finish``, ``alternate-screen-enter`` and ``alternate-screen-exit``
-  events and uniforms for whether a command is running and whether the
-  alternate screen is in use in the active window
+- Fix the scrolled back view jumping when new output arrives and
+  ``clear_terminal last_command`` not working or moving the view when scrolled
+  back (:pull:`10841`)
 
-- :doc:`Custom shaders <custom-shaders>`: Fix the ``bell-in-window`` event only
-  firing when :opt:`visual_bell_duration` is non-zero. Bells in hidden windows,
-  such as those in inactive tabs, no longer trigger the event late, when the
-  window next becomes visible
+- :doc:`choose-files <kittens/choose-files>`: Fix hangs previewing special
+  files, various preview caching bugs and e-book previews showing the wrong book
+  (:pull:`10843`)
 
-- :doc:`Hints kitten </kittens/hints>`: Fix custom regex patterns with capture
-  groups inside lookarounds that overlap later matches finding no matches at all
-  when the text contains non-ASCII characters
+- :doc:`Pointer shapes <pointer-shapes>`: Fix animated pointers restarting
+  unnecessarily (:iss:`10838`) and the shape not updating when switching to or
+  from the alternate screen
 
-- :doc:`choose-files <kittens/choose-files>`: Fix hangs when previewing named
-  pipes and other special files, fix previews of videos and custom preview
-  commands not being cached or receiving the wrong path, and respect the
-  maximum text preview size for symlinks
+- Bash integration: Find system wide startup files by scanning the bash
+  executable instead of guessing their location (:iss:`10819`)
 
-- :doc:`choose-files <kittens/choose-files>`: Fix e-book previews sometimes
-  showing the metadata and cover of a different book (:pull:`10843`)
+- Remote control: Fix ``set-colors`` and ``get-colors`` handling of
+  ``cursor_text_color`` (:iss:`10832`)
 
-- Bash integration: Source the system wide profile and bashrc files that bash
-  was actually built to use, found by scanning the bash executable, instead of
-  guessing their locations in :file:`/etc`. Fixes system startup files not
-  being sourced on distros that keep them elsewhere (:iss:`10819`)
+- ssh kitten: Fix remote directories such as :file:`~/.terminfo` being created
+  world writable (:iss:`10834`)
 
-- Vertical tab bar: Fix clicking the blank line below a tab not activating the tab (:iss:`10810`)
+- :doc:`Hints kitten </kittens/hints>`: Fix some custom regexes with lookarounds
+  finding no matches in non-ASCII text
 
-- macOS: Add a workaround for clicking notifications not focusing the correct
-  OS Window when there are multiple kitty instances because of Cocoa
-  limitations (:iss:`10805`)
+- Vertical tab bar: Fix clicking the blank line below a tab not activating it (:iss:`10810`)
 
 - IME: Move cursor position within pre-edit text (:iss:`10807`)
 
-- Wayland: Fix kitty hanging when creating a new OS window if an output was
-  plugged and unplugged quickly and the compositor never sent its logical
-  geometry
+- macOS: Workaround for clicking notifications not focusing the correct OS
+  Window with multiple kitty instances (:iss:`10805`)
 
-- X11: Fix kitty exiting when a program requesting the clipboard or primary
-  selection destroys its window before kitty can reply. X errors no longer
-  cause kitty to exit, they are reported instead (:iss:`9248`)
+- Wayland: Fix a hang creating OS windows after an output is quickly plugged and
+  unplugged
 
-- ssh kitten: Fix directories such as :file:`~/.terminfo` being created world
-  writable on the remote host on first connect (:iss:`10834`)
-
-- Remote control: Fix ``kitten @ set-colors`` failing on color files containing
-  ``cursor_text_color background`` (:iss:`10832`)
-
-- Remote control: Fix ``kitten @ get-colors`` reporting a window's cursor text
-  color as ``cursor_text`` instead of ``cursor_text_color``
-
-- :doc:`Pointer shapes <pointer-shapes>`: Fix animated mouse pointers restarting
-  their animation on every mouse movement in ``kitten mouse-demo`` and when
-  programs pop and push the same pointer shape in a single write (:iss:`10838`)
-
-- :doc:`Pointer shapes <pointer-shapes>`: Fix the mouse pointer shape not being
-  updated when a program switches to or from the alternate screen
-
-- Fix the scrolled back view sometimes jumping when new output arrives, for
-  example with programs that use synchronized output or when scrolling while
-  output is being received (:pull:`10841`)
-
-- Fix erasing the last command (``clear_terminal last_command``) doing nothing
-  when the window is scrolled back far enough, and moving the scrolled back view
+- X11: Report X errors instead of exiting, fixing exits when clipboard
+  requestors destroy their window early (:iss:`9248`)
 
 
 0.50.0 [2026-11-03]
