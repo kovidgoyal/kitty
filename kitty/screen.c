@@ -3789,9 +3789,10 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump, int sc
     } else {
         int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
         num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
-        int y = -self->scrolled_by;
+        const int oldest_y = -(int)self->historybuf->count;
+        int y = -(int)self->scrolled_by;
 #define ensure_y_ok \
-    if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
+    if (y >= (int)self->lines || y < oldest_y) return false;
         ensure_y_ok;
         y += scroll_offset;
         while (num_of_prompts_to_jump) {
@@ -3799,10 +3800,12 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump, int sc
             ensure_y_ok;
             if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) { num_of_prompts_to_jump--; }
         }
-        y -= scroll_offset;
 #undef ensure_y_ok
-        self->scrolled_by = y >= 0 ? 0 : -y;
-        screen_set_last_visited_prompt(self, 0);
+        const int viewport_top = MAX(oldest_y, MIN(0, y - scroll_offset));
+        self->scrolled_by = -viewport_top;
+        const int prompt_y = y - viewport_top;
+        // The context above the prompt can include another command's output.
+        screen_set_last_visited_prompt(self, prompt_y >= 0 && prompt_y < (int)self->lines ? prompt_y : 0);
     }
     if (old != self->scrolled_by) {
         reset_pixel_scroll(self, 0);

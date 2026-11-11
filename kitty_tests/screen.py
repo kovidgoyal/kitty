@@ -2353,6 +2353,28 @@ class TestScreen(BaseTest):
         s.draw('a foo')
         ae(s, 'foo', 2)
 
+    def test_scroll_to_prompt_with_short_scrollback(self):
+        for lines_before_prompt in (0, 1):
+            with self.subTest(lines_before_prompt=lines_before_prompt):
+                s = self.create_screen(cols=12, lines=4, scrollback=10)
+                if lines_before_prompt:
+                    parse_bytes(s, b'\x1b]133;C\x07older\r\n')
+                parse_bytes(s, b'\x1b]133;A\x07$ a\r\n')
+                parse_bytes(s, b'\x1b]133;C\x07a0\r\n\r\n\r\n')
+                parse_bytes(s, b'\x1b]133;A\x07$ live')
+                self.ae(s.historybuf.count, lines_before_prompt + 1)
+
+                self.assertTrue(s.scroll_to_prompt(-1, 3))
+                self.ae(s.scrolled_by, s.historybuf.count)
+                s.scroll_to_absolute(0)
+
+                output = []
+                s.cmd_output(2, output.append)
+                self.ae(''.join(output).rstrip(), 'a0')
+                self.assertTrue(s.scroll_to_prompt(0))
+                self.ae(s.scrolled_by, s.historybuf.count)
+                self.ae(str(s.visual_line(lines_before_prompt)), '$ a')
+
     def test_prompt_marking(self):
         # ]]]]]]]]]]]]]]]]}}}}}}}}}}}}}}}}))))))))))))))))))))))
 
