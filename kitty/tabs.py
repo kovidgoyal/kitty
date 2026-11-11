@@ -1862,6 +1862,7 @@ class TabManager:  # {{{
         empty_tab: bool = False,
         location: str = 'last',
         title: str = '',
+        session_name: str = '',
     ) -> Tab:
         idx = len(self.tabs)
         tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
@@ -1871,8 +1872,7 @@ class TabManager:  # {{{
         if as_neighbor:
             location = 'after'
         insert_at = index_for_new_tab(tuple(x.effective_title for x in tabs), orig_active_tab_idx, location, title)
-        session_name = ''
-        if cwd_from is not None and (sw := cwd_from.window):
+        if not session_name and cwd_from is not None and (sw := cwd_from.window):
             session_name = sw.created_in_session_name
             if not session_name and (sw_tab := sw.tabref()):
                 session_name = sw_tab.created_in_session_name

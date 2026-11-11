@@ -3839,11 +3839,13 @@ class Boss:
         src_tab = window.tabref()
         if src_tab is None:
             return
+        # A new tab for the window belongs to its session, as does a new tab whose cwd comes from it
+        session_name = window.created_in_session_name or src_tab.created_in_session_name
         with self.suppress_focus_change_events():
             if target_os_window_id == 'new':
                 target_os_window_id = self.add_os_window()
                 tm = self.os_window_map[target_os_window_id]
-                target_tab = tm.new_tab(empty_tab=True, title=new_tab_title)
+                target_tab = tm.new_tab(empty_tab=True, title=new_tab_title, session_name=session_name)
             else:
                 target_os_window_id = target_os_window_id or current_os_window()
                 if isinstance(target_tab_id, str):
@@ -3855,9 +3857,11 @@ class Boss:
                         tm = self.os_window_map[target_os_window_id]
                     if target_tab_id.startswith('new'):
                         # valid values for target_tab_id are 'new', 'new_after' and 'new_before'
-                        target_tab = tm.new_tab(empty_tab=True, location=(new_tab_location or target_tab_id[4:] or 'last'), title=new_tab_title)
+                        target_tab = tm.new_tab(
+                            empty_tab=True, location=(new_tab_location or target_tab_id[4:] or 'last'), title=new_tab_title, session_name=session_name
+                        )
                     else:
-                        target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True)
+                        target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True, session_name=session_name)
                 else:
                     for tab in self.all_tabs:
                         if tab.id == target_tab_id:

@@ -125,9 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Sessions: Fix tabs moved to another OS Window with :ac:`detach_tab` or drag
-  and drop no longer belonging to their session, so that a
-  :opt:`tab_bar_filter` matching sessions showed them in the wrong sessions
+- Sessions: Fix tabs moved to another OS Window, and windows moved into a new
+  tab, with :ac:`detach_tab`, :ac:`detach_window` or drag and drop no longer
+  belonging to their session, so that a :opt:`tab_bar_filter` matching sessions
+  showed them in the wrong sessions
 
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders to shake
   a window on bell, add command start/finish and alternate screen enter/exit

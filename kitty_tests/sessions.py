@@ -475,3 +475,27 @@ class TestSessions(BaseTest):
         src, dest = FakeTab('a1', 'a'), FakeTab('', '')
         Tab.take_over_from(cast(Tab, dest), cast(Tab, src))
         self.ae((dest.name, dest.cwd, dest.created_in_session_name), ('a1', '/a1', 'a'))
+
+    def test_tab_for_moved_window_keeps_session(self) -> None:
+        # A new tab made for a window moved into it belongs to the window's session, or else its tab's
+        from contextlib import nullcontext
+
+        from kitty.boss import Boss
+        from kitty.window import Window
+
+        sessions: list[str] = []
+        tab = SimpleNamespace(created_in_session_name='a', detach_window=lambda w: None, attach_windows=lambda w: None, make_active=lambda: None)
+
+        def new_tab(session_name: str = '', **kw: object) -> SimpleNamespace:
+            sessions.append(session_name)
+            return tab
+
+        tm = SimpleNamespace(new_tab=new_tab, tab_at_location=lambda location: None)
+        boss = SimpleNamespace(
+            os_window_map={1: tm}, add_os_window=lambda: 1, suppress_focus_change_events=nullcontext, _cleanup_tab_after_window_removal=lambda t: None
+        )
+        # Each place a new tab is made for the window: a new tab, no tab at the location, a new OS window
+        for window_session, target_tab_id, target_os_window_id in (('b', 'new', 1), ('b', 'left', 1), ('b', None, 'new'), ('', 'new', 1)):
+            window = SimpleNamespace(created_in_session_name=window_session, tabref=lambda: tab)
+            Boss._move_window_to(cast(Boss, boss), cast(Window, window), target_tab_id, target_os_window_id)
+        self.ae(sessions, ['b', 'b', 'b', 'a'])
