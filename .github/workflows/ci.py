@@ -290,6 +290,7 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2026-12345',  # tempfile.TemporaryDirectory cleanup symlink attack
     'CVE-2026-103995',  # http response header parsing in stdlib, inapplicable
     'CVE-2026-116566',  # getaddrinfo null bytes, utterly irrelevant
+    'CVE-2026-119170',  # openssl fips mode inapplicable
     # github.com/nwaples/rardecode/v2
     'CVE-2025-11579',  # rardecode is version 2.2.1, not vulnerable
 ]
