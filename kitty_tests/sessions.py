@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from kitty.fast_data_types import Screen
 from kitty.os_window_size import WindowSize, WindowSizes, initial_window_size_func
-from kitty.session import get_os_window_sizing_data, parse_session
+from kitty.session import get_os_window_sizing_data, parse_session, save_as_session
 
 from .base import BaseTest, parse_bytes
 
@@ -84,6 +86,26 @@ class TestSessions(BaseTest):
         lines = ['', 'new_tab a', 'launch', '', 'new_tab b', 'launch', '', 'focus_tab 1']
         (s,) = parse_session('\n'.join(lines), self.set_options())
         self.ae((len(s.tabs), s.focus_tab_spec), (2, '1'))
+
+    def test_save_as_session_empty_match(self) -> None:
+        boss = Mock(active_session='work')
+        match = '--match=title:^editor$'
+        with TemporaryDirectory() as tmp:
+            existing = Path(tmp, 'work.kitty-session')
+            new = Path(tmp, 'new', 'work.kitty-session')
+            with patch.dict('kitty.session.seen_session_paths', work=str(existing)):
+                boss.serialize_state_as_session.return_value = iter(('launch',))
+                save_as_session(boss, ['--save-only', match, '.'])
+                self.ae(existing.read_bytes(), b'launch')
+                boss.serialize_state_as_session.return_value = iter(())
+                with self.subTest(destination='active session'):
+                    save_as_session(boss, [match, '.'])
+                    self.ae(existing.read_bytes(), b'launch')
+                with self.subTest(destination='new file'):
+                    save_as_session(boss, ['--save-only', match, str(new)])
+                    self.assertFalse(new.parent.exists())
+        self.ae(boss.show_error.call_count, 2)
+        boss.edit_file.assert_not_called()
 
     def test_scrollback_for_restore(self) -> None:
         from kitty.logout_session import sanitize_restored_output, scrollback_for_restore
