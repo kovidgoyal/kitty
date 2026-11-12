@@ -953,6 +953,14 @@ class Window:
         return tab.overlay_parent(self)
 
     @property
+    def effective_session_name(self) -> str:
+        "The session this window belongs to: the one it was created in, or else the one its tab was created in"
+        if self.created_in_session_name:
+            return self.created_in_session_name
+        tab = self.tabref()
+        return '' if tab is None else tab.created_in_session_name
+
+    @property
     def current_colors(self) -> dict[str, int | None | tuple[tuple[Color, float], ...]]:
         return self.screen.color_profile.as_dict()
 

@@ -556,6 +556,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, n
                     y=y,
                 )
             tm = boss.os_window_map[oswid]
+            tm.created_in_session_name = add_to_session
         tab = tm.new_tab(empty_tab=True, location=opts.location, title=opts.tab_title or '')
         tab.created_in_session_name = add_to_session
         return tab
@@ -939,12 +940,12 @@ def _launch(
         add_to_session = opts.add_to_session or ''
         match add_to_session:
             case '.':
-                add_to_session = source_window.created_in_session_name if source_window else ''
+                add_to_session = source_window.effective_session_name if source_window else ''
             case '!':
                 add_to_session = ''
             case '':
                 if kw['cwd_from'] is not None and source_window:
-                    add_to_session = source_window.created_in_session_name
+                    add_to_session = source_window.effective_session_name
         kw['hold'] = opts.hold
         dock_owner: WindowGroup | None = None
         if opts.type in dock_launch_types:

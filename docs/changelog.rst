@@ -125,6 +125,15 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Sessions: Fix tabs and windows moved with :ac:`detach_tab`, :ac:`detach_window`
+  or drag and drop losing their session, so that a :opt:`tab_bar_filter`
+  matching sessions showed them in the wrong sessions. New tabs and OS Windows
+  created for moved tabs and windows, or by :option:`launch --type`:code:`=os-window`,
+  now belong to their session as well. :option:`launch --add-to-session`:code:`=.`
+  and :option:`launch --cwd`:code:`=current` now use the session of the source
+  window's tab when the window itself has no session, as
+  :ac:`new_window_with_cwd` does (:pull:`10851`)
+
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders to shake
   a window on bell, add command start/finish and alternate screen enter/exit
   events and uniforms, and fix ``bell-in-window`` needing a non-zero
