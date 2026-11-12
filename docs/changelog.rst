@@ -134,8 +134,8 @@ Detailed list of changes
   focusing the wrong tab when some OS Windows or tabs had nothing to save,
   also affecting :ref:`restore_after_logout`
 
-- Preserve the session file and show an error when :ac:`save_as_session` with
-  ``--match`` has no windows to save
+- :ac:`save_as_session`: Show an error instead of overwriting the session file
+  with an empty one when there are no windows that can be saved (:pull:`10852`)
 
 - Fix the scrolled back view jumping when new output arrives and
   ``clear_terminal last_command`` not working or moving the view when scrolled

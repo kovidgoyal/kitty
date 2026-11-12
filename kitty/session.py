@@ -687,7 +687,7 @@ If specified, only save all windows (and their parent tabs/OS Windows) that matc
 search expression. See :ref:`search_syntax` for details on the search language. In particular if
 you want to only save windows that are present in the currently active session,
 use :code:`--match=session:.`.
-If no matching windows can be saved, the action reports an error and cancels the save.
+If none of the matching windows can be saved, an error is shown and any existing session file is left unchanged.
 
 
 --base-dir
@@ -706,6 +706,16 @@ saved on Wayland as it does not allow applications to position their windows.
 """
 
 
+def show_nothing_to_save_error(boss: BossType, opts: SaveAsSessionOptions) -> None:
+    if opts.match and next(boss.match_windows(opts.match), None) is None:
+        msg = _('No windows match: {0}').format(opts.match)
+    elif opts.match:
+        msg = _('None of the matching windows can be saved in a session, for example, because they are running UI kittens.')
+    else:
+        msg = _('None of the windows can be saved in a session, for example, because they are running UI kittens.')
+    boss.show_error(_('No windows to save'), msg)
+
+
 def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str, path_input_by_user: bool = False) -> None:
     if not path:
         return
@@ -721,8 +731,9 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str,
     if path_input_by_user and '.' not in os.path.basename(path):
         path += '.kitty-session'
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
-    if opts.match and not session:
-        boss.show_error(_('No windows to save'), _('No windows matching {0} could be saved.').format(opts.match))
+    if not session:
+        # Never overwrite an existing session file with an empty one
+        show_nothing_to_save_error(boss, opts)
         return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_save(session.encode(), path)
@@ -756,6 +767,9 @@ def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
         path = seen_session_paths.get(sn) or ''
     if path:
         save_as_session_part2(boss, opts, path)
+    elif next(boss.serialize_state_as_session('', opts), None) is None:
+        # Fail before asking the user for a path that will not be used
+        show_nothing_to_save_error(boss, opts)
     else:
         boss.get_save_filepath(
             _('Enter the path at which to save the session, usually session files are given the .kitty-session file extension'),
