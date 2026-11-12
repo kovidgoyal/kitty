@@ -9,7 +9,7 @@ from itertools import count
 from typing import Any, Deque, Union
 
 from .fast_data_types import Color, get_options
-from .types import DockSpec, OverlayType, WindowGeometry
+from .types import DockScope, DockSpec, OverlayType, WindowGeometry
 from .typing_compat import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
@@ -57,11 +57,13 @@ def compensatory_padding_away_from_title_bar(geom: WindowGeometry, title_bar_at_
 
 
 class WindowGroup:
-    def __init__(self, dock: DockSpec | None = None) -> None:
+    def __init__(self, dock: DockSpec | None = None, dock_scope: DockScope = 'tab') -> None:
         self.windows: list[WindowType] = []
         self.id = next(group_id_counter)
-        # Set when this group is itself docked to an edge of its owner group or tab
+        # Set when this group is itself docked to an edge of its owner group, tab or OS window
         self.dock = dock
+        # What this group is docked to, only meaningful when dock is set
+        self.dock_scope: DockScope = dock_scope
         # The groups docked to the edges of this group, outermost first
         self.docks: list[WindowGroup] = []
         # The geometry the layout allocated to this group, includes the area of its docks
@@ -136,7 +138,7 @@ class WindowGroup:
             'windows': tuple(w.serialize_state() for w in self.windows),
         }
         if self.dock is not None:
-            ans['dock'] = self.dock.as_dict()
+            ans['dock'] = self.dock_as_dict()
         if self.docks:
             ans['docks'] = [d.serialize_state() for d in self.docks]
         return ans
@@ -161,9 +163,14 @@ class WindowGroup:
             'windows': [w.id for w in self.windows],
         }
         if self.dock is not None:
-            ans['dock'] = self.dock.as_dict()
+            ans['dock'] = self.dock_as_dict()
         if self.docks:
             ans['docks'] = [d.id for d in self.docks]
+        return ans
+
+    def dock_as_dict(self) -> dict[str, Any]:
+        ans = self.dock.as_dict() if self.dock is not None else {}
+        ans['scope'] = self.dock_scope
         return ans
 
     def decoration(self, which: EdgeLiteral, border_mult: int = 1, is_single_window: bool = False) -> int:
@@ -224,13 +231,19 @@ class WindowGroup:
 class WindowList:
     force_show_title_bars: bool = False
 
-    def __init__(self, tab: TabType) -> None:
+    def __init__(self, tab: TabType, os_window_docks: list[WindowGroup] | None = None) -> None:
         self.all_windows: list[WindowType] = []
         self.id_map: dict[int, WindowType] = {}
         # The normal window groups, these are the only groups layouts arrange
         self.groups: list[WindowGroup] = []
         # Groups docked to the edges of the tab, outermost first
         self.tab_docks: list[WindowGroup] = []
+        # Groups docked to the edges of the OS window, outermost first. This
+        # list is shared by all the tabs in an OS window, so that every tab
+        # reserves space for them. Their windows are present only in the tab
+        # that hosts them, which is the active tab, see TabManager.
+        self.os_window_docks: list[WindowGroup] = [] if os_window_docks is None else os_window_docks
+        self.hosts_os_window_docks = False
         # Docks whose owner group has been removed, kept until their windows are closed
         self.orphaned_docks: list[WindowGroup] = []
         self._active_group_idx: int = -1
@@ -259,6 +272,7 @@ class WindowList:
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_state() for g in self.groups],
             'tab_docks': [g.serialize_state() for g in self.tab_docks],
+            'os_window_docks': [g.serialize_state() for g in self.hosted_os_window_docks()],
         }
 
     def serialize_layout_state(self) -> dict[str, Any]:
@@ -422,7 +436,7 @@ class WindowList:
         return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
 
     def iter_dock_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
-        "Iterate over the tab docks followed by the docks of every normal group"
+        "Iterate over the tab docks, the docks of every normal group and the OS window docks, if hosted"
         for d in self.tab_docks:
             if not only_visible or d.is_visible_in_layout:
                 yield d
@@ -430,6 +444,64 @@ class WindowList:
             for d in g.docks:
                 if not only_visible or d.is_visible_in_layout:
                     yield d
+        for d in self.hosted_os_window_docks():
+            if not only_visible or d.is_visible_in_layout:
+                yield d
+
+    def hosted_os_window_docks(self) -> Sequence[WindowGroup]:
+        "The OS window docks if this list hosts them, outermost first"
+        return self.os_window_docks if self.hosts_os_window_docks else ()
+
+    def is_os_window_dock(self, group: WindowGroup) -> bool:
+        return any(g is group for g in self.os_window_docks)
+
+    def is_in_os_window_dock(self, window: WindowType) -> bool:
+        return any(window in g for g in self.hosted_os_window_docks())
+
+    def iter_os_window_dock_windows(self) -> Iterator[WindowType]:
+        "The windows of the OS window docks, if this list hosts them"
+        for g in self.hosted_os_window_docks():
+            yield from g
+
+    def iter_tab_windows(self) -> Iterator[WindowType]:
+        "All windows except those in the OS window docks, which do not belong to any one tab"
+        dock_windows = {w.id for w in self.iter_os_window_dock_windows()}
+        for w in self.all_windows:
+            if w.id not in dock_windows:
+                yield w
+
+    @property
+    def has_tab_windows(self) -> bool:
+        return next(self.iter_tab_windows(), None) is not None
+
+    def release_os_window_docks(self) -> list[WindowType]:
+        """
+        Remove the windows of the OS window docks from this list, when it hosts
+        them. Their groups remain, as they are shared by all tabs in the OS window.
+        Returns the removed windows. Does not send focus change notifications.
+        """
+        if not self.hosts_os_window_docks:
+            return []
+        ans = list(self.iter_os_window_dock_windows())
+        self.hosts_os_window_docks = False
+        if self._active_dock_id and any(g.id == self._active_dock_id for g in self.os_window_docks):
+            self._active_dock_id = 0
+        for w in ans:
+            with suppress(ValueError):
+                self.all_windows.remove(w)
+            self.id_map.pop(w.id, None)
+        return ans
+
+    def adopt_os_window_docks(self) -> list[WindowType]:
+        "Add the windows of the OS window docks to this list. Returns the added windows."
+        ans: list[WindowType] = []
+        self.hosts_os_window_docks = True
+        for w in self.iter_os_window_dock_windows():
+            if w.id not in self.id_map:
+                self.all_windows.append(w)
+                self.id_map[w.id] = w
+                ans.append(w)
+        return ans
 
     def iter_all_groups(self) -> Iterator[WindowGroup]:
         yield from self.groups
@@ -442,7 +514,7 @@ class WindowList:
         yield from self.iter_dock_groups(only_visible=True)
 
     def dock_owner(self, dock: WindowGroup) -> WindowGroup | None:
-        "The normal group a dock belongs to, or None for tab docks"
+        "The normal group a dock belongs to, or None for tab and OS window docks"
         for g in self.groups:
             for d in g.docks:
                 if d is dock:
@@ -602,8 +674,18 @@ class WindowList:
         head_of_group: bool = False,
         dock: DockSpec | None = None,
         dock_owner: WindowGroup | None = None,
+        os_window_dock: bool = False,
     ) -> WindowGroup:
-        "Add a window. When dock is specified a new docked group is created, at the edge of dock_owner if specified, otherwise at the edge of the tab."
+        """
+        Add a window. When dock is specified a new docked group is created, at
+        the edge of dock_owner if specified, otherwise at the edge of the OS
+        window if os_window_dock is True, otherwise at the edge of the tab.
+        """
+        if dock is not None and group_of is None:
+            if os_window_dock and not self.hosts_os_window_docks:
+                raise ValueError('Windows can only be docked to the OS window in the tab that has its docks')
+            if dock_owner is not None and (dock_owner.dock is not None or dock_owner not in self.groups):
+                raise ValueError('Windows can only be docked to normal window groups present in this tab')
         self.all_windows.append(window)
         self.id_map[window.id] = window
         target_group: WindowGroup | None = None
@@ -611,13 +693,15 @@ class WindowList:
         if group_of is not None:
             target_group = self.group_for_window(group_of)
         if target_group is None and dock is not None:
-            target_group = WindowGroup(dock)
-            if dock_owner is None:
-                self.tab_docks.append(target_group)
-            else:
-                if dock_owner.dock is not None or dock_owner not in self.groups:
-                    raise ValueError('Windows can only be docked to normal window groups present in this tab')
+            if dock_owner is not None:
+                target_group = WindowGroup(dock, 'window')
                 dock_owner.docks.append(target_group)
+            elif os_window_dock:
+                target_group = WindowGroup(dock, 'os-window')
+                self.os_window_docks.append(target_group)
+            else:
+                target_group = WindowGroup(dock, 'tab')
+                self.tab_docks.append(target_group)
             make_active = make_active and dock.focusable
         if target_group is None and next_to is not None:
             q = self.id_map[next_to] if isinstance(next_to, int) else next_to
@@ -666,7 +750,7 @@ class WindowList:
             self.notify_on_active_window_change(old_active_window, new_active_window)
 
     def _remove_dock_group(self, dock: WindowGroup) -> None:
-        for container in [self.tab_docks, self.orphaned_docks] + [g.docks for g in self.groups]:
+        for container in [self.tab_docks, self.orphaned_docks, self.os_window_docks] + [g.docks for g in self.groups]:
             if dock in container:
                 container.remove(dock)
                 break

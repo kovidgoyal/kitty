@@ -508,6 +508,34 @@ detach_window(id_type os_window_id, id_type tab_id, id_type id) {
 }
 
 
+static bool
+move_window_to_tab(id_type os_window_id, id_type src_tab_id, id_type dest_tab_id, id_type id) {
+    // Move a window between two tabs of the same OS window. Unlike detach_window() and
+    // attach_window() this keeps the GPU resources of the window, as both tabs share the
+    // OpenGL context of the OS window.
+    OSWindow *osw = os_window_for_id(os_window_id);
+    if (!osw || src_tab_id == dest_tab_id) return false;
+    Tab *src = NULL, *dest = NULL;
+    for (size_t t = 0; t < osw->num_tabs; t++) {
+        if (osw->tabs[t].id == src_tab_id) src = osw->tabs + t;
+        else if (osw->tabs[t].id == dest_tab_id) dest = osw->tabs + t;
+    }
+    if (!src || !dest) return false;
+    for (size_t i = 0; i < src->num_windows; i++) {
+        if (src->windows[i].id == id) {
+            ensure_space_for(dest, windows, Window, dest->num_windows + 1, capacity, 1, true);
+            memcpy(dest->windows + dest->num_windows++, src->windows + i, sizeof(Window));
+            zero_at_i(src->windows, i);
+            remove_i_from_array(src->windows, i, src->num_windows);
+            if (src->active_window > i) src->active_window--;
+            else if (src->active_window >= src->num_windows) src->active_window = src->num_windows ? src->num_windows - 1 : 0;
+            osw->needs_render = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 static void
 resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
     if (screen) {
@@ -2025,6 +2053,12 @@ THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
+PYWRAP1(move_window_to_tab) {
+    id_type os_window_id, src_tab_id, dest_tab_id, window_id;
+    PA("KKKK", &os_window_id, &src_tab_id, &dest_tab_id, &window_id);
+    if (move_window_to_tab(os_window_id, src_tab_id, dest_tab_id, window_id)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) {
     PyObject *title;
@@ -2160,6 +2194,7 @@ static PyMethodDef module_methods[] = {
     MW(remove_window, METH_VARARGS),
     MW(detach_window, METH_VARARGS),
     MW(attach_window, METH_VARARGS),
+    MW(move_window_to_tab, METH_VARARGS),
     MW(set_active_tab, METH_VARARGS),
     MW(mark_os_window_dirty, METH_VARARGS),
     MW(set_redirect_keys_to_overlay, METH_VARARGS),

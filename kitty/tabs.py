@@ -43,6 +43,7 @@ from .fast_data_types import (
     last_focused_os_window_id,
     mark_tab_bar_dirty,
     monotonic,
+    move_window_to_tab,
     next_window_id,
     remove_tab,
     remove_timer,
@@ -277,7 +278,7 @@ class Tab:  # {{{
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id)
-        self.windows: WindowList = WindowList(self)
+        self.windows: WindowList = WindowList(self, tab_manager.os_window_docks)
         self._last_used_layout: str | None = None
         self._current_layout_name: str | None = None
         # Layouts this tab has used, by name. Their state is preserved when
@@ -343,7 +344,21 @@ class Tab:  # {{{
             window.apply_options(is_active and aw is window)
         self.set_enabled_layouts(get_options().enabled_layouts)
 
+    def os_window_docks_changed(self) -> None:
+        "Re-layout the other tabs in the OS window, as the space they reserve for the OS window docks has changed"
+        if (tm := self.tab_manager_ref()) is not None:
+            for tab in tm:
+                if tab is not self:
+                    tab.relayout()
+
     def take_over_from(self, other_tab: 'Tab') -> None:
+        # The OS window docks stay in their OS windows, so take them out of both
+        # tabs before the windows of other_tab are moved, see TabManager.sync_os_window_docks()
+        tm, other_tm = self.tab_manager_ref(), other_tab.tab_manager_ref()
+        if other_tm is not None:
+            other_tm.park_os_window_docks(other_tab)
+        if tm is not None:
+            tm.park_os_window_docks(self)
         self.name, self.cwd, self.created_in_session_name = other_tab.name, other_tab.cwd, other_tab.created_in_session_name
         self.enabled_layouts = list(other_tab.enabled_layouts)
         self._last_used_layout = other_tab._last_used_layout
@@ -356,14 +371,21 @@ class Tab:  # {{{
             self.mark_tab_bar_dirty()
         for window in other_tab.windows:
             detach_window(other_tab.os_window_id, other_tab.id, window.id)
+        # Each WindowList must keep referring to the OS window docks of the OS window its tab is in
+        own_os_window_docks, other_os_window_docks = self.windows.os_window_docks, other_tab.windows.os_window_docks
         self.windows = other_tab.windows
         self.windows.change_tab(self)
-        other_tab.windows = WindowList(other_tab)
+        self.windows.os_window_docks = own_os_window_docks
+        other_tab.windows = WindowList(other_tab, other_os_window_docks)
         for window in self.windows:
             window.change_tab(self)
             attach_window(self.os_window_id, self.id, window.id)
         self.active_window_changed()
         self.relayout()
+        if other_tm is not None:
+            other_tm.sync_os_window_docks()
+        if tm is not None:
+            tm.sync_os_window_docks()
 
     def _set_current_layout(self, layout_name: str) -> None:
         self._last_used_layout = self._current_layout_name
@@ -477,14 +499,20 @@ class Tab:  # {{{
         matched_windows: frozenset[Window] | None,
         ser_opts: SaveAsSessionOptions,
         saved_windows: list[Window] | None = None,
+        os_window_docks: Sequence[WindowGroup] = (),
     ) -> list[str]:
-        """If saved_windows is not None, the windows written to the session are appended to it"""
+        """
+        If saved_windows is not None, the windows written to the session are
+        appended to it. The os_window_docks are written after the windows of this
+        tab, but only if this tab has some windows to write.
+        """
         import shlex
 
         launch_cmds = []
         active_group = self.windows.active_group
         # Docks are launched immediately after the group they are docked to, so
-        # that it is the active group when they are created. Tab docks come last.
+        # that it is the active group when they are created. Tab docks come
+        # next, followed by the OS window docks.
         groups: list[WindowGroup] = []
         dock_args: dict[int, list[str]] = {}
         for g in self.windows.groups:
@@ -497,6 +525,12 @@ class Tab:  # {{{
             if d.dock is not None:
                 groups.append(d)
                 dock_args[d.id] = d.dock.as_launch_args('tab')
+        os_window_dock_ids: set[int] = set()
+        for d in os_window_docks:
+            if d.dock is not None:
+                groups.append(d)
+                dock_args[d.id] = d.dock.as_launch_args('os-window')
+                os_window_dock_ids.add(d.id)
         session_base_dir = os.path.dirname(session_path) if session_path else ''
 
         def make_relative(cwd: str) -> str:
@@ -506,15 +540,18 @@ class Tab:  # {{{
 
         most_common_cwd = ''
         cwds = {w.id: make_relative(w.cwd_for_serialization) for g in groups for w in g}
-        if cwds:
+        # The OS window docks do not belong to this tab, so they do not influence its cwd
+        if tab_cwds := [cwds[w.id] for g in groups if g.id not in os_window_dock_ids for w in g]:
             from collections import Counter
 
-            most_common_cwd, _ = Counter(cwds.values()).most_common(1)[0]
+            most_common_cwd, _ = Counter(tab_cwds).most_common(1)[0]
         emitted_group_ids: set[int] = set()
         for g in groups:
             if (owner := self.windows.dock_owner(g)) is not None and owner.id not in emitted_group_ids:
                 # cannot dock to a group that is not in the session
                 continue
+            if g.id in os_window_dock_ids and not launch_cmds:
+                break
             gw: list[str] = []
             for window in g:
                 if matched_windows is not None and window not in matched_windows:
@@ -909,10 +946,22 @@ class Tab:  # {{{
         next_to: Window | None = None,
         dock: DockSpec | None = None,
         dock_owner: WindowGroup | None = None,
+        os_window_dock: bool = False,
     ) -> None:
         self.current_layout.add_window(
-            self.windows, window, location, overlay_for, put_overlay_behind=overlay_behind, bias=bias, next_to=next_to, dock=dock, dock_owner=dock_owner
+            self.windows,
+            window,
+            location,
+            overlay_for,
+            put_overlay_behind=overlay_behind,
+            bias=bias,
+            next_to=next_to,
+            dock=dock,
+            dock_owner=dock_owner,
+            os_window_dock=os_window_dock,
         )
+        if os_window_dock:
+            self.os_window_docks_changed()
         if overlay_behind and (w := self.active_window):
             set_redirect_keys_to_overlay(self.os_window_id, self.id, w.id, window.id)
             buffer_keys_in_window(self.os_window_id, self.id, window.id, True)
@@ -948,8 +997,14 @@ class Tab:  # {{{
         dock: DockSpec | None = None,
         dock_owner: WindowGroup | None = None,
         restored_scrollback: bytes = b'',
+        os_window_dock: bool = False,
     ) -> Window:
-        "Create a new window. When dock is specified, the window is docked to dock_owner or to the tab if dock_owner is None."
+        """
+        Create a new window. When dock is specified, the window is docked to
+        dock_owner, or if dock_owner is None, to the OS window if os_window_dock
+        is True, otherwise to the tab. Docking to the OS window requires this
+        tab to host the OS window docks, see TabManager.host_os_window_docks_in().
+        """
         cs = WindowCreationSpec(
             use_shell=use_shell,
             cmd=cmd,
@@ -1000,7 +1055,15 @@ class Tab:  # {{{
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self._add_window(
-            window, location=location, overlay_for=overlay_for, overlay_behind=overlay_behind, bias=bias, next_to=next_to, dock=dock, dock_owner=dock_owner
+            window,
+            location=location,
+            overlay_for=overlay_for,
+            overlay_behind=overlay_behind,
+            bias=bias,
+            next_to=next_to,
+            dock=dock,
+            dock_owner=dock_owner,
+            os_window_dock=os_window_dock,
         )
         if marker:
             try:
@@ -1045,7 +1108,8 @@ class Tab:  # {{{
     def close_other_windows_in_tab(self) -> None:
         if len(self.windows) > 1:
             active_window = self.active_window
-            for window in tuple(self.windows):
+            # The OS window docks do not belong to this tab
+            for window in tuple(self.windows.iter_tab_windows()):
                 if window is not active_window:
                     self.remove_window(window)
 
@@ -1063,7 +1127,10 @@ class Tab:  # {{{
     def remove_window(self, window: Window, destroy: bool = True, do_post_removal_update: bool = True) -> None:
         had_normal_windows = bool(self.windows.groups)
         orphans_before = list(self.windows.orphaned_docks)
+        num_os_window_docks = len(self.windows.os_window_docks)
         self.windows.remove_window(window)
+        if num_os_window_docks != len(self.windows.os_window_docks):
+            self.os_window_docks_changed()
         if destroy:
             remove_window(self.os_window_id, self.id, window.id)
         else:
@@ -1445,7 +1512,7 @@ class Tab:  # {{{
         evict_cached_layouts(self.id)
         for w in self.windows:
             w.destroy(close_event)
-        self.windows = WindowList(self)
+        self.windows = WindowList(self, self.windows.os_window_docks)
 
     def __repr__(self) -> str:
         return f'Tab(title={self.effective_title}, id={self.id})'
@@ -1523,6 +1590,13 @@ class TabManager:  # {{{
         self.active_tab_history: Deque[int] = deque()
         self.tab_bar = TabBar(self.os_window_id)
         self._active_tab_idx = 0
+        # The groups docked to the edges of this OS window, outermost first.
+        # They are shared by all its tabs, but their windows are present only in
+        # the host tab, which is kept equal to the active tab, see sync_os_window_docks()
+        self.os_window_docks: list[WindowGroup] = []
+        self._os_window_docks_host: weakref.ReferenceType[Tab] | None = None
+        # True when the windows of the OS window docks are in no tab, see park_os_window_docks()
+        self._os_window_docks_parked = False
 
         if startup_session is not None:
             self.add_tabs_from_session(startup_session)
@@ -1626,7 +1700,70 @@ class TabManager:  # {{{
             self.active_tab_idx = idx
         else:
             self._active_tab_idx = idx
+        # Move the OS window docks before telling the C code about the new
+        # active tab, so that they are never reported as hidden to the
+        # programs running in them
+        self.sync_os_window_docks()
         set_active_tab(self.os_window_id, idx)
+
+    @property
+    def os_window_docks_host(self) -> Tab | None:
+        "The tab containing the windows of the OS window docks"
+        return None if self._os_window_docks_host is None else self._os_window_docks_host()
+
+    def host_os_window_docks_in(self, tab: Tab) -> None:
+        """
+        Move the windows of the OS window docks into tab, which must belong to
+        this OS window. No focus change notifications are sent, the docks do
+        not have focus in tab after the move.
+        """
+        host = self.os_window_docks_host
+        if host is tab:
+            return
+        moved: list[Window] = []
+        if host is not None:
+            moved = host.windows.release_os_window_docks()
+            for w in moved:
+                if not move_window_to_tab(self.os_window_id, host.id, tab.id, w.id):
+                    log_error(f'Failed to move the OS window dock window {w.id} from tab {host.id} to tab {tab.id}, re-attaching it instead')
+                    detach_window(self.os_window_id, host.id, w.id)
+                    attach_window(self.os_window_id, tab.id, w.id)
+            if moved:
+                aw = host.active_window
+                set_active_window(self.os_window_id, host.id, aw.id if aw else 0)
+        elif self._os_window_docks_parked:
+            moved = [w for g in self.os_window_docks for w in g]
+            for w in moved:
+                attach_window(self.os_window_id, tab.id, w.id)
+        self._os_window_docks_parked = False
+        self._os_window_docks_host = weakref.ref(tab)
+        for w in moved:
+            w.change_tab(tab)
+        tab.windows.adopt_os_window_docks()
+        if moved:
+            # The space for the docks is reserved in every tab, so the other
+            # windows in tab are not resized, but the docks need to be placed
+            # and the borders and blank areas of tab need to include them
+            tab.relayout()
+
+    def park_os_window_docks(self, tab: Tab) -> None:
+        """
+        Take the windows of the OS window docks out of tab, if it hosts them.
+        Used when tab is about to be removed or have its windows replaced. The
+        windows are put into the active tab by the next call to sync_os_window_docks().
+        """
+        if self.os_window_docks_host is not tab:
+            return
+        self._os_window_docks_host = None
+        windows = tab.windows.release_os_window_docks()
+        for w in windows:
+            detach_window(self.os_window_id, tab.id, w.id)
+        self._os_window_docks_parked = bool(windows)
+
+    def sync_os_window_docks(self) -> None:
+        "Ensure the windows of the OS window docks are in the active tab"
+        if (at := self.active_tab) is not None:
+            self.host_os_window_docks_in(at)
 
     def layout_tab_bar(self) -> None:
         # set tab_bar_should_be_visible so that tab_bar.layout() gets correct dimensions
@@ -1799,9 +1936,13 @@ class TabManager:  # {{{
         ans: list[str] = []
         active_tab_idx = -1
         last_focused_at: list[float] = []
+        # The OS window docks are written in the first tab that has windows
+        # to write. When restored, they are moved to the active tab.
+        os_window_docks: Sequence[WindowGroup] = self.os_window_docks
         for tab in self.tabs:
             saved_windows: list[Window] = []
-            if lines := tab.serialize_state_as_session(session_path, matched_windows, ser_opts, saved_windows):
+            if lines := tab.serialize_state_as_session(session_path, matched_windows, ser_opts, saved_windows, os_window_docks):
+                os_window_docks = ()
                 if tab is self.active_tab:
                     active_tab_idx = len(last_focused_at)
                 last_focused_at.append(max((w.last_focused_at for w in saved_windows), default=0))
@@ -1903,6 +2044,9 @@ class TabManager:  # {{{
             idx_before_removal = tabs.index(active_tab_before_removal)
         except Exception:
             idx_before_removal = -1
+        if len(self.tabs) > 1:
+            # The OS window docks outlive the tab, they move to the next active tab
+            self.park_os_window_docks(removed_tab)
         remove_tab(self.os_window_id, removed_tab.id)
         self.tabs.remove(removed_tab)
         while True:
@@ -1966,6 +2110,7 @@ class TabManager:  # {{{
                     self._set_active_tab(self.tabs.index(active_tab_before_removal), store_in_history=False)
             else:
                 self._active_tab_idx = 0
+        self.sync_os_window_docks()
         self.mark_tab_bar_dirty()
         removed_tab.destroy()
 
@@ -2495,6 +2640,8 @@ class TabManager:  # {{{
         if close_event is None:
             close_event = {'reason': 'os_window', 'cause': 'closed', 'confirmed': self.close_confirmed}
         self._cancel_drag_hover()
+        # Parked docks are destroyed along with the tab they are put back into
+        self.sync_os_window_docks()
         for t in self:
             t.destroy(close_event)
         self.tab_bar.destroy()

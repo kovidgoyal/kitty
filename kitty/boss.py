@@ -1149,9 +1149,16 @@ class Boss:
         mark_os_window_for_close(os_window_id, request_type)
 
     def _cleanup_tab_after_window_removal(self, src_tab: Tab) -> None:
-        if len(src_tab) < 1:
+        # The windows of the OS window docks do not keep a tab alive
+        if not src_tab.windows.has_tab_windows:
             tm = src_tab.tab_manager_ref()
             if tm is not None:
+                if len(src_tab) and len(tm) < 2:
+                    # Only the OS window docks remain in the last tab, they are
+                    # closed and the OS window with them, once they are gone.
+                    for w in tuple(src_tab):
+                        self.mark_window_for_close(w)
+                    return
                 tm.remove(src_tab)
                 src_tab.destroy()
                 if len(tm) == 0:
@@ -1459,10 +1466,19 @@ class Boss:
             'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
         )
 
+    def _windows_closed_with_tab(self, tab: Tab) -> tuple[Window, ...]:
+        # The OS window docks are not closed with the tab, unless it is the
+        # last tab, in which case the OS window and its docks are closed
+        tm = tab.tab_manager_ref()
+        if tm is not None and len(tm) < 2:
+            return tuple(tab)
+        return tuple(tab.windows.iter_tab_windows())
+
     def confirm_tab_close(self, tab: Tab) -> None:
-        msg, num_active_windows = self.close_windows_with_confirmation_msg(tab, tab.active_window)
+        windows = self._windows_closed_with_tab(tab)
+        msg, num_active_windows = self.close_windows_with_confirmation_msg(windows, tab.active_window)
         x = get_options().confirm_os_window_close[0]
-        num = num_active_windows if x < 0 else len(tab)
+        num = num_active_windows if x < 0 else len(windows)
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
             self.close_tab_no_confirm(tab)
@@ -1490,14 +1506,14 @@ class Boss:
             return
         if not confirmed:
             return
-        for w in tab:
+        for w in self._windows_closed_with_tab(tab):
             w.close_confirmed = True
         self.close_tab_no_confirm(tab)
 
     def close_tab_no_confirm(self, tab: Tab) -> None:
         if self.current_visual_select is not None and self.current_visual_select.tab_id == tab.id:
             self.cancel_current_visual_select()
-        for window in tab:
+        for window in self._windows_closed_with_tab(tab):
             self.mark_window_for_close(window)
 
     def close_windows_no_confirm(self, windows: Sequence[Window]) -> None:
@@ -3037,7 +3053,8 @@ class Boss:
         if window_type == 'tab':
             tab = self._new_tab(SpecialWindow(cmd, **kw))
             if tab is not None:
-                for w in tab:
+                # Not the last window in the tab, which could be an OS window dock
+                for w in tab.windows.iter_tab_windows():
                     window = w
         elif window_type == 'os_window':
             os_window_id = self._new_os_window(SpecialWindow(cmd, **kw))
@@ -3888,7 +3905,13 @@ class Boss:
             ans.created_in_session_name = session_name
             return ans
 
+        if target_os_window_id != 'new' and not isinstance(target_tab_id, str) and not any(t.id == target_tab_id for t in self.all_tabs):
+            return
+
         with self.suppress_focus_change_events():
+            # The windows of the OS window docks follow the active tab, which
+            # can change below, so detach them first
+            detached = src_tab.detach_window(window) if src_tab.windows.is_in_os_window_dock(window) else None
             if target_os_window_id == 'new':
                 target_tab = new_tab(self._new_os_window_for_session(session_name), title=new_tab_title)
             else:
@@ -3914,7 +3937,7 @@ class Boss:
                     else:
                         return
 
-            target_tab.attach_windows(src_tab.detach_window(window))
+            target_tab.attach_windows(src_tab.detach_window(window) if detached is None else detached)
             self._cleanup_tab_after_window_removal(src_tab)
             target_tab.make_active()
 

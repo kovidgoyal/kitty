@@ -595,6 +595,12 @@ class TestSessions(BaseTest):
             def remove(self, tab: FakeTab) -> None:
                 self.tabs.remove(tab)
 
+            def park_os_window_docks(self, tab: FakeTab) -> None:
+                pass
+
+            def sync_os_window_docks(self) -> None:
+                pass
+
         class FakeBoss:
             shutting_down = False
             suppress_focus_change_events = nullcontext

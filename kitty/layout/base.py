@@ -319,7 +319,11 @@ def is_focusable_dock(g: WindowGroup) -> bool:
 
 
 def innermost_focusable_dock(docks: Sequence[WindowGroup], edge: DockEdge) -> WindowGroup | None:
-    for d in reversed(docks):
+    return outermost_focusable_dock(tuple(reversed(docks)), edge)
+
+
+def outermost_focusable_dock(docks: Sequence[WindowGroup], edge: DockEdge) -> WindowGroup | None:
+    for d in docks:
         if d.dock is not None and d.dock.edge == edge and is_focusable_dock(d):
             return d
     return None
@@ -369,6 +373,7 @@ class Layout:
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects: list[Rect] = []
         self.tab_dock_placements: list[tuple[WindowGroup, Region]] = []
+        self.os_window_dock_placements: list[tuple[WindowGroup, Region]] = []
         # The blank strips at the edges of the layout area when margins are collapsed
         self.collapsed_margin_rects: list[Rect] = []
         self.layout_opts = self.parse_layout_opts(layout_opts)
@@ -480,8 +485,14 @@ class Layout:
             return {}
         if group.dock is None:
             return self._neighbors_with_docks(window, group, all_windows)
+        edge = group.dock.edge
         owner = all_windows.dock_owner(group)
-        siblings = [d for d in (all_windows.tab_docks if owner is None else owner.docks) if d.dock is not None and d.dock.edge == group.dock.edge]
+        is_os_window_dock = owner is None and all_windows.is_os_window_dock(group)
+        if owner is not None:
+            container = owner.docks
+        else:
+            container = all_windows.os_window_docks if is_os_window_dock else all_windows.tab_docks
+        siblings = [d for d in container if d.dock is not None and d.dock.edge == edge]
         idx = siblings.index(group)
         outer = [d for d in siblings[:idx] if is_focusable_dock(d)]
         inner = [d for d in siblings[idx + 1 :] if is_focusable_dock(d)]
@@ -494,11 +505,17 @@ class Layout:
             inwards = [inner[0].id]
         elif owner is not None:
             inwards = [owner.id]
+        elif is_os_window_dock and (d := outermost_focusable_dock(all_windows.tab_docks, edge)) is not None:
+            # The tab docks at the same edge are inside the OS window docks
+            inwards = [d.id]
         elif (mg := all_windows.active_main_group) is not None:
             inwards = [mg.id]
-        set_neighbors(ans, opposite_dock_edge[group.dock.edge], inwards)
+        set_neighbors(ans, opposite_dock_edge[edge], inwards)
         if outer:
-            set_neighbors(ans, group.dock.edge, [outer[-1].id])
+            set_neighbors(ans, edge, [outer[-1].id])
+        elif owner is None and not is_os_window_dock and (d := innermost_focusable_dock(all_windows.hosted_os_window_docks(), edge)) is not None:
+            # The OS window docks at the same edge are outside the tab docks
+            set_neighbors(ans, edge, [d.id])
         return ans
 
     def _neighbors_with_docks(self, window: WindowType, group: WindowGroup, all_windows: WindowList, skip_own_docks: bool = False) -> NeighborsMap:
@@ -510,7 +527,10 @@ class Layout:
             # neighbors in that direction.
             if not skip_own_docks and (d := innermost_focusable_dock(group.docks, edge)) is not None:
                 set_neighbors(ans, edge, [d.id])
-            elif not ans.get(edge) and (d := innermost_focusable_dock(all_windows.tab_docks, edge)) is not None:
+            elif not ans.get(edge) and (
+                (d := innermost_focusable_dock(all_windows.tab_docks, edge)) is not None
+                or (d := innermost_focusable_dock(all_windows.hosted_os_window_docks(), edge)) is not None
+            ):
                 set_neighbors(ans, edge, [d.id])
         return ans
 
@@ -560,9 +580,10 @@ class Layout:
         next_to: WindowType | None = None,
         dock: DockSpec | None = None,
         dock_owner: WindowGroup | None = None,
+        os_window_dock: bool = False,
     ) -> WindowType | None:
         if dock is not None:
-            all_windows.add_window(window, dock=dock, dock_owner=dock_owner)
+            all_windows.add_window(window, dock=dock, dock_owner=dock_owner, os_window_dock=os_window_dock)
             return None
         if overlay_for is not None:
             underlay = all_windows.id_map.get(overlay_for)
@@ -615,8 +636,11 @@ class Layout:
         for window, is_group_leader in all_windows.iter_windows_with_visibility():
             is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
             window.set_visible_in_layout(is_visible)
-        # Docked groups are visible when their owner is, tab docks are always visible
+        # Docked groups are visible when their owner is, tab and OS window docks are always visible
         for dock in all_windows.tab_docks:
+            for window in dock:
+                window.set_visible_in_layout(window.id == dock.active_window_id)
+        for dock in all_windows.hosted_os_window_docks():
             for window in dock:
                 window.set_visible_in_layout(window.id == dock.active_window_id)
         for group in all_windows.groups:
@@ -649,8 +673,14 @@ class Layout:
                 for r in (Rect(left, top, right, it), Rect(left, ib, right, bottom), Rect(left, it, il, ib), Rect(ir, it, right, ib))
                 if r.right > r.left and r.bottom > r.top
             ]
-        # The tab docks reduce the area available to the layout
-        lgd.central, self.tab_dock_placements = carve_docks(full_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)
+        # The OS window docks and then the tab docks reduce the area available to
+        # the layout. Space for the OS window docks is reserved even in the tabs
+        # that do not currently host them, so that their windows are not resized
+        # when switching tabs.
+        tab_area, self.os_window_dock_placements = carve_docks(full_area, all_windows.os_window_docks, lgd.cell_width, lgd.cell_height)
+        if not all_windows.hosts_os_window_docks:
+            self.os_window_dock_placements = []
+        lgd.central, self.tab_dock_placements = carve_docks(tab_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
         lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, all_windows.has_more_than_one_visible_group)
@@ -680,6 +710,8 @@ class Layout:
                 self.blank_rects.extend(blank_rects_for_window(geom))
 
     def layout_docks(self, all_windows: WindowList) -> None:
+        for dock, area in self.os_window_dock_placements:
+            self.layout_docked_group(dock, area)
         for dock, area in self.tab_dock_placements:
             self.layout_docked_group(dock, area)
         for group in all_windows.groups:

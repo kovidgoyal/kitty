@@ -1023,6 +1023,9 @@ def detach_window(os_window_id: int, tab_id: int, window_id: int) -> None:
 def attach_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 
+def move_window_to_tab(os_window_id: int, src_tab_id: int, dest_tab_id: int, window_id: int) -> bool:
+    pass
+
 def add_tab(os_window_id: int) -> int:
     pass
 

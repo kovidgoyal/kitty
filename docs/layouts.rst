@@ -310,8 +310,8 @@ Docked windows
 
 .. versionadded:: 0.50.0
 
-A kitty window can be *docked* to an edge of another kitty window or to an
-edge of the tab. Docked windows are placed outside the layout, which arranges
+A kitty window can be *docked* to an edge of another kitty window, of the tab
+or of the OS window. Docked windows are placed outside the layout, which arranges
 the other windows in the space that remains. They are useful for things like
 status bars, file trees or a shell kept next to an editor. Create them with the
 :doc:`launch <launch>` action, for example::
@@ -320,10 +320,12 @@ status bars, file trees or a shell kept next to an editor. Create them with the
     map f1 launch --type=tab-dock --dock-edge=bottom --dock-size=1 --dock-skip-focus my-status-bar
     # A file tree using a quarter of the width of the active window, at its left
     map f2 launch --type=window-dock --dock-edge=left --dock-size=25% yazi
+    # A list of projects at the left of every tab in the OS window
+    map f3 launch --type=os-window-dock --dock-edge=left --dock-size=30 my-project-list
 
 The size of a dock is a number of rows (for docks at the top or bottom edge) or
 columns (for docks at the left or right edge), or with a :code:`%` suffix, a
-percentage of the window or tab being docked to. When there are several docks
+percentage of the window, tab or OS window being docked to. When there are several docks
 at an edge, later docks are placed inside earlier ones. When there is not
 enough space for all the docks, the docks created last are made smaller first.
 
@@ -331,6 +333,16 @@ A :code:`window-dock` belongs to the window it is docked to. It is shown
 whenever that window is shown, moves with it when it is moved to another tab
 and is closed when it is closed. A :code:`tab-dock` is closed when the last
 window in the tab that is not docked is closed.
+
+An :code:`os-window-dock` is shown in every tab of its OS window, below the tab
+bar, at the same position and size, outside the docks of the tab. It is a
+single window running a single program, which stays in place when switching
+tabs, and is closed when the OS window is closed. It is not closed when a tab
+is closed, and does not keep a tab open. It is listed as part of the active
+tab, for example in the output of :ref:`kitten @ ls <at-ls>`, where the
+:code:`dock` entry of its group in :code:`groups` has a :code:`scope` of
+:code:`os-window`. The :code:`scope` of the other docks is :code:`window` or
+:code:`tab`.
 
 Docks can be focused like other windows, by clicking on them, with
 :ac:`neighboring_window` or :ac:`nth_window` with a negative number, unless they

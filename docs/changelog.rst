@@ -125,6 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Allow docking kitty windows to an edge of the OS window, below the tab bar,
+  with :code:`launch --type=os-window-dock`. Such a dock is shown in every tab of
+  the OS window and lives as long as the OS window, see :ref:`docks` (:iss:`10854`)
+
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders to shake
   a window on bell, add command start/finish and alternate screen enter/exit
   events and uniforms, and fix ``bell-in-window`` needing a non-zero

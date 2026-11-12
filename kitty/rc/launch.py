@@ -30,7 +30,7 @@ class Launch(RemoteCommand):
     var/list.str: List of user variables of the form NAME=VALUE
     os_panel/list.str: List of panel settings
     tab_title/str: Title for the new tab
-    type/choices.window.window-dock.tab.tab-dock.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
+    type/choices.window.window-dock.tab.tab-dock.os-window-dock.os-window.os-panel.overlay.overlay-main.background.clipboard.primary: The type of window to open
     dock_edge/choices.left.top.right.bottom: The edge at which to place a docked window
     dock_size/str: The size of a docked window as a number of cells or a percentage
     dock_skip_focus/bool: Boolean indicating whether the docked window should never get keyboard focus

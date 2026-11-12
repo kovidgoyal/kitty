@@ -47,6 +47,8 @@ class FloatEdges(NamedTuple):
 
 
 DockEdge = Literal['left', 'top', 'right', 'bottom']
+# What a dock is docked to: a window, a tab or an OS window
+DockScope = Literal['window', 'tab', 'os-window']
 CloseReason = Literal['window', 'os_window', 'quit']
 
 
@@ -77,7 +79,7 @@ class DockSpec(NamedTuple):
     def size_as_string(self) -> str:
         return f'{self.size:g}%' if self.size_is_percent else str(int(self.size))
 
-    def as_launch_args(self, scope: Literal['window', 'tab']) -> list[str]:
+    def as_launch_args(self, scope: DockScope) -> list[str]:
         ans = [f'--type={scope}-dock', f'--dock-edge={self.edge}', f'--dock-size={self.size_as_string}']
         if not self.focusable:
             ans.append('--dock-skip-focus')
