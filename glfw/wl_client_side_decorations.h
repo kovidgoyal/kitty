@@ -16,3 +16,7 @@ bool csd_set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system
 bool csd_should_window_be_decorated(_GLFWwindow *window);
 void csd_set_visible(_GLFWwindow *window, bool visible);
 void csd_handle_pointer_event(_GLFWwindow *window, int button, int state, struct wl_surface *surface);
+void csd_handle_touch_down(_GLFWwindow *window, struct wl_surface *surface, int32_t id, uint32_t serial, double sx, double sy);
+void csd_handle_touch_motion(int32_t id, double sx, double sy);
+void csd_handle_touch_up(int32_t id);
+void csd_handle_touch_cancel(void);

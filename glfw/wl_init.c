@@ -401,8 +401,13 @@ touchHandleDown(
     // A finger landing stops any scroll that is coasting, as on every touch system
     glfw_cancel_momentum_scroll();
     _GLFWwindow *window = get_window_from_surface(surface);
-    // A touch on a client-side decoration is not reported
-    if (!window || surface != window->wl.surface) return;
+    if (!window) return;
+    if (surface != window->wl.surface) {
+        _glfw.wl.serial = serial;
+        _glfw.wl.input_serial = serial;
+        csd_handle_touch_down(window, surface, id, serial, wl_fixed_to_double(sx), wl_fixed_to_double(sy));
+        return;
+    }
     if (touch.count >= arraysz(touch.points) || touch_point_index(id) > -1) return;
     _glfw.wl.serial = serial;
     _glfw.wl.input_serial = serial;
@@ -422,6 +427,7 @@ touchHandleDown(
 
 static void
 touchHandleUp(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, int32_t id) {
+    csd_handle_touch_up(id);
     const ssize_t i = touch_point_index(id);
     if (i < 0) return;
     _glfw.wl.serial = serial;
@@ -433,6 +439,7 @@ touchHandleUp(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t seri
 
 static void
 touchHandleMotion(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t time, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
+    csd_handle_touch_motion(id, wl_fixed_to_double(sx), wl_fixed_to_double(sy));
     const ssize_t i = touch_point_index(id);
     if (i < 0) return;
     touch_record_time(time);
@@ -488,6 +495,7 @@ touchHandleFrame(void *data UNUSED, struct wl_touch *wl_touch UNUSED) {
 // window hears of it only if it was told the sequence began
 static void
 touchHandleCancel(void *data UNUSED, struct wl_touch *wl_touch UNUSED) {
+    csd_handle_touch_cancel();
     const monotonic_t timestamp = monotonic();
     GLFWid done[arraysz(touch.points)];
     size_t num_done = 0;
