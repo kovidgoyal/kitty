@@ -1287,10 +1287,13 @@ application_close_requested_callback(int flags) {
     }
     if (flags & GLFW_APPLICATION_CLOSE_FATAL_ERROR) {
         global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
+        global_state.quit_cause = QUIT_CAUSE_FATAL_ERROR;
         global_state.has_pending_closes = true;
         request_tick_callback();
     } else {
+        if (flags & GLFW_APPLICATION_CLOSE_LOGOUT) global_state.quit_cause = QUIT_CAUSE_LOGOUT;
         if (global_state.quit_request == NO_CLOSE_REQUESTED) {
+            if (!(flags & GLFW_APPLICATION_CLOSE_LOGOUT)) global_state.quit_cause = QUIT_CAUSE_OS_REQUEST;
             global_state.has_pending_closes = true;
             global_state.quit_request = CONFIRMABLE_CLOSE_REQUESTED;
             request_tick_callback();

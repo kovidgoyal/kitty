@@ -71,6 +71,12 @@ from .fast_data_types import (
     IMPERATIVE_CLOSE_REQUESTED,
     LEFT_EDGE,
     NO_CLOSE_REQUESTED,
+    QUIT_CAUSE_ACTION,
+    QUIT_CAUSE_FATAL_ERROR,
+    QUIT_CAUSE_LOGOUT,
+    QUIT_CAUSE_NONE,
+    QUIT_CAUSE_OS_REQUEST,
+    QUIT_CAUSE_SIGNAL,
     RIGHT_EDGE,
     TOP_EDGE,
     ChildMonitor,
@@ -88,6 +94,7 @@ from .fast_data_types import (
     cocoa_minimize_os_window,
     cocoa_set_menubar_title,
     create_os_window,
+    current_application_quit_cause,
     current_application_quit_request,
     current_focused_os_window_id,
     current_os_window,
@@ -157,7 +164,7 @@ from .session import (
 from .shaders.slang import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
 from .tabs import DropDirection, SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
-from .types import AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
+from .types import AsyncResponse, CloseEvent, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing_compat import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters,
@@ -423,6 +430,10 @@ class Boss:
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
         self.snapshot_saved_for_logout = ''
+        # Set while the desktop session is ending, so that being killed by a signal is reported as a logout
+        self.desktop_session_ending = False
+        # Set when the user confirmed quitting
+        self.quit_confirmed = False
         self.peer_data_map: dict[int, dict[str, Sequence[str]] | None] = {}
         self.background_process_death_notify_map: dict[int, Callable[[int, Exception | None], None]] = {}
         self.encryption_key = EllipticCurveKey()
@@ -1159,7 +1170,7 @@ class Boss:
             for w, val in changes.items():
                 w.ignore_focus_changes = val
 
-    def on_child_death(self, window_id: int, child_died: bool, exit_status: int) -> None:
+    def on_child_death(self, window_id: int, child_died: bool, exit_status: int, close_requested: bool = False) -> None:
         prev_active_window = self.active_window
         window = self.window_id_map.pop(window_id, None)
         if window is None:
@@ -1175,7 +1186,11 @@ class Boss:
 
                     traceback.print_exc()
             os_window_id = window.os_window_id
-            window.destroy()
+            window.destroy(
+                self.quit_close_event()
+                if self.is_quitting
+                else {'reason': 'window', 'cause': 'closed' if close_requested else 'program_exit', 'confirmed': window.close_confirmed}
+            )
             tm = self.os_window_map.get(os_window_id)
             tab = None
             if tm is not None:
@@ -1271,6 +1286,8 @@ class Boss:
 
     def handle_close_window_confirmation(self, allowed: bool, window_id: int) -> None:
         if allowed:
+            if (w := self.window_id_map.get(window_id)) is not None:
+                w.close_confirmed = True
             self.mark_window_for_close(window_id)
 
     @ac('tab', 'Close the current tab')
@@ -1473,6 +1490,8 @@ class Boss:
             return
         if not confirmed:
             return
+        for w in tab:
+            w.close_confirmed = True
         self.close_tab_no_confirm(tab)
 
     def close_tab_no_confirm(self, tab: Tab) -> None:
@@ -2466,6 +2485,7 @@ class Boss:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             tm.confirm_close_window_id = 0
+            tm.close_confirmed = confirmed
         if confirmed:
             self.mark_os_window_for_close(os_window_id)
         else:
@@ -2483,7 +2503,7 @@ class Boss:
             self.cached_values['window-size'] = viewport_width, viewport_height
             self.cached_values['window-state'] = 'maximized' if was_maximized else 'normal'
         if tm is not None:
-            tm.destroy()
+            tm.destroy(self.quit_close_event() if self.is_quitting else None)
         for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
             self.window_id_map.pop(window_id, None)
         if not self.os_window_map and is_macos:
@@ -2493,6 +2513,23 @@ class Boss:
             action()
 
     quit_confirmation_window_id: int = 0
+
+    @property
+    def is_quitting(self) -> bool:
+        return current_application_quit_request() == IMPERATIVE_CLOSE_REQUESTED
+
+    def quit_close_event(self) -> CloseEvent:
+        cause = {
+            QUIT_CAUSE_ACTION: 'action',
+            QUIT_CAUSE_OS_REQUEST: 'os_request',
+            QUIT_CAUSE_LOGOUT: 'logout',
+            QUIT_CAUSE_SIGNAL: 'signal',
+            QUIT_CAUSE_FATAL_ERROR: 'fatal_error',
+        }.get(current_application_quit_cause(), 'unknown')
+        if cause == 'signal' and self.desktop_session_ending:
+            # On Linux, kitty is killed by a signal when the desktop session ends
+            cause = 'logout'
+        return {'reason': 'quit', 'cause': cause, 'confirmed': self.quit_confirmed}
 
     def _call_on_quit_watchers(self, data: dict[str, Any]) -> bool:
         w = self.active_window
@@ -2516,6 +2553,8 @@ class Boss:
 
     @ac('win', 'Quit, closing all windows')
     def quit(self, *args: Any) -> None:
+        # A quit not requested by the OS or a signal is the result of the quit action
+        cause = QUIT_CAUSE_ACTION if current_application_quit_cause() == QUIT_CAUSE_NONE else -1
         windows = []
         for q in self.os_window_map.values():
             for qt in q:
@@ -2530,7 +2569,8 @@ class Boss:
                 set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
             self.save_session_if_logging_out()
-            set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
+            self.quit_confirmed = False
+            set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED, cause)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
             if self.quit_confirmation_window_id and self.quit_confirmation_window_id in self.window_id_map:
@@ -2550,7 +2590,7 @@ class Boss:
         msg = msg or _('It has {} windows.').format(num)
         w = self.confirm(_('Are you sure you want to quit kitty?') + ' ' + msg, self.handle_quit_confirmation, window=active_window, title=_('Quit kitty?'))
         self.quit_confirmation_window_id = w.id
-        set_application_quit_request(CLOSE_BEING_CONFIRMED)
+        set_application_quit_request(CLOSE_BEING_CONFIRMED, cause)
 
     def handle_quit_confirmation(self, confirmed: bool) -> None:
         self.quit_confirmation_window_id = 0
@@ -2559,6 +2599,7 @@ class Boss:
                 set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
             self.save_session_if_logging_out()
+        self.quit_confirmed = confirmed
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
 
     def save_session_if_logging_out(self) -> None:
@@ -2595,6 +2636,7 @@ class Boss:
     def on_desktop_session_state_changed(self, state: int) -> None:
         from .logout_session import DESKTOP_SESSION_QUERY_END, DESKTOP_SESSION_RUNNING, delete_snapshot
 
+        self.desktop_session_ending = state != DESKTOP_SESSION_RUNNING
         if state == DESKTOP_SESSION_QUERY_END:
             # The session will end once this returns, unless some other application cancels it
             self.snapshot_saved_for_logout = self.save_session_at_logout()
@@ -3140,7 +3182,7 @@ class Boss:
         self.update_check_process = None
         del self.child_monitor
         for tm in self.os_window_map.values():
-            tm.destroy()
+            tm.destroy(self.quit_close_event())
         self.os_window_map = {}
         destroy_global_data()
 

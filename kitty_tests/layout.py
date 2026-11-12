@@ -1584,6 +1584,32 @@ class TestWindowHelpers(BaseTest):
                 {f'{prefix}-left': 1, f'{prefix}-right': 2, f'{prefix}-top': 3, f'{prefix}-bottom': 4},
             )
 
+    def test_quit_close_event(self):
+        from kitty import fast_data_types as f
+        from kitty.boss import Boss
+
+        boss = SimpleNamespace(desktop_session_ending=False, quit_confirmed=False)
+
+        def ev(cause):
+            with patch('kitty.boss.current_application_quit_cause', lambda: cause):
+                return Boss.quit_close_event(boss)
+
+        for cause, name in (
+            (f.QUIT_CAUSE_ACTION, 'action'),
+            (f.QUIT_CAUSE_OS_REQUEST, 'os_request'),
+            (f.QUIT_CAUSE_LOGOUT, 'logout'),
+            (f.QUIT_CAUSE_SIGNAL, 'signal'),
+            (f.QUIT_CAUSE_FATAL_ERROR, 'fatal_error'),
+            (f.QUIT_CAUSE_NONE, 'unknown'),
+        ):
+            self.ae(ev(cause), {'reason': 'quit', 'cause': name, 'confirmed': False})
+        boss.quit_confirmed = True
+        self.ae(ev(f.QUIT_CAUSE_ACTION), {'reason': 'quit', 'cause': 'action', 'confirmed': True})
+        # being killed by a signal while the desktop session is ending is a logout
+        boss.desktop_session_ending = True
+        self.ae(ev(f.QUIT_CAUSE_SIGNAL)['cause'], 'logout')
+        self.ae(ev(f.QUIT_CAUSE_FATAL_ERROR)['cause'], 'fatal_error')
+
     def test_deferred_watcher_calls(self):
         timers = []
         next_timer_id = [0]

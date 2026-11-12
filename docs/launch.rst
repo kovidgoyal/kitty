@@ -153,7 +153,30 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
 
     def on_close(boss: Boss, window: Window, data: dict[str, Any])-> None:
         # called when window is closed, typically when the program running in
-        # it exits
+        # it exits. data contains reason, cause and confirmed. reason is what
+        # was closed and cause is why, one of:
+        #   reason='window': only this window was closed, cause is:
+        #       'program_exit': the program running in the window exited
+        #       'closed': kitty closed the window, for example, because the
+        #                 user closed it or its tab or because of a remote
+        #                 control command
+        #   reason='os_window': the OS window containing this window was
+        #       closed, cause is 'closed'
+        #   reason='quit': kitty is quitting, cause is:
+        #       'action': the quit action, for example, via a keyboard
+        #                 shortcut, menu or remote control
+        #       'os_request': the OS asked kitty to quit, for example, via
+        #                     the Dock on macOS
+        #       'logout': the user is logging out or shutting down. On Linux
+        #                 this is reported only when
+        #                 restore_session_after_logout is enabled, otherwise
+        #                 it is reported as 'signal'
+        #       'signal': kitty received SIGTERM, SIGINT or SIGHUP
+        #       'fatal_error': kitty lost its connection to the display
+        #                      server
+        #       'unknown': none of the above
+        # confirmed is True if the user confirmed closing the window, its
+        # tab, its OS window or quitting kitty in a confirmation dialog.
         ...
 
     def on_set_user_var(boss: Boss, window: Window, data: dict[str, Any]) -> None:
@@ -166,6 +189,15 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
         # data will contain title and from_child. from_child will be True
         # when a title change was requested via escape code from the program
         # running in the terminal
+        ...
+
+    def on_cwd_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
+        # called when the program running in the window reports a change in
+        # its working directory via the OSC 7 escape code, as done by the
+        # kitty shell integration. data contains cwd, the reported directory and
+        # host, the hostname from the reported URL (empty if absent). Note that
+        # the directory may be on a remote machine, for example, when using the
+        # ssh kitten.
         ...
 
     def on_cmd_startstop(boss: Boss, window: Window, data: dict[str, Any]) -> None:

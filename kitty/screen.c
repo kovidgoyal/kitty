@@ -3828,8 +3828,11 @@ process_cwd_notification(Screen *self, unsigned int code, const char *data, size
     if (code == 7) {
         PyObject *x = PyBytes_FromStringAndSize(data, sz);
         if (x) {
+            bool changed = !self->last_reported_cwd || PyBytes_GET_SIZE(self->last_reported_cwd) != (Py_ssize_t)sz ||
+                           memcmp(PyBytes_AS_STRING(self->last_reported_cwd), data, sz) != 0;
             Py_CLEAR(self->last_reported_cwd);
             self->last_reported_cwd = x;
+            if (changed) CALLBACK("on_cwd_change", "O", x);
         } else {
             PyErr_Clear();
         }

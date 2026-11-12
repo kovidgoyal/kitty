@@ -4141,6 +4141,56 @@ class TestScreen(BaseTest):
         s.cursor.x = 1
         self.ae(s.ime_text_around_cursor(), ('c', 'd'))
 
+    def test_cwd_change_notification(self):
+        from kitty.window import Watchers, Window
+
+        s = self.create_screen()
+        c = s.callbacks
+        parse_bytes(s, b'\x1b]7;file://host/a/b\x1b\\')
+        self.ae(c.cwd_changes, [b'file://host/a/b'])
+        self.ae(s.last_reported_cwd, b'file://host/a/b')
+        # repeating the same directory does not report a change
+        parse_bytes(s, b'\x1b]7;file://host/a/b\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b'])
+        parse_bytes(s, b'\x1b]7;file://host/a/c\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b', b'file://host/a/c'])
+        # OSC 6 is ignored
+        parse_bytes(s, b'\x1b]6;file://host/x\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b', b'file://host/a/c'])
+        # after a reset the next report is a change
+        s.reset()
+        parse_bytes(s, b'\x1b]7;file://host/a/c\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b', b'file://host/a/c', b'file://host/a/c'])
+
+        delivered = []
+
+        class FakeWindow:
+            def __init__(self):
+                self.watchers = Watchers()
+                self.watchers.on_cwd_change.append(lambda boss, window, data: None)
+
+            def call_watchers(self, which, data):
+                delivered.append(data)
+
+        w = FakeWindow()
+        Window.on_cwd_change(w, b'file://myhost/some%20dir/x')
+        Window.on_cwd_change(w, b'kitty-shell-cwd://otherhost/a b')
+        Window.on_cwd_change(w, b'file:///no/host')
+        Window.on_cwd_change(w, b'file://h/bad\xff')
+        self.ae(
+            delivered,
+            [
+                {'cwd': '/some dir/x', 'host': 'myhost'},
+                {'cwd': '/a b', 'host': 'otherhost'},
+                {'cwd': '/no/host', 'host': ''},
+                {'cwd': '/bad�', 'host': 'h'},
+            ],
+        )
+        del delivered[:]
+        w.watchers.on_cwd_change.clear()
+        Window.on_cwd_change(w, b'file://myhost/y')
+        self.ae(delivered, [])
+
 
 def detect_url(self, scale=1):
     s = self.create_screen(cols=30 * scale)

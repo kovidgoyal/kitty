@@ -610,6 +610,7 @@ parse_input(ChildMonitor *self) {
     if (UNLIKELY(kill_signal_received || reload_config_signal_received)) {
         if (kill_signal_received) {
             global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
+            global_state.quit_cause = QUIT_CAUSE_SIGNAL;
             global_state.has_pending_closes = true;
             if (self->benchmark_wakeup_fd < 0) request_tick_callback();
             kill_signal_received = false;
@@ -675,10 +676,11 @@ parse_input(ChildMonitor *self) {
         if (remove_notify[remove_count].screen && do_parse(self, remove_notify[remove_count].screen, now, true)) input_read = true;
         PyObject *t = PyObject_CallFunction(
             self->death_notify,
-            "kOi",
+            "kOiO",
             remove_notify[remove_count].id,
             remove_notify[remove_count].child_died ? Py_True : Py_False,
-            remove_notify[remove_count].exit_status);
+            remove_notify[remove_count].exit_status,
+            remove_notify[remove_count].close_requested ? Py_True : Py_False);
         if (t == NULL) PyErr_Print();
         else Py_DECREF(t);
         FREE_CHILD(remove_notify[remove_count]);

@@ -108,7 +108,7 @@ from .program_status import ProgramStatus
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, NeighborsMap, OverlayType, WindowGeometry, ac, run_once
+from .types import CloseEvent, MouseEvent, NeighborsMap, OverlayType, WindowGeometry, ac, run_once
 from .typing_compat import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int,
@@ -358,6 +358,7 @@ class Watchers:
     on_focus_change: list[Watcher]
     on_set_user_var: list[Watcher]
     on_title_change: list[Watcher]
+    on_cwd_change: list[Watcher]
     on_cmd_startstop: list[Watcher]
     on_program_status_change: list[Watcher]
     on_color_scheme_preference_change: list[Watcher]
@@ -370,6 +371,7 @@ class Watchers:
         self.on_focus_change = []
         self.on_set_user_var = []
         self.on_title_change = []
+        self.on_cwd_change = []
         self.on_cmd_startstop = []
         self.on_program_status_change = []
         self.on_color_scheme_preference_change = []
@@ -387,6 +389,7 @@ class Watchers:
         merge(self.on_focus_change, others.on_focus_change)
         merge(self.on_set_user_var, others.on_set_user_var)
         merge(self.on_title_change, others.on_title_change)
+        merge(self.on_cwd_change, others.on_cwd_change)
         merge(self.on_cmd_startstop, others.on_cmd_startstop)
         merge(self.on_program_status_change, others.on_program_status_change)
         merge(self.on_color_scheme_preference_change, others.on_color_scheme_preference_change)
@@ -396,6 +399,7 @@ class Watchers:
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
         del self.on_set_user_var[:], self.on_title_change[:], self.on_cmd_startstop[:]
+        del self.on_cwd_change[:]
         del self.on_program_status_change[:]
         del self.on_color_scheme_preference_change[:]
         del self.on_tab_bar_dirty[:]
@@ -408,6 +412,7 @@ class Watchers:
         ans.on_focus_change = self.on_focus_change[:]
         ans.on_set_user_var = self.on_set_user_var[:]
         ans.on_title_change = self.on_title_change[:]
+        ans.on_cwd_change = self.on_cwd_change[:]
         ans.on_cmd_startstop = self.on_cmd_startstop[:]
         ans.on_program_status_change = self.on_program_status_change[:]
         ans.on_color_scheme_preference_change = self.on_color_scheme_preference_change[:]
@@ -424,6 +429,7 @@ class Watchers:
             or self.on_color_scheme_preference_change
             or self.on_set_user_var
             or self.on_title_change
+            or self.on_cwd_change
             or self.on_cmd_startstop
             or self.on_program_status_change
             or self.on_tab_bar_dirty
@@ -795,6 +801,8 @@ class Window:
     show_title_bar: bool = False  # must be set before calling set_geometry
     is_drag_target: bool = False  # highlight this window's title bar as a drop target
     child_died: bool = False
+    # Set when the user confirmed closing this window or its tab
+    close_confirmed: bool = False
     child_exit_status: int = 0
     child_exit_code: int = 0
 
@@ -1680,6 +1688,14 @@ class Window:
         if self.override_title is None:
             self.title_updated()
 
+    def on_cwd_change(self, raw_url: bytes) -> None:
+        if self.watchers.on_cwd_change:
+            url = raw_url.decode('utf-8', 'replace')
+            host = ''
+            if url.startswith(('file://', 'kitty-shell-cwd://')):
+                host = url.partition('://')[2].partition('/')[0]
+            self.call_watchers(self.watchers.on_cwd_change, {'cwd': path_from_osc7_url(url), 'host': host})
+
     def osc_context(self, ctx_data: memoryview) -> None:
         pass  # this is systemd's useless OSC 3008 context protocol https://systemd.io/OSC_CONTEXT/
 
@@ -2269,10 +2285,12 @@ class Window:
 
                 traceback.print_exc()
 
-    def destroy(self) -> None:
+    def destroy(self, close_event: CloseEvent | None = None) -> None:
         from .remote_control import abort_active_streams_from
 
-        self.call_watchers(self.watchers.on_close, {})
+        if close_event is None:
+            close_event = {'reason': 'window', 'cause': 'closed', 'confirmed': self.close_confirmed}
+        self.call_watchers(self.watchers.on_close, dict(close_event))
         self.destroyed = True
         abort_active_streams_from(window_id=self.id)
         if self.clear_progress_timer:

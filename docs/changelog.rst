@@ -125,6 +125,17 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders to shake
+  a window on bell, add command start/finish and alternate screen enter/exit
+  events and uniforms, and fix ``bell-in-window`` needing a non-zero
+  :opt:`visual_bell_duration` and firing late for hidden windows
+
+- :ref:`Watchers <watchers>`: The ``on_close`` event now reports why the window
+  was closed: whether the program exited or the window, its OS window or kitty
+  was closed, what caused kitty to quit and whether the user confirmed the
+  close. A new ``on_cwd_change`` event fires when the working directory reported
+  by the shell changes (:disc:`10828`)
+
 - :ref:`Watchers <watchers>`: Fix ``on_resize`` and ``on_focus_change`` calls
   being silently dropped when many windows are created at once, for example,
   when restoring several sessions (:iss:`10853`)
@@ -137,11 +148,6 @@ Detailed list of changes
   and :option:`launch --cwd`:code:`=current` now use the session of the source
   window's tab when the window itself has no session, as
   :ac:`new_window_with_cwd` does (:pull:`10851`)
-
-- :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders to shake
-  a window on bell, add command start/finish and alternate screen enter/exit
-  events and uniforms, and fix ``bell-in-window`` needing a non-zero
-  :opt:`visual_bell_duration` and firing late for hidden windows
 
 - :ac:`save_as_session`: Fix saved sessions opening in a new OS Window or
   focusing the wrong tab when some OS Windows or tabs had nothing to save,

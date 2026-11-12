@@ -125,7 +125,7 @@ def run_parsing_benchmark(
 
     child_died = False
 
-    def on_child_death(window_id: int, died: bool, exit_status: int) -> None:
+    def on_child_death(window_id: int, died: bool, exit_status: int, close_requested: bool) -> None:
         nonlocal child_died
         child_died = True
 

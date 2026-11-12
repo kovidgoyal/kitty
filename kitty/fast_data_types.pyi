@@ -79,6 +79,12 @@ KITTY_VCS_REV: str
 KITTY_VERSION_SUFFIX: str
 NO_CLOSE_REQUESTED: int
 IMPERATIVE_CLOSE_REQUESTED: int
+QUIT_CAUSE_NONE: int
+QUIT_CAUSE_ACTION: int
+QUIT_CAUSE_OS_REQUEST: int
+QUIT_CAUSE_LOGOUT: int
+QUIT_CAUSE_SIGNAL: int
+QUIT_CAUSE_FATAL_ERROR: int
 CLOSE_BEING_CONFIRMED: int
 ERROR_PREFIX: str
 GLSL_VERSION: int
@@ -874,10 +880,13 @@ def locale_is_valid(name: str) -> bool:
 def mark_os_window_for_close(os_window_id: int, cr_type: int = 2) -> bool:
     pass
 
-def set_application_quit_request(cr_type: int = 2) -> None:
+def set_application_quit_request(cr_type: int = 2, quit_cause: int = -1) -> None:
     pass
 
 def current_application_quit_request() -> int:
+    pass
+
+def current_application_quit_cause() -> int:
     pass
 
 def application_logout_requested_at() -> float:
@@ -1380,7 +1389,7 @@ def truncate_point_for_length(text: str, num_cells: int, start_pos: int = 0) -> 
 class ChildMonitor:
     def __init__(
         self,
-        death_notify: Callable[[int, bool, int], None],
+        death_notify: Callable[[int, bool, int, bool], None],
         dump_callback: Optional[Callable[[int, str, Any], None]],
         talk_fd: int = -1,
         listen_fd: int = -1,
