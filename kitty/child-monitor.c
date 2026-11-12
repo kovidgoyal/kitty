@@ -1415,9 +1415,12 @@ add_python_timer(PyObject *self UNUSED, PyObject *args) {
     double interval;
     int repeats = 1;
     if (!PyArg_ParseTuple(args, "Od|p", &callback, &interval, &repeats)) return NULL;
+    // The timer owns a reference to callback, released by python_timer_cleanup
+    Py_INCREF(callback);
     unsigned long long timer_id =
         add_main_loop_timer(s_double_to_monotonic_t(interval), repeats ? true : false, python_timer_callback, callback, python_timer_cleanup);
-    Py_INCREF(callback);
+    // On failure the cleanup function is never called, so release the reference here
+    if (!timer_id) Py_DECREF(callback);
     return Py_BuildValue("K", timer_id);
 }
 

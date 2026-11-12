@@ -431,15 +431,52 @@ class Watchers:
         )
 
 
-def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
+class DeferredWatcherCalls:
+    """
+    Deliver watcher calls on the next main loop tick, in order, using a single
+    timer. Deferring prevents infinite recursion when a watcher causes the
+    event it is watching (for example, resizing in on_resize). Using a single
+    timer prevents bursts of events from exhausting the fixed size timer table.
+    Calls made during delivery are delivered in the next batch.
+    """
 
-    def callback(timer_id: int | None) -> None:
+    def __init__(self) -> None:
+        self.pending: list[tuple[Callable[[], Optional['Window']], str, dict[str, Any]]] = []
+        self.timer_id = 0
+
+    def __call__(self, windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
         w = windowref()
-        if w is not None:
-            watchers: list[Watcher] = getattr(w.watchers, which)
-            w.call_watchers(watchers, data)
+        if w is None or not getattr(w.watchers, which):
+            return
+        self.pending.append((windowref, which, data))
+        self.schedule()
 
-    add_timer(callback, 0, False)
+    def schedule(self) -> None:
+        if not self.timer_id and self.pending:
+            self.timer_id = add_timer(self.deliver, 0, False)
+            if not self.timer_id:
+                log_error(f'Failed to schedule delivery of {len(self.pending)} watcher calls, will retry on the next watched event')
+
+    def deliver(self, timer_id: int | None) -> None:
+        self.timer_id = 0
+        batch, self.pending = self.pending, []
+        delivered = 0
+        try:
+            for windowref, which, data in batch:
+                delivered += 1
+                w = windowref()
+                if w is not None:
+                    watchers: list[Watcher] = getattr(w.watchers, which)
+                    w.call_watchers(watchers, data)
+        finally:
+            if delivered < len(batch):
+                # An exception not handled by Window.call_watchers() interrupted
+                # delivery, requeue the remaining calls ahead of any new ones
+                self.pending[:0] = batch[delivered:]
+                self.schedule()
+
+
+call_watchers = DeferredWatcherCalls()
 
 
 class WindowCreationSpec(NamedTuple):

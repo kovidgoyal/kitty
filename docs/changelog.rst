@@ -125,6 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :ref:`Watchers <watchers>`: Fix ``on_resize`` and ``on_focus_change`` calls
+  being silently dropped when many windows are created at once, for example,
+  when restoring several sessions (:iss:`10853`)
+
 - Sessions: Fix tabs and windows moved with :ac:`detach_tab`, :ac:`detach_window`
   or drag and drop losing their session, so that a :opt:`tab_bar_filter`
   matching sessions showed them in the wrong sessions. New tabs and OS Windows

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import weakref
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -12,7 +13,7 @@ from kitty.layout.interface import Fat, Grid, Horizontal, Splits, Stack, Tall, V
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.rc.set_spacing import parse_spacing_settings
 from kitty.types import WindowGeometry
-from kitty.window import EdgeWidths, GlobalWatchers, Watchers
+from kitty.window import DeferredWatcherCalls, EdgeWidths, GlobalWatchers, Watchers
 from kitty.window_list import WindowList, reset_group_id_counter
 
 from .base import BaseTest
@@ -1582,6 +1583,101 @@ class TestWindowHelpers(BaseTest):
                 parse_spacing_settings(a.partition('=')[2] for a in args),
                 {f'{prefix}-left': 1, f'{prefix}-right': 2, f'{prefix}-top': 3, f'{prefix}-bottom': 4},
             )
+
+    def test_deferred_watcher_calls(self):
+        timers = []
+        next_timer_id = [0]
+
+        def add_timer(callback, interval, repeats=True):
+            if len(timers) >= 128:  # simulate the fixed size glfw timer table
+                return 0
+            timers.append(callback)
+            next_timer_id[0] += 1
+            return next_timer_id[0]
+
+        def fire_timers():
+            while timers:
+                callback = timers.pop(0)
+                callback(1)
+
+        delivered = []
+
+        class FakeWindow:
+            def __init__(self, num, watched=True):
+                self.num = num
+                self.watchers = Watchers()
+                if watched:
+                    self.watchers.on_resize.append(lambda boss, window, data: None)
+
+            def call_watchers(self, which, data):
+                delivered.append((self.num, data['n']))
+                if data.get('recurse'):
+                    dc(weakref.ref(self), 'on_resize', {'n': data['n'] + 1000})
+
+        with patch('kitty.window.add_timer', add_timer), patch('kitty.window.log_error', lambda *a: None):
+            dc = DeferredWatcherCalls()
+            windows = [FakeWindow(i) for i in range(10)]
+            unwatched = FakeWindow(-1, watched=False)
+            expected = []
+            for n in range(300):
+                w = windows[n % len(windows)]
+                dc(weakref.ref(w), 'on_resize', {'n': n})
+                dc(weakref.ref(unwatched), 'on_resize', {'n': n})
+                expected.append((w.num, n))
+            self.ae(len(timers), 1)
+            self.ae(delivered, [])
+            fire_timers()
+            self.ae(delivered, expected)
+
+            # calls made during delivery go to the next batch
+            del delivered[:]
+            dc(weakref.ref(windows[0]), 'on_resize', {'n': 1, 'recurse': True})
+            timers.pop(0)(1)
+            self.ae(delivered, [(0, 1)])
+            self.ae(len(timers), 1)
+            fire_timers()
+            self.ae(delivered, [(0, 1), (0, 1001)])
+
+            # calls for windows that have been garbage collected are dropped
+            del delivered[:]
+            w = FakeWindow(99)
+            dc(weakref.ref(w), 'on_resize', {'n': 7})
+            dc(weakref.ref(windows[1]), 'on_resize', {'n': 8})
+            del w
+            fire_timers()
+            self.ae(delivered, [(1, 8)])
+
+            # an exception escaping a watcher does not lose the rest of the batch
+            del delivered[:]
+
+            class Interrupted(BaseException):
+                pass
+
+            def interrupting_call_watchers(which, data):
+                raise Interrupted()
+
+            bad = FakeWindow(50)
+            bad.call_watchers = interrupting_call_watchers
+            dc(weakref.ref(windows[0]), 'on_resize', {'n': 1})
+            dc(weakref.ref(bad), 'on_resize', {'n': 2})
+            dc(weakref.ref(windows[1]), 'on_resize', {'n': 3})
+            with self.assertRaises(Interrupted):
+                timers.pop(0)(1)
+            self.ae(delivered, [(0, 1)])
+            self.ae(len(timers), 1)
+            fire_timers()
+            self.ae(delivered, [(0, 1), (1, 3)])
+
+            # if the timer cannot be added, calls are kept and retried on the next event
+            del delivered[:]
+            timers.extend([lambda timer_id: None] * 128)
+            dc(weakref.ref(windows[2]), 'on_resize', {'n': 1})
+            self.ae(dc.timer_id, 0)
+            del timers[:]
+            dc(weakref.ref(windows[3]), 'on_resize', {'n': 2})
+            self.ae(len(timers), 1)
+            fire_timers()
+            self.ae(delivered, [(2, 1), (3, 2)])
 
     def test_global_watchers(self):
         opts = SimpleNamespace(watcher={})
