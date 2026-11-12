@@ -154,6 +154,9 @@ Detailed list of changes
 - ssh kitten: Fix remote directories such as :file:`~/.terminfo` being created
   world writable (:iss:`10834`)
 
+- :doc:`dnd kitten <kittens/dnd>`: Fix the kitten failing to start in a directory
+  that is not writable (:iss:`10855`)
+
 - :doc:`choose-files <kittens/choose-files>`: Fix hangs previewing special files
   and various preview caching bugs (:pull:`10843`, :pull:`10850`)
 
