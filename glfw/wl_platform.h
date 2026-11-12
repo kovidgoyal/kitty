@@ -364,6 +364,14 @@ typedef struct _GLFWlibraryWayland {
         uint32_t last_event_time;
         bool has_event_time;
     } touch_state;
+    struct {
+        bool active;
+        int32_t id;
+        GLFWid window_id;
+        struct wl_surface *surface;
+        int button; // a GLFWTitlebarButton
+        double x, y;
+    } decoration_touch;
     struct wl_data_device_manager *dataDeviceManager;
     struct wl_data_device *dataDevice;
     struct xdg_wm_base *wmBase;
