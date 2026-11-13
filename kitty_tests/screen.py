@@ -7,7 +7,8 @@ import tempfile
 
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, SCROLL_LINE, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
 from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
-from kitty.window import pagerhist
+from kitty.utils import path_from_osc7_url
+from kitty.window import is_conemu_osc9_command, pagerhist
 
 from .base import BaseTest, draw_multicell, parse_bytes
 
@@ -4161,6 +4162,26 @@ class TestScreen(BaseTest):
         s.reset()
         parse_bytes(s, b'\x1b]7;file://host/a/c\x07')
         self.ae(c.cwd_changes, [b'file://host/a/b', b'file://host/a/c', b'file://host/a/c'])
+        # ConEmu OSC 9;9 cwd reporting
+        del c.cwd_changes[:]
+        c.notifications = []
+        parse_bytes(s, b'\x1b]9;9;/x/y z\x1b\\')
+        self.ae(s.last_reported_cwd, b'kitty-shell-cwd:///x/y z')
+        parse_bytes(s, b'\x1b]9;9;"/q/r"\x07')
+        self.ae(s.last_reported_cwd, b'kitty-shell-cwd:///q/r')
+        # relative and windows paths are ignored
+        parse_bytes(s, b'\x1b]9;9;C:\\x\x07')
+        parse_bytes(s, b'\x1b]9;9;\x07')
+        self.ae(c.cwd_changes, [b'kitty-shell-cwd:///x/y z', b'kitty-shell-cwd:///q/r'])
+        self.ae(c.notifications, [])
+        # other OSC 9 payloads still go to desktop_notify
+        parse_bytes(s, b'\x1b]9;hello\x07')
+        self.ae(c.notifications, [(9, 'hello')])
+        self.ae(path_from_osc7_url(s.last_reported_cwd), '/q/r')
+        for x in ('1;10', '2;msg', '5', '9;9;/a', '12', '10;1'):
+            self.assertTrue(is_conemu_osc9_command(x), x)
+        for x in ('hello', '13;x', '0;x', '1x', '', '42'):
+            self.assertFalse(is_conemu_osc9_command(x), x)
 
         delivered = []
 

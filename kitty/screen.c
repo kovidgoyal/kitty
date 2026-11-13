@@ -3948,20 +3948,43 @@ set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
     }
 }
 
+static void
+set_last_reported_cwd(Screen *self, const char *data, size_t sz) {
+    PyObject *x = PyBytes_FromStringAndSize(data, sz);
+    if (x) {
+        bool changed = !self->last_reported_cwd || PyBytes_GET_SIZE(self->last_reported_cwd) != (Py_ssize_t)sz ||
+                       memcmp(PyBytes_AS_STRING(self->last_reported_cwd), data, sz) != 0;
+        Py_CLEAR(self->last_reported_cwd);
+        self->last_reported_cwd = x;
+        if (changed) CALLBACK("on_cwd_change", "O", x);
+    } else {
+        PyErr_Clear();
+    }
+}
+
 void
 process_cwd_notification(Screen *self, unsigned int code, const char *data, size_t sz) {
-    if (code == 7) {
-        PyObject *x = PyBytes_FromStringAndSize(data, sz);
-        if (x) {
-            bool changed = !self->last_reported_cwd || PyBytes_GET_SIZE(self->last_reported_cwd) != (Py_ssize_t)sz ||
-                           memcmp(PyBytes_AS_STRING(self->last_reported_cwd), data, sz) != 0;
-            Py_CLEAR(self->last_reported_cwd);
-            self->last_reported_cwd = x;
-            if (changed) CALLBACK("on_cwd_change", "O", x);
-        } else {
-            PyErr_Clear();
+    if (code == 7) set_last_reported_cwd(self, data, sz);
+    else if (code == 9) {
+        // ConEmu OSC 9;9;path where path is a plain, possibly quoted, path
+        if (sz > 1 && data[0] == '"' && data[sz - 1] == '"') {
+            data++;
+            sz -= 2;
         }
-    } // we ignore OSC 6 document reporting as we dont have a use for it
+        if (!sz || data[0] != '/') return; // only absolute paths are meaningful
+        static const char prefix[] = "kitty-shell-cwd://";
+        const size_t psz = sizeof(prefix) - 1;
+        char *url = malloc(psz + sz);
+        if (!url) {
+            log_error("Out of memory processing OSC 9;9 cwd report");
+            return;
+        }
+        memcpy(url, prefix, psz);
+        memcpy(url + psz, data, sz);
+        set_last_reported_cwd(self, url, psz + sz);
+        free(url);
+    }
+    // we ignore OSC 6 document reporting as we dont have a use for it
 }
 
 bool

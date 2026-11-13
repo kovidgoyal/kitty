@@ -125,6 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Treat the ConEmu OSC 9;9 escape code as a report of the current working
+  directory, like OSC 7, and ignore other ConEmu OSC 9 numeric sub-commands
+  instead of showing them as desktop notifications
+
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)

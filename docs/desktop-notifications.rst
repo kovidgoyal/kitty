@@ -502,7 +502,10 @@ Key      Value                 Default    Description
 .. note::
    |kitty| also supports the `legacy OSC 9 protocol developed by iTerm2
    <https://iterm2.com/documentation-escape-codes.html>`__ for desktop
-   notifications.
+   notifications. OSC 9 payloads that start with a ConEmu numeric sub-command
+   (``1;`` to ``12;``) are not shown as notifications. Of these, ``9;4`` is
+   used for progress reporting and ``9;9;path`` to report the current working
+   directory, the rest are ignored.
 
 
 .. _base64:
