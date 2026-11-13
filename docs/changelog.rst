@@ -125,6 +125,9 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- macOS: Ignore delayed IME and dictation results after composition is
+  explicitly cancelled, allowing fresh typing or dictation to start normally
+
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)
