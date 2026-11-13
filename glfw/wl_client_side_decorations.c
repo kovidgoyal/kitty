@@ -322,9 +322,11 @@ is_titlebar_button_available(_GLFWwindow *window, GLFWTitlebarButton which) {
     return false;
 }
 
+// Only x is checked so that a mouse button pressed on a titlebar button
+// still activates it when released after the pointer is dragged out of the
+// titlebar, vertically.
 static GLFWTitlebarButton
-titlebar_button_at(_GLFWwindow *window, double sx, double sy) {
-    if (sy < 0 || sy >= decs.metrics.visible_titlebar_height) return TITLEBAR_BUTTON_NONE;
+titlebar_button_at_x(_GLFWwindow *window, double sx) {
     const int scaled_x = (int)round(decs.for_window_state.fscale * sx);
 #define button_at(which, value) \
     if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) return value;
@@ -333,6 +335,12 @@ titlebar_button_at(_GLFWwindow *window, double sx, double sy) {
     button_at(minimize, TITLEBAR_BUTTON_MINIMIZE);
 #undef button_at
     return TITLEBAR_BUTTON_NONE;
+}
+
+static GLFWTitlebarButton
+titlebar_button_at(_GLFWwindow *window, double sx, double sy) {
+    if (sy < 0 || sy >= decs.metrics.visible_titlebar_height) return TITLEBAR_BUTTON_NONE;
+    return titlebar_button_at_x(window, sx);
 }
 
 static void
@@ -353,9 +361,9 @@ static _GLFWCSDSurface
 decoration_surface(_GLFWwindow *window, struct wl_surface *surface) {
 #define surface_at(which) \
     if (surface && surface == decs.which.surface) return CSD_##which;
-    all_surfaces(surface_at)
+    all_surfaces(surface_at);
 #undef surface_at
-        return CENTRAL_WINDOW;
+    return CENTRAL_WINDOW;
 }
 
 static uint32_t
@@ -510,8 +518,10 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
         state->width = slot;
         uint32_t fill = colors.button;
         if (state->hovered) fill = decs.pressed_button == (int)buttons[i].which ? colors.pressed_button : colors.hovered_button;
-        if (decoration_touch.active && decoration_touch.window_id == window->id && decoration_touch.surface == decs.titlebar.surface &&
-            decoration_touch.button == (int)buttons[i].which && titlebar_button_at(window, decoration_touch.x, decoration_touch.y) == buttons[i].which)
+        // The geometry of the buttons after this one is not set yet, but
+        // buttons do not overlap, so only this button can contain the touch
+        if (decoration_touch.active && decoration_touch.window_id == window->id && decoration_touch.button == (int)buttons[i].which &&
+            titlebar_button_at(window, decoration_touch.x, decoration_touch.y) == buttons[i].which)
             fill = colors.pressed_button;
         render_titlebar_button(pixels, width, height, buttons[i].left, slot, scale, buttons[i].which, maximized, fill, colors.fg, colors.bg);
     }
@@ -950,7 +960,7 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow *window) {
 
 static bool
 update_hovered_button(_GLFWwindow *window) {
-    const GLFWTitlebarButton hovered = titlebar_button_at(window, x, y);
+    const GLFWTitlebarButton hovered = titlebar_button_at_x(window, x);
 #define c(which, button)                       \
     if (hovered == button) {                   \
         if (!decs.which.hovered) {             \
@@ -1052,7 +1062,7 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
             case CENTRAL_WINDOW: break;
             case CSD_titlebar:
                 if (has_hovered_button(window) || decs.pressed_button) {
-                    const GLFWTitlebarButton hovered = titlebar_button_at(window, x, y);
+                    const GLFWTitlebarButton hovered = titlebar_button_at_x(window, x);
                     decs.dragging = false;
                     decs.titlebar_needs_update = true;
                     decs.last_click_on_top_decoration_at = 0;
@@ -1085,6 +1095,12 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
 }
 
 
+static void
+commit_titlebar_update(_GLFWwindow *window) {
+    csd_change_title(window);
+    if (!window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
+}
+
 void
 csd_handle_pointer_event(_GLFWwindow *window, int button, int state, struct wl_surface *surface) {
     if (!window_is_csd_capable(window)) return;
@@ -1095,70 +1111,82 @@ csd_handle_pointer_event(_GLFWwindow *window, int button, int state, struct wl_s
         case -3: handle_pointer_leave(window, surface); break;
         default: handle_pointer_button(window, button, state); break;
     }
-    if (decs.titlebar_needs_update) {
-        csd_change_title(window);
-        if (!window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
-    }
+    if (decs.titlebar_needs_update) commit_titlebar_update(window);
 }
 #undef x
 #undef y
 
-static void
-redraw_touch_titlebar(_GLFWwindow *window) {
-    csd_change_title(window);
-    if (!window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
+// Called for every touch down, wherever it lands. A contact id is only reused
+// after its previous sequence ended, so a tracked contact with this id is
+// stale, its up was never delivered.
+void
+csd_drop_stale_touch(int32_t id) {
+    if (decoration_touch.active && decoration_touch.id == id) csd_handle_touch_cancel();
 }
 
-void
+bool
+csd_is_tracking_touch(int32_t id) {
+    return decoration_touch.active && decoration_touch.id == id;
+}
+
+bool
 csd_handle_touch_down(_GLFWwindow *window, struct wl_surface *surface, int32_t id, uint32_t serial, double sx, double sy) {
-    // A seat has one interactive move/resize; other CSD contacts remain ignored.
-    if (decoration_touch.active || !csd_should_window_be_decorated(window) || !window->wl.xdg.toplevel) return;
+    if (!csd_should_window_be_decorated(window) || !window->wl.xdg.toplevel) return false;
     const _GLFWCSDSurface which = decoration_surface(window, surface);
-    if (which == CENTRAL_WINDOW) return;
+    if (which == CENTRAL_WINDOW) return false;
+    const GLFWTitlebarButton button = which == CSD_titlebar ? titlebar_button_at(window, sx, sy) : TITLEBAR_BUTTON_NONE;
+    if (button == TITLEBAR_BUTTON_NONE) {
+        // Interactive requests require this contact's original down serial.
+        // The contact is not tracked as the compositor takes it over and need
+        // not send its up event to us.
+        const uint32_t edges = decoration_resize_edges(which);
+        if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, serial, edges);
+        else xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, serial);
+        return true;
+    }
+    // Only one titlebar button press is tracked at a time, other button
+    // presses are ignored while it is down
+    if (decoration_touch.active) return true;
     decoration_touch.active = true;
     decoration_touch.id = id;
     decoration_touch.window_id = window->id;
     decoration_touch.surface = surface;
     decoration_touch.x = sx;
     decoration_touch.y = sy;
-    decoration_touch.button = which == CSD_titlebar ? titlebar_button_at(window, sx, sy) : TITLEBAR_BUTTON_NONE;
-    const uint32_t edges = decoration_resize_edges(which);
-    // Interactive requests require this contact's original down serial.
-    if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, serial, edges);
-    else if (decoration_touch.button == TITLEBAR_BUTTON_NONE) xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, serial);
-    else redraw_touch_titlebar(window);
+    decoration_touch.button = button;
+    commit_titlebar_update(window);
+    return true;
 }
 
 void
 csd_handle_touch_motion(int32_t id, double sx, double sy) {
-    if (!decoration_touch.active || decoration_touch.id != id) return;
+    if (!csd_is_tracking_touch(id)) return;
     _GLFWwindow *window = _glfwWindowForId(decoration_touch.window_id);
     if (!window) {
         memset(&decoration_touch, 0, sizeof(decoration_touch));
         return;
     }
-    const GLFWTitlebarButton before = titlebar_button_at(window, decoration_touch.x, decoration_touch.y);
+    const GLFWTitlebarButton button = decoration_touch.button;
+    const bool was_on_button = titlebar_button_at(window, decoration_touch.x, decoration_touch.y) == button;
     decoration_touch.x = sx;
     decoration_touch.y = sy;
-    if (decoration_touch.button != TITLEBAR_BUTTON_NONE && before != titlebar_button_at(window, sx, sy)) redraw_touch_titlebar(window);
+    if (was_on_button != (titlebar_button_at(window, sx, sy) == button)) commit_titlebar_update(window);
 }
 
 void
 csd_handle_touch_cancel(void) {
     if (!decoration_touch.active) return;
     _GLFWwindow *window = _glfwWindowForId(decoration_touch.window_id);
-    const bool redraw = decoration_touch.button != TITLEBAR_BUTTON_NONE;
     memset(&decoration_touch, 0, sizeof(decoration_touch));
-    if (window && redraw) redraw_touch_titlebar(window);
+    if (window) commit_titlebar_update(window);
 }
 
 void
 csd_handle_touch_up(int32_t id) {
-    if (!decoration_touch.active || decoration_touch.id != id) return;
+    if (!csd_is_tracking_touch(id)) return;
     _GLFWwindow *window = _glfwWindowForId(decoration_touch.window_id);
     const GLFWTitlebarButton pressed = decoration_touch.button;
-    const bool activate = window && csd_should_window_be_decorated(window) && decoration_touch.surface == decs.titlebar.surface &&
-                          pressed != TITLEBAR_BUTTON_NONE && pressed == titlebar_button_at(window, decoration_touch.x, decoration_touch.y);
+    const bool activate = window && csd_should_window_be_decorated(window) && pressed == titlebar_button_at(window, decoration_touch.x, decoration_touch.y);
     // The close callback can destroy the window. Clear the contact first.
     csd_handle_touch_cancel();
     if (activate) activate_titlebar_button(window, pressed);

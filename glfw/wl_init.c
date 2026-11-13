@@ -400,12 +400,15 @@ touchHandleDown(
     void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, struct wl_surface *surface, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
     // A finger landing stops any scroll that is coasting, as on every touch system
     glfw_cancel_momentum_scroll();
+    csd_drop_stale_touch(id);
     _GLFWwindow *window = get_window_from_surface(surface);
     if (!window) return;
     if (surface != window->wl.surface) {
-        _glfw.wl.serial = serial;
-        _glfw.wl.input_serial = serial;
-        csd_handle_touch_down(window, surface, id, serial, wl_fixed_to_double(sx), wl_fixed_to_double(sy));
+        if (csd_handle_touch_down(window, surface, id, serial, wl_fixed_to_double(sx), wl_fixed_to_double(sy))) {
+            _glfw.wl.serial = serial;
+            _glfw.wl.input_serial = serial;
+            _glfw.wl.pointer_serial = serial;
+        }
         return;
     }
     if (touch.count >= arraysz(touch.points) || touch_point_index(id) > -1) return;
@@ -427,7 +430,13 @@ touchHandleDown(
 
 static void
 touchHandleUp(void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, int32_t id) {
-    csd_handle_touch_up(id);
+    if (csd_is_tracking_touch(id)) {
+        _glfw.wl.serial = serial;
+        _glfw.wl.input_serial = serial;
+        _glfw.wl.pointer_serial = serial;
+        csd_handle_touch_up(id);
+        return;
+    }
     const ssize_t i = touch_point_index(id);
     if (i < 0) return;
     _glfw.wl.serial = serial;

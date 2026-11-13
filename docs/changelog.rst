@@ -125,10 +125,6 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Treat the ConEmu OSC 9;9 escape code as a report of the current working
-  directory, like OSC 7, and ignore other ConEmu OSC 9 numeric sub-commands
-  instead of showing them as desktop notifications
-
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)
@@ -150,6 +146,10 @@ Detailed list of changes
 - Fix out of bounds memory accesses when a multi-line :doc:`text sizing
   <text-sizing-protocol>` character is partially scrolled off the screen and a
   combining char is then added to it or the window is resized
+
+- Wayland: Allow using touchscreens with the client side window decorations to
+  close, minimize and maximize the window, and to move and resize it
+  (:pull:`10859`)
 
 - A hard reset (:code:`RIS`) now clears the alternate screen as well
 
@@ -203,6 +203,10 @@ Detailed list of changes
 
 - X11: Report X errors instead of exiting, fixing exits when clipboard
   requestors destroy their window early (:iss:`9248`)
+
+- Treat the ConEmu OSC 9;9 escape code as a report of the current working
+  directory, like OSC 7, and ignore other ConEmu OSC 9 numeric sub-commands
+  instead of showing them as desktop notifications
 
 
 0.50.0 [2026-11-03]
