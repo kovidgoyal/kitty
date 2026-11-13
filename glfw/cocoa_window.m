@@ -870,6 +870,10 @@ static void flush_focus_loss_text(_GLFWwindow *window);
     // With the default macOS keybindings, pressing certain key combinations
     // (e.g. Ctrl+/, Ctrl+Cmd+Down/Left/Right) will produce a beep sound.
     debug_input("\n\tTextInputCtx: doCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
+    if (selector == @selector(cancelOperation:) || selector == @selector(startDictation:)) {
+        [self.client doCommandBySelector:selector];
+        return;
+    }
     if (forward_dictation_selector_to_app(selector, nil)) return;
 }
 @end // }}}
@@ -913,6 +917,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
     NSRect markedRect;
     bool marked_text_cleared_by_insert;
     bool committing_marked_text, marked_text_committed_by_ime;
+    bool ime_session_cancelled;
     NSString *focus_loss_text;
     bool focus_loss_text_sent;
     int in_key_handler;
@@ -982,6 +987,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 }
 
 - (void)removeGLFWWindow {
+    ime_session_cancelled = true;
     [self clearFocusLossText];
     window = NULL;
 }
@@ -1234,6 +1240,15 @@ is_ascii_control_char(char x) {
     _glfwInputKeyboard(window, &glfw_keyevent);
 
     const bool previous_has_marked_text = [self hasMarkedText];
+    const unsigned int keycode = [event keyCode];
+    const NSUInteger flags = remap_cocoa_flags([event modifierFlags]);
+    event = event_with_remapped_flags(event, flags);
+    const int mods = translateFlags(flags);
+    const bool cancel_key = keycode == 0x35 /* escape */;
+    if (cancel_key) {
+        [self cancelOperation:nil];
+        if (!window) return;
+    }
     if (input_context && (!input_source_at_last_key_event || ![input_source_at_last_key_event isEqualToString:input_context.selectedKeyboardInputSource])) {
         if (input_source_at_last_key_event) {
             debug_input("Input source changed, clearing pre-edit text and resetting deadkey state\n");
@@ -1247,15 +1262,17 @@ is_ascii_control_char(char x) {
         [self unmarkText];
     }
 
-    const unsigned int keycode = [event keyCode];
-    const NSUInteger flags = remap_cocoa_flags([event modifierFlags]);
-    event = event_with_remapped_flags(event, flags);
-    const int mods = translateFlags(flags);
     const uint32_t key = translateKey(keycode, true);
     const bool process_text =
         !_glfw.ignoreOSKeyboardProcessing && (!window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1);
+    const bool delete_key = keycode == 0x33 /* backspace */ || (keycode == 0x04 /* h */ && mods == GLFW_MOD_CONTROL);
+    if (!cancel_key && !delete_key && process_text && !(GLFW_FKEY_FIRST <= key && key <= GLFW_FKEY_LAST) &&
+        !(mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META))) {
+        [self beginIMEInput];
+        if (!window) return;
+    }
     _glfw.ns.text[0] = 0;
-    if (keycode == 0x33 /* backspace */ || keycode == 0x35 /* escape */ || (keycode == 0x04 /* h */ && mods == GLFW_MOD_CONTROL)) [self unmarkText];
+    if (delete_key) [self unmarkText];
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = GLFW_PRESS, .mods = mods};
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
@@ -1394,6 +1411,11 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
         safe_name_for_keycode(keycode),
         key,
         format_mods(mods));
+    if (action == GLFW_PRESS && process_text && (key == GLFW_FKEY_LEFT_ALT || key == GLFW_FKEY_RIGHT_ALT) &&
+        !(mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META))) {
+        [self beginIMEInput];
+        if (!window) return;
+    }
     marked_text_cleared_by_insert = false;
     if (process_text && input_context) {
         // this will call insertText which will fill up _glfw.ns.text
@@ -2064,6 +2086,10 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
 
 - (void)setMarkedText:(id)string selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange {
     if (committing_marked_text) return;
+    if (ime_session_cancelled) {
+        debug_input("Ignoring pre-edit text from a cancelled IME session\n");
+        return;
+    }
     const char *s = polymorphic_string_as_utf8(string);
     debug_input(
         "\n\tsetMarkedText: %s selectedRange: (%lu, %lu) replacementRange: (%lu, %lu)\n",
@@ -2148,7 +2174,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     [self clearFocusLossText];
     [input_context discardMarkedText];
     committing_marked_text = false;
-    if (!window || marked_text_committed_by_ime) return;
+    if (!window || marked_text_committed_by_ime || ime_session_cancelled) return;
     // Other input methods may deliver their final result asynchronously, so
     // wait briefly for it before committing the pre-edit text.
     debug_input("Waiting for IME result before committing pre-edit text on focus loss: %s\n", [text UTF8String]);
@@ -2185,6 +2211,12 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     [self clearFocusLossText];
 }
 
+- (void)beginIMEInput {
+    if (!window) return;
+    if (ime_session_cancelled) debug_input("Starting a fresh IME session after cancellation\n");
+    ime_session_cancelled = false;
+}
+
 - (void)updateIMEStateFor:(GLFWIMEUpdateType)which focused:(bool)focused {
     if (which == GLFW_IME_UPDATE_FOCUS && !focused && [self hasMarkedText] && window) {
         if (!_glfwPlatformWindowFocused(window)) {
@@ -2194,11 +2226,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         } else {
             // Focus moved to another kitty window or the window is being
             // closed, cancel the composition
-            [input_context discardMarkedText];
-            [self unmarkText];
-            GLFWkeyevent glfw_keyevent = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
-            _glfwInputKeyboard(window, &glfw_keyevent);
-            _glfw.ns.text[0] = 0;
+            [self cancelOperation:nil];
         }
     }
     if (which != GLFW_IME_UPDATE_CURSOR_POSITION) return;
@@ -2260,6 +2288,10 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 - (void)insertText:(id)string replacementRange:(NSRange)replacementRange {
+    if (ime_session_cancelled) {
+        debug_input("Ignoring final text from a cancelled IME session\n");
+        return;
+    }
     if (!string) {
         debug_input("\n\tinsertText: nil replacementRange: (%lu, %lu)\n", replacementRange.location, replacementRange.length);
         return;
@@ -2325,10 +2357,33 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)doCommandBySelector:(SEL)selector {
     debug_input("\n\tdoCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
+    if (selector == @selector(cancelOperation:)) {
+        [self cancelOperation:nil];
+        return;
+    }
+    if (selector == @selector(startDictation:)) { [self beginIMEInput]; }
     if (forward_dictation_selector_to_app(selector, self)) return;
 }
 
+- (void)cancelOperation:(id)sender {
+    (void)sender;
+    const bool had_marked_text = [self hasMarkedText];
+    // Input methods can deliver more preedit and a final result after Escape.
+    // Accept callbacks again only after a fresh input action starts a session.
+    debug_input("Cancelling IME session\n");
+    ime_session_cancelled = true;
+    [self clearFocusLossText];
+    [self unmarkText];
+    if (had_marked_text && window && (!in_key_handler || in_key_handler == 2)) {
+        GLFWkeyevent event = {.ime_state = GLFW_IME_PREEDIT_CHANGED};
+        _glfwInputKeyboard(window, &event);
+        _glfw.ns.text[0] = 0;
+    }
+    if (had_marked_text && !committing_marked_text) [input_context discardMarkedText];
+}
+
 - (void)startDictation:(id)sender {
+    [self beginIMEInput];
     forward_dictation_selector_to_app(_cmd, sender);
 }
 
