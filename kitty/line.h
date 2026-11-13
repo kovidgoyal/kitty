@@ -164,6 +164,23 @@ mcd_x_limit(const CPUCell *mcd) {
     return mcd->scale * mcd->width;
 }
 
+static inline void
+cell_clear_multicell(CPUCell *c) {
+    // Make c an ordinary cell, clearing all the multicell fields, so that they
+    // are not mistaken for those of a multicell char by code that does not
+    // check is_multicell
+    c->is_multicell = false;
+    c->natural_width = false;
+    c->scale = 0;
+    c->subscale_n = 0;
+    c->subscale_d = 0;
+    c->valign = 0;
+    c->halign = 0;
+    c->x = 0;
+    c->y = 0;
+    c->width = 0;
+}
+
 static inline bool
 continues_multicell_char(const CPUCell *c, const CPUCell *ref, index_type y) {
     // Whether c is the cell in row y of the same multicell char as ref in the same column.

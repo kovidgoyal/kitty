@@ -367,7 +367,7 @@ clear_multicell_cell(HistoryBuf *self, index_type lnum, index_type x) {
     init_line(self, index_of(self, lnum), self->line);
     CPUCell *c = self->line->cpu_cells + x;
     cell_set_char(c, 0);
-    c->is_multicell = false;
+    cell_clear_multicell(c);
     clear_sprite_position(self->line->gpu_cells[x]);
 }
 

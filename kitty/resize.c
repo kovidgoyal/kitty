@@ -277,7 +277,7 @@ multiline_copy_src_to_dest(Rewrap *r) {
         find_space_in_dest(r, mc_width);
         copy_range(&r->src.line, r->src.x, &r->dest.line, r->dest.x, mc_width);
         update_tracked_cursors(r, mc_width, r->src.y, r->dest.y, r->src_x_limit);
-        if (c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
+        if (c->is_multicell && c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
         r->src.x += mc_width;
         r->dest.x += mc_width;
     }
@@ -454,7 +454,7 @@ static void
 nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit) {
     for (index_type x = start; x < x_limit; x++) {
         cell_set_char(cp + x, 0);
-        cp[x].is_multicell = false;
+        cell_clear_multicell(cp + x);
         clear_sprite_position(gp[x]);
     }
 }

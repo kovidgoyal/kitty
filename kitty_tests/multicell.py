@@ -74,6 +74,59 @@ class TestMulticell(BaseTest):
         self.ae([mcd(s, 2, x) for x in range(s.columns)], [None] * s.columns)
         parse_bytes(s, b'\x1b[2;6H\x1b[@')
 
+    def test_multiline_chars_not_torn(self):
+        def assert_not_torn(s):
+            first = -s.historybuf.count if s.is_main_linebuf() else 0
+            for y in range(first, s.lines):
+                for x in range(s.columns):
+                    c = s.cpu_cells(y, x)
+                    mcd = c['mcd']
+                    if mcd and mcd['scale'] > 1:
+                        top = y - c['y']
+                        for r in range(max(first, top), min(s.lines, top + mcd['scale'])):
+                            o = s.cpu_cells(r, x)
+                            self.assertIsNotNone(o['mcd'], f'Torn char at ({x}, {y}) row: {r}')
+                            self.ae((o['y'], o['mcd']['scale']), (r - top, mcd['scale']), f'Torn char at ({x}, {y}) row: {r}')
+
+        def mcd(s, y, x):
+            c = s.cpu_cells(y, x)['mcd']
+            return c and (c['scale'], c['width'])
+
+        # The marker preserving a blank cursor line during resize can be placed
+        # by rewrap after the lower rows of a multiline char, removing the marker
+        # must not change the char
+        s = self.create_screen(cols=3, lines=6)
+        # SARA AM widens the char, moving it to the start of the line after the
+        # multiline char, so the lines it occupies are continued
+        parse_bytes(s, b'\x1b]66;s=2;L\x07\xe0\xb8\x81\xe0\xb8\xb3\x1bD\x1b[3M')
+        s.resize(10, 7)
+        assert_not_torn(s)
+        self.ae((s.cursor.x, s.cursor.y), (2, 1))
+        self.ae(str(s.line(1)), '')
+        # the rows of the char are recognized as one char, so they are removed together
+        parse_bytes(s, b'\x1b[2K')
+        assert_not_torn(s)
+        self.ae([mcd(s, y, 0) for y in range(2)], [None, None])
+
+        # Removed multicell chars must not leave behind multicell fields that
+        # are used by code that does not check is_multicell, which caused
+        # chars to be placed after unrelated chars and rewrap to copy them
+        s = self.create_screen(cols=10, lines=9)
+        parse_bytes(s, b'\x1b]66;s=2:w=3;X\x07\x1b[1K\x1b]66;s=2;L\x07\x1b]66;s=2;\xf0\x9f\x98\x80\x07')
+        self.ae([mcd(s, 1, x) for x in range(s.columns)], [(2, 2)] * 4 + [None] * 2 + [(2, 1)] * 2 + [None] * 2)
+        s.resize(4, 10)
+        assert_not_torn(s)
+
+        # Moving the screen into the scrollback must use the lines of the
+        # screen, not the visual lines, when the scrollback is scrolled
+        s = self.create_screen(cols=5, lines=4, scrollback=10)
+        parse_bytes(s, b'a' + b'\r\n' * 7 + b'\x1b[H\x1b]66;s=2;L\x07')
+        s.scroll(4, True)
+        parse_bytes(s, b'\x1b[22J')
+        assert_not_torn(s)
+        self.ae([mcd(s, y, 0) for y in (-2, -1, 0)], [(2, 1), (2, 1), None])
+        self.ae(str(s.historybuf.line(5)), 'a')
+
     def test_rewrap_multiline_char_followed_by_continuation(self):
         # Regression: when the lines after a multiline char were continuations that
         # fit on its first row, the lower rows of the char were lost on rewrap
