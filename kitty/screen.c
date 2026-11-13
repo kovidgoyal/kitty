@@ -541,7 +541,7 @@ static void
 nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit, char_type ch) {
     for (index_type x = start; x < x_limit; x++) {
         cell_set_char(cp + x, ch);
-        cp[x].is_multicell = false;
+        cell_clear_multicell(cp + x);
         clear_sprite_position(gp[x]);
     }
 }
@@ -786,10 +786,17 @@ preserve_blank_output_start_line(Cursor *cursor, LineBuf *linebuf) {
 
 static void
 remove_blank_output_line_reservation_marker(Cursor *cursor, LineBuf *linebuf) {
+    // The cursor was moved past the marker, so the marker is just before it.
+    // It is not necessarily at the start of the line, as rewrap places it
+    // after the lower rows of multiline chars from the lines above.
     if (cursor->y < linebuf->ynum) {
-        linebuf_init_line(linebuf, cursor->y);
-        cell_set_char(linebuf->line->cpu_cells, 0);
-        cursor->x = 0;
+        CPUCell *cells = linebuf_cpu_cells_for_line(linebuf, cursor->y);
+#define is_marker(x) (!cells[x].is_multicell && cell_is_char(cells + (x), '<'))
+        index_type x = cursor->x ? MIN(cursor->x, linebuf->xnum) - 1 : 0;
+        if (!is_marker(x)) x = 0;
+        if (is_marker(x)) cell_set_char(cells + x, 0);
+#undef is_marker
+        cursor->x = x;
     }
 }
 
@@ -1293,7 +1300,7 @@ add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
 static bool
 has_multiline_cells_in_span(const CPUCell *cells, const index_type start, const index_type count) {
     for (index_type x = start; x < start + count; x++)
-        if (cells[x].y) return true;
+        if (cells[x].is_multicell && cells[x].y) return true;
     return false;
 }
 
@@ -3133,15 +3140,15 @@ screen_clear_scrollback(Screen *self) {
     self->linebuf = orig;
 }
 
-static Line *visual_line_(Screen *self, int y_);
-
 static void
 screen_move_into_scrollback(Screen *self) {
     if (self->linebuf != self->main_linebuf || self->margin_top != 0 || self->margin_bottom != self->lines - 1) return;
     unsigned int num_of_lines_to_move = self->lines;
     while (num_of_lines_to_move) {
-        Line *line = visual_line_(self, num_of_lines_to_move - 1);
-        if (!line_is_empty(line)) break;
+        // the lines of the screen, not the visual lines, which are lines from
+        // the scrollback when it is scrolled
+        linebuf_init_line(self->linebuf, num_of_lines_to_move - 1);
+        if (!line_is_empty(self->linebuf->line)) break;
         num_of_lines_to_move--;
     }
     if (num_of_lines_to_move) {
@@ -5762,7 +5769,7 @@ remove_multicell_fragments_cut_off_above_screen(Screen *self, index_type num_lin
             if (c->is_multicell && c->y > num_lines_above_screen + y) {
                 found = true;
                 cell_set_char(c, 0);
-                c->is_multicell = false;
+                cell_clear_multicell(c);
                 clear_sprite_position(line->gpu_cells[x]);
             }
         }
