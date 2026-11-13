@@ -24,6 +24,16 @@ class BorderLine(NamedTuple):
     horizontal: bool = False
 
 
+class DockMetrics(NamedTuple):
+    # The size of the dock, the room left for the content it is docked to and
+    # the size of the area it is docked into, in pixels, along the axis of the dock
+    size: int
+    room: int
+    total: int
+    cell: int
+    decoration: int
+
+
 class LayoutOpts:
     def __init__(self, data: dict[str, str]):
         pass
@@ -374,6 +384,8 @@ class Layout:
         self.blank_rects: list[Rect] = []
         self.tab_dock_placements: list[tuple[WindowGroup, Region]] = []
         self.os_window_dock_placements: list[tuple[WindowGroup, Region]] = []
+        # The areas the OS window docks and the tab docks are carved from
+        self.os_window_dock_area = self.tab_dock_area = region(0, 0, 0, 0)
         # The blank strips at the edges of the layout area when margins are collapsed
         self.collapsed_margin_rects: list[Rect] = []
         self.layout_opts = self.parse_layout_opts(layout_opts)
@@ -677,9 +689,11 @@ class Layout:
         # the layout. Space for the OS window docks is reserved even in the tabs
         # that do not currently host them, so that their windows are not resized
         # when switching tabs.
+        self.os_window_dock_area = full_area
         tab_area, self.os_window_dock_placements = carve_docks(full_area, all_windows.os_window_docks, lgd.cell_width, lgd.cell_height)
         if not all_windows.hosts_os_window_docks:
             self.os_window_dock_placements = []
+        self.tab_dock_area = tab_area
         lgd.central, self.tab_dock_placements = carve_docks(tab_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
@@ -730,6 +744,89 @@ class Layout:
         owner.set_content_geometry(window_geometry_from_layouts(x, y))
         for dock, area in placements:
             self.layout_docked_group(dock, area)
+
+    def tab_content_area(self, all_windows: WindowList) -> Region:
+        "The area left for the layout after the OS window docks and the tab docks, as of the last call to _set_dimensions()"
+        tab_area = carve_docks(self.os_window_dock_area, all_windows.os_window_docks, lgd.cell_width, lgd.cell_height)[0]
+        return carve_docks(tab_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)[0]
+
+    def room_for_os_window_docks(self, all_windows: WindowList, is_horizontal: bool) -> int:
+        "The space along an axis that the OS window docks can grow into without shrinking the tab docks of this tab"
+        self._set_dimensions(all_windows)
+        content = self.tab_content_area(all_windows)
+        return content.height if is_horizontal else content.width
+
+    def dock_metrics(self, all_windows: WindowList, dock: WindowGroup) -> DockMetrics | None:
+        "The size of a docked group along its axis, as carved from the area it is docked into"
+        if dock.dock is None:
+            return None
+        is_os_window_dock = False
+        if (owner := all_windows.dock_owner(dock)) is not None:
+            if owner.allocated_geometry is None:
+                return None
+            area, docks = outer_region_of(owner.allocated_geometry), owner.docks
+        elif any(d is dock for d in all_windows.tab_docks):
+            area, docks = self.tab_dock_area, all_windows.tab_docks
+        elif any(d is dock for d in all_windows.hosted_os_window_docks()):
+            area, docks, is_os_window_dock = self.os_window_dock_area, all_windows.os_window_docks, True
+        else:
+            return None
+        content, placements = carve_docks(area, docks, lgd.cell_width, lgd.cell_height)
+        r = next((r for g, r in placements if g is dock), None)
+        if r is None:
+            return None
+        if is_os_window_dock:
+            # The tab docks are inside the OS window docks, so only the area
+            # left for the layout is room to grow into
+            content = self.tab_content_area(all_windows)
+        if dock.dock.is_horizontal:
+            return DockMetrics(r.height, content.height, area.height, lgd.cell_height, dock.decoration('top') + dock.decoration('bottom'))
+        return DockMetrics(r.width, content.width, area.width, lgd.cell_width, dock.decoration('left') + dock.decoration('right'))
+
+    def resize_dock(self, all_windows: WindowList, dock: WindowGroup, increment: int, fraction: float = 0, max_room: int | None = None) -> int:
+        """
+        Resize a docked group along its axis by a number of cells, positive
+        values make it bigger, whatever its edge. Returns the number of cells
+        actually applied. A dock keeps at least one cell and grows only into the
+        content it is docked to, which keeps space for at least one cell, so
+        that the docks inside it are not shrunk. max_room further limits the
+        number of pixels the dock can grow by. With a non-zero fraction, that
+        fraction of the possible steps of size increment is taken, the last
+        step being partial if needed.
+        """
+        if (spec := dock.dock) is None or not increment:
+            return 0
+        # The layout global data is shared by all tabs, so refresh it
+        self._set_dimensions(all_windows)
+        if (m := self.dock_metrics(all_windows, dock)) is None or m.cell < 1:
+            return 0
+        cells = max(1, (m.size - m.decoration) // m.cell)
+        if increment > 0:
+            room = m.room if max_room is None else min(m.room, max_room)
+            # Windows share their margin, border and padding settings, so the
+            # decoration of the dock estimates that of the window(s) in the content
+            limit = max(0, (room - m.decoration) // m.cell - 1)
+        else:
+            limit = cells - 1
+        step = abs(increment)
+        if fraction:
+            steps = min(limit, fractional_resize_steps(ceil(limit / step), fraction) * step)
+        else:
+            steps = min(step, limit)
+        if not steps:
+            return 0
+        applied = steps if increment > 0 else -steps
+        if spec.size_is_percent:
+            if m.total < 1:
+                return 0
+            # Aim for the middle of the pixel so that carve_docks() rounds down
+            # to it. Rounding keeps the percentage exact when serialized, see
+            # DockSpec.size_as_string, while staying within the pixel.
+            pixels = (cells + applied) * m.cell + m.decoration
+            dock.dock = spec._replace(size=min(100, round((pixels + 0.5) * 100 / m.total, 3)))
+        else:
+            dock.dock = spec._replace(size=cells + applied)
+        return applied
 
     def layout_docked_group(self, dock: WindowGroup, area: Region) -> None:
         xdecoration_pairs = ((dock.decoration('left'), dock.decoration('right')),)

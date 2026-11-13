@@ -3090,7 +3090,7 @@ class Boss:
         cell_height: int,
     ) -> bool:
         if (w := self.window_id_map.get(window_id)) and (tab := w.tabref()):
-            data = tab.current_layout.drag_resize_target_windows(w, x, y, edges, tab.windows)
+            data = tab.drag_resize_target_windows(w, x, y, edges)
             if not edges & (LEFT_EDGE | RIGHT_EDGE):
                 data = data._replace(horizontal_id=None)
             if not edges & (TOP_EDGE | BOTTOM_EDGE):
@@ -3124,20 +3124,21 @@ class Boss:
             step_x = int((x - r.initial_x) / r.cell_width) * mult
             dx = step_x - r.last_step_x
             if dx != 0:
-                if applied := tab.drag_resize_window(h, dx, True):
+                if applied := tab.drag_resize_window(h, dx, True, r.data.is_dock):
                     self.drag_resize_of_window = r = r._replace(last_step_x=r.last_step_x + applied)
         if (v := r.data.vertical_id) is not None:
             mult = 1 if r.data.height_increases_downwards else -1
             step_y = int((y - r.initial_y) / r.cell_height) * mult
             dy = step_y - r.last_step_y
             if dy != 0:
-                if applied := tab.drag_resize_window(v, dy, False):
+                if applied := tab.drag_resize_window(v, dy, False, r.data.is_dock):
                     self.drag_resize_of_window = r._replace(last_step_y=r.last_step_y + applied)
 
     def drag_resize_end(self) -> None:
         if tab := self.tab_for_id(self.drag_resize_of_window.tab_id):
             for cw in tab:
                 cw.pause_resize_notifications_to_child(pause=False)
+            tab.drag_resize_ended(self.drag_resize_of_window.data)
         self.drag_resize_of_window = WindowResizeDrag()
 
     def open_kitty_website(self) -> None:

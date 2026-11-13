@@ -129,6 +129,10 @@ Detailed list of changes
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)
 
+- Allow resizing docks by dragging their inner border or with the
+  :ac:`resize_window` action and :code:`kitten @ resize-window`, see :ref:`docks`
+  (:iss:`10857`)
+
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders that shake
   a window on bell and new events and uniforms for command start/finish and
   alternate screen enter/exit

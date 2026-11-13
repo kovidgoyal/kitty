@@ -584,6 +584,12 @@ class WindowList:
                 return g
         return None
 
+    def dock_for_window_id(self, window_id: int) -> WindowGroup | None:
+        "The docked group containing the window, None if the window is not docked or not in this list"
+        if (w := self.id_map.get(window_id)) is not None and (g := self.group_for_window(w)) is not None and g.dock is not None:
+            return g
+        return None
+
     def group_for_id(self, gid: int) -> WindowGroup | None:
         for g in self.iter_all_groups():
             if g.id == gid:

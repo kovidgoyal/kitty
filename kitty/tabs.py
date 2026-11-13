@@ -64,7 +64,7 @@ from .layout.base import DragOverlayMode, Layout
 from .layout.interface import all_layouts, create_layout_object_for, evict_cached_layouts
 from .progress import ProgressState
 from .tab_bar import TabBar, TabBarData, WindowDropTarget, apply_title_template
-from .types import CloseEvent, DockSpec, ac
+from .types import CloseEvent, DockSpec, WindowResizeDragData, ac
 from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import cmdline_for_hold, color_as_int, log_error, natsort_key, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowCreationSpec, WindowDict, global_watchers
@@ -806,6 +806,11 @@ class Tab:  # {{{
             self.goto_layout(layout_name)
 
     def resize_window_by(self, window_id: int, increment: float, is_horizontal: bool, fraction: float = 0) -> str | None:
+        if (dock := self.windows.dock_for_window_id(window_id)) is not None and dock.dock is not None:
+            if is_horizontal == dock.dock.is_horizontal:
+                which = 'taller or shorter' if dock.dock.is_horizontal else 'wider or narrower'
+                return f'A dock at the {dock.dock.edge} edge can only be made {which}'
+            return None if self.resize_dock(dock, increment, fraction) else 'Could not resize'
         increment_as_percent = self.current_layout.bias_increment_for_cell(self.windows, is_horizontal) * increment
         if fraction:
             changed = self.current_layout.modify_size_of_window_by_fraction(self.windows, window_id, increment_as_percent, is_horizontal, fraction)
@@ -816,10 +821,47 @@ class Tab:  # {{{
             return None
         return 'Could not resize'
 
-    def drag_resize_window(self, object_id: int, increment: float, is_horizontal: bool) -> float:
+    def resize_dock(self, dock: WindowGroup, increment: float, fraction: float = 0, relayout_other_tabs: bool = True) -> int:
+        "Resize a docked group by a number of cells, see Layout.resize_dock()"
+        # Round away from zero, so that fractional increments still resize
+        cells = int(math.copysign(math.ceil(abs(increment)), increment))
+        is_os_window_dock = self.windows.is_os_window_dock(dock)
+        max_room: int | None = None
+        if is_os_window_dock and cells > 0 and dock.dock is not None and (tm := self.tab_manager_ref()) is not None:
+            # Growing an OS window dock must not shrink the tab docks of the other tabs either
+            is_horizontal = dock.dock.is_horizontal
+            max_room = min((t.current_layout.room_for_os_window_docks(t.windows, is_horizontal) for t in tm if t is not self), default=None)
+        applied = self.current_layout.resize_dock(self.windows, dock, cells, fraction, max_room)
+        if applied:
+            self.relayout()
+            if is_os_window_dock and relayout_other_tabs:
+                self.os_window_docks_changed()
+        return applied
+
+    def drag_resize_target_windows(self, window: Window, x: float, y: float, edges: int) -> WindowResizeDragData:
+        if (dock := self.windows.dock_for_window_id(window.id)) is None or dock.dock is None:
+            return self.current_layout.drag_resize_target_windows(window, x, y, edges, self.windows)
+        # A dock has a border only on its inner edge, its outer edges stay put
+        edge = dock.dock.edge
+        if dock.dock.is_horizontal:
+            return WindowResizeDragData(vertical_id=window.id, height_increases_downwards=edge == 'top', is_dock=True)
+        return WindowResizeDragData(horizontal_id=window.id, width_increases_rightwards=edge == 'left', is_dock=True)
+
+    def drag_resize_window(self, object_id: int, increment: float, is_horizontal: bool, is_dock: bool = False) -> float:
+        if is_dock:
+            # The other tabs are re-laid out once, when the drag ends, see drag_resize_ended()
+            dock = self.windows.dock_for_window_id(object_id)
+            return 0 if dock is None else self.resize_dock(dock, increment, relayout_other_tabs=False)
         if resized := self.current_layout.drag_resize_window(self.windows, object_id, increment, is_horizontal):
             self.relayout()
         return resized
+
+    def drag_resize_ended(self, data: WindowResizeDragData) -> None:
+        if data.is_dock:
+            for wid in (data.horizontal_id, data.vertical_id):
+                if wid is not None and (dock := self.windows.dock_for_window_id(wid)) is not None and self.windows.is_os_window_dock(dock):
+                    self.os_window_docks_changed()
+                    break
 
     @ac(
         'win',

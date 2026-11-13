@@ -326,6 +326,8 @@ class WindowResizeDragData(NamedTuple):
     width_increases_rightwards: bool = True
     vertical_id: int | None = None
     height_increases_downwards: bool = True
+    # The ids are window ids of a docked window, rather than layout specific ids
+    is_dock: bool = False
 
 
 class WindowResizeDrag(NamedTuple):

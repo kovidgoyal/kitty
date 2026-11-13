@@ -329,6 +329,15 @@ percentage of the window, tab or OS window being docked to. When there are sever
 at an edge, later docks are placed inside earlier ones. When there is not
 enough space for all the docks, the docks created last are made smaller first.
 
+Docks can be resized in whole cells by dragging their inner border with the
+mouse, or with the :ac:`resize_window` action and :ref:`kitten @ resize-window
+<at-resize-window>`, where wider or taller always means bigger, whatever the
+edge of the dock. Only the size along the axis of the dock can be changed. A
+size that was a percentage stays a percentage. The new size is used from then
+on, including in :ref:`kitten @ ls <at-ls>` and in saved sessions. Resetting
+window sizes does not change the size of docks, as they are not part of the
+layout.
+
 A :code:`window-dock` belongs to the window it is docked to. It is shown
 whenever that window is shown, moves with it when it is moved to another tab
 and is closed when it is closed. A :code:`tab-dock` is closed when the last
