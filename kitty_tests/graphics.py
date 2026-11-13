@@ -2330,3 +2330,15 @@ class TestGraphics(BaseTest):
                 self.ae((width, height), (w, h))
                 f.seek(8)
                 self.ae(rgba_data, f.read())
+
+            # non-regular files must be rejected rather than streamed into the converter
+            num = irc.num_of_renders
+            fifo = os.path.join(cache_path, 'fifo')
+            os.mkfifo(fifo)
+            for bad in (os.devnull, fifo, cache_path):
+                with self.assertRaises(ValueError, msg=bad):
+                    irc.render(bad)
+                with self.assertRaises(ValueError, msg=bad):
+                    irc.render_image(bad, os.path.join(cache_path, 'out'))
+                self.assertFalse(os.path.exists(os.path.join(cache_path, 'out')))
+            self.ae(irc.num_of_renders, num)

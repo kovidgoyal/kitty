@@ -157,6 +157,11 @@ Detailed list of changes
 
 - A hard reset (:code:`RIS`) now clears the alternate screen as well
 
+- Fix a program running in the terminal being able to hang kitty by using
+  :doc:`edit-in-kitty </shell-integration>` to set a window logo that is a
+  special file such as :file:`/dev/zero`. Window logos and background images
+  must now be regular files and image conversion is subject to a timeout
+
 - Fix the lower rows of a multi-line :doc:`text sizing <text-sizing-protocol>`
   character being lost when resizing if the text after it is wrapped onto its
   first row
