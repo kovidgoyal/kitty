@@ -143,6 +143,16 @@ Detailed list of changes
   no longer opens saved sessions in the wrong OS Window or tab and no longer
   overwrites the session file with an empty one (:pull:`10851`, :pull:`10852`)
 
+- Fix out of bounds memory accesses when a multi-line :doc:`text sizing
+  <text-sizing-protocol>` character is partially scrolled off the screen and a
+  combining char is then added to it or the window is resized
+
+- A hard reset (:code:`RIS`) now clears the alternate screen as well
+
+- Fix the lower rows of a multi-line :doc:`text sizing <text-sizing-protocol>`
+  character being lost when resizing if the text after it is wrapped onto its
+  first row
+
 - Fix the scrolled back view jumping, and images, the cursor and the scrollbar
   getting out of sync with the text, when new output arrives
   (:pull:`10841`, :pull:`10847`)

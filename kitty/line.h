@@ -164,6 +164,15 @@ mcd_x_limit(const CPUCell *mcd) {
     return mcd->scale * mcd->width;
 }
 
+static inline bool
+continues_multicell_char(const CPUCell *c, const CPUCell *ref, index_type y) {
+    // Whether c is the cell in row y of the same multicell char as ref in the same column.
+    // Use this rather than trusting the y and scale of a cell when walking the rows of a
+    // multiline char, as the char may be partial or torn.
+    return c->is_multicell && c->y == y && c->x == ref->x && c->scale == ref->scale && c->width == ref->width && c->subscale_n == ref->subscale_n &&
+           c->subscale_d == ref->subscale_d && c->ch_and_idx == ref->ch_and_idx;
+}
+
 static inline void
 text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
     if (c->ch_is_idx) {
