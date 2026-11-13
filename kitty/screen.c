@@ -707,9 +707,12 @@ nuke_incomplete_single_line_multicell_chars_in_range(Screen *self, index_type st
     linebuf_init_cells(self->linebuf, y, &cpu_cells, &gpu_cells);
     for (index_type x = start; x < limit; x++) {
         if (cpu_cells[x].is_multicell) {
-            index_type mcd_x_limit = x + cpu_cells[x].width - cpu_cells[x].x;
-            if (cpu_cells[x].x || mcd_x_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(mcd_x_limit, limit), replace_with_spaces ? ' ' : 0);
-            x = mcd_x_limit - 1;
+            // The end of the char, at least x + 1, so that the loop always makes
+            // progress, even for fragments of chars whose first cell is missing
+            const index_type w = mcd_x_limit(cpu_cells + x);
+            const index_type char_limit = x + (w > cpu_cells[x].x ? w - cpu_cells[x].x : 1);
+            if (cpu_cells[x].x || char_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(char_limit, limit), replace_with_spaces ? ' ' : 0);
+            x = char_limit - 1;
         }
     }
 }
@@ -1294,52 +1297,76 @@ has_multiline_cells_in_span(const CPUCell *cells, const index_type start, const 
     return false;
 }
 
+static void
+nuke_multicell_chars_in_span(Screen *self, index_type start, index_type count) {
+    // Remove all multicell chars intersecting the span of count cells at start
+    // in the cursor line, so that the span can be overwritten without tearing them
+    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y);
+    for (index_type x = start; x < start + count; x++) {
+        if (cp[x].is_multicell) nuke_multicell_char_at(self, x, self->cursor->y, cp[x].x != 0);
+    }
+}
+
+static bool
+linefeed_moves_to_new_line(const Screen *self) {
+    // A linefeed scrolls when the cursor is on the bottom margin and otherwise
+    // moves the cursor down, unless it is on the last line, below the bottom margin
+    return self->cursor->y == self->margin_bottom || self->cursor->y + 1 < self->lines;
+}
+
 static bool
 move_cursor_past_multicell(Screen *self, index_type required_width) {
+    // Move the cursor to the first place at or after it where there are
+    // required_width cells free of the lower rows of multiline chars, removing
+    // any other multicell chars in those cells.
     if (required_width > self->columns) return false;
-    index_type orig_x = self->cursor->x, orig_y = self->cursor->y;
     while (true) {
         CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y);
         while (self->cursor->x + required_width <= self->columns) {
             if (!has_multiline_cells_in_span(cp, self->cursor->x, required_width)) {
-                if (cp[self->cursor->x].is_multicell) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, cp[self->cursor->x].x != 0);
+                nuke_multicell_chars_in_span(self, self->cursor->x, required_width);
                 return true;
             }
             self->cursor->x++;
         }
-        if (self->modes.mDECAWM || has_multiline_cells_in_span(cp, self->columns - required_width, required_width)) {
+        if ((self->modes.mDECAWM || has_multiline_cells_in_span(cp, self->columns - required_width, required_width)) && linefeed_moves_to_new_line(self)) {
             continue_to_next_line(self);
         } else {
+            // Either there is no auto wrap or there is no new line to move to,
+            // as the cursor is on the last line below the bottom margin, so
+            // make space at the end of the line
             self->cursor->x = self->columns - required_width;
-            if (cp[self->cursor->x].is_multicell) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, cp[self->cursor->x].x != 0);
+            nuke_multicell_chars_in_span(self, self->cursor->x, required_width);
             return true;
         }
     }
-    self->cursor->x = orig_x;
-    self->cursor->y = orig_y;
-    return false;
 }
 
 static void
 move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell *cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
     index_type before = self->cursor->y;
+    // Remove the char from its current cell before moving it, so that it is
+    // not removed as a multicell char in the way and the cells it is moved to
+    // can include its current cell
+    const CPUCell c = *cpu_cell;
+    GPUCell g = *gpu_cell;
+    *cpu_cell = (CPUCell){0};
+    *gpu_cell = (GPUCell){0};
     self->cursor->x = xpos;
     self->cursor->y = ypos;
     if (move_cursor_past_multicell(self, 2)) {
         CPUCell *cp;
         GPUCell *gp;
-        clear_sprite_position(*gpu_cell);
+        clear_sprite_position(g);
         linebuf_init_cells(self->linebuf, self->cursor->y, &cp, &gp);
-        cp[self->cursor->x] = *cpu_cell;
-        gp[self->cursor->x] = *gpu_cell;
+        cp[self->cursor->x] = c;
+        gp[self->cursor->x] = g;
         self->cursor->x++;
-        cp[self->cursor->x] = *cpu_cell;
-        gp[self->cursor->x] = *gpu_cell;
+        cp[self->cursor->x] = c;
+        gp[self->cursor->x] = g;
         cp[self->cursor->x].x = 1;
         self->cursor->x++;
     }
-    *cpu_cell = (CPUCell){0};
-    *gpu_cell = (GPUCell){0};
     if (self->cursor->y == before) init_segmentation_state(self, s);
     else init_text_loop_line(self, s);
 }
@@ -1618,10 +1645,10 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             CPUCell *c = &s->cp[self->cursor->x];
             if (c->is_multicell) {
                 if (c->y) {
+                    // this also removes the multicell chars in the cells the char will occupy
                     move_cursor_past_multicell(self, char_width);
                     reinit_text_loop_line(self, s);
-                }
-                nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, c->x > 0);
+                } else nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, c->x > 0);
             }
         }
         if (self->modes.mIRM) insert_characters(self, self->cursor->x, char_width, self->cursor->y, true);

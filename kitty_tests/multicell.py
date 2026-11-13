@@ -40,6 +40,40 @@ class TestMulticell(BaseTest):
                 self.assertIsNotNone(c['mcd'])
                 self.ae((c['x'], c['y'], c['mcd']['scale']), (x, y - s.lines + 2, 2))
 
+    def test_no_infinite_loops_making_space_for_chars(self):
+        def mcd(s, y, x):
+            c = s.cpu_cells(y, x)['mcd']
+            return c and (c['scale'], c['width'])
+
+        # Regression: with the cursor on the last line, below the bottom
+        # margin, a linefeed does not move it, so looking for space free of
+        # the lower rows of multiline chars on later lines looped forever
+        s = self.create_screen(cols=5, lines=6)
+        parse_bytes(s, b'\x1b[1;3r\x1b[5;1H\x1b]66;s=2;A\x07\x1b[6;1H\x1b]66;s=2:w=2;B\x07')
+        for y in (4, 5):
+            self.ae([mcd(s, y, x) for x in range(s.columns)], [None] + [(2, 2)] * 4)
+        self.ae(str(s.line(4)), ' B')
+        # same for a wide char drawn without auto wrap
+        s = self.create_screen(cols=4, lines=6)
+        parse_bytes(s, b'\x1b[1;3r\x1b[5;3H\x1b]66;s=2;A\x07\x1b[?7l\x1b[6;1H\x1b[3C' + '好'.encode())
+        self.ae([mcd(s, 4, x) for x in range(s.columns)], [None] * 4)
+        self.ae([mcd(s, 5, x) for x in range(s.columns)], [None, None, (1, 2), (1, 2)])
+
+        # Regression: a char widened by VS16 at the end of a line moved to the
+        # next line overwrote the first cell of a multiline char there,
+        # leaving a fragment of it, on which inserting chars looped forever
+        s = self.create_screen(cols=8, lines=6)
+        parse_bytes(s, b'\x1b[2;2H\x1b]66;s=2;A\x07\x1b[1;8H\xe2\x98\x80\xef\xb8\x8f')
+        self.ae([mcd(s, 1, x) for x in range(4)], [(1, 2), (1, 2), None, None])
+        self.ae([mcd(s, 2, x) for x in range(4)], [None] * 4)
+        parse_bytes(s, b'\x1b[2;3H\x1b[@')
+        # same for a wide char moved past the lower rows of a multiline char
+        s = self.create_screen(cols=8, lines=6)
+        parse_bytes(s, b'\x1b[1;2H\x1b]66;s=2;P\x07\x1b[2;5H\x1b]66;s=2;Q\x07\x1b[2;1H' + '好'.encode())
+        self.ae([mcd(s, 1, x) for x in range(s.columns)], [None, (2, 1), (2, 1), (1, 2), (1, 2), None, None, None])
+        self.ae([mcd(s, 2, x) for x in range(s.columns)], [None] * s.columns)
+        parse_bytes(s, b'\x1b[2;6H\x1b[@')
+
     def test_rewrap_multiline_char_followed_by_continuation(self):
         # Regression: when the lines after a multiline char were continuations that
         # fit on its first row, the lower rows of the char were lost on rewrap
