@@ -201,7 +201,9 @@ that position.
 
 You can drag window borders to resize windows. You can double click on empty regions
 of the tab bar to create new tabs or double click on an existing tab to rename
-it.
+it. Text in an empty region of the tab bar, such as text drawn there by a custom
+tab bar, can be selected by dragging the mouse over it, and is copied like a
+selection in a window, see :opt:`copy_on_select`.
 
 .. toctree::
    :hidden:

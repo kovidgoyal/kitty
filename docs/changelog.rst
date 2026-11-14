@@ -125,6 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Allow selecting and copying text drawn in the tab bar outside the tabs, for
+  example by a custom :file:`tab_bar.py`, by dragging the mouse over it
+  (:iss:`10869`)
+
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)

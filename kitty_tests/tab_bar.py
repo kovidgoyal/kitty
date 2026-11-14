@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
-from unittest.mock import patch
+from functools import partial
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
-from kitty.fast_data_types import LEFT_EDGE, Color, Region, Screen
-from kitty.options.utils import tab_title_wrap
+from kitty.fast_data_types import GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, GLFW_RELEASE, LEFT_EDGE, Color, Region, Screen
+from kitty.options.utils import copy_on_select, tab_title_wrap
 from kitty.tab_bar import CellRange, DrawData, ExtraData, TabBar, TabBarData, TabExtent, WindowDropTarget, as_rgb, powerline_symbols, truncate_line, wrap_title
+from kitty.tabs import MouseEvents, TabManager
 from kitty.utils import color_as_int
 
 from .base import BaseTest
@@ -160,6 +163,77 @@ class TestTabBar(BaseTest):
         self.ae(tb.tab_id_at(60, 90), 3)
         self.ae(tb.tab_id_at(60, 130), 0)
         self.ae(tb.tab_id_at(180, 10), 0)
+
+    def test_tab_bar_selection(self) -> None:
+        tb = self.vertical_tab_bar(3)  # 12x8 cells, tabs on rows 0, 2 and 4
+        self.ae(tb.cell_at(-5, -5), (0, 0, True))
+        self.ae(tb.cell_at(300, 300), (11, 7, False))  # past the end includes the last cell
+        tb.start_selection(1, 50)
+        tb.update_selection(25, 50)
+        with patch('kitty.tab_bar.get_boss', return_value=DummyBoss()):
+            tb.update(tb.last_laid_out_tabs)  # erases the screen, the selection must be restored
+        self.ae(tb.finish_selection(), 't1 ')  # strip_trailing_spaces is never by default
+        self.assertFalse(tb.screen.has_selection())
+        for tab_bar_region in (region(0, 0, 120, 160), region(0, 0, 0, 0)):  # the second hides the tab bar
+            tb.start_selection(1, 50)
+            with (
+                patch('kitty.tab_bar.viewport_for_window', return_value=(region(120, 0, 400, 160), tab_bar_region, 400, 160, 10, 20)),
+                patch('kitty.tab_bar.set_tab_bar_render_data'),
+            ):
+                tb.layout()
+            self.assertIsNone(tb.selection)
+            self.assertFalse(tb.screen.has_selection())
+
+    def test_tab_bar_selection_mouse_handling(self) -> None:
+        tb = self.vertical_tab_bar(3)
+        s = tb.screen
+        s.cursor.x, s.cursor.y = 0, 7
+        s.draw('cpu 14%')  # text drawn below the tabs, as by a custom tab bar
+        tm = SimpleNamespace(
+            tab_bar=tb, os_window_id=1, recent_tab_bar_mouse_events=MouseEvents(), new_tab=Mock(),
+            tab_for_id=lambda tab_id: SimpleNamespace(id=tab_id) if tab_id > 0 else None)
+
+        def mouse(x: float, y: float, action: int = -1) -> None:
+            TabManager.handle_tab_bar_mouse(tm, x, y, -1 if action == -1 else GLFW_MOUSE_BUTTON_LEFT, 0, action)  # type: ignore
+
+        boss = Mock()
+        with (
+            patch('kitty.tabs.get_boss', return_value=boss),
+            patch('kitty.tabs.get_tab_being_dragged', return_value=(0, False, 0, 0)),
+            patch('kitty.tabs.set_tab_being_dragged'),
+        ):
+            # dragging over the text copies it and is not a click
+            mouse(1, 150, GLFW_PRESS)
+            mouse(25, 150)
+            self.assertTrue(s.has_selection())
+            mouse(300, 150)  # past the tab bar, over a window
+            mouse(300, 150, GLFW_RELEASE)
+            boss.copy_selected_text.assert_called_once_with('cpu 14%')
+            self.assertFalse(s.has_selection())
+            self.ae(len(tm.recent_tab_bar_mouse_events), 1)
+            # a double click on an empty area still opens a new tab and copies nothing
+            for action in (GLFW_PRESS, GLFW_RELEASE, GLFW_PRESS, GLFW_RELEASE):
+                mouse(5, 130, action)
+            tm.new_tab.assert_called_once()
+            boss.copy_selected_text.assert_called_once()
+            # a press on a tab starts no selection
+            mouse(5, 10, GLFW_PRESS)
+            self.assertIsNone(tb.selection)
+
+    def test_copy_selected_text(self) -> None:
+        from kitty.boss import Boss
+
+        for value, clipboard_calls, buffers in (('no', 0, {}), ('clipboard', 1, {}), ('a1', 0, {'a1': 'text'})):
+            self.set_options({'copy_on_select': copy_on_select(value)})
+            boss = SimpleNamespace(handle_clipboard_loss=Mock(), clipboard_buffers={})
+            boss.set_clipboard_buffer = partial(Boss.set_clipboard_buffer, boss)
+            boss.copy_text_to_buffer = partial(Boss.copy_text_to_buffer, boss)
+            with patch('kitty.boss.set_primary_selection') as primary, patch('kitty.boss.set_clipboard_string') as clipboard:
+                Boss.copy_selected_text(boss, 'text')  # type: ignore
+                Boss.copy_selected_text(boss, '')  # type: ignore
+            primary.assert_called_once_with('text')
+            self.ae(clipboard.call_count, clipboard_calls)
+            self.ae(boss.clipboard_buffers, buffers)
 
     def test_vertical_tab_bar_alignment(self) -> None:
         self.set_options(
