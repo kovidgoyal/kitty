@@ -48,7 +48,7 @@ type archive_preview struct {
 
 func displayFilename(s string) string {
 	if isPrintableUTF8(s) {
-		return s
+		return sanitize_name(s)
 	}
 	return fmt.Sprintf("%X", utils.UnsafeStringToBytes(s))
 }
@@ -95,12 +95,7 @@ func (p *archive_preview) render(output chan<- *MessagePreview, base *MessagePre
 		if err == nil || errors.Is(err, zip.ErrInsecurePath) {
 			defer r.Close()
 			for _, f := range r.File {
-				if f.NonUTF8 {
-					names = append(names, displayFilename(f.Name))
-				} else {
-					names = append(names, f.Name)
-				}
-
+				names = append(names, displayFilename(f.Name))
 			}
 		}
 	case ".rar":

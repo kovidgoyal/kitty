@@ -91,7 +91,7 @@ func (h *Handler) draw_footer() (num_lines int, err error) {
 				if rel, rerr := filepath.Rel(h.state.CurrentDir(), s); rerr == nil {
 					text = rel
 				}
-				w("  ", text, nil, s, func(abspath string) { h.state.ToggleSelection(abspath) })
+				w("  ", sanitize_name(text), nil, s, func(abspath string) { h.state.ToggleSelection(abspath) })
 				if len(lines)-before > 2 && len(h.state.selections)-i-1 > 3 {
 					w("  ", fmt.Sprintf("and %d more…", len(h.state.selections)-1-i), nil, "", nil)
 					break

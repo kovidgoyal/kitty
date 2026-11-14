@@ -13,15 +13,18 @@ import (
 
 var _ = fmt.Print
 
-func new_test_archive_preview(t *testing.T) (*archive_preview, *MessagePreview) {
+func new_test_archive_preview(t *testing.T, names ...string) (*archive_preview, *MessagePreview) {
 	t.Helper()
+	if len(names) == 0 {
+		names = []string{"a.txt", "dir/b.txt"}
+	}
 	path := filepath.Join(t.TempDir(), "test.zip")
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	zw := zip.NewWriter(f)
-	for _, name := range []string{"a.txt", "dir/b.txt"} {
+	for _, name := range names {
 		w, err := zw.Create(name)
 		if err != nil {
 			t.Fatal(err)
@@ -98,5 +101,21 @@ func TestArchivePreviewWorkerPanic(t *testing.T) {
 	result := run_archive_preview_worker(t, p, nil)
 	if !strings.Contains(strings.Join(result.trailers, "\n"), "Failed to read the archive") {
 		t.Fatalf("archive preview does not report the panic: %#v", result.trailers)
+	}
+}
+
+// Names of archive members are untrusted and must not be able to inject
+// escape codes into the terminal.
+func TestArchivePreviewSanitizesNames(t *testing.T) {
+	evil := "x\x1b]52;c;aGFja2Vk\x07\ny.txt"
+	p, base := new_test_archive_preview(t, evil)
+	result := run_archive_preview_worker(t, p, base)
+	for _, line := range result.trailers {
+		if strings.ContainsAny(line, "\x1b\x07\n") {
+			t.Fatalf("archive preview contains unsanitized name: %#v", line)
+		}
+	}
+	if expected := "x␛]52;c;aGFja2Vk␇␤y.txt"; !slices.Contains(result.trailers, expected) {
+		t.Fatalf("archive preview does not list %#v: %#v", expected, result.trailers)
 	}
 }

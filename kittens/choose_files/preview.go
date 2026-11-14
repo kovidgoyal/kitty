@@ -44,11 +44,10 @@ type PreviewManager struct {
 	highlighter      highlight.Highlighter
 }
 
-func NewPreviewManager(err_chan chan error, settings Settings, WakeupMainThread func() bool) (ans *PreviewManager) {
-	defer func() { sanitize = ans.highlighter.Sanitize }()
+func NewPreviewManager(err_chan chan error, settings Settings, WakeupMainThread func() bool) *PreviewManager {
 	return &PreviewManager{
 		report_errors: err_chan, settings: settings, WakeupMainThread: WakeupMainThread,
-		cache: make(map[string]Preview), highlighter: highlight.NewHighlighter(nil),
+		cache: make(map[string]Preview), highlighter: highlight.NewHighlighter(sanitize),
 	}
 }
 
@@ -116,11 +115,9 @@ func (p MessagePreview) Render(h *Handler, x, y, width, height int) {
 
 func NewErrorPreview(err error) Preview {
 	sctx := style.Context{AllowEscapeCodes: true}
-	text := fmt.Sprintf("%s: %s", sctx.SprintFunc("fg=red")("Error"), err)
+	text := fmt.Sprintf("%s: %s", sctx.SprintFunc("fg=red")("Error"), sanitize(err.Error()))
 	return &MessagePreview{msg: text}
 }
-
-var sanitize func(string) string
 
 func write_file_metadata(abspath string, metadata fs.FileInfo, entries []fs.DirEntry) (header string, trailers []string) {
 	buf := strings.Builder{}
@@ -128,15 +125,15 @@ func write_file_metadata(abspath string, metadata fs.FileInfo, entries []fs.DirE
 	add := func(key, val string) { fmt.Fprintf(&buf, "%s: %s\n", key, val) }
 	ftype := metadata.Mode().Type()
 	const file_icon = " "
-	fmt.Fprintln(&buf, filepath.Base(abspath))
+	fmt.Fprintln(&buf, sanitize_name(filepath.Base(abspath)))
 	switch ftype {
 	case 0:
 		add("Size", humanize.Bytes(uint64(metadata.Size())))
 	case fs.ModeSymlink:
 		if tgt, err := os.Readlink(abspath); err == nil {
-			add("Target", sanitize(tgt))
+			add("Target", sanitize_name(tgt))
 		} else {
-			add("Target", err.Error())
+			add("Target", sanitize(err.Error()))
 		}
 	case fs.ModeDir:
 		num_files, num_dirs := 0, 0
@@ -164,7 +161,7 @@ func write_file_metadata(abspath string, metadata fs.FileInfo, entries []fs.DirE
 		slices.SortFunc(names, func(a, b string) int { return strings.Compare(type_map[a].lname, type_map[b].lname) })
 		fmt.Fprintln(&buf, "Contents:")
 		for _, n := range names {
-			trailers = append(trailers, icons.IconForFileWithMode(n, type_map[n].ftype, false)+"  "+sanitize(n))
+			trailers = append(trailers, icons.IconForFileWithMode(n, type_map[n].ftype, false)+"  "+sanitize_name(n))
 		}
 	}
 	return buf.String(), trailers
@@ -181,7 +178,7 @@ func NewDirectoryPreview(abspath string, metadata fs.FileInfo) Preview {
 }
 
 func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) *MessagePreview {
-	ext := filepath.Ext(abspath)
+	ext := sanitize_name(filepath.Ext(abspath))
 	if ext == "" {
 		ext = "File"
 	}
@@ -191,14 +188,14 @@ func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) *MessagePrevie
 }
 
 func NewFileMetadataPreviewWithError(abspath string, metadata fs.FileInfo, err error) *MessagePreview {
-	ext := filepath.Ext(abspath)
+	ext := sanitize_name(filepath.Ext(abspath))
 	if ext == "" {
 		ext = "File"
 	}
 	title := icons.IconForFileWithMode(filepath.Base(abspath), metadata.Mode().Type(), false) + "  " + ext
 	h, t := write_file_metadata(abspath, metadata, nil)
 	ans := &MessagePreview{title: title, msg: h, trailers: t}
-	lines := style.WrapTextAsLines(err.Error(), 30, style.WrapOptions{})
+	lines := style.WrapTextAsLines(sanitize(err.Error()), 30, style.WrapOptions{})
 	ans.trailers = append(ans.trailers, "")
 	ans.trailers = append(ans.trailers, lines...)
 	return ans
@@ -246,7 +243,7 @@ func (p *TextFilePreview) Render(h *Handler, x, y, width, height int) {
 	s := utils.NewLineScanner(text)
 	buf := strings.Builder{}
 	buf.Grow(1024 * height)
-	title := icons.IconForPath(p.path) + "  " + filepath.Base(p.path) + fmt.Sprintf(" %s", humanize.Bytes(uint64(p.metadata.Size())))
+	title := icons.IconForPath(p.path) + "  " + sanitize_name(filepath.Base(p.path)) + fmt.Sprintf(" %s", humanize.Bytes(uint64(p.metadata.Size())))
 	for num := 1 + h.render_wrapped_text_in_region(title, x, y, width, height, true); s.Scan() && num < height; num++ {
 		line := s.Text()
 		truncated := wcswidth.TruncateToVisualLength(line, width)

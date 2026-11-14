@@ -154,7 +154,7 @@ func (c ffmpeg_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 			offset += h.render_wrapped_text_in_region(text, s.x, s.y+offset, s.width, s.height-offset, center)
 		}
 	}
-	ext := filepath.Ext(s.abspath)
+	ext := sanitize_name(filepath.Ext(s.abspath))
 	text := fmt.Sprintf("%s: %s", ext, humanize.Bytes(uint64(s.metadata.Size())))
 	r := s.custom_metadata.custom.(*FFMpegMetadata)
 	icon := icons.IconForPath(s.abspath)
