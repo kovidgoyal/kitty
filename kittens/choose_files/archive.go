@@ -46,6 +46,10 @@ type archive_preview struct {
 	mp               *MessagePreview
 }
 
+// The maximum number of entries shown in an archive preview, including the
+// blank separator line
+const max_archive_entries = 500
+
 func displayFilename(s string) string {
 	if isPrintableUTF8(s) {
 		return sanitize_name(s)
@@ -81,7 +85,7 @@ func (p *archive_preview) render(output chan<- *MessagePreview, base *MessagePre
 	names := []string{""}
 	populate_tar := func(r io.Reader) {
 		tr := tar.NewReader(r)
-		for len(names) < 500 {
+		for len(names) < max_archive_entries {
 			hdr, err := tr.Next()
 			if err != nil {
 				break
@@ -94,7 +98,7 @@ func (p *archive_preview) render(output chan<- *MessagePreview, base *MessagePre
 		r, err := zip.OpenReader(p.path)
 		if err == nil || errors.Is(err, zip.ErrInsecurePath) {
 			defer r.Close()
-			for _, f := range r.File {
+			for _, f := range r.File[:min(len(r.File), max_archive_entries-len(names))] {
 				names = append(names, displayFilename(f.Name))
 			}
 		}
@@ -102,7 +106,7 @@ func (p *archive_preview) render(output chan<- *MessagePreview, base *MessagePre
 		r, err := rardecode.OpenReader(p.path, rardecode.SkipCheck)
 		if err == nil {
 			defer r.Close()
-			for len(names) < 500 {
+			for len(names) < max_archive_entries {
 				hdr, err := r.Next()
 				if err != nil {
 					break

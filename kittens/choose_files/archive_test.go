@@ -119,3 +119,18 @@ func TestArchivePreviewSanitizesNames(t *testing.T) {
 		t.Fatalf("archive preview does not list %#v: %#v", expected, result.trailers)
 	}
 }
+
+func TestArchivePreviewLimitsEntries(t *testing.T) {
+	names := make([]string, 2*max_archive_entries)
+	for i := range names {
+		names[i] = fmt.Sprintf("%d.txt", i)
+	}
+	p, base := new_test_archive_preview(t, names...)
+	result := run_archive_preview_worker(t, p, base)
+	if n := len(result.trailers) - len(base.trailers); n != max_archive_entries {
+		t.Fatalf("archive preview has %d entries, expected %d", n, max_archive_entries)
+	}
+	if !slices.Contains(result.trailers, "0.txt") || slices.Contains(result.trailers, names[max_archive_entries]) {
+		t.Fatalf("archive preview has the wrong entries: %#v", result.trailers)
+	}
+}
