@@ -5,9 +5,9 @@ package readline
 import (
 	"container/list"
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils/shlex"
 	"strconv"
 	"strings"
 	"testing"

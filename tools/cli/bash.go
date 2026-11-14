@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -17,16 +17,16 @@ func bash_completion_script(commands []string) (string, error) {
     builtin local limit
     # Send all words up to the word the cursor is currently on
     builtin let limit=1+$COMP_CWORD
-    src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command kitten __complete__ bash)
+    src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command daddy __complete__ bash)
     if [[ $? == 0 ]]; then
         builtin eval "${src}"
     fi
 }
 
-builtin complete -F _ksi_completions kitty
-builtin complete -F _ksi_completions edit-in-kitty
-builtin complete -F _ksi_completions clone-in-kitty
-builtin complete -F _ksi_completions kitten
+builtin complete -F _ksi_completions datty
+builtin complete -F _ksi_completions edit-in-datty
+builtin complete -F _ksi_completions clone-in-datty
+builtin complete -F _ksi_completions daddy
 `, nil
 }
 

@@ -11,8 +11,8 @@ import (
 
 	"github.com/emmansun/base64"
 
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
 )
 
 var _ = fmt.Print
@@ -551,7 +551,7 @@ func Run(args []string) (rc int, err error) {
 	}
 
 	lp.OnInitialize = func() (string, error) {
-		lp.SetWindowTitle("kitty mouse features demo")
+		lp.SetWindowTitle("datty mouse features demo")
 		lp.SetCursorVisible(false)
 		lp.StartAcceptingDrops("", "text/plain", "text/uri-list")
 		draw_screen()

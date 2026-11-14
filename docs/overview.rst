@@ -4,37 +4,37 @@ Overview
 Design philosophy
 -------------------
 
-|kitty| is designed for power keyboard users. To that end all its controls work
+|datty| is designed for power keyboard users. To that end all its controls work
 with the keyboard (although it fully supports mouse interactions as well). Its
 configuration is a simple, human editable, single file for easy reproducibility
 (I like to store configuration in source control).
 
-The code in |kitty| is designed to be simple, modular and hackable. It is
+The code in |datty| is designed to be simple, modular and hackable. It is
 written in a mix of C (for performance sensitive parts), Python (for easy
 extensibility and flexibility of the UI) and Go (for the command line
-:term:`kittens`).  It does not depend on any large and complex UI toolkit,
+:term:`daddies`).  It does not depend on any large and complex UI toolkit,
 using only OpenGL for rendering everything.
 
-Finally, |kitty| is designed from the ground up to support all modern terminal
+Finally, |datty| is designed from the ground up to support all modern terminal
 features, such as Unicode, true color, bold/italic fonts, text formatting, etc.
 It even extends existing text formatting escape codes, to add support for
 features not available elsewhere, such as colored and styled (curly) underlines.
-One of the design goals of |kitty| is to be easily extensible so that new
+One of the design goals of |datty| is to be easily extensible so that new
 features can be added in the future with relatively little effort.
 
 .. include:: basic.rst
 
 
-Configuring kitty
+Configuring datty
 -------------------
 
-|kitty| is highly configurable, everything from keyboard shortcuts to painting
-frames-per-second. Press :sc:`edit_config_file` in kitty to open its fully
+|datty| is highly configurable, everything from keyboard shortcuts to painting
+frames-per-second. Press :sc:`edit_config_file` in datty to open its fully
 commented sample config file in your text editor. For details see the
 :doc:`configuration docs <conf>`.
 
 You can quickly browse all available mappable actions by pressing
-:sc:`command_palette`, see :doc:`kittens/command-palette` for details.
+:sc:`command_palette`, see :doc:`daddies/command-palette` for details.
 
 .. toctree::
    :hidden:
@@ -47,7 +47,7 @@ You can quickly browse all available mappable actions by pressing
 Layouts
 ----------
 
-A :term:`layout` is an arrangement of multiple :term:`kitty windows <window>`
+A :term:`layout` is an arrangement of multiple :term:`datty windows <window>`
 inside a top-level :term:`OS window <os_window>`. The layout manages all its
 windows automatically, resizing and moving them as needed. You can create a new
 :term:`window` using the :sc:`new_window` key combination.
@@ -74,7 +74,7 @@ Currently, there are seven layouts available:
 By default, all layouts are enabled and you can switch between layouts using
 the :sc:`next_layout` key combination. You can also create shortcuts to select
 particular layouts, and choose which layouts you want to enable, see
-:ref:`conf-kitty-shortcuts.layout` for examples. The first layout listed in
+:ref:`conf-datty-shortcuts.layout` for examples. The first layout listed in
 :opt:`enabled_layouts` becomes the default layout.
 
 For more details on the layouts and how to use them see :doc:`the documentation
@@ -85,40 +85,40 @@ For more details on the layouts and how to use them see :doc:`the documentation
 
    layouts
 
-Extending kitty
+Extending datty
 ------------------
 
-kitty has a powerful framework for scripting. You can create small terminal
-programs called :doc:`kittens <kittens_intro>`. These can be used to add features
-to kitty, for example, :doc:`editing remote files <kittens/remote_file>` or
-:doc:`inputting Unicode characters <kittens/unicode_input>`. They can also be
-used to create programs that leverage kitty's powerful features, for example,
-:doc:`viewing images <kittens/icat>` or :doc:`diffing files with image support
-<kittens/diff>`.
+datty has a powerful framework for scripting. You can create small terminal
+programs called :doc:`daddies <daddies_intro>`. These can be used to add features
+to datty, for example, :doc:`editing remote files <daddies/remote_file>` or
+:doc:`inputting Unicode characters <daddies/unicode_input>`. They can also be
+used to create programs that leverage datty's powerful features, for example,
+:doc:`viewing images <daddies/icat>` or :doc:`diffing files with image support
+<daddies/diff>`.
 
-You can :doc:`create your own kittens to scratch your own itches
-<kittens/custom>`.
+You can :doc:`create your own daddies to scratch your own itches
+<daddies/custom>`.
 
-For a list of all the builtin kittens, run ``kitten`` in kitty, or to browse
-some of the more prominent ones, see :ref:`see here <kittens>`.
+For a list of all the builtin daddies, run ``daddy`` in datty, or to browse
+some of the more prominent ones, see :ref:`see here <daddies>`.
 
 Additionally, you can use the :ref:`watchers <Watchers>` framework
 to create Python scripts that run in response to various events such as windows
 being resized, closing, having their titles changed, etc.
 
-Finally, there is remote control which allows you to control kitty from
+Finally, there is remote control which allows you to control datty from
 anywhere, even across a network! See below for more about remote control.
 
 .. toctree::
    :hidden:
 
-   kittens_intro
+   daddies_intro
 
 
 Remote control
 ------------------
 
-|kitty| has a very powerful system that allows you to control it from the
+|datty| has a very powerful system that allows you to control it from the
 :doc:`shell prompt, even over SSH <remote-control>`. You can change colors,
 fonts, open new :term:`windows <window>`, :term:`tabs <tab>`, set their titles,
 change window layout, get text from one window and send text to another, etc.
@@ -134,17 +134,17 @@ started.
 Sessions
 ------------------
 
-You can control the :term:`tabs <tab>`, :term:`kitty window <window>` layout,
+You can control the :term:`tabs <tab>`, :term:`datty window <window>` layout,
 working directory, startup programs, etc. by creating a *session* file and using
-the :option:`kitty --session` command line flag or the :opt:`startup_session`
-option in :file:`kitty.conf`. You can also easily switch between sessions with
+the :option:`datty --session` command line flag or the :opt:`startup_session`
+option in :file:`datty.conf`. You can also easily switch between sessions with
 a keypress. See :doc:`sessions` for details.
 
 
 Creating tabs/windows
 -------------------------------
 
-kitty can be told to run arbitrary programs in new :term:`tabs <tab>`,
+datty can be told to run arbitrary programs in new :term:`tabs <tab>`,
 :term:`windows <window>` or :term:`overlays <overlay>` at a keypress.
 To learn how to do this, see :doc:`here <launch>`.
 
@@ -171,17 +171,17 @@ Mouse features
   primary clipboard).
 * You can right click while holding :kbd:`Ctrl+Shift` to open the output of the
   clicked on command in a pager (requires :ref:`shell_integration`)
-* You can select text with kitty even when a terminal program has grabbed the
+* You can select text with datty even when a terminal program has grabbed the
   mouse by holding down the :kbd:`Shift` key
 
-All these actions can be customized in :file:`kitty.conf` as described
-:ref:`here <conf-kitty-mouse.mousemap>`.
+All these actions can be customized in :file:`datty.conf` as described
+:ref:`here <conf-datty-mouse.mousemap>`.
 
 You can also customize what happens when clicking on :term:`hyperlinks` in
-kitty, having it open files in your editor, download remote files, open things
+datty, having it open files in your editor, download remote files, open things
 in your browser, etc. For details, see :doc:`here <open_actions>`.
 
-Additionally, various bits of the kitty UI itself work with the mouse. You can
+Additionally, various bits of the datty UI itself work with the mouse. You can
 drag and drop tabs in the tab bar to re-order them or move them from one OS
 Window to another, or even pop them out into a new OS Window. A tab containing a
 single window can also be dropped into the content area of another tab to insert
@@ -211,13 +211,13 @@ it.
 Font control
 -----------------
 
-|kitty| has extremely flexible and powerful font selection features. You can
+|datty| has extremely flexible and powerful font selection features. You can
 specify individual families for the regular, bold, italic and bold+italic fonts.
 You can even specify specific font families for specific ranges of Unicode
 characters. This allows precise control over text rendering. It can come in
 handy for applications like powerline, without the need to use patched fonts.
 See the various font related configuration directives in
-:ref:`conf-kitty-fonts`.
+:ref:`conf-datty-fonts`.
 
 
 .. _scrollback:
@@ -225,15 +225,15 @@ See the various font related configuration directives in
 The scrollback buffer
 -----------------------
 
-|kitty| supports scrolling back to view history, just like most terminals. You
-can use either keyboard shortcuts or the mouse scroll wheel to do so. |kitty|
+|datty| supports scrolling back to view history, just like most terminals. You
+can use either keyboard shortcuts or the mouse scroll wheel to do so. |datty|
 displays an interactive :opt:`scrollbar` along the right edge
 of the window that shows your current position in the scrollback. You can click
 and drag the scrollbar to quickly navigate through the history.
 
-However, |kitty| has an extra, neat feature. Sometimes you need to explore the scrollback
+However, |datty| has an extra, neat feature. Sometimes you need to explore the scrollback
 buffer in more detail, maybe search for some text or refer to it side-by-side
-while typing in a follow-up command. |kitty| allows you to do this by pressing
+while typing in a follow-up command. |datty| allows you to do this by pressing
 the :sc:`show_scrollback` shortcut, which will open the scrollback buffer in
 your favorite pager program (which is :program:`less` by default). Colors and
 text formatting are preserved. You can explore the scrollback buffer comfortably
@@ -249,8 +249,8 @@ Would open the scrollback buffer in a new :term:`window` when you press the
 :kbd:`F1` key. See :sc:`show_scrollback <show_scrollback>` for details.
 
 If you want to use it with an editor such as :program:`nvim` to get more powerful
-features, see for example, `kitty-scrollback.nvim
-<https://github.com/mikesmithgh/kitty-scrollback.nvim>`__ or `kitty-grab <https://github.com/yurikhan/kitty_grab>`__
+features, see for example, `datty-scrollback.nvim
+<https://github.com/mikesmithgh/datty-scrollback.nvim>`__ or `datty-grab <https://github.com/yurikhan/datty_grab>`__
 or see more tips for using various editor programs, in :iss:`this thread <719>`.
 
 If you wish to store very large amounts of scrollback to view using the piping
@@ -261,7 +261,7 @@ or :sc:`show_scrollback <show_scrollback>` features, you can use the
 Integration with shells
 ---------------------------------
 
-kitty has the ability to integrate closely within common shells, such as `zsh
+datty has the ability to integrate closely within common shells, such as `zsh
 <https://www.zsh.org/>`__, `fish <https://fishshell.com>`__ and `bash
 <https://www.gnu.org/software/bash/>`__ to enable features such as jumping to
 previous prompts in the scrollback, viewing the output of the last command in
@@ -278,9 +278,9 @@ See :doc:`shell-integration` for details.
 Multiple copy/paste buffers
 -----------------------------
 
-In addition to being able to copy/paste from the system clipboard, in |kitty|
+In addition to being able to copy/paste from the system clipboard, in |datty|
 you can also setup an arbitrary number of copy paste buffers. To do so, simply
-add something like the following to your :file:`kitty.conf`::
+add something like the following to your :file:`datty.conf`::
 
    map f1 copy_to_buffer a
    map f2 paste_from_buffer a
@@ -293,7 +293,7 @@ names are arbitrary strings, so you can define as many such buffers as you need.
 Marks
 -------------
 
-kitty has the ability to mark text on the screen based on regular expressions.
+datty has the ability to mark text on the screen based on regular expressions.
 This can be useful to highlight words or phrases when browsing output from long
 running programs or similar. To learn how this feature works, see :doc:`marks`.
 

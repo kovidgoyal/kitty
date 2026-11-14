@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/datty"
 )
 
 var _ = fmt.Print
@@ -24,7 +24,7 @@ func TestSplitIntoGraphemes(t *testing.T) {
 			t.Fatalf("Failed to split %#v into graphemes: %s", text, diff)
 		}
 	}
-	tests, err := kitty.LoadGraphemeBreakTests()
+	tests, err := datty.LoadGraphemeBreakTests()
 	if err != nil {
 		t.Fatal(err)
 	}

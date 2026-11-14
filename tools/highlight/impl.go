@@ -11,7 +11,7 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/kovidgoyal/go-parallel"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -128,7 +128,7 @@ func ansi_formatter(w io.Writer, style *chroma.Style, sanitize func(string) stri
 				after = append(after, '3', '9', ';')
 			}
 		}
-		// independently format each line in a multiline token, needed for the diff kitten highlighting to work, also
+		// independently format each line in a multiline token, needed for the diff daddy highlighting to work, also
 		// pagers like less reset SGR formatting at line boundaries
 		text := sanitize(token.Value)
 		for text != "" {

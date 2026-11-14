@@ -30,9 +30,9 @@ First some examples::
     # Query the terminal for what the currently set shape is
     <OSC> 22 ; ?__current__ <ESC>\
 
-To demo the various shapes, simply run the following command inside kitty::
+To demo the various shapes, simply run the following command inside datty::
 
-    kitten mouse-demo
+    daddy mouse-demo
 
 For more details see below.
 
@@ -158,9 +158,9 @@ characters from the set ``a-z0-9_-``.
 
 .. end list of shape css names
 
-To demo the various shapes, simply run the following command inside kitty::
+To demo the various shapes, simply run the following command inside datty::
 
-    kitten mouse-demo
+    daddy mouse-demo
 
 Legacy xterm compatibility
 ----------------------------

@@ -25,7 +25,7 @@
 //========================================================================
 
 #pragma once
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 #include <poll.h>
 #include <unistd.h>
 #include <stdbool.h>

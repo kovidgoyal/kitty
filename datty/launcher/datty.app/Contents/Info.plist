@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleDisplayName</key>
+	<string>datty</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>command</string>
+				<string>sh</string>
+				<string>zsh</string>
+				<string>bash</string>
+				<string>fish</string>
+				<string>tool</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>datty.icns</string>
+			<key>CFBundleTypeName</key>
+			<string>Terminal scripts</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Folders</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.directory</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Shell</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.unix-executable</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Text files</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.text</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Image files</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.image</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>All files</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.archive</string>
+				<string>public.content</string>
+				<string>public.data</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>datty</string>
+	<key>CFBundleGetInfoString</key>
+	<string>datty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/datty/</string>
+	<key>CFBundleIconFile</key>
+	<string>datty.icns</string>
+	<key>CFBundleIconName</key>
+	<string>datty</string>
+	<key>CFBundleIdentifier</key>
+	<string>net.kovidgoyal.datty</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>datty</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.50.0</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>File URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>file</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>FTP URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ftp</string>
+				<string>ftps</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Gemini URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>gemini</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Git URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>git</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Gopher URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>gopher</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>HTTP URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>http</string>
+				<string>https</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>IRC URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>irc</string>
+				<string>irc6</string>
+				<string>ircs</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>datty URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>datty</string>
+			</array>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSIsAppleDefaultForScheme</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Mail Address URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mailto</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>News URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>news</string>
+				<string>nntp</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>SSH and SFTP URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ssh</string>
+				<string>sftp</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Telnet URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>telnet</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>0.50.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSEnvironment</key>
+	<dict>
+		<key>DATTY_LAUNCHED_BY_LAUNCH_SERVICES</key>
+		<string>1</string>
+	</dict>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0.0</string>
+	<key>LSRequiresNativeExecution</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>A program running inside datty would like to access AppleScript.</string>
+	<key>NSAppleScriptEnabled</key>
+	<false/>
+	<key>NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac</key>
+	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>A program running inside datty would like to access Bluetooth.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>A program running inside datty would like to access your calendar data.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>A program running inside datty would like to access the camera.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>A program running inside datty would like to access your contacts.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright 2026, Kovid Goyal</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>A program running inside datty would like to access local network.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<string>A program running inside datty would like to access your location temporarily.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>A program running inside datty would like to access your location information.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>A program running inside datty would like to access the microphone.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>A program running inside datty would like to access motion data.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>A program running inside datty would like to access your photo library.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>A program running inside datty would like to access your reminders.</string>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<string>NO</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>New datty Tab Here</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>openTab</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSTextContent</key>
+				<string>FilePath</string>
+			</dict>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSFilenamesPboardType</string>
+				<string>public.plain-text</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>New datty Window Here</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>openOSWindow</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSTextContent</key>
+				<string>FilePath</string>
+			</dict>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSFilenamesPboardType</string>
+				<string>public.plain-text</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Open with datty</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>openFileURLs</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSTextContent</key>
+				<string>FilePath</string>
+			</dict>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSFilenamesPboardType</string>
+				<string>public.plain-text</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>A program running inside datty would like to access speech recognition.</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>A program running inside datty requires elevated privileges.</string>
+	<key>TICapsLockLanguageSwitchCapable</key>
+	<true/>
+</dict>
+</plist>

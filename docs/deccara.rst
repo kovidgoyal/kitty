@@ -4,7 +4,7 @@ Setting text styles/colors in arbitrary regions of the screen
 There already exists an escape code to set *some* text attributes in arbitrary
 regions of the screen, `DECCARA
 <https://vt100.net/docs/vt510-rm/DECCARA.html>`__. However, it is limited to
-only a few attributes. |kitty| extends this to work with *all* SGR attributes.
+only a few attributes. |datty| extends this to work with *all* SGR attributes.
 So, for example, this can be used to set the background color in an arbitrary
 region of the screen.
 

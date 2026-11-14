@@ -1,4 +1,4 @@
-#!./kitty/launcher/kitty +launch
+#!./datty/launcher/datty +launch
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
@@ -20,9 +20,9 @@ from pty import CHILD, fork
 from types import ModuleType
 from unittest.mock import patch
 
-from kitty.constants import kitten_exe, kitty_exe
-from kitty.fast_data_types import ChildMonitor, Region, Screen, safe_pipe, set_options
-from kitty.utils import read_screen_size
+from datty.constants import daddy_exe, datty_exe
+from datty.fast_data_types import ChildMonitor, Region, Screen, safe_pipe, set_options
+from datty.utils import read_screen_size
 
 BENCHMARK_WINDOW_ID = 1
 PARSING_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes')
@@ -33,11 +33,11 @@ TAB_BAR_COLUMNS = 200
 
 
 def perf_output() -> str:
-    return os.path.join(tempfile.gettempdir(), 'kitty-benchmark.perf')
+    return os.path.join(tempfile.gettempdir(), 'datty-benchmark.perf')
 
 
 # Set by the re-exec wrapper so we don't recurse when --perf is in argv.
-_UNDER_PERF_ENV = '_KITTY_BENCHMARK_UNDER_PERF'
+_UNDER_PERF_ENV = '_DATTY_BENCHMARK_UNDER_PERF'
 
 
 def find_perf() -> str | None:
@@ -107,7 +107,7 @@ def run_parsing_benchmark(
     is_child = child_pid == CHILD
     # we add render as we aren't rendering anyway and it means the synchronized
     # escape codes are no longer needed.
-    argv = [kitten_exe(), '__benchmark__', '--render']
+    argv = [daddy_exe(), '__benchmark__', '--render']
     if with_scrollback:
         argv.append('--with-scrollback')
     if repetitions is not None:
@@ -163,11 +163,11 @@ def run_parsing_benchmark(
 
 
 def tab_bar_module_at(rev: str) -> ModuleType:
-    "Load kitty/tab_bar.py as it is at the specified git revision"
-    src = subprocess.check_output(['git', 'show', f'{rev}:kitty/tab_bar.py'], text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
-    m = ModuleType(f'kitty.tab_bar_at_{rev}')
-    m.__package__ = 'kitty'
-    exec(compile(src, f'{rev}:kitty/tab_bar.py', 'exec'), m.__dict__)
+    "Load datty/tab_bar.py as it is at the specified git revision"
+    src = subprocess.check_output(['git', 'show', f'{rev}:datty/tab_bar.py'], text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
+    m = ModuleType(f'datty.tab_bar_at_{rev}')
+    m.__package__ = 'datty'
+    exec(compile(src, f'{rev}:datty/tab_bar.py', 'exec'), m.__dict__)
     return m
 
 
@@ -183,7 +183,7 @@ class TabBarBenchmarkBoss:
 
 def time_tab_bar_updates(tab_bar: ModuleType, style: str, num_tabs: int, repetitions: int | None) -> float:
     "Return the median time in seconds taken to lay out and draw a horizontal tab bar"
-    from kitty.options.types import defaults
+    from datty.options.types import defaults
 
     set_options(defaults._replace(tab_bar_style=style))
     cell_width, cell_height = 10, 20
@@ -217,14 +217,14 @@ def time_tab_bar_updates(tab_bar: ModuleType, style: str, num_tabs: int, repetit
 
 
 def run_tab_bar_benchmark(compare_with: str = '', repetitions: int | None = None) -> None:
-    import kitty.tab_bar
+    import datty.tab_bar
 
-    modules = {'working tree': kitty.tab_bar}
+    modules = {'working tree': datty.tab_bar}
     if compare_with:
         try:
             modules = {compare_with: tab_bar_module_at(compare_with), **modules}
         except subprocess.CalledProcessError:
-            raise SystemExit(f'Could not read kitty/tab_bar.py at the git revision: {compare_with}')
+            raise SystemExit(f'Could not read datty/tab_bar.py at the git revision: {compare_with}')
     width = max(12, *map(len, modules))
 
     def rows() -> Iterator[str]:
@@ -260,7 +260,7 @@ def exec_under_perf(perf_exe: str, print_report: bool = False) -> None:
         '-o',
         perf_output(),
         '--',
-        kitty_exe(),
+        datty_exe(),
         '+launch',
         script,
     ] + sys.argv[1:]
@@ -272,7 +272,7 @@ def exec_under_perf(perf_exe: str, print_report: bool = False) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description='Run kitty parsing and tab bar benchmarks')
+    p = argparse.ArgumentParser(description='Run datty parsing and tab bar benchmarks')
     p.add_argument(
         'benchmarks',
         nargs='*',
@@ -308,13 +308,13 @@ def main() -> None:
         type=int,
         default=None,
         metavar='N',
-        help='Number of repetitions of each benchmark (default: kitten default of 100, for tab_bar it depends on the number of tabs)',
+        help='Number of repetitions of each benchmark (default: daddy default of 100, for tab_bar it depends on the number of tabs)',
     )
     p.add_argument(
         '--compare-with',
         default='',
         metavar='GIT_REVISION',
-        help='For the tab_bar benchmark, also time kitty/tab_bar.py as it is at the specified git revision, for comparison',
+        help='For the tab_bar benchmark, also time datty/tab_bar.py as it is at the specified git revision, for comparison',
     )
     args = p.parse_args()
 

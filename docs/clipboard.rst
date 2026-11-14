@@ -3,7 +3,7 @@ Copying all data types to the clipboard
 
 There already exists an escape code to allow terminal programs to
 read/write plain text data from the system clipboard, *OSC 52*.
-kitty introduces a more advanced protocol that supports:
+datty introduces a more advanced protocol that supports:
 
 * Copy arbitrary data including images, rich text documents, etc.
 * Allow terminals to ask the user for permission to access the clipboard and

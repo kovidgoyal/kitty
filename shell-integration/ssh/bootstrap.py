@@ -70,19 +70,19 @@ def write_all(fd, data):
         data = data[n:]
 
 
-def dcs_to_kitty(payload, type='ssh'):
+def dcs_to_datty(payload, type='ssh'):
     if isinstance(payload, str):
         payload = payload.encode('utf-8')
     payload = base64.standard_b64encode(payload)
-    return b'\033P@kitty-' + type.encode('ascii') + b'|' + payload + b'\033\\'
+    return b'\033P@datty-' + type.encode('ascii') + b'|' + payload + b'\033\\'
 
 
 def send_data_request():
-    write_all(tty_file_obj.fileno(), dcs_to_kitty('id=REQUEST_ID:pwfile=PASSWORD_FILENAME:pw=DATA_PASSWORD'))
+    write_all(tty_file_obj.fileno(), dcs_to_datty('id=REQUEST_ID:pwfile=PASSWORD_FILENAME:pw=DATA_PASSWORD'))
 
 
 def debug(msg):
-    data = dcs_to_kitty('debug: {}'.format(msg), 'print')
+    data = dcs_to_datty('debug: {}'.format(msg), 'print')
     if tty_file_obj is None:
         with open(os.ctermid(), 'wb') as fl:
             write_all(fl.fileno(), data)
@@ -109,7 +109,7 @@ def apply_env_vars(raw):
             process_defn(val)
         elif line.startswith('unset '):
             os.environ.pop(json.loads(val)[0], None)
-    login_shell = os.environ.pop('KITTY_LOGIN_SHELL', login_shell)
+    login_shell = os.environ.pop('DATTY_LOGIN_SHELL', login_shell)
 
 
 def move_dir(src, dest):
@@ -172,21 +172,21 @@ def compile_terminfo(base):
     if not tic:
         return
     tname = '.terminfo'
-    q = os.path.join(base, tname, '78', 'xterm-kitty')
+    q = os.path.join(base, tname, '78', 'xterm-datty')
     if not os.path.exists(q):
         try:
             os.makedirs(os.path.dirname(q))
         except EnvironmentError as e:
             if e.errno != errno.EEXIST:
                 raise
-        os.symlink('../x/xterm-kitty', q)
+        os.symlink('../x/xterm-datty', q)
     if os.path.exists('/usr/share/misc/terminfo.cdb'):
         # NetBSD requires this
-        os.symlink('../../.terminfo.cdb', os.path.join(base, tname, 'x', 'xterm-kitty'))
+        os.symlink('../../.terminfo.cdb', os.path.join(base, tname, 'x', 'xterm-datty'))
         tname += '.cdb'
     os.environ['TERMINFO'] = os.path.join(HOME, tname)
     p = subprocess.Popen(
-        [tic, '-x', '-o', os.path.join(base, tname), os.path.join(base, '.terminfo', 'kitty.terminfo')], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        [tic, '-x', '-o', os.path.join(base, tname), os.path.join(base, '.terminfo', 'datty.terminfo')], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
     output = p.stdout.read()
     rc = p.wait()
@@ -201,7 +201,7 @@ def iter_base64_data(f):
     while True:
         line = f.readline().rstrip()
         if started == 0:
-            if line == b'KITTY_DATA_START':
+            if line == b'DATTY_DATA_START':
                 started = 1
             else:
                 leading_data += line
@@ -211,7 +211,7 @@ def iter_base64_data(f):
             else:
                 raise SystemExit(line.decode('utf-8', 'replace').rstrip())
         else:
-            if line == b'KITTY_DATA_END':
+            if line == b'DATTY_DATA_END':
                 break
             yield line
 
@@ -237,7 +237,7 @@ def get_data():
         # have been sent before the script had a chance to run
         sys.stdout.write('\r\033[K')
     data = base64.standard_b64decode(data)
-    with temporary_directory(dir=HOME, prefix='.kitty-ssh-kitten-untar-') as tdir, tarfile.open(fileobj=io.BytesIO(data)) as tf:
+    with temporary_directory(dir=HOME, prefix='.datty-ssh-daddy-untar-') as tdir, tarfile.open(fileobj=io.BytesIO(data)) as tf:
         try:
             # We have to use fully_trusted as otherwise it refuses to extract,
             # for example, symlinks that point to absolute paths outside
@@ -248,7 +248,7 @@ def get_data():
         with open(tdir + '/data.sh') as f:
             env_vars = f.read()
         apply_env_vars(env_vars)
-        data_dir = os.environ.pop('KITTY_SSH_KITTEN_DATA_DIR')
+        data_dir = os.environ.pop('DATTY_SSH_DADDY_DATA_DIR')
         if not os.path.isabs(data_dir):
             data_dir = os.path.join(HOME, data_dir)
         data_dir = os.path.abspath(data_dir)
@@ -272,15 +272,15 @@ def exec_zsh_with_integration():
     zdotdir = os.environ.get('ZDOTDIR') or ''
     if not zdotdir:
         zdotdir = HOME
-        os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
+        os.environ.pop('DATTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
     else:
-        os.environ['KITTY_ORIG_ZDOTDIR'] = zdotdir
+        os.environ['DATTY_ORIG_ZDOTDIR'] = zdotdir
     # dont prevent zsh-newuser-install from running
     for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
         if os.path.exists(os.path.join(zdotdir, q)):
             os.environ['ZDOTDIR'] = shell_integration_dir + '/zsh'
             exec_with_better_error(login_shell, os.path.basename(login_shell), '-l')
-    os.environ.pop('KITTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
+    os.environ.pop('DATTY_ORIG_ZDOTDIR', None)  # ensure this is not propagated
 
 
 def exec_fish_with_integration():
@@ -288,16 +288,16 @@ def exec_fish_with_integration():
         os.environ['XDG_DATA_DIRS'] = shell_integration_dir
     else:
         os.environ['XDG_DATA_DIRS'] = shell_integration_dir + ':' + os.environ['XDG_DATA_DIRS']
-    os.environ['KITTY_FISH_XDG_DATA_DIR'] = shell_integration_dir
+    os.environ['DATTY_FISH_XDG_DATA_DIR'] = shell_integration_dir
     exec_with_better_error(login_shell, os.path.basename(login_shell), '-l')
 
 
 def exec_bash_with_integration():
-    os.environ['ENV'] = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
-    os.environ['KITTY_BASH_INJECT'] = '1'
+    os.environ['ENV'] = os.path.join(shell_integration_dir, 'bash', 'datty.bash')
+    os.environ['DATTY_BASH_INJECT'] = '1'
     if not os.environ.get('HISTFILE'):
         os.environ['HISTFILE'] = os.path.join(HOME, '.bash_history')
-        os.environ['KITTY_BASH_UNEXPORT_HISTFILE'] = '1'
+        os.environ['DATTY_BASH_UNEXPORT_HISTFILE'] = '1'
     exec_with_better_error(login_shell, os.path.basename('login_shell'), '--posix')
 
 
@@ -311,16 +311,16 @@ def exec_with_shell_integration():
         exec_bash_with_integration()
 
 
-def install_kitty_bootstrap():
-    kitty_remote = os.environ.pop('KITTY_REMOTE', '')
-    kitty_exists = shutil.which('kitty')
-    kitty_dir = os.path.join(data_dir, 'kitty', 'bin')
-    os.environ['SSH_KITTEN_KITTY_DIR'] = kitty_dir
-    if kitty_remote == 'yes' or (kitty_remote == 'if-needed' and not kitty_exists):
-        if kitty_exists:
-            os.environ['PATH'] = kitty_dir + os.pathsep + os.environ['PATH']
+def install_datty_bootstrap():
+    datty_remote = os.environ.pop('DATTY_REMOTE', '')
+    datty_exists = shutil.which('datty')
+    datty_dir = os.path.join(data_dir, 'datty', 'bin')
+    os.environ['SSH_DADDY_DATTY_DIR'] = datty_dir
+    if datty_remote == 'yes' or (datty_remote == 'if-needed' and not datty_exists):
+        if datty_exists:
+            os.environ['PATH'] = datty_dir + os.pathsep + os.environ['PATH']
         else:
-            os.environ['PATH'] = os.environ['PATH'] + os.pathsep + kitty_dir
+            os.environ['PATH'] = os.environ['PATH'] + os.pathsep + datty_dir
 
 
 def main():
@@ -335,28 +335,28 @@ def main():
         get_data()
     finally:
         cleanup()
-    cwd = os.environ.pop('KITTY_LOGIN_CWD', '')
-    install_kitty_bootstrap()
+    cwd = os.environ.pop('DATTY_LOGIN_CWD', '')
+    install_datty_bootstrap()
     if cwd:
         try:
             os.chdir(cwd)
         except Exception as err:
             print(f'Failed to change working directory to: {cwd} with error: {err}', file=sys.stderr)
-    ksi = frozenset(filter(None, os.environ.get('KITTY_SHELL_INTEGRATION', '').split()))
+    ksi = frozenset(filter(None, os.environ.get('DATTY_SHELL_INTEGRATION', '').split()))
     exec_cmd = b'EXEC_CMD'
     if exec_cmd:
-        os.environ.pop('KITTY_SHELL_INTEGRATION', None)
+        os.environ.pop('DATTY_SHELL_INTEGRATION', None)
         cmd = base64.standard_b64decode(exec_cmd).decode('utf-8')
         exec_with_better_error(login_shell, os.path.basename(login_shell), '-c', cmd)
     remote_cmd = b'REMOTE_CMD'
     if remote_cmd:
-        os.environ.pop('KITTY_SHELL_INTEGRATION', None)
+        os.environ.pop('DATTY_SHELL_INTEGRATION', None)
         cmd = base64.standard_b64decode(remote_cmd).decode('utf-8')
         exec_with_better_error(login_shell, os.path.basename(login_shell), '-c', cmd)
     TEST_SCRIPT  # noqa
     if ksi and 'no-rc' not in ksi:
         exec_with_shell_integration()
-    os.environ.pop('KITTY_SHELL_INTEGRATION', None)
+    os.environ.pop('DATTY_SHELL_INTEGRATION', None)
     exec_with_better_error(login_shell, '-' + os.path.basename(login_shell))
 
 

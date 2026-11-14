@@ -4,9 +4,9 @@ package readline
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 	"strings"
 )
 

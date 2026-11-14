@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/tui/readline"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/tui/readline"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/shlex"
 )
 
 var _ = fmt.Print
@@ -99,7 +99,7 @@ func shell_loop(rl *readline.Readline, kill_if_signaled bool) (int, error) {
 
 func show_basic_help() {
 	output := strings.Builder{}
-	fmt.Fprintln(&output, "Control kitty by sending it commands.")
+	fmt.Fprintln(&output, "Control datty by sending it commands.")
 	fmt.Fprintln(&output)
 	fmt.Fprintln(&output, formatter.Title("Commands")+":")
 	r := EntryPoint(cli.NewRootCommand())
@@ -160,7 +160,7 @@ func exec_command(at_root_command *cli.Command, rl *readline.Readline, cmdline s
 			fmt.Fprintln(os.Stderr, "No command named", formatter.BrightRed(parsed_cmdline[0])+". Type help for a list of commands")
 			return true
 		}
-		cmdline := []string{"kitten", "@"}
+		cmdline := []string{"daddy", "@"}
 		cmdline = append(cmdline, parsed_cmdline...)
 		root := cli.NewRootCommand()
 		EntryPoint(root)
@@ -172,14 +172,14 @@ func exec_command(at_root_command *cli.Command, rl *readline.Readline, cmdline s
 }
 
 func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
-	const prefix = "kitten @ "
+	const prefix = "daddy @ "
 	text := prefix + before_cursor
 	argv, position_of_last_arg := shlex.SplitForCompletion(text)
 	if len(argv) == 0 || position_of_last_arg < len(prefix) {
 		return
 	}
 	root := cli.NewRootCommand()
-	c := root.AddSubCommand(&cli.Command{Name: "kitten"})
+	c := root.AddSubCommand(&cli.Command{Name: "daddy"})
 	EntryPoint(c)
 	a := c.FindSubCommand("@")
 
@@ -191,7 +191,7 @@ func completions(before_cursor, after_cursor string) (ans *cli.Completions) {
 		x.ShortDescription = desc
 	}
 	add_sc("help", "Show help")
-	add_sc("exit", "Exit the kitty shell")
+	add_sc("exit", "Exit the datty shell")
 	root.Validate()
 	ans = root.GetCompletions(argv, nil)
 	ans.CurrentWordIdx = position_of_last_arg - len(prefix)
@@ -205,13 +205,13 @@ func shell_main(cmd *cli.Command, args []string) (int, error) {
 	}
 	running_shell = true
 	formatter = markup.New(true)
-	fmt.Println("Welcome to the kitty shell!")
+	fmt.Println("Welcome to the datty shell!")
 	fmt.Println("Use", formatter.Green("help"), "for assistance or", formatter.Green("exit"), "to quit.")
-	if atwid := os.Getenv("KITTY_SHELL_ACTIVE_WINDOW_ID"); atwid != "" {
+	if atwid := os.Getenv("DATTY_SHELL_ACTIVE_WINDOW_ID"); atwid != "" {
 		amsg := "Previously active window id: " + atwid
-		os.Unsetenv("KITTY_SHELL_ACTIVE_WINDOW_ID")
-		if attid := os.Getenv("KITTY_SHELL_ACTIVE_TAB_ID"); attid != "" {
-			os.Unsetenv("KITTY_SHELL_ACTIVE_TAB_ID")
+		os.Unsetenv("DATTY_SHELL_ACTIVE_WINDOW_ID")
+		if attid := os.Getenv("DATTY_SHELL_ACTIVE_TAB_ID"); attid != "" {
+			os.Unsetenv("DATTY_SHELL_ACTIVE_TAB_ID")
 			amsg += " and tab id: " + attid
 		}
 		fmt.Println(amsg)

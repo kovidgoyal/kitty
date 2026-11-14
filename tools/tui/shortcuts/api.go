@@ -4,7 +4,7 @@ package shortcuts
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
 	"strings"
 )
 

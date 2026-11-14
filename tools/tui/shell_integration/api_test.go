@@ -5,7 +5,7 @@ package shell_integration
 import (
 	"bytes"
 	"fmt"
-	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/datty"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,11 +18,11 @@ func TestExtractShellIntegration(t *testing.T) {
 	if err := extract_shell_integration_for("zsh", tdir); err != nil {
 		t.Fatal(err)
 	}
-	kzsh := filepath.Join(tdir, "shell-integration", "zsh", "kitty.zsh")
+	kzsh := filepath.Join(tdir, "shell-integration", "zsh", "datty.zsh")
 	if _, err := os.Stat(kzsh); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(tdir, "shell-integration", "zsh", "completions", "_kitty")); err != nil {
+	if _, err := os.Stat(filepath.Join(tdir, "shell-integration", "zsh", "completions", "_datty")); err != nil {
 		t.Fatal(err)
 	}
 	orig, err := os.ReadFile(kzsh)
@@ -44,7 +44,7 @@ func TestExtractShellIntegration(t *testing.T) {
 	if err = extract_terminfo(tdir); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(tdir, "terminfo", "78", kitty.DefaultTermName)); err != nil {
+	if _, err := os.Stat(filepath.Join(tdir, "terminfo", "78", datty.DefaultTermName)); err != nil {
 		t.Fatal(err)
 	}
 	TerminfoData()

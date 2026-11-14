@@ -8,11 +8,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
 )
 
 var _ = fmt.Print
@@ -28,7 +28,7 @@ type Message struct {
 
 func main(args []string, opts *Options) (rc int, err error) {
 	if tty.IsTerminal(os.Stdin.Fd()) {
-		return 1, fmt.Errorf("Input data for this kitten must be piped as JSON to STDIN")
+		return 1, fmt.Errorf("Input data for this daddy must be piped as JSON to STDIN")
 	}
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -96,7 +96,7 @@ func EntryPoint(root *cli.Command) *cli.Command {
 		Hidden:           true,
 		Usage:            "[options]",
 		ShortDescription: "Show an error message. Internal use.",
-		HelpText:         "Show an error message. Used internally by kitty.",
+		HelpText:         "Show an error message. Used internally by datty.",
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {
 			opts := &Options{}
 			err = cmd.GetOptionValues(opts)

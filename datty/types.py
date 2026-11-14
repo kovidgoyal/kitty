@@ -1,0 +1,345 @@
+#!/usr/bin/env python
+# License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
+
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from enum import Enum
+from functools import update_wrapper
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict, TypeVar, Union, cast
+
+if TYPE_CHECKING:
+    from datty.fast_data_types import SingleKey
+
+
+class SingleInstanceData(TypedDict):
+    cmd: str
+    args: Sequence[str]
+    cmdline_args_for_open: Sequence[str]
+    cwd: str
+    session_data: str
+    session_arg: str
+    session_path: str
+    environ: Mapping[str, str]
+    notify_on_os_window_death: str | None
+
+
+class OverlayType(Enum):
+    transient = 'transient'
+    main = 'main'
+
+
+class ParsedShortcut(NamedTuple):
+    mods: int
+    key_name: str
+
+
+class Edges(NamedTuple):
+    left: int = 0
+    top: int = 0
+    right: int = 0
+    bottom: int = 0
+
+
+class FloatEdges(NamedTuple):
+    left: float = 0
+    top: float = 0
+    right: float = 0
+    bottom: float = 0
+
+
+DockEdge = Literal['left', 'top', 'right', 'bottom']
+# What a dock is docked to: a window, a tab or an OS window
+DockScope = Literal['window', 'tab', 'os-window']
+CloseReason = Literal['window', 'os_window', 'quit']
+
+
+class CloseEvent(TypedDict):
+    # The data passed to on_close watchers, see the watchers documentation for the possible values of cause
+    reason: CloseReason
+    cause: str
+    confirmed: bool
+
+
+dock_edges: tuple[DockEdge, ...] = ('left', 'top', 'right', 'bottom')
+opposite_dock_edge: dict[DockEdge, DockEdge] = {'left': 'right', 'right': 'left', 'top': 'bottom', 'bottom': 'top'}
+
+
+class DockSpec(NamedTuple):
+    edge: DockEdge = 'bottom'
+    # Either a number of cells or a percentage of the area being docked into
+    size: float = 1
+    size_is_percent: bool = False
+    focusable: bool = True
+
+    @property
+    def is_horizontal(self) -> bool:
+        "True if the dock is at the top or bottom edge, i.e. it spans the width of its area"
+        return self.edge in ('top', 'bottom')
+
+    @property
+    def size_as_string(self) -> str:
+        return f'{self.size:g}%' if self.size_is_percent else str(int(self.size))
+
+    def as_launch_args(self, scope: DockScope) -> list[str]:
+        ans = [f'--type={scope}-dock', f'--dock-edge={self.edge}', f'--dock-size={self.size_as_string}']
+        if not self.focusable:
+            ans.append('--dock-skip-focus')
+        return ans
+
+    def as_dict(self) -> dict[str, Any]:
+        return {'edge': self.edge, 'size': self.size_as_string, 'focusable': self.focusable}
+
+
+def parse_dock_spec(edge: str, size: str, focusable: bool = True) -> DockSpec:
+    if edge not in dock_edges:
+        raise ValueError(f'{edge!r} is not a valid dock edge, must be one of: {", ".join(dock_edges)}')
+    raw = size.strip()
+    if raw.endswith('%'):
+        try:
+            percent = float(raw[:-1])
+        except ValueError:
+            raise ValueError(f'{size!r} is not a valid dock size') from None
+        if not 0 < percent <= 100:
+            raise ValueError(f'The dock size {size!r} must be a percentage greater than zero and no more than 100')
+        return DockSpec(edge, percent, True, focusable)
+    try:
+        cells = int(raw)
+    except ValueError:
+        raise ValueError(f'{size!r} is not a valid dock size, must be a number of cells or a percentage') from None
+    if cells < 1:
+        raise ValueError(f'The dock size {size!r} must be at least one cell')
+    return DockSpec(edge, cells, False, focusable)
+
+
+class WindowGeometry(NamedTuple):
+    left: int
+    top: int
+    right: int
+    bottom: int
+    xnum: int
+    ynum: int
+    spaces: Edges = Edges()
+    # The part of spaces that comes from the window size not being an exact
+    # multiple of the cell size (as opposed to intentional margin/border/padding
+    # decoration). This is the innermost slice of the padding, adjacent to the
+    # cells, see layout_dimension().
+    compensatory: Edges = Edges()
+
+
+class SignalInfo(NamedTuple):
+    si_signo: int
+    si_code: int
+    si_pid: int
+    si_uid: int
+    si_addr: int
+    si_status: int
+    sival_int: int
+    sival_ptr: int
+
+
+class LayerShellConfig(NamedTuple):
+    type: int = 0
+    edge: int = 0
+    focus_policy: int = 0
+    output_name: str = ''
+    x_size_in_pixels: int = 0
+    y_size_in_pixels: int = 0
+    x_size_in_cells: int = 0
+    y_size_in_cells: int = 0
+    requested_top_margin: int = 0
+    requested_left_margin: int = 0
+    requested_bottom_margin: int = 0
+    requested_right_margin: int = 0
+    requested_exclusive_zone: int = -1
+    override_exclusive_zone: bool = False
+    hide_on_focus_loss: bool = False
+
+
+def mod_to_names(mods: int, has_datty_mod: bool = False, datty_mod: int = 0) -> Iterator[str]:
+    if has_datty_mod:
+        mods &= ~datty_mod
+        yield 'datty_mod'
+    for name, val in modmap().items():
+        if mods & val:
+            yield name
+
+
+def human_repr_of_single_key(self: 'SingleKey', datty_mod: int) -> str:
+    from .fast_data_types import glfw_get_key_name
+
+    names = []
+    names = list(mod_to_names(self.mods, self.defined_with_datty_mod, datty_mod))
+    if self.key > 0:
+        kname = (glfw_get_key_name(0, self.key) if self.is_native else glfw_get_key_name(self.key, 0)) or f'{self.key}'
+        kname = {' ': 'space'}.get(kname, kname)
+        names.append(kname)
+    return '+'.join(names)
+
+
+class Shortcut(NamedTuple):
+    keys: tuple['SingleKey', ...]
+
+    def human_repr(self, datty_mod: int = 0) -> str:
+        return ' > '.join(human_repr_of_single_key(k, datty_mod) for k in self.keys)
+
+
+class MouseEvent(NamedTuple):
+    button: int = 0
+    mods: int = 0
+    repeat_count: int = 1
+    grabbed: bool = False
+
+    def human_repr(self, datty_mod: int = 0) -> str:
+        from .options.utils import mouse_button_map, mouse_trigger_count_map, mouse_wheel_map
+
+        def mouse_button_num_to_name(num: int) -> str:
+            for k, v in mouse_wheel_map.items():
+                if v == num:
+                    return k
+            button_map = {v: k for k, v in mouse_button_map.items()}
+            name = f'b{num + 1}'
+            return button_map.get(name, name)
+
+        def mouse_trigger_count_to_name(count: int) -> str:
+            trigger_count_map = {str(v): k for k, v in mouse_trigger_count_map.items()}
+            k = str(count)
+            return trigger_count_map.get(k, k)
+
+        names = list(mod_to_names(self.mods)) + [mouse_button_num_to_name(self.button)]
+        when = mouse_trigger_count_to_name(self.repeat_count)
+        grabbed = 'grabbed' if self.grabbed else 'ungrabbed'
+        return ' '.join(('+'.join(names), when, grabbed))
+
+
+class WindowSystemMouseEvent(NamedTuple):
+    in_tab_bar: bool
+    window_id: int
+    action: int
+    modifiers: int
+    button: int
+    currently_pressed_button: int
+    x: float
+    y: float
+
+
+ConvertibleToNumbers = Union[str, bytes, int, float]
+
+
+class sentinel_type:
+    pass
+
+
+sentinel = sentinel_type()
+
+
+class AsyncResponse:
+    pass
+
+
+class RunOnce[T]:
+    def __init__(self, f: Callable[[], T]) -> None:
+        self._override: T | sentinel_type = sentinel
+        self._cached_result: T | sentinel_type = sentinel
+        update_wrapper(self, f)
+
+    if TYPE_CHECKING:
+
+        def __call__(self) -> T:
+            return cast(T, 1)
+    else:
+
+        def __call__(self) -> T:
+            if self._override is not sentinel:
+                return self._override
+            if self._cached_result is sentinel:
+                self._cached_result = self.__wrapped__()
+            return self._cached_result
+
+    def clear_cached(self) -> None:
+        self._cached_result = sentinel
+
+    def set_override(self, val: T) -> None:
+        self._override = val
+
+    def clear_override(self) -> None:
+        self._override = sentinel
+
+
+def run_once[T](f: Callable[[], T]) -> RunOnce[T]:
+    return RunOnce(f)
+
+
+@run_once
+def modmap() -> dict[str, int]:
+    from .constants import is_macos
+    from .fast_data_types import (
+        GLFW_MOD_ALT,
+        GLFW_MOD_CAPS_LOCK,
+        GLFW_MOD_CONTROL,
+        GLFW_MOD_HYPER,
+        GLFW_MOD_META,
+        GLFW_MOD_NUM_LOCK,
+        GLFW_MOD_SHIFT,
+        GLFW_MOD_SUPER,
+    )
+
+    return {
+        'ctrl': GLFW_MOD_CONTROL,
+        'shift': GLFW_MOD_SHIFT,
+        ('opt' if is_macos else 'alt'): GLFW_MOD_ALT,
+        ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER,
+        'hyper': GLFW_MOD_HYPER,
+        'meta': GLFW_MOD_META,
+        'caps_lock': GLFW_MOD_CAPS_LOCK,
+        'num_lock': GLFW_MOD_NUM_LOCK,
+    }
+
+
+ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'fs', 'mouse', 'mk', 'lay', 'misc', 'debug', 'session']
+
+
+class ActionSpec(NamedTuple):
+    group: str
+    doc: str
+
+
+def ac[_T](group: ActionGroup, doc: str) -> Callable[[_T], _T]:
+    def w(f: _T) -> _T:
+        setattr(f, 'action_spec', ActionSpec(group, doc))
+        return f
+
+    return w
+
+
+WindowMapper = Callable[[int], int | None]
+DecoratedFunc = TypeVar('DecoratedFunc', bound=Callable[..., Any])
+
+
+class NeighborsMap(TypedDict, total=False):
+    left: list[int]
+    top: list[int]
+    right: list[int]
+    bottom: list[int]
+
+
+class WindowResizeDragData(NamedTuple):
+    horizontal_id: int | None = None
+    width_increases_rightwards: bool = True
+    vertical_id: int | None = None
+    height_increases_downwards: bool = True
+    # The ids are window ids of a docked window, rather than layout specific ids
+    is_dock: bool = False
+
+
+class WindowResizeDrag(NamedTuple):
+    is_active: bool = False
+    cell_width: int = 0
+    cell_height: int = 0
+    initial_x: float = 0
+    initial_y: float = 0
+    last_step_x: float = 0
+    last_step_y: float = 0
+    tab_id: int = 0
+    data: WindowResizeDragData = WindowResizeDragData()
+
+    def __bool__(self) -> bool:
+        return self.is_active

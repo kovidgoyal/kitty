@@ -11,8 +11,8 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/go-parallel"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 type write_msg struct {
@@ -56,7 +56,7 @@ func writestring_ignoring_temporary_errors(f *tty.Term, buf string) (int, error)
 // Remove the first n entries from pending_writes. This must not copy the
 // remaining entries, as when there are lots of small writes queued up (for
 // example when redrawing the screen in response to a flood of mouse events) that
-// becomes quadratic, see https://github.com/kovidgoyal/kitty/issues/10634
+// becomes quadratic, see https://github.com/kovidgoyal/datty/issues/10634
 func (self *Loop) discard_sent_pending_writes(n int) {
 	clear(self.pending_writes[:n])
 	if n >= len(self.pending_writes) {

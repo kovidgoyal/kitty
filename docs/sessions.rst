@@ -3,9 +3,9 @@
 Sessions
 =============
 
-kitty has robust support for sessions. A session is basically a simple text
-file where you can define kitty windows, tabs and what programs to run in them
-as well as how to layout the windows. kitty also supports actions to easily
+datty has robust support for sessions. A session is basically a simple text
+file where you can define datty windows, tabs and what programs to run in them
+as well as how to layout the windows. datty also supports actions to easily
 :ac:`create and switch between existing sessions <goto_session>`, so that you
 can move seamlessly from working on one project to another with a couple of keystrokes.
 
@@ -25,14 +25,14 @@ a session file to develop a project:
     # Create another side window to keep an eye on some useful log file
     launch --title "Log for my project" /usr/bin/tail -f /path/to/project/log/file
 
-Save this file as :file:`~/path/to/myproject/launch.kitty-session`. Now when
+Save this file as :file:`~/path/to/myproject/launch.datty-session`. Now when
 you want to work on the project, simply run:
 
 .. code-block:: sh
 
-    kitty --session ~/path/to/myproject/launch.kitty-session
+    datty --session ~/path/to/myproject/launch.datty-session
 
-You can also set the session in :file:`kitty.conf` via :opt:`startup_session`.
+You can also set the session in :file:`datty.conf` via :opt:`startup_session`.
 
 Thus, it is very easy to create sessions and work on projects. To learn how to
 create more complex sessions, see :ref:`complex_sessions`.
@@ -44,15 +44,15 @@ Creating/Switching to sessions with a keypress
 ------------------------------------------------
 
 If you like to manage multiple sessions within a single terminal and
-easily swap between them, kitty has you covered. You can use the
-:ac:`goto_session` action in kitty.conf, like this:
+easily swap between them, datty has you covered. You can use the
+:ac:`goto_session` action in datty.conf, like this:
 
 .. code-block:: conf
 
    # Press F7 and then c to jump to the "cool" project
-   map f7>c goto_session ~/path/to/cool/cool.kitty-session
+   map f7>c goto_session ~/path/to/cool/cool.datty-session
    # Press F7 and then h to jump to the "hot" project
-   map f7>h goto_session ~/path/to/hot/hot.kitty-session
+   map f7>h goto_session ~/path/to/hot/hot.datty-session
    # Browse and select from the list of known projects defined via goto_session commands
    map f7>/ goto_session
    # Browse and select from the list of active projects defined via goto_session commands
@@ -60,15 +60,15 @@ easily swap between them, kitty has you covered. You can use the
    # Same as above, but the sessions are listed alphabetically instead of by most recent
    map f7>/ goto_session --sort-by=alphabetical
    # Browse session files inside a directory and pick one
-   map f7>p goto_session ~/.local/share/kitty/sessions
+   map f7>p goto_session ~/.local/share/datty/sessions
    # Go to the previously active session (larger negative numbers jump further back in history)
    map f7>- goto_session -1
 
 In this manner you can define as many projects/sessions as you like and easily
 switch between them with a keypress.
 
-When a directory path is supplied to :ac:`goto_session`, kitty scans it for
-files ending in ``.kitty-session``, ``.kitty_session`` or ``.session`` and
+When a directory path is supplied to :ac:`goto_session`, datty scans it for
+files ending in ``.datty-session``, ``.datty_session`` or ``.session`` and
 presents an interactive list. The ``--sort-by`` option controls the ordering of that list just like it does
 for globally known sessions.
 
@@ -79,7 +79,7 @@ all windows in the session with a single keypress.
 Displaying the currently active session name
 ----------------------------------------------
 
-You can display the name of the currently active session file in the kitty tab
+You can display the name of the currently active session file in the datty tab
 bar using :opt:`tab_title_template`. For example, using the value::
 
     {session_name} {title}
@@ -98,15 +98,15 @@ More complex sessions
 
 If you want to create more complex sessions, with sophisticated layouts, such
 as :ref:`splits_layout`, the easiest way is to set up the state you want to
-save manually by first starting kitty like this:
+save manually by first starting datty like this:
 
 .. code-block:: sh
 
-    kitty -o 'map f1 save_as_session --use-foreground-process --relocatable'
+    datty -o 'map f1 save_as_session --use-foreground-process --relocatable'
 
 Now create whatever splits and tabs you need and start whatever programs such
 as editors, REPLs, debuggers, etc. you want to start in each of them. Once
-kitty is the way you want it, press the :kbd:`F1` key, and you will be prompted
+datty is the way you want it, press the :kbd:`F1` key, and you will be prompted
 for a path at which to save the session file. Specify the path and the session
 will be saved there with the exact setup you created. The saved file will even
 be opened in your editor for you to review, automatically.
@@ -115,15 +115,15 @@ be opened in your editor for you to review, automatically.
    If you want session files to be saved to a specific directory regardless of
    your current working directory, use the ``--base-dir`` option. For example::
 
-       map f7>s save_as_session --use-foreground-process --base-dir ~/.local/share/kitty/sessions
+       map f7>s save_as_session --use-foreground-process --base-dir ~/.local/share/datty/sessions
 
-   This is particularly useful when kitty is launched from system-wide shortcuts
+   This is particularly useful when datty is launched from system-wide shortcuts
    where the working directory might not be your home directory. Note that
    ``--relocatable`` is typically not used with ``--base-dir``, since relocatable
    is meant for session files that are co-located with their project directories.
 
 If instead, you want to create these by hand, see the example below which shows
-all the major keywords you can use in kitty session files:
+all the major keywords you can use in datty session files:
 
 .. code-block:: session
 
@@ -224,9 +224,9 @@ they don't belong to the session. If you would prefer to have them belong
 to the currently active session, you can use the :ac:`new_window_with_cwd`
 and :ac:`new_tab_with_cwd` actions instead, like this::
 
-    map kitty_mod+enter new_window_with_cwd
-    map kitty_mod+t new_tab_with_cwd
-    map kitty_mod+n new_os_window_with_cwd
+    map datty_mod+enter new_window_with_cwd
+    map datty_mod+t new_tab_with_cwd
+    map datty_mod+n new_os_window_with_cwd
 
 This will cause newly created windows and tabs to belong to the currently active
 session, if any. Note that adding a window to a session in this way is
@@ -245,42 +245,42 @@ flag.
 Sessions with remote connections
 -------------------------------------
 
-If you use the :doc:`ssh kitten </kittens/ssh>` to connect to remote computers,
-:ac:`save_as_session` is smart enough to save the ssh kitten invocation to your
+If you use the :doc:`ssh daddy </daddies/ssh>` to connect to remote computers,
+:ac:`save_as_session` is smart enough to save the ssh daddy invocation to your
 session file, preserving the remote working directory and even the currently
-running program on the remote host! Try it, run kitty with::
+running program on the remote host! Try it, run datty with::
 
-    kitty -o 'map f1 save_as_session --use-foreground-process --relocatable' --session <(printf '%s\n' 'layout vertical' launch launch)
+    datty -o 'map f1 save_as_session --use-foreground-process --relocatable' --session <(printf '%s\n' 'layout vertical' launch launch)
 
 Now in both windows, run::
 
-    kitten ssh localhost
+    daddy ssh localhost
 
 To connect them both to a remote computer (replace ``localhost`` with another
 computer if you like). In one window change the directory to /tmp and in the
 other start some program. Then press :kbd:`F1` to save the session file.
-When you run the session file in another kitty instance you will see both
+When you run the session file in another datty instance you will see both
 windows re-created, as expected with the correct working directories and
 running programs.
 
 .. _restore_after_logout:
 
-Restoring kitty after logging out
+Restoring datty after logging out
 ------------------------------------
 
-kitty can save its state when you log out, restart or shut down the computer
+datty can save its state when you log out, restart or shut down the computer
 and restore it the next time it is started, just like other applications. To
-enable this, set :opt:`restore_session_after_logout` in :file:`kitty.conf`::
+enable this, set :opt:`restore_session_after_logout` in :file:`datty.conf`::
 
     restore_session_after_logout yes
 
 This works on macOS and on Linux, where it needs a desktop portal that supports
 monitoring the session state (version 3 of the Inhibit portal), such as the one
-used by GNOME. The state of every kitty instance is saved as a session file,
+used by GNOME. The state of every datty instance is saved as a session file,
 including the size, position and state of every OS Window, and the scrollback
-of every window. The next time kitty is started, it restores
+of every window. The next time datty is started, it restores
 the state of the instance that had the same command line arguments, and starts
-a separate kitty instance for each of the others, with the command line
+a separate datty instance for each of the others, with the command line
 arguments, working directory and environment variables they originally had.
 
 The scrollback of every window is restored before the shell starts, followed by
@@ -291,22 +291,22 @@ not started again, since they could have been run for their effects, like
 ``--os-window-geometry`` option of :ac:`save_as_session`.
 
 On macOS, the saved state, which includes the scrollback and the environment
-variables of every kitty instance, is encrypted, with a separate random key for
-every kitty instance, stored in your login keychain. Note that despite the
+variables of every datty instance, is encrypted, with a separate random key for
+every datty instance, stored in your login keychain. Note that despite the
 encryption any process that runs as you can read the saved session data. The
 keys are deleted when the state is restored, so any copies of it left on disk or
-in backups cannot be read. kitty never shows any keychain prompts for this. If the keychain needs
+in backups cannot be read. datty never shows any keychain prompts for this. If the keychain needs
 user interaction, the state is not saved or not restored. This happens if:
 
 * your login keychain is locked, for example, because it has a different
   password from your login password or because it is set to lock itself after
   a period of inactivity
-* the kitty you are running is not signed by the same developer as the kitty
-  that saved the state, for example, because you build kitty yourself, in
+* the datty you are running is not signed by the same developer as the datty
+  that saved the state, for example, because you build datty yourself, in
   which case every new build counts as a different application
 
 On Linux, the saved state is not encrypted, as there is no way to store the key
-securely without asking you for a password. It is stored in the kitty cache
+securely without asking you for a password. It is stored in the datty cache
 directory and is readable only by you, like your shell history. It is saved when
 the desktop says that the session is about to end, and deleted again if the
 logout is cancelled, for example, by another application.
@@ -314,17 +314,17 @@ logout is cancelled, for example, by another application.
 If your session is not restored on macOS, any errors are written to the system
 log, where you can see them with::
 
-    /usr/bin/log show --last 1d --predicate 'processImagePath contains "kitty" and messageType == error'
+    /usr/bin/log show --last 1d --predicate 'processImagePath contains "datty" and messageType == error'
 
-On Linux, they are written to the standard error of kitty.
+On Linux, they are written to the standard error of datty.
 
 Managing multi tab sessions in a single OS Window
 ----------------------------------------------------
 
-The natural way to organise sessions in kitty is one per :term:`os_window`.
+The natural way to organise sessions in datty is one per :term:`os_window`.
 However, if you prefer to manage multiple sessions in a single OS Window, you
-can configure the kitty tab bar to only show tabs that belong to the currently
-active session. To do so, use :opt:`tab_bar_filter` in :file:`kitty.conf` set::
+can configure the datty tab bar to only show tabs that belong to the currently
+active session. To do so, use :opt:`tab_bar_filter` in :file:`datty.conf` set::
 
     tab_bar_filter session:~ or session:^$
 
@@ -361,7 +361,7 @@ documentation for them.
 
 ``focus_os_window``
     Give keyboard focus to the current OS Window. This is guaranteed to work
-    only is some other OS Window in the current kitty process has focus,
+    only is some other OS Window in the current datty process has focus,
     otherwise the window manager might block changing focus to prevent *focus
     stealing*.
 
@@ -395,7 +395,7 @@ documentation for them.
 
 ``new_tab [tab title]``
     Create a new tab with the specified title. If no title is specified, the
-    title behaves just as for a regular tab in kitty.
+    title behaves just as for a regular tab in datty.
 
 ``os_window_title``
     Set the title for the current OS Window. The OS Window will then always
@@ -440,7 +440,7 @@ documentation for them.
 The save_as_session action
 ------------------------------
 
-This action can be mapped to a key press in :file:`kitty.conf`. It will save
+This action can be mapped to a key press in :file:`datty.conf`. It will save
 the currently open OS Windows, tabs, windows, running programs, working
 directories, etc. into a session file. It is a convenient way to
 :ref:`complex_sessions`. The options this action takes are documented below.

@@ -4,7 +4,7 @@ package tui
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 	"testing"
 )
 

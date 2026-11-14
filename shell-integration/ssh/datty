@@ -1,0 +1,160 @@
+#!/bin/sh
+# Copyright (C) 2018 Kovid Goyal <kovid at kovidgoyal.net>
+#
+# Distributed under terms of the GPLv3 license.
+
+{ \unalias command; \unset -f command; } >/dev/null 2>&1
+
+
+die() { printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr; exit 1; }
+
+delete_lock_dir() {
+    trap '' EXIT INT QUIT TERM
+    [ -n "$lock_dir" ] && {
+        command rm -rf "$lock_dir"
+        lock_dir=""
+    }
+}
+
+exec_datty() {
+    delete_lock_dir
+    [ -n "$datty_exe" ] && exec "$datty_exe" "$@"
+    die "Failed to execute datty"
+}
+
+
+has_diskutil_image() {
+    # hdiutil is deprecated in macOS 27
+    macos_major=$(command sw_vers -productVersion 2> /dev/null)
+    macos_major="${macos_major%%.*}"
+    case "$macos_major" in
+        ''|*[!0-9]*) return 1;;
+    esac
+    [ "$macos_major" -ge 27 ]
+}
+
+mount_dmg() {
+    if has_diskutil_image; then
+        command diskutil image attach --readOnly --mountPoint "$2" "$1"
+    else
+        command hdiutil attach "$1" "-mountpoint" "$2"
+    fi
+}
+
+unmount_dmg() {
+    if has_diskutil_image; then
+        command diskutil eject "$1"
+    else
+        command hdiutil detach "$1"
+    fi
+}
+
+is_wrapped_daddy() {
+    wrapped_daddies="clipboard icat hyperlinked_grep ask hints unicode_input ssh themes diff show_key transfer query_terminal choose-files command-palette resize_window broadcast remote_file"
+    [ -n "$1" ] && {
+        case " $wrapped_daddies " in
+            *" $1 "*) printf "%s" "$1" ;;
+        esac
+    }
+}
+
+test "(" "$1" = "+daddy" -a -n "$(is_wrapped_daddy "$2")" ")" -o "(" "$1" = "+" -a "$2" = "daddy" -a "$(is_wrapped_daddy "$3")" ")" && {
+    if [ "$1" = "+daddy" ]; then shift "1"; else shift "2"; fi
+    exec daddy "$@"
+}
+
+lock_dir=""
+script_path="$(command readlink -f "$0" 2> /dev/null)"
+[ $? = 0 ] || script_path="$0"
+script_dir="$(command dirname "$script_path")"
+install_dir="$(command dirname "$script_dir")/install"
+remote_datty_version_file="$script_dir/../version"
+local_datty_version_file="$install_dir/installed-datty-version"
+datty_exe="$install_dir/bin/datty"
+local_datty_version=""
+
+[ -f "$datty_exe" -a -x "$datty_exe" -a "$1" != "+update-datty" ] && exec_datty "$@"
+
+case "$(command uname)" in
+    'Linux') OS="linux";;
+    'Darwin') OS="macos";;
+    *) die "datty pre-built binaries are not available for the $(command uname) operating system";;
+esac
+
+if command -v curl 2> /dev/null > /dev/null; then
+    fetch() {
+        command curl -fL "$1"
+    }
+    fetch_quiet() {
+        command curl -fsSL "$1"
+    }
+elif command -v wget 2> /dev/null > /dev/null; then
+    fetch() {
+        command wget -O- "$1"
+    }
+    fetch_quiet() {
+        command wget --quiet -O- "$1"
+    }
+else
+    die "Neither curl nor wget available, cannot download datty"
+fi
+
+if [ "$OS" = "linux" ]; then
+    case "$(command uname -m)" in
+        amd64|x86_64) arch="x86_64";;
+        aarch64*) arch="arm64";;
+        armv8*) arch="arm64";;
+        arm64) arch="arm64";;
+        i386) arch="i686";;
+        i686) arch="i686";;
+        *) die "Unknown CPU architecture $(command uname -m)";;
+    esac
+fi
+
+release_version=$(fetch_quiet "https://sw.kovidgoyal.net/datty/current-version.txt")
+[ $? -ne 0 -o -z "$release_version" ] && {
+    [ -n "$local_datty_version" ] && exec_datty "$@"
+    die "Could not get datty latest release version"
+}
+
+if [ "$OS" = "linux" ]; then
+    url="https://github.com/kovidgoyal/datty/releases/download/v$release_version/datty-$release_version-$arch.txz"
+else
+    url="https://github.com/kovidgoyal/datty/releases/download/v$release_version/datty-$release_version.dmg"
+fi
+
+lock_dir="$script_dir/datty-install-lock"
+if ! command mkdir "$lock_dir" 2> /dev/null; then
+    ed="$lock_dir"
+    lock_dir="";
+    die "Failed to create lock dir another instance of the datty bootstrap script is running. If you are sure that is not the case delete: $ed";
+fi
+trap 'delete_lock_dir' EXIT INT QUIT TERM
+
+printf "\033[33mdatty needs to be installed\033[m\n\n"
+command rm -rf "$install_dir"
+command mkdir -p "$install_dir"
+printf "Downloading datty from: \033[32m%s\033[m\n\n" "$url"
+
+if [ "$OS" = "linux" ]; then
+    old_umask=$(umask)
+    umask 000
+    fetch "$url" | command tar -C "$install_dir" -xJof -
+    umask "$old_umask"
+    [ $? = 0 ] || die "Failed to download and install datty"
+else
+    tdir=$(command mktemp -d "$install_dir/tmp-for-dmg-XXXXXXXXXXXX")
+    [ $? = 0 ] || die "Creating temp directory failed"
+    fetch "$url" > "$tdir/datty.dmg"
+    command mkdir "$tdir/mp"
+    mount_dmg "$tdir/datty.dmg" "$tdir/mp" || die "Failed to mount datty.dmg"
+    command ditto -v "$tdir/mp/datty.app" "$install_dir/datty.app"
+    rc="$?"
+    unmount_dmg "$tdir/mp"
+    command rm -rf "$tdir"
+    [ "$rc" != "0" ] && die "Failed to copy datty.app from mounted dmg"
+    command mkdir "$install_dir/bin"
+    command ln -sf "$install_dir/datty.app/Contents/MacOS/datty" "$install_dir/bin/datty"
+fi
+command "$datty_exe" +runpy "from datty.constants import str_version; print(end=str_version)" > "$local_datty_version_file"
+exec_datty "$@"

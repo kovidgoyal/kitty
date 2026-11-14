@@ -1,7 +1,7 @@
 Colored and styled underlines
 ================================
 
-|kitty| supports colored and styled (wavy) underlines. This is of particular use
+|datty| supports colored and styled (wavy) underlines. This is of particular use
 in terminal based text editors such as :program:`vim` and :program:`emacs` to
 display red, wavy underlines under mis-spelled words and/or syntax errors. This
 is done by re-purposing some SGR escape codes that are not used in modern

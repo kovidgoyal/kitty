@@ -1,7 +1,0 @@
-#compdef kitty
-
-(( ${+commands[kitten]} )) || builtin return
-builtin local src cmd=${(F)words:0:$CURRENT}
-# Send all words up to the word the cursor is currently on.
-src=$(builtin command kitten __complete__ zsh "_matcher=$_matcher" <<<$cmd) || builtin return
-builtin eval "$src"

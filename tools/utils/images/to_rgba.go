@@ -9,7 +9,7 @@ import (
 
 	"github.com/kovidgoyal/imaging"
 	"github.com/kovidgoyal/imaging/nrgba"
-	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tty"
 )
 
 var _ = fmt.Print

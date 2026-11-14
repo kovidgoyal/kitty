@@ -1,4 +1,4 @@
-// License: GPLv3 Copyright: 2026, kitty contributors
+// License: GPLv3 Copyright: 2026, datty contributors
 
 package at
 

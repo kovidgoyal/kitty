@@ -8,12 +8,12 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
 )
 
 var _ = fmt.Print
 
-// Tells kitty that a program it cannot see exit has exited, so that it can drop
+// Tells datty that a program it cannot see exit has exited, so that it can drop
 // the program status (OSC 7501) records that do not outlive the program
 const PROGRAM_STATUS_PROCESS_EXITED = "\x1b]7501;process-exited\x1b\\"
 

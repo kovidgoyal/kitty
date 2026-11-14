@@ -9,7 +9,7 @@ set the default foreground, background, selection and cursor colors and the ANSI
 color table. This allows for various performance optimizations when drawing the
 screen. The problem is that if the user previously used the escape codes to
 change these colors themselves, then running the full screen application will
-lose those changes even after it exits. To avoid this, kitty introduces a new
+lose those changes even after it exits. To avoid this, datty introduces a new
 pair of *OSC* escape codes to push and pop the current color values from a
 stack::
 
@@ -24,7 +24,7 @@ foreground, selection background, selection foreground and cursor color and the
    extension, without acknowledgement, and using incompatible escape codes
    (XTPUSHCOLORS, XTPOPCOLORS, XTREPORTCOLORS). And they decided to save not
    just the dynamic colors but the entire ANSI color table. In the interests of
-   promoting interoperability, kitty added support for xterm's escape codes as
+   promoting interoperability, datty added support for xterm's escape codes as
    well, and changed this extension to also save/restore the entire ANSI color
    table.
 
@@ -45,7 +45,7 @@ fixed color. The XTerm protocol has no way to query for this condition. The
 protocol also doesn't actually specify the format in which colors are reported,
 deferring to a man page for X11!
 
-Instead kitty has developed a single number based protocol that addresses all
+Instead datty has developed a single number based protocol that addresses all
 these shortcomings and is future proof by virtue of using string keys rather
 than numbers. The syntax of the escape code is::
 
@@ -77,7 +77,7 @@ transparent_background_color1..7  A background color that is rendered           
 ================================= =============================================== ===============================
 
 In this table the third column shows what effect setting the color to *dynamic*
-has in kitty and many other terminal emulators. It is advisory only, terminal
+has in datty and many other terminal emulators. It is advisory only, terminal
 emulators may not support dynamic colors for these or they may have other
 effects. Setting the ANSI color table colors to dynamic is not allowed.
 

@@ -26,7 +26,7 @@ func TestFileLock(t *testing.T) {
 		_ = UnlockFile(file_descriptor)
 		file_descriptor.Close()
 	}()
-	cmd := exec.Command(KittyExe(), "+runpy", `
+	cmd := exec.Command(DattyExe(), "+runpy", `
 import sys, os, fcntl
 fd = os.open(sys.argv[-1], os.O_RDONLY)
 try:

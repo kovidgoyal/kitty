@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 )
 
 var _ = fmt.Print

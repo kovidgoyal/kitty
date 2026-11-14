@@ -8,7 +8,7 @@ import (
 
 	"github.com/emmansun/base64"
 
-	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tty"
 )
 
 var _ = fmt.Print

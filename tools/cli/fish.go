@@ -7,19 +7,19 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
 
 func fish_completion_script(commands []string) (string, error) {
 	// One command in fish requires one completion script.
-	// Usage: kitten __complete__ setup fish [kitty|kitten|clone-in-kitty]
+	// Usage: daddy __complete__ setup fish [datty|daddy|clone-in-datty]
 	all_commands := map[string]bool{
-		"kitty":          true,
-		"clone-in-kitty": true,
-		"kitten":         true,
+		"datty":          true,
+		"clone-in-datty": true,
+		"daddy":         true,
 	}
 	if len(commands) == 0 {
 		commands = append(commands, utils.Keys(all_commands)...)
@@ -28,7 +28,7 @@ func fish_completion_script(commands []string) (string, error) {
 	script.WriteString(`function __ksi_completions
     set --local ct (commandline --current-token)
     set --local tokens (commandline --tokenize --cut-at-cursor --current-process)
-    printf "%s\n" $tokens $ct | command kitten __complete__ fish | source -
+    printf "%s\n" $tokens $ct | command daddy __complete__ fish | source -
 end
 
 `)

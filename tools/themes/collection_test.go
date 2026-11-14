@@ -60,7 +60,7 @@ func TestThemeCollections(t *testing.T) {
 	if _, err := fw.Write([]byte(`[
     {
         "author": "X Y",
-        "blurb": "A dark color scheme for the kitty terminal.",
+        "blurb": "A dark color scheme for the datty terminal.",
         "file": "themes/Alabaster_Dark.conf",
         "is_dark": true,
         "license": "MIT",

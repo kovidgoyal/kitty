@@ -99,7 +99,7 @@ _glfwInitNSGL(void) {
 
 // We use a globally shared context across all OS Windows so that
 // if all OS Windows are closed the context does not have to be recreated
-// with all associated data lost. On Apple kitty can remain running with no
+// with all associated data lost. On Apple datty can remain running with no
 // OS Windows.
 static NSOpenGLContext *globally_shared_context = nil;
 

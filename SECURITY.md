@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-There are no security specific releases of kitty. Security bugs are fixed
+There are no security specific releases of datty. Security bugs are fixed
 and released just like all other bugs.
 
 ## Reporting a vulnerability

@@ -1,0 +1,431 @@
+#!/bin/bash
+
+if [[ "$-" != *i* ]] ; then builtin return; fi  # check in interactive mode
+if [[ -z "$DATTY_SHELL_INTEGRATION" ]]; then builtin return; fi
+
+# Load the normal bash startup files
+if [[ -n "$DATTY_BASH_INJECT" ]]; then
+    builtin declare datty_bash_inject="$DATTY_BASH_INJECT"
+    builtin declare ksi_val="$DATTY_SHELL_INTEGRATION"
+    builtin unset DATTY_SHELL_INTEGRATION  # ensure manual sourcing of this file in bashrc does not have any effect
+    builtin unset DATTY_BASH_INJECT ENV
+    if [[ -z "$HOME" ]]; then HOME=~; fi
+    if [[ -z "$DATTY_BASH_ETC_LOCATION" ]]; then DATTY_BASH_ETC_LOCATION="/etc"; fi
+
+    _ksi_sourceable() {
+        [[ -f "$1" && -r "$1" ]] && builtin return 0; builtin return 1;
+    }
+
+    if [[ -n "$ksi_val" && "$ksi_val" != *no-sudo* && -n "$TERMINFO" && ! ( -r "/usr/share/terminfo/x/xterm-datty" || -r "/usr/share/terminfo/78/xterm-datty" ) ]]; then
+        # this must be done before sourcing user bashrc otherwise aliasing of sudo does not work
+            sudo() {
+                # Ensure terminfo is available in sudo
+                builtin local cannot_set_env_var="n"
+                builtin local ignore_arg="n"
+                for arg; do
+                    if [[ "$ignore_arg" == "y" ]]; then ignore_arg="n"; builtin continue; fi
+                    case "$arg" in
+                        --) builtin break ;;  # end of options
+                        # sudo -e disallows setting env vars
+                        --edit | -e* | -[!-]*e*) cannot_set_env_var="y"; builtin break ;;
+                        # sudo-rs -v disallows setting env vars
+                        --validate | -v* | -[!-]*v*) cannot_set_env_var="y"; builtin break ;;
+                        # flags that require a following argument
+                        --user|--group|--host|--chdir|--chroot|--role|--type|--command-timeout|--auth-type|--login-class|--prompt|--close-from|--other-user) ignore_arg="y" ;;
+                        --*) ;;  # misc long opt
+                        -*a|-*C|-*c|-*D|-*g|-*h|-*p|-*R|-*r|-*t|-*T|-*u) ignore_arg="y" ;;
+                        # flag or env var setting
+                        -* | *=*) ;;
+                        *) builtin break ;;  # command found
+                    esac
+                done
+                if [[ "$cannot_set_env_var" == "y" ]]; then
+                    builtin command sudo "$@";
+                else
+                    builtin command sudo TERMINFO="$TERMINFO" "$@";
+                fi
+            }
+            if builtin type -P run0 >/dev/null 2>&1; then
+                run0() {
+                    # Ensure terminfo is available in run0, --setenv=NAME copies NAME from the current env
+                    builtin command run0 --setenv=TERMINFO "$@";
+                }
+            fi
+    fi
+
+    if [[ "$datty_bash_inject" == *"posix"* ]]; then
+        _ksi_sourceable "$DATTY_BASH_POSIX_ENV" && {
+            builtin source "$DATTY_BASH_POSIX_ENV"
+            builtin export ENV="$DATTY_BASH_POSIX_ENV"
+        }
+    else
+        builtin set +o posix
+        builtin shopt -u inherit_errexit 2>/dev/null  # resetting posix does not clear this
+        if [[ -n "$DATTY_BASH_UNEXPORT_HISTFILE" ]]; then
+            builtin export -n HISTFILE
+            builtin unset DATTY_BASH_UNEXPORT_HISTFILE
+        fi
+
+        # See run_startup_files() in shell.c in the Bash source code
+        if builtin shopt -q login_shell; then
+            if [[ "$datty_bash_inject" != *"no-profile"* ]]; then
+                if [[ -n "$DATTY_BASH_SYS_PROFILE" ]]; then
+                    # The SYS_PROFILE path bash was compiled with, found by datty
+                    _ksi_sourceable "$DATTY_BASH_SYS_PROFILE" && builtin source "$DATTY_BASH_SYS_PROFILE"
+                else
+                    _ksi_sourceable "$DATTY_BASH_ETC_LOCATION/profile" && builtin source "$DATTY_BASH_ETC_LOCATION/profile"
+                fi
+                for _ksi_i in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
+                    _ksi_sourceable "$_ksi_i" && { builtin source "$_ksi_i"; break; }
+                done
+            fi
+        else
+            if [[ "$datty_bash_inject" != *"no-rc"* ]]; then
+                if [[ -n "$DATTY_BASH_SYS_PROFILE" ]]; then
+                    # datty found the SYS_BASHRC path bash was compiled with by
+                    # scanning the bash binary, it is empty if bash has no SYS_BASHRC
+                    [[ -n "$DATTY_BASH_SYS_BASHRC" ]] && _ksi_sourceable "$DATTY_BASH_SYS_BASHRC" && builtin source "$DATTY_BASH_SYS_BASHRC"
+                else
+                    # Linux distros build bash with -DSYS_BASHRC. When datty could not
+                    # find it in the bash binary, fall back to well known locations.
+                    # Arch, Debian, Ubuntu use /etc/bash.bashrc
+                    # Fedora uses /etc/bashrc sourced from ~/.bashrc instead of SYS_BASHRC
+                    # Void Linux uses /etc/bash/bashrc
+                    for _ksi_i in "$DATTY_BASH_ETC_LOCATION/bash.bashrc" "$DATTY_BASH_ETC_LOCATION/bash/bashrc" ; do
+                        _ksi_sourceable "$_ksi_i" && { builtin source "$_ksi_i"; break; }
+                    done
+                fi
+                if [[ -z "$DATTY_BASH_RCFILE" ]]; then DATTY_BASH_RCFILE="$HOME/.bashrc"; fi
+                _ksi_sourceable "$DATTY_BASH_RCFILE" && builtin source "$DATTY_BASH_RCFILE"
+            fi
+        fi
+    fi
+    builtin unset DATTY_BASH_RCFILE DATTY_BASH_POSIX_ENV DATTY_BASH_ETC_LOCATION DATTY_BASH_SYS_PROFILE DATTY_BASH_SYS_BASHRC
+    builtin unset -f _ksi_sourceable
+    builtin export DATTY_SHELL_INTEGRATION="$ksi_val"
+    builtin unset _ksi_i ksi_val datty_bash_inject
+fi
+
+
+if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
+    builtin unset DATTY_SHELL_INTEGRATION
+    builtin printf "%s\n" "Bash version ${BASH_VERSION} too old, datty shell integration disabled" > /dev/stderr
+    builtin return
+fi
+
+if [ -v "_ksi_prompt[sourced]" ]; then
+    # we have already run
+    builtin unset DATTY_SHELL_INTEGRATION
+    builtin return
+fi
+
+# this is defined outside _ksi_main to make it global without using declare -g
+# which is not available on older bash
+builtin declare -A _ksi_prompt
+_ksi_prompt=(
+    [cursor]='y' [title]='y' [mark]='y' [complete]='y' [cwd]='y' [sudo]='y' [ps0]='' [ps0_suffix]='' [ps1]='' [ps1_suffix]='' [ps2]=''
+    [hostname_prefix]='' [sourced]='y' [last_reported_cwd]=''
+)
+
+_ksi_main() {
+    builtin local ifs="$IFS" i
+    IFS=" "
+    for i in ${DATTY_SHELL_INTEGRATION[@]}; do
+        case "$i" in
+            "no-cursor") _ksi_prompt[cursor]='n';;
+            "no-title") _ksi_prompt[title]='n';;
+            "no-prompt-mark") _ksi_prompt[mark]='n';;
+            "no-complete") _ksi_prompt[complete]='n';;
+            "no-cwd") _ksi_prompt[cwd]='n';;
+            "no-sudo") _ksi_prompt[sudo]='n';;
+        esac
+    done
+    IFS="$ifs"
+
+    builtin unset DATTY_SHELL_INTEGRATION
+    if [[ -n "$SSH_DADDY_DATTY_DIR" ]]; then
+        if [[ ! "$PATH" =~ (^|:)${SSH_DADDY_DATTY_DIR}(:|$) ]] && [[ -z "$(builtin command -v daddy)" ]]; then
+            builtin export PATH="${PATH}:${SSH_DADDY_DATTY_DIR}"
+        fi
+        builtin unset SSH_DADDY_DATTY_DIR
+    fi
+    builtin local krcs="$DATTY_SI_RUN_COMMAND_AT_STARTUP"
+    builtin unset DATTY_SI_RUN_COMMAND_AT_STARTUP
+
+    _ksi_debug_print() {
+        # print a line to STDERR of parent datty process
+        builtin local b
+        b=$(builtin command base64 <<< "${@}")
+        builtin printf "\eP@datty-print|%s\e\\" "${b//[[:space:]]}}"
+    }
+
+    _ksi_set_mark() {
+        _ksi_prompt["${1}_mark"]="\[\e]133;k;${1}_datty\a\]"
+    }
+
+    _ksi_set_mark start
+    _ksi_set_mark end
+    _ksi_set_mark start_secondary
+    _ksi_set_mark end_secondary
+    _ksi_set_mark start_suffix
+    _ksi_set_mark end_suffix
+    builtin unset -f _ksi_set_mark
+    _ksi_prompt[secondary_prompt]="\n${_ksi_prompt[start_secondary_mark]}\[\e]133;A;k=s\a\]${_ksi_prompt[end_secondary_mark]}"
+
+    _ksi_prompt_command() {
+        # we first remove any previously added datty code from the prompt variables and then add
+        # it back, to ensure we have only a single instance
+        if [[ -n "${_ksi_prompt[ps0]}" ]]; then
+            PS0=${PS0//\\\[\\e\]133;k;start_datty\\a\\\]*end_datty\\a\\\]}
+            PS0="${_ksi_prompt[ps0]}$PS0"
+        fi
+        if [[ -n "${_ksi_prompt[ps0_suffix]}" ]]; then
+            PS0=${PS0//\\\[\\e\]133;k;start_suffix_datty\\a\\\]*end_suffix_datty\\a\\\]}
+            PS0="${PS0}${_ksi_prompt[ps0_suffix]}"
+        fi
+        # restore PS1 to its pristine state without our additions
+        if [[ -n "${_ksi_prompt[ps1]}" ]]; then
+            PS1=${PS1//\\\[\\e\]133;k;start_datty\\a\\\]*end_datty\\a\\\]}
+            PS1=${PS1//\\\[\\e\]133;k;start_secondary_datty\\a\\\]*end_secondary_datty\\a\\\]}
+        fi
+        if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then
+            PS1=${PS1//\\\[\\e\]133;k;start_suffix_datty\\a\\\]*end_suffix_datty\\a\\\]}
+        fi
+        if [[ -n "${_ksi_prompt[ps1]}" ]]; then
+            if [[ "${_ksi_prompt[mark]}" == "y" && ( "${PS1}" == *"\n"* || "${PS1}" == *$'\n'* ) ]]; then
+                builtin local oldval
+                oldval=$(builtin shopt -p extglob)
+                builtin shopt -s extglob
+                # bash does not redraw the leading lines in a multiline prompt so
+                # mark the last line as a secondary prompt. Otherwise on resize the
+                # lines before the last line will be erased by datty.
+                # the first part removes everything from the last \n onwards
+                # the second part appends a newline with the secondary marking
+                # the third part appends everything after the last newline
+                PS1=${PS1%@('\n'|$'\n')*}${_ksi_prompt[secondary_prompt]}${PS1##*@('\n'|$'\n')}
+                builtin eval "$oldval"
+            fi
+            PS1="${_ksi_prompt[ps1]}$PS1"
+        fi
+        if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then
+            PS1="${PS1}${_ksi_prompt[ps1_suffix]}"
+        fi
+        if [[ -n "${_ksi_prompt[ps2]}" ]]; then
+            PS2=${PS2//\\\[\\e\]133;k;start_datty\\a\\\]*end_datty\\a\\\]}
+            PS2="${_ksi_prompt[ps2]}$PS2"
+        fi
+
+        if [[ "${_ksi_prompt[cwd]}" == "y" ]]; then
+            # unfortunately bash provides no hooks to detect cwd changes
+            # in particular this means cwd reporting will not happen for a
+            # command like cd /test && cat. PS0 is evaluated before cd is run.
+            if [[ "${_ksi_prompt[last_reported_cwd]}" != "$PWD" ]]; then
+                _ksi_prompt[last_reported_cwd]="$PWD"
+                builtin printf "\e]7;datty-shell-cwd://%s%s\a" "$HOSTNAME" "$PWD"
+            fi
+        fi
+    }
+
+    if [[ "${_ksi_prompt[cursor]}" == "y" ]]; then
+        _ksi_prompt[ps1_suffix]+="\[\e[5 q\]"  # blinking bar cursor
+        _ksi_prompt[ps0_suffix]+="\[\e[0 q\]"  # blinking default cursor
+    fi
+
+    if [[ "${_ksi_prompt[title]}" == "y" || "${_ksi_prompt[mark]}" == "y" ]]; then
+        _ksi_get_current_command() {
+            builtin local last_cmd
+            last_cmd=$(HISTTIMEFORMAT= builtin history 1)
+            last_cmd="${last_cmd#*[[:digit:]]*[[:space:]]}"  # remove leading history number
+            last_cmd="${last_cmd#"${last_cmd%%[![:space:]]*}"}"  # remove remaining leading whitespace
+            if [[ "${_ksi_prompt[title]}" == "y" ]]; then
+                builtin printf "\e]2;%s%s\a" "${_ksi_prompt[hostname_prefix]@P}" "${last_cmd//[[:cntrl:]]}" # removes any control characters
+            fi
+            if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
+                builtin printf "\e]133;C;cmdline=%q\a" "$last_cmd"
+            fi
+        }
+        _ksi_prompt[ps0]+='$(_ksi_get_current_command > /dev/tty)';
+    fi
+
+    if [[ "${_ksi_prompt[title]}" == "y" ]]; then
+        if [[ -z "$DATTY_PID" ]]; then
+            if [[ -n "$SSH_TTY" || -n "$SSH2_TTY$DATTY_WINDOW_ID" ]]; then
+                # connected to most SSH servers
+                # or use ssh daddy to connected to some SSH servers that do not set SSH_TTY
+                _ksi_prompt[hostname_prefix]="\h: "
+            elif [[ -n "$(builtin command -v who)" && "$(builtin command who -m 2> /dev/null)" =~ \([a-fA-F.:0-9]+\)$ ]]; then
+                # the shell integration script is installed manually on the remote system
+                # the environment variables are cleared after sudo
+                # OpenSSH's sshd creates entries in utmp for every login so use those
+                _ksi_prompt[hostname_prefix]="\h: "
+            fi
+        fi
+        # see https://www.gnu.org/software/bash/manual/html_node/Controlling-the-Prompt.html#Controlling-the-Prompt
+        # we use suffix here because some distros add title setting to their bashrc files by default
+        _ksi_prompt[ps1_suffix]+="\[\e]2;${_ksi_prompt[hostname_prefix]}\w\a\]"
+        if [[ "$HISTCONTROL" == *"ignoreboth"* ]] || [[ "$HISTCONTROL" == *"ignorespace"* ]]; then
+            _ksi_debug_print "ignoreboth or ignorespace present in bash HISTCONTROL setting, showing running command will not be robust"
+        fi
+    fi
+
+    if [[ "${_ksi_prompt[mark]}" == "y" ]]; then
+        # this can result in multiple D prompt marks or ones that dont
+        # correspond to a cmd but datty handles this gracefully, only
+        # taking into account the first D after a C.
+        _ksi_prompt[ps1]+="\[\e]133;D;\$?\a\e]133;A\a\]"
+        _ksi_prompt[ps2]+="\[\e]133;A;k=s\a\]"
+    fi
+
+    builtin alias edit-in-datty="daddy edit-in-datty"
+
+
+    if [[ "${_ksi_prompt[complete]}" == "y" ]]; then
+        _ksi_completions() {
+            builtin local src
+            builtin local limit
+            # Send all words up to the word the cursor is currently on
+            builtin let limit=1+$COMP_CWORD
+            src=$(builtin printf "%s\n" "${COMP_WORDS[@]:0:$limit}" | builtin command daddy __complete__ bash)
+            if [[ $? == 0 ]]; then
+                builtin eval "${src}"
+            fi
+        }
+        builtin complete -F _ksi_completions datty
+        builtin complete -F _ksi_completions edit-in-datty
+        builtin complete -F _ksi_completions clone-in-datty
+        builtin complete -F _ksi_completions daddy
+    fi
+
+    # wrap our prompt additions in markers we can use to remove them using
+    # bash's anemic pattern substitution
+    if [[ -n "${_ksi_prompt[ps0]}" ]]; then
+        _ksi_prompt[ps0]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps0]}${_ksi_prompt[end_mark]}"
+    fi
+    if [[ -n "${_ksi_prompt[ps0_suffix]}" ]]; then
+        _ksi_prompt[ps0_suffix]="${_ksi_prompt[start_suffix_mark]}${_ksi_prompt[ps0_suffix]}${_ksi_prompt[end_suffix_mark]}"
+    fi
+    if [[ -n "${_ksi_prompt[ps1]}" ]]; then
+        _ksi_prompt[ps1]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps1]}${_ksi_prompt[end_mark]}"
+    fi
+    if [[ -n "${_ksi_prompt[ps1_suffix]}" ]]; then
+        _ksi_prompt[ps1_suffix]="${_ksi_prompt[start_suffix_mark]}${_ksi_prompt[ps1_suffix]}${_ksi_prompt[end_suffix_mark]}"
+    fi
+    if [[ -n "${_ksi_prompt[ps2]}" ]]; then
+        _ksi_prompt[ps2]="${_ksi_prompt[start_mark]}${_ksi_prompt[ps2]}${_ksi_prompt[end_mark]}"
+    fi
+    # BASH aborts the entire script when doing unset with failglob set, somebody should report this upstream
+    builtin local oldval
+    oldval=$(builtin shopt -p failglob)
+    builtin shopt -u failglob
+    builtin unset _ksi_prompt[start_mark] _ksi_prompt[end_mark] _ksi_prompt[start_suffix_mark] _ksi_prompt[end_suffix_mark] _ksi_prompt[start_secondary_mark] _ksi_prompt[end_secondary_mark]
+    builtin eval "$oldval"
+
+    # install our prompt command, using an array if it is unset or already an array,
+    # otherwise append a string. We check if _ksi_prompt_command exists as some shell
+    # scripts stupidly export PROMPT_COMMAND making it inherited by all programs launched
+    # from the shell
+    builtin local pc
+    pc='builtin declare -F _ksi_prompt_command > /dev/null 2> /dev/null && _ksi_prompt_command'
+    if [[ -z "${PROMPT_COMMAND[*]}" ]]; then
+        PROMPT_COMMAND=([0]="$pc")
+    elif [[ $(builtin declare -p PROMPT_COMMAND 2> /dev/null) =~ 'declare -a PROMPT_COMMAND' ]]; then
+        PROMPT_COMMAND+=("$pc")
+    else
+        builtin local oldval
+        oldval=$(builtin shopt -p extglob)
+        builtin shopt -s extglob
+        PROMPT_COMMAND="${PROMPT_COMMAND%%+([[:space:]])}"
+        PROMPT_COMMAND="${PROMPT_COMMAND%%+(;)}"
+        builtin eval "$oldval"
+        PROMPT_COMMAND+="; $pc"
+    fi
+    if [ -n "${DATTY_IS_CLONE_LAUNCH}" ]; then
+        builtin local orig_conda_env="$CONDA_DEFAULT_ENV"
+        builtin eval "${DATTY_IS_CLONE_LAUNCH}"
+        builtin hash -r 2> /dev/null 1> /dev/null
+        builtin local venv="${VIRTUAL_ENV}/bin/activate"
+        builtin local sourced=""
+        _ksi_s_is_ok() {
+            [[ -z "$sourced" && "$DATTY_CLONE_SOURCE_STRATEGIES" == *",$1,"* ]] && builtin return 0
+            builtin return 1
+        }
+
+        if _ksi_s_is_ok "venv" && [ -n "${VIRTUAL_ENV}" -a -r "$venv" ]; then
+            sourced="y"
+            builtin unset VIRTUAL_ENV
+            builtin source "$venv"
+        fi; if _ksi_s_is_ok "conda" && [ -n "${CONDA_DEFAULT_ENV}" ] && builtin command -v conda >/dev/null 2>/dev/null && [ "${CONDA_DEFAULT_ENV}" != "$orig_conda_env" ]; then
+            sourced="y"
+            conda activate "${CONDA_DEFAULT_ENV}"
+        fi; if _ksi_s_is_ok "env_var" && [[ -n "${DATTY_CLONE_SOURCE_CODE}" ]]; then
+            sourced="y"
+            builtin eval "${DATTY_CLONE_SOURCE_CODE}"
+        fi; if _ksi_s_is_ok "path" && [[ -r "${DATTY_CLONE_SOURCE_PATH}" ]]; then
+            sourced="y"
+            builtin source "${DATTY_CLONE_SOURCE_PATH}"
+        fi
+        builtin unset -f _ksi_s_is_ok
+        # Ensure PATH has no duplicate entries
+        if [ -n "$PATH" ]; then
+            builtin local old_PATH=$PATH:; PATH=
+            while [ -n "$old_PATH" ]; do
+                builtin local x
+                x=${old_PATH%%:*}
+                case $PATH: in
+                    *:"$x":*) ;;
+                    *) PATH=$PATH:$x;;
+                esac
+                old_PATH=${old_PATH#*:}
+            done
+            PATH=${PATH#:}
+        fi
+    fi
+    builtin unset DATTY_IS_CLONE_LAUNCH DATTY_CLONE_SOURCE_STRATEGIES
+    if [[ -n "$krcs" ]]; then builtin
+        builtin printf "\e]2;%s\a" "${krcs//[[:cntrl:]]}" # removes any control characters
+        eval "$krcs";
+    fi
+}
+_ksi_main
+builtin unset -f _ksi_main
+
+case :$SHELLOPTS: in
+  *:posix:*) ;;
+  *)
+
+_ksi_transmit_data() {
+    builtin local data
+    data="${1//[[:space:]]}"
+    builtin local pos=0
+    builtin local chunk_num=0
+    while [ $pos -lt ${#data} ]; do
+        builtin local chunk="${data:$pos:2048}"
+        pos=$(($pos+2048))
+        builtin printf '\eP@datty-%s|%s:%s\e\\' "${2}" "${chunk_num}" "${chunk}"
+        chunk_num=$(($chunk_num+1))
+    done
+    # save history so it is available in new shell
+    [ "$3" = "save_history" ] && builtin history -a
+    builtin printf '\eP@datty-%s|\e\\' "${2}"
+}
+
+clone-in-datty() {
+    builtin local bv="${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}"
+    builtin local data="shell=bash,pid=$$,bash_version=$bv,cwd=$(builtin printf "%s" "$PWD" | builtin command base64),envfmt=bash,env=$(builtin export | builtin command base64)"
+    while :; do
+        case "$1" in
+            "") break;;
+            -h|--help)
+                builtin printf "%s\n\n%s\n" "Clone the current bash session into a new datty window." "For usage instructions see: https://sw.kovidgoyal.net/datty/shell-integration/#clone-shell"
+                builtin return
+                ;;
+            *) data="$data,a=$(builtin printf "%s" "$1" | builtin command base64)";;
+        esac
+        shift
+    done
+    _ksi_transmit_data "$data" "clone" "save_history"
+}
+
+      ;;
+esac
+

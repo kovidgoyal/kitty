@@ -4,7 +4,7 @@ package cli
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -125,7 +125,7 @@ func TestCompleteFiles(t *testing.T) {
 		t.Fatalf("Directory containing only an uppercase extension match not completed by FnmatchCompleter: %#v", c.Groups)
 	}
 
-	// mime types kitty knows about but the Go stdlib does not
+	// mime types datty knows about but the Go stdlib does not
 	create("zz.py")
 	c = NewCompletions()
 	MimepatCompleter("", CWD, "text/*")(c, "zz", 0)
@@ -136,7 +136,7 @@ func TestCompleteFiles(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("File with a mime type known only to kitty not completed by MimepatCompleter: %#v", c.Groups)
+		t.Fatalf("File with a mime type known only to datty not completed by MimepatCompleter: %#v", c.Groups)
 	}
 }
 

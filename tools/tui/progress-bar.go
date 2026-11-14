@@ -4,7 +4,7 @@ package tui
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
 	"strings"
 )
 

@@ -9,9 +9,9 @@ Working with the screen and history buffer contents
 
 You can pipe the contents of the current screen and history buffer as
 :file:`STDIN` to an arbitrary program using the ``pipe`` function. The program
-can be displayed in a kitty window or overlay.
+can be displayed in a datty window or overlay.
 
-For example, the following in :file:`kitty.conf` will open the scrollback
+For example, the following in :file:`datty.conf` will open the scrollback
 buffer in less in an overlay window, when you press :kbd:`F1`::
 
     map f1 pipe @ansi overlay less +G -R
@@ -25,11 +25,11 @@ The piping environment
 --------------------------
 
 The program to which the data is piped has a special environment variable
-declared, ``KITTY_PIPE_DATA`` whose contents are::
+declared, ``DATTY_PIPE_DATA`` whose contents are::
 
-   KITTY_PIPE_DATA={scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}
+   DATTY_PIPE_DATA={scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}
 
-where ``scrolled_by`` is the number of lines kitty is currently scrolled by,
+where ``scrolled_by`` is the number of lines datty is currently scrolled by,
 ``cursor_(x|y)`` is the position of the cursor on the screen with ``(1,1)``
 being the top left corner and ``{lines},{columns}`` being the number of rows
 and columns of the screen.
@@ -37,10 +37,10 @@ and columns of the screen.
 You can choose where to run the pipe program:
 
 ``overlay``
-   An overlay window over the current kitty window
+   An overlay window over the current datty window
 
 ``window``
-   A new kitty window
+   A new datty window
 
 ``os_window``
    A new top-level window
@@ -94,7 +94,7 @@ There are various different kinds of placeholders
    No input
 
 
-You can also add the suffix ``_wrap`` to the placeholder, in which case kitty
+You can also add the suffix ``_wrap`` to the placeholder, in which case datty
 will insert the carriage return at every line wrap location (where long lines
 are wrapped at screen edges). This is useful if you want to pipe to program
 that wants to duplicate the screen layout of the screen.

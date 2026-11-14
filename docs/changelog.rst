@@ -1,8 +1,8 @@
 Changelog
 ==============
 
-|kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
-To update |kitty|, :doc:`follow the instructions <binary>`.
+|datty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
+To update |datty|, :doc:`follow the instructions <binary>`.
 
 .. recent major features {{{
 
@@ -12,7 +12,7 @@ Recent major new features
 Docked windows [0.50]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-kitty windows can now be :ref:`docked <docks>` to an edge of another window or
+datty windows can now be :ref:`docked <docks>` to an edge of another window or
 of the tab. Docked windows are placed outside the layout, making them perfect
 for status bars, file trees or a shell kept next to your editor. A dock
 attached to a window follows it around, moving with it to other tabs and closing
@@ -22,9 +22,9 @@ when it closes. Create docks with :code:`launch --type=window-dock` or
 Restore after logout [0.50]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Like other applications, kitty can now save its state when you log out, restart or
+Like other applications, datty can now save its state when you log out, restart or
 shut down your computer, and restore it the next time it starts. Simply set
-:opt:`restore_session_after_logout` and every kitty instance comes back with all
+:opt:`restore_session_after_logout` and every datty instance comes back with all
 its OS Windows, tabs and windows in place, including their scrollback. On
 macOS, the saved state is encrypted using a key stored in your keychain. See
 :ref:`restore_after_logout` for details.
@@ -32,18 +32,18 @@ macOS, the saved state is encrypted using a key stored in your keychain. See
 Custom shaders [0.49]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-kitty now has official support for :doc:`/custom-shaders`. These can be used for all
+datty now has official support for :doc:`/custom-shaders`. These can be used for all
 manner of graphical effects, from animated backgrounds to focus highlighting to
 animations that change how cursor movements or mouse clicks are visualised.
 
 See the :doc:`documentation </custom-shaders>` for a video gallery showcasing various custom shaders
-that ship with kitty.
+that ship with datty.
 
 Performance improvements [0.49]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This release saw tons of performance work focused on improving throughput
-making kitty even faster than it already is. Real world effective throughput
+making datty even faster than it already is. Real world effective throughput
 should see a 15-35% improvement depending on workload. Some details:
 
 
@@ -65,56 +65,56 @@ should see a 15-35% improvement depending on workload. Some details:
 Vertical tabs [0.48]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-kitty now has support for :pull:`vertical tabs <9855>` along the left or right edge of the OS
+datty now has support for :pull:`vertical tabs <9855>` along the left or right edge of the OS
 Window. Useful for people that have wide aspect ratio windows.
 
 Drag and drop for terminal programs [0.47]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-kitty now has a new :doc:`/kittens/dnd` kitten that allows you to seamlessly
-drag and drop files between kitty and any GUI program like the OS file manager
+datty now has a new :doc:`/daddies/dnd` daddy that allows you to seamlessly
+drag and drop files between datty and any GUI program like the OS file manager
 or a webapp. It even works over SSH! It is powered by a new :doc:`protocol
 </dnd-protocol>` allowing the use of drag and drop from any TUI program.
 
 Mousing [0.46]
 ~~~~~~~~~~~~~~~
 
-kitty already had excellent mouse support, but now it is taking it to the next
-level. The kitty scrollback buffer grew support for :opt:`smooth scrolling
+datty already had excellent mouse support, but now it is taking it to the next
+level. The datty scrollback buffer grew support for :opt:`smooth scrolling
 <pixel_scroll>` and :opt:`momentum based scrolling <momentum_scroll>`
 for a natural, smooth and kinetic scrolling experience.
 
-Additionally, you can now :opt:`drag kitty tabs around <drag_threshold>` with the mouse
-to re-order them, move them to another kitty OS Window or even detach them into
+Additionally, you can now :opt:`drag datty tabs around <drag_threshold>` with the mouse
+to re-order them, move them to another datty OS Window or even detach them into
 their own OS Window.
 
-Finally, a long requested feature, the ability to resize kitty windows (aka
+Finally, a long requested feature, the ability to resize datty windows (aka
 splits) with the mouse was implemented.
 
 Choose files, fast [0.45]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A new :doc:`kitten to select files at the speed of thought
-</kittens/choose-files>` with a keyboard first interface and support for
+A new :doc:`daddy to select files at the speed of thought
+</daddies/choose-files>` with a keyboard first interface and support for
 content previews of text files with syntax highlighting, images, videos, e-books
 and more. Allows you to select files for use at the shell prompt or other
 terminal workflows with just a few keystrokes, similar to how fuzzy finders
 like `fzf <https://github.com/junegunn/fzf/>`__ operate, but designed for
-files in particular, leveraging the various innovations of kitty such as image
+files in particular, leveraging the various innovations of datty such as image
 display and variable sized text.
 
-On Linux, it can even be used as a :doc:`drop in replacement </kittens/desktop-ui>`
+On Linux, it can even be used as a :doc:`drop in replacement </daddies/desktop-ui>`
 for the File Open/Save dialog boxes in GUI programs.
 
 
 Sessions [0.43]
 ~~~~~~~~~~~~~~~~
 
-kitty has long had support for :doc:`sessions`, aka simple text files where you
-can define what tabs, windows and programs you wish to run in kitty. Now in
-addition to that kitty has the ability to :ref:`create and switch between
+datty has long had support for :doc:`sessions`, aka simple text files where you
+can define what tabs, windows and programs you wish to run in datty. Now in
+addition to that datty has the ability to :ref:`create and switch between
 sessions <goto_session>` with a single keypress and also to manually setup some
-tabs/windows in kitty and :ref:`save it as a session file <complex_sessions>`,
+tabs/windows in datty and :ref:`save it as a session file <complex_sessions>`,
 for seamless and intuitive session file creation.
 
 .. }}}
@@ -125,12 +125,12 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Allow docking kitty windows to an edge of the OS window, below the tab bar,
+- Allow docking datty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)
 
 - Allow resizing docks by dragging their inner border or with the
-  :ac:`resize_window` action and :code:`kitten @ resize-window`, see :ref:`docks`
+  :ac:`resize_window` action and :code:`daddy @ resize-window`, see :ref:`docks`
   (:iss:`10857`)
 
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders that shake
@@ -157,8 +157,8 @@ Detailed list of changes
 
 - A hard reset (:code:`RIS`) now clears the alternate screen as well
 
-- Fix a program running in the terminal being able to hang kitty by using
-  :doc:`edit-in-kitty </shell-integration>` to set a window logo that is a
+- Fix a program running in the terminal being able to hang datty by using
+  :doc:`edit-in-datty </shell-integration>` to set a window logo that is a
   special file such as :file:`/dev/zero`. Window logos and background images
   must now be regular files and image conversion is subject to a timeout
 
@@ -174,13 +174,13 @@ Detailed list of changes
   :ac:`show_last_visited_command_output` using the wrong lines in various
   situations
 
-- ssh kitten: Fix remote directories such as :file:`~/.terminfo` being created
+- ssh daddy: Fix remote directories such as :file:`~/.terminfo` being created
   world writable (:iss:`10834`)
 
-- :doc:`dnd kitten <kittens/dnd>`: Fix the kitten failing to start in a directory
+- :doc:`dnd daddy <daddies/dnd>`: Fix the daddy failing to start in a directory
   that is not writable (:iss:`10855`)
 
-- :doc:`choose-files <kittens/choose-files>`: Fix hangs previewing special files
+- :doc:`choose-files <daddies/choose-files>`: Fix hangs previewing special files
   and various preview caching bugs (:pull:`10843`, :pull:`10850`)
 
 - :doc:`Pointer shapes <pointer-shapes>`: Fix animated pointers restarting
@@ -198,14 +198,14 @@ Detailed list of changes
 - Remote control: Fix ``set-colors`` and ``get-colors`` handling of
   ``cursor_text_color`` (:iss:`10832`)
 
-- :doc:`Hints kitten </kittens/hints>`: Fix some custom regexes with lookarounds
+- :doc:`Hints daddy </daddies/hints>`: Fix some custom regexes with lookarounds
   finding no matches in non-ASCII text
 
 - :ref:`Unscrolling <unscroll>` the screen no longer overwrites the top line when
   a top margin is set
 
 - macOS: Workaround for clicking notifications not focusing the correct OS
-  Window with multiple kitty instances (:iss:`10805`)
+  Window with multiple datty instances (:iss:`10805`)
 
 - Wayland: Fix a hang creating OS windows after an output is quickly plugged and
   unplugged
@@ -221,20 +221,20 @@ Detailed list of changes
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Allow docking kitty windows to the edges of other windows or of the tab, for
+- Allow docking datty windows to the edges of other windows or of the tab, for
   status bars, file trees, etc. Create them with :code:`launch --type=window-dock`
   or :code:`launch --type=tab-dock`, see :ref:`docks`
 
 - A new option :opt:`restore_session_after_logout` to save the state of every
-  kitty instance, including scrollback, when logging out, restarting or
-  shutting down and restore it the next time kitty starts. On macOS, the state
+  datty instance, including scrollback, when logging out, restarting or
+  shutting down and restore it the next time datty starts. On macOS, the state
   is encrypted with a key in the keychain. On Linux, it requires the Inhibit
   desktop portal. See :ref:`restore_after_logout` (:iss:`1197`, :pull:`10659`)
 
 - Allow using tabs like named workspaces: A new :option:`launch --focus-existing`
   option to focus an existing window or tab instead of creating a new one, a
   new :code:`by-title` value for :option:`launch --location` to keep tabs in
-  alphabetical order and new options for `kitten @ detach-window` and the
+  alphabetical order and new options for `daddy @ detach-window` and the
   :ac:`detach_window` action to send windows to a named tab, creating it if
   needed (:iss:`10627`)
 
@@ -256,7 +256,7 @@ Detailed list of changes
   :code:`pointer_map()` function so that clicks and selections land on the
   text shown under the mouse, which the :code:`crt` shader now uses, see
   :ref:`custom_shader_pointer_map`. Also fix animations becoming jerky after
-  kitty has been running for a few hours, shaders specified by path not being
+  datty has been running for a few hours, shaders specified by path not being
   found and various pipeline bugs (:iss:`10587`, :iss:`10667`, :iss:`10693`,
   :iss:`10595`, :iss:`10694`, :pull:`10639`)
 
@@ -275,13 +275,13 @@ Detailed list of changes
 
 - :ref:`Automatic color themes <auto_color_scheme>`: When the system switches
   between light and dark, keep colors set by programs running in a window, by
-  the :opt:`ssh kitten <kitten-ssh.color_scheme>`, by :option:`launch --color`
+  the :opt:`ssh daddy <daddy-ssh.color_scheme>`, by :option:`launch --color`
   or :option:`launch --copy-colors`, and use the current theme colors when a
   program restores its saved colors. :option:`launch --color` colors now also
-  survive config reloads. The ssh kitten can use different color schemes for
+  survive config reloads. The ssh daddy can use different color schemes for
   remote hosts in dark and light mode via the new
-  :opt:`kitten-ssh.color_scheme_dark`, :opt:`kitten-ssh.color_scheme_light` and
-  :opt:`kitten-ssh.color_scheme_no_preference` options (:iss:`10724`)
+  :opt:`daddy-ssh.color_scheme_dark`, :opt:`daddy-ssh.color_scheme_light` and
+  :opt:`daddy-ssh.color_scheme_no_preference` options (:iss:`10724`)
 
 - Layouts: Align the borders of neighboring windows and keep the gaps between
   them uniform, and add a new option :opt:`collapse_window_margins` to have
@@ -298,7 +298,7 @@ Detailed list of changes
   or too thick when zoomed out. At the configured :opt:`font_size` nothing
   changes (:iss:`10362`)
 
-- :ref:`mouse_map <conf-kitty-mouse.mousemap>` can now map the scroll wheel, via
+- :ref:`mouse_map <conf-datty-mouse.mousemap>` can now map the scroll wheel, via
   the :code:`wheel_up`, :code:`wheel_down`, :code:`wheel_left` and
   :code:`wheel_right` buttons, for example, to change the font size with
   :kbd:`Ctrl+scroll`
@@ -311,10 +311,10 @@ Detailed list of changes
   modifiers match a configured mouse action for opening the link with a single
   click, updating immediately when modifiers are pressed or released
 
-- quick-access-terminal kitten: New
-  :option:`kitty +kitten quick_access_terminal --if-running`,
-  :option:`kitty +kitten quick_access_terminal --listen-on` and
-  :option:`kitty +kitten quick_access_terminal --hold` options to run programs
+- quick-access-terminal daddy: New
+  :option:`datty +daddy quick_access_terminal --if-running`,
+  :option:`datty +daddy quick_access_terminal --listen-on` and
+  :option:`datty +daddy quick_access_terminal --hold` options to run programs
   in an already running quick access terminal, use a fixed remote control
   socket and keep the terminal open after the program exits (:iss:`10603`)
 
@@ -324,7 +324,7 @@ Detailed list of changes
   size and ``os_window_title`` in sessions sometimes being ignored
   (:iss:`10675`)
 
-- Command palette: Show action and kitten aliases at the top when the search
+- Command palette: Show action and daddy aliases at the top when the search
   query is empty, so they can be used to pin frequently used actions (:iss:`10711`)
 
 - Vertical tab bars: When :opt:`tab_title_max_length` is set, size the tab bar
@@ -332,7 +332,7 @@ Detailed list of changes
   narrower tab bars (:iss:`10680`)
 
 - Linux/BSD: Detect MIME types for :doc:`open actions <open_actions>` and
-  kittens using the shared-mime-info cache, matching the rest of the desktop,
+  daddies using the shared-mime-info cache, matching the rest of the desktop,
   including files without an extension, such as :file:`Makefile`, and MIME
   type aliases (:iss:`3056`)
 
@@ -341,24 +341,24 @@ Detailed list of changes
   macOS, commit in-progress IME or dictation text instead of discarding it when
   the OS window loses focus (:pull:`10642`, :pull:`10644`)
 
-- Shell integration: Make the kitty terminfo files available in commands run
+- Shell integration: Make the datty terminfo files available in commands run
   via :program:`run0`, similar to :program:`sudo` (:pull:`10692`)
 
-- :option:`kitty --config`\=NONE now also skips the automatic color theme
+- :option:`datty --config`\=NONE now also skips the automatic color theme
   files, :file:`open-actions.conf`, :file:`launch-actions.conf`,
   :file:`mime.types`, :file:`paste-actions.py`, :file:`notifications.py` and
-  the custom window icon in the kitty config directory
+  the custom window icon in the datty config directory
 
-- Processes kitty inserts to wrap the program it runs, such as
+- Processes datty inserts to wrap the program it runs, such as
   :file:`/usr/bin/login` on macOS or the wrapper for :option:`launch --hold`,
   are now skipped when reporting the pid, working directory, command line and
-  environment of a window in :ref:`kitten @ ls <at-ls>` and when matching
+  environment of a window in :ref:`daddy @ ls <at-ls>` and when matching
   windows. Also fix :option:`launch --cwd`:code:`=root` using the working
   directory of the foreground process instead of the root process while the
   shell is running a command
 
 - Nightly builds now show the date and hash of the commit they were built from
-  in the output of :option:`kitty --version` and :code:`kitten --version`
+  in the output of :option:`datty --version` and :code:`daddy --version`
 
 - Do not render between render frames to reduce flicker from programs that draw
   with many small partial updates (:iss:`10749`)
@@ -377,7 +377,7 @@ Detailed list of changes
   ``run`` and ``set-enabled-layouts``, ignoring options, reporting false
   success or silently misinterpreting invalid input, particularly when used in
   :ac:`remote_control` mappings. ``set-colors`` now parses color files the same
-  way as :file:`kitty.conf`. Also fix a single unresponsive peer blocking all
+  way as :file:`datty.conf`. Also fix a single unresponsive peer blocking all
   remote control communication and a crash when using damaged images with
   ``set-window-logo`` or ``set-background-image`` (:iss:`10672`,
   :pull:`10632`, :pull:`10688`, :pull:`10690`, :pull:`10715`)
@@ -413,36 +413,36 @@ Detailed list of changes
   from an unrelated font, the cursor trail not always being shown when focus
   moves to a different window, :opt:`watcher` entries not being removed on
   config reload and changing text marker colors at runtime, for example with
-  :code:`kitten @ set-colors` or automatic theme switching, applying the colors
+  :code:`daddy @ set-colors` or automatic theme switching, applying the colors
   of each marker to the next one (:iss:`10591`)
 
-- ssh kitten: Preserve the permissions of copied directories, fix copying
+- ssh daddy: Preserve the permissions of copied directories, fix copying
   files outside HOME whose paths share its prefix and files in HOME being
   copied to an absolute path with :code:`--symlink-strategy=resolve` when HOME
   is a symlink, fix hanging when re-using a shared connection that has
   silently died and fix colors 16-255 being set to white with themes that do
   not define them (:iss:`10691`, :iss:`10661`, :pull:`10727`, :pull:`10737`)
 
-- Desktop UI kitten: Fix D-Bus activation when kitten is installed in a path
+- Desktop UI daddy: Fix D-Bus activation when daddy is installed in a path
   containing spaces or quoting characters (:pull:`10784`)
 
 - Automatic color themes: Stop using cached colors and background images after
   the corresponding theme file has been deleted and apply theme files created
-  after kitty was started when reloading the config (:pull:`10786`)
+  after datty was started when reloading the config (:pull:`10786`)
 
-- Themes kitten: Fix overwriting the Unicode input kitten's recent entries
+- Themes daddy: Fix overwriting the Unicode input daddy's recent entries
   and input mode, and vice versa, by using separate caches (:pull:`10780`)
 
-- Remote file kitten: Preserve the local edited copy and show its recovery path
+- Remote file daddy: Preserve the local edited copy and show its recovery path
   when the final upload fails, including when the SSH connection has died
   (:pull:`10789`)
 
-- Transfer kitten: When receiving files, replace existing symbolic and hard
+- Transfer daddy: When receiving files, replace existing symbolic and hard
   links at the destination instead of overwriting the files they point to, and
   write to a temporary file that is renamed into place, so an interrupted
   transfer no longer leaves a truncated file behind (:pull:`10713`)
 
-- Drag and drop kitten: Reject copying or moving a directory into itself or
+- Drag and drop daddy: Reject copying or moving a directory into itself or
   one of its subdirectories, and moving a directory into a symlink that points
   inside it, which would delete the moved files. When moving, do not delete
   sources that were replaced during the drop, for example by files merged
@@ -456,38 +456,38 @@ Detailed list of changes
 - Drag and drop protocol: Fix base64 data with padding at the end being
   rejected, as allowed by the protocol (:iss:`10777`)
 
-- Clipboard kitten: Fix only the last of several outputs that use the same
+- Clipboard daddy: Fix only the last of several outputs that use the same
   MIME type being saved, for example with
-  :code:`kitten clipboard -g picture.png picture.jpg`, the data is now
+  :code:`daddy clipboard -g picture.png picture.jpg`, the data is now
   downloaded and decoded only once for all such outputs. Reject duplicate
   output files, including ones that differ only in case on case-insensitive
   filesystems or whose paths contain a symlink followed by ``..``. Fix a race
   when replacing an existing output file, losing the original file if writing
-  it fails and :code:`kitten clipboard -g -m . formats.txt` silently doing
+  it fails and :code:`daddy clipboard -g -m . formats.txt` silently doing
   nothing. Also preserve the permissions of and follow symlinks at existing
   output files (:pull:`10738`, :pull:`10744`)
 
-- Kittens: When saving files, such as themes, config files or clipboard
+- Daddies: When saving files, such as themes, config files or clipboard
   output, write to the target of a symlink even when the target does not yet
   exist, instead of replacing the symlink with a regular file (:pull:`10740`)
 
-- Kittens: Fix laggy mouse selection and failures comparing remote
-  directories in the diff kitten, Unicode quotes not being removed from around
-  paths and URLs in the hints kitten, the order of styles with negative or
-  closely spaced fractional axis values in the choose-fonts kitten, various
-  bugs in the choose-files, quick-access-terminal and other kittens and reject
+- Daddies: Fix laggy mouse selection and failures comparing remote
+  directories in the diff daddy, Unicode quotes not being removed from around
+  paths and URLs in the hints daddy, the order of styles with negative or
+  closely spaced fractional axis values in the choose-fonts daddy, various
+  bugs in the choose-files, quick-access-terminal and other daddies and reject
   command-line options missing their required value (:iss:`10634`,
   :pull:`10641`, :pull:`10676`, :pull:`10687`, :pull:`10730`)
 
-- Wayland: Fix a crash on compositors without cursor-shape support, kitty
+- Wayland: Fix a crash on compositors without cursor-shape support, datty
   being disconnected by GNOME when showing a long covered window, the app_id
-  being lost when hiding and showing windows, `kitty --os-window-tag`
+  being lost when hiding and showing windows, `datty --os-window-tag`
   not setting the window tag and various drag and drop bugs (:iss:`10597`,
   :iss:`10602`, :iss:`10604`, :iss:`10759`, :pull:`10632`)
 
 - Linux: Fix momentum scrolling up or left, X11 wheel events from sources
   without smooth scrolling being ignored and various desktop notification
-  bugs. Notifications now identify kitty's desktop file, so desktops such as
+  bugs. Notifications now identify datty's desktop file, so desktops such as
   KDE can group them (:iss:`10625`, :iss:`10695`, :pull:`10610`,
   :pull:`10721`)
 
@@ -495,7 +495,7 @@ Detailed list of changes
   spaces, a duplicate path when dropping items from Apple Mail, emoji from a
   monochrome emoji font such as Noto Emoji not using the foreground color, a
   memory leak, reloading config causing Apple injected shortcuts to not work
-  and kitty freezing when opening a new window while another entry
+  and datty freezing when opening a new window while another entry
   in :file:`/dev` is stuck (:iss:`10708`, :iss:`10581`, :iss:`10628`,
   :iss:`10673`, :iss:`10741`, :iss:`10757`, :iss:`10793`)
 
@@ -532,7 +532,7 @@ Detailed list of changes
 
 - Preserve transparent background colors when applying unrelated launch color overrides
 
-- ssh kitten: Preserve SSH option values following a spaced :code:`--kitten` option
+- ssh daddy: Preserve SSH option values following a spaced :code:`--daddy` option
 
 - Fix a memory leak when loading a corrupt PNG image that has an embedded ICC
   color profile
@@ -554,10 +554,10 @@ Detailed list of changes
 - X11: Fix copy and paste targeting the wrong OS window when the keyboard focus
   is set to PointerRoot or None
 
-- diff kitten: Fix freezes and very high memory use when a very long line, such
+- diff daddy: Fix freezes and very high memory use when a very long line, such
   as in a minified file, is changed
 
-- themes and choose fonts kittens: Fix search freezing for many seconds when
+- themes and choose fonts daddies: Fix search freezing for many seconds when
   typing a long query, such as the full name of a theme
 
 - macOS: Fix a custom dock icon reverting to the stock icon after a progress
@@ -570,9 +570,9 @@ Detailed list of changes
 - macOS: Fix regression in 0.49 that caused rounded rect shader to not work on
   ancient macs with AMD GPUs (:iss:`10549`)
 
-- diff kitten: Fix search not finding matches at the end of a line
+- diff daddy: Fix search not finding matches at the end of a line
 
-- hints kitten: Fix delays of many seconds when selecting paths or line
+- hints daddy: Fix delays of many seconds when selecting paths or line
   numbers on a screen with long lines that contain no spaces
 
 - File transfer: Fix a security issue where a malicious program on the remote
@@ -616,7 +616,7 @@ Detailed list of changes
   the graphics protocol (:iss:`10517`)
 
 - Fix a packaging bug that could cause pipeline files to be omitted from some
-  kitty builds
+  datty builds
 
 - :ac:`save_as_session`: Show an error instead of saving next to the directory
   when the specified path is an existing directory (:iss:`10520`)
@@ -640,9 +640,9 @@ Detailed list of changes
 
 - The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show the scrollbar when the mouse moves over the scrollbar region (:pull:`10345`)
 
-- A new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
+- A new :code:`daddy @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
 
-- A new :code:`kitten @ set-os-window-title` remote control command to set the title for an already-open OS Window and optionally restore automatic title tracking when no title is specified
+- A new :code:`daddy @ set-os-window-title` remote control command to set the title for an already-open OS Window and optionally restore automatic title tracking when no title is specified
 
 - Wayland: Fix the first movement of the scroll wheel after reversing direction
   often not scrolling, with high resolution wheels such as the Logitech MX
@@ -662,19 +662,19 @@ Detailed list of changes
 
 - Sessions: Also save/restore layouts other than the currently active layout (:pull:`10324`)
 
-- Wayland: Fix clipboard sharing between kitty instances in containers with isolated PID namespaces and stale paste data when used with clipboard managers that restore application private MIME types (:iss:`10352`, :iss:`10376`)
+- Wayland: Fix clipboard sharing between datty instances in containers with isolated PID namespaces and stale paste data when used with clipboard managers that restore application private MIME types (:iss:`10352`, :iss:`10376`)
 
 - When expanding a window in alternate screen mode use the most common
   background color as the color for the newly created lines leading to less
   visual flicker until the application can redraw itself (:iss:`10365`)
 
-- macOS: Allow kitty OS Windows to participate in Split View tiling (:pull:`103701`)
+- macOS: Allow datty OS Windows to participate in Split View tiling (:pull:`103701`)
 
 - Allow dropping a tab containing a single window into another tab's layout,
   using the existing window drop preview and preserving running programs.
   See :doc:`overview` for details.
 
-- Port remaining built in kittens from Python to Go (:pull:`10371`)
+- Port remaining built in daddies from Python to Go (:pull:`10371`)
 
 - Splits layout: Fix dragging a border resizing the wrong split in nested layouts.
 
@@ -694,7 +694,7 @@ Detailed list of changes
   :opt:`dragging borders <window_drag_tolerance>` no longer start selections
   (:iss:`10393`)
 
-- dnd kitten: Add an option to use file copies instead of hard links for copy drops (:pull:`10412`)
+- dnd daddy: Add an option to use file copies instead of hard links for copy drops (:pull:`10412`)
 
 - Fix a malformed CSI escape sequence such as ``\e[?:`` corrupting the parser state so that subsequent SGR color codes are ignored (:iss:`10434`)
 
@@ -734,11 +734,11 @@ Detailed list of changes
 
 - Text sizing protocol: Fix a buffer overflow when a natural width text sizing escape code contains a grapheme cluster longer than four codepoints (:cve:`2026-80431`)
 
-- ssh kitten askpass: Verify owner and permissions of SHM memory used for askpass (:cve:`2026-95835`)
+- ssh daddy askpass: Verify owner and permissions of SHM memory used for askpass (:cve:`2026-95835`)
 
 - Graphics protocol: Fix a crash when transmitting image data via a file or
   shared memory object (``t=f``, ``t=t`` or ``t=s``) and the client truncates
-  it while kitty is reading from it.
+  it while datty is reading from it.
 
 - Graphics protocol: Fix reading image data from a file or shared memory
   object at an offset (the ``O`` key) failing unless the offset happened to be
@@ -748,9 +748,9 @@ Detailed list of changes
 
 - Graphics protocol: Make fileopen failure responses generic to avoid leaking any information about failed files
 
-- edit-in-kitty: harden the code used to parse messages from clients
+- edit-in-datty: harden the code used to parse messages from clients
 
-- Linux: :option:`kitty --single-instance`: Only accept commands from processes running as the same user
+- Linux: :option:`datty --single-instance`: Only accept commands from processes running as the same user
 
 - Clipboard protocol: Report an ``EFBIG`` error to programs that try to write
   more data to the clipboard than allowed by :opt:`clipboard_max_size`, instead
@@ -763,7 +763,7 @@ Detailed list of changes
 
 - macOS: Fix dropping files that are provided as file promises pasting paths to
   files that no longer exist. The dropped files are now kept alive for
-  ten minutes and removed when kitty quits (:iss:`10430`)
+  ten minutes and removed when datty quits (:iss:`10430`)
 
 - macOS: Fix all signal handling being permanently disabled after the first
   window that used the graphics protocol is closed. This caused exited window
@@ -791,9 +791,9 @@ Detailed list of changes
 
 - Wayland: Fix regression in previous release that broke drag and drop on Plasma (:iss:`10284`)
 
-- diff kitten: Fix a rare crash when showing a large diff due to incorrect locking when highlighting
+- diff daddy: Fix a rare crash when showing a large diff due to incorrect locking when highlighting
 
-- Allow the private DCS kitty-echo escape code to only echo numbers (:cve:`2026-72913`)
+- Allow the private DCS datty-echo escape code to only echo numbers (:cve:`2026-72913`)
 
 - Linux: Fix an approx 1MB memory leak when reloading the config, introduced in version 0.40.0 (:iss:`10290`)
 
@@ -815,7 +815,7 @@ Detailed list of changes
 
 - Wayland: fix using remote control to resize OS windows on some tiling compositors leading to broken rendering
 
-- macOS: fix ``edge=none`` panel height shrinking when ``margin_top`` is non-zero in the panel/quick-access-terminal kittens (:iss:`10278`)
+- macOS: fix ``edge=none`` panel height shrinking when ``margin_top`` is non-zero in the panel/quick-access-terminal daddies (:iss:`10278`)
 
 
 0.48.0 [2026-07-18]
@@ -825,9 +825,9 @@ Detailed list of changes
 
 - Graphics protocol: Add a new :ref:`transient usage hint <image_usage_hints>` that clients can send to terminals to indicate an image is meant for only short duration use (:pull:`10092`)
 
-- On first press in an unfocused OS Window/kitty window give it focus and pass the mouse event through to the clicked element. This is a behavior change but aligns with platform defaults on macOS. Linux has no platform defaults here as far as I can tell, so it gets to follow along. (:pull:`10233`)
+- On first press in an unfocused OS Window/datty window give it focus and pass the mouse event through to the clicked element. This is a behavior change but aligns with platform defaults on macOS. Linux has no platform defaults here as far as I can tell, so it gets to follow along. (:pull:`10233`)
 
-- kitten @ get-text: Add support for :code:`alternate` and :code:`alternate_scrollback` extents to fetch text from the alternate screen buffer (:iss:`10165`)
+- daddy @ get-text: Add support for :code:`alternate` and :code:`alternate_scrollback` extents to fetch text from the alternate screen buffer (:iss:`10165`)
 
 - Wayland: Fix first OS window being a few cells too small when ``initial_window_width/initial_window_height`` are set in cells and a fractional display scale is in use (:iss:`10146`)
 
@@ -837,29 +837,29 @@ Detailed list of changes
 - macOS: New option :opt:`macos_use_physical_screen_frame` to allow panel OS
   Windows to cover the macOS global dock bar (:pull:`10116`)
 
-- kitty binary builds are now built on Ubuntu 22 upgraded from Ubuntu 18 for improved performance from better compilers
+- datty binary builds are now built on Ubuntu 22 upgraded from Ubuntu 18 for improved performance from better compilers
 
 - macOS: Fix incorrect horizontal alignment when using text sizing protocol (:iss:`10179`)
 
-- ``edit-in-kitty``: Return exit code from underlying editor process on exit (:iss:`10198`)
+- ``edit-in-datty``: Return exit code from underlying editor process on exit (:iss:`10198`)
 
 - Make erasing last command robust against commands with no output and commands in the scrollback (:pull:`10201`)
 
 - Fix superfluous margin visible to the left and right of the tab bar when :opt:`background_opacity` is less than one and the window width is not a multiple of the cell width (:iss:`10212`)
 
-- hints kitten: Add a new flag :option:`kitty +kitten hints --prefix-free` to generate hints without a shared prefix (:pull:`10210`)
+- hints daddy: Add a new flag :option:`datty +daddy hints --prefix-free` to generate hints without a shared prefix (:pull:`10210`)
 
 - Wayland GNOME: Fix dragging a window title bar to the "+" button failing to create a new tab when there is only a single tab (:iss:`10222`)
 
-- choose-files kitten: Add a ``--mode=all`` to select either an existing file or directory (:iss:`10208`)
+- choose-files daddy: Add a ``--mode=all`` to select either an existing file or directory (:iss:`10208`)
 
 - Add support for editing files in sublime text and zed at specified line number (:pull:`10224`)
 
-- choose-file kitten: Use a full readline editor for the search box. Also allow remapping the up/down/home/end keys to use for editing instead of navigating the file list (:pull:`10225`)
+- choose-file daddy: Use a full readline editor for the search box. Also allow remapping the up/down/home/end keys to use for editing instead of navigating the file list (:pull:`10225`)
 
-- Fix :ac:`remote_control_script` not working in a kitty instance run from inside another kitty instance
+- Fix :ac:`remote_control_script` not working in a datty instance run from inside another datty instance
 
-- quick-access-terminal kitten: Allow configuring the layer on which to display the terminal (:pull:`10242`)
+- quick-access-terminal daddy: Allow configuring the layer on which to display the terminal (:pull:`10242`)
 
 - :opt:`cursor_trail_start_threshold` now optionally accepts two values to set x (horizontal) and y (vertical) thresholds independently (:iss:`10246`)
 
@@ -893,9 +893,9 @@ Detailed list of changes
 
 - Fix :opt:`focus_follows_mouse` switching the active window when returning to a desktop/space, even though the mouse did not move. Now the window under a stationary cursor is left alone, while moving the mouse across windows still switches focus as before.
 
-- Sanitise responses to color control escape codes to avoid command injection for shells that do not use the kitty keyboard protocol (:cve:`2026-54057`)
+- Sanitise responses to color control escape codes to avoid command injection for shells that do not use the datty keyboard protocol (:cve:`2026-54057`)
 
-- choose fonts kitten: Fix a rare timing based race causing kitten to crash at startup (:pull:`10128`)
+- choose fonts daddy: Fix a rare timing based race causing daddy to crash at startup (:pull:`10128`)
 
 - Wayland: Fix mouse input getting broken when starting a tab drag and releasing the mouse button before the drag is actually registered (:pull:`10136`)
 
@@ -907,7 +907,7 @@ Detailed list of changes
 
 - macOS: Fix regression in 0.47.0 that broke passing :kbd:`Cmd+C` on to terminal applications when no text is selected (:iss:`10087`)
 
-- ``kitten @ set-background-image``: Fix ``--layout=configured`` changing layout to centered instead (:iss:`10089`)
+- ``daddy @ set-background-image``: Fix ``--layout=configured`` changing layout to centered instead (:iss:`10089`)
 
 - Splits layout: add an ``equalize`` action and an ``equalize_on_window_close`` option to redistribute split space proportionally (:iss:`3489`)
 
@@ -917,7 +917,7 @@ Detailed list of changes
 
 - File transfer protocol: use O_NOFOLLOW when opening regular files (:cve:`2026-54055`)
 
-- dnd kitten: Protect against drops from malicious sources (:cve:`2026-54056`)
+- dnd daddy: Protect against drops from malicious sources (:cve:`2026-54056`)
 
 
 0.47.1 [2026-05-28]
@@ -929,7 +929,7 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke automatic color scheme changes when using a background image (:iss:`10058`)
 
-- Fix :opt:`auto_reload_config` not working when :file:`kitty.conf` is a symlink (:iss:`10066`)
+- Fix :opt:`auto_reload_config` not working when :file:`datty.conf` is a symlink (:iss:`10066`)
 
 - Fix a regression in the previous release that broke dragging of URLs to the shell prompt from programs that dont support MOVE drag operations
 
@@ -942,7 +942,7 @@ Detailed list of changes
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new :doc:`Drag and drop kitten </kittens/dnd>` to allow drag and drop of files from your shell to any GUI program even across SSH (:iss:`9984`)
+- A new :doc:`Drag and drop daddy </daddies/dnd>` to allow drag and drop of files from your shell to any GUI program even across SSH (:iss:`9984`)
 
 - A new option :opt:`palette_generate` to automatically generate the 256 color palette from the first 16 colors (:pull:`9426`)
 
@@ -958,7 +958,7 @@ Detailed list of changes
 
 - Allow specifying multiple background images for :opt:`background_image` that are stored on GPU to allow fast image switching (:pull:`9836`)
 
-- :doc:`Remote control <remote-control>`: Expose :code:`session_name` and :code:`last_focused_at` in the output of ``kitten @ ls`` for each window (:iss:`9732`, :iss:`9799`)
+- :doc:`Remote control <remote-control>`: Expose :code:`session_name` and :code:`last_focused_at` in the output of ``daddy @ ls`` for each window (:iss:`9732`, :iss:`9799`)
 
 - Allow optionally dragging URLs with the mouse, see :sc:`start_simple_selection` (:pull:`9804`)
 
@@ -980,7 +980,7 @@ Detailed list of changes
 
 - Command palette: Improve searching to use word level matching (:pull:`9727`)
 
-- hints kitten: A new option to set the background color of matched text (:pull:`9745`)
+- hints daddy: A new option to set the background color of matched text (:pull:`9745`)
 
 - The :opt:`show_hyperlink_targets` option now allows specifying a keyboard modifier so that target URLs are only shown on hover when the modifier is pressed (:pull:`9741`)
 
@@ -988,7 +988,7 @@ Detailed list of changes
 
 - Fix scrollbar hover/interaction not working when the scrollbar is drawn in the window margin area (:iss:`9756`)
 
-- Fix completion for ``edit-in-kitty`` not including some common text file types
+- Fix completion for ``edit-in-datty`` not including some common text file types
 
 - Allow holding the :kbd:`Alt` key and triple-clicking to select from the first cell even if it is empty (:pull:`9758`)
 
@@ -1002,13 +1002,13 @@ Detailed list of changes
 
 - Fix triple-click line selection and double-click word selection not extending wrapped lines beyond the edges of the viewport
 
-- Password input in kittens: hide the cursor and display a blinking 🔒 at the end of typed characters to make it visually clear the user is entering a password
+- Password input in daddies: hide the cursor and display a blinking 🔒 at the end of typed characters to make it visually clear the user is entering a password
 
-- edit-in-kitty: Ignore environment variables as some editors execute code present in env vars. Similarly ignore conf file specifications for colors (:cve:`2026-42851`)
+- edit-in-datty: Ignore environment variables as some editors execute code present in env vars. Similarly ignore conf file specifications for colors (:cve:`2026-42851`)
 
 - Command palette :sc:`command_palette`: nicer grouping of aliases and combined actions (:pull:`9819`)
 
-- hints kitten: Fix trailing punctuation not being removed from URLs (:pull:`9828`)
+- hints daddy: Fix trailing punctuation not being removed from URLs (:pull:`9828`)
 
 - Fix copy/paste dropping spaces at soft-wrap boundaries when :opt:`strip_trailing_spaces` is set (:iss:`9834`)
 
@@ -1018,7 +1018,7 @@ Detailed list of changes
 - A new option :opt:`macos_fullscreen_ignore_safe_area_insets` to control
   whether to ignore the notch space when using :opt:`macos_traditional_fullscreen` (:pull:`9841`)
 
-- Fix some responses from terminal sometimes leaking into shell after kitten exit (:iss:`9839`)
+- Fix some responses from terminal sometimes leaking into shell after daddy exit (:iss:`9839`)
 
 - Render block elements from the Unicode Symbols for Legacy Computing Supplement block (U+1CC00–U+1CEBF): separated block quadrants, separated block sextants, one sixteenth blocks, and one quarter block partial fills (:disc:`9849`)
 
@@ -1026,7 +1026,7 @@ Detailed list of changes
 
 - macOS: Fix occasional phantom cursors being drawn on screen (:iss:`9725`)
 
-- diff kitten: Keep the current (topmost) filename visible when scrolling, controlled by a new option :opt:`kitten-diff.sticky_header` (:pull:`9891`)
+- diff daddy: Keep the current (topmost) filename visible when scrolling, controlled by a new option :opt:`daddy-diff.sticky_header` (:pull:`9891`)
 
 - Add an option to :opt:`focus_follows_mouse` to only switch focus on drops rather than movement (:pull:`9896`)
 
@@ -1034,13 +1034,13 @@ Detailed list of changes
 
 - macOS: Fix args passed via ``open --args`` being ignored when :file:`macos-launch-services-cmdline` is present (:iss:`9910`)
 
-- :ac:`save_as_session`: when the filename input by the user has no extension, automatically add the ``.kitty-session`` extension (:pull:`9919`)
+- :ac:`save_as_session`: when the filename input by the user has no extension, automatically add the ``.datty-session`` extension (:pull:`9919`)
 
 - Linux: Workaround bug in Nvidia drivers that caused color corruption when resuming after suspend (:iss:`9844`)
 
-- choose-files kitten: Output a trailing newline when writing to a tty in text format (:iss:`9982`)
+- choose-files daddy: Output a trailing newline when writing to a tty in text format (:iss:`9982`)
 
-- ssh kitten: Sanitize user controlled data in error messages that might leak to shell (:cve:`2026-42850`)
+- ssh daddy: Sanitize user controlled data in error messages that might leak to shell (:cve:`2026-42850`)
 
 - Linux: Respect the fontconfig matrix setting commonly used for fake slant with fonts that do not have italic variants (:pull:`9990`)
 
@@ -1058,11 +1058,11 @@ Detailed list of changes
 
 - Prevent stacking of multiple rename tab windows (:iss:`9691`)
 
-- choose files kitten: Fix a regression that caused incorrect highlight of matched letters
+- choose files daddy: Fix a regression that caused incorrect highlight of matched letters
 
 - macOS: When using :opt:`macos_traditional_fullscreen` do not render content under the notch (:pull:`9678`)
 
-- X11: Fix massive scroll when switching focus between kitty and another application (:iss:`9703`)
+- X11: Fix massive scroll when switching focus between datty and another application (:iss:`9703`)
 
 - Markers: Fix marking not working for multicell characters (:iss:`9705`)
 
@@ -1072,15 +1072,15 @@ Detailed list of changes
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- diff kitten: Highlight moved lines using a different background color (:opt:`kitten-diff.mark_moved_lines`) (:iss:`3241`)
+- diff daddy: Highlight moved lines using a different background color (:opt:`daddy-diff.mark_moved_lines`) (:iss:`3241`)
 
-- Fix a regression that broke ``kitten update-self`` (:iss:`9642`)
+- Fix a regression that broke ``daddy update-self`` (:iss:`9642`)
 
 - macOS: Clear bell alert badge on dock icon on mouse/keyboard activity (:iss:`9640`)
 
 - Fix a regression that broke accept anyway shortcut in the paste confirmation dialog (:pull:`9640`)
 
-- Fix kitty hanging on startup on Intel macs (:iss:`9643`)
+- Fix datty hanging on startup on Intel macs (:iss:`9643`)
 
 - X11: Fix a regression that caused some high res scroll devices to be treated as line based scroll devices (:iss:`9649`)
 
@@ -1097,35 +1097,35 @@ Detailed list of changes
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Pixel scrolling for the kitty scrollback buffer controlled via :opt:`pixel_scroll` (:pull:`9330`)
+- Pixel scrolling for the datty scrollback buffer controlled via :opt:`pixel_scroll` (:pull:`9330`)
 
-- Linux: momentum scrolling in the kitty scrollback buffer for touchpads and touchscreens, see :opt:`momentum_scroll`
+- Linux: momentum scrolling in the datty scrollback buffer for touchpads and touchscreens, see :opt:`momentum_scroll`
 
 - X11: support high resolution scroll events from touchpads, etc
 
-- macOS: Implement support for Apple dictation to input text in kitty (:iss:`3732`)
+- macOS: Implement support for Apple dictation to input text in datty (:iss:`3732`)
 
 - Allow dragging tabs (opt:`drag_threshold`) in the tab bar to re-order, move to another OS Window or
   detach (:pull:`9296`)
 
-- Allow dragging window borders to resize kitty windows in all the different
+- Allow dragging window borders to resize datty windows in all the different
   layouts, controlled by :opt:`window_drag_tolerance` (:pull:`9447`)
 
-- Allow showing :opt:`configurable window titles <window_title_bar>` for individual kitty
+- Allow showing :opt:`configurable window titles <window_title_bar>` for individual datty
   windows via a window title bar (:pull:`9450`)
 
 - A command palette (:sc:`command_palette`) to browse and trigger all mapped and unmapped actions
   (:pull:`9545`)
 
-- choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
+- choose-files daddy: Fix JXL image preview not working (:iss:`9323`)
 
 - Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some
   circumstances (:iss:`9328`)
 
-- Add support for specifying colors in :file:`kitty.conf` in OKLCH and LAB
+- Add support for specifying colors in :file:`datty.conf` in OKLCH and LAB
   color spaces (:pull:`9325`)
 
-- Fix a regression that broke using line numbers with the edit-in-kitty command
+- Fix a regression that broke using line numbers with the edit-in-datty command
   (:pull:`9346`)
 
 - Key maps: Allow specifying a timeout for multi key mappings and keyboard modes (:pull:`9551`)
@@ -1150,27 +1150,27 @@ Detailed list of changes
   engine (:iss:`9376`)
 
 - Wayland: Remove usage of the Wayland color management protocol to inform
-  compositors of the color space used by kitty (:iss:`9341`)
+  compositors of the color space used by datty (:iss:`9341`)
 
 - Linux: Fix a regression in 0.40 that caused horizontal alignment for emoji to
   be incorrect in some cases (:iss:`9395`)
 
-- icat kitten: When catting multiple images display the images in input order (:iss:`9413`)
+- icat daddy: When catting multiple images display the images in input order (:iss:`9413`)
 
-- kitten @: Fix relative paths for --password-file being resolved relative to
-  CWD instead of the kitty config directory
+- daddy @: Fix relative paths for --password-file being resolved relative to
+  CWD instead of the datty config directory
 
-- kitten choose-files: Add a new binding of :kbd:`Alt+Enter` to modify the name
+- daddy choose-files: Add a new binding of :kbd:`Alt+Enter` to modify the name
   of an existing file when choosing a save file name (:iss:`9387`)
 
-- kitten choose-files: Fix TAB completion in the choose save file name prompt
+- daddy choose-files: Fix TAB completion in the choose save file name prompt
   not working with respect to the current working directory (:iss:`9387`)
 
 - Fix line-at-once selection not extending wrapped lines into scrollback (:iss:`9437`)
 
-- ssh kitten: Restore keyboard mode even if the ssh connection drops
+- ssh daddy: Restore keyboard mode even if the ssh connection drops
 
-- edit-in-kitty: Handle connection drop more gracefully (:pull:`9480`)
+- edit-in-datty: Handle connection drop more gracefully (:pull:`9480`)
 
 - macOS: Fix changing window title with global menubar menu open causes menu to
   get stuck (:pull:`9490`)
@@ -1188,7 +1188,7 @@ Detailed list of changes
 - Wayland: Add support for the background blur extension (:iss:`9534`)
 
 - macOS: A new option :opt:`macos_dock_badge_on_bell` to show a badge on the
-  kitty dock icon when a bell occurs (:pull:`9529`)
+  datty dock icon when a bell occurs (:pull:`9529`)
 
 - macOS: Workaround for yet another Tahoe bug causing rendering to fail
   (:pull:`9520`)
@@ -1213,7 +1213,7 @@ Detailed list of changes
 
 - Allow double clicking on a tab to rename it (:pull:`9609`)
 
-- :ac:`remote_control_script` resolve relative paths with respect to kitty
+- :ac:`remote_control_script` resolve relative paths with respect to datty
   config directory (:iss:`9625`)
 
 - Splits layout: Add new mappable actions to maximize a window in the splits
@@ -1223,20 +1223,20 @@ Detailed list of changes
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new :doc:`kitten to select files at the speed of thought </kittens/choose-files>` with a keyboard first interface and support for content previews of text files with syntax highlighting, images, videos, e-books and more (:iss:`9263`)
+- A new :doc:`daddy to select files at the speed of thought </daddies/choose-files>` with a keyboard first interface and support for content previews of text files with syntax highlighting, images, videos, e-books and more (:iss:`9263`)
 
 - Add support for the `paste events protocol <https://rockorager.dev/misc/bracketed-paste-mime/>`__ (:iss:`9183`)
 
-- icat kitten: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP color space metadata to the builtin engine
+- icat daddy: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP color space metadata to the builtin engine
 
-- icat kitten: Add a new flag :option:`kitty +kitten icat --fit` to control how images are scaled to fit the screen (:iss:`9201`)
+- icat daddy: Add a new flag :option:`datty +daddy icat --fit` to control how images are scaled to fit the screen (:iss:`9201`)
 
-- icat kitten: The :option:`kitty +kitten icat --scale-up` flag now takes effect when not using :option:`kitty +kitten icat --place` as well
+- icat daddy: The :option:`datty +daddy icat --scale-up` flag now takes effect when not using :option:`datty +daddy icat --place` as well
 
 - Add a mappable action :ac:`copy_last_command_output` to copy the output of the last
   command to the clipboard (:pull:`9185`)
 
-- ssh kitten: Fix a bug where automatic login was not working (:iss:`9187`)
+- ssh daddy: Fix a bug where automatic login was not working (:iss:`9187`)
 
 - Graphics: Fix overwrite composition mode for animation frames not being honored
 
@@ -1251,10 +1251,10 @@ Detailed list of changes
 
 - Have reloading config also reload the custom tab bar python modules (:disc:`9221`)
 
-- kitten @ ls: Also output the neighbors for every window (:disc:`9225`)
+- daddy @ ls: Also output the neighbors for every window (:disc:`9225`)
 
-- Have the :option:`kitty --start-as` flag be respected when used with
-  :option:`kitty --single-instance` (:iss:`9228`)
+- Have the :option:`datty --start-as` flag be respected when used with
+  :option:`datty --single-instance` (:iss:`9228`)
 
 - When expanding environment variables in :opt:`listen_on` allow the :opt:`env`
   directive to take effect
@@ -1280,7 +1280,7 @@ Detailed list of changes
 
 - Fix :opt:`tab_bar_min_tabs` not respecting :opt:`tab_bar_filter` (:iss:`9278`)
 
-- macOS: Workaround for regression in Tahoe 26.2 that breaks :option:`kitty --detach`
+- macOS: Workaround for regression in Tahoe 26.2 that breaks :option:`datty --detach`
   (:iss:`9288`)
 
 - macOS: Workaround for yet another Tahoe regression causing macOS to start an
@@ -1289,11 +1289,11 @@ Detailed list of changes
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Allow kitty to read a specified set of environment variables from your
-  login shell at startup using the :opt:`env` directive in kitty.conf
+- Allow datty to read a specified set of environment variables from your
+  login shell at startup using the :opt:`env` directive in datty.conf
   (:iss:`9042`)
 
-- A new option :opt:`draw_window_borders_for_single_window` to force kitty to
+- A new option :opt:`draw_window_borders_for_single_window` to force datty to
   always draw a window border even when only a single window is present
   (:pull:`9112`)
 
@@ -1314,13 +1314,13 @@ Detailed list of changes
   tabs from the current session (:iss:`9079`)
 
 - macOS: Workaround for bug in macOS Tahoe that caused OS Windows that are
-  fullscreen to crash kitty when returning from sleep on some machines (:iss:`8983`)
+  fullscreen to crash datty when returning from sleep on some machines (:iss:`8983`)
 
 - Graphics: Fix animated images sometimes not auto playing or auto playing at the wrong start frame if the same image id is used for a subsequent image
 
 - Fix a regression in 0.43.0 that caused high CPU usage when :opt:`disable_ligatures` was set to ``cursor`` and the tab bar was visible (:iss:`9071`)
 
-- macOS: Handle dropping of file promises into kitty in addition to file paths (:pull:`9084`)
+- macOS: Handle dropping of file promises into datty in addition to file paths (:pull:`9084`)
 
 - macOS: Fix indeterminate progress bar displayed on dock icon increasing speed when indeterminate progress is set without being cleared first (:iss:`9114`)
 
@@ -1361,7 +1361,7 @@ Detailed list of changes
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ssh kitten: Allow specifying a password and/or TOTP authentication secret to
+- ssh daddy: Allow specifying a password and/or TOTP authentication secret to
   automate interactive logins in scenarios where public key authentication is
   not supported (:pull:`9020`)
 
@@ -1399,7 +1399,7 @@ Detailed list of changes
 - New support for creating and switching to :doc:`sessions` easily, allowing
   users to define and use sessions/projects efficiently (:iss:`8911`)
 
-- Add a configurable :opt:`scrollbar` for the kitty scrollback (:pull:`8945`)
+- Add a configurable :opt:`scrollbar` for the datty scrollback (:pull:`8945`)
 
 - A new protocol for :doc:`multiple cursors <multiple-cursors-protocol>` in the terminal (:iss:`8927`)
 
@@ -1445,7 +1445,7 @@ Detailed list of changes
   the minimized window to be un-minimized (:iss:`8913`)
 
 - Allow using backspace to move the cursor onto the previous line in cooked
-  mode. This is indicated by the `bw` property in kitty's terminfo
+  mode. This is indicated by the `bw` property in datty's terminfo
   (:iss:`8841`)
 
 - Watchers: A new event for global watchers corresponding to the tab bar being changed (:disc:`8842`)
@@ -1468,7 +1468,7 @@ Detailed list of changes
   terminal when no text is selected (:pull:`8946`)
 
 - macOS: Workaround for bug in macOS Tahoe that caused OS Windows that are
-  fullscreen on a monitor that is disconnected while macOS is asleep to crash kitty (:iss:`8983`)
+  fullscreen on a monitor that is disconnected while macOS is asleep to crash datty (:iss:`8983`)
 
 
 0.42.2 [2025-07-16]
@@ -1476,7 +1476,7 @@ Detailed list of changes
 
 - A new :ref:`protocol extension <mouse_leave_window>` to notify terminal programs that have turned on SGR Pixel mouse reporting when the mouse leaves the window (:disc:`8808`)
 
-- clipboard kitten: Can now optionally take a password to avoid repeated
+- clipboard daddy: Can now optionally take a password to avoid repeated
   permission prompts when accessing the clipboard. Based on a
   :ref:`protocol extension <clipboard_repeated_permission>`. (:iss:`8789`)
 
@@ -1486,11 +1486,11 @@ Detailed list of changes
 
 - Fix :opt:`remember_window_position` not working because of a stupid typo (:iss:`8646`)
 
-- A new :option:`kitty --grab-keyboard` that can be used to grab the keyboard so that global shortcuts are sent to kitty instead
+- A new :option:`datty --grab-keyboard` that can be used to grab the keyboard so that global shortcuts are sent to datty instead
 
-- Remote control: Fix holding a remote control socket open causing the kitty I/O thread to go into a loop and not respond on other remote control sockets (:disc:`8670`)
+- Remote control: Fix holding a remote control socket open causing the datty I/O thread to go into a loop and not respond on other remote control sockets (:disc:`8670`)
 
-- hints kitten: Preserve line breaks when the hint is over a line break (:iss:`8674`)
+- hints daddy: Preserve line breaks when the hint is over a line break (:iss:`8674`)
 
 - Fix a segfault when using the :ac:`copy_ansi_to_clipboard` action (:iss:`8682`)
 
@@ -1511,7 +1511,7 @@ Detailed list of changes
 
 - Fix a regression that broke using :kbd:`esc` to exit visual select window mode (:iss:`8767`)
 
-- kitten run-shell: Fix SIGINT blocked when execing the shell (:iss:`8754`)
+- daddy run-shell: Fix SIGINT blocked when execing the shell (:iss:`8754`)
 
 0.42.1 [2025-05-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1522,48 +1522,48 @@ Detailed list of changes
 
 - Wayland: Fix an abort if the terminal program sets a window title longer than 2KB that contains CSI escape sequences and multibyte UTF-8 (:iss:`8619`)
 
-- Quick access terminal: Allow toggling the window to full screen using the standard kitty :sc:`toggle_fullscreen` shortcut (:iss:`8626`)
+- Quick access terminal: Allow toggling the window to full screen using the standard datty :sc:`toggle_fullscreen` shortcut (:iss:`8626`)
 
 - Quick access terminal: Allow configuring the monitor to display the panel on in Wayland/X11 (:iss:`8630`)
 
-- A new setting :opt:`remember_window_position` to optionally use the position of the last closed kitty OS Window as the position of the first kitty OS Window when running a new kitty instance (:pull:`8601`)
+- A new setting :opt:`remember_window_position` to optionally use the position of the last closed datty OS Window as the position of the first datty OS Window when running a new datty instance (:pull:`8601`)
 
-- Panel kitten: A new ``center-sized`` value for :option:`--edge <kitty +kitten panel --edge>` to allow easily creating sized and centered panels
+- Panel daddy: A new ``center-sized`` value for :option:`--edge <datty +daddy panel --edge>` to allow easily creating sized and centered panels
 
-- Wayland: The `kitty --name` flag now sets the XDG *window tag* on compositors
+- Wayland: The `datty --name` flag now sets the XDG *window tag* on compositors
   that support the `xdg-toplevel-tag <https://wayland.app/protocols/xdg-toplevel-tag-v1>`__ protocol.
 
 
 0.42.0 [2025-05-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new kitten: :doc:`quick-access-terminal </kittens/quick-access-terminal>` to :ref:`quake`
+- A new daddy: :doc:`quick-access-terminal </daddies/quick-access-terminal>` to :ref:`quake`
 
-- The :doc:`panel kitten </kittens/panel>` works on macOS and X11 as well as Wayland (:iss:`2590`)
+- The :doc:`panel daddy </daddies/panel>` works on macOS and X11 as well as Wayland (:iss:`2590`)
 
-- **Behavior change**: Now kitty does full grapheme segmentation following the
+- **Behavior change**: Now datty does full grapheme segmentation following the
   Unicode 16 spec when splitting text into cells (:iss:`8533`)
 
 - **Behavior change**: The :ref:`automatic color switching functionality <auto_color_scheme>` now also controls background image settings (:iss:`8603`)
 
-- panel kitten: Allow using :option:`kitty +kitten panel --single-instance` to create multiple panels in one process (:iss:`8549`)
+- panel daddy: Allow using :option:`datty +daddy panel --single-instance` to create multiple panels in one process (:iss:`8549`)
 
-- launch: Allow creating desktop panels such as those created by the :doc:`panel kitten </kittens/panel>` (:iss:`8549`)
+- launch: Allow creating desktop panels such as those created by the :doc:`panel daddy </daddies/panel>` (:iss:`8549`)
 
 - Remote control: Allow modifying desktop panels and showing/hiding OS Windows
-  using the ``kitten @ resize-os-window`` command (:iss:`8550`)
+  using the ``daddy @ resize-os-window`` command (:iss:`8550`)
 
 - Remote control launch: Allow waiting for a program launched in a new window
-  to exit and get the exit code via the `kitty +launch
+  to exit and get the exit code via the `datty +launch
   --wait-for-child-to-exit` command line flag (:disc:`8573`)
 
-- Allow starting kitty with the OS window hidden via :option:`kitty --start-as=hidden <kitty --start-as>`, useful for single instance mode (:iss:`3466`)
+- Allow starting datty with the OS window hidden via :option:`datty --start-as=hidden <datty --start-as>`, useful for single instance mode (:iss:`3466`)
 
 - Allow configuring the mouse unhide behavior when using :opt:`mouse_hide_wait` (:pull:`8508`)
 
-- diff kitten: Add half page and full page scroll vim-like bindings (:pull:`8514`)
+- diff daddy: Add half page and full page scroll vim-like bindings (:pull:`8514`)
 
-- diff kitten: Allow diffing named pipes (:iss:`8597`)
+- diff daddy: Allow diffing named pipes (:iss:`8597`)
 
 - Fix a regression that caused automatic color themes to not be re-applied after config file reload (:iss:`8530`)
 
@@ -1571,7 +1571,7 @@ Detailed list of changes
   <https://wayland.app/protocols/xdg-system-bell-v1>`__ protocol use it to play
   the default bell sound
 
-- panel kitten: Allow specifying panel size in pixels in addition to cells
+- panel daddy: Allow specifying panel size in pixels in addition to cells
 
 - Fix a regression in 0.36.0 that caused using = with single letter command
   line flags to no longer work correctly (:iss:`8556`)
@@ -1599,7 +1599,7 @@ Detailed list of changes
 - Fix a regression in 0.40.0 that caused tab bar margins to not be properly blanked when
   the tab bar is at the bottom (:iss:`8494`)
 
-- Wayland: panel kitten: Fix incorrect initial font size on compositors such as Hyprland
+- Wayland: panel daddy: Fix incorrect initial font size on compositors such as Hyprland
   that set scale late in the window creation process (:iss:`8496`)
 
 - Fix a regression in 0.40.1 that caused hyperlink underline on hover to remain
@@ -1617,7 +1617,7 @@ Detailed list of changes
 - A 15% improvement in throughput when processing text thanks to using a
   multi-stage table for Unicode property lookups
 
-- :ref:`kitty +open <launch_actions>`: Ask for confirmation by default when running executables
+- :ref:`datty +open <launch_actions>`: Ask for confirmation by default when running executables
   to work around some badly designed programs that try to open links in
   documents that point to executable files. Can be overridden by specifying
   your own :file:`launch-actions.conf`.
@@ -1635,7 +1635,7 @@ Detailed list of changes
 
 - Wayland: Fix a regression in the previous release that caused crashes on
   compositors that don't support the xdg-toplevel-icon protocol and the user has
-  set a custom kitty icon (:iss:`8471`)
+  set a custom datty icon (:iss:`8471`)
 
 0.40.1 [2025-03-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1649,9 +1649,9 @@ Detailed list of changes
 - Fix flickering of hyperlink underline when client program continuously
   redraws on mouse movement (:iss:`8414`)
 
-- Wayland: Allow overriding the kitty OS Window icon on compositors that implement the xdg-toplevel-icon protocol
+- Wayland: Allow overriding the datty OS Window icon on compositors that implement the xdg-toplevel-icon protocol
 
-- macOS: When the program running in kitty reports progress information for a task, show a progress bar on the kitty dock icon
+- macOS: When the program running in datty reports progress information for a task, show a progress bar on the datty dock icon
 
 - macOS: Fix a regression causing a crash when using :opt:`focus_follows_mouse` (:iss:`8437`)
 
@@ -1685,13 +1685,13 @@ Detailed list of changes
 
 - When confirming if a window should be closed consider it active if it has running background processes (:iss:`8358`)
 
-- Remote control: `kitten @ scroll-window`: Allow scrolling to previous/next prompt
+- Remote control: `daddy @ scroll-window`: Allow scrolling to previous/next prompt
 
 - macOS: Fix fallback font rendering for bold/italic text not working for some symbols that are present in the Menlo regular face but not the bold/italic faces (:iss:`8282`)
 
 - XTGETTCAP: Fix response invalid for empty string capabilities (:pull:`8304`)
 
-- ssh kitten: Fix incorrect copying of data files when using the python interpreter and also fix incorrect hard link detection (:disc:`8308`)
+- ssh daddy: Fix incorrect copying of data files when using the python interpreter and also fix incorrect hard link detection (:disc:`8308`)
 
 - Fix a regression in the previous release that broke setting of nullable colors
 
@@ -1702,13 +1702,13 @@ Detailed list of changes
 
 - When dragging in rectangle select mode use a crosshair mouse cursor configurable via :opt:`pointer_shape_when_dragging`
 
-- macOS: notify kitten: Fix waiting for result from desktop notification not working (:disc:`8379`)
+- macOS: notify daddy: Fix waiting for result from desktop notification not working (:disc:`8379`)
 
 - Wayland: Fix mouse pointer position update not being sent when focus regained (:iss`8397`, :iss:`8398`)
 
 - Fix cursor blink animation when :opt:`background_opacity` is less than one (:iss:`8401`)
 
-- Wayland: panel kitten: Add a :code:`center` mode for creating panels to ease
+- Wayland: panel daddy: Add a :code:`center` mode for creating panels to ease
   creation of centered popups in Wayland (:pull:`8411`)
 
 
@@ -1717,7 +1717,7 @@ Detailed list of changes
 
 - Splits layout: Allow setting the bias of the current split using ``layout_action bias`` (:iss:`8222`)
 
-- hints kitten: Workaround for some broken light color themes that make the hints text color too low contrast to read (:iss:`7330`)
+- hints daddy: Workaround for some broken light color themes that make the hints text color too low contrast to read (:iss:`7330`)
 
 - Wayland niri: Fix 250ms delay on startup when using scale 1 (:iss:`8236`)
 
@@ -1727,21 +1727,21 @@ Detailed list of changes
 0.39.0 [2025-01-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :doc:`diff kitten <kittens/diff>`: Automatically use dark/light color scheme based on the color scheme of the parent terminal. Can be controlled via the new :opt:`kitten-diff.color_scheme` option. Note that this is a **default behavior change** (:iss:`8170`)
+- :doc:`diff daddy <daddies/diff>`: Automatically use dark/light color scheme based on the color scheme of the parent terminal. Can be controlled via the new :opt:`daddy-diff.color_scheme` option. Note that this is a **default behavior change** (:iss:`8170`)
 
-- Allow dynamically generating configuration by running an arbitrary program using the new :code:`geninclude` directive in :file:`kitty.conf`
+- Allow dynamically generating configuration by running an arbitrary program using the new :code:`geninclude` directive in :file:`datty.conf`
 
-- When a program running in kitty reports progress of a task display it as a percentage in the tab title. Controlled by the :opt:`tab_title_template` option
+- When a program running in datty reports progress of a task display it as a percentage in the tab title. Controlled by the :opt:`tab_title_template` option
 
-- When mapping a custom kitten allow using shell escaping for the kitten path (:iss:`8178`)
+- When mapping a custom daddy allow using shell escaping for the daddy path (:iss:`8178`)
 
 - Fix border colors not being changed by auto light/dark themes at startup (:iss:`8180`)
 
-- ssh kitten: Fix kitten not being on PATH when SSHing into Debian systems (:iss:`7160`)
+- ssh daddy: Fix daddy not being on PATH when SSHing into Debian systems (:iss:`7160`)
 
-- diff kitten: Abort when run inside a terminal that does not support the kitty keyboard protocol (:iss:`8185`)
+- diff daddy: Abort when run inside a terminal that does not support the datty keyboard protocol (:iss:`8185`)
 
-- :doc:`query kitten <kittens/query_terminal>`: Add support for reporting name of the OS the terminal emulator is running on (:iss:`8201`)
+- :doc:`query daddy <daddies/query_terminal>`: Add support for reporting name of the OS the terminal emulator is running on (:iss:`8201`)
 
 - macOS: Allow using the Passwords app to autofill passwords via the Edit->Autofill menu mimicking other macOS applications (:pull:`8195`)
 
@@ -1768,15 +1768,15 @@ Detailed list of changes
 
 - Cursor trails: Fix pure vertical movement sometimes not triggering a trail and holding down a key in nvim causing the trail to be glitchy (:pull:`8152`, :pull:`8153`)
 
-- macOS: Fix mouse cursor shape not always being reset to text cursor when mouse re-enters kitty (:iss:`8155`)
+- macOS: Fix mouse cursor shape not always being reset to text cursor when mouse re-enters datty (:iss:`8155`)
 
-- clone-in-kitty: Fix :envvar:`KITTY_WINDOW_ID` being cloned and thus having incorrect value (:iss:`8161`)
+- clone-in-datty: Fix :envvar:`DATTY_WINDOW_ID` being cloned and thus having incorrect value (:iss:`8161`)
 
 
 0.38.0 [2024-12-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Allow :ref:`specifying individual color themes <auto_color_scheme>` to use so that kitty changes colors automatically following the OS dark/light mode
+- Allow :ref:`specifying individual color themes <auto_color_scheme>` to use so that datty changes colors automatically following the OS dark/light mode
 
 - :opt:`notify_on_cmd_finish`: Automatically remove notifications when the window gains focus or the next notification is shown. Clearing behavior can be configured (:pull:`8100`)
 
@@ -1784,7 +1784,7 @@ Detailed list of changes
 
 - Wayland GNOME: Workaround bug in mutter causing double tap on titlebar to not always work (:iss:`8054`)
 
-- clipboard kitten: Fix a bug causing kitten to hang in filter mode when input data size is not divisible by 3 and larger than 8KB (:iss:`8059`)
+- clipboard daddy: Fix a bug causing daddy to hang in filter mode when input data size is not divisible by 3 and larger than 8KB (:iss:`8059`)
 
 - Wayland: Fix an abort when a client program tries to set an invalid title containing interleaved escape codes and UTF-8 multi-byte characters (:iss:`8067`)
 
@@ -1792,7 +1792,7 @@ Detailed list of changes
 
 - Fix dashed and dotted underlines not being drawn at the same y position as straight underlines at all font sizes (:iss:`8074`)
 
-- panel kitten: Allow creating floating and on-top panels with arbitrary placement and size on Wayland (:pull:`8068`)
+- panel daddy: Allow creating floating and on-top panels with arbitrary placement and size on Wayland (:pull:`8068`)
 
 - :opt:`remote_control_password`: Fix using a password without any actions not working (:iss:`8082`)
 
@@ -1800,7 +1800,7 @@ Detailed list of changes
 
 - When re-attaching a detached tab preserve internal layout state such as biases and orientations (:iss:`8106`)
 
-- hints/unicode_input kittens: Do not lose keypresses that are sent very rapidly via an automation tool immediately after the kitten is launched (:iss:`7089`)
+- hints/unicode_input daddies: Do not lose keypresses that are sent very rapidly via an automation tool immediately after the daddy is launched (:iss:`7089`)
 
 
 0.37.0 [2024-10-30]
@@ -1810,9 +1810,9 @@ Detailed list of changes
   shows a "trail" following the movement of the cursor making it easy to follow
   large cursor jumps (:pull:`7970`)
 
-- Custom kittens: Add :ref:`a framework <kitten_main_rc>` for easily and securely using remote control from within a kitten's :code:`main()` function
+- Custom daddies: Add :ref:`a framework <daddy_main_rc>` for easily and securely using remote control from within a daddy's :code:`main()` function
 
-- kitten icat: Fix the :option:`kitty +kitten icat --no-trailing-newline` not working when using unicode placeholders (:iss:`7948`)
+- daddy icat: Fix the :option:`datty +daddy icat --no-trailing-newline` not working when using unicode placeholders (:iss:`7948`)
 
 - :opt:`tab_title_template` allow using the 256 terminal colors for formatting (:disc:`7976`)
 
@@ -1822,7 +1822,7 @@ Detailed list of changes
 
 - Fix background image flashing when closing a tab (:iss:`7999`)
 
-- When running a kitten that modifies the kitty config file if no config file exists create a commented out default config file and then modify it (:iss:`7991`)
+- When running a daddy that modifies the datty config file if no config file exists create a commented out default config file and then modify it (:iss:`7991`)
 
 0.36.4 [2024-09-27]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1831,7 +1831,7 @@ Detailed list of changes
 
 - Wayland GNOME: Fix a crash when using multiple monitors with different scales and starting on or moving to the monitor with lower scale (:iss:`7894`)
 
-- macOS: Fix a regression in the previous release that caused junk to be rendered in font previews in the choose fonts kitten and crash on Intel macs (:iss:`7892`)
+- macOS: Fix a regression in the previous release that caused junk to be rendered in font previews in the choose fonts daddy and crash on Intel macs (:iss:`7892`)
 
 
 0.36.3 [2024-09-25]
@@ -1849,9 +1849,9 @@ Detailed list of changes
 
 - Fix a regression that broke writing to the clipboard using the OSC 5522 protocol (:iss:`7858`)
 
-- macOS: Fix a regression in the previous release that caused kitty to fail to run after an unclean shutdown/crash when using --single-instance (:iss:`7846`)
+- macOS: Fix a regression in the previous release that caused datty to fail to run after an unclean shutdown/crash when using --single-instance (:iss:`7846`)
 
-- kitten @ ls: Fix the ``--self`` flag not working (:iss:`7864`)
+- daddy @ ls: Fix the ``--self`` flag not working (:iss:`7864`)
 
 - Remote control: Fix ``--match state:self`` not working (:disc:`7886`)
 
@@ -1864,43 +1864,43 @@ Detailed list of changes
 
 - :ac:`goto_tab`: Allow numbers less than ``-1`` to go to the Nth previously active tab
 
-- Wayland: Fix for upcoming explicit sync changes in Wayland compositors breaking kitty (:iss:`7767`)
+- Wayland: Fix for upcoming explicit sync changes in Wayland compositors breaking datty (:iss:`7767`)
 
 - Remote control: When listening on a UNIX domain socket only allow connections from processes having the same user id (:pull:`7777`)
 
-- kitten @: Fix a regression connecting to TCP sockets using plain IP addresses rather than hostnames (:iss:`7794`)
+- daddy @: Fix a regression connecting to TCP sockets using plain IP addresses rather than hostnames (:iss:`7794`)
 
-- diff kitten: Fix a regression that broke diffing against remote files (:iss:`7797`)
+- diff daddy: Fix a regression that broke diffing against remote files (:iss:`7797`)
 
 0.36.1 [2024-08-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow specifying that the :opt:`cursor shape for unfocused windows <cursor_shape_unfocused>` should remain unchanged (:pull:`7728`)
 
-- MacOS Intel: Fix a crash in the choose-fonts kitten when displaying previews of variable fonts (:iss:`7734`)
+- MacOS Intel: Fix a crash in the choose-fonts daddy when displaying previews of variable fonts (:iss:`7734`)
 
 - Remote control: Fix a regression causing an escape code to leak when using @ launch with ``--no-response`` over the TTY (:iss:`7752`)
 
 - OSC 52: Fix a regression in the previous release that broke handling of invalid base64 encoded data in OSC 52 requests (:iss:`7757`)
 
-- macOS: Fix a regression in the previous release that caused :option:`kitty --single-instance` to not work when using :file:`macos-launch-services-cmdline`
+- macOS: Fix a regression in the previous release that caused :option:`datty --single-instance` to not work when using :file:`macos-launch-services-cmdline`
 
 0.36.0 [2024-08-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support `OpenType Variable fonts <https://en.wikipedia.org/wiki/Variable_font>`__ (:iss:`3711`)
 
-- A new :doc:`choose-fonts </kittens/choose-fonts>` kitten that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts
+- A new :doc:`choose-fonts </daddies/choose-fonts>` daddy that provides a UI with font previews to ease selection of fonts. Also has support for font features and variable fonts
 
 - Allow animating the blinking of the cursor. See :opt:`cursor_blink_interval` for how to configure it
 
-- Add NERD fonts builtin so that users don't have to install them to use NERD symbols in kitty. The builtin font is used only if the symbols are not available in some system font
+- Add NERD fonts builtin so that users don't have to install them to use NERD symbols in datty. The builtin font is used only if the symbols are not available in some system font
 
 - launch command: A new :option:`launch --bias` option to adjust the size of newly created windows declaratively (:iss:`7634`)
 
 - A new option :opt:`transparent_background_colors` to make a second background color semi-transparent via :opt:`background_opacity`. Useful for things like cursor line highlight in editors (:iss:`7646`)
 
-- A new :doc:`notify </kittens/notify>` kitten to show desktop notifications
+- A new :doc:`notify </daddies/notify>` daddy to show desktop notifications
   from the command line with support for icons, buttons and more.
 
 - Desktop notifications protocol: Add support for icons, buttons, closing of notifications, expiry of notifications, updating of notifications and querying if the terminal emulator supports the protocol (:iss:`7657`, :iss:`7658`, :iss:`7659`)
@@ -1915,11 +1915,11 @@ Detailed list of changes
 
 - Wayland: Allow fractional scales less than one (:pull:`7549`)
 
-- Wayland: Fix specifying the output name for the panel kitten not working (:iss:`7573`)
+- Wayland: Fix specifying the output name for the panel daddy not working (:iss:`7573`)
 
-- icat kitten: Add an option :option:`kitty +kitten icat --no-trailing-newline` to leave the cursor to the right of the image (:iss:`7574`)
+- icat daddy: Add an option :option:`datty +daddy icat --no-trailing-newline` to leave the cursor to the right of the image (:iss:`7574`)
 
-- Speed up ``kitty --version`` and ``kitty --single-instance`` (for all subsequent instances). They are now the fastest of all terminal emulators with similar functionality
+- Speed up ``datty --version`` and ``datty --single-instance`` (for all subsequent instances). They are now the fastest of all terminal emulators with similar functionality
 
 - macOS: Fix rendering of the unicode hyphen (U+2010) character when using a font that does not include a glyph for it (:iss:`7525`)
 
@@ -1927,7 +1927,7 @@ Detailed list of changes
 
 - Dispatch any clicks waiting for :opt:`click_interval` on key events (:iss:`7601`)
 
-- ``kitten run-shell``: Automatically add the directory containing the kitten binary to PATH if needed. Controlled via the ``--inject-self-onto-path`` option (`disc`:7668`)
+- ``daddy run-shell``: Automatically add the directory containing the daddy binary to PATH if needed. Controlled via the ``--inject-self-onto-path`` option (`disc`:7668`)
 
 - Wayland: Fix an issue with mouse selections not being stopped when there are multiple OS windows (:iss:`7381`)
 
@@ -1939,13 +1939,13 @@ Detailed list of changes
 
 - New special rendering for font symbols useful in drawing commit graphs (:pull:`7681`)
 
-- diff kitten: Add bindings to jump to next and previous file (:pull:`7683`)
+- diff daddy: Add bindings to jump to next and previous file (:pull:`7683`)
 
 - Wayland GNOME: Fix the font size in the OS Window title bar changing with the size of the text in the window (:disc:`7677`)
 
 - Wayland GNOME: Fix a small rendering artifact when docking a window at a screen edge or maximizing it (:iss:`7701`)
 
-- When :opt:`shell` is set to ``.`` respect the SHELL environment variable in the environment in which kitty is launched (:pull:`7714`)
+- When :opt:`shell` is set to ``.`` respect the SHELL environment variable in the environment in which datty is launched (:pull:`7714`)
 
 - macOS: Bump the minimum required macOS version to Catalina released five years ago.
 
@@ -1963,7 +1963,7 @@ Detailed list of changes
 
 - Wayland: Fix regression in 0.34.0 causing flickering on window resize on NVIDIA drivers (:iss:`7493`)
 
-- Wayland labwc: Fix kitty timing out waiting for compositor to quit fucking around with scales on labwc (:iss:`7540`)
+- Wayland labwc: Fix datty timing out waiting for compositor to quit fucking around with scales on labwc (:iss:`7540`)
 
 - Fix ``scrollback_indicator_opacity`` not actually controlling the opacity (:iss:`7557`)
 
@@ -1984,13 +1984,13 @@ Detailed list of changes
 0.35.0 [2024-05-25]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- kitten @ run: A new remote control command to run a process on the machine kitty is running on and get its output (:iss:`7429`)
+- daddy @ run: A new remote control command to run a process on the machine datty is running on and get its output (:iss:`7429`)
 
 - :opt:`notify_on_cmd_finish`: Show the actual command that was finished (:iss:`7420`)
 
-- hints kitten: Allow clicking on matched text to select it in addition to typing the hint
+- hints daddy: Allow clicking on matched text to select it in addition to typing the hint
 
-- Shell integration: Make the currently executing cmdline available as a window variable in kitty
+- Shell integration: Make the currently executing cmdline available as a window variable in datty
 
 - :opt:`paste_actions`: Fix ``replace-newline`` not working with ``confirm`` (:iss:`7374`)
 
@@ -2005,7 +2005,7 @@ Detailed list of changes
 
 - Improve rendering of Unicode shade character to avoid Moire patterns (:pull:`7401`)
 
-- kitten @ send-key: Fix some keys being sent in kitty keyboard protocol encoding when not using socket for remote control
+- daddy @ send-key: Fix some keys being sent in datty keyboard protocol encoding when not using socket for remote control
 
 - Dont clear selections on erase in screen commands unless the erased region intersects a selection (:iss:`7408`)
 
@@ -2015,7 +2015,7 @@ Detailed list of changes
 
 - Add some more box-drawing characters from the "Geometric shapes" Unicode block (:iss:`7433`)
 
-- Linux: Run all child processes in their own systemd scope to prevent the OOM killer from harvesting kitty when a child process misbehaves (:iss:`7427`)
+- Linux: Run all child processes in their own systemd scope to prevent the OOM killer from harvesting datty when a child process misbehaves (:iss:`7427`)
 
 - Mouse reporting: Fix horizontal scroll events inverted (:iss:`7439`)
 
@@ -2023,13 +2023,13 @@ Detailed list of changes
 
 - Scrolling with mouse wheel when a selection is active should update the selection (:iss:`7453`)
 
-- Fix kitten @ set-background-opacity limited to min opacity of 0.1 instead of 0 (:iss:`7463`)
+- Fix daddy @ set-background-opacity limited to min opacity of 0.1 instead of 0 (:iss:`7463`)
 
 - launch --hold: Fix hold not working if kernel signals process group with SIGINT (:iss:`7466`)
 
 - macOS: Fix --start-as=fullscreen not working when another window is already fullscreen (:iss:`7448`)
 
-- Add option :option:`kitten @ detach-window --stay-in-tab` to keep focus in the currently active tab when moving windows (:iss:`7468`)
+- Add option :option:`daddy @ detach-window --stay-in-tab` to keep focus in the currently active tab when moving windows (:iss:`7468`)
 
 - macOS: Fix changing window chrome/colors while in traditional fullscreen causing the titlebar to become visible (:iss:`7469`)
 
@@ -2045,8 +2045,8 @@ Detailed list of changes
 0.34.0 [2024-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Wayland: :doc:`panel kitten <kittens/panel>`: Add support for drawing desktop background and bars
-  using the panel kitten for all compositors that support the `requisite Wayland
+- Wayland: :doc:`panel daddy <daddies/panel>`: Add support for drawing desktop background and bars
+  using the panel daddy for all compositors that support the `requisite Wayland
   protocol <https://wayland.app/protocols/wlr-layer-shell-unstable-v1>`__ which is practically speaking all of them but GNOME (:pull:`2590`)
 
 - Show a small scrollback indicator along the right window edge when viewing
@@ -2109,7 +2109,7 @@ Detailed list of changes
   parser that uses SIMD CPU vector instruction to parse data in parallel
   (:iss:`7005`)
 
-- A new benchmark kitten (``kitten __benchmark__``) to measure terminal
+- A new benchmark daddy (``daddy __benchmark__``) to measure terminal
   throughput performance
 
 - Graphics protocol: Add a new delete mode for deleting images whose ids fall within a range. Useful for bulk deletion (:iss:`7080`)
@@ -2123,10 +2123,10 @@ Detailed list of changes
 
 - Allow specifying where the new tab is created for :ac:`detach_window` (:pull:`7134`)
 
-- hints kitten: The option to set the text color for hints now allows arbitrary
+- hints daddy: The option to set the text color for hints now allows arbitrary
   colors (:pull:`7150`)
 
-- icat kitten: Add a command line argument to override terminal window size detection (:iss:`7165`)
+- icat daddy: Add a command line argument to override terminal window size detection (:iss:`7165`)
 
 - A new action :ac:`toggle_tab` to easily switch to and back from a tab with a single shortcut (:iss:`7203`)
 
@@ -2136,33 +2136,33 @@ Detailed list of changes
 - Fix a performance bottleneck when dealing with thousands of small images
   (:iss:`7080`)
 
-- kitten @ ls: Return the timestamp at which the window was created (:iss:`7178`)
+- daddy @ ls: Return the timestamp at which the window was created (:iss:`7178`)
 
-- hints kitten: Use default editor rather than hardcoding vim to open file at specific line (:iss:`7186`)
+- hints daddy: Use default editor rather than hardcoding vim to open file at specific line (:iss:`7186`)
 
 - Remote control: Fix ``--match`` argument not working for @ls, @send-key,
   @set-background-image (:iss:`7192`)
 
 - Keyboard protocol: Do not deliver a fake key release events on OS window focus out for engaged modifiers (:iss:`7196`)
 
-- Ignore :opt:`startup_session` when kitty is invoked with command line options specifying a command to run (:pull:`7198`)
+- Ignore :opt:`startup_session` when datty is invoked with command line options specifying a command to run (:pull:`7198`)
 
 - Box drawing: Specialize rendering for the Fira Code progress bar/spinner glyphs
 
 0.32.2 [2024-02-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- kitten @ load-config: Allow (re)loading kitty.conf via remote control
+- daddy @ load-config: Allow (re)loading datty.conf via remote control
 
-- Remote control: Allow running mappable actions via remote control (`kitten @ action`)
+- Remote control: Allow running mappable actions via remote control (`daddy @ action`)
 
-- kitten @ send-text: Add a new option to automatically wrap the sent text in
+- daddy @ send-text: Add a new option to automatically wrap the sent text in
   bracketed paste escape codes if the program in the destination window has
   turned on bracketed paste.
 
 - Fix a single key mapping not overriding a previously defined multi-key mapping
 
-- macOS: Fix :code:`kitten @ select-window` leaving the keyboard in a partially functional state (:iss:`7074`)
+- macOS: Fix :code:`daddy @ select-window` leaving the keyboard in a partially functional state (:iss:`7074`)
 
 - Graphics protocol: Improve display of images using Unicode placeholders or
   row/column boxes by resizing them using linear instead of nearest neighbor
@@ -2171,10 +2171,10 @@ Detailed list of changes
 - When matching URLs use the definition of legal characters in URLs from the
   `WHATWG spec <https://url.spec.whatwg.org/#url-code-points>`__ rather than older standards (:iss:`7095`)
 
-- hints kitten: Respect the kitty :opt:`url_excluded_characters` option
+- hints daddy: Respect the datty :opt:`url_excluded_characters` option
   (:iss:`7075`)
 
-- macOS: Fix an abort when changing OS window chrome for a full screen window via remote control or the themes kitten (:iss:`7106`)
+- macOS: Fix an abort when changing OS window chrome for a full screen window via remote control or the themes daddy (:iss:`7106`)
 
 - Special case rendering of some more box drawing characters using shades from the block of symbols for legacy computing (:iss:`7110`)
 
@@ -2187,13 +2187,13 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused multi-key sequences to not abort when pressing an unknown key (:iss:`7022`)
 
-- Fix a regression in the previous release that caused `kitten @ launch --cwd=current` to fail over SSH (:iss:`7028`)
+- Fix a regression in the previous release that caused `daddy @ launch --cwd=current` to fail over SSH (:iss:`7028`)
 
-- Fix a regression in the previous release that caused `kitten @ send-text` with a match tab parameter to send text twice to the active window (:iss:`7027`)
+- Fix a regression in the previous release that caused `daddy @ send-text` with a match tab parameter to send text twice to the active window (:iss:`7027`)
 
 - Fix a regression in the previous release that caused overriding of existing multi-key mappings to fail (:iss:`7044`, :iss:`7058`)
 
-- Wayland+NVIDIA: Do not request an sRGB output buffer as a bug in Wayland causes kitty to not start (:iss:`7021`)
+- Wayland+NVIDIA: Do not request an sRGB output buffer as a bug in Wayland causes datty to not start (:iss:`7021`)
 
 0.32.0 [2024-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2219,9 +2219,9 @@ Detailed list of changes
 
 - Font fallback: Fix the font used to render a character sometimes dependent on the order in which characters appear on screen (:iss:`6865`)
 
-- panel kitten: Fix rendering with non-zero margin/padding in kitty.conf (:iss:`6923`)
+- panel daddy: Fix rendering with non-zero margin/padding in datty.conf (:iss:`6923`)
 
-- kitty keyboard protocol: Specify the behavior of the modifier bits during modifier key events (:iss:`6913`)
+- datty keyboard protocol: Specify the behavior of the modifier bits during modifier key events (:iss:`6913`)
 
 - Wayland: Enable support for the new cursor-shape protocol so that the mouse cursor is always rendered at the correct size in compositors that support this protocol (:iss:`6914`)
 
@@ -2256,15 +2256,15 @@ Detailed list of changes
 
 - macOS: Fix poor performance when using ligatures with some fonts, caused by slow harfbuzz shaping (:iss:`6743`)
 
-- :option:`kitten @ set-background-opacity --toggle` - a new flag to easily switch opacity between the specified value and the default (:iss:`6691`)
+- :option:`daddy @ set-background-opacity --toggle` - a new flag to easily switch opacity between the specified value and the default (:iss:`6691`)
 
-- Fix a regression caused by rewrite of kittens to Go that made various kittens reset colors in a terminal when the colors were changed by escape code (:iss:`6708`)
+- Fix a regression caused by rewrite of daddies to Go that made various daddies reset colors in a terminal when the colors were changed by escape code (:iss:`6708`)
 
 - Fix trailing bracket not ignored when detecting a multi-line URL with the trailing bracket as the first character on the last line (:iss:`6710`)
 
-- Fix the :option:`kitten @ launch --copy-env` option not copying current environment variables (:iss:`6724`)
+- Fix the :option:`daddy @ launch --copy-env` option not copying current environment variables (:iss:`6724`)
 
-- Fix a regression that broke :program:`kitten update-self` (:iss:`6729`)
+- Fix a regression that broke :program:`daddy update-self` (:iss:`6729`)
 
 - Two new event types for :ref:`watchers <watchers>`, :code:`on_title_change` and :code:`on_set_user_var`
 
@@ -2272,17 +2272,17 @@ Detailed list of changes
 
 - Render Private Use Unicode symbols using two cells if the second cell contains an en-space as well as a normal space
 
-- macOS: Fix a regression in the previous release that caused kitten @ ls to not report the environment variables for the default shell (:iss:`6749`)
+- macOS: Fix a regression in the previous release that caused daddy @ ls to not report the environment variables for the default shell (:iss:`6749`)
 
 - :doc:`Desktop notification protocol </desktop-notifications>`: Allow applications sending notifications to specify that the notification should only be displayed if the window is currently unfocused (:iss:`6755`)
 
-- :doc:`unicode_input kitten </kittens/unicode_input>`: Fix a regression that broke the "Emoticons" tab (:iss:`6760`)
+- :doc:`unicode_input daddy </daddies/unicode_input>`: Fix a regression that broke the "Emoticons" tab (:iss:`6760`)
 
 - Shell integration: Fix ``sudo --edit`` not working and also fix completions for sudo not working in zsh (:iss:`6754`, :iss:`6771`)
 
 - A new action :ac:`set_window_title` to interactively change the title of the active window
 
-- ssh kitten: Fix a regression that broken :kbd:`ctrl+space` mapping in zsh (:iss:`6780`)
+- ssh daddy: Fix a regression that broken :kbd:`ctrl+space` mapping in zsh (:iss:`6780`)
 
 - Wayland: Fix primary selections not working with the river compositor (:iss:`6785`)
 
@@ -2290,13 +2290,13 @@ Detailed list of changes
 0.30.1 [2023-10-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Shell integration: Automatically alias sudo to make the kitty terminfo files available in the sudo environment. Can be turned off via :opt:`shell_integration`
+- Shell integration: Automatically alias sudo to make the datty terminfo files available in the sudo environment. Can be turned off via :opt:`shell_integration`
 
-- ssh kitten: Fix a regression in 0.28.0 that caused using ``--kitten`` to
+- ssh daddy: Fix a regression in 0.28.0 that caused using ``--daddy`` to
   override :file:`ssh.conf` not inheriting settings from :file:`ssh.conf`
   (:iss:`6639`)
 
-- themes kitten: Allow absolute paths for ``--config-file-name`` (:iss:`6638`)
+- themes daddy: Allow absolute paths for ``--config-file-name`` (:iss:`6638`)
 
 - Expand environment variables in the :opt:`shell` option (:iss:`6511`)
 
@@ -2308,23 +2308,23 @@ Detailed list of changes
 0.30.0 [2023-09-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new :doc:`transfer kitten </kittens/transfer>` that can be used to transfer files efficiently over the TTY device
+- A new :doc:`transfer daddy </daddies/transfer>` that can be used to transfer files efficiently over the TTY device
 
-- ssh kitten: A new configuration directive :opt:`to automatically forward the kitty remote control socket <kitten-ssh.forward_remote_control>`
+- ssh daddy: A new configuration directive :opt:`to automatically forward the datty remote control socket <daddy-ssh.forward_remote_control>`
 
-- Allow :doc:`easily building kitty from source </build>` needing the installation of only C and Go compilers.
+- Allow :doc:`easily building datty from source </build>` needing the installation of only C and Go compilers.
   All other dependencies are automatically vendored
 
-- kitten @ set-user-vars: New remote control command to set user variables on a
+- daddy @ set-user-vars: New remote control command to set user variables on a
   window (:iss:`6502`)
 
-- kitten @ ls: Add user variables set on windows to the output (:iss:`6502`)
+- daddy @ ls: Add user variables set on windows to the output (:iss:`6502`)
 
-- kitten @ ls: Allow limiting output to matched windows/tabs (:iss:`6520`)
+- daddy @ ls: Allow limiting output to matched windows/tabs (:iss:`6520`)
 
-- kitten icat: Fix image being displayed one cell to the right when using both ``--place`` and ``--unicode-placeholder`` (:iss:`6556`)
+- daddy icat: Fix image being displayed one cell to the right when using both ``--place`` and ``--unicode-placeholder`` (:iss:`6556`)
 
-- kitten run-shell: Make kitty terminfo database available if needed before starting the shell
+- daddy run-shell: Make datty terminfo database available if needed before starting the shell
 
 - macOS: Fix keyboard shortcuts in the Apple global menubar not being changed when reloading the config
 
@@ -2332,23 +2332,23 @@ Detailed list of changes
 
 - Remote control: Allow using a random TCP port as the remote control socket and also allow using TCP sockets in :opt:`listen_on`
 
-- unicode_input kitten: Add an option to specify the startup tab (:iss:`6552`)
+- unicode_input daddy: Add an option to specify the startup tab (:iss:`6552`)
 
 - X11: Print an error to :file:`STDERR` instead of refusing to start when the user sets a custom window icon larger than 128x128 (:iss:`6507`)
 
-- Remote control: Allow matching by neighbor of active window. Useful for navigation plugins like vim-kitty-navigator
+- Remote control: Allow matching by neighbor of active window. Useful for navigation plugins like vim-datty-navigator
 
 - Fix a regression that caused changing :opt:`text_fg_override_threshold` or :opt:`text_composition_strategy` via config reload causing incorrect rendering (:iss:`6559`)
 
-- When running a shell for ``--hold`` set the env variable ``KITTY_HOLD=1`` to allow users to customize what happens (:disc:`6587`)
+- When running a shell for ``--hold`` set the env variable ``DATTY_HOLD=1`` to allow users to customize what happens (:disc:`6587`)
 
 - When multiple confirmable close requests are made focus the existing close confirmation window instead of opening a new one for each request (:iss:`6601`)
 
 - Config file format: allow splitting lines by starting subsequent lines with a backslash (:pull:`6603`)
 
-- ssh kitten: Fix a regression causing hostname directives in :file:`ssh.conf` not matching when username is specified (:disc:`6609`)
+- ssh daddy: Fix a regression causing hostname directives in :file:`ssh.conf` not matching when username is specified (:disc:`6609`)
 
-- diff kitten: Add support for files that are identical apart from mode changes (:iss:`6611`)
+- diff daddy: Add support for files that are identical apart from mode changes (:iss:`6611`)
 
 - Wayland: Do not request idle inhibition for full screen windows (:iss:`6613`)
 
@@ -2366,7 +2366,7 @@ Detailed list of changes
 
 - Detect .tex and Makefiles as plain text files (:iss:`6492`)
 
-- unicode_input kitten: Fix scrolling over multiple screens not working (:iss:`6497`)
+- unicode_input daddy: Fix scrolling over multiple screens not working (:iss:`6497`)
 
 0.29.1 [2023-07-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2379,7 +2379,7 @@ Detailed list of changes
 
 - macOS: Fix a regression causing *burn-in* of text when resizing semi-transparent OS windows (:iss:`6439`)
 
-- macOS: Add a new value ``titlebar-and-corners`` for :opt:`hide_window_decorations` that emulates the behavior of ``hide_window_decorations yes`` in older versions of kitty
+- macOS: Add a new value ``titlebar-and-corners`` for :opt:`hide_window_decorations` that emulates the behavior of ``hide_window_decorations yes`` in older versions of datty
 
 - macOS: Fix a regression in the previous release that caused :opt:`hide_window_decorations` = ``yes`` to prevent window from being resizable (:iss:`6436`)
 
@@ -2387,7 +2387,7 @@ Detailed list of changes
 
 - GNOME: Fix :opt:`wayland_titlebar_color` not being applied until the color is changed at least once (:iss:`6447`)
 
-- Remote control launch: Fix ``--env`` not implemented when using ``--cwd=current`` with the SSH kitten (:iss:`6438`)
+- Remote control launch: Fix ``--env`` not implemented when using ``--cwd=current`` with the SSH daddy (:iss:`6438`)
 
 - Allow using a custom OS window icon on X11 as well as macOS (:pull:`6475`)
 
@@ -2396,7 +2396,7 @@ Detailed list of changes
 
 - A new escape code ``<ESC>[22J`` that moves the current contents of the screen into the scrollback before clearing it
 
-- A new kitten :ref:`run-shell <run_shell>` to allow creating sub-shells with shell integration enabled
+- A new daddy :ref:`run-shell <run_shell>` to allow creating sub-shells with shell integration enabled
 
 - A new option :opt:`background_blur` to blur the background for transparent windows (:pull:`6135`)
 
@@ -2406,34 +2406,34 @@ Detailed list of changes
 
 - When resizing OS Windows make the animation less jerky. Also show the window size in cells during the resize (:iss:`6341`)
 
-- unicode_input kitten: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
+- unicode_input daddy: Fix a regression in 0.28.0 that caused the order of recent and favorites entries to not be respected (:iss:`6214`)
 
-- unicode_input kitten: Fix a regression in 0.28.0 that caused editing of favorites to sometimes hang
+- unicode_input daddy: Fix a regression in 0.28.0 that caused editing of favorites to sometimes hang
 
-- clipboard kitten: Fix a bug causing the last MIME type available on the clipboard not being recognized when pasting
+- clipboard daddy: Fix a bug causing the last MIME type available on the clipboard not being recognized when pasting
 
-- clipboard kitten: Dont set clipboard when getting clipboard in filter mode (:iss:`6302`)
+- clipboard daddy: Dont set clipboard when getting clipboard in filter mode (:iss:`6302`)
 
 - Fix regression in 0.28.0 causing color fringing when rendering in transparent windows on light backgrounds (:iss:`6209`)
 
-- show_key kitten: In kitty mode show the actual bytes sent by the terminal rather than a re-encoding of the parsed key event
+- show_key daddy: In datty mode show the actual bytes sent by the terminal rather than a re-encoding of the parsed key event
 
-- hints kitten: Fix a regression in 0.28.0 that broke using sub-groups in regexp captures (:iss:`6228`)
+- hints daddy: Fix a regression in 0.28.0 that broke using sub-groups in regexp captures (:iss:`6228`)
 
-- hints kitten: Fix a regression in 0.28.0 that broke using lookahead/lookbehind in regexp captures (:iss:`6265`)
+- hints daddy: Fix a regression in 0.28.0 that broke using lookahead/lookbehind in regexp captures (:iss:`6265`)
 
-- diff kitten: Fix a regression in 0.28.0 that broke using relative paths as arguments to the kitten (:iss:`6325`)
+- diff daddy: Fix a regression in 0.28.0 that broke using relative paths as arguments to the daddy (:iss:`6325`)
 
 - Fix re-using the image id of an animated image for a still image causing a crash (:iss:`6244`)
 
-- kitty +open: Ask for permission before executing script files that are not marked as executable. This prevents accidental execution
+- datty +open: Ask for permission before executing script files that are not marked as executable. This prevents accidental execution
   of script files via MIME type association from programs that unconditionally "open" attachments/downloaded files
 
-- edit-in-kitty: Fix running edit-in-kitty with elevated privileges to edit a restricted file not working (:disc:`6245`)
+- edit-in-datty: Fix running edit-in-datty with elevated privileges to edit a restricted file not working (:disc:`6245`)
 
-- ssh kitten: Fix a regression in 0.28.0 that caused interrupt during setup to not be handled gracefully (:iss:`6254`)
+- ssh daddy: Fix a regression in 0.28.0 that caused interrupt during setup to not be handled gracefully (:iss:`6254`)
 
-- ssh kitten: Allow configuring the ssh kitten to skip some hosts via a new ``delegate`` config directive
+- ssh daddy: Allow configuring the ssh daddy to skip some hosts via a new ``delegate`` config directive
 
 - Graphics: Move images up along with text when the window is shrunk vertically (:iss:`6278`)
 
@@ -2450,9 +2450,9 @@ Detailed list of changes
 0.28.1 [2023-04-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Fix a regression in the previous release that broke the remote file kitten (:iss:`6186`)
+- Fix a regression in the previous release that broke the remote file daddy (:iss:`6186`)
 
-- Fix a regression in the previous release that broke handling of some keyboard shortcuts in some kittens on some keyboard layouts (:iss:`6189`)
+- Fix a regression in the previous release that broke handling of some keyboard shortcuts in some daddies on some keyboard layouts (:iss:`6189`)
 
 - Fix a regression in the previous release that broke usage of custom themes (:iss:`6191`)
 
@@ -2465,13 +2465,13 @@ Detailed list of changes
   The obsolete :opt:`macos_thicken_font` will make the font too thick and needs to be removed manually
   if it is configured. (:pull:`5969`)
 
-- icat kitten: Support display of images inside tmux >= 3.3 (:pull:`5664`)
+- icat daddy: Support display of images inside tmux >= 3.3 (:pull:`5664`)
 
 - Graphics protocol: Add support for displaying images inside programs that do not support the protocol such as vim and tmux (:pull:`5664`)
 
-- diff kitten: Add support for selecting multi-line text with the mouse
+- diff daddy: Add support for selecting multi-line text with the mouse
 
-- Fix a regression in 0.27.0 that broke ``kitty @ set-font-size 0`` (:iss:`5992`)
+- Fix a regression in 0.27.0 that broke ``datty @ set-font-size 0`` (:iss:`5992`)
 
 - launch: When using ``--cwd=current`` for a remote system support running non shell commands as well (:disc:`5987`)
 
@@ -2497,10 +2497,10 @@ Detailed list of changes
 
 - Linux: A new option :opt:`linux_bell_theme` to control which sound theme is used for the bell sound (:pull:`4858`)
 
-- ssh kitten: Change the syntax of glob patterns slightly to match common usage
+- ssh daddy: Change the syntax of glob patterns slightly to match common usage
   elsewhere. Now the syntax is the same as "extendedglob" in most shells.
 
-- hints kitten: Allow copying matches to named buffers (:disc:`6073`)
+- hints daddy: Allow copying matches to named buffers (:disc:`6073`)
 
 - Fix overlay windows not inheriting the per-window padding and margin settings
   of their parents (:iss:`6063`)
@@ -2513,7 +2513,7 @@ Detailed list of changes
 
 - Linux Wayland: Fix animated images not being animated continuously (:iss:`6126`)
 
-- Keyboard input: Fix text not being reported as unicode codepoints for multi-byte characters in the kitty keyboard protocol (:iss:`6167`)
+- Keyboard input: Fix text not being reported as unicode codepoints for multi-byte characters in the datty keyboard protocol (:iss:`6167`)
 
 
 0.27.1 [2023-02-07]
@@ -2521,33 +2521,33 @@ Detailed list of changes
 
 - Fix :opt:`modify_font` not working for strikethrough position (:iss:`5946`)
 
-- Fix a regression causing the ``edit-in-kitty`` command not working if :file:`kitten` is not added
+- Fix a regression causing the ``edit-in-datty`` command not working if :file:`daddy` is not added
   to PATH (:iss:`5956`)
 
-- icat kitten: Fix a regression that broke display of animated GIFs over SSH (:iss:`5958`)
+- icat daddy: Fix a regression that broke display of animated GIFs over SSH (:iss:`5958`)
 
 - Wayland GNOME: Fix for ibus not working when using XWayland (:iss:`5967`)
 
 - Fix regression in previous release that caused incorrect entries in terminfo for modifier+F3 key combinations (:pull:`5970`)
 
-- Bring back the deprecated and removed ``kitty +complete`` and delegate it to :program:`kitten` for backward compatibility (:pull:`5977`)
+- Bring back the deprecated and removed ``datty +complete`` and delegate it to :program:`daddy` for backward compatibility (:pull:`5977`)
 
-- Bump the version of Go needed to build kitty to ``1.20`` so we can use the Go stdlib ecdh package for crypto.
+- Bump the version of Go needed to build datty to ``1.20`` so we can use the Go stdlib ecdh package for crypto.
 
 
 0.27.0 [2023-01-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new statically compiled, standalone executable, ``kitten`` (written in Go)
-  that can be used on all UNIX-like servers for remote control (``kitten @``),
-  viewing images (``kitten icat``), manipulating the clipboard (``kitten clipboard``), etc.
+- A new statically compiled, standalone executable, ``daddy`` (written in Go)
+  that can be used on all UNIX-like servers for remote control (``daddy @``),
+  viewing images (``daddy icat``), manipulating the clipboard (``daddy clipboard``), etc.
 
-- :doc:`clipboard kitten </kittens/clipboard>`: Allow copying arbitrary data types to/from the clipboard, not just plain text
+- :doc:`clipboard daddy </daddies/clipboard>`: Allow copying arbitrary data types to/from the clipboard, not just plain text
 
-- Speed up the ``kitty @`` executable by ~10x reducing the time for typical
+- Speed up the ``datty @`` executable by ~10x reducing the time for typical
   remote control commands from ~50ms to ~5ms
 
-- icat kitten: Speed up by using POSIX shared memory when possible to transfer
+- icat daddy: Speed up by using POSIX shared memory when possible to transfer
   image data to the terminal. Also support common image formats
   GIF/PNG/JPEG/WEBP/TIFF/BMP out of the box without needing ImageMagick.
 
@@ -2561,23 +2561,23 @@ Detailed list of changes
 
 - Pass key events mapped to scroll actions to the program running in the terminal when the terminal is in alternate screen mode (:iss:`5839`)
 
-- Implement :ref:`edit-in-kitty <edit_file>` using the new ``kitten`` static executable (:iss:`5546`, :iss:`5630`)
+- Implement :ref:`edit-in-datty <edit_file>` using the new ``daddy`` static executable (:iss:`5546`, :iss:`5630`)
 
 - Add an option :opt:`background_tint_gaps` to control background image tinting for window gaps (:iss:`5596`)
 
 - A new option :opt:`undercurl_style` to control the rendering of undercurls (:pull:`5883`)
 
-- Bash integration: Fix ``clone-in-kitty`` not working on bash >= 5.2 if environment variable values contain newlines or other special characters (:iss:`5629`)
+- Bash integration: Fix ``clone-in-datty`` not working on bash >= 5.2 if environment variable values contain newlines or other special characters (:iss:`5629`)
 
-- A new :ac:`sleep` action useful in combine based mappings to make kitty sleep before executing the next action
+- A new :ac:`sleep` action useful in combine based mappings to make datty sleep before executing the next action
 
-- Wayland GNOME: Workaround for latest mutter release breaking full screen for semi-transparent kitty windows (:iss:`5677`)
+- Wayland GNOME: Workaround for latest mutter release breaking full screen for semi-transparent datty windows (:iss:`5677`)
 
 - A new option :opt:`tab_title_max_length` to limit the length of tab (:iss:`5718`)
 
 - When drawing the tab bar have the default left and right margins drawn in a color matching the neighboring tab (:iss:`5719`)
 
-- When using the :code:`include` directive in :file:`kitty.conf` make the environment variable :envvar:`KITTY_OS` available for OS specific config
+- When using the :code:`include` directive in :file:`datty.conf` make the environment variable :envvar:`DATTY_OS` available for OS specific config
 
 - Wayland: Fix signal handling not working with some GPU drivers (:iss:`4636`)
 
@@ -2589,15 +2589,15 @@ Detailed list of changes
 
 - When a multi-key sequence does not match any action, send all key events to the child program (:pull:`5841`)
 
-- broadcast kitten: Allow pressing a key to stop echoing of input into the broadcast window itself (:disc:`5868`)
+- broadcast daddy: Allow pressing a key to stop echoing of input into the broadcast window itself (:disc:`5868`)
 
 - When reporting unused activity in a window, ignore activity that occurs soon after a window resize (:iss:`5881`)
 
 - Fix using :opt:`cursor` = ``none`` not working on text that has reverse video (:iss:`5897`)
 
-- Fix ssh kitten not working on FreeBSD (:iss:`5928`)
+- Fix ssh daddy not working on FreeBSD (:iss:`5928`)
 
-- macOS: Export kitty selected text to the system for use with services that accept it (patch by Sertaç Ö. Yıldız)
+- macOS: Export datty selected text to the system for use with services that accept it (patch by Sertaç Ö. Yıldız)
 
 
 0.26.5 [2022-11-07]
@@ -2605,7 +2605,7 @@ Detailed list of changes
 
 - Splits layout: Add a new mappable action to move the active window to the screen edge (:iss:`5643`)
 
-- ssh kitten: Allow using absolute paths for the location of transferred data (:iss:`5607`)
+- ssh daddy: Allow using absolute paths for the location of transferred data (:iss:`5607`)
 
 - Fix a regression in the previous release that caused a ``resize_draw_strategy`` of ``static`` to not work (:iss:`5601`)
 
@@ -2625,7 +2625,7 @@ Detailed list of changes
 0.26.4 [2022-10-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- macOS: Allow changing the kitty icon by placing a custom icon in the kitty config folder (:pull:`5464`)
+- macOS: Allow changing the datty icon by placing a custom icon in the datty config folder (:pull:`5464`)
 
 - Allow centering the :opt:`background_image` (:iss:`5525`)
 
@@ -2651,20 +2651,20 @@ Detailed list of changes
 
 - Allow passing null bytes through the system clipboard (:iss:`5483`)
 
-- ssh kitten: Fix :envvar:`KITTY_PUBLIC_KEY` not being encoded properly when transmitting (:iss:`5496`)
+- ssh daddy: Fix :envvar:`DATTY_PUBLIC_KEY` not being encoded properly when transmitting (:iss:`5496`)
 
 - Sessions: Allow controlling which OS Window is active via the ``focus_os_window`` directive
 
 - Wayland: Fix for bug in NVIDIA drivers that prevents transparency working (:iss:`5479`)
 
-- Wayland: Fix for a bug that could cause kitty to become non-responsive when
+- Wayland: Fix for a bug that could cause datty to become non-responsive when
   using multiple OS windows in a single instance on some compositors (:iss:`5495`)
 
-- Wayland: Fix for a bug preventing kitty from starting on Hyprland when using a non-unit scale (:iss:`5467`)
+- Wayland: Fix for a bug preventing datty from starting on Hyprland when using a non-unit scale (:iss:`5467`)
 
 - Wayland: Generate a XDG_ACTIVATION_TOKEN when opening URLs or running programs in the background via the launch action
 
-- Fix a regression that caused kitty not to restore SIGPIPE after python nukes it when launching children. Affects bash which does not sanitize its signal mask. (:iss:`5500`)
+- Fix a regression that caused datty not to restore SIGPIPE after python nukes it when launching children. Affects bash which does not sanitize its signal mask. (:iss:`5500`)
 
 - Fix a use-after-free when handling fake mouse clicks and the action causes windows to be removed/re-allocated (:iss:`5506`)
 
@@ -2674,17 +2674,17 @@ Detailed list of changes
 
 - Allow creating :code:`overlay-main` windows, which are treated as the active window unlike normal overlays (:iss:`5392`)
 
-- hints kitten: Allow using :doc:`launch` as the program to run, to open the result in a new kitty tab/window/etc. (:iss:`5462`)
+- hints daddy: Allow using :doc:`launch` as the program to run, to open the result in a new datty tab/window/etc. (:iss:`5462`)
 
-- hyperlinked_grep kitten: Allow control over which parts of ``rg`` output are hyperlinked (:pull:`5428`)
+- hyperlinked_grep daddy: Allow control over which parts of ``rg`` output are hyperlinked (:pull:`5428`)
 
-- Fix regression in 0.26.0 that caused launching kitty without working STDIO handles to result in high CPU usage and prewarming failing (:iss:`5444`)
+- Fix regression in 0.26.0 that caused launching datty without working STDIO handles to result in high CPU usage and prewarming failing (:iss:`5444`)
 
 - :doc:`/launch`: Allow setting the margin and padding for newly created windows (:iss:`5463`)
 
 - macOS: Fix regression in 0.26.0 that caused asking the user for a line of input such as for :ac:`set_tab_title` to not work (:iss:`5447`)
 
-- hints kitten: hyperlink matching: Fix hints occasionally matching text on subsequent line as part of hyperlink (:pull:`5450`)
+- hints daddy: hyperlink matching: Fix hints occasionally matching text on subsequent line as part of hyperlink (:pull:`5450`)
 
 - Fix a regression in 0.26.0 that broke mapping of native keys whose key codes did not fit in 21 bits (:iss:`5452`)
 
@@ -2698,9 +2698,9 @@ Detailed list of changes
 0.26.1 [2022-08-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ssh kitten: Fix executable permission missing from kitty bootstrap script (:iss:`5438`)
+- ssh daddy: Fix executable permission missing from datty bootstrap script (:iss:`5438`)
 
-- Fix a regression in 0.26.0 that caused kitty to no longer set the ``LANG`` environment variable on macOS (:iss:`5439`)
+- Fix a regression in 0.26.0 that caused datty to no longer set the ``LANG`` environment variable on macOS (:iss:`5439`)
 
 - Allow specifying a title when using the :ac:`set_tab_title` action (:iss:`5441`)
 
@@ -2710,11 +2710,11 @@ Detailed list of changes
 
 - A new option :opt:`remote_control_password` to use fine grained permissions for what can be remote controlled (:disc:`5320`)
 
-- Reduce startup latency by ~30 milliseconds when running kittens via key bindings inside kitty (:iss:`5159`)
+- Reduce startup latency by ~30 milliseconds when running daddies via key bindings inside datty (:iss:`5159`)
 
 - A new option :opt:`modify_font` to adjust various font metrics like underlines, cell sizes etc. (:pull:`5265`)
 
-- A new shortcut :sc:`show_kitty_doc` to display the kitty docs in a browser
+- A new shortcut :sc:`show_datty_doc` to display the datty docs in a browser
 
 - Graphics protocol: Only delete temp files if they have the string
   :code:`tty-graphics-protocol` in their file paths. This prevents deletion of arbitrary files in :file:`/tmp`.
@@ -2732,7 +2732,7 @@ Detailed list of changes
 
 - macOS: Fix unable to open new tab or new window when there is no OS window (:iss:`5276`)
 
-- kitty @ set-colors: Fix changing inactive_tab_foreground not working (:iss:`5214`)
+- datty @ set-colors: Fix changing inactive_tab_foreground not working (:iss:`5214`)
 
 - macOS: Fix a regression that caused switching keyboard input using Eisu and
   Kana keys not working (:iss:`5232`)
@@ -2748,23 +2748,23 @@ Detailed list of changes
 - Linux: Update cursor position after all key presses not just pre-edit text
   changes (:iss:`5241`)
 
-- ssh kitten: Allow ssh kitten to work from inside tmux, provided the tmux
-  session inherits the correct KITTY env vars (:iss:`5227`)
+- ssh daddy: Allow ssh daddy to work from inside tmux, provided the tmux
+  session inherits the correct DATTY env vars (:iss:`5227`)
 
-- ssh kitten: A new option :code:`--symlink-strategy` to control how symlinks
+- ssh daddy: A new option :code:`--symlink-strategy` to control how symlinks
   are copied to the remote machine (:iss:`5249`)
 
-- ssh kitten: Allow pressing :kbd:`Ctrl+C` to abort ssh before the connection is
+- ssh daddy: Allow pressing :kbd:`Ctrl+C` to abort ssh before the connection is
   completed (:iss:`5271`)
 
 - Bash integration: Fix declare not creating global variables in .bashrc (:iss:`5254`)
 
 - Bash integration: Fix the inherit_errexit option being set by shell integration (:iss:`5349`)
 
-- :command:`kitty @ scroll-window` allow scrolling by fractions of a screen
+- :command:`datty @ scroll-window` allow scrolling by fractions of a screen
   (:iss:`5294`)
 
-- remote files kitten: Fix working with files whose names have characters that
+- remote files daddy: Fix working with files whose names have characters that
   need to be quoted in shell scripts (:iss:`5313`)
 
 - Expand ~ in paths configured in :opt:`editor` and :opt:`exe_search_path` (:disc:`5298`)
@@ -2772,7 +2772,7 @@ Detailed list of changes
 - Allow showing the working directory of the active window in tab titles
   (:pull:`5314`)
 
-- ssh kitten: Allow completion of ssh options between the destination and command (:iss:`5322`)
+- ssh daddy: Allow completion of ssh options between the destination and command (:iss:`5322`)
 
 - macOS: Fix speaking selected text not working (:iss:`5357`)
 
@@ -2785,24 +2785,24 @@ Detailed list of changes
 0.25.2 [2022-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new command :command:`edit-in-kitty` to :ref:`edit_file`
+- A new command :command:`edit-in-datty` to :ref:`edit_file`
 
 - Allow getting the last non-empty command output easily via an action or
   remote control (:pull:`4973`)
 
 - Fix a bug that caused :opt:`macos_colorspace` to always be ``default`` regardless of its actual value (:iss:`5129`)
 
-- diff kitten: A new option :opt:`kitten-diff.ignore_name` to exclude files and directories from being scanned (:pull:`5171`)
+- diff daddy: A new option :opt:`daddy-diff.ignore_name` to exclude files and directories from being scanned (:pull:`5171`)
 
-- ssh kitten: Fix bash not being executed as a login shell since kitty 0.25.0 (:iss:`5130`)
+- ssh daddy: Fix bash not being executed as a login shell since datty 0.25.0 (:iss:`5130`)
 
 - macOS: When pasting text and the clipboard has a filesystem path, paste the
   full path instead of the text, which is sometimes just the file name (:pull:`5142`)
 
-- macOS: Allow opening executables without a file extension with kitty as well
+- macOS: Allow opening executables without a file extension with datty as well
   (:iss:`5160`)
 
-- Themes kitten: Add a tab to show user defined custom color themes separately
+- Themes daddy: Add a tab to show user defined custom color themes separately
   (:pull:`5150`)
 
 - Iosevka: Fix incorrect rendering when there is a combining char that does not
@@ -2812,11 +2812,11 @@ Detailed list of changes
   window resize (:iss:`5162`)
 
 - Remote control: Fix commands with large or asynchronous payloads like
-  :command:`kitty @ set-background-image`, :command:`kitty @ set-window-logo`
-  and :command:`kitty @ select-window` not working correctly
+  :command:`datty @ set-background-image`, :command:`datty @ set-window-logo`
+  and :command:`datty @ select-window` not working correctly
   when using a socket (:iss:`5165`)
 
-- hints kitten: Fix surrounding quotes/brackets and embedded carriage returns
+- hints daddy: Fix surrounding quotes/brackets and embedded carriage returns
   not being removed when using line number processing (:iss:`5170`)
 
 
@@ -2835,8 +2835,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused mouse move events to be incorrectly reported as drag events even when a button is not pressed (:iss:`4992`)
 
-- remote file kitten: Integrate with the ssh kitten for improved performance
-  and robustness. Re-uses the control master connection of the ssh kitten to
+- remote file daddy: Integrate with the ssh daddy for improved performance
+  and robustness. Re-uses the control master connection of the ssh daddy to
   avoid round-trip latency.
 
 - Fix tab selection when closing a new tab not correct in some scenarios (:iss:`4987`)
@@ -2847,18 +2847,18 @@ Detailed list of changes
   which characters are considered part of a word to the right when double clicking to select
   words (:pull:`5103`)
 
-- macOS: Make the global menu shortcut to open kitty website configurable (:pull:`5004`)
+- macOS: Make the global menu shortcut to open datty website configurable (:pull:`5004`)
 
 - macOS: Add the :opt:`macos_colorspace` option to control what color space colors are rendered in (:iss:`4686`)
 
-- Fix reloading of config not working when :file:`kitty.conf` does not exist when kitty is launched (:iss:`5071`)
+- Fix reloading of config not working when :file:`datty.conf` does not exist when datty is launched (:iss:`5071`)
 
 - Fix deleting images by row not calculating image bounds correctly (:iss:`5081`)
 
 - Increase the max number of combining chars per cell from two to three, without increasing memory usage.
 
 - Linux: Load libfontconfig at runtime to allow the binaries to work for
-  running kittens on servers without FontConfig
+  running daddies on servers without FontConfig
 
 - GNOME: Fix for high CPU usage caused by GNOME's text input subsystem going
   into an infinite loop when IME cursor position is updated after a done event
@@ -2868,7 +2868,7 @@ Detailed list of changes
 0.25.0 [2022-04-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :doc:`kittens/ssh`: automatic shell integration when using SSH. Easily
+- :doc:`daddies/ssh`: automatic shell integration when using SSH. Easily
   clone local shell and editor configuration on remote machines, and automatic
   re-use of existing connections to avoid connection setup latency.
 
@@ -2880,9 +2880,9 @@ Detailed list of changes
 
 - macOS: When using Apple's less as the pager for viewing scrollback strip out OSC codes as it can't parse them (:iss:`4788`)
 
-- diff kitten: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
+- diff daddy: Fix incorrect rendering in rare circumstances when scrolling after changing the context size (:iss:`4831`)
 
-- icat kitten: Fix a regression that broke :option:`kitty +kitten icat --print-window-size` (:pull:`4818`)
+- icat daddy: Fix a regression that broke :option:`datty +daddy icat --print-window-size` (:pull:`4818`)
 
 - Wayland: Fix :opt:`hide_window_decorations` causing docked windows to be resized on blur (:iss:`4797`)
 
@@ -2892,13 +2892,13 @@ Detailed list of changes
 
 - Fix continued lines not having their continued status reset on line feed (:iss:`4837`)
 
-- macOS: Allow the New kitty Tab/Window Here services to open multiple selected folders.  (:pull:`4848`)
+- macOS: Allow the New datty Tab/Window Here services to open multiple selected folders.  (:pull:`4848`)
 
 - Wayland: Fix a regression that broke IME when changing windows/tabs (:iss:`4853`)
 
 - macOS: Fix Unicode paths not decoded correctly when dropping files (:pull:`4879`)
 
-- Avoid flicker when starting kittens such as the hints kitten (:iss:`4674`)
+- Avoid flicker when starting daddies such as the hints daddy (:iss:`4674`)
 
 - A new action :ac:`scroll_prompt_to_top` to move the current prompt to the top (:pull:`4891`)
 
@@ -2922,7 +2922,7 @@ Detailed list of changes
 
 - Linux binaries: Fix binaries not working on systems with older Wayland client libraries (:iss:`4760`)
 
-- Fix a regression in the previous release that broke kittens launched with :code:`STDIN` not connected to a terminal (:iss:`4763`)
+- Fix a regression in the previous release that broke daddies launched with :code:`STDIN` not connected to a terminal (:iss:`4763`)
 
 - Wayland: Fix surface configure events not being acknowledged before commit
   the resized buffer (:pull:`4768`)
@@ -2934,30 +2934,30 @@ Detailed list of changes
 - Bash integration: No longer modify :file:`~/.bashrc` to load :ref:`shell integration <shell_integration>`.
   It is recommended to remove the lines used to load the shell integration from :file:`~/.bashrc` as they are no-ops.
 
-- macOS: Allow kitty to handle various URL types. Can be configured via
+- macOS: Allow datty to handle various URL types. Can be configured via
   :ref:`launch_actions` (:pull:`4618`)
 
-- macOS: Add a new service ``Open with kitty`` to open file types that are not
+- macOS: Add a new service ``Open with datty`` to open file types that are not
   recognized by the system (:pull:`4641`)
 
 - Splits layout: A new value for :option:`launch --location` to auto-select the split axis when splitting existing windows.
   Wide windows are split side-by-side and tall windows are split one-above-the-other
 
-- hints kitten: Fix a regression that broke recognition of path:linenumber:colnumber (:iss:`4675`)
+- hints daddy: Fix a regression that broke recognition of path:linenumber:colnumber (:iss:`4675`)
 
 - Fix a regression in the previous release that broke :opt:`active_tab_foreground` (:iss:`4620`)
 
 - Fix :ac:`show_last_command_output` not working when the output is stored
   partially in the scrollback pager history buffer (:iss:`4435`)
 
-- When dropping URLs/files onto kitty at a shell prompt insert them appropriately quoted and space
+- When dropping URLs/files onto datty at a shell prompt insert them appropriately quoted and space
   separated (:iss:`4734`)
 
 - Improve CWD detection when there are multiple foreground processes in the TTY process group
 
 - A new option :opt:`narrow_symbols` to turn off opportunistic wide rendering of private use codepoints
 
-- ssh kitten: Fix location of generated terminfo files on NetBSD (:iss:`4622`)
+- ssh daddy: Fix location of generated terminfo files on NetBSD (:iss:`4622`)
 
 - A new action to clear the screen up to the line containing the cursor, see
   :ac:`clear_terminal`
@@ -3022,10 +3022,10 @@ Detailed list of changes
 0.24.2 [2022-02-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- macOS: Allow opening text files, images and directories with kitty when
+- macOS: Allow opening text files, images and directories with datty when
   launched using "Open with" in Finder (:iss:`4460`)
 
-- Allow including config files matching glob patterns in :file:`kitty.conf`
+- Allow including config files matching glob patterns in :file:`datty.conf`
   (:iss:`4533`)
 
 - Shell integration: Fix bash integration not working when ``PROMPT_COMMAND``
@@ -3034,7 +3034,7 @@ Detailed list of changes
 - Shell integration: Fix cursor shape not being restored to default when
   running commands in the shell
 
-- Improve the UI of the ask kitten (:iss:`4545`)
+- Improve the UI of the ask daddy (:iss:`4545`)
 
 - Allow customizing the placement and formatting of the
   :opt:`tab_activity_symbol` and :opt:`bell_on_tab` symbols
@@ -3043,7 +3043,7 @@ Detailed list of changes
 - macOS: Persist "Secure Keyboard Entry" across restarts to match the behavior
   of Terminal.app (:iss:`4471`)
 
-- hints kitten: Fix common single letter extension files not being detected
+- hints daddy: Fix common single letter extension files not being detected
   (:iss:`4491`)
 
 - Support dotted and dashed underline styles (:pull:`4529`)
@@ -3064,7 +3064,7 @@ Detailed list of changes
 
 - Draw the dots for braille characters more evenly spaced at all font sizes (:iss:`4499`)
 
-- icat kitten: Add options to mirror images and remove their transparency
+- icat daddy: Add options to mirror images and remove their transparency
   before displaying them (:iss:`4513`)
 
 - macOS: Respect the users system-wide global keyboard shortcut preferences
@@ -3086,7 +3086,7 @@ Detailed list of changes
 - Fix clicking in a window to focus it and typing immediately sometimes having
   unexpected effects if at a shell prompt (:iss:`4128`)
 
-- themes kitten: Allow writing to a different file than :file:`kitty.conf`.
+- themes daddy: Allow writing to a different file than :file:`datty.conf`.
 
 
 0.24.1 [2022-01-06]
@@ -3099,7 +3099,7 @@ Detailed list of changes
 
 - Fix using ``--shell-integration`` with :file:`setup.py` broken (:iss:`4434`)
 
-- Fix showing debug information not working if kitty's :file:`STDIN` is not a tty
+- Fix showing debug information not working if datty's :file:`STDIN` is not a tty
   (:iss:`4424`)
 
 - Linux: Fix a regression that broke rendering of emoji with variation selectors
@@ -3109,7 +3109,7 @@ Detailed list of changes
 0.24.0 [2022-01-04]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Integrate kitty closely with common shells such as zsh, fish and bash.
+- Integrate datty closely with common shells such as zsh, fish and bash.
   This allows lots of niceties such as jumping to previous prompts, opening the
   output of the last command in a new window, etc. See :ref:`shell_integration`
   for details. Packagers please read :ref:`packagers`.
@@ -3119,7 +3119,7 @@ Detailed list of changes
   and you can press the number to focus the corresponding window (:iss:`4110`)
 
 - A new facility :opt:`window_logo_path` to draw an arbitrary PNG image as
-  logo in the corner of a kitty window (:pull:`4167`)
+  logo in the corner of a datty window (:pull:`4167`)
 
 - Allow rendering the cursor with a *reverse video* effect. See :opt:`cursor`
   for details (:iss:`126`)
@@ -3133,10 +3133,10 @@ Detailed list of changes
 - Allow the user to supply a custom Python function to draw tab bar. See
   :opt:`tab_bar_style`
 
-- A new remote control command to :program:`change the tab color <kitty @
+- A new remote control command to :program:`change the tab color <datty @
   set-tab-color>` (:iss:`1287`)
 
-- A new remote control command to :program:`visually select a window <kitty @
+- A new remote control command to :program:`visually select a window <datty @
   select-window>` (:iss:`4165`)
 
 - Add support for reporting mouse events with pixel coordinates using the
@@ -3148,37 +3148,37 @@ Detailed list of changes
 
 - A new mappable action ``swap_with_window`` to swap the current window with another window in the tab, visually
 
-- A new :program:`remote control command <kitty @ set-enabled-layouts>` to change
+- A new :program:`remote control command <datty @ set-enabled-layouts>` to change
   the enabled layouts in a tab (:iss:`4129`)
 
 - A new option :opt:`bell_path` to specify the path to a sound file
   to use as the bell sound
 
-- A new option :opt:`exe_search_path` to modify the locations kitty searches
+- A new option :opt:`exe_search_path` to modify the locations datty searches
   for executables to run (:iss:`4324`)
 
-- broadcast kitten: Show a "fake" cursor in all windows being broadcast too
+- broadcast daddy: Show a "fake" cursor in all windows being broadcast too
   (:iss:`4225`)
 
-- Allow defining :opt:`aliases <action_alias>` for more general actions, not just kittens
+- Allow defining :opt:`aliases <action_alias>` for more general actions, not just daddies
   (:pull:`4260`)
 
-- Fix a regression that caused :option:`kitty --title` to not work when
-  opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
+- Fix a regression that caused :option:`datty --title` to not work when
+  opening new OS windows using :option:`datty --single-instance` (:iss:`3893`)
 
-- icat kitten: Fix display of JPEG images that are rotated via EXIF data and
+- icat daddy: Fix display of JPEG images that are rotated via EXIF data and
   larger than available screen size (:iss:`3949`)
 
-- macOS: Fix SIGUSR1 quitting kitty instead of reloading the config file (:iss:`3952`)
+- macOS: Fix SIGUSR1 quitting datty instead of reloading the config file (:iss:`3952`)
 
 - Launch command: Allow specifying the OS window title
 
-- broadcast kitten: Allow broadcasting :kbd:`ctrl+c` (:pull:`3956`)
+- broadcast daddy: Allow broadcasting :kbd:`ctrl+c` (:pull:`3956`)
 
 - Fix space ligatures not working with Iosevka for some characters in the
   Enclosed Alphanumeric Supplement (:iss:`3954`)
 
-- hints kitten: Fix a regression that caused using the default open program
+- hints daddy: Fix a regression that caused using the default open program
   to trigger open actions instead of running the program (:iss:`3968`)
 
 - Allow deleting environment variables in :opt:`env` by specifying
@@ -3198,17 +3198,17 @@ Detailed list of changes
 - Remote file transfer: Fix transfer not working if custom ssh port or identity
   is specified on the command line (:iss:`4067`)
 
-- Unicode input kitten: Implement scrolling when more results are found than
+- Unicode input daddy: Implement scrolling when more results are found than
   the available display space (:pull:`4068`)
 
 - Allow middle clicking on a tab to close it (:iss:`4151`)
 
 - The command line option ``--watcher`` has been deprecated in favor of the
-  :opt:`watcher` option in :file:`kitty.conf`. It has the advantage of
+  :opt:`watcher` option in :file:`datty.conf`. It has the advantage of
   applying to all windows, not just the initially created ones. Note that
   ``--watcher`` now also applies to all windows, not just initially created ones.
 
-- **Backward incompatibility**: No longer turn on the kitty extended keyboard
+- **Backward incompatibility**: No longer turn on the datty extended keyboard
   protocol's disambiguate mode when the client sends the XTMODKEYS escape code.
   Applications must use the dedicated escape code to turn on the protocol.
   (:iss:`4075`)
@@ -3222,10 +3222,10 @@ Detailed list of changes
 - macOS: Fix :opt:`resize_in_steps` not working correctly on high DPI screens
   (:iss:`4114`)
 
-- Fix the :program:`resize OS Windows <kitty @ resize-os-window>` setting a
+- Fix the :program:`resize OS Windows <datty @ resize-os-window>` setting a
   slightly incorrect size on high DPI screens (:iss:`4114`)
 
-- :program:`kitty @ launch` - when creating tabs with the ``--match`` option create
+- :program:`datty @ launch` - when creating tabs with the ``--match`` option create
   the tab in the OS Window containing the result of the match rather than
   the active OS Window (:iss:`4126`)
 
@@ -3256,37 +3256,37 @@ Detailed list of changes
 - A new mappable action ``nth_os_window`` to focus the specified nth OS
   window. (:pull:`4316`)
 
-- macOS: The kitty window can be scrolled by the mouse wheel when OS window not
+- macOS: The datty window can be scrolled by the mouse wheel when OS window not
   in focus. (:pull:`4371`)
 
 - macOS: Light or dark system appearance can be specified in
-  :opt:`macos_titlebar_color` and used in kitty themes. (:pull:`4378`)
+  :opt:`macos_titlebar_color` and used in datty themes. (:pull:`4378`)
 
 
 0.23.1 [2021-08-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- macOS: Fix themes kitten failing to download themes because of missing SSL
+- macOS: Fix themes daddy failing to download themes because of missing SSL
   root certificates (:iss:`3936`)
 
 - A new option :opt:`clipboard_max_size` to control the maximum size
-  of data that kitty will transmit to the system clipboard on behalf of
+  of data that datty will transmit to the system clipboard on behalf of
   programs running inside it (:iss:`3937`)
 
-- When matching windows/tabs in kittens or using remote control, allow matching
+- When matching windows/tabs in daddies or using remote control, allow matching
   by recency. ``recent:0`` matches the active window/tab, ``recent:1`` matches
   the previous window/tab and so on
 
-- themes kitten: Fix only the first custom theme file being loaded correctly
+- themes daddy: Fix only the first custom theme file being loaded correctly
   (:iss:`3938`)
 
 
 0.23.0 [2021-08-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
-  Choose from almost two hundred themes in the `kitty themes repository
-  <https://github.com/kovidgoyal/kitty-themes>`_
+- A new :doc:`themes daddy </daddies/themes>` to easily change datty themes.
+  Choose from almost two hundred themes in the `datty themes repository
+  <https://github.com/kovidgoyal/datty-themes>`_
 
 - A new style for the tab bar that makes tabs looks like the tabs in a physical
   tabbed file, see :opt:`tab_bar_style`
@@ -3294,7 +3294,7 @@ Detailed list of changes
 - Make the visual bell flash more gentle, especially on dark themes
   (:pull:`2937`)
 
-- Fix :option:`kitty --title` not overriding the OS Window title when multiple
+- Fix :option:`datty --title` not overriding the OS Window title when multiple
   tabs are present. Also this option is no longer used as the default title for
   windows, allowing individual tabs/windows to have their own titles, even when
   the OS Window has a fixed overall title (:iss:`3893`)
@@ -3316,21 +3316,21 @@ Detailed list of changes
 - Add :opt:`clear_all_mouse_actions` to clear all mouse actions defined to
   that point (:iss:`3907`)
 
-- Fix the remote file kitten not working when using -- with ssh. The ssh kitten
+- Fix the remote file daddy not working when using -- with ssh. The ssh daddy
   was recently changed to do this (:iss:`3929`)
 
 - When dragging word or line selections, ensure the initially selected item is
   never deselected. This matches behavior in most other programs (:iss:`3930`)
 
-- hints kitten: Make copy/paste with the :option:`kitty +kitten hints
+- hints daddy: Make copy/paste with the :option:`datty +daddy hints
   --program` option work when using the ``self``
-  :option:`kitty +kitten hints --linenum-action` (:iss:`3931`)
+  :option:`datty +daddy hints --linenum-action` (:iss:`3931`)
 
 
 0.22.2 [2021-08-02]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- macOS: Fix a long standing bug that could cause kitty windows to stop
+- macOS: Fix a long standing bug that could cause datty windows to stop
   updating, that got worse in the previous release (:iss:`3890` and
   :iss:`2016`)
 
@@ -3341,7 +3341,7 @@ Detailed list of changes
 0.22.1 [2021-07-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Fix a regression in the previous release that broke ``kitty --help`` (:iss:`3869`)
+- Fix a regression in the previous release that broke ``datty --help`` (:iss:`3869`)
 
 - Graphics protocol: Fix composing onto currently displayed frame not updating the frame on the GPU (:iss:`3874`)
 
@@ -3352,7 +3352,7 @@ Detailed list of changes
 - detach_window: Allow specifying the previously active tab or the tab to the left/right of
   the active tab (:disc:`3877`)
 
-- broadcast kitten: Fix a regression in ``0.20.0`` that broke sending of some
+- broadcast daddy: Fix a regression in ``0.20.0`` that broke sending of some
   keys, such as backspace
 
 - Linux binary: Remove any RPATH build artifacts from bundled libraries
@@ -3374,7 +3374,7 @@ Detailed list of changes
   (:pull:`3836`)
 
 - When using the OSC 52 escape code to copy to clipboard allow large
-  copies (up to 8MB) without needing a kitty specific chunking protocol.
+  copies (up to 8MB) without needing a datty specific chunking protocol.
   Note that if you used the chunking protocol in the past, it will no longer
   work and you should switch to using the unmodified protocol which has the
   advantage of working with all terminal emulators.
@@ -3383,13 +3383,13 @@ Detailed list of changes
   could cause incorrect parsing if either the pending buffer capacity or the
   pending timeout were exceeded (:iss:`3779`)
 
-- A new remote control command to :program:`resize the OS Window <kitty @
+- A new remote control command to :program:`resize the OS Window <datty @
   resize-os-window>`
 
 - Graphics protocol: Add support for composing rectangles from one animation
   frame onto another (:iss:`3809`)
 
-- diff kitten: Remove limit on max line length of 4096 characters (:iss:`3806`)
+- diff daddy: Remove limit on max line length of 4096 characters (:iss:`3806`)
 
 - Fix turning off cursor blink via escape codes not working (:iss:`3808`)
 
@@ -3406,13 +3406,13 @@ Detailed list of changes
 - Wayland: Fix :opt:`initial_window_width/height <remember_window_size>` specified
   in cells not working on High DPI screens (:iss:`3834`)
 
-- A new theme for the kitty website with support for dark mode.
+- A new theme for the datty website with support for dark mode.
 
 - Render ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ with spaces at the edges. Matches rendering in
   most other programs and allows long chains of them to look better
   (:iss:`3844`)
 
-- hints kitten: Detect paths and hashes that appear over multiple lines.
+- hints daddy: Detect paths and hashes that appear over multiple lines.
   Note that this means that all line breaks in the text are no longer \n
   soft breaks are instead \r. If you use a custom regular expression that
   is meant to match over line breaks, you will need to match over both.
@@ -3427,8 +3427,8 @@ Detailed list of changes
   use the family name as the full face name of the regular font not working
   (:iss:`3861`)
 
-- clipboard kitten: fix copies to clipboard not working without the
-  :option:`kitty +kitten clipboard --wait-for-completion` option
+- clipboard daddy: fix copies to clipboard not working without the
+  :option:`datty +daddy clipboard --wait-for-completion` option
 
 
 0.21.2 [2021-06-28]
@@ -3443,12 +3443,12 @@ Detailed list of changes
 - Fix a regression in 0.21.0 that broke rendering of private use Unicode symbols followed
   by spaces, when they also exist not followed by spaces (:iss:`3729`)
 
-- ssh kitten: Support systems where the login shell is a non-POSIX shell
+- ssh daddy: Support systems where the login shell is a non-POSIX shell
   (:iss:`3405`)
 
-- ssh kitten: Add completion (:iss:`3760`)
+- ssh daddy: Add completion (:iss:`3760`)
 
-- ssh kitten: Fix "Connection closed" message being printed by ssh when running
+- ssh daddy: Fix "Connection closed" message being printed by ssh when running
   remote commands
 
 - Add support for the XTVERSION escape code
@@ -3464,14 +3464,14 @@ Detailed list of changes
 
 - Linux: Fix Emoji/bitmapped fonts not use able in symbol_map
 
-- query terminal kitten: Allow querying font face and size information
+- query terminal daddy: Allow querying font face and size information
   (:iss:`3756`)
 
-- hyperlinked grep kitten: Fix context options not generating contextual output (:iss:`3759`)
+- hyperlinked grep daddy: Fix context options not generating contextual output (:iss:`3759`)
 
 - Allow using superscripts in tab titles (:iss:`3763`)
 
-- Unicode input kitten: Fix searching when a word has more than 1024 matches (:iss:`3773`)
+- Unicode input daddy: Fix searching when a word has more than 1024 matches (:iss:`3773`)
 
 
 0.21.1 [2021-06-14]
@@ -3490,34 +3490,34 @@ Detailed list of changes
 0.21.0 [2021-06-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Allow reloading the :file:`kitty.conf` config file by pressing
+- Allow reloading the :file:`datty.conf` config file by pressing
   :sc:`reload_config_file`. (:iss:`1292`)
 
 - Allow clicking URLs to open them without needing to also hold
   :kbd:`ctrl+shift`
 
 - Allow remapping all mouse button press/release events to perform arbitrary
-  actions. :ref:`See details <conf-kitty-mouse.mousemap>` (:iss:`1033`)
+  actions. :ref:`See details <conf-datty-mouse.mousemap>` (:iss:`1033`)
 
 - Support infinite length ligatures (:iss:`3504`)
 
 - **Backward incompatibility**: The options to control which modifiers keys to
   press for various mouse actions have been removed, if you used these options,
   you will need to replace them with configuration using the new
-  :ref:`mouse actions framework <conf-kitty-mouse.mousemap>` as they will be
+  :ref:`mouse actions framework <conf-datty-mouse.mousemap>` as they will be
   ignored. The options were: ``terminal_select_modifiers``,
   ``rectangle_select_modifiers`` and ``open_url_modifiers``.
 
 - Add a configurable mouse action (:kbd:`ctrl+alt+triplepress` to select from the
   clicked point to the end of the line. (:iss:`3585`)
 
-- Add the ability to un-scroll the screen to the ``kitty @ scroll-window``
+- Add the ability to un-scroll the screen to the ``datty @ scroll-window``
   remote control command (:iss:`3604`)
 
 - A new option, :opt:`tab_bar_margin_height` to add margins around the
   top and bottom edges of the tab bar (:iss:`3247`)
 
-- Unicode input kitten: Fix a regression in 0.20.0 that broke keyboard handling
+- Unicode input daddy: Fix a regression in 0.20.0 that broke keyboard handling
   when the NumLock or CapsLock modifiers were engaged. (:iss:`3587`)
 
 - Fix a regression in 0.20.0 that sent incorrect bytes for the :kbd:`F1`-:kbd:`F4` keys
@@ -3536,7 +3536,7 @@ Detailed list of changes
   applications for some fonts (:iss:`2022`)
 
 - Add a few more special commandline arguments for the launch command. Now all
-  ``KITTY_PIPE_DATA`` is also available via command line argument substitution
+  ``DATTY_PIPE_DATA`` is also available via command line argument substitution
   (:iss:`3593`)
 
 - Fix dynamically changing the background color in a window causing rendering
@@ -3548,15 +3548,15 @@ Detailed list of changes
 - Fix deleting windows that are not the last window via remote control leaving
   no window focused (:iss:`3619`)
 
-- Add an option :option:`kitten @ get-text --add-cursor` to also get the current
+- Add an option :option:`daddy @ get-text --add-cursor` to also get the current
   cursor position and state as ANSI escape codes (:iss:`3625`)
 
-- Add an option :option:`kitten @ get-text --add-wrap-markers` to add line wrap
+- Add an option :option:`daddy @ get-text --add-wrap-markers` to add line wrap
   markers to the output (:pull:`3633`)
 
 - Improve rendering of curly underlines on HiDPI screens (:pull:`3637`)
 
-- ssh kitten: Mimic behavior of ssh command line client more closely by
+- ssh daddy: Mimic behavior of ssh command line client more closely by
   executing any command specified on the command line via the users' shell
   just as ssh does (:iss:`3638`)
 
@@ -3576,7 +3576,7 @@ Detailed list of changes
 - Remote control: Allow matching tabs by index number in currently active OS
   Window (:iss:`3708`)
 
-- ssh kitten: Fix non-standard properties in terminfo such as the ones used for
+- ssh daddy: Fix non-standard properties in terminfo such as the ones used for
   true color not being copied (:iss:`312`)
 
 
@@ -3585,7 +3585,7 @@ Detailed list of changes
 
 - macOS: Distribute universal binaries with both ARM and Intel architectures
 
-- A new ``show_key`` kitten to easily see the bytes generated by the terminal
+- A new ``show_key`` daddy to easily see the bytes generated by the terminal
   for key presses in the various keyboard modes (:pull:`3556`)
 
 - Linux: Fix keyboard layout change keys defined via compose rules not being
@@ -3611,34 +3611,34 @@ Detailed list of changes
 - A new remote control command :ref:`at-env` to change the default
   environment passed to newly created windows (:iss:`3529`)
 
-- Linux: Fix binary kitty builds not able to load fonts in WOFF2 format
+- Linux: Fix binary datty builds not able to load fonts in WOFF2 format
   (:iss:`3506`)
 
 - macOS: Prevent :kbd:`option` based shortcuts for being used for global menu
   actions (:iss:`3515`)
 
-- Fix ``kitty @ close-tab`` not working with pipe based remote control
+- Fix ``datty @ close-tab`` not working with pipe based remote control
   (:iss:`3510`)
 
 - Fix removal of inactive tab that is before the currently active tab causing
   the highlighted tab to be incorrect (:iss:`3516`)
 
-- icat kitten: Respect EXIF orientation when displaying JPEG images
+- icat daddy: Respect EXIF orientation when displaying JPEG images
   (:iss:`3518`)
 
 - GNOME: Fix maximize state not being remembered when focus changes and window
   decorations are hidden (:iss:`3507`)
 
 - GNOME: Add a new :opt:`wayland_titlebar_color` option to control the color of the
-  kitty window title bar
+  datty window title bar
 
-- Fix reading :option:`kitty --session` from ``STDIN`` not working when the
-  :code:`kitty --detach` option is used (:iss:`3523`)
+- Fix reading :option:`datty --session` from ``STDIN`` not working when the
+  :code:`datty --detach` option is used (:iss:`3523`)
 
 - Special case rendering of the few remaining Powerline box drawing chars
   (:iss:`3535`)
 
-- Fix ``kitty @ set-colors`` not working for the :opt:`active_tab_foreground`.
+- Fix ``datty @ set-colors`` not working for the :opt:`active_tab_foreground`.
 
 
 0.20.1 [2021-04-19]
@@ -3647,7 +3647,7 @@ Detailed list of changes
 - icat: Fix some broken GIF images with no frame delays not being animated
   (:iss:`3498`)
 
-- hints kitten: Fix sending hyperlinks to their default handler not working
+- hints daddy: Fix sending hyperlinks to their default handler not working
   (:pull:`3500`)
 
 - Wayland: Fix regression in previous release causing window decorations to
@@ -3657,8 +3657,8 @@ Detailed list of changes
 0.20.0 [2021-04-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Support display of animated images ``kitty +kitten icat animation.gif``. See
-  :ref:`animation_protocol` for details on animation support in the kitty
+- Support display of animated images ``datty +daddy icat animation.gif``. See
+  :ref:`animation_protocol` for details on animation support in the datty
   graphics protocol.
 
 - A new keyboard reporting protocol with various advanced features that can be
@@ -3679,9 +3679,9 @@ Detailed list of changes
   the window when the window is expanded with lines from the scrollback
   (:pull:`3371`)
 
-- diff kitten: Implement recursive diff over SSH (:iss:`3268`)
+- diff daddy: Implement recursive diff over SSH (:iss:`3268`)
 
-- ssh kitten: Allow using python instead of the shell on the server, useful if
+- ssh daddy: Allow using python instead of the shell on the server, useful if
   the shell used is a non-POSIX compliant one, such as fish (:iss:`3277`)
 
 - Add support for the color settings stack that XTerm copied from us without
@@ -3696,11 +3696,11 @@ Detailed list of changes
 
 - Double clicking on empty tab bar area now opens a new tab (:iss:`3201`)
 
-- kitty @ ls: Show only environment variables that are different for each
+- datty @ ls: Show only environment variables that are different for each
   window, by default.
 
 - When passing a directory or a non-executable file as the program to run to
-  kitty opens it with the shell or by parsing the shebang, instead of just failing.
+  datty opens it with the shell or by parsing the shebang, instead of just failing.
 
 - Linux: Fix rendering of emoji followed by the graphics variation selector not
   being colored with some fonts (:iss:`3211`)
@@ -3718,11 +3718,11 @@ Detailed list of changes
 - GNOME/Wayland: Improve window decorations the titlebar now shows the window
   title. Allow running under Wayland on GNOME by default. (:iss:`3284`)
 
-- Panel kitten: Allow setting WM_CLASS (:iss:`3233`)
+- Panel daddy: Allow setting WM_CLASS (:iss:`3233`)
 
 - macOS: Add menu items to close the OS window and the current tab (:pull:`3240`, :iss:`3246`)
 
-- macOS: Allow opening script and command files with kitty (:iss:`3366`)
+- macOS: Allow opening script and command files with datty (:iss:`3366`)
 
 - Also detect ``gemini://`` URLs when hovering with the mouse (:iss:`3370`)
 
@@ -3752,7 +3752,7 @@ Detailed list of changes
 - macOS: Disable the native operating system tabs as they are non-functional
   and can be confusing (:iss:`3325`)
 
-- hints kitten: When using the linenumber action with a background action,
+- hints daddy: When using the linenumber action with a background action,
   preserve the working directory (:iss:`3352`)
 
 - Graphics protocol: Fix suppression of responses not working for chunked
@@ -3781,9 +3781,9 @@ Detailed list of changes
 0.19.3 [2020-12-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Happy holidays to all kitty users!
+- Happy holidays to all datty users!
 
-- A new :doc:`broadcast <kittens/broadcast>` kitten to type in all kitty windows
+- A new :doc:`broadcast <daddies/broadcast>` daddy to type in all datty windows
   simultaneously (:iss:`1569`)
 
 - Add a new mappable `select_tab` action to choose a tab to switch to even
@@ -3813,7 +3813,7 @@ Detailed list of changes
 - Wayland: Fix key repeat being stopped by the release of an unrelated key
   (:iss:`2191`)
 
-- Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
+- Add an option, :opt:`detect_urls` to control whether datty will detect URLs
   when the mouse moves over them (:pull:`3118`)
 
 - Graphics protocol: Dont return filename in the error message when opening file
@@ -3836,14 +3836,14 @@ Detailed list of changes
 - Fix a regression in 0.19.0 that caused a rare crash when using the optional
   :opt:`scrollback_pager_history_size` (:iss:`3049`)
 
-- Full screen kittens: Fix incorrect cursor position after kitten quits
+- Full screen daddies: Fix incorrect cursor position after daddy quits
   (:iss:`3176`)
 
 
 0.19.2 [2020-11-13]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new :doc:`kittens/query_terminal` kitten to easily query the running kitty
+- A new :doc:`daddies/query_terminal` daddy to easily query the running datty
   via escape codes to detect its version, and the values of
   configuration options that enable or disable terminal features.
 
@@ -3866,11 +3866,11 @@ Detailed list of changes
 - Fix selections created by dragging upwards not being auto-cleared when
   screen contents change (:pull:`3028`)
 
-- macOS: Fix kitty not being added to PATH automatically when using pre-built
+- macOS: Fix datty not being added to PATH automatically when using pre-built
   binaries (:iss:`3063`)
 
-- Allow adding MIME definitions to kitty by placing a ``mime.types`` file in
-  the kitty config directory (:iss:`3056`)
+- Allow adding MIME definitions to datty by placing a ``mime.types`` file in
+  the datty config directory (:iss:`3056`)
 
 - Dont ignore :option:`--title` when using a session file that defines no
   windows (:iss:`3055`)
@@ -3886,7 +3886,7 @@ Detailed list of changes
 0.19.1 [2020-10-06]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- hints kitten: Add an ``ip`` type for easy selection of IP addresses
+- hints daddy: Add an ``ip`` type for easy selection of IP addresses
   (:pull:`3009`)
 
 - Fix a regression that caused a segfault when using
@@ -3903,12 +3903,12 @@ Detailed list of changes
   Controlled via :opt:`allow_hyperlinks` (:iss:`68`)
 
 - Add support for easily editing or downloading files over SSH sessions
-  without the need for any special software, see :doc:`kittens/remote_file`
+  without the need for any special software, see :doc:`daddies/remote_file`
 
-- A new :doc:`kittens/hyperlinked_grep` kitten to easily search files and open
+- A new :doc:`daddies/hyperlinked_grep` daddy to easily search files and open
   the results at the matched line by clicking on them.
 
-- Allow customizing the :doc:`actions kitty takes <open_actions>` when clicking on URLs
+- Allow customizing the :doc:`actions datty takes <open_actions>` when clicking on URLs
 
 - Improve rendering of borders when using minimal borders. Use less space and
   do not display a box around active windows
@@ -3919,7 +3919,7 @@ Detailed list of changes
 - Implement special rendering for various characters from the set of "Symbols
   for Legacy Computing" from the Unicode 13 standard
 
-- Unicode input kitten: Allow choosing symbols from the NERD font as well.
+- Unicode input daddy: Allow choosing symbols from the NERD font as well.
   These are mostly Private Use symbols not in any standard, however are common. (:iss:`2972`)
 
 - Allow specifying border sizes in either pts or pixels. Change the default to
@@ -3928,7 +3928,7 @@ Detailed list of changes
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)
 
-- hints kitten: Add a new :option:`kitty +kitten hints --type` of ``hyperlink`` useful
+- hints daddy: Add a new :option:`datty +daddy hints --type` of ``hyperlink`` useful
   for activating hyperlinks using just the keyboard
 
 - Allow tracking focus change events in watchers (:iss:`2918`)
@@ -3943,7 +3943,7 @@ Detailed list of changes
 - macOS: Switch to using the User Notifications framework for notifications.
   The current notifications framework has been deprecated in Big Sur. The new
   framework only allows notifications from signed and notarized applications,
-  so people using kitty from homebrew/source are out of luck. Complain to
+  so people using datty from homebrew/source are out of luck. Complain to
   Apple.
 
 - When in the main screen and a program grabs the mouse, do not use the scroll
@@ -3957,7 +3957,7 @@ Detailed list of changes
   Plex Mono that have the regular face with a full name that is the same as the
   family name (:iss:`2951`)
 
-- Fix a regression that broke :opt:`kitten_alias` (:iss:`2952`)
+- Fix a regression that broke :opt:`daddy_alias` (:iss:`2952`)
 
 - Fix a regression that broke the ``move_window_to_top`` action (:pull:`2953`)
 
@@ -3970,7 +3970,7 @@ Detailed list of changes
 0.18.3 [2020-08-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- hints kitten: Allow customizing hint colors (:pull:`2894`)
+- hints daddy: Allow customizing hint colors (:pull:`2894`)
 
 - Wayland: Fix a typo in the previous release that broke reading mouse cursor size (:iss:`2895`)
 
@@ -3999,7 +3999,7 @@ Detailed list of changes
 - Improve anti-aliasing of triangular box drawing characters, noticeable on
   low-resolution screens (:iss:`2844`)
 
-- Fix ``kitty @ send-text`` not working reliably when using a socket for remote
+- Fix ``datty @ send-text`` not working reliably when using a socket for remote
   control (:iss:`2852`)
 
 - Implement support for box drawing rounded-corners characters (:iss:`2240`)
@@ -4017,18 +4017,18 @@ Detailed list of changes
 - Make neighboring window selection in grid and splits layouts more intelligent
   (:pull:`2840`)
 
-- Allow passing the current selection to kittens (:iss:`2796`)
+- Allow passing the current selection to daddies (:iss:`2796`)
 
 - Fix pre-edit text not always being cleared with ibus input (:iss:`2862`)
 
 - Allow setting the :opt:`background_opacity` of new OS windows created via
-  :option:`kitty --single-instance` using the :option:`kitty --override` command line
+  :option:`datty --single-instance` using the :option:`datty --override` command line
   argument (:iss:`2806`)
 
 - Fix the CSI J (Erase in display ED) escape code not removing line continued
   markers (:iss:`2809`)
 
-- hints kitten: In linenumber mode expand paths that starts with ~
+- hints daddy: In linenumber mode expand paths that starts with ~
   (:iss:`2822`)
 
 - Fix ``launch --location=last`` not working (:iss:`2841`)
@@ -4056,7 +4056,7 @@ Detailed list of changes
 0.18.1 [2020-06-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- macOS: Fix for diff kitten not working with python 3.8 (:iss:`2780`)
+- macOS: Fix for diff daddy not working with python 3.8 (:iss:`2780`)
 
 
 0.18.0 [2020-06-20]
@@ -4065,7 +4065,7 @@ Detailed list of changes
 - Allow multiple overlay windows per normal window
 
 - Add an option :opt:`confirm_os_window_close` to ask for confirmation
-  when closing an OS window with multiple kitty windows.
+  when closing an OS window with multiple datty windows.
 
 - Tall and Fat layouts: Add a ``mirrored`` option to put the full size window
   on the opposite edge of the screen (:iss:`2654`)
@@ -4074,23 +4074,23 @@ Detailed list of changes
   of full size windows (:iss:`2688`)
 
 - Allow sending arbitrary signals to the current foreground process in a window
-  using either a mapping in kitty.conf or via remote control (:iss:`2778`)
+  using either a mapping in datty.conf or via remote control (:iss:`2778`)
 
 - Allow sending the back and forward mouse buttons to terminal applications
   (:pull:`2742`)
 
 - **Backwards incompatibility**: The numbers used to encode mouse buttons
-  for the ``send_mouse_event`` function that can be used in kittens have
+  for the ``send_mouse_event`` function that can be used in daddies have
   been changed (see :ref:`send_mouse_event`).
 
-- Add a new mappable ``quit`` action to quit kitty completely.
+- Add a new mappable ``quit`` action to quit datty completely.
 
 - Fix marks using different colors with regexes using only a single color
   (:pull:`2663`)
 
 - Linux: Workaround for broken Nvidia drivers for old cards (:iss:`456`)
 
-- Wayland: Fix kitty being killed on some Wayland compositors if a hidden window
+- Wayland: Fix datty being killed on some Wayland compositors if a hidden window
   has a lot of output (:iss:`2329`)
 
 - BSD: Fix controlling terminal not being established (:pull:`2686`)
@@ -4104,9 +4104,9 @@ Detailed list of changes
 - X11: Reduce startup time by ~25% by only querying GLX for framebuffer
   configurations once (:iss:`2754`)
 
-- macOS: Notarize the kitty application bundle (:iss:`2040`)
+- macOS: Notarize the datty application bundle (:iss:`2040`)
 
-- Fix the kitty shell launched via a mapping needlessly requiring
+- Fix the datty shell launched via a mapping needlessly requiring
   :opt:`allow_remote_control` to be turned on.
 
 
@@ -4129,8 +4129,8 @@ Detailed list of changes
 
 - Report modifier key state when sending wheel events to the terminal program
 
-- Fix kitty @ send-text not working with text larger than 1024 bytes when using
-  :option:`kitty --listen-on` (:iss:`2607`)
+- Fix datty @ send-text not working with text larger than 1024 bytes when using
+  :option:`datty --listen-on` (:iss:`2607`)
 
 - Wayland: Fix OS window title not updating for hidden windows (:iss:`2629`)
 
@@ -4148,7 +4148,7 @@ Detailed list of changes
   background image (:iss:`2419`)
 
 - Allow mapping arbitrary remote control commands to key presses in
-  :file:`kitty.conf`
+  :file:`datty.conf`
 
 - X11: Fix crash when doing drag and drop from some applications (:iss:`2505`)
 
@@ -4159,7 +4159,7 @@ Detailed list of changes
 - Render country flags designated by a pair of unicode codepoints
   in two cells instead of four.
 
-- diff kitten: New option to control the background color for filler lines in
+- diff daddy: New option to control the background color for filler lines in
   the margin (:iss:`2518`)
 
 - Fix specifying options for layouts in the startup session file not working
@@ -4177,12 +4177,12 @@ Detailed list of changes
 - Marks: Fix marks not handling wide characters and tab characters correctly
   (:iss:`2534`)
 
-- Add a new :opt:`listen_on` option in kitty.conf to set :option:`kitty --listen-on`
+- Add a new :opt:`listen_on` option in datty.conf to set :option:`datty --listen-on`
   globally. Also allow using environment variables in this option (:iss:`2569`).
 
-- Allow sending mouse events in kittens (:pull:`2538`)
+- Allow sending mouse events in daddies (:pull:`2538`)
 
-- icat kitten: Fix display of 16-bit depth images (:iss:`2542`)
+- icat daddy: Fix display of 16-bit depth images (:iss:`2542`)
 
 - Add ncurses specific terminfo definitions for strikethrough (:pull:`2567`)
 
@@ -4201,13 +4201,13 @@ Detailed list of changes
 - Fix a regression in 0.17 that broke drawing of borders with non-minimal
   borders (:iss:`2474`)
 
-- Hints kitten: Allow copying to primary selection as well as clipboard
+- Hints daddy: Allow copying to primary selection as well as clipboard
   (:pull:`2487`)
 
 - Add a new mappable action ``close_other_windows_in_tab`` to close all but the
   active window (:iss:`2484`)
 
-- Hints kitten: Adjust the default regex used to detect line numbers to handle
+- Hints daddy: Adjust the default regex used to detect line numbers to handle
   line+column numbers (:iss:`2268`)
 
 - Fix blank space at the start of tab bar in the powerline style when first tab is
@@ -4216,7 +4216,7 @@ Detailed list of changes
 - Fix regression causing incorrect rendering of separators in tab bar when
   defining a tab bar background color (:pull:`2480`)
 
-- Fix a regression in 0.17 that broke the kitty @ launch remote command and
+- Fix a regression in 0.17 that broke the datty @ launch remote command and
   also broke the --tab-title option when creating a new tab. (:iss:`2488`)
 
 - Linux: Fix selection of fonts with multiple width variants not preferring
@@ -4234,7 +4234,7 @@ Detailed list of changes
 - macOS: Fix a regression in 0.17 that caused incorrect variants to be
   automatically selected for some fonts (:iss:`2462`)
 
-- Fix a regression in 0.17 that caused kitty @ set-colors to require setting
+- Fix a regression in 0.17 that caused datty @ set-colors to require setting
   cursor_text_color (:iss:`2470`)
 
 
@@ -4265,10 +4265,10 @@ Detailed list of changes
 - X11: Fix arrow mouse cursor using right pointing instead of the default left
   pointing arrow (:iss:`2341`)
 
-- Allow passing the currently active kitty window id in the launch command
+- Allow passing the currently active datty window id in the launch command
   (:iss:`2391`)
 
-- unicode input kitten: Allow pressing :kbd:`ctrl+tab` to change the input mode
+- unicode input daddy: Allow pressing :kbd:`ctrl+tab` to change the input mode
   (:iss:`2343`)
 
 - Fix a bug that prevented using custom functions with the new marks feature
@@ -4280,7 +4280,7 @@ Detailed list of changes
 - Fix border/margin/padding sizes not being recalculated on DPI change
   (:iss:`2346`)
 
-- diff kitten: Fix directory diffing with removed binary files failing
+- diff daddy: Fix directory diffing with removed binary files failing
   (:iss:`2378`)
 
 - macOS: Fix menubar title not updating on OS Window focus change (:iss:`2350`)
@@ -4320,12 +4320,12 @@ Detailed list of changes
 
 - Drop support for python 3.5
 
-- Wayland: Fix a crash when drag and dropping into kitty (:iss:`2432`)
+- Wayland: Fix a crash when drag and dropping into datty (:iss:`2432`)
 
-- diff kitten: Fix images lingering as blank rectangles after the kitten quits
+- diff daddy: Fix images lingering as blank rectangles after the daddy quits
   (:iss:`2449`)
 
-- diff kitten: Fix images losing position when scrolling using mouse
+- diff daddy: Fix images losing position when scrolling using mouse
   wheel/touchpad
 
 
@@ -4335,7 +4335,7 @@ Detailed list of changes
 - A new :doc:`marks` feature that allows highlighting and scrolling to arbitrary
   text in the terminal window.
 
-- hints kitten: Allow pressing :sc:`goto_file_line` to quickly open
+- hints daddy: Allow pressing :sc:`goto_file_line` to quickly open
   the selected file at the selected line in vim or a configurable editor (:iss:`2268`)
 
 - Allow having more than one full height window in the :code:`tall` layout
@@ -4383,7 +4383,7 @@ Detailed list of changes
 - Fix a crash/incorrect rendering when detaching a window in some circumstances
   (:iss:`2173`)
 
-- hints kitten: Add an option :option:`kitty +kitten hints --ascending` to
+- hints daddy: Add an option :option:`datty +daddy hints --ascending` to
   control if the hints numbers increase or decrease from top to bottom
 
 - Fix :opt:`background_opacity` incorrectly applying to selected text and
@@ -4409,16 +4409,16 @@ Detailed list of changes
   window into a different tab (:iss:`1310`)
 
 - Add a new action :doc:`launch <launch>` that unifies launching of processes
-  in new kitty windows/tabs.
+  in new datty windows/tabs.
 
 - Add a new style ``powerline`` for tab bar rendering, see :opt:`tab_bar_style` (:pull:`2021`)
 
-- Allow changing colors by mapping a keyboard shortcut to read a kitty config
+- Allow changing colors by mapping a keyboard shortcut to read a datty config
   file with color definitions. See the :doc:`FAQ <faq>` for details
   (:iss:`2083`)
 
-- hints kitten: Allow completely customizing the matching and actions performed
-  by the kitten using your own script (:iss:`2124`)
+- hints daddy: Allow completely customizing the matching and actions performed
+  by the daddy using your own script (:iss:`2124`)
 
 - Wayland: Fix key repeat not being stopped when focus leaves window. This is
   expected behavior on Wayland, apparently (:iss:`2014`)
@@ -4426,9 +4426,9 @@ Detailed list of changes
 - When drawing unicode symbols that are followed by spaces, use multiple cells
   to avoid resized or cut-off glyphs (:iss:`1452`)
 
-- diff kitten: Allow diffing remote files easily via ssh (:iss:`727`)
+- diff daddy: Allow diffing remote files easily via ssh (:iss:`727`)
 
-- unicode input kitten: Add an option :option:`kitty +kitten unicode_input
+- unicode input daddy: Add an option :option:`datty +daddy unicode_input
   --emoji-variation` to control the presentation variant of selected emojis
   (:iss:`2139`)
 
@@ -4436,10 +4436,10 @@ Detailed list of changes
   (:pull:`2074` and :pull:`2021`)
 
 - Add a new socket only mode for :opt:`allow_remote_control`. This makes
-  it possible for programs running on the local machine to control kitty
+  it possible for programs running on the local machine to control datty
   but not programs running over ssh.
 
-- hints kitten: Allow using named groups in the regular expression. The named
+- hints daddy: Allow using named groups in the regular expression. The named
   groups are passed to the invoked program for further processing.
 
 - Fix a regression in 0.14.5 that caused rendering of private use glyphs
@@ -4458,7 +4458,7 @@ Detailed list of changes
 - macOS: Fix a regression in the previous release that caused a crash when
   pressing a unprintable key, such as the POWER key (:iss:`1997`)
 
-- Fix a regression in the previous release that caused kitty to not always
+- Fix a regression in the previous release that caused datty to not always
   respond to DPI changes (:pull:`1999`)
 
 
@@ -4489,22 +4489,22 @@ Detailed list of changes
 0.14.4 [2019-08-31]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- hints kitten: Add a :option:`kitty +kitten hints --alphabet` option to
+- hints daddy: Add a :option:`datty +daddy hints --alphabet` option to
   control what alphabets are used for hints (:iss:`1879`)
 
-- hints kitten: Allow specifying :option:`kitty +kitten hints --program`
+- hints daddy: Allow specifying :option:`datty +daddy hints --program`
   multiple times to run multiple programs  (:iss:`1879`)
 
-- Add a :opt:`kitten_alias` option that can be used to alias kitten invocation
-  for brevity and to change kitten option defaults globally (:iss:`1879`)
+- Add a :opt:`daddy_alias` option that can be used to alias daddy invocation
+  for brevity and to change daddy option defaults globally (:iss:`1879`)
 
 - macOS: Add an option :opt:`macos_show_window_title_in` to control
   showing the window title in the menubar/titlebar (:pull:`1837`)
 
-- macOS: Allow drag and drop of text from other applications into kitty
+- macOS: Allow drag and drop of text from other applications into datty
   (:pull:`1921`)
 
-- When running kittens, use the colorscheme of the current window
+- When running daddies, use the colorscheme of the current window
   rather than the configured colorscheme (:iss:`1906`)
 
 - Don't fail to start if running the shell to read the EDITOR env var fails
@@ -4516,7 +4516,7 @@ Detailed list of changes
 - Fix a regression that broke setting background_opacity via remote control
   (:iss:`1895`)
 
-- Fix piping PNG images into the icat kitten not working (:iss:`1920`)
+- Fix piping PNG images into the icat daddy not working (:iss:`1920`)
 
 - When the OS returns a fallback font that does not actually contain glyphs
   for the text, do not exhaust the list of fallback fonts (:iss:`1918`)
@@ -4528,12 +4528,12 @@ Detailed list of changes
 0.14.3 [2019-07-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Remote control: Add a command `kitty @ scroll-window` to scroll windows
+- Remote control: Add a command `datty @ scroll-window` to scroll windows
 
 - Allow passing a ``!neighbor`` argument to the new_window mapping to open a
   new window next to the active window (:iss:`1746`)
 
-- Document the kitty remote control protocol (:iss:`1646`)
+- Document the datty remote control protocol (:iss:`1646`)
 
 - Add a new option :opt:`pointer_shape_when_grabbed` that allows you to control
   the mouse pointer shape when the terminal programs grabs the pointer
@@ -4546,7 +4546,7 @@ Detailed list of changes
 - When piping data to a child in the pipe command do it in a thread so as not
   to block the UI (:iss:`1708`)
 
-- unicode_input kitten: Fix a regression that broke using indices to select
+- unicode_input daddy: Fix a regression that broke using indices to select
   recently used symbols.
 
 - Fix a regression that caused closing an overlay window to focus
@@ -4567,12 +4567,12 @@ Detailed list of changes
 - Linux: Use the system "bell" sound for the terminal bell. Adds libcanberra
   as a new dependency to play the system sound.
 
-- macOS: Fix a rare deadlock causing kitty to hang (:iss:`1779`)
+- macOS: Fix a rare deadlock causing datty to hang (:iss:`1779`)
 
 - Linux: Fix a regression in 0.14.0 that caused the event loop to tick
   continuously, wasting CPU even when idle (:iss:`1782`)
 
-- ssh kitten: Make argument parsing more like ssh (:iss:`1787`)
+- ssh daddy: Make argument parsing more like ssh (:iss:`1787`)
 
 - When using :opt:`strip_trailing_spaces` do not remove empty lines
   (:iss:`1802`)
@@ -4587,7 +4587,7 @@ Detailed list of changes
   aligned inside the window when the window size is not an exact multiple
   of the cell size (:pull:`1670`)
 
-- hints kitten: Add a :option:`kitty +kitten hints --multiple-joiner` option to
+- hints daddy: Add a :option:`datty +daddy hints --multiple-joiner` option to
   control how multiple selections are serialized when copying to clipboard
   or inserting into the terminal. You can have them on separate lines,
   separated by arbitrary characters, or even serialized as JSON (:iss:`1665`)
@@ -4595,14 +4595,14 @@ Detailed list of changes
 - macOS: Fix a regression in the previous release that broke using
   :kbd:`ctrl+shift+tab` (:iss:`1671`)
 
-- panel kitten: Fix the contents of the panel kitten not being positioned
+- panel daddy: Fix the contents of the panel daddy not being positioned
   correctly on the vertical axis
 
-- icat kitten: Fix a regression that broke passing directories to icat
+- icat daddy: Fix a regression that broke passing directories to icat
   (:iss:`1683`)
 
-- clipboard kitten: Add a :option:`kitty +kitten clipboard --wait-for-completion`
-  option to have the kitten wait till copying to clipboard is complete
+- clipboard daddy: Add a :option:`datty +daddy clipboard --wait-for-completion`
+  option to have the daddy wait till copying to clipboard is complete
   (:iss:`1693`)
 
 - Allow using the :doc:`pipe <pipe>` command to send screen and scrollback
@@ -4613,7 +4613,7 @@ Detailed list of changes
   :opt:`linux_display_server`.
 
 - Add an option to control the default :opt:`update_check_interval` when
-  building kitty packages
+  building datty packages
 
 - Wayland: Fix resizing the window on a compositor that does not provide
   server side window decorations, such a GNOME or Weston not working
@@ -4639,7 +4639,7 @@ Detailed list of changes
 - Fix colors not being preserved when using the pipe command with
   the pager history buffer (:pull:`1657`)
 
-- macOS: Fix a regression that could cause rendering of a kitty window
+- macOS: Fix a regression that could cause rendering of a datty window
   to occasionally freeze in certain situations, such as moving it between
   monitors or transitioning from/to fullscreen (:iss:`1641`)
 
@@ -4670,7 +4670,7 @@ Detailed list of changes
 - Allow using the new private internal clipboard buffers with the
   :opt:`copy_on_select` option (:iss:`1390`)
 
-- macOS: Allow opening new kitty tabs/top-level windows from Finder
+- macOS: Allow opening new datty tabs/top-level windows from Finder
   (:pull:`1350`)
 
 - Add an option :opt:`disable_ligatures` to disable
@@ -4685,7 +4685,7 @@ Detailed list of changes
   tab becomes active when the current tab is closed (:pull:`1524`)
 
 - Allow specifying a value of ``none`` for the :opt:`selection_foreground`
-  which will cause kitty to not change text color in selections (:iss:`1358`)
+  which will cause datty to not change text color in selections (:iss:`1358`)
 
 - Make live resizing of OS windows smoother and add an option
   ``resize_draw_strategy`` to control what is drawn while a
@@ -4699,7 +4699,7 @@ Detailed list of changes
 - When a window is closed, switch focus to the previously active window (if
   any) instead of picking the previous window in the layout (:iss:`1450`)
 
-- icat kitten: Add support for displaying images at http(s) URLs (:iss:`1340`)
+- icat daddy: Add support for displaying images at http(s) URLs (:iss:`1340`)
 
 - A new option :opt:`strip_trailing_spaces` to optionally remove trailing
   spaces from lines when copying to clipboard.
@@ -4737,7 +4737,7 @@ Detailed list of changes
 - Fix scrollback pager history not being cleared when clearing the
   main scrollback buffer (:iss:`1387`)
 
-- macOS: When closing a top-level window only switch focus to the previous kitty
+- macOS: When closing a top-level window only switch focus to the previous datty
   window if it is on the same workspace (:iss:`1379`)
 
 - macOS: Fix :opt:`sync_to_monitor` not working on Mojave.
@@ -4745,16 +4745,16 @@ Detailed list of changes
 - macOS: Use the system cursor blink interval by default
   :opt:`cursor_blink_interval`.
 
-- Wayland: Use the kitty Wayland backend by default. Can be switched back
+- Wayland: Use the datty Wayland backend by default. Can be switched back
   to using XWayland by setting the environment variable:
-  ``KITTY_DISABLE_WAYLAND=1``
+  ``DATTY_DISABLE_WAYLAND=1``
 
 - Add a ``no-append`` setting to :opt:`clipboard_control` to disable
-  the kitty copy concatenation protocol extension for OSC 52.
+  the datty copy concatenation protocol extension for OSC 52.
 
 - Update to using the Unicode 12 standard
 
-- Unicode input kitten: Allow using the arrow keys in code mode to go to next
+- Unicode input daddy: Allow using the arrow keys in code mode to go to next
   and previous unicode symbol.
 
 - macOS: Fix specifying initial window size in cells not working correctly on
@@ -4773,7 +4773,7 @@ Detailed list of changes
 - Use negative values for :opt:`mouse_hide_wait` to hide the mouse cursor
   immediately when pressing a key (:iss:`1534`)
 
-- When encountering errors in :file:`kitty.conf` report them to the user
+- When encountering errors in :file:`datty.conf` report them to the user
   instead of failing to start.
 
 - Allow the user to control the resize debounce time via
@@ -4796,24 +4796,24 @@ Detailed list of changes
 0.13.3 [2019-01-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- icat kitten: Add a ``--stdin`` option to control if image data is read from
+- icat daddy: Add a ``--stdin`` option to control if image data is read from
   STDIN (:iss:`1308`)
 
-- hints kitten: Start hints numbering at one instead of zero by default. Added
+- hints daddy: Start hints numbering at one instead of zero by default. Added
   an option ``--hints-offset`` to control it. (:iss:`1289`)
 
 - Fix a regression in the previous release that broke using ``background`` for
   :opt:`cursor_text_color` (:iss:`1288`)
 
-- macOS: Fix dragging kitty window tabs in traditional full screen mode causing
+- macOS: Fix dragging datty window tabs in traditional full screen mode causing
   crashes (:iss:`1296`)
 
-- macOS: Ensure that when running from a bundle, the bundle kitty exe is
-  preferred over any kitty in PATH (:iss:`1280`)
+- macOS: Ensure that when running from a bundle, the bundle datty exe is
+  preferred over any datty in PATH (:iss:`1280`)
 
 - macOS: Fix a regression that broke mapping of :kbd:`ctrl+tab` (:iss:`1304`)
 
-- Add a list of user-created kittens to the docs
+- Add a list of user-created daddies to the docs
 
 - Fix a regression that broke changing mouse wheel scroll direction with
   negative :opt:`wheel_scroll_multiplier` values in full-screen applications
@@ -4822,13 +4822,13 @@ Detailed list of changes
 - Fix :opt:`background_opacity` not working with pure white backgrounds
   (:iss:`1285`)
 
-- macOS: Fix "New OS Window" dock action not working when kitty is not focused
+- macOS: Fix "New OS Window" dock action not working when datty is not focused
   (:iss:`1312`)
 
 - macOS: Add aliases for close window and new tab actions that conform to common
   Apple shortcuts for these actions (:iss:`1313`)
 
-- macOS: Fix some kittens causing 100% CPU usage
+- macOS: Fix some daddies causing 100% CPU usage
 
 
 0.13.2 [2019-01-04]
@@ -4839,7 +4839,7 @@ Detailed list of changes
   the tab number next to the title (:iss:`1223`)
 
 - Report the current foreground processes as well as the original child process,
-  when using `kitty @ ls`
+  when using `datty @ ls`
 
 - Use the current working directory of the foreground process for the
   `*_with_cwd` actions that open a new window with the current working
@@ -4863,7 +4863,7 @@ Detailed list of changes
 - Fix changing :opt:`cursor_text_color` via remote control not working
   (:iss:`1229`)
 
-- Add an action to resize windows that can be mapped to shortcuts in :file:`kitty.conf`
+- Add an action to resize windows that can be mapped to shortcuts in :file:`datty.conf`
   (:pull:`1245`)
 
 - Fix using the ``new_tab !neighbor`` action changing the order of the
@@ -4890,14 +4890,14 @@ Detailed list of changes
 0.13.0 [2018-12-05]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Add an option :opt:`scrollback_pager_history_size` to tell kitty to store
+- Add an option :opt:`scrollback_pager_history_size` to tell datty to store
   extended scrollback to use when viewing the scrollback buffer in a pager
   (:iss:`970`)
 
-- Modify the kittens sub-system to allow creating custom kittens without any
+- Modify the daddies sub-system to allow creating custom daddies without any
   user interface. This is useful for creating more complex actions that can
-  be bound to key presses in :file:`kitty.conf`. See
-  doc:`kittens/custom`. (:iss:`870`)
+  be bound to key presses in :file:`datty.conf`. See
+  doc:`daddies/custom`. (:iss:`870`)
 
 - Add a new ``nth_window`` action that can be used to go to the nth window and
   also previously active windows, using negative numbers. Similarly,
@@ -4913,10 +4913,10 @@ Detailed list of changes
 - Add a new :opt:`touch_scroll_multiplier` option to modify the amount
   scrolled by high precision scrolling devices such as touchpads (:pull:`1129`)
 
-- icat kitten: Implement reading image data from STDIN, if STDIN is not
+- icat daddy: Implement reading image data from STDIN, if STDIN is not
   connected to a terminal (:iss:`1130`)
 
-- hints kitten: Insert trailing spaces after matches when using the
+- hints daddy: Insert trailing spaces after matches when using the
   ``--multiple`` option. Also add a separate ``--add-trailing-space``
   option to control this behavior (:pull:`1132`)
 
@@ -4948,7 +4948,7 @@ Detailed list of changes
 - Linux: Fix a crash when using the GNU Unifont as a fallback font
   (:iss:`1087`)
 
-- Wayland: Fix copying from hidden kitty windows hanging (:iss:`1051`)
+- Wayland: Fix copying from hidden datty windows hanging (:iss:`1051`)
 
 - Wayland: Add support for the primary selection protocol
   implemented by some compositors (:pull:`1095`)
@@ -4988,7 +4988,7 @@ Detailed list of changes
 0.12.3 [2018-09-29]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- macOS: Fix kitty window not being rendered on macOS Mojave until the window is
+- macOS: Fix datty window not being rendered on macOS Mojave until the window is
   moved or resized at least once (:iss:`887`)
 
 - Unicode input: Fix an error when searching for the string 'fir' (:iss:`1035`)
@@ -5008,7 +5008,7 @@ Detailed list of changes
   and scrollback buffer to any desired program running in a new window, tab or
   overlay window. (:iss:`933`)
 
-- Add a new :option:`kitty --start-as` command line flag to start kitty
+- Add a new :option:`datty --start-as` command line flag to start datty
   full-screen/maximized/minimized. This replaces the ``--start-in-fullscreen``
   flag introduced in the previous release (:iss:`935`)
 
@@ -5020,7 +5020,7 @@ Detailed list of changes
   sub-pixel antialiasing (:pull:`950`)
 
 - macOS: Add an option :opt:`macos_traditional_fullscreen` to make
-  full-screening of kitty windows much faster, but less pretty. (:iss:`911`)
+  full-screening of datty windows much faster, but less pretty. (:iss:`911`)
 
 - Fix a bug causing incorrect line ordering when viewing the scrollback buffer
   if the scrollback buffer is full (:iss:`960`)
@@ -5031,19 +5031,19 @@ Detailed list of changes
 - Workaround for broken editors like nano that cannot handle newlines in pasted text
   (:iss:`994`)
 
-- Linux: Ensure that the python embedded in the kitty binary build uses
+- Linux: Ensure that the python embedded in the datty binary build uses
   UTF-8 mode to process command-line arguments (:iss:`924`)
 
 - Linux: Handle fonts that contain monochrome bitmaps (such as the Terminus TTF
   font) (:pull:`934`)
 
-- Have the :option:`kitty --title` flag apply to all windows created
-  using :option:`kitty --session` (:iss:`921`)
+- Have the :option:`datty --title` flag apply to all windows created
+  using :option:`datty --session` (:iss:`921`)
 
 - Revert change for backspacing of wide characters in the previous release,
   as it breaks backspacing in some wide character aware programs (:iss:`875`)
 
-- Fix kitty @set-colors not working for tab backgrounds when using the `fade` tabbar style
+- Fix datty @set-colors not working for tab backgrounds when using the `fade` tabbar style
   (:iss:`937`)
 
 - macOS: Fix resizing semi-transparent windows causing the windows to be
@@ -5056,17 +5056,17 @@ Detailed list of changes
   (:iss:`359`)
 
 - Remote control: Fix the ``focus_window`` command not focusing the
-  top-level OS window of the specified kitty window (:iss:`1003`)
+  top-level OS window of the specified datty window (:iss:`1003`)
 
 - Fix using :opt:`focus_follows_mouse` causing text selection with the
-  mouse to malfunction when using multiple kitty windows (:iss:`1002`)
+  mouse to malfunction when using multiple datty windows (:iss:`1002`)
 
 
 0.12.1 [2018-09-08]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Add a new ``--start-in-fullscreen`` command line flag to start
-  kitty in full screen mode (:iss:`856`)
+  datty in full screen mode (:iss:`856`)
 
 - macOS: Fix a character that cannot be rendered in any font causing
   font fallback for all subsequent characters that cannot be rendered in the
@@ -5086,23 +5086,23 @@ Detailed list of changes
 
 - Allow mapping of individual key-presses without modifiers as shortcuts
 
-- Fix legacy invocation of icat as `kitty icat` not working (:iss:`850`)
+- Fix legacy invocation of icat as `datty icat` not working (:iss:`850`)
 
 - Improve rendering of wavy underline at small font sizes (:iss:`853`)
 
 - Fix a regression in 0.12.0 that broke dynamic resizing of layouts (:iss:`860`)
 
-- Wayland: Allow using the :code:`kitty --class` command line flag
+- Wayland: Allow using the :code:`datty --class` command line flag
   to set the app id (:iss:`862`)
 
-- Add completion of the kitty command for the fish shell (:pull:`829`)
+- Add completion of the datty command for the fish shell (:pull:`829`)
 
 - Linux: Fix XCompose rules with no defined symbol not working (:iss:`880`)
 
 - Linux: Fix crash with some Nvidia drivers when creating tabs in the first
   top level-window after creating a second top-level window. (:iss:`873`)
 
-- macOS: Diff kitten: Fix syntax highlighting not working because of
+- macOS: Diff daddy: Fix syntax highlighting not working because of
   a bug in the 0.12.0 macOS package
 
 
@@ -5117,14 +5117,14 @@ Detailed list of changes
   using standard keyboards) via `IBus
   <https://github.com/ibus/ibus/wiki/ReadMe>`_ (:iss:`469`)
 
-- Implement completion for the kitty command in bash and zsh. See
+- Implement completion for the datty command in bash and zsh. See
   :ref:`shell_integration`.
 
 - Render the text under the cursor in a fixed color, configurable via
   the option :opt:`cursor_text_color` (:iss:`126`)
 
 - Add an option :opt:`env` to set environment variables in child processes
-  from kitty.conf
+  from datty.conf
 
 - Add an action to the ``clear_terminal`` function to scroll the screen
   contents into the scrollback buffer (:iss:`1113`)
@@ -5141,9 +5141,9 @@ Detailed list of changes
 - Remote control: Allow matching windows by the environment variables of their
   child process as well
 
-- Allow running kittens via the remote control system (:iss:`738`)
+- Allow running daddies via the remote control system (:iss:`738`)
 
-- Allow enabling remote control in only some kitty windows
+- Allow enabling remote control in only some datty windows
 
 - Add a keyboard shortcut to reset the terminal (:sc:`reset_terminal`). It
   takes parameters so you can define your own shortcuts to clear the
@@ -5152,13 +5152,13 @@ Detailed list of changes
 - Fix one-pixel line appearing at window edges at some window sizes when
   displaying images with background opacity enabled (:iss:`741`)
 
-- diff kitten: Fix error when right hand side file is binary and left hand side
+- diff daddy: Fix error when right hand side file is binary and left hand side
   file is text (:pull:`752`)
 
-- kitty @ new-window: Add a new option :option:`kitten @ new-window --window-type`
+- datty @ new-window: Add a new option :option:`daddy @ new-window --window-type`
   to create top-level OS windows (:iss:`770`)
 
-- macOS: The :opt:`focus_follows_mouse` option now also works across top-level kitty OS windows
+- macOS: The :opt:`focus_follows_mouse` option now also works across top-level datty OS windows
   (:iss:`754`)
 
 - Fix detection of URLs in HTML source code (URLs inside quotes) (:iss:`785`)
@@ -5167,7 +5167,7 @@ Detailed list of changes
 
 - Round-trip the zwj unicode character. Rendering of sequences containing zwj
   is still not implemented, since it can cause the collapse of an unbounded
-  number of characters into a single cell. However, kitty at least preserves
+  number of characters into a single cell. However, datty at least preserves
   the zwj by storing it as a combining character.
 
 - macOS: Disable the custom mouse cursor. Using a custom cursor fails on dual
@@ -5177,7 +5177,7 @@ Detailed list of changes
 - macOS: Fix control+tab key combination not working (:iss:`801`)
 
 - Linux: Fix slow startup on some systems caused by GLFW searching for
-  joysticks. Since kitty does not use joysticks, disable joystick support.
+  joysticks. Since datty does not use joysticks, disable joystick support.
   (:iss:`830`)
 
 
@@ -5188,9 +5188,9 @@ Detailed list of changes
   that separate the inactive window from a neighbor. Note that setting
   a non-zero window margin overrides this and causes all borders to be drawn.
   The old behavior of drawing all borders can be restored via the
-  :opt:`draw_minimal_borders` setting in kitty.conf. (:iss:`699`)
+  :opt:`draw_minimal_borders` setting in datty.conf. (:iss:`699`)
 
-- macOS: Add an option :opt:`macos_window_resizable` to control if kitty
+- macOS: Add an option :opt:`macos_window_resizable` to control if datty
   top-level windows are resizable using the mouse or not (:iss:`698`)
 
 - macOS: Use a custom mouse cursor that shows up well on both light and dark backgrounds
@@ -5220,13 +5220,13 @@ Detailed list of changes
 
 - Linux: Allow using XKB key names to bind shortcuts to keys not supported by GLFW (:pull:`665`)
 
-- kitty shell: Ignore failure to read readline history file. Happens if the
-  user migrates their kitty cache directory between systems with incompatible
+- datty shell: Ignore failure to read readline history file. Happens if the
+  user migrates their datty cache directory between systems with incompatible
   readline implementations.
 
 - macOS: Fix an error in remote control when using --listen-on (:iss:`679`)
 
-- hints kitten: Add a :option:`kitty +kitten hints --multiple` option to select
+- hints daddy: Add a :option:`datty +daddy hints --multiple` option to select
   multiple items (:iss:`687`)
 
 - Fix pasting large amounts of text very slow (:iss:`682`)
@@ -5234,13 +5234,13 @@ Detailed list of changes
 - Add an option :opt:`single_window_margin_width` to allow different margins
   when only a single window is visible in the layout (:iss:`688`)
 
-- Add a :option:`kitty --hold` command line option to stay open after the child process exits (:iss:`667`)
+- Add a :option:`datty --hold` command line option to stay open after the child process exits (:iss:`667`)
 
-- diff kitten: When triggering a search scroll to the first match automatically
+- diff daddy: When triggering a search scroll to the first match automatically
 
-- :option:`kitty --debug-font-fallback` also prints out what basic fonts were matched
+- :option:`datty --debug-font-fallback` also prints out what basic fonts were matched
 
-- When closing a kitty window reset the mouse cursor to its default shape and ensure it is visible (:iss:`655`).
+- When closing a datty window reset the mouse cursor to its default shape and ensure it is visible (:iss:`655`).
 
 - Remote control: Speed-up reading of command responses
 
@@ -5255,24 +5255,24 @@ Detailed list of changes
 0.11.1 [2018-06-17]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- diff kitten: Implement searching for text in the diff (:iss:`574`)
+- diff daddy: Implement searching for text in the diff (:iss:`574`)
 
-- Add an option :opt:`startup_session` to :file:`kitty.conf` to specify a
+- Add an option :opt:`startup_session` to :file:`datty.conf` to specify a
   default startup session (:iss:`641`)
 
-- Add a command line option :option:`kitty --wait-for-single-instance-window-close`
-  to make :option:`kitty --single-instance` wait for the closing of the newly opened
+- Add a command line option :option:`datty --wait-for-single-instance-window-close`
+  to make :option:`datty --single-instance` wait for the closing of the newly opened
   window before quitting (:iss:`630`)
 
-- diff kitten: Allow theming the selection background/foreground as well
+- diff daddy: Allow theming the selection background/foreground as well
 
-- diff kitten: Display CRLF line endings using the unicode return symbol
+- diff daddy: Display CRLF line endings using the unicode return symbol
   instead of <d> as it is less intrusive (:iss:`638`)
 
-- diff kitten: Fix default foreground/background colors not being restored when
-  kitten quits (:iss:`637`)
+- diff daddy: Fix default foreground/background colors not being restored when
+  daddy quits (:iss:`637`)
 
-- Fix :option:`kitten @ set-colors --all` not working when more than one window
+- Fix :option:`daddy @ set-colors --all` not working when more than one window
   present (:iss:`632`)
 
 - Fix a regression that broke the legacy increase/decrease_font_size actions
@@ -5290,7 +5290,7 @@ Detailed list of changes
 - :doc:`Pre-compiled binaries <binary>` with all bundled dependencies for Linux
   (:iss:`595`)
 
-- A :doc:`new kitten <kittens/panel>` to create dock panels on X11 desktops
+- A :doc:`new daddy <daddies/panel>` to create dock panels on X11 desktops
   showing the output from arbitrary terminal programs.
 
 - Reduce data sent to the GPU per render by 30% (:commit:`8dea5b3`)
@@ -5298,17 +5298,17 @@ Detailed list of changes
 - Implement changing the font size for individual top level (OS) windows
   (:iss:`408`)
 
-- When viewing the scrollback in less using :sc:`show_scrollback` and kitty
-  is currently scrolled, position the scrollback in less to match kitty's
+- When viewing the scrollback in less using :sc:`show_scrollback` and datty
+  is currently scrolled, position the scrollback in less to match datty's
   scroll position. (:iss:`148`)
 
-- ssh kitten: Support all SSH options. It can now be aliased directly to ssh
+- ssh daddy: Support all SSH options. It can now be aliased directly to ssh
   for convenience. (:pull:`591`)
 
-- icat kitten: Add :option:`kitty +kitten icat --print-window-size` to easily
+- icat daddy: Add :option:`datty +daddy icat --print-window-size` to easily
   detect the window size in pixels from scripting languages (:iss:`581`)
 
-- hints kitten: Allow selecting hashes from the terminal with
+- hints daddy: Allow selecting hashes from the terminal with
   :sc:`insert_selected_hash` useful for git commits. (:pull:`604`)
 
 - Allow specifying initial window size in number of cells in addition to pixels
@@ -5320,15 +5320,15 @@ Detailed list of changes
 - When closing a tab switch to the last active tab instead of the right-most
   tab (:iss:`585`)
 
-- Wayland: Fix kitty not starting when using wl_roots based compositors
+- Wayland: Fix datty not starting when using wl_roots based compositors
   (:iss:`157`)
 
 - Wayland: Fix mouse wheel/touchpad scrolling in opposite direction to other apps (:iss:`594`)
 
 - macOS: Fix the new OS window keyboard shortcut (:sc:`new_os_window`) not
-  working if no kitty window currently has focus. (:iss:`524`)
+  working if no datty window currently has focus. (:iss:`524`)
 
-- macOS: Keep kitty running even when the last window is closed. This is in
+- macOS: Keep datty running even when the last window is closed. This is in
   line with how applications are supposed to behave on macOS (:iss:`543`).
   There is a new option (:opt:`macos_quit_when_last_window_closed`) to control
   this.
@@ -5336,7 +5336,7 @@ Detailed list of changes
 - macOS: Add macOS standard shortcuts for copy, paste and new OS window
   (⌘+C, ⌘+V, ⌘+N)
 
-- Add a config option (:opt:`editor`) to set the EDITOR kitty uses (:iss:`580`)
+- Add a config option (:opt:`editor`) to set the EDITOR datty uses (:iss:`580`)
 
 - Add a config option (``x11_hide_window_decorations``) to hide window
   decorations under X11/Wayland (:iss:`607`)
@@ -5356,15 +5356,15 @@ Detailed list of changes
 
 - Fix :opt:`inactive_text_alpha` also applying to the tab bar (:iss:`612`)
 
-- :doc:`hints kitten <kittens/hints>`: Fix a regression that caused some blank lines to be not
+- :doc:`hints daddy <daddies/hints>`: Fix a regression that caused some blank lines to be not
   be displayed.
 
 - Linux: Include a man page and the HTML docs when building the linux-package
 
-- Remote control: Fix kitty @ sometimes failing to read the response from
-  kitty. (:iss:`614`)
+- Remote control: Fix datty @ sometimes failing to read the response from
+  datty. (:iss:`614`)
 
-- Fix `kitty @ set-colors` not working with the window border colors.
+- Fix `datty @ set-colors` not working with the window border colors.
   (:iss:`623`)
 
 - Fix a regression in 0.10 that caused incorrect rendering of the status bar in
@@ -5374,22 +5374,22 @@ Detailed list of changes
 0.10.1 [2018-05-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Add a kitten to easily ssh into servers that automatically copies the
-  terminfo files over. ``kitty +kitten ssh myserver``.
+- Add a daddy to easily ssh into servers that automatically copies the
+  terminfo files over. ``datty +daddy ssh myserver``.
 
-- diff kitten: Make the keyboard shortcuts configurable (:iss:`563`)
+- diff daddy: Make the keyboard shortcuts configurable (:iss:`563`)
 
 - Allow controlling *background_opacity* via either keyboard shortcuts or
   remote control. Note that you must set *dynamic_background_opacity yes* in
-  kitty.conf first. (:iss:`569`)
+  datty.conf first. (:iss:`569`)
 
-- diff kitten: Add keybindings to scroll by page
+- diff daddy: Add keybindings to scroll by page
 
-- diff kitten: Fix incorrect syntax highlighting for a few file formats such as
+- diff daddy: Fix incorrect syntax highlighting for a few file formats such as
   yaml
 
 - macOS: Fix regression that caused the *macos_option_as_alt* setting to always
-  be disabled for all OS windows in a kitty instance after the first window
+  be disabled for all OS windows in a datty instance after the first window
   (:iss:`571`)
 
 - Fix Ctrl+Alt+Space not working in normal and application keyboard modes
@@ -5399,28 +5399,28 @@ Detailed list of changes
 0.10.0 [2018-05-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A diff kitten to show side-by-side diffs with syntax highlighting and support
-  for images. See :doc:`diff kitten <kittens/diff>`.
+- A diff daddy to show side-by-side diffs with syntax highlighting and support
+  for images. See :doc:`diff daddy <daddies/diff>`.
 
-- Make windows in the various kitty layouts manually resizable. See
+- Make windows in the various datty layouts manually resizable. See
   :ref:`layouts` for details.
 
 - Implement support for the SGR *faint* escape code to make text blend
   into the background (:iss:`446`).
 
-- Make the hints kitten a little smarter (:commit:`ad1109b`)
+- Make the hints daddy a little smarter (:commit:`ad1109b`)
   so that URLs that stretch over multiple lines are detected. Also improve
   detection of surrounding brackets/quotes.
 
-- Make the kitty window id available as the environment variable
-  ``KITTY_WINDOW_ID`` (:iss:`532`).
+- Make the datty window id available as the environment variable
+  ``DATTY_WINDOW_ID`` (:iss:`532`).
 
 - Add a "fat" layout that is similar to the "tall" layout but vertically
   oriented.
 
 - Expand environment variables in config file include directives
 
-- Allow programs running in kitty to read/write from the clipboard (:commit:`889ca77`).
+- Allow programs running in datty to read/write from the clipboard (:commit:`889ca77`).
   By default only writing is allowed. This feature is supported in many
   terminals, search for `OSC 52 clipboard` to find out more about using it.
 
@@ -5469,25 +5469,25 @@ Detailed list of changes
 
 - Remote control: Allow matching windows by number (visible position).
 
-- macOS: Fix changing tab title and kitty shell not working
+- macOS: Fix changing tab title and datty shell not working
 
 - When triple-clicking select all wrapped lines belonging to a single logical line.
 
-- hints kitten: Detect bracketed URLs and don't include the closing bracket in the URL.
+- hints daddy: Detect bracketed URLs and don't include the closing bracket in the URL.
 
 - When calling pass_selection_to_program use the current directory of the child
   process as the cwd of the program.
 
-- Add macos_hide_from_tasks option to hide kitty from the macOS task switcher
+- Add macos_hide_from_tasks option to hide datty from the macOS task switcher
 
 - macOS: When the macos_titlebar_color is set to background change the titlebar
-  colors to match the current background color of the active kitty window
+  colors to match the current background color of the active datty window
 
 - Add a setting to clear all shortcuts defined up to that point in the config
   file(s)
 
-- Add a setting (kitty_mod) to change the modifier used by all the default
-  kitty shortcuts, globally
+- Add a setting (datty_mod) to change the modifier used by all the default
+  datty shortcuts, globally
 
 - Fix Shift+function key not working
 
@@ -5502,7 +5502,7 @@ Detailed list of changes
   colors for the two cells.
 
 - Fix passing @text to other programs such as when viewing the scrollback
-  buffer not working correctly if kitty is itself scrolled up.
+  buffer not working correctly if datty is itself scrolled up.
 
 - Fix window focus gained/lost events not being reported to child programs when
   switching windows/tabs using the various keyboard shortcuts.
@@ -5517,15 +5517,15 @@ Detailed list of changes
 0.9.0 [2018-04-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A new kitty command shell to allow controlling kitty via commands. Press
+- A new datty command shell to allow controlling datty via commands. Press
   `ctrl+shift+escape` to run the shell.
 
-- The hints kitten has become much more powerful. Now in addition to URLs you
+- The hints daddy has become much more powerful. Now in addition to URLs you
   can use it to select word, paths, filenames, lines, etc. from the screen.
   These can be inserted into the terminal, copied to clipboard or sent to
   external programs.
 
-- Linux: Switch to libxkbcommon for keyboard handling. It allows kitty to
+- Linux: Switch to libxkbcommon for keyboard handling. It allows datty to
   support XCompose and dead keys and also react to keyboard remapping/layout
   change without needing a restart.
 
@@ -5544,14 +5544,14 @@ Detailed list of changes
 
 - Allow setting all 256 terminal colors in the config file
 
-- Fix using `kitty --single-instance` to open a new window in a running kitty
+- Fix using `datty --single-instance` to open a new window in a running datty
   instance, not respecting the `--directory` flag
 
 - URL hints: Exclude trailing punctuation from URLs
 
-- URL hints: Launch the browser from the kitty parent process rather than the
-  hints kitten. Fixes launching on some systems where xdg-open doesn't like
-  being run from a kitten.
+- URL hints: Launch the browser from the datty parent process rather than the
+  hints daddy. Fixes launching on some systems where xdg-open doesn't like
+  being run from a daddy.
 
 - Allow using rectangle select mode by pressing shift in addition to the
   rectangle select modifiers even when the terminal program has grabbed the
@@ -5562,7 +5562,7 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Fix presence of XDG_CONFIG_DIRS and absence of XDG_CONFIG_HOME preventing
-  kitty from starting
+  datty from starting
 
 - Revert change in last release to cell width calculation. Instead just clip
   the right edges of characters that overflow the cell by at most two pixels
@@ -5585,10 +5585,10 @@ Detailed list of changes
   now calculated by actually rendering bitmaps, which is slower but more
   accurate)
 
-- Allow specifying a system wide kitty config file, for all users
+- Allow specifying a system wide datty config file, for all users
 
 - Add a --debug-config command line flag to output data about the system and
-  kitty configuration.
+  datty configuration.
 
 - Wayland: Fix auto-repeat of keys not working
 
@@ -5600,15 +5600,15 @@ Detailed list of changes
 
 - Add a configurable keyboard shortcut and remote command to set the font size to a specific value
 
-- Add an option to have kitty close the window when the main processes running in it exits, even if there are still background processes writing to that terminal
+- Add an option to have datty close the window when the main processes running in it exits, even if there are still background processes writing to that terminal
 
 - Add configurable keyboard shortcuts to switch to a specific layout
 
-- Add a keyboard shortcut to edit the kitty config file easily
+- Add a keyboard shortcut to edit the datty config file easily
 
 - macOS: Fix restoring of window size not correct on Retina screens
 
-- macOS: Add a facility to specify command line arguments when running kitty from the GUI
+- macOS: Add a facility to specify command line arguments when running datty from the GUI
 
 - Add a focus-tab remote command
 
@@ -5620,8 +5620,8 @@ Detailed list of changes
 0.8.1 [2018-03-09]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Extend kitty's remote control feature to work over both UNIX and TCP sockets,
-  so now you can control kitty from across the internet, if you want to.
+- Extend datty's remote control feature to work over both UNIX and TCP sockets,
+  so now you can control datty from across the internet, if you want to.
 
 - Render private use unicode characters that are followed by a space as a two
   character ligature. This fixes rendering for applications that misuse
@@ -5630,7 +5630,7 @@ Detailed list of changes
 - Fix Unicode emoji presentation variant selector causing new a fallback font
   instance to be created
 
-- Fix a rare error that prevented the Unicode input kitten from working
+- Fix a rare error that prevented the Unicode input daddy from working
   sometimes
 
 - Allow using Ctrl+Alt+letter in legacy keyboard modes by outputting them as Ctrl+letter and Alt+letter.
@@ -5652,20 +5652,20 @@ Detailed list of changes
 0.8.0 [2018-02-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- A framework for kittens, that is, small terminal programs designed to run
-  inside kitty and extend its capabilities. Examples include unicode input and
+- A framework for daddies, that is, small terminal programs designed to run
+  inside datty and extend its capabilities. Examples include unicode input and
   selecting URLs with the keyboard.
 
 - Input arbitrary unicode characters by pressing Ctrl+Shift+u. You can choose
   characters by name, by hex code, by recently used, etc. There is even and
   editable Favorites list.
 
-- Open URLs using only the keyboard. kitty has a new "hints mode". Press
+- Open URLs using only the keyboard. datty has a new "hints mode". Press
   Ctrl+Shift+e and all detected URLs on the screen are highlighted with a key
   to press to open them. The facility is customizable so you can change
   what is detected as a URL and which program is used to open it.
 
-- Add an option to change the titlebar color of kitty windows on macOS
+- Add an option to change the titlebar color of datty windows on macOS
 
 - Only consider Emoji characters with default Emoji presentation to be two
   cells wide. This matches the standard. Also add support for the Unicode Emoji
@@ -5710,7 +5710,7 @@ Detailed list of changes
 0.7.0 [2018-01-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Allow controlling kitty from the shell prompt/scripts. You can
+- Allow controlling datty from the shell prompt/scripts. You can
   open/close/rename windows and tabs and even send input to specific windows.
   See the README for details.
 
@@ -5737,7 +5737,7 @@ Detailed list of changes
 - macOS: Fix alt+arrow keys not working when disabling the macos_option_as_alt
   config option.
 
-- kitty icat: Workaround for bug in ImageMagick that would cause some images
+- datty icat: Workaround for bug in ImageMagick that would cause some images
   to fail to display at certain sizes.
 
 - Fix rendering of text with ligature fonts that do not use dummy glyphs
@@ -5760,7 +5760,7 @@ Detailed list of changes
 - Add new actions to open windows/tabs/etc. with the working directory set to
   the working directory of the current window.
 
-- Automatically adjust cell size when DPI changes, for example when kitty is
+- Automatically adjust cell size when DPI changes, for example when datty is
   moved from one monitor to another with a different DPI
 
 - Ensure underlines are rendered even for fonts with very poor metrics
@@ -5784,7 +5784,7 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support background transparency via the background_opacity option. Provided
-  that your OS/window manager supports transparency, you can now have kitty
+  that your OS/window manager supports transparency, you can now have datty
   render pixels that have only the default background color as
   semi-transparent.
 
@@ -5793,7 +5793,7 @@ Detailed list of changes
   the shortcut `ctrl+shift+n` to open a new top-level window.
 
 - Add support for a *daemon* mode using the `--single-instance` command line
-  option. With this option you can have only a single kitty instance running.
+  option. With this option you can have only a single datty instance running.
   All future invocations simply open new top-level windows in the existing
   instance.
 
@@ -5805,7 +5805,7 @@ Detailed list of changes
 
 - Add a new "grid" window layout
 
-- Drop the dependency on glfw (kitty now uses a modified, bundled copy of glfw)
+- Drop the dependency on glfw (datty now uses a modified, bundled copy of glfw)
 
 - Add an option to control the audio bell volume on X11 systems
 
@@ -5817,7 +5817,7 @@ Detailed list of changes
 - Add more options to customize the tab-bar's appearance (font styles and
   separator)
 
-- Allow drag and drop of files into kitty. On drop kitty will paste the
+- Allow drag and drop of files into datty. On drop datty will paste the
   file path to the running program.
 
 - Add an option to control the underline style for URL highlighting on hover
@@ -5851,12 +5851,12 @@ Detailed list of changes
 0.5.0 [2017-11-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Add support for ligature fonts such as Fira Code, Hasklig, etc. kitty now
+- Add support for ligature fonts such as Fira Code, Hasklig, etc. datty now
   uses harfbuzz for text shaping which allow it to support advanced OpenType
   features such as contextual alternates/ligatures/combining glyphs/etc.
 
 - Make it easy to select fonts by allowing listing of monospace fonts using:
-  kitty list-fonts
+  datty list-fonts
 
 - Add an option to have window focus follow mouse
 
@@ -5865,7 +5865,7 @@ Detailed list of changes
 - macOS: Fix handling of option key. It now behaves just like the alt key on
   Linux. There is an option to make it type unicode characters instead.
 
-- Linux: Add support for startup notification on X11 desktops. kitty will
+- Linux: Add support for startup notification on X11 desktops. datty will
   now inform the window manager when its startup is complete.
 
 - Fix shell prompt being duplicated when window is resized
@@ -5873,7 +5873,7 @@ Detailed list of changes
 - Fix crash when displaying more than 64 images in the same session
 
 - Add support for colons in SGR color codes. These are generated by some
-  applications such as neovim when they mistakenly identify kitty as a libvte
+  applications such as neovim when they mistakenly identify datty as a libvte
   based terminal.
 
 - Fix mouse interaction not working in apps using obsolete mouse interaction
@@ -5889,7 +5889,7 @@ Detailed list of changes
 
 - Fix a regression in 0.4.0 that broke support for non-QWERTY keyboard layouts
 
-- Avoid using threads to reap zombie child processes. Also prevent kitty from
+- Avoid using threads to reap zombie child processes. Also prevent datty from
   hanging if the open program hangs when clicking on a URL.
 
 
@@ -5897,17 +5897,17 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Support for drawing arbitrary raster graphics (images) in the terminal via a
-  new graphics protocol. kitty can draw images with full 32-bit color using both
+  new graphics protocol. datty can draw images with full 32-bit color using both
   ssh connections and files/shared memory (when available) for better
   performance. The drawing primitives support alpha blending and z-index.
   Images can be drawn both above and below text. See :doc:`graphics-protocol`.
   for details.
 
-- Refactor kitty's internals to make it even faster and more efficient. The CPU
-  usage of kitty + X server while doing intensive tasks such as scrolling a
+- Refactor datty's internals to make it even faster and more efficient. The CPU
+  usage of datty + X server while doing intensive tasks such as scrolling a
   file continuously in less has been reduced by 50%. There are now two
   configuration options ``repaint_delay`` and ``input_delay`` you can use to
-  fine tune kitty's performance vs CPU usage profile. The CPU usage of kitty +
+  fine tune datty's performance vs CPU usage profile. The CPU usage of datty +
   X when scrolling in less is now significantly better than most (all?) other
   terminals. See :doc:`performance`.
 

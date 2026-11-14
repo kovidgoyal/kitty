@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/shlex"
 )
 
 var _ = fmt.Print

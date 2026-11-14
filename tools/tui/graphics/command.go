@@ -12,9 +12,9 @@ import (
 
 	"github.com/emmansun/base64"
 
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print

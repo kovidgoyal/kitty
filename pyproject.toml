@@ -12,8 +12,8 @@ requires = [
 
 [tool.ty.src]
 include = [
-  "kitty",
-  "kittens",
+  "datty",
+  "daddies",
   "glfw",
   "*.py",
   "docs/conf.py",
@@ -34,10 +34,10 @@ ignore = ["ANN401"]  # allow typing.Any
 mypy-init-return = true
 
 [tool.ruff.lint.per-file-ignores]
-"kitty/options/types.py" = ["E501"]
-"kitty/options/parse.py" = ["E501"]
+"datty/options/types.py" = ["E501"]
+"datty/options/parse.py" = ["E501"]
 "shell-integration/ssh/bootstrap.py" = ["ANN"]
-"kitty_tests/*.py" = ["ANN"]
+"datty_tests/*.py" = ["ANN"]
 "bypy/*" = ["ANN"]
 "3rdparty/*" = ["ANN"]
 
@@ -46,4 +46,4 @@ detect-same-package = true
 
 [tool.ruff.format]
 quote-style = 'single'
-exclude = ['kitty/options/types.py', 'kitty/options/parse.py']
+exclude = ['datty/options/types.py', 'datty/options/parse.py']

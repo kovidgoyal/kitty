@@ -1,4 +1,4 @@
-#!./kitty/launcher/kitty +launch
+#!./datty/launcher/datty +launch
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
@@ -8,7 +8,7 @@ import subprocess
 import sys
 import types
 
-from kitty.conf.generate import write_output
+from datty.conf.generate import write_output
 
 if __name__ == '__main__' and not __package__:
     import __main__
@@ -46,7 +46,7 @@ def patch_color_list(path: str, colors: list[str], name: str, spc: str = '    ')
 
 
 def main(args: list[str] = sys.argv) -> None:
-    from kitty.options.definition import definition
+    from datty.options.definition import definition
 
     nullable_colors = []
     all_colors = []
@@ -70,7 +70,7 @@ def main(args: list[str] = sys.argv) -> None:
     sc = ',\n    '.join(f'{x!r}' for x in special_colors)
     ac = ',\n    '.join(f'{x!r}' for x in all_colors)
     write_output(
-        'kitty',
+        'datty',
         definition,
         f'\nnullable_colors = frozenset({{\n    {nc}\n}})\n\nspecial_colors = frozenset({{\n    {sc}\n}})\n\nall_colors = frozenset({{\n    {ac}\n}})\n',
     )

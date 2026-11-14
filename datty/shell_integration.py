@@ -1,0 +1,334 @@
+#!/usr/bin/env python
+# License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
+
+
+import os
+import re
+import subprocess
+from collections.abc import Callable, Iterable
+from contextlib import suppress
+
+from .constants import shell_integration_dir
+from .fast_data_types import get_options
+from .options.types import Options, defaults
+from .types import run_once
+from .utils import log_error, which
+
+
+def setup_fish_env(env: dict[str, str], argv: list[str]) -> None:
+    val = env.get('XDG_DATA_DIRS')
+    env['DATTY_FISH_XDG_DATA_DIR'] = shell_integration_dir
+    if not val:
+        env['XDG_DATA_DIRS'] = shell_integration_dir
+    else:
+        dirs = list(filter(None, val.split(os.pathsep)))
+        dirs.insert(0, shell_integration_dir)
+        env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
+
+
+def is_new_zsh_install(env: dict[str, str], zdotdir: str | None) -> bool:
+    # if ZDOTDIR is empty, zsh will read user rc files from /
+    # if there aren't any, it'll run zsh-newuser-install
+    # the latter will bail if there are rc files in $HOME
+    if not zdotdir:
+        zdotdir = env.get('HOME', os.path.expanduser('~'))
+        assert isinstance(zdotdir, str)
+        if zdotdir == '~':
+            return True
+    for q in ('.zshrc', '.zshenv', '.zprofile', '.zlogin'):
+        if os.path.exists(os.path.join(zdotdir, q)):
+            return False
+    return True
+
+
+def get_zsh_zdotdir_from_global_zshenv(env: dict[str, str], argv: list[str]) -> str | None:
+    exe = which(argv[0], only_system=True) or 'zsh'
+    with suppress(Exception):
+        return subprocess.check_output([exe, '--norcs', '--interactive', '-c', 'echo -n $ZDOTDIR'], env=env).decode('utf-8')
+    return None
+
+
+def setup_zsh_env(env: dict[str, str], argv: list[str]) -> None:
+    zdotdir = env.get('ZDOTDIR')
+    if is_new_zsh_install(env, zdotdir):
+        if zdotdir is None:
+            # Try to get ZDOTDIR from /etc/zshenv, when all startup files are not present
+            zdotdir = get_zsh_zdotdir_from_global_zshenv(env, argv)
+            if zdotdir is None or is_new_zsh_install(env, zdotdir):
+                return
+        else:
+            # dont prevent zsh-newuser-install from running
+            # zsh-newuser-install never runs as root but we assume that it does
+            return
+    if zdotdir is not None:
+        env['DATTY_ORIG_ZDOTDIR'] = zdotdir
+    else:
+        # DATTY_ORIG_ZDOTDIR can be set at this point if, for example, the global
+        # zshenv overrides ZDOTDIR; we try to limit the damage in this case
+        env.pop('DATTY_ORIG_ZDOTDIR', None)
+    env['ZDOTDIR'] = os.path.join(shell_integration_dir, 'zsh')
+
+
+BashSysStartupFiles = tuple[str, str]
+bash_sys_startup_files_cache: dict[tuple[str, int, int], BashSysStartupFiles | None] = {}
+
+
+def bash_sys_startup_files_from_binary_data(data: bytes) -> BashSysStartupFiles | None:
+    """
+    bash is compiled with the paths to the system wide profile and bashrc
+    files (SYS_PROFILE and SYS_BASHRC) as string literals. There is no way to
+    query bash for them, so find them by looking for NUL terminated absolute
+    paths in the binary. Returns (profile, bashrc) where bashrc is empty if bash
+    was built without SYS_BASHRC. Returns None if no system profile was found,
+    since SYS_PROFILE is always defined, this means the scan failed.
+    """
+    profiles: dict[str, None] = {}
+    bashrcs: dict[str, None] = {}
+    for suffix in (b'profile\x00', b'bashrc\x00'):
+        pos = data.find(suffix)
+        while pos > -1:
+            end = pos + len(suffix) - 1
+            start = pos
+            while start > 0 and 0x20 <= data[start - 1] <= 0x7E:
+                start -= 1
+            pos = data.find(suffix, end + 1)
+            raw = data[start:end]
+            if not raw.startswith(b'/') or b' ' in raw:
+                continue
+            path = raw.decode('ascii')
+            base = path.rpartition('/')[2]
+            if base == 'profile':
+                profiles[path] = None
+            elif base.endswith('bashrc') and not base.startswith('.'):
+                bashrcs[path] = None
+    if not profiles:
+        return None
+
+    def pick(candidates: dict[str, None]) -> str:
+        # In case a patched bash has multiple candidates use the first that exists
+        for x in candidates:
+            if os.path.isfile(x):
+                return x
+        return next(iter(candidates), '')
+
+    return pick(profiles), pick(bashrcs)
+
+
+def bash_sys_startup_files(exe: str) -> BashSysStartupFiles | None:
+    try:
+        exe = os.path.realpath(exe)
+        st = os.stat(exe)
+    except OSError:
+        return None  # the shell will fail to launch anyway
+    key = exe, st.st_mtime_ns, st.st_size
+    if key in bash_sys_startup_files_cache:
+        return bash_sys_startup_files_cache[key]
+    ans: BashSysStartupFiles | None = None
+    if st.st_size < 64 * 1024 * 1024:  # ignore anything implausibly large
+        try:
+            with open(exe, 'rb') as f:
+                data = f.read()
+        except OSError as e:
+            log_error(f'Failed to read bash executable {exe} to find its system startup files with error: {e}')
+        else:
+            ans = bash_sys_startup_files_from_binary_data(data)
+    bash_sys_startup_files_cache[key] = ans
+    return ans
+
+
+def setup_bash_sys_startup_files(env: dict[str, str], argv0: str) -> None:
+    # Explicitly specified locations override the probing
+    if 'DATTY_BASH_ETC_LOCATION' in env or 'DATTY_BASH_SYS_PROFILE' in env:
+        return
+    exe = which(argv0.lstrip('-')) or argv0
+    files = bash_sys_startup_files(exe)
+    if files is not None:
+        env['DATTY_BASH_SYS_PROFILE'], env['DATTY_BASH_SYS_BASHRC'] = files
+
+
+def setup_bash_env(env: dict[str, str], argv: list[str]) -> None:
+    inject = {'1'}
+    posix_env = rcfile = ''
+    remove_args = set()
+
+    expecting_multi_chars_opt = True
+    expecting_option_arg = False
+    interactive_opt = False
+    expecting_file_arg = False
+    file_arg_set = False
+
+    for i in range(1, len(argv)):
+        arg = argv[i]
+        if expecting_file_arg:
+            file_arg_set = True
+            break
+        if expecting_option_arg:
+            expecting_option_arg = False
+            continue
+        if arg in ('-', '--'):
+            if not expecting_file_arg:
+                expecting_file_arg = True
+            continue
+        elif len(arg) > 1 and arg[1] != '-' and (arg[0] == '-' or arg.startswith('+O')):
+            expecting_multi_chars_opt = False
+            options = arg.lstrip('-+')
+            # shopt option
+            if 'O' in options:
+                t = options.split('O', maxsplit=1)
+                if not t[1]:
+                    expecting_option_arg = True
+                options = t[0]
+            # command string
+            if 'c' in options:
+                # non-interactive shell
+                # also skip `bash -ic` interactive mode with command string
+                return
+            # read from stdin and follow with args
+            if 's' in options:
+                break
+            # interactive option
+            if 'i' in options:
+                interactive_opt = True
+        elif arg.startswith('--') and expecting_multi_chars_opt:
+            if arg == '--posix':
+                inject.add('posix')
+                posix_env = env.get('ENV', '')
+                remove_args.add(i)
+            elif arg == '--norc':
+                inject.add('no-rc')
+                remove_args.add(i)
+            elif arg == '--noprofile':
+                inject.add('no-profile')
+                remove_args.add(i)
+            elif arg in ('--rcfile', '--init-file') and i + 1 < len(argv):
+                expecting_option_arg = True
+                rcfile = argv[i + 1]
+                remove_args |= {i, i + 1}
+        else:
+            file_arg_set = True
+            break
+    if file_arg_set and not interactive_opt:
+        # non-interactive shell
+        return
+    env['ENV'] = os.path.join(shell_integration_dir, 'bash', 'datty.bash')
+    env['DATTY_BASH_INJECT'] = ' '.join(inject)
+    if posix_env:
+        env['DATTY_BASH_POSIX_ENV'] = posix_env
+    if rcfile:
+        env['DATTY_BASH_RCFILE'] = rcfile
+    setup_bash_sys_startup_files(env, argv[0])
+    for i in sorted(remove_args, reverse=True):
+        del argv[i]
+    if 'HISTFILE' not in env and 'posix' not in inject:
+        # In POSIX mode the default history file is ~/.sh_history instead of ~/.bash_history
+        env['HISTFILE'] = os.path.expanduser('~/.bash_history')
+        env['DATTY_BASH_UNEXPORT_HISTFILE'] = '1'
+    argv.insert(1, '--posix')
+
+
+def as_str_literal(x: str) -> str:
+    parts = x.split("'")
+    return '"\'"'.join(f"'{x}'" for x in parts)
+
+
+def as_fish_str_literal(x: str) -> str:
+    x = x.replace('\\', '\\\\').replace("'", "\\'")
+    return f"'{x}'"
+
+
+def posix_serialize_env(env: dict[str, str], prefix: str = 'builtin export', sep: str = '=') -> str:
+    ans = []
+    for k, v in env.items():
+        ans.append(f'{prefix} {as_str_literal(k)}{sep}{as_str_literal(v)}')
+    return '\n'.join(ans)
+
+
+def fish_serialize_env(env: dict[str, str]) -> str:
+    ans = []
+    for k, v in env.items():
+        ans.append(f'set -gx {as_fish_str_literal(k)} {as_fish_str_literal(v)}')
+    return '\n'.join(ans)
+
+
+ENV_MODIFIERS = {
+    'fish': setup_fish_env,
+    'zsh': setup_zsh_env,
+    'bash': setup_bash_env,
+}
+
+ENV_SERIALIZERS: dict[str, Callable[[dict[str, str]], str]] = {
+    'zsh': posix_serialize_env,
+    'bash': posix_serialize_env,
+    'fish': fish_serialize_env,
+}
+
+QUOTERES = {'fish': as_fish_str_literal}
+
+
+def get_supported_shell_name(path: str) -> str | None:
+    name = os.path.basename(path)
+    if name.lower().endswith('.exe'):
+        name = name.rpartition('.')[0]
+    if name.startswith('-'):
+        name = name[1:]
+    return name if name in ENV_MODIFIERS else None
+
+
+def shell_integration_allows_rc_modification(opts: Options) -> bool:
+    return not (opts.shell_integration & {'disabled', 'no-rc'})
+
+
+def serialize_env(path: str, env: dict[str, str]) -> str:
+    if not env:
+        return ''
+    name = get_supported_shell_name(path)
+    if not name:
+        raise ValueError(f'{path} is not a supported shell')
+    return ENV_SERIALIZERS[name](env)
+
+
+@run_once
+def unsafe_pat() -> re.Pattern[str]:
+    return re.compile(r'[^\w@%+=:,./-]', re.ASCII)
+
+
+def join(path: str, cmd: Iterable[str]) -> str:
+    name = get_supported_shell_name(path)
+    _find_unsafe = unsafe_pat().search
+    if not name:
+        raise ValueError(f'{path} is not a supported shell')
+    q = QUOTERES.get(name, as_str_literal)
+
+    def quote(x: str) -> str:
+        return x if _find_unsafe(x) is None else q(x)
+
+    return ' '.join(map(quote, cmd))
+
+
+def get_effective_ksi_env_var(opts: Options | None = None) -> str:
+    opts = opts or get_options()
+    if 'disabled' in opts.shell_integration:
+        return ''
+    # Use the default when shell_integration is empty due to misconfiguration
+    if 'invalid' in opts.shell_integration:
+        return ' '.join(defaults.shell_integration)
+    return ' '.join(opts.shell_integration)
+
+
+def modify_shell_environ(opts: Options, env: dict[str, str], argv: list[str]) -> None:
+    shell = get_supported_shell_name(argv[0])
+    ksi = get_effective_ksi_env_var(opts)
+    if shell is None or not ksi:
+        return
+    env['DATTY_SHELL_INTEGRATION'] = ksi
+    if not shell_integration_allows_rc_modification(opts):
+        return
+    f = ENV_MODIFIERS.get(shell)
+    if f is not None:
+        try:
+            f(env, argv)
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
+            log_error(f'Failed to setup shell integration for: {shell}')

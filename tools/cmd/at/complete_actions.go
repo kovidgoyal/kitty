@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kovidgoyal/kitty"
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
 
 func complete_actions(completions *cli.Completions, word string, arg_num int) {
 	if arg_num < 2 {
-		scanner := utils.NewLineScanner(KittyActionNames)
+		scanner := utils.NewLineScanner(DattyActionNames)
 		mg := completions.AddMatchGroup("Actions")
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
@@ -26,10 +26,10 @@ func complete_actions(completions *cli.Completions, word string, arg_num int) {
 	}
 }
 
-func complete_kitty_override(completions *cli.Completions, word string, arg_num int) {
+func complete_datty_override(completions *cli.Completions, word string, arg_num int) {
 	mg := completions.AddMatchGroup("Config directives")
 	mg.NoTrailingSpace = true
-	scanner := utils.NewLineScanner(kitty.OptionNames)
+	scanner := utils.NewLineScanner(datty.OptionNames)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if strings.HasPrefix(line, word) {

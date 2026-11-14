@@ -34,7 +34,7 @@ detect_network_tool() {
             command wget --quiet -O- "$1"
         }
     else
-        die "Neither curl nor wget available, cannot download kitty"
+        die "Neither curl nor wget available, cannot download datty"
     fi
 }
 
@@ -49,10 +49,10 @@ detect_os() {
                 amd64|x86_64) arch="x86_64";;
                 aarch64*) arch="arm64";;
                 armv8*) arch="arm64";;
-                *) die "kitty binaries not available for architecture $(command uname -m)";;
+                *) die "datty binaries not available for architecture $(command uname -m)";;
             esac
             ;;
-        *) die "kitty binaries are not available for $(command uname)"
+        *) die "datty binaries are not available for $(command uname)"
     esac
 }
 
@@ -79,12 +79,12 @@ parse_args() {
     done
     dest=$(expand_tilde "${dest}")
     [ "$launch" != "y" -a "$launch" != "n" ] && die "Unrecognized command line option: launch=$launch"
-    dest="$dest/kitty.app"
+    dest="$dest/datty.app"
 }
 
 
 get_file_url() {
-    url="https://github.com/kovidgoyal/kitty/releases/download/$1/kitty-$2"
+    url="https://github.com/kovidgoyal/datty/releases/download/$1/datty-$2"
     if [ "$OS" = "macos" ]; then
         url="$url.dmg"
     else
@@ -93,8 +93,8 @@ get_file_url() {
 }
 
 get_release_url() {
-    release_version=$(fetch_quiet "https://sw.kovidgoyal.net/kitty/current-version.txt")
-    [ $? -ne 0 -o -z "$release_version" ] && die "Could not get kitty latest release version"
+    release_version=$(fetch_quiet "https://sw.kovidgoyal.net/datty/current-version.txt")
+    [ $? -ne 0 -o -z "$release_version" ] && die "Could not get datty latest release version"
     get_file_url "v$release_version" "$release_version"
 }
 
@@ -117,13 +117,13 @@ get_download_url() {
 }
 
 download_installer() {
-    tdir=$(command mktemp -d "/tmp/kitty-install-XXXXXXXXXXXX")
+    tdir=$(command mktemp -d "/tmp/datty-install-XXXXXXXXXXXX")
     [ "$installer_is_file" != "y" ] && {
         printf '%s\n\n' "Downloading from: $url"
         if [ "$OS" = "macos" ]; then
-            installer="$tdir/kitty.dmg"
+            installer="$tdir/datty.dmg"
         else
-            installer="$tdir/kitty.txz"
+            installer="$tdir/datty.txz"
         fi
         fetch "$url" > "$installer" || die "Failed to download: $url"
         installer_is_file="y"
@@ -139,9 +139,9 @@ ensure_dest() {
 
 linux_install() {
     command mkdir "$tdir/mp"
-    command tar -C "$tdir/mp" "-xJof" "$installer" || die "Failed to extract kitty tarball"
+    command tar -C "$tdir/mp" "-xJof" "$installer" || die "Failed to extract datty tarball"
     ensure_dest
-    command mv "$tdir/mp" "$dest" || die "Failed to move kitty.app to $dest"
+    command mv "$tdir/mp" "$dest" || die "Failed to move datty.app to $dest"
 }
 
 has_diskutil_image() {
@@ -172,21 +172,21 @@ unmount_dmg() {
 
 macos_install() {
     command mkdir "$tdir/mp"
-    mount_dmg "$installer" "$tdir/mp" || die "Failed to mount kitty.dmg"
+    mount_dmg "$installer" "$tdir/mp" || die "Failed to mount datty.dmg"
     ensure_dest
-    command ditto -v "$tdir/mp/kitty.app" "$dest"
+    command ditto -v "$tdir/mp/datty.app" "$dest"
     rc="$?"
     unmount_dmg "$tdir/mp"
-    [ "$rc" != "0" ] && die "Failed to copy kitty.app from mounted dmg"
+    [ "$rc" != "0" ] && die "Failed to copy datty.app from mounted dmg"
 }
 
-exec_kitty() {
+exec_datty() {
     if [ "$OS" = "macos" ]; then
         exec "open" "$dest"
     else
-        exec "$dest/bin/kitty" "--detach"
+        exec "$dest/bin/datty" "--detach"
     fi
-    die "Failed to launch kitty"
+    die "Failed to launch datty"
 }
 
 main() {
@@ -201,7 +201,7 @@ main() {
         linux_install
     fi
     cleanup
-    [ "$launch" = "y" ] && exec_kitty
+    [ "$launch" = "y" ] && exec_datty
     exit 0
 }
 

@@ -13,9 +13,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kovidgoyal/kitty"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -24,7 +24,7 @@ type integration_setup_func = func(shell_integration_dir string, argv []string, 
 
 func TerminfoData() string {
 	d := Data()
-	entry := d["terminfo/x/xterm-kitty"]
+	entry := d["terminfo/x/xterm-datty"]
 	return utils.UnsafeBytesToString(entry.Data)
 }
 
@@ -64,8 +64,8 @@ func extract_shell_integration_for(shell_name string, dest_dir string) (err erro
 
 func extract_terminfo(dest_dir string) (err error) {
 	var s os.FileInfo
-	if s, err = os.Stat(filepath.Join(dest_dir, "terminfo", "x", kitty.DefaultTermName)); err == nil && s.Mode().IsRegular() {
-		if s, err = os.Stat(filepath.Join(dest_dir, "terminfo", "78", kitty.DefaultTermName)); err == nil && s.Mode().IsRegular() {
+	if s, err = os.Stat(filepath.Join(dest_dir, "terminfo", "x", datty.DefaultTermName)); err == nil && s.Mode().IsRegular() {
+		if s, err = os.Stat(filepath.Join(dest_dir, "terminfo", "78", datty.DefaultTermName)); err == nil && s.Mode().IsRegular() {
 			return
 		}
 	}
@@ -128,7 +128,7 @@ func PathToTerminfoDb(term string) (ans string) {
 }
 
 func EnsureTerminfoFiles() (terminfo_dir string, err error) {
-	if kid := os.Getenv("KITTY_INSTALLATION_DIR"); kid != "" {
+	if kid := os.Getenv("DATTY_INSTALLATION_DIR"); kid != "" {
 		if s, e := os.Stat(kid); e == nil && s.IsDir() {
 			q := filepath.Join(kid, "terminfo")
 			if s, e := os.Stat(q); e == nil && s.IsDir() {
@@ -147,7 +147,7 @@ func EnsureTerminfoFiles() (terminfo_dir string, err error) {
 }
 
 func EnsureShellIntegrationFilesFor(shell_name string) (shell_integration_dir_for_shell string, err error) {
-	if kid := os.Getenv("KITTY_INSTALLATION_DIR"); kid != "" {
+	if kid := os.Getenv("DATTY_INSTALLATION_DIR"); kid != "" {
 		if s, e := os.Stat(kid); e == nil && s.IsDir() {
 			q := filepath.Join(kid, "shell-integration", shell_name)
 			if s, e := os.Stat(q); e == nil && s.IsDir() {
@@ -214,11 +214,11 @@ func zsh_setup_func(shell_integration_dir string, argv []string, env map[string]
 		}
 	}
 	if zdotdir != "" {
-		env[`KITTY_ORIG_ZDOTDIR`] = zdotdir
+		env[`DATTY_ORIG_ZDOTDIR`] = zdotdir
 	} else {
-		// KITTY_ORIG_ZDOTDIR can be set at this point if, for example, the global
+		// DATTY_ORIG_ZDOTDIR can be set at this point if, for example, the global
 		// zshenv overrides ZDOTDIR; we try to limit the damage in this case
-		delete(final_env, `KITTY_ORIG_ZDOTDIR`)
+		delete(final_env, `DATTY_ORIG_ZDOTDIR`)
 	}
 	final_env[`ZDOTDIR`] = shell_integration_dir
 	return
@@ -227,7 +227,7 @@ func zsh_setup_func(shell_integration_dir string, argv []string, env map[string]
 func fish_setup_func(shell_integration_dir string, argv []string, env map[string]string) (final_argv []string, final_env map[string]string, err error) {
 	shell_integration_dir = filepath.Dir(shell_integration_dir)
 	val := env[`XDG_DATA_DIRS`]
-	env[`KITTY_FISH_XDG_DATA_DIR`] = shell_integration_dir
+	env[`DATTY_FISH_XDG_DATA_DIR`] = shell_integration_dir
 	if val == "" {
 		env[`XDG_DATA_DIRS`] = shell_integration_dir
 	} else {
@@ -321,19 +321,19 @@ func bash_sys_startup_files(exe string) (profile, bashrc string, found bool, err
 
 func setup_bash_sys_startup_files(env map[string]string, argv0 string) {
 	// Explicitly specified locations override the probing
-	if _, found := env[`KITTY_BASH_ETC_LOCATION`]; found {
+	if _, found := env[`DATTY_BASH_ETC_LOCATION`]; found {
 		return
 	}
-	if _, found := env[`KITTY_BASH_SYS_PROFILE`]; found {
+	if _, found := env[`DATTY_BASH_SYS_PROFILE`]; found {
 		return
 	}
 	profile, bashrc, found, err := bash_sys_startup_files(utils.FindExe(strings.TrimLeft(argv0, "-")))
 	if err != nil || !found {
-		// kitty.bash falls back to checking well known locations
+		// datty.bash falls back to checking well known locations
 		return
 	}
-	env[`KITTY_BASH_SYS_PROFILE`] = profile
-	env[`KITTY_BASH_SYS_BASHRC`] = bashrc
+	env[`DATTY_BASH_SYS_PROFILE`] = profile
+	env[`DATTY_BASH_SYS_BASHRC`] = bashrc
 }
 
 func bash_setup_func(shell_integration_dir string, argv []string, env map[string]string) ([]string, map[string]string, error) {
@@ -407,13 +407,13 @@ func bash_setup_func(shell_integration_dir string, argv []string, env map[string
 		// non-interactive shell
 		return argv, env, nil
 	}
-	env[`ENV`] = filepath.Join(shell_integration_dir, `kitty.bash`)
-	env[`KITTY_BASH_INJECT`] = strings.Join(inject.AsSlice(), " ")
+	env[`ENV`] = filepath.Join(shell_integration_dir, `datty.bash`)
+	env[`DATTY_BASH_INJECT`] = strings.Join(inject.AsSlice(), " ")
 	if posix_env != "" {
-		env[`KITTY_BASH_POSIX_ENV`] = posix_env
+		env[`DATTY_BASH_POSIX_ENV`] = posix_env
 	}
 	if rcfile != "" {
-		env[`KITTY_BASH_RCFILE`] = rcfile
+		env[`DATTY_BASH_RCFILE`] = rcfile
 	}
 	setup_bash_sys_startup_files(env, argv[0])
 	sorted := remove_args.AsSlice()
@@ -424,14 +424,14 @@ func bash_setup_func(shell_integration_dir string, argv []string, env map[string
 	if env[`HISTFILE`] == "" && !inject.Has(`posix`) {
 		// In POSIX mode the default history file is ~/.sh_history instead of ~/.bash_history
 		env[`HISTFILE`] = utils.Expanduser(`~/.bash_history`)
-		env[`KITTY_BASH_UNEXPORT_HISTFILE`] = `1`
+		env[`DATTY_BASH_UNEXPORT_HISTFILE`] = `1`
 	}
 	argv = slices.Insert(argv, 1, `--posix`)
 
-	if bashrc := os.Getenv(`KITTY_RUNNING_BASH_INTEGRATION_TEST`); bashrc != `` && os.Getenv("KITTY_RUNNING_SHELL_INTEGRATION_TEST") == "1" {
+	if bashrc := os.Getenv(`DATTY_RUNNING_BASH_INTEGRATION_TEST`); bashrc != `` && os.Getenv("DATTY_RUNNING_SHELL_INTEGRATION_TEST") == "1" {
 		// prevent bash from sourcing /etc/profile which is not under our control
-		env[`KITTY_BASH_INJECT`] += ` posix`
-		env[`KITTY_BASH_POSIX_ENV`] = bashrc
+		env[`DATTY_BASH_INJECT`] += ` posix`
+		env[`DATTY_BASH_POSIX_ENV`] = bashrc
 	}
 
 	return argv, env, nil
@@ -458,7 +458,7 @@ func Setup(shell_name string, ksi_var string, argv []string, env map[string]stri
 	}
 	argv, env, err = setup_func_for_shell(shell_name)(ksi_dir, slices.Clone(argv), maps.Clone(env))
 	if err == nil {
-		env[`KITTY_SHELL_INTEGRATION`] = ksi_var
+		env[`DATTY_SHELL_INTEGRATION`] = ksi_var
 	}
 	return argv, env, err
 }

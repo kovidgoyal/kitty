@@ -1,0 +1,1543 @@
+#!/usr/bin/env python
+# License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
+
+
+import os
+import shutil
+from collections.abc import Callable, Container, Iterable, Iterator, Sequence
+from contextlib import suppress
+from typing import Any, Literal, NamedTuple, TypedDict
+
+from .boss import Boss
+from .child import Child
+from .cli import parse_args
+from .cli_stub import LaunchCLIOptions
+from .clipboard import set_clipboard_string, set_primary_selection
+from .constants import is_wayland
+from .fast_data_types import COLOR_LAYER_WINDOW, add_timer, get_boss, get_options, get_os_window_title, patch_color_profiles
+from .options.utils import env as parse_env
+from .tabs import Tab, TabManager
+from .types import DockSpec, LayerShellConfig, OverlayType, dock_edges, parse_dock_spec, run_once
+from .utils import get_editor, log_error, resolve_custom_file, which
+from .window import CwdRequest, CwdRequestType, Watchers, Window
+from .window_list import WindowGroup
+
+
+class LaunchSpec(NamedTuple):
+    opts: LaunchCLIOptions
+    args: list[str]
+
+
+# Options definition {{{
+env_docs = """\
+type=list
+Environment variables to set in the child process. Can be specified multiple
+times to set different environment variables. Syntax: :code:`name=value`. Using
+:code:`name=` will set to empty string and just :code:`name` will remove the
+environment variable.
+"""
+
+
+remote_control_password_docs = """\
+type=list
+Restrict the actions remote control is allowed to take. This works like
+:opt:`remote_control_password`. You can specify a password and list of actions
+just as for :opt:`remote_control_password`. For example::
+
+    --remote-control-password '"my passphrase" get-* set-colors'
+
+This password will be in effect for this window only.
+Note that any passwords you have defined for :opt:`remote_control_password`
+in :file:`datty.conf` are also in effect. You can override them by using the same password here.
+You can also disable all :opt:`remote_control_password` global passwords for this window, by using::
+
+    --remote-control-password '!'
+
+This option only takes effect if :option:`--allow-remote-control`
+is also specified. Can be specified multiple times to create multiple passwords.
+This option was added to datty in version 0.26.0
+"""
+
+
+@run_once
+def options_spec() -> str:
+    from .rc.set_spacing import SPACING_SETTINGS_DOC
+
+    return f"""
+--source-window
+A match expression to select the window from which data such as title, colors, env vars,
+screen contents, etc. are copied. When not specified the currently active window is used.
+See :ref:`search_syntax` for the syntax used for specifying windows.
+
+
+--window-title --title
+The title to set for the new window. By default, title is controlled by the
+child process. The special value :code:`current` will copy the title from the
+:option:`source window <launch --source-window>`.
+
+
+--tab-title
+The title for the new tab if launching in a new tab. By default, the title
+of the active window in the tab is used as the tab title. The special value
+:code:`current` will copy the title from the tab containing the
+:option:`source window <launch --source-window>`.
+
+
+--type
+type=choices
+default=window
+choices=window,window-dock,tab,tab-dock,os-window-dock,os-window,os-panel,overlay,overlay-main,background,clipboard,primary
+Where to launch the child process:
+
+:code:`window`
+    A new :term:`datty window <window>` in the current tab
+
+:code:`window-dock`
+    A new :term:`datty window <window>` docked to an edge of the active window
+    in the current tab. It is shown whenever that window is shown and is closed
+    when that window is closed. Use :option:`launch --dock-edge` and
+    :option:`launch --dock-size` to control where it is placed. See :ref:`docks`.
+
+:code:`tab-dock`
+    A new :term:`datty window <window>` docked to an edge of the current tab,
+    the layout arranges the other windows in the remaining space. It is closed
+    when the last non-docked window in the tab is closed. See :ref:`docks`.
+
+:code:`os-window-dock`
+    A new :term:`datty window <window>` docked to an edge of the current
+    :term:`OS window <os_window>`, below the tab bar. It is shown in every tab of the OS
+    window, outside the docks of the tab, and is closed when the OS window is
+    closed. See :ref:`docks`.
+
+:code:`tab`
+    A new :term:`tab` in the current OS window. Not available when the
+    :doc:`launch <launch>` command is used in :ref:`startup sessions <sessions>`.
+
+:code:`os-window`
+    A new :term:`operating system window <os_window>`.  Not available when the
+    :doc:`launch <launch>` command is used in :ref:`startup sessions <sessions>`.
+
+:code:`overlay`
+    An :term:`overlay window <overlay>` covering the current active datty window
+
+:code:`overlay-main`
+    An :term:`overlay window <overlay>` covering the current active datty window.
+    Unlike a plain overlay window, this window is considered as a :italic:`main`
+    window which means it is used as the active window for getting the current working
+    directory, the input text for daddies, launch commands, etc. Useful if this overlay is
+    intended to run for a long time as a primary window.
+
+:code:`background`
+    The process will be run in the :italic:`background`, without a datty
+    window. Note that if :option:`daddy @ launch --allow-remote-control` is
+    specified the :envvar:`DATTY_LISTEN_ON` environment variable will be set to
+    a dedicated socket pair file descriptor that the process can use for remote
+    control.
+
+:code:`clipboard`, :code:`primary`
+    These two are meant to work with :option:`--stdin-source <launch --stdin-source>` to copy
+    data to the :italic:`system clipboard` or :italic:`primary selection`.
+
+:code:`os-panel`
+    Similar to :code:`os-window`, except that it creates the new OS Window as a desktop panel.
+    Only works on platforms that support this, such as Wayland compositors that support the layer
+    shell protocol. Use the :option:`daddy @ launch --os-panel` option to configure the panel.
+
+#placeholder_for_formatting#
+
+
+--dock-edge
+type=choices
+default=bottom
+choices={','.join(dock_edges)}
+The edge at which to place a :code:`window-dock`, :code:`tab-dock` or
+:code:`os-window-dock` window.
+When there are multiple docks at an edge, later docks are placed inside earlier
+ones.
+
+
+--dock-size
+default=1
+The size of a :code:`window-dock`, :code:`tab-dock` or :code:`os-window-dock`
+window. For docks at the
+top or bottom edge this is a number of rows, for docks at the left or right edge
+a number of columns. The space for the window's margin, border and padding is
+added to it. Alternately, add a :code:`%` suffix to specify the size as a
+percentage of the window, tab or OS window being docked to, including the window's
+decorations, for example: :code:`25%`.
+
+
+--dock-skip-focus
+type=bool-set
+Prevent a :code:`window-dock`, :code:`tab-dock` or :code:`os-window-dock` window from ever getting
+keyboard focus. Useful for docks that only display information, such as status
+bars.
+
+
+--keep-focus --dont-take-focus
+type=bool-set
+Keep the focus on the currently active window instead of switching to the newly
+opened window.
+
+
+--focus-existing
+A match expression to select an existing window or tab. If a match is found,
+it is focused and nothing new is launched, otherwise the launch proceeds as
+normal. When :option:`--type <launch --type>` is :code:`tab` the expression
+selects tabs, otherwise it selects windows, in all OS Windows. See :ref:`search_syntax` for the
+syntax for specifying windows and tabs. The special value :code:`@title` matches
+the tab whose title is exactly the value of :option:`--tab-title <launch --tab-title>`
+or, for other types, the window whose title is exactly the value of
+:option:`--window-title <launch --window-title>`. Unlike a match expression,
+:code:`@title` only considers the tabs shown in the tab bar of the OS Window in
+which the new tab/window would be created, so tabs hidden by :opt:`tab_bar_filter`
+are ignored. For the :code:`os-window` and :code:`os-panel` types, it considers
+windows in all OS Windows. If :option:`--keep-focus <launch --keep-focus>`
+is also specified, the matched window/tab is not focused. Has no effect for the
+:code:`background`, :code:`clipboard` and :code:`primary` types and in
+:ref:`startup sessions <sessions>`. Useful for mapping a key to switch to a
+window or tab, creating it if it does not exist, for example::
+
+    map ctrl+1 launch --type=tab --tab-title=1 --location=by-title --focus-existing=@title
+
+
+--cwd
+completion=type:directory kwds:current,oldest,last_reported,root
+The working directory for the newly launched child. Use the special value
+:code:`current` to use the working directory of the :option:`source window <launch --source-window>`.
+The special value :code:`last_reported` uses the last working directory reported
+by the shell (needs :ref:`shell_integration` to work). The special value
+:code:`oldest` works like :code:`current` but uses the working directory of the
+oldest foreground process associated with the currently active window rather
+than the newest foreground process. Finally, the special value :code:`root`
+refers to the process that was originally started when the window was created.
+If datty itself started that process via a wrapper, such as :file:`/usr/bin/login`
+on macOS, the wrapper is ignored and its first child is used instead. The
+working directory reported by the shell is used only when the root process is in
+the foreground.
+
+When opening in the same working directory as the current window causes the new
+window to connect to a remote host, you can use the :option:`--hold-after-ssh`
+flag to prevent the new window from closing when the connection is terminated.
+
+
+--add-to-session
+Add the newly created window/tab to the specified session. Use :code:`.` to add
+to the session of the :option:`source window <launch --source-window>`, if any. See :ref:`sessions`
+for what a session is and how to use one. By default, the window is added to the
+session of the :option:`source window <launch --source-window>` when :option:`launch --cwd`
+is set to use the working directory from that window, otherwise the newly created window
+does not belong to any session. To force adding to no session, use the value :code:`!`.
+Adding a newly created window to a session is purely temporary, it does not change the actual
+session file, for that you have to resave the session. Note that using this flag in a launch
+command within a session file has no effect as the window is always added to the
+session belonging to that file.
+
+
+--env
+{env_docs}
+
+
+--var
+type=list
+User variables to set in the created window. Can be specified multiple
+times to set different user variables. Syntax: :code:`name=value`. Using
+:code:`name=` will set to empty string.
+
+
+--hold
+type=bool-set
+Keep the window open even after the command being executed exits, at a shell prompt.
+The shell will be run after the launched command exits.
+
+
+--copy-colors
+type=bool-set
+Set the colors of the newly created window to be the same as the colors in the
+:option:`source window <launch --source-window>`.
+
+
+--copy-cmdline
+type=bool-set
+Ignore any specified command line and instead use the command line from the
+:option:`source window <launch --source-window>`.
+
+
+--copy-env
+type=bool-set
+Copy the environment variables from the :option:`source window <launch --source-window>` into the newly
+launched child process. Note that this only copies the environment when the
+window was first created, as it is not possible to get updated environment variables
+from arbitrary processes. In particular, this means, if you are running a shell in the
+window and the shell has set env vars in its rc files, these will **not** be copied.
+To copy that environment, use either the :ref:`clone-in-datty <clone_shell>` feature
+or the datty remote control feature with :option:`daddy @ launch --copy-env`.
+
+
+--location
+type=choices
+default=default
+choices=first,after,before,neighbor,last,vsplit,hsplit,split,by-title,default
+Where to place the newly created window when it is added to a tab which already
+has existing windows in it. :code:`after` and :code:`before` place the new
+window before or after the active window. :code:`neighbor` is a synonym for
+:code:`after`. Also applies to creating a new tab, where the value of
+:code:`after` will cause the new tab to be placed next to the current tab
+instead of at the end. The value :code:`by-title` applies only to new tabs,
+it places the new tab before the first tab whose title sorts after the title
+of the new tab, as specified by :option:`--tab-title <launch --tab-title>`. This
+keeps tabs in alphabetical order, if they already are. The values of :code:`vsplit`, :code:`hsplit` and
+:code:`split` are only used by the :code:`splits` layout and control if the new
+window is placed in a vertical, horizontal or automatic split with the currently
+active window. The default is to place the window in a layout dependent manner,
+typically, after the currently active window. See :option:`--next-to <launch --next-to>`
+to use a window other than the currently active window.
+
+
+--next-to
+A match expression to select the window next to which the new window is created.
+See :ref:`search_syntax` for the syntax for specifying windows. If not specified
+defaults to the active window. When used via remote control
+this option is ignored unless the matched window is in the target tab (default active tab).
+When using :option:`--type <launch --type>` of :code:`tab`, the tab will be created
+in the OS Window containing the matched window.
+
+
+--bias
+type=float
+default=0
+The bias used to alter the size of the window.
+It controls what fraction of available space the window takes. The exact meaning
+of bias depends on the current layout.
+
+* Splits layout: The bias is interpreted as a percentage between 0 and 100.
+When splitting a window into two, the new window will take up the specified fraction
+of the space allotted to the original window and the original window will take up
+the remainder of the space.
+
+* Vertical/horizontal layout: The bias is interpreted as adding/subtracting from the
+normal size of the window. It should be a number between -90 and 90. This number is
+the percentage of the OS Window size that should be added to the window size.
+So for example, if a window would normally have been size 50 in the layout inside an
+OS Window that is size 80 high and --bias -10 is used it will become *approximately*
+size 42 high. Note that sizes are approximations, you cannot use this method to
+create windows of fixed sizes.
+
+* Tall layout: If the window being created is the *first* window in a column, then
+the bias is interpreted as a percentage, as for the splits layout, splitting the OS
+Window width between columns. If the window is a second or subsequent window in a column
+the bias is interpreted as adding/subtracting from the window size as for the vertical
+layout above.
+
+* Fat layout: Same as tall layout except it goes by rows instead of columns.
+
+* Grid layout: The bias is interpreted the same way as for the Vertical and Horizontal
+layouts, as something to be added/subtracted to the normal size. However, the
+since in a grid layout there are rows *and* columns, the bias on the first window in a column
+operates on the columns. Any later windows in that column operate on the row.
+So, for example, if you bias the first window in a grid layout it will change the width
+of the first column, the second window, the width of the second column, the third window,
+the height of the second row and so on.
+
+The bias option was introduced in datty version 0.36.0.
+
+
+--allow-remote-control
+type=bool-set
+Programs running in this window can control datty (even if remote control is not
+enabled in :file:`datty.conf`). Note that any program with the right level of
+permissions can still write to the pipes of any other program on the same
+computer and therefore can control datty. It can, however, be useful to block
+programs running on other computers (for example, over SSH) or as other users.
+See :option:`--remote-control-password` for ways to restrict actions allowed by
+remote control.
+
+
+--remote-control-password
+{remote_control_password_docs}
+
+--stdin-source
+type=choices
+default=none
+choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback,@first_cmd_output_on_screen,@last_cmd_output,@last_visited_cmd_output
+Pass the screen contents as :file:`STDIN` to the child process.
+
+:code:`@selection`
+    is the currently selected text in the :option:`source window <launch --source-window>`.
+
+:code:`@screen`
+    is the contents of the :option:`source window <launch --source-window>`.
+
+:code:`@screen_scrollback`
+    is the same as :code:`@screen`, but includes the scrollback buffer as well.
+
+:code:`@alternate`
+    is the secondary screen of the :option:`source window <launch --source-window>`. For example if you run
+    a full screen terminal application, the secondary screen will
+    be the screen you return to when quitting the application.
+
+:code:`@first_cmd_output_on_screen`
+    is the output from the first command run in the shell on screen.
+
+:code:`@last_cmd_output`
+    is the output from the last command run in the shell.
+
+:code:`@last_visited_cmd_output`
+    is the first output below the last scrolled position via :ac:`scroll_to_prompt`,
+    this needs :ref:`shell integration <shell_integration>` to work.
+
+#placeholder_for_formatting#
+
+
+--stdin-add-formatting
+type=bool-set
+When using :option:`--stdin-source <launch --stdin-source>` add formatting
+escape codes, without this only plain text will be sent.
+
+
+--stdin-add-line-wrap-markers
+type=bool-set
+When using :option:`--stdin-source <launch --stdin-source>` add a carriage
+return at every line wrap location (where long lines are wrapped at screen
+edges). This is useful if you want to pipe to program that wants to duplicate
+the screen layout of the screen.
+
+
+--marker
+Create a marker that highlights text in the newly created window. The syntax is
+the same as for the :ac:`toggle_marker` action (see :doc:`/marks`).
+
+
+--os-window-class
+Set the :italic:`WM_CLASS` property on X11 and the application id property on
+Wayland for the newly created OS window when using :option:`--type=os-window
+<launch --type>`. Defaults to whatever is used by the parent datty process,
+which in turn defaults to :code:`datty`.
+
+
+--os-window-name
+Set the :italic:`WM_NAME` property on X11 for the newly created OS Window when
+using :option:`--type=os-window <launch --type>`. Defaults to
+:option:`--os-window-class <launch --os-window-class>`.
+
+
+--os-window-title
+Set the title for the newly created OS window. This title will override any
+titles set by programs running in datty. The special value :code:`current` will
+copy the title from the OS Window containing the
+:option:`source window <launch --source-window>`.
+
+
+--os-window-state
+type=choices
+default=normal
+choices=normal,fullscreen,maximized,minimized
+The initial state for the newly created OS Window.
+
+
+--os-window-position
+The position, for example :code:`10x20`, on screen at which to place the newly
+created OS Window. This may or may not work depending on the policies of the
+desktop environment/window manager. It never works on Wayland.
+
+
+--logo
+completion=type:file ext:png group:"PNG images" relative:conf
+Path to a PNG image to use as the logo for the newly created window. See
+:opt:`window_logo_path`. Relative paths are resolved from the datty configuration directory.
+
+
+--logo-position
+The position for the window logo. Only takes effect if :option:`--logo` is
+specified. See :opt:`window_logo_position`.
+
+
+--logo-alpha
+type=float
+default=-1
+The amount the window logo should be faded into the background. Only takes
+effect if :option:`--logo` is specified. See :opt:`window_logo_alpha`.
+
+
+--color
+type=list
+Change colors in the newly launched window. You can either specify a path to a
+:file:`.conf` file with the same syntax as :file:`datty.conf` to read the colors
+from, or specify them individually, for example::
+
+    --color background=white --color foreground=red
+
+
+--spacing
+type=list
+Set the margin and padding for the newly created window.
+{SPACING_SETTINGS_DOC}
+Can be specified multiple times. Note that this is ignored for overlay windows as these use the settings
+from the base window.
+
+
+--watcher -w
+type=list
+completion=type:file ext:py relative:conf group:"Python scripts"
+Path to a Python file. Appropriately named functions in this file will be called
+for various events, such as when the window is resized, focused or closed. See
+the section on watchers in the launch command documentation: :ref:`watchers`.
+Relative paths are resolved relative to the :ref:`datty config directory
+<confloc>`. Global watchers for all windows can be specified with
+:opt:`watcher` in :file:`datty.conf`.
+
+
+--os-panel
+type=list
+Options to control the creation of desktop panels. Takes the same settings
+as the :doc:`panel daddy </daddies/panel>`, except for :option:`--override <datty +daddy panel --override>`
+and :option:`--config <datty +daddy panel --config>`. Can be specified multiple times.
+For example, to create a desktop panel at the bottom of the screen two lines high::
+
+    launch --type os-panel --os-panel lines=2 --os-panel edge=bottom sh -c "echo; echo; echo hello; sleep 5s"
+
+
+--hold-after-ssh
+type=bool-set
+When using :option:`--cwd`:code:`=current` or similar from a window that is running the ssh daddy,
+the new window will run a local shell after disconnecting from the remote host, when this option
+is specified.
+"""
+
+
+# }}}
+
+
+def parse_launch_args(args: Sequence[str] | None = None) -> LaunchSpec:
+    args = list(args or ())
+    try:
+        opts, args = parse_args(result_class=LaunchCLIOptions, args=args, ospec=options_spec)
+    except SystemExit as e:
+        raise ValueError(str(e)) from e
+    return LaunchSpec(opts, args)
+
+
+def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env: dict[str, str] | None = None) -> dict[str, str]:
+    env: dict[str, str] = {}
+    if opts.copy_env and active_child:
+        env.update(active_child.foreground_environ)
+    if base_env is not None:
+        env.update(base_env)
+    for x in opts.env:
+        for k, v in parse_env(x, env):
+            env[k] = v
+    return env
+
+
+def layer_shell_config_from_panel_opts(panel_opts: Iterable[str]) -> LayerShellConfig:
+    from daddies.panel.main import layer_shell_config, parse_panel_args
+
+    args = [('' if x.startswith('--') else '--') + x for x in panel_opts]
+    try:
+        opts, _ = parse_panel_args(args)
+    except SystemExit as e:
+        raise ValueError(str(e))
+    return layer_shell_config(opts)
+
+
+def parse_os_window_position(position: str | None) -> tuple[int | None, int | None]:
+    if not position:
+        return None, None
+    x, _, y = position.lower().partition('x')
+    return int(x), int(y)
+
+
+def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, next_to: Window | None, add_to_session: str) -> Tab:
+
+    def create_tab(tm: TabManager | None = None) -> Tab:
+        if tm is None:
+            if opts.type == 'os-panel':
+                oswid = boss.add_os_panel(layer_shell_config_from_panel_opts(opts.os_panel), opts.os_window_class, opts.os_window_name)
+            else:
+                x, y = (None, None) if is_wayland() else parse_os_window_position(opts.os_window_position)
+                oswid = boss.add_os_window(
+                    wclass=opts.os_window_class,
+                    wname=opts.os_window_name,
+                    window_state=opts.os_window_state,
+                    override_title=opts.os_window_title or None,
+                    x=x,
+                    y=y,
+                )
+            tm = boss.os_window_map[oswid]
+            tm.created_in_session_name = add_to_session
+        tab = tm.new_tab(empty_tab=True, location=opts.location, title=opts.tab_title or '')
+        tab.created_in_session_name = add_to_session
+        return tab
+
+    if opts.type == 'tab':
+        tm = boss.active_tab_manager
+        if next_to is not None and (tab := next_to.tabref()) is not None and (qtm := tab.tab_manager_ref()) is not None:
+            tm = qtm
+        if target_tab is not None:
+            tm = target_tab.tab_manager_ref() or tm
+        tab = create_tab(tm)
+    elif opts.type in ('os-window', 'os-panel'):
+        tab = create_tab()
+    else:
+        if target_tab is not None:
+            tab = target_tab
+        else:
+            tab = boss.active_tab
+            if next_to is not None and (qtab := next_to.tabref()) is not None:
+                tab = qtab
+            tab = tab or create_tab()
+    return tab
+
+
+watcher_modules: dict[str, Any] = {}
+
+
+def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
+    watchers = tuple(watchers)
+    if not watchers:
+        return None
+    import runpy
+
+    ans = Watchers()
+    boss = get_boss()
+    for path in watchers:
+        path = resolve_custom_file(path)
+        m = watcher_modules.get(path, None)
+        if m is None:
+            try:
+                m = runpy.run_path(path, run_name='__datty_watcher__')
+            except Exception as err:
+                import traceback
+
+                log_error(traceback.format_exc())
+                log_error(f'Failed to load watcher from {path} with error: {err}')
+                watcher_modules[path] = False
+                continue
+            watcher_modules[path] = m
+            w = m.get('on_load')
+            if callable(w):
+                try:
+                    w(boss, {})
+                except Exception as err:
+                    import traceback
+
+                    log_error(traceback.format_exc())
+                    log_error(f'Failed to call on_load() in watcher from {path} with error: {err}')
+        if m is False:
+            continue
+        w = m.get('on_close')
+        if callable(w):
+            ans.on_close.append(w)
+        w = m.get('on_resize')
+        if callable(w):
+            ans.on_resize.append(w)
+        w = m.get('on_focus_change')
+        if callable(w):
+            ans.on_focus_change.append(w)
+        w = m.get('on_set_user_var')
+        if callable(w):
+            ans.on_set_user_var.append(w)
+        w = m.get('on_title_change')
+        if callable(w):
+            ans.on_title_change.append(w)
+        w = m.get('on_cwd_change')
+        if callable(w):
+            ans.on_cwd_change.append(w)
+        w = m.get('on_cmd_startstop')
+        if callable(w):
+            ans.on_cmd_startstop.append(w)
+        w = m.get('on_program_status_change')
+        if callable(w):
+            ans.on_program_status_change.append(w)
+        w = m.get('on_color_scheme_preference_change')
+        if callable(w):
+            ans.on_color_scheme_preference_change.append(w)
+        w = m.get('on_tab_bar_dirty')
+        if callable(w):
+            ans.on_tab_bar_dirty.append(w)
+        w = m.get('on_quit')
+        if callable(w):
+            ans.on_quit.append(w)
+    return ans
+
+
+class LaunchKwds(TypedDict):
+    allow_remote_control: bool
+    remote_control_passwords: dict[str, Sequence[str]] | None
+    cwd_from: CwdRequest | None
+    cwd: str | None
+    location: str | None
+    override_title: str | None
+    copy_colors_from: Window | None
+    marker: str | None
+    cmd: list[str] | None
+    overlay_for: int | None
+    dock: DockSpec | None
+    os_window_dock: bool
+    stdin: bytes | None
+    hold: bool
+    bias: float | None
+    hold_after_ssh: bool
+
+
+def apply_colors(window: Window, spec: Sequence[str]) -> None:
+    from .colors import parse_colors
+
+    colors, transparent_background_colors = parse_colors(spec)
+    profiles = (window.screen.color_profile,)
+    patch_color_profiles(colors, transparent_background_colors, profiles, COLOR_LAYER_WINDOW)
+
+
+def parse_var(defn: Iterable[str]) -> Iterator[tuple[str, str]]:
+    for item in defn:
+        a, sep, b = item.partition('=')
+        yield a, b
+
+
+class ForceWindowLaunch:
+    def __init__(self) -> None:
+        self.force = False
+
+    def __bool__(self) -> bool:
+        return self.force
+
+    def __call__(self, force: bool) -> 'ForceWindowLaunch':
+        self.force = force
+        return self
+
+    def __enter__(self) -> None:
+        pass
+
+    def __exit__(self, *a: object) -> None:
+        self.force = False
+
+
+force_window_launch = ForceWindowLaunch()
+non_window_launch_types = 'background', 'clipboard', 'primary'
+dock_launch_types = 'window-dock', 'tab-dock', 'os-window-dock'
+
+
+def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequence[str]) -> dict[str, Sequence[str]] | None:
+    remote_control_restrictions: dict[str, Sequence[str]] | None = None
+    if allow_remote_control and passwords:
+        from datty.options.utils import remote_control_password
+
+        remote_control_restrictions = {}
+        for rcp in passwords:
+            for pw, rcp_items in remote_control_password(rcp, {}):
+                remote_control_restrictions[pw] = rcp_items
+    return remote_control_restrictions
+
+
+def find_existing(boss: Boss, opts: LaunchCLIOptions, rc_from_window: Window | None = None, tm: TabManager | None = None) -> Window | Tab | None:
+    # @title only considers the tabs visible in the tab bar of tm, the OS Window the
+    # new tab/window would be created in, so that it respects tab_bar_filter
+    q = opts.focus_existing
+    if not q:
+        return None
+    visible_tabs: tuple[Tab, ...] = tuple(tm.tabs_to_be_shown_in_tab_bar) if tm is not None else ()
+    if opts.type == 'tab':
+        if q == '@title':
+            if not opts.tab_title:
+                raise ValueError('--focus-existing=@title requires --tab-title to also be specified')
+            return next((t for t in visible_tabs if t.effective_title == opts.tab_title), None)
+        return next(boss.match_tabs(q), None)
+    if q == '@title':
+        if not opts.window_title:
+            raise ValueError('--focus-existing=@title requires --window-title to also be specified')
+        candidates: Iterable[Window] = boss.all_windows if opts.type in ('os-window', 'os-panel') else (w for t in visible_tabs for w in t)
+        return next((w for w in candidates if w.title == opts.window_title), None)
+    return next(boss.match_windows(q, rc_from_window), None)
+
+
+def _launch(
+    boss: Boss,
+    opts: LaunchCLIOptions,
+    args: list[str],
+    target_tab: Tab | None = None,
+    force_target_tab: bool = False,
+    is_clone_launch: str = '',
+    rc_from_window: Window | None = None,
+    base_env: dict[str, str] | None = None,
+    child_death_callback: Callable[[int, Exception | None], None] | None = None,
+    startup_command_via_shell_integration: Sequence[str] | str = (),
+    restored_scrollback: bytes = b'',
+) -> Window | None:
+    source_window = boss.active_window_for_cwd
+    if opts.source_window:
+        for qw in boss.match_windows(opts.source_window, rc_from_window):
+            source_window = qw
+            break
+    source_child = source_window.child if source_window else None
+    next_to = boss.active_window
+    if opts.next_to:
+        for qw in boss.match_windows(opts.next_to, rc_from_window):
+            next_to = qw
+            break
+    if target_tab and next_to and next_to not in target_tab:
+        next_to = None
+    if opts.window_title == 'current':
+        opts.window_title = source_window.title if source_window else None
+    if opts.tab_title == 'current':
+        atab = boss.active_tab
+        if source_window and (qt := source_window.tabref()):
+            atab = qt
+        opts.tab_title = atab.effective_title if atab else None
+    if opts.os_window_title == 'current':
+        tm = boss.active_tab_manager
+        if source_window and (qt := source_window.tabref()) and (qr := qt.tab_manager_ref()):
+            tm = qr
+        opts.os_window_title = get_os_window_title(tm.os_window_id) if tm else None
+    if opts.focus_existing and not force_target_tab and opts.type not in non_window_launch_types:
+        scope_tm = boss.active_tab_manager
+        if target_tab is not None:
+            scope_tm = target_tab.tab_manager_ref() or scope_tm
+        elif next_to is not None and (nt := next_to.tabref()) is not None:
+            scope_tm = nt.tab_manager_ref() or scope_tm
+        if (existing := find_existing(boss, opts, rc_from_window, scope_tm)) is not None:
+            if not opts.keep_focus:
+                if isinstance(existing, Window):
+                    boss.set_active_window(existing, switch_os_window_if_needed=True)
+                elif (aw := existing.active_window) is not None:
+                    boss.set_active_window(aw, switch_os_window_if_needed=True)
+                elif (etm := existing.tab_manager_ref()) is not None:
+                    etm.set_active_tab(existing)
+            return existing if isinstance(existing, Window) else existing.active_window
+    env = get_env(opts, source_child, base_env)
+    kw: LaunchKwds = {
+        'allow_remote_control': opts.allow_remote_control,
+        'remote_control_passwords': parse_remote_control_passwords(opts.allow_remote_control, opts.remote_control_password),
+        'cwd_from': None,
+        'cwd': None,
+        'location': None,
+        'override_title': opts.window_title or None,
+        'copy_colors_from': None,
+        'marker': opts.marker or None,
+        'cmd': None,
+        'overlay_for': None,
+        'dock': None,
+        'os_window_dock': False,
+        'stdin': None,
+        'hold': False,
+        'bias': None,
+        'hold_after_ssh': False,
+    }
+    spacing = {}
+    if opts.spacing:
+        from .rc.set_spacing import parse_spacing_settings, patch_window_edges
+
+        spacing = parse_spacing_settings(opts.spacing)
+    if opts.bias:
+        kw['bias'] = max(-100, min(opts.bias, 100))
+    if opts.cwd:
+        if opts.cwd == 'current':
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window)
+        elif opts.cwd == 'last_reported':
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window, CwdRequestType.last_reported)
+        elif opts.cwd == 'oldest':
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window, CwdRequestType.oldest)
+        elif opts.cwd == 'root':
+            if source_window:
+                kw['cwd_from'] = CwdRequest(source_window, CwdRequestType.root)
+        else:
+            kw['cwd'] = opts.cwd
+    if opts.hold_after_ssh:
+        if opts.cwd not in ('current', 'last_reported', 'oldest'):
+            raise ValueError('--hold-after-ssh can only be supplied if --cwd=current or similar is also supplied')
+        kw['hold_after_ssh'] = True
+
+    if opts.location not in ('default', 'by-title'):
+        kw['location'] = opts.location
+    if opts.copy_colors and source_window:
+        kw['copy_colors_from'] = source_window
+    pipe_data: dict[str, Any] = {}
+    if opts.stdin_source != 'none':
+        q = str(opts.stdin_source)
+        if opts.stdin_add_formatting:
+            if q in (
+                '@screen',
+                '@screen_scrollback',
+                '@alternate',
+                '@alternate_scrollback',
+                '@first_cmd_output_on_screen',
+                '@last_cmd_output',
+                '@last_visited_cmd_output',
+            ):
+                q = f'@ansi_{q[1:]}'
+        if opts.stdin_add_line_wrap_markers:
+            q += '_wrap'
+        penv, stdin = boss.process_stdin_source(window=source_window, stdin=q, copy_pipe_data=pipe_data)
+        if stdin:
+            kw['stdin'] = stdin
+            if penv:
+                env.update(penv)
+
+    cmd = args or None
+    if opts.copy_cmdline and source_child:
+        cmd = source_child.foreground_cmdline
+    active = boss.active_window
+    if cmd:
+        final_cmd: list[str] = []
+        for x in cmd:
+            if source_window and not opts.copy_cmdline:
+                if x == '@selection':
+                    s = boss.data_for_at(which=x, window=source_window)
+                    if s:
+                        x = s
+                elif x == '@active-datty-window-id':
+                    if active:
+                        x = str(active.id)
+                elif x == '@input-line-number':
+                    if 'input_line_number' in pipe_data:
+                        x = str(pipe_data['input_line_number'])
+                elif x == '@line-count':
+                    if 'lines' in pipe_data:
+                        x = str(pipe_data['lines'])
+                elif x in ('@cursor-x', '@cursor-y', '@scrolled-by', '@first-line-on-screen', '@last-line-on-screen'):
+                    if source_window is not None:
+                        screen = source_window.screen
+                        if x == '@scrolled-by':
+                            x = str(screen.scrolled_by)
+                        elif x == '@cursor-x':
+                            x = str(screen.cursor.x + 1)
+                        elif x == '@cursor-y':
+                            x = str(screen.cursor.y + 1)
+                        elif x == '@first-line-on-screen':
+                            x = str(screen.visual_line(0) or '')
+                        elif x == '@last-line-on-screen':
+                            x = str(screen.visual_line(screen.lines - 1) or '')
+            final_cmd.append(x)
+        if rc_from_window is None and final_cmd:
+            exe = which(final_cmd[0])
+            if exe:
+                final_cmd[0] = exe
+        kw['cmd'] = final_cmd
+    if force_window_launch and opts.type not in non_window_launch_types and opts.type not in dock_launch_types:
+        opts.type = 'window'
+    if next_to and opts.type in non_window_launch_types:
+        next_to = None
+    base_for_overlay = next_to
+    if target_tab and (not base_for_overlay or base_for_overlay not in target_tab):
+        base_for_overlay = target_tab.active_window
+    if opts.type in ('overlay', 'overlay-main') and base_for_overlay:
+        kw['overlay_for'] = base_for_overlay.id
+    if opts.type == 'background':
+        cmd = kw['cmd']
+        if not cmd:
+            raise ValueError('The cmd to run must be specified when running a background process')
+        boss.run_background_process(
+            cmd,
+            cwd=kw['cwd'],
+            cwd_from=kw['cwd_from'],
+            env=env or None,
+            stdin=kw['stdin'],
+            allow_remote_control=kw['allow_remote_control'],
+            remote_control_passwords=kw['remote_control_passwords'],
+            notify_on_death=child_death_callback,
+        )
+    elif opts.type in ('clipboard', 'primary'):
+        stdin = kw.get('stdin')
+        if stdin is not None:
+            if opts.type == 'clipboard':
+                set_clipboard_string(stdin)
+                boss.handle_clipboard_loss('clipboard')
+            else:
+                set_primary_selection(stdin)
+                boss.handle_clipboard_loss('primary')
+        if child_death_callback is not None:
+            child_death_callback(0, None)
+    else:
+        add_to_session = opts.add_to_session or ''
+        match add_to_session:
+            case '.':
+                add_to_session = source_window.effective_session_name if source_window else ''
+            case '!':
+                add_to_session = ''
+            case '':
+                if kw['cwd_from'] is not None and source_window:
+                    add_to_session = source_window.effective_session_name
+        kw['hold'] = opts.hold
+        dock_owner: WindowGroup | None = None
+        if opts.type in dock_launch_types:
+            kw['dock'] = parse_dock_spec(opts.dock_edge, opts.dock_size, not opts.dock_skip_focus)
+        if force_target_tab and target_tab is not None:
+            tab = target_tab
+        else:
+            tab = tab_for_window(boss, opts, target_tab, next_to, add_to_session)
+        if opts.type == 'window-dock':
+            owner_window = tab.windows.main_window_for(next_to) if next_to is not None and next_to in tab else None
+            owner_window = owner_window or tab.windows.active_main_window
+            if owner_window is None or (dock_owner := tab.windows.group_for_window(owner_window)) is None:
+                raise ValueError('A window-dock can only be created in a tab that has a window to dock it to')
+        elif opts.type == 'os-window-dock':
+            if (tm := tab.tab_manager_ref()) is None:
+                raise ValueError('An os-window-dock can only be created in a tab that belongs to an OS window')
+            # The OS window docks are in the active tab, the tab is None only
+            # while the first tab of a session is being created
+            tab = tm.active_tab or tab
+            tm.host_os_window_docks_in(tab)
+            kw['os_window_dock'] = True
+        watchers = load_watch_modules(opts.watcher)
+        with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
+            new_window: Window = tab.new_window(
+                env=env or None,
+                watchers=watchers or None,
+                is_clone_launch=is_clone_launch,
+                next_to=next_to,
+                startup_command_via_shell_integration=startup_command_via_shell_integration,
+                restored_scrollback=restored_scrollback,
+                dock_owner=dock_owner,
+                **kw,
+            )
+            new_window.created_in_session_name = add_to_session
+            if child_death_callback is not None:
+                boss.monitor_pid(new_window.child.pid or 0, child_death_callback)
+            if new_window.creation_spec:
+                if opts.watcher:
+                    new_window.creation_spec = new_window.creation_spec._replace(watchers=tuple(opts.watcher))
+                if opts.spacing:
+                    new_window.creation_spec = new_window.creation_spec._replace(spacing=tuple(opts.spacing))
+                if opts.color:
+                    new_window.creation_spec = new_window.creation_spec._replace(colors=tuple(opts.color))
+        if spacing:
+            patch_window_edges(new_window, spacing)
+            tab.relayout()
+        if opts.color:
+            apply_colors(new_window, opts.color)
+        if opts.keep_focus:
+            if active:
+                boss.set_active_window(active, switch_os_window_if_needed=True, for_keep_focus=True)
+            if not Window.initial_ignore_focus_changes_context_manager_in_operation:
+                new_window.ignore_focus_changes = False
+        if opts.logo:
+            new_window.set_logo(opts.logo, opts.logo_position or '', opts.logo_alpha)
+        if opts.type == 'overlay-main':
+            new_window.overlay_type = OverlayType.main
+        if opts.var:
+            vars = tuple(parse_var(opts.var))
+            if new_window.creation_spec:
+                new_window.creation_spec = new_window.creation_spec._replace(user_vars=vars)
+            for key, val in vars:
+                new_window.set_user_var(key, val)
+        return new_window
+    return None
+
+
+def launch(
+    boss: Boss,
+    opts: LaunchCLIOptions,
+    args: list[str],
+    target_tab: Tab | None = None,
+    force_target_tab: bool = False,
+    is_clone_launch: str = '',
+    rc_from_window: Window | None = None,
+    base_env: dict[str, str] | None = None,
+    child_death_callback: Callable[[int, Exception | None], None] | None = None,
+    startup_command_via_shell_integration: Sequence[str] | str = (),
+    restored_scrollback: bytes = b'',
+) -> Window | None:
+    active = boss.active_window
+    if opts.keep_focus and active:
+        orig, active.ignore_focus_changes = active.ignore_focus_changes, True
+    try:
+        return _launch(
+            boss,
+            opts,
+            args,
+            target_tab,
+            force_target_tab,
+            is_clone_launch,
+            rc_from_window,
+            base_env,
+            child_death_callback,
+            startup_command_via_shell_integration,
+            restored_scrollback,
+        )
+    finally:
+        if opts.keep_focus and active:
+            active.ignore_focus_changes = orig
+
+
+@run_once
+def clone_safe_opts() -> frozenset[str]:
+    return frozenset(
+        (
+            'window_title',
+            'tab_title',
+            'type',
+            'keep_focus',
+            'cwd',
+            'var',
+            'hold',
+            'location',
+            'os_window_class',
+            'os_window_name',
+            'os_window_title',
+            'os_window_state',
+            'os_window_position',
+            'logo',
+            'logo_position',
+            'logo_alpha',
+            'spacing',
+            'next_to',
+            'hold_after_ssh',
+        )
+    )
+
+
+def parse_opts_for_clone(args: list[str], allow_env: bool = False) -> tuple[LaunchCLIOptions, list[str]]:
+    unsafe, unsafe_args = parse_launch_args(args)
+    default_opts, default_args = parse_launch_args()
+    # only copy safe options, those that dont lead to local code exec
+    for x in clone_safe_opts():
+        setattr(default_opts, x, getattr(unsafe, x))
+    if allow_env:
+        # Env is not safe in general because some programs may execute code
+        # based on the value of env vars, such as VIMINIT for vim.
+        default_opts.env = unsafe.env
+    # color specs that dont have = will be parsed as a conf file. That is unsafe because of geninclude.
+    default_opts.color = [x for x in unsafe.color if '=' in x]
+    return default_opts, unsafe_args
+
+
+def parse_null_env(text: str) -> dict[str, str]:
+    ans = {}
+    for line in text.split('\0'):
+        if line:
+            try:
+                k, v = line.split('=', 1)
+            except ValueError:
+                continue
+            ans[k] = v
+    return ans
+
+
+def parse_message(msg: str, simple: Container[str]) -> Iterator[tuple[str, str]]:
+    from base64 import standard_b64decode
+
+    for x in msg.split(','):
+        try:
+            k, v = x.split('=', 1)
+        except ValueError:
+            continue
+        if k not in simple:
+            v = standard_b64decode(v).decode('utf-8', 'replace')
+        yield k, v
+
+
+AbortSignal = Literal['closed', 'replaced', 'disconnected', 'interrupt', '']
+
+
+class EditRequest(NamedTuple):
+    args: list[str]
+    cwd: str
+    file_inode: tuple[int, int]
+    file_size: int
+    file_data: bytes
+    version: int
+    abort_signaled: AbortSignal
+
+
+def parse_edit_message(msg: str) -> EditRequest:
+    # Only keys that are part of the edit protocol are recognized, all others
+    # are ignored. In particular, values from the message must never be used to
+    # set attributes on the EditCmd object directly, as that would allow any
+    # program that can write to the terminal to overwrite internal state, such
+    # as the temporary directory that is deleted once editing is finished.
+    args: list[str] = []
+    cwd = ''
+    file_inode = -1, -1
+    file_size = -1
+    file_data = b''
+    version = 0
+    abort_signaled: AbortSignal = ''
+    simple = 'file_inode', 'file_data', 'abort_signaled', 'version'
+    for k, v in parse_message(msg, simple):
+        if k == 'file_inode':
+            parts = v.split(':')
+            if len(parts) > 2:
+                with suppress(ValueError):
+                    dev, inode, sz = int(parts[0]), int(parts[1]), int(parts[2])
+                    file_inode, file_size = (dev, inode), sz
+        elif k == 'a':
+            args.append(v)
+        elif k == 'file_data':
+            import base64
+
+            file_data = base64.standard_b64decode(v)
+        elif k == 'version':
+            version = int(v)
+        elif k == 'cwd':
+            cwd = v
+        elif k == 'abort_signaled':
+            # interrupt is the only abort signal clients can send, the other
+            # values of abort_signaled are used for internal state only.
+            abort_signaled = 'interrupt' if v else ''
+    return EditRequest(args, cwd, file_inode, file_size, file_data, version, abort_signaled)
+
+
+class EditCmd:
+    # Using __slots__ means an attribute that is not listed here cannot be
+    # created on this object, not even accidentally, which keeps internal state
+    # such as tdir safe from data received over the edit protocol.
+    __slots__ = (
+        'abort_signaled',
+        'args',
+        'child_is_remote',
+        'cwd',
+        'editor_exit_code',
+        'editor_window_id',
+        'file_data',
+        'file_inode',
+        'file_localpath',
+        'file_name',
+        'file_size',
+        'file_spec',
+        'is_local_file',
+        'last_mod_time',
+        'line_number',
+        'opts',
+        'source_window_id',
+        'tdir',
+        'version',
+    )
+    abort_signaled: AbortSignal
+    opts: LaunchCLIOptions
+
+    def __init__(self, msg: str, child_is_remote: bool) -> None:
+        # set up the internal state that __del__ needs first, so that it works
+        # even if parsing the message below fails
+        self.child_is_remote = child_is_remote
+        self.tdir = ''
+        self.abort_signaled = ''
+        self.file_name = self.file_localpath = ''
+        self.source_window_id = self.editor_window_id = -1
+        self.editor_exit_code: int | None = None
+        req = parse_edit_message(msg)
+        self.args = req.args
+        self.cwd = req.cwd
+        self.file_inode = req.file_inode
+        self.file_size = req.file_size
+        self.file_data = req.file_data
+        self.version = req.version
+        self.abort_signaled = req.abort_signaled
+        if self.abort_signaled:
+            return
+        if self.version > 0:
+            raise ValueError(f'Unsupported version received in edit protocol: {self.version}')
+        self.opts, extra_args = parse_opts_for_clone(['--type=overlay'] + self.args)
+        self.file_spec = extra_args.pop()
+        self.line_number = 0
+        import re
+
+        pat = re.compile(r'\+(-?\d+)')
+        for x in extra_args:
+            m = pat.match(x)
+            if m is not None:
+                self.line_number = int(m.group(1))
+        self.file_name = os.path.basename(self.file_spec)
+        self.file_localpath = os.path.normpath(os.path.join(self.cwd, self.file_spec))
+        self.is_local_file = False
+        with suppress(OSError):
+            st = os.stat(self.file_localpath)
+            self.is_local_file = (st.st_dev, st.st_ino) == self.file_inode and os.access(self.file_localpath, os.W_OK | os.R_OK)
+        if not self.is_local_file:
+            import tempfile
+
+            self.tdir = tempfile.mkdtemp()
+            self.file_localpath = os.path.join(self.tdir, self.file_name)
+            with open(self.file_localpath, 'wb') as f:
+                f.write(self.file_data)
+        self.file_data = b''
+        self.last_mod_time = self.file_mod_time
+        if not self.opts.cwd:
+            self.opts.cwd = os.path.dirname(self.file_localpath)
+
+    def __del__(self) -> None:
+        # tdir is only ever set to a directory created by us in __init__, never
+        # to a value coming from the edit protocol message.
+        if self.tdir:
+            if not self.abort_signaled == 'disconnected':
+                with suppress(OSError):
+                    shutil.rmtree(self.tdir)
+            self.tdir = ''
+
+    def read_data(self) -> bytes:
+        with open(self.file_localpath, 'rb') as f:
+            return f.read()
+
+    @property
+    def file_mod_time(self) -> int:
+        return os.stat(self.file_localpath).st_mtime_ns
+
+    def schedule_check(self) -> None:
+        if not self.abort_signaled:
+            add_timer(self.check_status, 1.0, False)
+
+    def on_edit_window_close(self, window: Window) -> None:
+        self.check_status()
+        if self.editor_exit_code is None:
+            # The PID death callback fires in the same main-loop tick as the
+            # window-close callback (report_reaped_pids runs after parse_input).
+            # Schedule a short-interval fallback timer in case the PID was not
+            # registered in time (e.g., editor crashed before monitor_pid ran).
+            add_timer(self._fallback_done, 0.1, False)
+
+    def _fallback_done(self, timer_id: int | None = None) -> None:
+        if self.editor_exit_code is None:
+            self.editor_exit_code = 0
+        self.check_status()
+
+    def check_status(self, timer_id: int | None = None) -> None:
+        if self.abort_signaled:
+            return
+        boss = get_boss()
+        source_window = boss.window_id_map.get(self.source_window_id)
+        if source_window is not None and not self.is_local_file:
+            mtime = self.file_mod_time
+            if mtime != self.last_mod_time:
+                self.last_mod_time = mtime
+                data = self.read_data()
+                self.send_data(source_window, 'UPDATE', data)
+        editor_window = boss.window_id_map.get(self.editor_window_id)
+        if editor_window is None:
+            if self.editor_exit_code is None:
+                # Wait for the PID death callback to provide the editor's exit code.
+                # It will call check_status() again once the exit code is known.
+                return
+            edits_in_flight.pop(self.source_window_id, None)
+            if source_window is not None:
+                self.send_data(source_window, 'DONE', str(self.editor_exit_code).encode())
+            self.abort_signaled = self.abort_signaled or 'closed'
+        else:
+            self.schedule_check()
+
+    def send_data(self, window: Window, data_type: str, data: bytes = b'') -> None:
+        if not self.is_local_file and self.child_is_remote and not window.child_is_remote:
+            self.abort_signaled = 'disconnected'
+            get_boss().show_error(
+                'edit-in-datty', f'Failed to sync file due to the SSH connection dropping. Your local changes can still be found at {self.file_localpath}'
+            )
+            return
+        window.write_to_child(f'DATTY_DATA_START\n{data_type}\n')
+        if data:
+            import base64
+
+            mv = memoryview(base64.standard_b64encode(data))
+            while mv:
+                window.write_to_child(bytes(mv[:512]))
+                window.write_to_child('\n')
+                mv = mv[512:]
+        window.write_to_child('DATTY_DATA_END\n')
+
+
+@run_once
+def excluded_env_vars() -> frozenset[str]:
+    return frozenset(
+        {
+            'HOME',
+            'LOGNAME',
+            'USER',
+            'PWD',
+            # some people export these. We want the shell rc files to recreate them
+            'PS0',
+            'PS1',
+            'PS2',
+            'PS3',
+            'PS4',
+            'RPS1',
+            'PROMPT_COMMAND',
+            'SHLVL',
+            # conda state env vars
+            'CONDA_SHLVL',
+            'CONDA_PREFIX',
+            'CONDA_PROMPT_MODIFIER',
+            'CONDA_EXE',
+            'CONDA_PYTHON_EXE',
+            '_CE_CONDA',
+            '_CE_M',
+            # skip SSH environment variables
+            'SSH_CLIENT',
+            'SSH_CONNECTION',
+            'SSH_ORIGINAL_COMMAND',
+            'SSH_TTY',
+            'SSH2_TTY',
+            'SSH_TUNNEL',
+            'SSH_USER_AUTH',
+            'SSH_AUTH_SOCK',
+            # Dont clone DATTY_WINDOW_ID
+            'DATTY_WINDOW_ID',
+            # Bash variables from "bind -x" and "complete -C" (needed not to confuse bash-preexec)
+            'READLINE_ARGUMENT',
+            'READLINE_LINE',
+            'READLINE_MARK',
+            'READLINE_POINT',
+            'COMP_LINE',
+            'COMP_POINT',
+            'COMP_TYPE',
+            # GPG gpg-agent
+            'GPG_TTY',
+            # Session variables of XDG
+            'XDG_SESSION_CLASS',
+            'XDG_SESSION_ID',
+            'XDG_SESSION_TYPE',
+            # Session variables of GNU Screen
+            'STY',
+            'WINDOW',
+            # Session variables of interactive shell plugins
+            'ATUIN_SESSION',
+            'ATUIN_HISTORY_ID',
+            'BLE_SESSION_ID',
+            '_ble_util_fdlist_cloexec',
+            '_ble_util_fdvars_export',
+            '_GITSTATUS_CLIENT_PID',
+            '_GITSTATUS_REQ_FD',
+            '_GITSTATUS_RESP_FD',
+            'GITSTATUS_DAEMON_PID',
+            'MCFLY_SESSION_ID',
+            'STARSHIP_SESSION_KEY',
+        }
+    )
+
+
+def is_excluded_env_var(x: str) -> bool:
+    # conda state env vars for multi-level virtual environments CONDA_PREFIX_*
+    return x in excluded_env_vars() or x.startswith('CONDA_PREFIX_')
+
+
+class CloneCmd:
+    def __init__(self, msg: str) -> None:
+        self.args: list[str] = []
+        self.env: dict[str, str] | None = None
+        self.cwd = ''
+        self.shell = ''
+        self.envfmt = 'default'
+        self.pid = -1
+        self.bash_version = ''
+        self.history = ''
+        self.parse_message(msg)
+        self.opts = parse_opts_for_clone(self.args, allow_env=True)[0]
+
+    def parse_message(self, msg: str) -> None:
+        simple = 'pid', 'envfmt', 'shell', 'bash_version'
+        for k, v in parse_message(msg, simple):
+            if k in simple:
+                if k == 'pid':
+                    self.pid = int(v)
+                else:
+                    setattr(self, k, v)
+            elif k == 'a':
+                self.args.append(v)
+            elif k == 'env':
+                if self.envfmt == 'bash':
+                    from .bash import parse_bash_env
+
+                    env = parse_bash_env(v, self.bash_version)
+                else:
+                    env = parse_null_env(v)
+                self.env = {k: v for k, v in env.items() if not is_excluded_env_var(k)}
+            elif k == 'cwd':
+                self.cwd = v
+            elif k == 'history':
+                self.history = v
+
+
+edits_in_flight: dict[int, EditCmd] = {}
+
+
+def remote_edit(msg: str, window: Window) -> None:
+    c = EditCmd(msg, window.child_is_remote)
+    if c.abort_signaled:
+        q = edits_in_flight.pop(window.id, None)
+        if q is not None:
+            q.abort_signaled = c.abort_signaled
+        return
+    cmdline = get_editor(path_to_edit=c.file_localpath, line_number=c.line_number)
+    c.opts.source_window = c.opts.next_to = f'id:{window.id}'
+    w = launch(get_boss(), c.opts, cmdline)
+    if w is not None:
+        c.source_window_id = window.id
+        c.editor_window_id = w.id
+        q = edits_in_flight.pop(window.id, None)
+        if q is not None:
+            q.abort_signaled = 'replaced'
+        edits_in_flight[window.id] = c
+        w.actions_on_close.append(c.on_edit_window_close)
+        editor_pid = w.child.pid
+        if editor_pid:
+
+            def on_editor_pid_death(wait_status: int, err: Exception | None) -> None:
+                c.editor_exit_code = os.waitstatus_to_exitcode(wait_status) if err is None else 1
+                c.check_status()
+
+            try:
+                get_boss().monitor_pid(editor_pid, on_editor_pid_death)
+            except RuntimeError:
+                # PID monitoring table is full. The fallback timer in
+                # on_edit_window_close will set editor_exit_code to 0.
+                log_error('edit-in-datty: PID monitoring table full, editor exit code will not be tracked')
+        else:
+            c.editor_exit_code = 0
+        c.schedule_check()
+
+
+def clone_and_launch(msg: str, window: Window) -> None:
+    from .shell_integration import serialize_env
+
+    c = CloneCmd(msg)
+    if c.cwd and not c.opts.cwd:
+        c.opts.cwd = c.cwd
+    c.opts.copy_colors = True
+    c.opts.copy_env = False
+    if c.opts.type in non_window_launch_types:
+        c.opts.type = 'window'
+    env_to_serialize = c.env or {}
+    if env_to_serialize.get('PATH') and env_to_serialize.get('VIRTUAL_ENV'):
+        # only pass VIRTUAL_ENV if it is currently active
+        if f'{env_to_serialize["VIRTUAL_ENV"]}/bin' not in env_to_serialize['PATH'].split(os.pathsep):
+            del env_to_serialize['VIRTUAL_ENV']
+    env_to_serialize['DATTY_CLONE_SOURCE_STRATEGIES'] = ',' + ','.join(get_options().clone_source_strategies) + ','
+    is_clone_launch = serialize_env(c.shell, env_to_serialize)
+    ssh_daddy_cmdline = window.ssh_daddy_cmdline()
+    if ssh_daddy_cmdline:
+        from daddies.ssh.utils import patch_cmdline, set_cwd_in_cmdline, set_env_in_cmdline
+
+        cmdline = ssh_daddy_cmdline
+        if c.opts.cwd:
+            set_cwd_in_cmdline(c.opts.cwd, cmdline)
+            c.opts.cwd = None
+        if c.env:
+            set_env_in_cmdline(
+                {
+                    'DATTY_IS_CLONE_LAUNCH': is_clone_launch,
+                },
+                cmdline,
+            )
+            c.env = None
+        if c.opts.env:
+            for entry in reversed(c.opts.env):
+                patch_cmdline('env', entry, cmdline)
+            c.opts.env = []
+    else:
+        try:
+            cmdline = window.child.cmdline_of_pid(c.pid)
+        except Exception:
+            cmdline = []
+        if not cmdline:
+            cmdline = list(window.child.argv)
+        if cmdline and cmdline[0].startswith('-'):  # on macOS, run via run-shell daddy
+            if window.child.is_default_shell:
+                cmdline = window.child.unmodified_argv
+            else:
+                cmdline[0] = cmdline[0][1:]
+                cmdline[0] = which(cmdline[0]) or cmdline[0]
+        if cmdline and cmdline[0] == window.child.final_argv0:
+            cmdline[0] = window.child.final_exe
+        if cmdline and cmdline == [window.child.final_exe] + window.child.argv[1:]:
+            cmdline = window.child.unmodified_argv
+    c.opts.source_window = f'id:{window.id}'
+    c.opts.next_to = c.opts.next_to or c.opts.source_window
+    launch(get_boss(), c.opts, cmdline, is_clone_launch=is_clone_launch)

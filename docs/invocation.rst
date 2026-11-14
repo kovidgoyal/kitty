@@ -1,15 +1,15 @@
 :orphan:
 
-The kitty command line interface
+The datty command line interface
 ====================================
 
-.. program:: kitty
+.. program:: datty
 
-.. include:: generated/cli-kitty.rst
+.. include:: generated/cli-datty.rst
 
 .. include:: basic.rst
 
 See also
 -----------
 
-See kitty.conf(5)
+See datty.conf(5)

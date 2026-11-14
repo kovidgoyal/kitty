@@ -14,9 +14,9 @@ import (
 	"github.com/sgtdi/fswatcher"
 	"golang.org/x/sys/unix"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/config"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/config"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -204,7 +204,7 @@ func watch_for_config_changes(ctx context.Context, action func() error, debounce
 				sync_watched_dirs()
 
 				if err := action(); err != nil {
-					fmt.Fprintf(os.Stderr, "failed to signal kitty in event: %s with error: %s\n", event, err)
+					fmt.Fprintf(os.Stderr, "failed to signal datty in event: %s with error: %s\n", event, err)
 				}
 			}
 		case <-ctx.Done():
@@ -213,7 +213,7 @@ func watch_for_config_changes(ctx context.Context, action func() error, debounce
 	}
 }
 
-func watch_for_kitty_config_changes(action func() error, debounce_time time.Duration, config_paths []string) error {
+func watch_for_datty_config_changes(action func() error, debounce_time time.Duration, config_paths []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
@@ -226,8 +226,8 @@ func watch_for_kitty_config_changes(action func() error, debounce_time time.Dura
 	return watch_for_config_changes(ctx, action, debounce_time, config_paths)
 }
 
-func signal_kitty_to_reload_config(kitty_pid int) error {
-	return unix.Kill(kitty_pid, unix.SIGUSR1)
+func signal_datty_to_reload_config(datty_pid int) error {
+	return unix.Kill(datty_pid, unix.SIGUSR1)
 }
 
 func EntryPoint(root *cli.Command) {
@@ -237,9 +237,9 @@ func EntryPoint(root *cli.Command) {
 		OnlyArgsAllowed: true,
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
 			if len(args) < 3 {
-				return 1, fmt.Errorf("Usage: __watch_conf__ kitty_pid debounce_time_ms config_paths...")
+				return 1, fmt.Errorf("Usage: __watch_conf__ datty_pid debounce_time_ms config_paths...")
 			}
-			kitty_pid, err := strconv.Atoi(args[0])
+			datty_pid, err := strconv.Atoi(args[0])
 			if err != nil {
 				return 1, err
 			}
@@ -251,8 +251,8 @@ func EntryPoint(root *cli.Command) {
 				return 0, fmt.Errorf("debounce_time must be >= 0")
 			}
 			config_paths := utils.Map(resolve_path, args[2:])
-			if err = watch_for_kitty_config_changes(
-				func() error { return signal_kitty_to_reload_config(kitty_pid) },
+			if err = watch_for_datty_config_changes(
+				func() error { return signal_datty_to_reload_config(datty_pid) },
 				time.Millisecond*time.Duration(debounce_time_ms), config_paths); err != nil {
 				return 1, err
 			}

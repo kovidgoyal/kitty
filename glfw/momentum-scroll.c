@@ -15,7 +15,7 @@ typedef struct ScrollSample {
 
 #define DEQUE_DATA_TYPE ScrollSample
 #define DEQUE_NAME ScrollSamples
-#include "../kitty/fixed_size_deque.h"
+#include "../datty/fixed_size_deque.h"
 
 typedef enum ScrollerState { NONE, PHYSICAL_EVENT_IN_PROGRESS, MOMENTUM_IN_PROGRESS } ScrollerState;
 

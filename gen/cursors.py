@@ -19,7 +19,7 @@ from .key_constants import patch_file
 # Wayland: https://wayland.app/protocols/cursor-shape-v1
 # Cocoa: https://developer.apple.com/documentation/appkit/nscursor + secret apple selectors + SDL_cocoamouse.m
 
-# kitty_names CSS_name       XCursor_names                             Wayland_name    Cocoa_name
+# datty_names CSS_name       XCursor_names                             Wayland_name    Cocoa_name
 cursors = """\
 arrow         default        default,!left_ptr                         default         arrowCursor
 beam,text     text           text,!xterm,ibeam                         text            IBeamCursor
@@ -63,7 +63,7 @@ def main(args: list[str] = sys.argv) -> None:
     css_names = []
     glfw_xc_map = {}
     glfw_xfont_map = []
-    kitty_to_enum_map = {}
+    datty_to_enum_map = {}
     enum_to_glfw_map = {}
     enum_to_css_map = {}
     glfw_cocoa_map = {}
@@ -86,7 +86,7 @@ def main(args: list[str] = sys.argv) -> None:
             css_names.append(css)
             glfw_wayland[glfw_name] = 'WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_' + wayland.replace('-', '_').upper()
             for n in names:
-                kitty_to_enum_map[n] = enum_name
+                datty_to_enum_map[n] = enum_name
             glfw_enum.append(glfw_name)
             glfw_xc_map[glfw_name] = ', '.join(f'''"{x.replace('!', '')}"''' for x in xc)
             for x in xc:
@@ -112,7 +112,7 @@ def main(args: list[str] = sys.argv) -> None:
         if x not in css_to_enum:
             css_to_enum[x] = v
 
-    for x, v in kitty_to_enum_map.items():
+    for x, v in datty_to_enum_map.items():
         if x not in css_to_enum:
             css_to_enum[x] = v
 
@@ -121,22 +121,22 @@ def main(args: list[str] = sys.argv) -> None:
     patch_file('glfw/wl_window.c', 'glfw to wayland mapping', '\n'.join(f'        C({g}, {x});' for g, x in glfw_wayland.items()))
     patch_file('glfw/wl_window.c', 'glfw to xc mapping', '\n'.join(f'        C({g}, {x});' for g, x in glfw_xc_map.items()))
     patch_file('glfw/x11_window.c', 'glfw to xc mapping', '\n'.join(f'        {x}' for x in glfw_xfont_map))
-    patch_file('kitty/data-types.h', 'mouse shapes', '\n'.join(f'    {x},' for x in enum_to_glfw_map))
+    patch_file('datty/data-types.h', 'mouse shapes', '\n'.join(f'    {x},' for x in enum_to_glfw_map))
     patch_file(
-        'kitty/options/utils.py',
+        'datty/options/utils.py',
         'pointer shape names',
-        '\n'.join(f'    {x!r},' for x in kitty_to_enum_map),
+        '\n'.join(f'    {x!r},' for x in datty_to_enum_map),
         start_marker='# ',
         end_marker='',
     )
-    patch_file('kitty/options/to-c.h', 'pointer shapes', '\n'.join(f'    else if (strcmp(name, "{k}") == 0) return {v};' for k, v in kitty_to_enum_map.items()))
-    patch_file('kitty/glfw.c', 'enum to glfw', '\n'.join(f'        case {k}: set_glfw_mouse_cursor(w, {v}); break;' for k, v in enum_to_glfw_map.items()))
+    patch_file('datty/options/to-c.h', 'pointer shapes', '\n'.join(f'    else if (strcmp(name, "{k}") == 0) return {v};' for k, v in datty_to_enum_map.items()))
+    patch_file('datty/glfw.c', 'enum to glfw', '\n'.join(f'        case {k}: set_glfw_mouse_cursor(w, {v}); break;' for k, v in enum_to_glfw_map.items()))
     patch_file(
-        'kitty/glfw.c', 'name to glfw', '\n'.join(f'    if (strcmp(name, "{k}") == 0) return {enum_to_glfw_map[v]};' for k, v in kitty_to_enum_map.items())
+        'datty/glfw.c', 'name to glfw', '\n'.join(f'    if (strcmp(name, "{k}") == 0) return {enum_to_glfw_map[v]};' for k, v in datty_to_enum_map.items())
     )
-    patch_file('kitty/glfw.c', 'glfw to css', '\n'.join(f'        case {g}: return "{c}";' for g, c in glfw_css_map.items()))
-    patch_file('kitty/screen.c', 'enum to css', '\n'.join(f'        case {e}: ans = "{c}"; break;' for e, c in enum_to_css_map.items()))
-    patch_file('kitty/screen.c', 'css to enum', '\n'.join(f'        else if (strcmp("{c}", css_name) == 0) s = {e};' for c, e in css_to_enum.items()))
+    patch_file('datty/glfw.c', 'glfw to css', '\n'.join(f'        case {g}: return "{c}";' for g, c in glfw_css_map.items()))
+    patch_file('datty/screen.c', 'enum to css', '\n'.join(f'        case {e}: ans = "{c}"; break;' for e, c in enum_to_css_map.items()))
+    patch_file('datty/screen.c', 'css to enum', '\n'.join(f'        else if (strcmp("{c}", css_name) == 0) s = {e};' for c, e in css_to_enum.items()))
     patch_file('glfw/cocoa_window.m', 'glfw to cocoa', '\n'.join(f'        {x}' for x in glfw_cocoa_map.values()))
     patch_file(
         'docs/pointer-shapes.rst',

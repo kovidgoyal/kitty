@@ -1,0 +1,500 @@
+#!/usr/bin/env python
+# License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
+
+
+import glob
+import json
+import os
+import shlex
+import shutil
+import stat
+import subprocess
+import tempfile
+from contextlib import suppress
+from functools import lru_cache
+
+from daddies.ssh.utils import get_connection_data
+from datty.constants import is_macos, daddy_exe, datty_base_dir, runtime_dir
+from datty.fast_data_types import CURSOR_BEAM, shm_unlink
+from datty.utils import SSHConnectionData
+
+from .base import BaseTest, retry_on_failure
+from .shell_integration import bash_ok, basic_shell_env
+
+
+def make_writable(top):
+    for dirpath, dirnames, filenames in os.walk(top):
+        for x in dirnames:
+            path = os.path.join(dirpath, x)
+            if not os.path.islink(path):
+                os.chmod(path, 0o700)
+
+
+def files_in(path):
+    for record in os.walk(path):
+        for f in record[-1]:
+            yield os.path.relpath(os.path.join(record[0], f), path)
+
+
+class SSHDaddy(BaseTest):
+    @retry_on_failure()
+    def test_basic_pty_operations(self):
+        pty = self.create_pty('echo hello')
+        pty.process_input_from_child()
+        self.ae(pty.screen_contents(), 'hello')
+        pty = self.create_pty(
+            self.cmd_to_run_python_code("""\
+import array, fcntl, sys, termios
+buf = array.array('H', [0, 0, 0, 0])
+fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+print(' '.join(map(str, buf)))"""),
+            lines=13,
+            cols=77,
+        )
+        pty.process_input_from_child()
+        self.ae(pty.screen_contents(), '13 77 770 260')
+
+    @retry_on_failure()
+    def test_ssh_connection_data(self):
+        def t(cmdline, binary='ssh', host='main', port=None, identity_file='', extra_args=()):
+            if identity_file:
+                identity_file = os.path.abspath(identity_file)
+            en = {f'{x[0]}' for x in extra_args}
+            q = get_connection_data(cmdline.split(), extra_args=en)
+            self.ae(q, SSHConnectionData(binary, host, port, identity_file, extra_args))
+
+        t('ssh main')
+        t('ssh un@ip -i ident -p34', host='un@ip', port=34, identity_file='ident')
+        t('ssh un@ip -iident -p34', host='un@ip', port=34, identity_file='ident')
+        t('ssh -p 33 main', port=33)
+        t('ssh -p 34 ssh://un@ip:33/', host='un@ip', port=34)
+        t('ssh --daddy=one -p 12 --daddy two -ix main', identity_file='x', port=12, extra_args=(('--daddy', 'one'), ('--daddy', 'two')))
+        self.assertTrue(runtime_dir())
+
+    @property
+    @lru_cache
+    def all_possible_sh(self):
+        python = 'python3' if shutil.which('python3') else 'python'
+        return tuple(filter(shutil.which, ('dash', 'zsh', 'bash', 'posh', 'sh', python)))
+
+    @retry_on_failure()
+    def test_ssh_copy(self):
+        simple_data = 'rkjlhfwf9whoaa'
+
+        def touch(p):
+            with open(os.path.join(local_home, p), 'w') as f:
+                f.write(simple_data)
+
+        for sh in self.all_possible_sh:
+            with tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
+                tuple(map(touch, 'simple-file g.1 g.2'.split()))
+                os.makedirs(f'{local_home}/d1/d2/d3')
+                touch('d1/d2/x')
+                touch('d1/d2/w.exclude')
+                os.mkdir(f'{local_home}/d1/r')
+                touch('d1/r/noooo')
+                os.symlink('d2/x', f'{local_home}/d1/y')
+                bad_link_name = '$(touch SHOULD_NOT_EXIST)'
+                os.symlink('d2/x', os.path.join(local_home, 'd1', bad_link_name))
+                os.symlink('-dash-target', os.path.join(local_home, 'd1', 'dash-target-link'))
+                os.symlink('simple-file', f'{local_home}/s1')
+                os.symlink('simple-file', f'{local_home}/s2')
+
+                conf = """\
+copy simple-file
+copy s1
+copy --symlink-strategy=keep-path s2
+copy --dest=a/sfa simple-file
+copy --glob g.*
+copy --exclude **/w.* --exclude **/r d1
+"""
+                self.check_bootstrap(
+                    sh,
+                    remote_home,
+                    test_script='env; exit 0',
+                    SHELL_INTEGRATION_VALUE='',
+                    conf=conf,
+                    home=local_home,
+                )
+                tname = '.terminfo'
+                if os.path.exists('/usr/share/misc/terminfo.cdb'):
+                    tname += '.cdb'
+                self.assertTrue(os.path.lexists(f'{remote_home}/{tname}/78'))
+                self.assertTrue(os.path.exists(f'{remote_home}/{tname}/78/xterm-datty'))
+                self.assertTrue(os.path.exists(f'{remote_home}/{tname}/x/xterm-datty'))
+                for w in ('simple-file', 'a/sfa', 's2'):
+                    with open(os.path.join(remote_home, w)) as f:
+                        self.ae(f.read(), simple_data)
+                    self.assertFalse(os.path.islink(f.name))
+                self.assertTrue(os.path.lexists(f'{remote_home}/d1/y'))
+                self.assertTrue(os.path.exists(f'{remote_home}/d1/y'))
+                self.ae(os.readlink(f'{remote_home}/d1/y'), 'd2/x')
+                self.assertTrue(os.path.lexists(os.path.join(remote_home, 'd1', bad_link_name)))
+                self.assertFalse(os.path.exists(os.path.join(remote_home, 'SHOULD_NOT_EXIST')))
+                self.ae(os.readlink(f'{remote_home}/d1/dash-target-link'), '-dash-target')
+                self.ae(os.readlink(f'{remote_home}/s1'), 'simple-file')
+                contents = set(files_in(remote_home))
+                contents.discard('.zshrc')  # added by check_bootstrap()
+                # depending on platform one of these is a symlink and hence
+                # isn't in contents
+                contents.discard(f'{tname}/x/xterm-datty')
+                contents.discard(f'{tname}/78/xterm-datty')
+                self.ae(
+                    contents,
+                    {
+                        'g.1',
+                        'g.2',
+                        f'{tname}/datty.terminfo',
+                        'simple-file',
+                        'd1/d2/x',
+                        'd1/y',
+                        f'd1/{bad_link_name}',
+                        'd1/dash-target-link',
+                        'a/sfa',
+                        's1',
+                        's2',
+                        '.local/share/datty-ssh-daddy/datty/version',
+                        '.local/share/datty-ssh-daddy/datty/bin/datty',
+                        '.local/share/datty-ssh-daddy/datty/bin/daddy',
+                    },
+                )
+                self.ae(len(glob.glob(f'{remote_home}/{tname}/*/xterm-datty')), 2)
+
+    def test_ssh_copy_home_prefix(self):
+        for sh in self.all_possible_sh:
+            with self.subTest(interpreter=sh):
+                self.do_test_ssh_copy_home_prefix(sh)
+
+    @retry_on_failure()
+    def do_test_ssh_copy_home_prefix(self, sh):
+        with tempfile.TemporaryDirectory() as tdir:
+            local_home = os.path.join(tdir, 'alice')
+            remote_home = os.path.join(tdir, 'remote')
+            sibling = local_home + '-backup'
+            for d in (local_home, remote_home, sibling):
+                os.mkdir(d)
+            source = os.path.join(sibling, 'config')
+            with open(source, 'w') as f:
+                f.write('copied contents')
+            # Remove the local file after creating the archive so that the
+            # bootstrap must restore it at the same absolute path.
+            launcher = os.path.join(tdir, 'launcher')
+            with open(launcher, 'w') as f:
+                f.write(f'#!/bin/sh\nrm -f {shlex.quote(source)} || exit 1\nexec sh "$@"\n')
+            os.chmod(launcher, 0o755)
+            self.check_bootstrap(
+                sh,
+                remote_home,
+                test_script='env; exit 0',
+                SHELL_INTEGRATION_VALUE='',
+                conf=f'copy {shlex.quote(source)}',
+                home=local_home,
+                launcher=launcher,
+            )
+            with open(source) as f:
+                self.ae(f.read(), 'copied contents')
+            self.ae(glob.glob(os.path.join(remote_home, '.datty-ssh-daddy-untar-*')), [])
+
+    def test_ssh_copy_directory_merge(self):
+        bootstrap_utils = os.path.join(datty_base_dir, 'shell-integration', 'ssh', 'bootstrap-utils.sh')
+        for sh in self.all_possible_sh:
+            if 'python' in sh:
+                continue
+            with self.subTest(shell=sh), tempfile.TemporaryDirectory() as tdir:
+                src, dest = os.path.join(tdir, 'src'), os.path.join(tdir, 'dest')
+                name = '-private dir'
+                source, target = os.path.join(src, name), os.path.join(dest, name)
+                os.makedirs(os.path.join(source, 'nested'))
+                os.makedirs(target)
+                with open(os.path.join(source, 'nested', 'file with spaces'), 'w') as f:
+                    f.write('copied contents')
+                with open(os.path.join(target, 'existing'), 'w') as f:
+                    f.write('retained contents')
+                os.chmod(os.path.join(source, 'nested'), 0o750)
+                os.chmod(source, 0o500)
+                os.chmod(target, 0o710)
+                try:
+                    cp = subprocess.run(
+                        [sh, '-c', '. "$1"; mv_files_and_dirs "$2" "$3"', 'sh', bootstrap_utils, src, dest],
+                        stdin=subprocess.DEVNULL,
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.ae(cp.returncode, 0, cp.stderr)
+                    self.ae(cp.stderr, '')
+                    self.ae(stat.S_IMODE(os.stat(target).st_mode), 0o710)
+                    self.ae(stat.S_IMODE(os.stat(os.path.join(target, 'nested')).st_mode), 0o750)
+                    for filename, data in (('nested/file with spaces', 'copied contents'), ('existing', 'retained contents')):
+                        with open(os.path.join(target, filename)) as f:
+                            self.ae(f.read(), data)
+                finally:
+                    make_writable(tdir)
+
+    def test_ssh_copy_directory_permissions(self):
+        dirs = {
+            '': 0o750,
+            'private': 0o700,
+            'private/nested': 0o750,
+            '.hidden': 0o700,
+            'empty': 0o710,
+            'space dir': 0o750,
+            'readonly': 0o500,
+            'readonly/sub': 0o500,
+            'replaced': 0o750,
+        }
+        files = {'private/nested/file with spaces': 'one', 'readonly/f': 'two', 'readonly/sub/f': 'three'}
+        existing = {'': 0o700, 'private': 0o710, 'readonly': 0o750}
+        for sh in self.all_possible_sh:
+            for umask in ('022', '077'):
+                # Retry inside the subTest as subTest() swallows exceptions, so
+                # decorating the test method itself would never retry.
+                with self.subTest(interpreter=sh, umask=umask):
+                    self.do_test_ssh_copy_directory_permissions(sh, umask, dirs, files, existing)
+
+    @retry_on_failure()
+    def do_test_ssh_copy_directory_permissions(self, sh, umask, dirs, files, existing):
+        # Use fresh directories for every attempt
+        with tempfile.TemporaryDirectory() as remote_home, tempfile.TemporaryDirectory() as local_home:
+            try:
+                self.check_ssh_copy_directory_permissions(sh, umask, remote_home, local_home, dirs, files, existing)
+            finally:
+                make_writable(remote_home)
+                make_writable(local_home)
+
+    def check_ssh_copy_directory_permissions(self, sh, umask, remote_home, local_home, dirs, files, existing):
+        tree = os.path.join(local_home, 'tree')
+        for name in dirs:
+            os.makedirs(os.path.join(tree, name), exist_ok=True)
+        for name, data in files.items():
+            with open(os.path.join(tree, name), 'w') as f:
+                f.write(data)
+        os.symlink('private/nested', os.path.join(tree, 'link'))
+        os.symlink('missing', os.path.join(tree, 'broken'))
+        for name, mode in sorted(dirs.items(), reverse=True):
+            os.chmod(os.path.join(tree, name), mode)
+        for name, mode in existing.items():
+            path = os.path.join(remote_home, 'merged', name)
+            os.mkdir(path, mode)
+            os.chmod(path, mode)
+        # a directory replacing a dangling symlink
+        os.symlink('missing', os.path.join(remote_home, 'merged', 'replaced'))
+        launcher = os.path.join(local_home, 'launcher')
+        with open(launcher, 'w') as f:
+            f.write(f'#!/bin/sh\numask {umask}\nexec sh "$@"\n')
+        os.chmod(launcher, 0o755)
+        self.check_bootstrap(
+            sh,
+            remote_home,
+            test_script='env; exit 0',
+            SHELL_INTEGRATION_VALUE='',
+            conf='copy --dest=new tree\ncopy --dest=merged tree',
+            home=local_home,
+            launcher=launcher,
+        )
+        for target in ('new', 'merged'):
+            dest = os.path.join(remote_home, target)
+            for name, mode in dirs.items():
+                # the ssh daddy ensures everything is readable and writable by the owner
+                expected = existing.get(name, mode | 0o600) if target == 'merged' else mode | 0o600
+                self.ae(stat.S_IMODE(os.lstat(os.path.join(dest, name)).st_mode), expected, (sh, umask, target, name))
+            for name, data in files.items():
+                with open(os.path.join(dest, name)) as f:
+                    self.ae(f.read(), data)
+            self.ae(os.readlink(os.path.join(dest, 'link')), 'private/nested')
+            self.ae(os.readlink(os.path.join(dest, 'broken')), 'missing')
+        self.ae(glob.glob(os.path.join(remote_home, '.datty-ssh-daddy-untar-*')), [])
+        # directories not present in the tarball must be created respecting the umask
+        # https://github.com/kovidgoyal/datty/issues/10834
+        for name in ('.terminfo', '.terminfo/x'):
+            self.ae(stat.S_IMODE(os.lstat(os.path.join(remote_home, name)).st_mode), 0o777 & ~int(umask, 8), (sh, umask, name))
+
+    @retry_on_failure()
+    def test_ssh_env_vars(self):
+        tset = '$A-$(echo no)-`echo no2` !Q5 "something else"'
+        for sh in self.all_possible_sh:
+            with tempfile.TemporaryDirectory() as tdir:
+                os.mkdir(os.path.join(tdir, 'cwd'))
+                conf = f"""
+cwd $HOME/cwd
+env A=AAA
+env TSET={tset}
+env COLORTERM
+"""
+                pty = self.check_bootstrap(sh, tdir, test_script='env; pwd; exit 0', SHELL_INTEGRATION_VALUE='', conf=conf)
+                # coreutils >= 9.12 has env(1) shell-quote values written to a terminal,
+                # so accept both the raw and the shell-quoted form of the value.
+                expected_tset = tset.replace('$A', 'AAA')
+                pty.wait_till(lambda: f'TSET={expected_tset}' in pty.screen_contents() or f'TSET={shlex.quote(expected_tset)}' in pty.screen_contents())
+                self.assertNotIn('COLORTERM', pty.screen_contents())
+                pty.wait_till(lambda: '/cwd' in pty.screen_contents())
+                self.assertTrue(pty.is_echo_on())
+
+    @retry_on_failure()
+    def test_ssh_bootstrap_with_different_launchers(self):
+        for launcher in self.all_possible_sh:
+            if 'python' in launcher:
+                continue
+            for sh in self.all_possible_sh:
+                if sh == 'sh' or 'python' in sh:
+                    q = shutil.which(launcher)
+                    if q:
+                        with tempfile.TemporaryDirectory() as tdir:
+                            self.check_bootstrap(sh, tdir, test_script='env; exit 0', SHELL_INTEGRATION_VALUE='', launcher=q)
+
+    @retry_on_failure()
+    def test_ssh_leading_data(self):
+        script = 'echo "ld:$leading_data"; exit 0'
+        for sh in self.all_possible_sh:
+            if 'python' in sh:
+                script = 'print("ld:" + leading_data.decode("ascii")); raise SystemExit(0);'
+            with tempfile.TemporaryDirectory() as tdir:
+                pty = self.check_bootstrap(sh, tdir, test_script=script, SHELL_INTEGRATION_VALUE='', pre_data='before_tarfile')
+                self.ae(pty.screen_contents(), 'UNTAR_DONE\nld:before_tarfile')
+
+    @retry_on_failure()
+    def test_ssh_login_shell_detection(self):
+        methods = []
+        if shutil.which('python') or shutil.which('python3') or shutil.which('python2'):
+            methods.append('using_python')
+        if is_macos:
+            methods += ['using_id']
+        else:
+            if shutil.which('getent'):
+                methods.append('using_getent')
+            if os.access('/etc/passwd', os.R_OK):
+                methods.append('using_passwd')
+        self.assertTrue(methods)
+        import pwd
+
+        try:
+            expected_login_shell = pwd.getpwuid(os.geteuid()).pw_shell
+        except KeyError:
+            self.skipTest('Skipping login shell detection as getpwuid() failed to read login shell')
+        if os.path.basename(expected_login_shell) == 'nologin':
+            self.skipTest('Skipping login shell detection as login shell is set to nologin')
+        for m in methods:
+            for sh in self.all_possible_sh:
+                if 'python' in sh:
+                    continue
+                with tempfile.TemporaryDirectory() as tdir:
+                    pty = self.check_bootstrap(sh, tdir, test_script=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
+                    self.assertIn(expected_login_shell, pty.screen_contents())
+
+    def test_ssh_login_shell_fallback_quoting(self):
+        bootstrap_utils = os.path.join(datty_base_dir, 'shell-integration', 'ssh', 'bootstrap-utils.sh')
+        python = shutil.which('python3') or shutil.which('python2') or shutil.which('python')
+        if python is None:
+            self.skipTest('Python executable not found')
+        runners = [('execute_with_python', python, 'PYTHON_FOR_TEST')]
+        if perl := shutil.which('perl'):
+            runners.append(('execute_with_perl', perl, 'PERL_FOR_TEST'))
+        script = """\
+. "$BOOTSTRAP_UTILS"
+detect_python() { python="$PYTHON_FOR_TEST"; return 0; }
+detect_perl() { perl="$PERL_FOR_TEST"; return 0; }
+login_shell=$LOGIN_SHELL
+shell_name=$(command basename "$login_shell")
+"$EXEC_FUNC"
+"""
+        for func, executable, env_key in runners:
+            with tempfile.TemporaryDirectory() as tdir:
+                login_shell = os.path.join(tdir, "login shell's python")
+                os.symlink(python, login_shell)
+                env = {
+                    'PATH': os.environ.get('PATH', '/usr/bin:/bin'),
+                    'BOOTSTRAP_UTILS': bootstrap_utils,
+                    'EXEC_FUNC': func,
+                    'LOGIN_SHELL': login_shell,
+                    env_key: executable,
+                }
+                cp = subprocess.run(['sh', '-c', script], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True)
+                self.assertEqual(cp.returncode, 0, cp.stderr + cp.stdout)
+
+    @retry_on_failure()
+    def test_ssh_shell_integration(self):
+        available_login_shells = {'fish', 'zsh', 'bash'} & set(self.all_possible_sh)
+        # Use one POSIX-shell bootstrap and one Python bootstrap as representatives.
+        # Exhaustive bootstrap-shell compatibility is covered by
+        # test_ssh_bootstrap_with_different_launchers; here we only need to verify
+        # that both bootstrap code paths (sh and python) correctly deliver the
+        # shell-integration files.
+        sh_type = next((s for s in self.all_possible_sh if 'python' not in s), None)
+        py_type = next((s for s in self.all_possible_sh if 'python' in s), None)
+        test_interps = [s for s in (sh_type, py_type) if s is not None]
+
+        for sh in test_interps:
+            for login_shell in available_login_shells:
+                if login_shell == 'bash' and not bash_ok():
+                    continue
+                with tempfile.TemporaryDirectory() as tdir:
+                    pty = self.check_bootstrap(sh, tdir, login_shell)
+                    if login_shell == 'bash':
+                        pty.send_cmd_to_child('echo $HISTFILE')
+                        pty.wait_till(lambda: '/.bash_history' in pty.screen_contents())
+                    elif login_shell == 'zsh':
+                        pty.send_cmd_to_child('echo "login_shell=$ZSH_NAME"')
+                        pty.wait_till(lambda: 'login_shell=zsh' in pty.screen_contents())
+                    self.assertIn(b'\x1b]133;', pty.received_bytes)
+
+        # Check that turning off shell integration works.  Disabled integration is
+        # a login-shell concern, so one representative bootstrap shell is enough;
+        # we test all available bash/zsh login shells to cover both integrations.
+        disabled_login_shells = available_login_shells & {'bash', 'zsh'}
+        if disabled_login_shells and sh_type is not None:
+            for val in ('', 'no-rc', 'enabled no-rc'):
+                for login_shell in disabled_login_shells:
+                    if login_shell == 'bash' and not bash_ok():
+                        continue
+                    with tempfile.TemporaryDirectory() as tdir:
+                        pty = self.check_bootstrap(sh_type, tdir, login_shell, val)
+                        num_lines = len(pty.screen_contents().splitlines())
+                        pty.send_cmd_to_child('echo "$TERM=fruity"')
+                        pty.wait_till(lambda: 'datty=fruity' in pty.screen_contents(), timeout=30)
+                        pty.wait_till(lambda: len(pty.screen_contents().splitlines()) >= num_lines + 2)
+                        self.assertEqual(pty.screen.cursor.shape, 0)
+                        self.assertNotIn(b'\x1b]133;', pty.received_bytes)
+
+    def check_bootstrap(self, sh, home_dir, login_shell='', SHELL_INTEGRATION_VALUE='enabled', test_script='', pre_data='', conf='', launcher='sh', home=''):
+        if login_shell:
+            conf += f'\nlogin_shell {login_shell}'
+        if 'python' in sh:
+            if test_script.startswith('env;'):
+                test_script = f'os.execlp("sh", "sh", "-c", {test_script!r})'
+            test_script = f'print("UNTAR_DONE", flush=True); {test_script}'
+        else:
+            test_script = f'echo "UNTAR_DONE"; {test_script}'
+        conf += '\nshell_integration ' + (SHELL_INTEGRATION_VALUE or 'disabled')
+        conf += '\ninterpreter ' + sh
+        env = os.environ.copy()
+        if home:
+            env['HOME'] = home
+        cp = subprocess.run([daddy_exe(), '__pytest__', 'ssh', test_script], env=env, stdout=subprocess.PIPE, input=conf.encode('utf-8'))
+        self.assertEqual(cp.returncode, 0)
+        self.rdata = json.loads(cp.stdout)
+        del cp
+        try:
+            env = basic_shell_env(home_dir)
+            # Avoid generating unneeded completion scripts
+            os.makedirs(os.path.join(home_dir, '.local', 'share', 'fish', 'generated_completions'), exist_ok=True)
+            # prevent newuser-install from running
+            open(os.path.join(home_dir, '.zshrc'), 'w').close()
+            pty = self.create_pty([launcher, '-c', ' '.join(self.rdata['cmd'])], cwd=home_dir, env=env)
+            pty.turn_off_echo()
+            if pre_data:
+                pty.write_buf = pre_data.encode('utf-8')
+
+            def check_untar_or_fail():
+                q = pty.screen_contents()
+                return 'UNTAR_DONE' in q
+
+            pty.wait_till(check_untar_or_fail, timeout=60)
+            self.assertTrue(os.path.exists(os.path.join(home_dir, '.terminfo/datty.terminfo')))
+            if SHELL_INTEGRATION_VALUE != 'enabled':
+                pty.wait_till(lambda: len(pty.screen_contents().splitlines()) > 1, timeout=60)
+                self.assertEqual(pty.screen.cursor.shape, 0)
+            else:
+                pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM, timeout=60)
+            return pty
+        finally:
+            with suppress(FileNotFoundError):
+                shm_unlink(self.rdata['shm_name'])

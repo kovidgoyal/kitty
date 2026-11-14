@@ -15,7 +15,7 @@ if __name__ == '__main__' and not __package__:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 functional_key_defs = """# {{{
-# kitty                     XKB                         macVK  macU
+# datty                     XKB                         macVK  macU
 escape                      Escape                      0x35   -
 enter                       Return                      0x24   NSCarriageReturnCharacter
 tab                         Tab                         0x30   NSTabCharacter
@@ -356,10 +356,10 @@ def generate_glfw_header() -> None:
     lines.append(f'  GLFW_FKEY_LAST = 0x{last_code:x}u')
     lines.append('} GLFWFunctionKey;')
     patch_file('glfw/glfw3.h', 'functional key names', '\n'.join(lines))
-    patch_file('kitty/glfw.c', 'glfw functional keys', '\n'.join(klines))
-    patch_file('kitty/fast_data_types.pyi', 'glfw functional keys', '\n'.join(pyi), start_marker='# ', end_marker='')
+    patch_file('datty/glfw.c', 'glfw functional keys', '\n'.join(klines))
+    patch_file('datty/fast_data_types.pyi', 'glfw functional keys', '\n'.join(pyi), start_marker='# ', end_marker='')
     patch_file('glfw/input.c', 'functional key names', '\n'.join(names))
-    patch_file('kitty/glfw.c', 'glfw functional key names', '\n'.join(knames))
+    patch_file('datty/glfw.c', 'glfw functional key names', '\n'.join(knames))
 
 
 def generate_xkb_mapping() -> None:
@@ -394,7 +394,7 @@ def generate_functional_table() -> None:
         lines.append('   ' + ', '.join(f'"{x}"' for x in li))
     lines.append('')
     patch_file('docs/keyboard-protocol.rst', 'functional key table', '\n'.join(lines), start_marker='.. ', end_marker='')
-    patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
+    patch_file('datty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
     code_to_name = {v: k.upper() for k, v in name_to_code.items()}
     csi_map = {v: name_to_code[k] for k, v in functional_encoding_overrides.items()}
     letter_trailer_codes: dict[str, int] = {
@@ -404,7 +404,7 @@ def generate_functional_table() -> None:
     text += f'\ncsi_number_to_functional_number_map = {serialize_dict(csi_map)}'
     text += f'\nletter_trailer_to_csi_number_map = {letter_trailer_codes!r}'
     text += f'\ntilde_trailers = {tilde_trailers!r}'
-    patch_file('kitty/key_encoding.py', 'csi mapping', text, start_marker='# ', end_marker='')
+    patch_file('datty/key_encoding.py', 'csi mapping', text, start_marker='# ', end_marker='')
     text = f'var functional_key_number_to_name_map = map[int]string{serialize_go_dict(code_to_name)}\n'
     text += f'\nvar csi_number_to_functional_number_map = map[int]int{serialize_go_dict(csi_map)}\n'
     text += f'\nvar letter_trailer_to_csi_number_map = map[string]int{serialize_go_dict(letter_trailer_codes)}\n'
@@ -439,7 +439,7 @@ def generate_legacy_text_key_maps() -> None:
     for k in shift_map:
         simple(k)
 
-    patch_file('kitty_tests/keys.py', 'legacy letter tests', '\n'.join(tests), start_marker='# ', end_marker='')
+    patch_file('datty_tests/keys.py', 'legacy letter tests', '\n'.join(tests), start_marker='# ', end_marker='')
 
 
 def chunks(lst: list[Any], n: int) -> Any:
@@ -465,7 +465,7 @@ def generate_ctrl_mapping() -> None:
         lines.append('   ' + ', '.join(f'"{x}"' for x in line_items))
     lines.append('')
     patch_file('docs/keyboard-protocol.rst', 'ctrl mapping', '\n'.join(lines), start_marker='.. ', end_marker='')
-    patch_file('kitty/key_encoding.c', 'ctrl mapping', '\n'.join(mi))
+    patch_file('datty/key_encoding.c', 'ctrl mapping', '\n'.join(mi))
 
 
 def generate_macos_mapping() -> None:

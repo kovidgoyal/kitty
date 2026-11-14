@@ -1,0 +1,372 @@
+#!/usr/bin/env python
+# License: GPLv3 Copyright: 2025, Kovid Goyal <kovid at kovidgoyal.net>
+
+import shlex
+import sys
+from typing import Any
+
+from datty.conf.types import Definition
+from datty.constants import appname
+from datty.simple_cli_definitions import CONFIG_HELP, CompletionSpec
+from datty.typing_compat import BossType
+
+from ..tui.handler import result_handler
+
+definition = Definition(
+    '!daddies.choose_files',
+)
+
+agr = definition.add_group
+egr = definition.end_group
+opt = definition.add_option
+map = definition.add_map
+mma = definition.add_mouse_map
+
+agr('scanning', 'Filesystem scanning')  # {{{
+
+opt(
+    'show_hidden',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
+Whether to show hidden files. The default value of :code:`last` means remember the last
+used value. This setting can be toggled within the program.""",
+)
+
+opt(
+    'sort_by_last_modified',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
+Whether to sort the list of entries by last modified, instead of name. Note that sorting only applies
+before any query is entered. Once a query is entered entries are sorted by their matching score.
+The default value of :code:`last` means remember the last
+used value. This setting can be toggled within the program.""",
+)
+
+opt(
+    'respect_ignores',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
+Whether to respect .gitignore and .ignore files and the :opt:`ignore` setting.
+The default value of :code:`last` means remember the last used value.
+This setting can be toggled within the program.""",
+)
+
+opt(
+    '+ignore',
+    '',
+    add_to_default=False,
+    long_text="""
+An ignore pattern to ignore matched files. Uses the same syntax as :code:`.gitignore` files (see :code:`man gitignore`).
+Anchored patterns match with respect to whatever directory is currently being displayed.
+Can be specified multiple times to use multiple patterns. Note that every pattern
+has to be checked against every file, so use sparingly.
+""",
+)
+egr()  # }}}
+
+agr('appearance', 'Appearance')  # {{{
+
+opt(
+    'show_preview',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
+Whether to show a preview of the current file/directory. The default value of :code:`last` means remember the last
+used value. This setting can be toggled within the program.""",
+)
+
+opt(
+    'pygments_style',
+    'default',
+    long_text="""
+The pygments color scheme to use for syntax highlighting of file previews. See :link:`pygments
+builtin styles <https://pygments.org/styles/>` for a list of schemes.
+This sets the colors used for light color schemes, use :opt:`dark_pygments_style` to change the
+colors for dark color schemes.
+""",
+)
+
+opt(
+    'dark_pygments_style',
+    'github-dark',
+    long_text="""
+The pygments color scheme to use for syntax highlighting with dark colors. See :link:`pygments
+builtin styles <https://pygments.org/styles/>` for a list of schemes.
+This sets the colors used for dark color schemes, use :opt:`pygments_style` to change the
+colors for light color schemes.""",
+)
+
+opt(
+    'cache_size',
+    '0.5',
+    option_type='positive_float',
+    long_text="""
+The maximum size of the disk cache, in gigabytes, used for previews. Zero or negative values
+mean no limit.
+""",
+)
+
+opt(
+    'syntax_aliases',
+    'pyj:py pyi:py recipe:py',
+    ctype='strdict_ _:',
+    option_type='syntax_aliases',
+    long_text="""
+File extension aliases for syntax highlight. For example, to syntax highlight
+:file:`file.xyz` as :file:`file.abc` use a setting of :code:`xyz:abc`.
+Multiple aliases must be separated by spaces.
+""",
+)
+
+opt(
+    'video_preview',
+    'width=480 fps=10 duration=5',
+    long_text="""
+Control how videos are sampled for previwing. The width controls
+the size of the generated thumbnail from the video. Duration controls
+how long the generated thumbnail plays for, in seconds. Note that when
+changing these you should also use the :code:`--clear-cache` flag
+otherwise it will not affect already cached previews.
+""",
+)
+
+opt(
+    '+previewer',
+    '',
+    long_text="""
+Specify an arbitrary program based preview generator. The syntax is::
+
+    pattern program arguments...
+
+Here, pattern can be used to match file names or mimetypes. For example:
+:code:`name:*.doc` matches files with the extension :code:`.doc`. Similarly,
+:code:`mime:image/*` matches all image files. :code:`program` can be any
+executable program in PATH. It will be run with the supplied arguments. The last argument
+will be the path to the file for which a preview must be generated.
+
+Can be specified multiple times to setup different previewers for different types of files.
+Note that previewers specified using this option take precedence over the builtin
+previewers.
+
+The command must output preview data to STDOUT, as a JSON object:
+
+.. code-block:: json
+
+    {
+        "lines": ["line1", "line2", "..."],
+        "image": "absolute path to generated image preview",
+        "title_extra": "some text to show on the first line",
+    }
+
+The lines can contain SGR formatting escape codes and will be displayed as is at the
+top of the preview panel. The image is optional and must be in one of the JPEG, PNG, GIF, WEBP, APNG
+formats. Generated previews are cached, so when changing the program or its output you should
+also use the :code:`--clear-cache` flag otherwise it will not affect already cached previews.
+""",
+)
+egr()  # }}}
+
+agr('shortcuts', 'Keyboard shortcuts')  # {{{
+map('Quit', 'quit esc quit')
+map('Quit', 'quit ctrl+c quit')
+
+map('Accept current result', 'accept enter accept')
+map(
+    'Select current result',
+    'select shift+enter select',
+    long_text="""
+When selecting multiple files, this will add the current file to the list of selected files.
+You can also toggle the selected status of a file by holding down the :kbd:`Ctrl` key and clicking on
+it. Similarly, the :kbd:`Alt` key can be held to click and extend the range of selected files.
+""",
+)
+map(
+    'Type file name',
+    'typename ctrl+enter typename',
+    long_text="""
+Type a file name/path rather than filtering the list of existing files.
+Useful when specifying a file or directory name for saving that does not yet exist.
+When choosing existing directories, will accept the directory whose
+contents are being currently displayed as the choice.
+Does not work when selecting files to open rather than to save.
+""",
+)
+map(
+    'Modify file name',
+    'modifyname alt+enter modifyname',
+    long_text="""
+Modify the name of an existing file and select it for saving.
+Useful when specifying a file or directory name for saving that does not yet exist,
+but is based on an existing file name.
+Does not work when selecting files to open rather than to save.
+""",
+)
+
+
+map('Next result', 'next_result down next 1')
+map('Previous result', 'prev_result up next -1')
+map('Left result', 'left_result left next left')
+map('Right result', 'right_result right next right')
+map('First result on screen', 'first_result_on_screen home next first_on_screen')
+map('Last result on screen', 'last_result_on_screen end next last_on_screen')
+map('First result', 'first_result_on_screen ctrl+home next first')
+map('Last result', 'last_result_on_screen ctrl+end next last')
+
+map('Change to currently selected dir', 'cd_current tab cd .')
+map('Change to parent directory', 'cd_parent shift+tab cd ..')
+map('Change to root directory', 'cd_root ctrl+/ cd /')
+map('Change to home directory', 'cd_home ctrl+~ cd ~')
+map('Change to home directory', 'cd_home ctrl+` cd ~')
+map('Change to home directory', 'cd_home ctrl+shift+` cd ~')
+map('Change to temp directory', 'cd_tmp --allow-fallback=shifted,ascii ctrl+t cd /tmp')
+
+map('Next filter', 'next_filter --allow-fallback=shifted,ascii ctrl+f 1')
+map('Previous filter', 'prev_filter --allow-fallback=shifted,ascii alt+f -1')
+
+map('Toggle showing dotfiles', 'toggle_dotfiles --allow-fallback=shifted,ascii alt+h toggle dotfiles')
+map('Toggle showing ignored files', 'toggle_ignorefiles --allow-fallback=shifted,ascii alt+i toggle ignorefiles')
+map('Toggle sorting by dates', 'toggle_sort_by_dates --allow-fallback=shifted,ascii alt+d toggle sort_by_dates')
+map('Toggle showing preview', 'toggle_preview --allow-fallback=shifted,ascii alt+p toggle preview')
+
+egr()  # }}}
+
+
+def main(args: list[str]) -> None:
+    raise SystemExit('This must be run as daddy choose-files')
+
+
+def relative_path_if_possible(path: str, base: str) -> str:
+    if not base or not path:
+        return path
+    from contextlib import suppress
+    from pathlib import Path
+
+    b = Path(base)
+    q = Path(path)
+    with suppress(ValueError):
+        return str(q.relative_to(b))
+    return path
+
+
+def format_selection_for_paste(paths: list[str], cwd: str | None, at_prompt: bool) -> str:
+    items = []
+    for path in paths:
+        if cwd:
+            path = relative_path_if_possible(path, cwd)
+        if at_prompt:
+            path = shlex.quote(path)
+        items.append(path)
+    return (' ' if at_prompt else '\n').join(items)
+
+
+@result_handler(has_ready_notification=True)
+def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, boss: BossType) -> None:
+    paths: list[str] = data.get('paths', [])
+    if not paths:
+        boss.ring_bell_if_allowed()
+        return
+    w = boss.window_id_map.get(target_window_id)
+    if w is None:
+        boss.ring_bell_if_allowed()
+        return
+    w.paste_text(format_selection_for_paste(paths, w.cwd_of_child, w.at_prompt))
+
+
+usage = '[directory to start choosing files in]'
+
+
+OPTIONS = """
+--mode
+type=choices
+choices=file,files,all,save-file,dir,save-dir,dirs,save-files
+default=file
+The type of object(s) to select
+
+
+--file-filter
+type=list
+A list of filters to restrict the displayed files. Can be either mimetypes, or glob style patterns. Can be specified multiple times.
+The syntax is :code:`type:expression:Descriptive Name`.
+For example: :code:`mime:image/png:Images` and :code:`mime:image/gif:Images` and :code:`glob:*.[tT][xX][Tt]:Text files`.
+Note that glob patterns are case-sensitive. The mimetype specification is treated as a glob expressions as well, so you can,
+for example, use :code:`mime:text/*` to match all text files. The first filter in the list will be applied by default. Use a filter
+such as :code:`glob:*:All` to match all files. Note that filtering only applies to files, not directories.
+
+
+--suggested-save-file-name
+A suggested name when picking a save file.
+
+
+--suggested-save-file-path
+Path to an existing file to use as the save file.
+
+
+--title
+Window title to use for this chooser
+
+
+--display-title
+type=bool-set
+Show the window title at the top, useful when this daddy is used in an
+OS window without a title bar.
+
+
+--override -o
+type=list
+Override individual configuration options, can be specified multiple times.
+Syntax: :italic:`name=value`.
+
+
+--config
+type=list
+completion=type:file ext:conf group:"Config files" kwds:none,NONE
+{config_help}
+
+
+--write-output-to
+Path to a file to which the output is written in addition to STDOUT.
+
+
+--output-format
+choices=text,json,shell,shell-relative
+default=text
+The format in which to write the output. The :code:`text` format is absolute paths separated by newlines,
+with a trailing newline. The :code:`shell` format is quoted absolute paths separated by spaces,
+quoting is done only if needed. The :code:`shell-relative` format is the same as :code:`shell` except that
+it returns paths relative to the starting directory. Note that when invoked from a mapping,
+this option is ignored, and either text or shell format is used automatically based on whether
+the cursor is at a shell prompt or not.
+
+
+--write-pid-to
+Path to a file to which to write the process ID (PID) of this process to.
+
+
+--clear-cache
+type=bool-set
+Clear the caches used by this daddy.
+""".format(config_help=CONFIG_HELP.format(conf_name='choose-files', appname=appname)).format
+
+
+help_text = """\
+Select one or more files, quickly, using fuzzy finding, by typing just a few characters from
+the file name. Browse matching files, using the arrow keys to navigate matches and press :kbd:`Enter`
+to select. The :kbd:`Tab` key can be used to change to a sub-folder. See the :doc:`online docs </daddies/choose-files>`
+for full details.
+"""
+
+
+if __name__ == '__main__':
+    main(sys.argv)
+elif __name__ == '__doc__':
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = OPTIONS
+    cd['help_text'] = help_text
+    cd['short_desc'] = 'Choose files, fast'
+    cd['args_completion'] = CompletionSpec.from_string('type:directory')
+elif __name__ == '__conf__':
+    sys.options_definition = definition  # type: ignore

@@ -3,7 +3,7 @@ Frequently Asked Questions
 
 .. highlight:: sh
 
-Some special symbols are rendered small/truncated in kitty?
+Some special symbols are rendered small/truncated in datty?
 -----------------------------------------------------------
 
 The number of cells a Unicode character takes up are controlled by the Unicode
@@ -18,12 +18,12 @@ Some programs, like Powerline, vim with fancy gutter symbols/status-bar, etc.
 use Unicode characters from the private use area to represent symbols. Often
 these symbols are wide and should be rendered in two cells. However, since
 private use area symbols all have their width set to one in the Unicode
-standard, |kitty| renders them either smaller or truncated. The exception is if
+standard, |datty| renders them either smaller or truncated. The exception is if
 these characters are followed by a space or en-space (U+2002) in which case
-kitty makes use of the extra cell to render them in two cells. This behavior
+datty makes use of the extra cell to render them in two cells. This behavior
 can be turned off for specific symbols using :opt:`narrow_symbols`.
 
-As of version 0.40 kitty has innovated a :doc:`new protocol
+As of version 0.40 datty has innovated a :doc:`new protocol
 <text-sizing-protocol>` that allows programs running in the terminal to control
 how many cells a character is rendered in thereby solving the issue of
 character width once and for all.
@@ -39,34 +39,34 @@ monospaced.
 I get errors about the terminal being unknown or opening the terminal failing or functional keys like arrow keys don't work?
 -------------------------------------------------------------------------------------------------------------------------------
 
-These issues all have the same root cause: the kitty terminfo files not being
+These issues all have the same root cause: the datty terminfo files not being
 available. The most common way this happens is SSHing into a computer that does
-not have the kitty terminfo files. The simplest fix for that is running::
+not have the datty terminfo files. The simplest fix for that is running::
 
-    kitten ssh myserver
+    daddy ssh myserver
 
 It will automatically copy over the terminfo files and also magically enable
 :doc:`shell integration </shell-integration>` on the remote machine.
 
-This :doc:`ssh kitten <kittens/ssh>` takes all the same command line arguments
+This :doc:`ssh daddy <daddies/ssh>` takes all the same command line arguments
 as :program:`ssh`, you can alias it to something small in your shell's rc files
 to avoid having to type it each time::
 
-    alias s="kitten ssh"
+    alias s="daddy ssh"
 
 If this does not work, see :ref:`manual_terminfo_copy` for alternative ways to
-get the kitty terminfo files onto a remote computer.
+get the datty terminfo files onto a remote computer.
 
 The next most common reason for this is if you are running commands as root
 using :program:`sudo` or :program:`su`. These programs often filter the
-:envvar:`TERMINFO` environment variable which is what points to the kitty
+:envvar:`TERMINFO` environment variable which is what points to the datty
 terminfo files.
 
-First, make sure the :envvar:`TERM` is set to ``xterm-kitty`` in the sudo
+First, make sure the :envvar:`TERM` is set to ``xterm-datty`` in the sudo
 environment. By default, it should be automatically copied over.
 
 If you are using a well maintained Linux distribution, it will have a
-``kitty-terminfo`` package that you can simply install to make the kitty
+``datty-terminfo`` package that you can simply install to make the datty
 terminfo files available system-wide. Then the problem will no longer occur.
 
 Alternately, you can configure :program:`sudo` to preserve :envvar:`TERMINFO`
@@ -95,15 +95,15 @@ I cannot use the key combination X in program Y?
 
 First, run::
 
-    kitten show-key -m kitty
+    daddy show-key -m datty
 
-Press the key combination X. If the kitten reports the key press
-that means kitty is correctly sending the key press to terminal programs.
+Press the key combination X. If the daddy reports the key press
+that means datty is correctly sending the key press to terminal programs.
 You need to report the issue to the developer of the terminal program. Most
 likely they have not added support for :doc:`/keyboard-protocol`.
 
-If the kitten does not report it, it means that the key is bound to some action
-in kitty. You can unbind it in :file:`kitty.conf` with:
+If the daddy does not report it, it means that the key is bound to some action
+in datty. You can unbind it in :file:`datty.conf` with:
 
 .. code-block:: conf
 
@@ -113,13 +113,13 @@ Here X is the keys you press on the keyboard. So for example
 :kbd:`ctrl+shift+1`.
 
 
-How do I change the colors in a running kitty instance?
+How do I change the colors in a running datty instance?
 ------------------------------------------------------------
 
-The easiest way to do it is to use the :doc:`themes kitten </kittens/themes>`,
+The easiest way to do it is to use the :doc:`themes daddy </daddies/themes>`,
 to choose a new color theme. Simply run::
 
-    kitten themes
+    daddy themes
 
 And choose your theme from the list.
 
@@ -127,12 +127,12 @@ You can also define keyboard shortcuts to set colors, for example::
 
     map f1 set_colors --configured /path/to/some/config/file/colors.conf
 
-Or you can enable :doc:`remote control <remote-control>` for |kitty| and use
+Or you can enable :doc:`remote control <remote-control>` for |datty| and use
 :ref:`at-set-colors`. The shortcut mapping technique has the same syntax as the
 remote control command, for details, see :ref:`at-set-colors`.
 
 To change colors when SSHing into a remote host, use the :opt:`color_scheme
-<kitten-ssh.color_scheme>` setting for the :doc:`ssh kitten <kittens/ssh>`.
+<daddy-ssh.color_scheme>` setting for the :doc:`ssh daddy <daddies/ssh>`.
 
 Additionally, you can use the escape code described in :doc:`color-stack`
 to set colors in a single window.
@@ -168,27 +168,27 @@ the terminal or more correctly, open a bug report against such programs and ask
 them to :doc:`change the terminal default background color <color-stack>`
 using OSC escape codes when starting and restore it when quitting to have it work automatically.
 
-How do I specify command line options for kitty on macOS?
+How do I specify command line options for datty on macOS?
 ---------------------------------------------------------------
 
 Apple does not want you to use command line options with GUI applications. To
-workaround that limitation, |kitty| will read command line options from the file
-:file:`<kitty config dir>/macos-launch-services-cmdline` when it is launched
-from the GUI, i.e. by clicking the |kitty| application icon or using
-``open -a kitty``. Note that this file is *only read* when running via the GUI.
-The contents of the file are assumed to be the command line to pass to kitty in
+workaround that limitation, |datty| will read command line options from the file
+:file:`<datty config dir>/macos-launch-services-cmdline` when it is launched
+from the GUI, i.e. by clicking the |datty| application icon or using
+``open -a datty``. Note that this file is *only read* when running via the GUI.
+The contents of the file are assumed to be the command line to pass to datty in
 shell syntax, for example::
 
     --single-instance --override background=red
 
-You can, of course, also run |kitty| from a terminal with command line options,
-using: :file:`/Applications/kitty.app/Contents/MacOS/kitty`.
+You can, of course, also run |datty| from a terminal with command line options,
+using: :file:`/Applications/datty.app/Contents/MacOS/datty`.
 
-And within |kitty| itself, you can always run |kitty| using just ``kitty`` as it
+And within |datty| itself, you can always run |datty| using just ``datty`` as it
 cleverly adds itself to the :envvar:`PATH`.
 
 
-I catted a binary file and now kitty is hung?
+I catted a binary file and now datty is hung?
 -----------------------------------------------
 
 **Never** output unknown binary data directly into a terminal.
@@ -202,10 +202,10 @@ closing sequence. Press :sc:`reset_terminal` to reset the terminal.
 If you do want to cat unknown data, use ``cat -v``.
 
 
-kitty is not able to use my favorite font?
+datty is not able to use my favorite font?
 ---------------------------------------------
 
-|kitty| achieves its stellar performance by caching alpha masks of each rendered
+|datty| achieves its stellar performance by caching alpha masks of each rendered
 character on the GPU, and rendering them all in parallel. This means it is a
 strictly character cell based display. As such it can use only monospace fonts,
 since every cell in the grid has to be the same size. Furthermore, it needs
@@ -214,11 +214,11 @@ fonts to be freely resizable, so it does not support bitmapped fonts.
 .. note::
    If you are trying to use a font patched with `Nerd Fonts
    <https://nerdfonts.com/>`__ symbols, don't do that as patching destroys
-   fonts. There is no need, kitty has a builtin NERD font and will use it for
+   fonts. There is no need, datty has a builtin NERD font and will use it for
    symbols not found in any other font on your system.
    If you have patched fonts on your system they might be used instead for NERD
-   symbols, so to force kitty to use the pure NERD font for NERD symbols,
-   add the following line to :file:`kitty.conf`::
+   symbols, so to force datty to use the pure NERD font for NERD symbols,
+   add the following line to :file:`datty.conf`::
 
         # Nerd Fonts v3.4.0
 
@@ -228,7 +228,7 @@ fonts to be freely resizable, so it does not support bitmapped fonts.
    <https://en.wikipedia.org/wiki/Private_Use_Areas>`__ are
    not included.
 
-If your font is not listed in ``kitten choose-fonts`` it means that it is not
+If your font is not listed in ``daddy choose-fonts`` it means that it is not
 monospace or is a bitmapped font. On Linux you can list all monospace fonts
 with::
 
@@ -260,38 +260,38 @@ command to rebuild your fontconfig cache::
 
     fc-cache -r
 
-Then, the font will be available in ``kitten choose-fonts``.
+Then, the font will be available in ``daddy choose-fonts``.
 
 
-How can I assign a single global shortcut to bring up the kitty terminal?
+How can I assign a single global shortcut to bring up the datty terminal?
 -----------------------------------------------------------------------------
 
-Use the :ref:`panel kitten <quake>`, this allows you to use kitty as a quick
-access Quake like terminal and even to use kitty as the desktop background, if
+Use the :ref:`panel daddy <quake>`, this allows you to use datty as a quick
+access Quake like terminal and even to use datty as the desktop background, if
 so desired.
 
 
-I do not like the kitty icon!
+I do not like the datty icon!
 -------------------------------
 
-The kitty icon was created as tribute to my cat of nine years who passed away,
+The datty icon was created as tribute to my cat of nine years who passed away,
 as such it is not going to change. However, if you do not like it, there are
 many alternate icons available, click on an icon to visit its homepage:
 
-.. image:: https://github.com/k0nserv/kitty-icon/raw/main/kitty.iconset/icon_256x256.png
-   :target: https://github.com/k0nserv/kitty-icon
+.. image:: https://github.com/k0nserv/datty-icon/raw/main/datty.iconset/icon_256x256.png
+   :target: https://github.com/k0nserv/datty-icon
    :width: 256
 
-.. image:: https://github.com/DinkDonk/kitty-icon/raw/main/kitty-dark.png
-   :target: https://github.com/DinkDonk/kitty-icon
+.. image:: https://github.com/DinkDonk/datty-icon/raw/main/datty-dark.png
+   :target: https://github.com/DinkDonk/datty-icon
    :width: 256
 
-.. image:: https://github.com/DinkDonk/kitty-icon/raw/main/kitty-light.png
-   :target: https://github.com/DinkDonk/kitty-icon
+.. image:: https://github.com/DinkDonk/datty-icon/raw/main/datty-light.png
+   :target: https://github.com/DinkDonk/datty-icon
    :width: 256
 
-.. image:: https://github.com/hristost/kitty-alternative-icon/raw/main/kitty_icon.png
-   :target: https://github.com/hristost/kitty-alternative-icon
+.. image:: https://github.com/hristost/datty-alternative-icon/raw/main/datty_icon.png
+   :target: https://github.com/hristost/datty-alternative-icon
    :width: 256
 
 .. image:: https://github.com/igrmk/whiskers/raw/main/whiskers.svg
@@ -303,22 +303,22 @@ many alternate icons available, click on an icon to visit its homepage:
    :width: 256
 
 .. image:: https://github.com/user-attachments/assets/a37d7830-4a8c-45a8-988a-3e98a41ea541
-   :target: https://github.com/diegobit/kitty-icon
+   :target: https://github.com/diegobit/datty-icon
    :width: 256
 
-.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/2d/kitty-preview.png
+.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/datty-terminal/2d/datty-preview.png
    :target: https://github.com/eccentric-j/eccentric-icons
    :width: 256
 
-.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/kitty-terminal/3d/kitty-preview.png
+.. image:: https://github.com/eccentric-j/eccentric-icons/raw/main/icons/datty-terminal/3d/datty-preview.png
    :target: https://github.com/eccentric-j/eccentric-icons
    :width: 256
 
-.. image:: https://github.com/sodapopcan/kitty-icon/raw/main/kitty.app.png
-   :target: https://github.com/sodapopcan/kitty-icon
+.. image:: https://github.com/sodapopcan/datty-icon/raw/main/datty.app.png
+   :target: https://github.com/sodapopcan/datty-icon
    :width: 256
 
-.. image:: https://github.com/sfsam/some_icons/raw/main/kitty.app.iconset/icon_128x128@2x.png
+.. image:: https://github.com/sfsam/some_icons/raw/main/datty.app.iconset/icon_128x128@2x.png
    :target: https://github.com/sfsam/some_icons
    :width: 256
 
@@ -326,34 +326,34 @@ many alternate icons available, click on an icon to visit its homepage:
    :target: https://github.com/igrmk/twiskers
    :width: 256
 
-.. image:: https://github.com/mtklr/kitty-nyan-icon/raw/main/kitty-nyan.svg
-   :target: https://github.com/mtklr/kitty-nyan-icon
+.. image:: https://github.com/mtklr/datty-nyan-icon/raw/main/datty-nyan.svg
+   :target: https://github.com/mtklr/datty-nyan-icon
    :width: 256
 
-You can put :file:`kitty.app.icns` (macOS only) or :file:`kitty.app.png` in the
-:ref:`kitty configuration directory <confloc>`, and this icon will be applied
-automatically at startup. On X11 and Wayland, this will set the icon for kitty windows.
+You can put :file:`datty.app.icns` (macOS only) or :file:`datty.app.png` in the
+:ref:`datty configuration directory <confloc>`, and this icon will be applied
+automatically at startup. On X11 and Wayland, this will set the icon for datty windows.
 Note that not all Wayland compositors support the `protocol needed <https://wayland.app/protocols/xdg-toplevel-icon-v1>`__
 for changing window icons.
 
 Unfortunately, on macOS, Apple's Dock does not change its cached icon so the
-custom icon will revert when kitty is quit. Run the following to force the Dock
+custom icon will revert when datty is quit. Run the following to force the Dock
 to update its cached icons:
 
 .. code-block:: sh
 
     rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
 
-If you prefer not to keep a custom icon in the kitty config folder, on macOS, you can
+If you prefer not to keep a custom icon in the datty config folder, on macOS, you can
 also set it with the following command:
 
 .. code-block:: sh
 
-    # Set kitty.icns as the icon for currently running kitty
-    kitty +runpy 'from kitty.fast_data_types import cocoa_set_app_icon; import sys; cocoa_set_app_icon(*sys.argv[1:]); print("OK")' kitty.icns
+    # Set datty.icns as the icon for currently running datty
+    datty +runpy 'from datty.fast_data_types import cocoa_set_app_icon; import sys; cocoa_set_app_icon(*sys.argv[1:]); print("OK")' datty.icns
 
     # Set the icon for app bundle specified by the path
-    kitty +runpy 'from kitty.fast_data_types import cocoa_set_app_icon; import sys; cocoa_set_app_icon(*sys.argv[1:]); print("OK")' /path/to/icon.png /Applications/kitty.app
+    datty +runpy 'from datty.fast_data_types import cocoa_set_app_icon; import sys; cocoa_set_app_icon(*sys.argv[1:]); print("OK")' /path/to/icon.png /Applications/datty.app
 
 You can also change the icon manually by following the steps:
 
@@ -361,34 +361,34 @@ You can also change the icon manually by following the steps:
 
    .. tab-item:: macOS
 
-      #. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
-      #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
+      #. Find :file:`datty.app` in the Applications folder, select it and press :kbd:`⌘+I`
+      #. Drag :file:`datty.icns` onto the application icon in the datty info pane
       #. Delete the icon cache and restart Dock::
 
             rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
 
    .. tab-item:: Linux
 
-      #. Copy :file:`kitty.desktop` from the installation location (usually
+      #. Copy :file:`datty.desktop` from the installation location (usually
          :file:`/usr/share/applications` to :file:`~/.local/share/applications`
       #. Edit the copied desktop file changing the ``Icon`` line to have
          the absolute path to your desired icon.
 
 
-How do I map key presses in kitty to different keys in the terminal program?
+How do I map key presses in datty to different keys in the terminal program?
 --------------------------------------------------------------------------------------
 
-This is accomplished by using ``map`` with :ac:`send_key` in :file:`kitty.conf`.
+This is accomplished by using ``map`` with :ac:`send_key` in :file:`datty.conf`.
 For example::
 
     map alt+s send_key ctrl+s
     map ctrl+alt+2 combine : send_key ctrl+c : send_key h : send_key a
 
-This causes the program running in kitty to receive the :kbd:`ctrl+s` key when
+This causes the program running in datty to receive the :kbd:`ctrl+s` key when
 you press the :kbd:`alt+s` key and several keystrokes when you press
 :kbd:`ctrl+alt+2`. To see this in action, run::
 
-    kitten show-key -m kitty
+    daddy show-key -m datty
 
 Which will print out what key events it receives. To send arbitrary text rather
 than a key press, see :sc:`send_text <send_text>` instead.
@@ -397,48 +397,48 @@ than a key press, see :sc:`send_text <send_text>` instead.
 How do I open a new window or tab with the same working directory as the current window?
 --------------------------------------------------------------------------------------------
 
-In :file:`kitty.conf` add the following::
+In :file:`datty.conf` add the following::
 
     map f1 launch --cwd=current
     map f2 launch --cwd=current --type=tab
 
-Pressing :kbd:`F1` will open a new kitty window with the same working directory
+Pressing :kbd:`F1` will open a new datty window with the same working directory
 as the current window. The :doc:`launch command <launch>` is very powerful,
 explore :doc:`its documentation <launch>`.
 
 
-Things behave differently when running kitty from system launcher vs. from another terminal?
+Things behave differently when running datty from system launcher vs. from another terminal?
 -----------------------------------------------------------------------------------------------
 
-This will be because of environment variables. When you run kitty from the
+This will be because of environment variables. When you run datty from the
 system launcher, it gets a default set of system environment variables. When
-you run kitty from another terminal, you are actually running it from a shell,
+you run datty from another terminal, you are actually running it from a shell,
 and the shell's rc files will have setup a whole different set of environment
-variables which kitty will now inherit.
+variables which datty will now inherit.
 
 You need to make sure that the environment variables you define in your shell's
 rc files are either also defined system wide or via the :opt:`env` directive in
-:file:`kitty.conf`. Common environment variables that cause issues are those
+:file:`datty.conf`. Common environment variables that cause issues are those
 related to localization, such as :envvar:`LANG`, ``LC_*`` and loading of
-configuration files such as ``XDG_*``, :envvar:`KITTY_CONFIG_DIRECTORY` and,
+configuration files such as ``XDG_*``, :envvar:`DATTY_CONFIG_DIRECTORY` and,
 most importantly, ``PATH`` to locate binaries.
 
-The simplest way to fix this is to have kitty load the environment variables
+The simplest way to fix this is to have datty load the environment variables
 from your shell configuration at startup using the :opt:`env` directive,
-adding the following to :file:`kitty.conf`::
+adding the following to :file:`datty.conf`::
 
     env read_from_shell=PATH LANG LC_* XDG_* EDITOR VISUAL
 
 This works for POSIX compliant shells and the fish shell. Note that it
-does add significantly to kitty startup time, so use only if really necessary.
+does add significantly to datty startup time, so use only if really necessary.
 This feature was added in version ``0.43.2``.
 
-To see the environment variables that kitty sees, you can add the following
-mapping to :file:`kitty.conf`::
+To see the environment variables that datty sees, you can add the following
+mapping to :file:`datty.conf`::
 
-    map f1 show_kitty_env_vars
+    map f1 show_datty_env_vars
 
-then pressing :kbd:`F1` will show you the environment variables kitty sees.
+then pressing :kbd:`F1` will show you the environment variables datty sees.
 
 This problem is most common on macOS, as Apple makes it exceedingly difficult to
 setup environment variables system-wide, so people end up putting them in all
@@ -449,7 +449,7 @@ I am using tmux/zellij and have a problem
 ----------------------------------------------
 
 First, terminal multiplexers are :iss:`a bad idea <391#issuecomment-638320745>`,
-do not use them, if at all possible. kitty contains features that do all of what
+do not use them, if at all possible. datty contains features that do all of what
 tmux does, but better, with the exception of remote persistence (:iss:`391`).
 If you still want to use tmux, read on.
 
@@ -463,19 +463,19 @@ multiple terminfo definitions.
 
 Displaying images while inside programs such as nvim or ranger may not work
 depending on whether those programs have adopted support for the :ref:`unicode
-placeholders <graphics_unicode_placeholders>` workaround that kitty created
+placeholders <graphics_unicode_placeholders>` workaround that datty created
 for tmux refusing to support images.
 
-If you use any of the advanced features that kitty has innovated, such as
+If you use any of the advanced features that datty has innovated, such as
 :doc:`styled underlines </underlines>`, :doc:`desktop notifications
 </desktop-notifications>`, :doc:`variable sized text </text-sizing-protocol>`,
 :doc:`extended keyboard support </keyboard-protocol>`,
-:doc:`file transfer </kittens/transfer>`, :doc:`the ssh kitten </kittens/ssh>`,
+:doc:`file transfer </daddies/transfer>`, :doc:`the ssh daddy </daddies/ssh>`,
 :doc:`shell integration </shell-integration>` etc. they may or may not work,
 depending on the whims of tmux's maintainer, your version of tmux, etc.
 
 
-I opened and closed a lot of windows/tabs and top shows kitty's memory usage is very high?
+I opened and closed a lot of windows/tabs and top shows datty's memory usage is very high?
 -------------------------------------------------------------------------------------------
 
 :program:`top` is not a good way to measure process memory usage. That is
@@ -489,11 +489,11 @@ is using it.
 To check for memory leaks, instead use a tool like `Valgrind
 <https://valgrind.org/>`__. Run::
 
-    PYTHONMALLOC=malloc valgrind --tool=massif kitty
+    PYTHONMALLOC=malloc valgrind --tool=massif datty
 
 Now open lots of tabs/windows, generate lots of output using tools like find/yes
 etc. Then close all but one window. Do some random work for a few seconds in
-that window, maybe run yes or find again. Then quit kitty and run::
+that window, maybe run yes or find again. Then quit datty and run::
 
     massif-visualizer massif.out.*
 
@@ -516,7 +516,7 @@ to the OS immediately.
 Using a color theme with a background color does not work well in vim?
 -----------------------------------------------------------------------
 
-First, be sure to `use a color scheme in vim <https://github.com/kovidgoyal/kitty/discussions/8196#discussioncomment-11739991>`__
+First, be sure to `use a color scheme in vim <https://github.com/kovidgoyal/datty/discussions/8196#discussioncomment-11739991>`__
 instead of relying on the terminal theme. Otherwise, background and text selection colours
 may be difficult to read.
 
@@ -529,7 +529,7 @@ bracketed paste.
 
 Thankfully, probably as a consequence of this lack of detection, vim allows users to
 configure these low level details. So, to make vim work well with any modern
-terminal, including kitty, add the following to your :file:`~/.vimrc`.
+terminal, including datty, add the following to your :file:`~/.vimrc`.
 
 .. code-block:: vim
 
@@ -578,7 +578,7 @@ terminal, including kitty, add the following to your :file:`~/.vimrc`.
     " vim hardcodes background color erase even if the terminfo file does
     " not contain bce. This causes incorrect background rendering when
     " using a color theme with a background color in terminals such as
-    " kitty that do not support background color erase.
+    " datty that do not support background color erase.
     let &t_ut=''
 
 These settings must be placed **before** setting the ``colorscheme``. It is
@@ -586,11 +586,11 @@ also important that the value of the vim ``term`` variable is not changed
 after these settings.
 
 
-Why does kitty sometimes start slowly on my Linux system?
+Why does datty sometimes start slowly on my Linux system?
 -------------------------------------------------------------------------------------------
 
-|kitty| takes no longer (within 100ms) to start than other similar GPU terminal
-emulators, (and may be faster than some). If |kitty| occasionally takes a long
+|datty| takes no longer (within 100ms) to start than other similar GPU terminal
+emulators, (and may be faster than some). If |datty| occasionally takes a long
 time to start, it could be a power management issue with the graphics card. On
 a multi-GPU system (which many modern laptops are, having a power efficient GPU
 that's built into the processor and a power hungry dedicated one that's usually
@@ -598,11 +598,11 @@ off), even if the answer of the GPU will only be "don't use me".
 
 For example, if you have a system with an AMD CPU and an NVIDIA GPU, and you
 know that you want to use the lower powered card to save battery life and
-because kitty does not require a powerful GPU to function, you can choose not
+because datty does not require a powerful GPU to function, you can choose not
 to wake up the dedicated card, which has been reported on at least one system
-(:iss:`4292`) to take ≈2 seconds, by running |kitty| as::
+(:iss:`4292`) to take ≈2 seconds, by running |datty| as::
 
-    MESA_LOADER_DRIVER_OVERRIDE=radeonsi __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json kitty
+    MESA_LOADER_DRIVER_OVERRIDE=radeonsi __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json datty
 
 The correct command will depend on your situation and hardware.
 ``__EGL_VENDOR_LIBRARY_FILENAMES`` instructs the GL dispatch library to use

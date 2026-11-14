@@ -15,9 +15,9 @@
 /fonts/
 /shaders/
 /linux-package/
-/kitty.app/
+/datty.app/
 /glad/out/
-/kitty/launcher/kitt*
+/datty/launcher/kitt*
 /*.dSYM/
 __pycache__/
 /glfw/wayland-*-client-protocol.[ch]

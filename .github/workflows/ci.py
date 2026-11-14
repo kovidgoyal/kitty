@@ -19,10 +19,10 @@ from urllib.request import Request, urlopen
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
 FONTS_URL = 'https://download.calibre-ebook.com/ci/fonts.tar.xz'
 NERD_URL = 'https://github.com/ryanoasis/nerd-fonts/releases/latest/download/NerdFontsSymbolsOnly.tar.xz'
-is_bundle = os.environ.get('KITTY_BUNDLE') == '1'
-is_codeql = os.environ.get('KITTY_CODEQL') == '1'
+is_bundle = os.environ.get('DATTY_BUNDLE') == '1'
+is_codeql = os.environ.get('DATTY_CODEQL') == '1'
 is_macos = 'darwin' in sys.platform.lower()
-running_under_sanitizer = os.environ.get('KITTY_SANITIZE') == '1'
+running_under_sanitizer = os.environ.get('DATTY_SANITIZE') == '1'
 SW = ''
 SLANG_INSTALL_DIR = '/tmp/slang'
 
@@ -36,7 +36,7 @@ def do_print_crash_reports() -> None:
         end_time = time.monotonic() + 90
         while time.monotonic() < end_time:
             time.sleep(1)
-            items = glob.glob(os.path.join(os.path.expanduser('~/Library/Logs/DiagnosticReports'), 'kitty-*.ips'))
+            items = glob.glob(os.path.join(os.path.expanduser('~/Library/Logs/DiagnosticReports'), 'datty-*.ips'))
             if items:
                 break
         if items:
@@ -133,7 +133,7 @@ def install_slang_compiler() -> None:
 
 
 def install_deps() -> None:
-    print('Installing kitty dependencies...')
+    print('Installing datty dependencies...')
     sys.stdout.flush()
     if is_macos:
         if not is_codeql:  # for some reason brew fails on CodeQL we dont need it anyway
@@ -170,7 +170,7 @@ def set_slangc() -> None:
     os.environ['SLANGC'] = slangc
 
 
-def build_kitty() -> None:
+def build_datty() -> None:
     python = shutil.which('python3') if is_bundle else sys.executable
     cmd = f'{python} setup.py build --verbose'
     if running_under_sanitizer:
@@ -179,7 +179,7 @@ def build_kitty() -> None:
     run(cmd)
 
 
-def test_kitty() -> None:
+def test_datty() -> None:
     if is_macos:
         run('ulimit -c unlimited')
         run('sudo chmod -R 777 /cores')
@@ -189,14 +189,14 @@ def test_kitty() -> None:
     run('./test.py', print_crash_reports=True)
 
 
-def package_kitty() -> None:
+def package_datty() -> None:
     set_slangc()
     python = 'python3' if is_macos else 'python'
     run(f'{python} setup.py linux-package --update-check-interval=0 --verbose')
     run('make FAIL_WARN=1 docs')
     if is_macos:
-        run('python3 setup.py kitty.app --update-check-interval=0 --verbose')
-        run('kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"')
+        run('python3 setup.py datty.app --update-check-interval=0 --verbose')
+        run('datty.app/Contents/MacOS/datty +runpy "from datty.constants import *; print(datty_exe())"')
 
 
 def replace_in_file(path: str, src: str, dest: str) -> None:
@@ -208,7 +208,7 @@ def replace_in_file(path: str, src: str, dest: str) -> None:
 
 def setup_bundle_env() -> None:
     global SW
-    os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
+    os.environ['SW'] = SW = '/Users/Shared/datty-build/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
     os.environ['PKG_CONFIG_PATH'] = os.path.join(SW, 'lib', 'pkgconfig')
     if is_macos:
         os.environ['PATH'] = '{}:{}'.format('/usr/local/opt/sphinx-doc/bin', os.environ['PATH'])
@@ -257,7 +257,7 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2025-8194',  # DoS in tarfile
     'CVE-2025-6069',  # DoS in HTMLParser
     'CVE-2025-13836',  # DoS in http client reading from malicious server
-    'CVE-2025-12084',  # DoS in xml.dom.minidom unused in kitty
+    'CVE-2025-12084',  # DoS in xml.dom.minidom unused in datty
     'CVE-2025-13837',  # DoS in plistlib reading plist. We only use plistlib for writing
     'CVE-2025-6075',  # Quadratic complexity in os.path.expandvars()
     # python stdlib all these are erroneously marked as fixed in python 3.15
@@ -315,7 +315,7 @@ def check_dependencies() -> None:
     import runpy
 
     orig = sys.argv, sys.stdout
-    sys.argv = ['bypy', 'sbom', 'kovidgoyal/kitty', '1.0.0']
+    sys.argv = ['bypy', 'sbom', 'kovidgoyal/datty', '1.0.0']
     buf = io.StringIO()
     sys.stdout = buf
     runpy.run_path('bypy-src')
@@ -335,19 +335,19 @@ def main() -> None:
     if action in ('build', 'package'):
         install_deps()
     if action == 'build':
-        build_kitty()
+        build_datty()
     elif action == 'package':
-        build_kitty()
-        test_kitty()
-        package_kitty()
+        build_datty()
+        test_datty()
+        package_datty()
     elif action == 'test':
-        test_kitty()
+        test_datty()
     elif action == 'govulncheck':
         subprocess.check_call(['go', 'install', 'golang.org/x/vuln/cmd/govulncheck@latest'])
-        subprocess.check_call(['govulncheck', '-mode=binary', 'kitty/launcher/kitten'])
+        subprocess.check_call(['govulncheck', '-mode=binary', 'datty/launcher/daddy'])
         subprocess.check_call(['govulncheck', './...'])
     elif action == 'check_code_formatting':
-        q = subprocess.check_output('gofmt -s -l tools kittens'.split()).decode()
+        q = subprocess.check_output('gofmt -s -l tools daddies'.split()).decode()
         if q.strip():
             q = '\n'.join(filter(lambda x: not x.rstrip().endswith(('_generated.go', '_generated_test.go')), q.strip().splitlines())).strip()
             if q:

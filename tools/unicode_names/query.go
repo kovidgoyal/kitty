@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/images"
 )
 
 type mark_set = *utils.Set[uint16]

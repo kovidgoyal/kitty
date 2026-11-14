@@ -1,16 +1,16 @@
-= kitty - the fast, feature-rich, cross-platform, GPU based terminal
+= datty - the fast, feature-rich, cross-platform, GPU based terminal
 
-If you live in the terminal, *kitty* is made for **you**!
+If you live in the terminal, *datty* is made for **you**!
 
-See https://sw.kovidgoyal.net/kitty/[the kitty website].
+See https://sw.kovidgoyal.net/datty/[the datty website].
 
-image:https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg["Build status", link="https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI"]
+image:https://github.com/kovidgoyal/datty/workflows/CI/badge.svg["Build status", link="https://github.com/kovidgoyal/datty/actions?query=workflow%3ACI"]
 
-https://sw.kovidgoyal.net/kitty/faq/[Frequently Asked Questions]
+https://sw.kovidgoyal.net/datty/faq/[Frequently Asked Questions]
 
-To ask other questions about kitty usage, use either the https://github.com/kovidgoyal/kitty/discussions/[discussions on GitHub] or the
-https://www.reddit.com/r/KittyTerminal[Reddit community]
+To ask other questions about datty usage, use either the https://github.com/kovidgoyal/datty/discussions/[discussions on GitHub] or the
+https://www.reddit.com/r/DattyTerminal[Reddit community]
 
 Packaging status in various repositories:
 
-image:https://repology.org/badge/vertical-allrepos/kitty-terminal.svg?columns=3&header=kitty["Packaging status", link="https://repology.org/project/kitty-terminal/versions"]
+image:https://repology.org/badge/vertical-allrepos/datty-terminal.svg?columns=3&header=datty["Packaging status", link="https://repology.org/project/datty-terminal/versions"]

@@ -28,7 +28,7 @@
 //========================================================================
 
 #include "internal.h"
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 
 #include <errno.h>
 #include <stdlib.h>

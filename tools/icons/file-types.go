@@ -375,7 +375,7 @@ var FileNameMap = sync.OnceValue(func() map[string]rune { // {{{
 		"kdeglobals":                 0xf373,          // 
 		"kdenlive-layoutsrc":         KDENLIVE,        // 
 		"kdenliverc":                 KDENLIVE,        // 
-		"kitty.conf":                 '🐱',
+		"datty.conf":                 '🐱',
 		"known_hosts":                0xf08c0,         // 󰣀
 		"kritadisplayrc":             KRITA,           // 
 		"kritarc":                    KRITA,           // 

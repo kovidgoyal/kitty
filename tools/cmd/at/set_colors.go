@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/config"
-	"github.com/kovidgoyal/kitty/tools/themes"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/style"
+	"github.com/kovidgoyal/datty/tools/config"
+	"github.com/kovidgoyal/datty/tools/themes"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/style"
 )
 
 var nullable_colors = map[string]bool{
@@ -286,7 +286,7 @@ var titlebar_special_values = map[string]int{"system": 0, "background": 1}
 var scrollbar_special_values = map[string]int{"foreground": 0, "selection_background": 1}
 
 // The special values each color in special_colors accepts, must match the
-// parsers in kitty/options/utils.py
+// parsers in datty/options/utils.py
 var special_color_values = map[string]map[string]int{
 	"macos_titlebar_color":   titlebar_special_values,
 	"wayland_titlebar_color": titlebar_special_values,
@@ -295,7 +295,7 @@ var special_color_values = map[string]map[string]int{
 }
 
 // Encode a color that accepts special values the same way as
-// color_with_special_values() in kitty/options/utils.py: special values are
+// color_with_special_values() in datty/options/utils.py: special values are
 // stored in the lowest byte and actual colors are shifted into the upper bytes.
 func encode_special_color(key, val string) (int64, error) {
 	special_values, found := special_color_values[key]
@@ -323,7 +323,7 @@ func encode_special_color(key, val string) (int64, error) {
 
 func set_color_in_color_map(key, val string, ans map[string]any, check_nullable, skip_nullable bool) error {
 	if key == "cursor_text_color" && val == "background" {
-		// matches cursor_text_color() in kitty/options/utils.py
+		// matches cursor_text_color() in datty/options/utils.py
 		val = "none"
 	}
 	if val == "none" {

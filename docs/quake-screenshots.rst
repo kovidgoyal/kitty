@@ -6,7 +6,7 @@
         **Screenshots**
 
         .. figure:: /screenshots/quake-macos.webp
-            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program btop, running inside kitty, on macOS
+            :alt: Screenshot, showing the datty floating quick access terminal above the background which is the program btop, running inside datty, on macOS
             :align: center
             :width: 100%
 
@@ -14,7 +14,7 @@
 
 
         .. figure:: /screenshots/quake-hypr.webp
-            :alt: Screenshot, showing the kitty floating quick access terminal above the background which is the program btop, running inside kitty, on Hyprland in Linux
+            :alt: Screenshot, showing the datty floating quick access terminal above the background which is the program btop, running inside datty, on Hyprland in Linux
             :align: center
             :width: 100%
 

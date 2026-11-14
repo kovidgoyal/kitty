@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kovidgoyal/kitty/tools/simdstring"
+	"github.com/kovidgoyal/datty/tools/simdstring"
 	"golang.org/x/exp/constraints"
 	"golang.org/x/text/language"
 )

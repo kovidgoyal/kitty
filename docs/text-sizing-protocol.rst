@@ -354,8 +354,8 @@ The algorithm for splitting text into cells
 ------------------------------------------------
 
 .. note::
-   kitty comes with a utility to test terminal compliance with this algorithm.
-   Install kitty and run: ``kitten __width_test__`` in any terminal to test it.
+   datty comes with a utility to test terminal compliance with this algorithm.
+   Install datty and run: ``daddy __width_test__`` in any terminal to test it.
    This uses tests published by the Unicode consortium, `GraphemeBreakTest.txt
    <https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt>`__.
 

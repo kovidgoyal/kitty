@@ -2,7 +2,7 @@ initialize_command: make debug
 copy_resource: fonts
 copy_resource: bypy/b/linux/64/pkg/slang
 add_to_path: bypy/b/linux/64/pkg/slang/bin
-prepend_to_path: kitty/launcher
+prepend_to_path: datty/launcher
 pre_commit: ./autoformat
 
 # System Instructions & Project Context
@@ -49,7 +49,7 @@ To isolate testing to a specific test use, use the test name without the leading
 ./test.py my_function
 ```
 
-To run all tests in a specific file, for example, in kitty_tests/screen.py, use
+To run all tests in a specific file, for example, in datty_tests/screen.py, use
 ```bash
 ./test.py --module screen
 ```
@@ -61,20 +61,20 @@ To run a Go test named TestMyFunction, use:
 
 ## Remote control API for verification
 
-kitty has a comprehensive remote control API you can use for manual verification of
-your changes. Run kitty as:
+datty has a comprehensive remote control API you can use for manual verification of
+your changes. Run datty as:
 
-    kitty -o allow_remote_control=y --listen-on=unix:@test-kitty-xxx
+    datty -o allow_remote_control=y --listen-on=unix:@test-datty-xxx
 
-Then, you can take a screenshot of kitty and save it to test.png with:
+Then, you can take a screenshot of datty and save it to test.png with:
 
-    kitten @ --to=unix:@test-kitty-xxx screenshot test.png
+    daddy @ --to=unix:@test-datty-xxx screenshot test.png
 
-You can create window and tabs, send key events to kitty, query kitty
+You can create window and tabs, send key events to datty, query datty
 state, etc using the various remote control sub-commands, which you can query
 using:
 
-    kitten @ --help
+    daddy @ --help
 
 
 ## Verification Pipeline
@@ -84,7 +84,7 @@ Before declaring a task complete, you must follow this exact verification lifecy
 2. Run the local **Build Command** to guarantee zero compilation or compilation-stage type errors.
 3. Run the local **Test Command** to run the full test suite
 4. If errors occur, analyze the stdout logs completely before writing a fix. Do not guess.
-5. If your changes involve rendering changes to kitty manually verify
-   them by running kitty and using the remote control API as described above.
+5. If your changes involve rendering changes to datty manually verify
+   them by running datty and using the remote control API as described above.
 6. If the change you have made is user facing, update the docs/changelog.rst
    file with a brief description of your changes

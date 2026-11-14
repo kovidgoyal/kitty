@@ -19,7 +19,7 @@ import (
 
 var _ = fmt.Print
 
-const TempTemplate = "kitty-tty-graphics-protocol-*"
+const TempTemplate = "datty-tty-graphics-protocol-*"
 
 func CreateTemp() (*os.File, error) {
 	return os.CreateTemp("", TempTemplate)
@@ -200,7 +200,7 @@ func (self *ImageData) Resize(x_frac, y_frac float64) *ImageData {
 
 func MakeTempDir(template string) (ans string, err error) {
 	if template == "" {
-		template = "kitty-img-*"
+		template = "datty-img-*"
 	}
 	if shm.SHM_DIR != "" {
 		ans, err = os.MkdirTemp(shm.SHM_DIR, template)

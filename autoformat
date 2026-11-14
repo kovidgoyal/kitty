@@ -14,7 +14,7 @@ import threading
 base = os.path.dirname(os.path.abspath(__file__))
 
 ruff = subprocess.Popen(['ruff', 'format'], cwd=base, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-go = subprocess.Popen('gofmt -s -l -w tools kittens'.split(), cwd=base, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+go = subprocess.Popen('gofmt -s -l -w tools daddies'.split(), cwd=base, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 ruff_output = b''
 go_output = b''
 

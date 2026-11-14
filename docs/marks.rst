@@ -2,7 +2,7 @@ Mark text on screen
 ---------------------
 
 
-kitty has the ability to mark text on the screen based on regular expressions.
+datty has the ability to mark text on the screen based on regular expressions.
 This can be useful to highlight words or phrases when browsing output from long
 running programs or similar. Lets start with a few examples:
 
@@ -10,7 +10,7 @@ Examples
 ----------
 
 Suppose we want to be able to highlight the word :code:`ERROR` in the current
-window. Add the following to :file:`kitty.conf`::
+window. Add the following to :file:`datty.conf`::
 
     map f1 toggle_marker text 1 ERROR
 
@@ -29,8 +29,8 @@ insensitively::
 
     map f1 toggle_marker iregex 1 \\bERROR\\b 2 \\bWARNING\\b
 
-kitty supports up to 3 mark groups (the numbers in the commands above). You
-can control the colors used for these groups in :file:`kitty.conf` with::
+datty supports up to 3 mark groups (the numbers in the commands above). You
+can control the colors used for these groups in :file:`datty.conf` with::
 
     mark1_foreground red
     mark1_background gray
@@ -48,7 +48,7 @@ Creating markers dynamically
 ---------------------------------
 
 If you want to create markers dynamically rather than pre-defining them in
-:file:`kitty.conf`, you can do so as follows::
+:file:`datty.conf`, you can do so as follows::
 
     map f1 create_marker
     map f2 remove_marker
@@ -65,8 +65,8 @@ remove markers.
 Scrolling to marks
 --------------------
 
-kitty has a :ac:`scroll_to_mark` action to scroll to the next line that contains
-a mark. You can use it by mapping it to some shortcut in :file:`kitty.conf`::
+datty has a :ac:`scroll_to_mark` action to scroll to the next line that contains
+a mark. You can use it by mapping it to some shortcut in :file:`datty.conf`::
 
     map ctrl+p scroll_to_mark prev
     map ctrl+n scroll_to_mark next
@@ -117,11 +117,11 @@ group (1-3). For example:
                 yield i, i, 3
 
 
-Save this file somewhere and in :file:`kitty.conf`, use::
+Save this file somewhere and in :file:`datty.conf`, use::
 
     map f1 toggle_marker function /path/to/mymarker.py
 
-If you save the file in the :ref:`kitty config directory <confloc>`, you can
+If you save the file in the :ref:`datty config directory <confloc>`, you can
 use::
 
     map f1 toggle_marker function mymarker.py

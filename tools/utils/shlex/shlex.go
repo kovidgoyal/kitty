@@ -17,7 +17,7 @@ package shlex
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 	"strings"
 	"unicode/utf8"
 )

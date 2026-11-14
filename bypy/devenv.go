@@ -124,7 +124,18 @@ func get_local_dependencies(path string) (ans []dependency) {
 
 func change_dep(path string, dep dependency) {
 	cmd := []string{}
-	fid := filepath.Join(root_dir(), dep.basename)
+	// Absolute paths under this checkout are longer than the Mach-O header
+	// padding in the prebuilt libraries, so use a relative loader path.
+	var fid string
+	if dep.is_id {
+		fid = filepath.Join(root_dir(), dep.basename)
+	} else {
+		rel, err := filepath.Rel(filepath.Dir(path), filepath.Join(root_dir(), dep.basename))
+		if err != nil {
+			exit(err)
+		}
+		fid = "@loader_path/" + filepath.ToSlash(rel)
+	}
 	if dep.is_id {
 		cmd = append(cmd, "-id", fid)
 	} else {
@@ -361,7 +372,7 @@ func dependencies(args []string) {
 		exit(err)
 	}
 
-	fmt.Println(`Dependencies downloaded. Now build kitty with: ./dev.sh build`)
+	fmt.Println(`Dependencies downloaded. Now build datty with: ./dev.sh build`)
 }
 
 // }}}
@@ -415,7 +426,7 @@ func build(args []string) {
 		fmt.Fprintln(os.Stderr, "The following build command failed:", python, strings.Join(args, " "))
 		exit(err)
 	}
-	fmt.Println("Build successful. Run kitty as: kitty/launcher/kitty")
+	fmt.Println("Build successful. Run datty as: datty/launcher/datty")
 }
 
 func docs(args []string) {

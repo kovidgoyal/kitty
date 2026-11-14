@@ -9,9 +9,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/kovidgoyal/kitty"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/style"
+	"github.com/kovidgoyal/datty"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/style"
 )
 
 var _ = fmt.Print
@@ -121,7 +121,7 @@ func (self *Context) link(x string) string {
 
 func (self *Context) ref_hyperlink(x string, prefix string) string {
 	text, target := Text_and_target(x)
-	url := "kitty+doc://" + utils.Hostname() + "/#ref=" + prefix + target
+	url := "datty+doc://" + utils.Hostname() + "/#ref=" + prefix + target
 	text = ReplaceAllRSTRoles(text, func(group Rst_format_match) string {
 		return group.Payload
 	})
@@ -133,7 +133,7 @@ func (self *Context) Prettify(text string) string {
 		val := group.Payload
 		switch group.Role {
 		case "file":
-			if val == "kitty.conf" && self.fmt_ctx.AllowEscapeCodes {
+			if val == "datty.conf" && self.fmt_ctx.AllowEscapeCodes {
 				path := filepath.Join(utils.ConfigDir(), val)
 				val = self.hyperlink_for_path(path, val)
 			}
@@ -144,7 +144,7 @@ func (self *Context) Prettify(text string) string {
 			text, target := Text_and_target(val)
 			no_title := text == target
 			target = strings.Trim(target, "/")
-			if title, ok := kitty.DocTitleMap[target]; ok && no_title {
+			if title, ok := datty.DocTitleMap[target]; ok && no_title {
 				val = title + " <" + target + ">"
 			} else {
 				val = text + " <" + target + ">"

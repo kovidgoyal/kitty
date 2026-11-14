@@ -4,7 +4,7 @@
 Desktop notifications
 =======================
 
-|kitty| implements an extensible escape code (OSC 99) to show desktop
+|datty| implements an extensible escape code (OSC 99) to show desktop
 notifications. It is easy to use from shell scripts and fully extensible to show
 title and body. Clicking on the notification can optionally focus the window it
 came from, and/or send an escape code back to the application running in that
@@ -37,12 +37,12 @@ To show a message with a title and a body::
 
 .. tip::
 
-   |kitty| also comes with its own :doc:`statically compiled command line tool </kittens/notify>` to easily display
+   |datty| also comes with its own :doc:`statically compiled command line tool </daddies/notify>` to easily display
    notifications, with all their advanced features. For example:
 
    .. code-block:: sh
 
-        kitten notify "Hello world" A good day to you
+        daddy notify "Hello world" A good day to you
 
 The most important key in the metadata is the ``p`` key, it controls how the
 payload is interpreted. A value of ``title`` means the payload is setting the
@@ -95,7 +95,7 @@ for examples of notification types.
 
 .. tip::
 
-   |kitty| has sophisticated notification filtering and management
+   |datty| has sophisticated notification filtering and management
    capabilities via :opt:`filter_notification`.
 
 
@@ -500,7 +500,7 @@ Key      Value                 Default    Description
 
 
 .. note::
-   |kitty| also supports the `legacy OSC 9 protocol developed by iTerm2
+   |datty| also supports the `legacy OSC 9 protocol developed by iTerm2
    <https://iterm2.com/documentation-escape-codes.html>`__ for desktop
    notifications. OSC 9 payloads that start with a ConEmu numeric sub-command
    (``1;`` to ``12;``) are not shown as notifications. Of these, ``9;4`` is

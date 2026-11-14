@@ -33,8 +33,8 @@ jobs:
 
         runs-on: ${{ matrix.os }}
         env:
-            KITTY_BUNDLE: 1
-            KITTY_CODEQL: 1
+            DATTY_BUNDLE: 1
+            DATTY_CODEQL: 1
 
         steps:
 
@@ -59,7 +59,7 @@ jobs:
               languages: ${{ matrix.language }}
               trap-caching: false
 
-        - name: Build kitty
+        - name: Build datty
           if: matrix.language == 'c' || matrix.language == 'go'
           run: python3 .github/workflows/ci.py build
 

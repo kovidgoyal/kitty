@@ -287,7 +287,7 @@ titlebar_colors(_GLFWwindow *window) {
     ans.bg = dark ? dark_bg : light_bg;
     if (decs.use_custom_titlebar_color || appearance == GLFW_COLOR_SCHEME_NO_PREFERENCE) {
         // When using system colors and the desktop has no preference, follow
-        // the background color of the active kitty window.
+        // the background color of the active datty window.
         const uint32_t color = 0xff000000 | (decs.titlebar_color & 0xffffff);
         dark = .2126 * R(color) + .7152 * G(color) + .0722 * B(color) < 128;
         ans.bg = decs.use_custom_titlebar_color ? color : (dark ? dark_bg : light_bg);
@@ -937,7 +937,7 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow *window) {
             _glfwInputError(
                 GLFW_PLATFORM_ERROR,
                 "WARNING: Cursor image size: %dx%d is not a multiple of window scale: %d. This will"
-                " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/kitty/issues/4878",
+                " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/datty/issues/4878",
                 image->width,
                 image->height,
                 scale);

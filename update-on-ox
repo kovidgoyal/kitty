@@ -34,9 +34,9 @@ HOST = 'ox'
 base = os.path.dirname(os.path.abspath(__file__))
 if True:
     sys.path.insert(0, base)
-    from kitty.constants import str_version
+    from datty.constants import str_version
 
-dmg = f'kitty-{str_version}.dmg'
+dmg = f'datty-{str_version}.dmg'
 
 
 def run(what):

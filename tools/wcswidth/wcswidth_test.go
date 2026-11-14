@@ -10,7 +10,7 @@ import (
 
 func TestNonZeroWidthSpacingMarks(t *testing.T) {
 	// The cell a SpacingMark with non-zero width combines into is widened, both here and
-	// in kitty's C code. Only U+0E33 and U+0EB3 have that combination of properties, which
+	// in datty's C code. Only U+0E33 and U+0EB3 have that combination of properties, which
 	// docs/text-sizing-protocol.rst specifies, so guard against a Unicode data refresh
 	// silently changing the set.
 	expected := map[rune]bool{0x0e33: true, 0x0eb3: true}

@@ -182,7 +182,7 @@ func TestGetSetOfConfigFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	main_conf := filepath.Join(tdir, "kitty.conf")
+	main_conf := filepath.Join(tdir, "datty.conf")
 	included_conf := filepath.Join(subdir, "included.conf")
 
 	// Main config that includes another file
@@ -237,7 +237,7 @@ func TestWatchForConfigChanges(t *testing.T) {
 		}
 	}
 
-	main_conf := filepath.Join(tdir, "kitty.conf")
+	main_conf := filepath.Join(tdir, "datty.conf")
 	included_conf := filepath.Join(subdir, "included.conf")
 	dark_theme := filepath.Join(tdir, "dark-theme.auto.conf")
 	unrelated := filepath.Join(tdir, "unrelated.txt")
@@ -314,7 +314,7 @@ func TestWatchForConfigChanges(t *testing.T) {
 		before := action_count.Load()
 		write_file(t, main_conf, "include sub/included.conf\ninclude extra/custom.conf\n")
 		if wait_for_count(&action_count, before+1, 2*time.Second) <= before {
-			t.Fatalf("Expected action after kitty.conf gained include directive")
+			t.Fatalf("Expected action after datty.conf gained include directive")
 		}
 		// Let the debounce window clear before writing to the newly watched file.
 		time.Sleep(debounce + 20*time.Millisecond)
@@ -351,7 +351,7 @@ func TestWatchForConfigChanges(t *testing.T) {
 		before := action_count.Load()
 		write_file(t, main_conf, "include sub/included.conf\n")
 		if wait_for_count(&action_count, before+1, 2*time.Second) <= before {
-			t.Fatalf("Expected action after kitty.conf lost include directive")
+			t.Fatalf("Expected action after datty.conf lost include directive")
 		}
 		time.Sleep(debounce + 20*time.Millisecond)
 		before = action_count.Load()
@@ -374,11 +374,11 @@ func TestWatchForConfigChanges(t *testing.T) {
 }
 
 // TestWatchForConfigChangesEmptyConfigDir verifies that the watcher starts
-// successfully when the config file does not yet exist (e.g. KITTY_CONFIG_DIRECTORY
+// successfully when the config file does not yet exist (e.g. DATTY_CONFIG_DIRECTORY
 // points to a fresh empty directory) and fires the action once the file is created.
 func TestWatchForConfigChangesEmptyConfigDir(t *testing.T) {
 	tdir := resolve_path(t.TempDir())
-	main_conf := filepath.Join(tdir, "kitty.conf")
+	main_conf := filepath.Join(tdir, "datty.conf")
 	// main_conf intentionally does not exist — simulates a fresh empty config directory.
 
 	var action_count atomic.Int32
@@ -396,7 +396,7 @@ func TestWatchForConfigChangesEmptyConfigDir(t *testing.T) {
 		done <- watch_for_config_changes(ctx, action, debounce, []string{main_conf})
 	}()
 
-	// prime_watcher creates kitty.conf on its first write and retries until
+	// prime_watcher creates datty.conf on its first write and retries until
 	// the watcher delivers an event, confirming the directory watch is active.
 	prime_watcher(t, main_conf, &action_count, debounce)
 
@@ -420,7 +420,7 @@ func TestWatchForConfigChangesEmptyConfigDir(t *testing.T) {
 
 func TestWatchForConfigChangesDebounce(t *testing.T) {
 	tdir := t.TempDir()
-	main_conf := filepath.Join(tdir, "kitty.conf")
+	main_conf := filepath.Join(tdir, "datty.conf")
 	write_file(t, main_conf, "font_size 12\n")
 
 	var action_count atomic.Int32

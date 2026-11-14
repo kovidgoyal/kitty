@@ -5,56 +5,56 @@ package tool
 import (
 	"fmt"
 
-	"github.com/kovidgoyal/kitty/kittens/ask"
-	"github.com/kovidgoyal/kitty/kittens/broadcast"
-	"github.com/kovidgoyal/kitty/kittens/choose_files"
-	"github.com/kovidgoyal/kitty/kittens/choose_fonts"
-	"github.com/kovidgoyal/kitty/kittens/clipboard"
-	"github.com/kovidgoyal/kitty/kittens/command_palette"
-	"github.com/kovidgoyal/kitty/kittens/desktop_ui"
-	"github.com/kovidgoyal/kitty/kittens/diff"
-	"github.com/kovidgoyal/kitty/kittens/dnd"
-	"github.com/kovidgoyal/kitty/kittens/hints"
-	"github.com/kovidgoyal/kitty/kittens/hyperlinked_grep"
-	"github.com/kovidgoyal/kitty/kittens/icat"
-	"github.com/kovidgoyal/kitty/kittens/notify"
-	"github.com/kovidgoyal/kitty/kittens/panel"
-	"github.com/kovidgoyal/kitty/kittens/query_terminal"
-	"github.com/kovidgoyal/kitty/kittens/quick_access_terminal"
-	"github.com/kovidgoyal/kitty/kittens/remote_file"
-	"github.com/kovidgoyal/kitty/kittens/resize_window"
-	"github.com/kovidgoyal/kitty/kittens/show_key"
-	"github.com/kovidgoyal/kitty/kittens/ssh"
-	"github.com/kovidgoyal/kitty/kittens/themes"
-	"github.com/kovidgoyal/kitty/kittens/transfer"
-	"github.com/kovidgoyal/kitty/kittens/unicode_input"
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/cmd/at"
-	"github.com/kovidgoyal/kitty/tools/cmd/atexit"
-	"github.com/kovidgoyal/kitty/tools/cmd/benchmark"
-	"github.com/kovidgoyal/kitty/tools/cmd/edit_in_kitty"
-	"github.com/kovidgoyal/kitty/tools/cmd/mouse_demo"
-	"github.com/kovidgoyal/kitty/tools/cmd/pytest"
-	"github.com/kovidgoyal/kitty/tools/cmd/run_shell"
-	"github.com/kovidgoyal/kitty/tools/cmd/show_error"
-	"github.com/kovidgoyal/kitty/tools/cmd/update_self"
-	"github.com/kovidgoyal/kitty/tools/tui"
-	"github.com/kovidgoyal/kitty/tools/utils/images"
-	"github.com/kovidgoyal/kitty/tools/watch"
+	"github.com/kovidgoyal/datty/daddies/ask"
+	"github.com/kovidgoyal/datty/daddies/broadcast"
+	"github.com/kovidgoyal/datty/daddies/choose_files"
+	"github.com/kovidgoyal/datty/daddies/choose_fonts"
+	"github.com/kovidgoyal/datty/daddies/clipboard"
+	"github.com/kovidgoyal/datty/daddies/command_palette"
+	"github.com/kovidgoyal/datty/daddies/desktop_ui"
+	"github.com/kovidgoyal/datty/daddies/diff"
+	"github.com/kovidgoyal/datty/daddies/dnd"
+	"github.com/kovidgoyal/datty/daddies/hints"
+	"github.com/kovidgoyal/datty/daddies/hyperlinked_grep"
+	"github.com/kovidgoyal/datty/daddies/icat"
+	"github.com/kovidgoyal/datty/daddies/notify"
+	"github.com/kovidgoyal/datty/daddies/panel"
+	"github.com/kovidgoyal/datty/daddies/query_terminal"
+	"github.com/kovidgoyal/datty/daddies/quick_access_terminal"
+	"github.com/kovidgoyal/datty/daddies/remote_file"
+	"github.com/kovidgoyal/datty/daddies/resize_window"
+	"github.com/kovidgoyal/datty/daddies/show_key"
+	"github.com/kovidgoyal/datty/daddies/ssh"
+	"github.com/kovidgoyal/datty/daddies/themes"
+	"github.com/kovidgoyal/datty/daddies/transfer"
+	"github.com/kovidgoyal/datty/daddies/unicode_input"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/cmd/at"
+	"github.com/kovidgoyal/datty/tools/cmd/atexit"
+	"github.com/kovidgoyal/datty/tools/cmd/benchmark"
+	"github.com/kovidgoyal/datty/tools/cmd/edit_in_datty"
+	"github.com/kovidgoyal/datty/tools/cmd/mouse_demo"
+	"github.com/kovidgoyal/datty/tools/cmd/pytest"
+	"github.com/kovidgoyal/datty/tools/cmd/run_shell"
+	"github.com/kovidgoyal/datty/tools/cmd/show_error"
+	"github.com/kovidgoyal/datty/tools/cmd/update_self"
+	"github.com/kovidgoyal/datty/tools/tui"
+	"github.com/kovidgoyal/datty/tools/utils/images"
+	"github.com/kovidgoyal/datty/tools/watch"
 )
 
 var _ = fmt.Print
 
-func KittyToolEntryPoints(root *cli.Command) {
+func DattyToolEntryPoints(root *cli.Command) {
 	root.Add(cli.OptionSpec{
-		Name: "--version", Type: "bool-set", Help: "The current kitten version."})
+		Name: "--version", Type: "bool-set", Help: "The current daddy version."})
 	tui.PrepareRootCmd(root)
 	// @
 	at.EntryPoint(root)
 	// update-self
 	update_self.EntryPoint(root)
-	// edit-in-kitty
-	edit_in_kitty.EntryPoint(root)
+	// edit-in-datty
+	edit_in_datty.EntryPoint(root)
 	// clipboard
 	clipboard.EntryPoint(root)
 	// dnd
@@ -84,7 +84,7 @@ func KittyToolEntryPoints(root *cli.Command) {
 	// mouse_demo
 	root.AddSubCommand(&cli.Command{
 		Name:             "mouse-demo",
-		ShortDescription: "Demo the mouse handling kitty implements for terminal programs",
+		ShortDescription: "Demo the mouse handling datty implements for terminal programs",
 		OnlyArgsAllowed:  true,
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
 			return mouse_demo.Run(args)
@@ -151,7 +151,7 @@ func KittyToolEntryPoints(root *cli.Command) {
 	// __atexit__
 	atexit.EntryPoint(root)
 	// __width_test__
-	cli.WcswidthKittenEntryPoint(root)
+	cli.WcswidthDaddyEntryPoint(root)
 	// __generate_man_pages__
 	root.AddSubCommand(&cli.Command{
 		Name:            "__generate_man_pages__",

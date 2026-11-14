@@ -1,4 +1,4 @@
-module github.com/kovidgoyal/kitty
+module github.com/kovidgoyal/datty
 
 go 1.26.0
 

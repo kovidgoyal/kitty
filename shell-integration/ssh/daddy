@@ -1,0 +1,99 @@
+#!/bin/sh
+# Copyright (C) 2018 Kovid Goyal <kovid at kovidgoyal.net>
+#
+# Distributed under terms of the GPLv3 license.
+
+{ \unalias command; \unset -f command; } >/dev/null 2>&1
+
+
+die() {
+    if [ -e /dev/stderr ]; then
+        printf "\033[31m%s\033[m\n\r" "$*" > /dev/stderr;
+    elif [ -e /dev/fd/2 ]; then
+        printf "\033[31m%s\033[m\n\r" "$*" > /dev/fd/2;
+    else
+        printf "\033[31m%s\033[m\n\r" "$*";
+    fi
+    exit 1;
+}
+
+exec_datty() {
+    [ -n "$datty_exe" ] && exec "$datty_exe" "$@"
+    die "Failed to execute datty"
+}
+
+script_path="$(command readlink -f "$0" 2> /dev/null)"
+[ $? = 0 ] || script_path="$0"
+script_dir="$(command dirname "$script_path")"
+install_dir="$(command dirname "$script_dir")/install-tool"
+remote_datty_version_file="$script_dir/../version"
+local_datty_version_file="$install_dir/installed-daddy-version"
+datty_exe="$install_dir/daddy"
+local_datty_version=""
+
+[ -f "$datty_exe" -a -x "$datty_exe" ] && exec_datty "$@"
+
+# Use daddy from the downloaded datty installation, if available.
+embed_exe="$(command dirname "$script_dir")/install/bin/daddy"
+[ -f "$embed_exe" -a -x "$embed_exe" ] && {
+    datty_exe="$embed_exe"
+    exec_datty "$@"
+}
+
+# If called for shell completion with no binary available, do nothing to avoid
+# downloading daddy and showing spurious output during tab completion.
+[ "$1" = "__complete__" ] && exit 0
+
+case "$(command uname)" in
+    'Linux') OS="linux";;
+    'Darwin') OS="darwin";;
+    'FreeBSD') OS="freebsd";;
+    'NetBSD') OS="netbsd";;
+    'OpenBSD') OS="openbsd";;
+    'DragonFlyBSD') OS="dragonfly";;
+    *) die "daddy pre-built binaries are not available for the $(command uname) operating system";;
+esac
+
+if command -v curl 2> /dev/null > /dev/null; then
+    fetch() {
+        command curl -fL "$1"
+    }
+    fetch_quiet() {
+        command curl -fsSL "$1"
+    }
+elif command -v wget 2> /dev/null > /dev/null; then
+    fetch() {
+        command wget -O- "$1"
+    }
+    fetch_quiet() {
+        command wget --quiet -O- "$1"
+    }
+else
+    die "Neither curl nor wget available, cannot download daddy"
+fi
+
+case "$(command uname -m)" in
+    amd64|x86_64) arch="amd64";;
+    aarch64*) arch="arm64";;
+    armv8*) arch="arm64";;
+    arm64) arch="arm64";;
+    arm|armv7l) arch="arm";;
+    i386) arch="386";;
+    i686) arch="386";;
+    *) die "Unknown CPU architecture $(command uname -m)";;
+esac
+
+url="https://github.com/kovidgoyal/datty/releases/latest/download/daddy-$OS-$arch"
+
+printf "\033[33mdaddy needs to be installed\033[m\n\n"
+command mkdir -p "$install_dir"
+printf "Downloading daddy from: \033[32m%s\033[m\n\n" "$url"
+download_dest="$(command mktemp "$datty_exe.XXXXXXXXXX")"
+fetch "$url" > "$download_dest" || {
+    command rm -f "$download_dest"
+    die "Failed to download daddy"
+}
+command chmod 755 "$download_dest"
+command mv "$download_dest" "$datty_exe"
+command "$datty_exe" --version | cut -d" " -f2 > "$local_datty_version_file"
+exec_datty "$@"

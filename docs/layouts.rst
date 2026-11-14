@@ -1,7 +1,7 @@
 Arrange windows
 -------------------
 
-kitty has the ability to define its own windows that can be tiled next to each
+datty has the ability to define its own windows that can be tiled next to each
 other in arbitrary arrangements, based on *Layouts*, see below for examples:
 
 
@@ -11,7 +11,7 @@ other in arbitrary arrangements, based on *Layouts*, see below for examples:
     :width: 100%
 
     Screenshot, showing :program:`vim`, :program:`tig` and :program:`git`
-    running in |kitty| with the *Tall* layout
+    running in |datty| with the *Tall* layout
 
 
 .. figure:: screenshots/splits.png
@@ -142,7 +142,7 @@ The Splits Layout
 
 This is the most flexible layout. You can create any arrangement of windows
 by splitting existing windows repeatedly. To best use this layout you should
-define a few extra key bindings in :file:`kitty.conf`::
+define a few extra key bindings in :file:`datty.conf`::
 
     # Create a new window splitting the space used by the existing one so that
     # the two windows are placed one above the other
@@ -310,7 +310,7 @@ Docked windows
 
 .. versionadded:: 0.50.0
 
-A kitty window can be *docked* to an edge of another kitty window, of the tab
+A datty window can be *docked* to an edge of another datty window, of the tab
 or of the OS window. Docked windows are placed outside the layout, which arranges
 the other windows in the space that remains. They are useful for things like
 status bars, file trees or a shell kept next to an editor. Create them with the
@@ -330,11 +330,11 @@ at an edge, later docks are placed inside earlier ones. When there is not
 enough space for all the docks, the docks created last are made smaller first.
 
 Docks can be resized in whole cells by dragging their inner border with the
-mouse, or with the :ac:`resize_window` action and :ref:`kitten @ resize-window
+mouse, or with the :ac:`resize_window` action and :ref:`daddy @ resize-window
 <at-resize-window>`, where wider or taller always means bigger, whatever the
 edge of the dock. Only the size along the axis of the dock can be changed. A
 size that was a percentage stays a percentage. The new size is used from then
-on, including in :ref:`kitten @ ls <at-ls>` and in saved sessions. Resetting
+on, including in :ref:`daddy @ ls <at-ls>` and in saved sessions. Resetting
 window sizes does not change the size of docks, as they are not part of the
 layout.
 
@@ -348,7 +348,7 @@ bar, at the same position and size, outside the docks of the tab. It is a
 single window running a single program, which stays in place when switching
 tabs, and is closed when the OS window is closed. It is not closed when a tab
 is closed, and does not keep a tab open. It is listed as part of the active
-tab, for example in the output of :ref:`kitten @ ls <at-ls>`, where the
+tab, for example in the output of :ref:`daddy @ ls <at-ls>`, where the
 :code:`dock` entry of its group in :code:`groups` has a :code:`scope` of
 :code:`os-window`. The :code:`scope` of the other docks is :code:`window` or
 :code:`tab`.
@@ -388,11 +388,11 @@ one. Resizing stops at the layout's size limit. Ordinary letters (including
 uppercase letters) keep their normal step size unless Shift is selected as
 the fractional modifier, and :kbd:`Ctrl` doubles it.
 To choose a different fraction, pass :code:`--fraction`
-to the resize kitten, for example::
+to the resize daddy, for example::
 
-   map kitty_mod+r kitten resize_window --fraction=1/4
+   map datty_mod+r daddy resize_window --fraction=1/4
    # macOS
-   map cmd+r kitten resize_window --fraction=1/3
+   map cmd+r daddy resize_window --fraction=1/3
 
 Inside the resize page, :kbd:`1` selects the Window strategy and :kbd:`2`
 selects the Edge strategy. :kbd:`M` switches the fractional modifier between
@@ -411,9 +411,9 @@ options override saved values for that invocation.
 
 To move a specific divider in the *Splits* layout, select the edge strategy::
 
-   map kitty_mod+r kitten resize_window --strategy=edge --fraction=1/3
+   map datty_mod+r daddy resize_window --strategy=edge --fraction=1/3
    # macOS, with a different fractional step
-   map cmd+r kitten resize_window --strategy=edge --fraction=1/4
+   map cmd+r daddy resize_window --strategy=edge --fraction=1/4
 
 First press :kbd:`H`, :kbd:`J`, :kbd:`K`, or :kbd:`L` to select the left,
 bottom, top, or right edge of the current pane. Arrow keys also work.
@@ -452,10 +452,10 @@ resize mode opened, rather than equalizing the layout. If the split structure
 has changed since then, restoration is refused. The initial default
 :code:`--strategy=window` retains the usual width/height controls. Other layouts,
 and Splits when resize mode was opened in a different layout, keep Window's
-default-size reset behavior. Starting the resize kitten again while its page is
+default-size reset behavior. Starting the resize daddy again while its page is
 open replaces the page, applying the new options and keeping the saved sizes.
 
-You can also define shortcuts in :file:`kitty.conf` to make the active window
+You can also define shortcuts in :file:`datty.conf` to make the active window
 wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`
 action, for example::
 
@@ -471,7 +471,7 @@ the resizing increment (a positive integer that defaults to 1).
 
 Some layouts take options to control their behavior. For example, the *Fat*
 and *Tall* layouts accept the ``bias`` and ``full_size`` options to control
-how the available space is split up. To specify the option, in :opt:`kitty.conf
+how the available space is split up. To specify the option, in :opt:`datty.conf
 <enabled_layouts>` use::
 
     enabled_layouts tall:bias=70;full_size=2
@@ -482,4 +482,4 @@ and ``90``.
 
 Writing a new layout only requires about two hundred lines of code, so if there
 is some layout you want, take a look at one of the existing layouts in the
-:repo_folder:`layout <kitty/layout>` package and submit a pull request!
+:repo_folder:`layout <datty/layout>` package and submit a pull request!

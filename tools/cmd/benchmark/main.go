@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui/graphics"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui/graphics"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
 
 	"golang.org/x/sys/unix"
 )
@@ -227,7 +227,7 @@ func images() (r result, err error) {
 
 func long_escape_codes() (r result, err error) {
 	data := random_string_of_bytes(8024, ascii_printable)
-	// OSC 6 is document reporting or XTerm special color which kitty ignores after parsing
+	// OSC 6 is document reporting or XTerm special color which datty ignores after parsing
 	data = strings.Repeat("\x1b]6;"+data+"\x07", 1024)
 	const desc = "Long escape codes"
 	duration, data_sz, reps, err := benchmark_data(desc, data, opts)
@@ -366,7 +366,7 @@ func EntryPoint(root *cli.Command) {
 	sc := root.AddSubCommand(&cli.Command{
 		Name:             "__benchmark__",
 		ShortDescription: "Run various benchmarks",
-		HelpText:         "To run only particular benchmarks, specify them on the command line from the set: " + strings.Join(all_benchamrks(), ", ") + ". Benchmarking works by sending large amount of data to the TTY device and waiting for the terminal to process the data and respond to queries sent to it in the data. By default rendering is suppressed during benchmarking to focus on parser performance. Use the --render flag to enable it, but be aware that rendering in modern terminals is typically asynchronous so it wont be properly benchmarked by this kitten.",
+		HelpText:         "To run only particular benchmarks, specify them on the command line from the set: " + strings.Join(all_benchamrks(), ", ") + ". Benchmarking works by sending large amount of data to the TTY device and waiting for the terminal to process the data and respond to queries sent to it in the data. By default rendering is suppressed during benchmarking to focus on parser performance. Use the --render flag to enable it, but be aware that rendering in modern terminals is typically asynchronous so it wont be properly benchmarked by this daddy.",
 		Usage:            "[options] [optional benchmark to run ...]",
 		Hidden:           true,
 		Run: func(cmd *cli.Command, args []string) (ret int, err error) {

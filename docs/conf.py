@@ -24,19 +24,19 @@ from pygments.token import Comment, Error, Keyword, Literal, Name, Number, Strin
 from sphinx import addnodes, version_info
 from sphinx.util.logging import getLogger
 
-kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if kitty_src not in sys.path:
-    sys.path.insert(0, kitty_src)
+datty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if datty_src not in sys.path:
+    sys.path.insert(0, datty_src)
 
-from kitty.conf.types import Definition, expand_opt_references  # noqa
-from kitty.constants import str_version, website_url  # noqa
-from kitty.fast_data_types import DND_CODE, Shlex, TEXT_SIZE_CODE  # noqa
-import kitty.shaders.custom.demo as demo_module  # noqa
+from datty.conf.types import Definition, expand_opt_references  # noqa
+from datty.constants import str_version, website_url  # noqa
+from datty.fast_data_types import DND_CODE, Shlex, TEXT_SIZE_CODE  # noqa
+import datty.shaders.custom.demo as demo_module  # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
 
-project = 'kitty'
+project = 'datty'
 copyright = time.strftime('%Y, Kovid Goyal')
 author = 'Kovid Goyal'
 building_man_pages = 'man' in sys.argv
@@ -70,7 +70,7 @@ extensions = [
 # URL for OpenGraph tags
 ogp_site_url = website_url()
 # OGP needs a PNG image because of: https://github.com/wpilibsuite/sphinxext-opengraph/issues/96
-ogp_social_cards = {'image': '../logo/kitty.png'}
+ogp_social_cards = {'image': '../logo/datty.png'}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -106,9 +106,9 @@ exclude_patterns = [
 ]
 
 rst_prolog = """
-.. |kitty| replace:: *kitty*
+.. |datty| replace:: *datty*
 .. |version| replace:: VERSION
-.. _tarball: https://github.com/kovidgoyal/kitty/releases/download/vVERSION/kitty-VERSION.tar.xz
+.. _tarball: https://github.com/kovidgoyal/datty/releases/download/vVERSION/datty-VERSION.tar.xz
 .. role:: italic
 
 """.replace('VERSION', str_version)
@@ -126,7 +126,7 @@ def go_version(go_mod_path: str) -> str:  # {{{
 # }}}
 
 string_replacements = {
-    '_kitty_install_cmd': 'curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin',
+    '_datty_install_cmd': 'curl -L https://sw.kovidgoyal.net/datty/installer.sh | sh /dev/stdin',
     '_build_go_version': go_version('../go.mod'),
     '_text_size_code': str(TEXT_SIZE_CODE),
     '_dnd_code': str(DND_CODE),
@@ -139,7 +139,7 @@ string_replacements = {
 # a list of builtin themes.
 #
 html_theme = 'furo'
-html_title = 'kitty'
+html_title = 'datty'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -152,7 +152,7 @@ html_theme_options: Dict[str, Any] = {
     'footer_icons': [
         {
             'name': 'GitHub',
-            'url': 'https://github.com/kovidgoyal/kitty',
+            'url': 'https://github.com/kovidgoyal/datty',
             'html': f"""
                 <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
                     <path fill-rule="evenodd" d="{github_icon_path}"></path>
@@ -168,7 +168,7 @@ html_theme_options: Dict[str, Any] = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-html_favicon = html_logo = '../logo/kitty.svg'
+html_favicon = html_logo = '../logo/datty.svg'
 html_css_files = ['custom.css', 'timestamps.css']
 html_js_files = ['custom.js', 'timestamps.js']
 
@@ -189,8 +189,8 @@ manpages_url = 'https://man7.org/linux/man-pages/man{section}/{page}.{section}.h
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('invocation', 'kitty', 'The fast, feature rich terminal emulator', [author], 1),
-    ('conf', 'kitty.conf', 'Configuration file for kitty', [author], 5),
+    ('invocation', 'datty', 'The fast, feature rich terminal emulator', [author], 1),
+    ('conf', 'datty.conf', 'Configuration file for datty', [author], 5),
 ]
 
 
@@ -200,7 +200,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'kitty', 'kitty Documentation', author, 'kitty', 'Cross-platform, fast, feature-rich, GPU based terminal', 'Miscellaneous'),
+    (master_doc, 'datty', 'datty Documentation', author, 'datty', 'Cross-platform, fast, feature-rich, GPU based terminal', 'Miscellaneous'),
 ]
 # }}}
 
@@ -208,11 +208,11 @@ texinfo_documents = [
 # GitHub linking inline roles {{{
 
 extlinks = {
-    'iss': ('https://github.com/kovidgoyal/kitty/issues/%s', '#%s'),
-    'pull': ('https://github.com/kovidgoyal/kitty/pull/%s', '#%s'),
-    'disc': ('https://github.com/kovidgoyal/kitty/discussions/%s', '#%s'),
-    'repo_folder': ('https://github.com/kovidgoyal/kitty/tree/master/%s', '#%s'),
-    'repo_file': ('https://github.com/kovidgoyal/kitty/blob/master/%s', '#%s'),
+    'iss': ('https://github.com/kovidgoyal/datty/issues/%s', '#%s'),
+    'pull': ('https://github.com/kovidgoyal/datty/pull/%s', '#%s'),
+    'disc': ('https://github.com/kovidgoyal/datty/discussions/%s', '#%s'),
+    'repo_folder': ('https://github.com/kovidgoyal/datty/tree/master/%s', '#%s'),
+    'repo_file': ('https://github.com/kovidgoyal/datty/blob/master/%s', '#%s'),
 }
 
 
@@ -226,7 +226,7 @@ def commit_role(
         msg = inliner.reporter.error(f'git commit id "{text}" not recognized.', line=lineno)
         prb = inliner.problematic(rawtext, rawtext, msg)
         return [prb], [msg]
-    url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
+    url = f'https://github.com/kovidgoyal/datty/commit/{commit_id}'
     options = normalize_options(options)
     short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
@@ -237,14 +237,14 @@ def commit_role(
 
 
 # CLI docs {{{
-def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
-    from kittens.ssh.main import copy_message, option_text
-    from kitty.cli import option_spec_as_rst
+def write_cli_docs(all_daddy_names: Iterable[str]) -> None:
+    from daddies.ssh.main import copy_message, option_text
+    from datty.cli import option_spec_as_rst
 
     with open('generated/ssh-copy.rst', 'w') as f:
         f.write(option_spec_as_rst(appname='copy', ospec=option_text, heading_char='^', usage='file-or-dir-to-copy ...', message=copy_message))
-    del sys.modules['kittens.ssh.main']
-    from kitty.session import save_as_session_message, save_as_session_options
+    del sys.modules['daddies.ssh.main']
+    from datty.session import save_as_session_message, save_as_session_options
 
     with open('generated/save-as-session.rst', 'w') as f:
         f.write(
@@ -257,7 +257,7 @@ def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
             )
         )
 
-    from kitty.launch import options_spec as launch_options_spec
+    from datty.launch import options_spec as launch_options_spec
 
     with open('generated/launch.rst', 'w') as f:
         f.write(
@@ -266,50 +266,50 @@ def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
                 ospec=launch_options_spec,
                 heading_char='_',
                 message="""\
-Launch an arbitrary program in a new kitty window/tab. Note that
+Launch an arbitrary program in a new datty window/tab. Note that
 if you specify a program-to-run you can use the special placeholder
 :code:`@selection` which will be replaced by the current selection.
 """,
             )
         )
-    with open('generated/cli-kitty.rst', 'w') as f:
-        f.write(option_spec_as_rst(appname='kitty').replace('kitty --to', 'kitty @ --to'))
+    with open('generated/cli-datty.rst', 'w') as f:
+        f.write(option_spec_as_rst(appname='datty').replace('datty --to', 'datty @ --to'))
     as_rst = partial(option_spec_as_rst, heading_char='_')
-    from kitty.rc.base import all_command_names, command_for_name
-    from kitty.remote_control import cli_msg, global_options_spec
+    from datty.rc.base import all_command_names, command_for_name
+    from datty.remote_control import cli_msg, global_options_spec
 
-    with open('generated/cli-kitten-at.rst', 'w') as f:
+    with open('generated/cli-daddy-at.rst', 'w') as f:
         p = partial(print, file=f)
-        p('kitten @')
+        p('daddy @')
         p('-' * 80)
-        p('.. program::', 'kitten @')
-        p('\n\n' + as_rst(global_options_spec, message=cli_msg, usage='command ...', appname='kitten @'))
-        from kitty.rc.base import cli_params_for
+        p('.. program::', 'daddy @')
+        p('\n\n' + as_rst(global_options_spec, message=cli_msg, usage='command ...', appname='daddy @'))
+        from datty.rc.base import cli_params_for
 
         for cmd_name in sorted(all_command_names()):
             func = command_for_name(cmd_name)
             p(f'.. _at-{func.name}:\n')
-            p('kitten @', func.name)
+            p('daddy @', func.name)
             p('-' * 120)
-            p('.. program::', 'kitten @', func.name)
+            p('.. program::', 'daddy @', func.name)
             p('\n\n' + as_rst(*cli_params_for(func)))
-    from kittens.runner import get_kitten_cli_docs
+    from daddies.runner import get_daddy_cli_docs
 
-    for kitten in all_kitten_names:
-        data = get_kitten_cli_docs(kitten)
+    for daddy in all_daddy_names:
+        data = get_daddy_cli_docs(daddy)
         if data:
-            with open(f'generated/cli-kitten-{kitten}.rst', 'w') as f:
+            with open(f'generated/cli-daddy-{daddy}.rst', 'w') as f:
                 p = partial(print, file=f)
-                p('.. program::', 'kitty +kitten', kitten)
-                p('\nSource code for', kitten)
+                p('.. program::', 'datty +daddy', daddy)
+                p('\nSource code for', daddy)
                 p('-' * 72)
-                scurl = f'https://github.com/kovidgoyal/kitty/tree/master/kittens/{kitten}'
-                p(f'\nThe source code for this kitten is `available on GitHub <{scurl}>`_.')
+                scurl = f'https://github.com/kovidgoyal/datty/tree/master/daddies/{daddy}'
+                p(f'\nThe source code for this daddy is `available on GitHub <{scurl}>`_.')
                 p('\nCommand Line Interface')
                 p('-' * 72)
-                appname = f'kitten {kitten}'
-                if kitten in ('panel', 'broadcast', 'remote_file'):
-                    appname = 'kitty +' + appname
+                appname = f'daddy {daddy}'
+                if daddy in ('panel', 'broadcast', 'remote_file'):
+                    appname = 'datty +' + appname
                 p('\n\n' + option_spec_as_rst(data['options'], message=data['help_text'], usage=data['usage'], appname=appname, heading_char='^'))
 
 
@@ -361,7 +361,7 @@ def write_custom_shader_docs() -> None:  # {{{
 
 
 def write_color_names_table() -> None:  # {{{
-    from kitty.fast_data_types import all_color_names
+    from datty.fast_data_types import all_color_names
 
     def s(c: Any) -> str:
         return f'{c.red:02x}/{c.green:02x}/{c.blue:02x}'
@@ -380,7 +380,7 @@ def write_color_names_table() -> None:  # {{{
 
 
 def write_remote_control_protocol_docs() -> None:  # {{{
-    from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
+    from datty.rc.base import RemoteCommand, all_command_names, command_for_name
 
     field_pat = re.compile(r'\s*([^:]+?)\s*:\s*(.+)')
 
@@ -450,7 +450,7 @@ class ConfLexer(RegexLexer):
     def map_flags(self: RegexLexer, val: str, start_pos: int) -> Iterator[Tuple[int, Any, str]]:
         expecting_arg = ''
         s = Shlex(val)
-        from kitty.options.utils import allowed_key_map_options
+        from datty.options.utils import allowed_key_map_options
 
         last_pos = 0
         while (tok := s.next_word())[0] > -1:
@@ -615,7 +615,7 @@ def parse_action_node(env: Any, sig: str, signode: Any) -> str:
 def process_opt_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
     conf_name, opt = target.partition('.')[::2]
     if not opt:
-        conf_name, opt = 'kitty', conf_name
+        conf_name, opt = 'datty', conf_name
     full_name = f'{conf_name}.{opt}'
     return title, opt_aliases.get(full_name, full_name)
 
@@ -627,7 +627,7 @@ def process_action_link(env: Any, refnode: Any, has_explicit_title: bool, title:
 def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
     conf_name, slug = target.partition('.')[::2]
     if not slug:
-        conf_name, slug = 'kitty', conf_name
+        conf_name, slug = 'datty', conf_name
     full_name = f'{conf_name}.{slug}'
     try:
         target, stitle = shortcut_slugs[full_name]
@@ -639,7 +639,7 @@ def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, titl
     return title, target
 
 
-def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
+def write_conf_docs(app: Any, all_daddy_names: Iterable[str]) -> None:
     app.add_lexer('conf', ConfLexer() if version_info[0] < 3 else ConfLexer)
     app.add_object_type(
         'opt',
@@ -678,28 +678,28 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
             print('.. highlight:: conf\n', file=f)
             f.write('\n'.join(definition.as_rst(name, shortcut_slugs)))
 
-        conf_name = re.sub(r'^kitten-', '', name) + '.conf'
+        conf_name = re.sub(r'^daddy-', '', name) + '.conf'
         with open(f'generated/conf/{conf_name}', 'w', encoding='utf-8') as f:
             text = '\n'.join(definition.as_conf(commented=True))
             print(text, file=f)
 
-    from kitty.options.definition import definition
+    from datty.options.definition import definition
 
-    generate_default_config(definition, 'kitty')
+    generate_default_config(definition, 'datty')
 
-    from kittens.runner import get_kitten_conf_docs
+    from daddies.runner import get_daddy_conf_docs
 
-    for kitten in all_kitten_names:
-        defn = get_kitten_conf_docs(kitten)
+    for daddy in all_daddy_names:
+        defn = get_daddy_conf_docs(daddy)
         if defn is not None:
-            generate_default_config(defn, f'kitten-{kitten}')
+            generate_default_config(defn, f'daddy-{daddy}')
 
-    from kitty.actions import as_rst
+    from datty.actions import as_rst
 
     with open('generated/actions.rst', 'w', encoding='utf-8') as f:
         f.write(as_rst())
 
-    from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
+    from datty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
 
     with open('generated/matching.rst', 'w') as f:
         print('Matching windows', file=f)
@@ -783,28 +783,28 @@ def monkeypatch_man_writer() -> None:
 
 
 def setup_man_pages() -> None:
-    from kittens.runner import get_kitten_cli_docs
+    from daddies.runner import get_daddy_cli_docs
 
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for x in glob.glob(os.path.join(base, 'docs/kittens/*.rst')):
+    for x in glob.glob(os.path.join(base, 'docs/daddies/*.rst')):
         kn = os.path.basename(x).rpartition('.')[0]
-        if kn in ('custom', 'developing-builtin-kittens'):
+        if kn in ('custom', 'developing-builtin-daddies'):
             continue
-        cd = get_kitten_cli_docs(kn) or {}
+        cd = get_daddy_cli_docs(kn) or {}
         khn = kn.replace('_', '-')
-        man_pages.append((f'kittens/{kn}', 'kitten-' + khn, cd.get('short_desc', 'kitten Documentation'), [author], 1))
+        man_pages.append((f'daddies/{kn}', 'daddy-' + khn, cd.get('short_desc', 'daddy Documentation'), [author], 1))
     monkeypatch_man_writer()
 
 
 def build_extra_man_pages() -> None:
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    kitten = os.environ.get('KITTEN_EXE_FOR_DOCS', os.path.join(base, 'kitty/launcher/kitten'))
-    if not os.path.exists(kitten):
-        kitten = os.path.join(base, 'kitty/launcher/kitty.app/Contents/MacOS/kitten')
-        if not os.path.exists(kitten):
-            subprocess.call(['find', os.path.join(base, 'kitty/launcher')])
-            raise Exception(f'The kitten binary {kitten} is not built cannot generate man pages')
-    raw = subprocess.check_output([kitten, '-h']).decode()
+    daddy = os.environ.get('DADDY_EXE_FOR_DOCS', os.path.join(base, 'datty/launcher/daddy'))
+    if not os.path.exists(daddy):
+        daddy = os.path.join(base, 'datty/launcher/datty.app/Contents/MacOS/daddy')
+        if not os.path.exists(daddy):
+            subprocess.call(['find', os.path.join(base, 'datty/launcher')])
+            raise Exception(f'The daddy binary {daddy} is not built cannot generate man pages')
+    raw = subprocess.check_output([daddy, '-h']).decode()
     started = 0
     names = set()
     for line in raw.splitlines():
@@ -813,11 +813,11 @@ def build_extra_man_pages() -> None:
         q = line.strip()
         if started and len(q.split()) == 1 and not q.startswith('-') and ':' not in q:
             if len(line) - len(line.lstrip()) == started:
-                if not os.path.exists(os.path.join(base, f'docs/kittens/{q}.rst')):
+                if not os.path.exists(os.path.join(base, f'docs/daddies/{q}.rst')):
                     names.add(q)
     cwd = os.path.join(base, 'docs/_build/man')
-    subprocess.check_call([kitten, '__generate_man_pages__'], cwd=cwd)
-    subprocess.check_call([kitten, '__generate_man_pages__'] + list(names), cwd=cwd)
+    subprocess.check_call([daddy, '__generate_man_pages__'], cwd=cwd)
+    subprocess.check_call([daddy, '__generate_man_pages__'] + list(names), cwd=cwd)
 
 
 if building_man_pages:
@@ -831,9 +831,9 @@ def build_finished(app: Any, exception: Any) -> None:
 
 def setup(app: Any) -> None:
     os.makedirs('generated/conf', exist_ok=True)
-    from kittens.runner import all_kitten_names
+    from daddies.runner import all_daddy_names
 
-    kn = all_kitten_names()
+    kn = all_daddy_names()
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
     write_color_names_table()

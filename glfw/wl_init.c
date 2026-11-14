@@ -31,7 +31,7 @@
 #include "backend_utils.h"
 #include "wl_client_side_decorations.h"
 #include "linux_desktop_settings.h"
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 #include "wl_text_input.h"
 #include "wayland-text-input-unstable-v3-client-protocol.h"
 #include "wayland-pointer-gestures-unstable-v1-client-protocol.h"

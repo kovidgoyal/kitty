@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleDisplayName</key>
+	<string>datty-quick-access</string>
+	<key>CFBundleDocumentTypes</key>
+	<array/>
+	<key>CFBundleExecutable</key>
+	<string>datty-quick-access</string>
+	<key>CFBundleGetInfoString</key>
+	<string>datty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/datty/</string>
+	<key>CFBundleIconFile</key>
+	<string>datty.icns</string>
+	<key>CFBundleIconName</key>
+	<string>datty</string>
+	<key>CFBundleIdentifier</key>
+	<string>net.kovidgoyal.datty-quick-access</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>datty-quick-access</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.50.0</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array/>
+	<key>CFBundleVersion</key>
+	<string>0.50.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSBackgroundOnly</key>
+	<true/>
+	<key>LSEnvironment</key>
+	<dict>
+		<key>DATTY_LAUNCHED_BY_LAUNCH_SERVICES</key>
+		<string>1</string>
+	</dict>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0.0</string>
+	<key>LSRequiresNativeExecution</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>A program running inside datty would like to access AppleScript.</string>
+	<key>NSAppleScriptEnabled</key>
+	<false/>
+	<key>NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac</key>
+	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>A program running inside datty would like to access Bluetooth.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>A program running inside datty would like to access your calendar data.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>A program running inside datty would like to access the camera.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>A program running inside datty would like to access your contacts.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright 2026, Kovid Goyal</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>A program running inside datty would like to access local network.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<string>A program running inside datty would like to access your location temporarily.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>A program running inside datty would like to access your location information.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>A program running inside datty would like to access the microphone.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>A program running inside datty would like to access motion data.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>A program running inside datty would like to access your photo library.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>A program running inside datty would like to access your reminders.</string>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<string>NO</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Quick access to datty built from source</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>quickAccessTerminal</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSServiceCategory</key>
+				<string>None</string>
+			</dict>
+		</dict>
+	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>A program running inside datty would like to access speech recognition.</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>A program running inside datty requires elevated privileges.</string>
+	<key>TICapsLockLanguageSwitchCapable</key>
+	<true/>
+</dict>
+</plist>

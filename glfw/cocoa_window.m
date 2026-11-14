@@ -26,7 +26,7 @@
 // It is fine to use C99 in this file because it will not be built with VS
 //========================================================================
 
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 #include "glfw3.h"
 #include "internal.h"
 
@@ -705,7 +705,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
     }
     // Because of a bug in macOS Tahoe we cannot redraw the window in response
     // to a resize event that was caused by a screen change as the OpenGL
-    // context is not ready yet. See: https://github.com/kovidgoyal/kitty/issues/8983
+    // context is not ready yet. See: https://github.com/kovidgoyal/datty/issues/8983
     if (window->ns.resizeCallback && !is_screen_change && !is_fullscreen && window->ns.live_resize_in_progress) window->ns.resizeCallback((GLFWwindow *)window);
 }
 
@@ -940,12 +940,12 @@ static void flush_focus_loss_text(_GLFWwindow *window);
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
         input_source_at_last_key_event = nil;
         in_key_handler = 0;
-        self.identifier = @"kitty-content-view";
+        self.identifier = @"datty-content-view";
 
         [self updateTrackingAreas];
         char tab_mime[64], window_mime[64];
-        snprintf(tab_mime, sizeof(tab_mime), "application/net.kovidgoyal.kitty-tab-%d", getpid());
-        snprintf(window_mime, sizeof(window_mime), "application/net.kovidgoyal.kitty-window-%d", getpid());
+        snprintf(tab_mime, sizeof(tab_mime), "application/net.kovidgoyal.datty-tab-%d", getpid());
+        snprintf(window_mime, sizeof(window_mime), "application/net.kovidgoyal.datty-window-%d", getpid());
         NSMutableArray *types = [NSMutableArray arrayWithObjects:NSPasteboardTypeFileURL,
                                                                  NSPasteboardTypeString,
                                                                  NSPasteboardTypeURL,
@@ -1538,7 +1538,7 @@ reset_drop_copy_mimes(_GLFWDropData *d) {
 // from_self is true only for a drag started by this process, which is the same
 // scope in which the rest of the code recognises its own drags, since the MIME
 // types used for tab and window drags have the pid embedded in them. A drag
-// from a different kitty process is therefore treated like any other
+// from a different datty process is therefore treated like any other
 // application's drag.
 static bool
 file_promise_is_for_a_file(NSFilePromiseReceiver *receiver, bool from_self) {
@@ -1702,7 +1702,7 @@ build_uri_list(_GLFWDropData *d) {
     // The keys are numbered consecutively from zero so that the uri-list is in
     // the same order as the dragged items, unlike dictionary iteration order.
     for (unsigned i = 0;; i++) {
-        id x = path_map[[NSString stringWithFormat:@"kitty-internal/uri-list-item-%u", i]];
+        id x = path_map[[NSString stringWithFormat:@"datty-internal/uri-list-item-%u", i]];
         if (x == nil) break;
         // A promise that was fulfilled without error but produced no file is
         // recorded as NSNull, see the reader block in performDragOperation:
@@ -1757,7 +1757,7 @@ build_uri_list(_GLFWDropData *d) {
         // open, so deleting the directory afterwards fails, and unlike an item
         // being replaced, these files have to outlive the drop, see
         // glfwCocoaPreserveDroppedFilePromises().
-        NSString *name = [NSString stringWithFormat:@"kitty-dropped-files-%@", [[NSProcessInfo processInfo] globallyUniqueString]];
+        NSString *name = [NSString stringWithFormat:@"datty-dropped-files-%@", [[NSProcessInfo processInfo] globallyUniqueString]];
         tempDirURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:name] isDirectory:YES];
         NSError *mkdirError = nil;
         if (![[NSFileManager defaultManager] createDirectoryAtURL:tempDirURL
@@ -1818,14 +1818,14 @@ build_uri_list(_GLFWDropData *d) {
                                                    // with a de-duplicated name, such as "message 2.eml", but
                                                    // nothing is ever written there. Ignore such phantom
                                                    // files, Apple Mail does this, see
-                                                   // https://github.com/kovidgoyal/kitty/issues/10628
+                                                   // https://github.com/kovidgoyal/datty/issues/10628
                                                    const bool missing = !error && ![[NSFileManager defaultManager] fileExistsAtPath:[fileURL path]];
                                                    // A promise of a file contributes its path to the
                                                    // uri-list. A phantom is recorded as NSNull rather than
                                                    // left out, so that the promises fulfilled after it keep
                                                    // their positions in the uri-list.
                                                    if (is_for_a_file)
-                                                       results[[NSString stringWithFormat:@"kitty-internal/uri-list-item-%u", url_list_idx]] =
+                                                       results[[NSString stringWithFormat:@"datty-internal/uri-list-item-%u", url_list_idx]] =
                                                            error ? (id)error : (missing ? (id)[NSNull null] : (id)fileURL);
                                                    // and the contents are made available under the MIME types
                                                    // of the promised data. Nothing is claimed for a phantom,
@@ -2013,7 +2013,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
 // clients read this to find out what surrounds the point at which text will be
 // inserted. Without it, an input method that inserts a space between Latin and
 // CJK text has nothing to base that decision on and so inserts nothing.
-// See https://github.com/kovidgoyal/kitty/issues/10492
+// See https://github.com/kovidgoyal/datty/issues/10492
 - (NSString *)documentAroundCursor:(NSUInteger *)insertion_point {
     NSString *before = @"", *after = @"";
     GLFWIMETextAroundCursor t = {0};
@@ -2045,7 +2045,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
 - (NSRange)selectedRange {
     // Never return kEmptyRange (NSNotFound, 0) from here: macOS dictation
     // fails if it cannot tell where text is to be inserted.
-    // See https://github.com/kovidgoyal/kitty/issues/3732
+    // See https://github.com/kovidgoyal/datty/issues/3732
     NSUInteger insertion_point;
     [self documentAroundCursor:&insertion_point];
     const NSUInteger marked_len = [markedText length];
@@ -2101,7 +2101,7 @@ glfwCocoaPreserveDroppedFilePromises(GLFWwindow *w) {
         markedTextSelectedRange = selectedRange;
     }
     if (!in_key_handler || in_key_handler == 2) {
-        debug_input("Updating IME text in kitty from setMarkedText called from %s: %s\n", in_key_handler ? "flagsChanged" : "event loop", _glfw.ns.text);
+        debug_input("Updating IME text in datty from setMarkedText called from %s: %s\n", in_key_handler ? "flagsChanged" : "event loop", _glfw.ns.text);
         GLFWkeyevent glfw_keyevent = {.text = [[markedText string] UTF8String], .ime_state = GLFW_IME_PREEDIT_CHANGED};
         [self setPreEditCursorInEvent:&glfw_keyevent];
         _glfwInputKeyboard(window, &glfw_keyevent);
@@ -2192,7 +2192,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
             // macOS applications do, so that it is not lost
             [self commitMarkedText];
         } else {
-            // Focus moved to another kitty window or the window is being
+            // Focus moved to another datty window or the window is being
             // closed, cancel the composition
             [input_context discardMarkedText];
             [self unmarkText];
@@ -2297,7 +2297,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     // to the fixed-size buffer used by the key handlers.
     if (!in_key_handler || committing_marked_text) {
         if (!is_ascii_control_char(utf8[0])) {
-            debug_input("Sending text to kitty from insertText called from event loop: %s\n", utf8);
+            debug_input("Sending text to datty from insertText called from event loop: %s\n", utf8);
             GLFWkeyevent glfw_keyevent = {.text = utf8, .ime_state = GLFW_IME_COMMIT_TEXT};
             _glfwInputKeyboard(window, &glfw_keyevent);
             if (committing_marked_text) marked_text_committed_by_ime = true;
@@ -2314,7 +2314,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
         if (in_key_handler == 2 && _glfw.ns.text[0]) {
             if (!is_ascii_control_char(_glfw.ns.text[0])) {
-                debug_input("Sending text to kitty from insertText called from flagsChanged: %s\n", _glfw.ns.text);
+                debug_input("Sending text to datty from insertText called from flagsChanged: %s\n", _glfw.ns.text);
                 GLFWkeyevent glfw_keyevent = {.text = _glfw.ns.text, .ime_state = GLFW_IME_COMMIT_TEXT};
                 _glfwInputKeyboard(window, &glfw_keyevent);
             }
@@ -2342,7 +2342,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (BOOL)isAccessibilitySelectorAllowed:(SEL)selector {
     // Allow accessibility selectors needed for dictation and other accessibility features
-    // See https://github.com/kovidgoyal/kitty/issues/3732
+    // See https://github.com/kovidgoyal/datty/issues/3732
     if (selector == @selector(accessibilityRole) || selector == @selector(accessibilitySelectedText) || selector == @selector(accessibilitySelectedTextRange) ||
         selector == @selector(accessibilityNumberOfCharacters) || selector == @selector(accessibilityInsertionPointLineNumber) ||
         selector == @selector(accessibilityValue) || selector == @selector(setAccessibilityValue:) || selector == @selector(accessibilityStringForRange:))
@@ -2350,7 +2350,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
     // Allow accessibility selectors needed for external window management tools
     // (e.g. Easy Move+Resize) to find and manipulate the window.
-    // See https://github.com/kovidgoyal/kitty/issues/5561
+    // See https://github.com/kovidgoyal/datty/issues/5561
     if (selector == @selector(accessibilityWindow) || selector == @selector(accessibilityParent) || selector == @selector(accessibilityPosition) ||
         selector == @selector(setAccessibilityPosition:) || selector == @selector(accessibilitySize) || selector == @selector(setAccessibilitySize:))
         return YES;
@@ -2379,7 +2379,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 // Accessibility methods required for dictation support
-// See https://github.com/kovidgoyal/kitty/issues/3732
+// See https://github.com/kovidgoyal/datty/issues/3732
 
 - (NSRange)accessibilitySelectedTextRange {
     return [self selectedRange];
@@ -2432,7 +2432,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 // Selected text as input to be sent to Services
-// For example, after selecting an absolute path, open the global menu bar kitty->Services and click `Show in Finder`.
+// For example, after selecting an absolute path, open the global menu bar datty->Services and click `Show in Finder`.
 - (BOOL)writeSelectionToPasteboard:(NSPasteboard *)pboard types:(NSArray *)types {
     if (!_glfw.callbacks.get_current_selection) return NO;
     char *text = _glfw.callbacks.get_current_selection();
@@ -3228,7 +3228,7 @@ _glfwPlatformShowWindow(_GLFWwindow *window, bool move_to_active_screen) {
         // assigned them. In particular, touching the collection behavior or
         // the space assignment of such a window discards any assignment the
         // user has made via the Dock icon's Options->Assign To menu.
-        // See https://github.com/kovidgoyal/kitty/issues/10581
+        // See https://github.com/kovidgoyal/datty/issues/10581
         [nw orderFront:nil];
     } else {
         // Cocoa has a bug where when showing a hidden window after
@@ -3236,7 +3236,7 @@ _glfwPlatformShowWindow(_GLFWwindow *window, bool move_to_active_screen) {
         // to the current space even though it has NSWindowCollectionBehaviorCanJoinAllSpaces
         // probably because it wasnt added to the temp space used for
         // fullscreen.
-        // See https://github.com/kovidgoyal/kitty/issues/8740
+        // See https://github.com/kovidgoyal/datty/issues/8740
         //
         // Work around this by explicitly assigning the window
         // to the current active space via the private CGS API before showing it.
@@ -3847,7 +3847,7 @@ _glfwPlatformToggleFullscreen(_GLFWwindow *w, unsigned int flags) {
         if (!in_fullscreen && !_glfwPlatformWindowVisible(w)) {
             // Bug in Apple's fullscreen implementation causes fullscreen to
             // not work before window is shown (at creation) if another window
-            // is already fullscreen. Le sigh. https://github.com/kovidgoyal/kitty/issues/7448
+            // is already fullscreen. Le sigh. https://github.com/kovidgoyal/datty/issues/7448
             _glfwPlatformAddTimer(0, false, make_window_fullscreen_after_show, (void *)(uintptr_t)(w->id), NULL);
             return made_fullscreen;
         }
@@ -4172,7 +4172,7 @@ glfwCocoaSetWindowResizeCallback(GLFWwindow *w, GLFWcocoarenderframefun cb) {
 
 static void
 clear_title_bar_background_views(NSWindow *window) {
-#define tag @"kitty-for-transparent-titlebar"
+#define tag @"datty-for-transparent-titlebar"
     NSView *contentView = window.contentView, *titlebarContainer = contentView ? contentView.superview : nil;
     if (titlebarContainer) {
         for (NSView *subview in [titlebarContainer viewsWithIdentifier:tag]) [subview removeFromSuperview];
@@ -4278,7 +4278,7 @@ glfwCocoaSetWindowChrome(
             // Use an almost fully transparent color so that the final color is effectively just the color from
             // the surface. An actual clear color cannot be used because:
             // 1) macOS special cases a clear window background by not drawing the system titlebar background
-            //    either, making the titlebar fully transparent. See https://github.com/kovidgoyal/kitty/issues/10540
+            //    either, making the titlebar fully transparent. See https://github.com/kovidgoyal/datty/issues/10540
             // 2) it causes blurring of shadows at window corners with the desktop background
             window_background = [NSColor colorWithWhite:0 alpha:0.001f];
         }
@@ -4337,7 +4337,7 @@ glfwCocoaSetWindowChrome(
                 break;
         }
         // shadow causes burn-in/ghosting because cocoa doesnt invalidate it on OS window resize/minimize/restore.
-        // https://github.com/kovidgoyal/kitty/issues/6439
+        // https://github.com/kovidgoyal/datty/issues/6439
         if (is_transparent) has_shadow = false;
         bool hide_titlebar_buttons = !in_fullscreen && window->ns.titlebar_hidden;
         [nsw setTitlebarAppearsTransparent:window->ns.last_applied_titlebar_settings.transparent];
@@ -4373,7 +4373,7 @@ glfwCocoaSetWindowChrome(
         [[nsw standardWindowButton:NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
         [[nsw standardWindowButton:NSWindowZoomButton] setHidden:hide_titlebar_buttons];
         // Apple throws a hissy fit if one attempts to clear the value of NSWindowStyleMaskFullScreen outside of a full screen transition
-        // event. See https://github.com/kovidgoyal/kitty/issues/7106
+        // event. See https://github.com/kovidgoyal/datty/issues/7106
         NSWindowStyleMask fsmask = current_style_mask & NSWindowStyleMaskFullScreen;
         window->ns.pre_full_screen_style_mask = getStyleMask(window);
         NSWindowStyleMask desired_mask;
@@ -4689,7 +4689,7 @@ add_uri_list_drag_items(
         if (line.length == 0 || [line hasPrefix:@"#"]) continue;
         NSURL *url = [NSURL URLWithString:line];
         if (use_promises && [[url scheme] caseInsensitiveCompare:@"file"] == NSOrderedSame) {
-            snprintf(buf, sizeof(buf), "kitty-internal/uri-list-item-%d", count);
+            snprintf(buf, sizeof(buf), "datty-internal/uri-list-item-%d", count);
             NSString *filename = [url lastPathComponent];
             NSURLComponents *components = [NSURLComponents componentsWithString:line];
             bool is_dir = [components.percentEncodedPath hasSuffix:@"/"];
@@ -4717,7 +4717,7 @@ add_drag_items(_GLFWwindow *window, NSMutableArray<NSDraggingItem *> *dragItems,
     }
     NSString *utiString = mime_to_uti(mime_item->mime_type);
     id w;
-    // remote client URI list must be set a file promise so that the kitty drag
+    // remote client URI list must be set a file promise so that the datty drag
     // source code receives a request for it and can then fetch the remote
     // files.
     if (mime_item->optional_data) {
@@ -4997,7 +4997,7 @@ _glfwPlatformStartDrag(_GLFWwindow *window, const GLFWimage *thumbnail) {
         UTType *type = [UTType typeWithMIMEType:@(mimeType)];
         if (type) extension = type.preferredFilenameExtension;
     }
-    return [NSString stringWithFormat:@"kitty-drag-source-%@.%@", [[NSUUID UUID] UUIDString], extension];
+    return [NSString stringWithFormat:@"datty-drag-source-%@.%@", [[NSUUID UUID] UUIDString], extension];
 }
 
 - (void)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/datty"
 )
 
 // key encoding mappings {{{
@@ -261,20 +261,20 @@ func ParseShortcut(spec string) *ParsedShortcut {
 	}
 	parts := strings.Split(ospec, "+")
 	key_name := parts[len(parts)-1]
-	if val, ok := kitty.FunctionalKeyNameAliases[strings.ToUpper(key_name)]; ok {
+	if val, ok := datty.FunctionalKeyNameAliases[strings.ToUpper(key_name)]; ok {
 		key_name = val
 	}
 	if _, is_functional_key := name_to_functional_number_map[strings.ToUpper(key_name)]; is_functional_key {
 		key_name = strings.ToUpper(key_name)
 	} else {
-		if val, ok := kitty.CharacterKeyNameAliases[strings.ToUpper(key_name)]; ok {
+		if val, ok := datty.CharacterKeyNameAliases[strings.ToUpper(key_name)]; ok {
 			key_name = val
 		}
 	}
 	ans := ParsedShortcut{KeyName: key_name}
 	if len(parts) > 1 {
 		for _, q := range parts[:len(parts)-1] {
-			val, ok := kitty.ConfigModMap[strings.ToUpper(q)]
+			val, ok := datty.ConfigModMap[strings.ToUpper(q)]
 			if ok {
 				ans.Mods |= KeyModifiers(val)
 			} else {

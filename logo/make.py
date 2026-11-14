@@ -10,7 +10,7 @@ import sys
 from copy import deepcopy
 from typing import Any
 
-SRC = 'kitty.svg'
+SRC = 'datty.svg'
 base = os.path.dirname(os.path.abspath(__file__))
 
 # To generate this template create an icon using Icon Composer on macOS and in
@@ -49,7 +49,7 @@ def run(*args: str) -> None:
     try:
         subprocess.check_call(args)
     except OSError:
-        raise SystemExit(f'You are missing the {args[0]} program needed to generate the kitty logo')
+        raise SystemExit(f'You are missing the {args[0]} program needed to generate the datty logo')
 
 
 def get_svg_viewbox(file_path: str) -> tuple[float, ...]:
@@ -101,8 +101,8 @@ def create_assets() -> None:
         '--output-partial-info-plist',
         '/dev/stdout',
     ]
-    icon = create_icon('kitty', abspath(SRC), base)
-    run(*(actool + ['--app-icon', 'kitty', icon]))
+    icon = create_icon('datty', abspath(SRC), base)
+    run(*(actool + ['--app-icon', 'datty', icon]))
     shutil.rmtree(icon)
 
 
@@ -119,10 +119,10 @@ def main() -> None:
         if sys.argv[-1] == 'remote-macos':
             return
     else:
-        run('ssh', 'ox', 'zsh', '-ilc', '~/bin/update-kitty && python3 ~/kitty-src/logo/make.py remote-macos')
-        run('rsync', '-avz', '--include=*.icns', '--include=*.car', '--exclude=*', 'ox:~/kitty-src/logo/', base + '/')
-    render(abspath('kitty.png'))
-    render(abspath('kitty-128.png'), sz=128)
+        run('ssh', 'ox', 'zsh', '-ilc', '~/bin/update-datty && python3 ~/datty-src/logo/make.py remote-macos')
+        run('rsync', '-avz', '--include=*.icns', '--include=*.car', '--exclude=*', 'ox:~/datty-src/logo/', base + '/')
+    render(abspath('datty.png'))
+    render(abspath('datty-128.png'), sz=128)
 
 
 if __name__ == '__main__':

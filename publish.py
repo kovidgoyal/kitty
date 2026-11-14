@@ -25,9 +25,9 @@ from urllib.parse import urlencode, urlparse
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 docs_dir = os.path.abspath('docs')
-publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'kitty'))
+publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'datty'))
 building_nightly = False
-with open('kitty/constants.py') as f:
+with open('datty/constants.py') as f:
     raw = f.read()
 nv = re.search(r'^version: Version\s+=\s+Version\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE)
 if nv is not None:
@@ -164,7 +164,7 @@ def add_old_redirects(loc: str) -> None:
                     link_name = os.path.join(base, f'{bname}.html') if base else f'{bname}.html'
                     generate_redirect_html(link_name, bname)
 
-    old_unicode_input_path = os.path.join(loc, 'kittens', 'unicode-input')
+    old_unicode_input_path = os.path.join(loc, 'daddies', 'unicode-input')
     os.makedirs(old_unicode_input_path, exist_ok=True)
     generate_redirect_html(os.path.join(old_unicode_input_path, 'index.html'), '../unicode_input')
     generate_redirect_html(f'{old_unicode_input_path}.html', 'unicode_input')
@@ -182,9 +182,9 @@ def run_website(args: Any) -> None:
         f.write(version)
     shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
     os.chdir(os.path.dirname(publish_dir))
-    subprocess.check_call(['optipng', '-o7'] + glob.glob('kitty/_images/social_previews/*.png'))
-    subprocess.check_call(['git', 'add', 'kitty'])
-    subprocess.check_call(['git', 'commit', '-m', 'kitty website updates'])
+    subprocess.check_call(['optipng', '-o7'] + glob.glob('datty/_images/social_previews/*.png'))
+    subprocess.check_call(['git', 'add', 'datty'])
+    subprocess.check_call(['git', 'commit', '-m', 'datty website updates'])
     subprocess.check_call(['git', 'push'])
 
 
@@ -197,14 +197,14 @@ def sign_file(path: str) -> None:
 
 def run_sdist(args: Any) -> None:
     with tempfile.TemporaryDirectory() as tdir:
-        base = os.path.join(tdir, f'kitty-{version}')
+        base = os.path.join(tdir, f'datty-{version}')
         os.mkdir(base)
         subprocess.check_call(f'git archive HEAD | tar -x -C {base}', shell=True)
         dest = os.path.join(base, 'docs', '_build')
         os.mkdir(dest)
         for x in 'html man'.split():
             shutil.copytree(os.path.join(docs_dir, '_build', x), os.path.join(dest, x))
-        dest = os.path.abspath(os.path.join('build', f'kitty-{version}.tar'))
+        dest = os.path.abspath(os.path.join('build', f'datty-{version}.tar'))
         subprocess.check_call(['tar', '-cf', dest, os.path.basename(base)], cwd=tdir)
         with suppress(FileNotFoundError):
             os.remove(f'{dest}.xz')
@@ -213,7 +213,7 @@ def run_sdist(args: Any) -> None:
 
 
 def run_sbom(args: Any) -> None:
-    call(f'python ../bypy sbom --output build/kitty-{version}.tar.xz.spdx.json --url https://sw.kovidgoyal.net/kitty/binary kovidgoyal/{appname} {version}')
+    call(f'python ../bypy sbom --output build/datty-{version}.tar.xz.spdx.json --url https://sw.kovidgoyal.net/datty/binary kovidgoyal/{appname} {version}')
 
 
 class ReadFileWithProgressReporting(io.FileIO):  # {{{
@@ -284,7 +284,7 @@ class GitHub:  # {{{
         headers = {
             'Authorization': self.auth,
             'Accept': 'application/vnd.github+json',
-            'User-Agent': 'kitty',
+            'User-Agent': 'datty',
             'X-GitHub-Api-Version': '2022-11-28',
         }
         if params:
@@ -353,7 +353,7 @@ class GitHub:  # {{{
             url,
             'Failed to update nightly release description',
             body=f'Nightly release, generated on: {now} from commit: {commit}.'
-            ' For how to install nightly builds, see: https://sw.kovidgoyal.net/kitty/binary/#customizing-the-installation',
+            ' For how to install nightly builds, see: https://sw.kovidgoyal.net/datty/binary/#customizing-the-installation',
         )
 
     def __call__(self) -> None:
@@ -443,7 +443,7 @@ class GitHub:  # {{{
             'target_commitish': 'master',
             'name': f'version {self.version}',
             'body': f'Release version {self.version}.'
-            ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog/#detailed-list-of-changes'
+            ' For changelog, see https://sw.kovidgoyal.net/datty/changelog/#detailed-list-of-changes'
             ' GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg',
             'draft': False,
             'prerelease': False,
@@ -468,9 +468,9 @@ def files_for_upload() -> Dict[str, str]:
     files = {}
     signatures = {}
     for f, desc in {
-        'macos/dist/kitty-{}.dmg': 'macOS dmg',
-        'linux/64/dist/kitty-{}-x86_64.txz': 'Linux amd64 binary bundle',
-        'linux/arm64/dist/kitty-{}-arm64.txz': 'Linux arm64 binary bundle',
+        'macos/dist/datty-{}.dmg': 'macOS dmg',
+        'linux/64/dist/datty-{}-x86_64.txz': 'Linux amd64 binary bundle',
+        'linux/arm64/dist/datty-{}-arm64.txz': 'Linux arm64 binary bundle',
     }.items():
         path = os.path.join('bypy', 'b', f.format(version))
         if not os.path.exists(path):
@@ -478,7 +478,7 @@ def files_for_upload() -> Dict[str, str]:
         files[path] = desc
         signatures[path] = f'GPG signature for {desc}'
     b = len(files)
-    for path in glob.glob('build/static/kitten-*'):
+    for path in glob.glob('build/static/daddy-*'):
         if path.endswith('.sig'):
             continue
         path = os.path.abspath(path)
@@ -488,9 +488,9 @@ def files_for_upload() -> Dict[str, str]:
     if len(files) == b:
         raise SystemExit('No static binaries found')
 
-    files[f'build/kitty-{version}.tar.xz'] = 'Source code'
-    files[f'build/kitty-{version}.tar.xz.sig'] = 'Source code GPG signature'
-    files[f'build/kitty-{version}.tar.xz.spdx.json'] = 'SBOM for kitty (all builds)'
+    files[f'build/datty-{version}.tar.xz'] = 'Source code'
+    files[f'build/datty-{version}.tar.xz.sig'] = 'Source code GPG signature'
+    files[f'build/datty-{version}.tar.xz.spdx.json'] = 'SBOM for datty (all builds)'
     for path, desc in signatures.items():
         sign_file(path)
         files[f'{path}.sig'] = desc
@@ -577,7 +577,7 @@ def exec_actions(actions: Iterable[str], args: Any) -> None:
 
 def main() -> None:
     global building_nightly
-    parser = argparse.ArgumentParser(description='Publish kitty')
+    parser = argparse.ArgumentParser(description='Publish datty')
     parser.add_argument(
         '--only', default=False, action='store_true', help='Only run the specified action, by default the specified action and all sub-sequent actions are run'
     )

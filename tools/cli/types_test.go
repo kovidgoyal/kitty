@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/datty/tools/utils/shlex"
 
 	"github.com/google/go-cmp/cmp"
 )

@@ -1,0 +1,29 @@
+// License: GPLv3 Copyright: 2023, Kovid Goyal, <kovid at kovidgoyal.net>
+
+package tui
+
+import (
+	"fmt"
+
+	"github.com/emmansun/base64"
+
+	"github.com/kovidgoyal/datty/tools/utils"
+)
+
+var _ = fmt.Print
+
+func DCSToDatty(msgtype, payload string) (string, error) {
+	data := base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(payload))
+	ans := "\x1bP@datty-" + msgtype + "|" + data
+	tmux := TmuxSocketAddress()
+	if tmux != "" {
+		err := TmuxAllowPassthrough()
+		if err != nil {
+			return "", err
+		}
+		ans = "\033Ptmux;\033" + ans + "\033\033\\\033\\"
+	} else {
+		ans += "\033\\"
+	}
+	return ans, nil
+}

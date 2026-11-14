@@ -12,7 +12,7 @@ import (
 
 	"github.com/emmansun/base64"
 
-	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/datty/tools/utils/images"
 )
 
 func set_payload_data(io_data *rc_io_data, data string) {

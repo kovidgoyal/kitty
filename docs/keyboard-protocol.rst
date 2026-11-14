@@ -19,7 +19,7 @@ terminals. They include:
   for this, leading to bugs, for example:
   `neovim #2035 <https://github.com/neovim/neovim/issues/2035>`_.
 
-To solve these issues and others, kitty has created a new keyboard protocol,
+To solve these issues and others, datty has created a new keyboard protocol,
 that is backward compatible but allows applications to opt-in to support more
 advanced usages. The protocol is based on initial work in `fixterms
 <http://www.leonerd.org.uk/hacks/fixterms/>`_, however, it corrects various
@@ -28,13 +28,13 @@ issues in that proposal, listed at the :ref:`bottom of this document
 
 You can see this protocol with all enhancements in action by running::
 
-    kitten show-key -m kitty
+    daddy show-key -m datty
 
-inside the kitty terminal to report key events.
+inside the datty terminal to report key events.
 
-In addition to kitty, this protocol is also implemented in:
+In addition to datty, this protocol is also implemented in:
 
-* The `AbsoluteTelnet SSH client <https://www.celestialsoftware.net/absolutetelnet-ssh-implements-the-kitty-keyboard-protocol>`__
+* The `AbsoluteTelnet SSH client <https://www.celestialsoftware.net/absolutetelnet-ssh-implements-the-datty-keyboard-protocol>`__
 * The `alacritty terminal <https://github.com/alacritty/alacritty/pull/7125>`__
 * The `foot terminal <https://codeberg.org/dnkl/foot/issues/319>`__
 * The `ghostty terminal <https://ghostty.org>`__
@@ -44,7 +44,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `T1K terminal <https://github.com/erango/t1k/blob/main/crates/t1k-terminal/src/input.rs>`__
 * The `TuiOS terminal (multiplexer) <https://github.com/Gaurav-Gosain/tuios/issues/26>`__
 * The `Warp terminal <https://github.com/warpdotdev/Warp/issues/8462#issuecomment-3857779488>`__
-* The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_kitty_keyboard.html>`__
+* The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_datty_keyboard.html>`__
 * The `xterm.js terminal <https://github.com/xtermjs/xterm.js/pull/5600>`__
 
 Libraries implementing this protocol:
@@ -489,7 +489,7 @@ second form when modifiers are present (``SS3 is the bytes 0x1b 0x4f``).
 
 These sequences must match entries in the terminfo database for maximum
 compatibility. The table below lists the key, its terminfo entry name and
-the escape code used for it by kitty. A different terminal would use whatever
+the escape code used for it by datty. A different terminal would use whatever
 escape code is present in its terminfo database for the key.
 Some keys have an alternate representation when the terminal is in *cursor key
 mode* (the ``smkx/rmkx`` terminfo capabilities). This form is used only in
@@ -543,9 +543,9 @@ All keypad keys are reported as their equivalent non-keypad keys. To
 distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
 
 Terminals may choose what they want to do about functional keys that have no
-legacy encoding. kitty chooses to encode these using ``CSI u`` encoding even in
+legacy encoding. datty chooses to encode these using ``CSI u`` encoding even in
 legacy mode, so that they become usable even in programs that do not
-understand the full kitty keyboard protocol. However, terminals may instead choose to
+understand the full datty keyboard protocol. However, terminals may instead choose to
 ignore such keys in legacy mode instead, or have an option to control this behavior.
 
 .. _legacy_text:

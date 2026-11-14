@@ -11,10 +11,10 @@ import (
 	"sync/atomic"
 
 	shm "github.com/kovidgoyal/go-shm/v2"
-	"github.com/kovidgoyal/kitty/tools/tui"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/datty/tools/tui"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/images"
 )
 
 var _ = fmt.Print

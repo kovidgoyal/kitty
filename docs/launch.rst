@@ -4,12 +4,12 @@ The :command:`launch` command
 .. program:: launch
 
 
-|kitty| has a :code:`launch` action that can be used to run arbitrary programs
+|datty| has a :code:`launch` action that can be used to run arbitrary programs
 in new windows/tabs. It can be mapped to user defined shortcuts in
-:file:`kitty.conf`. It is very powerful and allows sending the contents of the
+:file:`datty.conf`. It is very powerful and allows sending the contents of the
 current window to the launched program, as well as many other options.
 
-In the simplest form, you can use it to open a new kitty window running the
+In the simplest form, you can use it to open a new datty window running the
 shell, as shown below::
 
     map f1 launch
@@ -59,12 +59,12 @@ The piping environment
 --------------------------
 
 When using :option:`launch --stdin-source`, the program to which the data is
-piped has a special environment variable declared, :envvar:`KITTY_PIPE_DATA`
+piped has a special environment variable declared, :envvar:`DATTY_PIPE_DATA`
 whose contents are::
 
-   KITTY_PIPE_DATA={scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}
+   DATTY_PIPE_DATA={scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}
 
-where ``scrolled_by`` is the number of lines kitty is currently scrolled by,
+where ``scrolled_by`` is the number of lines datty is currently scrolled by,
 ``cursor_(x|y)`` is the position of the cursor on the screen with ``(1,1)``
 being the top left corner and ``{lines},{columns}`` being the number of rows
 and columns of the screen.
@@ -80,8 +80,8 @@ the command line:
 ``@selection``
     Replaced by the currently selected text.
 
-``@active-kitty-window-id``
-    Replaced by the id of the currently active kitty window.
+``@active-datty-window-id``
+    Replaced by the id of the currently active datty window.
 
 ``@line-count``
     Replaced by the number of lines in STDIN. Only present when passing some
@@ -89,10 +89,10 @@ the command line:
 
 ``@input-line-number``
     Replaced by the number of lines a pager should scroll to match the current
-    scroll position in kitty. See :opt:`scrollback_pager` for details.
+    scroll position in datty. See :opt:`scrollback_pager` for details.
 
 ``@scrolled-by``
-    Replaced by the number of lines kitty is currently scrolled by.
+    Replaced by the number of lines datty is currently scrolled by.
 
 ``@cursor-x``
     Replaced by the current cursor x position with 1 being the leftmost cell.
@@ -109,7 +109,7 @@ the command line:
 
 For example::
 
-    map f1 launch my-program @active-kitty-window-id
+    map f1 launch my-program @active-datty-window-id
 
 
 .. _watchers:
@@ -122,21 +122,21 @@ that will be called at specific events, such as when the window is resized or
 closed. Note that you can also specify watchers that are loaded for all windows,
 via :opt:`watcher`. To create a watcher, specify the path to a Python module
 that specifies callback functions for the events you are interested in, for
-create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` = :file:`mywatcher.py`:
+create :file:`~/.config/datty/mywatcher.py` and use :option:`launch --watcher` = :file:`mywatcher.py`:
 
 .. code-block:: python
 
-    # ~/.config/kitty/mywatcher.py
+    # ~/.config/datty/mywatcher.py
     from typing import Any
 
-    from kitty.boss import Boss
-    from kitty.window import Window
+    from datty.boss import Boss
+    from datty.window import Window
 
 
     def on_load(boss: Boss, data: dict[str, Any]) -> None:
         # This is a special function that is called just once when this watcher
         # module is first loaded, can be used to perform any initialization/one
-        # time setup. Any exceptions in this function are printed to kitty's
+        # time setup. Any exceptions in this function are printed to datty's
         # STDERR but otherwise ignored.
         ...
 
@@ -157,26 +157,26 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
         # was closed and cause is why, one of:
         #   reason='window': only this window was closed, cause is:
         #       'program_exit': the program running in the window exited
-        #       'closed': kitty closed the window, for example, because the
+        #       'closed': datty closed the window, for example, because the
         #                 user closed it or its tab or because of a remote
         #                 control command
         #   reason='os_window': the OS window containing this window was
         #       closed, cause is 'closed'
-        #   reason='quit': kitty is quitting, cause is:
+        #   reason='quit': datty is quitting, cause is:
         #       'action': the quit action, for example, via a keyboard
         #                 shortcut, menu or remote control
-        #       'os_request': the OS asked kitty to quit, for example, via
+        #       'os_request': the OS asked datty to quit, for example, via
         #                     the Dock on macOS
         #       'logout': the user is logging out or shutting down. On Linux
         #                 this is reported only when
         #                 restore_session_after_logout is enabled, otherwise
         #                 it is reported as 'signal'
-        #       'signal': kitty received SIGTERM, SIGINT or SIGHUP
-        #       'fatal_error': kitty lost its connection to the display
+        #       'signal': datty received SIGTERM, SIGINT or SIGHUP
+        #       'fatal_error': datty lost its connection to the display
         #                      server
         #       'unknown': none of the above
         # confirmed is True if the user confirmed closing the window, its
-        # tab, its OS window or quitting kitty in a confirmation dialog.
+        # tab, its OS window or quitting datty in a confirmation dialog.
         ...
 
     def on_set_user_var(boss: Boss, window: Window, data: dict[str, Any]) -> None:
@@ -194,10 +194,10 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
     def on_cwd_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
         # called when the program running in the window reports a change in
         # its working directory via the OSC 7 escape code, as done by the
-        # kitty shell integration. data contains cwd, the reported directory and
+        # datty shell integration. data contains cwd, the reported directory and
         # host, the hostname from the reported URL (empty if absent). Note that
         # the directory may be on a remote machine, for example, when using the
-        # ssh kitten.
+        # ssh daddy.
         ...
 
     def on_cmd_startstop(boss: Boss, window: Window, data: dict[str, Any]) -> None:
@@ -222,15 +222,15 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
     def on_tab_bar_dirty(boss: Boss, window: Window, data: dict[str, Any]) -> None:
         # called when any changes happen to the tab bar, such a new tabs being
         # created, tab titles changing, tabs moving, etc. Useful to display the
-        # tab bar externally to kitty. This is called even if the tab bar is
+        # tab bar externally to datty. This is called even if the tab bar is
         # hidden. Note that this is called only in *global watchers*, that is
-        # watchers defined in kitty.conf or using the --watcher command line
+        # watchers defined in datty.conf or using the --watcher command line
         # flag. data contains tab_manager which is the object responsible for
         # managing all tabs in a single OS Window.
         ...
 
     def on_quit(boss: Boss, window: Window, data: dict[str, Any]) -> None:
-        # called when kitty is about to quit. This is called in *global watchers*
+        # called when datty is about to quit. This is called in *global watchers*
         # only. It is called twice: once before the quit confirmation dialog is
         # shown (data['confirmed'] will be False) and once after the user has
         # confirmed quitting (data['confirmed'] will be True). Setting
@@ -240,11 +240,11 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
 
 Every callback is passed a reference to the global ``Boss`` object as well as
 the ``Window`` object the action is occurring on. The ``data`` object is a dict
-that contains event dependent data. You have full access to kitty internals in
-the watcher scripts, however kitty internals are not documented/stable so for
-most things you are better off using the kitty :doc:`Remote control API </remote-control>`.
+that contains event dependent data. You have full access to datty internals in
+the watcher scripts, however datty internals are not documented/stable so for
+most things you are better off using the datty :doc:`Remote control API </remote-control>`.
 Simply call :code:`boss.call_remote_control()`, with the same arguments you
-would pass to ``kitten @``. For example:
+would pass to ``daddy @``. For example:
 
 .. code-block:: python
 
@@ -252,7 +252,7 @@ would pass to ``kitten @``. For example:
         # send some text to the resized window
         boss.call_remote_control(window, ('send-text', f'--match=id:{window.id}', 'hello world'))
 
-Run, ``kitten @ --help`` in a kitty terminal, to see all the remote control
+Run, ``daddy @ --help`` in a datty terminal, to see all the remote control
 commands available to you.
 
 

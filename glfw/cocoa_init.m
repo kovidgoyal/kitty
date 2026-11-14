@@ -27,7 +27,7 @@
 //========================================================================
 
 #include "internal.h"
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 #include <sys/param.h> // For MAXPATHLEN
 #include <sys/sysctl.h>
 #include <stdatomic.h>
@@ -974,7 +974,7 @@ void
 _glfwPlatformTerminate(void) {
     @autoreleasepool {
         // Kill the AutoFill helper process that macOS Tahoe starts and fails to
-        // shutdown on application exit, see https://github.com/kovidgoyal/kitty/issues/9299
+        // shutdown on application exit, see https://github.com/kovidgoyal/datty/issues/9299
         // Only kill helpers that were launched within a few seconds of this process to
         // avoid killing helpers from other processes. This is obviously not robust
         // but since Apple cant design its way out of a paper bag, it's the best we
@@ -982,7 +982,7 @@ _glfwPlatformTerminate(void) {
         if (application_finished_launching_at != nil) {
             for (NSRunningApplication *app in [[NSWorkspace sharedWorkspace] runningApplications]) {
                 if ([app.bundleIdentifier isEqualToString:@"com.apple.SafariPlatformSupport.Helper"] &&
-                    [[app.localizedName lowercaseString] containsString:@"autofill (kitty)"]) {
+                    [[app.localizedName lowercaseString] containsString:@"autofill (datty)"]) {
                     NSDate *st = get_process_start_time(app.processIdentifier);
                     if (st != nil) {
                         NSTimeInterval timeDifference = [application_finished_launching_at timeIntervalSinceDate:st];

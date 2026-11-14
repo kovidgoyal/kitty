@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/emmansun/base64"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 func screenshot_handle_response(data []byte) error {
@@ -25,8 +25,8 @@ func read_screenshot_args(io_data *rc_io_data, args []string) (func(io_data *rc_
 		return nil, fmt.Errorf("%s", "Must specify at most one output file")
 	}
 	if len(args) == 0 {
-		// kitty writes the screenshot directly to the output file when one is
-		// given (it runs on the same computer as kitty), so a custom response
+		// datty writes the screenshot directly to the output file when one is
+		// given (it runs on the same computer as datty), so a custom response
 		// handler is only needed to write the PNG data to STDOUT.
 		io_data.handle_response = screenshot_handle_response
 	}

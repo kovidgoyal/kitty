@@ -162,7 +162,7 @@ typedef void (*GLFWDBussessionstatefun)(uint32_t);
 
 const char* load_glfw(const char* path);
 """.format(preamble, '\n\n'.join(declarations))
-    with open('../kitty/glfw-wrapper.h', 'w') as f:
+    with open('../datty/glfw-wrapper.h', 'w') as f:
         f.write(header)
 
     code = """
@@ -194,7 +194,7 @@ unload_glfw(void) {
     if (handle) { dlclose(handle); handle = NULL; }
 }
 """.replace('LOAD', '\n\n    '.join(f.load() for f in functions))
-    with open('../kitty/glfw-wrapper.c', 'w') as f:
+    with open('../datty/glfw-wrapper.c', 'w') as f:
         f.write(code)
 
 

@@ -10,15 +10,15 @@ and build the project, making it ready for inspection.
 
 ## Build Procedures
 - **Build command:** Run `./dev.sh build` to build the project
-- Run `gen/config.py` to update generated config parsing code for both kitty
-  and kitten. The `gen/go_code.py` generator is run automatically by the build
+- Run `gen/config.py` to update generated config parsing code for both datty
+  and daddy. The `gen/go_code.py` generator is run automatically by the build
   command to keep generated Go code files up to date.
-- To build individual kittens use the build command above **do not** try to run go build
+- To build individual daddies use the build command above **do not** try to run go build
   yourself.
 
-Once a build is done, the kitty and kitten binaries will be in the `kitty/launcher` directory.
-Note that the kitty binary can run python files using `kitty +launch file.py`.
-When it does so the kitty fast_data_types module is available to the python
+Once a build is done, the datty and daddy binaries will be in the `datty/launcher` directory.
+Note that the datty binary can run python files using `datty +launch file.py`.
+When it does so the datty fast_data_types module is available to the python
 code.
 
 ## Test Procedures
@@ -29,7 +29,7 @@ code.
 
 ## PR guidance
 When creating a pull request, if the changes in the pull request are user
-visible compared to the previous kitty release, add an entry in the file docs/changelog.rst
+visible compared to the previous datty release, add an entry in the file docs/changelog.rst
 describing the change. If the changes include changes to Go code, run gofmt on
 the changed Go files to ensure they are formatted correctly, before submitting
 your changes.

@@ -15,12 +15,12 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/go-parallel"
-	"github.com/kovidgoyal/kitty"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/machine_id"
-	"github.com/kovidgoyal/kitty/tools/utils/style"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/machine_id"
+	"github.com/kovidgoyal/datty/tools/utils/style"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 )
 
 type ScreenSize struct {
@@ -155,7 +155,7 @@ func New(options ...func(self *Loop)) (*Loop, error) {
 
 // Create a loop that does not change terminal state such as keyboard mode,
 // resize/focus notifications, mouse tracking, alternate screen etc. Useful
-// for special purpose kittens such as icat/clipboard/@ etc.
+// for special purpose daddies such as icat/clipboard/@ etc.
 func NewForSimpleInteraction() (*Loop, error) {
 	lp, err := New(
 		NoAlternateScreen, NoRestoreColors, NoMouseTracking, NoInBandResizeNotifications,
@@ -198,30 +198,30 @@ func NoRoundtripToTerminalOnExit(self *Loop) {
 }
 
 func (self *Loop) OnlyDisambiguateKeys() *Loop {
-	self.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS
+	self.terminal_options.datty_keyboard_mode = DISAMBIGUATE_KEYS
 	return self
 }
 
 func OnlyDisambiguateKeys(self *Loop) {
-	self.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS
+	self.terminal_options.datty_keyboard_mode = DISAMBIGUATE_KEYS
 }
 
 func (self *Loop) NoKeyboardStateChange() *Loop {
-	self.terminal_options.kitty_keyboard_mode = NO_KEYBOARD_STATE_CHANGE
+	self.terminal_options.datty_keyboard_mode = NO_KEYBOARD_STATE_CHANGE
 	return self
 }
 
 func NoKeyboardStateChange(self *Loop) {
-	self.terminal_options.kitty_keyboard_mode = NO_KEYBOARD_STATE_CHANGE
+	self.terminal_options.datty_keyboard_mode = NO_KEYBOARD_STATE_CHANGE
 }
 
 func (self *Loop) FullKeyboardProtocol() *Loop {
-	self.terminal_options.kitty_keyboard_mode = FULL_KEYBOARD_PROTOCOL
+	self.terminal_options.datty_keyboard_mode = FULL_KEYBOARD_PROTOCOL
 	return self
 }
 
 func FullKeyboardProtocol(self *Loop) {
-	self.terminal_options.kitty_keyboard_mode = FULL_KEYBOARD_PROTOCOL
+	self.terminal_options.datty_keyboard_mode = FULL_KEYBOARD_PROTOCOL
 }
 
 func (self *Loop) MouseTrackingMode(mt MouseTracking) *Loop {
@@ -356,7 +356,7 @@ func (self *Loop) DebugPrintln(args ...any) {
 		msg := fmt.Sprintln(args...)
 		for i := 0; i < len(msg); i += limit {
 			end := min(i+limit, len(msg))
-			self.QueueWriteString("\x1bP@kitty-print|")
+			self.QueueWriteString("\x1bP@datty-print|")
 			self.QueueWriteString(base64.StdEncoding.EncodeToString([]byte(msg[i:end])))
 			self.QueueWriteString("\x1b\\")
 		}
@@ -527,7 +527,7 @@ func (self *Loop) ClearScreenButNotGraphics() {
 }
 
 func (self *Loop) SendOverlayReady() {
-	self.QueueWriteString("\x1bP@kitty-overlay-ready|\x1b\\")
+	self.QueueWriteString("\x1bP@datty-overlay-ready|\x1b\\")
 }
 
 func (self *Loop) Quit(exit_code int) {
@@ -569,7 +569,7 @@ func (self *Loop) QueryTerminal(fields ...string) IdType {
 	}
 	q := make([]string, len(fields))
 	for i, x := range fields {
-		q[i] = hex.EncodeToString(utils.UnsafeStringToBytes("kitty-query-" + x))
+		q[i] = hex.EncodeToString(utils.UnsafeStringToBytes("datty-query-" + x))
 	}
 	return self.QueueWriteString(fmt.Sprintf("\x1bP+q%s\a", strings.Join(q, ";")))
 }
@@ -629,9 +629,9 @@ type SizedText struct {
 func (self *Loop) RecoverFromPanicInGoRoutine() {
 	if r := recover(); r != nil {
 		err := parallel.Format_stacktrace_on_panic(r, 1)
-		// print to kitty stdout as multiple go routines might panic but only
+		// print to datty stdout as multiple go routines might panic but only
 		// one panic is reported by the main loop panic_channel
-		if f := tty.KittyStdout(); f != nil {
+		if f := tty.DattyStdout(); f != nil {
 			fmt.Fprintln(f, err)
 		}
 		self.panic_channel <- err
@@ -677,7 +677,7 @@ func (self *Loop) QueueDnDData(cmd DndCommand) IdType {
 	b := strings.Builder{}
 	b.Grow(64)
 	as_base64 := cmd.Type == 'r' || cmd.Type == 'p'
-	fmt.Fprintf(&b, "\x1b]%d;t=%c", kitty.DndCode, cmd.Type)
+	fmt.Fprintf(&b, "\x1b]%d;t=%c", datty.DndCode, cmd.Type)
 	add := func(key byte, val int) {
 		if val != 0 {
 			fmt.Fprintf(&b, ":%c=%d", key, val)
@@ -712,7 +712,7 @@ func (self *Loop) QueueDnDData(cmd DndCommand) IdType {
 			fmt.Fprintf(&b, ":m=%d;", utils.IfElse(is_last, 0, 1))
 			self.QueueWriteString(b.String())
 		} else {
-			self.QueueWriteString(fmt.Sprintf("\x1b]%d;m=%d;", kitty.DndCode, utils.IfElse(is_last, 0, 1)))
+			self.QueueWriteString(fmt.Sprintf("\x1b]%d;m=%d;", datty.DndCode, utils.IfElse(is_last, 0, 1)))
 		}
 		self.QueueWriteString(payload[i:end])
 		ans = self.QueueWriteString("\x1b\\")

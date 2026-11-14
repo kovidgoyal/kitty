@@ -238,11 +238,11 @@ Interaction with other terminal controls and state
 Footnotes
 -------------
 
-.. [anim] kitty allows the cursor blink to be :opt:`animated
+.. [anim] datty allows the cursor blink to be :opt:`animated
    <cursor_blink_interval>` using any CSS easing function. This cannot be
    implemented using fake cursors.
 
-.. [rv] kitty has a special "reverse video" color mode for cursors where the
+.. [rv] datty has a special "reverse video" color mode for cursors where the
    color of the cursor and the text under the cursor is adjusted based on the
    color of the cell under the cursor. This also cannot be implemented using
    fake cursors.

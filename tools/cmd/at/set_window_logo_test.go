@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 // Truncate a JPEG immediately after its SOS segment header so that the

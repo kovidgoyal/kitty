@@ -30,20 +30,20 @@ mv_files_and_dirs() {
 compile_terminfo() {
     tname=".terminfo"
     # Ensure the 78 dir is present
-    if [ ! -f "$1/$tname/78/xterm-kitty" ]; then
+    if [ ! -f "$1/$tname/78/xterm-datty" ]; then
         command mkdir -p "$1/$tname/78"
-        command ln -sf "../x/xterm-kitty" "$1/$tname/78/xterm-kitty"
+        command ln -sf "../x/xterm-datty" "$1/$tname/78/xterm-datty"
     fi
 
     if [ -e "/usr/share/misc/terminfo.cdb" ]; then
-        # NetBSD requires this file, see https://github.com/kovidgoyal/kitty/issues/4622
+        # NetBSD requires this file, see https://github.com/kovidgoyal/datty/issues/4622
         # Also compile terminfo using tic installed via pkgsrc,
         # so that programs that depend on the new version of ncurses automatically fall back to this one.
         if [ -x "/usr/pkg/bin/tic" ]; then
-            /usr/pkg/bin/tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>/dev/null
+            /usr/pkg/bin/tic -x -o "$1/$tname" "$1/.terminfo/datty.terminfo" 2>/dev/null
         fi
-        if [ ! -e "$1/$tname/x/xterm-kitty" ]; then
-            command ln -sf "../../.terminfo.cdb" "$1/$tname/x/xterm-kitty"
+        if [ ! -e "$1/$tname/x/xterm-datty" ]; then
+            command ln -sf "../../.terminfo.cdb" "$1/$tname/x/xterm-datty"
         fi
         tname=".terminfo.cdb"
     fi
@@ -53,7 +53,7 @@ compile_terminfo() {
 
     # compile terminfo for this system
     if [ -x "$(command -v tic)" ]; then
-        tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/kitty.terminfo" 2>&1)
+        tic_out=$(command tic -x -o "$1/$tname" "$1/.terminfo/datty.terminfo" 2>&1)
         [ $? = 0 ] || die "Failed to compile terminfo with err: $tic_out"
     fi
 }
@@ -116,7 +116,7 @@ exec_zsh_with_integration() {
     if [ -z "$zdotdir" ]; then
         zdotdir=~
     else
-        export KITTY_ORIG_ZDOTDIR="$zdotdir"
+        export DATTY_ORIG_ZDOTDIR="$zdotdir"
     fi
     # dont prevent zsh-newuser-install from running
     if [ -f "$zdotdir/.zshrc" -o -f "$zdotdir/.zshenv" -o -f "$zdotdir/.zprofile" -o -f "$zdotdir/.zlogin" ]; then
@@ -124,7 +124,7 @@ exec_zsh_with_integration() {
         exec "$login_shell" "-l"
     fi
     # ensure this is not propagated
-    unset KITTY_ORIG_ZDOTDIR
+    unset DATTY_ORIG_ZDOTDIR
 }
 
 exec_fish_with_integration() {
@@ -133,16 +133,16 @@ exec_fish_with_integration() {
     else
         export XDG_DATA_DIRS="$shell_integration_dir:$XDG_DATA_DIRS"
     fi
-    export KITTY_FISH_XDG_DATA_DIR="$shell_integration_dir"
+    export DATTY_FISH_XDG_DATA_DIR="$shell_integration_dir"
     exec "$login_shell" "-l"
 }
 
 exec_bash_with_integration() {
-    export ENV="$shell_integration_dir/bash/kitty.bash"
-    export KITTY_BASH_INJECT="1"
+    export ENV="$shell_integration_dir/bash/datty.bash"
+    export DATTY_BASH_INJECT="1"
     if [ -z "$HISTFILE" ]; then
         export HISTFILE="$HOME/.bash_history"
-        export KITTY_BASH_UNEXPORT_HISTFILE="1"
+        export DATTY_BASH_UNEXPORT_HISTFILE="1"
     fi
     exec "$login_shell" "--login" "--posix"
 }
@@ -167,37 +167,37 @@ execute_sh_with_posix_env() {
     [ "$shell_name" = "sh" ] || return
     # sh supports -l so use that
     command "$login_shell" -l -c ":" > /dev/null 2> /dev/null && return
-    [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh kitten cannot function"
+    [ -z "$shell_integration_dir" ] && die "Could not read data over tty ssh daddy cannot function"
     sh_dir="$shell_integration_dir/sh"
     command mkdir -p "$sh_dir" || die "Creating directory $sh_dir failed"
     sh_script="$sh_dir/login_shell_env.sh"
     # Source /etc/profile, ~/.profile, and then check and source ENV
     printf "%s" '
-if [ -n "$KITTY_SH_INJECT" ]; then
-    unset ENV; unset KITTY_SH_INJECT
+if [ -n "$DATTY_SH_INJECT" ]; then
+    unset ENV; unset DATTY_SH_INJECT
     _ksi_safe_source() { [ -f "$1" -a -r "$1" ] || return 1; . "$1"; return 0; }
-    [ -n "$KITTY_SH_POSIX_ENV" ] && export ENV="$KITTY_SH_POSIX_ENV"
-    unset KITTY_SH_POSIX_ENV
+    [ -n "$DATTY_SH_POSIX_ENV" ] && export ENV="$DATTY_SH_POSIX_ENV"
+    unset DATTY_SH_POSIX_ENV
     _ksi_safe_source "/etc/profile"; _ksi_safe_source "${HOME-}/.profile"
     [ -n "$ENV" ] && _ksi_safe_source "$ENV"
     unset -f _ksi_safe_source
 fi' > "$sh_script"
-    export KITTY_SH_INJECT="1"
-    [ -n "$ENV" ] && export KITTY_SH_POSIX_ENV="$ENV"
+    export DATTY_SH_INJECT="1"
+    [ -n "$ENV" ] && export DATTY_SH_POSIX_ENV="$ENV"
     export ENV="$sh_script"
     exec "$login_shell"
 }
 
-install_kitty_bootstrap() {
-    kitty_dir="$data_dir/kitty/bin"
-    export SSH_KITTEN_KITTY_DIR="$kitty_dir"
-    kitty_exists="n"
-    command -v kitty 2> /dev/null > /dev/null && kitty_exists="y"
-    if [ "$kitty_remote" = "yes" -o "$kitty_remote-$kitty_exists" = "if-needed-n" ]; then
-        if [ "$kitty_exists" = "y" ]; then
-            export PATH="$kitty_dir:$PATH"
+install_datty_bootstrap() {
+    datty_dir="$data_dir/datty/bin"
+    export SSH_DADDY_DATTY_DIR="$datty_dir"
+    datty_exists="n"
+    command -v datty 2> /dev/null > /dev/null && datty_exists="y"
+    if [ "$datty_remote" = "yes" -o "$datty_remote-$datty_exists" = "if-needed-n" ]; then
+        if [ "$datty_exists" = "y" ]; then
+            export PATH="$datty_dir:$PATH"
         else
-            export PATH="$PATH:$kitty_dir"
+            export PATH="$PATH:$datty_dir"
         fi
     fi
 }
@@ -209,8 +209,8 @@ prepare_for_exec() {
         # have been sent before the script had a chance to run
         printf "\r\033[K" > /dev/tty
     fi
-    [ -f "$HOME/.terminfo/kitty.terminfo" ] || die "Incomplete extraction of ssh data"
-    install_kitty_bootstrap
+    [ -f "$HOME/.terminfo/datty.terminfo" ] || die "Incomplete extraction of ssh data"
+    install_datty_bootstrap
 
     [ -n "$login_shell" ] || using_getent || using_id || using_python || using_perl || using_passwd || using_shell_env || login_shell="sh"
     case "$login_shell" in
@@ -232,16 +232,16 @@ prepare_for_exec() {
 }
 
 exec_login_shell() {
-    case "$KITTY_SHELL_INTEGRATION" in
+    case "$DATTY_SHELL_INTEGRATION" in
         ("")
             # only blanks or unset
-            unset KITTY_SHELL_INTEGRATION
+            unset DATTY_SHELL_INTEGRATION
             ;;
         (*)
             # not blank
-            printf "%s" "$KITTY_SHELL_INTEGRATION" | command grep -q '\bno-rc\b' || exec_with_shell_integration
+            printf "%s" "$DATTY_SHELL_INTEGRATION" | command grep -q '\bno-rc\b' || exec_with_shell_integration
             # either no-rc or exec failed
-            unset KITTY_SHELL_INTEGRATION
+            unset DATTY_SHELL_INTEGRATION
             ;;
     esac
 

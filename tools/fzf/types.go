@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 	"golang.org/x/text/unicode/norm"
 )
 

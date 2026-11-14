@@ -1,7 +1,7 @@
 Wide gamut color formats
 =========================
 
-kitty supports modern wide gamut color formats for precise color specification.
+datty supports modern wide gamut color formats for precise color specification.
 These formats can be used anywhere a color value is accepted in the configuration
 (foreground, background, color0-color255, etc.).
 
@@ -60,7 +60,7 @@ Gamut Mapping
 -------------
 
 When you specify colors in OKLCH or CIE LAB formats that are outside the sRGB
-color gamut, kitty automatically converts them using the CSS Color Module Level 4
+color gamut, datty automatically converts them using the CSS Color Module Level 4
 gamut mapping algorithm:
 
 - Preserves the original lightness and hue as much as possible

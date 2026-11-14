@@ -43,12 +43,12 @@ def check_version_info() -> None:
     else:
         is_ok = sys.version_info > q
     if not is_ok:
-        exit(f'kitty requires Python {minver}. Current Python version: {".".join(map(str, sys.version_info[:3]))}')
+        exit(f'datty requires Python {minver}. Current Python version: {".".join(map(str, sys.version_info[:3]))}')
 
 
 verbose = False
 build_dir = 'build'
-constants = os.path.join('kitty', 'constants.py')
+constants = os.path.join('datty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname: str = '([^']+)'", constants, re.MULTILINE).group(1)  # type: ignore
@@ -304,7 +304,7 @@ class Options:
     prefix: str = './linux-package'
     dir_for_static_binaries: str = 'build/static'
     skip_code_generation: bool = False
-    skip_building_kitten: bool = False
+    skip_building_daddy: bool = False
     clean_for_cross_compile: bool = False
     python_compiler_flags: str = ''
     python_linker_flags: str = ''
@@ -316,14 +316,14 @@ class Options:
     extra_logging: List[str] = []
     extra_include_dirs: List[str] = []
     extra_library_dirs: List[str] = []
-    link_time_optimization: bool = 'KITTY_NO_LTO' not in os.environ
+    link_time_optimization: bool = 'DATTY_NO_LTO' not in os.environ
     update_check_interval: float = 24.0
     shell_integration: str = 'enabled'
-    egl_library: Optional[str] = os.getenv('KITTY_EGL_LIBRARY')
-    startup_notification_library: Optional[str] = os.getenv('KITTY_STARTUP_NOTIFICATION_LIBRARY')
-    canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
-    systemd_library: Optional[str] = os.getenv('KITTY_SYSTEMD_LIBRARY')
-    fontconfig_library: Optional[str] = os.getenv('KITTY_FONTCONFIG_LIBRARY')
+    egl_library: Optional[str] = os.getenv('DATTY_EGL_LIBRARY')
+    startup_notification_library: Optional[str] = os.getenv('DATTY_STARTUP_NOTIFICATION_LIBRARY')
+    canberra_library: Optional[str] = os.getenv('DATTY_CANBERRA_LIBRARY')
+    systemd_library: Optional[str] = os.getenv('DATTY_SYSTEMD_LIBRARY')
+    fontconfig_library: Optional[str] = os.getenv('DATTY_FONTCONFIG_LIBRARY')
     building_arch: str = ''
 
     # Extras
@@ -513,7 +513,7 @@ def get_python_flags(args: Options, cflags: List[str], for_main_executable: bool
         lval = sysconfig.get_config_var('LINKFORSHARED') or ''
         if not for_main_executable:
             # Python sets the stack size on macOS which is not allowed unless
-            # compiling an executable https://github.com/kovidgoyal/kitty/issues/289
+            # compiling an executable https://github.com/kovidgoyal/datty/issues/289
             lval = re.sub(r'-Wl,-stack_size,\d+', '', lval)
         libs += list(filter(None, lval.split()))
     return libs
@@ -556,7 +556,7 @@ def test_compile(
     get_output_arch: bool = False,
 ) -> Union[bool, BinaryArch]:
     src = src or 'int main(void) { return 0; }'
-    with tempfile.TemporaryDirectory(prefix='kitty-test-compile-') as tdir:
+    with tempfile.TemporaryDirectory(prefix='datty-test-compile-') as tdir:
         with open(os.path.join(tdir, f'source.{source_ext}'), 'w', encoding='utf-8') as srcf:
             print(src, file=srcf)
         output = os.path.join(tdir, 'source.output')
@@ -676,7 +676,7 @@ def init_env(
         ldflags.append('-flto')
 
     if debug:
-        cflags.append('-DKITTY_DEBUG_BUILD')
+        cflags.append('-DDATTY_DEBUG_BUILD')
 
     if profile:
         cppflags.append('-DWITH_PROFILER')
@@ -694,10 +694,10 @@ def init_env(
             library_paths.setdefault(which, []).append(f'{name}="{val}"')
 
     add_lpath('glfw/egl_context.c', '_GLFW_EGL_LIBRARY', egl_library)
-    add_lpath('kitty/desktop.c', '_KITTY_STARTUP_NOTIFICATION_LIBRARY', startup_notification_library)
-    add_lpath('kitty/desktop.c', '_KITTY_CANBERRA_LIBRARY', canberra_library)
-    add_lpath('kitty/systemd.c', '_KITTY_SYSTEMD_LIBRARY', systemd_library)
-    add_lpath('kitty/fontconfig.c', '_KITTY_FONTCONFIG_LIBRARY', fontconfig_library)
+    add_lpath('datty/desktop.c', '_DATTY_STARTUP_NOTIFICATION_LIBRARY', startup_notification_library)
+    add_lpath('datty/desktop.c', '_DATTY_CANBERRA_LIBRARY', canberra_library)
+    add_lpath('datty/systemd.c', '_DATTY_SYSTEMD_LIBRARY', systemd_library)
+    add_lpath('datty/fontconfig.c', '_DATTY_FONTCONFIG_LIBRARY', fontconfig_library)
 
     for path in extra_include_dirs:
         cflags.append(f'-I{path}')
@@ -717,14 +717,14 @@ def init_env(
     ba = test_compile(cc, *(cppflags + cflags), ldflags=ldflags, get_output_arch=True)
     assert isinstance(ba, BinaryArch)
     if ba.isa not in (ISA.AMD64, ISA.X86, ISA.ARM64):
-        cppflags.append('-DKITTY_NO_SIMD')
+        cppflags.append('-DDATTY_NO_SIMD')
 
     control_flow_protection = ''
     if ba.isa == ISA.AMD64:
         control_flow_protection = '-fcf-protection=full' if ccver >= (9, 0) else ''
     elif ba.isa == ISA.ARM64:
         # Using -mbranch-protection=standard causes crashes on Linux ARM, reported
-        # in https://github.com/kovidgoyal/kitty/issues/6845#issuecomment-1835886938
+        # in https://github.com/kovidgoyal/datty/issues/6845#issuecomment-1835886938
         if is_macos:
             control_flow_protection = '-mbranch-protection=standard'
 
@@ -755,7 +755,7 @@ def init_env(
     return ans
 
 
-def kitty_env(args: Options) -> Env:
+def datty_env(args: Options) -> Env:
     ans = env.copy()
     cflags = ans.cflags
     cflags.append('-pthread')
@@ -932,15 +932,15 @@ def base64_defines(isa: ISA) -> List[str]:
 
 
 def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Optional[List[str]]]:
-    if src == 'kitty/vt-parser-dump.c':
-        return 'kitty/vt-parser.c', [], ['DUMP_COMMANDS']
-    if src == 'kitty/data-types.c':
+    if src == 'datty/vt-parser-dump.c':
+        return 'datty/vt-parser.c', [], ['DUMP_COMMANDS']
+    if src == 'datty/data-types.c':
         if not env.vcs_rev:
             env.vcs_rev = get_vcs_rev()
         return (
             src,
             [],
-            [f'KITTY_VCS_REV="{env.vcs_rev}"', f'KITTY_VERSION_SUFFIX="{env.version_suffix}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"'],
+            [f'DATTY_VCS_REV="{env.vcs_rev}"', f'DATTY_VERSION_SUFFIX="{env.version_suffix}"', f'WRAPPED_DADDIES="{wrapped_daddies()}"'],
         )
     if src.startswith('3rdparty/base64/'):
         return (
@@ -950,9 +950,9 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
             ],
             base64_defines(env.binary_arch.isa),
         )
-    if src == 'kitty/screen.c':
+    if src == 'datty/screen.c':
         return src, [], [f'PRIMARY_VERSION={env.primary_version}', f'SECONDARY_VERSION={env.secondary_version}', f'XT_VERSION="{env.xt_version}"']
-    if src == 'kitty/fast-file-copy.c':
+    if src == 'datty/fast-file-copy.c':
         return src, [], (['HAS_COPY_FILE_RANGE'] if env.has_copy_file_range else None)
     try:
         return src, [], env.library_paths[src]
@@ -963,7 +963,7 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
 def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     ans = list(env.cflags)
     # SIMD specific flags
-    if src in ('kitty/simd-string-128.c', 'kitty/simd-string-256.c'):
+    if src in ('datty/simd-string-128.c', 'datty/simd-string-256.c'):
         # simde recommends these are used for best performance
         ans.extend(('-fopenmp-simd', '-DSIMDE_ENABLE_OPENMP'))
         if env.binary_arch.isa in (ISA.AMD64, ISA.X86):
@@ -975,7 +975,7 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
                     ans.append('-x86-use-vzeroupper=0')
                 else:
                     ans.append('-mno-vzeroupper')
-    elif src == 'kitty/simd-string-512.c':
+    elif src == 'datty/simd-string-512.c':
         # uses native AVX-512 intrinsics, only compiled on x86-64, selected at runtime only when the CPU supports these features
         if env.binary_arch.isa is ISA.AMD64:
             ans.extend(('-mavx512f', '-mavx512bw', '-mavx512vl', '-mavx512vbmi2'))
@@ -1179,17 +1179,17 @@ def compile_c_extension(
 
 def find_c_files() -> Tuple[List[str], List[str]]:
     ans, headers = [], []
-    d = 'kitty'
+    d = 'datty'
     exclude = (
         {'fontconfig.c', 'freetype.c', 'desktop.c', 'freetype_render_ui_text.c'} if is_macos else {'core_text.m', 'cocoa_window.m', 'macos_process_info.c'}
     )
     for x in sorted(os.listdir(d)):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
-            ans.append(os.path.join('kitty', x))
+            ans.append(os.path.join('datty', x))
         elif ext == '.h':
-            headers.append(os.path.join('kitty', x))
-    ans.append('kitty/vt-parser-dump.c')
+            headers.append(os.path.join('datty', x))
+    ans.append('datty/vt-parser-dump.c')
 
     # ringbuf
     ans.append('3rdparty/ringbuf/ringbuf.c')
@@ -1291,7 +1291,7 @@ def build_wayland_protocols(
         else:
             src = os.path.join(glfw_base, protocol)
             if not os.path.exists(src):
-                raise SystemExit(f'The local Wayland protocol {protocol} is missing from kitty sources')
+                raise SystemExit(f'The local Wayland protocol {protocol} is missing from datty sources')
         for ext in 'hc':
             dest = wayland_protocol_file_name(src, ext)
             dest = os.path.join(dest_dir, dest)
@@ -1322,27 +1322,27 @@ def compile_glfw(compilation_database: CompilationDatabase, build_dsym: bool = F
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
                 continue
-        compile_c_extension(genv, f'kitty/glfw-{module}', compilation_database, sources, all_headers, desc_prefix=f'[{module}] ', build_dsym=build_dsym)
+        compile_c_extension(genv, f'datty/glfw-{module}', compilation_database, sources, all_headers, desc_prefix=f'[{module}] ', build_dsym=build_dsym)
 
 
-def kittens_env(args: Options) -> Env:
+def daddies_env(args: Options) -> Env:
     kenv = env.copy()
     cflags = kenv.cflags
     cflags.append('-pthread')
-    cflags.append('-Ikitty')
+    cflags.append('-Idatty')
     pylib = get_python_flags(args, cflags)
     kenv.ldpaths += pylib
     return kenv
 
 
-def compile_kittens(args: Options) -> None:
-    kenv = kittens_env(args)
+def compile_daddies(args: Options) -> None:
+    kenv = daddies_env(args)
 
     def list_files(q: str) -> List[str]:
         return sorted(glob.glob(q))
 
     def files(
-        kitten: str,
+        daddy: str,
         output: str,
         extra_headers: Sequence[str] = (),
         extra_sources: Sequence[str] = (),
@@ -1350,16 +1350,16 @@ def compile_kittens(args: Options) -> None:
         includes: Sequence[str] = (),
         libraries: Sequence[str] = (),
     ) -> Tuple[str, List[str], List[str], str, Sequence[str], Sequence[str]]:
-        sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
-        headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
-        return kitten, sources, headers, f'kittens/{kitten}/{output}', includes, libraries
+        sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('daddies', daddy, '*.c'))))
+        headers = list_files(os.path.join('daddies', daddy, '*.h')) + list(extra_headers)
+        return daddy, sources, headers, f'daddies/{daddy}/{output}', includes, libraries
 
     xxhash = xxhash_flags()
-    for kitten, sources, all_headers, dest, includes, libraries in (files('transfer', 'rsync', libraries=xxhash[1], includes=xxhash[0]),):
+    for daddy, sources, all_headers, dest, includes, libraries in (files('transfer', 'rsync', libraries=xxhash[1], includes=xxhash[0]),):
         final_env = kenv.copy()
         final_env.cflags.extend(includes)
         final_env.ldpaths[:0] = list(libraries)
-        compile_c_extension(final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'], build_dsym=args.build_dsym)
+        compile_c_extension(final_env, dest, args.compilation_database, sources, all_headers + ['datty/data-types.h'], build_dsym=args.build_dsym)
 
 
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
@@ -1402,7 +1402,7 @@ def update_if_changed(path: str, text: str) -> None:
 
 
 def build_ref_map(skip_generation: bool = False) -> str:
-    dest = 'kitty/docs_ref_map_generated.h'
+    dest = 'datty/docs_ref_map_generated.h'
     if not skip_generation:
         d = extract_rst_targets()
         h = 'static const char docs_ref_map[] = {\n' + textwrap.fill(', '.join(map(str, bytearray(json.dumps(d, sort_keys=True).encode('utf-8'))))) + '\n};\n'
@@ -1411,29 +1411,29 @@ def build_ref_map(skip_generation: bool = False) -> str:
 
 
 def build_cli_parser_specs(skip_generation: bool = False) -> str:
-    dest = 'kitty/launcher/cli-parser-data_generated.h'
+    dest = 'datty/launcher/cli-parser-data_generated.h'
     if not skip_generation:
-        m = runpy.run_path('kitty/simple_cli_definitions.py', {'appname': appname})
+        m = runpy.run_path('datty/simple_cli_definitions.py', {'appname': appname})
         h = '\n'.join(m['generate_c_parsers']())
         update_if_changed(dest, h)
     return dest
 
 
 @lru_cache
-def wrapped_kittens() -> str:
-    with open('shell-integration/ssh/kitty') as f:
+def wrapped_daddies() -> str:
+    with open('shell-integration/ssh/datty') as f:
         for line in f:
-            if line.startswith('    wrapped_kittens="'):
+            if line.startswith('    wrapped_daddies="'):
                 val = line.strip().partition('"')[2][:-1]
                 return ' '.join(sorted(filter(None, val.split())))
-    raise Exception('Failed to read wrapped kittens from kitty wrapper script')
+    raise Exception('Failed to read wrapped daddies from datty wrapper script')
 
 
-def build_shaders(args: Options, kitty_exe: str, shaders_dest: str = '') -> None:
+def build_shaders(args: Options, datty_exe: str, shaders_dest: str = '') -> None:
     if args.skip_code_generation:
         print('Skipping building of shaders due to command line option', flush=True)
     else:
-        generate_shaders(kitty_exe)
+        generate_shaders(datty_exe)
     if shaders_dest:
         if not os.path.isdir('shaders'):
             raise SystemExit(
@@ -1442,14 +1442,14 @@ def build_shaders(args: Options, kitty_exe: str, shaders_dest: str = '') -> None
         shutil.copytree('shaders', shaders_dest, dirs_exist_ok=True)
 
 
-def generate_shaders(kitty_exe: str) -> None:
+def generate_shaders(datty_exe: str) -> None:
     env = os.environ.copy()
     env['ASAN_OPTIONS'] = 'detect_leaks=0'
     cp = subprocess.run(
         [
-            kitty_exe,
+            datty_exe,
             '+launch',
-            os.path.join(src_base, 'kitty/shaders/slang.py'),
+            os.path.join(src_base, 'datty/shaders/slang.py'),
             'verbose' if verbose else '',
             'build/shaders',
             'shaders',
@@ -1470,15 +1470,15 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     headers.append(build_ref_map(args.skip_code_generation))
     headers.append(build_cli_parser_specs(args.skip_code_generation))
     compile_c_extension(
-        kitty_env(args),
-        'kitty/fast_data_types',
+        datty_env(args),
+        'datty/fast_data_types',
         args.compilation_database,
         sources,
         headers,
         build_dsym=args.build_dsym,
     )
     compile_glfw(args.compilation_database, args.build_dsym)
-    compile_kittens(args)
+    compile_daddies(args)
     add_builtin_fonts(args)
 
 
@@ -1486,7 +1486,7 @@ def safe_makedirs(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def update_go_generated_files(args: Options, kitty_exe: str) -> None:
+def update_go_generated_files(args: Options, datty_exe: str) -> None:
     if args.skip_code_generation:
         print('Skipping generation of Go files due to command line option', flush=True)
         return
@@ -1496,7 +1496,7 @@ def update_go_generated_files(args: Options, kitty_exe: str) -> None:
 
     env = os.environ.copy()
     env['ASAN_OPTIONS'] = 'detect_leaks=0'
-    cp = subprocess.run([kitty_exe, '+launch', os.path.join(src_base, 'gen/go_code.py')], stdout=subprocess.DEVNULL, env=env)
+    cp = subprocess.run([datty_exe, '+launch', os.path.join(src_base, 'gen/go_code.py')], stdout=subprocess.DEVNULL, env=env)
     if cp.returncode != 0:
         if os.environ.get('CI') == 'true' and cp.returncode < 0 and shutil.which('coredumpctl'):
             subprocess.run(['sh', '-c', 'echo bt | coredumpctl debug'])
@@ -1523,7 +1523,7 @@ def go_cmd() -> list[str]:
     return []
 
 
-def build_static_kittens(
+def build_static_daddies(
     args: Options,
     launcher_dir: str,
     destination_dir: str = '',
@@ -1547,11 +1547,11 @@ def build_static_kittens(
     if not for_platform:
         update_go_generated_files(args, os.path.join(launcher_dir, appname))
         if for_freeze and not shaders_dest:
-            shaders_dest = os.path.join(launcher_dir, '..', 'Resources' if is_macos else 'lib', 'kitty', 'shaders')
+            shaders_dest = os.path.join(launcher_dir, '..', 'Resources' if is_macos else 'lib', 'datty', 'shaders')
         build_shaders(args, os.path.join(launcher_dir, appname), shaders_dest)
 
-    if args.skip_building_kitten:
-        print('Skipping building of the kitten binary because of a command line option. Build is incomplete', file=sys.stderr)
+    if args.skip_building_daddy:
+        print('Skipping building of the daddy binary because of a command line option. Build is incomplete', file=sys.stderr)
         return ''
     cmd = go + ['build', '-v']
     vcs_rev = args.vcs_rev or get_vcs_rev()
@@ -1571,7 +1571,7 @@ def build_static_kittens(
         ld_flags.append('-s')
         ld_flags.append('-w')
     cmd += ['-ldflags', ' '.join(binary_data_flags + ld_flags)]
-    dest = os.path.join(destination_dir or launcher_dir, 'kitten')
+    dest = os.path.join(destination_dir or launcher_dir, 'daddy')
     if for_platform:
         dest += f'-{for_platform[0]}-{for_platform[1]}'
     src = os.path.abspath('tools/cmd')
@@ -1581,7 +1581,7 @@ def build_static_kittens(
         if args.verbose:
             print(shlex.join(c))
         e = os.environ.copy()
-        # https://github.com/kovidgoyal/kitty/issues/6051#issuecomment-1441369828
+        # https://github.com/kovidgoyal/datty/issues/6051#issuecomment-1441369828
         e.pop('PWD', None)
         if for_platform:
             e['CGO_ENABLED'] = '0'
@@ -1617,11 +1617,11 @@ def build_static_binaries(args: Options, launcher_dir: str) -> None:
         'dragonfly': ('amd64',),
     }.items():
         for arch in arches_:
-            print('Cross compiling static kitten for:', os_, arch)
-            build_static_kittens(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
+            print('Cross compiling static daddy for:', os_, arch)
+            build_static_daddies(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
 
 
-def read_bool_options(path: str = 'kitty/cli.py') -> Tuple[str, ...]:
+def read_bool_options(path: str = 'datty/cli.py') -> Tuple[str, ...]:
     with open(os.path.join(src_base, path)) as f:
         raw = f.read()
     m = re.search(r"^\s*OPTIONS = r?'''(.+?)'''", raw, flags=re.MULTILINE | re.DOTALL)
@@ -1650,7 +1650,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         cflags.extend(('-pedantic-errors', '-Werror'))
     if c_std:
         cflags.append(c_std)
-    cppflags = [define(f'WRAPPED_KITTENS=" {wrapped_kittens()} "')]
+    cppflags = [define(f'WRAPPED_DADDIES=" {wrapped_daddies()} "')]
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     xxhash = xxhash_flags()
     cppflags.extend(xxhash[0])
@@ -1667,7 +1667,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     if bundle_type.endswith('-freeze'):
         cppflags.append('-DFOR_BUNDLE')
         cppflags.append(f'-DPYVER="{sysconfig.get_python_version()}"')
-        cppflags.append(f'-DKITTY_LIB_DIR_NAME="{args.libdir_name}"')
+        cppflags.append(f'-DDATTY_LIB_DIR_NAME="{args.libdir_name}"')
     elif bundle_type == 'source':
         cppflags.append('-DFROM_SOURCE')
     elif bundle_type == 'develop':
@@ -1677,17 +1677,17 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         if not is_macos:
             ldflags += ['-Wl,--disable-new-dtags', f'-Wl,-rpath,$ORIGIN/../../{ph}/lib']
     if bundle_type.startswith('macos-'):
-        klp = '../Resources/kitty'
+        klp = '../Resources/datty'
     elif bundle_type.startswith('linux-'):
-        klp = '../{}/kitty'.format(args.libdir_name.strip('/'))
+        klp = '../{}/datty'.format(args.libdir_name.strip('/'))
     elif bundle_type == 'source':
         klp = os.path.relpath('.', launcher_dir)
     elif bundle_type == 'develop':
-        # make the kitty executable relocatable
+        # make the datty executable relocatable
         klp = src_base
     else:
         raise SystemExit(f'Unknown bundle type: {bundle_type}')
-    cppflags.append(f'-DKITTY_LIB_PATH="{klp}"')
+    cppflags.append(f'-DDATTY_LIB_PATH="{klp}"')
     pylib = get_python_flags(args, cflags, for_main_executable=True)
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
@@ -1704,9 +1704,9 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(launcher_dir, exist_ok=True)
     os.makedirs(build_dir, exist_ok=True)
     objects = []
-    headers = glob.glob('kitty/launcher/*.h')
-    cppflags.append('-DKITTY_VERSION="' + '.'.join(map(str, version)) + args.version_suffix + '"')
-    for src in ('kitty/launcher/main.c', 'kitty/launcher/single-instance.c', 'kitty/launcher/cmdline.c'):
+    headers = glob.glob('datty/launcher/*.h')
+    cppflags.append('-DDATTY_VERSION="' + '.'.join(map(str, version)) + args.version_suffix + '"')
+    for src in ('datty/launcher/main.c', 'datty/launcher/single-instance.c', 'datty/launcher/cmdline.c'):
         obj = os.path.join(build_dir, src.replace('/', '-').replace('.c', '.o'))
         objects.append(obj)
         cmd = env.cc + cppflags + cflags + ['-c', src, '-o', obj]
@@ -1714,17 +1714,17 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         args.compilation_database.add_command(
             f'Compiling {emphasis(src)} ...', cmd, partial(newer, obj, src, *dependecies_for(src, obj, headers)), key=key, keyfile=src
         )
-    dest = kitty_exe = os.path.join(launcher_dir, 'kitty')
+    dest = datty_exe = os.path.join(launcher_dir, 'datty')
     link_targets.append(os.path.abspath(dest))
     desc = f'Linking {emphasis("launcher")} ...'
     cmd = env.cc + ldflags + objects + libs + pylib + ['-o', dest]
-    args.compilation_database.add_command(desc, cmd, partial(newer, dest, *objects), key=LinkKey('kitty'))
+    args.compilation_database.add_command(desc, cmd, partial(newer, dest, *objects), key=LinkKey('datty'))
     if args.build_dsym and is_macos:
         desc = f'Linking dSYM {emphasis("launcher")} ...'
         dsym = f'{dest}.dSYM/Contents/Resources/DWARF/{os.path.basename(dest)}'
         args.compilation_database.add_command(desc, ['dsymutil', dest], partial(newer, dsym, dest), key=LinkKey(dsym), is_post_link=True)
     args.compilation_database.build_all()
-    return kitty_exe
+    return datty_exe
 
 
 # Packaging {{{
@@ -1738,7 +1738,7 @@ def copy_man_pages(ddir: str) -> None:
     src = 'docs/_build/man'
     if not os.path.exists(src):
         raise SystemExit("""\
-The kitty man pages are missing. If you are building from git then run:
+The datty man pages are missing. If you are building from git then run:
 make && make docs
 (needs the sphinx documentation system to be installed)
 """)
@@ -1756,7 +1756,7 @@ def copy_html_docs(ddir: str) -> None:
     src = 'docs/_build/html'
     if not os.path.exists(src):
         raise SystemExit("""\
-The kitty html docs are missing. If you are building from git then run:
+The datty html docs are missing. If you are building from git then run:
 make && make docs
 (needs the sphinx documentation system to be installed)
 """)
@@ -1788,48 +1788,48 @@ def compile_python(base_path: str) -> None:
 def create_linux_bundle_gunk(ddir: str, args: Options) -> None:
     libdir_name = args.libdir_name
     base = Path(ddir)
-    in_src_launcher = base / (f'{libdir_name}/kitty/kitty/launcher/kitty')
-    launcher = base / 'bin/kitty'
+    in_src_launcher = base / (f'{libdir_name}/datty/datty/launcher/datty')
+    launcher = base / 'bin/datty'
     skip_docs = False
     if not os.path.exists('docs/_build/html'):
-        kitten_exe = os.path.join(os.path.dirname(str(launcher)), 'kitten')
-        if os.path.exists(kitten_exe):
-            os.environ['KITTEN_EXE_FOR_DOCS'] = kitten_exe
+        daddy_exe = os.path.join(os.path.dirname(str(launcher)), 'daddy')
+        if os.path.exists(daddy_exe):
+            os.environ['DADDY_EXE_FOR_DOCS'] = daddy_exe
             make = 'gmake' if is_freebsd else 'make'
             run_tool([make, 'docs'])
         else:
-            if args.skip_building_kitten:
+            if args.skip_building_daddy:
                 skip_docs = True
                 print(
-                    'WARNING: You have chosen to skip building kitten.'
+                    'WARNING: You have chosen to skip building daddy.'
                     ' This means docs could not be generated and will not be included in the linux package.'
-                    ' You should build kitten and then re-run this build.',
+                    ' You should build daddy and then re-run this build.',
                     file=sys.stderr,
                 )
             else:
-                raise SystemExit(f'kitten binary not found at: {kitten_exe}')
+                raise SystemExit(f'daddy binary not found at: {daddy_exe}')
     if not skip_docs:
         copy_man_pages(ddir)
         copy_html_docs(ddir)
     for icdir, ext in {'256x256': 'png', 'scalable': 'svg'}.items():
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', icdir, 'apps')
         safe_makedirs(icdir)
-        shutil.copy2(f'logo/kitty.{ext}', icdir)
+        shutil.copy2(f'logo/datty.{ext}', icdir)
     deskdir = os.path.join(ddir, 'share', 'applications')
     safe_makedirs(deskdir)
-    with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
+    with open(os.path.join(deskdir, 'datty.desktop'), 'w') as f:
         f.write(
             """\
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=kitty
+Name=datty
 GenericName=Terminal emulator
 Comment=Fast, feature-rich, GPU based terminal
-TryExec=kitty
+TryExec=datty
 StartupNotify=true
-Exec=kitty
-Icon=kitty
+Exec=datty
+Icon=datty
 Categories=System;TerminalEmulator;
 X-TerminalArgExec=--
 X-TerminalArgTitle=--title
@@ -1838,22 +1838,22 @@ X-TerminalArgDir=--working-directory
 X-TerminalArgHold=--hold
 """
         )
-    with open(os.path.join(deskdir, 'kitty-open.desktop'), 'w') as f:
+    with open(os.path.join(deskdir, 'datty-open.desktop'), 'w') as f:
         f.write(
             """\
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=kitty URL Launcher
+Name=datty URL Launcher
 GenericName=Terminal emulator
-Comment=Open URLs with kitty
+Comment=Open URLs with datty
 StartupNotify=true
-TryExec=kitty
-Exec=kitty +open %U
-Icon=kitty
+TryExec=datty
+Exec=datty +open %U
+Icon=datty
 Categories=System;TerminalEmulator;
 NoDisplay=true
-MimeType=image/*;application/x-sh;application/x-shellscript;inode/directory;text/*;x-scheme-handler/kitty;x-scheme-handler/ssh;
+MimeType=image/*;application/x-sh;application/x-shellscript;inode/directory;text/*;x-scheme-handler/datty;x-scheme-handler/ssh;
 """
         )
 
@@ -1869,7 +1869,7 @@ def macos_info_plist(for_quake: str = '') -> bytes:
     VERSION = '.'.join(map(str, version))
 
     def access(what: str, verb: str = 'would like to access') -> str:
-        return f'A program running inside kitty {verb} {what}'
+        return f'A program running inside datty {verb} {what}'
 
     docs = (
         []
@@ -1903,7 +1903,7 @@ def macos_info_plist(for_quake: str = '') -> bytes:
                 'CFBundleTypeRole': 'Viewer',
                 'LSHandlerRank': 'Alternate',
             },
-            # Allows dragging arbitrary files to kitty Dock icon, and list kitty in the Open With context menu.
+            # Allows dragging arbitrary files to datty Dock icon, and list datty in the Open With context menu.
             {
                 'CFBundleTypeName': 'All files',
                 'LSItemContentTypes': ['public.archive', 'public.content', 'public.data'],
@@ -1946,8 +1946,8 @@ def macos_info_plist(for_quake: str = '') -> bytes:
                 'CFBundleURLSchemes': ['irc', 'irc6', 'ircs'],
             },
             {
-                'CFBundleURLName': 'kitty URL',
-                'CFBundleURLSchemes': ['kitty'],
+                'CFBundleURLName': 'datty URL',
+                'CFBundleURLSchemes': ['datty'],
                 'LSHandlerRank': 'Owner',
                 'LSIsAppleDefaultForScheme': True,
             },
@@ -2012,7 +2012,7 @@ def macos_info_plist(for_quake: str = '') -> bytes:
         CFBundleShortVersionString=VERSION,
         CFBundleInfoDictionaryVersion='6.0',
         NSHumanReadableCopyright=time.strftime('Copyright %Y, Kovid Goyal'),
-        CFBundleGetInfoString='kitty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/kitty/',
+        CFBundleGetInfoString='datty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/datty/',
         # Operating System Version
         LSMinimumSystemVersion='12.0.0',
         # Categorization
@@ -2021,11 +2021,11 @@ def macos_info_plist(for_quake: str = '') -> bytes:
         LSApplicationCategoryType='public.app-category.utilities',
         # App Execution
         CFBundleExecutable=quake_name if for_quake else appname,
-        LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+        LSEnvironment={'DATTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
         LSRequiresNativeExecution=True,
         NSSupportsSuddenTermination=False,
         # Localization
-        # see https://github.com/kovidgoyal/kitty/issues/1233
+        # see https://github.com/kovidgoyal/datty/issues/1233
         CFBundleDevelopmentRegion='English',
         CFBundleAllowMixedLocalizations=True,
         TICapsLockLanguageSwitchCapable=True,
@@ -2067,7 +2067,7 @@ def macos_info_plist(for_quake: str = '') -> bytes:
         # Speech
         NSSpeechRecognitionUsageDescription=access('speech recognition.'),
         # One time code autofill popups
-        # see https://github.com/kovidgoyal/kitty/pull/10250
+        # see https://github.com/kovidgoyal/datty/pull/10250
         NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac=True,
     )
     if for_quake:
@@ -2084,7 +2084,7 @@ def create_macos_app_icon(where: str = 'Resources') -> None:
 quake_name = f'{appname}-quick-access'
 
 
-def create_quick_access_bundle(kapp: str, quake_desc: str = 'Quick access to kitty') -> None:
+def create_quick_access_bundle(kapp: str, quake_desc: str = 'Quick access to datty') -> None:
     qapp = os.path.join(kapp, 'Contents', f'{quake_name}.app')
     base_exe_dir = os.path.join(kapp, 'Contents/MacOS')
     if os.path.exists(qapp):
@@ -2095,7 +2095,7 @@ def create_quick_access_bundle(kapp: str, quake_desc: str = 'Quick access to kit
         f.write(macos_info_plist(quake_desc))
     for exe in os.listdir(base_exe_dir):
         os.symlink(f'../../../MacOS/{exe}', os.path.join(bin_dir, exe))
-    base_exe = os.path.join(base_exe_dir, 'kitty')
+    base_exe = os.path.join(base_exe_dir, 'datty')
     if os.path.exists(base_exe):  # during freeze launcher is built after bundle is created
         shutil.copy2(base_exe, os.path.join(bin_dir, quake_name))
     for x in ('Frameworks', 'Resources'):
@@ -2103,7 +2103,7 @@ def create_quick_access_bundle(kapp: str, quake_desc: str = 'Quick access to kit
 
 
 def create_minimal_macos_bundle(args: Options, launcher_dir: str, relocate: bool = False) -> None:
-    kapp = os.path.join(launcher_dir, 'kitty.app')
+    kapp = os.path.join(launcher_dir, 'datty.app')
     if os.path.exists(kapp):
         shutil.rmtree(kapp)
     bin_dir = os.path.join(kapp, 'Contents/MacOS')
@@ -2113,17 +2113,17 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str, relocate: bool
     with open(os.path.join(kapp, 'Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
     if relocate:
-        shutil.copy2(os.path.join(launcher_dir, 'kitty'), bin_dir)
-        shutil.copy2(os.path.join(launcher_dir, 'kitten'), bin_dir)
+        shutil.copy2(os.path.join(launcher_dir, 'datty'), bin_dir)
+        shutil.copy2(os.path.join(launcher_dir, 'daddy'), bin_dir)
     else:
         build_launcher(args, bin_dir)
-        build_static_kittens(args, launcher_dir=bin_dir)
-        kitty_exe = os.path.join(launcher_dir, appname)
+        build_static_daddies(args, launcher_dir=bin_dir)
+        datty_exe = os.path.join(launcher_dir, appname)
         with suppress(FileNotFoundError):
-            os.remove(kitty_exe)
-        os.symlink(os.path.join(os.path.relpath(bin_dir, launcher_dir), appname), kitty_exe)
+            os.remove(datty_exe)
+        os.symlink(os.path.join(os.path.relpath(bin_dir, launcher_dir), appname), datty_exe)
     create_macos_app_icon(resources_dir)
-    create_quick_access_bundle(kapp, 'Quick access to kitty built from source')
+    create_quick_access_bundle(kapp, 'Quick access to datty built from source')
 
 
 def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
@@ -2136,21 +2136,21 @@ def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
     os.rename(ddir / 'share', ddir / 'Contents/Resources')
     os.rename(ddir / 'bin', ddir / 'Contents/MacOS')
     os.rename(ddir / 'lib', ddir / 'Contents/Frameworks')
-    os.rename(ddir / 'Contents/Frameworks/kitty', ddir / 'Contents/Resources/kitty')
-    kitty_exe = ddir / 'Contents/MacOS/kitty'
-    in_src_launcher = ddir / 'Contents/Resources/kitty/kitty/launcher/kitty'
+    os.rename(ddir / 'Contents/Frameworks/datty', ddir / 'Contents/Resources/datty')
+    datty_exe = ddir / 'Contents/MacOS/datty'
+    in_src_launcher = ddir / 'Contents/Resources/datty/datty/launcher/datty'
     if os.path.exists(in_src_launcher):
         os.remove(in_src_launcher)
     os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
-    os.symlink(os.path.relpath(kitty_exe, os.path.dirname(in_src_launcher)), in_src_launcher)
+    os.symlink(os.path.relpath(datty_exe, os.path.dirname(in_src_launcher)), in_src_launcher)
     create_macos_app_icon(os.path.join(ddir, 'Contents', 'Resources'))
     if not for_freeze:
-        kitten_exe = build_static_kittens(args, launcher_dir=os.path.dirname(kitty_exe), shaders_dest=str(ddir / 'Contents/Resources/kitty/shaders'))
-        if not kitten_exe:
-            raise SystemExit('kitten not built cannot create macOS bundle')
-        os.symlink(os.path.relpath(kitten_exe, os.path.dirname(in_src_launcher)), os.path.join(os.path.dirname(in_src_launcher), os.path.basename(kitten_exe)))
+        daddy_exe = build_static_daddies(args, launcher_dir=os.path.dirname(datty_exe), shaders_dest=str(ddir / 'Contents/Resources/datty/shaders'))
+        if not daddy_exe:
+            raise SystemExit('daddy not built cannot create macOS bundle')
+        os.symlink(os.path.relpath(daddy_exe, os.path.dirname(in_src_launcher)), os.path.join(os.path.dirname(in_src_launcher), os.path.basename(daddy_exe)))
     create_quick_access_bundle(dest)
-    return str(kitty_exe)
+    return str(datty_exe)
 
 
 def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
@@ -2158,7 +2158,7 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
     for_freeze = bundle_type.endswith('-freeze')
     if bundle_type == 'linux-freeze':
         args.libdir_name = 'lib'
-    libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'kitty')
+    libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'datty')
     if os.path.exists(libdir):
         shutil.rmtree(libdir)
     launcher_dir = os.path.join(ddir, 'bin')
@@ -2174,11 +2174,11 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
         odir = os.path.join(x, 'terminfo')
         safe_makedirs(odir)
         build_terminfo['compile_terminfo'](odir)
-    shutil.copy2('terminfo/kitty.terminfo', os.path.join(libdir, 'terminfo'))
-    shutil.copy2('terminfo/kitty.termcap', os.path.join(libdir, 'terminfo'))
+    shutil.copy2('terminfo/datty.terminfo', os.path.join(libdir, 'terminfo'))
+    shutil.copy2('terminfo/datty.termcap', os.path.join(libdir, 'terminfo'))
     shutil.copy2('__main__.py', libdir)
-    shutil.copy2('logo/kitty-128.png', os.path.join(libdir, 'logo'))
-    shutil.copy2('logo/kitty.png', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/datty-128.png', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/datty.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor@2x.png', os.path.join(libdir, 'logo'))
     shutil.copytree('shell-integration', os.path.join(libdir, 'shell-integration'), dirs_exist_ok=True)
@@ -2188,10 +2188,10 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
     def src_ignore(parent: str, entries: Iterable[str]) -> List[str]:
         return [x for x in entries if '.' in x and x.rpartition('.')[2] not in allowed_extensions]
 
-    shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
-    shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
+    shutil.copytree('datty', os.path.join(libdir, 'datty'), ignore=src_ignore)
+    shutil.copytree('daddies', os.path.join(libdir, 'daddies'), ignore=src_ignore)
     if for_freeze:
-        shutil.copytree('kitty_tests', os.path.join(libdir, 'kitty_tests'))
+        shutil.copytree('datty_tests', os.path.join(libdir, 'datty_tests'))
 
     def repl(name: str, raw: str, defval: Union[str, float, FrozenSet[str]], val: Union[str, float, FrozenSet[str]]) -> str:
         if defval == val:
@@ -2205,7 +2205,7 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
             raise SystemExit(f'Failed to change the value of {name}')
         return nraw
 
-    with open(os.path.join(libdir, 'kitty/options/types.py'), 'r+', encoding='utf-8') as f:
+    with open(os.path.join(libdir, 'datty/options/types.py'), 'r+', encoding='utf-8') as f:
         oraw = raw = f.read()
         raw = repl('update_check_interval', raw, Options.update_check_interval, args.update_check_interval)
         raw = repl('shell_integration', raw, frozenset(Options.shell_integration.split()), frozenset(args.shell_integration.split()))
@@ -2218,7 +2218,7 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
         if path.endswith('.so'):
             return True
         q = path.split(os.sep)[-2:]
-        if len(q) == 2 and q[0] == 'ssh' and q[1] in ('kitty', 'kitten'):
+        if len(q) == 2 and q[0] == 'ssh' and q[1] in ('datty', 'daddy'):
             return True
         return False
 
@@ -2228,7 +2228,7 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
             os.chmod(path, 0o755 if should_be_executable(path) else 0o644)
     if not for_freeze:
         if not bundle_type.startswith('macos-'):
-            build_static_kittens(args, launcher_dir=launcher_dir, shaders_dest=os.path.join(libdir, 'shaders'))
+            build_static_daddies(args, launcher_dir=launcher_dir, shaders_dest=os.path.join(libdir, 'shaders'))
     if not is_macos and not is_windows:
         create_linux_bundle_gunk(ddir, args)
 
@@ -2258,11 +2258,11 @@ def clean(for_cross_compile: bool = False) -> None:
                     os.unlink(x)
 
     safe_remove(
-        'build', 'compile_commands.json', 'link_commands.json', 'linux-package', 'kitty.app', 'asan-launcher', 'kitty-profile'
+        'build', 'compile_commands.json', 'link_commands.json', 'linux-package', 'datty.app', 'asan-launcher', 'datty-profile'
     )  # no fonts as that is not generated by build
     if not for_cross_compile:
         safe_remove('docs/generated', 'shaders')
-    clean_launcher_dir('kitty/launcher')
+    clean_launcher_dir('datty/launcher')
 
     def excluded(root: str, d: str) -> bool:
         q = os.path.relpath(os.path.join(root, d), src_base).replace(os.sep, '/')
@@ -2284,7 +2284,7 @@ def clean(for_cross_compile: bool = False) -> None:
                 os.unlink(os.path.join(root, f))
     for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)
-    for x in glob.glob('kittens/*'):
+    for x in glob.glob('daddies/*'):
         if os.path.isdir(x) and not os.path.exists(os.path.join(x, '__init__.py')):
             shutil.rmtree(x)
     if go := go_cmd():
@@ -2302,7 +2302,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
             'test',
             'develop',
             'linux-package',
-            'kitty.app',
+            'datty.app',
             'linux-freeze',
             'macos-freeze',
             'build-launcher',
@@ -2324,7 +2324,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         help='Turn on sanitization to detect memory access errors and undefined behavior. This is a big performance hit.',
     )
     p.add_argument('--prefix', default=Options.prefix, help='Where to create the linux package')
-    p.add_argument('--dir-for-static-binaries', default=Options.dir_for_static_binaries, help='Where to create the static kitten binary')
+    p.add_argument('--dir-for-static-binaries', default=Options.dir_for_static_binaries, help='Where to create the static daddy binary')
     p.add_argument(
         '--skip-code-generation',
         default=Options.skip_code_generation,
@@ -2333,10 +2333,10 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         ' have already been generated by a previous build, for example during a two-stage cross compilation.',
     )
     p.add_argument(
-        '--skip-building-kitten',
-        default=Options.skip_building_kitten,
+        '--skip-building-daddy',
+        default=Options.skip_building_daddy,
         action='store_true',
-        help='Do not build the kitten binary. Useful if you want to build it separately.',
+        help='Do not build the daddy binary. Useful if you want to build it separately.',
     )
     p.add_argument(
         '--clean-for-cross-compile',
@@ -2451,7 +2451,7 @@ def build_dep() -> None:
         platform: str = 'all'
         deps: List[str] = []
 
-    p = argparse.ArgumentParser(prog=f'{sys.argv[0]} build-dep', description='Build dependencies for the kitty binary packages')
+    p = argparse.ArgumentParser(prog=f'{sys.argv[0]} build-dep', description='Build dependencies for the datty binary packages')
     p.add_argument('--platform', default=Options.platform, choices='all macos linux linux-arm64 linux-64'.split(), help='Platforms to build the dep for')
     p.add_argument('deps', nargs='*', default=Options.deps, help='Names of the dependencies, if none provided, build all')
     args = p.parse_args(sys.argv[2:], namespace=Options())
@@ -2497,13 +2497,13 @@ def macos_freeze(args: Options, launcher_dir: str, only_frozen_launcher: bool = 
         os.makedirs(build_dir, exist_ok=True)
         print('Building for arch:', arch, 'in', build_dir)
         if arch is not macos_universal_arches[0]:
-            args.skip_code_generation = True  # cant run kitty as its not a native arch
+            args.skip_code_generation = True  # cant run datty as its not a native arch
         link_targets.clear()
         with CompilationDatabase() as cdb:
             args.compilation_database = cdb
             init_env_from_args(args, native_optimizations=False)
             if only_frozen_launcher:
-                kitty_exe_path = build_launcher(args, launcher_dir=launcher_dir, bundle_type=bundle_type)
+                datty_exe_path = build_launcher(args, launcher_dir=launcher_dir, bundle_type=bundle_type)
             else:
                 build_launcher(args, launcher_dir=launcher_dir)
                 build(args, native_optimizations=False, call_init=False)
@@ -2516,16 +2516,16 @@ def macos_freeze(args: Options, launcher_dir: str, only_frozen_launcher: bool = 
     lipo(link_target_map)
     if only_frozen_launcher:
         if is_macos:
-            shutil.copy2(kitty_exe_path, os.path.dirname(kitty_exe_path) + f'/../Contents/{quake_name}.app/Contents/MacOS/{quake_name}')
+            shutil.copy2(datty_exe_path, os.path.dirname(datty_exe_path) + f'/../Contents/{quake_name}.app/Contents/MacOS/{quake_name}')
     else:
         package(args, bundle_type=bundle_type, do_build_all=False)
 
 
 def do_build(args: Options) -> None:
-    launcher_dir = 'kitty/launcher'
+    launcher_dir = 'datty/launcher'
 
     if args.action == 'test':
-        texe = os.path.abspath(os.path.join(launcher_dir, 'kitty'))
+        texe = os.path.abspath(os.path.join(launcher_dir, 'datty'))
         os.execl(texe, texe, '+launch', 'test.py')
     if args.action == 'clean':
         clean(for_cross_compile=args.clean_for_cross_compile)
@@ -2544,38 +2544,38 @@ def do_build(args: Options) -> None:
                 create_minimal_macos_bundle(args, launcher_dir)
             else:
                 build_launcher(args, launcher_dir=launcher_dir)
-                build_static_kittens(args, launcher_dir=launcher_dir)
+                build_static_daddies(args, launcher_dir=launcher_dir)
         elif args.action == 'develop':
             build(args)
             build_launcher(args, launcher_dir=launcher_dir, bundle_type='develop')
-            build_static_kittens(args, launcher_dir=launcher_dir)
+            build_static_daddies(args, launcher_dir=launcher_dir)
             if is_macos:
                 create_minimal_macos_bundle(args, launcher_dir, relocate=True)
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
             build_launcher(args, launcher_dir=launcher_dir)
-            build_static_kittens(args, launcher_dir=launcher_dir)
+            build_static_daddies(args, launcher_dir=launcher_dir)
         elif args.action == 'build-frozen-launcher':
             init_env_from_args(args, False)
             bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
             build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
         elif args.action == 'build-frozen-tools':
-            build_static_kittens(args, launcher_dir=args.prefix, for_freeze=True)
+            build_static_daddies(args, launcher_dir=args.prefix, for_freeze=True)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')
         elif args.action == 'linux-freeze':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-freeze')
-        elif args.action == 'kitty.app':
-            args.prefix = 'kitty.app'
+        elif args.action == 'datty.app':
+            args.prefix = 'datty.app'
             if os.path.exists(args.prefix):
                 shutil.rmtree(args.prefix)
             build(args)
             package(args, bundle_type='macos-package')
-            print('kitty.app successfully built!')
+            print('datty.app successfully built!')
         elif args.action == 'export-ci-bundles':
-            cmd = [sys.executable, '../bypy', 'export', 'download.calibre-ebook.com:/srv/download/ci/kitty']
+            cmd = [sys.executable, '../bypy', 'export', 'download.calibre-ebook.com:/srv/download/ci/datty']
             subprocess.check_call(cmd + ['linux'])
             subprocess.check_call(cmd + ['linux', '--arch=arm64'])
             subprocess.check_call(cmd + ['macos'])

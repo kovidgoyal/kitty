@@ -32,8 +32,8 @@
  * ibus engine name
  * You can list available engines with:
  * ibus list-engine
- * Then run kitty as:
- * GLFW_IM_MODULE=ibus kitty
+ * Then run datty as:
+ * GLFW_IM_MODULE=ibus datty
  */
 #define _GNU_SOURCE
 #include <stdio.h>

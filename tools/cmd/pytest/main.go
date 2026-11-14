@@ -8,8 +8,8 @@ import (
 	"os"
 
 	shm "github.com/kovidgoyal/go-shm/v2"
-	"github.com/kovidgoyal/kitty/kittens/ssh"
-	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/datty/daddies/ssh"
+	"github.com/kovidgoyal/datty/tools/cli"
 )
 
 var _ = fmt.Print

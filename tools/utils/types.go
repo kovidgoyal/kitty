@@ -12,7 +12,7 @@ type RemoteControlCmd struct {
 	CancelAsync   bool   `json:"cancel_async,omitempty"`
 	Stream        bool   `json:"stream,omitempty"`
 	StreamId      string `json:"stream_id,omitempty"`
-	KittyWindowId uint   `json:"kitty_window_id,omitempty"`
+	DattyWindowId uint   `json:"datty_window_id,omitempty"`
 	Payload       any    `json:"payload,omitempty"`
 }
 

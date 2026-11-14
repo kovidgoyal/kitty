@@ -22,12 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/config"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/tui/subseq"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/style"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/config"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/tui/subseq"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/style"
 )
 
 var _ = fmt.Print
@@ -458,7 +458,7 @@ func fetch_cached(name, url, cache_path string, max_cache_age time.Duration) (st
 }
 
 func FetchCached(max_cache_age time.Duration) (string, error) {
-	return fetch_cached("kitty-themes", "https://codeload.github.com/kovidgoyal/kitty-themes/zip/master", utils.CacheDir(), max_cache_age)
+	return fetch_cached("datty-themes", "https://codeload.github.com/kovidgoyal/kitty-themes/zip/master", utils.CacheDir(), max_cache_age)
 }
 
 type ThemeMetadata struct {
@@ -474,7 +474,7 @@ type ThemeMetadata struct {
 
 func ParseThemeMetadata(path string) (*ThemeMetadata, map[string]string, error) {
 	var in_metadata, in_blurb, finished_metadata bool
-	ans := ThemeMetadata{Is_dark: true} // the default background in kitty is dark
+	ans := ThemeMetadata{Is_dark: true} // the default background in datty is dark
 	settings := map[string]string{}
 
 	read_is_dark := func(key, val string) (err error) {
@@ -613,15 +613,15 @@ func (self *Theme) SaveInConf(config_dir, reload_in, config_file_name string) (e
 	}
 	patcher := config.Patcher{Write_backup: true}
 	if _, err = patcher.Patch(
-		confpath, "KITTY_THEME", fmt.Sprintf("# %s\ninclude current-theme.conf", self.metadata.Name),
+		confpath, "DATTY_THEME", fmt.Sprintf("# %s\ninclude current-theme.conf", self.metadata.Name),
 		utils.Keys(AllColorSettingNames)...); err != nil {
 		return
 	}
 	switch reload_in {
 	case "parent":
-		config.ReloadConfigInKitty(true)
+		config.ReloadConfigInDatty(true)
 	case "all":
-		config.ReloadConfigInKitty(false)
+		config.ReloadConfigInDatty(false)
 	}
 	return
 }
@@ -743,7 +743,7 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 	}
 	w.WriteString("\033\\")
 	if len(unset) > 0 {
-		// Have kitty fill in unset colors based on its palette_generate setting
+		// Have datty fill in unset colors based on its palette_generate setting
 		w.WriteString("\033]21")
 		for _, i := range unset {
 			w.WriteByte(';')
@@ -755,9 +755,9 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 	return w.String()
 }
 
-// The same colors as set by ColorSettingsAsEscapeCodes as a map of kitty
+// The same colors as set by ColorSettingsAsEscapeCodes as a map of datty
 // color names to 0xRRGGBB values. Colors that are reset to their configured
-// values are not present and colors that kitty should generate are nil.
+// values are not present and colors that datty should generate are nil.
 func ColorSettingsAsSpec(settings map[string]string) map[string]any {
 	colors := ResolveColorSettings(settings)
 	ans := make(map[string]any, len(colors.Defaults)+len(colors.Palette))
@@ -849,7 +849,7 @@ func (self *Themes) add_from_dir(dirpath string) error {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".conf") {
 			path := filepath.Join(dirpath, e.Name())
 			// ignore files if they are the STDOUT of the current processes
-			// allows using kitten theme --dump-theme name > ~/.config/kitty/themes/name.conf
+			// allows using daddy theme --dump-theme name > ~/.config/datty/themes/name.conf
 			if utils.Samefile(path, os.Stdout) {
 				continue
 			}

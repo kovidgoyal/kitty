@@ -1,8 +1,8 @@
 Performance
 ===================
 
-The main goals for |kitty| performance are user perceived latency while typing
-and "smoothness" while scrolling as well as CPU usage. |kitty| tries hard to
+The main goals for |datty| performance are user perceived latency while typing
+and "smoothness" while scrolling as well as CPU usage. |datty| tries hard to
 find an optimum balance for these. To that end it keeps a cache of each
 rendered glyph in video RAM so that font rendering is not a bottleneck.
 Interaction with child programs takes place in a separate thread from
@@ -15,7 +15,7 @@ bytes to the GPU.
 There are two config options you can tune to adjust the performance,
 :opt:`repaint_delay` and :opt:`input_delay`. These control the artificial delays
 introduced into the render loop to reduce CPU usage. See
-:ref:`conf-kitty-performance` for details. See also the :opt:`sync_to_monitor`
+:ref:`conf-datty-performance` for details. See also the :opt:`sync_to_monitor`
 option to further decrease latency at the cost of some `screen tearing
 <https://en.wikipedia.org/wiki/Screen_tearing>`__ while scrolling.
 
@@ -31,11 +31,11 @@ Keyboard to screen latency
 
 This is measured either with dedicated hardware, or software such as `Typometer
 <https://pavelfatin.com/typometer/>`__. Third party measurements comparing
-kitty with other terminal emulators on various systems show kitty has best in
+datty with other terminal emulators on various systems show datty has best in
 class keyboard to screen latency.
 
 Note that to minimize latency at the expense of more energy usage, use the
-following settings in kitty.conf::
+following settings in datty.conf::
 
     input_delay 0
     repaint_delay 2
@@ -43,38 +43,38 @@ following settings in kitty.conf::
     wayland_enable_ime no
 
 `Hardware based measurement on macOS
-<https://thume.ca/2020/05/20/making-a-latency-tester/>`__ show that kitty and
+<https://thume.ca/2020/05/20/making-a-latency-tester/>`__ show that datty and
 Apple's Terminal.app share the crown for best latency. These
 measurements were done with :opt:`input_delay` at its default value of ``3 ms``
-which means kitty's actual numbers would be even lower.
+which means datty's actual numbers would be even lower.
 
 `Typometer based measurements on Linux
-<https://github.com/kovidgoyal/kitty/issues/2701#issuecomment-911089374>`__
-show that kitty has far and away the best latency of the terminals tested.
+<https://github.com/kovidgoyal/datty/issues/2701#issuecomment-911089374>`__
+show that datty has far and away the best latency of the terminals tested.
 
 .. _throughput:
 
 Throughput
 ^^^^^^^^^^^^^^^^
 
-kitty has a builtin kitten to measure throughput, it works by dumping large
+datty has a builtin daddy to measure throughput, it works by dumping large
 amounts of data of different types into the tty device and measuring how fast
 the terminal parses and responds to it. The measurements below were taken with
 the same font, font size and window size for all terminals, and default
-settings, on the same computer. They clearly show kitty has the fastest
-throughput. To run the tests yourself, run ``kitten __benchmark__`` in the
-terminal emulator you want to test, where the kitten binary is part of the
-kitty install.
+settings, on the same computer. They clearly show datty has the fastest
+throughput. To run the tests yourself, run ``daddy __benchmark__`` in the
+terminal emulator you want to test, where the daddy binary is part of the
+datty install.
 
 The numbers are megabytes per second of data that the terminal
 processes. Measurements were taken under Linux/X11 with an ``AMD Ryzen 7 PRO
-5850U``. Entries are in order of decreasing performance. kitty is twice
+5850U``. Entries are in order of decreasing performance. datty is twice
 as fast as the next best.
 
 ================   ======  ======= ===== ====== =======
 Terminal           ASCII   Unicode CSI   Images Average
 ================   ======  ======= ===== ====== =======
-kitty 0.33         121.8   105.0   59.8  251.6  134.55
+datty 0.33         121.8   105.0   59.8  251.6  134.55
 gnometerm 3.50.1   33.4    55.0    16.1  142.8  61.83
 alacritty 0.13.1   43.1    46.5    32.5  94.1   54.05
 wezterm 20230712   16.4    26.0    11.1  140.5  48.5
@@ -89,12 +89,12 @@ ASCII only text.
 
 .. note::
 
-   By default, the benchmark kitten suppresses actual rendering, to better
+   By default, the benchmark daddy suppresses actual rendering, to better
    focus on parser speed, you can pass it the ``--render`` flag to not suppress
    rendering. However, modern terminals typically render asynchronously,
    therefore the numbers are not really useful for comparison, as it is just a
    game about how much input to *batch* before rendering the next frame.
-   However, even with rendering enabled kitty is still faster than all the
+   However, even with rendering enabled datty is still faster than all the
    rest. For brevity those numbers are not included.
 
 .. note::
@@ -127,7 +127,7 @@ Devices, Inc. [AMD/ATI] Cape Verde XT [Radeon HD 7770/8760 / R7 250X]`` GPU.
 ==============   =========================
 Terminal         CPU usage (X + terminal)
 ==============   =========================
-|kitty|          6 - 8%
+|datty|          6 - 8%
 xterm            5 - 7% (but scrolling was extremely janky)
 termite          10 - 13%
 urxvt            12 - 14%
@@ -135,18 +135,18 @@ gnome-terminal   15 - 17%
 konsole          29 - 31%
 ==============   =========================
 
-As you can see, |kitty| uses much less CPU than all terminals, except xterm, but
+As you can see, |datty| uses much less CPU than all terminals, except xterm, but
 its scrolling "smoothness" is much better than that of xterm (at least to my,
 admittedly biased, eyes).
 
-Instrumenting kitty
+Instrumenting datty
 -----------------------
 
-To profile kitty performance on Linux, first install ``perf`` and run::
+To profile datty performance on Linux, first install ``perf`` and run::
 
     sudo setcap cap_sys_admin,cap_sys_ptrace,cap_syslog=ep /usr/bin/perf
 
-Then build kitty with::
+Then build datty with::
 
     make profile
 

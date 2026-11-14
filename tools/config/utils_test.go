@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
 )
 
 var _ = fmt.Print

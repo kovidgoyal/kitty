@@ -1,4 +1,4 @@
-#!./kitty/launcher/kitty +launch
+#!./datty/launcher/datty +launch
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
@@ -24,26 +24,26 @@ from typing import (
     Union,
 )
 
-import kitty.constants as kc
-from kittens.tui.operations import Mode
-from kittens.tui.spinners import spinners
-from kitty.actions import get_all_actions
-from kitty.cli import (
+import datty.constants as kc
+from daddies.tui.operations import Mode
+from daddies.tui.spinners import spinners
+from datty.actions import get_all_actions
+from datty.cli import (
     GoOption,
     go_options_for_seq,
 )
-from kitty.conf.generate import gen_go_code
-from kitty.conf.types import Definition
-from kitty.config import commented_out_default_config
-from kitty.fast_data_types import NULL_COLOR_VALUE, all_color_names, default_color_table
-from kitty.guess_mime_type import known_extensions, text_mimes
-from kitty.key_encoding import config_mod_map
-from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
-from kitty.options.types import Options
-from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
-from kitty.rc.set_spacing import spacing_edge_map
-from kitty.remote_control import global_options_spec
-from kitty.simple_cli_definitions import CompletionSpec, parse_option_spec, serialize_as_go_string
+from datty.conf.generate import gen_go_code
+from datty.conf.types import Definition
+from datty.config import commented_out_default_config
+from datty.fast_data_types import NULL_COLOR_VALUE, all_color_names, default_color_table
+from datty.guess_mime_type import known_extensions, text_mimes
+from datty.key_encoding import config_mod_map
+from datty.key_names import character_key_name_aliases, functional_key_name_aliases
+from datty.options.types import Options
+from datty.rc.base import RemoteCommand, all_command_names, command_for_name
+from datty.rc.set_spacing import spacing_edge_map
+from datty.remote_control import global_options_spec
+from datty.simple_cli_definitions import CompletionSpec, parse_option_spec, serialize_as_go_string
 
 if __name__ == '__main__' and not __package__:
     import __main__
@@ -176,7 +176,7 @@ def stringify() -> None:
     for path in (
         'tools/tui/graphics/command.go',
         'tools/rsync/algorithm.go',
-        'kittens/transfer/ftc.go',
+        'daddies/transfer/ftc.go',
     ):
         stringify_file(path)
 
@@ -187,7 +187,7 @@ def stringify() -> None:
 
 
 def make_bitfields() -> None:
-    from kitty.fast_data_types import SCALE_BITS, SUBSCALE_BITS, WIDTH_BITS
+    from datty.fast_data_types import SCALE_BITS, SUBSCALE_BITS, WIDTH_BITS
 
     from .bitfields import make_bitfield
 
@@ -227,7 +227,7 @@ def make_bitfields() -> None:
         'LineAttrs',
         'prompt_kind 2',
     )
-    mb('kittens/choose_files', 'CombinedScore', 'score 16', 'length 16', 'index 32')
+    mb('daddies/choose_files', 'CombinedScore', 'score 16', 'length 16', 'index 32')
 
 
 # }}}
@@ -236,33 +236,33 @@ def make_bitfields() -> None:
 
 
 @lru_cache
-def kitten_cli_docs(kitten: str) -> Any:
-    from kittens.runner import get_kitten_cli_docs
+def daddy_cli_docs(daddy: str) -> Any:
+    from daddies.runner import get_daddy_cli_docs
 
-    return get_kitten_cli_docs(kitten)
+    return get_daddy_cli_docs(daddy)
 
 
 @lru_cache
-def go_options_for_kitten(kitten: str) -> tuple[Sequence[GoOption], Optional[CompletionSpec]]:
-    kcd = kitten_cli_docs(kitten)
+def go_options_for_daddy(daddy: str) -> tuple[Sequence[GoOption], Optional[CompletionSpec]]:
+    kcd = daddy_cli_docs(daddy)
     if kcd:
         ospec = kcd['options']
         return (tuple(go_options_for_seq(parse_option_spec(ospec())[0])), kcd.get('args_completion'))
     return (), None
 
 
-def generate_kittens_completion() -> None:
-    from kittens.runner import all_kitten_names, get_kitten_wrapper_of
+def generate_daddies_completion() -> None:
+    from daddies.runner import all_daddy_names, get_daddy_wrapper_of
 
-    for kitten in sorted(all_kitten_names()):
-        kn = 'kitten_' + kitten
-        print(f'{kn} := plus_kitten.AddSubCommand(&cli.Command{{Name:"{kitten}", Group: "Kittens"}})')
-        wof = get_kitten_wrapper_of(kitten)
+    for daddy in sorted(all_daddy_names()):
+        kn = 'daddy_' + daddy
+        print(f'{kn} := plus_daddy.AddSubCommand(&cli.Command{{Name:"{daddy}", Group: "Daddies"}})')
+        wof = get_daddy_wrapper_of(daddy)
         if wof:
             print(f'{kn}.ArgCompleter = cli.CompletionForWrapper("{serialize_as_go_string(wof)}")')
             print(f'{kn}.OnlyArgsAllowed = true')
             continue
-        gopts, ac = go_options_for_kitten(kitten)
+        gopts, ac = go_options_for_daddy(daddy)
         if gopts or ac:
             for opt in gopts:
                 print(opt.as_option(kn))
@@ -274,7 +274,7 @@ def generate_kittens_completion() -> None:
 
 @lru_cache
 def clone_safe_launch_opts() -> Sequence[GoOption]:
-    from kitty.launch import clone_safe_opts, options_spec
+    from datty.launch import clone_safe_opts, options_spec
 
     ans = []
     allowed = clone_safe_opts()
@@ -290,48 +290,48 @@ def completion_for_launch_wrappers(*names: str) -> None:
             print(o.as_option(name))
 
 
-def generate_completions_for_kitty() -> None:
+def generate_completions_for_datty() -> None:
     print('package completion\n')
-    print('import "github.com/kovidgoyal/kitty/tools/cli"')
-    print('import "github.com/kovidgoyal/kitty/tools/cmd/tool"')
-    print('import "github.com/kovidgoyal/kitty/tools/cmd/at"')
+    print('import "github.com/kovidgoyal/datty/tools/cli"')
+    print('import "github.com/kovidgoyal/datty/tools/cmd/tool"')
+    print('import "github.com/kovidgoyal/datty/tools/cmd/at"')
 
-    print('func kitty(root *cli.Command) {')
+    print('func datty(root *cli.Command) {')
 
-    # The kitty exe
+    # The datty exe
     print(
         'k := root.AddSubCommand(&cli.Command{'
-        'Name:"kitty", SubCommandIsOptional: true, ArgCompleter: cli.CompleteExecutableFirstArg, SubCommandMustBeFirst: true })'
+        'Name:"datty", SubCommandIsOptional: true, ArgCompleter: cli.CompleteExecutableFirstArg, SubCommandMustBeFirst: true })'
     )
-    print('kt := root.AddSubCommand(&cli.Command{Name:"kitten", SubCommandMustBeFirst: true })')
-    print('tool.KittyToolEntryPoints(kt)')
+    print('kt := root.AddSubCommand(&cli.Command{Name:"daddy", SubCommandMustBeFirst: true })')
+    print('tool.DattyToolEntryPoints(kt)')
     for opt in go_options_for_seq(parse_option_spec()[0]):
         print(opt.as_option('k'))
 
-    # kitty +
-    print('plus := k.AddSubCommand(&cli.Command{Name:"+", Group:"Entry points", ShortDescription: "Various special purpose tools and kittens"})')
+    # datty +
+    print('plus := k.AddSubCommand(&cli.Command{Name:"+", Group:"Entry points", ShortDescription: "Various special purpose tools and daddies"})')
 
-    # kitty +launch
+    # datty +launch
     print(
         'plus_launch := plus.AddSubCommand(&cli.Command{'
         'Name:"launch", Group:"Entry points", ShortDescription: "Launch Python scripts", ArgCompleter: complete_plus_launch})'
     )
     print('k.AddClone("", plus_launch).Name = "+launch"')
 
-    # kitty +list-fonts
+    # datty +list-fonts
     print(
         'plus_list_fonts := plus.AddSubCommand(&cli.Command{Name:"list-fonts", Group:"Entry points", ShortDescription: "List all available monospaced fonts"})'
     )
     print('k.AddClone("", plus_list_fonts).Name = "+list-fonts"')
 
-    # kitty +runpy
+    # datty +runpy
     print(
         'plus_runpy := plus.AddSubCommand(&cli.Command{'
         'Name: "runpy", Group:"Entry points", ArgCompleter: complete_plus_runpy, ShortDescription: "Run Python code"})'
     )
     print('k.AddClone("", plus_runpy).Name = "+runpy"')
 
-    # kitty +open
+    # datty +open
     print(
         'plus_open := plus.AddSubCommand(&cli.Command{'
         'Name:"open", Group:"Entry points", ArgCompleter: complete_plus_open, ShortDescription: "Open files and URLs"})'
@@ -339,21 +339,21 @@ def generate_completions_for_kitty() -> None:
     print('for _, og := range k.OptionGroups { plus_open.OptionGroups = append(plus_open.OptionGroups, og.Clone(plus_open)) }')
     print('k.AddClone("", plus_open).Name = "+open"')
 
-    # kitty +kitten
-    print('plus_kitten := plus.AddSubCommand(&cli.Command{Name:"kitten", Group:"Kittens", SubCommandMustBeFirst: true})')
-    generate_kittens_completion()
-    print('k.AddClone("", plus_kitten).Name = "+kitten"')
+    # datty +daddy
+    print('plus_daddy := plus.AddSubCommand(&cli.Command{Name:"daddy", Group:"Daddies", SubCommandMustBeFirst: true})')
+    generate_daddies_completion()
+    print('k.AddClone("", plus_daddy).Name = "+daddy"')
 
     # @
     print('at.EntryPoint(k)')
 
-    # clone-in-kitty, edit-in-kitty
-    print('cik := root.AddSubCommand(&cli.Command{Name:"clone-in-kitty"})')
+    # clone-in-datty, edit-in-datty
+    print('cik := root.AddSubCommand(&cli.Command{Name:"clone-in-datty"})')
     completion_for_launch_wrappers('cik')
 
     print('}')
     print('func init() {')
-    print('cli.RegisterExeForCompletion(kitty)')
+    print('cli.RegisterExeForCompletion(datty)')
     print('}')
 
 
@@ -506,17 +506,17 @@ def go_code_for_remote_command(name: str, cmd: RemoteCommand, template: str) -> 
 # }}}
 
 
-# kittens {{{
+# daddies {{{
 
 
-def generate_conf_parser(kitten: str, defn: Definition) -> None:
-    with replace_if_needed(f'kittens/{kitten}/conf_generated.go'):
-        print(f'package {kitten}')
+def generate_conf_parser(daddy: str, defn: Definition) -> None:
+    with replace_if_needed(f'daddies/{daddy}/conf_generated.go'):
+        print(f'package {daddy}')
         print(gen_go_code(defn))
 
 
 def generate_extra_cli_parser(name: str, spec: str) -> None:
-    print('import "github.com/kovidgoyal/kitty/tools/cli"')
+    print('import "github.com/kovidgoyal/datty/tools/cli"')
     go_opts = tuple(go_options_for_seq(parse_option_spec(spec)[0]))
     print(f'type {name}_options struct {{')
     for opt in go_opts:
@@ -535,8 +535,8 @@ def generate_extra_cli_parser(name: str, spec: str) -> None:
     print('}')
 
 
-def kittens_needing_cli_parsers() -> Iterator[str]:
-    for d in os.scandir('kittens'):
+def daddies_needing_cli_parsers() -> Iterator[str]:
+    for d in os.scandir('daddies'):
         if not d.is_dir(follow_symlinks=False):
             continue
         if os.path.exists(os.path.join(d.path, 'main.py')) and os.path.exists(os.path.join(d.path, 'main.go')):
@@ -546,32 +546,32 @@ def kittens_needing_cli_parsers() -> Iterator[str]:
                 yield d.name
 
 
-def kitten_clis() -> None:
-    from kittens.runner import get_kitten_conf_docs, get_kitten_extra_cli_parsers
+def daddy_clis() -> None:
+    from daddies.runner import get_daddy_conf_docs, get_daddy_extra_cli_parsers
 
-    for kitten in kittens_needing_cli_parsers():
-        defn = get_kitten_conf_docs(kitten)
+    for daddy in daddies_needing_cli_parsers():
+        defn = get_daddy_conf_docs(daddy)
         if defn is not None:
-            generate_conf_parser(kitten, defn)
-        ecp = get_kitten_extra_cli_parsers(kitten)
+            generate_conf_parser(daddy, defn)
+        ecp = get_daddy_extra_cli_parsers(daddy)
         if ecp:
             for name, spec in ecp.items():
-                with replace_if_needed(f'kittens/{kitten}/{name}_cli_generated.go'):
-                    print(f'package {kitten}')
+                with replace_if_needed(f'daddies/{daddy}/{name}_cli_generated.go'):
+                    print(f'package {daddy}')
                     generate_extra_cli_parser(name, spec)
 
-        with replace_if_needed(f'kittens/{kitten}/cli_generated.go'):
+        with replace_if_needed(f'daddies/{daddy}/cli_generated.go'):
             od = []
             ser = []
-            kcd = kitten_cli_docs(kitten)
-            has_underscore = '_' in kitten
-            print(f'package {kitten}')
+            kcd = daddy_cli_docs(daddy)
+            has_underscore = '_' in daddy
+            print(f'package {daddy}')
             print('import "fmt"')
-            print('import "github.com/kovidgoyal/kitty/tools/cli"')
+            print('import "github.com/kovidgoyal/datty/tools/cli"')
             print('var _ = fmt.Sprintf')
             print('func create_cmd(root *cli.Command, run_func func(*cli.Command, *Options, []string)(int, error)) {')
             print('ans := root.AddSubCommand(&cli.Command{')
-            print(f'Name: "{kitten}",')
+            print(f'Name: "{daddy}",')
             if kcd:
                 print(f'ShortDescription: "{serialize_as_go_string(kcd["short_desc"])}",')
                 if kcd['usage']:
@@ -585,7 +585,7 @@ def kitten_clis() -> None:
             if has_underscore:
                 print('Hidden: true,')
             print('})')
-            gopts, ac = go_options_for_kitten(kitten)
+            gopts, ac = go_options_for_daddy(daddy)
             for opt in gopts:
                 print(opt.as_option('ans'))
                 od.append(opt.struct_declaration())
@@ -597,7 +597,7 @@ def kitten_clis() -> None:
             if has_underscore:
                 print('clone := root.AddClone(ans.Group, ans)')
                 print('clone.Hidden = false')
-                print(f'clone.Name = "{serialize_as_go_string(kitten.replace("_", "-"))}"')
+                print(f'clone.Name = "{serialize_as_go_string(daddy.replace("_", "-"))}"')
             print('}')
             print('type Options struct {')
             print('\n'.join(od))
@@ -670,7 +670,7 @@ SelectionBg: "{selbg}",
 
 
 def load_ref_map() -> dict[str, dict[str, str]]:
-    with open('kitty/docs_ref_map_generated.h') as f:
+    with open('datty/docs_ref_map_generated.h') as f:
         raw = f.read()
     raw = raw.split('{', 1)[1].split('}', 1)[0]
     data = json.loads(bytes(bytearray(json.loads(f'[{raw}]'))))
@@ -678,18 +678,18 @@ def load_ref_map() -> dict[str, dict[str, str]]:
 
 
 def generate_constants() -> str:
-    from kittens.hints.main import DEFAULT_REGEX
-    from kittens.query_terminal.main import all_queries
-    from kitty.colors import ThemeFile
-    from kitty.config import option_names_for_completion
-    from kitty.fast_data_types import DND_CODE, FILE_TRANSFER_CODE
-    from kitty.options.utils import allowed_shell_integration_values, url_style_map
-    from kitty.simple_cli_definitions import CONFIG_HELP
+    from daddies.hints.main import DEFAULT_REGEX
+    from daddies.query_terminal.main import all_queries
+    from datty.colors import ThemeFile
+    from datty.config import option_names_for_completion
+    from datty.fast_data_types import DND_CODE, FILE_TRANSFER_CODE
+    from datty.options.utils import allowed_shell_integration_values, url_style_map
+    from datty.simple_cli_definitions import CONFIG_HELP
 
-    del sys.modules['kittens.hints.main']
-    del sys.modules['kittens.query_terminal.main']
+    del sys.modules['daddies.hints.main']
+    del sys.modules['daddies.query_terminal.main']
     ref_map = load_ref_map()
-    with open('kitty/data-types.h') as dt:
+    with open('datty/data-types.h') as dt:
         m = re.search(r'^#define IMAGE_PLACEHOLDER_CHAR (\S+)', dt.read(), flags=re.M)
         assert m is not None
         placeholder_char = int(m.group(1), 16)
@@ -699,7 +699,7 @@ def generate_constants() -> str:
     url_style = {v: k for k, v in url_style_map.items()}[Options.url_style]
     query_names = ', '.join(f'"{name}"' for name in all_queries)
     return f'''\
-package kitty
+package datty
 
 type VersionType struct {{
     Major, Minor, Patch int
@@ -731,7 +731,7 @@ var DocTitleMap = map[string]string{serialize_go_dict(ref_map['doc'])}
 var AllowedShellIntegrationValues = []string{{ {str(sorted(allowed_shell_integration_values))[1:-1].replace("'", '"')} }}
 var QueryNames = []string{{ {query_names} }}
 var CommentedOutDefaultConfig = "{serialize_as_go_string(commented_out_default_config())}"
-var KittyConfigDefaults = struct {{
+var DattyConfigDefaults = struct {{
 Term, Shell_integration, Select_by_word_characters, Url_excluded_characters, Shell string
 Wheel_scroll_multiplier float64
 Url_prefixes []string
@@ -799,7 +799,7 @@ def update_at_commands() -> None:
     odef = '\n'.join(opt_def)
     code = f"""
 package at
-import "github.com/kovidgoyal/kitty/tools/cli"
+import "github.com/kovidgoyal/datty/tools/cli"
 type rc_global_options struct {{
 {sdef}
 }}
@@ -817,20 +817,20 @@ func add_rc_global_opts(cmd *cli.Command) {{
 
 
 def update_completion() -> None:
-    with replace_if_needed('tools/cmd/completion/kitty_generated.go'):
-        generate_completions_for_kitty()
+    with replace_if_needed('tools/cmd/completion/datty_generated.go'):
+        generate_completions_for_datty()
 
-    with replace_if_needed('tools/cmd/at/kitty_actions_generated.go'):
+    with replace_if_needed('tools/cmd/at/datty_actions_generated.go'):
         print('package at')
-        print('const KittyActionNames = `', end='')
+        print('const DattyActionNames = `', end='')
         for grp, actions in get_all_actions().items():
             for ac in actions:
                 print(ac.name)
         print('`')
 
-    with replace_if_needed('tools/cmd/edit_in_kitty/launch_generated.go'):
-        print('package edit_in_kitty')
-        print('import "github.com/kovidgoyal/kitty/tools/cli"')
+    with replace_if_needed('tools/cmd/edit_in_datty/launch_generated.go'):
+        print('package edit_in_datty')
+        print('import "github.com/kovidgoyal/datty/tools/cli"')
         print('func AddCloneSafeOpts(cmd *cli.Command) {')
         completion_for_launch_wrappers('cmd')
         m = ','.join(text_mimes)
@@ -975,9 +975,9 @@ def generate_unicode_names(src: TextIO, dest: BinaryIO) -> None:
     write_compressed_data(gob.getvalue(), dest)
 
 
-def generate_ssh_kitten_data() -> None:
+def generate_ssh_daddy_data() -> None:
     files = {
-        'terminfo/kitty.terminfo',
+        'terminfo/datty.terminfo',
         'terminfo/x/' + Options.term,
     }
     for dirpath, dirnames, filenames in os.walk('shell-integration'):
@@ -1022,11 +1022,11 @@ def main(args: list[str] = sys.argv) -> None:
     if newer('tools/unicode_names/data_generated.bin', 'tools/unicode_names/names.txt'):
         with open('tools/unicode_names/data_generated.bin', 'wb') as dest, open('tools/unicode_names/names.txt') as src:
             generate_unicode_names(src, dest)
-    generate_ssh_kitten_data()
+    generate_ssh_daddy_data()
 
     update_completion()
     update_at_commands()
-    kitten_clis()
+    daddy_clis()
     stringify()
     make_bitfields()
     print(json.dumps(changed, indent=2))

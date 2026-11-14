@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 )
 
 var _ = fmt.Print
@@ -54,8 +54,8 @@ func (r *response_reader) read_response_from_conn(conn *net.Conn, timeout time.D
 	keep_going := true
 	if len(r.pending_responses) == 0 {
 		r.parser.HandleDCS = func(data []byte) error {
-			if bytes.HasPrefix(data, []byte("@kitty-cmd")) {
-				r.pending_responses = append(r.pending_responses, append([]byte{}, data[len("@kitty-cmd"):]...))
+			if bytes.HasPrefix(data, []byte("@datty-cmd")) {
+				r.pending_responses = append(r.pending_responses, append([]byte{}, data[len("@datty-cmd"):]...))
 				keep_going = false
 			}
 			return nil
@@ -79,7 +79,7 @@ func (r *response_reader) read_response_from_conn(conn *net.Conn, timeout time.D
 	return
 }
 
-const cmd_escape_code_prefix = "\x1bP@kitty-cmd"
+const cmd_escape_code_prefix = "\x1bP@datty-cmd"
 const cmd_escape_code_suffix = "\x1b\\"
 
 func run_stdin_echo_loop(conn *net.Conn, io_data *rc_io_data) (err error) {

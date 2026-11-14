@@ -538,9 +538,9 @@ above, the serialized fields are::
 
 Terminal implementations are free to use their own more advanced hashing
 schemes, with prefixes other than those starting with ``sha``, which are
-reserved. For instance, kitty uses a scheme based on public key encryption
-via :envvar:`KITTY_PUBLIC_KEY`. For details of this scheme, see the
-``check_bypass()`` function in the kitty source code.
+reserved. For instance, datty uses a scheme based on public key encryption
+via :envvar:`DATTY_PUBLIC_KEY`. For details of this scheme, see the
+``check_bypass()`` function in the datty source code.
 
 Encoding of transfer commands as escape codes
 ------------------------------------------------

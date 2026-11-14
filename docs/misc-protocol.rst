@@ -1,8 +1,8 @@
 Miscellaneous protocol extensions
 ==============================================
 
-These are a few small protocol extensions kitty implements, primarily for use
-by its own kitten, they are documented here for completeness.
+These are a few small protocol extensions datty implements, primarily for use
+by its own daddy, they are documented here for completeness.
 
 
 Simple save/restore of all terminal modes
@@ -10,7 +10,7 @@ Simple save/restore of all terminal modes
 
 XTerm has the XTSAVE/XTRESTORE escape codes to save and restore terminal
 private modes. However, they require specifying an explicit list of modes to
-save/restore. kitty extends this protocol to specify that when no modes are
+save/restore. datty extends this protocol to specify that when no modes are
 specified, all side-effect free modes should be saved/restored. By side-effects
 we mean things that can affect other terminal state such as cursor position or
 screen contents. Examples of modes that have side effects are: `DECOM
@@ -26,7 +26,7 @@ Independent control of bold and faint SGR properties
 
 In common terminal usage, bold is set via SGR 1 and faint by SGR 2. However,
 there is only one number to reset these attributes, SGR 22, which resets both.
-There is no way to reset one and not the other. kitty uses 221 and 222 to reset
+There is no way to reset one and not the other. datty uses 221 and 222 to reset
 bold and faint independently.
 
 .. _mouse_leave_window:
@@ -34,7 +34,7 @@ bold and faint independently.
 Reporting when the mouse leaves the window
 ----------------------------------------------
 
-kitty extends the SGR Pixel mouse reporting protocol created by xterm to
+datty extends the SGR Pixel mouse reporting protocol created by xterm to
 also report when the mouse leaves the window. This event is delivered
 encoded as a normal SGR pixel event except that the eight bit is set on the
 first number. Additionally, bit 5 is set to indicate this is a motion related event.
@@ -57,14 +57,14 @@ code had been used ``\x1b [ 2 J``.
 Reporting the status of a program
 -------------------------------------
 
-kitty supports the `Program Status Protocol (OSC 7501)
+datty supports the `Program Status Protocol (OSC 7501)
 <https://www.superlogical.com/rex/docs/build/program-status>`__, revision 0.4,
 which lets a program tell the terminal what it is doing: idle, working,
 finished, blocked waiting on the user or failed, and why. For example::
 
     printf '\e]7501;state=working:app=rsync:progress=40\e\\'
 
-kitty keeps the records reported by programs per window and applies the
+datty keeps the records reported by programs per window and applies the
 lifetime rules of the specification:
 
 * :code:`working`, :code:`blocked` and :code:`idle` records are dropped when a
@@ -81,14 +81,14 @@ in the specification, as 263 bytes is what the limits on the length and number
 of its segments allow.
 
 The status is shown in the tab bar via the :code:`tab.program_status` field of
-:opt:`tab_title_template`, is reported in the output of ``kitten @ ls``, and
+:opt:`tab_title_template`, is reported in the output of ``daddy @ ls``, and
 :ref:`watchers <watchers>` can react to it via
 :code:`on_program_status_change`.
 
 
-kitty specific private escape codes
+datty specific private escape codes
 ---------------------------------------
 
-These are a family of escape codes used by kitty for various things including
+These are a family of escape codes used by datty for various things including
 remote control. They are all DCS (Device Control String) escape codes starting
-with ``\x1b P @ kitty-`` (ignoring spaces present for clarity).
+with ``\x1b P @ datty-`` (ignoring spaces present for clarity).

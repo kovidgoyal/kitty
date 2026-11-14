@@ -19,7 +19,7 @@ endif
 SPHINXOPTS    = -n -q -j auto -T $(FAIL_WARN) $(OPTS)
 SPHINXBUILD   = sphinx-build
 SPHINXAUTOBUILD = sphinx-autobuild
-SPHINXPROJ    = kitty
+SPHINXPROJ    = datty
 SOURCEDIR     = .
 BUILDDIR      = _build
 
@@ -36,4 +36,4 @@ help:
 
 
 develop-docs:
-	$(SPHINXAUTOBUILD) --ignore "$(abspath $(SOURCEDIR))/generated/*" --watch ../kitty --watch ../kittens -b dirhtml "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
+	$(SPHINXAUTOBUILD) --ignore "$(abspath $(SOURCEDIR))/generated/*" --watch ../datty --watch ../daddies -b dirhtml "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)

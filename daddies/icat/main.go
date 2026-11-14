@@ -1,0 +1,381 @@
+// License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
+
+package icat
+
+import (
+	"fmt"
+	"math"
+	"os"
+	"runtime"
+	"slices"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"time"
+
+	"github.com/kovidgoyal/imaging"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui"
+	"github.com/kovidgoyal/datty/tools/tui/graphics"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/style"
+
+	"golang.org/x/sys/unix"
+)
+
+var _ = fmt.Print
+
+type Place struct {
+	width, height, left, top int
+}
+
+var opts *Options
+var place *Place
+var z_index int32
+var remove_alpha *imaging.NRGBColor
+var flip, flop bool
+
+type transfer_mode int
+
+const (
+	unknown transfer_mode = iota
+	unsupported
+	supported
+)
+
+type fit_t int
+
+const (
+	fit_none fit_t = iota
+	fit_width
+	fit_height
+	fit_both
+)
+
+var transfer_by_file, transfer_by_memory transfer_mode
+
+var files_channel chan input_arg
+var output_channel chan *image_data
+var num_of_items int
+var keep_going *atomic.Bool
+var screen_size *unix.Winsize
+var fit_mode fit_t
+
+func send_output(imgd *image_data) {
+	output_channel <- imgd
+}
+
+func parse_mirror() (err error) {
+	flip = opts.Mirror == "both" || opts.Mirror == "vertical"
+	flop = opts.Mirror == "both" || opts.Mirror == "horizontal"
+	return
+}
+
+func parse_background() (err error) {
+	if opts.Background == "" || opts.Background == "none" {
+		return nil
+	}
+	col, err := style.ParseColor(opts.Background)
+	if err != nil {
+		return fmt.Errorf("Invalid value for --background: %w", err)
+	}
+	remove_alpha = &imaging.NRGBColor{R: col.Red, G: col.Green, B: col.Blue}
+	return
+}
+
+func parse_z_index() (err error) {
+	val := opts.ZIndex
+	var origin int32
+	if strings.HasPrefix(val, "--") {
+		origin = -1073741824
+		val = val[1:]
+	}
+	i, err := strconv.ParseInt(val, 10, 32)
+	if err != nil {
+		return fmt.Errorf("Invalid value for --z-index with error: %w", err)
+	}
+	z_index = int32(i) + origin
+	return
+}
+
+func parse_fit() (err error) {
+	switch strings.ToLower(opts.Fit) {
+	case "width":
+		fit_mode = fit_width
+	case "height":
+		fit_mode = fit_height
+	case "none", "neither":
+		fit_mode = fit_none
+	case "both":
+		fit_mode = fit_both
+	default:
+		return fmt.Errorf("unknown fit specification: %#v", opts.Fit)
+	}
+	return nil
+}
+
+func parse_place() (err error) {
+	if opts.Place == "" {
+		return nil
+	}
+	area, pos, found := strings.Cut(opts.Place, "@")
+	if !found {
+		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
+	}
+	w, h, found := strings.Cut(area, "x")
+	if !found {
+		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
+	}
+	l, t, found := strings.Cut(pos, "x")
+	if !found {
+		return fmt.Errorf("Invalid --place specification: %s", opts.Place)
+	}
+	place = &Place{}
+	place.width, err = strconv.Atoi(w)
+	if err != nil {
+		return err
+	}
+	place.height, err = strconv.Atoi(h)
+	if err != nil {
+		return err
+	}
+	place.left, err = strconv.Atoi(l)
+	if err != nil {
+		return err
+	}
+	place.top, err = strconv.Atoi(t)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func print_error(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintln(os.Stderr)
+}
+
+func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
+	opts = o
+	if err = parse_place(); err != nil {
+		return 1, err
+	}
+	if err = parse_fit(); err != nil {
+		return 1, err
+	}
+	err = parse_z_index()
+	if err != nil {
+		return 1, err
+	}
+	err = parse_background()
+	if err != nil {
+		return 1, err
+	}
+	err = parse_mirror()
+	if err != nil {
+		return 1, err
+	}
+	if opts.UseWindowSize == "" {
+		if tty.IsTerminal(os.Stdout.Fd()) {
+			screen_size, err = tty.GetSize(int(os.Stdout.Fd()))
+		} else {
+			t, oerr := tty.OpenControllingTerm()
+			if oerr != nil {
+				return 1, fmt.Errorf("Failed to open controlling terminal with error: %w", oerr)
+			}
+			screen_size, err = t.GetSize()
+		}
+		if err != nil {
+			return 1, fmt.Errorf("Failed to query terminal using TIOCGWINSZ with error: %w", err)
+		}
+	} else {
+		parts := strings.SplitN(opts.UseWindowSize, ",", 4)
+		if len(parts) != 4 {
+			return 1, fmt.Errorf("Invalid size specification: %s", opts.UseWindowSize)
+		}
+		screen_size = &unix.Winsize{}
+		var t uint64
+		if t, err = strconv.ParseUint(parts[0], 10, 16); err != nil || t < 1 {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
+		}
+		screen_size.Col = uint16(t)
+		if t, err = strconv.ParseUint(parts[1], 10, 16); err != nil || t < 1 {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
+		}
+		screen_size.Row = uint16(t)
+		if t, err = strconv.ParseUint(parts[2], 10, 16); err != nil || t < 1 {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
+		}
+		screen_size.Xpixel = uint16(t)
+		if t, err = strconv.ParseUint(parts[3], 10, 16); err != nil || t < 1 {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: %w", opts.UseWindowSize, err)
+		}
+		screen_size.Ypixel = uint16(t)
+		if screen_size.Xpixel < screen_size.Col {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: The pixel width is smaller than the number of columns", opts.UseWindowSize)
+		}
+		if screen_size.Ypixel < screen_size.Row {
+			return 1, fmt.Errorf("Invalid size specification: %s with error: The pixel height is smaller than the number of rows", opts.UseWindowSize)
+		}
+	}
+
+	if opts.PrintWindowSize {
+		fmt.Printf("%dx%d", screen_size.Xpixel, screen_size.Ypixel)
+		return 0, nil
+	}
+	if opts.Clear {
+		cc := &graphics.GraphicsCommand{}
+		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
+		if err = cc.WriteWithPayloadTo(os.Stdout, nil); err != nil {
+			return 1, err
+		}
+	}
+	switch {
+	case opts.ClearAll:
+		cc := &graphics.GraphicsCommand{}
+		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_by_range).SetLeftEdge(0).SetTopEdge(math.MaxUint32)
+		if err = cc.WriteWithPayloadTo(os.Stdout, nil); err != nil {
+			return 1, err
+		}
+	case opts.Clear:
+		cc := &graphics.GraphicsCommand{}
+		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
+		if err = cc.WriteWithPayloadTo(os.Stdout, nil); err != nil {
+			return 1, err
+		}
+	}
+	if screen_size.Xpixel == 0 || screen_size.Ypixel == 0 {
+		return 1, fmt.Errorf("Terminal does not support reporting screen sizes in pixels, use a terminal such as datty, WezTerm, Konsole, etc. that does.")
+	}
+
+	items, err := process_dirs(args...)
+	if err != nil {
+		return 1, err
+	}
+	if opts.Place != "" && len(items) > 1 {
+		return 1, fmt.Errorf("The --place option can only be used with a single image, not %d", len(items))
+	}
+	files_channel = make(chan input_arg, len(items))
+	for i, ia := range items {
+		ia.index = i
+		files_channel <- ia
+	}
+	num_of_items = len(items)
+	output_channel = make(chan *image_data, 1)
+	keep_going = &atomic.Bool{}
+	keep_going.Store(true)
+	if !opts.DetectSupport && num_of_items > 0 {
+		num_workers := utils.Max(1, utils.Min(num_of_items, runtime.NumCPU()))
+		for range num_workers {
+			go run_worker()
+		}
+	}
+
+	passthrough_mode := no_passthrough
+	switch opts.Passthrough {
+	case "tmux":
+		passthrough_mode = tmux_passthrough
+	case "detect":
+		if tui.TmuxSocketAddress() != "" {
+			passthrough_mode = tmux_passthrough
+		}
+	}
+
+	if passthrough_mode == no_passthrough && (opts.TransferMode == "detect" || opts.DetectSupport) {
+		memory, files, direct, err := DetectSupport(time.Duration(opts.DetectionTimeout * float64(time.Second)))
+		if err != nil {
+			return 1, err
+		}
+		if !direct {
+			keep_going.Store(false)
+			return 1, fmt.Errorf("This terminal does not support the graphics protocol use a terminal such as datty, WezTerm or Konsole that does. If you are running inside a terminal multiplexer such as tmux or screen that might be interfering as well.")
+		}
+		if memory {
+			transfer_by_memory = supported
+		} else {
+			transfer_by_memory = unsupported
+		}
+		if files {
+			transfer_by_file = supported
+		} else {
+			transfer_by_file = unsupported
+		}
+	}
+	if passthrough_mode != no_passthrough {
+		// tmux doesn't allow responses from the terminal so we can't detect if memory or file based transferring is supported
+		transfer_by_memory = unsupported
+		transfer_by_file = unsupported
+	}
+	if opts.DetectSupport {
+		if transfer_by_memory == supported {
+			print_error("memory")
+		} else if transfer_by_file == supported {
+			print_error("files")
+		} else {
+			print_error("stream")
+		}
+		return 0, nil
+	}
+	use_unicode_placeholder := opts.UnicodePlaceholder
+	if passthrough_mode != no_passthrough {
+		use_unicode_placeholder = true
+	}
+	base_id := uint32(opts.ImageId)
+	expecting_input_sequence_number := 0
+	pending := make([]*image_data, 0, num_of_items)
+
+	do_one := func(imgd *image_data) {
+		expecting_input_sequence_number++
+		if base_id != 0 {
+			imgd.image_id = base_id
+			base_id++
+			if base_id == 0 {
+				base_id++
+			}
+		}
+		imgd.use_unicode_placeholder = use_unicode_placeholder
+		imgd.passthrough_mode = passthrough_mode
+		if imgd.err != nil {
+			print_error("Failed to process \x1b[31m%s\x1b[39m: %s\r\n", imgd.source_name, imgd.err)
+		} else {
+			transmit_image(imgd, opts.NoTrailingNewline)
+			if imgd.err != nil {
+				print_error("Failed to transmit \x1b[31m%s\x1b[39m: %s\r\n", imgd.source_name, imgd.err)
+			}
+		}
+	}
+
+	for num_of_items > 0 {
+		imgd := <-output_channel
+		num_of_items--
+		if imgd.input_sequence_number == expecting_input_sequence_number {
+			do_one(imgd)
+		} else {
+			index, _ := slices.BinarySearchFunc(pending, imgd.input_sequence_number, func(x *image_data, n int) int {
+				return x.input_sequence_number - n
+			})
+			pending = slices.Insert(pending, index, imgd)
+		}
+		for len(pending) > 0 && pending[0].input_sequence_number == expecting_input_sequence_number {
+			do_one(pending[0])
+			pending = pending[1:]
+		}
+	}
+	for _, x := range pending {
+		do_one(x)
+	}
+	keep_going.Store(false)
+	if opts.Hold {
+		fmt.Print("\r")
+		if opts.Place != "" {
+			fmt.Println()
+		}
+		tui.HoldTillEnter(false)
+	}
+	return 0, nil
+}
+
+func EntryPoint(parent *cli.Command) {
+	create_cmd(parent, main)
+}

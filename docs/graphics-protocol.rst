@@ -14,18 +14,18 @@ emulator. The major design goals are:
 
 For some discussion regarding the design choices, see :iss:`33`.
 
-To see a quick demo, inside a |kitty| terminal run::
+To see a quick demo, inside a |datty| terminal run::
 
-    kitten icat path/to/some/image.png
+    daddy icat path/to/some/image.png
 
 You can also see a screenshot with more sophisticated features such as
 alpha-blending and text over graphics.
 
 .. image:: https://github.com/user-attachments/assets/78caad22-1798-4ec5-a6ee-2722c51ce875
-    :alt: Demo of graphics rendering in kitty
+    :alt: Demo of graphics rendering in datty
     :align: center
 
-Some applications that use the kitty graphics protocol:
+Some applications that use the datty graphics protocol:
 
 * `blackcat <https://github.com/j-c-m/blackcat>`_ - a modern compatible cat with image support
 * `bicat <https://github.com/stevenxxiu/bicat>`_ - a terminal image viewer that also works in the Vifm file manager, with nested Tmux support
@@ -33,7 +33,7 @@ Some applications that use the kitty graphics protocol:
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * `chawan <https://chawan.net>`_ - TUI web browser
 * `desktui <https://github.com/mishushakov/desktui>`_ - a VNC client that draws a remote desktop in the terminal, one remote pixel per terminal pixel
-* :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
+* :doc:`datty-diff <daddies/diff>` - a side-by-side terminal diff program with support for images
 * `elio <https://github.com/elio-fm/elio>`_ - Batteries-included terminal file manager with rich previews
 * `fzf <https://github.com/junegunn/fzf/commit/d8188fce7b7bea982e7f9050c35e488e49fb8fd0>`_ - A command line fuzzy finder
 * `mpv <https://github.com/mpv-player/mpv/commit/874e28f4a41a916bb567a882063dd2589e9234e1>`_ - A video player that can play videos in the terminal
@@ -41,7 +41,7 @@ Some applications that use the kitty graphics protocol:
 * `nvim <https://github.com/neovim/neovim/issues/30889>`__ - A TUI editor that can display images in the terminal
 * `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
 * `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with image previews
-* `terminal-browser <https://terminal-browser.com/>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
+* `terminal-browser <https://terminal-browser.com/>`_ - Chromium-based web browser rendered in Datty with mouse and keyboard support
 * `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
 * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
 * `tpix <https://github.com/jesvedberg/tpix>`_ - a statically compiled binary that can be used to display images and easily installed on remote servers without root access
@@ -58,20 +58,20 @@ Libraries:
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
-* `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside neovim using the kitty graphics protocol
-* `kitty-graphics.el <https://github.com/cashmeredev/kitty-graphics.el>`_ - Images in emacs
+* `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside neovim using the datty graphics protocol
+* `datty-graphics.el <https://github.com/cashmeredev/datty-graphics.el>`_ - Images in emacs
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
-* `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
+* `gldatty <https://github.com/michaeljclark/gldatty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 * `malevich <https://github.com/shergin/malevich>`_ - Rust library for terminal plotting that can draw charts with the graphics protocol
 * `kmp-terminal <https://github.com/JohNan/kmp-terminal-emulator>`_ - Kotlin Multiplatform terminal emulator library and Compose Multiplatform renderer supporting the graphics protocol and Unicode placeholders
 
 Other terminals that have implemented the graphics protocol:
 
-* `AbsoluteTelnet/SSH <https://www.celestialsoftware.net/kitty-graphics-protocol>`_
+* `AbsoluteTelnet/SSH <https://www.celestialsoftware.net/datty-graphics-protocol>`_
 * `Ghostty <https://ghostty.org>`_
 * `Konsole <https://invent.kde.org/utilities/konsole/-/merge_requests/594>`_
 * `Mobile SSH <https://mobile-ssh.github.io/docs/terminal/>`_
-* `st (with a patch) <https://st.suckless.org/patches/kitty-graphics-protocol>`_
+* `st (with a patch) <https://st.suckless.org/patches/datty-graphics-protocol>`_
 * `SSH Client for Android <https://ssh-client.nanzen.se/features>`_
 * `Warp <https://docs.warp.dev/getting-started/changelog#id-2025.03.26-v0.2025.03.26.08.10>`_
 * `wayst <https://github.com/91861/wayst>`_
@@ -173,20 +173,20 @@ code to demonstrate its use
 
 Note that some terminals return ``0`` for the width and height values. Such
 terminals should be modified to return the correct values.  Examples of
-terminals that return correct values: ``kitty, xterm``
+terminals that return correct values: ``datty, xterm``
 
 You can also use the *CSI t* escape code to get the screen size. Send
-``<ESC>[14t`` to ``STDOUT`` and kitty will reply on ``STDIN`` with
+``<ESC>[14t`` to ``STDOUT`` and datty will reply on ``STDIN`` with
 ``<ESC>[4;<height>;<width>t`` where ``height`` and ``width`` are the window
 size in pixels. This escape code is supported in many terminals, not just
-kitty. A more precise version of this escape code, which is however supported
+datty. A more precise version of this escape code, which is however supported
 in less terminals is ``<ESC>[16t`` which causes the terminal to reply with the
 pixel dimensions of a single cell.
 
 A minimal example
 ------------------
 
-Some minimal code to display PNG images in kitty, using the most basic
+Some minimal code to display PNG images in datty, using the most basic
 features of the graphics protocol:
 
 .. tab-set::
@@ -242,7 +242,7 @@ features of the graphics protocol:
 
 
 Save this script as :file:`send-png`, then you can use it to display any PNG
-file in kitty as::
+file in datty as::
 
     chmod +x send-png
     ./send-png file.png
@@ -438,7 +438,7 @@ allow such a program to use the responses to these commands to learn anything
 about files it cannot read itself. In particular, all failures to read an
 image file, be it because the file does not exist, is not readable, is not a
 regular file, lies in a sensitive location or is smaller than the client
-claimed, must be reported with a single, identical, error response. kitty
+claimed, must be reported with a single, identical, error response. datty
 answers with ``EBADF:Failed to read image file`` for all of these and writes
 the actual reason to its log, which only the local user can see.
 
@@ -661,7 +661,7 @@ placements around the screen, without flicker.
 
 
 .. versionadded:: 0.19.3
-   Support for specifying placement ids (see :doc:`kittens/query_terminal` to query kitty version)
+   Support for specifying placement ids (see :doc:`daddies/query_terminal` to query datty version)
 
 
 Controlling displayed image layout
@@ -928,7 +928,7 @@ Value of ``d``       Meaning
 ``f`` or ``F``       Delete animation frames.
 ``p`` or ``P``       Delete all placements that intersect a specific cell, the cell is specified using the ``x`` and ``y`` keys
 ``q`` or ``Q``       Delete all placements that intersect a specific cell having a specific z-index. The cell and z-index is specified using the ``x``, ``y`` and ``z`` keys.
-``r`` or ``R``       Delete all images whose id is greater than or equal to the value of the ``x`` key and less than or equal to the value of the ``y`` (added in kitty version 0.33.0).
+``r`` or ``R``       Delete all images whose id is greater than or equal to the value of the ``x`` key and less than or equal to the value of the ``y`` (added in datty version 0.33.0).
 ``x`` or ``X``       Delete all placements that intersect the specified column, specified using the ``x`` key.
 ``y`` or ``Y``       Delete all placements that intersect the specified row, specified using the ``y`` key.
 ``z`` or ``Z``       Delete all placements that have the specified z-index, specified using the ``z`` key.
@@ -961,7 +961,7 @@ terminal. For this, you can use the ``q`` key. Set it to ``1`` to suppress
 ``OK`` responses and to ``2`` to suppress failure responses.
 
 .. versionadded:: 0.19.3
-   The ability to suppress responses (see :doc:`kittens/query_terminal` to query kitty version)
+   The ability to suppress responses (see :doc:`daddies/query_terminal` to query datty version)
 
 
 Requesting image ids from the terminal
@@ -993,7 +993,7 @@ use the ``i`` key with the image id for all future communication.
    terminal must reply with an EINVAL error message, unless silenced.
 
 .. versionadded:: 0.19.3
-   The ability to use image numbers (see :doc:`kittens/query_terminal` to query kitty version)
+   The ability to use image numbers (see :doc:`daddies/query_terminal` to query datty version)
 
 
 .. _image_usage_hints:
@@ -1023,7 +1023,7 @@ Animation
 -------------------------------------------
 
 .. versionadded:: 0.20.0
-   Animation support (see :doc:`kittens/query_terminal` to query kitty version)
+   Animation support (see :doc:`daddies/query_terminal` to query datty version)
 
 Clients can detect support for animation by sending :ref:`feature queries
 <graphics_query_features>` with ``e=f``, ``e=a`` and ``e=c`` for loading
@@ -1184,10 +1184,10 @@ the same and the rectangles overlap, the terminal must respond with `EINVAL`.
 
 
 .. note::
-   In kitty, doing a composition will cause a frame to be *fully rendered*
+   In datty, doing a composition will cause a frame to be *fully rendered*
    potentially increasing its storage requirements, when the frame was previously
    stored as a set of operations on other frames. If this happens and there
-   is not enough storage space, kitty will respond with ENOSPC.
+   is not enough storage space, datty will respond with ENOSPC.
 
 
 Image persistence and storage quotas
@@ -1195,9 +1195,9 @@ Image persistence and storage quotas
 
 In order to avoid *Denial-of-Service* attacks, terminal emulators should have a
 maximum storage quota for image data. It should allow at least a few full
-screen images.  For example the quota in kitty is 320MB per buffer. When adding
+screen images.  For example the quota in datty is 320MB per buffer. When adding
 a new image, if the total size exceeds the quota, the terminal emulator should
-delete older images to make space for the new one. In kitty, for animations,
+delete older images to make space for the new one. In datty, for animations,
 the additional frame data is stored on disk and has a separate, larger quota of
 five times the base quota.
 

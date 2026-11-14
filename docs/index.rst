@@ -1,7 +1,7 @@
-kitty
+datty
 ==========================================================
 
-*If you live in the terminal, kitty is made for YOU!*
+*If you live in the terminal, datty is made for YOU!*
 
 The fast, feature-rich, GPU based terminal emulator.
 
@@ -27,18 +27,18 @@ The fast, feature-rich, GPU based terminal emulator.
 
       * Uses GPU and SIMD vector CPU instructions for :doc:`best in class performance <performance>`
       * Uses threaded rendering for :iss:`absolutely minimal latency <2701#issuecomment-636497270>`
-      * Performance tradeoffs can be :ref:`tuned <conf-kitty-performance>`
+      * Performance tradeoffs can be :ref:`tuned <conf-datty-performance>`
 
    .. tab-item:: Capable
 
       * Graphics, with :doc:`images and animations <graphics-protocol>`
-      * Ligatures, emoji with :opt:`per glyph font substitution <symbol_map>` and :doc:`variable fonts and font features </kittens/choose-fonts>`
+      * Ligatures, emoji with :opt:`per glyph font substitution <symbol_map>` and :doc:`variable fonts and font features </daddies/choose-fonts>`
       * :term:`Hyperlinks<hyperlinks>`, with :doc:`configurable actions <open_actions>`
 
    .. tab-item:: Scriptable
 
       * Control from :doc:`scripts or the shell <remote-control>`
-      * Extend with :ref:`kittens <kittens>` using the Python language
+      * Extend with :ref:`daddies <daddies>` using the Python language
       * Use :ref:`startup sessions <sessions>` to specify working environments
 
    .. tab-item:: Composable
@@ -46,7 +46,7 @@ The fast, feature-rich, GPU based terminal emulator.
       * Programmable tabs, :ref:`splits <splits_layout>` and multiple :doc:`layouts <layouts>` to manage windows
       * Browse the :ref:`entire history <scrollback>` or the :sc:`output from the last command <show_last_command_output>`
         comfortably in pagers and editors
-      * Edit or download :doc:`remote files <kittens/remote_file>` in an existing SSH session
+      * Edit or download :doc:`remote files <daddies/remote_file>` in an existing SSH session
 
    .. tab-item:: Cross-platform
 

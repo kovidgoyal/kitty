@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/kovidgoyal/kitty"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var SIGNULL unix.Signal
@@ -30,7 +30,7 @@ func new_loop() *Loop {
 	l.terminal_options.focus_tracking = true
 	l.terminal_options.in_band_resize_notification = true
 	l.terminal_options.color_scheme_change_notification = false
-	l.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS
+	l.terminal_options.datty_keyboard_mode = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS
 	l.terminal_options.roundtrip_on_exit = true
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
@@ -298,7 +298,7 @@ func (self *Loop) handle_osc(raw []byte) error {
 	if idx := bytes.IndexByte(raw, ';'); idx >= 2 {
 		if code, err := strconv.ParseUint(utils.UnsafeBytesToString(raw[:idx]), 10, 0); err == nil {
 			switch code {
-			case uint64(kitty.DndCode):
+			case uint64(datty.DndCode):
 				if self.OnDnDData != nil {
 					return self.handle_dnd(raw[idx+1:])
 				}
@@ -312,8 +312,8 @@ func (self *Loop) handle_osc(raw []byte) error {
 }
 
 func (self *Loop) handle_dcs(raw []byte) error {
-	if self.OnRCResponse != nil && bytes.HasPrefix(raw, utils.UnsafeStringToBytes("@kitty-cmd")) {
-		return self.OnRCResponse(raw[len("@kitty-cmd"):])
+	if self.OnRCResponse != nil && bytes.HasPrefix(raw, utils.UnsafeStringToBytes("@datty-cmd")) {
+		return self.OnRCResponse(raw[len("@datty-cmd"):])
 	}
 	if self.OnQueryResponse != nil && (bytes.HasPrefix(raw, utils.UnsafeStringToBytes("1+r")) || bytes.HasPrefix(raw, utils.UnsafeStringToBytes("0+r"))) {
 		valid := raw[0] == '1'
@@ -321,8 +321,8 @@ func (self *Loop) handle_dcs(raw []byte) error {
 		for s.Scan() {
 			key, val, _ := strings.Cut(s.Text(), "=")
 			if k, err := hex.DecodeString(key); err == nil {
-				if bytes.HasPrefix(k, utils.UnsafeStringToBytes("kitty-query-")) {
-					k = k[len("kitty-query-"):]
+				if bytes.HasPrefix(k, utils.UnsafeStringToBytes("datty-query-")) {
+					k = k[len("datty-query-"):]
 					if v, err := hex.DecodeString(val); err == nil {
 						if err = self.OnQueryResponse(string(k), string(v), valid); err != nil {
 							return err
@@ -525,7 +525,7 @@ func (self *Loop) run() (err error) {
 		default:
 		}
 		if self.terminal_options.roundtrip_on_exit {
-			// ensure that any terminal responses such as kitty keyboard events,
+			// ensure that any terminal responses such as datty keyboard events,
 			// color scheme changes, in-band resize notifications, etc. do not
 			// bleed into the shell.
 			do_roundtrip_to_terminal(controlling_term, 2*time.Second)

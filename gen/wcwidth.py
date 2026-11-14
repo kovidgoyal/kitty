@@ -406,7 +406,7 @@ def gen_rowcolumn_diacritics() -> None:
             codes.append(code)
 
     go_file = 'tools/utils/images/rowcolumn_diacritics.go'
-    with create_header('kitty/rowcolumn-diacritics.c') as p, create_header(go_file, include_data_types=False) as g:
+    with create_header('datty/rowcolumn-diacritics.c') as p, create_header(go_file, include_data_types=False) as g:
         p('int diacritic_to_num(char_type code) {')
         p('\tswitch (code) {')
         g('package images')
@@ -441,7 +441,7 @@ def gen_rowcolumn_diacritics() -> None:
 
 
 def gen_test_data() -> None:
-    with open('kitty_tests/GraphemeBreakTest.json', 'wb') as f:
+    with open('datty_tests/GraphemeBreakTest.json', 'wb') as f:
         f.write(json.dumps(grapheme_segmentation_tests, indent=2, ensure_ascii=False).encode())
 
 
@@ -1182,7 +1182,7 @@ def gen_char_props() -> None:
         )
         for x in prop_array
     )
-    # Both kitty's wcswidth() and its text drawing code widen the cell a SpacingMark
+    # Both datty's wcswidth() and its text drawing code widen the cell a SpacingMark
     # with non-zero width combines into. Only these two code points have that
     # combination (they are Lo not Mc, so they get a width of one), and the
     # docs/text-sizing-protocol.rst spec says so, hence the assertion.
@@ -1205,7 +1205,7 @@ def gen_char_props() -> None:
 
     buf = StringIO()
     cen = partial(print, file=buf)
-    with create_header('kitty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
+    with create_header('datty/char-props-data.h', include_data_types=False) as c, open('tools/wcswidth/char-props-data.go', 'w') as gof:
         gp = partial(print, file=gof)
         gp('package wcswidth')
         gp('import "unsafe"')
@@ -1227,7 +1227,7 @@ def gen_char_props() -> None:
         c(GraphemeSegmentationState.c_declaration())
         gp(GraphemeSegmentationKey.code_to_convert_to_int(for_go=True))
     gofmt(gof.name)
-    with open('kitty/char-props.h', 'r+') as f:
+    with open('datty/char-props.h', 'r+') as f:
         raw = f.read()
         nraw = re.sub(r'\d+/\*=width_shift\*/', f'{width_shift}/*=width_shift*/', raw)
         nraw = patch_declaration('CharProps', CharProps.c_declaration(), nraw)

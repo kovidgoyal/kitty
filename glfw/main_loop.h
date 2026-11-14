@@ -7,7 +7,7 @@
 #pragma once
 
 #include "internal.h"
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 
 #ifndef GLFW_LOOP_BACKEND
 #define GLFW_LOOP_BACKEND x11

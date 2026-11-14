@@ -1,5 +1,5 @@
 " Scan the following dirs recursively for tags
-let g:project_tags_dirs = ['kitty', 'kittens', 'tools']
+let g:project_tags_dirs = ['datty', 'daddies', 'tools']
 set wildignore+==template.py
 set wildignore+=tags
 set expandtab
@@ -10,5 +10,5 @@ set smarttab
 python3 <<endpython
 import sys
 sys.path.insert(0, os.path.abspath('.'))
-import kitty
+import datty
 endpython

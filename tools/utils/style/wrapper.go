@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/datty/tools/utils/shlex"
 )
 
 type escape_code interface {

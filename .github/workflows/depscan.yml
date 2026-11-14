@@ -19,7 +19,7 @@ jobs:
         name: Scan dependencies for vulnerabilities
         runs-on: ubuntu-latest
         env:
-            KITTY_BUNDLE: 1
+            DATTY_BUNDLE: 1
         steps:
           - name: Checkout source code
             uses: actions/checkout@v7.0.1

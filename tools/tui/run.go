@@ -4,7 +4,7 @@ package tui
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/datty"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,22 +16,22 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 	"golang.org/x/sys/unix"
 
-	"github.com/kovidgoyal/kitty/tools/config"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/tui/shell_integration"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/datty/tools/config"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/tui/shell_integration"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/shlex"
 )
 
 var _ = fmt.Print
 
-type KittyOpts struct {
+type DattyOpts struct {
 	Shell, Shell_integration string
 }
 
-func read_relevant_kitty_opts() KittyOpts {
-	ans := KittyOpts{Shell: kitty.KittyConfigDefaults.Shell, Shell_integration: kitty.KittyConfigDefaults.Shell_integration}
+func read_relevant_datty_opts() DattyOpts {
+	ans := DattyOpts{Shell: datty.DattyConfigDefaults.Shell, Shell_integration: datty.DattyConfigDefaults.Shell_integration}
 	handle_line := func(key, val string) error {
 		switch key {
 		case "shell":
@@ -41,9 +41,9 @@ func read_relevant_kitty_opts() KittyOpts {
 		}
 		return nil
 	}
-	config.ReadKittyConfig(handle_line)
+	config.ReadDattyConfig(handle_line)
 	if ans.Shell == "" {
-		ans.Shell = kitty.KittyConfigDefaults.Shell
+		ans.Shell = datty.DattyConfigDefaults.Shell
 	}
 	return ans
 }
@@ -54,19 +54,19 @@ func get_effective_ksi_env_var(x string) string {
 	if current.Has("disabled") {
 		return ""
 	}
-	allowed := utils.NewSetWithItems(kitty.AllowedShellIntegrationValues...)
+	allowed := utils.NewSetWithItems(datty.AllowedShellIntegrationValues...)
 	if !current.IsSubsetOf(allowed) {
-		return relevant_kitty_opts().Shell_integration
+		return relevant_datty_opts().Shell_integration
 	}
 	return x
 }
 
-var relevant_kitty_opts = sync.OnceValue(func() KittyOpts {
-	return read_relevant_kitty_opts()
+var relevant_datty_opts = sync.OnceValue(func() DattyOpts {
+	return read_relevant_datty_opts()
 })
 
-func get_shell_from_kitty_conf() (shell string) {
-	shell = relevant_kitty_opts().Shell
+func get_shell_from_datty_conf() (shell string) {
+	shell = relevant_datty_opts().Shell
 	if shell == "." {
 		s, e := utils.LoginShellForCurrentUser()
 		if e != nil {
@@ -102,10 +102,10 @@ func find_shell_parent_process() string {
 func ResolveShell(shell string) []string {
 	switch shell {
 	case "":
-		shell = get_shell_from_kitty_conf()
+		shell = get_shell_from_datty_conf()
 	case ".":
 		if shell = find_shell_parent_process(); shell == "" {
-			shell = get_shell_from_kitty_conf()
+			shell = get_shell_from_datty_conf()
 		}
 	}
 	shell_cmd, err := shlex.Split(shell)
@@ -121,7 +121,7 @@ func ResolveShell(shell string) []string {
 
 func ResolveShellIntegration(shell_integration string) string {
 	if shell_integration == "" {
-		shell_integration = relevant_kitty_opts().Shell_integration
+		shell_integration = relevant_datty_opts().Shell_integration
 	}
 	return get_effective_ksi_env_var(shell_integration)
 }
@@ -166,7 +166,7 @@ func RunShell(shell_cmd []string, shell_integration_env_var_val, cwd string) (er
 	if shell_integration.IsSupportedShell(shell_name) {
 		rc_mod_allowed, set_ksi_env_var := rc_modification_allowed(shell_integration_env_var_val)
 		if rc_mod_allowed {
-			// KITTY_SHELL_INTEGRATION is always set by this function
+			// DATTY_SHELL_INTEGRATION is always set by this function
 			argv, env, err := shell_integration.Setup(shell_name, shell_integration_env_var_val, shell_cmd, copy_os_env_as_dict())
 			if err != nil {
 				return err
@@ -175,11 +175,11 @@ func RunShell(shell_cmd []string, shell_integration_env_var_val, cwd string) (er
 			shell_env = env
 		} else if set_ksi_env_var {
 			shell_env = copy_os_env_as_dict()
-			shell_env["KITTY_SHELL_INTEGRATION"] = shell_integration_env_var_val
+			shell_env["DATTY_SHELL_INTEGRATION"] = shell_integration_env_var_val
 		}
 	}
 	exe := shell_cmd[0]
-	if runtime.GOOS == "darwin" && (os.Getenv("KITTY_RUNNING_SHELL_INTEGRATION_TEST") != "1" || os.Getenv("KITTY_RUNNING_BASH_INTEGRATION_TEST") != "") {
+	if runtime.GOOS == "darwin" && (os.Getenv("DATTY_RUNNING_SHELL_INTEGRATION_TEST") != "1" || os.Getenv("DATTY_RUNNING_BASH_INTEGRATION_TEST") != "") {
 		// ensure shell runs in login mode. On macOS lots of people use ~/.bash_profile instead of ~/.bashrc
 		// which means they expect the shell to run in login mode always. Le Sigh.
 		shell_cmd[0] = "-" + filepath.Base(shell_cmd[0])
@@ -220,8 +220,8 @@ func RunCommandRestoringTerminalToSaneStateAfter(cmd []string) {
 			defer func() {
 				_, _ = term.WriteString(strings.Join([]string{
 					loop.RESTORE_PRIVATE_MODE_VALUES,
-					"\x1b[=u", // reset kitty keyboard protocol to legacy
-					"\x1bP@kitty-restore-cursor-appearance|\a",
+					"\x1b[=u", // reset datty keyboard protocol to legacy
+					"\x1bP@datty-restore-cursor-appearance|\a",
 					PROGRAM_STATUS_PROCESS_EXITED,
 				}, ""))
 				_ = term.Tcsetattr(tty.TCSANOW, &state_before)

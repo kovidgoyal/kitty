@@ -3,15 +3,15 @@
 Integrations with other tools
 ================================
 
-kitty provides extremely powerful interfaces such as :doc:`remote-control` and
-:doc:`kittens/custom` and :doc:`kittens/icat` that allow it to be integrated
+datty provides extremely powerful interfaces such as :doc:`remote-control` and
+:doc:`daddies/custom` and :doc:`daddies/icat` that allow it to be integrated
 with other tools seamlessly.
 
 
 Image and document viewers
 ----------------------------
 
-Powered by kitty's :doc:`graphics-protocol` there exist many tools for viewing
+Powered by datty's :doc:`graphics-protocol` there exist many tools for viewing
 images and other types of documents directly in your terminal, even over SSH.
 
 .. _tool_bookokrat:
@@ -61,37 +61,37 @@ the graphics protocol for images.
 `presenterm <https://github.com/mfontanini/presenterm>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Show markdown based slides with images in your terminal, powered by the
-kitty graphics protocol.
+datty graphics protocol.
 
 .. _tool_mdfried:
 
 `mdfried <https://github.com/benjajaja/mdfried>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Markdown viewer that can render big headers with the text-sizing-protocol, and
-also render images with the kitty graphics protocol.
+also render images with the datty graphics protocol.
 
-`kmv <https://github.com/parf/Kitty-Markdown-Viewer>`__
+`kmv <https://github.com/parf/Datty-Markdown-Viewer>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Markdown viewer that can render big headers with the text-sizing-protocol, and
-also render images with the kitty graphics protocol.
+also render images with the datty graphics protocol.
 
 .. _tool_term_image:
 
 `term-image <https://github.com/AnonymouX47/term-image>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Tool to browse images in a terminal using kitty's graphics protocol.
+Tool to browse images in a terminal using datty's graphics protocol.
 
 .. _tool_koneko:
 
 `koneko <https://github.com/twenty5151/koneko>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Browse images from the pixiv artist community directly in kitty.
+Browse images from the pixiv artist community directly in datty.
 
 .. _tool_viu:
 
 `viu <https://github.com/atanunq/viu>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-View images in the terminal, similar to kitty's icat.
+View images in the terminal, similar to datty's icat.
 
 .. _tool_nb:
 
@@ -99,27 +99,27 @@ View images in the terminal, similar to kitty's icat.
 `nb <https://github.com/xwmx/nb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Command line and local web note-taking, bookmarking, archiving, and knowledge
-base application that uses kitty's graphics protocol for images.
+base application that uses datty's graphics protocol for images.
 
 .. _tool_w3m:
 
 `w3m <https://github.com/tats/w3m>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A text mode WWW browser that supports kitty's graphics protocol to display
+A text mode WWW browser that supports datty's graphics protocol to display
 images.
 
 .. _tool_terminal_browser:
 
 `terminal-browser <https://terminal-browser.com/>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A full Chromium based web browser running in the terminal using kitty's
+A full Chromium based web browser running in the terminal using datty's
 graphics protocol.
 
 .. _tool_chawan:
 
 `chawan <https://sr.ht/~bptato/chawan/>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A text mode WWW browser that supports kitty's graphics protocol to display
+A text mode WWW browser that supports datty's graphics protocol to display
 images.
 
 .. _tool_mpv:
@@ -130,7 +130,7 @@ A video player that can play videos in the terminal.
 
 .. code-block:: sh
 
-    mpv --profile=sw-fast --vo=kitty --vo-kitty-use-shm=yes --really-quiet video.mkv
+    mpv --profile=sw-fast --vo=datty --vo-datty-use-shm=yes --really-quiet video.mkv
 
 .. _tool_timg:
 
@@ -148,35 +148,35 @@ File managers
 
 `ranger <https://github.com/ranger/ranger>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A terminal file manager, with previews of file contents powered by kitty's
+A terminal file manager, with previews of file contents powered by datty's
 graphics protocol.
 
 .. _tool_nnn:
 
 `nnn <https://github.com/jarun/nnn/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Another terminal file manager, with previews of file contents powered by kitty's
+Another terminal file manager, with previews of file contents powered by datty's
 graphics protocol.
 
 .. _tool_yazi:
 
 `Yazi <https://github.com/sxyazi/yazi>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Blazing fast terminal file manager, with built-in kitty graphics protocol
+Blazing fast terminal file manager, with built-in datty graphics protocol
 support, Drag and Drop protocol and OSC 5522 clipboard protocol support.
 
 .. _tool_clifm:
 
 `clifm <https://github.com/leo-arch/clifm>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The shell-like, command line terminal file manager, uses the kitty graphics and
+The shell-like, command line terminal file manager, uses the datty graphics and
 keyboard protocols.
 
 .. _tool_hunter:
 
 `hunter <https://github.com/rabite0/hunter>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Another terminal file manager, with previews of file contents powered by kitty's
+Another terminal file manager, with previews of file contents powered by datty's
 graphics protocol.
 
 .. _tool_far2l:
@@ -184,13 +184,13 @@ graphics protocol.
 `far2l <https://github.com/elfmz/far2l>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Text-mode dual panel (orthodox) file manager and also terminal emulator, uses
-the kitty graphics and keyboard protocols (both as client and as terminal)
+the datty graphics and keyboard protocols (both as client and as terminal)
 
 .. _tool_elio:
 
 `elio <https://github.com/elio-fm/elio>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Batteries-included terminal file manager with previews using kitty's graphics
+Batteries-included terminal file manager with previews using datty's graphics
 protocol, and native support for its Drag and Drop protocol.
 
 
@@ -201,7 +201,7 @@ System and data visualisation tools
 
 `neofetch <https://github.com/dylanaraps/neofetch>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A command line system information tool that shows images using kitty's graphics
+A command line system information tool that shows images using datty's graphics
 protocol
 
 .. _tool_matplotlib:
@@ -209,35 +209,35 @@ protocol
 matplotlib
 ^^^^^^^^^^^^^^
 
-There exist multiple backends for matplotlib to draw images directly in kitty.
+There exist multiple backends for matplotlib to draw images directly in datty.
 
-* `matplotlib-backend-kitty <https://github.com/jktr/matplotlib-backend-kitty>`__
+* `matplotlib-backend-datty <https://github.com/jktr/matplotlib-backend-datty>`__
 * `kitcat <https://github.com/mil-ad/kitcat>`__
 
-.. _tool_KittyTerminalImage:
+.. _tool_DattyTerminalImage:
 
-`KittyTerminalImages.jl <https://github.com/simonschoelly/KittyTerminalImages.jl>`_
+`DattyTerminalImages.jl <https://github.com/simonschoelly/DattyTerminalImages.jl>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Show images from Julia directly in kitty
+Show images from Julia directly in datty
 
 .. _tool_euporie:
 
 `euporie <https://github.com/joouha/euporie>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A text-based user interface for running and editing Jupyter notebooks, powered
-by kitty's graphics protocol for displaying plots
+by datty's graphics protocol for displaying plots
 
 .. _tool_gnuplot:
 
 `gnuplot <http://www.gnuplot.info/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A graphing and data visualization tool that has support for the kitty graphics
-protocol, with its ``kittygd`` and ``kittycairo`` backends.
+A graphing and data visualization tool that has support for the datty graphics
+protocol, with its ``dattygd`` and ``dattycairo`` backends.
 
 .. _tool_k-nine:
 
-`k-nine <https://github.com/talwrii/kitty-plotnine>`_
+`k-nine <https://github.com/talwrii/datty-plotnine>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A wrapper around the :code:`plotnine` library which lets you plot data from the command-line with bash one-liners.
@@ -258,7 +258,7 @@ A tool to fetch information about your git repositories
 
 `patat <https://github.com/jaspervdj/patat>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Terminal based presentations using pandoc and kitty's image protocol for
+Terminal based presentations using pandoc and datty's image protocol for
 images
 
 .. tool_wttr:
@@ -271,48 +271,48 @@ A tool to display weather information in your terminal with curl
 
 `wl-clipboard-manager <https://github.com/maximbaz/wl-clipboard-manager>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-View and manage the system clipboard under Wayland in your kitty terminal
+View and manage the system clipboard under Wayland in your datty terminal
 
 .. tool_nemu:
 
 `NEMU <https://github.com/nemuTUI/nemu>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TUI for QEMU used to manage virtual machines, can display the Virtual Machine
-in the terminal using the kitty graphics protocol.
+in the terminal using the datty graphics protocol.
 
 
 Editor integration
 -----------------------
 
-|kitty| can be integrated into many different terminal based text editors to add
+|datty| can be integrated into many different terminal based text editors to add
 features such a split windows, previews, REPLs etc.
 
 .. tool_kakoune:
 
 `kakoune <https://kakoune.org/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Integrates with kitty to use native kitty windows for its windows/panels and
+Integrates with datty to use native datty windows for its windows/panels and
 REPLs.
 
 .. _tool_orbiton:
 
 `orbiton <https://github.com/xyproto/orbiton/>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A terminal text editor that uses kitty's graphics protocol to render Markdown
+A terminal text editor that uses datty's graphics protocol to render Markdown
 documents with fonts and images inline (use the ``-B`` flag for a word
 processor-like book mode), and to preview images in its built-in file browser.
 
 .. tool_vim_slime:
 
-`vim-slime <https://github.com/jpalardy/vim-slime#kitty>`_
+`vim-slime <https://github.com/jpalardy/vim-slime#datty>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Uses kitty remote control for a Lisp REPL.
+Uses datty remote control for a Lisp REPL.
 
-.. tool_vim_kitty_navigator:
+.. tool_vim_datty_navigator:
 
-`vim-kitty-navigator <https://github.com/knubie/vim-kitty-navigator>`_
+`vim-datty-navigator <https://github.com/knubie/vim-datty-navigator>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Allows you to navigate seamlessly between vim and kitty splits using a
+Allows you to navigate seamlessly between vim and datty splits using a
 consistent set of hotkeys.
 
 .. tool_vim_test:
@@ -329,40 +329,40 @@ Various image viewing plugins for editors
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
-* `kitty-graphics.el <https://github.com/cashmeredev/kitty-graphics.el>`_ - view images in emacs
+* `datty-graphics.el <https://github.com/cashmeredev/datty-graphics.el>`_ - view images in emacs
 
 Scrollback manipulation
 -------------------------
 
-.. tool_kitty_search_incremental:
+.. tool_datty_search_incremental:
 
-`kitty-search-incremental <https://github.com/Mobinshahidi/kitty-search>`_
+`datty-search-incremental <https://github.com/Mobinshahidi/datty-search>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Incremental scrollback search with live results, regex and literal modes,
 case-sensitivity toggle, match counter, and auto-scroll to the matching line.
 
-.. tool_kitty_scrollback_nvim:
+.. tool_datty_scrollback_nvim:
 
-`kitty-scrollback.nvim <https://github.com/mikesmithgh/kitty-scrollback.nvim>`_
+`datty-scrollback.nvim <https://github.com/mikesmithgh/datty-scrollback.nvim>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Browse the scrollback buffer with Neovim, with simple key actions for efficient
 copy/paste and even execution of commands.
 
-.. tool_kitty_search:
+.. tool_datty_search:
 
-`kitty-search <https://github.com/trygveaa/kitty-kitten-search>`_
+`datty-search <https://github.com/trygveaa/datty-daddy-search>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Live incremental search of the scrollback buffer.
 
-.. tool_kitty_grab:
+.. tool_datty_grab:
 
-`kitty-grab <https://github.com/yurikhan/kitty_grab>`_
+`datty-grab <https://github.com/yurikhan/datty_grab>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Keyboard based text selection for the kitty scrollback buffer.
+Keyboard based text selection for the datty scrollback buffer.
 
-.. tool_kitty_smart_scroll:
+.. tool_datty_smart_scroll:
 
-`kitty-smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
+`datty-smart-scroll <https://github.com/yurikhan/datty-smart-scroll>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Use keys to either scroll or pass them onto running applications if no
 scrollback buffer is present
@@ -371,27 +371,27 @@ scrollback buffer is present
 Desktop panels
 -------------------------
 
-`kitty panel <https://github.com/5hubham5ingh/kitty-panel>`__
+`datty panel <https://github.com/5hubham5ingh/datty-panel>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A system panel for Kitty terminal that displays real-time system metrics using terminal-based utilities.
+A system panel for Datty terminal that displays real-time system metrics using terminal-based utilities.
 
 
 `pawbar <https://github.com/codelif/pawbar>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A kitten-panel based desktop panel for your desktop
+A daddy-panel based desktop panel for your desktop
 
 Password managers
 ---------------------
 
-`1password <https://github.com/mm-zacharydavison/kitty-kitten-1password>`__
+`1password <https://github.com/mm-zacharydavison/datty-daddy-1password>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Allow injecting passwords from 1Password into kitty.
+Allow injecting passwords from 1Password into datty.
 
-`BitWarden <https://github.com/dnanhkhoa/kitty-password-manager>`__
+`BitWarden <https://github.com/dnanhkhoa/datty-password-manager>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Inject passwords from BitWarden into kitty
+Inject passwords from BitWarden into datty
 
 AI
 --------------
@@ -402,7 +402,7 @@ AI
 `captain-miao <https://github.com/hyperlogue/captain-miao>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TUI to monitor and organize multiple AI coding sessions, by leveraging
-the kitty remote control protocol
+the datty remote control protocol
 
 
 .. tool_gattino:
@@ -410,7 +410,7 @@ the kitty remote control protocol
 `gattino <https://github.com/salvozappa/gattino>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Integrate kitty with an LLM to convert plain language prompts into shell
+Integrate datty with an LLM to convert plain language prompts into shell
 commands.
 
 
@@ -420,7 +420,7 @@ commands.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Lets Claude Code show screenshots and play videos inline in the conversation
-using kitty's graphics protocol, including recordings of the app it built and
+using datty's graphics protocol, including recordings of the app it built and
 before/after runs played side by side for QA.
 
 
@@ -432,13 +432,13 @@ Miscellaneous
 DOOM
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Play the classic shooter DOOM in `kitty <https://github.com/cryptocode/terminal-doom>`__ or even inside `neovim inside kitty
+Play the classic shooter DOOM in `datty <https://github.com/cryptocode/terminal-doom>`__ or even inside `neovim inside datty
 <https://github.com/seandewar/actually-doom.nvim>`__.
 
 
-.. tool_kitty_smart_tab:
+.. tool_datty_smart_tab:
 
-`kitty-smart-tab <https://github.com/yurikhan/kitty-smart-tab>`_
+`datty-smart-tab <https://github.com/yurikhan/datty-smart-tab>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Use keys to either control tabs or pass them onto running applications if no
 tabs are present
@@ -447,18 +447,18 @@ tabs are present
 
 `kitti3 <https://github.com/LandingEllipse/kitti3>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Allow using kitty as a drop-down terminal under the i3 window manager
+Allow using datty as a drop-down terminal under the i3 window manager
 
 .. tool_weechat_hints:
 
-`weechat-hints <https://github.com/GermainZ/kitty-weechat-hints>`_
+`weechat-hints <https://github.com/GermainZ/datty-weechat-hints>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-URL hints kitten for WeeChat that works without having to use WeeChat's
+URL hints daddy for WeeChat that works without having to use WeeChat's
 raw-mode.
 
-.. tool_glkitty:
+.. tool_gldatty:
 
-`glkitty <https://github.com/michaeljclark/glkitty>`_
+`gldatty <https://github.com/michaeljclark/gldatty>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 C library to draw OpenGL shaders in the terminal with a glgears demo
 

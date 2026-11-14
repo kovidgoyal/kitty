@@ -342,7 +342,7 @@ def parsers() -> None:
         'e': ('report_supported', flag(string.ascii_letters)),
     }
     text = generate('parse_graphics_code', 'screen_handle_graphics_command', 'graphics_command', keymap, 'GraphicsCommand')
-    write_header(text, 'kitty/parse-graphics-command.h')
+    write_header(text, 'datty/parse-graphics-command.h')
 
     keymap = {
         'w': ('width', 'uint'),
@@ -362,7 +362,7 @@ def parsers() -> None:
         start_parsing_at=0,
         field_sep=':',
     )
-    write_header(text, 'kitty/parse-multicell-command.h')
+    write_header(text, 'datty/parse-multicell-command.h')
 
     keymap = {
         't': ('type', flag('aAmMrRopPqeEk')),
@@ -377,7 +377,7 @@ def parsers() -> None:
     text = generate(
         'parse_dnd_code', 'screen_handle_dnd_command', 'dnd_command', keymap, 'DnDCommand', payload_is_base64=False, start_parsing_at=0, field_sep=':'
     )
-    write_header(text, 'kitty/parse-dnd-command.h')
+    write_header(text, 'datty/parse-dnd-command.h')
 
 
 def main(args: list[str] = sys.argv) -> None:

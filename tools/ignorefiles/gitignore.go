@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print

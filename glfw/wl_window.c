@@ -34,7 +34,7 @@
 #include "linux_session_monitor.h"
 #include "linux_desktop_settings.h"
 #include "wl_client_side_decorations.h"
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -566,13 +566,13 @@ static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener =
 void
 _glfwWaylandSurfaceOutputsChanged(_GLFWwindow *window) {
     // A pending frame callback may never be answered when the output the
-    // surface was on goes away, see https://github.com/kovidgoyal/kitty/issues/10329
+    // surface was on goes away, see https://github.com/kovidgoyal/datty/issues/10329
     // so treat output changes as a frame event, the client will request a new
     // frame callback after it next renders. This must not be done on a timer
     // since compositors legitimately withhold frame callbacks for occluded
     // windows and destroying the proxy does not cancel the callback in the
     // compositor, so repeated requests accumulate till the compositor
-    // disconnects us. See https://github.com/kovidgoyal/kitty/issues/10597
+    // disconnects us. See https://github.com/kovidgoyal/datty/issues/10597
     if (!window->wl.frameCallbackData.current_wl_callback) return;
     wl_callback_destroy(window->wl.frameCallbackData.current_wl_callback);
     window->wl.frameCallbackData.current_wl_callback = NULL;
@@ -669,7 +669,7 @@ fractional_scale_preferred_scale(void *data, struct wp_fractional_scale_v1 *wp_f
     // scale before configure (as of Jan 2025). sway as of 1.10 and Hyprland send it after configure.
     // https://github.com/hyprwm/Hyprland/issues/9126
     // labwc doesnt support preferred buffer scale and seems to send only a
-    // single fraction scale event before configure https://github.com/kovidgoyal/kitty/issues/7540
+    // single fraction scale event before configure https://github.com/kovidgoyal/datty/issues/7540
     window->wl.window_fully_created = window->wl.once.surface_configured;
     apply_scale_changes(window, true, true);
 }
@@ -688,7 +688,7 @@ create_surface(_GLFWwindow *window, const _GLFWwndconfig *wndconfig) {
     // If we already have been notified of the primary monitor scale, assume
     // the window will be created on it and so avoid a rescale roundtrip in the common
     // case of the window being shown on the primary monitor or all monitors having the same scale.
-    // If you change this also change get_window_content_scale() in the kitty code.
+    // If you change this also change get_window_content_scale() in the datty code.
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     float xscale = 1.0, yscale = 1.0;
     int scale = 1;
@@ -1275,7 +1275,7 @@ create_layer_shell_surface(_GLFWwindow *window) {
     struct wl_output *wl_output = find_output_by_name(window->wl.layer_shell.config.output_name);
 #define ls window->wl.layer_shell.zwlr_layer_surface_v1
     ls = zwlr_layer_shell_v1_get_layer_surface(
-        _glfw.wl.zwlr_layer_shell_v1, window->wl.surface, wl_output, get_layer_shell_layer(window), window->wl.appId[0] ? window->wl.appId : "kitty");
+        _glfw.wl.zwlr_layer_shell_v1, window->wl.surface, wl_output, get_layer_shell_layer(window), window->wl.appId[0] ? window->wl.appId : "datty");
     if (!ls) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: layer-surface creation failed");
         return false;
@@ -2866,7 +2866,7 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
         //
         // However in wl-roots based compositors, using the serial from the keyboard enter event doesn't work. No clue what
         // the correct serial to use here is. Given this Wayland there probably isn't one. What a joke.
-        // Bug report: https://github.com/kovidgoyal/kitty/issues/6890
+        // Bug report: https://github.com/kovidgoyal/datty/issues/6890
         // Ironically one of the contributors to wl_roots claims the keyboard enter serial is the correct one to use:
         // https://emersion.fr/blog/2020/wayland-clipboard-drag-and-drop/
         // The Wayland spec itself says "serial number of the event that triggered this request"
@@ -3685,7 +3685,7 @@ _glfwPlatformStartDrag(_GLFWwindow *window, const GLFWimage *thumbnail) {
         // data source never receives any events, so fail early instead.
         // This can happen as drags are started asynchronously and the button
         // may have been released by the time we get here. EPERM matches what
-        // start_window_drag() in kitty/glfw.c reports for this situation.
+        // start_window_drag() in datty/glfw.c reports for this situation.
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Refusing to start drag without an active pointer implicit grab");
         return EPERM;
     }

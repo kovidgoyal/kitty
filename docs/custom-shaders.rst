@@ -5,17 +5,17 @@ Custom Shaders
 
 .. highlight:: conf
 
-Custom shaders in kitty are event driven and allow for all manner of visual
+Custom shaders in datty are event driven and allow for all manner of visual
 effects from the fun and blingy to useful visual aides. Users can write their
-own custom shaders or use some from the large set that ship with kitty.
-Browse the categories below to watch some custom shaders that ship with kitty in
-action. To use a custom shader add :opt:`custom_shaders` to :file:`kitty.conf`,
+own custom shaders or use some from the large set that ship with datty.
+Browse the categories below to watch some custom shaders that ship with datty in
+action. To use a custom shader add :opt:`custom_shaders` to :file:`datty.conf`,
 for example::
 
     custom_shaders inside-the-matrix
 
-You can see the code for the custom shaders that ship with kitty :repo_folder:`here
-<kitty/shaders/custom>`.
+You can see the code for the custom shaders that ship with datty :repo_folder:`here
+<datty/shaders/custom>`.
 
 .. role:: small-dim(raw)
    :format: html
@@ -26,7 +26,7 @@ You can see the code for the custom shaders that ship with kitty :repo_folder:`h
 Cursor trails
 ----------------
 
-You must have enabled cursor trails with something like ``cursor_trail 1`` in :file:`kitty.conf` for
+You must have enabled cursor trails with something like ``cursor_trail 1`` in :file:`datty.conf` for
 these shaders to take effect.
 
 When the cursor moves quickly, the trail can appear to hop from place to place
@@ -35,13 +35,13 @@ the way a camera does, by blurring the trail slightly along the direction it
 is moving, and it also smooths the trail's jagged edges. Enable it with
 :code:`custom_shaders cursor-trail-motion-blur`. The options it supports are
 explained at the top of the :repo_file:`shader file
-<kitty/shaders/custom/cursor-trail-motion-blur.slang>`.
+<datty/shaders/custom/cursor-trail-motion-blur.slang>`.
 
 The ``cursor-trail-railgun``, ``cursor-trail-torpedo`` and
 ``cursor-trail-pixiedust`` shaders make particles fly off the cursor as it
 moves, in the style of `neovide <https://neovide.dev>`__. You can change the
 size, speed, color, lifetime, etc. of the particles, as explained at the top of
-the :repo_file:`shader file <kitty/shaders/custom/cursor-trail-particles.slang>`.
+the :repo_file:`shader file <datty/shaders/custom/cursor-trail-particles.slang>`.
 
 .. include:: generated/custom-shaders-cursor-trails.rst
 
@@ -68,7 +68,7 @@ The ``screen-shake`` shader shakes only the window in which the bell occurred,
 other windows in the tab are left alone. Use ``screen-shake-random`` for a
 jittery shake in random directions instead of side to side. The amount, speed
 and style of the shake can be changed, as explained at the top of the
-:repo_file:`shader file <kitty/shaders/custom/screen-shake.slang>`.
+:repo_file:`shader file <datty/shaders/custom/screen-shake.slang>`.
 
 To shake the window whenever a shell command fails, have your shell print a
 bell character when the last command exits with an error.
@@ -143,11 +143,11 @@ when the spotlight animation should start and stop.
 Controlling shaders with key presses
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Groups can respond to events you send from a mapping in :file:`kitty.conf`
+Groups can respond to events you send from a mapping in :file:`datty.conf`
 using the :ac:`shader_event` action. Such events are named in the pipeline
 with a ``user:`` prefix. For example, to show the spotlight for a couple of
 seconds when you press :kbd:`F1`, so that you can find the mouse pointer,
-create the pipeline file :file:`shaders/find-pointer.pipeline` in the kitty config
+create the pipeline file :file:`shaders/find-pointer.pipeline` in the datty config
 directory with::
 
     startgroup
@@ -156,7 +156,7 @@ directory with::
         shaders spotlight
     endgroup
 
-and in :file:`kitty.conf`::
+and in :file:`datty.conf`::
 
     custom_shaders find-pointer
     map f1 shader_event find-pointer
@@ -172,12 +172,12 @@ next::
 Here ``map f2 shader_event crt`` toggles the ``crt`` effect. Events are sent to
 the active OS window, use ``map f2 shader_event crt all`` to send them to all OS
 windows. You can also send them from scripts with remote control, for example:
-``kitten @ action shader_event crt``. Groups that are not active are not drawn
+``daddy @ action shader_event crt``. Groups that are not active are not drawn
 at all, so an effect that is turned off costs nothing.
 
 As another example, to blend inactive windows toward gray instead of black, save the
-following as :file:`shaders/dim-gray.pipeline` in your kitty config directory and
-set ``custom_shaders dim-gray`` and ``inactive_text_alpha 1`` in :file:`kitty.conf`::
+following as :file:`shaders/dim-gray.pipeline` in your datty config directory and
+set ``custom_shaders dim-gray`` and ``inactive_text_alpha 1`` in :file:`datty.conf`::
 
     startgroup
         animation_step 0
@@ -204,7 +204,7 @@ effect redraw only when content or shader events change.
 Anatomy of a custom shader
 ----------------------------
 
-Shaders in kitty are written in `slang <https://shader-slang.org/>`__
+Shaders in datty are written in `slang <https://shader-slang.org/>`__
 which is a shading language that compiles down to the actual shading language
 used by the underlying platform. A custom shader consists of two parts: the
 actual shader, which is basically a single function that takes an input color
@@ -213,7 +213,7 @@ a *pipeline* file, which is responsible for specifying how
 different custom shaders are grouped together, how they render, what animation
 trigger events they respond to, etc. The two parts are described below.
 
-Custom shaders are run at the very end of the kitty rendering pipeline, when
+Custom shaders are run at the very end of the datty rendering pipeline, when
 everything else has already been rendered. Note that all colors are in the
 linear RGB color space and co-ordinates are in the traditional UV co-ordinate
 system with its origin in the lower left corner and Y increasing upwards.
@@ -223,7 +223,7 @@ system with its origin in the lower left corner and Y increasing upwards.
 How shaders are loaded
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When you set the :opt:`custom_shaders XXX <custom_shaders>` setting in :file:`kitty.conf` kitty
+When you set the :opt:`custom_shaders XXX <custom_shaders>` setting in :file:`datty.conf` datty
 tries to load a pipeline file with that name and if no pipeline file is found
 but a shader with that name is found instead, it is loaded with a default
 pipeline file. Loading of pipeline files takes place in the following order:
@@ -231,8 +231,8 @@ pipeline file. Loading of pipeline files takes place in the following order:
 #. If the specified pipeline file is an absolute path, it is loaded directly.
    A leading :file:`~` and environment variables are expanded.
 #. If a relative path it is loaded from the :file:`shaders` sub-directory
-   inside the kitty config directory
-#. It is looked for amongst the custom shaders shipped with kitty
+   inside the datty config directory
+#. It is looked for amongst the custom shaders shipped with datty
 #. A default pipeline file is constructed
 
 The :file:`.pipeline` extension is added automatically if not present. If the
@@ -250,14 +250,14 @@ The shader part
 This is in a :file:`.slang` file. It must define a function called
 ``fragment_main()`` whose signature is:
 
-.. literalinclude:: ../kitty/shaders/custom/sample.slang
+.. literalinclude:: ../datty/shaders/custom/sample.slang
    :start-after: START_FUNCTION_SIGNATURE
    :end-before: END_FUNCTION_SIGNATURE
 
 The two structs passed into this function have the definition shown below:
 
-.. literalinclude:: ../kitty/shaders/custom/types.slang
-   :start-at: public struct KittyCustomShaderData {
+.. literalinclude:: ../datty/shaders/custom/types.slang
+   :start-at: public struct DattyCustomShaderData {
    :end-before: END_TYPES_DEFINITION
 
 Shaders take their inputs and use them to transform the color as they see fit.
@@ -267,19 +267,19 @@ Shaders take their inputs and use them to transform the color as they see fit.
 Shaders that move content
 __________________________
 
-A shader that draws content somewhere other than where kitty put it, such as
+A shader that draws content somewhere other than where datty put it, such as
 the ``crt`` shader curving the screen, makes the mouse pointer and the text
 under it disagree, so that clicks and selections land on the wrong cells. To
-fix that, the shader can also define a function that tells kitty where the
+fix that, the shader can also define a function that tells datty where the
 content shown at a given position actually is::
 
     public float2
-    pointer_map(float2 pos, KittyCustomShaderData d) {
+    pointer_map(float2 pos, DattyCustomShaderData d) {
         return warp(pos);  // the same function fragment_main() uses to sample the backbuffer
     }
 
 ``pos`` and the return value are in the same UV co-ordinates as ``t.pos``.
-The function must be ``public`` and return ``float2``. kitty evaluates it on a
+The function must be ``public`` and return ``float2``. datty evaluates it on a
 grid only when the pipeline is loaded and when the OS Window is resized, and
 uses it to move all pointer events, so the only field of ``d`` it may use is
 ``d.viewport_size_pixels``. Only shaders in groups that draw to the whole
@@ -312,7 +312,7 @@ whitespace; blank lines are ignored.
 
 ``slot end``
     The rendering slot. Currently only ``end`` is supported (the shaders run
-    after all of kitty's own rendering is complete). This is the default and
+    after all of datty's own rendering is complete). This is the default and
     can be omitted.
 
 ``textures a b persist``
@@ -353,8 +353,8 @@ Directives inside a group:
 ``shaders <name> [name …]``
     One or more shader names to run in order. Shaders are searched for first
     in the directory containing the pipeline file, then in the :file:`shaders/`
-    subdirectory of the kitty config directory, then among the shaders shipped
-    with kitty. Absolute paths, including ones starting with :file:`~`, are
+    subdirectory of the datty config directory, then among the shaders shipped
+    with datty. Absolute paths, including ones starting with :file:`~`, are
     loaded directly.
 
 ``var <type> <name> <value>``
@@ -394,7 +394,7 @@ Directives inside a group:
       ``animation_progress`` value will smoothly reach ``1.0`` at that point.
     * ``never`` — the animation runs indefinitely until an explicit stop event.
 
-    When ``animation_stop`` is omitted kitty uses
+    When ``animation_stop`` is omitted datty uses
     :opt:`cursor_stop_blinking_after` as the duration.
 
 ``animation_curve <curve>``
@@ -503,7 +503,7 @@ Named textures
 _________________
 
 Named textures are additional off-screen buffers accessible to all shaders in
-the pipeline via the ``KittyTextures`` struct (``t.a``, ``t.b``, ``t.persist``).
+the pipeline via the ``DattyTextures`` struct (``t.a``, ``t.b``, ``t.persist``).
 
 ``a``, ``b``
     Scratch textures that exist for the lifetime of the pipeline. They start
@@ -520,17 +520,17 @@ the pipeline via the ``KittyTextures`` struct (``t.a``, ``t.b``, ``t.persist``).
 
 All three named textures cover the same area as the OS Window viewport and are
 sampled in the same UV co-ordinate space as ``t.pos``, via the ``Sample()``
-method on ``KittyTexture``. Note that the underlying GPU textures can be larger
-than the viewport, since kitty grows them to fit the largest OS Window and
+method on ``DattyTexture``. Note that the underlying GPU textures can be larger
+than the viewport, since datty grows them to fit the largest OS Window and
 never shrinks them again, so always sample via ``Sample()`` rather than using
 the raw ``tex`` sampler. They must be declared in the top-level ``textures``
 directive before they can be referenced. A named texture that is the output
-target for the current group cannot simultaneously be sampled as input; kitty
+target for the current group cannot simultaneously be sampled as input; datty
 automatically substitutes the backbuffer in that case.
 
 **How groups chain together**
 
-The backbuffer starts out as kitty's fully rendered terminal frame. Each group
+The backbuffer starts out as datty's fully rendered terminal frame. Each group
 reads from ``t.backbuffer`` and writes somewhere:
 
 * ``output_texture default`` (the default): the group's output becomes the
@@ -569,7 +569,7 @@ any of these directives run on every frame.
 Here the first group renders a glow pre-pass into texture ``a``, and the
 second group reads both the original backbuffer (``t.backbuffer``) and the
 glow data (``t.a``) to composite the final image. Note that these shaders
-aren't shipped with kitty, this is jut an illustrative example.
+aren't shipped with datty, this is jut an illustrative example.
 
 **A multi-pass event-driven effect** using ``attach``::
 
@@ -621,17 +621,17 @@ be combined with ``|`` — any one of them will trigger the action.
      - The OS window loses keyboard focus.
 
    * - ``window-focus-in``
-     - The active kitty window (pane) changes and a new window gains focus.
+     - The active datty window (pane) changes and a new window gains focus.
        The focused window's geometry is in ``d.active_window_geometry``.
 
    * - ``window-focus-out``
-     - A kitty window (pane) loses focus.
+     - A datty window (pane) loses focus.
 
    * - ``tab-change``
      - The active tab changes.
 
    * - ``bell-in-window``
-     - A bell (BEL character) is received in a visible kitty window. Bells
+     - A bell (BEL character) is received in a visible datty window. Bells
        in windows in inactive tabs or hidden by overlays or the layout do not
        trigger this event. This fires regardless of
        :opt:`visual_bell_duration`, so a shader can be used as a replacement
@@ -652,10 +652,10 @@ be combined with ``|`` — any one of them will trigger the action.
 
    * - ``cursor-trail-move``
      - The cursor trail begins moving (requires :opt:`cursor_trail` to be
-       enabled in :file:`kitty.conf`). The trail geometry is available via
+       enabled in :file:`datty.conf`). The trail geometry is available via
        ``d.cursor_trail_corners_x``, ``d.cursor_trail_corners_y``, and
        ``d.cursor_trail_edge``. When any group subscribes to this event,
-       kitty's built-in cursor trail rendering is suppressed so the shader
+       datty's built-in cursor trail rendering is suppressed so the shader
        takes over completely.
 
    * - ``cursor-trail-stop``

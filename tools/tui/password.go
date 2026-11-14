@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 )
 
 type KilledBySignal struct {

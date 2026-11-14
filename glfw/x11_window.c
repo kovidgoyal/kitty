@@ -33,7 +33,7 @@
 #include "backend_utils.h"
 #include "linux_notify.h"
 #include "linux_session_monitor.h"
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 
 #include <X11/cursorfont.h>
 #include <X11/Xmd.h>
@@ -3256,8 +3256,8 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char *mime_typ
     size_t count = 0;
     if (strcmp(mime_type, "text/plain") == 0) {
         // UTF8_STRING is what xclip uses by default, and there are people out there that expect to be able to paste from it with a single read operation. See
-        // https://github.com/kovidgoyal/kitty/issues/5842 Also ancient versions of GNOME use DOS line endings even for text/plain;charset=utf-8. See
-        // https://github.com/kovidgoyal/kitty/issues/5528#issuecomment-1325348218
+        // https://github.com/kovidgoyal/datty/issues/5842 Also ancient versions of GNOME use DOS line endings even for text/plain;charset=utf-8. See
+        // https://github.com/kovidgoyal/datty/issues/5528#issuecomment-1325348218
         atoms[count++] = _glfw.x11.UTF8_STRING;
         // we need to do this because GTK/GNOME is moronic they convert text/plain to DOS line endings, see
         // https://gitlab.gnome.org/GNOME/gtk/-/issues/2307

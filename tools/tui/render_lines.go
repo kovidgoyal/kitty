@@ -6,19 +6,19 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/style"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/style"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 )
 
 var _ = fmt.Print
 var _ = utils.Repr
 
-const KittyInternalHyperlinkProtocol = "kitty-ih"
+const DattyInternalHyperlinkProtocol = "datty-ih"
 
 func InternalHyperlink(text, id string) string {
-	return fmt.Sprintf("\x1b]8;;%s:%s\x1b\\%s\x1b]8;;\x1b\\", KittyInternalHyperlinkProtocol, id, text)
+	return fmt.Sprintf("\x1b]8;;%s:%s\x1b\\%s\x1b]8;;\x1b\\", DattyInternalHyperlinkProtocol, id, text)
 }
 
 type RenderLines struct {
@@ -80,8 +80,8 @@ func (r RenderLines) InRectangle(
 			}
 		} else {
 			commit_hyperlink()
-			if strings.HasPrefix(url, KittyInternalHyperlinkProtocol+":") {
-				start_hyperlink(url[len(KittyInternalHyperlinkProtocol)+1:])
+			if strings.HasPrefix(url, DattyInternalHyperlinkProtocol+":") {
+				start_hyperlink(url[len(DattyInternalHyperlinkProtocol)+1:])
 			} else {
 				buf.WriteString(fmt.Sprintf("\x1b]8;%s;%s\x1b\\", id, url))
 			}

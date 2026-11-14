@@ -1,9 +1,9 @@
 Terminal protocol extensions
 ===================================
 
-|kitty| has extensions to the legacy terminal protocol, to enable advanced
+|datty| has extensions to the legacy terminal protocol, to enable advanced
 features. These are typically in the form of new or re-purposed escape codes.
-While these extensions are currently |kitty| specific, it would be nice to get
+While these extensions are currently |datty| specific, it would be nice to get
 some of them adopted more broadly, to push the state of terminal emulators
 forward.
 
@@ -18,7 +18,7 @@ hopefully encouraging their widespread adoption.
 
 If you wish to discuss these extensions, propose additions or changes to them,
 please do so by opening issues in the `GitHub bug tracker
-<https://github.com/kovidgoyal/kitty/issues>`__.
+<https://github.com/kovidgoyal/datty/issues>`__.
 
 
 .. toctree::

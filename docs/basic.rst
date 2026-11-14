@@ -1,13 +1,13 @@
 Tabs and Windows
 -------------------
 
-|kitty| is capable of running multiple programs organized into tabs and windows.
+|datty| is capable of running multiple programs organized into tabs and windows.
 The top level of organization is the :term:`OS window <os_window>`. Each OS
 window consists of one or more :term:`tabs <tab>`. Each tab consists of one or more
-:term:`kitty windows <window>`. The kitty windows can be arranged in multiple
+:term:`datty windows <window>`. The datty windows can be arranged in multiple
 different :term:`layouts <layout>`, like windows are organized in a tiling
 window manager. The keyboard controls (which are :ref:`all customizable
-<conf-kitty-shortcuts>`) for tabs and windows are:
+<conf-datty-shortcuts>`) for tabs and windows are:
 
 Scrolling
 ~~~~~~~~~~~~~~
@@ -72,7 +72,7 @@ Focus specific window       :sc:`first_window`, :sc:`second_window` ... :sc:`ten
                             (clockwise from the top-left)
 ========================    =======================
 
-Additionally, you can define shortcuts in :file:`kitty.conf` to focus
+Additionally, you can define shortcuts in :file:`datty.conf` to focus
 neighboring windows and move windows around (similar to window movement in
 :program:`vim`)::
 
@@ -113,7 +113,7 @@ or another OS window::
     # asks which tab to move the window into
     map ctrl+f4 detach_window ask
 
-The :ac:`detach_window` action also accepts the options of :program:`kitten @ detach-window`,
+The :ac:`detach_window` action also accepts the options of :program:`daddy @ detach-window`,
 which can be combined with :option:`launch --focus-existing` to use tabs like
 named workspaces, switching to a tab, or sending the current window to it,
 creating the tab if it does not exist::
@@ -131,7 +131,7 @@ Similarly, you can detach the current tab, with::
     map ctrl+f4 detach_tab ask
 
 Note that tabs can be re-arranged, detached and moved to another OS Window in
-the same kitty instance using drag and drop.
+the same datty instance using drag and drop.
 
 Finally, you can define a shortcut to close all windows in a tab other than the
 currently active window::
@@ -150,7 +150,7 @@ mappings, such as modal mappings, per application mappings, etc. see
 ==================================  =======================
 Action                              Shortcut
 ==================================  =======================
-Show this help                      :sc:`show_kitty_doc`
+Show this help                      :sc:`show_datty_doc`
 Copy to clipboard                   :sc:`copy_to_clipboard` (also :kbd:`⌘+c` on macOS)
 Paste from clipboard                :sc:`paste_from_clipboard` (also :kbd:`⌘+v` on macOS)
 Paste from selection                :sc:`paste_from_selection`
@@ -163,10 +163,10 @@ Toggle maximized                    :sc:`toggle_maximized`
 Input Unicode character             :sc:`input_unicode_character` (also :kbd:`⌃+⌘+space` on macOS)
 Open URL in web browser             :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal` (also :kbd:`⌥+⌘+r` on macOS)
-Edit :file:`kitty.conf`             :sc:`edit_config_file` (also :kbd:`⌘+,` on macOS)
-Reload :file:`kitty.conf`           :sc:`reload_config_file` (also :kbd:`⌃+⌘+,` on macOS)
-Debug :file:`kitty.conf`            :sc:`debug_config` (also :kbd:`⌥+⌘+,` on macOS)
-Open a |kitty| shell                :sc:`kitty_shell`
+Edit :file:`datty.conf`             :sc:`edit_config_file` (also :kbd:`⌘+,` on macOS)
+Reload :file:`datty.conf`           :sc:`reload_config_file` (also :kbd:`⌃+⌘+,` on macOS)
+Debug :file:`datty.conf`            :sc:`debug_config` (also :kbd:`⌥+⌘+,` on macOS)
+Open a |datty| shell                :sc:`datty_shell`
 Increase background opacity         :sc:`increase_background_opacity`
 Decrease background opacity         :sc:`decrease_background_opacity`
 Full background opacity             :sc:`full_background_opacity`

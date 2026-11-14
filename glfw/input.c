@@ -31,7 +31,7 @@
 #if defined(_GLFW_WAYLAND) || defined(_GLFW_X11)
 #include "linux_desktop_settings.h"
 #endif
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 
 #include <assert.h>
 #include <errno.h>

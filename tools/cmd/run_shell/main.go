@@ -4,16 +4,16 @@ package run_shell
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/datty"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui"
-	"github.com/kovidgoyal/kitty/tools/tui/shell_integration"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui"
+	"github.com/kovidgoyal/datty/tools/tui/shell_integration"
+	"github.com/kovidgoyal/datty/tools/utils"
 
 	"golang.org/x/exp/slices"
 	"golang.org/x/sys/unix"
@@ -55,7 +55,7 @@ func inject_self_onto_path() {
 			for i, x := range realpath_items {
 				q := filepath.Join(x, filepath.Base(exe))
 				if is_executable_file(q) {
-					// some kitten already in path
+					// some daddy already in path
 					if utils.Samefile(q, exe) {
 						done = true
 						break
@@ -96,12 +96,12 @@ func main(args []string, opts *Options) (rc int, err error) {
 		changed = true
 	}
 	if os.Getenv("TERM") == "" {
-		os.Setenv("TERM", kitty.DefaultTermName)
+		os.Setenv("TERM", datty.DefaultTermName)
 	}
 	if opts.InjectSelfOntoPath == "always" || (opts.InjectSelfOntoPath == "unless-root" && os.Geteuid() != 0) {
 		inject_self_onto_path()
 	}
-	if term := os.Getenv("TERM"); term == kitty.DefaultTermName && shell_integration.PathToTerminfoDb(term) == "" {
+	if term := os.Getenv("TERM"); term == datty.DefaultTermName && shell_integration.PathToTerminfoDb(term) == "" {
 		if terminfo_dir, err := shell_integration.EnsureTerminfoFiles(); err == nil {
 			os.Unsetenv("TERMINFO")
 			existing := os.Getenv("TERMINFO_DIRS")
@@ -145,12 +145,12 @@ func EntryPoint(root *cli.Command) *cli.Command {
 	})
 	sc.Add(cli.OptionSpec{
 		Name: "--shell-integration",
-		Help: "Specify a value for the :opt:`shell_integration` option, overriding the one from :file:`kitty.conf`.",
+		Help: "Specify a value for the :opt:`shell_integration` option, overriding the one from :file:`datty.conf`.",
 	})
 	sc.Add(cli.OptionSpec{
 		Name:    "--shell",
 		Default: ".",
-		Help:    "Specify the shell command to run. The default value of :code:`.` will use the parent shell if recognized, falling back to the value of the :opt:`shell` option from :file:`kitty.conf`.",
+		Help:    "Specify the shell command to run. The default value of :code:`.` will use the parent shell if recognized, falling back to the value of the :opt:`shell` option from :file:`datty.conf`.",
 	})
 	sc.Add(cli.OptionSpec{
 		Name: "--env",
@@ -163,7 +163,7 @@ func EntryPoint(root *cli.Command) *cli.Command {
 	})
 	sc.Add(cli.OptionSpec{
 		Name:    "--inject-self-onto-path",
-		Help:    "Add the directory containing this kitten binary to PATH. Directory is added only if not already present.",
+		Help:    "Add the directory containing this daddy binary to PATH. Directory is added only if not already present.",
 		Default: "always",
 		Choices: "always,never,unless-root",
 	})

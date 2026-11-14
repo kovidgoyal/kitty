@@ -22,11 +22,11 @@ If applicable, add screenshots to help explain your problem.
 
 **Environment details**
 ```
-Press Ctrl+Shift+F6 (cmd+option+comma on macOS) in kitty, to copy debug output about kitty and its
+Press Ctrl+Shift+F6 (cmd+option+comma on macOS) in datty, to copy debug output about datty and its
 configuration to the clipboard and paste it here.
 
-On older versions of kitty, run kitty --debug-config instead
+On older versions of datty, run datty --debug-config instead
 ```
 
 **Additional context**
-Try to reproduce the problem with `kitty --config NONE` if you cannot then post a minimal kitty.conf that reproduces the problem. If the problem involves interaction with some other terminal program post a minimal config for that program to reproduce the problem as well.
+Try to reproduce the problem with `datty --config NONE` if you cannot then post a minimal datty.conf that reproduces the problem. If the problem involves interaction with some other terminal program post a minimal config for that program to reproduce the problem as well.

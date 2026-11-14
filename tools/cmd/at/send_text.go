@@ -10,10 +10,10 @@ import (
 
 	"github.com/emmansun/base64"
 
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/shlex"
 )
 
 var end_reading_from_stdin = errors.New("end reading from STDIN")
@@ -66,7 +66,7 @@ func parse_send_text(io_data *rc_io_data, args []string) error {
 				if ke.MatchesPressOrRepeat("ctrl+d") {
 					return end_reading_from_stdin
 				}
-				bs := "kitty-key:" + base64.StdEncoding.EncodeToString([]byte(ke.AsCSI()))
+				bs := "datty-key:" + base64.StdEncoding.EncodeToString([]byte(ke.AsCSI()))
 				pending_key_events = append(pending_key_events, bs)
 				if ke.Text != "" {
 					lp.QueueWriteString(ke.Text)

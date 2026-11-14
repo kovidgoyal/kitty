@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-// Keep in sync with kitty_tests/open_actions.py
+// Keep in sync with datty_tests/open_actions.py
 const mime_cache_test_types = `
-<mime-type type="text/x-kt-literal"><glob pattern="KittyLiteral"/></mime-type>
+<mime-type type="text/x-kt-literal"><glob pattern="DattyLiteral"/></mime-type>
 <mime-type type="text/x-kt-cs"><glob pattern="*.KCS" case-sensitive="true"/></mime-type>
 <mime-type type="text/x-kt-ext"><glob pattern="*.kext"/><alias type="text/x-kt-old"/><alias type="application/x-kt-older"/></mime-type>
 <mime-type type="text/x-kt-long"><glob pattern="*.long.kext"/></mime-type>
@@ -38,7 +38,7 @@ func TestMimeCache(t *testing.T) {
 		}
 		xml := `<?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">` + types + `</mime-info>`
-		if err := os.WriteFile(filepath.Join(pkgs, "kitty-test.xml"), []byte(xml), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(pkgs, "datty-test.xml"), []byte(xml), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		cmd := exec.Command("update-mime-database", filepath.Join(data_dir, "mime"))
@@ -66,10 +66,10 @@ func TestMimeCache(t *testing.T) {
 		t.Fatalf("Expected to load 3 caches, loaded: %d", len(caches))
 	}
 	for name, expected := range map[string]string{
-		"KittyLiteral":    "text/x-kt-literal",
-		"kittyliteral":    "text/x-kt-literal",
-		"KITTYLITERAL":    "text/x-kt-literal",
-		"xKittyLiteral":   "",
+		"DattyLiteral":    "text/x-kt-literal",
+		"dattyliteral":    "text/x-kt-literal",
+		"DATTYLITERAL":    "text/x-kt-literal",
+		"xDattyLiteral":   "",
 		"a.KCS":           "text/x-kt-cs",
 		"a.kcs":           "",
 		"a.kext":          "text/x-kt-ext",

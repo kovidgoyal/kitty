@@ -4,7 +4,7 @@ package subseq
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 	"math/rand"
 	"slices"
 	"strconv"

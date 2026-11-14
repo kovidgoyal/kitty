@@ -1,4 +1,4 @@
-#!./kitty/launcher/kitty +launch
+#!./datty/launcher/datty +launch
 # License: GPLv3 Copyright: 2025, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -785,7 +785,7 @@ def main(args: list[str] = sys.argv) -> None:
         print('%%', file=tf)
         tf.flush()
         tf.seek(0)
-        with open('kitty/color-names.h', 'w') as header:
+        with open('datty/color-names.h', 'w') as header:
             subprocess.check_call(
                 'gperf -m 2000 --struct-type --includes --readonly-tables --lookup-function-name in_color_name_set'
                 ' --global-table --null-strings --hash-function-name color_name_hash /dev/stdin'

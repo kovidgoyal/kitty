@@ -15,7 +15,7 @@ jobs:
         runs-on: ubuntu-latest
         env:
             CC: ${{ matrix.cc }}
-            KITTY_SANITIZE: ${{ matrix.sanitize }}
+            DATTY_SANITIZE: ${{ matrix.sanitize }}
 
         strategy:
             matrix:
@@ -60,10 +60,10 @@ jobs:
             with:
               go-version-file: go.mod
 
-          - name: Build kitty
+          - name: Build datty
             run: python .github/workflows/ci.py build
 
-          - name: Test kitty
+          - name: Test datty
             run: python .github/workflows/ci.py test
 
     linux-package:
@@ -79,10 +79,10 @@ jobs:
               persist-credentials: false
 
           - name: Test for trailing whitespace
-            run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
+            run: if grep -Inr '\s$' datty datty_tests daddies docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
 
           - name: Test for bad code block formatting
-            run: if grep -Inr ':code:`\s' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Space at code block start found, aborting.; exit 1; fi
+            run: if grep -Inr ':code:`\s' datty datty_tests daddies docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Space at code block start found, aborting.; exit 1; fi
 
           - name: Set up Python
             uses: actions/setup-python@v7.1.0
@@ -95,7 +95,7 @@ jobs:
               go-version-file: go.mod
               cache: false
 
-          - name: Cache Go build artifacts for static kittens
+          - name: Cache Go build artifacts for static daddies
             uses: actions/cache@v6.1.0
             with:
               path: |
@@ -114,7 +114,7 @@ jobs:
           - name: Check code formatting
             run: go version && python .github/workflows/ci.py check_code_formatting
 
-          - name: Build kitty package
+          - name: Build datty package
             run: python .github/workflows/ci.py package
 
           - name: Run type checking
@@ -123,7 +123,7 @@ jobs:
           - name: Run go vet
             run: go version && go vet -tags testing ./...
 
-          - name: Build static kittens
+          - name: Build static daddies
             run: python setup.py build-static-binaries
 
     bundle:
@@ -133,8 +133,8 @@ jobs:
             matrix:
                 os: [ubuntu-latest, macos-latest]
         env:
-            KITTY_BUNDLE: 1
-            KITTY_SANITIZE: 1
+            DATTY_BUNDLE: 1
+            DATTY_SANITIZE: 1
         steps:
           - name: Checkout source code
             uses: actions/checkout@v7.0.1
@@ -147,10 +147,10 @@ jobs:
             with:
               go-version-file: go.mod
 
-          - name: Build kitty
+          - name: Build datty
             run: which python3 && python3 .github/workflows/ci.py build
 
-          - name: Test kitty
+          - name: Test datty
             run: python3 .github/workflows/ci.py test
 
     brew:
@@ -176,7 +176,7 @@ jobs:
           - name: Install deps for docs
             run: python3 -m pip install -r docs/requirements.txt
 
-          - name: Build kitty package
+          - name: Build datty package
             run: python3 .github/workflows/ci.py package
 
           - name: Run benchmarks
@@ -200,7 +200,7 @@ jobs:
             with:
               go-version-file: go.mod
 
-          - name: Build kitty
+          - name: Build datty
             run: ./dev.sh build
 
           - name: Run benchmarks

@@ -4,31 +4,31 @@ package cli
 
 import (
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/style"
-	"github.com/kovidgoyal/kitty/tools/wcswidth"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils/style"
+	"github.com/kovidgoyal/datty/tools/wcswidth"
 	"strings"
 )
 
 var _ = fmt.Print
 
 func zsh_completion_script(commands []string) (string, error) {
-	return `#compdef kitty
+	return `#compdef datty
 
-_kitty() {
-    (( ${+commands[kitten]} )) || builtin return
+_datty() {
+    (( ${+commands[daddy]} )) || builtin return
     builtin local src cmd=${(F)words:0:$CURRENT}
     # Send all words up to the word the cursor is currently on.
-    src=$(builtin command kitten __complete__ zsh "_matcher=$_matcher" <<<$cmd) || builtin return
+    src=$(builtin command daddy __complete__ zsh "_matcher=$_matcher" <<<$cmd) || builtin return
     builtin eval "$src"
 }
 
 if (( $+functions[compdef] )); then
-    compdef _kitty kitty
-    compdef _kitty clone-in-kitty
-    compdef _kitty kitten
+    compdef _datty datty
+    compdef _datty clone-in-datty
+    compdef _datty daddy
 fi
 `, nil
 }
@@ -110,11 +110,11 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 	} else {
 		if len(completions.Groups) > 0 {
 			// Respect the user's description format, falling back to bold group titles
-			fmt.Fprintln(&output, "builtin local _kitty_fmt _kitty_expl")
-			output.WriteString(`builtin zstyle -s ":completion:${curcontext}:descriptions" format _kitty_fmt || _kitty_fmt='%B%d%b'` + "\n")
+			fmt.Fprintln(&output, "builtin local _datty_fmt _datty_expl")
+			output.WriteString(`builtin zstyle -s ":completion:${curcontext}:descriptions" format _datty_fmt || _datty_fmt='%B%d%b'` + "\n")
 		}
 		for _, mg := range completions.Groups {
-			fmt.Fprintln(&output, "builtin zformat -f _kitty_expl \"$_kitty_fmt\"", utils.QuoteStringForSH("d:"+mg.Title))
+			fmt.Fprintln(&output, "builtin zformat -f _datty_expl \"$_datty_fmt\"", utils.QuoteStringForSH("d:"+mg.Title))
 			cmd := strings.Builder{}
 			escape_ourselves := mg.IsFiles // zsh quoting quotes a leading ~/ in filenames which is wrong
 			cmd.WriteString("compadd -U ")
@@ -123,7 +123,7 @@ func serialize(completions *Completions, f *markup.Context, screen_width int) ([
 			}
 			cmd.WriteString("-J ")
 			cmd.WriteString(utils.QuoteStringForSH(mg.Title))
-			cmd.WriteString(` -X "$_kitty_expl"`)
+			cmd.WriteString(` -X "$_datty_expl"`)
 			if mg.NoTrailingSpace {
 				cmd.WriteString(" -S ''")
 			}

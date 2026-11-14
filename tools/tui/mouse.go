@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kovidgoyal/kitty"
-	"github.com/kovidgoyal/kitty/tools/config"
-	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty"
+	"github.com/kovidgoyal/datty/tools/config"
+	"github.com/kovidgoyal/datty/tools/tui/loop"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -294,7 +294,7 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 	if len(style) == 0 {
 		if !m.default_url_style.loaded {
 			m.default_url_style.loaded = true
-			color, style := kitty.DefaultUrlColor, kitty.DefaultUrlStyle
+			color, style := datty.DefaultUrlColor, datty.DefaultUrlStyle
 			line_handler := func(key, val string) error {
 				switch key {
 				case "url_color":
@@ -304,7 +304,7 @@ func (m *MouseState) ApplyHoverStyles(lp *loop.Loop, style ...string) {
 				}
 				return nil
 			}
-			config.ReadKittyConfig(line_handler)
+			config.ReadDattyConfig(line_handler)
 			if style != "none" && style != "" {
 				m.default_url_style.value = fmt.Sprintf("u=%s uc=%s", style, color)
 			}

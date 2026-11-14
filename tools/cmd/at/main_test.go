@@ -5,8 +5,8 @@ package at
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/crypto"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/crypto"
+	"github.com/kovidgoyal/datty/tools/utils"
 	"testing"
 )
 

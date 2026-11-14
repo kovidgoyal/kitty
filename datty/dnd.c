@@ -1,0 +1,3129 @@
+/*
+ * dnd.c
+ * Copyright (C) 2026 Kovid Goyal <kovid at kovidgoyal.net>
+ *
+ * Distributed under terms of the GPL3 license.
+ */
+
+#include "dnd.h"
+#include "base64.h"
+#include "control-codes.h"
+#include "safe-wrappers.h"
+#include "iqsort.h"
+#include "png-reader.h"
+#define NAME lower_str_set
+#define KEY_TY char *
+#define KEY_DTOR_FN free
+#include "datty-verstable.h"
+#include <ctype.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stddef.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define DEFAULT_MIME_LIST_SIZE_CAP 1024u * 1024u
+static size_t MIME_LIST_SIZE_CAP = DEFAULT_MIME_LIST_SIZE_CAP;
+#define DEFAULT_PRESENT_DATA_CAP 64 * 1024 * 1024
+static size_t PRESENT_DATA_CAP = DEFAULT_PRESENT_DATA_CAP;
+#define DEFAULT_REMOTE_DRAG_LIMIT 1024 * 1024 * 1024
+static size_t REMOTE_DRAG_LIMIT = DEFAULT_REMOTE_DRAG_LIMIT;
+static PyObject *g_dnd_test_write_func = NULL;
+static const unsigned file_permissions = 0644;
+static const unsigned dir_permissions = 0755;
+#define startwith_literal(x, literal) (x != NULL && strlen(x) >= sizeof(literal) - 1 && memcmp(x, literal, sizeof(literal) - 1) == 0)
+
+
+// Utils {{{
+// In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
+// It receives (window_id: int, data: bytes) and its return value is ignored.
+static void drop_process_queue(Window *w);
+static void drop_pop_request(Window *w);
+
+static size_t
+count_occurrences(const char *str, size_t len, char target) {
+    if (!str) return 0;
+    size_t count = 0;
+    const char *ptr = str;
+    while ((ptr = memchr(ptr, target, len - (ptr - str))) != NULL) {
+        count++;
+        ptr++; // Move past the found character
+        if (ptr >= str + len) break;
+    }
+    return count;
+}
+
+static const char *
+get_errno_name(int err) {
+    switch (err) {
+        case EPERM: return "EPERM";
+        case ENOENT: return "ENOENT";
+        case EIO: return "EIO";
+        case EINVAL: return "EINVAL";
+        case EMFILE: return "EMFILE";
+        case ENOMEM: return "ENOMEM";
+        case EFBIG: return "EFBIG";
+        case EISDIR: return "EISDIR";
+        case ELOOP: return "ELOOP";
+        case ENOTDIR: return "ENOTDIR";
+        case ENOSPC: return "ENOSPC";
+        case 0: return "OK";
+        default: return "EUNKNOWN";
+    }
+}
+
+static const char *
+machine_id(void) {
+    static bool done = false;
+    static char ans[512] = {0};
+    if (!done) {
+        done = true;
+        RAII_PyObject(mname, PyUnicode_DecodeFSDefault("datty.machine_id"));
+        if (mname) {
+            RAII_PyObject(module, PyImport_Import(mname));
+            if (module) {
+                RAII_PyObject(func, PyObject_GetAttrString(module, "machine_id"));
+                if (func) {
+                    RAII_PyObject(ret, PyObject_CallFunction(func, "s", "tty-dnd-protocol-machine-id"));
+                    if (ret) snprintf(ans, sizeof(ans), "%s", PyUnicode_AsUTF8(ret));
+                }
+            }
+        }
+        if (PyErr_Occurred()) PyErr_Print();
+    }
+    return ans;
+}
+
+static void
+rmtree_best_effort(const char *relpath, int dirfd) {
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("datty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "rmtree_best_effort"));
+            if (func) { RAII_PyObject(ret, PyObject_CallFunction(func, "si", relpath, dirfd)); }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    safe_close(dirfd, __FILE__, __LINE__);
+}
+
+static bool
+dnd_is_test_mode(void) {
+    return g_dnd_test_write_func != NULL;
+}
+
+static char *
+mktempdir_in_cache(const char *prefix, int *fd) {
+    char *ans = NULL;
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("datty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "mktempdir_in_cache"));
+            if (func) {
+                RAII_PyObject(ret, PyObject_CallFunction(func, "sO", prefix, dnd_is_test_mode() ? Py_False : Py_True));
+                if (ret) {
+                    if (PyArg_ParseTuple(ret, "si", &ans, fd)) {
+                        if (*fd < 0) {
+                            errno = -*fd;
+                            return NULL;
+                        }
+                        ans = strdup(ans);
+                        if (!ans) {
+                            errno = ENOMEM;
+                            return NULL;
+                        }
+                        return ans;
+                    }
+                }
+            }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    errno = EIO;
+    return NULL;
+}
+
+// -1 = unknown, 0 = case-sensitive, 1 = case-insensitive
+static int tempdir_case_insensitive = -1;
+
+static void
+detect_tempdir_case_sensitivity(const char *tempdir_path) {
+    if (tempdir_case_insensitive >= 0) return;
+    tempdir_case_insensitive = 0; // default: case-sensitive
+    const char *slash = strrchr(tempdir_path, '/');
+    if (!slash) return;
+    size_t dirname_len = (size_t)(slash - tempdir_path);
+    const char *basename = slash + 1;
+    size_t basename_len = strlen(basename);
+    if (!basename_len) return;
+    char upper_basename[PATH_MAX];
+    if (basename_len >= sizeof(upper_basename)) return;
+    for (size_t i = 0; i < basename_len; i++) upper_basename[i] = (char)toupper((unsigned char)basename[i]);
+    upper_basename[basename_len] = '\0';
+    if (strcmp(upper_basename, basename) == 0) return; // already all-uppercase, cannot distinguish
+    char upper_path[PATH_MAX];
+    if (dirname_len + 1 + basename_len + 1 > sizeof(upper_path)) return;
+    memcpy(upper_path, tempdir_path, dirname_len);
+    upper_path[dirname_len] = '/';
+    memcpy(upper_path + dirname_len + 1, upper_basename, basename_len + 1);
+    struct stat st;
+    if (stat(upper_path, &st) == 0) tempdir_case_insensitive = 1;
+}
+
+static char *
+as_file_url(const char *wd, const char *middle, const char *filename) {
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("datty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "as_file_url"));
+            if (func) {
+                RAII_PyObject(ret, PyObject_CallFunction(func, "sss", wd, middle, filename));
+                if (ret) return strdup(PyUnicode_AsUTF8(ret));
+            }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    return NULL;
+}
+
+static char *
+sanitized_filename_from_url(const char *url) {
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("datty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "sanitized_filename_from_url"));
+            if (func) {
+                RAII_PyObject(ret, PyObject_CallFunction(func, "s", url));
+                if (ret) return strdup(PyUnicode_AsUTF8(ret));
+            }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    return NULL;
+}
+
+
+static void
+dnd_set_test_write_func(PyObject *func, size_t mime_list_size_cap, size_t present_data_cap, size_t remote_drag_limit, int case_insensitive_tempdir) {
+    (void)machine_id;
+    Py_CLEAR(g_dnd_test_write_func);
+    g_dnd_test_write_func = Py_XNewRef(func);
+    MIME_LIST_SIZE_CAP = mime_list_size_cap ? mime_list_size_cap : DEFAULT_MIME_LIST_SIZE_CAP;
+    PRESENT_DATA_CAP = present_data_cap ? present_data_cap : DEFAULT_PRESENT_DATA_CAP;
+    REMOTE_DRAG_LIMIT = remote_drag_limit ? remote_drag_limit : DEFAULT_REMOTE_DRAG_LIMIT;
+    // Allows tests to exercise both the case-sensitive and the case-insensitive
+    // filesystem code paths regardless of the filesystem the tests run on. A
+    // negative value means auto-detect, as in normal operation.
+    tempdir_case_insensitive = case_insensitive_tempdir < 0 ? -1 : (case_insensitive_tempdir ? 1 : 0);
+}
+
+static int
+string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
+    if (an != bn) return (int)an - (int)bn;
+    for (size_t i = 0; i < an; i++) {
+        int ret = strcmp(a[i], b[i]);
+        if (ret != 0) return ret;
+    }
+    return 0;
+}
+
+static bool
+test_write_chunk(id_type id, const char *buf, size_t sz) {
+    // In test mode, deliver the chunk to the registered Python callable.
+    // Returns true when the test interceptor consumed the data (no real write needed).
+    if (!g_dnd_test_write_func) return false;
+    RAII_PyObject(ret, PyObject_CallFunction(g_dnd_test_write_func, "Ky#", (unsigned long long)id, buf, (Py_ssize_t)sz));
+    if (!ret) PyErr_Print();
+    return true;
+}
+
+static const size_t keep_write_to_child_queue_space = 32 * 1024;
+
+static size_t
+send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t header_sz, const char *data, const size_t data_sz, bool as_base64) {
+    size_t offset = 0;
+    char buf[4096 + 1024];
+    memcpy(buf, header, header_sz);
+    if (client_id) header_sz += snprintf(buf + header_sz, sizeof(buf) - header_sz, ":i=%u", (unsigned)client_id);
+    if (!data_sz) {
+        buf[header_sz++] = 0x1b;
+        buf[header_sz++] = '\\';
+        if (!test_write_chunk(id, buf, header_sz)) {
+            bool found, too_much_data;
+            schedule_write_to_child_if_possible(id, buf, header_sz, &found, &too_much_data, keep_write_to_child_queue_space);
+            if (too_much_data) return 0;
+        }
+        return 1;
+    }
+    buf[header_sz++] = ':';
+    buf[header_sz++] = 'm';
+    buf[header_sz++] = '=';
+    const size_t limit = as_base64 ? 3072 : 4096;
+    while (offset < data_sz) {
+        size_t chunk = data_sz - offset;
+        if (chunk > limit) chunk = limit;
+        size_t p = header_sz;
+        const bool is_last = offset + chunk >= data_sz;
+        buf[p++] = is_last ? '0' : '1';
+        buf[p++] = ';';
+        if (as_base64) {
+            size_t b64_len = sizeof(buf) - p;
+            base64_encode8((const uint8_t *)data + offset, chunk, (uint8_t *)buf + p, &b64_len, false);
+            p += b64_len;
+        } else {
+            memcpy(buf + p, data + offset, chunk);
+            p += chunk;
+        }
+        buf[p++] = 0x1b;
+        buf[p++] = '\\';
+        if (!test_write_chunk(id, buf, p)) {
+            bool found, too_much_data;
+            schedule_write_to_child_if_possible(id, buf, p, &found, &too_much_data, keep_write_to_child_queue_space);
+            if (too_much_data) break;
+            if (!found) return data_sz;
+        }
+        offset += chunk;
+    }
+    return offset;
+}
+
+static bool
+flush_pending(id_type id, PendingData *pending) {
+    while (pending->count) {
+        PendingEntry *e = pending->items;
+        size_t written = send_payload_to_child(id, e->client_id, e->buf, e->header_sz, e->buf + e->header_sz, e->data_sz, e->as_base64);
+        if (written < e->data_sz) {
+            if (written) {
+                e->data_sz -= written;
+                memmove(e->buf + e->header_sz, e->buf + e->header_sz + written, e->data_sz);
+            }
+            break;
+        } else {
+            if (!e->data_sz && !written) break;
+            free(e->buf);
+            zero_at_ptr(e);
+            remove_i_from_array(pending->items, 0, pending->count);
+        }
+    }
+    return pending->count == 0;
+}
+
+#define check_for_pending_writes() add_main_loop_timer(ms_to_monotonic_t(20), false, flush_pending_payloads, (void *)(uintptr_t)id, NULL)
+
+static void
+flush_pending_payloads(id_type timer_id UNUSED, void *x) {
+    id_type id = (uintptr_t)x;
+    Window *w = window_for_window_id(id);
+    if (w && w->drop.wanted) {
+        if (!flush_pending(w->id, &w->drop.pending)) check_for_pending_writes();
+    }
+}
+
+static void
+queue_payload_to_child(
+    id_type id, uint32_t client_id, PendingData *pending, const char *header, size_t header_sz, const char *data, size_t data_sz, bool as_base64) {
+    size_t offset = 0;
+    if (flush_pending(id, pending)) offset = send_payload_to_child(id, client_id, header, header_sz, data, data_sz, as_base64);
+    if (offset < data_sz || (!offset && !data_sz)) {
+        ensure_space_for(pending, items, PendingEntry, pending->count + 1, capacity, 32, true);
+        char *buf = malloc(header_sz + data_sz - offset);
+        if (!buf) fatal("Out of memory");
+        memcpy(buf, header, header_sz);
+        if (data_sz - offset) memcpy(buf + header_sz, data + offset, data_sz - offset);
+        PendingEntry *e = &pending->items[pending->count++];
+        e->buf = buf;
+        e->header_sz = header_sz;
+        e->data_sz = data_sz - offset;
+        e->as_base64 = as_base64;
+        e->client_id = client_id;
+    }
+    if (pending->count) check_for_pending_writes();
+}
+
+void
+dnd_query(Window *w, uint32_t client_id) {
+    char buf[64];
+    ssize_t header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=q", DND_CODE);
+    send_payload_to_child(w->id, client_id, buf, header_size, NULL, 0, false);
+}
+
+static bool
+is_same_machine(const char *client_machine_id, size_t sz) {
+    if (!sz || !client_machine_id) return true;
+    if (sz < 20) return false;
+    if (client_machine_id[0] != '1' || client_machine_id[1] != ':') return false;
+    client_machine_id = client_machine_id + 2;
+    sz -= 2;
+    const char *host_machine_id = machine_id();
+    if (!host_machine_id) return true;
+    const size_t hsz = strlen(host_machine_id);
+    return sz == hsz && memcmp(client_machine_id, host_machine_id, sz) == 0;
+}
+
+static void
+url_decode_inplace(char *str) {
+    char *src = str, *dst = str;
+    while (*src) {
+        if (*src == '%' && src[1] && src[2]) {
+            unsigned int hi = 0, lo = 0;
+            char c1 = src[1], c2 = src[2];
+            if (c1 >= '0' && c1 <= '9') hi = c1 - '0';
+            else if (c1 >= 'a' && c1 <= 'f') hi = c1 - 'a' + 10;
+            else if (c1 >= 'A' && c1 <= 'F') hi = c1 - 'A' + 10;
+            else {
+                *dst++ = *src++;
+                continue;
+            }
+            if (c2 >= '0' && c2 <= '9') lo = c2 - '0';
+            else if (c2 >= 'a' && c2 <= 'f') lo = c2 - 'a' + 10;
+            else if (c2 >= 'A' && c2 <= 'F') lo = c2 - 'A' + 10;
+            else {
+                *dst++ = *src++;
+                continue;
+            }
+            *dst++ = (char)((hi << 4) | lo);
+            src += 3;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst = 0;
+}
+
+// }}}
+
+// Dropping {{{
+static void
+drop_free_offered_mimes(Window *w) {
+    if (w->drop.offerred_mimes) {
+        for (size_t i = 0; i < w->drop.num_offerred_mimes; i++) free((void *)w->drop.offerred_mimes[i]);
+        free(w->drop.offerred_mimes);
+        w->drop.offerred_mimes = NULL;
+    }
+    w->drop.num_offerred_mimes = 0;
+    w->drop.offered_mimes_total_size = 0;
+}
+
+static void
+drop_free_accepted_mimes(Window *w) {
+    free(w->drop.accepted_mimes);
+    w->drop.accepted_mimes = NULL;
+    w->drop.accepted_mimes_sz = 0;
+}
+
+static void
+free_pending(PendingData *pending) {
+    if (pending->items) {
+        for (size_t i = 0; i < pending->count; i++) free(pending->items[i].buf);
+        free(pending->items);
+    }
+    zero_at_ptr(pending);
+}
+
+static void
+drop_free_dir_handle(DirHandle *h) {
+    free(h->path);
+    for (size_t i = 0; i < h->num_entries; i++) free(h->entries[i]);
+    free(h->entries);
+    zero_at_ptr(h);
+}
+
+static void
+drop_free_dir_handles(Window *w) {
+    for (size_t i = 0; i < w->drop.num_dir_handles; i++) drop_free_dir_handle(&w->drop.dir_handles[i]);
+    free(w->drop.dir_handles);
+    w->drop.dir_handles = NULL;
+    w->drop.num_dir_handles = 0;
+    w->drop.dir_handles_capacity = 0;
+    w->drop.next_dir_handle_id = 0;
+}
+
+static void
+drop_close_file_fd(Window *w) {
+    if (w->drop.file_fd_plus_one) {
+        safe_close(w->drop.file_fd_plus_one - 1, __FILE__, __LINE__);
+        w->drop.file_fd_plus_one = 0;
+    }
+    if (w->drop.file_send_timer) {
+        remove_main_loop_timer(w->drop.file_send_timer);
+        w->drop.file_send_timer = 0;
+    }
+}
+
+static void
+drop_free_request_queue(Window *w) {
+    w->drop.num_data_requests = 0;
+    w->drop.current_request_x = 0;
+    w->drop.current_request_y = 0;
+    w->drop.current_request_Y = 0;
+}
+
+void
+drop_free_data(Window *w) {
+    drop_close_file_fd(w);
+    drop_free_offered_mimes(w);
+    drop_free_accepted_mimes(w);
+    free_pending(&w->drop.pending);
+    free(w->drop.registered_mimes);
+    w->drop.registered_mimes = NULL;
+    free(w->drop.uri_list);
+    w->drop.uri_list = NULL;
+    free(w->drop.getting_data_for_mime);
+    w->drop.getting_data_for_mime = NULL;
+    drop_free_dir_handles(w);
+    drop_free_request_queue(w);
+}
+
+static void
+reset_drop(Window *w) {
+    bool wanted = w->drop.wanted;
+    uint32_t cid = w->drop.client_id;
+    bool is_remote_client = w->drop.is_remote_client;
+    drop_free_data(w);
+    zero_at_ptr(&w->drop);
+    if (wanted) {
+        w->drop.wanted = wanted;
+        w->drop.client_id = cid;
+        w->drop.is_remote_client = is_remote_client;
+    }
+}
+
+void
+drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
+    w->drop.wanted = on;
+    w->drop.client_id = client_id;
+    w->drop.is_remote_client = false;
+    if (!on) {
+        drop_free_data(w);
+        zero_at_ptr(&w->drop);
+        return;
+    }
+    if (!payload || !payload_sz) return;
+    size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
+    if (sz + payload_sz > MIME_LIST_SIZE_CAP) return;
+    char *tmp = realloc(w->drop.registered_mimes, sz + payload_sz + 1);
+    if (tmp) {
+        w->drop.registered_mimes = tmp;
+        memcpy(w->drop.registered_mimes + sz, payload, payload_sz);
+        sz += payload_sz;
+        w->drop.registered_mimes[sz] = 0;
+    }
+    if (more) return;
+    if (w->drop.registered_mimes) {
+        OSWindow *osw = os_window_for_datty_window(w->id);
+        if (osw) {
+            size_t num = 0;
+            RAII_ALLOC(const char *, mimes, malloc(sizeof(char *) * strlen(w->drop.registered_mimes)));
+            if (mimes) {
+                char *token = strtok(w->drop.registered_mimes, " ");
+                while (token != NULL) {
+                    mimes[num++] = token;
+                    token = strtok(NULL, " ");
+                }
+                register_mimes_for_drop(osw, mimes, num);
+            }
+        }
+    }
+    free(w->drop.registered_mimes);
+    w->drop.registered_mimes = NULL;
+}
+
+void
+drop_register_machine_id(Window *w, const uint8_t *machine_id, size_t sz) {
+    w->drop.is_remote_client = !is_same_machine((const char *)machine_id, sz);
+}
+
+void
+drop_move_on_child(Window *w, const char **mimes, size_t num_mimes, bool is_drop) {
+    if (!w->drop.hovered) {
+        reset_drop(w);
+        w->drop.hovered = true;
+    }
+    if (is_drop) {
+        w->drop.dropped = true;
+        w->drop.hovered = false;
+    }
+    if (mimes && (w->drop.offerred_mimes == NULL || string_arrays_cmp(mimes, num_mimes, w->drop.offerred_mimes, w->drop.num_offerred_mimes) != 0)) {
+        drop_free_offered_mimes(w);
+        w->drop.offerred_mimes = malloc(num_mimes * sizeof(char *));
+        if (w->drop.offerred_mimes) {
+            w->drop.offered_mimes_total_size = 0;
+            for (size_t i = 0; i < num_mimes; i++) {
+                size_t l = strlen(mimes[i]);
+                w->drop.offered_mimes_total_size += 1 + l;
+                char *p = malloc(l + 1);
+                if (!p) fatal("Out of memory");
+                memcpy(p, mimes[i], l);
+                p[l] = 0;
+                w->drop.offerred_mimes[i] = p;
+            }
+        }
+        w->drop.num_offerred_mimes = num_mimes;
+    }
+    // we simply drop this event if there is too much data being written to the child
+    if (w->drop.pending.count && !is_drop) return;
+    char buf[128];
+    int header_size;
+    int allowed_ops = 0;
+    if (global_state.drop_dest.allowed_ops & GLFW_DRAG_OPERATION_COPY) allowed_ops |= 1;
+    if (global_state.drop_dest.allowed_ops & GLFW_DRAG_OPERATION_MOVE) allowed_ops |= 2;
+    if (global_state.drop_dest.allowed_ops & GLFW_DRAG_OPERATION_GENERIC) allowed_ops |= 3;
+    header_size = snprintf(
+        buf,
+        sizeof(buf),
+        "\x1b]%d;t=%c:x=%u:y=%u:X=%d:Y=%d:o=%d",
+        DND_CODE,
+        is_drop ? 'M' : 'm',
+        w->mouse_pos.cell_x,
+        w->mouse_pos.cell_y,
+        (int)w->mouse_pos.global_x,
+        (int)w->mouse_pos.global_y,
+        allowed_ops);
+    if (w->drop.offered_mimes_total_size) {
+        const size_t mimes_total_size = 1 + w->drop.offered_mimes_total_size;
+        RAII_ALLOC(char, mbuf, malloc(mimes_total_size));
+        if (mbuf) {
+            size_t pos = 0;
+            for (size_t i = 0; i < w->drop.num_offerred_mimes && pos < mimes_total_size; i++) {
+                int n = snprintf(mbuf + pos, mimes_total_size - pos, "%s ", w->drop.offerred_mimes[i]);
+                if (n < 0) break;
+                pos += n;
+            }
+            queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, mbuf, pos, false);
+        }
+    } else queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, NULL, 0, false);
+}
+
+static GLFWDragOperationType
+drop_operation_to_enum(uint32_t op) {
+    switch (op) {
+        case 1: return GLFW_DRAG_OPERATION_COPY;
+        case 2: return GLFW_DRAG_OPERATION_MOVE;
+        default: return GLFW_DRAG_OPERATION_NONE;
+    }
+}
+
+static GLFWDragOperationType last_drop_finish_operation = GLFW_DRAG_OPERATION_NONE;
+
+void
+drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz, bool more) {
+    last_drop_finish_operation = GLFW_DRAG_OPERATION_NONE;
+    if (!w->drop.accept_in_progress) {
+        drop_free_accepted_mimes(w);
+        w->drop.accept_in_progress = true;
+        w->drop.accepted_operation = drop_operation_to_enum(operation);
+    }
+    if (payload_sz) {
+        if (w->drop.accepted_mimes_sz + payload_sz > MIME_LIST_SIZE_CAP) return;
+        char *new_buf = realloc(w->drop.accepted_mimes, w->drop.accepted_mimes_sz + payload_sz + 2);
+        if (!new_buf) return;
+        w->drop.accepted_mimes = new_buf;
+        memcpy(w->drop.accepted_mimes + w->drop.accepted_mimes_sz, payload, payload_sz);
+        w->drop.accepted_mimes_sz += payload_sz;
+    }
+    if (!more) {
+        w->drop.accept_in_progress = false;
+        if (w->drop.accepted_mimes) {
+            for (size_t i = 0; i < w->drop.accepted_mimes_sz; i++)
+                if (w->drop.accepted_mimes[i] == ' ') w->drop.accepted_mimes[i] = 0;
+            w->drop.accepted_mimes[w->drop.accepted_mimes_sz++] = 0;
+        }
+        OSWindow *osw = os_window_for_datty_window(w->id);
+        if (osw) request_drop_status_update(osw);
+    }
+}
+
+void
+drop_finish(Window *w) {
+    OSWindow *osw = os_window_for_datty_window(w->id);
+    if (osw && osw->handle) { glfwEndDrop(osw->handle, w->drop.accepted_operation); }
+}
+
+/* Return the byte offset of *mime* in the NUL-separated *buf* (length *buf_sz*),
+ * using exact string comparison.  Returns -1 if *mime* is not present.
+ * strstr() must not be used here because it does substring matching: a MIME
+ * type like "text/h" would falsely match against "text/html" in the buffer. */
+static ssize_t
+find_mime_exact_offset(const char *buf, size_t buf_sz, const char *mime) {
+    const char *p = buf;
+    const char *end = buf + buf_sz;
+    while (p < end && *p) {
+        if (strcmp(p, mime) == 0) return (ssize_t)(p - buf);
+        p += strlen(p) + 1;
+    }
+    return -1;
+}
+
+size_t
+drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_count) {
+    if (w->drop.accept_in_progress) return allowed_mimes_count;
+    if (w->drop.accepted_operation == GLFW_DRAG_OPERATION_NONE) return 0;
+    typedef struct mime_sorter {
+        const char *m;
+        ssize_t key;
+    } mime_sorter;
+    if (!w->drop.accepted_mimes) return allowed_mimes_count;
+    RAII_ALLOC(mime_sorter, ms, malloc(sizeof(mime_sorter) * allowed_mimes_count));
+    if (!ms) return allowed_mimes_count;
+    /* Use accepted_mimes_sz + 1 as the sentinel.  Every valid byte offset in the
+     * accepted_mimes buffer is in [0, accepted_mimes_sz - 1], so this value is
+     * strictly greater than any real offset and guarantees that not-found entries
+     * sort after all accepted ones.  The previous choice of allowed_mimes_count
+     * was incorrect: when allowed_mimes_count < accepted_mimes_sz (common when
+     * few MIME types are offered), real byte offsets of accepted entries beyond
+     * the first would exceed the sentinel and not-found entries would sort into
+     * the middle of the list, evading the trailing-trim that follows. */
+    const ssize_t sentinel = (ssize_t)(w->drop.accepted_mimes_sz + 1);
+    for (size_t i = 0; i < allowed_mimes_count; i++) {
+        ms[i].m = allowed_mimes[i];
+        ssize_t offset = find_mime_exact_offset(w->drop.accepted_mimes, w->drop.accepted_mimes_sz, ms[i].m);
+        ms[i].key = offset >= 0 ? offset : sentinel;
+    }
+#define mimes_lt(a, b) ((a)->key < (b)->key)
+    QSORT(mime_sorter, ms, allowed_mimes_count, mimes_lt);
+#undef mimes_lt
+    while (allowed_mimes_count && ms[allowed_mimes_count - 1].key == sentinel) allowed_mimes_count--;
+    for (size_t i = 0; i < allowed_mimes_count; i++) allowed_mimes[i] = ms[i].m;
+    return allowed_mimes_count;
+}
+
+/* Append the current request disambiguation keys (x, y, Y) to a header buffer.
+ * Returns the number of bytes written. */
+static int
+drop_append_request_keys(Window *w, char *buf, size_t bufsize) {
+    int sz = 0;
+    if (w->drop.current_request_x && sz < (int)bufsize - 1) sz += snprintf(buf + sz, bufsize - sz, ":x=%d", (int)w->drop.current_request_x);
+    if (w->drop.current_request_y && sz < (int)bufsize - 1) sz += snprintf(buf + sz, bufsize - sz, ":y=%d", (int)w->drop.current_request_y);
+    if (w->drop.current_request_Y && sz < (int)bufsize - 1) sz += snprintf(buf + sz, bufsize - sz, ":Y=%d", (int)w->drop.current_request_Y);
+    return sz;
+}
+
+static void
+drop_send_error(Window *w, int error_code, const char *desc) {
+    char buf[128], details_buf[1024];
+    int n;
+    if (desc && desc[0]) n = snprintf(details_buf, sizeof(details_buf), "%s:%s", get_errno_name(error_code), desc);
+    else n = snprintf(details_buf, sizeof(details_buf), "%s", get_errno_name(error_code));
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
+    header_size += drop_append_request_keys(w, buf + header_size, sizeof(buf) - header_size);
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, details_buf, n, false);
+}
+
+void
+drop_send_einval(Window *w, const char *desc) {
+    drop_send_error(w, EINVAL, desc);
+}
+
+/* Returns true if the request completed synchronously (error, no-op),
+ * false if an async OS data fetch was started. */
+static bool
+do_drop_request_data(Window *w, int32_t idx) {
+    if (w->drop.getting_data_for_mime) {
+        free(w->drop.getting_data_for_mime);
+        w->drop.getting_data_for_mime = NULL;
+    }
+    OSWindow *osw = os_window_for_datty_window(w->id);
+    if (!osw) return true;
+    /* idx is 1-based */
+    if (idx < 1 || !w->drop.offerred_mimes || (size_t)idx > w->drop.num_offerred_mimes) {
+        drop_send_error(w, ENOENT, "drop data request index out of bounds");
+        return true;
+    }
+    const char *mime = w->drop.offerred_mimes[idx - 1];
+    w->drop.getting_data_for_mime = strdup(mime);
+    if (w->drop.getting_data_for_mime && !dnd_is_test_mode()) {
+        int err = request_drop_data(osw, w->id, mime);
+        if (err) {
+            drop_send_error(w, err, "drop data request from OS failed");
+            return true;
+        }
+    }
+    return false; /* async: completion via drop_dispatch_data */
+}
+
+void
+drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
+    if (sz < 0) {
+        drop_send_error(w, -sz, "drop data request failed to read data");
+        drop_pop_request(w);
+        drop_process_queue(w);
+    } else {
+        char buf[128];
+        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=r", DND_CODE);
+        const bool is_uri_list = strcmp(mime, "text/uri-list") == 0;
+        if (is_uri_list && w->drop.is_remote_client) header_size += snprintf(buf + header_size, sizeof(buf) - header_size, ":X=1");
+        header_size += drop_append_request_keys(w, buf + header_size, sizeof(buf) - header_size);
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz, true);
+        if (is_uri_list && sz) {
+            w->drop.uri_list_sz += sz;
+            char *tmp = realloc(w->drop.uri_list, w->drop.uri_list_sz);
+            if (tmp) {
+                w->drop.uri_list = tmp;
+                memcpy(w->drop.uri_list + w->drop.uri_list_sz - sz, data, sz);
+            } else {
+                free(w->drop.uri_list);
+                w->drop.uri_list = NULL;
+                w->drop.uri_list_sz = 0;
+            }
+        }
+        if (sz == 0) {
+            drop_pop_request(w);
+            drop_process_queue(w);
+        }
+    }
+}
+
+// ---- Remote file / directory transfer ----
+
+/* Return the nth (0-based) file path from a text/uri-list.
+ * On success returns true and *path_out is a malloc'd absolute resolved path.
+ * On failure returns false and *error_out points to a static error string. */
+static bool
+get_nth_file_url(const char *uri_list, size_t uri_list_sz, int n, char **path_out, const char **error_out) {
+    *path_out = NULL;
+    RAII_ALLOC(char, buf, malloc(uri_list_sz + 1));
+    if (!buf) {
+        *error_out = "ENOMEM";
+        return false;
+    }
+    memcpy(buf, uri_list, uri_list_sz);
+    buf[uri_list_sz] = 0;
+
+    const char *found_line = NULL;
+    char *p = buf;
+    while (*p) {
+        char *eol = p + strcspn(p, "\r\n");
+        char saved = *eol;
+        *eol = 0;
+        /* trim trailing whitespace */
+        char *end = eol;
+        while (end > p && (end[-1] == ' ' || end[-1] == '\t')) {
+            end--;
+            *end = 0;
+        }
+        if (*p && *p != '#') {
+            if (n <= 0) {
+                found_line = p;
+                break;
+            }
+            n--;
+        }
+        if (saved == 0) break;
+        p = eol + 1;
+        while (*p == '\r' || *p == '\n') p++;
+    }
+    if (!found_line) {
+        *error_out = "ENOENT";
+        return false;
+    }
+
+    /* Must be a file:// URL */
+    if (strncmp(found_line, "file://", 7) != 0) {
+        *error_out = "EUNKNOWN";
+        return false;
+    }
+
+    const char *rest = found_line + 7;
+    const char *slash = strchr(rest, '/');
+    if (!slash) {
+        *error_out = "EINVAL";
+        return false;
+    }
+
+    /* Host part must be empty or "localhost" */
+    size_t host_len = (size_t)(slash - rest);
+    if (host_len > 0 && !(host_len == 9 && strncasecmp(rest, "localhost", 9) == 0)) {
+        *error_out = "EUNKNOWN";
+        return false;
+    }
+
+    RAII_ALLOC(char, path, strdup(slash));
+    if (!path) {
+        *error_out = "ENOMEM";
+        return false;
+    }
+    /* Strip any query (?...) or fragment (#...) from the path */
+    char *query_or_fragment_start = path + strcspn(path, "?#");
+    *query_or_fragment_start = 0;
+    url_decode_inplace(path);
+    if (path[0] != '/') {
+        *error_out = "EINVAL";
+        return false;
+    }
+    *path_out = strdup(path);
+    if (!*path_out) {
+        *error_out = "ENOMEM";
+        return false;
+    }
+    return true;
+}
+
+/* Send error using a literal string (for cases where we have a string, not int). */
+static void
+drop_send_error_str(Window *w, const char *err_name) {
+    char buf[128];
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
+    header_size += drop_append_request_keys(w, buf + header_size, sizeof(buf) - header_size);
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, err_name, strlen(err_name), false);
+}
+
+/* Size of each file read chunk; fits in one base64 sub-chunk (≤4096 chars). */
+#define FILE_CHUNK_SIZE 3072
+/* Abort file transfer if no data has been sent to the child for this long. */
+#define FILE_SEND_TIMEOUT_SECONDS 90
+
+static void drop_send_file_chunks(Window *w);
+
+static void
+file_send_timer_callback(id_type timer_id UNUSED, void *x) {
+    id_type id = (uintptr_t)x;
+    Window *w = window_for_window_id(id);
+    if (!w || !w->drop.file_fd_plus_one) return;
+    w->drop.file_send_timer = 0;
+    if (monotonic() - w->drop.last_file_send_at > s_to_monotonic_t(FILE_SEND_TIMEOUT_SECONDS)) {
+        drop_close_file_fd(w);
+        drop_send_error(w, EIO, "timed out waiting for child to read file data");
+        drop_pop_request(w);
+        drop_process_queue(w);
+        return;
+    }
+    drop_send_file_chunks(w);
+}
+
+static void
+drop_send_file_chunks(Window *w) {
+    if (!flush_pending(w->id, &w->drop.pending)) {
+        w->drop.file_send_timer = add_main_loop_timer(ms_to_monotonic_t(20), false, file_send_timer_callback, (void *)(uintptr_t)w->id, NULL);
+        return;
+    }
+    char hdr[128];
+    int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
+    hdr_sz += drop_append_request_keys(w, hdr + hdr_sz, sizeof(hdr) - hdr_sz);
+    while (1) {
+        char buf[FILE_CHUNK_SIZE];
+        ssize_t n;
+        do { n = read(w->drop.file_fd_plus_one - 1, buf, sizeof(buf)); } while (n < 0 && errno == EINTR);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* No data available right now; retry via timer */
+                w->drop.file_send_timer = add_main_loop_timer(ms_to_monotonic_t(20), false, file_send_timer_callback, (void *)(uintptr_t)w->id, NULL);
+                return;
+            }
+            drop_close_file_fd(w);
+            drop_send_error(w, EIO, "failed to read from drop data file");
+            drop_pop_request(w);
+            drop_process_queue(w);
+            return;
+        }
+        if (n == 0) {
+            /* EOF: close fd and send the empty end-of-data signal */
+            drop_close_file_fd(w);
+            queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+            drop_pop_request(w);
+            drop_process_queue(w);
+            return;
+        }
+        size_t sent = send_payload_to_child(w->id, w->drop.client_id, hdr, hdr_sz, buf, (size_t)n, true);
+        if (sent > 0) w->drop.last_file_send_at = monotonic();
+        if (sent < (size_t)n) {
+            /* Partial send: rewind file pointer and retry via timer */
+            if (lseek(w->drop.file_fd_plus_one - 1, -(off_t)(((size_t)n) - sent), SEEK_CUR) < 0) {
+                drop_close_file_fd(w);
+                drop_send_error(w, EIO, "failed to seek() on drop data file");
+                drop_pop_request(w);
+                drop_process_queue(w);
+                return;
+            }
+            w->drop.file_send_timer = add_main_loop_timer(ms_to_monotonic_t(20), false, file_send_timer_callback, (void *)(uintptr_t)w->id, NULL);
+            return;
+        }
+        /* Full chunk sent: loop and read next chunk */
+    }
+}
+
+/* Open a regular file and begin sending its contents as t=r chunks followed
+ * by an empty end-of-data t=r, using chunked I/O to avoid large allocations.
+ * Returns true if completed synchronously (error), false if async I/O started. */
+static bool
+drop_send_file_data(Window *w, const char *path) {
+    drop_close_file_fd(w);
+    int fd = safe_open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOFOLLOW, 0);
+    if (fd < 0) {
+        switch (errno) {
+            case ENOENT:
+            case ENOTDIR: drop_send_error(w, ENOENT, "drop data file does not exist"); break;
+            case EACCES:
+            case EPERM: drop_send_error(w, EPERM, "opening drop data file permission denied"); break;
+            default: drop_send_error(w, EIO, "failed to open drop data file"); break;
+        }
+        return true;
+    }
+    struct stat st;
+    if (fstat(fd, &st) < 0) {
+        switch (errno) {
+            case ENOENT:
+            case ENOTDIR: drop_send_error(w, ENOENT, "failed to stat drop data file"); break;
+            case EACCES:
+            case EPERM: drop_send_error(w, EPERM, "failed to stat drop data file"); break;
+            default: drop_send_error(w, EIO, "failed to stat drop data file"); break;
+        }
+        safe_close(fd, __FILE__, __LINE__);
+        return true;
+    }
+    if (!S_ISREG(st.st_mode)) {
+        drop_send_error(w, EINVAL, "drop data file is not a regular file");
+        safe_close(fd, __FILE__, __LINE__);
+        return true;
+    }
+    w->drop.file_fd_plus_one = fd + 1;
+    w->drop.last_file_send_at = monotonic();
+    drop_send_file_chunks(w);
+    return false; /* async: completion via drop_send_file_chunks */
+}
+
+/* Allocate a new DirHandle for the given path and entries (takes ownership of
+ * entries array and its strings). Returns the new handle id. */
+static uint32_t
+drop_alloc_dir_handle(Window *w, const char *path, char **entries, size_t num_entries) {
+    ensure_space_for(&w->drop, dir_handles, DirHandle, w->drop.num_dir_handles + 1, dir_handles_capacity, 4, true);
+    w->drop.next_dir_handle_id++;
+    /* Handles 0 and 1 are reserved (0 = absent, 1 = symlink indicator), so
+     * valid directory handles must be >= 2. */
+    if (w->drop.next_dir_handle_id < 2) w->drop.next_dir_handle_id = 2;
+    DirHandle *h = &w->drop.dir_handles[w->drop.num_dir_handles++];
+    zero_at_ptr(h);
+    h->id = w->drop.next_dir_handle_id;
+    h->path = strdup(path);
+    if (!h->path) fatal("Out of memory");
+    h->entries = entries;
+    h->num_entries = num_entries;
+    return h->id;
+}
+
+static DirHandle *
+drop_find_dir_handle(Window *w, uint32_t id) {
+    for (size_t i = 0; i < w->drop.num_dir_handles; i++)
+        if (w->drop.dir_handles[i].id == id) return &w->drop.dir_handles[i];
+    return NULL;
+}
+
+/* Open a directory, build the null-separated listing, create a handle, and
+ * send the listing to the client as a t=d:x=handle_id response. */
+static void
+drop_send_dir_listing(Window *w, const char *path) {
+    DIR *dir = opendir(path);
+    if (!dir) {
+        switch (errno) {
+            case ENOENT:
+            case ENOTDIR: drop_send_error(w, ENOENT, "drop data dir does not exist"); break;
+            case EACCES:
+            case EPERM: drop_send_error(w, EPERM, "drop data dir permission denied"); break;
+            default: drop_send_error(w, EIO, "drop data dir opening failed"); break;
+        }
+        return;
+    }
+
+    /* Build null-separated payload: entry1\0entry2\0... */
+    size_t payload_cap = 4096, payload_sz = 0;
+    char *payload = malloc(payload_cap);
+    if (!payload) {
+        closedir(dir);
+        drop_send_error(w, ENOMEM, "out of memory reading drop data dir");
+        return;
+    }
+
+#define APPEND(s, n)                                                               \
+    do {                                                                           \
+        size_t _n = (size_t)(n);                                                   \
+        size_t _need = payload_sz + _n + 1;                                        \
+        if (_need > payload_cap) {                                                 \
+            while (payload_cap < _need) payload_cap *= 2;                          \
+            char *_np = realloc(payload, payload_cap);                             \
+            if (!_np) {                                                            \
+                free(payload);                                                     \
+                closedir(dir);                                                     \
+                drop_send_error(w, ENOMEM, "out of memory reading drop data dir"); \
+                return;                                                            \
+            }                                                                      \
+            payload = _np;                                                         \
+        }                                                                          \
+        memcpy(payload + payload_sz, (s), _n);                                     \
+        payload_sz += _n;                                                          \
+        payload[payload_sz++] = 0;                                                 \
+    } while (0)
+
+    /* Collect directory entries */
+    size_t ents_cap = 16, ents_num = 0;
+    char **ents = malloc(sizeof(char *) * ents_cap);
+    if (!ents) {
+        free(payload);
+        closedir(dir);
+        drop_send_error(w, ENOMEM, "out of memory reading directory contents");
+        return;
+    }
+
+    struct dirent *de;
+    while ((de = readdir(dir)) != NULL) {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+
+        unsigned char dtype = de->d_type;
+        if (dtype == DT_UNKNOWN) {
+            /* Fall back to lstat when d_type is unavailable */
+            char full[PATH_MAX];
+            if (snprintf(full, sizeof(full), "%s/%s", path, de->d_name) >= (int)sizeof(full)) continue;
+            struct stat est;
+            if (lstat(full, &est) < 0) continue;
+            if (S_ISREG(est.st_mode)) dtype = DT_REG;
+            else if (S_ISDIR(est.st_mode)) dtype = DT_DIR;
+            else if (S_ISLNK(est.st_mode)) dtype = DT_LNK;
+            else continue;
+        }
+        if (dtype != DT_REG && dtype != DT_DIR && dtype != DT_LNK) continue;
+
+        if (ents_num >= ents_cap) {
+            ents_cap *= 2;
+            char **ne = realloc(ents, sizeof(char *) * ents_cap);
+            if (!ne) {
+                for (size_t i = 0; i < ents_num; i++) free(ents[i]);
+                free(ents);
+                free(payload);
+                closedir(dir);
+                drop_send_error(w, ENOMEM, "out of memory reading drop data dir");
+                return;
+            }
+            ents = ne;
+        }
+        ents[ents_num] = strdup(de->d_name);
+        if (!ents[ents_num]) {
+            for (size_t i = 0; i < ents_num; i++) free(ents[i]);
+            free(ents);
+            free(payload);
+            closedir(dir);
+            drop_send_error(w, ENOMEM, "out of memory reading drop data dir");
+            return;
+        }
+        ents_num++;
+
+        APPEND(de->d_name, strlen(de->d_name));
+    }
+    closedir(dir);
+
+#undef APPEND
+
+    uint32_t handle_id = drop_alloc_dir_handle(w, path, ents, ents_num);
+
+    char hdr[128];
+    int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
+    /* Echo all request keys (x, y, Y) so the client can unambiguously identify
+     * which filesystem object this listing corresponds to.  For top-level URI
+     * file requests Y is absent; for sub-dir reads Y holds the parent handle
+     * and x holds the 1-based entry index.  The new handle is X itself (a value
+     * > 1 distinguishes directories from regular files (X absent / X=0) and
+     * symlinks (X=1)). */
+    hdr_sz += drop_append_request_keys(w, hdr + hdr_sz, sizeof(hdr) - hdr_sz);
+    hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":X=%u", (unsigned)handle_id);
+    /* payload_sz includes a trailing null; omit it – the null-separated format
+     * does not require a trailing null after the last entry. */
+    size_t send_sz = payload_sz > 0 ? payload_sz - 1 : 0;
+    if (send_sz) queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, payload, send_sz, true);
+    free(payload);
+    /* end-of-listing signal (empty payload) */
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+}
+
+static void
+drop_send_symlink(Window *w, const char *path) {
+    char target[PATH_MAX];
+    ssize_t tgtsz;
+    if ((tgtsz = readlink(path, target, sizeof(target) - 1)) < 0) {
+        drop_send_error(w, EIO, "failed to read symlink for drop data");
+        return;
+    }
+    char hdr[128];
+    int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
+    hdr_sz += drop_append_request_keys(w, hdr + hdr_sz, sizeof(hdr) - hdr_sz);
+    hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":X=1");
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, target, tgtsz, true);
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+}
+
+/* Send the file/directory at URI-list index idx.
+ * Returns true if completed synchronously, false if async file I/O started. */
+static bool
+do_drop_request_uri_data(Window *w, int32_t mime_idx, int32_t file_idx) {
+    if (!w->drop.uri_list || !w->drop.uri_list_sz) {
+        drop_send_error(w, EINVAL, "drop data uri list empty");
+        return true;
+    }
+    if (global_state.drag_source.from_window == w->id && w->drag_source.state != DRAG_SOURCE_NONE) {
+        drop_send_error(w, EPERM, "cannot drop into self window");
+        return true;
+    }
+
+    /* Verify mime_idx (1-based) points to text/uri-list */
+    if (mime_idx < 1 || !w->drop.offerred_mimes || (size_t)mime_idx > w->drop.num_offerred_mimes ||
+        strcmp(w->drop.offerred_mimes[mime_idx - 1], "text/uri-list") != 0) {
+        drop_send_error(w, EINVAL, "drop data mime index out of bounds");
+        return true;
+    }
+
+    /* file_idx is 1-based, convert to 0-based for get_nth_file_url */
+    if (file_idx < 1) {
+        drop_send_error(w, EINVAL, "drop data file url index out of bounds");
+        return true;
+    }
+    int file_n = file_idx - 1;
+
+    RAII_ALLOC(char, path, NULL);
+    const char *err = NULL;
+    if (!get_nth_file_url(w->drop.uri_list, w->drop.uri_list_sz, file_n, &path, &err)) {
+        drop_send_error_str(w, err);
+        return true;
+    }
+
+    struct stat st;
+    if (lstat(path, &st) < 0) {
+        log_error("lstat() of uri-list entry num: %d (%s) failed with error: %s", file_n, path, strerror(errno));
+        switch (errno) {
+            case ENOENT:
+            case ENOTDIR: drop_send_error(w, ENOENT, "drop data file does not exist"); break;
+            case EACCES:
+            case EPERM: drop_send_error(w, EPERM, "permission denied for stat() on drop data file"); break;
+            default: drop_send_error(w, EIO, "stat() on drop data file failed"); break;
+        }
+        return true;
+    }
+
+    bool sync = true;
+    if (S_ISDIR(st.st_mode)) {
+        drop_send_dir_listing(w, path);
+    } else if (S_ISREG(st.st_mode)) {
+        sync = drop_send_file_data(w, path);
+    } else if (S_ISLNK(st.st_mode)) {
+        drop_send_symlink(w, path);
+    } else {
+        drop_send_error(w, EINVAL, "drop data file is neother a regular file, directory or symlink");
+    }
+    return sync;
+}
+
+/* Handle a directory request from the client.
+ * handle_id: the directory handle (Y= key).
+ * entry_num: 0 means close the handle; >=1 means read that entry (x= key, 1-based).
+ * Returns true if completed synchronously, false if async file I/O started. */
+static bool
+do_drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
+    if (!handle_id) {
+        drop_send_error(w, EINVAL, "no parent directory handle specified");
+        return true;
+    }
+
+    DirHandle *h = drop_find_dir_handle(w, handle_id);
+    if (!h) {
+        drop_send_error(w, EINVAL, "parent directory handle not found");
+        return true;
+    }
+
+    if (entry_num == 0) {
+        /* Close the handle */
+        size_t hidx = (size_t)(h - w->drop.dir_handles);
+        drop_free_dir_handle(h);
+        remove_i_from_array(w->drop.dir_handles, hidx, w->drop.num_dir_handles);
+        return true;
+    }
+
+    /* Read the entry at 1-based index */
+    size_t eidx = (size_t)(entry_num - 1);
+    if (eidx >= h->num_entries) {
+        drop_send_error(w, EINVAL, "entry index out of bounds for parent directory");
+        return true;
+    }
+
+    char full[PATH_MAX];
+    if (snprintf(full, sizeof(full), "%s/%s", h->path, h->entries[eidx]) >= (int)sizeof(full)) {
+        drop_send_error(w, EIO, "drop data file path too long");
+        return true;
+    }
+
+    struct stat lst;
+    if (lstat(full, &lst) < 0) {
+        switch (errno) {
+            case ENOENT:
+            case ENOTDIR:
+            case ELOOP: drop_send_error(w, ENOENT, "drop data entry does not exist"); break;
+            case EACCES:
+            case EPERM: drop_send_error(w, EPERM, "parmission denied while trying to stat() drop data entry"); break;
+            default: drop_send_error(w, EIO, "stt() failed on drop data entry"); break;
+        }
+        return true;
+    }
+
+    if (S_ISLNK(lst.st_mode)) {
+        /* Symlink: send the symlink target as t=r:X=1 */
+        char target[PATH_MAX];
+        ssize_t tlen = readlink(full, target, sizeof(target) - 1);
+        if (tlen < 0) {
+            switch (errno) {
+                case ENOENT:
+                case ENOTDIR: drop_send_error(w, ENOENT, "readlink() failed on drop data entry"); break;
+                case EACCES:
+                case EPERM: drop_send_error(w, EPERM, "readlink() failed on drop data entry"); break;
+                default: drop_send_error(w, EIO, "readlink() failed on drop data entry"); break;
+            }
+            return true;
+        }
+        target[tlen] = '\0';
+        char hdr[128];
+        int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
+        hdr_sz += drop_append_request_keys(w, hdr + hdr_sz, sizeof(hdr) - hdr_sz);
+        hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":X=1");
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, target, (size_t)tlen, true);
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+        return true;
+    }
+
+    if (S_ISDIR(lst.st_mode)) {
+        drop_send_dir_listing(w, full);
+        return true;
+    } else if (S_ISREG(lst.st_mode)) {
+        return drop_send_file_data(w, full);
+    } else {
+        drop_send_error(w, EINVAL, "drop data entry is neither a regular file nor a directory");
+        return true;
+    }
+}
+
+void
+drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
+    do_drop_handle_dir_request(w, handle_id, entry_num);
+}
+
+/* --- Request queue management --- */
+
+/* Pop the head of the queue (the request that just completed). */
+static void
+drop_pop_request(Window *w) {
+    if (w->drop.num_data_requests == 0) return;
+    w->drop.num_data_requests--;
+    if (w->drop.num_data_requests > 0) {
+        memmove(w->drop.data_requests, w->drop.data_requests + 1, w->drop.num_data_requests * sizeof(w->drop.data_requests[0]));
+    }
+    w->drop.current_request_x = 0;
+    w->drop.current_request_y = 0;
+    w->drop.current_request_Y = 0;
+}
+
+static void
+drop_finish_and_clear_queue(Window *w) {
+    drop_close_file_fd(w);
+    drop_free_request_queue(w);
+    drop_finish(w);
+}
+
+/* Process queued requests in FIFO order.
+ * Must be called after popping a completed request, or after enqueuing
+ * the first request into an empty queue. */
+static void
+drop_process_queue(Window *w) {
+    while (w->drop.num_data_requests > 0) {
+        int32_t x = w->drop.data_requests[0].cell_x;
+        int32_t y = w->drop.data_requests[0].cell_y;
+        int32_t Y = w->drop.data_requests[0].pixel_y;
+        w->drop.current_request_x = x;
+        w->drop.current_request_y = y;
+        w->drop.current_request_Y = Y;
+        bool sync = true;
+        if (Y != 0) {
+            /* Directory request: Y=handle, x=entry_num */
+            sync = do_drop_handle_dir_request(w, (uint32_t)Y, x);
+        } else if (y != 0) {
+            /* URI file request: x=mime_idx, y=file_idx */
+            sync = do_drop_request_uri_data(w, x, y);
+        } else if (x != 0) {
+            /* MIME data request: x=idx */
+            sync = do_drop_request_data(w, x);
+        } else {
+            /* Finish: x=0, y=0, Y=0 */
+            drop_pop_request(w);
+            drop_finish_and_clear_queue(w);
+            return;
+        }
+        if (sync) {
+            drop_pop_request(w);
+            /* Loop continues to process next request */
+        } else {
+            /* Async operation in progress; completion will call drop_process_queue */
+            return;
+        }
+    }
+}
+
+void
+drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y, uint32_t operation) {
+    if (cell_x == 0 && cell_y == 0 && pixel_y == 0) { // drop finished
+        w->drop.accepted_operation = drop_operation_to_enum(operation);
+        last_drop_finish_operation = w->drop.accepted_operation;
+        drop_finish_and_clear_queue(w);
+        reset_drop(w);
+        return;
+    }
+
+    if (!w->drop.dropped) {
+        /* The user has not actually dropped anything on this window, so the
+         * client is not allowed to read any drag data. Movement events are
+         * informational only; consent to transfer data is given by the drop. */
+        int32_t saved_x = w->drop.current_request_x;
+        int32_t saved_y = w->drop.current_request_y;
+        int32_t saved_Y = w->drop.current_request_Y;
+        w->drop.current_request_x = cell_x;
+        w->drop.current_request_y = cell_y;
+        w->drop.current_request_Y = pixel_y;
+        drop_send_error(w, EPERM, "drop data can only be requested after a drop");
+        w->drop.current_request_x = saved_x;
+        w->drop.current_request_y = saved_y;
+        w->drop.current_request_Y = saved_Y;
+        return;
+    }
+
+    if (w->drop.num_data_requests >= arraysz(w->drop.data_requests)) {
+        /* Queue full: deny with EMFILE and end the drop */
+        int32_t saved_x = w->drop.current_request_x;
+        int32_t saved_y = w->drop.current_request_y;
+        int32_t saved_Y = w->drop.current_request_Y;
+        w->drop.current_request_x = cell_x;
+        w->drop.current_request_y = cell_y;
+        w->drop.current_request_Y = pixel_y;
+        drop_send_error(w, EMFILE, "too many drop data requests");
+        w->drop.current_request_x = saved_x;
+        w->drop.current_request_y = saved_y;
+        w->drop.current_request_Y = saved_Y;
+        drop_finish_and_clear_queue(w);
+        return;
+    }
+
+    size_t idx = w->drop.num_data_requests;
+    w->drop.data_requests[idx].cell_x = cell_x;
+    w->drop.data_requests[idx].cell_y = cell_y;
+    w->drop.data_requests[idx].pixel_y = pixel_y;
+    bool was_empty = (w->drop.num_data_requests == 0);
+    w->drop.num_data_requests++;
+    if (was_empty) drop_process_queue(w);
+}
+
+void
+drop_left_child(Window *w) {
+    w->drop.hovered = false;
+    w->drop.dropped = false;
+    drop_free_offered_mimes(w);
+    /* The drag session no longer involves this window, so discard everything
+     * obtained from it: otherwise a previously fetched URI list, open
+     * directory handles and an in-flight file transfer would let the client
+     * keep reading files with no drag in progress. */
+    drop_close_file_fd(w);
+    drop_free_request_queue(w);
+    drop_free_dir_handles(w);
+    free(w->drop.uri_list);
+    w->drop.uri_list = NULL;
+    w->drop.uri_list_sz = 0;
+    free(w->drop.getting_data_for_mime);
+    w->drop.getting_data_for_mime = NULL;
+    if (w->drop.wanted) {
+        char buf[128];
+        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=m:x=-1:y=-1", DND_CODE);
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, NULL, 0, false);
+    }
+}
+// }}}
+
+// Dragging {{{
+#define ds w->drag_source
+
+static void
+drag_free_remote_item(DragRemoteItem *x) {
+    free(x->dir_entry_name);
+    free(x->data);
+    if (x->fd_plus_one) safe_close(x->fd_plus_one - 1, __FILE__, __LINE__);
+    if (x->top_level_parent_dir_fd_plus_one) safe_close(x->top_level_parent_dir_fd_plus_one - 1, __FILE__, __LINE__);
+    if (x->children) {
+        for (size_t i = 0; i < x->children_sz; i++) drag_free_remote_item(x->children + i);
+        free(x->children);
+    }
+    zero_at_ptr(x);
+}
+
+static void
+delete_basedir_for_remote_items(Window *w) {
+    if (ds.base_dir_fd_plus_one) {
+        rmtree_best_effort(".", ds.base_dir_fd_plus_one - 1);
+        ds.base_dir_fd_plus_one = 0;
+    }
+    free(ds.base_dir_for_remote_items);
+    ds.base_dir_for_remote_items = NULL;
+}
+
+void
+drag_free_offer(Window *w, bool remove_remote_items) {
+    free(ds.mimes_buf);
+    ds.mimes_buf = NULL;
+    ds.bufsz = 0;
+    if (ds.items) {
+        for (size_t i = 0; i < ds.num_mimes; i++) {
+            free(ds.items[i].optional_data);
+            if (ds.items[i].fd_plus_one > 0) safe_close(ds.items[i].fd_plus_one - 1, __FILE__, __LINE__);
+            if (ds.items[i].uri_list) {
+                for (size_t k = 0; k < ds.items[i].num_uris; k++) free(ds.items[i].uri_list[k]);
+                free(ds.items[i].uri_list);
+            }
+            if (ds.items[i].remote_items) {
+                for (size_t k = 0; k < ds.items[i].num_remote_items; k++) drag_free_remote_item(&ds.items[i].remote_items[k]);
+                free(ds.items[i].remote_items);
+                ds.items[i].remote_items = NULL;
+                ds.items[i].num_remote_items = 0;
+            }
+        }
+        free(ds.items);
+        ds.items = NULL;
+    }
+    ds.num_mimes = 0;
+    ds.total_remote_data_size = 0;
+    for (size_t i = 0; i < arraysz(ds.images); i++) {
+        if (ds.images[i].data) free(ds.images[i].data);
+        zero_at_ptr(ds.images + i);
+    }
+    free_pending(&ds.pending);
+    ds.allowed_operations = 0;
+    ds.state = DRAG_SOURCE_NONE;
+    ds.pre_sent_total_sz = 0;
+    ds.images_sent_total_sz = 0;
+    if (ds.file_promises) {
+        for (size_t i = 0; i < ds.file_promises_count; i++) { drag_free_remote_item(&ds.file_promises[i].ri); }
+        free(ds.file_promises);
+        ds.file_promises = NULL;
+    }
+    ds.file_promises_count = 0;
+    ds.file_promises_capacity = 0;
+    if (remove_remote_items) delete_basedir_for_remote_items(w);
+}
+
+static void
+drag_send_error(Window *w, int error_code, const char *details) {
+    char buf[128], details_buf[1024];
+    int n;
+    if (details && details[0]) n = snprintf(details_buf, sizeof(details_buf), "%s:%s", get_errno_name(error_code), details);
+    else n = snprintf(details_buf, sizeof(details_buf), "%s", get_errno_name(error_code));
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=E", DND_CODE);
+    queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_size, details_buf, n, false);
+}
+
+static void
+cancel_drag(Window *w, int error_code, const char *details) {
+    if (error_code) drag_send_error(w, error_code, details);
+    if (global_state.drag_source.is_active && global_state.drag_source.from_window == w->id) cancel_current_drag_source();
+    if (error_code) drag_free_offer(w, true);
+}
+
+#define abrt(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return;                        \
+    }
+
+void
+drag_start_offerring(Window *w, const char *client_machine_id, size_t sz) {
+    ds.can_offer = true;
+    ds.is_remote_client = !is_same_machine(client_machine_id, sz);
+}
+
+void
+drag_stop_offerring(Window *w) {
+    drag_free_offer(w, true);
+    ds.can_offer = false;
+    ds.is_remote_client = false;
+}
+
+void
+drag_add_mimes(Window *w, int allowed_operations, uint32_t client_id, const char *data, size_t sz, bool has_more) {
+    if (!ds.can_offer) abrt(EINVAL, "cannot add drag source mimes as not offerring drag");
+    if (allowed_operations && !ds.allowed_operations) ds.allowed_operations = allowed_operations;
+    if (!ds.allowed_operations || ds.state > DRAG_SOURCE_BEING_BUILT)
+        abrt(
+            EINVAL,
+            !ds.allowed_operations ? "cannot add drag source mimes as allowed operations are not set"
+                                   : "cannot add drag source mimes as drag source is not being built");
+    ds.state = DRAG_SOURCE_BEING_BUILT;
+    ds.client_id = client_id;
+    size_t new_sz = ds.bufsz + sz;
+    if (new_sz > MIME_LIST_SIZE_CAP) abrt(EFBIG, "drag source mimes size too large");
+    char *tmp = realloc(ds.mimes_buf, ds.bufsz + sz + 1);
+    if (!tmp) abrt(ENOMEM, "out of mmeory adding drag source mimes");
+    ds.mimes_buf = tmp;
+    memcpy(ds.mimes_buf + ds.bufsz, data, sz);
+    ds.bufsz = new_sz;
+    ds.mimes_buf[ds.bufsz] = 0;
+    if (!has_more) {
+        char *ptr = ds.mimes_buf;
+        size_t rough_count = 0;
+        while ((ptr = strchr(ptr, ' ')) != NULL) {
+            *ptr = 0;
+            ptr++;
+            rough_count++;
+        }
+        ds.items = calloc(rough_count + 2, sizeof(ds.items[0]));
+        if (!ds.items) abrt(ENOMEM, "out of mmeory adding drag source mimes");
+        char *p = ds.mimes_buf, *end = ds.mimes_buf + ds.bufsz;
+        ds.num_mimes = 0;
+        while (p < end) {
+            if (*p) {
+                if (ds.num_mimes >= rough_count + 1) break;
+                ds.items[ds.num_mimes].is_uri_list = strcmp(p, "text/uri-list") == 0;
+                ds.items[ds.num_mimes++].mime_type = p;
+                p += strlen(p) + 1;
+            } else p++;
+        }
+        ds.pre_sent_total_sz = 0;
+    }
+}
+
+void
+drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t sz) {
+    if (ds.state != DRAG_SOURCE_BEING_BUILT || idx >= ds.num_mimes)
+        abrt(EINVAL, idx >= ds.num_mimes ? "pre-sent data item idx too large" : "drag source not being currently built, cannot add pre-sent data");
+    if (sz + ds.pre_sent_total_sz > PRESENT_DATA_CAP) abrt(EFBIG, "too much pre-sent data");
+    ds.pre_sent_total_sz += sz;
+#define item ds.items[idx]
+    if (!item.data_decode_initialized) {
+        item.data_decode_initialized = true;
+        base64_init_stream_decoder(&item.base64_state);
+    }
+    const size_t needed = MAX(sz, required_buffer_size_for_base64_decode(sz)) + item.data_size;
+    if (item.data_capacity < needed) {
+        size_t newcap = MAX(item.data_capacity * 2, needed);
+        uint8_t *tmp = realloc(item.optional_data, newcap);
+        if (!tmp) abrt(ENOMEM, "");
+        item.optional_data = tmp;
+        item.data_capacity = newcap;
+    }
+    size_t outlen = item.data_capacity - item.data_size;
+    if (!base64_decode_stream(&item.base64_state, payload, sz, item.optional_data + item.data_size, &outlen))
+        abrt(EINVAL, "error while decoding base64 pre-sent data");
+    item.data_size += outlen;
+#undef item
+}
+
+#define img ds.images[idx]
+
+void
+drag_add_image(Window *w, unsigned idx, int fmt, int width, int height, int opacity, const uint8_t *payload, size_t sz) {
+    if (ds.state != DRAG_SOURCE_BEING_BUILT) abrt(EINVAL, "cannot add drag thumbnail as drag source not currently being built");
+    if (idx + 1 >= arraysz(ds.images)) abrt(EFBIG, "too many drag thumbnails");
+    if (ds.images_sent_total_sz + sz > PRESENT_DATA_CAP) abrt(EFBIG, "drag thumbnails too large");
+    ds.images_sent_total_sz += sz;
+    if (!img.started) {
+        if (fmt != 0 && fmt != 24 && fmt != 32 && fmt != 100) abrt(EINVAL, "unknown drag thumbnail format");
+        if (fmt != 0 && (width < 1 || height < 1)) abrt(EINVAL, "invalid drag thumbnail image dimensions");
+        img.started = true;
+        img.width = width;
+        img.height = height;
+        img.fmt = fmt;
+        img.opacity = opacity;
+        base64_init_stream_decoder(&img.base64_state);
+    }
+    if (img.capacity < MAX(32u, sz + img.sz)) {
+        size_t newcap = MAX(img.capacity * 2, MAX(32u, sz + img.sz));
+        uint8_t *tmp = realloc(img.data, newcap);
+        if (!tmp) abrt(ENOMEM, "out of memory processing drag thumbnails");
+        img.data = tmp;
+        img.capacity = newcap;
+    }
+    size_t outlen = img.capacity - img.sz;
+    if (!base64_decode_stream(&img.base64_state, payload, sz, img.data + img.sz, &outlen)) abrt(EINVAL, "could not base64 decode drag thumbnail data");
+    img.sz += outlen;
+}
+
+void
+drag_change_image(Window *w, unsigned idx) {
+    ds.img_idx = idx;
+    if (ds.state == DRAG_SOURCE_STARTED) change_drag_image(idx);
+}
+
+static bool
+expand_rgb_data(Window *w, size_t idx) {
+#define fail(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return false;                  \
+    }
+    if (img.sz != (size_t)img.width * (size_t)img.height * 3) fail(EINVAL, "drag thumbnail RGB data not correct size");
+    const size_t sz = (size_t)img.width * (size_t)img.height * 4u;
+    RAII_ALLOC(uint8_t, expanded, malloc(sz));
+    if (!expanded) fail(ENOMEM, "out of memory processing drag thumbnail RGB data");
+    memset(expanded, 0xff, sz);
+    for (int r = 0; r < img.height; r++) {
+        uint8_t *src_row = img.data + r * img.width * 3, *dest_row = expanded + r * img.width * 4;
+        for (int c = 0; c < img.width; c++) memcpy(dest_row + c * 4, src_row + c * 3, 3);
+    }
+    SWAP(img.data, expanded);
+    img.sz = sz;
+    img.fmt = 32;
+    return true;
+}
+
+static bool
+expand_png_data(Window *w, size_t idx) {
+    png_read_data d = {0};
+    inflate_png_inner(&d, img.data, img.sz, 2000);
+    if (d.ok) {
+        free(img.data);
+        img.data = d.decompressed;
+        img.sz = d.sz;
+        img.width = d.width;
+        img.height = d.height;
+    } else free(d.decompressed);
+    free(d.row_pointers);
+    return d.ok;
+}
+#undef fail
+
+static size_t last_total_image_size = 0;
+
+static char **
+parse_uri_list(Window *w, const char *data, const size_t sz, size_t *num_uris_out) {
+    // data is not NUL terminated, so all scanning must be bounded by sz
+    *num_uris_out = 0;
+    const char *limit = data + sz;
+#define next_line(p, line_start, line_end)                                                         \
+    {                                                                                              \
+        while (p < limit && (*p == '\r' || *p == '\n')) p++;                                       \
+        line_start = p;                                                                            \
+        while (p < limit && *p != '\r' && *p != '\n') p++;                                         \
+        line_end = p;                                                                              \
+        while (line_end > line_start && (line_end[-1] == ' ' || line_end[-1] == '\t')) line_end--; \
+    }
+#define is_uri_line (line_end > line_start && *line_start != '#')
+    // First pass: count non-comment, non-empty lines
+    size_t count = 0;
+    const char *line_start, *line_end;
+    for (const char *p = data; p < limit;) {
+        next_line(p, line_start, line_end);
+        if (is_uri_line) count++;
+    }
+
+    char **result = calloc((count + 1), sizeof(const char *));
+    if (!result) {
+        cancel_drag(w, ENOMEM, "out of memory parsing uri list");
+        return NULL;
+    }
+
+    // Second pass: fill in URI strings
+    size_t idx = 0;
+    for (const char *p = data; p < limit && idx < count;) {
+        next_line(p, line_start, line_end);
+        if (is_uri_line) {
+            char *decoded = strndup(line_start, line_end - line_start);
+            if (!decoded) {
+                for (size_t k = 0; k < idx; k++) free((char *)result[k]);
+                free(result);
+                cancel_drag(w, ENOMEM, "out of memory parsing uri list");
+                return NULL;
+            }
+            result[idx++] = decoded;
+        }
+    }
+#undef is_uri_line
+#undef next_line
+    *num_uris_out = idx;
+    return result;
+}
+
+
+void
+drag_start(Window *w) {
+    if (ds.state != DRAG_SOURCE_BEING_BUILT) abrt(EINVAL, "cannot start drag as drag source is not being built");
+    delete_basedir_for_remote_items(w);
+    size_t total_size = 0;
+    for (size_t idx = 0; idx < arraysz(ds.images); idx++) {
+        if (img.sz) {
+            switch (img.fmt) {
+                case 24:
+                    if (!expand_rgb_data(w, idx)) return;
+                    break;
+                case 100:
+                    if (!expand_png_data(w, idx)) return;
+                    break;
+                case 0: {
+                    // Text format: render using draw_window_title
+                    OSWindow *osw = os_window_for_datty_window(w->id);
+                    Screen *screen = w->render_data.screen;
+                    if (!osw || !osw->fonts_data || !screen) break; // no fonts available, skip
+                    int X = img.width > 0 ? img.width : 1;
+                    int Y = img.height > 0 ? img.height : 1;
+                    double adjusted_font_sz = osw->fonts_data->font_sz_in_pts * (double)X / (double)Y;
+                    double ydpi = osw->fonts_data->logical_dpi_y;
+                    double px_sz_d = adjusted_font_sz * ydpi / 72.0;
+                    if (px_sz_d < 1.0) px_sz_d = 1.0;
+                    size_t render_height = (size_t)(px_sz_d * 4.0 / 3.0 + 0.5);
+                    if (render_height < 1) render_height = 1;
+                    ColorProfile *cp = screen->color_profile;
+                    const color_type fg_color = colorprofile_to_color(cp, cp->overridden.default_fg, cp->configured.default_fg).rgb | 0xff000000;
+                    static const unsigned DRAG_OPACITY_MAX = 1024u;
+                    uint8_t bg_alpha = (uint8_t)(((uint32_t)img.opacity * 255u + DRAG_OPACITY_MAX / 2) / DRAG_OPACITY_MAX);
+                    color_type bg_color = colorprofile_to_color(cp, cp->overridden.default_bg, cp->configured.default_bg).rgb | (((uint32_t)bg_alpha) << 24);
+                    // Add a null terminator for draw_window_title
+                    uint8_t *txt = realloc(img.data, img.sz + 1);
+                    if (!txt) {
+                        abrt(ENOMEM, "out of memory processing text based drag thumbnail");
+                        return;
+                    }
+                    img.data = txt;
+                    txt[img.sz] = '\0';
+                    const size_t max_width = (size_t)screen->cell_size.width * screen->columns;
+                    uint8_t *render_buf = malloc(max_width * render_height * 4);
+                    if (!render_buf) {
+                        abrt(ENOMEM, "out of memory processing text based drag thumbnail");
+                        return;
+                    }
+                    size_t actual_width = max_width;
+                    bool ok = draw_window_title(
+                        adjusted_font_sz, ydpi, (const char *)img.data, fg_color, bg_color, render_buf, max_width, render_height, &actual_width);
+                    if (!ok || actual_width < 1) {
+                        free(render_buf);
+                        break;
+                    }
+                    size_t final_sz = actual_width * render_height * 4;
+                    // Un-premultiply alpha: draw_window_title output is pre-multiplied RGBA
+                    for (size_t j = 0; j < actual_width * render_height; j++) {
+                        uint8_t *px = render_buf + j * 4;
+                        uint16_t a = px[3];
+                        if (a > 0) {
+                            px[0] = (uint8_t)(((uint16_t)px[0] * 255u + a / 2u) / a);
+                            px[1] = (uint8_t)(((uint16_t)px[1] * 255u + a / 2u) / a);
+                            px[2] = (uint8_t)(((uint16_t)px[2] * 255u + a / 2u) / a);
+                        }
+                    }
+                    free(img.data);
+                    img.data = render_buf;
+                    img.sz = final_sz;
+                    img.width = (int)actual_width;
+                    img.height = (int)render_height;
+                    img.fmt = 32;
+                } break;
+            }
+            total_size += img.sz;
+            if (total_size > 2 * PRESENT_DATA_CAP) abrt(EFBIG, "too large a drag thumbnail");
+            if (img.sz != (size_t)img.width * (size_t)img.height * 4u) abrt(EINVAL, "drag thumbnail size incorrect");
+        }
+    }
+    last_total_image_size = total_size;
+    int err = start_window_drag(w, dnd_is_test_mode());
+    if (err != 0) {
+        if (err == EPERM)
+            abrt(err, "permission to start drag denied, this can happen if the user has already released the drag or if the mouse has moved out of the window");
+        abrt(err, "failed to start drag in OS");
+    } else {
+        // Free images and optional_data but keep the items array for later
+        // data requests from the drop target
+        for (size_t i = 0; i < ds.num_mimes; i++) {
+            if (ds.is_remote_client && ds.items[i].is_uri_list) {
+                if (ds.items[i].optional_data && ds.items[i].data_size) {
+                    ds.items[i].uri_list = parse_uri_list(w, (char *)ds.items[i].optional_data, ds.items[i].data_size, &ds.items[i].num_uris);
+                    if (!ds.items[i].uri_list) return;
+                } else abrt(EINVAL, "remote client must pre-send text/uri-list data");
+            }
+            free(ds.items[i].optional_data);
+            ds.items[i].optional_data = NULL;
+            ds.items[i].data_size = 0;
+            ds.items[i].data_capacity = 0;
+            ds.items[i].data_decode_initialized = false;
+        }
+        for (size_t i = 0; i < arraysz(ds.images); i++) {
+            if (ds.images[i].data) free(ds.images[i].data);
+            zero_at_ptr(ds.images + i);
+        }
+        ds.state = DRAG_SOURCE_STARTED;
+        drag_send_error(w, 0, ""); // send OK
+    }
+}
+
+void
+drag_notify(Window *w, DragNotifyType type) {
+    if (ds.state < DRAG_SOURCE_STARTED) return;
+    char buf[128];
+    size_t sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d", DND_CODE, type + 1);
+    switch (type) {
+        case DRAG_NOTIFY_ACCEPTED:
+            if (global_state.drag_source.accepted_mime_type != NULL) {
+                for (size_t i = 0; i < ds.num_mimes; i++) {
+                    if (strcmp(ds.items[i].mime_type, global_state.drag_source.accepted_mime_type) == 0) {
+                        sz += snprintf(buf + sz, sizeof(buf) - sz, ":y=%zu", i);
+                        break;
+                    }
+                }
+            }
+            break;
+        case DRAG_NOTIFY_ACTION_CHANGED:
+            switch (global_state.drag_source.action) {
+                case GLFW_DRAG_OPERATION_MOVE: sz += snprintf(buf + sz, sizeof(buf) - sz, ":o=2"); break;
+                default: sz += snprintf(buf + sz, sizeof(buf) - sz, ":o=1"); break;
+            }
+            break;
+        case DRAG_NOTIFY_DROPPED: ds.state = DRAG_SOURCE_DROPPED; break;
+        case DRAG_NOTIFY_FINISHED: sz += snprintf(buf + sz, sizeof(buf) - sz, ":y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
+    }
+    queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, sz, NULL, 0, false);
+    if (type == DRAG_NOTIFY_FINISHED) drag_free_offer(w, false);
+}
+
+int
+drag_free_data(Window *w, const char *mime_type, const char *data, size_t sz) {
+    (void)w;
+    (void)mime_type;
+    (void)sz;
+    free((void *)data);
+    return 0;
+}
+
+static bool
+is_file_url(const char *url) {
+    return startwith_literal(url, "file://");
+}
+
+static void
+request_remote_file(Window *w, DragRemoteItem *ri, const char *url, size_t idx_in_uri_list) {
+    char buf[128];
+    int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=k:x=%zu", DND_CODE, idx_in_uri_list + 1);
+    ri->dir_entry_name = sanitized_filename_from_url(url);
+    if (ri->dir_entry_name) {
+        queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_sz, NULL, 0, false);
+        ri->waiting_for_completion = true;
+    }
+}
+
+static int
+notify_drag_data_received(Window *w, size_t uri_item_idx, const char *basename, int type) {
+    char mime_type[128], path[4096];
+    snprintf(mime_type, sizeof(mime_type), "datty-internal/uri-list-item-%zu", uri_item_idx);
+    if (!basename || !basename[0]) return notify_drag_data_ready(global_state.drag_source.from_os_window, mime_type, NULL, 0, type);
+    int sz = snprintf(path, sizeof(path), "%s/%zu/%s", ds.base_dir_for_remote_items, uri_item_idx, basename);
+    return notify_drag_data_ready(global_state.drag_source.from_os_window, mime_type, path, sz, type);
+}
+
+static const char *
+request_file_promise(Window *w, size_t idx_in_uri_list, const char *url, int *err_code) {
+    for (size_t i = 0; i < w->drag_source.file_promises_count; i++) {
+        if (w->drag_source.file_promises[i].uri_item_idx == idx_in_uri_list) {
+            const DragRemoteItem *ri = &w->drag_source.file_promises[i].ri;
+            // When completed, notify_drag_data_received() synchronously hands the
+            // file to the platform backend which ends the transfer itself, so
+            // we must still return EAGAIN as returning 0 with no data would
+            // cause the backend to end the transfer a second time.
+            if (ri->completed) notify_drag_data_received(w, idx_in_uri_list, ri->dir_entry_name, ri->type);
+            *err_code = EAGAIN;
+            return NULL;
+        }
+    }
+    if (w->drag_source.file_promises_count + 1 >= w->drag_source.file_promises_capacity) {
+        size_t cap = MAX(w->drag_source.file_promises_count + 1, MAX(16u, 2u * w->drag_source.file_promises_capacity));
+        void *p = realloc(w->drag_source.file_promises, sizeof(w->drag_source.file_promises[0]) * cap);
+        if (!p) {
+            *err_code = ENOMEM;
+            return NULL;
+        }
+        w->drag_source.file_promises = p;
+        w->drag_source.file_promises_capacity = cap;
+    }
+    char *fname = sanitized_filename_from_url(url);
+    if (!fname) {
+        *err_code = EINVAL;
+        return NULL;
+    }
+    w->drag_source.file_promises[w->drag_source.file_promises_count].uri_item_idx = idx_in_uri_list;
+    w->drag_source.file_promises[w->drag_source.file_promises_count].ri = (DragRemoteItem){.dir_entry_name = fname};
+    request_remote_file(w, &w->drag_source.file_promises[w->drag_source.file_promises_count].ri, url, idx_in_uri_list);
+    w->drag_source.file_promises_count++;
+
+    *err_code = EAGAIN;
+    return NULL;
+}
+
+static bool
+request_remote_files(Window *w, size_t i) {
+#define mi ds.items[i]
+    mi.remote_items = calloc(mi.num_uris, sizeof(mi.remote_items[0]));
+    if (!mi.remote_items) return false;
+    mi.num_remote_items = mi.num_uris;
+    for (size_t k = 0; k < mi.num_remote_items; k++) {
+        if (is_file_url(mi.uri_list[k])) { request_remote_file(w, mi.remote_items + k, mi.uri_list[k], k); }
+    }
+    return true;
+#undef mi
+}
+
+const char *
+drag_get_file_promise_data(Window *w, size_t idx_in_uri_list, size_t *sz, int *err_code) {
+    *err_code = ENOENT;
+    *sz = 0;
+    for (size_t i = 0; i < ds.num_mimes; i++) {
+        if (strcmp(ds.items[i].mime_type, "text/uri-list") == 0) {
+            if ((unsigned)idx_in_uri_list >= ds.items[i].num_uris) break;
+            const char *url = ds.items[i].uri_list[idx_in_uri_list];
+            if (!is_file_url(url)) break;
+            return request_file_promise(w, idx_in_uri_list, url, err_code);
+        }
+    }
+    return NULL;
+}
+
+const char *
+drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
+    *err_code = ENOENT;
+    *sz = 0;
+    if (!ds.items || ds.state < DRAG_SOURCE_STARTED) return NULL;
+    if (startwith_literal(mime_type, "datty-internal/uri-list-item-")) {
+        // request for a single file:// URL from text/uri-list used by macOS backend file promise providers
+        int idx_in_uri_list = atoi(mime_type + sizeof("datty-internal/uri-list-item-") - 1);
+        return drag_get_file_promise_data(w, idx_in_uri_list, sz, err_code);
+    }
+    for (size_t i = 0; i < ds.num_mimes; i++) {
+        if (strcmp(ds.items[i].mime_type, mime_type) == 0) {
+            if (ds.items[i].fd_plus_one < 0) {
+                // Error was stored by drag_process_item_data
+                *err_code = -ds.items[i].fd_plus_one;
+                ds.items[i].fd_plus_one = 0;
+                return NULL;
+            }
+            if (ds.items[i].requested_remote_files) { // wait for remote files to be read
+                *err_code = EAGAIN;
+                return NULL;
+            }
+            if (ds.items[i].fd_plus_one > 0) {
+                // data_size = read position, data_capacity = bytes written to file
+                if (ds.items[i].data_capacity > ds.items[i].data_size) {
+                    // Unread data available, use pread to read from read_pos
+                    size_t available = ds.items[i].data_capacity - ds.items[i].data_size;
+                    char *data = malloc(available);
+                    if (!data) {
+                        *err_code = ENOMEM;
+                        return NULL;
+                    }
+                    size_t total = 0;
+                    while (total < available) {
+                        ssize_t n = pread(ds.items[i].fd_plus_one - 1, data + total, available - total, (off_t)(ds.items[i].data_size + total));
+                        if (n < 0) {
+                            if (errno == EINTR) continue;
+                            free(data);
+                            *err_code = EIO;
+                            return NULL;
+                        }
+                        if (n == 0) break;
+                        total += (size_t)n;
+                    }
+                    ds.items[i].data_size += total;
+                    *sz = total;
+                    *err_code = 0;
+                    return data;
+                }
+                // No unread data
+                if (!ds.items[i].data_decode_initialized) {
+                    // Transfer complete and all data read
+                    ds.items[i].data_requested_from_client = false;
+                    *err_code = 0;
+                    return NULL;
+                }
+                // Still receiving data from client, wait
+                *err_code = EAGAIN;
+                return NULL;
+            }
+            // No fd yet, request data from the client
+            if (!ds.items[i].data_requested_from_client) {
+                ds.items[i].data_requested_from_client = true;
+                ds.items[i].requested_remote_files = ds.is_remote_client && ds.items[i].is_uri_list;
+                if (ds.items[i].requested_remote_files) {
+                    if (!request_remote_files(w, i)) {
+                        *err_code = ENOMEM;
+                        return NULL;
+                    }
+                } else {
+                    char buf[128];
+                    int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu", DND_CODE, DRAG_NOTIFY_FINISHED + 2, i);
+                    queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_sz, NULL, 0, false);
+                }
+            }
+            *err_code = EAGAIN;
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
+static int
+parse_errno_name(const uint8_t *data, size_t sz) {
+    if (sz >= 6 && memcmp(data, "ENOENT", 6) == 0) return ENOENT;
+    if (sz >= 5 && memcmp(data, "EPERM", 5) == 0) return EPERM;
+    if (sz >= 6 && memcmp(data, "EINVAL", 6) == 0) return EINVAL;
+    if (sz >= 6 && memcmp(data, "ENOMEM", 6) == 0) return ENOMEM;
+    if (sz >= 5 && memcmp(data, "EFBIG", 5) == 0) return EFBIG;
+    if (sz >= 3 && memcmp(data, "EIO", 3) == 0) return EIO;
+    if (sz >= 6 && memcmp(data, "EMFILE", 6) == 0) return EMFILE;
+    return EIO;
+}
+
+static int
+open_item_tmpfile(void) {
+    int fd = -1;
+#ifdef O_TMPFILE
+    fd = safe_open("/tmp", O_TMPFILE | O_CLOEXEC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+#endif
+    if (fd < 0) {
+        char name[] = "/tmp/datty-dnd-XXXXXXXXXXXX";
+        fd = safe_mkstemp(name);
+        if (fd >= 0) unlink(name);
+    }
+    return fd;
+}
+
+static int
+notify_drag_data_ready_to_read(const char *mime_type) {
+    return notify_drag_data_ready(global_state.drag_source.from_os_window, mime_type, NULL, 0, -1);
+}
+
+
+void
+drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *payload, size_t payload_sz) {
+    if ((ds.state < DRAG_SOURCE_STARTED) || idx >= ds.num_mimes || !ds.items) {
+        abrt(
+            EINVAL,
+            ds.state < DRAG_SOURCE_STARTED ? "cannot process drag source item data as drag has not been started"
+                                           : "cannot process drag source item data as item index is out of bounds");
+        return;
+    }
+
+    if (has_more < 0) {
+        // Error from the client program
+        if (ds.items[idx].fd_plus_one > 0) { safe_close(ds.items[idx].fd_plus_one - 1, __FILE__, __LINE__); }
+        int err = parse_errno_name(payload, payload_sz);
+        ds.items[idx].fd_plus_one = -err;
+        ds.items[idx].data_decode_initialized = false;
+        if (!dnd_is_test_mode()) {
+            int ret = notify_drag_data_ready_to_read(ds.items[idx].mime_type);
+            if (ret) cancel_drag(w, ret, "could not notify OS that drag source item data is available");
+        }
+        return;
+    }
+
+    // Open temp file if not yet open, including for an empty transfer.
+    if (!ds.items[idx].fd_plus_one) {
+        int fd = open_item_tmpfile();
+        if (fd < 0) {
+            cancel_drag(w, EIO, "failed to open temporary file to store drag source item data");
+            return;
+        }
+        ds.items[idx].fd_plus_one = fd + 1;
+        ds.items[idx].data_decode_initialized = true;
+        ds.items[idx].data_size = 0;     // read position for pread
+        ds.items[idx].data_capacity = 0; // bytes written to file
+        base64_init_stream_decoder(&ds.items[idx].base64_state);
+    }
+
+    // End of data: has_more == 0 and empty payload
+    if (has_more == 0 && payload_sz == 0) {
+        ds.items[idx].data_decode_initialized = false;
+        if (ds.items[idx].fd_plus_one > 0) {
+            if (!ds.items[idx].requested_remote_files) {
+                if (!dnd_is_test_mode()) {
+                    int ret = notify_drag_data_ready_to_read(ds.items[idx].mime_type);
+                    if (ret) cancel_drag(w, ret, "could not notify OS that drag source item data is available");
+                }
+            }
+        }
+        return;
+    }
+
+    // Decode and write payload data
+    if (payload_sz > 0) {
+        size_t outlen = MAX(payload_sz, required_buffer_size_for_base64_decode(payload_sz));
+        RAII_ALLOC(uint8_t, decoded, malloc(outlen));
+        if (!decoded) {
+            cancel_drag(w, ENOMEM, "out of memory processing drag source item data");
+            return;
+        }
+        if (!base64_decode_stream(&ds.items[idx].base64_state, payload, payload_sz, decoded, &outlen)) {
+            cancel_drag(w, EINVAL, "failed to base64 decode drag source item data");
+            return;
+        }
+        size_t written = 0;
+        while (written < outlen) {
+            ssize_t n = safe_write(ds.items[idx].fd_plus_one - 1, decoded + written, outlen - written);
+            if (n < 0) {
+                cancel_drag(w, EIO, "failed to write drag source item data to temp file");
+                return;
+            }
+            written += (size_t)n;
+        }
+        ds.items[idx].data_capacity += outlen;
+        // Notify as soon as any data is available
+        if (!ds.items[idx].requested_remote_files) {
+            if (!dnd_is_test_mode()) {
+                int ret = notify_drag_data_ready_to_read(ds.items[idx].mime_type);
+                if (ret) cancel_drag(w, ret, "could not notify OS that drag source item data is available");
+            }
+        }
+    }
+}
+
+static void
+finish_remote_data(Window *w, size_t item_idx) {
+    if (!ds.items[item_idx].fd_plus_one) {
+        int fd = open_item_tmpfile();
+        if (fd < 0) abrt(EIO, "failed to open temp file to store modified uri list");
+        ds.items[item_idx].fd_plus_one = fd + 1;
+    }
+    const int fd = ds.items[item_idx].fd_plus_one - 1;
+    ds.items[item_idx].requested_remote_files = false;
+    if (safe_ftruncate(fd, 0) != 0) abrt(errno, "error updating uri list after all remote data received");
+    if (lseek(fd, 0, SEEK_SET) == -1) abrt(errno, "error updating uri list after all remote data received");
+    size_t new_size = 0;
+    for (size_t i = 0; i < ds.items[item_idx].num_uris; i++) {
+        int ret = safe_write_all(fd, ds.items[item_idx].uri_list[i], strlen(ds.items[item_idx].uri_list[i])) ? errno : 0;
+        new_size += strlen(ds.items[item_idx].uri_list[i]);
+        free((char *)ds.items[item_idx].uri_list[i]);
+        ds.items[item_idx].uri_list[i] = NULL;
+        if (ret) abrt(ret, "error updating uri list after all remote data received");
+        if (safe_write_all(fd, "\r\n", 2)) abrt(errno, "error updating uri list after all remote data received");
+        new_size += 2;
+    }
+    free(ds.items[item_idx].uri_list);
+    ds.items[item_idx].uri_list = NULL;
+    ds.items[item_idx].num_uris = 0;
+    // The fd has been completely rewritten with updated (cached) URIs; update the read tracking
+    // fields so drag_get_data returns the full new content starting from the beginning.
+    ds.items[item_idx].data_capacity = new_size;
+    ds.items[item_idx].data_size = 0;
+    int ret = dnd_is_test_mode() ? 0 : notify_drag_data_ready_to_read(ds.items[item_idx].mime_type);
+    if (ret) abrt(ret, "could not notify OS that drag source item data is available");
+}
+
+#define mi ds.items[mime_item_idx]
+
+static char *
+lowercase_copy(const char *s) {
+    size_t len = strlen(s);
+    char *ans = malloc(len + 1);
+    if (!ans) return NULL;
+    for (size_t i = 0; i < len; i++) ans[i] = (char)tolower((unsigned char)s[i]);
+    ans[len] = '\0';
+    return ans;
+}
+
+static void
+uniqify_dir_entries_for_case_insensitive_fs(DragRemoteItem *children, size_t count) {
+    if (!count) return;
+    lower_str_set seen;
+    vt_init(&seen);
+    for (size_t i = 0; i < count; i++) {
+        if (!children[i].dir_entry_name) continue;
+        const char *orig_name = children[i].dir_entry_name;
+        char *lower = lowercase_copy(orig_name);
+        if (!lower) continue;
+        if (vt_is_end(vt_get(&seen, lower))) {
+            if (vt_is_end(vt_insert(&seen, lower))) {
+                free(lower);
+                continue;
+            } // OOM, skip tracking this entry
+            continue;
+        }
+        free(lower);
+        bool renamed = false;
+        for (int q = 1; q <= 1000; q++) {
+            size_t buflen = 26 + strlen(orig_name); // "case-conflict-" + 10 digits + "-" + name + null
+            char *new_name = malloc(buflen);
+            if (!new_name) break;
+            snprintf(new_name, buflen, "case-conflict-%d-%s", q, orig_name);
+            lower = lowercase_copy(new_name);
+            if (!lower) {
+                free(new_name);
+                break;
+            }
+            if (vt_is_end(vt_get(&seen, lower))) {
+                free(children[i].dir_entry_name);
+                children[i].dir_entry_name = new_name;
+                if (vt_is_end(vt_insert(&seen, lower))) {
+                    free(lower);
+                    break;
+                } // OOM
+                renamed = true;
+                break;
+            }
+            free(lower);
+            free(new_name);
+        }
+        if (!renamed) {
+            lower = lowercase_copy(children[i].dir_entry_name);
+            if (lower) {
+                if (vt_is_end(vt_insert(&seen, lower))) free(lower); // OOM
+            }
+        }
+    }
+    vt_cleanup(&seen);
+}
+
+// The following functions can abort the drag when they encounter an error.
+// Aborting calls cancel_drag() -> drag_free_offer(), which frees the offer
+// including the DragRemoteItem the caller is holding. They therefore return
+// false on abort (and true otherwise) so callers know to stop touching the now
+// freed memory. abrt() is redefined here to return false instead of void; it is
+// restored to its void form after subdir_data_for_drag().
+#undef abrt
+#define abrt(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return false;                  \
+    }
+
+static bool
+populate_dir_entries(Window *w, DragRemoteItem *ri) {
+    size_t num = count_occurrences((char *)ri->data, ri->data_sz, 0) + 1;
+    ri->children = calloc(num + 1, sizeof(ri->children[0]));
+    if (!ri->children) abrt(ENOMEM, "out of memory processing drag source item directory entries");
+    ri->children_sz = 0;
+    const char *ptr = (char *)ri->data;
+    const char *end = (char *)ri->data + ri->data_sz;
+    while (ptr < end) {
+        const char *p = memchr(ptr, 0, (size_t)(end - ptr));
+        size_t len = p ? (size_t)(p - ptr) : (size_t)(end - ptr);
+        DragRemoteItem *child = ri->children + ri->children_sz++;
+        child->parent = ri;
+        if (len > 0) {
+            char *name = strndup(ptr, len);
+            if (!name) abrt(ENOMEM, "out of memory processing drag source item directory entries");
+#ifdef _WIN32
+            for (size_t i = 0; i < len; i++)
+                if (name[i] == '/' || name[i] == '\\') name[i] = '_';
+#else
+            for (size_t i = 0; i < len; i++)
+                if (name[i] == '/') name[i] = '_';
+#endif
+            if (len == 1 && name[0] == '.') name[0] = '_';
+            if (len == 2 && name[0] == '.' && name[1] == '.') name[0] = '_';
+            child->dir_entry_name = name;
+        }
+        ptr = p ? p + 1 : end;
+    }
+    if (tempdir_case_insensitive == 1) uniqify_dir_entries_for_case_insensitive_fs(ri->children, ri->children_sz);
+    return true;
+}
+
+static bool
+add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload, size_t payload_sz, int dirfd) {
+    if (payload_sz && payload) {
+        if (payload_sz > 4096) abrt(EINVAL, "drag source item data chunk too large");
+        switch (ri->type) {
+            case 0: {
+                if (!ri->fd_plus_one) {
+                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY | O_EXCL, file_permissions);
+                    if (fd < 0) abrt(errno, "could not open drag source item data file");
+                    ri->fd_plus_one = fd + 1;
+                }
+                uint8_t buf[4096];
+                size_t outlen = sizeof(buf);
+                if (!base64_decode_stream(&ri->base64_state, payload, payload_sz, buf, &outlen)) abrt(EINVAL, "could not base64 decode drag source item data");
+                ds.total_remote_data_size += outlen;
+                if (outlen && safe_write_all(ri->fd_plus_one - 1, buf, outlen) < 0) abrt(errno, "could not write drag source item data to file");
+            } break;
+            default: {
+                if (ri->data_sz + payload_sz > ri->data_capacity) {
+                    size_t cap = MAX(ri->data_capacity * 2, ri->data_sz + payload_sz + 4096);
+                    if (cap > PRESENT_DATA_CAP) abrt(EMFILE, "too much drag source item data");
+                    uint8_t *tmp = realloc(ri->data, cap);
+                    if (!tmp) abrt(ENOMEM, "out of memory processing drag source item data");
+                    ri->data = tmp;
+                    ri->data_capacity = cap;
+                }
+                size_t outlen = ri->data_capacity - ri->data_sz;
+                if (!base64_decode_stream(&ri->base64_state, payload, payload_sz, ri->data + ri->data_sz, &outlen))
+                    abrt(EINVAL, "could not base64 decode drag source item data");
+                ds.total_remote_data_size += outlen;
+                ri->data_sz += outlen;
+            } break;
+        }
+    }
+    if (ds.total_remote_data_size > REMOTE_DRAG_LIMIT) abrt(EMFILE, "too much drag source item data");
+    if (!has_more && !payload_sz) { // all data received
+        switch (ri->type) {
+            case 0:
+                if (ri->fd_plus_one) {
+                    safe_close(ri->fd_plus_one - 1, __FILE__, __LINE__);
+                    ri->fd_plus_one = 0;
+                } else {
+                    // Empty file: no data payload was ever received so the file was never opened;
+                    // create it now so that it exists at the expected path for the caller.
+                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY | O_EXCL, file_permissions);
+                    if (fd < 0) abrt(errno, "could not create empty drag source item file");
+                    safe_close(fd, __FILE__, __LINE__);
+                }
+                break;
+            case 1:
+                // Ensure room for the null terminator needed by symlinkat
+                if (ri->data_sz >= ri->data_capacity) {
+                    uint8_t *tmp = realloc(ri->data, ri->data_sz + 1);
+                    if (!tmp) abrt(ENOMEM, "out of memory processingdrag source symlink item");
+                    ri->data = tmp;
+                    ri->data_capacity = ri->data_sz + 1;
+                }
+                ri->data[ri->data_sz] = 0;
+                // We allow arbitrary symlinks here even though they can lead
+                // outside the destination directory. This is safe because we
+                // only create files with open(O_EXCL) and mkdirat and symlinkat
+                // all fail with EEXIST if a symlink exists at the path.
+                if (symlinkat((char *)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno, "failed to create symlink for drag source item");
+                break;
+            default:
+                if (mkdirat(dirfd, ri->dir_entry_name, dir_permissions) != 0 && errno != EEXIST) {
+                    int err = errno;
+                    log_error("Failed to create directory for drag source item with name: %s and error: %s", ri->dir_entry_name, strerror(err));
+                    abrt(err, "failed to create directory for drag source item");
+                }
+                if (!populate_dir_entries(w, ri)) return false;
+                break;
+        }
+        free(ri->data);
+        ri->data = 0;
+        ri->data_capacity = 0;
+        ri->data_sz = 0;
+    }
+    return true;
+}
+
+static int
+ensure_base_dir_for_drag(Window *w) {
+    if (!ds.base_dir_for_remote_items) {
+        int fd;
+        ds.base_dir_for_remote_items = mktempdir_in_cache("dnd-drag-", &fd);
+        if (!ds.base_dir_for_remote_items) return errno;
+        ds.base_dir_fd_plus_one = fd + 1;
+        detect_tempdir_case_sensitivity(ds.base_dir_for_remote_items);
+    }
+    return 0;
+}
+
+static bool
+toplevel_data_for_drag(
+    Window *w,
+    DragRemoteItem *ri,
+    unsigned mime_item_idx,
+    unsigned uri_item_idx,
+    unsigned item_type,
+    bool has_more,
+    const uint8_t *payload,
+    size_t payload_sz) {
+    int errcode;
+    if ((errcode = ensure_base_dir_for_drag(w)) != 0) abrt(errcode, "failed to create temporary directory for drag source items");
+    if (!ri->started) {
+        ri->started = true;
+        ri->type = item_type;
+        base64_init_stream_decoder(&ri->base64_state);
+        if (uri_item_idx >= mi.num_uris) abrt(EINVAL, "out of bounds uri list item index for drag source");
+        const char *uri = mi.uri_list[uri_item_idx];
+        char *fname = sanitized_filename_from_url(uri);
+        if (!fname) abrt(EINVAL, "could not sanitize filename for URI in drag source uri-list");
+        if (!fname[0]) abrt(EINVAL, "URI must not have an empty path");
+        ri->dir_entry_name = fname;
+        char path[32];
+        snprintf(path, sizeof(path), "%u", uri_item_idx);
+        if (mkdirat(ds.base_dir_fd_plus_one - 1, path, dir_permissions) != 0 && errno != EEXIST) {
+            int err = errno;
+            log_error("Failed to create directory for drag source item at: %s/%u with error: %s", ds.base_dir_for_remote_items, uri_item_idx, strerror(err));
+            abrt(err, "failed to create directory for drag source item");
+        }
+        int fd = safe_openat(ds.base_dir_fd_plus_one - 1, path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW, 0);
+        if (fd < 0) abrt(errno, "failed to open directory for drag source item");
+        ri->top_level_parent_dir_fd_plus_one = fd + 1;
+        if (!ds.file_promises) {
+            char *new_url = as_file_url(ds.base_dir_for_remote_items, path, ri->dir_entry_name);
+            if (!new_url) abrt(ENOMEM, "failed to generate file URL for drag source item");
+            free(mi.uri_list[uri_item_idx]);
+            mi.uri_list[uri_item_idx] = new_url;
+        }
+    }
+    return add_payload(w, ri, has_more, payload, payload_sz, ri->top_level_parent_dir_fd_plus_one - 1);
+}
+
+static DragRemoteItem *
+find_by_handle(DragRemoteItem *parent, int handle) {
+    if (parent->type == handle) return parent;
+    DragRemoteItem *x;
+    for (size_t i = 0; i < parent->children_sz; i++) {
+        if ((x = find_by_handle(parent->children + i, handle))) return x;
+    }
+    return NULL;
+}
+
+// Maximum nesting depth of a remote drag source directory tree. Prevents
+// unbounded recursion in open_subdir_of_drag() for a maliciously deep tree.
+#define MAX_DRAG_DIR_DEPTH 128u
+
+// Open the directory for item by walking down from the top-level directory of
+// the drag source item, one component at a time, with O_NOFOLLOW. Constructing
+// a path and opening it is unsafe: a malicious client can send a directory
+// listing with two identically named entries, registering the first as a
+// symlink pointing outside the temporary directory and the second as a
+// directory. Creating the directory then fails with EEXIST (which is ignored)
+// and opening the path would follow the symlink, allowing the client to write
+// arbitrary files anywhere the datty process can write. Starting at a directory
+// we created ourselves and refusing to traverse symlinks keeps every write
+// contained within the temporary directory.
+static int
+open_subdir_of_drag(DragRemoteItem *root, DragRemoteItem *item, unsigned depth) {
+    if (depth > MAX_DRAG_DIR_DEPTH) {
+        errno = ELOOP;
+        return -1;
+    }
+    if (!item->dir_entry_name) {
+        errno = EINVAL;
+        return -1;
+    }
+    int parent_fd, ans;
+    bool close_parent_fd = false;
+    if (item == root) {
+        if (!root->top_level_parent_dir_fd_plus_one) {
+            errno = EINVAL;
+            return -1;
+        }
+        parent_fd = root->top_level_parent_dir_fd_plus_one - 1;
+    } else {
+        if (!item->parent) {
+            errno = EINVAL;
+            return -1;
+        }
+        parent_fd = open_subdir_of_drag(root, item->parent, depth + 1);
+        if (parent_fd < 0) return -1;
+        close_parent_fd = true;
+    }
+    ans = safe_openat(parent_fd, item->dir_entry_name, O_DIRECTORY | O_RDONLY | O_NOFOLLOW, 0);
+    if (close_parent_fd) {
+        int saved_errno = errno;
+        safe_close(parent_fd, __FILE__, __LINE__);
+        errno = saved_errno;
+    }
+    return ans;
+}
+
+static bool
+subdir_data_for_drag(
+    Window *w,
+    unsigned mime_item_idx,
+    int handle,
+    unsigned entry_num,
+    unsigned item_type,
+    bool has_more,
+    const uint8_t *payload,
+    size_t payload_sz,
+    DragRemoteItem **ri) {
+    DragRemoteItem *root = *ri;
+    DragRemoteItem *parent = NULL;
+    *ri = NULL;
+    if (mi.currently_open_subdir) {
+        if (mi.currently_open_subdir->type == handle) parent = mi.currently_open_subdir;
+        else {
+            if (mi.currently_open_subdir->fd_plus_one) {
+                safe_close(mi.currently_open_subdir->fd_plus_one - 1, __FILE__, __LINE__);
+                mi.currently_open_subdir->fd_plus_one = 0;
+            }
+            mi.currently_open_subdir = NULL;
+        }
+    }
+    if (parent == NULL || !parent->fd_plus_one) {
+        if (!root->dir_entry_name) abrt(EINVAL, "drag source sub directory parent dir does not exist");
+        parent = find_by_handle(root, handle);
+        if (!parent) abrt(EINVAL, "drag source sub directory parent dir handle does not exist");
+        mi.currently_open_subdir = parent;
+        if (!parent->fd_plus_one) {
+            int fd = open_subdir_of_drag(root, parent, 0);
+            if (fd < 0) abrt(errno, "drag source failed to open sub directory");
+            parent->fd_plus_one = fd + 1;
+        }
+    }
+    if (entry_num >= parent->children_sz) abrt(EINVAL, "drag source sub diretory index out of bounds");
+    *ri = parent->children + entry_num;
+    if (!(*ri)->started) {
+        (*ri)->started = true;
+        (*ri)->type = item_type;
+        base64_init_stream_decoder(&(*ri)->base64_state);
+    }
+    return add_payload(w, *ri, has_more, payload, payload_sz, parent->fd_plus_one - 1);
+}
+
+// Restore abrt() to its void-returning form for the remaining functions.
+#undef abrt
+#define abrt(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return;                        \
+    }
+
+void
+drag_offer_start_to_child(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_x, int32_t pixel_y) {
+    char buf[256];
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=o:x=%d:y=%d:X=%d:Y=%d", DND_CODE, cell_x, cell_y, pixel_x, pixel_y);
+    queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_size, NULL, 0, false);
+}
+
+static void
+finish_remote_data_if_all_items_received(Window *w, unsigned mime_item_idx) {
+    for (size_t i = 0; i < mi.num_remote_items; i++) {
+        if (mi.remote_items[i].waiting_for_completion && !mi.remote_items[i].completed) { return; }
+    }
+    finish_remote_data(w, mime_item_idx);
+}
+
+static bool
+all_children_complete(DragRemoteItem *parent) {
+    if (parent->children) {
+        for (size_t i = 0; i < parent->children_sz; i++) {
+            if (!parent->children[i].completed) return false;
+        }
+    }
+    return true;
+}
+
+static void
+finish_file_promise(Window *w, size_t uri_item_idx, DragRemoteItem *ri) {
+    notify_drag_data_received(w, uri_item_idx, ri->dir_entry_name, ri->type);
+}
+
+void
+drag_remote_file_data(Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, bool has_more, const uint8_t *payload, size_t payload_sz) {
+    if (x < 1) abrt(EINVAL, "drag source remote item x index cannot be less than 1");
+    size_t mime_item_idx = ds.num_mimes + 1;
+    for (size_t i = 0; i < ds.num_mimes; i++) {
+        if ((ds.file_promises && ds.items[i].is_uri_list) || (!ds.file_promises && ds.items[i].is_uri_list)) {
+            mime_item_idx = i;
+            break;
+        }
+    }
+    if (mime_item_idx == ds.num_mimes + 1)
+        abrt(EINVAL, ds.file_promises ? "drag source file promise no uri list present" : "drag source no remote data was requested");
+    const bool all_data_received = !payload_sz && !has_more;
+    DragRemoteItem *ri;
+    const unsigned uri_item_idx = x - 1;
+    if (ds.file_promises) {
+        size_t promise_item_idx = ds.file_promises_count + 1;
+        for (size_t i = 0; i < ds.file_promises_count; i++) {
+            if (ds.file_promises[i].uri_item_idx == uri_item_idx) {
+                promise_item_idx = i;
+                break;
+            }
+        }
+        if (promise_item_idx == ds.file_promises_count + 1) abrt(EINVAL, "drag source file promise uri list index out of bounds");
+        ri = &ds.file_promises[promise_item_idx].ri;
+        notify_drag_data_received(w, uri_item_idx, "", ri->type);
+    } else {
+        if (uri_item_idx >= mi.num_remote_items) abrt(EINVAL, "drag source uri list index out of bounds");
+        ri = mi.remote_items + uri_item_idx;
+    }
+    if (!Y) {
+        if (!toplevel_data_for_drag(w, ri, mime_item_idx, uri_item_idx, X, has_more, payload, payload_sz)) return;
+        if (all_data_received && all_children_complete(ri)) {
+            ri->completed = true;
+            if (ds.file_promises) finish_file_promise(w, uri_item_idx, ri);
+            else if (ri->waiting_for_completion) finish_remote_data_if_all_items_received(w, mime_item_idx);
+        }
+    } else {
+        if (y < 1) abrt(EINVAL, "drag source remote item y index cannot be less than 1");
+        if (!subdir_data_for_drag(w, mime_item_idx, Y, y - 1, X, has_more, payload, payload_sz, &ri)) return;
+        if (all_data_received && ri && all_children_complete(ri)) {
+            ri->completed = true;
+            while (1) {
+                if (ri->parent) {
+                    ri = ri->parent;
+                    if (all_children_complete(ri)) ri->completed = true;
+                    else break;
+                } else {
+                    if (ds.file_promises) finish_file_promise(w, uri_item_idx, ri);
+                    else finish_remote_data_if_all_items_received(w, mime_item_idx);
+                    break;
+                }
+            }
+        }
+    }
+}
+#undef img
+#undef abrt
+#undef ds
+#undef mi
+// }}}
+
+// DnD testing infrastructure {{{
+
+static PyObject *
+py_dnd_set_test_write_func(PyObject *self UNUSED, PyObject *args) {
+    PyObject *func = Py_None;
+    unsigned mime_list_size_cap = 0, present_data_cap = 0, remote_drag_limit = 0;
+    int case_insensitive_tempdir = -1;
+    if (!PyArg_ParseTuple(args, "|OIIIi", &func, &mime_list_size_cap, &present_data_cap, &remote_drag_limit, &case_insensitive_tempdir)) return NULL;
+    // Pass None to clear the interceptor and restore normal operation.
+    dnd_set_test_write_func(func == Py_None ? NULL : func, mime_list_size_cap, present_data_cap, remote_drag_limit, case_insensitive_tempdir);
+    Py_RETURN_NONE;
+}
+
+static void
+destroy_fake_window_contents(Window *w) {
+    // Free window resources without touching GPU objects (none allocated for fake windows).
+    drop_free_data(w);
+    drag_free_offer(w, false);
+    free(w->pending_clicks.clicks);
+    zero_at_ptr(&w->pending_clicks);
+    free_buffered_keys(w);
+    Py_CLEAR(w->render_data.screen);
+    Py_CLEAR(w->title);
+    Py_CLEAR(w->title_bar_data.last_drawn_title_object_id);
+    free(w->title_bar_data.buf);
+    w->title_bar_data.buf = NULL;
+    Py_CLEAR(w->url_target_bar_data.last_drawn_title_object_id);
+    free(w->url_target_bar_data.buf);
+    w->url_target_bar_data.buf = NULL;
+    // render_data.vao_idx is -1 so release_gpu_resources_for_window is safe, but we skip it
+    // since we never allocated those resources.
+}
+
+static PyObject *
+dnd_test_create_fake_window(PyObject *self UNUSED, PyObject *args UNUSED) {
+    // Create a minimal OS window + tab + window without any OpenGL/GPU resources.
+    // Returns (os_window_id, window_id).
+    ensure_space_for(&global_state, os_windows, OSWindow, global_state.num_os_windows + 1, capacity, 1, true);
+    OSWindow *osw = global_state.os_windows + global_state.num_os_windows++;
+    zero_at_ptr(osw);
+    osw->id = ++global_state.os_window_id_counter;
+    osw->tab_bar_render_data.vao_idx = -1;
+    osw->background_opacity.alpha = OPT(background_opacity);
+    osw->created_at = monotonic();
+    // osw->handle intentionally left NULL - no real GLFW window
+
+    ensure_space_for(osw, tabs, Tab, 1, capacity, 1, true);
+    Tab *tab = &osw->tabs[0];
+    zero_at_ptr(tab);
+    tab->id = ++global_state.tab_id_counter;
+    tab->border_rects.vao_idx = -1;
+    osw->num_tabs = 1;
+    osw->active_tab = 0;
+
+    ensure_space_for(tab, windows, Window, 1, capacity, 1, true);
+    Window *w = &tab->windows[0];
+    zero_at_ptr(w);
+    w->id = ++global_state.window_id_counter;
+    w->visible = true;
+    w->render_data.vao_idx = -1;
+    w->window_title_render_data.vao_idx = -1;
+    w->drop.wanted = true;
+    tab->num_windows = 1;
+    tab->active_window = 0;
+
+    global_state.mouse_hover_in_window = w->id;
+    return Py_BuildValue("KK", (unsigned long long)osw->id, (unsigned long long)w->id);
+}
+
+static PyObject *
+dnd_test_cleanup_fake_window(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id;
+    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        if (global_state.os_windows[i].id == (id_type)os_window_id) {
+            OSWindow *osw = global_state.os_windows + i;
+            for (size_t t = 0; t < osw->num_tabs; t++) {
+                Tab *tab = osw->tabs + t;
+                for (size_t j = 0; j < tab->num_windows; j++) {
+                    Window *win = tab->windows + j;
+                    if (global_state.mouse_hover_in_window == win->id) global_state.mouse_hover_in_window = 0;
+                    destroy_fake_window_contents(win);
+                }
+                free(tab->border_rects.rect_buf);
+                tab->border_rects.rect_buf = NULL;
+                free(tab->windows);
+                tab->windows = NULL;
+            }
+            Py_CLEAR(osw->window_title);
+            Py_CLEAR(osw->tab_bar_render_data.screen);
+            free(osw->tabs);
+            osw->tabs = NULL;
+            remove_i_from_array(global_state.os_windows, i, global_state.num_os_windows);
+            break;
+        }
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_set_mouse_pos(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long window_id;
+    int cell_x, cell_y, pixel_x, pixel_y;
+    if (!PyArg_ParseTuple(args, "Kiiii", &window_id, &cell_x, &cell_y, &pixel_x, &pixel_y)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    w->mouse_pos.cell_x = (unsigned int)cell_x;
+    w->mouse_pos.cell_y = (unsigned int)cell_y;
+    w->mouse_pos.global_x = pixel_x;
+    w->mouse_pos.global_y = pixel_y;
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_fake_drop_event(PyObject *self UNUSED, PyObject *args) {
+    // Simulate a drop enter/move/drop event. mimes_seq must be a sequence of str, or
+    // None to simulate a leave event.
+    unsigned long long window_id;
+    int is_drop;
+    PyObject *mimes_seq = Py_None;
+    int x = -2, y = -2;
+    int allowed_ops = 0;
+    if (!PyArg_ParseTuple(args, "Kp|Oiii", &window_id, &is_drop, &mimes_seq, &x, &y, &allowed_ops)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    if (mimes_seq == Py_None) {
+        drop_left_child(w);
+        Py_RETURN_NONE;
+    }
+    RAII_PyObject(fast_seq, PySequence_Fast(mimes_seq, "mimes must be a sequence"));
+    if (!fast_seq) return NULL;
+    Py_ssize_t num_mimes = PySequence_Fast_GET_SIZE(fast_seq);
+    RAII_ALLOC(const char *, mimes, malloc(sizeof(const char *) * (num_mimes ? num_mimes : 1)));
+    if (!mimes) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < num_mimes; i++) {
+        mimes[i] = PyUnicode_AsUTF8(PySequence_Fast_GET_ITEM(fast_seq, i));
+        if (!mimes[i]) return NULL;
+    }
+    if (x > -1) w->mouse_pos.cell_x = x;
+    if (y > -1) w->mouse_pos.cell_y = y;
+    global_state.drop_dest.allowed_ops = allowed_ops;
+    drop_move_on_child(w, mimes, (size_t)num_mimes, is_drop ? true : false);
+    global_state.drop_dest.allowed_ops = 0;
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_fake_drop_data(PyObject *self UNUSED, PyObject *args) {
+    // Simulate OS delivering drop data for the given MIME type.
+    // If error_code > 0, simulate an error (e.g. ENOENT=2, EIO=5, EPERM=1).
+    // Otherwise deliver data and the mandatory end-of-data signal.
+    unsigned long long window_id;
+    const char *mime;
+    RAII_PY_BUFFER(data);
+    int error_code = 0, no_eod = 0;
+    if (!PyArg_ParseTuple(args, "Ksy*|ip", &window_id, &mime, &data, &error_code, &no_eod)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    if (error_code > 0) {
+        drop_dispatch_data(w, mime, NULL, -(ssize_t)error_code);
+    } else if (data.len > 0) {
+        drop_dispatch_data(w, mime, (const char *)data.buf, (ssize_t)data.len);
+        if (!no_eod) drop_dispatch_data(w, mime, NULL, 0); // mandatory end-of-data signal
+    } else {
+        // Empty data: just the end-of-data signal (sz=0 is the sentinel for "no more data").
+        drop_dispatch_data(w, mime, NULL, 0);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_force_drag_dropped(PyObject *self UNUSED, PyObject *args) {
+    // Force the drag source state to DROPPED for testing purposes.
+    // This simulates what would happen after start_window_drag() succeeds
+    // and the drop target receives the data.
+    unsigned long long window_id;
+    if (!PyArg_ParseTuple(args, "K", &window_id)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    // Simulate what drag_start does on success, without calling start_window_drag
+#define ds w->drag_source
+    for (size_t i = 0; i < w->drag_source.num_mimes; i++) {
+        if (ds.is_remote_client && ds.items[i].is_uri_list) {
+            if (ds.items[i].optional_data && ds.items[i].data_size) {
+                ds.items[i].uri_list = parse_uri_list(w, (char *)ds.items[i].optional_data, ds.items[i].data_size, &ds.items[i].num_uris);
+            }
+        }
+        free(ds.items[i].optional_data);
+        ds.items[i].optional_data = NULL;
+        ds.items[i].data_size = 0;
+        ds.items[i].data_capacity = 0;
+        ds.items[i].data_decode_initialized = false;
+    }
+    for (size_t i = 0; i < arraysz(w->drag_source.images); i++) {
+        if (ds.images[i].data) free(w->drag_source.images[i].data);
+        zero_at_ptr(ds.images + i);
+    }
+    ds.state = DRAG_SOURCE_DROPPED;
+#undef ds
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_request_drag_data(PyObject *self UNUSED, PyObject *args) {
+    // Simulate what drag_get_data does initially: find the MIME item at the
+    // given index, set requested_remote_files if appropriate.
+    unsigned long long window_id;
+    unsigned idx;
+    if (!PyArg_ParseTuple(args, "KI", &window_id, &idx)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    if (w->drag_source.state < DRAG_SOURCE_DROPPED || idx >= w->drag_source.num_mimes || !w->drag_source.items) {
+        PyErr_SetString(PyExc_ValueError, "Invalid state or index");
+        return NULL;
+    }
+    w->drag_source.items[idx].requested_remote_files = w->drag_source.is_remote_client && w->drag_source.items[idx].is_uri_list;
+    if (w->drag_source.items[idx].requested_remote_files) request_remote_files(w, idx);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_drag_finish(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long window_id;
+    int canceled_by_user;
+    int errcode = 0;
+    if (!PyArg_ParseTuple(args, "Kp|i", &window_id, &canceled_by_user, &errcode)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    global_state.drag_source.was_canceled = canceled_by_user;
+    if (!errcode) drag_notify(w, DRAG_NOTIFY_FINISHED);
+    cancel_drag(w, errcode, "");
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_drag_notify(PyObject *self UNUSED, PyObject *args) {
+    // Call drag_notify with a specific type for testing the protocol output.
+    // type: 0=ACCEPTED, 1=ACTION_CHANGED, 2=DROPPED, 3=FINISHED
+    // accepted_mime: the MIME type to set in global_state.drag_source.accepted_mime_type (for ACCEPTED)
+    // action: the action to set in global_state.drag_source.action (for ACTION_CHANGED)
+    // was_canceled: whether the drag was canceled (for FINISHED)
+    unsigned long long window_id;
+    int type;
+    const char *accepted_mime = NULL;
+    int action = 0, was_canceled = 0;
+    if (!PyArg_ParseTuple(args, "Ki|sip", &window_id, &type, &accepted_mime, &action, &was_canceled)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    if (type < 0 || type > 3) {
+        PyErr_SetString(PyExc_ValueError, "Invalid type");
+        return NULL;
+    }
+    if (accepted_mime && *accepted_mime) {
+        free(global_state.drag_source.accepted_mime_type);
+        global_state.drag_source.accepted_mime_type = strdup(accepted_mime);
+        if (!global_state.drag_source.accepted_mime_type) {
+            PyErr_NoMemory();
+            return NULL;
+        }
+    }
+    global_state.drag_source.action = action;
+    global_state.drag_source.was_canceled = was_canceled;
+    drag_notify(w, (DragNotifyType)type);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
+    const char *q;
+    unsigned long long window_id;
+    if (!PyArg_ParseTuple(args, "Ks", &window_id, &q)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    if (strcmp(q, "drop_wanted") == 0) { return Py_NewRef(w->drop.wanted ? Py_True : Py_False); }
+    if (strcmp(q, "drag_can_offer") == 0) { return Py_NewRef(w->drag_source.can_offer ? Py_True : Py_False); }
+    if (strcmp(q, "drop_is_remote_client") == 0) { return Py_NewRef(w->drop.is_remote_client ? Py_True : Py_False); }
+    if (strcmp(q, "drag_is_remote_client") == 0) { return Py_NewRef(w->drag_source.is_remote_client ? Py_True : Py_False); }
+    if (strcmp(q, "drop_action") == 0) { return PyLong_FromLong((long)w->drop.accepted_operation); }
+    if (strcmp(q, "last_drop_action") == 0) { return PyLong_FromLong((long)last_drop_finish_operation); }
+    if (strcmp(q, "drop_mimes") == 0) {
+        if (w->drop.accepted_mimes == NULL) return PyUnicode_FromString("");
+        return PyUnicode_FromStringAndSize(w->drop.accepted_mimes, w->drop.accepted_mimes_sz);
+    }
+    if (strcmp(q, "drop_data_requests") == 0) {
+        PyObject *ans = PyTuple_New(w->drop.num_data_requests);
+        for (size_t i = 0; i < w->drop.num_data_requests; i++) {
+#define item w->drop.data_requests[i]
+            PyObject *x = Py_BuildValue("iii", item.cell_x, item.cell_y, item.pixel_y);
+            PyTuple_SET_ITEM(ans, i, x);
+#undef item
+        }
+        return ans;
+    }
+    if (strcmp(q, "drop_getting_data_for_mime") == 0) { return PyUnicode_FromString(w->drop.getting_data_for_mime ? w->drop.getting_data_for_mime : ""); }
+    if (strcmp(q, "drop_dropped") == 0) { return Py_NewRef(w->drop.dropped ? Py_True : Py_False); }
+    if (strcmp(q, "drop_num_dir_handles") == 0) { return PyLong_FromSize_t(w->drop.num_dir_handles); }
+    if (strcmp(q, "drop_uri_list_sz") == 0) { return PyLong_FromSize_t(w->drop.uri_list_sz); }
+    if (strcmp(q, "drop_file_fd_plus_one") == 0) { return PyLong_FromLong((long)w->drop.file_fd_plus_one); }
+    if (strcmp(q, "can_offer") == 0) { return Py_NewRef(w->drag_source.can_offer ? Py_True : Py_False); }
+    if (strcmp(q, "drag_operations") == 0) { return PyLong_FromLong((long)w->drag_source.allowed_operations); }
+    if (strcmp(q, "drag_mimes") == 0) {
+        PyObject *ans = PyTuple_New(w->drag_source.num_mimes);
+        for (size_t i = 0; i < w->drag_source.num_mimes; i++) PyTuple_SET_ITEM(ans, i, PyUnicode_FromString(w->drag_source.items[i].mime_type));
+        return ans;
+    }
+    if (strcmp(q, "drag_thumbnail_size") == 0) { return PyLong_FromSize_t(last_total_image_size); }
+    if (strcmp(q, "drag_remote_data_complete") == 0) {
+        for (size_t idx = 0; idx < w->drag_source.num_mimes; idx++) {
+#define mi w->drag_source.items[idx]
+            if (mi.is_uri_list && mi.requested_remote_files) {
+                for (size_t i = 0; i < mi.num_remote_items; i++) {
+                    if (mi.remote_items[i].waiting_for_completion && !mi.remote_items[i].completed)
+                        return PyUnicode_FromString(mi.remote_items[i].dir_entry_name ? mi.remote_items[i].dir_entry_name : "");
+                }
+            }
+#undef mi
+        }
+        Py_RETURN_NONE;
+    }
+    // "drag_remote_item_path:N" returns the full filesystem path for URI item N (0-based)
+    if (strncmp(q, "drag_remote_item_path:", 22) == 0) {
+        size_t uri_idx = (size_t)atoi(q + 22);
+        if (w->drag_source.base_dir_for_remote_items) {
+            for (size_t idx = 0; idx < w->drag_source.num_mimes; idx++) {
+#define mi w->drag_source.items[idx]
+                if (mi.is_uri_list && mi.remote_items && uri_idx < mi.num_remote_items) {
+                    const char *name = mi.remote_items[uri_idx].dir_entry_name;
+                    if (name) {
+                        char path[PATH_MAX + 1];
+                        int n = snprintf(path, sizeof(path), "%s/%zu/%s", w->drag_source.base_dir_for_remote_items, uri_idx, name);
+                        if (n <= 0 || (size_t)n >= sizeof(path)) Py_RETURN_NONE;
+                        return PyUnicode_FromStringAndSize(path, (Py_ssize_t)n);
+                    }
+                }
+#undef mi
+            }
+        }
+        Py_RETURN_NONE;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_start_drag_offer(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long window_id;
+    int x = 0, y = 0, X = 0, Y = 0;
+    if (!PyArg_ParseTuple(args, "K|iiii", &window_id, &x, &y, &X, &Y)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    drag_offer_start_to_child(w, x, y, X, Y);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_drag_get_data(PyObject *self UNUSED, PyObject *args) {
+    const char *mime;
+    unsigned long long window_id;
+    if (!PyArg_ParseTuple(args, "Ks", &window_id, &mime)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    int err;
+    size_t sz;
+    const char *data = drag_get_data(w, mime, &sz, &err);
+    if (err != 0) {
+        if (data) drag_free_data(w, mime, data, sz);
+        errno = err;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
+    PyObject *ans = PyBytes_FromStringAndSize(data ? data : "", sz);
+    if (data) drag_free_data(w, mime, data, sz);
+    return ans;
+}
+
+/* Test helper: set up accepted-mimes state then call drop_update_mimes.
+ * Args: window_id (K), operation (i), accepted_mimes space-separated (s),
+ *       offered_mimes (list of str).
+ * Returns the filtered/prioritised MIME list as a Python list. */
+static PyObject *
+dnd_test_drop_update_mimes(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long window_id;
+    int operation;
+    const char *accepted;
+    PyObject *offered_seq;
+    if (!PyArg_ParseTuple(args, "KisO", &window_id, &operation, &accepted, &offered_seq)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) {
+        PyErr_SetString(PyExc_ValueError, "Window not found");
+        return NULL;
+    }
+    /* Set up accepted_mimes via drop_set_status (more=false finalises the buffer). */
+    drop_set_status(w, operation, accepted, strlen(accepted), false);
+    RAII_PyObject(fast_seq, PySequence_Fast(offered_seq, "offered_mimes must be a sequence"));
+    if (!fast_seq) return NULL;
+    Py_ssize_t num = PySequence_Fast_GET_SIZE(fast_seq);
+    RAII_ALLOC(const char *, mimes, malloc(sizeof(const char *) * (num ? (size_t)num : 1u)));
+    if (!mimes) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < num; i++) {
+        mimes[i] = PyUnicode_AsUTF8(PySequence_Fast_GET_ITEM(fast_seq, i));
+        if (!mimes[i]) return NULL;
+    }
+    size_t count = (size_t)num;
+    count = drop_update_mimes(w, mimes, count);
+    PyObject *result = PyList_New((Py_ssize_t)count);
+    if (!result) return NULL;
+    for (size_t i = 0; i < count; i++) {
+        PyObject *s = PyUnicode_FromString(mimes[i]);
+        if (!s) {
+            Py_DECREF(result);
+            return NULL;
+        }
+        PyList_SET_ITEM(result, (Py_ssize_t)i, s);
+    }
+    return result;
+}
+
+static PyMethodDef dnd_methods[] = {
+    {"dnd_set_test_write_func", (PyCFunction)py_dnd_set_test_write_func, METH_VARARGS, ""},
+    METHODB(dnd_test_create_fake_window, METH_NOARGS),
+    METHODB(dnd_test_cleanup_fake_window, METH_VARARGS),
+    METHODB(dnd_test_set_mouse_pos, METH_VARARGS),
+    METHODB(dnd_test_fake_drop_event, METH_VARARGS),
+    METHODB(dnd_test_fake_drop_data, METH_VARARGS),
+    METHODB(dnd_test_start_drag_offer, METH_VARARGS),
+    METHODB(dnd_test_force_drag_dropped, METH_VARARGS),
+    METHODB(dnd_test_request_drag_data, METH_VARARGS),
+    METHODB(dnd_test_drag_notify, METH_VARARGS),
+    METHODB(dnd_test_drag_finish, METH_VARARGS),
+    METHODB(dnd_test_probe_state, METH_VARARGS),
+    METHODB(dnd_test_drag_get_data, METH_VARARGS),
+    METHODB(dnd_test_drop_update_mimes, METH_VARARGS),
+    {NULL, NULL, 0, NULL}};
+
+bool
+init_dnd(PyObject *m) {
+    if (PyModule_AddFunctions(m, dnd_methods) != 0) return false;
+    return true;
+}
+// }}}

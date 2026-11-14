@@ -27,7 +27,7 @@
 
 #pragma once
 
-#include "../kitty/monotonic.h"
+#include "../datty/monotonic.h"
 
 #if defined(_GLFW_USE_CONFIG_H)
 #include "glfw_config.h"

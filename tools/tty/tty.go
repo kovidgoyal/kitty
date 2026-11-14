@@ -14,7 +14,7 @@ import (
 	"github.com/emmansun/base64"
 	"golang.org/x/sys/unix"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 const (
@@ -340,7 +340,7 @@ func (self *Term) DebugPrintln(a ...any) {
 		chunk := msg[i:end]
 		encoded = encoded[:cap(encoded)]
 		base64.StdEncoding.Encode(encoded, chunk)
-		_, _ = self.WriteString("\x1bP@kitty-print|")
+		_, _ = self.WriteString("\x1bP@datty-print|")
 		_, _ = self.Write(encoded)
 		_, _ = self.WriteString("\x1b\\")
 	}
@@ -362,10 +362,10 @@ func (self *Term) GetSize() (*unix.Winsize, error) {
 // go doesn't have a wrapper for ctermid()
 func Ctermid() string { return "/dev/tty" }
 
-var KittyStdout = sync.OnceValue(func() *os.File {
-	if fds := os.Getenv(`KITTY_STDIO_FORWARDED`); fds != "" {
+var DattyStdout = sync.OnceValue(func() *os.File {
+	if fds := os.Getenv(`DATTY_STDIO_FORWARDED`); fds != "" {
 		if fd, err := strconv.Atoi(fds); err == nil && fd > -1 {
-			if f := os.NewFile(uintptr(fd), "<kitty_stdout>"); f != nil {
+			if f := os.NewFile(uintptr(fd), "<datty_stdout>"); f != nil {
 				return f
 			}
 		}
@@ -374,7 +374,7 @@ var KittyStdout = sync.OnceValue(func() *os.File {
 })
 
 func DebugPrintln(a ...any) {
-	if f := KittyStdout(); f != nil {
+	if f := DattyStdout(); f != nil {
 		fmt.Fprintln(f, a...)
 		return
 	}

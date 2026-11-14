@@ -1,4 +1,4 @@
-package kitty
+package datty
 
 import (
 	_ "embed"
@@ -8,10 +8,10 @@ import (
 
 var _ = fmt.Print
 
-//go:embed logo/kitty.png
-var KittyLogoAsPNGData []byte
+//go:embed logo/datty.png
+var DattyLogoAsPNGData []byte
 
-//go:embed kitty_tests/GraphemeBreakTest.json
+//go:embed datty_tests/GraphemeBreakTest.json
 var grapheme_break_test_data []byte
 
 type GraphemeBreakTest struct {

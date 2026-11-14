@@ -12,20 +12,20 @@ import tempfile
 
 def compile_terminfo(base):
     with tempfile.TemporaryDirectory() as tdir:
-        proc = subprocess.run(['tic', '-x', f'-o{tdir}', 'terminfo/kitty.terminfo'], capture_output=True)
+        proc = subprocess.run(['tic', '-x', f'-o{tdir}', 'terminfo/datty.terminfo'], capture_output=True)
         if proc.returncode != 0:
             sys.stderr.buffer.write(proc.stderr)
             raise SystemExit(proc.returncode)
-        tfiles = glob.glob(os.path.join(tdir, '*', 'xterm-kitty'))
+        tfiles = glob.glob(os.path.join(tdir, '*', 'xterm-datty'))
         if not tfiles:
-            raise SystemExit('tic failed to output the compiled kitty terminfo file')
+            raise SystemExit('tic failed to output the compiled datty terminfo file')
 
         tfile = tfiles[0]
-        directory, xterm_kitty = os.path.split(tfile)
+        directory, xterm_datty = os.path.split(tfile)
         _, directory = os.path.split(directory)
         odir = os.path.join(base, directory)
         os.makedirs(odir, exist_ok=True)
-        ofile = os.path.join(odir, xterm_kitty)
+        ofile = os.path.join(odir, xterm_datty)
         shutil.move(tfile, ofile)
     return ofile
 
@@ -35,22 +35,22 @@ def generate_terminfo():
     os.chdir(base)
     sys.path.insert(0, base)
 
-    from kitty.terminfo import generate_terminfo
+    from datty.terminfo import generate_terminfo
 
-    with open('terminfo/kitty.terminfo', 'w') as f:
+    with open('terminfo/datty.terminfo', 'w') as f:
         f.write(generate_terminfo())
-    proc = subprocess.run(['tic', '-CrT0', 'terminfo/kitty.terminfo'], capture_output=True)
+    proc = subprocess.run(['tic', '-CrT0', 'terminfo/datty.terminfo'], capture_output=True)
     if proc.returncode != 0:
         sys.stderr.buffer.write(proc.stderr)
         raise SystemExit(proc.returncode)
     tcap = proc.stdout.decode('utf-8').splitlines()[-1]
-    with open('terminfo/kitty.termcap', 'w') as f:
+    with open('terminfo/datty.termcap', 'w') as f:
         f.write(tcap)
 
     dbfile = compile_terminfo(os.path.join(base, 'terminfo'))
     with open(dbfile, 'rb') as f:
         data = f.read()
-    with open('kitty/terminfo.h', 'w') as f:
+    with open('datty/terminfo.h', 'w') as f:
         print(f'static const uint8_t terminfo_data[{len(data)}] = ''{', file=f)
         for b in data:
             print(b, end=', ', file=f)

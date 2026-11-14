@@ -7,7 +7,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/utils"
 	"io"
 	"regexp"
 	"strings"

@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/datty"
 )
 
 var _ = fmt.Print
 
 func TestImageSerialize(t *testing.T) {
-	img, _, err := OpenImageFromReader(bytes.NewReader(kitty.KittyLogoAsPNGData))
+	img, _, err := OpenImageFromReader(bytes.NewReader(datty.DattyLogoAsPNGData))
 	if err != nil {
 		t.Fatal(err)
 	}

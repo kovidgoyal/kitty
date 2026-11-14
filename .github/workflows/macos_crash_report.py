@@ -25,7 +25,7 @@ def _build_filename_cache() -> dict[str, str]:
 
     The script lives at <repo>/.github/workflows/, so the repo root is two
     levels up. We scan the whole repo tree so we find both in-tree build
-    artefacts (e.g. kitty/fast_data_types.so) and those under build/.
+    artefacts (e.g. datty/fast_data_types.so) and those under build/.
     """
     cache: dict[str, str] = {}
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

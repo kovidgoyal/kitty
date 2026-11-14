@@ -31,7 +31,7 @@ var get_worker = sync.OnceValues(func() (*worker, error) {
 		return nil, err
 	}
 	if IsTesting() {
-		if exe, err = filepath.Abs("../../kitty/launcher/kitten"); err != nil {
+		if exe, err = filepath.Abs("../../datty/launcher/daddy"); err != nil {
 			return nil, err
 		}
 	}

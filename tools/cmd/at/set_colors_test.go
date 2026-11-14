@@ -1,4 +1,4 @@
-// License: GPLv3 Copyright: 2026, kitty contributors
+// License: GPLv3 Copyright: 2026, datty contributors
 
 package at
 
@@ -99,7 +99,7 @@ func TestSetColorsSpecialColors(t *testing.T) {
 			t.Fatalf("The special values for %s are not defined", key)
 		}
 	}
-	// expected values are from kitty.colors.parse_colors()
+	// expected values are from datty.colors.parse_colors()
 	for _, test := range []struct {
 		arg      string
 		expected int64

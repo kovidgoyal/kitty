@@ -14,11 +14,11 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/kovidgoyal/kitty/kittens/ask"
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/cli/markup"
-	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/daddies/ask"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/cli/markup"
+	"github.com/kovidgoyal/datty/tools/tty"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -117,7 +117,7 @@ func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc in
 			if err != nil {
 				return 1, err
 			}
-			editor := exec.Command(exe, "edit-in-kitty", script_path)
+			editor := exec.Command(exe, "edit-in-datty", script_path)
 			editor.Stdin = os.Stdin
 			editor.Stdout = os.Stdout
 			editor.Stderr = os.Stderr
@@ -145,7 +145,7 @@ func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc in
 
 func run_shebang(args []string) (rc int, err error) {
 	if len(args) < 3 {
-		return 1, fmt.Errorf("Usage: kitten __shebang__ confirm-exe path_to_script cmd...")
+		return 1, fmt.Errorf("Usage: daddy __shebang__ confirm-exe path_to_script cmd...")
 	}
 	var confirm_policy ConfirmPolicy
 	switch args[0] {

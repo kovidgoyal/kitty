@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/datty/tools/cli"
+	"github.com/kovidgoyal/datty/tools/utils"
 )
 
 var _ = fmt.Print
