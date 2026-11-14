@@ -69,6 +69,16 @@ write_to_stderr(const char *text) {
     }
 
 static void
+mark_close_on_exec(int fd) {
+    // Only async-signal-safe functions are used as this is called in the child after fork()
+    int flags = fcntl(fd, F_GETFD);
+    if (flags == -1) return; // fd is not open
+    if (!(flags & FD_CLOEXEC)) {
+        if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1) exit_on_err("Failed to set the close-on-exec flag on an inherited file descriptor");
+    }
+}
+
+static void
 wait_for_terminal_ready(int fd) {
     char data;
     while (1) {
@@ -229,13 +239,16 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             wait_for_terminal_ready(ready_read_fd);
             safe_close(ready_read_fd, __FILE__, __LINE__);
 
-            // Close any extra fds inherited from parent
-            if (has_preserved_fds) {
-                for (int c = 3; c < 256; c++) {
-                    if (!FD_ISSET(c, &passed_fds)) safe_close(c, __FILE__, __LINE__);
-                }
-            } else
-                for (int c = 3; c < 256; c++) { safe_close(c, __FILE__, __LINE__); }
+            // Ensure any extra fds inherited from parent are closed by exec().
+            // They are marked close-on-exec rather than closed, as on macOS
+            // some of them may be guarded file descriptors created by system
+            // frameworks such as Metal or libdispatch and calling close() on a
+            // guarded file descriptor causes the kernel to kill the process
+            // with SIGKILL (EXC_GUARD). Guarded file descriptors are always
+            // close-on-exec so setting the flag on them is allowed.
+            for (int c = 3; c < 256; c++) {
+                if (!has_preserved_fds || !FD_ISSET(c, &passed_fds)) mark_close_on_exec(c);
+            }
 
             extern char **environ;
             environ = env;
