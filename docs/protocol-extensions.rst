@@ -26,6 +26,7 @@ please do so by opening issues in the `GitHub bug tracker
 
    underlines
    graphics-protocol
+   content-rendering-protocol
    keyboard-protocol
    text-sizing-protocol
    dnd-protocol
