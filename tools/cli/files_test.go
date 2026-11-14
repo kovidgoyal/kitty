@@ -104,14 +104,36 @@ func TestCompleteFiles(t *testing.T) {
 
 	// paths are resolved relative to the cwd passed in, such as the config directory, not the process cwd
 	cdir := t.TempDir()
-	os.Mkdir(filepath.Join(cdir, "sessions"), 0700)
-	os.WriteFile(filepath.Join(cdir, "sessions", "work.kitty-session"), nil, 0600)
-	for _, prefix := range []string{"sessions/", "sessions/w"} {
+	if err := os.Mkdir(filepath.Join(cdir, "sessions"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cdir, "sessions", "work.kitty-session"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	test_with_cwd := func(prefix, cwd string, expected ...string) {
+		t.Helper()
 		actual := []string{}
-		CompleteFiles(prefix, func(entry *FileEntry) { actual = append(actual, entry.CompletionCandidate) }, cdir)
-		if !reflect.DeepEqual(actual, []string{"sessions/work.kitty-session"}) {
-			t.Fatalf("Did not complete %#v relative to the cwd argument: %#v", prefix, actual)
+		if err := CompleteFiles(prefix, func(entry *FileEntry) { actual = append(actual, entry.CompletionCandidate) }, cwd); err != nil {
+			t.Fatalf("Completing %#v relative to %#v failed: %s", prefix, cwd, err)
 		}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Fatalf("Did not complete %#v relative to the cwd argument %#v\nExpected: %#v\nActual:   %#v", prefix, cwd, expected, actual)
+		}
+	}
+	test_with_cwd("sessions/", cdir, "sessions/work.kitty-session")
+	test_with_cwd("sessions/w", cdir, "sessions/work.kitty-session")
+	test_with_cwd("./sessions/w", cdir, "./sessions/work.kitty-session")
+	test_with_cwd("../sessions/w", filepath.Join(cdir, "sessions"), "../sessions/work.kitty-session")
+	t.Setenv("HOME", cdir)
+	test_with_cwd("~/sessions/w", tdir, "~/sessions/work.kitty-session")
+	// a relative cwd, such as a config directory from a relative XDG_CONFIG_HOME, is relative to the process cwd
+	if err := os.Chdir(filepath.Dir(cdir)); err != nil {
+		t.Fatal(err)
+	}
+	test_with_cwd("sessions/", filepath.Base(cdir), "sessions/work.kitty-session")
+	test_with_cwd("s", filepath.Base(cdir), "sessions/")
+	if err := os.Chdir(tdir); err != nil {
+		t.Fatal(err)
 	}
 
 	// symlinks to directories are directories
