@@ -2926,6 +2926,8 @@ whatever shell is set as the default shell for the current user. Note that on
 macOS if you change this, you might need to add :code:`--login` and
 :code:`--interactive` to ensure that the shell starts in interactive mode and
 reads its startup rc files. Environment variables are expanded in this setting.
+To run every program in new windows, not just the shell, via a wrapper, such as
+inside a container, see :ref:`launch_wrapper`.
 """,
 )
 

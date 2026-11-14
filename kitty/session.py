@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from .cli_stub import CLIOptions, GotoSessionOptions, SaveAsSessionOptions
 from .constants import config_dir, unserialize_launch_flag
 from .fast_data_types import get_options
+from .launch_wrapper import LaunchRequest, user_launch_request
 from .layout.interface import all_layouts
 from .options.types import Options
 from .options.utils import MapType, resize_window, to_layout_names, window_size
@@ -236,7 +237,7 @@ def parse_session(
 
         for t in ans.tabs:
             if not t.windows:
-                t.windows.append(WindowSpec(SpecialWindow(cmd=resolved_shell(opts))))
+                t.windows.append(WindowSpec(SpecialWindow(cmd=resolved_shell(opts), launch_request=LaunchRequest('tab'))))
         return ans
 
     if environ is None:
@@ -372,7 +373,14 @@ def create_sessions(
         from kitty.tabs import SpecialWindow
 
         cwd: str | None = args.directory if respect_cwd and args else None
-        special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, env=env_when_no_session, hold=bool(args and args.hold))
+        special_window = SpecialWindow(
+            cmd,
+            cwd_from=cwd_from,
+            cwd=cwd,
+            env=env_when_no_session,
+            hold=bool(args and args.hold),
+            launch_request=user_launch_request('os-window', cwd_from),
+        )
     ans.add_special_window(special_window)
     yield ans
 

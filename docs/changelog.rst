@@ -142,6 +142,11 @@ Detailed list of changes
   and ``on_resize``/``on_focus_change`` calls are no longer dropped when many
   windows are created at once (:disc:`10828`, :iss:`10853`)
 
+- Allow running the programs in new windows via a wrapper command, such as to
+  open new windows inside the same container as the window they are opened
+  from, using a :file:`launch_wrapper.py` file in the kitty config directory,
+  see :ref:`launch_wrapper` (:iss:`10858`)
+
 - Sessions: Fix tabs and windows moved with :ac:`detach_tab`,
   :ac:`detach_window` or drag and drop losing their session. :ac:`save_as_session`
   no longer opens saved sessions in the wrong OS Window or tab and no longer
