@@ -521,6 +521,15 @@ load_glfw(const char* path) {
     *(void **) (&glfwCocoaSetWindowLevel_impl) = dlsym(handle, "glfwCocoaSetWindowLevel");
     if (glfwCocoaSetWindowLevel_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwCocoaAddWindowToTabGroup_impl) = dlsym(handle, "glfwCocoaAddWindowToTabGroup");
+    if (glfwCocoaAddWindowToTabGroup_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwCocoaCycleTabs_impl) = dlsym(handle, "glfwCocoaCycleTabs");
+    if (glfwCocoaCycleTabs_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwCocoaSetNewTabCallback_impl) = dlsym(handle, "glfwCocoaSetNewTabCallback");
+    if (glfwCocoaSetNewTabCallback_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwGetPrimarySelectionString_impl) = dlsym(handle, "glfwGetPrimarySelectionString");
     if (glfwGetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
 

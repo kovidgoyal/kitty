@@ -3331,14 +3331,28 @@ class Boss:
             return tm.set_active_tab(tab)
         return False
 
+    def _cycle_native_tab(self, delta: int) -> bool:
+        if not is_macos:
+            return False
+        from .fast_data_types import cocoa_cycle_native_tabs
+
+        tm = self.active_tab_manager_with_dispatch
+        if tm is None:
+            return False
+        return bool(cocoa_cycle_native_tabs(tm.os_window_id, int(delta)))
+
     @ac('tab', 'Make the next tab active')
     def next_tab(self) -> None:
+        if self._cycle_native_tab(1):
+            return
         tm = self.active_tab_manager_with_dispatch
         if tm is not None:
             tm.next_tab()
 
     @ac('tab', 'Make the previous tab active')
     def previous_tab(self) -> None:
+        if self._cycle_native_tab(-1):
+            return
         tm = self.active_tab_manager_with_dispatch
         if tm is not None:
             tm.next_tab(-1)
@@ -3567,9 +3581,42 @@ class Boss:
             args = args[1:]
         self._new_tab(args, as_neighbor=as_neighbor, cwd_from=cwd_from)
 
+    def _foreground_env(self, cwd_from: CwdRequest | None) -> dict[str, str] | None:
+        window = cwd_from.window if cwd_from is not None else None
+        if window is None:
+            return None
+        with suppress(Exception):
+            env = window.child.foreground_environ
+            if env:
+                return dict(env)
+        return None
+
+    def _new_native_tab(self, args: list[str], cwd_from: CwdRequest | None = None) -> None:
+        from .fast_data_types import add_os_window_to_native_tab_group
+
+        parent = current_focused_os_window_id() or last_focused_os_window_id()
+        if args and args[0].startswith('!'):
+            args = args[1:]
+        if cwd_from is None:
+            source = self.window_for_dispatch or self.active_window_for_cwd
+            cwd_from = CwdRequest(source) if source is not None else None
+        env = self._foreground_env(cwd_from)
+        if args:
+            sw = self.args_to_special_window(args, cwd_from=cwd_from)
+            if env:
+                sw = sw._replace(env={**env, **(sw.env or {})})
+        else:
+            sw = SpecialWindow(None, cwd_from=cwd_from, env=env)
+        new_id = self._new_os_window(sw, cwd_from=cwd_from)
+        if parent > 0 and new_id != parent:
+            add_os_window_to_native_tab_group(parent, new_id)
+
     @ac('tab', 'Create a new tab')
     def new_tab(self, *args: str) -> None:
-        self._create_tab(list(args))
+        if is_macos:
+            self._new_native_tab(list(args))
+        else:
+            self._create_tab(list(args))
 
     @ac(
         'tab',
@@ -3579,7 +3626,11 @@ class Boss:
     """,
     )
     def new_tab_with_cwd(self, *args: str) -> None:
-        self._create_tab(list(args), cwd_from=CwdRequest(self.window_for_dispatch or self.active_window_for_cwd))
+        cwd_from = CwdRequest(self.window_for_dispatch or self.active_window_for_cwd)
+        if is_macos:
+            self._new_native_tab(list(args), cwd_from=cwd_from)
+        else:
+            self._create_tab(list(args), cwd_from=cwd_from)
 
     def new_tab_with_wd(self, wd: str | list[str], str_is_multiple_paths: bool = False) -> None:
         if isinstance(wd, str):

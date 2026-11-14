@@ -1927,6 +1927,33 @@ filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned
     return 0;
 }
 
+static void
+cocoa_on_new_tab(void) {
+    set_cocoa_pending_action(NEW_TAB, NULL);
+}
+
+static PyObject *
+add_os_window_to_native_tab_group(PyObject UNUSED *self, PyObject *args) {
+    unsigned long long parent_id = 0, child_id = 0;
+    if (!PyArg_ParseTuple(args, "KK", &parent_id, &child_id)) return NULL;
+    OSWindow *parent = os_window_for_id(parent_id);
+    OSWindow *child = os_window_for_id(child_id);
+    if (!parent || !child || !parent->handle || !child->handle || !glfwCocoaAddWindowToTabGroup) Py_RETURN_NONE;
+    glfwCocoaAddWindowToTabGroup(parent->handle, child->handle);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+cocoa_cycle_native_tabs(PyObject UNUSED *self, PyObject *args) {
+    unsigned long long os_window_id = 0;
+    int delta = 0;
+    if (!PyArg_ParseTuple(args, "Ki", &os_window_id, &delta)) return NULL;
+    OSWindow *os_window = os_window_for_id(os_window_id);
+    if (!os_window || !os_window->handle || !glfwCocoaCycleTabs) Py_RETURN_FALSE;
+    if (glfwCocoaCycleTabs(os_window->handle, delta)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 static bool
 on_application_reopen(int has_visible_windows) {
     if (cocoa_yield_reopen_to_other_instance()) return false;
@@ -2820,6 +2847,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     if (ok) {
 #ifdef __APPLE__
         glfwSetCocoaURLOpenCallback(apple_url_open_callback);
+        if (glfwCocoaSetNewTabCallback) glfwCocoaSetNewTabCallback(cocoa_on_new_tab);
 #else
         glfwSetDrawTextFunction(draw_text_callback);
 #endif
@@ -4161,6 +4189,8 @@ static PyMethodDef module_methods[] = {
 #else
     {"cocoa_recreate_global_menu", (PyCFunction)py_recreate_global_menu, METH_NOARGS, ""},
     {"cocoa_clear_global_shortcuts", (PyCFunction)py_clear_global_shortcuts, METH_NOARGS, ""},
+    METHODB(add_os_window_to_native_tab_group, METH_VARARGS),
+    METHODB(cocoa_cycle_native_tabs, METH_VARARGS),
 #endif
     METHODB(cocoa_window_id, METH_O),
     METHODB(cocoa_hide_app, METH_NOARGS),

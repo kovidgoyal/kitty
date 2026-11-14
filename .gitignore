@@ -28,6 +28,7 @@ __pycache__/
 /.claude
 .DS_Store
 .cache
+/.audit/
 bypy/b
 bypy/virtual-machines.conf
 _codeql_detected_source_root

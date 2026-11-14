@@ -1948,6 +1948,7 @@ typedef bool (* GLFWhandleurlopen)(const char*);
 typedef void (* GLFWapplicationwillfinishlaunchingfun)(bool);
 typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
+typedef void (* GLFWcocoanewtabfun)(void);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
 typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, int, const char*);
@@ -2623,6 +2624,18 @@ GFW_EXTERN glfwCocoaPreserveDroppedFilePromises_func glfwCocoaPreserveDroppedFil
 typedef void (*glfwCocoaSetWindowLevel_func)(GLFWwindow*, const char*);
 GFW_EXTERN glfwCocoaSetWindowLevel_func glfwCocoaSetWindowLevel_impl;
 #define glfwCocoaSetWindowLevel glfwCocoaSetWindowLevel_impl
+
+typedef void (*glfwCocoaAddWindowToTabGroup_func)(GLFWwindow*, GLFWwindow*);
+GFW_EXTERN glfwCocoaAddWindowToTabGroup_func glfwCocoaAddWindowToTabGroup_impl;
+#define glfwCocoaAddWindowToTabGroup glfwCocoaAddWindowToTabGroup_impl
+
+typedef int (*glfwCocoaCycleTabs_func)(GLFWwindow*, int);
+GFW_EXTERN glfwCocoaCycleTabs_func glfwCocoaCycleTabs_impl;
+#define glfwCocoaCycleTabs glfwCocoaCycleTabs_impl
+
+typedef void (*glfwCocoaSetNewTabCallback_func)(GLFWcocoanewtabfun);
+GFW_EXTERN glfwCocoaSetNewTabCallback_func glfwCocoaSetNewTabCallback_impl;
+#define glfwCocoaSetNewTabCallback glfwCocoaSetNewTabCallback_impl
 
 typedef const char* (*glfwGetPrimarySelectionString_func)(GLFWwindow*);
 GFW_EXTERN glfwGetPrimarySelectionString_func glfwGetPrimarySelectionString_impl;
