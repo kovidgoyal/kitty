@@ -222,6 +222,9 @@ Detailed list of changes
   directory, like OSC 7, and ignore other ConEmu OSC 9 numeric sub-commands
   instead of showing them as desktop notifications
 
+- Fix an error instead of a helpful message when the configured :opt:`editor`
+  is not found while editing the config file (:iss:`10865`)
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

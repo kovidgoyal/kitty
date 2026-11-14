@@ -2719,13 +2719,13 @@ class Boss:
     def edit_file(self, path: str) -> None:
         editor_cmd = get_editor(get_options())
         exe = editor_cmd[0]
+        path = os.path.abspath(os.path.expanduser(path))
         if not os.path.isabs(exe):
             exe = which(exe) or ''
-            if not exe or not os.access(exe, os.X_OK):
-                self.show_error(_('Cannot find editor'), _('Could not edit the file {0} because the editor {1} was not found.').format(editor_cmd[0]))
-                return
-            editor_cmd[0] = exe
-        path = os.path.abspath(os.path.expanduser(path))
+        if not exe or not os.access(exe, os.X_OK):
+            self.show_error(_('Cannot find editor'), _('Could not edit the file {0} because the editor {1} was not found.').format(path, editor_cmd[0]))
+            return
+        editor_cmd[0] = exe
         self.new_os_window(*editor_cmd, path)
 
     def run_kitten_with_metadata(
