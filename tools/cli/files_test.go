@@ -102,6 +102,18 @@ func TestCompleteFiles(t *testing.T) {
 		}
 	}
 
+	// paths are resolved relative to the cwd passed in, such as the config directory, not the process cwd
+	cdir := t.TempDir()
+	os.Mkdir(filepath.Join(cdir, "sessions"), 0700)
+	os.WriteFile(filepath.Join(cdir, "sessions", "work.kitty-session"), nil, 0600)
+	for _, prefix := range []string{"sessions/", "sessions/w"} {
+		actual := []string{}
+		CompleteFiles(prefix, func(entry *FileEntry) { actual = append(actual, entry.CompletionCandidate) }, cdir)
+		if !reflect.DeepEqual(actual, []string{"sessions/work.kitty-session"}) {
+			t.Fatalf("Did not complete %#v relative to the cwd argument: %#v", prefix, actual)
+		}
+	}
+
 	// symlinks to directories are directories
 	os.Symlink(filepath.Join(tdir, "odir"), filepath.Join(tdir, "slink"))
 	c := NewCompletions()

@@ -16,13 +16,12 @@ import (
 
 var _ = fmt.Print
 
-func absolutize_path(path string) string {
+func absolutize_path(path, cwd string) string {
 	path = utils.Expanduser(path)
-	q, err := filepath.Abs(path)
-	if err == nil {
-		path = q
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(cwd, path)
 	}
-	return path
+	return filepath.Clean(path)
 }
 
 type FileEntry struct {
@@ -39,7 +38,7 @@ func CompleteFiles(prefix string, callback func(*FileEntry), cwd string) error {
 			return err
 		}
 	}
-	location := absolutize_path(prefix)
+	location := absolutize_path(prefix, cwd)
 	base_dir := ""
 	joinable_prefix := ""
 	switch prefix {
