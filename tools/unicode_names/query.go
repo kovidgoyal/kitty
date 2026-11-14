@@ -24,23 +24,23 @@ var names map[rune]string
 var marks []rune
 var word_map map[string][]uint16
 
-func add_word(codepoint uint16, word []byte) {
+func add_word(mark uint16, codepoint rune, word []byte) {
 	if codepoint <= 32 || codepoint == 127 || (128 <= codepoint && codepoint <= 159) || len(word) < 2 {
 		return
 	}
 	w := utils.UnsafeBytesToString(word)
-	word_map[w] = append(word_map[w], codepoint)
+	word_map[w] = append(word_map[w], mark)
 }
 
-func add_words(codepoint uint16, raw []byte) {
+func add_words(mark uint16, codepoint rune, raw []byte) {
 	for len(raw) > 0 {
 		idx := bytes.IndexByte(raw, ' ')
 		if idx < 0 {
-			add_word(codepoint, raw)
+			add_word(mark, codepoint, raw)
 			break
 		}
 		if idx > 0 {
-			add_word(codepoint, raw[:idx])
+			add_word(mark, codepoint, raw[:idx])
 		}
 		raw = raw[idx+1:]
 	}
@@ -54,9 +54,9 @@ func parse_record(record []byte, mark uint16) {
 	record = record[2:]
 	name := utils.UnsafeBytesToString(record[:namelen])
 	names[codepoint] = name
-	add_words(mark, record[:namelen])
+	add_words(mark, codepoint, record[:namelen])
 	if len(record) > int(namelen) {
-		add_words(mark, record[namelen:])
+		add_words(mark, codepoint, record[namelen:])
 	}
 }
 

@@ -133,6 +133,8 @@ Detailed list of changes
   :ac:`resize_window` action and :code:`kitten @ resize-window`, see :ref:`docks`
   (:iss:`10857`)
 
+- Unicode input kitten: Fix searching by name not finding some characters such as the pound sign (:iss:`10862`)
+
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders that shake
   a window on bell and new events and uniforms for command start/finish and
   alternate screen enter/exit
