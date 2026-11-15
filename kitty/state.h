@@ -881,6 +881,19 @@ bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *sc
 void setup_os_window_for_rendering(OSWindow *, Tab *, Window *, bool, monotonic_t);
 monotonic_t update_custom_shader_animations(ShaderAnimEventMask event_mask, monotonic_t now, OSWindow *os_window);
 void init_shader_animation_state(OSWindow *os_window);
+
+// Records an OS window focus change for the custom shader animation state
+// machine. The pending events are only consumed when the OS window is next
+// rendered, which can be much later, for instance, when the window is hidden
+// or occluded. So a focus change replaces any pending opposite focus change
+// rather than accumulating with it, as both together would be indistinguishable
+// from simultaneous events, where focus-out wins.
+static inline void
+record_os_window_focus_change_for_shaders(OSWindow *osw, bool focused) {
+    const ShaderAnimEventMask in = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN);
+    const ShaderAnimEventMask out = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
+    osw->shader_anim_event_registry = (osw->shader_anim_event_registry & ~(focused ? out : in)) | (focused ? in : out);
+}
 bool custom_shader_needs_render(const ShaderAnimState *before, const ShaderAnimState *after, ShaderAnimEventMask event_mask, monotonic_t now);
 void map_pointer_position(const OSWindow *os_window, double *x, double *y);
 void set_os_window_mouse_position(OSWindow *window, double x, double y);

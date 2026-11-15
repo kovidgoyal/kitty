@@ -168,6 +168,38 @@ class TestSlang(BaseTest):
         ]
         self.ae(simulate_custom_shader_animation(p, ticks), expected)
 
+    def test_custom_shader_focus_changes_between_frames(self):
+        # https://github.com/kovidgoyal/kitty/issues/10871 focus changes that
+        # happen before the OS window is next rendered, for instance, while it
+        # is hidden, must leave groups in the state for the final focus, rather
+        # than look like simultaneous focus-out and focus-in events
+        from kitty.fast_data_types import simulate_custom_shader_animation
+
+        lines = []
+        for spec in (
+            'animation_start os-window-focus-in\nanimation_stop os-window-focus-out',
+            'animation_start os-window-focus-out\nanimation_stop os-window-focus-in',
+            'animation_start window-focus-in|user-activity\nanimation_stop window-focus-out',
+        ):
+            lines.append('startgroup')
+            lines.extend(spec.splitlines())
+            lines.extend(('animation_step 0', 'shaders sample', 'endgroup'))
+        p = parse_pipeline_definition(lines, 'test')
+        focused, unfocused = (True, False, True), (False, True, False)
+        ticks: list[tuple[str, ...]] = [
+            ('focus:in',),
+            ('focus:out', 'focus:in'),  # hidden and shown again
+            ('focus:in', 'focus:out'),  # briefly focused while hidden
+            ('focus:in', 'focus:out', 'focus:in'),
+            ('focus:out', 'focus:in', 'focus:out'),
+            ('focus:in',),
+            # A start event in the same frame as focus out is a hard stop
+            ('focus:out', 'user-activity'),
+            ('user-activity',),
+        ]
+        expected = [focused, focused, unfocused, focused, unfocused, focused, unfocused, (False, True, True)]
+        self.ae(simulate_custom_shader_animation(p, ticks), expected)
+
     def test_custom_shader_animation_progress(self):
         from kitty.fast_data_types import simulate_custom_shader_animation
 
