@@ -759,7 +759,9 @@ csd_should_window_be_decorated(_GLFWwindow *window) {
 
 static bool
 ensure_csd_resources(_GLFWwindow *window) {
-    if (!window_is_csd_capable(window)) return false;
+    // Never create decorations for windows that should not have them, such
+    // as fullscreen windows, even if the stored state is stale
+    if (!csd_should_window_be_decorated(window)) return false;
     const bool has_titlebar = !decs.titlebar_hidden;
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool focus_changed = is_focused != decs.for_window_state.focused;
@@ -768,9 +770,16 @@ ensure_csd_resources(_GLFWwindow *window) {
         (decs.for_window_state.width != window->wl.width || decs.for_window_state.height != window->wl.height ||
          decs.for_window_state.fscale != current_scale || !decs.mapping.data ||
          (has_titlebar && decs.titlebar.buffer.viewport_height != decs.metrics.visible_titlebar_height));
-    const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
+    // The activated state is ignored as focus is tracked separately via
+    // keyboard focus, otherwise every focus change would render the
+    // decorations twice, once for keyboard focus and once for the configure
+    const uint32_t ignored_states = TOPLEVEL_STATE_ACTIVATED;
+    const bool state_changed = (decs.for_window_state.toplevel_states & ~ignored_states) != (window->wl.current.toplevel_states & ~ignored_states);
     const bool titlebar_state_changed = (has_titlebar && !decs.titlebar.surface) || (!has_titlebar && decs.titlebar.surface);
-    const bool needs_update = focus_changed || size_changed || titlebar_state_changed || state_changed;
+    // The surfaces are destroyed when the decorations are hidden, for example,
+    // when going fullscreen, without the state above changing
+    const bool surfaces_missing = !decs.shadow_top.surface;
+    const bool needs_update = focus_changed || size_changed || titlebar_state_changed || state_changed || surfaces_missing;
     debug(
         "CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d\n",
         decs.for_window_state.width,
@@ -864,6 +873,14 @@ csd_change_title(_GLFWwindow *window) {
         return true;
     }
     return false;
+}
+
+bool
+csd_handle_focus_change(_GLFWwindow *window) {
+    // Keyboard focus changes are not necessarily accompanied by a configure
+    // event, which is what usually causes the decorations to be re-rendered.
+    // Returns true if the window surface needs to be committed.
+    return ensure_csd_resources(window);
 }
 
 static void
