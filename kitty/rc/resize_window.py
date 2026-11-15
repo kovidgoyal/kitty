@@ -21,7 +21,10 @@ class ResizeWindow(RemoteCommand):
     """
 
     short_desc = 'Resize the specified windows'
-    desc = 'Resize the specified windows in the current layout. Note that not all layouts can resize all windows in all directions.'
+    desc = (
+        'Resize the specified windows in the current layout. Note that not all layouts can resize all windows in all directions.'
+        ' Docked windows are resized along the axis of their dock, with a positive increment making the dock bigger, whatever its edge.'
+    )
     options_spec = (
         MATCH_WINDOW_OPTION
         + """\n

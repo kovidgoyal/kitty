@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
+from math import ceil
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from kitty.fast_data_types import Region
+from kitty.boss import Boss
+from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import carve_docks, lgd, outer_region_of
 from kitty.layout.interface import Splits, Stack, Tall
 from kitty.tabs import DetachedGroup
 from kitty.tabs import Tab as RealTab
+from kitty.tabs import TabManager as RealTabManager
 from kitty.types import DockSpec, parse_dock_spec
 from kitty.window_list import WindowGroup, WindowList, reset_group_id_counter
 
@@ -25,10 +28,85 @@ class CountingWindow(Window):
     def __init__(self, win_id: int) -> None:
         super().__init__(win_id)
         self.set_geometry_calls = 0
+        self.tab = None
 
     def set_geometry(self, geometry):
         self.set_geometry_calls += 1
         super().set_geometry(geometry)
+
+    def change_tab(self, tab):
+        self.tab = tab
+
+
+class OSWindowTab:
+    "A tab in an OS window that can host the OS window docks"
+
+    def __init__(self, tm, tab_id, *window_ids):
+        self.id = tab_id
+        self.tm = tm
+        self.os_window_id = tm.os_window_id
+        self.current_layout = make_layout(Tall)
+        self.windows = WindowList(self, tm.os_window_docks)
+        for wid in window_ids:
+            self.current_layout.add_window(self.windows, CountingWindow(wid))
+        tm.tabs.append(self)
+
+    def __len__(self):
+        return len(self.windows)
+
+    def __iter__(self):
+        return iter(self.windows)
+
+    def tab_manager_ref(self):
+        return self.tm
+
+    name = cwd = created_in_session_name = ''
+    enabled_layouts = ('tall',)
+    _last_used_layout = None
+    _current_layout_name = ''
+    take_over_from = RealTab.take_over_from
+    os_window_docks_changed = RealTab.os_window_docks_changed
+    resize_window_by = RealTab.resize_window_by
+    resize_dock = RealTab.resize_dock
+    drag_resize_window = RealTab.drag_resize_window
+    drag_resize_target_windows = RealTab.drag_resize_target_windows
+    drag_resize_ended = RealTab.drag_resize_ended
+    reset_window_sizes = RealTab.reset_window_sizes
+
+    def mark_tab_bar_dirty(self):
+        pass
+
+    def active_window_changed(self):
+        pass
+
+    @property
+    def active_window(self):
+        return self.windows.active_window
+
+    def relayout(self):
+        self.current_layout(self.windows)
+
+
+class OSWindowTabManager:
+    os_window_docks_host = RealTabManager.os_window_docks_host
+    host_os_window_docks_in = RealTabManager.host_os_window_docks_in
+    park_os_window_docks = RealTabManager.park_os_window_docks
+    sync_os_window_docks = RealTabManager.sync_os_window_docks
+
+    def __init__(self, os_window_id=1):
+        self.os_window_id = os_window_id
+        self.os_window_docks = []
+        self._os_window_docks_host = None
+        self._os_window_docks_parked = False
+        self.tabs = []
+        self.active_tab = None
+        self.remove = Mock(side_effect=self.tabs.remove)
+
+    def __len__(self):
+        return len(self.tabs)
+
+    def __iter__(self):
+        return iter(self.tabs)
 
 
 def make_layout(cls):
@@ -52,6 +130,12 @@ def make_windows(layout, num=2):
 def add_dock(layout, windows, win_id, edge='bottom', size='1', focusable=True, owner=None):
     w = CountingWindow(win_id)
     layout.add_window(windows, w, dock=parse_dock_spec(edge, size, focusable), dock_owner=owner)
+    return w
+
+
+def add_os_window_dock(tab, win_id, edge='left', size='1', focusable=True):
+    w = CountingWindow(win_id)
+    tab.current_layout.add_window(tab.windows, w, dock=parse_dock_spec(edge, size, focusable), os_window_dock=True)
     return w
 
 
@@ -94,6 +178,7 @@ class TestDocks(BaseTest):
         spec = parse_dock_spec('right', '30%', False)
         self.ae(spec.as_launch_args('window'), ['--type=window-dock', '--dock-edge=right', '--dock-size=30%', '--dock-skip-focus'])
         self.ae(parse_dock_spec('top', '2').as_launch_args('tab'), ['--type=tab-dock', '--dock-edge=top', '--dock-size=2'])
+        self.ae(parse_dock_spec('left', '20%').as_launch_args('os-window'), ['--type=os-window-dock', '--dock-edge=left', '--dock-size=20%'])
 
     def test_carving(self):
         def dock(edge, size):
@@ -340,3 +425,408 @@ class TestDocks(BaseTest):
             boss.mark_window_for_close.assert_not_called()
             remove(windows.id_map[1])
             self.ae([c.args[0] for c in boss.mark_window_for_close.call_args_list], [tab_dock])
+
+    def test_os_window_docks(self):
+        reset_group_id_counter()
+        tm = OSWindowTabManager()
+        t1, t2 = OSWindowTab(tm, 101, 1, 2), OSWindowTab(tm, 102, 3)
+        c_calls = self.patch_c_calls()
+
+        def switch_to(tab):
+            tm.active_tab = tab
+            tm.sync_os_window_docks()
+
+        def region(w):
+            return rect(outer_region_of(w.geometry))
+
+        switch_to(t1)
+        self.assertTrue(t1.windows.hosts_os_window_docks)
+        self.assertFalse(t2.windows.hosts_os_window_docks)
+        with self.assertRaises(ValueError):
+            t2.current_layout.add_window(t2.windows, CountingWindow(99), dock=parse_dock_spec('left', '10%'), os_window_dock=True)
+        side = add_dock(t1.current_layout, t1.windows, 10, 'left', '10%')
+        t1.windows.remove_window(side)
+        side = CountingWindow(10)
+        t1.current_layout.add_window(t1.windows, side, dock=parse_dock_spec('left', '10%'), os_window_dock=True)
+        tab_dock = add_dock(t1.current_layout, t1.windows, 11, 'left', '3')
+        group = t1.windows.group_for_window(side)
+        self.ae(tm.os_window_docks, [group])
+        self.ae(group.as_simple_dict()['dock'], {'edge': 'left', 'size': '10%', 'focusable': True, 'scope': 'os-window'})
+        self.ae(t1.windows.group_for_window(tab_dock).as_simple_dict()['dock']['scope'], 'tab')
+        self.assertTrue(t1.windows.is_in_os_window_dock(side))
+        self.assertFalse(t1.windows.is_in_os_window_dock(tab_dock))
+        self.ae([w.id for w in t1.windows.iter_tab_windows()], [1, 2, 11])
+        # The OS window dock is outside the tab dock
+        t1.relayout()
+        self.ae(region(side), (0, 0, 100, 600))
+        self.ae(region(tab_dock), (100, 0, 100 + 3 * CELL_WIDTH + 2 * DECORATION, 600))
+        self.check_no_overlaps(t1.windows)
+        dock_geometry = side.geometry
+        # Every tab reserves the space for the OS window docks
+        t2.relayout()
+        self.ae(rect(lgd.central), (100, 0, 1000, 600))
+        self.assertNotIn(side, t2.windows)
+
+        # Neighbors
+        gid = {w.id: t1.windows.group_for_window(w).id for w in t1.windows}
+
+        def neighbors(tab, wid):
+            return {k: v for k, v in tab.current_layout.neighbors_for_any_window(tab.windows.id_map[wid], tab.windows).items() if v}
+
+        self.ae(neighbors(t1, 10), {'right': [gid[11]]})
+        self.ae(neighbors(t1, 11)['left'], [gid[10]])
+
+        # Focus the OS window dock and switch tabs, it moves to the new tab
+        t1.windows.set_active_window_group_for(side)
+        self.assertIs(t1.active_window, side)
+        switch_to(t2)
+        c_calls['move_window_to_tab'].assert_called_once_with(1, 101, 102, 10)
+        c_calls['set_active_window'].assert_called_once_with(1, 101, 2)
+        self.assertIs(side.tab, t2)
+        self.assertNotIn(side, t1.windows)
+        self.assertIn(side, t2.windows)
+        self.assertIs(t1.active_window, t1.windows.id_map[2])
+        # It does not take the focus in the new tab
+        self.assertIs(t2.active_window, t2.windows.id_map[3])
+        self.ae(side.geometry, dock_geometry)
+        self.assertTrue(side.is_visible_in_layout)
+        self.ae(neighbors(t2, 3)['left'], [t2.windows.group_for_window(side).id])
+        self.check_no_overlaps(t2.windows)
+        # The tab dock stays in its tab
+        self.assertIn(tab_dock, t1.windows)
+        self.ae([w.id for w in t2.windows], [3, 10])
+        self.ae([w.id for w in t2.windows.iter_tab_windows()], [3])
+        self.ae(list(t2.windows.hosted_os_window_docks()), tm.os_window_docks)
+        self.ae(list(t1.windows.hosted_os_window_docks()), [])
+
+        # A tab with only the OS window docks has no windows of its own
+        t2.windows.remove_window(t2.windows.id_map[3])
+        self.assertFalse(t2.windows.has_tab_windows)
+        self.assertTrue(t1.windows.has_tab_windows)
+
+        # Parking takes the docks out of all tabs, syncing puts them in the active tab
+        tm.park_os_window_docks(t1)
+        c_calls['detach_window'].assert_not_called()
+        tm.park_os_window_docks(t2)
+        c_calls['detach_window'].assert_called_once_with(1, 102, 10)
+        self.assertIsNone(tm.os_window_docks_host)
+        self.assertNotIn(side, t2.windows)
+        tm.active_tab = t1
+        tm.sync_os_window_docks()
+        c_calls['attach_window'].assert_called_once_with(1, 101, 10)
+        self.assertIs(side.tab, t1)
+        self.assertIn(side, t1.windows)
+        self.ae(side.geometry, dock_geometry)
+
+        # Closing the dock removes it from every tab
+        t1.windows.remove_window(side)
+        self.ae(tm.os_window_docks, [])
+        t2.relayout()
+        self.ae(rect(lgd.central), (0, 0, 1000, 600))
+
+    def test_cleanup_of_tab_with_only_os_window_docks(self):
+        reset_group_id_counter()
+        tm = OSWindowTabManager()
+        with patch('kitty.tabs.move_window_to_tab', return_value=True), patch('kitty.tabs.set_active_window'):
+            t1, t2 = OSWindowTab(tm, 101, 1), OSWindowTab(tm, 102, 2)
+            tm.active_tab = t1
+            tm.sync_os_window_docks()
+            dock = CountingWindow(10)
+            t1.current_layout.add_window(t1.windows, dock, dock=parse_dock_spec('top', '1'), os_window_dock=True)
+            boss = SimpleNamespace(shutting_down=False, mark_window_for_close=Mock(), mark_os_window_for_close=Mock())
+            cleanup = Boss._cleanup_tab_after_window_removal.__get__(boss)
+            t1.windows.remove_window(t1.windows.id_map[1])
+            t1.destroy = Mock()
+            # With other tabs present, the tab is removed and the docks move on
+            cleanup(t1)
+            tm.remove.assert_called_once_with(t1)
+            boss.mark_window_for_close.assert_not_called()
+            # In the last tab, the docks are closed first
+            tm.remove.reset_mock()
+            tm.active_tab = t2
+            tm.sync_os_window_docks()
+            t2.windows.remove_window(t2.windows.id_map[2])
+            cleanup(t2)
+            tm.remove.assert_not_called()
+            self.ae([c.args[0] for c in boss.mark_window_for_close.call_args_list], [dock])
+            t2.windows.remove_window(dock)
+            t2.destroy = Mock()
+            cleanup(t2)
+            tm.remove.assert_called_once_with(t2)
+            boss.mark_os_window_for_close.assert_called_once_with(1)
+
+    def test_moving_tab_to_other_os_window_keeps_docks(self):
+        reset_group_id_counter()
+        src, dest = OSWindowTabManager(1), OSWindowTabManager(2)
+        self.patch_c_calls()
+        moved, staying, target = OSWindowTab(src, 101, 1), OSWindowTab(src, 102, 2), OSWindowTab(dest, 201)
+        for tm, tab, wid in ((src, moved, 10), (dest, target, 20)):
+            tm.active_tab = tab
+            tm.sync_os_window_docks()
+            tab.current_layout.add_window(tab.windows, CountingWindow(wid), dock=parse_dock_spec('left', '5'), os_window_dock=True)
+        src_dock, dest_dock = src.os_window_docks[0], dest.os_window_docks[0]
+        # The source tab will be removed, so the docks go to the other tab
+        src.active_tab = staying
+        target.take_over_from(moved)
+        self.assertIs(target.windows.os_window_docks, dest.os_window_docks)
+        self.assertIs(moved.windows.os_window_docks, src.os_window_docks)
+        self.assertIs(staying.windows.os_window_docks, src.os_window_docks)
+        self.ae(src.os_window_docks, [src_dock])
+        self.ae(dest.os_window_docks, [dest_dock])
+        self.ae([w.id for w in target.windows], [1, 20])
+        self.ae([w.id for w in staying.windows], [2, 10])
+        self.ae([w.id for w in moved.windows], [])
+        self.assertIs(src.os_window_docks_host, staying)
+        self.assertIs(dest.os_window_docks_host, target)
+
+    def patch_c_calls(self):
+        c_calls = {name: Mock(return_value=True) for name in ('move_window_to_tab', 'attach_window', 'detach_window', 'set_active_window')}
+        patches = [patch(f'kitty.tabs.{name}', m) for name, m in c_calls.items()]
+        for p in patches:
+            p.start()
+        self.addCleanup(lambda: [p.stop() for p in patches])
+        return c_calls
+
+    def test_multiple_os_window_docks(self):
+        reset_group_id_counter()
+        tm = OSWindowTabManager()
+        c_calls = self.patch_c_calls()
+        t1, t2 = OSWindowTab(tm, 101, 1, 2), OSWindowTab(tm, 102, 3)
+        tm.active_tab = t1
+        tm.sync_os_window_docks()
+        outer_left = add_os_window_dock(t1, 10, 'left', '10%', focusable=False)
+        inner_left = add_os_window_dock(t1, 11, 'left', '5')
+        bottom = add_os_window_dock(t1, 12, 'bottom', '1')
+        tab_dock = add_dock(t1.current_layout, t1.windows, 13, 'left', '3')
+        dock_ids = [10, 11, 12]
+        self.ae([[w.id for w in g] for g in tm.os_window_docks], [[10], [11], [12]])
+        self.ae([g.dock_as_dict()['scope'] for g in t1.windows.iter_dock_groups()], ['tab', 'os-window', 'os-window', 'os-window'])
+
+        def region(w):
+            return rect(outer_region_of(w.geometry))
+
+        def neighbors(tab, wid):
+            return {k: v for k, v in tab.current_layout.neighbors_for_any_window(tab.windows.id_map[wid], tab.windows).items() if v}
+
+        def gid(tab, w):
+            return tab.windows.group_for_window(w).id
+
+        # Later docks at the same edge are inside earlier ones, the earlier
+        # docks span the full extent of their edge, the tab docks are inside all
+        # the OS window docks
+        t1.relayout()
+        self.ae(region(outer_left), (0, 0, 100, 600))
+        self.ae(region(inner_left), (100, 0, 100 + 5 * CELL_WIDTH + 2 * DECORATION, 600))
+        self.ae(region(bottom), (156, 600 - CELL_HEIGHT - 2 * DECORATION, 1000, 600))
+        self.ae(region(tab_dock), (156, 0, 156 + 3 * CELL_WIDTH + 2 * DECORATION, 574))
+        self.ae(rect(lgd.central), (192, 0, 1000, 574))
+        self.check_no_overlaps(t1.windows)
+        geometries = {wid: t1.windows.id_map[wid].geometry for wid in dock_ids}
+
+        # Neighbors chain from the OS window docks through the tab docks to
+        # the layout, skipping docks that cannot be focused
+        self.ae(neighbors(t1, 11), {'right': [gid(t1, tab_dock)]})
+        self.ae(neighbors(t1, 13)['left'], [gid(t1, inner_left)])
+        self.ae(neighbors(t1, 12), {'top': [t1.windows.active_main_group.id]})
+        self.ae(neighbors(t1, 1), {'right': [t1.windows.groups[1].id], 'left': [gid(t1, tab_dock)], 'bottom': [gid(t1, bottom)]})
+        # Focusable docks are numbered after the normal windows, the tab docks first
+        self.ae([w.id for n, w in t1.windows.iter_windows_with_number(only_visible=False)], [1, 2, 13, 11, 12])
+
+        # All the OS window docks move together, in order, and keep their geometry
+        tm.active_tab = t2
+        tm.sync_os_window_docks()
+        self.ae([c.args for c in c_calls['move_window_to_tab'].call_args_list], [(1, 101, 102, wid) for wid in dock_ids])
+        self.ae([w.id for w in t2.windows], [3] + dock_ids)
+        self.ae([w.id for w in t1.windows], [1, 2, 13])
+        self.ae({wid: t2.windows.id_map[wid].geometry for wid in dock_ids}, geometries)
+        self.assertTrue(all(t2.windows.id_map[wid].is_visible_in_layout for wid in dock_ids))
+        self.ae(rect(lgd.central), (156, 0, 1000, 574))
+        self.check_no_overlaps(t2.windows)
+        self.ae(neighbors(t2, 3), {'left': [gid(t2, inner_left)], 'bottom': [gid(t2, bottom)]})
+        self.ae(neighbors(t2, 11), {'right': [t2.windows.active_main_group.id]})
+
+        # Closing one of them gives its space to the others, in every tab
+        t2.windows.remove_window(inner_left)
+        self.ae([[w.id for w in g] for g in tm.os_window_docks], [[10], [12]])
+        t2.relayout()
+        self.ae(region(outer_left), (0, 0, 100, 600))
+        self.ae(region(bottom), (100, 574, 1000, 600))
+        self.ae(rect(lgd.central), (100, 0, 1000, 574))
+        t1.relayout()
+        self.ae(region(tab_dock), (100, 0, 136, 574))
+        self.ae(rect(lgd.central), (136, 0, 1000, 574))
+        self.check_no_overlaps(t1.windows)
+
+        # Moving back to the first tab moves the remaining docks
+        tm.active_tab = t1
+        tm.sync_os_window_docks()
+        self.ae([w.id for w in t1.windows], [1, 2, 13, 10, 12])
+        self.ae([w.id for w in t2.windows], [3])
+
+    def test_multiple_os_window_docks_shrink(self):
+        reset_group_id_counter()
+        tm = OSWindowTabManager()
+        self.patch_c_calls()
+        t1, t2 = OSWindowTab(tm, 101, 1), OSWindowTab(tm, 102, 2)
+        tm.active_tab = t1
+        tm.sync_os_window_docks()
+        top = add_os_window_dock(t1, 10, 'top', '90%')
+        bottom = add_os_window_dock(t1, 11, 'bottom', '50%')
+        tab_dock = add_dock(t1.current_layout, t1.windows, 12, 'top', '1')
+        t1.relayout()
+        # The docks created last are made smaller first, down to nothing for the
+        # tab docks and the layout
+        self.ae([outer_region_of(w.geometry).height for w in (top, bottom, tab_dock)], [540, 60, 0])
+        self.ae(lgd.central.height, 0)
+        # The same space is reserved in the other tab
+        t2.relayout()
+        self.ae(lgd.central.height, 0)
+        t1.windows.remove_window(top)
+        t2.relayout()
+        self.ae(rect(lgd.central), (0, 0, 1000, 300))
+
+    def test_resizing_docks(self):
+        reset_group_id_counter()
+        tm = OSWindowTabManager()
+        self.patch_c_calls()
+        t1, t2 = OSWindowTab(tm, 101, 1, 2), OSWindowTab(tm, 102, 3)
+        tm.active_tab = t1
+        tm.sync_os_window_docks()
+        windows = t1.windows
+        side = add_dock(t1.current_layout, windows, 10, 'left', '3')
+        status = add_dock(t1.current_layout, windows, 11, 'bottom', '1', focusable=False)
+        t1.relayout()
+        layout_state = t1.current_layout.layout_state()
+
+        def spec(w):
+            return windows.group_for_window(w).dock
+
+        def width(w):
+            return outer_region_of(w.geometry).width
+
+        def height(w):
+            return outer_region_of(w.geometry).height
+
+        # Docks resize along their axis only, wider means bigger whatever the edge
+        self.assertIsNone(t1.resize_window_by(side.id, 2, True))
+        self.ae(spec(side), DockSpec('left', 5, False, True))
+        self.ae(width(side), 5 * CELL_WIDTH + 2 * DECORATION)
+        self.assertIn('wider or narrower', t1.resize_window_by(side.id, 1, False))
+        self.assertIn('taller or shorter', t1.resize_window_by(status.id, 1, True))
+        self.assertIsNone(t1.resize_window_by(status.id, 2, False))
+        self.ae(spec(status).size, 3)
+        self.ae(height(status), 3 * CELL_HEIGHT + 2 * DECORATION)
+        # A dock keeps at least one cell
+        self.assertIsNone(t1.resize_window_by(side.id, -100, True))
+        self.ae(spec(side).size, 1)
+        self.ae(t1.resize_window_by(side.id, -1, True), 'Could not resize')
+        # and grows only into the content, which keeps space for at least one cell
+        self.assertIsNone(t1.resize_window_by(side.id, 1000, True))
+        self.ae(rect(lgd.central)[2] - rect(lgd.central)[0], 1000 - width(side))
+        self.assertGreaterEqual(1000 - width(side), CELL_WIDTH + 2 * DECORATION)
+        self.assertLess(1000 - width(side), 2 * CELL_WIDTH + 2 * DECORATION)
+        self.ae(t1.resize_window_by(side.id, 1, True), 'Could not resize')
+        self.check_no_overlaps(windows)
+        # Taking a fraction of the remaining steps
+        self.assertIsNone(t1.resize_window_by(side.id, -1, True, fraction=1))
+        self.ae(spec(side).size, 1)
+        possible_steps = (1000 - width(side) - 2 * DECORATION) // CELL_WIDTH - 1
+        self.assertIsNone(t1.resize_window_by(side.id, 1, True, fraction=0.5))
+        self.ae(spec(side).size, 1 + (possible_steps + 1) // 2)
+        # The increment is the size of the steps, the last one can be partial
+        self.assertIsNone(t1.resize_window_by(side.id, -100, True))
+        self.assertIsNone(t1.resize_window_by(side.id, 4, True, fraction=0.5))
+        self.ae(spec(side).size, 1 + 4 * ceil(ceil(possible_steps / 4) / 2))
+        self.assertIsNone(t1.resize_window_by(side.id, 40, True, fraction=1))
+        self.ae(spec(side).size, 1 + possible_steps)
+        # Fractional increments resize by at least a cell
+        self.assertIsNone(t1.resize_window_by(side.id, -0.5, True))
+        self.ae(spec(side).size, possible_steps)
+        # Resizing docks does not change the layout and resetting the layout does not change docks
+        self.ae(t1.current_layout.layout_state(), layout_state)
+        t1.current_layout.modify_size_of_window(windows, 1, 0.1)
+        self.assertNotEqual(t1.current_layout.layout_state(), layout_state)
+        docks = spec(side), spec(status)
+        t1.reset_window_sizes()
+        self.ae(t1.current_layout.layout_state(), layout_state)
+        self.ae((spec(side), spec(status)), docks)
+
+        self.assertIsNone(t1.resize_window_by(side.id, -100, True))
+        # A percentage stays a percentage, of the area docked into, and is
+        # resized in whole cells
+        right = add_dock(t1.current_layout, windows, 12, 'right', '20%', owner=windows.groups[1])
+        t1.relayout()
+        owner_width = outer_region_of(windows.groups[1].allocated_geometry).width
+        before = width(right)
+        self.assertIsNone(t1.resize_window_by(right.id, 1, True))
+        self.assertTrue(spec(right).size_is_percent)
+        cells = (before - 2 * DECORATION) // CELL_WIDTH + 1
+        self.ae(width(right), cells * CELL_WIDTH + 2 * DECORATION)
+        self.ae(int(owner_width * spec(right).size / 100), width(right))
+        # The new size is what is serialized
+        self.ae(parse_dock_spec('right', windows.group_for_window(right).as_simple_dict()['dock']['size']), spec(right))
+        self.check_no_overlaps(windows)
+
+        # Dragging the inner border of a dock
+        boss = SimpleNamespace(window_id_map={w.id: w for w in windows}, tab_for_id=lambda tab_id: t1, drag_resize_of_window=None)
+        for w in windows:
+            w.tabref = lambda: t1
+            w.pause_resize_notifications_to_child = lambda pause=True: None
+        t1.current_layout.drag_resize_target_windows = Mock(side_effect=AssertionError('docks are not part of the layout'))
+        start, update = Boss.drag_resize_start.__get__(boss), Boss.drag_resize_update.__get__(boss)
+        self.ae(spec(side).size, 1)
+        x = width(side)
+        self.assertTrue(start(RIGHT_EDGE, x, 300, side.id, CELL_WIDTH, CELL_HEIGHT))
+        update(x + 2.5 * CELL_WIDTH, 300)
+        self.ae(spec(side).size, 3)
+        update(x - 5 * CELL_WIDTH, 300)
+        self.ae(spec(side).size, 1)
+        # coming back out of the minimum keeps the border locked to the pointer
+        update(x + CELL_WIDTH, 300)
+        self.ae(spec(side).size, 2)
+        y = outer_region_of(status.geometry).top
+        size = spec(status).size
+        self.assertTrue(start(TOP_EDGE, 500, y, status.id, CELL_WIDTH, CELL_HEIGHT))
+        update(500, y - 2 * CELL_HEIGHT)
+        self.ae(spec(status).size, size + 2)
+        before = width(right)
+        self.assertTrue(start(LEFT_EDGE, 900, 100, right.id, CELL_WIDTH, CELL_HEIGHT))
+        update(900 - CELL_WIDTH, 100)
+        self.ae(width(right), ((before - 2 * DECORATION) // CELL_WIDTH + 1) * CELL_WIDTH + 2 * DECORATION)
+        t1.current_layout.drag_resize_target_windows.assert_not_called()
+
+        # Resizing an OS window dock changes the space reserved for it in every
+        # tab and does not shrink the tab docks of any tab
+        t1.current_layout.drag_resize_target_windows.reset_mock()
+        os_dock = add_os_window_dock(t1, 20, 'top', '1')
+        other_status = add_dock(t2.current_layout, t2.windows, 30, 'bottom', '10')
+        t1.relayout(), t2.relayout()
+        self.ae(rect(lgd.central)[1], CELL_HEIGHT + 2 * DECORATION)
+        self.assertIsNone(t1.resize_window_by(os_dock.id, 1, False))
+        self.ae(spec(os_dock).size, 2)
+        self.ae(rect(lgd.central)[1], 2 * CELL_HEIGHT + 2 * DECORATION)
+        self.ae(height(os_dock), 2 * CELL_HEIGHT + 2 * DECORATION)
+        status_height, other_status_height = height(status), height(other_status)
+        self.assertIsNone(t1.resize_window_by(os_dock.id, 1000, False))
+        t1.relayout()
+        self.ae(height(status), status_height)
+        t2.relayout()
+        self.ae(height(other_status), other_status_height)
+        self.assertGreaterEqual(rect(lgd.central)[3] - rect(lgd.central)[1], CELL_HEIGHT + 2 * DECORATION)
+        self.assertLess(rect(lgd.central)[3] - rect(lgd.central)[1], 2 * CELL_HEIGHT + 2 * DECORATION)
+        # Dragging it re-lays out the other tabs only once, when the drag ends
+        self.assertIsNone(t1.resize_window_by(os_dock.id, -1000, False))
+        boss.window_id_map[os_dock.id] = os_dock
+        os_dock.tabref = lambda: t1
+        os_dock.pause_resize_notifications_to_child = lambda pause=True: None
+        t2.relayout = Mock(side_effect=t2.relayout)
+        # The dock is at the top of the OS window, so its inner border is at its height
+        y = height(os_dock)
+        self.assertTrue(start(BOTTOM_EDGE, 500, y, os_dock.id, CELL_WIDTH, CELL_HEIGHT))
+        for i in range(1, 4):
+            update(500, y + i * CELL_HEIGHT)
+        self.ae(spec(os_dock).size, 4)
+        t2.relayout.assert_not_called()
+        Boss.drag_resize_end.__get__(boss)()
+        t2.relayout.assert_called_once()
+        t1.current_layout.drag_resize_target_windows.assert_not_called()

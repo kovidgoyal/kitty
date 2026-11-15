@@ -108,7 +108,7 @@ from .program_status import ProgramStatus
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, NeighborsMap, OverlayType, WindowGeometry, ac, run_once
+from .types import CloseEvent, MouseEvent, NeighborsMap, OverlayType, WindowGeometry, ac, run_once
 from .typing_compat import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int,
@@ -260,6 +260,12 @@ def process_title_from_child(title: memoryview, is_base64: bool, default_title: 
 
 
 @lru_cache(maxsize=64)
+def is_conemu_osc9_command(raw_data: str) -> bool:
+    # ConEmu uses OSC 9 with numeric sub-commands 1-12, for example: 9;9;path
+    # these must not be treated as iTerm2 style notifications
+    return re.match(r'(?:1[0-2]|[1-9])(?:;|$)', raw_data) is not None
+
+
 def compile_match_query(exp: str, is_simple: bool = True) -> MatchPatternType:
     if is_simple:
         pat: MatchPatternType = re.compile(exp)
@@ -358,6 +364,7 @@ class Watchers:
     on_focus_change: list[Watcher]
     on_set_user_var: list[Watcher]
     on_title_change: list[Watcher]
+    on_cwd_change: list[Watcher]
     on_cmd_startstop: list[Watcher]
     on_program_status_change: list[Watcher]
     on_color_scheme_preference_change: list[Watcher]
@@ -370,6 +377,7 @@ class Watchers:
         self.on_focus_change = []
         self.on_set_user_var = []
         self.on_title_change = []
+        self.on_cwd_change = []
         self.on_cmd_startstop = []
         self.on_program_status_change = []
         self.on_color_scheme_preference_change = []
@@ -387,6 +395,7 @@ class Watchers:
         merge(self.on_focus_change, others.on_focus_change)
         merge(self.on_set_user_var, others.on_set_user_var)
         merge(self.on_title_change, others.on_title_change)
+        merge(self.on_cwd_change, others.on_cwd_change)
         merge(self.on_cmd_startstop, others.on_cmd_startstop)
         merge(self.on_program_status_change, others.on_program_status_change)
         merge(self.on_color_scheme_preference_change, others.on_color_scheme_preference_change)
@@ -396,6 +405,7 @@ class Watchers:
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
         del self.on_set_user_var[:], self.on_title_change[:], self.on_cmd_startstop[:]
+        del self.on_cwd_change[:]
         del self.on_program_status_change[:]
         del self.on_color_scheme_preference_change[:]
         del self.on_tab_bar_dirty[:]
@@ -408,6 +418,7 @@ class Watchers:
         ans.on_focus_change = self.on_focus_change[:]
         ans.on_set_user_var = self.on_set_user_var[:]
         ans.on_title_change = self.on_title_change[:]
+        ans.on_cwd_change = self.on_cwd_change[:]
         ans.on_cmd_startstop = self.on_cmd_startstop[:]
         ans.on_program_status_change = self.on_program_status_change[:]
         ans.on_color_scheme_preference_change = self.on_color_scheme_preference_change[:]
@@ -424,6 +435,7 @@ class Watchers:
             or self.on_color_scheme_preference_change
             or self.on_set_user_var
             or self.on_title_change
+            or self.on_cwd_change
             or self.on_cmd_startstop
             or self.on_program_status_change
             or self.on_tab_bar_dirty
@@ -431,15 +443,52 @@ class Watchers:
         )
 
 
-def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
+class DeferredWatcherCalls:
+    """
+    Deliver watcher calls on the next main loop tick, in order, using a single
+    timer. Deferring prevents infinite recursion when a watcher causes the
+    event it is watching (for example, resizing in on_resize). Using a single
+    timer prevents bursts of events from exhausting the fixed size timer table.
+    Calls made during delivery are delivered in the next batch.
+    """
 
-    def callback(timer_id: int | None) -> None:
+    def __init__(self) -> None:
+        self.pending: list[tuple[Callable[[], Optional['Window']], str, dict[str, Any]]] = []
+        self.timer_id = 0
+
+    def __call__(self, windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
         w = windowref()
-        if w is not None:
-            watchers: list[Watcher] = getattr(w.watchers, which)
-            w.call_watchers(watchers, data)
+        if w is None or not getattr(w.watchers, which):
+            return
+        self.pending.append((windowref, which, data))
+        self.schedule()
 
-    add_timer(callback, 0, False)
+    def schedule(self) -> None:
+        if not self.timer_id and self.pending:
+            self.timer_id = add_timer(self.deliver, 0, False)
+            if not self.timer_id:
+                log_error(f'Failed to schedule delivery of {len(self.pending)} watcher calls, will retry on the next watched event')
+
+    def deliver(self, timer_id: int | None) -> None:
+        self.timer_id = 0
+        batch, self.pending = self.pending, []
+        delivered = 0
+        try:
+            for windowref, which, data in batch:
+                delivered += 1
+                w = windowref()
+                if w is not None:
+                    watchers: list[Watcher] = getattr(w.watchers, which)
+                    w.call_watchers(watchers, data)
+        finally:
+            if delivered < len(batch):
+                # An exception not handled by Window.call_watchers() interrupted
+                # delivery, requeue the remaining calls ahead of any new ones
+                self.pending[:0] = batch[delivered:]
+                self.schedule()
+
+
+call_watchers = DeferredWatcherCalls()
 
 
 class WindowCreationSpec(NamedTuple):
@@ -758,6 +807,8 @@ class Window:
     show_title_bar: bool = False  # must be set before calling set_geometry
     is_drag_target: bool = False  # highlight this window's title bar as a drop target
     child_died: bool = False
+    # Set when the user confirmed closing this window or its tab
+    close_confirmed: bool = False
     child_exit_status: int = 0
     child_exit_code: int = 0
 
@@ -951,6 +1002,14 @@ class Window:
         if tab is None:
             return None
         return tab.overlay_parent(self)
+
+    @property
+    def effective_session_name(self) -> str:
+        "The session this window belongs to: the one it was created in, or else the one its tab was created in"
+        if self.created_in_session_name:
+            return self.created_in_session_name
+        tab = self.tabref()
+        return '' if tab is None else tab.created_in_session_name
 
     @property
     def current_colors(self) -> dict[str, int | None | tuple[tuple[Color, float], ...]]:
@@ -1444,6 +1503,10 @@ class Window:
                 tab.update_progress()
             self.clear_progress_if_needed()
             return
+        if osc_code == 9 and is_conemu_osc9_command(raw_data):
+            # Other ConEmu OSC 9 sub-commands (9;9 cwd reporting is handled in the parser)
+            log_error(f'Ignoring unsupported ConEmu OSC 9 command: {raw_data[:64]!r}')
+            return
         get_boss().notification_manager.handle_notification_cmd(self.id, osc_code, raw_data)
 
     def clear_progress_if_needed(self, timer_id: int | None = None) -> None:
@@ -1634,6 +1697,14 @@ class Window:
         self.call_watchers(self.watchers.on_title_change, {'title': self.child_title, 'from_child': True})
         if self.override_title is None:
             self.title_updated()
+
+    def on_cwd_change(self, raw_url: bytes) -> None:
+        if self.watchers.on_cwd_change:
+            url = raw_url.decode('utf-8', 'replace')
+            host = ''
+            if url.startswith(('file://', 'kitty-shell-cwd://')):
+                host = url.partition('://')[2].partition('/')[0]
+            self.call_watchers(self.watchers.on_cwd_change, {'cwd': path_from_osc7_url(url), 'host': host})
 
     def osc_context(self, ctx_data: memoryview) -> None:
         pass  # this is systemd's useless OSC 3008 context protocol https://systemd.io/OSC_CONTEXT/
@@ -2224,10 +2295,12 @@ class Window:
 
                 traceback.print_exc()
 
-    def destroy(self) -> None:
+    def destroy(self, close_event: CloseEvent | None = None) -> None:
         from .remote_control import abort_active_streams_from
 
-        self.call_watchers(self.watchers.on_close, {})
+        if close_event is None:
+            close_event = {'reason': 'window', 'cause': 'closed', 'confirmed': self.close_confirmed}
+        self.call_watchers(self.watchers.on_close, dict(close_event))
         self.destroyed = True
         abort_active_streams_from(window_id=self.id)
         if self.clear_progress_timer:

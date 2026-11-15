@@ -18,6 +18,7 @@ from .types import run_once
 from .utils import cmdline_for_hold, log_error, resolved_shell, which
 
 if TYPE_CHECKING:
+    from .launch_wrapper import LaunchRequest
     from .window import CwdRequest
 
 
@@ -401,8 +402,10 @@ class Child:
         remote_control_fd: int = -1,
         hold_after_ssh: bool = False,
         startup_command_via_shell_integration: Sequence[str] | str = (),
+        launch_request: Optional['LaunchRequest'] = None,
     ):
         self.is_clone_launch = is_clone_launch
+        self.launch_request = launch_request
         self.id = next(child_counter)
         # Used to cache the root pid, see root_pid
         self.wrapper_children: dict[int, int] = {}
@@ -509,6 +512,7 @@ class Child:
         self.initial_termios_state = termios.tcgetattr(master)
         argv = list(self.argv)
         kitty_wrappers: list[KittyWrapper] = []
+        login_argv: list[str] = []
         cwd = self.cwd
         pass_fds = self.pass_fds
         if self.remote_control_fd > -1:
@@ -555,6 +559,20 @@ class Child:
                 kitty_wrappers.insert(0, KittyWrapper(tuple(login_argv), False))
         self.final_exe = final_exe = which(argv[0]) or argv[0]
         self.final_argv0 = argv[0]
+        if self.launch_request is not None:
+            from .launch_wrapper import prefix_for_launch
+
+            if user_prefix := prefix_for_launch(self.launch_request, self.argv, self.cwd, self.final_env):
+                # The user's wrapper goes inside /usr/bin/login, if present,
+                # but outside everything else, so that kitty's own helpers
+                # such as the run-shell kitten see the actual command.
+                pos = len(login_argv) if login_argv else 0
+                argv[pos:pos] = user_prefix
+                if pos == 0:
+                    final_exe = which(argv[0]) or argv[0]
+                # The wrapper either replaces itself with the command or runs
+                # it as a child, either way it is not the root process
+                kitty_wrappers.append(KittyWrapper(user_prefix, True))
         if self.hold:
             hold_argv = cmdline_for_hold()
             argv = hold_argv + argv

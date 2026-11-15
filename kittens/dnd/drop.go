@@ -810,6 +810,9 @@ func (dnd *dnd) drop_on_wakeup() error {
 }
 
 func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
+	if err = dnd.ensure_base_tempdir(); err != nil {
+		return nil, err
+	}
 	dnd.tdir_counter++
 	name := strconv.Itoa(dnd.tdir_counter)
 	return utils.CreateDirAt(dnd.base_tempdir, name, 0o700)

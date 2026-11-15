@@ -800,7 +800,7 @@ init_custom_programs(void) {
         // animations triggered by os-window-focus-in start on the first render
         // after shader compilation (the focus-in event fired before shaders were
         // compiled and was consumed without being processed).
-        if (osw->is_focused) { osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN); }
+        if (osw->is_focused) record_os_window_focus_change_for_shaders(osw, true);
     }
     debug_rendering(
         "Custom shaders: %zu program(s), %zu group(s), textures_mask=0x%x, initially_active=%d\n",
@@ -3981,7 +3981,27 @@ pysimulate_custom_shader_animation(PyObject *self UNUSED, PyObject *args) {
                 Py_CLEAR(ans);
                 break;
             }
-            update_custom_shader_animations(parse_anim_event_sequence(names, &custom_shaders.end), now, osw);
+            // focus:in and focus:out change OS window focus, as the GLFW focus
+            // callback does, before the tick's events are consumed, the way
+            // prepare_to_render_os_window() does
+            for (Py_ssize_t n = 0; n < PySequence_Fast_GET_SIZE(names); n++) {
+                PyObject *item = PySequence_Fast_GET_ITEM(names, n);
+                if (!PyUnicode_Check(item)) continue;
+                const char *name = PyUnicode_AsUTF8(item);
+                if (!name) {
+                    Py_CLEAR(ans);
+                    break;
+                }
+                const bool focus_in = strcmp(name, "focus:in") == 0;
+                if (focus_in || strcmp(name, "focus:out") == 0) {
+                    const bool focused = focus_in;
+                    if (osw->is_focused != focused) record_os_window_focus_change_for_shaders(osw, focused);
+                    osw->is_focused = focused;
+                }
+            }
+            if (!ans) break;
+            update_custom_shader_animations(parse_anim_event_sequence(names, &custom_shaders.end) | osw->shader_anim_event_registry, now, osw);
+            osw->shader_anim_event_registry = 0;
             RAII_PyObject(states, PyTuple_New(custom_shaders.end.num_groups));
             if (!states) {
                 Py_CLEAR(ans);

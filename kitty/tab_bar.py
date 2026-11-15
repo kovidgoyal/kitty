@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import math
 import os
 import re
 from collections.abc import Callable, Generator, Sequence
@@ -18,6 +19,7 @@ from .constants import config_dir, is_macos
 from .fast_data_types import (
     BOTTOM_EDGE,
     DECAWM,
+    EXTEND_CELL,
     LEFT_EDGE,
     LNM,
     RIGHT_EDGE,
@@ -819,6 +821,10 @@ class TabBar:
         self.left_edge_is_default = True
         self.right_edge_is_default = True
         self._last_viewport: tuple[Region, Region, int, int] | None = None
+        # (column, row, in left half of cell) of the start and end of a selection of text being dragged with the mouse
+        self.selection: tuple[tuple[int, int, bool], tuple[int, int, bool]] | None = None
+        # pixel position of the press that started the selection, until the mouse moves past drag_threshold
+        self.selection_press_position: tuple[float, float] | None = None
         self.apply_options()
 
     def apply_options(self) -> None:
@@ -998,6 +1004,7 @@ class TabBar:
         self.blank_rects = tuple(blank_rects)
 
     def layout(self) -> None:
+        self.cancel_selection()  # its cells mean nothing in another layout
         central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
         if self.is_vertical:
             if tab_bar.width < cell_width or tab_bar.height < cell_height:
@@ -1057,9 +1064,55 @@ class TabBar:
         if not self.laid_out_once:
             return False
         with caching_titles():
-            if self.is_vertical:
-                return self.update_vertical(data)
-            return self.update_horizontal(data)
+            ans = self.update_vertical(data) if self.is_vertical else self.update_horizontal(data)
+        self.apply_selection()  # redrawing erased it
+        return ans
+
+    def contains(self, x: float, y: float) -> bool:
+        g = self.window_geometry
+        return self.laid_out_once and g.left <= x < g.right and g.top <= y < g.bottom
+
+    def cell_at(self, x: float, y: float) -> tuple[int, int, bool]:
+        "The cell at the pixel position, clamped to the tab bar, and whether the position is in its left half"
+        g = self.window_geometry
+        x = min(max(x - g.left, 0), self.screen.columns * self.cell_width - 1)
+        y = min(max(y - g.top, 0), self.screen.lines * self.cell_height - 1)
+        return int(x // self.cell_width), int(y // self.cell_height), x % self.cell_width < self.cell_width / 2
+
+    def apply_selection(self) -> None:
+        if self.selection is not None:
+            (x, y, in_left_half_of_cell), end = self.selection
+            self.screen.start_selection(x, y, False, EXTEND_CELL, in_left_half_of_cell)
+            # not ended: ending a selection makes the selection of the active window the primary selection
+            self.screen.update_selection(*end, False)
+
+    def start_selection(self, x: float, y: float) -> None:
+        cell = self.cell_at(x, y)
+        self.selection = cell, cell
+        self.selection_press_position = x, y
+        self.apply_selection()
+
+    def update_selection(self, x: float, y: float) -> None:
+        if (p := self.selection_press_position) is not None:
+            # ignore jitter so that a click, as in a double click to open a new tab, selects nothing
+            if math.hypot(x - p[0], y - p[1]) <= get_options().drag_threshold:
+                return
+            self.selection_press_position = None
+        end = self.cell_at(x, y)
+        if self.selection is not None and end != self.selection[1]:
+            self.selection = self.selection[0], end
+            self.screen.update_selection(*end, False)
+
+    def finish_selection(self) -> str:
+        "Clear the selection, returning its text"
+        text = ''.join(self.screen.text_for_selection(False, get_options().strip_trailing_spaces != 'never'))
+        self.cancel_selection()
+        return text
+
+    def cancel_selection(self) -> None:
+        if self.selection is not None:
+            self.selection = self.selection_press_position = None
+            self.screen.clear_selection()
 
     def update_horizontal(self, data: Sequence[TabBarData]) -> bool:
         s = self.screen

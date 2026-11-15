@@ -1414,7 +1414,7 @@ func equalStringSlices(a, b []string) bool {
 	return true
 }
 
-// TestSetupBaseDirDetectsNameAliases verifies that setup_base_dir detects
+// TestSetupBaseDirDetectsNameAliases verifies that ensure_base_tempdir detects
 // whether the filesystem treats names differing in case or Unicode
 // normalization as aliases and leaves no probe files behind.
 func TestSetupBaseDirDetectsNameAliases(t *testing.T) {
@@ -1432,6 +1432,12 @@ func TestSetupBaseDirDetectsNameAliases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if d.base_tempdir != nil {
+		t.Fatal("base temporary directory created before it was needed")
+	}
+	if err = d.ensure_base_tempdir(); err != nil {
+		t.Fatal(err)
+	}
 	if d.is_case_sensitive_filesystem != want {
 		t.Errorf("is_case_sensitive_filesystem: got %v, want %v", d.is_case_sensitive_filesystem, want)
 	}
@@ -1441,5 +1447,33 @@ func TestSetupBaseDirDetectsNameAliases(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Errorf("probe files left in the base temporary directory: %v", entries)
+	}
+}
+
+// TestSetupBaseDirInUnwritableDir verifies that the kitten can start in a
+// directory that is not writable, failing only if a drop is attempted.
+func TestSetupBaseDirInUnwritableDir(t *testing.T) {
+	dest := t.TempDir()
+	if err := os.Chmod(dest, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dest, 0o700) })
+	if f, err := os.Create(filepath.Join(dest, "probe")); err == nil {
+		f.Close()
+		t.Skip("directory permissions are not enforced, probably running as root")
+	}
+	d := &dnd{}
+	if err := d.setup_base_dir(dest); err != nil {
+		t.Fatalf("setup_base_dir failed for unwritable directory: %v", err)
+	}
+	defer d.drop_output_dir.Close()
+	if d.base_tempdir != nil {
+		t.Fatal("base temporary directory created eagerly")
+	}
+	if _, err := d.new_tdir(); err == nil {
+		t.Fatal("creating a staging directory in an unwritable directory unexpectedly succeeded")
+	}
+	if err := d.remove_tdir(); err != nil {
+		t.Fatal(err)
 	}
 }

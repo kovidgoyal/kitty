@@ -4,6 +4,8 @@
 import os
 import subprocess
 import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from kitty.child import Child, KittyWrapper, children_of_process, cmdline_of_pid, cwd_of_process, memory_used_by_process_tree_rooted_at
 from kitty.constants import is_macos, kitty_exe
@@ -251,3 +253,102 @@ time.sleep(300)
             self.ae(c.root_pid, p.pid)
         finally:
             self._terminate_tree(p)
+
+
+class LaunchWrapperTest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.set_options({'shell_integration': frozenset({'disabled'})})
+        self.contexts = []
+
+    def tearDown(self):
+        from kitty.launch_wrapper import load_prefix_func
+
+        load_prefix_func.clear_override()
+        super().tearDown()
+
+    def _fork(self, argv=('/bin/prog', 'arg'), launch_request=None, hold=False, user_func=None):
+        # Fork a Child with spawning faked, returning the Child and the
+        # exe and argv that would have been spawned
+        from kitty import child as child_module
+        from kitty.launch_wrapper import load_prefix_func
+
+        load_prefix_func.set_override(user_func)
+        spawned = {}
+
+        def spawn(exe, cwd, argv, *a):
+            spawned['exe'], spawned['argv'] = exe, argv
+            return 1234567
+
+        boss = SimpleNamespace(encryption_public_key='key', listening_on='', window_id_map={})
+        c = Child(list(argv), '/', env={'KITTY_WINDOW_ID': '7'}, hold=hold, launch_request=launch_request)
+        with (
+            patch.object(child_module.fast_data_types, 'spawn', spawn),
+            patch.object(child_module.fast_data_types, 'get_boss', return_value=boss),
+            patch.object(child_module.fast_data_types, 'systemd_move_pid_into_new_scope', side_effect=NotImplementedError, create=True),
+        ):
+            c.fork()
+        os.close(c.child_fd)
+        c.child_fd = None
+        return c, spawned['exe'], spawned['argv']
+
+    def _recording(self, ans):
+        def func(ctx):
+            self.contexts.append(ctx)
+            if isinstance(ans, Exception):
+                raise ans
+            return ans
+
+        return func
+
+    def test_launch_wrapper(self):
+        from kitty.launch_wrapper import LaunchRequest
+
+        req = LaunchRequest('tab', None, (('a', 'b'),))
+        # Not a user launch, the wrapper is not called
+        c, exe, argv = self._fork(user_func=self._recording(['wrapper', '-x']))
+        self.ae(argv, ('/bin/prog', 'arg'))
+        self.ae(self.contexts, [])
+        self.ae(c.kitty_wrappers, ())
+        # No launch_wrapper.py
+        c, exe, argv = self._fork(launch_request=req)
+        self.ae(argv, ('/bin/prog', 'arg'))
+        # A prefix is applied, with the actual command still known to kitty
+        c, exe, argv = self._fork(launch_request=req, user_func=self._recording(['/bin/wrapper', '-x']))
+        self.ae(argv, ('/bin/wrapper', '-x', '/bin/prog', 'arg'))
+        self.ae(exe, '/bin/wrapper')
+        self.ae(c.argv, ['/bin/prog', 'arg'])
+        self.ae(c.final_exe, '/bin/prog')
+        self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper', '-x'), True),))
+        ctx = self.contexts[-1]
+        self.ae(ctx.argv, ('/bin/prog', 'arg'))
+        self.ae(ctx.cwd, '/')
+        self.ae(ctx.window_id, 7)
+        self.ae(ctx.launch_type, 'tab')
+        self.ae(ctx.source_window_id, None)
+        self.ae(ctx.source_pid, None)
+        self.ae(dict(ctx.user_vars), {'a': 'b'})
+        self.ae(ctx.env['KITTY_WINDOW_ID'], '7')
+        self.assertFalse(ctx.is_default_shell)
+        with self.assertRaises(TypeError):
+            ctx.env['x'] = 'y'
+        # The hold wrapper runs outside the user's wrapper
+        c, exe, argv = self._fork(launch_request=req, hold=True, user_func=self._recording(['/bin/wrapper']))
+        self.ae(argv[-2:], ('/bin/prog', 'arg'))
+        self.ae(argv[-3], '/bin/wrapper')
+        self.ae(c.kitty_wrappers[-1], KittyWrapper(('/bin/wrapper',), True))
+        self.ae(len(c.kitty_wrappers), 2)
+        self.ae(c.kitty_wrappers[0].argv, argv[: len(c.kitty_wrappers[0].argv)])
+        # Failures and invalid return values result in no prefix
+        from kitty import launch_wrapper
+
+        errors = []
+        with patch.object(launch_wrapper, 'log_error', lambda *a: errors.append(a)):
+            for bad in (ValueError('oops'), 'a string', ['ok', 1], 3):
+                c, exe, argv = self._fork(launch_request=req, user_func=self._recording(bad))
+                self.ae(argv, ('/bin/prog', 'arg'))
+                self.ae(c.kitty_wrappers, ())
+            for empty in (None, [], ()):
+                c, exe, argv = self._fork(launch_request=req, user_func=self._recording(empty))
+                self.ae(argv, ('/bin/prog', 'arg'))
+        self.ae(len(errors), 4)

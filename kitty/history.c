@@ -367,7 +367,7 @@ clear_multicell_cell(HistoryBuf *self, index_type lnum, index_type x) {
     init_line(self, index_of(self, lnum), self->line);
     CPUCell *c = self->line->cpu_cells + x;
     cell_set_char(c, 0);
-    c->is_multicell = false;
+    cell_clear_multicell(c);
     clear_sprite_position(self->line->gpu_cells[x]);
 }
 
@@ -382,9 +382,13 @@ historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
     CPUCell *cells = self->line->cpu_cells;
     self->count--;
     for (index_type x = 0; x < self->line->xnum; x++) {
-        CPUCell *c = cells + x;
-        if (c->is_multicell && c->y) {
-            for (index_type i = 0, pos = self->count; i < c->y && pos; i++, pos--) clear_multicell_cell(self, self->count - pos, x);
+        const CPUCell c = cells[x];
+        if (c.is_multicell && c.y) {
+            // the rows above, stopping at the first that does not continue the char, as it may be partial or torn
+            for (index_type lnum = 0; lnum < c.y && lnum < self->count; lnum++) {
+                if (!continues_multicell_char(cpu_lineptr(self, index_of(self, lnum)) + x, &c, c.y - 1 - lnum)) break;
+                clear_multicell_cell(self, lnum, x);
+            }
         }
     }
 }
@@ -404,7 +408,11 @@ historybuf_delete_lines(HistoryBuf *self, index_type num_newer, index_type count
         const CPUCell c = self->line->cpu_cells[x];
         if (c.is_multicell && c.y) {
             const index_type limit = MIN(oldest_deleted + c.y + 1, self->count);
-            for (index_type lnum = oldest_deleted + 1; lnum < limit; lnum++) clear_multicell_cell(self, lnum, x);
+            for (index_type lnum = oldest_deleted + 1; lnum < limit; lnum++) {
+                // stop at the first row that does not continue the char, as it may be partial or torn
+                if (!continues_multicell_char(cpu_lineptr(self, index_of(self, lnum)) + x, &c, c.y - (lnum - oldest_deleted))) break;
+                clear_multicell_cell(self, lnum, x);
+            }
             init_line(self, index_of(self, oldest_deleted), self->line);
         }
     }

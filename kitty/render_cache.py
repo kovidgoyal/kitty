@@ -13,6 +13,9 @@ from .utils import lock_file, unlock_file
 
 class ImageRenderCache:
     lock_file_name = '.lock'
+    # Max time to wait for the image conversion process. This runs on the
+    # main thread so it must not be allowed to block indefinitely.
+    conversion_timeout: float = 30.0
 
     def __init__(self, subdirname: str = 'rgba', max_entries: int = 32, cache_path: str = ''):
         self.subdirname = subdirname
@@ -69,9 +72,25 @@ class ImageRenderCache:
         import stat
         import subprocess
 
+        # Open with O_NONBLOCK so that opening a FIFO cannot block and then
+        # ensure we are reading from a regular file, so that the converter
+        # cannot be fed an infinite stream from things like /dev/zero
+        src_fd = os.open(src_path, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_NOCTTY', 0) | getattr(os, 'O_CLOEXEC', 0))
         try:
-            with open(src_path, 'rb') as src, open(output_path, 'wb', opener=partial(os.open, mode=stat.S_IREAD | stat.S_IWRITE)) as output:
-                cp = subprocess.run([kitten_exe(), '__convert_image__', 'RGBA'], stdin=src, stdout=output, stderr=subprocess.PIPE)
+            if not stat.S_ISREG(os.fstat(src_fd).st_mode):
+                raise ValueError(f'Cannot convert {src_path} to RGBA data as it is not a regular file')
+            os.set_blocking(src_fd, True)
+        except Exception:
+            os.close(src_fd)
+            raise
+        try:
+            with open(src_fd, 'rb') as src, open(output_path, 'wb', opener=partial(os.open, mode=stat.S_IREAD | stat.S_IWRITE)) as output:
+                try:
+                    cp = subprocess.run(
+                        [kitten_exe(), '__convert_image__', 'RGBA'], stdin=src, stdout=output, stderr=subprocess.PIPE, timeout=self.conversion_timeout
+                    )
+                except subprocess.TimeoutExpired as e:
+                    raise ValueError(f'Timed out converting {src_path} to RGBA data') from e
                 if cp.returncode != 0:
                     raise ValueError(f'Failed to convert {src_path} to RGBA data with error: {cp.stderr.decode("utf-8", "replace")}')
                 if output.seek(0, os.SEEK_END) < 8:
@@ -91,10 +110,13 @@ class ImageRenderCache:
             return width, height, os.dup(f.fileno())
 
     def render(self, src_path: str) -> str:
+        import stat
         import struct
         from hashlib import sha256
 
         src_info = os.stat(src_path)
+        if not stat.S_ISREG(src_info.st_mode):
+            raise ValueError(f'Cannot render {src_path} as it is not a regular file')
         output_name = sha256(struct.pack('@qqqq', src_info.st_dev, src_info.st_ino, src_info.st_size, src_info.st_mtime_ns)).hexdigest()
 
         with self:

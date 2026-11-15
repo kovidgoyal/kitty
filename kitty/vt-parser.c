@@ -589,6 +589,18 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
             break;
         case 8: dispatch_hyperlink(self, (char *)buf + i); break;
         case 9:
+            if (limit - i >= 2 && buf[i] == '9' && buf[i + 1] == ';') {
+                // ConEmu cwd reporting: OSC 9;9;path
+                i += 2;
+#ifdef DUMP_COMMANDS
+                START_DISPATCH
+                REPORT_OSC2(process_cwd_notification, code, mv);
+                END_DISPATCH_WITHOUT_BREAK
+#endif
+                process_cwd_notification(self->screen, code, (char *)buf + i, limit - i);
+                break;
+            }
+            /* fallthrough */
         case 99:
         case 777:
         case 1337:

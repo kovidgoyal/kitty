@@ -131,6 +131,11 @@ func (c ffmpeg_renderer) Render(path string) (m map[string][]byte, mi metadata, 
 	return
 }
 
+// CacheKeyExtra returns the video_preview settings the thumbnail is rendered with.
+func (c ffmpeg_renderer) CacheKeyExtra(string) string {
+	return fmt.Sprintf("%d:%d:%g:%d", video_width, video_fps, video_duration, video_encoding_quality)
+}
+
 func (c ffmpeg_renderer) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[FFMPEG_METADATA_KEY])
 	if err != nil {
@@ -149,7 +154,7 @@ func (c ffmpeg_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 			offset += h.render_wrapped_text_in_region(text, s.x, s.y+offset, s.width, s.height-offset, center)
 		}
 	}
-	ext := filepath.Ext(s.abspath)
+	ext := sanitize_name(filepath.Ext(s.abspath))
 	text := fmt.Sprintf("%s: %s", ext, humanize.Bytes(uint64(s.metadata.Size())))
 	r := s.custom_metadata.custom.(*FFMpegMetadata)
 	icon := icons.IconForPath(s.abspath)

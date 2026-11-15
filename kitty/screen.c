@@ -246,6 +246,10 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
     if (is_hard_reset) {
         linebuf_clear(self->linebuf, BLANK_CHAR);
         historybuf_clear(self->historybuf);
+        linebuf_clear(self->alt_linebuf, BLANK_CHAR);
+        // all buffers are now empty
+        self->multiline_chars_used = false;
+        zero_at_ptr(&self->multiline_chars_cut_off_at_bottom);
         self->last_visited_prompt.is_set = false;
         self->scrolled_by = 0;
         self->pixel_scroll_offset_y = 0;
@@ -537,35 +541,55 @@ static void
 nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit, char_type ch) {
     for (index_type x = start; x < x_limit; x++) {
         cell_set_char(cp + x, ch);
-        cp[x].is_multicell = false;
+        cell_clear_multicell(cp + x);
         clear_sprite_position(gp[x]);
     }
 }
 
+typedef struct MulticellRows {
+    int start, limit;
+} MulticellRows;
+
+static MulticellRows
+multicell_char_rows(Screen *self, index_type x, index_type y) {
+    // The rows [start, limit) occupied by the multicell char that has a cell
+    // at (x, y), negative rows are in the history buffer. Multiline chars can
+    // be partial, with some of their rows scrolled off the screen or out of
+    // the history buffer, or torn, with some of their rows replaced by
+    // unrelated lines. So rather than trusting the y and scale of the cell,
+    // only the adjacent rows that actually continue the char are included.
+    const CPUCell ref = linebuf_cpu_cells_for_line(self->linebuf, y)[x];
+    MulticellRows ans = {.start = (int)y, .limit = (int)y + 1};
+    if (!ref.is_multicell) return ans;
+    const int min_y = self->linebuf == self->main_linebuf ? -(int)self->historybuf->count : 0;
+    for (int r = (int)y - 1, ry = (int)ref.y - 1; ry >= 0 && r >= min_y; r--, ry--) {
+        if (!continues_multicell_char(range_line_(self, r)->cpu_cells + x, &ref, ry)) break;
+        ans.start = r;
+    }
+    for (index_type r = y + 1, ry = ref.y + 1u; ry < ref.scale && r < self->lines; r++, ry++) {
+        if (!continues_multicell_char(linebuf_cpu_cells_for_line(self->linebuf, r) + x, &ref, ry)) break;
+        ans.limit = (int)r + 1;
+    }
+    return ans;
+}
+
+static void
+mark_range_line_dirty(Screen *self, int y) {
+    if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
+    else historybuf_mark_line_dirty(self->historybuf, -(y + 1));
+}
+
 static void
 nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
-    CPUCell *cp;
-    GPUCell *gp;
-    linebuf_init_cells(self->linebuf, y_, &cp, &gp);
-    index_type num_lines_above = cp[x_].y;
-    index_type y_max_limit = MIN(self->lines, y_ + cp[x_].scale - num_lines_above);
+    const MulticellRows rows = multicell_char_rows(self, x_, y_);
+    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y_);
     while (cp[x_].x && x_ > 0) x_--;
-    index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
-    char_type ch = replace_with_spaces ? ' ' : 0;
-    for (index_type y = y_; y < y_max_limit; y++) {
-        linebuf_init_cells(self->linebuf, y, &cp, &gp);
-        nuke_in_line(cp, gp, x_, x_limit, ch);
-        linebuf_mark_line_dirty(self->linebuf, y);
-    }
-    int y_min_limit = -1;
-    if (self->linebuf == self->main_linebuf) y_min_limit = -(self->historybuf->count + 1);
-    for (int y = (int)y_ - 1; y > y_min_limit && num_lines_above; y--, num_lines_above--) {
+    const index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
+    const char_type ch = replace_with_spaces ? ' ' : 0;
+    for (int y = rows.start; y < rows.limit; y++) {
         Line *line = range_line_(self, y);
-        cp = line->cpu_cells;
-        gp = line->gpu_cells;
-        nuke_in_line(cp, gp, x_, x_limit, ch);
-        if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
-        else historybuf_mark_line_dirty(self->historybuf, -(y + 1));
+        nuke_in_line(line->cpu_cells, line->gpu_cells, x_, x_limit, ch);
+        mark_range_line_dirty(self, y);
     }
     self->is_dirty = true;
 }
@@ -580,6 +604,69 @@ nuke_multiline_char_intersecting_with(Screen *self, index_type x_start, index_ty
             if (cp[x].is_multicell && cp[x].scale > 1) nuke_multicell_char_at(self, x, y, replace_with_spaces);
         }
     }
+}
+
+static bool *
+multiline_chars_cut_off_at_bottom(Screen *self) {
+    return self->multiline_chars_cut_off_at_bottom + (self->linebuf == self->alt_linebuf ? 1 : 0);
+}
+
+static void
+nuke_multiline_chars_extending_below(Screen *self, index_type bottom) {
+    // Remove chars extending below the line bottom when a new line is about to come in below it, tearing
+    // them. When bottom is the last line of the screen these are chars cut off at the bottom of the screen.
+    bool *cut_off = multiline_chars_cut_off_at_bottom(self);
+    const bool at_screen_bottom = bottom + 1 >= self->lines;
+    if (at_screen_bottom && !*cut_off) return;
+    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, bottom);
+    if (cells_have_multiline_chars(cp, self->columns)) {
+        for (index_type x = 0; x < self->columns; x++) {
+            if (cp[x].is_multicell && cp[x].y + 1u < cp[x].scale) nuke_multicell_char_at(self, x, bottom, false);
+        }
+    }
+    if (at_screen_bottom) *cut_off = false;
+}
+
+static void
+nuke_multiline_chars_torn_by_scroll(Screen *self, index_type top, index_type bottom, bool up, bool history_adjoins_top) {
+    // Scrolling the region [top, bottom] moves its lines by one, removing the line
+    // at one edge and bringing a new line in at the other. Multiline chars
+    // that end up cut off at the edge of the screen (or of the history buffer)
+    // are left alone, they are partially scrolled off and are rendered as
+    // such. Chars that would end up torn, with the rows adjacent to the
+    // remaining part of the char being from unrelated lines, are removed.
+    // history_adjoins_top must be true when the line removed from (up) or
+    // brought into (down) the top of the region is moved into or out of the
+    // history buffer.
+    if (!self->multiline_chars_used || top >= bottom || bottom >= self->lines) return;
+#define has_multiline(y) cells_have_multiline_chars(linebuf_cpu_cells_for_line(self->linebuf, y), self->columns)
+    if (up) {
+        // The top line is removed. This cuts chars at the edge of the screen
+        // only if there is nothing above it, i.e. on the alternate screen.
+        // On the main screen, the line above the screen is the newest
+        // history line.
+        const bool at_edge = top == 0 && (history_adjoins_top || self->linebuf == self->alt_linebuf);
+        if (!at_edge && has_multiline(top)) nuke_multiline_char_intersecting_with(self, 0, self->columns, top, top + 1, false);
+        // A new line comes in at the bottom
+        nuke_multiline_chars_extending_below(self, bottom);
+    } else {
+        // The bottom line is removed, cutting chars at the edge of the screen
+        // if it is the last line of the screen. Rather than scanning for such
+        // chars here, the flag is set unconditionally, the next scroll up scans
+        // for them once and clears it.
+        if (bottom + 1 < self->lines) {
+            if (has_multiline(bottom)) nuke_multiline_char_intersecting_with(self, 0, self->columns, bottom, bottom + 1, false);
+        } else *multiline_chars_cut_off_at_bottom(self) = true;
+        // A new line comes in at the top, tearing chars that extend above the
+        // top line unless the new line is the history line above the top line
+        if (!(top == 0 && history_adjoins_top) && has_multiline(top)) {
+            const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, top);
+            for (index_type x = 0; x < self->columns; x++) {
+                if (cp[x].is_multicell && cp[x].y > 0) nuke_multicell_char_at(self, x, top, false);
+            }
+        }
+    }
+#undef has_multiline
 }
 
 static void
@@ -620,9 +707,12 @@ nuke_incomplete_single_line_multicell_chars_in_range(Screen *self, index_type st
     linebuf_init_cells(self->linebuf, y, &cpu_cells, &gpu_cells);
     for (index_type x = start; x < limit; x++) {
         if (cpu_cells[x].is_multicell) {
-            index_type mcd_x_limit = x + cpu_cells[x].width - cpu_cells[x].x;
-            if (cpu_cells[x].x || mcd_x_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(mcd_x_limit, limit), replace_with_spaces ? ' ' : 0);
-            x = mcd_x_limit - 1;
+            // The end of the char, at least x + 1, so that the loop always makes
+            // progress, even for fragments of chars whose first cell is missing
+            const index_type w = mcd_x_limit(cpu_cells + x);
+            const index_type char_limit = x + (w > cpu_cells[x].x ? w - cpu_cells[x].x : 1);
+            if (cpu_cells[x].x || char_limit > limit) nuke_in_line(cpu_cells, gpu_cells, x, MIN(char_limit, limit), replace_with_spaces ? ' ' : 0);
+            x = char_limit - 1;
         }
     }
 }
@@ -696,10 +786,17 @@ preserve_blank_output_start_line(Cursor *cursor, LineBuf *linebuf) {
 
 static void
 remove_blank_output_line_reservation_marker(Cursor *cursor, LineBuf *linebuf) {
+    // The cursor was moved past the marker, so the marker is just before it.
+    // It is not necessarily at the start of the line, as rewrap places it
+    // after the lower rows of multiline chars from the lines above.
     if (cursor->y < linebuf->ynum) {
-        linebuf_init_line(linebuf, cursor->y);
-        cell_set_char(linebuf->line->cpu_cells, 0);
-        cursor->x = 0;
+        CPUCell *cells = linebuf_cpu_cells_for_line(linebuf, cursor->y);
+#define is_marker(x) (!cells[x].is_multicell && cell_is_char(cells + (x), '<'))
+        index_type x = cursor->x ? MIN(cursor->x, linebuf->xnum) - 1 : 0;
+        if (!is_marker(x)) x = 0;
+        if (is_marker(x)) cell_set_char(cells + x, 0);
+#undef is_marker
+        cursor->x = x;
     }
 }
 
@@ -799,6 +896,9 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         const unsigned int top = 0, bottom = self->lines - 1;
         Savepoint *sp = is_main ? &self->main_savepoint : &self->alt_savepoint;
         while (self->cursor->y + 1 < self->lines && self->lines - self->cursor->y > lines_after_cursor_before_resize) {
+            if (!self->historybuf->count) break;
+            // must be done before popping the history line
+            nuke_multiline_chars_torn_by_scroll(self, top, bottom, false, true);
             if (!historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) break;
             INDEX_DOWN(true);
             linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
@@ -1095,35 +1195,28 @@ insert_characters(Screen *self, index_type at, index_type num, index_type y, boo
     nuke_split_multicell_char_at_right_boundary(self, self->columns - 1, y, replace_with_spaces);
 }
 
-static bool
+static void
 halve_multicell_width(Screen *self, index_type x_, index_type y_) {
-    CPUCell *cp;
-    GPUCell *gp;
-    linebuf_init_cells(self->linebuf, y_, &cp, &gp);
-    int y_min_limit = -1;
-    if (self->linebuf == self->main_linebuf) y_min_limit = -(self->historybuf->count + 1);
-    int expected_y_min_limit = ((int)y_) - cp[x_].scale;
-    if (expected_y_min_limit < y_min_limit) return false;
-    y_min_limit = expected_y_min_limit;
-    unsigned new_width = cp[x_].width / 2;
+    const MulticellRows rows = multicell_char_rows(self, x_, y_);
+    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y_);
+    const unsigned new_width = cp[x_].width / 2;
     while (cp[x_].x && x_ > 0) x_--;
     const index_type ws = mcd_x_limit(&cp[x_]);
     const index_type x_limit = MIN(self->columns, x_ + ws);
     const index_type half_x_limit = MIN(self->columns, x_ + ws / 2);
-    int y_max_limit = MIN(self->lines, y_ + cp[x_].scale);
-    for (int y = y_min_limit + 1; y < y_max_limit; y++) {
+    for (int y = rows.start; y < rows.limit; y++) {
         Line *line = range_line_(self, y);
-        cp = line->cpu_cells;
-        gp = line->gpu_cells;
-        for (index_type x = x_; x < half_x_limit; x++) cp[x].width = new_width;
+        CPUCell *c = line->cpu_cells;
+        GPUCell *g = line->gpu_cells;
+        for (index_type x = x_; x < half_x_limit; x++) c[x].width = new_width;
         for (index_type x = half_x_limit; x < x_limit; x++) {
-            cp[x] = (CPUCell){0};
-            clear_sprite_position(gp[x]);
+            // preserve the soft wrap marker, which lives in the last cell of the line
+            c[x] = (CPUCell){.next_char_was_wrapped = c[x].next_char_was_wrapped};
+            clear_sprite_position(g[x]);
         }
-        if (y > -1) linebuf_mark_line_dirty(self->linebuf, y);
+        mark_range_line_dirty(self, y);
     }
     self->is_dirty = true;
-    return true;
 }
 
 void
@@ -1184,6 +1277,8 @@ add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
     if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return false; // don't allow adding combining chars to a null cell
     text_in_cell(cell, self->text_cache, self->lc);
     if (self->lc->count >= MAX_NUM_CODEPOINTS_PER_CELL) return false; // don't allow too many combining chars to prevent DoS attacks
+    // must be computed before the char is changed
+    const MulticellRows rows = cell->is_multicell ? multicell_char_rows(self, x, y) : (MulticellRows){0};
     ensure_space_for_chars(self->lc, self->lc->count + 1);
     self->lc->chars[self->lc->count++] = ch;
     cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
@@ -1192,7 +1287,8 @@ add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
         char_type ch_and_idx = cell->ch_and_idx;
         while (cell->x && x) cell = cpu_cells + --x;
         index_type x_limit = MIN(x + mcd_x_limit(cell), self->columns);
-        for (index_type v = y; v < y + cell->scale; v++) {
+        // the cell has y == 0 so rows.start == y, the lower rows can be cut off at the bottom of the screen
+        for (int v = rows.start; v < rows.limit; v++) {
             cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, v);
             for (index_type h = x; h < x_limit; h++) cpu_cells[h].ch_and_idx = ch_and_idx;
             linebuf_mark_line_dirty(self->linebuf, v);
@@ -1205,56 +1301,80 @@ add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
 static bool
 has_multiline_cells_in_span(const CPUCell *cells, const index_type start, const index_type count) {
     for (index_type x = start; x < start + count; x++)
-        if (cells[x].y) return true;
+        if (cells[x].is_multicell && cells[x].y) return true;
     return false;
+}
+
+static void
+nuke_multicell_chars_in_span(Screen *self, index_type start, index_type count) {
+    // Remove all multicell chars intersecting the span of count cells at start
+    // in the cursor line, so that the span can be overwritten without tearing them
+    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y);
+    for (index_type x = start; x < start + count; x++) {
+        if (cp[x].is_multicell) nuke_multicell_char_at(self, x, self->cursor->y, cp[x].x != 0);
+    }
+}
+
+static bool
+linefeed_moves_to_new_line(const Screen *self) {
+    // A linefeed scrolls when the cursor is on the bottom margin and otherwise
+    // moves the cursor down, unless it is on the last line, below the bottom margin
+    return self->cursor->y == self->margin_bottom || self->cursor->y + 1 < self->lines;
 }
 
 static bool
 move_cursor_past_multicell(Screen *self, index_type required_width) {
+    // Move the cursor to the first place at or after it where there are
+    // required_width cells free of the lower rows of multiline chars, removing
+    // any other multicell chars in those cells.
     if (required_width > self->columns) return false;
-    index_type orig_x = self->cursor->x, orig_y = self->cursor->y;
     while (true) {
         CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y);
         while (self->cursor->x + required_width <= self->columns) {
             if (!has_multiline_cells_in_span(cp, self->cursor->x, required_width)) {
-                if (cp[self->cursor->x].is_multicell) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, cp[self->cursor->x].x != 0);
+                nuke_multicell_chars_in_span(self, self->cursor->x, required_width);
                 return true;
             }
             self->cursor->x++;
         }
-        if (self->modes.mDECAWM || has_multiline_cells_in_span(cp, self->columns - required_width, required_width)) {
+        if ((self->modes.mDECAWM || has_multiline_cells_in_span(cp, self->columns - required_width, required_width)) && linefeed_moves_to_new_line(self)) {
             continue_to_next_line(self);
         } else {
+            // Either there is no auto wrap or there is no new line to move to,
+            // as the cursor is on the last line below the bottom margin, so
+            // make space at the end of the line
             self->cursor->x = self->columns - required_width;
-            if (cp[self->cursor->x].is_multicell) nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, cp[self->cursor->x].x != 0);
+            nuke_multicell_chars_in_span(self, self->cursor->x, required_width);
             return true;
         }
     }
-    self->cursor->x = orig_x;
-    self->cursor->y = orig_y;
-    return false;
 }
 
 static void
 move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell *cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
     index_type before = self->cursor->y;
+    // Remove the char from its current cell before moving it, so that it is
+    // not removed as a multicell char in the way and the cells it is moved to
+    // can include its current cell
+    const CPUCell c = *cpu_cell;
+    GPUCell g = *gpu_cell;
+    *cpu_cell = (CPUCell){0};
+    *gpu_cell = (GPUCell){0};
     self->cursor->x = xpos;
     self->cursor->y = ypos;
     if (move_cursor_past_multicell(self, 2)) {
         CPUCell *cp;
         GPUCell *gp;
-        clear_sprite_position(*gpu_cell);
+        clear_sprite_position(g);
         linebuf_init_cells(self->linebuf, self->cursor->y, &cp, &gp);
-        cp[self->cursor->x] = *cpu_cell;
-        gp[self->cursor->x] = *gpu_cell;
+        cp[self->cursor->x] = c;
+        gp[self->cursor->x] = g;
         self->cursor->x++;
-        cp[self->cursor->x] = *cpu_cell;
-        gp[self->cursor->x] = *gpu_cell;
+        cp[self->cursor->x] = c;
+        gp[self->cursor->x] = g;
         cp[self->cursor->x].x = 1;
         self->cursor->x++;
     }
-    *cpu_cell = (CPUCell){0};
-    *gpu_cell = (GPUCell){0};
     if (self->cursor->y == before) init_segmentation_state(self, s);
     else init_text_loop_line(self, s);
 }
@@ -1310,11 +1430,17 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
         // matching how VS16 and Thai/Lao SARA AM leave such cells alone.
         if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->natural_width && cpu_cell->width == 2 &&
             is_emoji_presentation_base(self->lc->chars[base_pos])) {
-            index_type deltax = (cpu_cell->scale * cpu_cell->width) / 2;
-            if (halve_multicell_width(self, xpos, s->prev.y)) {
-                self->cursor->x -= deltax;
-                init_segmentation_state(self, s);
+            const index_type old_limit = xpos + cpu_cell->scale * cpu_cell->width;
+            const index_type new_limit = old_limit - (cpu_cell->scale * cpu_cell->width) / 2;
+            halve_multicell_width(self, xpos, s->prev.y);
+            // The cursor only needs to move if it is on the same line as the
+            // narrowed char, the char can also be on the previous line when the
+            // cursor is at the start of a line that the char soft wrapped onto.
+            if (self->cursor->y == s->prev.y && self->cursor->x > new_limit) {
+                if (self->cursor->x >= old_limit) self->cursor->x -= old_limit - new_limit;
+                else self->cursor->x = new_limit;
             }
+            init_segmentation_state(self, s);
         }
     } else if (s->seg.grapheme_break == GBP_SpacingMark && !cp[xpos].is_multicell && wcwidth_std(char_props_for(ch)) > 0) {
         // Thai/Lao SARA AM is a SpacingMark with non-zero width, it widens a narrow base cell.
@@ -1534,10 +1660,10 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             CPUCell *c = &s->cp[self->cursor->x];
             if (c->is_multicell) {
                 if (c->y) {
+                    // this also removes the multicell chars in the cells the char will occupy
                     move_cursor_past_multicell(self, char_width);
                     reinit_text_loop_line(self, s);
-                }
-                nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, c->x > 0);
+                } else nuke_multicell_char_at(self, self->cursor->x, self->cursor->y, c->x > 0);
             }
         }
         if (self->modes.mIRM) insert_characters(self, self->cursor->x, char_width, self->cursor->y, true);
@@ -1720,6 +1846,7 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
         .halign = MIN(cmd->horizontal_align, M(HALIGN_BITS)),
         .is_multicell = true};
 #undef M
+    if (mcd.scale > 1) self->multiline_chars_used = true;
     if (mcd.width) handle_fixed_width_multicell_command(self, mcd, self->lc);
     else {
         RAII_ListOfChars(lc);
@@ -2588,6 +2715,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 }
 
 #define INDEX_UP(add_to_history)                                                                       \
+    nuke_multiline_chars_torn_by_scroll(self, top, bottom, true, add_to_history);                      \
     linebuf_index(self->linebuf, top, bottom);                                                         \
     INDEX_GRAPHICS(-1, add_to_history)                                                                 \
     if (add_to_history) {                                                                              \
@@ -2650,6 +2778,7 @@ screen_reverse_index(Screen *self) {
     // Move cursor up one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == top) {
+        nuke_multiline_chars_torn_by_scroll(self, top, bottom, false, false);
         INDEX_DOWN(false);
     } else screen_cursor_up(self, 1, false, -1);
 }
@@ -2667,6 +2796,9 @@ _reverse_scroll(Screen *self, unsigned int count, bool fill_from_scrollback) {
     } else count = MIN(self->lines, count);
     while (count-- > 0) {
         bool copied = false;
+        // must be done before popping the history line as removing chars
+        // can modify the parts of them that are in the history buffer
+        nuke_multiline_chars_torn_by_scroll(self, top, bottom, false, fill_from_scrollback && self->historybuf->count > 0);
         if (fill_from_scrollback) {
             copied = historybuf_pop_line(self->historybuf, self->alt_linebuf->line);
             // Keep a scrolled back viewport anchored on the same content
@@ -3016,15 +3148,15 @@ screen_clear_scrollback(Screen *self) {
     self->linebuf = orig;
 }
 
-static Line *visual_line_(Screen *self, int y_);
-
 static void
 screen_move_into_scrollback(Screen *self) {
     if (self->linebuf != self->main_linebuf || self->margin_top != 0 || self->margin_bottom != self->lines - 1) return;
     unsigned int num_of_lines_to_move = self->lines;
     while (num_of_lines_to_move) {
-        Line *line = visual_line_(self, num_of_lines_to_move - 1);
-        if (!line_is_empty(line)) break;
+        // the lines of the screen, not the visual lines, which are lines from
+        // the scrollback when it is scrolled
+        linebuf_init_line(self->linebuf, num_of_lines_to_move - 1);
+        if (!line_is_empty(self->linebuf->line)) break;
         num_of_lines_to_move--;
     }
     if (num_of_lines_to_move) {
@@ -3128,24 +3260,22 @@ screen_insert_lines(Screen *self, unsigned int count) {
         for (index_type x = 0; x < self->columns; x++) {
             if (cells[x].is_multicell && cells[x].y) nuke_multicell_char_at(self, x, self->cursor->y, false);
         }
+        const bool at_screen_bottom = bottom + 1 >= self->lines;
+        // remove chars straddling the bottom margin, as the lines at the bottom
+        // of the region are pushed out, tearing them
+        if (self->multiline_chars_used && !at_screen_bottom) nuke_multiline_chars_extending_below(self, bottom);
         screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         last_visited_prompt_insert_or_delete_lines(self, self->cursor->y, bottom, count, true);
         self->is_dirty = true;
         clear_all_selections(self);
         screen_carriage_return(self);
-        // remove split multiline chars at bottom of screen
-        cells = linebuf_cpu_cells_for_line(self->linebuf, bottom);
-        for (index_type x = 0; x < self->columns; x++) {
-            if (cells[x].is_multicell) {
-                index_type y_limit = cells[x].scale;
-                if (cells[x].y + 1u < y_limit) {
-                    index_type orig = self->lines;
-                    self->lines = bottom + 1;
-                    nuke_multicell_char_at(self, x, bottom, false);
-                    self->lines = orig;
-                }
-            }
+        if (self->multiline_chars_used) {
+            // Chars whose lower rows were pushed out of the region are now cut
+            // off at its bottom. At the bottom of the screen they are partially
+            // scrolled off, as when scrolling down, otherwise they are torn.
+            if (at_screen_bottom) *multiline_chars_cut_off_at_bottom(self) = true;
+            else nuke_multiline_chars_extending_below(self, bottom);
         }
     }
 }
@@ -3173,6 +3303,9 @@ screen_delete_lines_impl(Screen *self, index_type start, index_type count, index
     y += count;
     y = MIN(bottom, y);
     nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
+    // blank lines come in at the bottom, tearing chars that extend below it, which
+    // includes chars that are cut off at the bottom of the screen
+    if (self->multiline_chars_used) nuke_multiline_chars_extending_below(self, bottom);
     screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
     linebuf_delete_lines(self->linebuf, count, start, bottom);
     self->is_dirty = true;
@@ -3789,9 +3922,10 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump, int sc
     } else {
         int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
         num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
-        int y = -self->scrolled_by;
+        const int oldest_y = -(int)self->historybuf->count;
+        int y = -(int)self->scrolled_by;
 #define ensure_y_ok \
-    if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
+    if (y >= (int)self->lines || y < oldest_y) return false;
         ensure_y_ok;
         y += scroll_offset;
         while (num_of_prompts_to_jump) {
@@ -3799,10 +3933,12 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump, int sc
             ensure_y_ok;
             if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) { num_of_prompts_to_jump--; }
         }
-        y -= scroll_offset;
 #undef ensure_y_ok
-        self->scrolled_by = y >= 0 ? 0 : -y;
-        screen_set_last_visited_prompt(self, 0);
+        const int viewport_top = MAX(oldest_y, MIN(0, y - scroll_offset));
+        self->scrolled_by = -viewport_top;
+        const int prompt_y = y - viewport_top;
+        // The context above the prompt can include another command's output.
+        screen_set_last_visited_prompt(self, prompt_y >= 0 && prompt_y < (int)self->lines ? prompt_y : 0);
     }
     if (old != self->scrolled_by) {
         reset_pixel_scroll(self, 0);
@@ -3820,17 +3956,43 @@ set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
     }
 }
 
+static void
+set_last_reported_cwd(Screen *self, const char *data, size_t sz) {
+    PyObject *x = PyBytes_FromStringAndSize(data, sz);
+    if (x) {
+        bool changed = !self->last_reported_cwd || PyBytes_GET_SIZE(self->last_reported_cwd) != (Py_ssize_t)sz ||
+                       memcmp(PyBytes_AS_STRING(self->last_reported_cwd), data, sz) != 0;
+        Py_CLEAR(self->last_reported_cwd);
+        self->last_reported_cwd = x;
+        if (changed) CALLBACK("on_cwd_change", "O", x);
+    } else {
+        PyErr_Clear();
+    }
+}
+
 void
 process_cwd_notification(Screen *self, unsigned int code, const char *data, size_t sz) {
-    if (code == 7) {
-        PyObject *x = PyBytes_FromStringAndSize(data, sz);
-        if (x) {
-            Py_CLEAR(self->last_reported_cwd);
-            self->last_reported_cwd = x;
-        } else {
-            PyErr_Clear();
+    if (code == 7) set_last_reported_cwd(self, data, sz);
+    else if (code == 9) {
+        // ConEmu OSC 9;9;path where path is a plain, possibly quoted, path
+        if (sz > 1 && data[0] == '"' && data[sz - 1] == '"') {
+            data++;
+            sz -= 2;
         }
-    } // we ignore OSC 6 document reporting as we dont have a use for it
+        if (!sz || data[0] != '/') return; // only absolute paths are meaningful
+        static const char prefix[] = "kitty-shell-cwd://";
+        const size_t psz = sizeof(prefix) - 1;
+        char *url = malloc(psz + sz);
+        if (!url) {
+            log_error("Out of memory processing OSC 9;9 cwd report");
+            return;
+        }
+        memcpy(url, prefix, psz);
+        memcpy(url + psz, data, sz);
+        set_last_reported_cwd(self, url, psz + sz);
+        free(url);
+    }
+    // we ignore OSC 6 document reporting as we dont have a use for it
 }
 
 bool
@@ -5638,7 +5800,7 @@ remove_multicell_fragments_cut_off_above_screen(Screen *self, index_type num_lin
             if (c->is_multicell && c->y > num_lines_above_screen + y) {
                 found = true;
                 cell_set_char(c, 0);
-                c->is_multicell = false;
+                cell_clear_multicell(c);
                 clear_sprite_position(line->gpu_cells[x]);
             }
         }

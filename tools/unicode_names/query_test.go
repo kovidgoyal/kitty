@@ -29,6 +29,7 @@ func TestUnicodeInputQueries(t *testing.T) {
 	ts("horiz ell", 0x2026, 0x22ef, 0x2b2c, 0x2b2d, 0xfe19)
 	ts("horizontal ell", 0x2026, 0x22ef, 0x2b2c, 0x2b2d, 0xfe19)
 	ts("kfjhgkjdsfhgkjds")
+	ts("pound sign", 0xa3, 0xffe1, 0x1f4b7)
 	if slices.Index(CodePointsForQuery("bee"), 0x1f41d) < 0 {
 		t.Fatalf("The query bee did not match the codepoint: 0x1f41d")
 	}

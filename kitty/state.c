@@ -508,6 +508,34 @@ detach_window(id_type os_window_id, id_type tab_id, id_type id) {
 }
 
 
+static bool
+move_window_to_tab(id_type os_window_id, id_type src_tab_id, id_type dest_tab_id, id_type id) {
+    // Move a window between two tabs of the same OS window. Unlike detach_window() and
+    // attach_window() this keeps the GPU resources of the window, as both tabs share the
+    // OpenGL context of the OS window.
+    OSWindow *osw = os_window_for_id(os_window_id);
+    if (!osw || src_tab_id == dest_tab_id) return false;
+    Tab *src = NULL, *dest = NULL;
+    for (size_t t = 0; t < osw->num_tabs; t++) {
+        if (osw->tabs[t].id == src_tab_id) src = osw->tabs + t;
+        else if (osw->tabs[t].id == dest_tab_id) dest = osw->tabs + t;
+    }
+    if (!src || !dest) return false;
+    for (size_t i = 0; i < src->num_windows; i++) {
+        if (src->windows[i].id == id) {
+            ensure_space_for(dest, windows, Window, dest->num_windows + 1, capacity, 1, true);
+            memcpy(dest->windows + dest->num_windows++, src->windows + i, sizeof(Window));
+            zero_at_i(src->windows, i);
+            remove_i_from_array(src->windows, i, src->num_windows);
+            if (src->active_window > i) src->active_window--;
+            else if (src->active_window >= src->num_windows) src->active_window = src->num_windows ? src->num_windows - 1 : 0;
+            osw->needs_render = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 static void
 resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
     if (screen) {
@@ -1286,15 +1314,21 @@ PYWRAP1(mark_os_window_for_close) {
 
 PYWRAP1(set_application_quit_request) {
     CloseRequest cr = IMPERATIVE_CLOSE_REQUESTED;
-    PA("|i", &cr);
+    int cause = -1;
+    PA("|ii", &cr, &cause);
     global_state.quit_request = cr;
-    if (cr == NO_CLOSE_REQUESTED) global_state.logout_quit.requested = false;
+    if (cr == NO_CLOSE_REQUESTED) {
+        global_state.logout_quit.requested = false;
+        global_state.quit_cause = QUIT_CAUSE_NONE;
+    } else if (cause >= QUIT_CAUSE_NONE && cause <= QUIT_CAUSE_FATAL_ERROR) global_state.quit_cause = cause;
     global_state.has_pending_closes = true;
     request_tick_callback();
     Py_RETURN_NONE;
 }
 
 PYWRAP0(current_application_quit_request) { return Py_BuildValue("i", global_state.quit_request); }
+
+PYWRAP0(current_application_quit_cause) { return Py_BuildValue("i", global_state.quit_cause); }
 
 PYWRAP0(application_logout_requested_at) {
     // The monotonic time at which the OS asked kitty to quit for a logout, restart or shutdown, or -1 if it has not done so since
@@ -2019,6 +2053,12 @@ THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
+PYWRAP1(move_window_to_tab) {
+    id_type os_window_id, src_tab_id, dest_tab_id, window_id;
+    PA("KKKK", &os_window_id, &src_tab_id, &dest_tab_id, &window_id);
+    if (move_window_to_tab(os_window_id, src_tab_id, dest_tab_id, window_id)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) {
     PyObject *title;
@@ -2154,6 +2194,7 @@ static PyMethodDef module_methods[] = {
     MW(remove_window, METH_VARARGS),
     MW(detach_window, METH_VARARGS),
     MW(attach_window, METH_VARARGS),
+    MW(move_window_to_tab, METH_VARARGS),
     MW(set_active_tab, METH_VARARGS),
     MW(mark_os_window_dirty, METH_VARARGS),
     MW(set_redirect_keys_to_overlay, METH_VARARGS),
@@ -2173,6 +2214,7 @@ static PyMethodDef module_methods[] = {
     MW(mark_os_window_for_close, METH_VARARGS),
     MW(set_application_quit_request, METH_VARARGS),
     MW(current_application_quit_request, METH_NOARGS),
+    MW(current_application_quit_cause, METH_NOARGS),
     MW(application_logout_requested_at, METH_NOARGS),
     MW(set_os_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
@@ -2246,6 +2288,12 @@ init_state(PyObject *module) {
     Py_INCREF((PyObject *)&RegionType);
     PyModule_AddObject(module, "Region", (PyObject *)&RegionType);
     PyModule_AddIntConstant(module, "IMPERATIVE_CLOSE_REQUESTED", IMPERATIVE_CLOSE_REQUESTED);
+    PyModule_AddIntConstant(module, "QUIT_CAUSE_NONE", QUIT_CAUSE_NONE);
+    PyModule_AddIntConstant(module, "QUIT_CAUSE_ACTION", QUIT_CAUSE_ACTION);
+    PyModule_AddIntConstant(module, "QUIT_CAUSE_OS_REQUEST", QUIT_CAUSE_OS_REQUEST);
+    PyModule_AddIntConstant(module, "QUIT_CAUSE_LOGOUT", QUIT_CAUSE_LOGOUT);
+    PyModule_AddIntConstant(module, "QUIT_CAUSE_SIGNAL", QUIT_CAUSE_SIGNAL);
+    PyModule_AddIntConstant(module, "QUIT_CAUSE_FATAL_ERROR", QUIT_CAUSE_FATAL_ERROR);
     PyModule_AddIntConstant(module, "NO_CLOSE_REQUESTED", NO_CLOSE_REQUESTED);
     PyModule_AddIntConstant(module, "CLOSE_BEING_CONFIRMED", CLOSE_BEING_CONFIRMED);
     PyModule_AddIntMacro(module, WINDOW_NORMAL);

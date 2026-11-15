@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from .cli_stub import CLIOptions, GotoSessionOptions, SaveAsSessionOptions
 from .constants import config_dir, unserialize_launch_flag
 from .fast_data_types import get_options
+from .launch_wrapper import LaunchRequest, user_launch_request
 from .layout.interface import all_layouts
 from .options.types import Options
 from .options.utils import MapType, resize_window, to_layout_names, window_size
@@ -236,7 +237,7 @@ def parse_session(
 
         for t in ans.tabs:
             if not t.windows:
-                t.windows.append(WindowSpec(SpecialWindow(cmd=resolved_shell(opts))))
+                t.windows.append(WindowSpec(SpecialWindow(cmd=resolved_shell(opts), launch_request=LaunchRequest('tab'))))
         return ans
 
     if environ is None:
@@ -372,7 +373,14 @@ def create_sessions(
         from kitty.tabs import SpecialWindow
 
         cwd: str | None = args.directory if respect_cwd and args else None
-        special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, env=env_when_no_session, hold=bool(args and args.hold))
+        special_window = SpecialWindow(
+            cmd,
+            cwd_from=cwd_from,
+            cwd=cwd,
+            env=env_when_no_session,
+            hold=bool(args and args.hold),
+            launch_request=user_launch_request('os-window', cwd_from),
+        )
     ans.add_special_window(special_window)
     yield ans
 
@@ -687,6 +695,7 @@ If specified, only save all windows (and their parent tabs/OS Windows) that matc
 search expression. See :ref:`search_syntax` for details on the search language. In particular if
 you want to only save windows that are present in the currently active session,
 use :code:`--match=session:.`.
+If none of the matching windows can be saved, an error is shown and any existing session file is left unchanged.
 
 
 --base-dir
@@ -705,6 +714,16 @@ saved on Wayland as it does not allow applications to position their windows.
 """
 
 
+def show_nothing_to_save_error(boss: BossType, opts: SaveAsSessionOptions) -> None:
+    if opts.match and next(boss.match_windows(opts.match), None) is None:
+        msg = _('No windows match: {0}').format(opts.match)
+    elif opts.match:
+        msg = _('None of the matching windows can be saved in a session, for example, because they are running UI kittens.')
+    else:
+        msg = _('None of the windows can be saved in a session, for example, because they are running UI kittens.')
+    boss.show_error(_('No windows to save'), msg)
+
+
 def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str, path_input_by_user: bool = False) -> None:
     if not path:
         return
@@ -720,6 +739,10 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str,
     if path_input_by_user and '.' not in os.path.basename(path):
         path += '.kitty-session'
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
+    if not session:
+        # Never overwrite an existing session file with an empty one
+        show_nothing_to_save_error(boss, opts)
+        return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_save(session.encode(), path)
     if not opts.save_only:
@@ -752,8 +775,18 @@ def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
         path = seen_session_paths.get(sn) or ''
     if path:
         save_as_session_part2(boss, opts, path)
+    elif next(boss.serialize_state_as_session('', opts), None) is None:
+        # Fail before asking the user for a path that will not be used
+        show_nothing_to_save_error(boss, opts)
     else:
+        base_dir = os.path.abspath(os.path.expanduser(opts.base_dir)) if opts.base_dir else os.getcwd()
+        msg = (
+            _('Enter a name for the session file. It will be saved in: {0}').format(base_dir)
+            + '\n'
+            + _('You can also enter a full path. The .kitty-session extension is added if the name has no extension.')
+        )
         boss.get_save_filepath(
-            _('Enter the path at which to save the session, usually session files are given the .kitty-session file extension'),
+            msg,
             partial(save_as_session_part2, boss, opts, path_input_by_user=True),
+            cwd=base_dir if os.path.isdir(base_dir) else '',
         )

@@ -45,6 +45,10 @@ type PreviewRenderer interface {
 	Render(string) (map[string][]byte, metadata, *images.ImageData, error)
 	ShowMetadata(h *Handler, s ShowData) int
 	String() string
+	// CacheKeyExtra returns anything other than the contents of the file at
+	// path that the rendered output depends on. It is added to the disk cache
+	// key. Return an empty string if the output depends only on the file contents.
+	CacheKeyExtra(path string) string
 }
 
 type render_data struct {
@@ -186,7 +190,8 @@ func (p *ImagePreview) start_rendering(output chan<- render_data) {
 		p.ready.Store(true)
 		p.WakeupMainThread()
 	}()
-	key, ans, err := p.disk_cache.GetPath(p.abspath)
+	extra_key := p.renderer.CacheKeyExtra(p.abspath)
+	key, ans, err := p.disk_cache.GetPath(p.abspath, extra_key)
 	if err != nil {
 		output <- render_data{err: err}
 		return
@@ -212,7 +217,7 @@ func (p *ImagePreview) start_rendering(output chan<- render_data) {
 	if err != nil {
 		output <- render_data{err: err}
 	} else {
-		ans, err = p.disk_cache.AddPath(p.abspath, key, rdata)
+		ans, err = p.disk_cache.AddPath(p.abspath, extra_key, key, rdata)
 		if err == nil {
 			output <- render_data{cached_data: ans, metadata: metadata, img: img}
 		} else {
@@ -245,6 +250,7 @@ func (p ImagePreviewRenderer) Render(abspath string) (ans map[string][]byte, m m
 }
 
 func (p ImagePreviewRenderer) Unmarshall(map[string]string) (any, error) { return nil, nil }
+func (p ImagePreviewRenderer) CacheKeyExtra(string) string               { return "" }
 
 func (p ImagePreviewRenderer) ShowMetadata(h *Handler, s ShowData) int {
 	offset := 0

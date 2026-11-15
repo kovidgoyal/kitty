@@ -176,6 +176,27 @@ update_tracked_cursors(Rewrap *r, index_type num_cells, index_type src_y, index_
     }
 }
 
+static void
+update_tracked_cursors_for_dropped_cells(Rewrap *r, index_type num_cells) {
+    // Cursors on cells of src that are not copied to dest are placed where the
+    // cells would have been. As for update_tracked_cursors() cursors beyond the
+    // content of the src line are placed relative to the current position, in
+    // case nothing after the dropped cells is copied.
+    if (!r->src_is_in_linebuf) return;
+    const index_type src_y = r->src.y - r->src.hb_count;
+    for (TrackCursor *t = r->cursors; !t->is_sentinel; t++) {
+        if (t->y == src_y && r->src.x <= t->x) {
+            if (t->x < r->src.x + num_cells) {
+                t->dest_y = r->dest.y;
+                t->dest_x = MIN(r->dest.x, dest_xnum);
+            } else if (t->x >= r->src_x_limit) {
+                t->dest_y = r->dest.y;
+                t->dest_x = MIN(r->dest.x + (t->x - (r->src.x + num_cells)), dest_xnum);
+            }
+        }
+    }
+}
+
 static bool
 find_space_in_dest_line(Rewrap *r, index_type num_cells) {
     while (r->dest.x + num_cells <= dest_xnum) {
@@ -204,7 +225,10 @@ copy_range(Line *src, index_type src_at, Line *dest, index_type dest_at, index_t
 
 static void
 copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
-    for (index_type i = 1; i < src_cell->scale; i++) {
+    // multiline_char_is_complete() has checked that all rows are present in src,
+    // the bound is kept so that this never reads out of bounds
+    const index_type num_src_lines = r->src.hb_count + r->src.lb->ynum;
+    for (index_type i = 1; i < src_cell->scale && r->src.y + i < num_src_lines; i++) {
         init_src_line_basic(r, r->src.y + i, &r->src.scratch_line, false);
         linebuf_init_line_at(r->sb, i - 1, &r->dest.scratch_line);
         linebuf_mark_line_dirty(r->sb, i - 1);
@@ -213,6 +237,20 @@ copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
     }
 }
 
+
+static bool
+multiline_char_is_complete(Rewrap *r, const CPUCell *src_cell) {
+    // whether all rows of the multiline char starting at src_cell are present in src, they
+    // can be missing if the char is partially scrolled off or torn
+    const CPUCell ref = *src_cell;
+    const index_type num_src_lines = r->src.hb_count + r->src.lb->ynum;
+    for (index_type i = 1; i < ref.scale; i++) {
+        if (r->src.y + i >= num_src_lines) return false;
+        init_src_line_basic(r, r->src.y + i, &r->src.scratch_line, false);
+        if (!continues_multicell_char(r->src.scratch_line.cpu_cells + r->src.x, &ref, i)) return false;
+    }
+    return true;
+}
 
 static void
 multiline_copy_src_to_dest(Rewrap *r) {
@@ -229,12 +267,17 @@ multiline_copy_src_to_dest(Rewrap *r) {
             } else if (c->y) {
                 r->src.x += mc_width;
                 continue;
+            } else if (c->scale > 1 && !multiline_char_is_complete(r, c)) {
+                // partial multiline chars are dropped as they cannot be placed consistently in dest
+                update_tracked_cursors_for_dropped_cells(r, mc_width);
+                r->src.x += mc_width;
+                continue;
             }
         } else mc_width = 1;
         find_space_in_dest(r, mc_width);
         copy_range(&r->src.line, r->src.x, &r->dest.line, r->dest.x, mc_width);
         update_tracked_cursors(r, mc_width, r->src.y, r->dest.y, r->src_x_limit);
-        if (c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
+        if (c->is_multicell && c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
         r->src.x += mc_width;
         r->dest.x += mc_width;
     }
@@ -296,6 +339,11 @@ rewrap(Rewrap *r) {
         if (r->current_src_line_has_multline_cells || r->current_dest_line_has_multiline_cells) multiline_copy_src_to_dest(r);
         else fast_copy_src_to_dest(r);
     }
+    // The lower rows of multiline chars are written to dest from sb when moving to
+    // the next dest line. If the src ended without that happening, for example,
+    // because the lines after a multiline char were continuations that fit on
+    // its first row, write out the remaining rows.
+    for (index_type i = 0; i < r->sb->ynum && r->sb->line_attrs[0].has_dirty_text; i++) next_dest_line(r, false);
 }
 
 static index_type
@@ -340,6 +388,8 @@ resize_screen_buffers(
     if (!ans.lb) return ans;
     RAII_PyObject(raii_nlb, (PyObject *)ans.lb);
     (void)raii_nlb;
+    // sb holds the rows below the first row of multiline chars
+    static_assert((SCALE_BITS << 1) >= (1u << SCALE_BITS) - 2u, "sb is too small for the tallest multiline char");
     LineBuf *sb = alloc_linebuf(SCALE_BITS << 1, columns, lb->text_cache);
     if (!sb) return ans;
     RAII_PyObject(scratch, (PyObject *)sb);
@@ -404,7 +454,7 @@ static void
 nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit) {
     for (index_type x = start; x < x_limit; x++) {
         cell_set_char(cp + x, 0);
-        cp[x].is_multicell = false;
+        cell_clear_multicell(cp + x);
         clear_sprite_position(gp[x]);
     }
 }
@@ -414,15 +464,17 @@ nuke_multicell_char_at(LineBuf *lb, index_type x_, index_type y_) {
     CPUCell *cp;
     GPUCell *gp;
     linebuf_init_cells(lb, y_, &cp, &gp);
-    index_type num_lines_above = cp[x_].y;
-    index_type y_max_limit = MIN(lb->ynum, y_ + cp[x_].scale - num_lines_above);
+    const CPUCell ref = cp[x_];
+    // only the adjacent rows that continue the char, as it may be partial or torn
+    index_type y_start = y_, y_limit = y_ + 1;
+    while (y_start > 0 && y_ - y_start < ref.y && continues_multicell_char(linebuf_cpu_cells_for_line(lb, y_start - 1) + x_, &ref, ref.y - (y_ - y_start) - 1))
+        y_start--;
+    while (y_limit < lb->ynum && y_limit - y_ + ref.y < ref.scale &&
+           continues_multicell_char(linebuf_cpu_cells_for_line(lb, y_limit) + x_, &ref, ref.y + (y_limit - y_)))
+        y_limit++;
     while (cp[x_].x && x_ > 0) x_--;
     index_type x_limit = MIN(lb->xnum, x_ + mcd_x_limit(&cp[x_]));
-    for (index_type y = y_; y < y_max_limit; y++) {
-        linebuf_init_cells(lb, y, &cp, &gp);
-        nuke_in_line(cp, gp, x_, x_limit);
-    }
-    for (int y = (int)y_ - 1; y > -1 && num_lines_above; y--, num_lines_above--) {
+    for (index_type y = y_start; y < y_limit; y++) {
         linebuf_init_cells(lb, y, &cp, &gp);
         nuke_in_line(cp, gp, x_, x_limit);
     }
@@ -494,8 +546,11 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
                 for (index_type x = 0; x < ans.lb->xnum; x++) ans.lb->line->gpu_cells[x].bg = fill_bg;
             }
         }
-    } else if (ans.num_content_lines_after < ans.num_content_lines_before) {
-        // delete multicell chars split at the bottom
+    }
+    if (ans.num_content_lines_after && (ans.num_content_lines_after < ans.num_content_lines_before || ans.num_content_lines_after < lines)) {
+        // delete multicell chars split at the bottom, and chars that were cut
+        // off at the bottom of the screen but no longer are, as there are now
+        // lines below them
         linebuf_init_line(ans.lb, ans.num_content_lines_after - 1);
         for (index_type x = 0; x < ans.lb->xnum; x++) {
             CPUCell *c = ans.lb->line->cpu_cells + x;

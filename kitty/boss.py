@@ -71,6 +71,12 @@ from .fast_data_types import (
     IMPERATIVE_CLOSE_REQUESTED,
     LEFT_EDGE,
     NO_CLOSE_REQUESTED,
+    QUIT_CAUSE_ACTION,
+    QUIT_CAUSE_FATAL_ERROR,
+    QUIT_CAUSE_LOGOUT,
+    QUIT_CAUSE_NONE,
+    QUIT_CAUSE_OS_REQUEST,
+    QUIT_CAUSE_SIGNAL,
     RIGHT_EDGE,
     TOP_EDGE,
     ChildMonitor,
@@ -88,6 +94,7 @@ from .fast_data_types import (
     cocoa_minimize_os_window,
     cocoa_set_menubar_title,
     create_os_window,
+    current_application_quit_cause,
     current_application_quit_request,
     current_focused_os_window_id,
     current_os_window,
@@ -139,6 +146,7 @@ from .fast_data_types import (
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import Mappings
+from .launch_wrapper import user_launch_request
 from .layout.base import set_layout_options
 from .notifications import NotificationManager
 from .options.types import Options, nullable_colors
@@ -157,7 +165,7 @@ from .session import (
 from .shaders.slang import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
 from .tabs import DropDirection, SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
-from .types import AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
+from .types import AsyncResponse, CloseEvent, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing_compat import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters,
@@ -423,6 +431,10 @@ class Boss:
         self.primary_selection = Clipboard(ClipboardType.primary_selection)
         self.update_check_started = False
         self.snapshot_saved_for_logout = ''
+        # Set while the desktop session is ending, so that being killed by a signal is reported as a logout
+        self.desktop_session_ending = False
+        # Set when the user confirmed quitting
+        self.quit_confirmed = False
         self.peer_data_map: dict[int, dict[str, Sequence[str]] | None] = {}
         self.background_process_death_notify_map: dict[int, Callable[[int, Exception | None], None]] = {}
         self.encryption_key = EllipticCurveKey()
@@ -751,15 +763,13 @@ class Boss:
             sw: SpecialWindowInstance | None = args
         else:
             args = tuple(args)
-            sw = self.args_to_special_window(args, cwd_from) if args else None
+            sw = self.args_to_special_window(args, cwd_from, launch_type='os-window') if args else None
         startup_session = next(create_sessions(get_options(), special_window=sw, cwd_from=cwd_from))
         startup_session.session_name = ''
         ans = self.add_os_window(startup_session)
         if cwd_from is not None and (sow := cwd_from.window) and (tm := self.os_window_map.get(ans)):
-            session_name = sow.created_in_session_name
-            if not session_name and (sow_tab := sow.tabref()):
-                session_name = sow_tab.created_in_session_name
-            if session_name:
+            if session_name := sow.effective_session_name:
+                tm.created_in_session_name = session_name
                 for tab in tm:
                     tab.created_in_session_name = session_name
                     for w in tab:
@@ -792,7 +802,7 @@ class Boss:
         if isinstance(wd, str):
             wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
-            special_window = SpecialWindow(None, cwd=path)
+            special_window = SpecialWindow(None, cwd=path, launch_request=user_launch_request('os-window'))
             self._new_os_window(special_window)
 
     def add_child(self, window: Window) -> None:
@@ -1140,9 +1150,16 @@ class Boss:
         mark_os_window_for_close(os_window_id, request_type)
 
     def _cleanup_tab_after_window_removal(self, src_tab: Tab) -> None:
-        if len(src_tab) < 1:
+        # The windows of the OS window docks do not keep a tab alive
+        if not src_tab.windows.has_tab_windows:
             tm = src_tab.tab_manager_ref()
             if tm is not None:
+                if len(src_tab) and len(tm) < 2:
+                    # Only the OS window docks remain in the last tab, they are
+                    # closed and the OS window with them, once they are gone.
+                    for w in tuple(src_tab):
+                        self.mark_window_for_close(w)
+                    return
                 tm.remove(src_tab)
                 src_tab.destroy()
                 if len(tm) == 0:
@@ -1161,7 +1178,7 @@ class Boss:
             for w, val in changes.items():
                 w.ignore_focus_changes = val
 
-    def on_child_death(self, window_id: int, child_died: bool, exit_status: int) -> None:
+    def on_child_death(self, window_id: int, child_died: bool, exit_status: int, close_requested: bool = False) -> None:
         prev_active_window = self.active_window
         window = self.window_id_map.pop(window_id, None)
         if window is None:
@@ -1177,7 +1194,11 @@ class Boss:
 
                     traceback.print_exc()
             os_window_id = window.os_window_id
-            window.destroy()
+            window.destroy(
+                self.quit_close_event()
+                if self.is_quitting
+                else {'reason': 'window', 'cause': 'closed' if close_requested else 'program_exit', 'confirmed': window.close_confirmed}
+            )
             tm = self.os_window_map.get(os_window_id)
             tab = None
             if tm is not None:
@@ -1273,6 +1294,8 @@ class Boss:
 
     def handle_close_window_confirmation(self, allowed: bool, window_id: int) -> None:
         if allowed:
+            if (w := self.window_id_map.get(window_id)) is not None:
+                w.close_confirmed = True
             self.mark_window_for_close(window_id)
 
     @ac('tab', 'Close the current tab')
@@ -1427,6 +1450,7 @@ class Boss:
         window: Window | None = None,  # the window associated with the confirmation
         prompt: str = '> ',
         initial_value: str = '',
+        cwd: str = '',  # the directory relative to which file names are completed
     ) -> None:
         result: str = ''
 
@@ -1441,13 +1465,28 @@ class Boss:
         if initial_value:
             cmd.append('--default=' + initial_value)
         self.run_kitten_with_metadata(
-            'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
+            'ask',
+            cmd,
+            window=window,
+            custom_callback=callback_,
+            default_data={'response': ''},
+            action_on_removal=on_popup_overlay_removal,
+            cwd=cwd,
         )
 
+    def _windows_closed_with_tab(self, tab: Tab) -> tuple[Window, ...]:
+        # The OS window docks are not closed with the tab, unless it is the
+        # last tab, in which case the OS window and its docks are closed
+        tm = tab.tab_manager_ref()
+        if tm is not None and len(tm) < 2:
+            return tuple(tab)
+        return tuple(tab.windows.iter_tab_windows())
+
     def confirm_tab_close(self, tab: Tab) -> None:
-        msg, num_active_windows = self.close_windows_with_confirmation_msg(tab, tab.active_window)
+        windows = self._windows_closed_with_tab(tab)
+        msg, num_active_windows = self.close_windows_with_confirmation_msg(windows, tab.active_window)
         x = get_options().confirm_os_window_close[0]
-        num = num_active_windows if x < 0 else len(tab)
+        num = num_active_windows if x < 0 else len(windows)
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
             self.close_tab_no_confirm(tab)
@@ -1475,12 +1514,14 @@ class Boss:
             return
         if not confirmed:
             return
+        for w in self._windows_closed_with_tab(tab):
+            w.close_confirmed = True
         self.close_tab_no_confirm(tab)
 
     def close_tab_no_confirm(self, tab: Tab) -> None:
         if self.current_visual_select is not None and self.current_visual_select.tab_id == tab.id:
             self.cancel_current_visual_select()
-        for window in tab:
+        for window in self._windows_closed_with_tab(tab):
             self.mark_window_for_close(window)
 
     def close_windows_no_confirm(self, windows: Sequence[Window]) -> None:
@@ -1833,9 +1874,7 @@ class Boss:
     @property
     def active_session(self) -> str:
         if t := self.active_tab:
-            if w := t.active_window:
-                return w.created_in_session_name or t.created_in_session_name
-            return t.created_in_session_name
+            return w.effective_session_name if (w := t.active_window) else t.created_in_session_name
         return ''
 
     @property
@@ -2143,6 +2182,8 @@ class Boss:
     def on_focus(self, os_window_id: int, focused: bool) -> None:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
+            if not focused:  # the release that would end a selection in the tab bar may never arrive
+                tm.tab_bar.cancel_selection()
             w = tm.active_window
             if w is not None:
                 w.focus_changed(focused)
@@ -2470,6 +2511,7 @@ class Boss:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             tm.confirm_close_window_id = 0
+            tm.close_confirmed = confirmed
         if confirmed:
             self.mark_os_window_for_close(os_window_id)
         else:
@@ -2487,7 +2529,7 @@ class Boss:
             self.cached_values['window-size'] = viewport_width, viewport_height
             self.cached_values['window-state'] = 'maximized' if was_maximized else 'normal'
         if tm is not None:
-            tm.destroy()
+            tm.destroy(self.quit_close_event() if self.is_quitting else None)
         for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
             self.window_id_map.pop(window_id, None)
         if not self.os_window_map and is_macos:
@@ -2497,6 +2539,23 @@ class Boss:
             action()
 
     quit_confirmation_window_id: int = 0
+
+    @property
+    def is_quitting(self) -> bool:
+        return current_application_quit_request() == IMPERATIVE_CLOSE_REQUESTED
+
+    def quit_close_event(self) -> CloseEvent:
+        cause = {
+            QUIT_CAUSE_ACTION: 'action',
+            QUIT_CAUSE_OS_REQUEST: 'os_request',
+            QUIT_CAUSE_LOGOUT: 'logout',
+            QUIT_CAUSE_SIGNAL: 'signal',
+            QUIT_CAUSE_FATAL_ERROR: 'fatal_error',
+        }.get(current_application_quit_cause(), 'unknown')
+        if cause == 'signal' and self.desktop_session_ending:
+            # On Linux, kitty is killed by a signal when the desktop session ends
+            cause = 'logout'
+        return {'reason': 'quit', 'cause': cause, 'confirmed': self.quit_confirmed}
 
     def _call_on_quit_watchers(self, data: dict[str, Any]) -> bool:
         w = self.active_window
@@ -2520,6 +2579,8 @@ class Boss:
 
     @ac('win', 'Quit, closing all windows')
     def quit(self, *args: Any) -> None:
+        # A quit not requested by the OS or a signal is the result of the quit action
+        cause = QUIT_CAUSE_ACTION if current_application_quit_cause() == QUIT_CAUSE_NONE else -1
         windows = []
         for q in self.os_window_map.values():
             for qt in q:
@@ -2534,7 +2595,8 @@ class Boss:
                 set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
             self.save_session_if_logging_out()
-            set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
+            self.quit_confirmed = False
+            set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED, cause)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
             if self.quit_confirmation_window_id and self.quit_confirmation_window_id in self.window_id_map:
@@ -2554,7 +2616,7 @@ class Boss:
         msg = msg or _('It has {} windows.').format(num)
         w = self.confirm(_('Are you sure you want to quit kitty?') + ' ' + msg, self.handle_quit_confirmation, window=active_window, title=_('Quit kitty?'))
         self.quit_confirmation_window_id = w.id
-        set_application_quit_request(CLOSE_BEING_CONFIRMED)
+        set_application_quit_request(CLOSE_BEING_CONFIRMED, cause)
 
     def handle_quit_confirmation(self, confirmed: bool) -> None:
         self.quit_confirmation_window_id = 0
@@ -2563,6 +2625,7 @@ class Boss:
                 set_application_quit_request(NO_CLOSE_REQUESTED)
                 return
             self.save_session_if_logging_out()
+        self.quit_confirmed = confirmed
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
 
     def save_session_if_logging_out(self) -> None:
@@ -2599,6 +2662,7 @@ class Boss:
     def on_desktop_session_state_changed(self, state: int) -> None:
         from .logout_session import DESKTOP_SESSION_QUERY_END, DESKTOP_SESSION_RUNNING, delete_snapshot
 
+        self.desktop_session_ending = state != DESKTOP_SESSION_RUNNING
         if state == DESKTOP_SESSION_QUERY_END:
             # The session will end once this returns, unless some other application cancels it
             self.snapshot_saved_for_logout = self.save_session_at_logout()
@@ -2664,13 +2728,13 @@ class Boss:
     def edit_file(self, path: str) -> None:
         editor_cmd = get_editor(get_options())
         exe = editor_cmd[0]
+        path = os.path.abspath(os.path.expanduser(path))
         if not os.path.isabs(exe):
             exe = which(exe) or ''
-            if not exe or not os.access(exe, os.X_OK):
-                self.show_error(_('Cannot find editor'), _('Could not edit the file {0} because the editor {1} was not found.').format(editor_cmd[0]))
-                return
-            editor_cmd[0] = exe
-        path = os.path.abspath(os.path.expanduser(path))
+        if not exe or not os.access(exe, os.X_OK):
+            self.show_error(_('Cannot find editor'), _('Could not edit the file {0} because the editor {1} was not found.').format(path, editor_cmd[0]))
+            return
+        editor_cmd[0] = exe
         self.new_os_window(*editor_cmd, path)
 
     def run_kitten_with_metadata(
@@ -2682,6 +2746,7 @@ class Boss:
         custom_callback: Callable[[dict[str, Any], int, 'Boss'], None] | None = None,
         action_on_removal: Callable[[int, 'Boss'], None] | None = None,
         default_data: dict[str, Any] | None = None,
+        cwd: str = '',
     ) -> Any:
         from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler, resolved_kitten
 
@@ -2779,7 +2844,7 @@ class Boss:
                         cmd + args,
                         stdin=data,
                         env=env,
-                        cwd=CwdRequest(w).cwd_of_child or w.cwd_of_child,
+                        cwd=cwd or CwdRequest(w).cwd_of_child or w.cwd_of_child,
                         overlay_for=w.id,
                         overlay_behind=end_kitten.has_ready_notification,
                     ),
@@ -2999,7 +3064,8 @@ class Boss:
         if window_type == 'tab':
             tab = self._new_tab(SpecialWindow(cmd, **kw))
             if tab is not None:
-                for w in tab:
+                # Not the last window in the tab, which could be an OS window dock
+                for w in tab.windows.iter_tab_windows():
                     window = w
         elif window_type == 'os_window':
             os_window_id = self._new_os_window(SpecialWindow(cmd, **kw))
@@ -3035,7 +3101,7 @@ class Boss:
         cell_height: int,
     ) -> bool:
         if (w := self.window_id_map.get(window_id)) and (tab := w.tabref()):
-            data = tab.current_layout.drag_resize_target_windows(w, x, y, edges, tab.windows)
+            data = tab.drag_resize_target_windows(w, x, y, edges)
             if not edges & (LEFT_EDGE | RIGHT_EDGE):
                 data = data._replace(horizontal_id=None)
             if not edges & (TOP_EDGE | BOTTOM_EDGE):
@@ -3069,20 +3135,21 @@ class Boss:
             step_x = int((x - r.initial_x) / r.cell_width) * mult
             dx = step_x - r.last_step_x
             if dx != 0:
-                if applied := tab.drag_resize_window(h, dx, True):
+                if applied := tab.drag_resize_window(h, dx, True, r.data.is_dock):
                     self.drag_resize_of_window = r = r._replace(last_step_x=r.last_step_x + applied)
         if (v := r.data.vertical_id) is not None:
             mult = 1 if r.data.height_increases_downwards else -1
             step_y = int((y - r.initial_y) / r.cell_height) * mult
             dy = step_y - r.last_step_y
             if dy != 0:
-                if applied := tab.drag_resize_window(v, dy, False):
+                if applied := tab.drag_resize_window(v, dy, False, r.data.is_dock):
                     self.drag_resize_of_window = r._replace(last_step_y=r.last_step_y + applied)
 
     def drag_resize_end(self) -> None:
         if tab := self.tab_for_id(self.drag_resize_of_window.tab_id):
             for cw in tab:
                 cw.pause_resize_notifications_to_child(pause=False)
+            tab.drag_resize_ended(self.drag_resize_of_window.data)
         self.drag_resize_of_window = WindowResizeDrag()
 
     def open_kitty_website(self) -> None:
@@ -3144,7 +3211,7 @@ class Boss:
         self.update_check_process = None
         del self.child_monitor
         for tm in self.os_window_map.values():
-            tm.destroy()
+            tm.destroy(self.quit_close_event())
         self.os_window_map = {}
         destroy_global_data()
 
@@ -3183,12 +3250,19 @@ class Boss:
     def set_primary_selection(self) -> None:
         w = self.active_window
         if w is not None and not w.destroyed:
-            text = w.text_for_selection()
-            if text:
-                set_primary_selection(text)
-                self.handle_clipboard_loss('primary', w.id)
-                if get_options().copy_on_select:
-                    self.copy_to_buffer(get_options().copy_on_select)
+            self.copy_selected_text(w.text_for_selection(), w.id)
+
+    def cancel_tab_bar_selection(self, os_window_id: int) -> None:
+        if (tm := self.os_window_map.get(os_window_id)) is not None:
+            tm.tab_bar.cancel_selection()
+
+    def copy_selected_text(self, text: str, source_window_id: int = 0) -> None:
+        "Make text that was just selected the primary selection and copy it as per copy_on_select"
+        if text:
+            set_primary_selection(text)
+            self.handle_clipboard_loss('primary', source_window_id)
+            if get_options().copy_on_select:
+                self.copy_text_to_buffer(text, get_options().copy_on_select, source_window_id)
 
     def get_active_selection(self) -> str | None:
         w = self.active_window
@@ -3223,16 +3297,18 @@ class Boss:
     def copy_to_buffer(self, buffer_name: str) -> None:
         w = self.window_for_dispatch or self.active_window
         if w is not None and not w.destroyed:
-            text = w.text_for_selection()
-            if text:
-                if buffer_name == 'clipboard':
-                    set_clipboard_string(text)
-                    self.handle_clipboard_loss('clipboard', w.id)
-                elif buffer_name == 'primary':
-                    set_primary_selection(text)
-                    self.handle_clipboard_loss('primary', w.id)
-                else:
-                    self.set_clipboard_buffer(buffer_name, text)
+            self.copy_text_to_buffer(w.text_for_selection(), buffer_name, w.id)
+
+    def copy_text_to_buffer(self, text: str, buffer_name: str, source_window_id: int = 0) -> None:
+        if text:
+            if buffer_name == 'clipboard':
+                set_clipboard_string(text)
+                self.handle_clipboard_loss('clipboard', source_window_id)
+            elif buffer_name == 'primary':
+                set_primary_selection(text)
+                self.handle_clipboard_loss('primary', source_window_id)
+            else:
+                self.set_clipboard_buffer(buffer_name, text)
 
     @ac(
         'cp',
@@ -3465,7 +3541,7 @@ class Boss:
             self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)
         return None
 
-    def args_to_special_window(self, args: Iterable[str], cwd_from: CwdRequest | None = None) -> SpecialWindowInstance:
+    def args_to_special_window(self, args: Iterable[str], cwd_from: CwdRequest | None = None, launch_type: str = 'window') -> SpecialWindowInstance:
         args = list(args)
         stdin = None
         w = self.active_window
@@ -3484,7 +3560,7 @@ class Boss:
                     continue
                 arg = q
             cmd.append(arg)
-        return SpecialWindow(cmd, stdin, cwd_from=cwd_from)
+        return SpecialWindow(cmd, stdin, cwd_from=cwd_from, launch_request=user_launch_request(launch_type, cwd_from))
 
     def _new_tab(self, args: SpecialWindowInstance | Iterable[str], cwd_from: CwdRequest | None = None, as_neighbor: bool = False) -> Tab | None:
         special_window = None
@@ -3493,7 +3569,7 @@ class Boss:
         else:
             args = tuple(args)
             if args:
-                special_window = self.args_to_special_window(args, cwd_from=cwd_from)
+                special_window = self.args_to_special_window(args, cwd_from=cwd_from, launch_type='tab')
         if not self.os_window_map:
             self.add_os_window()
         tm = self.active_tab_manager
@@ -3529,7 +3605,7 @@ class Boss:
         if isinstance(wd, str):
             wd = wd.split(os.pathsep) if str_is_multiple_paths else [wd]
         for path in wd:
-            special_window = SpecialWindow(None, cwd=path)
+            special_window = SpecialWindow(None, cwd=path, launch_request=user_launch_request('tab'))
             self._new_tab(special_window)
 
     def _new_window(self, args: list[str], cwd_from: CwdRequest | None = None) -> Window | None:
@@ -3552,12 +3628,11 @@ class Boss:
         if args:
             w = tab.new_special_window(self.args_to_special_window(args, cwd_from=cwd_from), location=location, allow_remote_control=allow_remote_control)
         else:
-            w = tab.new_window(cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control)
+            w = tab.new_window(
+                cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control, launch_request=user_launch_request('window', cwd_from)
+            )
         if cwd_from is not None and (sw := cwd_from.window):
-            session_name = sw.created_in_session_name
-            if not session_name and (sw_tab := sw.tabref()):
-                session_name = sw_tab.created_in_session_name
-            w.created_in_session_name = session_name
+            w.created_in_session_name = sw.effective_session_name
         return w
 
     @ac('win', 'Create a new window')
@@ -3727,6 +3802,10 @@ class Boss:
 
         clear_caches()
 
+        from .launch_wrapper import clear_caches
+
+        clear_caches()
+
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):
             with suppress(FileNotFoundError):
@@ -3825,6 +3904,12 @@ class Boss:
         pd = cast(dict[str, Any], payload if isinstance(payload, dict) else {})
         c.response_from_kitty(self, self.window_for_dispatch or self.active_window, PayloadGetter(c, pd))
 
+    def _new_os_window_for_session(self, session_name: str) -> TabManager:
+        "An empty OS window for tabs and windows moved out of session_name"
+        tm = self.os_window_map[self.add_os_window()]
+        tm.created_in_session_name = session_name
+        return tm
+
     def _move_window_to(
         self,
         window: Window | None = None,
@@ -3839,11 +3924,23 @@ class Boss:
         src_tab = window.tabref()
         if src_tab is None:
             return
+        # A tab or OS window created for the window belongs to its session
+        session_name = window.effective_session_name
+
+        def new_tab(tm: TabManager, location: str = 'last', title: str = '') -> Tab:
+            ans = tm.new_tab(empty_tab=True, location=location, title=title)
+            ans.created_in_session_name = session_name
+            return ans
+
+        if target_os_window_id != 'new' and not isinstance(target_tab_id, str) and not any(t.id == target_tab_id for t in self.all_tabs):
+            return
+
         with self.suppress_focus_change_events():
+            # The windows of the OS window docks follow the active tab, which
+            # can change below, so detach them first
+            detached = src_tab.detach_window(window) if src_tab.windows.is_in_os_window_dock(window) else None
             if target_os_window_id == 'new':
-                target_os_window_id = self.add_os_window()
-                tm = self.os_window_map[target_os_window_id]
-                target_tab = tm.new_tab(empty_tab=True, title=new_tab_title)
+                target_tab = new_tab(self._new_os_window_for_session(session_name), title=new_tab_title)
             else:
                 target_os_window_id = target_os_window_id or current_os_window()
                 if isinstance(target_tab_id, str):
@@ -3855,9 +3952,9 @@ class Boss:
                         tm = self.os_window_map[target_os_window_id]
                     if target_tab_id.startswith('new'):
                         # valid values for target_tab_id are 'new', 'new_after' and 'new_before'
-                        target_tab = tm.new_tab(empty_tab=True, location=(new_tab_location or target_tab_id[4:] or 'last'), title=new_tab_title)
+                        target_tab = new_tab(tm, location=(new_tab_location or target_tab_id[4:] or 'last'), title=new_tab_title)
                     else:
-                        target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True)
+                        target_tab = tm.tab_at_location(target_tab_id) or new_tab(tm)
                 else:
                     for tab in self.all_tabs:
                         if tab.id == target_tab_id:
@@ -3867,7 +3964,7 @@ class Boss:
                     else:
                         return
 
-            target_tab.attach_windows(src_tab.detach_window(window))
+            target_tab.attach_windows(src_tab.detach_window(window) if detached is None else detached)
             self._cleanup_tab_after_window_removal(src_tab)
             target_tab.make_active()
 
@@ -3903,9 +4000,7 @@ class Boss:
         tab = tab or self.active_tab
         if tab is None:
             return None
-        if target_os_window_id is None:
-            target_os_window_id = self.add_os_window()
-        tm = self.os_window_map[target_os_window_id]
+        tm = self._new_os_window_for_session(tab.created_in_session_name) if target_os_window_id is None else self.os_window_map[target_os_window_id]
         target_tab = tm.new_tab(empty_tab=True)
         target_tab.take_over_from(tab)
         self._cleanup_tab_after_window_removal(tab)

@@ -564,6 +564,14 @@ static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener =
 };
 
 void
+_glfwWaylandKeyboardFocusChanged(id_type window_id) {
+    // The focus callbacks run before this can run arbitrary code, including
+    // closing the window, so look it up again
+    _GLFWwindow *window = _glfwWindowForId(window_id);
+    if (window && window->wl.visible && csd_handle_focus_change(window)) commit_window_surface_if_safe(window);
+}
+
+void
 _glfwWaylandSurfaceOutputsChanged(_GLFWwindow *window) {
     // A pending frame callback may never be answered when the output the
     // surface was on goes away, see https://github.com/kovidgoyal/kitty/issues/10329

@@ -1004,6 +1004,12 @@ handle_window_title_bar_mouse(Window *w, int button, int modifiers, int action) 
     }
 }
 
+static bool
+tab_bar_selection_in_progress(const OSWindow *w) {
+    // A mouse selection of text in the tab bar, see TabManager.handle_tab_bar_mouse()
+    return w && w->tab_bar_render_data.screen && w->tab_bar_render_data.screen->selections.in_progress;
+}
+
 static void
 handle_tab_bar_mouse(int button, int modifiers, int action) {
     set_currently_hovered_window(0, modifiers, false);
@@ -1021,8 +1027,8 @@ handle_tab_bar_mouse(int button, int modifiers, int action) {
         if (w) w->tab_bar_data_updated = false;
         return;
     }
-    // dont report motion events, as they are expensive and useless
-    if (w && (button > -1 || global_state.tab_being_dragged.id)) {
+    // dont report motion events, as they are expensive and useless, except while dragging a tab or selecting text
+    if (w && (button > -1 || global_state.tab_being_dragged.id || tab_bar_selection_in_progress(w))) {
         call_boss(handle_tab_bar_mouse, "Kddiii", w->id, w->mouse_x, w->mouse_y, button, modifiers, action);
     }
 }
@@ -1542,9 +1548,18 @@ mouse_event(const int button, int modifiers, int action) {
     window_idx = r.window_idx;
     set_currently_hovered_window(w && !r.window_border && !r.in_title_bar ? w->id : 0, modifiers, true);
 
-    if (r.in_tab_bar || global_state.tab_being_dragged.id) {
-        mouse_cursor_shape = POINTER_POINTER;
+    bool tab_bar_selecting = tab_bar_selection_in_progress(osw);
+    if (tab_bar_selecting && ((button > -1 && action == GLFW_PRESS && !r.in_tab_bar) || (button < 0 && !osw->mouse_button_pressed[GLFW_MOUSE_BUTTON_LEFT]))) {
+        // The release that should have ended the selection was lost, cancel
+        // it so that this event goes where it belongs.
+        call_boss(cancel_tab_bar_selection, "K", osw->id);
+        tab_bar_selecting = false;
+    }
+    if (r.in_tab_bar || global_state.tab_being_dragged.id || tab_bar_selecting) {
         handle_tab_bar_mouse(button, modifiers, action);
+        // the event may have started or ended a selection
+        if (tab_bar_selection_in_progress(osw)) set_mouse_cursor_when_dragging(osw->tab_bar_render_data.screen);
+        else mouse_cursor_shape = POINTER_POINTER;
         debug("handled by tab bar\n");
     } else if ((r.in_title_bar && r.window) || global_state.window_being_dragged.id) {
         mouse_cursor_shape = POINTER_POINTER;

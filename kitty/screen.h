@@ -141,6 +141,12 @@ typedef struct {
         CursorRenderInfo cursor;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data, sgr_blink_was_used;
+    // set once a multiline (scale > 1) char has been drawn, used to skip scanning for such chars in hot paths
+    bool multiline_chars_used;
+    // set when multiline chars may be cut off at the bottom of the main ([0]) or
+    // alternate ([1]) screen, which only happens when scrolling down, used to
+    // avoid scanning for them on every linefeed
+    bool multiline_chars_cut_off_at_bottom[2];
     Cursor *cursor;
     Savepoint main_savepoint, alt_savepoint;
     PyObject *callbacks, *test_child;

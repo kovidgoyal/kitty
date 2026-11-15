@@ -136,6 +136,11 @@ func (h *Handler) initialize_save_file_name(fname string) {
 			}
 		}
 	}
+	if sanitize_name(fname) != fname {
+		// Do not pre-fill names containing control codes as the readline
+		// would write them to the terminal unsanitized.
+		fname = ""
+	}
 	h.rl.SetText(fname)
 }
 
@@ -146,7 +151,7 @@ func (h *Handler) draw_save_file_name_screen() (err error) {
 		h.lp.Println(h.state.WindowTitle())
 	}
 	h.lp.Println("Enter the name of the", desc, "below, relative to:")
-	h.lp.Println(h.lp.SprintStyled("fg=green", h.state.CurrentDir()))
+	h.lp.Println(h.lp.SprintStyled("fg=green", sanitize_name(h.state.CurrentDir())))
 	if h.state.mode.AllowsMultipleSelection() {
 		h.lp.Println("Use shift+enter (or whatever you mapped the select action to) to enter multiple filenames")
 	}

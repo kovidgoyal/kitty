@@ -295,6 +295,10 @@ func resolve_path(path string) (string, error) {
 	return filepath.Abs(path)
 }
 
+// The book metadata depends only on the file contents, and Unmarshall already
+// checks that cached metadata belongs to the selected book.
+func (c calibre_renderer) CacheKeyExtra(string) string { return "" }
+
 func (c calibre_renderer) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[CALIBRE_METADATA_KEY])
 	if err != nil {
@@ -358,18 +362,18 @@ func (c calibre_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 			offset += h.render_wrapped_text_in_region(text, s.x, s.y+offset, s.width, s.height-offset, center)
 		}
 	}
-	ext := filepath.Ext(s.abspath)
+	ext := sanitize_name(filepath.Ext(s.abspath))
 	text := fmt.Sprintf("%s: %s", ext, humanize.Bytes(uint64(s.metadata.Size())))
 	icon := icons.IconForPath(s.abspath)
 	w(icon+"  "+text, true)
 	r := s.custom_metadata.custom.(*CalibreResponse)
-	w("Title: "+r.Metadata.Title, false)
-	w("Authors: "+strings.Join(r.Metadata.Authors, " & "), false)
+	w("Title: "+sanitize(r.Metadata.Title), false)
+	w("Authors: "+sanitize(strings.Join(r.Metadata.Authors, " & ")), false)
 	if r.Metadata.Series != "" {
-		w(fmt.Sprintf("Series: Book %g of %s", r.Metadata.Series_index, r.Metadata.Series), false)
+		w(fmt.Sprintf("Series: Book %g of %s", r.Metadata.Series_index, sanitize(r.Metadata.Series)), false)
 	}
 	if len(r.Metadata.Tags) > 0 {
-		w("Tags: "+strings.Join(r.Metadata.Tags, ", "), false)
+		w("Tags: "+sanitize(strings.Join(r.Metadata.Tags, ", ")), false)
 	}
 	return
 }

@@ -610,6 +610,7 @@ parse_input(ChildMonitor *self) {
     if (UNLIKELY(kill_signal_received || reload_config_signal_received)) {
         if (kill_signal_received) {
             global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
+            global_state.quit_cause = QUIT_CAUSE_SIGNAL;
             global_state.has_pending_closes = true;
             if (self->benchmark_wakeup_fd < 0) request_tick_callback();
             kill_signal_received = false;
@@ -675,10 +676,11 @@ parse_input(ChildMonitor *self) {
         if (remove_notify[remove_count].screen && do_parse(self, remove_notify[remove_count].screen, now, true)) input_read = true;
         PyObject *t = PyObject_CallFunction(
             self->death_notify,
-            "kOi",
+            "kOiO",
             remove_notify[remove_count].id,
             remove_notify[remove_count].child_died ? Py_True : Py_False,
-            remove_notify[remove_count].exit_status);
+            remove_notify[remove_count].exit_status,
+            remove_notify[remove_count].close_requested ? Py_True : Py_False);
         if (t == NULL) PyErr_Print();
         else Py_DECREF(t);
         FREE_CHILD(remove_notify[remove_count]);
@@ -1415,9 +1417,12 @@ add_python_timer(PyObject *self UNUSED, PyObject *args) {
     double interval;
     int repeats = 1;
     if (!PyArg_ParseTuple(args, "Od|p", &callback, &interval, &repeats)) return NULL;
+    // The timer owns a reference to callback, released by python_timer_cleanup
+    Py_INCREF(callback);
     unsigned long long timer_id =
         add_main_loop_timer(s_double_to_monotonic_t(interval), repeats ? true : false, python_timer_callback, callback, python_timer_cleanup);
-    Py_INCREF(callback);
+    // On failure the cleanup function is never called, so release the reference here
+    if (!timer_id) Py_DECREF(callback);
     return Py_BuildValue("K", timer_id);
 }
 

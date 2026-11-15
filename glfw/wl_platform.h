@@ -364,6 +364,14 @@ typedef struct _GLFWlibraryWayland {
         uint32_t last_event_time;
         bool has_event_time;
     } touch_state;
+    struct {
+        bool active;
+        int32_t id;
+        GLFWid window_id;
+        struct wl_surface *surface;
+        int button; // a GLFWTitlebarButton
+        double x, y;
+    } decoration_touch;
     struct wl_data_device_manager *dataDeviceManager;
     struct wl_data_device *dataDevice;
     struct xdg_wm_base *wmBase;
@@ -556,6 +564,7 @@ void _glfwCreateXdgOutputsWayland(void);
 void _glfwWaylandBeforeBufferSwap(_GLFWwindow *window);
 void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
 void _glfwWaylandSurfaceOutputsChanged(_GLFWwindow *window);
+void _glfwWaylandKeyboardFocusChanged(id_type window_id);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 double _glfwWaylandWindowScale(_GLFWwindow *);

@@ -95,19 +95,23 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	return ans, nil
 }
 
-func key_for_path(path string) (key string, err error) {
-	if path, err = filepath.EvalSymlinks(path); err != nil {
-		return
-	}
-	if path, err = filepath.Abs(path); err != nil {
-		return
-	}
-
-	s, err := os.Stat(path)
+func key_for_path(path, extra_key string) (key string, err error) {
+	resolved_path, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		return
 	}
-	data := fmt.Sprintf("%s\x00%d\x00%d", path, s.Size(), s.ModTime().UnixNano())
+	if resolved_path, err = filepath.Abs(resolved_path); err != nil {
+		return
+	}
+
+	s, err := os.Stat(resolved_path)
+	if err != nil {
+		return
+	}
+	data := fmt.Sprintf("%s\x00%d\x00%d", resolved_path, s.Size(), s.ModTime().UnixNano())
+	if extra_key != "" {
+		data += "\x00" + extra_key
+	}
 	sum := sha256.Sum256(utils.UnsafeStringToBytes(data))
 	return hex.EncodeToString(sum[:]), nil
 }
@@ -246,6 +250,10 @@ func (dc *DiskCache) ensure_entries() error {
 			if os.IsNotExist(err) {
 				dc.entry_map = make(map[string]*Entry)
 				dc.entries = Metadata{SortedEntries: make([]*Entry, 0), PathMap: make(map[string]string)}
+				// Write the file so that its state is recorded. Otherwise every
+				// later call reloads and discards in-memory changes not yet written.
+				dc.entries_dirty = true
+				return dc.write_entries_if_dirty()
 			} else {
 				return err
 			}
@@ -367,6 +375,7 @@ func (dc *DiskCache) clear() (err error) {
 		dc.entries_dirty = true
 		dc.entry_map = make(map[string]*Entry)
 		dc.entries.SortedEntries = make([]*Entry, 0)
+		dc.entries.PathMap = make(map[string]string)
 		dc.entries.TotalSize = 0
 	}
 	return
@@ -469,16 +478,43 @@ func (dc *DiskCache) add_path(path, key string, items map[string][]byte) (ans ma
 		}
 	}()
 
-	if existing := dc.entries.PathMap[path]; existing != "" && existing != key {
-		delete(dc.entries.PathMap, path)
-		dc.entries_dirty = true
-		if err = dc.remove(existing); err != nil {
+	if orphan := dc.set_key_for_path(path, key); orphan != "" {
+		if err = dc.remove(orphan); err != nil {
 			return
 		}
 	}
+	return dc.add(key, items)
+}
+
+// path_map_key returns the PathMap key for path. It includes extra_key so
+// that, for example, previews of one file by different commands do not evict
+// each other. An empty extra_key gives the same PathMap key as older versions.
+func path_map_key(path, extra_key string) string {
+	if extra_key == "" {
+		return path
+	}
+	return path + "\x00" + extra_key
+}
+
+// set_key_for_path records that path now uses the entry for key. It returns
+// the entry path used previously if no other path, such as another symlink to
+// the same file, still uses it, so that the caller can remove it.
+func (dc *DiskCache) set_key_for_path(path, key string) (orphan string) {
+	existing := dc.entries.PathMap[path]
+	if existing == key {
+		return ""
+	}
 	dc.entries.PathMap[path] = key
 	dc.entries_dirty = true
-	return dc.add(key, items)
+	if existing == "" {
+		return ""
+	}
+	for _, k := range dc.entries.PathMap {
+		if k == existing {
+			return ""
+		}
+	}
+	return existing
 }
 
 func (dc *DiskCache) add(key string, items map[string][]byte) (ans map[string]string, err error) {

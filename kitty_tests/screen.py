@@ -7,7 +7,8 @@ import tempfile
 
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, SCROLL_LINE, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
 from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
-from kitty.window import pagerhist
+from kitty.utils import path_from_osc7_url
+from kitty.window import is_conemu_osc9_command, pagerhist
 
 from .base import BaseTest, draw_multicell, parse_bytes
 
@@ -1686,6 +1687,43 @@ class TestScreen(BaseTest):
         t('\u25b6', 1, '\ufe0f', 2, '\ufe0e', 2)
         # wide + VS15 + VS16
         t('\U0001f610', 2, '\ufe0e', 1, '\ufe0f', 1)
+        # VS15 attaching to a wide char on the previous, soft wrapped line
+        s = self.create_screen(cols=5, lines=5)
+        parse_bytes(s, 'abc\U0001f610f\r'.encode())
+        self.ae((s.cursor.x, s.cursor.y), (0, 1))
+        parse_bytes(s, '\ufe0e'.encode())
+        self.ae((s.cursor.x, s.cursor.y), (0, 1))
+        self.ae(s.cpu_cells(0, 3)['mcd']['width'], 1)
+        self.assertTrue(s.cpu_cells(0, 4)['next_char_was_wrapped'])
+        parse_bytes(s, b'gh')
+        self.ae((s.cursor.x, s.cursor.y), (2, 1))
+        self.ae(str(s.line(0)), 'abc\U0001f610\ufe0e')
+        self.ae(str(s.line(1)), 'gh')
+        # scaled natural width char narrowed by VS15, on the same line and soft wrapped
+        s = self.create_screen(cols=8, lines=5)
+        parse_bytes(s, b'ab')
+        draw_multicell(s, '\U0001f610', scale=2)
+        self.ae(s.cursor.x, 6)
+        parse_bytes(s, '\ufe0e'.encode())
+        self.ae(s.cursor.x, 4)
+        for y in (0, 1):
+            self.ae(s.cpu_cells(y, 2)['mcd']['width'], 1)
+        s = self.create_screen(cols=6, lines=5)
+        parse_bytes(s, b'ab')
+        draw_multicell(s, '\U0001f610', scale=2)
+        parse_bytes(s, b'f\r')
+        self.ae((s.cursor.x, s.cursor.y), (0, 1))
+        parse_bytes(s, '\ufe0e'.encode())
+        self.ae((s.cursor.x, s.cursor.y), (0, 1))
+        self.ae(s.cpu_cells(0, 2)['mcd']['width'], 1)
+        self.assertTrue(s.cpu_cells(0, 5)['next_char_was_wrapped'])
+        # cursor inside the char is clamped to the end of the narrowed char
+        s = self.create_screen(cols=8, lines=5)
+        parse_bytes(s, b'ab')
+        draw_multicell(s, '\U0001f610', scale=2)
+        parse_bytes(s, b'\x1b[1;6H\xef\xb8\x8e')
+        self.ae(s.cursor.x, 4)
+        s = self.create_screen()
         # large numbers of combining chars
         s.reset()
         s.draw('\N{HEAVY EXCLAMATION MARK SYMBOL}' + 4500 * '\N{VARIATION SELECTOR-16}')
@@ -2352,6 +2390,64 @@ class TestScreen(BaseTest):
             self.assertIn(b'Ignoring invalid detect_url_regex: (', f.read())
         s.draw('a foo')
         ae(s, 'foo', 2)
+
+    def test_scroll_to_prompt_with_short_scrollback(self):
+        for lines_before_prompt in (0, 1):
+            with self.subTest(lines_before_prompt=lines_before_prompt):
+                s = self.create_screen(cols=12, lines=4, scrollback=10)
+                if lines_before_prompt:
+                    parse_bytes(s, b'\x1b]133;C\x07older\r\n')
+                parse_bytes(s, b'\x1b]133;A\x07$ a\r\n')
+                parse_bytes(s, b'\x1b]133;C\x07a0\r\n\r\n\r\n')
+                parse_bytes(s, b'\x1b]133;A\x07$ live')
+                self.ae(s.historybuf.count, lines_before_prompt + 1)
+
+                self.assertTrue(s.scroll_to_prompt(-1, 3))
+                self.ae(s.scrolled_by, s.historybuf.count)
+                s.scroll_to_absolute(0)
+
+                output = []
+                s.cmd_output(2, output.append)
+                self.ae(''.join(output).rstrip(), 'a0')
+                self.assertTrue(s.scroll_to_prompt(0))
+                self.ae(s.scrolled_by, s.historybuf.count)
+                self.ae(str(s.visual_line(lines_before_prompt)), '$ a')
+
+    def test_scroll_to_prompt_offset_tracks_target_command(self):
+        # With a scroll offset the top of the viewport is in the output of the
+        # command above the target, which must not be used as the last visited prompt
+        def create():
+            s = self.create_screen(cols=12, lines=5, scrollback=50)
+            for i in range(4):
+                parse_bytes(s, f'\x1b]133;A\x07$ c{i}\r\n'.encode())
+                parse_bytes(s, f'\x1b]133;C\x07o{i}a\r\no{i}b\r\no{i}c\r\no{i}d\r\n'.encode())
+            parse_bytes(s, b'\x1b]133;A\x07$ live')
+            return s
+
+        def last_visited_output(s):
+            output = []
+            s.cmd_output(2, output.append)
+            return ''.join(output).split()
+
+        expected = ['o3a', 'o3b', 'o3c', 'o3d']
+        for offset in range(5):
+            with self.subTest(offset=offset):
+                s = create()
+                self.assertTrue(s.scroll_to_prompt(-1, offset))
+                self.ae(s.scrolled_by, offset + 1)
+                self.ae(str(s.visual_line(offset)), '$ c3')
+                self.ae(last_visited_output(s), expected)
+                s.scroll_to_absolute(0)
+                self.assertTrue(s.scroll_to_prompt(0))
+                self.ae(s.scrolled_by, offset + 1)
+                self.ae(str(s.visual_line(offset)), '$ c3')
+
+        # Jumping forward with an offset records the prompt jumped to
+        s = create()
+        self.assertTrue(s.scroll_to_prompt(-2, 0))
+        self.assertTrue(s.scroll_to_prompt(1, 2))
+        self.ae(str(s.visual_line(2)), '$ c3')
+        self.ae(last_visited_output(s), expected)
 
     def test_prompt_marking(self):
         # ]]]]]]]]]]]]]]]]}}}}}}}}}}}}}}}}))))))))))))))))))))))
@@ -4082,6 +4178,76 @@ class TestScreen(BaseTest):
         s.draw('cd')
         s.cursor.x = 1
         self.ae(s.ime_text_around_cursor(), ('c', 'd'))
+
+    def test_cwd_change_notification(self):
+        from kitty.window import Watchers, Window
+
+        s = self.create_screen()
+        c = s.callbacks
+        parse_bytes(s, b'\x1b]7;file://host/a/b\x1b\\')
+        self.ae(c.cwd_changes, [b'file://host/a/b'])
+        self.ae(s.last_reported_cwd, b'file://host/a/b')
+        # repeating the same directory does not report a change
+        parse_bytes(s, b'\x1b]7;file://host/a/b\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b'])
+        parse_bytes(s, b'\x1b]7;file://host/a/c\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b', b'file://host/a/c'])
+        # OSC 6 is ignored
+        parse_bytes(s, b'\x1b]6;file://host/x\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b', b'file://host/a/c'])
+        # after a reset the next report is a change
+        s.reset()
+        parse_bytes(s, b'\x1b]7;file://host/a/c\x07')
+        self.ae(c.cwd_changes, [b'file://host/a/b', b'file://host/a/c', b'file://host/a/c'])
+        # ConEmu OSC 9;9 cwd reporting
+        del c.cwd_changes[:]
+        c.notifications = []
+        parse_bytes(s, b'\x1b]9;9;/x/y z\x1b\\')
+        self.ae(s.last_reported_cwd, b'kitty-shell-cwd:///x/y z')
+        parse_bytes(s, b'\x1b]9;9;"/q/r"\x07')
+        self.ae(s.last_reported_cwd, b'kitty-shell-cwd:///q/r')
+        # relative and windows paths are ignored
+        parse_bytes(s, b'\x1b]9;9;C:\\x\x07')
+        parse_bytes(s, b'\x1b]9;9;\x07')
+        self.ae(c.cwd_changes, [b'kitty-shell-cwd:///x/y z', b'kitty-shell-cwd:///q/r'])
+        self.ae(c.notifications, [])
+        # other OSC 9 payloads still go to desktop_notify
+        parse_bytes(s, b'\x1b]9;hello\x07')
+        self.ae(c.notifications, [(9, 'hello')])
+        self.ae(path_from_osc7_url(s.last_reported_cwd), '/q/r')
+        for x in ('1;10', '2;msg', '5', '9;9;/a', '12', '10;1'):
+            self.assertTrue(is_conemu_osc9_command(x), x)
+        for x in ('hello', '13;x', '0;x', '1x', '', '42'):
+            self.assertFalse(is_conemu_osc9_command(x), x)
+
+        delivered = []
+
+        class FakeWindow:
+            def __init__(self):
+                self.watchers = Watchers()
+                self.watchers.on_cwd_change.append(lambda boss, window, data: None)
+
+            def call_watchers(self, which, data):
+                delivered.append(data)
+
+        w = FakeWindow()
+        Window.on_cwd_change(w, b'file://myhost/some%20dir/x')
+        Window.on_cwd_change(w, b'kitty-shell-cwd://otherhost/a b')
+        Window.on_cwd_change(w, b'file:///no/host')
+        Window.on_cwd_change(w, b'file://h/bad\xff')
+        self.ae(
+            delivered,
+            [
+                {'cwd': '/some dir/x', 'host': 'myhost'},
+                {'cwd': '/a b', 'host': 'otherhost'},
+                {'cwd': '/no/host', 'host': ''},
+                {'cwd': '/bad�', 'host': 'h'},
+            ],
+        )
+        del delivered[:]
+        w.watchers.on_cwd_change.clear()
+        Window.on_cwd_change(w, b'file://myhost/y')
+        self.ae(delivered, [])
 
 
 def detect_url(self, scale=1):

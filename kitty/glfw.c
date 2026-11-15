@@ -968,10 +968,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", osw->id, focused);
     bool focus_changed = osw->is_focused != focused;
     osw->is_focused = focused ? true : false;
-    if (focus_changed) {
-        if (focused) osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN);
-        else osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
-    }
+    if (focus_changed) record_os_window_focus_change_for_shaders(osw, focused);
     monotonic_t now = monotonic();
     id_type wid = osw->id;
     if (focused) {
@@ -1287,10 +1284,13 @@ application_close_requested_callback(int flags) {
     }
     if (flags & GLFW_APPLICATION_CLOSE_FATAL_ERROR) {
         global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
+        global_state.quit_cause = QUIT_CAUSE_FATAL_ERROR;
         global_state.has_pending_closes = true;
         request_tick_callback();
     } else {
+        if (flags & GLFW_APPLICATION_CLOSE_LOGOUT) global_state.quit_cause = QUIT_CAUSE_LOGOUT;
         if (global_state.quit_request == NO_CLOSE_REQUESTED) {
+            if (!(flags & GLFW_APPLICATION_CLOSE_LOGOUT)) global_state.quit_cause = QUIT_CAUSE_OS_REQUEST;
             global_state.has_pending_closes = true;
             global_state.quit_request = CONFIRMABLE_CLOSE_REQUESTED;
             request_tick_callback();
@@ -2591,7 +2591,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetDropEventCallback(glfw_window, drop_dest_callback);
     monotonic_t now = monotonic();
     w->is_focused = true;
-    w->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN);
+    record_os_window_focus_change_for_shaders(w, true);
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
     w->mouse_activate_deadline = -1;
