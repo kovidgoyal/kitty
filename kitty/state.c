@@ -1388,6 +1388,7 @@ PYWRAP1(mark_tab_bar_dirty) {
     WITH_OS_WINDOW(os_window_id)
     os_window->has_too_few_tabs = !should_be_shown;
     os_window->tab_bar_data_updated = false;
+    request_tick_callback();
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }
