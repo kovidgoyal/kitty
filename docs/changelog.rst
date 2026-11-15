@@ -156,6 +156,9 @@ Detailed list of changes
   close, minimize and maximize the window, and to move and resize it
   (:pull:`10859`)
 
+- Wayland: Fix the client side window decorations sometimes showing the wrong
+  focus state, for example, after switching between tabbed windows on niri
+
 - Sessions: Fix tabs and windows moved with :ac:`detach_tab`,
   :ac:`detach_window` or drag and drop losing their session. :ac:`save_as_session`
   no longer opens saved sessions in the wrong OS Window or tab and no longer

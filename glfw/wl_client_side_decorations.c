@@ -866,6 +866,14 @@ csd_change_title(_GLFWwindow *window) {
     return false;
 }
 
+void
+csd_handle_focus_change(_GLFWwindow *window) {
+    // Keyboard focus changes are not necessarily accompanied by a configure
+    // event, which is what usually causes the decorations to be re-rendered
+    if (!csd_should_window_be_decorated(window)) return;
+    if (ensure_csd_resources(window) && !window->wl.waiting_for_swap_to_commit) wl_surface_commit(window->wl.surface);
+}
+
 static void
 on_titlebar_buffer_released(_GLFWwindow *window) {
     if (!decs.titlebar.buffer.has_pending_update || !decs.titlebar.surface || !window_is_csd_capable(window)) return;

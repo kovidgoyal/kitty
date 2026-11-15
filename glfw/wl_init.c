@@ -612,6 +612,7 @@ keyboardHandleEnter(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint
     _glfw.wl.keyboardFocusId = window->id;
     _glfw.wl.lastKeyboardFocusId = window->id;
     _glfwInputWindowFocus(window, true);
+    csd_handle_focus_change(window);
     uint32_t *key;
     if (keys && _glfw.wl.keyRepeatInfo.key) {
         wl_array_for_each(key, keys) {
@@ -632,6 +633,7 @@ keyboardHandleLeave(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint
     _glfw.wl.serial = serial;
     _glfw.wl.keyboardFocusId = 0;
     _glfwInputWindowFocus(window, false);
+    csd_handle_focus_change(window);
     stop_key_repeat_timer();
 }
 
