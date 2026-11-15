@@ -133,6 +133,8 @@ Detailed list of changes
   :ac:`resize_window` action and :code:`kitten @ resize-window`, see :ref:`docks`
   (:iss:`10857`)
 
+- Fix a crash when the VS15 variation selector is received with the cursor at the start of a line, after a wide emoji that was soft wrapped from the previous line
+
 - Unicode input kitten: Fix searching by name not finding some characters such as the pound sign (:iss:`10862`)
 
 - choose-files kitten: Sanitize file names, archive member names, ebook metadata and previewer output everywhere they are displayed so they cannot inject escape codes into the terminal

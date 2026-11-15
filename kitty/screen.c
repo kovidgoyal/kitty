@@ -1210,7 +1210,8 @@ halve_multicell_width(Screen *self, index_type x_, index_type y_) {
         GPUCell *g = line->gpu_cells;
         for (index_type x = x_; x < half_x_limit; x++) c[x].width = new_width;
         for (index_type x = half_x_limit; x < x_limit; x++) {
-            c[x] = (CPUCell){0};
+            // preserve the soft wrap marker, which lives in the last cell of the line
+            c[x] = (CPUCell){.next_char_was_wrapped = c[x].next_char_was_wrapped};
             clear_sprite_position(g[x]);
         }
         mark_range_line_dirty(self, y);
@@ -1429,9 +1430,16 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
         // matching how VS16 and Thai/Lao SARA AM leave such cells alone.
         if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->natural_width && cpu_cell->width == 2 &&
             is_emoji_presentation_base(self->lc->chars[base_pos])) {
-            index_type deltax = (cpu_cell->scale * cpu_cell->width) / 2;
+            const index_type old_limit = xpos + cpu_cell->scale * cpu_cell->width;
+            const index_type new_limit = old_limit - (cpu_cell->scale * cpu_cell->width) / 2;
             halve_multicell_width(self, xpos, s->prev.y);
-            self->cursor->x -= deltax;
+            // The cursor only needs to move if it is on the same line as the
+            // narrowed char, the char can also be on the previous line when the
+            // cursor is at the start of a line that the char soft wrapped onto.
+            if (self->cursor->y == s->prev.y && self->cursor->x > new_limit) {
+                if (self->cursor->x >= old_limit) self->cursor->x -= old_limit - new_limit;
+                else self->cursor->x = new_limit;
+            }
             init_segmentation_state(self, s);
         }
     } else if (s->seg.grapheme_break == GBP_SpacingMark && !cp[xpos].is_multicell && wcwidth_std(char_props_for(ch)) > 0) {
