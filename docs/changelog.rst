@@ -125,6 +125,10 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :ac:`save_as_session`: The prompt for the session file name now shows the
+  directory the session will be saved in, taking :code:`--base-dir` into
+  account, and file name completion is relative to that directory (:disc:`10867`)
+
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)

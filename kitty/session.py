@@ -779,7 +779,14 @@ def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
         # Fail before asking the user for a path that will not be used
         show_nothing_to_save_error(boss, opts)
     else:
+        base_dir = os.path.abspath(os.path.expanduser(opts.base_dir)) if opts.base_dir else os.getcwd()
+        msg = (
+            _('Enter a name for the session file. It will be saved in: {0}').format(base_dir)
+            + '\n'
+            + _('You can also enter a full path. The .kitty-session extension is added if the name has no extension.')
+        )
         boss.get_save_filepath(
-            _('Enter the path at which to save the session, usually session files are given the .kitty-session file extension'),
+            msg,
             partial(save_as_session_part2, boss, opts, path_input_by_user=True),
+            cwd=base_dir if os.path.isdir(base_dir) else '',
         )

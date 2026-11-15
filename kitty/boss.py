@@ -1450,6 +1450,7 @@ class Boss:
         window: Window | None = None,  # the window associated with the confirmation
         prompt: str = '> ',
         initial_value: str = '',
+        cwd: str = '',  # the directory relative to which file names are completed
     ) -> None:
         result: str = ''
 
@@ -1464,7 +1465,13 @@ class Boss:
         if initial_value:
             cmd.append('--default=' + initial_value)
         self.run_kitten_with_metadata(
-            'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
+            'ask',
+            cmd,
+            window=window,
+            custom_callback=callback_,
+            default_data={'response': ''},
+            action_on_removal=on_popup_overlay_removal,
+            cwd=cwd,
         )
 
     def _windows_closed_with_tab(self, tab: Tab) -> tuple[Window, ...]:
@@ -2737,6 +2744,7 @@ class Boss:
         custom_callback: Callable[[dict[str, Any], int, 'Boss'], None] | None = None,
         action_on_removal: Callable[[int, 'Boss'], None] | None = None,
         default_data: dict[str, Any] | None = None,
+        cwd: str = '',
     ) -> Any:
         from kittens.runner import CLIOnlyKitten, KittenMetadata, create_kitten_handler, resolved_kitten
 
@@ -2834,7 +2842,7 @@ class Boss:
                         cmd + args,
                         stdin=data,
                         env=env,
-                        cwd=CwdRequest(w).cwd_of_child or w.cwd_of_child,
+                        cwd=cwd or CwdRequest(w).cwd_of_child or w.cwd_of_child,
                         overlay_for=w.id,
                         overlay_behind=end_kitten.has_ready_notification,
                     ),
