@@ -65,8 +65,24 @@ write_to_stderr(const char *text) {
         write_to_stderr(m);               \
         write_to_stderr(": ");            \
         write_to_stderr(strerror(errno)); \
-        exit(EXIT_FAILURE);               \
+        _exit(EXIT_FAILURE);              \
     }
+
+static void
+format_env_int(char *buf, size_t bufsz, const char *prefix, int val) {
+    // Async-signal-safe replacement for snprintf(buf, bufsz, "%s%d", prefix, val), val must be >= 0
+    size_t n = 0;
+    while (*prefix && n + 1 < bufsz) buf[n++] = *prefix++;
+    char digits[16];
+    size_t nd = 0;
+    unsigned int v = val < 0 ? 0 : (unsigned int)val;
+    do {
+        digits[nd++] = '0' + (v % 10);
+        v /= 10;
+    } while (v && nd < sizeof(digits));
+    while (nd && n + 1 < bufsz) buf[n++] = digits[--nd];
+    buf[n] = 0;
+}
 
 static void
 mark_close_on_exec(int fd) {
@@ -155,13 +171,47 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     }
     int handled_signals[16] = {0}, num_handled_signals = MIN((int)arraysz(handled_signals), PyTuple_GET_SIZE(handled_signals_p));
     for (Py_ssize_t i = 0; i < num_handled_signals; i++) handled_signals[i] = PyLong_AsLong(PyTuple_GET_ITEM(handled_signals_p, i));
+    if (PyErr_Occurred()) {
+        free(argv);
+        free(env);
+        return NULL;
+    }
+    // Convert pass_fds to a C array before fork() so that no Python APIs are used in the child
+    fd_set passed_fds;
+    FD_ZERO(&passed_fds);
+    bool has_preserved_fds = false;
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(pass_fds); i++) {
+        PyObject *pfd = PyTuple_GET_ITEM(pass_fds, i);
+        if (!PyLong_Check(pfd)) {
+            free(argv);
+            free(env);
+            PyErr_SetString(PyExc_TypeError, "pass_fds must contain only integers");
+            return NULL;
+        }
+        long fd = PyLong_AsLong(pfd);
+        if (fd == -1 && PyErr_Occurred()) {
+            free(argv);
+            free(env);
+            return NULL;
+        }
+        if (fd > -1 && fd < FD_SETSIZE) {
+            FD_SET((int)fd, &passed_fds);
+            has_preserved_fds = true;
+        }
+    }
+    const size_t env_size = PyTuple_GET_SIZE(env_p);
 
+    // PyOS_AfterFork_Child() is deliberately not called in the child. It runs
+    // Python code (at fork handlers, thread state re-initialization) and
+    // allocates memory, and the Python docs only require it if the child will
+    // call back into the interpreter, which ours never does as it execs.
+    // Between fork() and exec() the child must use only async-signal-safe
+    // functions, macOS kills children that do otherwise with SIGKILL.
     PyOS_BeforeFork();
     pid_t pid = fork();
     switch (pid) {
         case 0: {
             // child
-            PyOS_AfterFork_Child();
             const struct sigaction act = {.sa_handler = SIG_DFL};
 
 #define SA(which) \
@@ -196,31 +246,18 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
             safe_close(tfd, __FILE__, __LINE__);
 
-            fd_set passed_fds;
-            FD_ZERO(&passed_fds);
-            bool has_preserved_fds = false;
             if (forward_stdio) {
                 int fd = safe_dup(STDOUT_FILENO);
                 if (fd < 0) exit_on_err("dup() failed for forwarded STDOUT");
                 FD_SET(fd, &passed_fds);
-                size_t s = PyTuple_GET_SIZE(env_p);
-                env[s] = (char *)(env + (s + 2));
-                snprintf(env[s], EXTRA_ENV_BUFFER_SIZE, "KITTY_STDIO_FORWARDED=%d", fd);
+                env[env_size] = (char *)(env + (env_size + 2));
+                format_env_int(env[env_size], EXTRA_ENV_BUFFER_SIZE, "KITTY_STDIO_FORWARDED=", fd);
                 fd = safe_dup(STDERR_FILENO);
                 if (fd < 0) exit_on_err("dup() failed for forwarded STDERR");
                 FD_SET(fd, &passed_fds);
                 has_preserved_fds = true;
             }
 
-            for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(pass_fds); i++) {
-                PyObject *pfd = PyTuple_GET_ITEM(pass_fds, i);
-                if (!PyLong_Check(pfd)) exit_on_err("pass_fds must contain only integers");
-                int fd = PyLong_AsLong(pfd);
-                if (fd > -1 && fd < FD_SETSIZE) {
-                    FD_SET(fd, &passed_fds);
-                    has_preserved_fds = true;
-                }
-            }
             // Redirect stdin/stdout/stderr to the pty
             if (safe_dup2(slave, STDOUT_FILENO) == -1) exit_on_err("dup2() failed for fd number 1");
             if (safe_dup2(slave, STDERR_FILENO) == -1) exit_on_err("dup2() failed for fd number 2");
@@ -261,7 +298,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             write_to_stderr(strerror(errno));
             write_to_stderr("\n");
             execlp(kitten_exe, "kitten", "__hold_till_enter__", NULL);
-            exit(EXIT_FAILURE);
+            _exit(EXIT_FAILURE);
             break;
         }
         case -1: {
