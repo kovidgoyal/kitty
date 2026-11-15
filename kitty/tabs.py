@@ -2280,7 +2280,11 @@ class TabManager:  # {{{
             set_tab_being_dragged()
 
     def handle_tab_bar_mouse(self, x: float, y: float, button: int, modifiers: int, action: int) -> None:
+        tab_bar = self.tab_bar
         if button == -1:  # motion
+            if tab_bar.selection is not None:
+                tab_bar.update_selection(x, y)
+                return
             dragged_tab_id, drag_started, start_x, start_y = get_tab_being_dragged()
             if dragged_tab_id and self.tab_for_id(dragged_tab_id) is not None and not drag_started:
                 threshold = get_options().drag_threshold
@@ -2290,10 +2294,17 @@ class TabManager:  # {{{
                     self.recent_tab_bar_mouse_events.clear()
             return
 
-        tab_id_at_pointer = self.tab_bar.tab_id_at(int(x), int(y))
+        is_left_release = button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE
+        if action == GLFW_PRESS:
+            tab_bar.cancel_selection()  # left over, if the release that should have ended it was lost
+        elif is_left_release and tab_bar.selection is not None:
+            text = tab_bar.finish_selection()
+            if text:  # a drag, which must not count towards a double click
+                get_boss().copy_selected_text(text)
+                return
+        tab_id_at_pointer = tab_bar.tab_id_at(int(x), int(y))
         self.recent_tab_bar_mouse_events.add(button, modifiers, action, x, y, tab_id_at_pointer)
         drag_started = get_tab_being_dragged()[1]
-        is_left_release = button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE
         if tab_id_at_pointer < 0:  # synthetic tab (e.g. "+" new-tab button)
             if is_left_release and not drag_started:
                 set_tab_being_dragged()  # clear potential drag from a press on a tab
@@ -2307,6 +2318,8 @@ class TabManager:  # {{{
         if tab is None:
             if is_left_release:
                 set_tab_being_dragged()  # clear potential drag from a press on a tab
+            elif button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_PRESS and tab_bar.contains(x, y):
+                tab_bar.start_selection(x, y)  # of text outside the tabs
             if self.recent_tab_bar_mouse_events.click_count(GLFW_MOUSE_BUTTON_LEFT) == 2:
                 self.new_tab()
                 self.recent_tab_bar_mouse_events.clear()

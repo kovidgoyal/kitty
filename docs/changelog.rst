@@ -129,6 +129,10 @@ Detailed list of changes
   directory the session will be saved in, taking :code:`--base-dir` into
   account, and file name completion is relative to that directory (:disc:`10867`)
 
+- Allow selecting and copying text drawn in the tab bar outside the tabs, for
+  example by a custom :file:`tab_bar.py`, by dragging the mouse over it
+  (:iss:`10869`)
+
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
   the OS window, see :ref:`docks` (:iss:`10854`)

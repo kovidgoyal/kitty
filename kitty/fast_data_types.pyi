@@ -304,6 +304,7 @@ CURSOR_HOLLOW: int
 NO_CURSOR_SHAPE: int
 CURSOR_UNDERLINE: int
 DECAWM: int
+EXTEND_CELL: int
 LNM: int
 ANIMATION_SAMPLE_WAIT: int
 BGIMAGE_PROGRAM: int
@@ -1293,6 +1294,12 @@ class Screen:
         pass
 
     def clear_selection(self) -> None:
+        pass
+
+    def start_selection(self, x: int, y: int, rectangle_select: bool = False, extend_mode: int = EXTEND_CELL, in_left_half_of_cell: bool = True) -> None:
+        pass
+
+    def update_selection(self, x: int, y: int, in_left_half_of_cell: bool = False, ended: bool = True, nearest: bool = False) -> None:
         pass
 
     def set_mode(self, mode: int, private: bool = False) -> None:
