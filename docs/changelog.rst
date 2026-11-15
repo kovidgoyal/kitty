@@ -125,96 +125,96 @@ Detailed list of changes
 0.50.1 [unreleased]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :ac:`save_as_session`: The prompt for the session file name now shows the
-  directory the session will be saved in, taking :code:`--base-dir` into
-  account, and file name completion is relative to that directory (:disc:`10867`)
-
-- Allow selecting and copying text drawn in the tab bar outside the tabs, for
-  example by a custom :file:`tab_bar.py`, by dragging the mouse over it
-  (:iss:`10869`)
-
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
   with :code:`launch --type=os-window-dock`. The dock is shown in every tab of
-  the OS window, see :ref:`docks` (:iss:`10854`)
-
-- Allow resizing docks by dragging their inner border or with the
-  :ac:`resize_window` action and :code:`kitten @ resize-window`, see :ref:`docks`
-  (:iss:`10857`)
-
-- Fix a crash when the VS15 variation selector is received with the cursor at the start of a line, after a wide emoji that was soft wrapped from the previous line
-
-- :doc:`Custom shaders <custom-shaders>`: Fix groups started or stopped by
-  OS window focus changes ending up in the wrong state when focus changes
-  more than once before the window is next drawn, for example, when the window
-  is hidden and shown again (:iss:`10871`)
-
-- Unicode input kitten: Fix searching by name not finding some characters such as the pound sign (:iss:`10862`)
-
-- choose-files kitten: Sanitize file names, archive member names, ebook metadata and previewer output everywhere they are displayed so they cannot inject escape codes into the terminal
+  the OS window and can be resized by dragging its inner border or with the
+  :ac:`resize_window` action and :code:`kitten @ resize-window`, see
+  :ref:`docks` (:iss:`10854`, :iss:`10857`)
 
 - :doc:`Custom shaders <custom-shaders>`: Add ``screen-shake`` shaders that shake
   a window on bell and new events and uniforms for command start/finish and
-  alternate screen enter/exit
-
-- :ref:`Watchers <watchers>`: ``on_close`` now reports why the window was
-  closed, a new ``on_cwd_change`` event fires when the working directory changes
-  and ``on_resize``/``on_focus_change`` calls are no longer dropped when many
-  windows are created at once (:disc:`10828`, :iss:`10853`)
+  alternate screen enter/exit. Also fix groups started or stopped by OS window
+  focus changes ending up in the wrong state when focus changes more than once
+  before the window is next drawn, for example, when the window is hidden and
+  shown again (:iss:`10871`)
 
 - Allow running the programs in new windows via a wrapper command, such as to
   open new windows inside the same container as the window they are opened
   from, using a :file:`launch_wrapper.py` file in the kitty config directory,
   see :ref:`launch_wrapper` (:iss:`10858`)
 
-- Sessions: Fix tabs and windows moved with :ac:`detach_tab`,
-  :ac:`detach_window` or drag and drop losing their session. :ac:`save_as_session`
-  no longer opens saved sessions in the wrong OS Window or tab and no longer
-  overwrites the session file with an empty one (:pull:`10851`, :pull:`10852`)
+- :ref:`Watchers <watchers>`: ``on_close`` now reports why the window was
+  closed, a new ``on_cwd_change`` event fires when the working directory changes
+  and ``on_resize``/``on_focus_change`` calls are no longer dropped when many
+  windows are created at once (:disc:`10828`, :iss:`10853`)
 
-- Fix out of bounds memory accesses when a multi-line :doc:`text sizing
-  <text-sizing-protocol>` character is partially scrolled off the screen and a
-  combining char is then added to it or the window is resized
+- Allow selecting and copying text drawn in the tab bar outside the tabs, for
+  example by a custom :file:`tab_bar.py`, by dragging the mouse over it
+  (:iss:`10869`)
 
 - Wayland: Allow using touchscreens with the client side window decorations to
   close, minimize and maximize the window, and to move and resize it
   (:pull:`10859`)
 
-- A hard reset (:code:`RIS`) now clears the alternate screen as well
+- Sessions: Fix tabs and windows moved with :ac:`detach_tab`,
+  :ac:`detach_window` or drag and drop losing their session. :ac:`save_as_session`
+  no longer opens saved sessions in the wrong OS Window or tab and no longer
+  overwrites the session file with an empty one. Its prompt for the session
+  file name now shows the directory the session will be saved in, taking
+  :code:`--base-dir` into account, and file name completion is relative to that
+  directory (:pull:`10851`, :pull:`10852`, :disc:`10867`)
+
+- Fix the scrolled back view jumping, and images, the cursor and the scrollbar
+  getting out of sync with the text, when new output arrives
+  (:pull:`10841`, :pull:`10847`)
 
 - Fix a program running in the terminal being able to hang kitty by using
   :doc:`edit-in-kitty </shell-integration>` to set a window logo that is a
   special file such as :file:`/dev/zero`. Window logos and background images
   must now be regular files and image conversion is subject to a timeout
 
-- Fix the lower rows of a multi-line :doc:`text sizing <text-sizing-protocol>`
-  character being lost when resizing if the text after it is wrapped onto its
-  first row
+- ssh kitten: Fix remote directories such as :file:`~/.terminfo` being created
+  world writable (:iss:`10834`)
 
-- Fix the scrolled back view jumping, and images, the cursor and the scrollbar
-  getting out of sync with the text, when new output arrives
-  (:pull:`10841`, :pull:`10847`)
+- :doc:`choose-files <kittens/choose-files>`: Sanitize file names, archive member
+  names, ebook metadata and previewer output everywhere they are displayed so
+  they cannot inject escape codes into the terminal. Fix hangs previewing
+  special files and various preview caching bugs (:pull:`10843`, :pull:`10850`)
+
+- IME: Move cursor position within pre-edit text (:iss:`10807`)
+
+- Bash integration: Find system wide startup files by scanning the bash
+  executable instead of guessing their location (:iss:`10819`)
+
+- Treat the ConEmu OSC 9;9 escape code as a report of the current working
+  directory, like OSC 7, and ignore other ConEmu OSC 9 numeric sub-commands
+  instead of showing them as desktop notifications
+
+- A hard reset (:code:`RIS`) now clears the alternate screen as well
+
+- :doc:`Text sizing <text-sizing-protocol>`: Fix out of bounds memory accesses
+  when a multi-line character is partially scrolled off the screen and a
+  combining char is then added to it or the window is resized. Fix the lower
+  rows of a multi-line character being lost when resizing if the text after it
+  is wrapped onto its first row
+
+- Fix a crash when the VS15 variation selector is received with the cursor at
+  the start of a line, after a wide emoji that was soft wrapped from the
+  previous line
 
 - Fix ``clear_terminal last_command``, jumping to the last visited prompt and
   :ac:`show_last_visited_command_output` using the wrong lines in various
   situations
 
-- ssh kitten: Fix remote directories such as :file:`~/.terminfo` being created
-  world writable (:iss:`10834`)
+- Unicode input kitten: Fix searching by name not finding some characters such
+  as the pound sign (:iss:`10862`)
 
 - :doc:`dnd kitten <kittens/dnd>`: Fix the kitten failing to start in a directory
   that is not writable (:iss:`10855`)
 
-- :doc:`choose-files <kittens/choose-files>`: Fix hangs previewing special files
-  and various preview caching bugs (:pull:`10843`, :pull:`10850`)
-
 - :doc:`Pointer shapes <pointer-shapes>`: Fix animated pointers restarting
   unnecessarily and the shape not updating on alternate screen switches
   (:iss:`10838`)
-
-- Bash integration: Find system wide startup files by scanning the bash
-  executable instead of guessing their location (:iss:`10819`)
-
-- IME: Move cursor position within pre-edit text (:iss:`10807`)
 
 - Vertical tab bar: Fix clicking the blank line below a tab not activating it
   (:iss:`10810`)
@@ -228,6 +228,9 @@ Detailed list of changes
 - :ref:`Unscrolling <unscroll>` the screen no longer overwrites the top line when
   a top margin is set
 
+- Fix an error instead of a helpful message when the configured :opt:`editor`
+  is not found while editing the config file (:iss:`10865`)
+
 - macOS: Workaround for clicking notifications not focusing the correct OS
   Window with multiple kitty instances (:iss:`10805`)
 
@@ -236,13 +239,6 @@ Detailed list of changes
 
 - X11: Report X errors instead of exiting, fixing exits when clipboard
   requestors destroy their window early (:iss:`9248`)
-
-- Treat the ConEmu OSC 9;9 escape code as a report of the current working
-  directory, like OSC 7, and ignore other ConEmu OSC 9 numeric sub-commands
-  instead of showing them as desktop notifications
-
-- Fix an error instead of a helpful message when the configured :opt:`editor`
-  is not found while editing the config file (:iss:`10865`)
 
 
 0.50.0 [2026-11-03]
