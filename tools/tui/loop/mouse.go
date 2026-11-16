@@ -19,6 +19,9 @@ const (
 	MOUSE_MOVE
 	MOUSE_CLICK
 	MOUSE_LEAVE
+	// A scroll event reported with detailed wheel events, see
+	// Loop.DetailedWheelEvents(). The details are in MouseEvent.Wheel.
+	MOUSE_WHEEL
 )
 
 func (e MouseEventType) String() string {
@@ -31,6 +34,10 @@ func (e MouseEventType) String() string {
 		return "move"
 	case MOUSE_CLICK:
 		return "click"
+	case MOUSE_LEAVE:
+		return "leave"
+	case MOUSE_WHEEL:
+		return "wheel"
 	}
 	return strconv.Itoa(int(e))
 }
@@ -203,14 +210,155 @@ func (b MouseButtonFlag) String() string {
 	return ans
 }
 
+// The unit of the deltas in a WheelEvent
+type WheelUnit uint8
+
+const (
+	// Fractions of a wheel click, with one click being 120
+	WHEEL_UNIT_V120 WheelUnit = 1
+	// Pixels
+	WHEEL_UNIT_PIXELS WheelUnit = 2
+)
+
+func (u WheelUnit) String() string {
+	switch u {
+	case WHEEL_UNIT_V120:
+		return "v120"
+	case WHEEL_UNIT_PIXELS:
+		return "pixels"
+	}
+	return strconv.Itoa(int(u))
+}
+
+// The kind of device a WheelEvent comes from
+type WheelSource uint8
+
+const (
+	WHEEL_SOURCE_UNKNOWN WheelSource = iota
+	WHEEL_SOURCE_WHEEL
+	WHEEL_SOURCE_FINGER
+	WHEEL_SOURCE_CONTINUOUS
+	WHEEL_SOURCE_WHEEL_TILT
+)
+
+func (s WheelSource) String() string {
+	switch s {
+	case WHEEL_SOURCE_UNKNOWN:
+		return "unknown"
+	case WHEEL_SOURCE_WHEEL:
+		return "wheel"
+	case WHEEL_SOURCE_FINGER:
+		return "finger"
+	case WHEEL_SOURCE_CONTINUOUS:
+		return "continuous"
+	case WHEEL_SOURCE_WHEEL_TILT:
+		return "wheel-tilt"
+	}
+	return strconv.Itoa(int(s))
+}
+
+// Where a WheelEvent is in a scroll gesture, or in the momentum scrolling
+// after it, when WheelEvent.Momentum is true
+type WheelPhase uint8
+
+const (
+	WHEEL_PHASE_NONE WheelPhase = iota
+	WHEEL_PHASE_BEGAN
+	WHEEL_PHASE_CHANGED
+	WHEEL_PHASE_ENDED
+	WHEEL_PHASE_CANCELLED
+	WHEEL_PHASE_MAY_BEGIN
+)
+
+func (p WheelPhase) String() string {
+	switch p {
+	case WHEEL_PHASE_NONE:
+		return "none"
+	case WHEEL_PHASE_BEGAN:
+		return "began"
+	case WHEEL_PHASE_CHANGED:
+		return "changed"
+	case WHEEL_PHASE_ENDED:
+		return "ended"
+	case WHEEL_PHASE_CANCELLED:
+		return "cancelled"
+	case WHEEL_PHASE_MAY_BEGIN:
+		return "may-begin"
+	}
+	return strconv.Itoa(int(p))
+}
+
+const (
+	WHEEL_FLAG_MOMENTUM = 1
+	WHEEL_FLAG_INVERTED = 2
+)
+
+// The details of a scroll event reported with detailed wheel events
+type WheelEvent struct {
+	// Positive DY is downwards, towards the end of the content, positive DX is rightwards
+	DX, DY int
+	Unit   WheelUnit
+	// The scroll multiplier the user has configured in the terminal for this
+	// kind of scrolling, or zero if the terminal did not send it
+	Multiplier float64
+	Source     WheelSource
+	Phase      WheelPhase
+	// Momentum is true for inertial scrolling, after the fingers are lifted.
+	// Inverted is true when the deltas are reversed relative to the physical
+	// movement of the device, for example, because of natural scrolling.
+	Momentum, Inverted bool
+}
+
+func (w WheelEvent) String() string {
+	ans := fmt.Sprintf("dx=%d dy=%d unit=%s source=%s phase=%s", w.DX, w.DY, w.Unit, w.Source, w.Phase)
+	if w.Multiplier > 0 {
+		ans += " multiplier=" + strconv.FormatFloat(w.Multiplier, 'f', -1, 64)
+	}
+	if w.Momentum {
+		ans += " momentum"
+	}
+	if w.Inverted {
+		ans += " inverted"
+	}
+	return ans
+}
+
+// Converts the deltas to a (fractional) number of lines, using the
+// multiplier from the terminal, if any, otherwise default_lines_per_click for
+// wheels. For pixel deltas cell_height is used.
+func (w WheelEvent) Lines(cell_height int, default_lines_per_click float64) (dx, dy float64) {
+	switch w.Unit {
+	case WHEEL_UNIT_PIXELS:
+		m := 1.0
+		if w.Multiplier > 0 {
+			m = w.Multiplier
+		}
+		if cell_height > 0 {
+			return m * float64(w.DX) / float64(cell_height), m * float64(w.DY) / float64(cell_height)
+		}
+	default:
+		m := default_lines_per_click
+		if w.Multiplier > 0 {
+			m = w.Multiplier
+		}
+		return m * float64(w.DX) / 120, m * float64(w.DY) / 120
+	}
+	return 0, 0
+}
+
 type MouseEvent struct {
 	Event_type  MouseEventType
 	Buttons     MouseButtonFlag
 	Mods        KeyModifiers
 	Cell, Pixel struct{ X, Y int }
+	// Set only for events of type MOUSE_WHEEL
+	Wheel WheelEvent
 }
 
 func (e MouseEvent) String() string {
+	if e.Event_type == MOUSE_WHEEL {
+		return fmt.Sprintf("MouseEvent{%s %s %s Cell:%v Pixel:%v}", e.Event_type, e.Wheel, e.Mods, e.Cell, e.Pixel)
+	}
 	return fmt.Sprintf("MouseEvent{%s %s %s Cell:%v Pixel:%v}", e.Event_type, e.Buttons, e.Mods, e.Cell, e.Pixel)
 }
 
@@ -274,6 +422,47 @@ func decode_sgr_mouse(text string, screen_size ScreenSize, last_letter byte) *Mo
 	return &ans
 }
 
+// Decodes a detailed wheel event:
+// CSI > x ; y ; dx ; dy ; unit[:multiplier] ; source ; phase ; flags ; mods M
+// Unknown trailing parameters and sub-parameters are ignored, as required by
+// the specification.
+func decode_wheel_event(text string, screen_size ScreenSize) *MouseEvent {
+	parts := strings.Split(text[:len(text)-1], ";")
+	if len(parts) < 9 {
+		return nil
+	}
+	var subparams [9][]string
+	nums := [9]int{}
+	for i := range subparams {
+		subparams[i] = strings.Split(parts[i], ":")
+		n, err := strconv.Atoi(subparams[i][0])
+		if err != nil {
+			return nil
+		}
+		nums[i] = n
+	}
+	ans := MouseEvent{Event_type: MOUSE_WHEEL}
+	ans.Pixel.X, ans.Pixel.Y = nums[0], nums[1]
+	w := &ans.Wheel
+	w.DX, w.DY = nums[2], nums[3]
+	w.Unit = WheelUnit(nums[4])
+	if len(subparams[4]) > 1 {
+		if m, err := strconv.ParseFloat(subparams[4][1], 64); err == nil && m > 0 {
+			w.Multiplier = m
+		}
+	}
+	w.Source = WheelSource(nums[5])
+	w.Phase = WheelPhase(nums[6])
+	w.Momentum = nums[7]&WHEEL_FLAG_MOMENTUM != 0
+	w.Inverted = nums[7]&WHEEL_FLAG_INVERTED != 0
+	if nums[8] > 0 {
+		ans.Mods = KeyModifiers(nums[8] - 1)
+	}
+	ans.Cell.X = pixel_to_cell(ans.Pixel.X, int(screen_size.WidthPx), int(screen_size.CellWidth))
+	ans.Cell.Y = pixel_to_cell(ans.Pixel.Y, int(screen_size.HeightPx), int(screen_size.CellHeight))
+	return &ans
+}
+
 func MouseEventFromCSI(csi string, screen_size ScreenSize) *MouseEvent {
 	if len(csi) == 0 {
 		return nil
@@ -285,6 +474,11 @@ func MouseEventFromCSI(csi string, screen_size ScreenSize) *MouseEvent {
 	switch csi[0] {
 	case '<':
 		return decode_sgr_mouse(csi[1:], screen_size, last_char)
+	case '>':
+		if last_char == 'M' {
+			return decode_wheel_event(csi[1:], screen_size)
+		}
+		return nil
 	default:
 		return nil
 	}

@@ -69,6 +69,7 @@ const (
 	PENDING_UPDATE                   Mode = 2026 | private
 	COLOR_SCHEME_CHANGE_NOTIFICATION Mode = 2031 | private
 	INBAND_RESIZE_NOTIFICATION       Mode = 2048 | private
+	WHEEL_EVENTS                     Mode = 5523 | private
 	HANDLE_TERMIOS_SIGNALS           Mode = kitty.HandleTermiosSignals | private
 )
 
@@ -105,6 +106,7 @@ type TerminalStateOptions struct {
 	kitty_keyboard_mode              KeyboardStateBits
 	in_band_resize_notification      bool
 	focus_tracking                   bool
+	detailed_wheel_events            bool
 	color_scheme_change_notification bool
 	// Set this to true to avoid doing a query response loop to the terminal at
 	// exit. This loop is needed for most kittens to ensure that in-flight
@@ -139,7 +141,7 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 	sb.WriteString(DECSACE_DEFAULT_REGION_SELECT)
 	reset_modes(&sb,
 		IRM, DECKM, DECSCNM, BRACKETED_PASTE,
-		MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING, MOUSE_MOVE_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE)
+		MOUSE_BUTTON_TRACKING, MOUSE_MOTION_TRACKING, MOUSE_MOVE_TRACKING, MOUSE_UTF8_MODE, MOUSE_SGR_MODE, WHEEL_EVENTS)
 	set_modes(&sb, DECARM, DECAWM, DECTCEM)
 	if self.focus_tracking {
 		set_modes(&sb, FOCUS_TRACKING)
@@ -170,6 +172,9 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 			sb.WriteString(MOUSE_MOTION_TRACKING.EscapeCodeToSet())
 		case FULL_MOUSE_TRACKING:
 			sb.WriteString(MOUSE_MOVE_TRACKING.EscapeCodeToSet())
+		}
+		if self.detailed_wheel_events {
+			sb.WriteString(WHEEL_EVENTS.EscapeCodeToSet())
 		}
 	}
 	return sb.String()
