@@ -505,6 +505,43 @@ class Rendering(FontBaseTest):
         _, rw, rh = without_matrix.render_codepoint(0x1F40D)
         self.assertGreater(mh, 0.5 * rh, f'color emoji shrunk by FC_MATRIX: {mh}px vs {rh}px (#10144)')
 
+    def glyph_ink_height(self, font_name, char, ppem):
+        ' The number of pixel rows char occupies when drawn in a single cell '
+        with setup_for_testing(size=ppem, dpi=72.0, main_face_path=self.path_for_font(font_name)) as (sprites, cell_width, cell_height):
+            s = Screen(None, 1, 4)
+            s.draw(char)
+            line = s.line(0)
+            test_render_line(line)
+            pos = sprite_idx_to_pos(line.sprite_at(0) & 0x7fffffff, setup_for_testing.xnum, setup_for_testing.ynum)
+            pixels = array.array('I', sprites[pos])
+        rows = [y for y in range(cell_height) if any(pixels[y * cell_width:(y + 1) * cell_width])]
+        return rows[-1] - rows[0] + 1 if rows else 0
+
+    @unittest.skipIf(is_macos, 'The rule under test is in the FreeType renderer')
+    def test_small_glyph_overhang_is_not_rescaled(self):
+        # Fonts have glyphs whose outlines overhang their advance a little, such
+        # as the texture healing alternates of Monaspace and 0xProto. These must
+        # be drawn at full size, not shrunk to fit the cell. The expected height
+        # is the height of the glyph's bounding box in font units, times
+        # ppem / units per em, rounded down.
+        for font_name, char, ppem, full_height in (
+            ('CascadiaCode-Regular.otf', 'ď', 40, 31),  # 1588 * 40 / 2048, outline is 7% wider than the cell
+            ('LiberationMono-Regular.ttf', 'Ƴ', 32, 21),  # 1370 * 32 / 2048, 10% wider
+            ('FiraCode-Medium.otf', 'œ', 64, 36),  # 1111 * 64 / 1950, 3% wider
+            # 935 * 120 / 1000, 15% wider, like the widest texture healing alternates of Monaspace
+            ('iosevka-regular.ttf', 'ꭦ', 120, 112),
+        ):
+            with self.subTest(font=font_name, char=char):
+                self.assertGreaterEqual(self.glyph_ink_height(font_name, char, ppem), full_height)
+
+    @unittest.skipIf(is_macos, 'The rule under test is in the FreeType renderer')
+    def test_large_glyph_overhang_is_rescaled(self):
+        # Ὦ has its breathing mark and accent to the left of the letter, outside
+        # its cell, so cropping would cut them off. Its outline is 1594 units
+        # wide and 1766 tall with an advance of 1229, so scaled to fit the cell
+        # it is at most 1766 * (1229 / 1594) * 32 / 2048 = 21.3 pixels tall.
+        self.assertLessEqual(self.glyph_ink_height('LiberationMono-Regular.ttf', 'Ὦ', 32), 22)
+
     def test_shaping(self):
 
         def ss(text, font=None):
