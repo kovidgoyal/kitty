@@ -1119,8 +1119,7 @@ cell_update_uniform_block(
         bool reversed = false;
         if (cursor->x < screen->columns && cursor->y < screen->lines) {
             if (screen->paused_rendering.expires_at) {
-                linebuf_init_line(screen->paused_rendering.linebuf, cursor->y);
-                line_for_cursor = screen->paused_rendering.linebuf->line;
+                line_for_cursor = screen_paused_line_for_cursor(screen, cursor->y);
             } else {
                 linebuf_init_line(screen->linebuf, cursor->y);
                 line_for_cursor = screen->linebuf->line;

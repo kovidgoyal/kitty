@@ -412,6 +412,24 @@ class TestScreen(BaseTest):
         self.assertTrue(s.pause_rendering(False))
         self.ae(s.current_selections(), before)
 
+    def test_paused_cursor_line_matches_screen_row(self):
+        for pixel_scroll in (True, False):
+            s = self.create_screen(cols=6, lines=4, options={'pixel_scroll': pixel_scroll})
+            texts = [f'row{i}' for i in range(s.lines)]
+            for i, text in enumerate(texts):
+                s.draw(text)
+                if i + 1 < s.lines:
+                    parse_bytes(s, b'\r\n')
+            self.assertTrue(s.pause_rendering(True, 5000))
+            parse_bytes(s, b'\x1b[H\x1b[2JXXXX')  # live screen changes, the snapshot must not
+            for r, text in enumerate(texts):
+                self.ae(str(s.paused_cursor_line(r)), text, f'{pixel_scroll=} {r=}')
+            with self.assertRaises(IndexError):
+                s.paused_cursor_line(s.lines)
+            self.assertTrue(s.pause_rendering(False))
+            with self.assertRaises(RuntimeError):
+                s.paused_cursor_line(0)
+
     def test_emoji_skin_tone_modifiers(self):
         s = self.create_screen()
         q = chr(0x1F469) + chr(0x1F3FD)

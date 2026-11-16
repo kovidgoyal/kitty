@@ -6391,6 +6391,33 @@ line(Screen *self, PyObject *val) {
 }
 
 Line *
+screen_paused_line_for_cursor(Screen *self, index_type y) {
+    if (!self->paused_rendering.expires_at) return NULL;
+    // With pixel scroll the snapshot has an extra leading row, so screen row y is at y + 1
+    y += self->paused_rendering.pixel_scroll;
+    if (y >= self->paused_rendering.linebuf->ynum) return NULL;
+    linebuf_init_line(self->paused_rendering.linebuf, y);
+    return self->paused_rendering.linebuf->line;
+}
+
+static PyObject *
+paused_cursor_line(Screen *self, PyObject *val) {
+    unsigned long y = PyLong_AsUnsignedLong(val);
+    if (PyErr_Occurred()) return NULL;
+    if (y >= self->lines) {
+        PyErr_SetString(PyExc_IndexError, "Out of bounds");
+        return NULL;
+    }
+    Line *ans = screen_paused_line_for_cursor(self, y);
+    if (!ans) {
+        PyErr_SetString(PyExc_RuntimeError, "Rendering is not paused");
+        return NULL;
+    }
+    Py_INCREF(ans);
+    return (PyObject *)ans;
+}
+
+Line *
 screen_visual_line(Screen *self, index_type y) {
     if (y >= self->lines) return NULL;
     return visual_line_(self, y);
@@ -8223,7 +8250,7 @@ static PyMethodDef methods[] = {
             MND(current_key_encoding_flags, METH_NOARGS) MND(text_for_selection, METH_VARARGS) MND(text_for_marked_url, METH_VARARGS)
                 MND(is_rectangle_select, METH_NOARGS) MND(scroll, METH_VARARGS) MND(scroll_to_absolute, METH_O) MND(fractional_scroll, METH_O)
                     MND(scroll_to_prompt, METH_VARARGS) MND(set_last_visited_prompt, METH_VARARGS) MND(send_escape_code_to_child, METH_VARARGS)
-                        MND(pause_rendering, METH_VARARGS) MND(hyperlink_at, METH_VARARGS) MND(toggle_alt_screen, METH_NOARGS) MND(reset_callbacks, METH_NOARGS)
+                        MND(pause_rendering, METH_VARARGS) MND(paused_cursor_line, METH_O) MND(hyperlink_at, METH_VARARGS) MND(toggle_alt_screen, METH_NOARGS) MND(reset_callbacks, METH_NOARGS)
                             MND(paste, METH_O) MND(paste_bytes, METH_O) MND(focus_changed, METH_O) MND(has_focus, METH_NOARGS)
                                 MND(has_activity_since_last_focus, METH_NOARGS) MND(copy_colors_from, METH_O) MND(set_marker, METH_VARARGS)
                                     MND(marked_cells, METH_NOARGS) MND(scroll_to_next_mark, METH_VARARGS) MND(update_only_line_graphics_data, METH_NOARGS)
