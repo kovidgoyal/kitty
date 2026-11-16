@@ -769,10 +769,15 @@ render_bitmap(
         size_t extra = ans->width - max_width;
         if (italic && extra < cell_width / 2) {
             trim_borders(ans, extra);
-        } else if (extra == 2 && num_cells == 1) {
-            // there exist fonts that have bitmaps just a couple of pixels
-            // wider than their advances, rather than rescale, which looks
-            // bad, we just crop the bitmap on the right. See https://github.com/kovidgoyal/kitty/issues/352
+        } else if (num_cells == 1 && (extra <= 2 || extra * 9 <= cell_width * 2)) {
+            // there exist fonts that have glyphs a little wider than their
+            // advances, such as wide letters that borrow space from a narrow
+            // neighbor. Rather than rescale, which looks bad, we just crop the
+            // bitmap to the cell. The allowance is 2/9 of the cell width,
+            // which is 2px for the 9px cell of a typical monospace font at
+            // 11pt and 96 dpi, the conditions this was originally tuned for,
+            // with a minimum of 2px for smaller cells.
+            // See https://github.com/kovidgoyal/kitty/issues/352
         } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)ans->width;
