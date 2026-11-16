@@ -152,6 +152,11 @@ Detailed list of changes
   example by a custom :file:`tab_bar.py`, by dragging the mouse over it
   (:iss:`10869`)
 
+- Fix repainting of a custom tab bar driven by a repeated :code:`add_timer`
+  stopping when the OS window is otherwise idle. Marking the tab bar dirty now
+  also requests a main loop tick, so the bar is redrawn without waiting for
+  some unrelated event
+
 - Wayland: Allow using touchscreens with the client side window decorations to
   close, minimize and maximize the window, and to move and resize it
   (:pull:`10859`)
