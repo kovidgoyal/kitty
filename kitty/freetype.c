@@ -670,7 +670,7 @@ typedef struct {
     size_t start_x, width, stride;
     size_t rows;
     FT_Pixel_Mode pixel_mode;
-    bool needs_free;
+    bool needs_free, rescaled;
     unsigned int factor, right_edge;
     int bitmap_left, bitmap_top;
 } ProcessedBitmap;
@@ -791,6 +791,7 @@ render_bitmap(
                     fg->fcm.cell_height)) {
                 free_processed_bitmap(ans);
                 if (!render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, false, fg)) return false;
+                ans->rescaled = true;
                 if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0, fg->fcm.cell_height)) return false;
             } else return false;
         }
@@ -1178,6 +1179,9 @@ place_bitmap_in_canvas(
     // Calculate column bounds
     int32_t xoff = (int32_t)(x_offset + bm->bitmap_left);
     if (debug_placement) printf(" bitmap_left: %d xoff: %d", bm->bitmap_left, xoff);
+    // A rescaled glyph, such as a letter with marks that hang to the left of
+    // its cell, shift it so the marks are not cut off
+    if (bm->rescaled && xoff < 0) xoff = 0;
     if (xoff < 0) src.left += -xoff;
     else dest.left = xoff;
     // Move the dest start column back if the width overflows because of it, but only if we are not in a very long/infinite ligature

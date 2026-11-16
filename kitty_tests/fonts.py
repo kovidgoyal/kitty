@@ -555,11 +555,9 @@ class Rendering(FontBaseTest):
         # at most 23 rows. Drawn at full size it covers at least 27.
         height, width, cell_width = self.glyph_ink('LiberationMono-Regular.ttf', 'Ὦ', 32)
         self.assertLessEqual(height, 23)
-        if is_macos:
-            # The rescaled glyph is moved into the cell so that the marks are
-            # not cut off and it spans the whole cell. The FreeType renderer
-            # still crops whatever lies to the left of the cell.
-            self.assertGreaterEqual(width, cell_width - 1)
+        # The rescaled glyph is moved into the cell so that the marks are
+        # not cut off and it spans the whole cell.
+        self.assertGreaterEqual(width, cell_width - 1)
 
     def test_shaping(self):
 

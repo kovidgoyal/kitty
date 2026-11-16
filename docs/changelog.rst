@@ -256,7 +256,7 @@ Detailed list of changes
   healing alternates of the Monaspace and 0xProto fonts, being rendered
   smaller than the surrounding text at some font sizes
 
-- macOS: Fix accents and breathing marks that hang to the left of wide glyphs,
+- Fix accents and breathing marks that hang to the left of wide glyphs,
   such as polytonic Greek capitals, being cut off
 
 
