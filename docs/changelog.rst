@@ -168,6 +168,10 @@ Detailed list of changes
   :code:`--base-dir` into account, and file name completion is relative to that
   directory (:pull:`10851`, :pull:`10852`, :disc:`10867`)
 
+- Graphics protocol: Fix a newly displayed image sometimes not being rendered
+  until something else, such as mouse movement, causes the window to be redrawn
+  (:iss:`10875`)
+
 - Fix the scrolled back view jumping, and images, the cursor and the scrollbar
   getting out of sync with the text, when new output arrives
   (:pull:`10841`, :pull:`10847`)
