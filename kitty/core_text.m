@@ -755,12 +755,12 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
 }
 
 PyObject *
-face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg UNUSED) {
+face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg) {
     RAII_CoreFoundation(CFStringRef, s, CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8));
     RAII_CoreFoundation(CFURLRef, url, CFURLCreateWithFileSystemPath(kCFAllocatorDefault, s, kCFURLPOSIXPathStyle, false));
     RAII_CoreFoundation(CGDataProviderRef, dp, CGDataProviderCreateWithURL(url));
     RAII_CoreFoundation(CGFontRef, cg_font, CGFontCreateWithDataProvider(dp));
-    RAII_CoreFoundation(CTFontRef, ct_font, CTFontCreateWithGraphicsFont(cg_font, 0.0, NULL, NULL));
+    RAII_CoreFoundation(CTFontRef, ct_font, CTFontCreateWithGraphicsFont(cg_font, fg ? scaled_point_sz(fg) : 0.0, NULL, NULL));
     return (PyObject *)ct_face(ct_font, NULL);
 }
 
@@ -1185,14 +1185,51 @@ do_render(
     ensure_render_space(canvas_width, cell_height, num_glyphs);
     CGRect br = CTFontGetBoundingRectsForGlyphs(ct_font, kCTFontOrientationHorizontal, buffers.glyphs, buffers.boxes, num_glyphs);
     const bool debug_rendering = false;
-    if (allow_resize) {
-        // Resize glyphs that would bleed into neighboring cells, by scaling the font size
-        float right = 0;
-        for (unsigned i = 0; i < num_glyphs; i++) right = MAX(right, buffers.boxes[i].origin.x + buffers.boxes[i].size.width);
-        if (!bold && !italic && right > canvas_width + 1) {
-            if (debug_rendering) printf("resizing glyphs, right: %f canvas_width: %u\n", right, canvas_width);
+    CGFloat x = 0, y = 0;
+    CGFloat scale = CTFontGetSize(ct_font) / units_per_em;
+    for (unsigned i = 0; i < num_glyphs; i++) {
+        buffers.positions[i].x = x + hb_positions[i].x_offset * scale;
+        buffers.positions[i].y = y + hb_positions[i].y_offset * scale;
+        if (debug_rendering)
+            printf(
+                "x=%f y=%f origin=%f width=%f x_advance=%f x_offset=%f y_advance=%f y_offset=%f\n",
+                buffers.positions[i].x,
+                buffers.positions[i].y,
+                buffers.boxes[i].origin.x,
+                buffers.boxes[i].size.width,
+                hb_positions[i].x_advance * scale,
+                hb_positions[i].x_offset * scale,
+                hb_positions[i].y_advance * scale,
+                hb_positions[i].y_offset * scale);
+        x += hb_positions[i].x_advance * scale;
+        y += hb_positions[i].y_advance * scale;
+    }
+    // The horizontal extent of the ink of the glyphs, as positioned in the
+    // canvas, and the width of the widest glyph
+    CGFloat left = canvas_width, right = 0, max_width = 0;
+    for (unsigned i = 0; i < num_glyphs; i++) {
+        if (buffers.boxes[i].size.width <= 0) continue;
+        left = MIN(left, buffers.positions[i].x + buffers.boxes[i].origin.x);
+        right = MAX(right, buffers.positions[i].x + buffers.boxes[i].origin.x + buffers.boxes[i].size.width);
+        max_width = MAX(max_width, buffers.boxes[i].size.width);
+    }
+    CGFloat dx = 0;
+    if (right > left) {
+        // Glyphs are checked individually, so that combining marks hanging
+        // outside the cell dont cause the base glyph to be shrunk
+        CGFloat extra = max_width - canvas_width;
+        // there exist fonts that have glyphs a little wider than their
+        // advances, such as wide letters that borrow space from a narrow
+        // neighbor. Rather than rescale, which looks bad, we just crop the
+        // glyph to the cell. The allowance is 2/9 of the cell width, with a
+        // minimum of 2px, the same as in the FreeType renderer.
+        // See https://github.com/kovidgoyal/kitty/issues/352
+        const bool crop = num_cells == 1 && (extra <= 2 || extra * 9 <= cell_width * 2);
+        if (allow_resize && !bold && !italic && extra > 1 && !crop) {
+            // Resize glyphs that would bleed into neighboring cells, by scaling the font size
+            if (debug_rendering) printf("resizing glyphs, max_width: %f canvas_width: %u\n", max_width, canvas_width);
             CGFloat sz = CTFontGetSize(ct_font);
-            sz *= canvas_width / right;
+            sz *= canvas_width / max_width;
             CTFontRef new_font = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
             bool ret = do_render(
                 new_font,
@@ -1214,25 +1251,18 @@ do_render(
             CFRelease(new_font);
             return ret;
         }
-    }
-    CGFloat x = 0, y = 0;
-    CGFloat scale = CTFontGetSize(ct_font) / units_per_em;
-    for (unsigned i = 0; i < num_glyphs; i++) {
-        buffers.positions[i].x = x + hb_positions[i].x_offset * scale;
-        buffers.positions[i].y = y + hb_positions[i].y_offset * scale;
-        if (debug_rendering)
-            printf(
-                "x=%f y=%f origin=%f width=%f x_advance=%f x_offset=%f y_advance=%f y_offset=%f\n",
-                buffers.positions[i].x,
-                buffers.positions[i].y,
-                buffers.boxes[i].origin.x,
-                buffers.boxes[i].size.width,
-                hb_positions[i].x_advance * scale,
-                hb_positions[i].x_offset * scale,
-                hb_positions[i].y_advance * scale,
-                hb_positions[i].y_offset * scale);
-        x += hb_positions[i].x_advance * scale;
-        y += hb_positions[i].y_advance * scale;
+        // Colored glyphs are placed by render_color_glyph()
+        if (!*was_colored) {
+            if (!allow_resize && left < 0) {
+                // A rescaled glyph, such as a letter with marks that hang to
+                // the left of its cell, shift it so the marks are not cut off
+                dx = -left;
+            } else if (right > canvas_width && left > 0 && num_glyphs < 4) {
+                // Move the glyphs back into the canvas, as far as their left bearing allows
+                dx = -MIN(left, right - canvas_width);
+            }
+            for (unsigned i = 0; i < num_glyphs; i++) buffers.positions[i].x += dx;
+        }
     }
     if (*was_colored) {
         render_color_glyph(ct_font, (uint8_t *)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
@@ -1245,7 +1275,7 @@ do_render(
     ri->rendered_width = (unsigned)ceil(x);
     ri->x = 0;
     // FiraCode ligatures result in negative origins
-    if (br.origin.x > 0) ri->x = (int)br.origin.x;
+    if (br.origin.x + dx > 0) ri->x = (int)(br.origin.x + dx);
     return true;
 }
 

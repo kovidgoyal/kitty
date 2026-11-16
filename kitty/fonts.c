@@ -2670,13 +2670,29 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (size_t)4 * cell_width * cell_height * num_cells);
     if (ans == NULL) return PyErr_NoMemory();
     pixel *dest = (pixel *)PyBytes_AS_STRING(ans);
+    RAII_ALLOC(uint8_t, rgba, is_32_bit ? malloc((size_t)4 * cell_width) : NULL);
+    if (is_32_bit && !rgba) {
+        Py_DECREF(ans);
+        return PyErr_NoMemory();
+    }
     for (r = 0; r < cell_height; r++) {
         for (c = 0; c < num_cells; c++) {
             void *s = ((uint8_t *)PyBytes_AS_STRING(PyTuple_GET_ITEM(cells, c)));
             if (is_32_bit) {
+                // sprite pixels are 0xRRGGBBAA, convert them to RGBA bytes
                 pixel *src = (pixel *)s + cell_width * r;
-                for (i = 0; i < cell_width; i++) dest[i] = (pixel)bgcolor;
-                blend_over_opaque((uint8_t *)dest, 4, (const uint8_t *)src, cell_width);
+                uint8_t *d = (uint8_t *)dest;
+                for (i = 0; i < cell_width; i++) {
+                    rgba[4 * i] = (src[i] >> 24) & 0xff;
+                    rgba[4 * i + 1] = (src[i] >> 16) & 0xff;
+                    rgba[4 * i + 2] = (src[i] >> 8) & 0xff;
+                    rgba[4 * i + 3] = src[i] & 0xff;
+                    d[4 * i] = (bgcolor >> 16) & 0xff;
+                    d[4 * i + 1] = (bgcolor >> 8) & 0xff;
+                    d[4 * i + 2] = bgcolor & 0xff;
+                    d[4 * i + 3] = 0xff;
+                }
+                blend_over_opaque(d, 4, rgba, cell_width);
                 dest += cell_width;
             } else {
                 uint8_t *src = (uint8_t *)s + cell_width * r;

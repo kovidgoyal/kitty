@@ -505,19 +505,31 @@ class Rendering(FontBaseTest):
         _, rw, rh = without_matrix.render_codepoint(0x1F40D)
         self.assertGreater(mh, 0.5 * rh, f'color emoji shrunk by FC_MATRIX: {mh}px vs {rh}px (#10144)')
 
-    def glyph_ink_height(self, font_name, char, ppem):
-        "The number of pixel rows char occupies when drawn in a single cell"
+    def test_concat_cells(self):
+        from kitty.fast_data_types import concat_cells
+
+        # sprite pixels are 0xRRGGBBAA and the result is opaque RGBA bytes
+        cell = array.array('I', (0xFF000080, 0xFFFFFF00, 0x00FF00FF)).tobytes()
+        self.ae(concat_cells(3, 1, True, (cell,)), bytes((0x80, 0, 0, 0xFF, 0, 0, 0, 0xFF, 0, 0xFF, 0, 0xFF)))
+        self.ae(concat_cells(1, 1, True, (cell[:4], cell[4:8])), bytes((0x80, 0, 0, 0xFF, 0, 0, 0, 0xFF)))
+        self.ae(concat_cells(2, 1, True, (cell[:8],), 0x0000FF), bytes((0x80, 0, 0x7F, 0xFF, 0, 0, 0xFF, 0xFF)))
+
+    def glyph_ink(self, font_name, char, ppem):
+        "The number of pixel rows and columns char occupies when drawn in a single cell, and the cell width"
         with setup_for_testing(size=ppem, dpi=72.0, main_face_path=self.path_for_font(font_name)) as (sprites, cell_width, cell_height):
             s = Screen(None, 1, 4)
             s.draw(char)
             line = s.line(0)
             test_render_line(line)
             pos = sprite_idx_to_pos(line.sprite_at(0) & 0x7FFFFFFF, setup_for_testing.xnum, setup_for_testing.ynum)
-            pixels = array.array('I', sprites[pos])
-        rows = [y for y in range(cell_height) if any(pixels[y * cell_width : (y + 1) * cell_width])]
-        return rows[-1] - rows[0] + 1 if rows else 0
+            # the low byte of each pixel is its alpha, the color bits are set even for empty pixels on macOS
+            alpha = bytes(p & 0xFF for p in array.array('I', sprites[pos]))
+        rows = [y for y in range(cell_height) if any(alpha[y * cell_width : (y + 1) * cell_width])]
+        cols = [x for x in range(cell_width) if any(alpha[x::cell_width])]
+        height = rows[-1] - rows[0] + 1 if rows else 0
+        width = cols[-1] - cols[0] + 1 if cols else 0
+        return height, width, cell_width
 
-    @unittest.skipIf(is_macos, 'The rule under test is in the FreeType renderer')
     def test_small_glyph_overhang_is_not_rescaled(self):
         # Fonts have glyphs whose outlines overhang their advance a little, such
         # as the texture healing alternates of Monaspace and 0xProto. These must
@@ -532,15 +544,22 @@ class Rendering(FontBaseTest):
             ('iosevka-regular.ttf', 'ꭦ', 120, 112),
         ):
             with self.subTest(font=font_name, char=char):
-                self.assertGreaterEqual(self.glyph_ink_height(font_name, char, ppem), full_height)
+                self.assertGreaterEqual(self.glyph_ink(font_name, char, ppem)[0], full_height)
 
-    @unittest.skipIf(is_macos, 'The rule under test is in the FreeType renderer')
     def test_large_glyph_overhang_is_rescaled(self):
         # Ὦ has its breathing mark and accent to the left of the letter, outside
         # its cell, so cropping would cut them off. Its outline is 1594 units
         # wide and 1766 tall with an advance of 1229, so scaled to fit the cell
-        # it is at most 1766 * (1229 / 1594) * 32 / 2048 = 21.3 pixels tall.
-        self.assertLessEqual(self.glyph_ink_height('LiberationMono-Regular.ttf', 'Ὦ', 32), 22)
+        # it is at most 1766 * (1229 / 1594) * 32 / 2048 = 21.3 pixels tall,
+        # which, depending on where it falls relative to the pixel grid, covers
+        # at most 23 rows. Drawn at full size it covers at least 27.
+        height, width, cell_width = self.glyph_ink('LiberationMono-Regular.ttf', 'Ὦ', 32)
+        self.assertLessEqual(height, 23)
+        if is_macos:
+            # The rescaled glyph is moved into the cell so that the marks are
+            # not cut off and it spans the whole cell. The FreeType renderer
+            # still crops whatever lies to the left of the cell.
+            self.assertGreaterEqual(width, cell_width - 1)
 
     def test_shaping(self):
 

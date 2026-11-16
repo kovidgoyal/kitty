@@ -252,9 +252,12 @@ Detailed list of changes
 - X11: Report X errors instead of exiting, fixing exits when clipboard
   requestors destroy their window early (:iss:`9248`)
 
-- Linux: Fix glyphs that are slightly wider than their cell, such as the
-  texture healing alternates of the Monaspace and 0xProto fonts, being rendered
+- Fix glyphs that are slightly wider than their cell, such as the texture
+  healing alternates of the Monaspace and 0xProto fonts, being rendered
   smaller than the surrounding text at some font sizes
+
+- macOS: Fix accents and breathing marks that hang to the left of wide glyphs,
+  such as polytonic Greek capitals, being cut off
 
 
 0.50.0 [2026-11-03]
