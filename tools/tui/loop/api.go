@@ -233,6 +233,20 @@ func MouseTrackingMode(self *Loop, mt MouseTracking) {
 	self.terminal_options.mouse_tracking = mt
 }
 
+// Have scroll events reported as MOUSE_WHEEL events with full detail, such as
+// high resolution and pixel deltas, gesture phases and momentum, instead of
+// as presses of the wheel buttons. Has an effect only if mouse tracking is
+// enabled and the terminal supports it, otherwise, scroll events are still
+// reported as wheel button presses, so kittens must handle both.
+func (self *Loop) DetailedWheelEvents() *Loop {
+	self.terminal_options.detailed_wheel_events = true
+	return self
+}
+
+func DetailedWheelEvents(self *Loop) {
+	self.terminal_options.detailed_wheel_events = true
+}
+
 func NoMouseTracking(self *Loop) {
 	self.terminal_options.mouse_tracking = NO_MOUSE_TRACKING
 }
