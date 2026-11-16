@@ -69,7 +69,7 @@ encode_button(unsigned int button) {
     }
 }
 
-static char mouse_event_buf[64];
+static char mouse_event_buf[128];
 
 static int
 encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
@@ -1864,6 +1864,158 @@ scroll_phase(GLFWMomentumType t) {
 }
 
 
+// Detailed wheel event reporting {{{
+// See the section on detailed wheel events in docs/misc-protocol.rst
+
+typedef enum WheelEventUnit { WHEEL_UNIT_V120 = 1, WHEEL_UNIT_PIXELS = 2 } WheelEventUnit;
+enum { WHEEL_FLAG_MOMENTUM = 1, WHEEL_FLAG_INVERTED = 2 };
+
+static unsigned
+wheel_event_phase(const GLFWScrollEvent *ev) {
+    switch (ev->momentum_type) {
+        case GLFW_NO_MOMENTUM_DATA: break;
+        case GLFW_MOMENTUM_PHASE_BEGAN: return 1;
+        case GLFW_MOMENTUM_PHASE_STATIONARY:
+        case GLFW_MOMENTUM_PHASE_ACTIVE: return 2;
+        case GLFW_MOMENTUM_PHASE_ENDED: return 3;
+        case GLFW_MOMENTUM_PHASE_CANCELED: return 4;
+        case GLFW_MOMENTUM_PHASE_MAY_BEGIN: return 5;
+    }
+    switch (ev->phase) {
+        case GLFW_SCROLL_PHASE_NONE: return 0;
+        case GLFW_SCROLL_PHASE_BEGAN: return 1;
+        case GLFW_SCROLL_PHASE_CHANGED: return 2;
+        case GLFW_SCROLL_PHASE_ENDED: return 3;
+        case GLFW_SCROLL_PHASE_CANCELLED: return 4;
+        case GLFW_SCROLL_PHASE_MAY_BEGIN: return 5;
+    }
+    return 0;
+}
+
+static unsigned
+wheel_event_source(GLFWScrollSource s) {
+    switch (s) {
+        case GLFW_SCROLL_SOURCE_UNKNOWN: return 0;
+        case GLFW_SCROLL_SOURCE_WHEEL: return 1;
+        case GLFW_SCROLL_SOURCE_FINGER: return 2;
+        case GLFW_SCROLL_SOURCE_CONTINUOUS: return 3;
+        case GLFW_SCROLL_SOURCE_WHEEL_TILT: return 4;
+    }
+    return 0;
+}
+
+// Formats a positive number as a short decimal, without an exponent or
+// trailing zeros, as needed by the escape code
+static void
+format_wheel_multiplier(double val, char *buf, size_t sz) {
+    if (!isfinite(val) || val < 0) val = 0;
+    int n = snprintf(buf, sz, "%.3f", val);
+    if (n <= 0 || (size_t)n >= sz) {
+        snprintf(buf, sz, "1");
+        return;
+    }
+    while (n > 1 && buf[n - 1] == '0') buf[--n] = 0;
+    if (n > 1 && buf[n - 1] == '.') buf[--n] = 0;
+}
+
+// Adds delta to the unreported remainder and returns the whole part of the
+// sum, keeping the fraction in remainder. A remainder from the opposite
+// direction is discarded, as it would otherwise cancel part of the new delta.
+static int
+take_whole_wheel_delta(double delta, double *remainder) {
+    if (delta * *remainder < 0) *remainder = 0;
+    const double total = *remainder + delta;
+    const double whole = trunc(total);
+    *remainder = total - whole;
+    if (whole > INT_MAX) return INT_MAX;
+    if (whole < -INT_MAX) return -INT_MAX;
+    return (int)whole;
+}
+
+// Reports a scroll event to the program in the detailed wheel event format.
+// Returns the number of bytes written to mouse_event_buf or zero if nothing
+// is to be reported.
+static int
+encode_wheel_event(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
+    Screen *screen = w->render_data.screen;
+    // GLFW offsets are positive upwards and leftwards, while the escape code
+    // uses positive downwards and rightwards
+    double dx = -ev->x_offset, dy = -ev->y_offset, multiplier;
+    WheelEventUnit unit;
+    switch (ev->offset_type) {
+        case GLFW_SCROLL_OFFEST_HIGHRES:
+            unit = WHEEL_UNIT_PIXELS;
+            multiplier = OPT(touch_scroll_multiplier);
+            break;
+        case GLFW_SCROLL_OFFSET_LINES:
+            dx *= 120;
+            dy *= 120;
+            /* fallthrough */
+        case GLFW_SCROLL_OFFEST_V120:
+        default:
+            unit = WHEEL_UNIT_V120;
+            multiplier = OPT(wheel_scroll_multiplier);
+            break;
+    }
+    unsigned flags = ev->direction_inverted ? WHEEL_FLAG_INVERTED : 0;
+    // Only the sign of the multiplier is applied to the deltas, the
+    // magnitude is sent as a hint
+    if (multiplier < 0) {
+        dx = -dx;
+        dy = -dy;
+        flags ^= WHEEL_FLAG_INVERTED;
+    }
+    if (ev->momentum_type != GLFW_NO_MOMENTUM_DATA) flags |= WHEEL_FLAG_MOMENTUM;
+    const unsigned phase = wheel_event_phase(ev);
+    if (osw->scroll.reported_window_id != w->id || osw->scroll.reported_unit != (int)unit || phase == 1) {
+        osw->scroll.reported_remainder_x = 0;
+        osw->scroll.reported_remainder_y = 0;
+        osw->scroll.reported_window_id = w->id;
+        osw->scroll.reported_unit = unit;
+    }
+    const int idx = take_whole_wheel_delta(dx, &osw->scroll.reported_remainder_x);
+    const int idy = take_whole_wheel_delta(dy, &osw->scroll.reported_remainder_y);
+    // An event that neither scrolls a whole unit nor changes the phase has
+    // nothing to report, its fraction is reported with a later event
+    if (!idx && !idy && (phase == 0 || phase == 2)) return 0;
+    int x = w->mouse_pos.cell_x + 1, y = w->mouse_pos.cell_y + 1;
+    if (screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
+        x = (int)round(w->mouse_pos.global_x);
+        y = (int)round(w->mouse_pos.global_y);
+    }
+    char mult[32];
+    format_wheel_multiplier(fabs(multiplier), mult, sizeof(mult));
+    const unsigned mods = 1 + ((unsigned)ev->keyboard_modifiers & 0xff);
+    const int n = snprintf(
+        mouse_event_buf,
+        sizeof(mouse_event_buf),
+        ">%d;%d;%d;%d;%d:%s;%u;%u;%u;%uM",
+        x,
+        y,
+        idx,
+        idy,
+        unit,
+        mult,
+        wheel_event_source(ev->source),
+        phase,
+        flags,
+        mods);
+    if (n <= 0 || (size_t)n >= sizeof(mouse_event_buf)) {
+        log_error("Detailed wheel event too long to encode");
+        return 0;
+    }
+    return n;
+}
+
+static bool
+report_wheel_event(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
+    Screen *screen = w->render_data.screen;
+    if (!screen->modes.mWHEEL_EVENTS || screen->modes.mouse_tracking_mode == NO_TRACKING) return false;
+    if (encode_wheel_event(osw, w, ev) > 0) write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
+    return true;
+}
+// }}}
+
 static inline bool
 pixel_scroll_enabled_for_screen(const Screen *screen) {
     return OPT(pixel_scroll) && screen->linebuf == screen->main_linebuf;
@@ -1909,6 +2061,7 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
         if (ev->momentum_type == GLFW_MOMENTUM_PHASE_ENDED || ev->momentum_type == GLFW_MOMENTUM_PHASE_CANCELED) osw->scroll.mapped_gesture = false;
         return;
     }
+    if (report_wheel_event(osw, w, ev)) return;
     finish_scroll_animation(screen);
     if (ev->y_offset != 0.0) {
         if (screen->modes.mouse_tracking_mode == NO_TRACKING && pixel_scroll_enabled_for_screen(screen) &&
@@ -2256,8 +2409,20 @@ static PyObject *
 send_mock_scroll_event_to_window(PyObject *self UNUSED, PyObject *args) {
     PyObject *capsule;
     GLFWScrollEvent ev = {0};
-    int offset_type, momentum_type = GLFW_NO_MOMENTUM_DATA;
-    if (!PyArg_ParseTuple(args, "O!iddi|i", &PyCapsule_Type, &capsule, &offset_type, &ev.x_offset, &ev.y_offset, &ev.keyboard_modifiers, &momentum_type))
+    int offset_type, momentum_type = GLFW_NO_MOMENTUM_DATA, source = GLFW_SCROLL_SOURCE_UNKNOWN, phase = GLFW_SCROLL_PHASE_NONE, inverted = 0;
+    if (!PyArg_ParseTuple(
+            args,
+            "O!iddi|iiip",
+            &PyCapsule_Type,
+            &capsule,
+            &offset_type,
+            &ev.x_offset,
+            &ev.y_offset,
+            &ev.keyboard_modifiers,
+            &momentum_type,
+            &source,
+            &phase,
+            &inverted))
         return NULL;
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (!w) return NULL;
@@ -2265,6 +2430,9 @@ send_mock_scroll_event_to_window(PyObject *self UNUSED, PyObject *args) {
     static OSWindow osw = {0};
     ev.offset_type = offset_type;
     ev.momentum_type = momentum_type;
+    ev.source = source;
+    ev.phase = phase;
+    ev.direction_inverted = inverted;
     ev.unscaled.x = ev.x_offset;
     ev.unscaled.y = ev.y_offset;
     scroll_event_in_window(&osw, w, &ev, w->render_data.screen->cell_size.width, w->render_data.screen->cell_size.height);

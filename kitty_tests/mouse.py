@@ -677,6 +677,73 @@ class TestMouse(BaseTest):
         self.ae(steps(LINES, [1.0, 0.1]), [-1, -1])
         self.ae(steps(V120, [120.0, 240.0]), [-1, -2])
 
+    def test_wheel_events(self):
+        LINES, V120, HIGHRES = 0, 1, 2  # GLFWOffsetType
+        MOMENTUM_BEGAN, MOMENTUM_ACTIVE, MOMENTUM_ENDED = 1, 3, 4  # GLFWMomentumType
+        WHEEL, FINGER = 1, 2  # GLFWScrollSource
+        BEGAN, CHANGED, ENDED = 1, 2, 3  # GLFWScrollPhase
+        s = self.create_screen(lines=5, scrollback=50)
+        self.set_options({'pixel_scroll': False, 'wheel_scroll_multiplier': 5.0, 'touch_scroll_multiplier': 1.5})
+        w = create_mock_window(s)
+
+        def scroll(y=0.0, x=0.0, offset_type=LINES, mods=0, momentum=0, source=0, phase=0, inverted=False):
+            s.callbacks.wtcbuf = b''
+            send_mock_scroll_event_to_window(w, offset_type, float(x), float(y), mods, momentum, source, phase, inverted)
+            return s.callbacks.wtcbuf.decode()
+
+        def ae(expected, **kw):
+            self.ae(scroll(**kw), ''.join(f'\x1b[>1;1;{e}M' for e in expected))
+
+        # Without mouse tracking the mode has no effect and the scrollback scrolls
+        parse_bytes(s, b'\x1b[?5523h')
+        self.assertTrue(s.wheel_events)
+        ae([], y=1)
+        parse_bytes(s, b'\x1b[?1000h')
+        # Wheels report whole clicks as 120, positive is downwards, the
+        # multiplier is only a hint and the deltas are not repeated
+        ae(['0;-360;1:5;1;0;0;1'], y=3, source=WHEEL)
+        ae(['0;120;1:5;1;0;0;1'], y=-1, source=WHEEL)
+        # Horizontal scrolling, positive is rightwards
+        ae(['-120;0;1:5;1;0;0;1'], x=1, source=WHEEL)
+        # High resolution wheels
+        ae(['0;30;1:5;0;0;0;1'], y=-30, offset_type=V120)
+        # Modifiers use the keyboard protocol encoding
+        ae(['0;120;1:5;0;0;0;7'], y=-1, mods=GLFW_MOD_CONTROL | GLFW_MOD_ALT)
+        ae(['0;120;1:5;0;0;0;65'], y=-1, mods=GLFW_MOD_CAPS_LOCK)
+        # A touchpad gesture with fractional pixels, which are accumulated
+        ae(['0;0;2:1.5;2;1;0;1'], y=0, offset_type=HIGHRES, source=FINGER, phase=BEGAN)
+        ae(['3;-2;2:1.5;2;2;0;1'], x=-3.5, y=2.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['1;-1;2:1.5;2;2;0;1'], x=-0.5, y=0.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        # Less than a pixel in the same phase has nothing to report
+        ae([], y=0.25, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['0;-1;2:1.5;2;2;0;1'], y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        # A change of phase is always reported
+        ae(['0;0;2:1.5;2;3;0;1'], offset_type=HIGHRES, source=FINGER, phase=ENDED)
+        # Momentum
+        ae(['0;-10;2:1.5;2;1;1;1'], y=10, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_BEGAN)
+        ae(['0;-5;2:1.5;2;2;1;1'], y=5, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ACTIVE)
+        ae(['0;0;2:1.5;2;3;1;1'], offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ENDED)
+        # Natural scrolling
+        ae(['0;-10;2:1.5;2;1;2;1'], y=10, offset_type=HIGHRES, source=FINGER, phase=BEGAN, inverted=True)
+        # A negative multiplier reverses the deltas and the inverted flag
+        self.set_options({'pixel_scroll': False, 'wheel_scroll_multiplier': -2.25})
+        ae(['0;-120;1:2.25;1;0;2;1'], y=-1, source=WHEEL)
+        ae(['0;-120;1:2.25;1;0;0;1'], y=-1, source=WHEEL, inverted=True)
+        # SGR pixel mode reports the position in pixels
+        parse_bytes(s, b'\x1b[?1016h')
+        self.ae(scroll(y=-1, source=WHEEL), '\x1b[>0;0;0;-120;1:2.25;1;0;2;1M')
+        # Turning the mode off restores legacy reporting
+        parse_bytes(s, b'\x1b[?1016l\x1b[?1006h\x1b[?5523l')
+        self.assertFalse(s.wheel_events)
+        self.ae(scroll(y=-1, source=WHEEL), '\x1b[<64;1;1M')
+        # DECRQM
+        s.callbacks.wtcbuf = b''
+        parse_bytes(s, b'\x1b[?5523$p')
+        self.ae(s.callbacks.wtcbuf, b'\x1b[?5523;2$y')
+        s.callbacks.wtcbuf = b''
+        parse_bytes(s, b'\x1b[?5523h\x1b[?5523$p')
+        self.ae(s.callbacks.wtcbuf, b'\x1b[?5523;1$y')
+
     def test_mapped_scroll(self):
         from kitty.config import load_config
 

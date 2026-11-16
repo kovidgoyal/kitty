@@ -207,11 +207,14 @@ typedef struct _GLFWwindowWayland {
         } discrete, continuous;
 
         /* Event timestamp in nanoseconds */
-        bool x_stop_received, y_stop_received;
+        bool x_stop_received, y_stop_received, source_received, direction_inverted_received, direction_inverted;
         uint32_t source_type;
         monotonic_t x_start_time, x_stop_time, y_stop_time, y_start_time;
     } pointer_curr_axis_info;
     GLFWOffsetType prev_frame_offset_type;
+    // Axis state that compositors need not repeat in every frame of a gesture
+    GLFWScrollSource prev_frame_scroll_source;
+    bool prev_frame_direction_inverted, scroll_gesture_in_progress;
 
     _GLFWcursor *currentCursor;
     double cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
