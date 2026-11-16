@@ -1407,6 +1407,9 @@ python_timer_callback(id_type timer_id, void *data) {
     PyObject *ret = PyObject_CallFunction(callback, "K", id);
     if (ret == NULL) PyErr_Print();
     else Py_DECREF(ret);
+    // Timers are dispatched outside the main loop tick, so ensure any state
+    // changed by the callback is processed and rendered
+    request_tick_callback();
 }
 
 static void
