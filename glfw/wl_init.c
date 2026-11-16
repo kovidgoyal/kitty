@@ -115,6 +115,18 @@ pointerHandleLeave(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_
     if (!window) return;
     _glfw.wl.serial = serial;
     _glfw.wl.pointerFocus = NULL;
+    if (window->wl.scroll_gesture_in_progress) {
+        // The end of the gesture will not be delivered to this window
+        window->wl.scroll_gesture_in_progress = false;
+        _glfwInputScroll(
+            window,
+            &(GLFWScrollEvent){
+                .phase = GLFW_SCROLL_PHASE_CANCELLED,
+                .source = window->wl.prev_frame_scroll_source,
+                .offset_type = window->wl.prev_frame_offset_type,
+                .direction_inverted = window->wl.prev_frame_direction_inverted,
+                .keyboard_modifiers = _glfw.wl.xkb.states.modifiers});
+    }
     if (window->wl.surface == surface) {
         window->wl.hovered = false;
         _glfwInputCursorEnter(window, false);
@@ -247,12 +259,36 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     }
     bool stopped = info.y_stop_received || info.x_stop_received;
     if (!found && stopped) ev.offset_type = window->wl.prev_frame_offset_type;
+    if (info.source_received) {
+        switch (info.source_type) {
+            case WL_POINTER_AXIS_SOURCE_WHEEL: ev.source = GLFW_SCROLL_SOURCE_WHEEL; break;
+            case WL_POINTER_AXIS_SOURCE_FINGER: ev.source = GLFW_SCROLL_SOURCE_FINGER; break;
+            case WL_POINTER_AXIS_SOURCE_CONTINUOUS: ev.source = GLFW_SCROLL_SOURCE_CONTINUOUS; break;
+            case WL_POINTER_AXIS_SOURCE_WHEEL_TILT: ev.source = GLFW_SCROLL_SOURCE_WHEEL_TILT; break;
+            default: ev.source = GLFW_SCROLL_SOURCE_UNKNOWN; break;
+        }
+    } else if (!found) ev.source = window->wl.prev_frame_scroll_source;
+    ev.direction_inverted = info.direction_inverted_received ? info.direction_inverted : window->wl.prev_frame_direction_inverted;
+    // Only finger and continuous sources send axis_stop, so only they have gestures
+    if (ev.source == GLFW_SCROLL_SOURCE_FINGER || ev.source == GLFW_SCROLL_SOURCE_CONTINUOUS) {
+        if (stopped) {
+            ev.phase = GLFW_SCROLL_PHASE_ENDED;
+            window->wl.scroll_gesture_in_progress = false;
+        } else if (found) {
+            ev.phase = window->wl.scroll_gesture_in_progress ? GLFW_SCROLL_PHASE_CHANGED : GLFW_SCROLL_PHASE_BEGAN;
+            window->wl.scroll_gesture_in_progress = true;
+        }
+    }
     ev.unscaled.x *= -1;
     const double scale = ev.offset_type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfwWaylandWindowScale(window) : 1;
     ev.x_offset = scale * ev.unscaled.x;
     ev.y_offset = scale * ev.unscaled.y;
     glfw_handle_scroll_event_for_momentum(window, &ev, stopped, info.source_type == WL_POINTER_AXIS_SOURCE_FINGER);
-    if (found) window->wl.prev_frame_offset_type = ev.offset_type;
+    if (found || info.source_received) {
+        if (found) window->wl.prev_frame_offset_type = ev.offset_type;
+        window->wl.prev_frame_scroll_source = ev.source;
+        window->wl.prev_frame_direction_inverted = ev.direction_inverted;
+    }
     /* clear pointer_curr_axis_info for next frame */
     memset(&info, 0, sizeof(info));
 }
@@ -262,6 +298,7 @@ pointer_handle_axis_source(void *data UNUSED, struct wl_pointer *pointer UNUSED,
     _GLFWwindow *window = _glfw.wl.pointerFocus;
     if (!window) return;
     info.source_type = source;
+    info.source_received = true;
 }
 
 static void
@@ -292,7 +329,12 @@ pointer_handle_axis_value120(void *data UNUSED, struct wl_pointer *pointer UNUSE
 }
 
 static void
-pointer_handle_axis_relative_direction(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t axis UNUSED, uint32_t axis_relative_direction UNUSED) {}
+pointer_handle_axis_relative_direction(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t axis UNUSED, uint32_t axis_relative_direction) {
+    _GLFWwindow *window = _glfw.wl.pointerFocus;
+    if (!window) return;
+    info.direction_inverted_received = true;
+    if (axis_relative_direction == WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED) info.direction_inverted = true;
+}
 
 #undef info
 static const struct wl_pointer_listener pointerListener = {

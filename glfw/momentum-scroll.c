@@ -34,6 +34,7 @@ typedef struct MomentumScroller {
         double x, y;
     } velocity;
     int keyboard_modifiers;
+    bool direction_inverted;
     struct {
         monotonic_t start, duration;
         struct {
@@ -71,7 +72,15 @@ cancel_existing_scroll(bool reset_velocity) {
     }
     if (s.state == MOMENTUM_IN_PROGRESS) {
         _GLFWwindow *w = _glfwWindowForId(s.window_id);
-        if (w) _glfwInputScroll(w, &(GLFWScrollEvent){.momentum_type = GLFW_MOMENTUM_PHASE_CANCELED, .keyboard_modifiers = s.keyboard_modifiers});
+        if (w)
+            _glfwInputScroll(
+                w,
+                &(GLFWScrollEvent){
+                    .momentum_type = GLFW_MOMENTUM_PHASE_CANCELED,
+                    .offset_type = GLFW_SCROLL_OFFEST_HIGHRES,
+                    .source = GLFW_SCROLL_SOURCE_FINGER,
+                    .direction_inverted = s.direction_inverted,
+                    .keyboard_modifiers = s.keyboard_modifiers});
     }
     s.window_id = 0;
     s.keyboard_modifiers = 0;
@@ -152,6 +161,8 @@ static void
 send_momentum_event(bool is_start) {
     _GLFWwindow *w = _glfwWindowForId(s.window_id);
     if (!w || w != _glfwFocusedWindow()) {
+        // Momentum that never began is not reported as cancelled
+        if (is_start) s.state = NONE;
         cancel_existing_scroll(true);
         return;
     }
@@ -174,6 +185,8 @@ send_momentum_event(bool is_start) {
         .unscaled.y = s.velocity.y,
         .x_offset = s.scale * s.velocity.x,
         .y_offset = s.scale * s.velocity.y,
+        .source = GLFW_SCROLL_SOURCE_FINGER,
+        .direction_inverted = s.direction_inverted,
         .keyboard_modifiers = s.keyboard_modifiers};
     _glfwInputScroll(w, &e);
 }
@@ -207,7 +220,8 @@ handle_scroll_event(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, boo
         return;
     }
     if (!is_finger_based || ev->offset_type != GLFW_SCROLL_OFFEST_HIGHRES || !glfw_is_momentum_scroll_enabled()) {
-        if (ev->x_offset != 0 || ev->y_offset != 0) _glfwInputScroll(w, ev);
+        // Events without offsets are sent only for the gesture phase they carry
+        if (ev->x_offset != 0 || ev->y_offset != 0 || ev->phase != GLFW_SCROLL_PHASE_NONE) _glfwInputScroll(w, ev);
         return;
     }
     if (s.state == PHYSICAL_EVENT_IN_PROGRESS) {
@@ -233,6 +247,7 @@ handle_scroll_event(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, boo
     }
     s.window_id = w->id;
     s.keyboard_modifiers = ev->keyboard_modifiers;
+    s.direction_inverted = ev->direction_inverted;
     if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES) {
         if (!is_synthetic_momentum_start_event) add_sample(ev->unscaled.x, ev->unscaled.y, now);
         if (stopped) s.state = is_suitable_for_momentum() ? MOMENTUM_IN_PROGRESS : NONE;
@@ -240,8 +255,11 @@ handle_scroll_event(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, boo
     } else {
         s.state = stopped ? NONE : PHYSICAL_EVENT_IN_PROGRESS;
     }
-    if (s.state == MOMENTUM_IN_PROGRESS) start_momentum_scroll(now);
-    else _glfwInputScroll(w, ev);
+    if (s.state == MOMENTUM_IN_PROGRESS) {
+        // Report the end of the physical gesture before the momentum begins
+        if (ev->phase != GLFW_SCROLL_PHASE_NONE) _glfwInputScroll(w, ev);
+        start_momentum_scroll(now);
+    } else _glfwInputScroll(w, ev);
 }
 
 void
@@ -272,6 +290,7 @@ glfwFeedMomentumScroller(GLFWwindow *handle, double dx, double dy, int keyboard_
         .x_offset = dx * (xscale > 0 ? xscale : 1),
         .y_offset = dy * (yscale > 0 ? yscale : 1),
         .keyboard_modifiers = keyboard_modifiers,
+        .source = GLFW_SCROLL_SOURCE_FINGER,
     };
     handle_scroll_event(w, &ev, stopped, true, timestamp > 0 ? timestamp : monotonic(), false);
 }
