@@ -2615,21 +2615,6 @@ test_render_line(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static uint32_t
-alpha_blend(uint32_t fg, uint32_t bg) {
-    uint32_t r1 = (fg >> 16) & 0xFF, g1 = (fg >> 8) & 0xFF, b1 = fg & 0xFF, a = (fg >> 24) & 0xff;
-    uint32_t r2 = (bg >> 16) & 0xFF, g2 = (bg >> 8) & 0xFF, b2 = bg & 0xFF;
-    float alpha = a / 255.f;
-
-#define mix(x) uint32_t x = ((uint32_t)(alpha * x##1 + (1.0f - alpha) * x##2)) & 0xff;
-    mix(r);
-    mix(g);
-    mix(b);
-#undef mix
-    // Combine components into result color
-    return (0xff000000) | (r << 16) | (g << 8) | b;
-}
-
 static PyObject *
 render_decoration(PyObject *self UNUSED, PyObject *args) {
     const char *which;
@@ -2669,7 +2654,9 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
     size_t num_cells = PyTuple_GET_SIZE(cells), r, c, i;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (size_t)4 * cell_width * cell_height * num_cells);
     if (ans == NULL) return PyErr_NoMemory();
+    if (!cell_width || !cell_height || !num_cells) return ans;
     pixel *dest = (pixel *)PyBytes_AS_STRING(ans);
+    const uint8_t bg_r = (bgcolor >> 16) & 0xff, bg_g = (bgcolor >> 8) & 0xff, bg_b = bgcolor & 0xff;
     RAII_ALLOC(uint8_t, rgba, is_32_bit ? malloc((size_t)4 * cell_width) : NULL);
     if (is_32_bit && !rgba) {
         Py_DECREF(ans);
@@ -2687,16 +2674,25 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
                     rgba[4 * i + 1] = (src[i] >> 16) & 0xff;
                     rgba[4 * i + 2] = (src[i] >> 8) & 0xff;
                     rgba[4 * i + 3] = src[i] & 0xff;
-                    d[4 * i] = (bgcolor >> 16) & 0xff;
-                    d[4 * i + 1] = (bgcolor >> 8) & 0xff;
-                    d[4 * i + 2] = bgcolor & 0xff;
+                    d[4 * i] = bg_r;
+                    d[4 * i + 1] = bg_g;
+                    d[4 * i + 2] = bg_b;
                     d[4 * i + 3] = 0xff;
                 }
                 blend_over_opaque(d, 4, rgba, cell_width);
                 dest += cell_width;
             } else {
+                // white text with the sprite pixels as its alpha, blended onto bgcolor
                 uint8_t *src = (uint8_t *)s + cell_width * r;
-                for (i = 0; i < cell_width; i++, dest++) dest[0] = alpha_blend(0x00ffffff | ((src[i] & 0xff) << 24), bgcolor);
+                uint8_t *d = (uint8_t *)dest;
+                for (i = 0; i < cell_width; i++) {
+                    const uint32_t a = src[i];
+                    d[4 * i] = (uint8_t)((255 * a + bg_r * (255 - a)) / 255);
+                    d[4 * i + 1] = (uint8_t)((255 * a + bg_g * (255 - a)) / 255);
+                    d[4 * i + 2] = (uint8_t)((255 * a + bg_b * (255 - a)) / 255);
+                    d[4 * i + 3] = 0xff;
+                }
+                dest += cell_width;
             }
         }
     }

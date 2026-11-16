@@ -769,14 +769,14 @@ render_bitmap(
         size_t extra = ans->width - max_width;
         if (italic && extra < cell_width / 2) {
             trim_borders(ans, extra);
-        } else if (num_cells == 1 && (extra <= 2 || extra * 9 <= cell_width * 2)) {
+        } else if (num_cells == 1 && (extra <= 2 || extra * 10 <= cell_width * 2)) {
             // there exist fonts that have glyphs a little wider than their
             // advances, such as wide letters that borrow space from a narrow
             // neighbor. Rather than rescale, which looks bad, we just crop the
-            // bitmap to the cell. The allowance is 2/9 of the cell width,
-            // which is 2px for the 9px cell of a typical monospace font at
-            // 11pt and 96 dpi, the conditions this was originally tuned for,
-            // with a minimum of 2px for smaller cells.
+            // bitmap to the cell. The allowance is 2/10 of the cell width,
+            // with a minimum of 2px for smaller cells, which is what this was
+            // originally tuned for. Cropping removes ink, so the allowance is
+            // kept small.
             // See https://github.com/kovidgoyal/kitty/issues/352
         } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
@@ -1179,9 +1179,6 @@ place_bitmap_in_canvas(
     // Calculate column bounds
     int32_t xoff = (int32_t)(x_offset + bm->bitmap_left);
     if (debug_placement) printf(" bitmap_left: %d xoff: %d", bm->bitmap_left, xoff);
-    // A rescaled glyph, such as a letter with marks that hang to the left of
-    // its cell, shift it so the marks are not cut off
-    if (bm->rescaled && xoff < 0) xoff = 0;
     if (xoff < 0) src.left += -xoff;
     else dest.left = xoff;
     // Move the dest start column back if the width overflows because of it, but only if we are not in a very long/infinite ligature
@@ -1231,7 +1228,7 @@ render_glyphs_in_cells(
     Face *self = (Face *)f;
     bool is_emoji = *was_colored;
     *was_colored = is_emoji && self->has_color;
-    float x = 0.f, y = 0.f;
+    float x = 0.f, y = 0.f, shift = 0.f;
     ProcessedBitmap bm;
     unsigned int canvas_width = cell_width * num_cells;
     GlyphColorType colored;
@@ -1256,6 +1253,13 @@ render_glyphs_in_cells(
             }
         }
         float x_offset = x + (float)positions[i].x_offset / 64.0f;
+        // A rescaled glyph, such as a letter with marks that hang to the left
+        // of its cell, is shifted so that the marks are not cut off. The
+        // combining marks that follow it, which have no advance, are shifted
+        // with it, so that they stay in place relative to it.
+        if (positions[i].x_advance) shift = 0;
+        if (bm.rescaled && x_offset + shift + (float)bm.bitmap_left < 0) shift = -(x_offset + (float)bm.bitmap_left);
+        x_offset += shift;
         y = (float)positions[i].y_offset / 64.0f;
         if (debug_placement) printf("%d: x=%f canvas: %u", i, x_offset, canvas_width);
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {

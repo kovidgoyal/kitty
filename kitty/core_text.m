@@ -868,8 +868,9 @@ setup_ctx_for_alpha_mask(CGContextRef render_ctx) {
     CGContextSetTextMatrix(render_ctx, CGAffineTransformIdentity);
 }
 
+// fonts, if not NULL, holds the font for each glyph, NULL meaning font
 static void
-render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
+render_glyphs(CTFontRef font, CTFontRef *fonts, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
     memset(buffers.render_buf, 0, width * height);
     CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
     if (gray_color_space == NULL) fatal("Out of memory");
@@ -879,7 +880,13 @@ render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned 
     if (render_ctx == NULL) fatal("Out of memory");
     setup_ctx_for_alpha_mask(render_ctx);
     CGContextSetTextPosition(render_ctx, 0, height - baseline);
-    CTFontDrawGlyphs(font, buffers.glyphs, buffers.positions, num_glyphs, render_ctx);
+    if (fonts) {
+        // Draw runs of consecutive glyphs that use the same font together
+        for (unsigned start = 0, end; start < num_glyphs; start = end) {
+            for (end = start + 1; end < num_glyphs && fonts[end] == fonts[start]; end++);
+            CTFontDrawGlyphs(fonts[start] ? fonts[start] : font, buffers.glyphs + start, buffers.positions + start, end - start, render_ctx);
+        }
+    } else CTFontDrawGlyphs(font, buffers.glyphs, buffers.positions, num_glyphs, render_ctx);
     CGContextRelease(render_ctx);
 }
 
@@ -903,7 +910,7 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     }
     StringCanvas ans = {.width = (size_t)ceil(x), .height = (size_t)(2 * bounding_box.size.height)};
     ensure_render_space(ans.width, ans.height, num_chars);
-    render_glyphs(font, ans.width, ans.height, baseline, num_chars);
+    render_glyphs(font, NULL, ans.width, ans.height, baseline, num_chars);
     ans.canvas = malloc(ans.width * ans.height);
     if (ans.canvas) memcpy(ans.canvas, buffers.render_buf, ans.width * ans.height);
     return ans;
@@ -934,7 +941,7 @@ render_codepoint(CTFace *self, PyObject *args) {
     if (CTFontSupportsColorGlyphs(self->ct_font)) {
         render_color_glyph(self->ct_font, (uint8_t *)PyBytes_AS_STRING(pbuf), buffers.glyphs[0], ans.width, ans.height, baseline);
     } else {
-        render_glyphs(self->ct_font, ans.width, ans.height, baseline, num_chars);
+        render_glyphs(self->ct_font, NULL, ans.width, ans.height, baseline, num_chars);
         uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
         const uint8_t *last_pixel = (uint8_t *)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
         const uint8_t *s_limit = buffers.render_buf + canvas_width * canvas_height;
@@ -1001,7 +1008,7 @@ render_sample_text(CTFace *self, PyObject *args) {
         buffers.glyphs[i] = info[i].codepoint;
         num_glyphs++;
     }
-    render_glyphs(font, canvas_width, canvas_height, fcm.baseline, num_glyphs);
+    render_glyphs(font, NULL, canvas_width, canvas_height, fcm.baseline, num_glyphs);
     uint8_t r = (fg >> 16) & 0xff, g = (fg >> 8) & 0xff, b = fg & 0xff;
     const uint8_t *last_pixel = (uint8_t *)PyBytes_AS_STRING(pbuf) + PyBytes_GET_SIZE(pbuf) - sizeof(pixel);
     const uint8_t *s_limit = buffers.render_buf + canvas_width * canvas_height;
@@ -1178,8 +1185,6 @@ do_render(
     unsigned int num_cells,
     unsigned int baseline,
     bool *was_colored,
-    bool allow_resize,
-    FONTS_DATA_HANDLE fg,
     GlyphRenderInfo *ri) {
     unsigned int canvas_width = cell_width * num_cells;
     ensure_render_space(canvas_width, cell_height, num_glyphs);
@@ -1204,72 +1209,82 @@ do_render(
         x += hb_positions[i].x_advance * scale;
         y += hb_positions[i].y_advance * scale;
     }
-    // The horizontal extent of the ink of the glyphs, as positioned in the
-    // canvas, and the width of the widest glyph
-    CGFloat left = canvas_width, right = 0, max_width = 0;
+    // Resize glyphs that would bleed into neighboring cells, by drawing them
+    // with a smaller font. Glyphs are checked and resized individually, as in
+    // the FreeType renderer, so that a combining mark does not cause its base
+    // glyph to be shrunk, or the other way around. fonts[i] is the font
+    // glyph i is drawn with, NULL meaning ct_font.
+    RAII_ALLOC(CTFontRef, fonts, NULL);
+    // The left edge of the ink of the resized glyphs, as positioned in the canvas
+    CGFloat resized_left = 0;
+    if (!bold && !italic) {
+        for (unsigned i = 0; i < num_glyphs; i++) {
+            const CGRect box = buffers.boxes[i];
+            if (box.size.width <= 0) continue;
+            // The width of the glyph in whole pixels, as rasterized, which is
+            // what the FreeType renderer uses
+            const CGFloat extra = ceil(box.origin.x + box.size.width) - floor(box.origin.x) - canvas_width;
+            if (extra <= 1) continue;
+            // there exist fonts that have glyphs a little wider than their
+            // advances, such as wide letters that borrow space from a narrow
+            // neighbor. Rather than rescale, which looks bad, we just crop the
+            // glyph to the cell. The allowance is 2/10 of the cell width, with
+            // a minimum of 2px, the same as in the FreeType renderer. Colored
+            // glyphs are always rescaled, as with FreeType.
+            // See https://github.com/kovidgoyal/kitty/issues/352
+            if (!*was_colored && num_cells == 1 && (extra <= 2 || extra * 10 <= cell_width * 2)) continue;
+            if (!fonts) {
+                fonts = calloc(num_glyphs, sizeof(fonts[0]));
+                if (!fonts) fatal("Out of memory");
+            }
+            const CGFloat sz = CTFontGetSize(ct_font) * canvas_width / box.size.width;
+            if (debug_rendering) printf("resizing glyph: %u width: %f canvas_width: %u size: %f\n", i, box.size.width, canvas_width, sz);
+            fonts[i] = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
+            if (!fonts[i]) fatal("Out of memory");
+            CTFontGetBoundingRectsForGlyphs(fonts[i], kCTFontOrientationHorizontal, buffers.glyphs + i, buffers.boxes + i, 1);
+            resized_left = MIN(resized_left, buffers.positions[i].x + buffers.boxes[i].origin.x);
+        }
+    }
+    if (fonts) {
+        br = CGRectNull;
+        for (unsigned i = 0; i < num_glyphs; i++) {
+            if (buffers.boxes[i].size.width > 0) br = CGRectUnion(br, buffers.boxes[i]);
+        }
+        if (CGRectIsNull(br)) br = CGRectZero;
+    }
+    // The horizontal extent of the ink of the glyphs, as positioned in the canvas
+    CGFloat left = canvas_width, right = 0;
     for (unsigned i = 0; i < num_glyphs; i++) {
         if (buffers.boxes[i].size.width <= 0) continue;
         left = MIN(left, buffers.positions[i].x + buffers.boxes[i].origin.x);
         right = MAX(right, buffers.positions[i].x + buffers.boxes[i].origin.x + buffers.boxes[i].size.width);
-        max_width = MAX(max_width, buffers.boxes[i].size.width);
     }
     CGFloat dx = 0;
-    if (right > left) {
-        // Glyphs are checked individually, so that combining marks hanging
-        // outside the cell dont cause the base glyph to be shrunk
-        CGFloat extra = max_width - canvas_width;
-        // there exist fonts that have glyphs a little wider than their
-        // advances, such as wide letters that borrow space from a narrow
-        // neighbor. Rather than rescale, which looks bad, we just crop the
-        // glyph to the cell. The allowance is 2/9 of the cell width, with a
-        // minimum of 2px, the same as in the FreeType renderer.
-        // See https://github.com/kovidgoyal/kitty/issues/352
-        const bool crop = num_cells == 1 && (extra <= 2 || extra * 9 <= cell_width * 2);
-        if (allow_resize && !bold && !italic && extra > 1 && !crop) {
-            // Resize glyphs that would bleed into neighboring cells, by scaling the font size
-            if (debug_rendering) printf("resizing glyphs, max_width: %f canvas_width: %u\n", max_width, canvas_width);
-            CGFloat sz = CTFontGetSize(ct_font);
-            sz *= canvas_width / max_width;
-            CTFontRef new_font = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
-            bool ret = do_render(
-                new_font,
-                CTFontGetUnitsPerEm(new_font),
-                bold,
-                italic,
-                info,
-                hb_positions,
-                num_glyphs,
-                canvas,
-                cell_width,
-                cell_height,
-                num_cells,
-                baseline,
-                was_colored,
-                false,
-                fg,
-                ri);
-            CFRelease(new_font);
-            return ret;
+    // Colored glyphs are placed by render_color_glyph()
+    if (right > left && !*was_colored) {
+        if (resized_left < 0) {
+            // A resized glyph, such as a letter with marks that hang to the
+            // left of its cell, shift it so the marks are not cut off. The
+            // glyphs are shifted together, so that combining marks stay in
+            // place relative to their base glyph.
+            dx = -resized_left;
+        } else if (right > canvas_width && left > 0 && num_glyphs < 4) {
+            // Move the glyphs back into the canvas, as far as their left bearing allows
+            dx = -MIN(left, right - canvas_width);
         }
-        // Colored glyphs are placed by render_color_glyph()
-        if (!*was_colored) {
-            if (!allow_resize && left < 0) {
-                // A rescaled glyph, such as a letter with marks that hang to
-                // the left of its cell, shift it so the marks are not cut off
-                dx = -left;
-            } else if (right > canvas_width && left > 0 && num_glyphs < 4) {
-                // Move the glyphs back into the canvas, as far as their left bearing allows
-                dx = -MIN(left, right - canvas_width);
-            }
-            for (unsigned i = 0; i < num_glyphs; i++) buffers.positions[i].x += dx;
-        }
+        for (unsigned i = 0; i < num_glyphs; i++) buffers.positions[i].x += dx;
     }
     if (*was_colored) {
-        render_color_glyph(ct_font, (uint8_t *)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
+        render_color_glyph(fonts && fonts[0] ? fonts[0] : ct_font, (uint8_t *)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
     } else {
-        render_glyphs(ct_font, canvas_width, cell_height, baseline, num_glyphs);
+        render_glyphs(ct_font, fonts, canvas_width, cell_height, baseline, num_glyphs);
         Region src = {.bottom = cell_height, .right = canvas_width}, dest = {.bottom = cell_height, .right = canvas_width};
         render_alpha_mask(buffers.render_buf, canvas, &src, &dest, canvas_width, canvas_width, 0xffffff);
+    }
+    if (fonts) {
+        for (unsigned i = 0; i < num_glyphs; i++) {
+            if (fonts[i]) CFRelease(fonts[i]);
+        }
     }
     ri->canvas_width = canvas_width;
     ri->rendered_width = (unsigned)ceil(x);
@@ -1293,7 +1308,7 @@ render_glyphs_in_cells(
     unsigned int num_cells,
     unsigned int baseline,
     bool *was_colored,
-    FONTS_DATA_HANDLE fg,
+    FONTS_DATA_HANDLE fg UNUSED,
     GlyphRenderInfo *ri) {
     CTFace *self = (CTFace *)s;
     // Emoji presentation codepoints rendered with a monochrome font must use the foreground color
@@ -1301,22 +1316,7 @@ render_glyphs_in_cells(
     ensure_render_space(128, 128, num_glyphs);
     for (unsigned i = 0; i < num_glyphs; i++) buffers.glyphs[i] = info[i].codepoint;
     return do_render(
-        self->ct_font,
-        self->units_per_em,
-        bold,
-        italic,
-        info,
-        hb_positions,
-        num_glyphs,
-        canvas,
-        cell_width,
-        cell_height,
-        num_cells,
-        baseline,
-        was_colored,
-        true,
-        fg,
-        ri);
+        self->ct_font, self->units_per_em, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, ri);
 }
 
 // Font tables {{{
