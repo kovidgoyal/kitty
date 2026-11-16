@@ -1083,6 +1083,32 @@ class TestSplitBorderResize(BaseSplitGeometryTest):
         self.assertIsNone(data.vertical_id)
 
 
+class BellWindow(Window):
+    needs_attention = False
+
+
+class TestMinimalBorderColors(BaseSplitGeometryTest):
+    def test_active_window_needing_attention_uses_bell_color(self):
+        # The active window can need attention when its OS window is unfocused,
+        # its minimal borders must then use the bell color not the active color
+        for layout_class in (Tall, Fat, Grid, Horizontal, Vertical, Splits):
+            for draw_active_borders in (True, False):
+                with self.subTest(layout=layout_class.name, draw_active_borders=draw_active_borders):
+                    layout = create_layout(layout_class)
+                    windows = create_windows(layout, num=3, window_class=BellWindow)
+                    self.stub_dimensions(layout, Region((0, 0, 1499, 1099, 1500, 1100)))
+                    layout(windows)
+                    lgd.draw_active_borders = draw_active_borders
+                    active = windows.active_window
+
+                    def colors():
+                        return {b.color for b in layout.get_minimal_borders(windows) if abs(b.window_id) == active.id}
+
+                    self.ae(colors(), {BorderColor.active} if draw_active_borders else {BorderColor.inactive})
+                    active.needs_attention = True
+                    self.ae(colors(), {BorderColor.bell})
+
+
 class TestReservedSpaces(BaseSplitGeometryTest):
     def test_reserved_spaces_do_not_overlap(self):
         # Custom shaders treat the space a layout reserves around the active

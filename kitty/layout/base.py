@@ -910,7 +910,6 @@ class Layout:
     def dock_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         "Borders on the inner edges of docked groups, separating them from the content they are docked to"
         needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
-        active_group = windows.active_group
         for g in windows.iter_dock_groups(only_visible=True):
             if g.dock is None or (geom := g.geometry) is None or not (bw := g.effective_border()):
                 continue
@@ -931,7 +930,7 @@ class Layout:
                     edges, horizontal, wid = Edges(left + margin, top, left + margin + bw, bottom), False, -wid
             color = BorderColor.inactive
             if needs_borders_map.get(g.id):
-                color = BorderColor.active if g is active_group else BorderColor.bell
+                color = BorderColor.bell if g.needs_attention else BorderColor.active
             yield BorderLine(edges, color, wid, horizontal)
 
     def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:

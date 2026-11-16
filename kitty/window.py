@@ -1675,12 +1675,7 @@ class Window:
             self.last_focused_at = monotonic()
             update_ime_position_for_window(self.id, False, 1)
             self.program_status_seen_by_user()
-            changed = self.needs_attention
-            self.needs_attention = False
-            if changed:
-                tab = self.tabref()
-                if tab is not None:
-                    tab.relayout_borders()
+            self.clear_needs_attention()
             if self.last_cmd_end_notification is not None:
                 from .notifications import OnlyWhen
 
@@ -1691,6 +1686,12 @@ class Window:
         elif self.os_window_id == current_focused_os_window_id():
             # Cancel IME composition after loses focus
             update_ime_position_for_window(self.id, False, -1)
+
+    def clear_needs_attention(self) -> None:
+        if self.needs_attention:
+            self.needs_attention = False
+            if (tab := self.tabref()) is not None:
+                tab.relayout_borders()
 
     def title_changed(self, new_title: memoryview | None, is_base64: bool = False) -> None:
         self.child_title = process_title_from_child(new_title or memoryview(b''), is_base64, self.default_title)
@@ -1763,7 +1764,10 @@ class Window:
             env = self.child.foreground_environ
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
             subprocess.Popen(cb, env=env, cwd=self.child.foreground_cwd, preexec_fn=clear_handled_signals)
-        if not self.is_active:
+        # Mark as needing attention unless the user is looking at this window,
+        # which requires both that it be the active window and that its OS
+        # window have keyboard focus. Attention is cleared when the window gains focus.
+        if not self.is_active or self.os_window_id != current_focused_os_window_id():
             changed = not self.needs_attention
             self.needs_attention = True
             tab = self.tabref()

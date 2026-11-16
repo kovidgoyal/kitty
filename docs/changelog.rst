@@ -168,6 +168,9 @@ Detailed list of changes
   :code:`--base-dir` into account, and file name completion is relative to that
   directory (:pull:`10851`, :pull:`10852`, :disc:`10867`)
 
+- Fix the bell indicator not being shown on the tab when a bell occurs in the
+  active window while the OS window does not have keyboard focus (:iss:`10880`)
+
 - Fix the display not being updated while the OS window is otherwise idle
   after changes made from timers, such as by a custom tab bar updated from a
   timer or by actions mapped to mouse clicks (:pull:`10878`)

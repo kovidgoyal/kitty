@@ -950,16 +950,12 @@ class Splits(Layout):
         if not lgd.draw_minimal_borders or window_count < 2:
             return
         needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
-        ag = windows.active_group
-        active_group_id = -1 if ag is None else ag.id
 
         border_color_map = {}
         for grp_id, needs_borders in needs_borders_map.items():
             if needs_borders:
-                wid = g.active_window_id if (g := windows.group_for_id(grp_id)) else 0
-                if wid:
-                    color = BorderColor.active if grp_id is active_group_id else BorderColor.bell
-                    border_color_map[wid] = color
+                if (g := windows.group_for_id(grp_id)) and (wid := g.active_window_id):
+                    border_color_map[wid] = BorderColor.bell if g.needs_attention else BorderColor.active
 
         for pair in self.pairs_root.self_and_descendants():
             if pair.between_borders:

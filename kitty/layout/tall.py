@@ -322,7 +322,6 @@ class Tall(Layout):
         perp_borders: list[BorderLine] = []
         layouts = (self.simple_layout if num <= self.num_full_size_windows else self.full_layout)(windows)
         needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
-        active_group = windows.active_group
         mirrored = self.layout_opts.mirrored
         for wg, xl, yl, is_full_size in layouts:
             if is_full_size:
@@ -330,7 +329,7 @@ class Tall(Layout):
             else:
                 color = BorderColor.inactive
                 if needs_borders_map.get(wg.id):
-                    color = BorderColor.active if wg is active_group else BorderColor.bell
+                    color = BorderColor.bell if wg.needs_attention else BorderColor.active
                 wid = wg.active_window_id
                 mult = 1 if mirrored else -1
 

@@ -2187,6 +2187,10 @@ class Boss:
             w = tm.active_window
             if w is not None:
                 w.focus_changed(focused)
+                if focused:
+                    # focus_changed() is a no-op if the window became active while
+                    # the OS window was unfocused, so clear the bell indicator here as well
+                    w.clear_needs_attention()
                 if is_macos and focused:
                     cocoa_set_menubar_title(w.title or '')
             tm.mark_tab_bar_dirty()
