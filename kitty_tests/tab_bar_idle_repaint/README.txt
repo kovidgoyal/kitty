@@ -6,7 +6,7 @@
 #
 # Manual procedure:
 #   1. cd into this directory
-#   2. kitty --config kitty.conf
+#   2. KITTY_CONFIG_DIRECTORY=$PWD kitty
 #   3. leave the window focused and do not touch it, mouse or keyboard
 #   4. watch the `tick N` text at the right of the tab
 #
