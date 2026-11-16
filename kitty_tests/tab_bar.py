@@ -818,3 +818,24 @@ class TestTabBar(BaseTest):
             with patch('kitty.tab_bar.caching_titles', nullcontext):
                 self.ae(self.horizontal_tab_bar_line(titles, 60, tab_bar_style='separator', tab_title_template=template), cached, template)
             self.assertGreater(ev.call_count, len(titles), template)
+
+    def test_dirty_mark_requests_a_main_loop_tick(self):
+        # A timer driven custom tab bar only repaints if clearing the dirty flag
+        # also asks the event loop for a tick, see the idle window report.
+        from kitty.fast_data_types import (
+            dnd_test_cleanup_fake_window,
+            dnd_test_create_fake_window,
+            mark_tab_bar_dirty,
+            test_tick_requests,
+        )
+
+        os_window_id, _ = dnd_test_create_fake_window()
+        try:
+            before = test_tick_requests()
+            mark_tab_bar_dirty(os_window_id, True)
+            self.ae(test_tick_requests(), before + 1, 'marking the tab bar dirty did not request a main loop tick')
+            before = test_tick_requests()
+            mark_tab_bar_dirty(os_window_id + 1000, True)  # no such OS window
+            self.ae(test_tick_requests(), before, 'requested a tick for an unknown OS window')
+        finally:
+            dnd_test_cleanup_fake_window(os_window_id)

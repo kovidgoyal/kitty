@@ -166,9 +166,22 @@ update_menu_bar_title(PyObject *title UNUSED) {
 }
 
 
+// Counted so a headless test can assert that a dirty mark wakes the main loop,
+// the tick itself is only observable with a real event loop.
+static unsigned long num_tick_requests;
+static bool glfw_is_initialized;
+
+static PyObject *
+test_tick_requests(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyLong_FromUnsignedLong(num_tick_requests);
+}
+
 void
 request_tick_callback(void) {
-    glfwPostEmptyEvent();
+    num_tick_requests++;
+    // In the headless test environment GLFW is never initialized and there is no
+    // platform function to post the event with.
+    if (glfw_is_initialized) glfwPostEmptyEvent();
 }
 
 static void
@@ -2815,6 +2828,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     bool supports_window_occlusion = false;
     bool ok = glfwInit(monotonic_start_time, &supports_window_occlusion);
     if (ok) {
+        glfw_is_initialized = true;
 #ifdef __APPLE__
         glfwSetCocoaURLOpenCallback(apple_url_open_callback);
 #else
@@ -4119,6 +4133,7 @@ start_drag_with_data(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
+    METHODB(test_tick_requests, METH_NOARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
     {"toggle_os_window_visibility", (PyCFunction)(void (*)(void))(toggle_os_window_visibility), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(layer_shell_config_for_os_window, METH_O),
