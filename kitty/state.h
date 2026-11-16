@@ -683,6 +683,11 @@ typedef struct OSWindow {
         int mapped_modifiers;
         monotonic_t mapped_last_event_at;
         bool mapped_gesture, mapped_grabbed;
+        // Detailed wheel event reporting: the fractions of the reported
+        // deltas not yet sent and the window and unit they belong to
+        double reported_remainder_x, reported_remainder_y;
+        id_type reported_window_id;
+        int reported_unit;
     } scroll;
     ShaderAnimEventMask shader_anim_event_registry;
     id_type last_bell_window_id; // ID of the most recent window that received a bell event

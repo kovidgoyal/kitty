@@ -2527,6 +2527,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
     switch (mode) {
         SIMPLE_MODE(LNM)
         SIMPLE_MODE(PASTE_EVENTS)
+        SIMPLE_MODE(WHEEL_EVENTS)
         SIMPLE_MODE(IRM)
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
@@ -3221,6 +3222,7 @@ copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, Scre
         SIMPLE_MODE(FOCUS_TRACKING)
         SIMPLE_MODE(COLOR_PREFERENCE_NOTIFICATION)
         SIMPLE_MODE(PASTE_EVENTS)
+        SIMPLE_MODE(WHEEL_EVENTS)
         SIMPLE_MODE(INBAND_RESIZE_NOTIFICATION)
         SIMPLE_MODE(VISIBILITY_REPORTS)
         SIMPLE_MODE(DECCKM)
@@ -3268,6 +3270,7 @@ copy_specific_modes(Screen *self, const ScreenModes *src, ScreenModes *dest) {
     copy_specific_mode(self, INBAND_RESIZE_NOTIFICATION, src, dest);
     copy_specific_mode(self, VISIBILITY_REPORTS, src, dest);
     copy_specific_mode(self, PASTE_EVENTS, src, dest);
+    copy_specific_mode(self, WHEEL_EVENTS, src, dest);
     copy_specific_mode(self, DECCKM, src, dest);
     copy_specific_mode(self, DECTCEM, src, dest);
     copy_specific_mode(self, DECAWM, src, dest);
@@ -3906,6 +3909,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(VISIBILITY_REPORTS);
         KNOWN_MODE(INBAND_RESIZE_NOTIFICATION);
         KNOWN_MODE(PASTE_EVENTS);
+        KNOWN_MODE(WHEEL_EVENTS);
 #undef KNOWN_MODE
         case ALTERNATE_SCREEN: ans = self->linebuf == self->alt_linebuf ? 1 : 2; break;
         case MOUSE_BUTTON_TRACKING: ans = self->modes.mouse_tracking_mode == BUTTON_MODE ? 1 : 2; break;
@@ -6567,6 +6571,7 @@ MODE_GETSET(focus_tracking_enabled, FOCUS_TRACKING)
 MODE_GETSET(color_preference_notification, COLOR_PREFERENCE_NOTIFICATION)
 MODE_GETSET(in_band_resize_notification, INBAND_RESIZE_NOTIFICATION)
 MODE_GETSET(paste_events, PASTE_EVENTS)
+MODE_GETSET(wheel_events, WHEEL_EVENTS)
 MODE_GETSET(auto_repeat_enabled, DECARM)
 MODE_GETSET(cursor_visible, DECTCEM)
 MODE_GETSET(cursor_key_mode, DECCKM)
@@ -8266,7 +8271,7 @@ static PyMethodDef methods[] = {
 
 static PyGetSetDef getsetters[] = {
     GETSET(in_bracketed_paste_mode) GETSET(color_preference_notification) GETSET(auto_repeat_enabled) GETSET(focus_tracking_enabled)
-        GETSET(in_band_resize_notification) GETSET(paste_events) GETSET(cursor_visible) GETSET(cursor_key_mode) GETSET(disable_ligatures)
+        GETSET(in_band_resize_notification) GETSET(paste_events) GETSET(wheel_events) GETSET(cursor_visible) GETSET(cursor_key_mode) GETSET(disable_ligatures)
             GETSET(render_unfocused_cursor){NULL} /* Sentinel */
 };
 

@@ -67,6 +67,7 @@ x11_scroll_stop_timer_callback(unsigned long long timer_id UNUSED, void *data UN
         x11_momentum_scroll_state.last_event.x_offset = 0;
         x11_momentum_scroll_state.last_event.unscaled.x = 0;
         x11_momentum_scroll_state.last_event.unscaled.y = 0;
+        x11_momentum_scroll_state.last_event.phase = GLFW_SCROLL_PHASE_ENDED;
         glfw_handle_scroll_event_for_momentum(w, &x11_momentum_scroll_state.last_event, true, true);
     } else {
         // Window no longer exists, cancel any ongoing momentum
@@ -81,6 +82,25 @@ x11_cancel_momentum_scroll_timer(void) {
         x11_momentum_scroll_state.timer_id = 0;
     }
     x11_momentum_scroll_state.window_id = 0;
+}
+
+// XInput has no end of gesture events, so a gesture is considered to end when
+// no scroll events arrive for a while. If something other than scrolling
+// happens before that, the gesture is cancelled instead.
+static void
+x11_cancel_scroll_gesture(void) {
+    if (!x11_momentum_scroll_state.timer_id) return;
+    _GLFWwindow *w = _glfwWindowForId(x11_momentum_scroll_state.window_id);
+    GLFWScrollEvent ev = x11_momentum_scroll_state.last_event;
+    x11_cancel_momentum_scroll_timer();
+    if (w) {
+        ev.x_offset = 0;
+        ev.y_offset = 0;
+        ev.unscaled.x = 0;
+        ev.unscaled.y = 0;
+        ev.phase = GLFW_SCROLL_PHASE_CANCELLED;
+        _glfwInputScroll(w, &ev);
+    }
 }
 
 // Additional mouse button names for XButtonEvent
@@ -1528,10 +1548,16 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
                 .y_offset = yOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleY : 1),
                 .unscaled = {.x = xOffset, .y = yOffset},
                 .offset_type = type,
+                .source = d->is_finger_based ? GLFW_SCROLL_SOURCE_FINGER
+                                             : (type == GLFW_SCROLL_OFFEST_HIGHRES ? GLFW_SCROLL_SOURCE_UNKNOWN : GLFW_SCROLL_SOURCE_WHEEL),
             };
 
-            // For high-resolution, finger-based scrolling, use timer-based momentum scrolling
-            if (d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES && glfw_is_momentum_scroll_enabled()) {
+            // For high-resolution, finger-based scrolling, use a timer to detect
+            // the end of the gesture, for gesture phases and momentum scrolling
+            if (d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
+                const bool gesture_in_progress = x11_momentum_scroll_state.timer_id && x11_momentum_scroll_state.window_id == window->id;
+                if (!gesture_in_progress) x11_cancel_scroll_gesture();
+                ev.phase = gesture_in_progress ? GLFW_SCROLL_PHASE_CHANGED : GLFW_SCROLL_PHASE_BEGAN;
                 // Reset the timer on each scroll event
                 x11_cancel_momentum_scroll_timer();
 
@@ -1553,7 +1579,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     }
     if (scroll_valuator_found) _glfw.x11.xi.last_smooth_scroll_time = de->time;
     else {
-        x11_cancel_momentum_scroll_timer();
+        x11_cancel_scroll_gesture();
         glfw_cancel_momentum_scroll();
         handle_mouse_move_event(window, (int)de->event_x, (int)de->event_y);
     }
@@ -2062,7 +2088,7 @@ processEvent(XEvent *event) {
 
         case KeyPress: {
             UPDATE_KEYMAP_IF_NEEDED;
-            x11_cancel_momentum_scroll_timer();
+            x11_cancel_scroll_gesture();
             glfw_cancel_momentum_scroll();
             glfw_xkb_handle_key_event(window, &_glfw.x11.xkb, event->xkey.keycode, GLFW_PRESS);
             return;
@@ -2070,7 +2096,7 @@ processEvent(XEvent *event) {
 
         case KeyRelease: {
             UPDATE_KEYMAP_IF_NEEDED;
-            x11_cancel_momentum_scroll_timer();
+            x11_cancel_scroll_gesture();
             glfw_cancel_momentum_scroll();
             if (!_glfw.x11.xkb.detectable) {
                 // HACK: Key repeat events will arrive as KeyRelease/KeyPress
@@ -2105,8 +2131,8 @@ processEvent(XEvent *event) {
         case ButtonPress: {
             const int mods = translateState(event->xbutton.state);
 
-#define cancel_momentum()               \
-    x11_cancel_momentum_scroll_timer(); \
+#define cancel_momentum()        \
+    x11_cancel_scroll_gesture(); \
     glfw_cancel_momentum_scroll()
 
             if (event->xbutton.button == Button1) {
@@ -2126,16 +2152,20 @@ processEvent(XEvent *event) {
             // such as from XTEST (x11vnc, xdotool) are handled normally.
             else if (event->xbutton.button == Button4) {
                 if (!isEmulatedScrollButton(&event->xbutton))
-                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .y_offset = 1, .unscaled.y = 1});
+                    _glfwInputScroll(
+                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .y_offset = 1, .unscaled.y = 1});
             } else if (event->xbutton.button == Button5) {
                 if (!isEmulatedScrollButton(&event->xbutton))
-                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .y_offset = -1, .unscaled.y = -1});
+                    _glfwInputScroll(
+                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .y_offset = -1, .unscaled.y = -1});
             } else if (event->xbutton.button == Button6) {
                 if (!isEmulatedScrollButton(&event->xbutton))
-                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .x_offset = 1, .unscaled.x = 1});
+                    _glfwInputScroll(
+                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .x_offset = 1, .unscaled.x = 1});
             } else if (event->xbutton.button == Button7) {
                 if (!isEmulatedScrollButton(&event->xbutton))
-                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .x_offset = -1, .unscaled.x = -1});
+                    _glfwInputScroll(
+                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .x_offset = -1, .unscaled.x = -1});
             }
 
             else {
@@ -2209,7 +2239,7 @@ processEvent(XEvent *event) {
                 handle_drag_motion(root_x, root_y, event->xmotion.time);
             }
 
-            x11_cancel_momentum_scroll_timer();
+            x11_cancel_scroll_gesture();
             glfw_cancel_momentum_scroll();
             handle_mouse_move_event(window, event->xmotion.x, event->xmotion.y);
             return;

@@ -1439,6 +1439,21 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
         case NSEventPhaseMayBegin: ev.momentum_type = GLFW_MOMENTUM_PHASE_MAY_BEGIN; break;
         case NSEventPhaseNone: break;
     }
+    switch ([event phase]) {
+        case NSEventPhaseBegan: ev.phase = GLFW_SCROLL_PHASE_BEGAN; break;
+        case NSEventPhaseStationary:
+        case NSEventPhaseChanged: ev.phase = GLFW_SCROLL_PHASE_CHANGED; break;
+        case NSEventPhaseEnded: ev.phase = GLFW_SCROLL_PHASE_ENDED; break;
+        case NSEventPhaseCancelled: ev.phase = GLFW_SCROLL_PHASE_CANCELLED; break;
+        case NSEventPhaseMayBegin: ev.phase = GLFW_SCROLL_PHASE_MAY_BEGIN; break;
+        case NSEventPhaseNone: break;
+    }
+    // Only gesture based devices, trackpads and the Magic Mouse, have phases.
+    // Precise deltas without phases come from devices such as high resolution
+    // wheels that macOS does not identify.
+    if (ev.phase != GLFW_SCROLL_PHASE_NONE || ev.momentum_type != GLFW_NO_MOMENTUM_DATA) ev.source = GLFW_SCROLL_SOURCE_FINGER;
+    else ev.source = [event hasPreciseScrollingDeltas] ? GLFW_SCROLL_SOURCE_UNKNOWN : GLFW_SCROLL_SOURCE_WHEEL;
+    ev.direction_inverted = [event isDirectionInvertedFromDevice];
 
     _glfwInputScroll(window, &ev);
 }

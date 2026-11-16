@@ -460,6 +460,33 @@ typedef enum GLFWOffsetType {
     GLFW_SCROLL_OFFEST_HIGHRES = 2,
 } GLFWOffsetType;
 
+// The kind of device a scroll event comes from
+typedef enum GLFWScrollSource {
+    GLFW_SCROLL_SOURCE_UNKNOWN = 0,
+    // A wheel, with or without high resolution
+    GLFW_SCROLL_SOURCE_WHEEL = 1,
+    // Fingers on a touchpad or trackpad
+    GLFW_SCROLL_SOURCE_FINGER = 2,
+    // A continuous device without a physical end of gesture, such as a trackpoint
+    GLFW_SCROLL_SOURCE_CONTINUOUS = 3,
+    // Sideways clicks of a wheel
+    GLFW_SCROLL_SOURCE_WHEEL_TILT = 4,
+} GLFWScrollSource;
+
+// Where an event is in a physical scroll gesture. Momentum events, generated
+// after the gesture ends, have their phase in momentum_type instead.
+typedef enum GLFWScrollPhase {
+    // The device has no concept of gestures, such as wheel clicks
+    GLFW_SCROLL_PHASE_NONE = 0,
+    GLFW_SCROLL_PHASE_BEGAN = 1,
+    GLFW_SCROLL_PHASE_CHANGED = 2,
+    // The gesture ended, for example, the fingers were lifted
+    GLFW_SCROLL_PHASE_ENDED = 3,
+    GLFW_SCROLL_PHASE_CANCELLED = 4,
+    // A gesture may begin, for example, the fingers rest on the trackpad
+    GLFW_SCROLL_PHASE_MAY_BEGIN = 5,
+} GLFWScrollPhase;
+
 typedef struct GLFWScrollEvent {
     double x_offset, y_offset; // offsets are scaled by the window scale for HIGHRES
     struct {
@@ -468,6 +495,11 @@ typedef struct GLFWScrollEvent {
     GLFWMomentumType momentum_type;
     GLFWOffsetType offset_type;
     int keyboard_modifiers;
+    GLFWScrollSource source;
+    GLFWScrollPhase phase;
+    // true if the offsets are reversed relative to the physical movement of
+    // the device, for example, because natural scrolling is enabled
+    bool direction_inverted;
 } GLFWScrollEvent;
 
 // Touch events are reported only for direct touch devices, i.e. touchscreens,
