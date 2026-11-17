@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var _ = fmt.Print
@@ -46,12 +47,16 @@ func (self *Range) has_point(x, y int) bool {
 }
 
 func truncate_at_space(text string, width int) (string, string) {
-	truncated, p := wcswidth.TruncateToVisualLengthWithWidth(text, width)
-	if len(truncated) == len(text) {
+	truncated := wcswidth.TruncateToVisualLength(text, width)
+	p := len(truncated)
+	if p == len(text) {
 		return text, ""
 	}
-	i := strings.LastIndexByte(truncated, ' ')
-	if i > 0 && p-i < 12 {
+	if p == 0 {
+		// The first character is wider than width, consume it anyway so
+		// that callers always make progress
+		_, p = utf8.DecodeRuneInString(text)
+	} else if i := strings.LastIndexByte(truncated, ' '); i > 0 && wcswidth.Stringwidth(truncated[i:]) < 12 {
 		p = i + 1
 	}
 	return text[:p], text[p:]
@@ -114,7 +119,7 @@ func GetChoices(o *Options) (response string, err error) {
 	hidden_text := ""
 	m := markup.New(true)
 	replacement_text := fmt.Sprintf("Press %s or click to show", m.Green(o.UnhideKey))
-	replacement_range := Range{-1, -1, -1}
+	var replacement_ranges []Range
 	if message != "" && o.HiddenTextPlaceholder != "" {
 		hidden_text_start_pos = strings.Index(message, o.HiddenTextPlaceholder)
 		if hidden_text_start_pos > -1 {
@@ -129,29 +134,56 @@ func GetChoices(o *Options) (response string, err error) {
 		}
 	}
 
-	draw_long_text := func(screen_width int, text string, msg_lines []string) []string {
+	// A layout is a block of rows that is rendered without line wrapping or
+	// scrolling, with clickable ranges whose y co-ordinates are relative to the
+	// first row of the block.
+	type Layout struct {
+		rows   []string
+		ranges map[string][]Range
+	}
+
+	max_row_width := func(rows []string) (ans int) {
+		for _, row := range rows {
+			ans = max(ans, wcswidth.Stringwidth(row))
+		}
+		return
+	}
+
+	// Wrap text to fit in screen_width, returning the wrapped lines and the
+	// ranges, relative to the returned lines, occupied by the bytes
+	// text[hot_start:hot_end], which may be split over multiple lines.
+	draw_long_text := func(screen_width int, text string, hot_start, hot_end int) (lines []string, hot_ranges []Range) {
 		if screen_width < 3 {
-			return msg_lines
+			return
 		}
 		if text == "" {
-			msg_lines = append(msg_lines, "")
-		} else {
-			width := screen_width - 2
-			prefix := prefix_style_pat.FindString(text)
-			for text != "" {
-				var t string
-				t, text = truncate_at_space(text, width)
-				t = strings.TrimSpace(t)
-				msg_lines = append(msg_lines, strings.Repeat(" ", extra_for(wcswidth.Stringwidth(t), width))+m.Bold(prefix+t))
-			}
+			return []string{""}, nil
 		}
-		return msg_lines
+		width := screen_width - 2
+		prefix := prefix_style_pat.FindString(text)
+		offset := 0
+		for text != "" {
+			var raw string
+			raw, text = truncate_at_space(text, width)
+			start := offset + len(raw) - len(strings.TrimLeftFunc(raw, unicode.IsSpace))
+			offset += len(raw)
+			t := strings.TrimSpace(raw)
+			pad := extra_for(wcswidth.Stringwidth(t), width)
+			if s, e := max(hot_start, start), min(hot_end, start+len(t)); s < e {
+				if w := wcswidth.Stringwidth(t[s-start : e-start]); w > 0 {
+					x := pad + wcswidth.Stringwidth(t[:s-start])
+					hot_ranges = append(hot_ranges, Range{x, x + w - 1, len(lines)})
+				}
+			}
+			lines = append(lines, strings.Repeat(" ", pad)+m.Bold(prefix+t))
+		}
+		return
 	}
 
 	ctx := style.Context{AllowEscapeCodes: true}
 
-	draw_choice_boxes := func(y, screen_width, _ int, choices ...Choice) {
-		clickable_ranges = map[string][]Range{}
+	layout_choice_boxes := func(screen_width int, choices ...Choice) Layout {
+		ans := Layout{ranges: make(map[string][]Range, len(choices))}
 		width := screen_width - 2
 		current_line_length := 0
 		type Item struct{ letter, text string }
@@ -162,7 +194,6 @@ func GetChoices(o *Options) (response string, err error) {
 		sep_sz := len(sep) + 2 // for the borders
 
 		for _, choice := range choices {
-			clickable_ranges[choice.letter] = make([]Range, 0, 4)
 			text := " " + choice.prefix()
 			color := choice.color
 			if choice.color == "" {
@@ -171,7 +202,7 @@ func GetChoices(o *Options) (response string, err error) {
 			text += ctx.SprintFunc("fg=" + color)(choice.display_letter())
 			text += choice.suffix() + " "
 			sz := wcswidth.Stringwidth(text)
-			if sz+sep_sz+current_line_length > width {
+			if len(current_line) > 0 && sz+sep_sz+current_line_length > width {
 				lines = append(lines, current_line)
 				current_line = nil
 				current_line_length = 0
@@ -211,7 +242,7 @@ func GetChoices(o *Options) (response string, err error) {
 			return
 		}
 
-		print_line := func(add_borders func(string, bool) string, is_last bool, items ...Item) {
+		add_row := func(add_borders func(string, bool) string, items ...Item) {
 			type Position struct {
 				letter  string
 				x, size int
@@ -229,71 +260,57 @@ func GetChoices(o *Options) (response string, err error) {
 			}
 			line := strings.TrimRightFunc(strings.Join(texts, ""), unicode.IsSpace)
 			offset := extra_for(wcswidth.Stringwidth(line), width)
+			y := len(ans.rows)
 			for _, pos := range positions {
-				x = pos.x
-				x += offset
-				clickable_ranges[pos.letter] = append(clickable_ranges[pos.letter], Range{x, x + pos.size - 1, y})
+				x = pos.x + offset
+				ans.ranges[pos.letter] = append(ans.ranges[pos.letter], Range{x, x + pos.size - 1, y})
 			}
-			end := "\r\n"
-			if is_last {
-				end = ""
-			}
-			lp.QueueWriteString(strings.Repeat(" ", offset) + line + end)
-			y++
+			ans.rows = append(ans.rows, strings.Repeat(" ", offset)+line)
 		}
-		lp.AllowLineWrapping(false)
-		defer func() { lp.AllowLineWrapping(true) }()
-		for i, boxed_line := range lines {
-			print_line(top, false, boxed_line...)
-			print_line(middle, false, boxed_line...)
-			is_last := i == len(lines)-1
-			print_line(bottom, is_last, boxed_line...)
+		for _, boxed_line := range lines {
+			add_row(top, boxed_line...)
+			add_row(middle, boxed_line...)
+			add_row(bottom, boxed_line...)
 		}
+		return ans
 	}
 
-	draw_yesno := func(y, screen_width, screen_height int) {
+	layout_compact_yesno := func(screen_width int) Layout {
 		yes := m.Green("Y") + "es"
 		no := m.BrightRed("N") + "o"
-		if y+3 <= screen_height {
-			draw_choice_boxes(y, screen_width, screen_height, Choice{"Yes", 0, "green", "y"}, Choice{"No", 0, "red", "n"})
-		} else {
-			sep := strings.Repeat(" ", 3)
-			text := yes + sep + no
-			w := wcswidth.Stringwidth(text)
-			x := extra_for(w, screen_width-2)
-			nx := x + wcswidth.Stringwidth(yes) + len(sep)
-			clickable_ranges = map[string][]Range{
-				"y": {{x, x + wcswidth.Stringwidth(yes) - 1, y}},
-				"n": {{nx, nx + wcswidth.Stringwidth(no) - 1, y}},
-			}
-			lp.QueueWriteString(strings.Repeat(" ", x) + text)
+		sep := strings.Repeat(" ", 3)
+		text := yes + sep + no
+		x := extra_for(wcswidth.Stringwidth(text), screen_width-2)
+		nx := x + wcswidth.Stringwidth(yes) + len(sep)
+		return Layout{
+			rows: []string{strings.Repeat(" ", x) + text},
+			ranges: map[string][]Range{
+				"y": {{x, x + wcswidth.Stringwidth(yes) - 1, 0}},
+				"n": {{nx, nx + wcswidth.Stringwidth(no) - 1, 0}},
+			},
 		}
 	}
 
-	draw_choice := func(y, screen_width, screen_height int) {
-		if y+3 <= screen_height {
-			draw_choice_boxes(y, screen_width, screen_height, choice_order...)
-			return
+	layout_compact_choices := func(screen_width int) Layout {
+		type Item struct {
+			letter string
+			size   int
 		}
-		clickable_ranges = map[string][]Range{}
+		ans := Layout{ranges: make(map[string][]Range, len(choice_order))}
 		current_line := ""
-		current_ranges := map[string]int{}
+		var current_items []Item
 		width := screen_width - 2
 
-		commit_line := func(add_newline bool) {
+		commit_line := func() {
 			x := extra_for(wcswidth.Stringwidth(current_line), width)
-			text := strings.Repeat(" ", x) + current_line
-			if add_newline {
-				lp.Println(text)
-			} else {
-				lp.QueueWriteString(text)
+			y := len(ans.rows)
+			ans.rows = append(ans.rows, strings.Repeat(" ", x)+current_line)
+			for _, item := range current_items {
+				// size includes the two trailing separator spaces
+				ans.ranges[item.letter] = append(ans.ranges[item.letter], Range{x, x + item.size - 3, y})
+				x += item.size
 			}
-			for letter, sz := range current_ranges {
-				clickable_ranges[letter] = []Range{{x, x + sz - 3, y}}
-				x += sz
-			}
-			current_ranges = map[string]int{}
-			y++
+			current_items = current_items[:0]
 			current_line = ""
 		}
 		for _, choice := range choice_order {
@@ -311,55 +328,105 @@ func GetChoices(o *Options) (response string, err error) {
 			text += choice.suffix()
 			text += "  "
 			sz := wcswidth.Stringwidth(text)
-			if sz+wcswidth.Stringwidth(current_line) >= width {
-				commit_line(true)
+			if current_line != "" && sz+wcswidth.Stringwidth(current_line) >= width {
+				commit_line()
 			}
 			current_line += text
-			current_ranges[choice.letter] = sz
+			current_items = append(current_items, Item{choice.letter, sz})
 		}
 		if current_line != "" {
-			commit_line(false)
+			commit_line()
 		}
+		return ans
 	}
 
 	draw_screen := func() error {
 		lp.StartAtomicUpdate()
 		defer lp.EndAtomicUpdate()
 		lp.ClearScreen()
-		msg_lines := make([]string, 0, 8)
 		sz, err := lp.ScreenSize()
 		if err != nil {
 			return err
 		}
+		screen_width, screen_height := int(sz.WidthCells), int(sz.HeightCells)
+		var rows []string
+		var unhide_ranges []Range
 		if message != "" {
 			scanner := utils.NewLineScanner(message)
 			for scanner.Scan() {
-				msg_lines = draw_long_text(int(sz.WidthCells), scanner.Text(), msg_lines)
-			}
-		}
-		y := int(sz.HeightCells) - len(msg_lines)
-		y = max(0, (y/2)-2)
-		lp.QueueWriteString(strings.Repeat("\r\n", y))
-		for _, line := range msg_lines {
-			if replacement_text != "" {
-				before, _, ok := strings.Cut(line, replacement_text)
-				if ok {
-					x := wcswidth.Stringwidth(before)
-					replacement_range = Range{x, x + wcswidth.Stringwidth(replacement_text), y}
+				line := scanner.Text()
+				hot_start, hot_end := -1, -1
+				if hidden_text != "" {
+					if idx := strings.Index(line, replacement_text); idx > -1 {
+						hot_start, hot_end = idx, idx+len(replacement_text)
+					}
 				}
+				lines, hot_ranges := draw_long_text(screen_width, line, hot_start, hot_end)
+				for _, r := range hot_ranges {
+					r.y += len(rows)
+					unhide_ranges = append(unhide_ranges, r)
+				}
+				rows = append(rows, lines...)
 			}
-			lp.Println(line)
-			y++
 		}
-		if sz.HeightCells > 2 {
-			lp.Println()
-			y++
+		num_message_rows := len(rows)
+		if screen_height > 2 {
+			rows = append(rows, "")
 		}
+		var choices Layout
 		switch o.Type {
 		case "yesno":
-			draw_yesno(y, int(sz.WidthCells), int(sz.HeightCells))
+			choices = layout_choice_boxes(screen_width, Choice{"Yes", 0, "green", "y"}, Choice{"No", 0, "red", "n"})
 		case "choices":
-			draw_choice(y, int(sz.WidthCells), int(sz.HeightCells))
+			choices = layout_choice_boxes(screen_width, choice_order...)
+		}
+		if len(rows)+len(choices.rows) > screen_height || max_row_width(choices.rows) > screen_width {
+			switch o.Type {
+			case "yesno":
+				choices = layout_compact_yesno(screen_width)
+			case "choices":
+				choices = layout_compact_choices(screen_width)
+			}
+		}
+		choices_start := len(rows)
+		rows = append(rows, choices.rows...)
+
+		// Center the message vertically. If everything does not fit, align
+		// the bottom of the content with the bottom of the screen so that the
+		// choices remain visible, letting the top of the message go
+		// off-screen.
+		top := min(max(0, (screen_height-num_message_rows)/2-2), screen_height-len(rows))
+		lp.AllowLineWrapping(false)
+		defer lp.AllowLineWrapping(true)
+		for i, row := range rows {
+			if y := top + i; y >= 0 && y < screen_height {
+				if wcswidth.Stringwidth(row) > screen_width {
+					// Rows can only be too wide when a single choice does not
+					// fit, indicate that it has been truncated
+					row = wcswidth.TruncateToVisualLength(row, screen_width-1) + "…"
+				}
+				lp.MoveCursorTo(1, y+1)
+				lp.QueueWriteString(row)
+			}
+		}
+
+		on_screen := func(r Range, offset int) (Range, bool) {
+			r.y += offset
+			return r, r.y >= 0 && r.y < screen_height
+		}
+		clickable_ranges = make(map[string][]Range, len(choices.ranges))
+		for letter, ranges := range choices.ranges {
+			for _, r := range ranges {
+				if r, ok := on_screen(r, top+choices_start); ok {
+					clickable_ranges[letter] = append(clickable_ranges[letter], r)
+				}
+			}
+		}
+		replacement_ranges = replacement_ranges[:0]
+		for _, r := range unhide_ranges {
+			if r, ok := on_screen(r, top); ok {
+				replacement_ranges = append(replacement_ranges, r)
+			}
 		}
 		return nil
 	}
@@ -436,8 +503,13 @@ func GetChoices(o *Options) (response string, err error) {
 				lp.Quit(0)
 				return nil
 			}
-			if hidden_text != "" && replacement_range.has_point(ev.Cell.X, ev.Cell.Y) {
-				unhide()
+			if hidden_text != "" {
+				for _, r := range replacement_ranges {
+					if r.has_point(ev.Cell.X, ev.Cell.Y) {
+						unhide()
+						break
+					}
+				}
 			}
 		}
 		return nil

@@ -265,6 +265,10 @@ Detailed list of changes
 - Fix accents and breathing marks that hang to the left of wide glyphs,
   such as polytonic Greek capitals, being cut off
 
+- ask kitten: Fix mouse clicks selecting the wrong choice,
+  or nothing, when the dialog does not fit in the window, and allow clicking
+  the hidden text placeholder when it wraps over multiple lines (:pull:`10883`)
+
 
 0.50.0 [2026-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
