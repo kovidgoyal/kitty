@@ -104,11 +104,13 @@ func key_for_path(path, extra_key string) (key string, err error) {
 		return
 	}
 
-	s, err := os.Stat(resolved_path)
+	info, err := os.Stat(resolved_path)
 	if err != nil {
 		return
 	}
-	data := fmt.Sprintf("%s\x00%d\x00%d", resolved_path, s.Size(), s.ModTime().UnixNano())
+	s := get_file_state(info)
+	// Version the key so entries written with weaker source validation miss.
+	data := fmt.Sprintf("v2\x00%s\x00%d\x00%d\x00%d", resolved_path, s.Inode, s.Size, s.ModTime.UnixNano())
 	if extra_key != "" {
 		data += "\x00" + extra_key
 	}

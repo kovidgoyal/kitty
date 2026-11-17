@@ -2,6 +2,7 @@ package choose_files
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -190,11 +191,21 @@ func (p *ImagePreview) start_rendering(output chan<- render_data) {
 		p.ready.Store(true)
 		p.WakeupMainThread()
 	}()
+	result := p.render_with_cache()
+	if errors.Is(result.err, disk_cache.ErrPathChanged) {
+		// The original check in preview_for no longer describes this path.
+		if info, err := os.Stat(p.abspath); err == nil && info.Mode().IsRegular() {
+			result = p.render_with_cache()
+		}
+	}
+	output <- result
+}
+
+func (p *ImagePreview) render_with_cache() render_data {
 	extra_key := p.renderer.CacheKeyExtra(p.abspath)
 	key, ans, err := p.disk_cache.GetPath(p.abspath, extra_key)
 	if err != nil {
-		output <- render_data{err: err}
-		return
+		return render_data{err: err}
 	}
 	if len(ans) > 0 {
 		mi := metadata{}
@@ -209,21 +220,18 @@ func (p *ImagePreview) start_rendering(output chan<- render_data) {
 			}
 		}
 		if mi.custom != nil || mi.image != nil {
-			output <- render_data{cached_data: ans, metadata: mi}
-			return
+			return render_data{cached_data: ans, metadata: mi}
 		}
 	}
-	rdata, metadata, img, err := p.renderer.Render(p.abspath)
+	rdata, mi, img, err := p.renderer.Render(p.abspath)
 	if err != nil {
-		output <- render_data{err: err}
-	} else {
-		ans, err = p.disk_cache.AddPath(p.abspath, extra_key, key, rdata)
-		if err == nil {
-			output <- render_data{cached_data: ans, metadata: metadata, img: img}
-		} else {
-			output <- render_data{err: err}
-		}
+		return render_data{err: err}
 	}
+	ans, err = p.disk_cache.AddPath(p.abspath, extra_key, key, rdata)
+	if err != nil {
+		return render_data{err: err}
+	}
+	return render_data{cached_data: ans, metadata: mi, img: img}
 }
 
 type ImagePreviewRenderer uint

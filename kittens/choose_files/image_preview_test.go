@@ -1,6 +1,7 @@
 package choose_files
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -17,13 +18,20 @@ import (
 
 var _ = fmt.Print
 
-type fake_preview_renderer struct{}
+type fake_preview_renderer struct {
+	before_render func(string) error
+}
 
 func (r fake_preview_renderer) String() string { return "fake_preview_renderer" }
 func (r fake_preview_renderer) Unmarshall(map[string]string) (any, error) {
 	return nil, nil
 }
-func (r fake_preview_renderer) Render(string) (map[string][]byte, metadata, *images.ImageData, error) {
+func (r fake_preview_renderer) Render(path string) (map[string][]byte, metadata, *images.ImageData, error) {
+	if r.before_render != nil {
+		if err := r.before_render(path); err != nil {
+			return nil, metadata{}, nil, err
+		}
+	}
 	return map[string][]byte{"rendered": []byte("data")}, metadata{custom: "rendered"}, nil, nil
 }
 func (r fake_preview_renderer) ShowMetadata(*Handler, ShowData) int { return 0 }
@@ -131,6 +139,40 @@ func TestImagePreviewConcurrentRender(t *testing.T) {
 	}
 	if !p.ready.Load() {
 		t.Fatal("worker did not mark the preview as ready")
+	}
+}
+
+func TestImagePreviewRetriesChangedFile(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		changes int
+	}{
+		{"stable on retry", 1},
+		{"changes again", 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := new_test_image_preview(t)
+			renders := 0
+			p.renderer = fake_preview_renderer{before_render: func(path string) error {
+				renders++
+				if renders <= tc.changes {
+					return os.WriteFile(path, []byte(strings.Repeat("updated ", renders)), 0o600)
+				}
+				return nil
+			}}
+			p.start_rendering(p.render_channel)
+			result := <-p.render_channel
+			if renders != 2 {
+				t.Fatalf("rendered %d times, want 2", renders)
+			}
+			if tc.changes == 2 {
+				if !errors.Is(result.err, disk_cache.ErrPathChanged) {
+					t.Fatalf("expected a file change error, got %v", result.err)
+				}
+			} else if result.err != nil || result.cached_data["rendered"] == "" {
+				t.Fatalf("retry did not return a cached preview: %+v", result)
+			}
+		})
 	}
 }
 

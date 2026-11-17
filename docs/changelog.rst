@@ -196,6 +196,9 @@ Detailed list of changes
   they cannot inject escape codes into the terminal. Fix hangs previewing
   special files and various preview caching bugs (:pull:`10843`, :pull:`10850`)
 
+- :doc:`choose-files <kittens/choose-files>`: Fix incorrect cached previews
+  when a file or symlink changes during rendering.
+
 - IME: Move cursor position within pre-edit text (:iss:`10807`)
 
 - Bash integration: Find system wide startup files by scanning the bash
