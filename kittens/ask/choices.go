@@ -150,7 +150,7 @@ func GetChoices(o *Options) (response string, err error) {
 
 	ctx := style.Context{AllowEscapeCodes: true}
 
-	draw_choice_boxes := func(y, screen_width, _ int, choices ...Choice) {
+	draw_choice_boxes := func(y, screen_width, _ int, choices ...Choice) int {
 		clickable_ranges = map[string][]Range{}
 		width := screen_width - 2
 		current_line_length := 0
@@ -249,13 +249,14 @@ func GetChoices(o *Options) (response string, err error) {
 			is_last := i == len(lines)-1
 			print_line(bottom, is_last, boxed_line...)
 		}
+		return y
 	}
 
-	draw_yesno := func(y, screen_width, screen_height int) {
+	draw_yesno := func(y, screen_width, screen_height int) int {
 		yes := m.Green("Y") + "es"
 		no := m.BrightRed("N") + "o"
 		if y+3 <= screen_height {
-			draw_choice_boxes(y, screen_width, screen_height, Choice{"Yes", 0, "green", "y"}, Choice{"No", 0, "red", "n"})
+			return draw_choice_boxes(y, screen_width, screen_height, Choice{"Yes", 0, "green", "y"}, Choice{"No", 0, "red", "n"})
 		} else {
 			sep := strings.Repeat(" ", 3)
 			text := yes + sep + no
@@ -267,13 +268,13 @@ func GetChoices(o *Options) (response string, err error) {
 				"n": {{nx, nx + wcswidth.Stringwidth(no) - 1, y}},
 			}
 			lp.QueueWriteString(strings.Repeat(" ", x) + text)
+			return y + 1
 		}
 	}
 
-	draw_choice := func(y, screen_width, screen_height int) {
+	draw_choice := func(y, screen_width, screen_height int) int {
 		if y+3 <= screen_height {
-			draw_choice_boxes(y, screen_width, screen_height, choice_order...)
-			return
+			return draw_choice_boxes(y, screen_width, screen_height, choice_order...)
 		}
 		clickable_ranges = map[string][]Range{}
 		current_line := ""
@@ -320,6 +321,7 @@ func GetChoices(o *Options) (response string, err error) {
 		if current_line != "" {
 			commit_line(false)
 		}
+		return y
 	}
 
 	draw_screen := func() error {
@@ -357,9 +359,19 @@ func GetChoices(o *Options) (response string, err error) {
 		}
 		switch o.Type {
 		case "yesno":
-			draw_yesno(y, int(sz.WidthCells), int(sz.HeightCells))
+			y = draw_yesno(y, int(sz.WidthCells), int(sz.HeightCells))
 		case "choices":
-			draw_choice(y, int(sz.WidthCells), int(sz.HeightCells))
+			y = draw_choice(y, int(sz.WidthCells), int(sz.HeightCells))
+		}
+		if scrolled := y - int(sz.HeightCells); scrolled > 0 {
+			for _, ranges := range clickable_ranges {
+				for i := range ranges {
+					ranges[i].y -= scrolled
+				}
+			}
+			if replacement_range.y > -1 {
+				replacement_range.y -= scrolled
+			}
 		}
 		return nil
 	}
