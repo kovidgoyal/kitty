@@ -28,7 +28,7 @@ func (self sgr_color) as_sgr(base int) string {
 			if n <= 7 {
 				return strconv.Itoa(base + n)
 			}
-			return strconv.Itoa(base + 60 + n - 7)
+			return strconv.Itoa(base + 60 + n - 8)
 		}
 		return fmt.Sprintf("%d:5:%d", base+8, n)
 	}
@@ -50,6 +50,10 @@ func (self *sgr_color) from_extended(nums []int) bool {
 			return true
 		}
 	case 2:
+		if len(nums) > 4 {
+			// Ignore the color space id in 38:2:<id>:r:g:b
+			nums = nums[1:]
+		}
 		if len(nums) > 3 {
 			self.number = -1
 			self.color.Red = as_uint8(nums[1])
@@ -61,12 +65,42 @@ func (self *sgr_color) from_extended(nums []int) bool {
 	return false
 }
 
-// Semicolons separate both SGR attributes and extended color operands.
+// Empty SGR parameters default to zero
+func parse_sgr_param(x string) (int, error) {
+	if x == "" {
+		return 0, nil
+	}
+	return strconv.Atoi(x)
+}
+
+// Parses the sub-parameters of an extended color in the colon form, such as
+// 38:5:200 or 38:2::r:g:b. Invalid colors leave the current color unchanged.
+func (self *sgr_color) from_colon_params(parts []string) {
+	nums := make([]int, len(parts))
+	for i, x := range parts {
+		n, err := parse_sgr_param(x)
+		if err != nil {
+			return
+		}
+		nums[i] = n
+	}
+	self.from_extended(nums)
+}
+
+// Parses an extended color in the semicolon form, such as 38;5;200 or
+// 38;2;r;g;b where the semicolons separate both SGR attributes and the color
+// operands. Returns the parameters remaining after the color. As in the
+// terminal, an unknown color type makes the rest of the parameters
+// uninterpretable, so they are all discarded. Invalid colors leave the current
+// color unchanged.
 func (self *sgr_color) from_semicolon_params(parts []string) []string {
 	if len(parts) == 0 {
 		return nil
 	}
-	mode, _ := strconv.Atoi(parts[0])
+	mode, err := parse_sgr_param(parts[0])
+	if err != nil {
+		return nil
+	}
 	var count int
 	switch mode {
 	case 5:
@@ -81,10 +115,7 @@ func (self *sgr_color) from_semicolon_params(parts []string) []string {
 	}
 	nums := [4]int{mode}
 	for i := 1; i < count; i++ {
-		if parts[i] == "" && i < len(parts)-1 {
-			continue // Empty parameters between semicolons default to zero.
-		}
-		n, err := strconv.Atoi(parts[i])
+		n, err := parse_sgr_param(parts[i])
 		if err != nil {
 			return parts[count:]
 		}
@@ -98,6 +129,16 @@ type sgr_state struct {
 	italic, reverse, bold, dim, strikethrough bool
 	underline_style                           underline_style
 	fg, bg, uc                                sgr_color
+}
+
+func (self *sgr_state) extended_color(code int) *sgr_color {
+	switch code {
+	case 48:
+		return &self.bg
+	case 58:
+		return &self.uc
+	}
+	return &self.fg
 }
 
 func (self *sgr_state) reset() {
@@ -254,17 +295,11 @@ func (self *sgr_state) apply_csi(raw string) {
 		case 90, 91, 92, 93, 94, 95, 96, 97:
 			self.fg.number = nums[0] + 1 - 82
 		case 38, 48, 58:
-			color := &self.fg
-			switch nums[0] {
-			case 48:
-				color = &self.bg
-			case 58:
-				color = &self.uc
-			}
+			color := self.extended_color(nums[0])
 			if len(subparts) == 1 {
 				parts = color.from_semicolon_params(parts)
 			} else {
-				color.from_extended(nums[1:])
+				color.from_colon_params(subparts[1:])
 			}
 		case 39:
 			self.fg.number = 0

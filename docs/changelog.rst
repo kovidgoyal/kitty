@@ -199,8 +199,10 @@ Detailed list of changes
 - :doc:`choose-files <kittens/choose-files>`: Fix incorrect cached previews
   when a file or symlink changes during rendering.
 
-- :doc:`choose-files <kittens/choose-files>`: Fix crashes and preserve extended
-  colors when wrapping the output of custom preview commands.
+- kittens: Fix a crash when wrapping text that contains extended SGR colors,
+  such as the output of custom preview commands in :doc:`choose-files
+  <kittens/choose-files>`. Also fix bright colors and colors with a color space
+  id being changed by the wrapping.
 
 - IME: Move cursor position within pre-edit text (:iss:`10807`)
 

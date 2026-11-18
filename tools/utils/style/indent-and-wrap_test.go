@@ -91,10 +91,46 @@ func TestIncompleteExtendedColor(t *testing.T) {
 			t.Fatalf("incomplete extended color %v changed the current color to %+v", params, color)
 		}
 	}
-	for _, params := range [][]string{{"5", ""}, {"2", "3", "4"}} {
+	for _, params := range [][]string{{"5"}, {"2", "3", "4"}} {
 		color := initial
 		if remaining := color.from_semicolon_params(params); len(remaining) != 0 || color != initial {
 			t.Fatalf("incomplete extended color %q left parameters %q and color %+v", params, remaining, color)
+		}
+	}
+}
+
+func TestSGRStateParsing(t *testing.T) {
+	for raw, expected := range map[string]string{
+		// trailing empty parameters default to zero
+		"38;5;m":     "30",
+		"38;2;1;2;m": "38:2:1:2:0",
+		// the color space id in the colon form is ignored
+		"38:2:1:2:3:4m": "38:2:2:3:4",
+		"38:2:1:2:3m":   "38:2:1:2:3",
+		"48:2::3:4:7m":  "48:2:3:4:7",
+		// bright colors round trip
+		"90m":      "90",
+		"97m":      "97",
+		"100m":     "100",
+		"107m":     "107",
+		"38;5;8m":  "90",
+		"38;5;15m": "97",
+		"48;5;9m":  "101",
+		"58;5;9m":  "58:5:9",
+		"38;5;16m": "38:5:16",
+		// attributes after an extended color are applied
+		"38;5;200;1;3m":   "1;3;38:5:200",
+		"48;2;1;2;3;4:3m": "4:3;48:2:1:2:3",
+		// unknown color types discard the rest of the parameters
+		"1;38;7;3m": "1",
+		// invalid colors are ignored
+		"38;5;x;3m": "3",
+		"38:5:x;3m": "3",
+	} {
+		var s sgr_state
+		s.apply_csi(raw)
+		if actual := s.as_sgr(false); actual != expected {
+			t.Fatalf("Parsing SGR %q gave %q expected %q", raw, actual, expected)
 		}
 	}
 }
