@@ -497,6 +497,10 @@ read -r _
             c.pid = p.pid
             try:
                 command_pid = int(self._read_line(p))
+                if cmdline_of_pid(command_pid)[0] != command[0]:
+                    # Under emulation, such as qemu-user via binfmt_misc, the
+                    # cmdline of processes starts with the emulator
+                    self.skipTest('Running under emulation')
                 self._assert_root_pid_settles(c, command_pid)
             finally:
                 self._stop_tree(p)
