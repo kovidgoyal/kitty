@@ -4,6 +4,7 @@
 import os
 import subprocess
 import tempfile
+from select import select
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -301,6 +302,32 @@ class LaunchWrapperTest(BaseTest):
 
         return func
 
+    def test_script_launch_wrapper_root_pid(self):
+        from kitty.launch_wrapper import LaunchRequest
+
+        req = LaunchRequest('tab')
+        with tempfile.TemporaryDirectory() as tdir, patch.dict(os.environ, {'PATH': tdir + os.pathsep + os.environ.get('PATH', '')}):
+            name = 'launch-wrapper'
+            script = os.path.join(tdir, name)
+            # The command reports its PID from a child so the process tree is ready.
+            report_pid = r'''/bin/sh -c 'printf "%s\n" "$0"; read -r _' "$$"'''
+            command = ('/bin/sh', '-c', f'{report_pid}\nexit $?', script, '')
+            for execs in (False, True):
+                with self.subTest(execs=execs):
+                    with open(script, 'w') as f:
+                        f.write('#!/bin/sh -e\n' + ('exec "$@"\n' if execs else '"$@"\nexit $?\n'))
+                    os.chmod(script, 0o700)
+                    c, exe, argv = self._fork(argv=command, launch_request=req, user_func=lambda ctx: [name])
+                    with subprocess.Popen(argv, executable=exe, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
+                        try:
+                            self.assertTrue(select([p.stdout], [], [], 5)[0], 'Wrapped command did not report its PID')
+                            command_pid = int(p.stdout.readline())
+                            self.ae(command_pid == p.pid, execs)
+                            c.pid = p.pid
+                            self.ae(c.root_pid, command_pid)
+                        finally:
+                            p.stdin.close()
+
     def test_launch_wrapper(self):
         from kitty.launch_wrapper import LaunchRequest
 
@@ -319,7 +346,7 @@ class LaunchWrapperTest(BaseTest):
         self.ae(exe, '/bin/wrapper')
         self.ae(c.argv, ['/bin/prog', 'arg'])
         self.ae(c.final_exe, '/bin/prog')
-        self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper', '-x'), True),))
+        self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper', '-x'), True, ('-x', '/bin/prog', 'arg')),))
         ctx = self.contexts[-1]
         self.ae(ctx.argv, ('/bin/prog', 'arg'))
         self.ae(ctx.cwd, '/')
@@ -336,7 +363,7 @@ class LaunchWrapperTest(BaseTest):
         c, exe, argv = self._fork(launch_request=req, hold=True, user_func=self._recording(['/bin/wrapper']))
         self.ae(argv[-2:], ('/bin/prog', 'arg'))
         self.ae(argv[-3], '/bin/wrapper')
-        self.ae(c.kitty_wrappers[-1], KittyWrapper(('/bin/wrapper',), True))
+        self.ae(c.kitty_wrappers[-1], KittyWrapper(('/bin/wrapper',), True, ('/bin/prog', 'arg')))
         self.ae(len(c.kitty_wrappers), 2)
         self.ae(c.kitty_wrappers[0].argv, argv[: len(c.kitty_wrappers[0].argv)])
         # Failures and invalid return values result in no prefix
