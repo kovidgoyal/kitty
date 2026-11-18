@@ -6,6 +6,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import time
 from contextlib import suppress
 from select import select
 from types import SimpleNamespace
@@ -389,6 +390,23 @@ class LaunchWrapperTest(BaseTest):
             with suppress(ProcessLookupError):
                 os.kill(pid, signal.SIGKILL)
 
+    def _assert_root_pid_settles(self, c: Child, expected: int, timeout: float = 5) -> None:
+        # Reading the process tree from /proc is not atomic, so on a heavily
+        # loaded machine root_pid can transiently fail to resolve all the way
+        # down to the command. Such results are never cached, so wait for it
+        # to settle, while a wrong result that is cached still fails.
+        end_time = time.monotonic() + timeout
+        while (actual := c.root_pid) != expected and time.monotonic() < end_time:
+            time.sleep(0.01)
+        if actual != expected:
+            tree = {}
+            for pid in [c.pid] + _descendants(c.pid):
+                try:
+                    tree[pid] = cmdline_of_pid(pid), children_of_process(pid)
+                except Exception as err:
+                    tree[pid] = err
+            self.fail(f'root_pid: {actual} != {expected} wrappers: {c.kitty_wrappers} resolved: {c.resolved_root_pid} process tree: {tree}')
+
     def _send_line(self, p: subprocess.Popen) -> None:
         p.stdin.write(b'\n')
         p.stdin.flush()
@@ -479,7 +497,7 @@ read -r _
             c.pid = p.pid
             try:
                 command_pid = int(self._read_line(p))
-                self.ae(c.root_pid, command_pid)
+                self._assert_root_pid_settles(c, command_pid)
             finally:
                 self._stop_tree(p)
 
