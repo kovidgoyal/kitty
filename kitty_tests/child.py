@@ -534,3 +534,17 @@ read -r _
                 c, exe, argv = self._fork(launch_request=req, user_func=self._recording(empty))
                 self.ae(argv, ('/bin/prog', 'arg'))
         self.ae(len(errors), 4)
+
+    def test_launch_wrapper_invalid_shell(self):
+        from kitty import launch_wrapper
+
+        self.set_options({'shell': '"unterminated', 'shell_integration': frozenset({'disabled'})})
+        req = launch_wrapper.LaunchRequest('tab')
+        with patch.object(launch_wrapper, 'log_error') as log_error:
+            c, exe, argv = self._fork(launch_request=req, user_func=self._recording(['/bin/wrapper']))
+        self.ae(exe, '/bin/prog')
+        self.ae(argv, ('/bin/prog', 'arg'))
+        self.ae(c.kitty_wrappers, ())
+        self.ae(self.contexts, [])
+        log_error.assert_called_once()
+        self.assertIn('Unterminated string', log_error.call_args.args[0])

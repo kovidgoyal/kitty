@@ -120,24 +120,24 @@ def prefix_for_launch(req: LaunchRequest, argv: Sequence[str], cwd: str, env: Ma
         window_id = int(env.get('KITTY_WINDOW_ID', '0'))
     except ValueError:
         window_id = 0
-    ctx = LaunchContext(
-        argv=tuple(argv),
-        cwd=cwd,
-        env=MappingProxyType(dict(env)),
-        is_default_shell=list(argv) == resolved_shell(get_options()),
-        window_id=window_id,
-        launch_type=req.launch_type,
-        source_window_id=req.source_window_id,
-        source_pid=source_pid_for(req.source_window_id),
-        user_vars=MappingProxyType(dict(req.user_vars)),
-    )
     try:
+        ctx = LaunchContext(
+            argv=tuple(argv),
+            cwd=cwd,
+            env=MappingProxyType(dict(env)),
+            is_default_shell=list(argv) == resolved_shell(get_options()),
+            window_id=window_id,
+            launch_type=req.launch_type,
+            source_window_id=req.source_window_id,
+            source_pid=source_pid_for(req.source_window_id),
+            user_vars=MappingProxyType(dict(req.user_vars)),
+        )
         ans = func(ctx)
     except Exception as e:
         import traceback
 
         traceback.print_exc()
-        log_error(f'The {FUNCTION_NAME}() function in {MODULE_NAME} failed with error: {e}, running the command without a wrapper')
+        log_error(f'Failed to apply {MODULE_NAME} with error: {e}, running the command without a wrapper')
         return ()
     if ans is None:
         return ()
