@@ -168,6 +168,10 @@ Detailed list of changes
   :code:`--base-dir` into account, and file name completion is relative to that
   directory (:pull:`10851`, :pull:`10852`, :disc:`10867`)
 
+- Fix an invalid value for :opt:`shell`, such as one with an unterminated
+  quote, causing errors when opening or saving windows, instead fall back to the
+  login shell and report the error (:pull:`10888`)
+
 - Fix the bell indicator not being shown on the tab when a bell occurs in the
   active window while the OS window does not have keyboard focus (:iss:`10880`)
 

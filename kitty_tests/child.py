@@ -536,15 +536,25 @@ read -r _
         self.ae(len(errors), 4)
 
     def test_launch_wrapper_invalid_shell(self):
-        from kitty import launch_wrapper
+        # An invalid shell option falls back to the login shell, with the
+        # wrapper still applied
+        from kitty import utils
+        from kitty.constants import shell_path
+        from kitty.launch_wrapper import LaunchRequest
 
-        self.set_options({'shell': '"unterminated', 'shell_integration': frozenset({'disabled'})})
-        req = launch_wrapper.LaunchRequest('tab')
-        with patch.object(launch_wrapper, 'log_error') as log_error:
+        opts = self.set_options({'shell': '"unterminated', 'shell_integration': frozenset({'disabled'})})
+        req = LaunchRequest('tab')
+        utils.report_invalid_shell.cache_clear()
+        with patch.object(utils, 'log_error') as log_error:
+            self.ae(utils.resolved_shell(opts), [shell_path])
             c, exe, argv = self._fork(launch_request=req, user_func=self._recording(['/bin/wrapper']))
-        self.ae(exe, '/bin/prog')
-        self.ae(argv, ('/bin/prog', 'arg'))
-        self.ae(c.kitty_wrappers, ())
-        self.ae(self.contexts, [])
+            self.ae(argv, ('/bin/wrapper', '/bin/prog', 'arg'))
+            self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper',), True, ('/bin/prog', 'arg')),))
+            self.assertFalse(self.contexts[-1].is_default_shell)
+            c, exe, argv = self._fork(argv=(shell_path,), launch_request=req, user_func=self._recording(['/bin/wrapper']))
+            self.ae(argv, ('/bin/wrapper', shell_path))
+            self.assertTrue(self.contexts[-1].is_default_shell)
+        utils.report_invalid_shell.cache_clear()
+        # Reported only once
         log_error.assert_called_once()
         self.assertIn('Unterminated string', log_error.call_args.args[0])
