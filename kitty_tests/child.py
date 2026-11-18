@@ -412,8 +412,13 @@ exit $?"""
 echo done
 read -r _
 """
-        # Runs another command in the background, alongside the command
-        background_wrapper = 'sleep 60 &\ntrap "kill $!" EXIT\n"$@"\n'
+        # Starts a background helper before the command and keeps it alive
+        background_wrapper = """sleep 60 &
+trap "kill $!" EXIT
+printf "%s\\n" "$!"
+read -r _
+"$@"
+"""
 
         with tempfile.TemporaryDirectory() as tdir, patch.dict(os.environ, {'PATH': tdir + os.pathsep + os.environ.get('PATH', '')}):
             name = 'launch-wrapper'
@@ -441,15 +446,15 @@ read -r _
                                 self.ae(c.root_pid, p.pid)
                                 self.assertIsNone(c.resolved_root_pid)
                                 self._send_line(p)
-                            elif kind == 'busy':
-                                # While the first command runs, it is the child
+                            elif kind in ('busy', 'background'):
+                                # Query while the helper is the wrapper's only child
                                 helper_pid = int(self._read_line(p))
                                 self.ae(c.root_pid, helper_pid)
                                 self._send_line(p)
                             command_pid = int(self._read_line(p))
                             self.ae(command_pid == p.pid, kind == 'exec')
                             if kind == 'background':
-                                self.ae(len(children_of_process(p.pid)), 2)
+                                self.ae(set(children_of_process(p.pid)), {helper_pid, command_pid})
                             self.ae(c.root_pid, command_pid)
                             if kind == 'exec':
                                 self.ae(c.resolved_root_pid, p.pid)

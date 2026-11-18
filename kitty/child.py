@@ -784,8 +784,10 @@ class Child:
     def _wrapped_child(w: KittyWrapper, children: list[int]) -> tuple[int, bool]:
         # The child of the wrapper that is running the command and whether
         # it is certain to be the one
-        if len(children) == 1:
-            return children[0], True
+        if w.script_args is None:
+            return min(children), len(children) == 1
+        # A sole child can be a helper that stays alive after the wrapped
+        # command starts. Cache it only if its command line matches.
         running_command = []
         for c in children:
             with suppress(Exception):  # child has exited
