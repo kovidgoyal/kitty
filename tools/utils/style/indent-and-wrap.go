@@ -40,6 +40,9 @@ func as_uint8(x int) uint8 {
 }
 
 func (self *sgr_color) from_extended(nums []int) bool {
+	if len(nums) == 0 {
+		return false
+	}
 	switch nums[0] {
 	case 5:
 		if len(nums) > 1 {
@@ -56,6 +59,39 @@ func (self *sgr_color) from_extended(nums []int) bool {
 		}
 	}
 	return false
+}
+
+// Semicolons separate both SGR attributes and extended color operands.
+func (self *sgr_color) from_semicolon_params(parts []string) []string {
+	if len(parts) == 0 {
+		return nil
+	}
+	mode, _ := strconv.Atoi(parts[0])
+	var count int
+	switch mode {
+	case 5:
+		count = 2
+	case 2:
+		count = 4
+	default:
+		return nil
+	}
+	if len(parts) < count {
+		return nil
+	}
+	nums := [4]int{mode}
+	for i := 1; i < count; i++ {
+		if parts[i] == "" && i < len(parts)-1 {
+			continue // Empty parameters between semicolons default to zero.
+		}
+		n, err := strconv.Atoi(parts[i])
+		if err != nil {
+			return parts[count:]
+		}
+		nums[i] = n
+	}
+	self.from_extended(nums[:count])
+	return parts[count:]
 }
 
 type sgr_state struct {
@@ -154,8 +190,9 @@ func (self *sgr_state) apply_csi(raw string) {
 	}
 	parts := strings.Split(raw, ";")
 	nums := make([]int, 0, 8)
-	for _, part := range parts {
-		subparts := strings.Split(part, ":")
+	for len(parts) > 0 {
+		subparts := strings.Split(parts[0], ":")
+		parts = parts[1:]
 		nums = nums[:0]
 		for _, b := range subparts {
 			q, err := strconv.Atoi(b)
@@ -216,20 +253,27 @@ func (self *sgr_state) apply_csi(raw string) {
 			self.fg.number = nums[0] + 1 - 30
 		case 90, 91, 92, 93, 94, 95, 96, 97:
 			self.fg.number = nums[0] + 1 - 82
-		case 38:
-			self.fg.from_extended(nums[1:])
+		case 38, 48, 58:
+			color := &self.fg
+			switch nums[0] {
+			case 48:
+				color = &self.bg
+			case 58:
+				color = &self.uc
+			}
+			if len(subparts) == 1 {
+				parts = color.from_semicolon_params(parts)
+			} else {
+				color.from_extended(nums[1:])
+			}
 		case 39:
 			self.fg.number = 0
 		case 40, 41, 42, 43, 44, 45, 46, 47:
 			self.bg.number = nums[0] + 1 - 40
 		case 100, 101, 102, 103, 104, 105, 106, 107:
 			self.bg.number = nums[0] + 1 - 92
-		case 48:
-			self.bg.from_extended(nums[1:])
 		case 49:
 			self.bg.number = 0
-		case 58:
-			self.uc.from_extended(nums[1:])
 		case 59:
 			self.uc.number = 0
 		}

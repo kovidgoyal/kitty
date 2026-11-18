@@ -199,6 +199,9 @@ Detailed list of changes
 - :doc:`choose-files <kittens/choose-files>`: Fix incorrect cached previews
   when a file or symlink changes during rendering.
 
+- :doc:`choose-files <kittens/choose-files>`: Fix crashes and preserve extended
+  colors when wrapping the output of custom preview commands.
+
 - IME: Move cursor position within pre-edit text (:iss:`10807`)
 
 - Bash integration: Find system wide startup files by scanning the bash

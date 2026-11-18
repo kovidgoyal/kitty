@@ -66,4 +66,35 @@ func TestFormatWithIndent(t *testing.T) {
 		"\x1b[1mbold\x1b[221m no more bold",
 		"\x1b[1mbold\x1b[221m no \nmore \nbold",
 	)
+
+	screen_width = 5
+	opts.Indent = "_"
+	tx(
+		"\x1b[38;5;200mone two",
+		"\x1b[38;5;200mone \n\x1b[39m_\x1b[38:5:200mtwo",
+	)
+	tx(
+		"\x1b[1;48;2;3;;7;58;5;180;9mone two",
+		"\x1b[1;48;2;3;;7;58;5;180;9mone \n\x1b[221;29;49;59m_\x1b[1;9;48:2:3:0:7;58:5:180mtwo",
+	)
+	tx(
+		"\x1b[38:5:200;48:2::3:4:7mone two",
+		"\x1b[38:5:200;48:2::3:4:7mone \n\x1b[39;49m_\x1b[38:5:200;48:2:3:4:7mtwo",
+	)
+}
+
+func TestIncompleteExtendedColor(t *testing.T) {
+	initial := sgr_color{number: 201}
+	for _, params := range [][]int{nil, {5}, {2, 3, 4}} {
+		color := initial
+		if color.from_extended(params) || color != initial {
+			t.Fatalf("incomplete extended color %v changed the current color to %+v", params, color)
+		}
+	}
+	for _, params := range [][]string{{"5", ""}, {"2", "3", "4"}} {
+		color := initial
+		if remaining := color.from_semicolon_params(params); len(remaining) != 0 || color != initial {
+			t.Fatalf("incomplete extended color %q left parameters %q and color %+v", params, remaining, color)
+		}
+	}
 }
