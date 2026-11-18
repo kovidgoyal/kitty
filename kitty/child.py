@@ -374,6 +374,22 @@ class KittyWrapper(NamedTuple):
     # True if the wrapper eventually replaces itself (via exec) with
     # something else, at which point it is no longer a wrapper
     replaces_itself: bool
+    # Arguments after the script path, including the wrapped command.
+    script_args: tuple[str, ...] | None = None
+
+    def matches_cmdline(self, cmdline: tuple[str, ...]) -> bool:
+        if cmdline[: len(self.argv)] == self.argv:
+            return True
+        if self.script_args is None:
+            return False
+        # The kernel puts the interpreter ahead of the script invocation.
+        # Match the whole tail since the wrapped command might also take the
+        # wrapper's filename as an argument.
+        script_index = len(cmdline) - len(self.script_args) - 1
+        if script_index <= 0 or cmdline[script_index + 1 :] != self.script_args:
+            return False
+        script = cmdline[script_index]
+        return script == self.argv[0] or os.path.basename(script) == self.argv[0]
 
 
 child_counter = count()
@@ -572,7 +588,9 @@ class Child:
                     final_exe = which(argv[0]) or argv[0]
                 # The wrapper either replaces itself with the command or runs
                 # it as a child, either way it is not the root process
-                kitty_wrappers.append(KittyWrapper(user_prefix, True))
+                # The procfs cmdline reader omits empty arguments.
+                script_args = tuple(arg for arg in argv[pos + 1 :] if is_macos or arg)
+                kitty_wrappers.append(KittyWrapper(user_prefix, True, script_args))
         if self.hold:
             hold_argv = cmdline_for_hold()
             argv = hold_argv + argv
@@ -731,7 +749,7 @@ class Child:
                 except Exception:
                     final = False
                     break
-                if cmdline[: len(w.argv)] != w.argv:
+                if not w.matches_cmdline(cmdline):
                     # Either the wrapper has replaced itself, which is
                     # permanent, or it has not been exec-ed yet and the forked
                     # process is still running kitty code
