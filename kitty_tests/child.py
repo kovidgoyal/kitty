@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -539,7 +540,7 @@ read -r _
         # An invalid shell option falls back to the login shell, with the
         # wrapper still applied
         from kitty import utils
-        from kitty.constants import shell_path
+        from kitty.constants import kitten_exe, shell_path
         from kitty.launch_wrapper import LaunchRequest
 
         opts = self.set_options({'shell': '"unterminated', 'shell_integration': frozenset({'disabled'})})
@@ -552,7 +553,12 @@ read -r _
             self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper',), True, ('/bin/prog', 'arg')),))
             self.assertFalse(self.contexts[-1].is_default_shell)
             c, exe, argv = self._fork(argv=(shell_path,), launch_request=req, user_func=self._recording(['/bin/wrapper']))
-            self.ae(argv, ('/bin/wrapper', shell_path))
+            if is_macos:
+                self.ae(argv[:4], ('/usr/bin/login', '-f', '-l', '-p'))
+                # Skip the login username, which depends on the test runner.
+                self.ae(argv[5:10], ('/bin/wrapper', kitten_exe(), 'run-shell', '--shell', shlex.quote(shell_path)))
+            else:
+                self.ae(argv, ('/bin/wrapper', shell_path))
             self.assertTrue(self.contexts[-1].is_default_shell)
         utils.report_invalid_shell.cache_clear()
         # Reported only once
