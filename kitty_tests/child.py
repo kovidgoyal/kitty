@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from kitty.child import Child, KittyWrapper, children_of_process, cmdline_of_pid, cwd_of_process, memory_used_by_process_tree_rooted_at
-from kitty.constants import is_macos, kitty_exe
+from kitty.constants import is_macos, kitten_exe, kitty_exe
 
 from .base import BaseTest
 
@@ -574,7 +574,17 @@ read -r _
             self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper',), True, ('/bin/prog', 'arg')),))
             self.assertFalse(self.contexts[-1].is_default_shell)
             c, exe, argv = self._fork(argv=(shell_path,), launch_request=req, user_func=self._recording(['/bin/wrapper']))
-            self.ae(argv, ('/bin/wrapper', shell_path))
+            if is_macos:
+                # On macOS the default shell is run via /usr/bin/login and the
+                # run-shell kitten, with the wrapper inside login
+                login_argv = c.kitty_wrappers[0].argv
+                self.ae(login_argv[0], '/usr/bin/login')
+                self.ae(argv[: len(login_argv)], login_argv)
+                rest = argv[len(login_argv) :]
+                self.ae(rest[:3], ('/bin/wrapper', kitten_exe(), 'run-shell'))
+                self.ae(rest[3:5], ('--shell', shell_path))
+            else:
+                self.ae(argv, ('/bin/wrapper', shell_path))
             self.assertTrue(self.contexts[-1].is_default_shell)
         utils.report_invalid_shell.cache_clear()
         # Reported only once
