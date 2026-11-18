@@ -122,7 +122,7 @@ for seamless and intuitive session file creation.
 Detailed list of changes
 -------------------------------------
 
-0.50.1 [unreleased]
+0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
