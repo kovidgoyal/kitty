@@ -220,15 +220,34 @@ def commit_role(
     name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []
 ) -> Tuple[List[nodes.reference], List[nodes.problematic]]:
     "Link to a github commit"
-    try:
-        commit_id = subprocess.check_output(f'git rev-list --max-count=1 {text}'.split()).decode('utf-8').strip()
-    except Exception:
-        msg = inliner.reporter.error(f'git commit id "{text}" not recognized.', line=lineno)
-        prb = inliner.problematic(rawtext, rawtext, msg)
-        return [prb], [msg]
+
+    def error(msg: str) -> Tuple[List[nodes.reference], List[nodes.problematic]]:
+        m = inliner.reporter.error(msg, line=lineno)
+        prb = inliner.problematic(rawtext, rawtext, m)
+        return [prb], [m]
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(('git',) + args, cwd=kitty_src, stderr=subprocess.DEVNULL).decode('utf-8').strip()
+
+    text = text.strip()
+    if os.path.exists(os.path.join(kitty_src, '.git')):
+        try:
+            commit_id = git('rev-list', '--max-count=1', text)
+            short_id = git('rev-list', '--max-count=1', '--abbrev-commit', commit_id)
+        except FileNotFoundError:
+            commit_id = short_id = ''  # git is not installed
+        except subprocess.CalledProcessError:
+            return error(f'git commit id "{text}" not recognized.')
+    else:
+        commit_id = short_id = ''  # no git history, for example, when building from a source archive
+    if not commit_id:
+        # Without git history we cannot resolve the commit, so link to it
+        # using the id as written, GitHub resolves abbreviated commit ids.
+        if not re.fullmatch(r'[0-9a-fA-F]{7,40}', text):
+            return error(f'git commit id "{text}" is not a valid commit hash.')
+        commit_id = short_id = text.lower()
     url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
     options = normalize_options(options)
-    short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
     return [node], []
 
