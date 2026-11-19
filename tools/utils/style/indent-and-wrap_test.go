@@ -91,7 +91,7 @@ func TestIncompleteExtendedColor(t *testing.T) {
 			t.Fatalf("incomplete extended color %v changed the current color to %+v", params, color)
 		}
 	}
-	for _, params := range [][]string{{"5"}, {"2", "3", "4"}} {
+	for _, params := range [][]string{{"5"}, {"5", ""}, {"2", "3", "4"}} {
 		color := initial
 		if remaining := color.from_semicolon_params(params); len(remaining) != 0 || color != initial {
 			t.Fatalf("incomplete extended color %q left parameters %q and color %+v", params, remaining, color)
@@ -99,11 +99,29 @@ func TestIncompleteExtendedColor(t *testing.T) {
 	}
 }
 
+func TestWrapTextWithEmptyColorParams(t *testing.T) {
+	for _, tc := range []struct{ params, color string }{
+		{"38;5;", "31"},
+		{"38;2;1;2;", "31"},
+		{"38:2::1:2", "31"},
+		{"38:2:::1:2:3", "38:2:1:2:3"},
+		{"38:5::200", "38:5:200"},
+		{"38;5;;", "30"},
+		{"38;5;200;38:5:;", "30"},
+	} {
+		t.Run(tc.params, func(t *testing.T) {
+			text := "\x1b[31m\x1b[" + tc.params + "mone two"
+			lines := WrapTextAsLines(text, 4, WrapOptions{})
+			want := "\x1b[39m\x1b[" + tc.color + "mtwo"
+			if len(lines) != 2 || lines[1] != want {
+				t.Fatalf("expected continuation line %q, got lines %q", want, lines)
+			}
+		})
+	}
+}
+
 func TestSGRStateParsing(t *testing.T) {
 	for raw, expected := range map[string]string{
-		// trailing empty parameters default to zero
-		"38;5;m":     "30",
-		"38;2;1;2;m": "38:2:1:2:0",
 		// the color space id in the colon form is ignored
 		"38:2:1:2:3:4m": "38:2:2:3:4",
 		"38:2:1:2:3m":   "38:2:1:2:3",

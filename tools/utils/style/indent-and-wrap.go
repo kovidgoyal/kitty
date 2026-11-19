@@ -65,7 +65,7 @@ func (self *sgr_color) from_extended(nums []int) bool {
 	return false
 }
 
-// Empty SGR parameters default to zero
+// Empty SGR parameters terminated by a semicolon default to zero.
 func parse_sgr_param(x string) (int, error) {
 	if x == "" {
 		return 0, nil
@@ -75,14 +75,17 @@ func parse_sgr_param(x string) (int, error) {
 
 // Parses the sub-parameters of an extended color in the colon form, such as
 // 38:5:200 or 38:2::r:g:b. Invalid colors leave the current color unchanged.
-func (self *sgr_color) from_colon_params(parts []string) {
-	nums := make([]int, len(parts))
+func (self *sgr_color) from_colon_params(parts []string, followed_by_semicolon bool) {
+	nums := make([]int, 0, len(parts))
 	for i, x := range parts {
+		if x == "" && (i < len(parts)-1 || !followed_by_semicolon) {
+			continue
+		}
 		n, err := parse_sgr_param(x)
 		if err != nil {
 			return
 		}
-		nums[i] = n
+		nums = append(nums, n)
 	}
 	self.from_extended(nums)
 }
@@ -97,7 +100,7 @@ func (self *sgr_color) from_semicolon_params(parts []string) []string {
 	if len(parts) == 0 {
 		return nil
 	}
-	mode, err := parse_sgr_param(parts[0])
+	mode, err := strconv.Atoi(parts[0])
 	if err != nil {
 		return nil
 	}
@@ -110,7 +113,8 @@ func (self *sgr_color) from_semicolon_params(parts []string) []string {
 	default:
 		return nil
 	}
-	if len(parts) < count {
+	// A final empty field has no terminating semicolon and is never committed.
+	if len(parts) < count || (len(parts) == count && parts[count-1] == "") {
 		return nil
 	}
 	nums := [4]int{mode}
@@ -299,7 +303,7 @@ func (self *sgr_state) apply_csi(raw string) {
 			if len(subparts) == 1 {
 				parts = color.from_semicolon_params(parts)
 			} else {
-				color.from_colon_params(subparts[1:])
+				color.from_colon_params(subparts[1:], len(parts) > 0)
 			}
 		case 39:
 			self.fg.number = 0
