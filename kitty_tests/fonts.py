@@ -375,6 +375,85 @@ class Selection(BaseTest):
             with self.assertRaises(FileNotFoundError):
                 variable_data_from_font_file(os.path.join(tdir, 'does-not-exist.ttf'))
 
+    def test_variable_data_for_font_collection_faces(self):
+        # Variable data must be cached per face, not per file, as font
+        # collection files contain multiple faces with different variable data.
+        import json
+        import subprocess
+
+        try:
+            from fontTools.fontBuilder import FontBuilder
+            from fontTools.pens.ttGlyphPen import TTGlyphPen
+            from fontTools.ttLib import TTCollection
+        except ImportError:
+            self.skipTest('fontTools is not available')
+        from kitty.constants import kitty_exe
+
+        def build_face(family: str, bold_name: str):
+            fb = FontBuilder(1000, isTTF=True)
+            chars = {ch: f'g{ch}' for ch in range(33, 127)}
+            fb.setupGlyphOrder(['.notdef', 'space'] + list(chars.values()))
+            fb.setupCharacterMap({32: 'space', **chars})
+            pen = TTGlyphPen(None)
+            pen.moveTo((100, 0))
+            pen.lineTo((100, 700))
+            pen.lineTo((500, 700))
+            pen.lineTo((500, 0))
+            pen.closePath()
+            box = pen.glyph()
+            fb.setupGlyf({'.notdef': box, 'space': TTGlyphPen(None).glyph(), **{g: box for g in chars.values()}})
+            fb.setupHorizontalMetrics({g: (600, 100) for g in fb.font.getGlyphOrder()})
+            fb.setupHorizontalHeader(ascent=800, descent=-200)
+            fb.setupNameTable({'familyName': family, 'styleName': 'Regular', 'psName': f'{family}-Regular', 'variationsPostScriptNamePrefix': family})
+            fb.setupOS2(sTypoAscender=800, sTypoDescender=-200, usWinAscent=800, usWinDescent=200, xAvgCharWidth=600)
+            fb.setupPost(isFixedPitch=1)
+            fb.setupFvar(
+                [('wght', 100, 400, 900, 'Weight')],
+                [{'location': {'wght': w}, 'stylename': n, 'postscriptfontname': f'{family}-{n}'} for w, n in ((400, 'Regular'), (700, bold_name))],
+            )
+            return fb.font
+
+        checker = """
+import json, sys
+from kitty.fast_data_types import add_font_file, set_options
+from kitty.fonts.common import FontSpec, all_fonts_map, get_font_files, get_variable_data_for_descriptor
+from kitty.options.types import Options
+# not an assert, as kitty runs python with optimizations, which removes asserts
+if not add_font_file(sys.argv[-1]):
+    raise SystemExit('Failed to add font file')
+set_options(Options())
+opts = Options()
+opts.font_family = FontSpec.from_setting('family=KittyTestCollectionA style=Regular')
+opts.bold_font = FontSpec.from_setting('family=KittyTestCollectionB style=Heavy')
+ff = get_font_files(opts)
+vmap = all_fonts_map(True)['variable_map']
+# fontconfig descriptors identify the named style by index, CoreText ones by axis values
+def style(d):
+    return d.get('axis_map', {}).get('wght') if d['descriptor_type'] == 'core_text' else d.get('named_style')
+print(json.dumps({
+    'medium': [ff['medium'].get('family'), style(ff['medium'])],
+    'bold': [ff['bold'].get('family'), style(ff['bold'])],
+    'named_styles': [
+        [ns['name'] for ns in get_variable_data_for_descriptor(vmap[k][0])['named_styles']]
+        for k in ('kittytestcollectiona', 'kittytestcollectionb')],
+}))
+"""
+        with tempfile.TemporaryDirectory() as tdir:
+            path = os.path.join(tdir, 'collection.ttc')
+            c = TTCollection()
+            c.fonts = [build_face('KittyTestCollectionA', 'Bold'), build_face('KittyTestCollectionB', 'Heavy')]
+            c.save(path)
+            script = os.path.join(tdir, 'checker.py')
+            with open(script, 'w') as f:
+                f.write(checker)
+            # Use a separate process so that the added font does not affect other tests
+            cp = subprocess.run([kitty_exe(), '+launch', script, path], capture_output=True, text=True)
+            self.assertEqual(cp.returncode, 0, cp.stderr)
+            result = json.loads(cp.stdout.strip().splitlines()[-1])
+        self.ae(result['medium'], ['KittyTestCollectionA', 400 if is_macos else 0])
+        self.ae(result['bold'], ['KittyTestCollectionB', 700 if is_macos else 1])
+        self.ae(result['named_styles'], [['Regular', 'Bold'], ['Regular', 'Heavy']])
+
     def test_invalid_font_feature(self):
         with self.assertRaises(ValueError) as cm:
             ParsedFontFeature('!!bad!!')
