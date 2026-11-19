@@ -859,12 +859,14 @@ struct FSContext {
 
     FSCandidate **candidates;
     size_t num_candidates, candidates_capacity;
-    ListCacheEntry *lists;
+    // Each entry is separately allocated so that pointers to cached lists
+    // remain valid when the array is grown by a nested list_fonts() call.
+    ListCacheEntry **lists;
     size_t num_lists, lists_capacity;
-    struct {
+    struct VariableDataCacheEntry {
         char *path;
         FSVariableData vd;
-    } *vds;
+    } **vds;
     size_t num_vds, vds_capacity;
     struct {
         char *family;
@@ -967,13 +969,15 @@ free_context(FSContext *ctx) {
     for (size_t i = 0; i < ctx->num_symbol_families; i++) free(ctx->symbol_families[i]);
     free(ctx->symbol_families);
     for (size_t i = 0; i < ctx->num_lists; i++) {
-        free(ctx->lists[i].key);
-        free(ctx->lists[i].list.items);
+        free(ctx->lists[i]->key);
+        free(ctx->lists[i]->list.items);
+        free(ctx->lists[i]);
     }
     free(ctx->lists);
     for (size_t i = 0; i < ctx->num_vds; i++) {
-        free(ctx->vds[i].path);
-        fs_free_variable_data(&ctx->vds[i].vd);
+        free(ctx->vds[i]->path);
+        fs_free_variable_data(&ctx->vds[i]->vd);
+        free(ctx->vds[i]);
     }
     free(ctx->vds);
     for (size_t i = 0; i < ctx->num_wrs; i++) free(ctx->wrs[i].family);
@@ -1011,7 +1015,7 @@ static const FSCandidateList *
 list_fonts(FSContext *ctx, FSListKind kind, const char *name, bool monospaced) {
     RAII_ALLOC(char, key, fs_name_to_key(name));
     for (size_t i = 0; i < ctx->num_lists; i++) {
-        ListCacheEntry *e = ctx->lists + i;
+        const ListCacheEntry *e = ctx->lists[i];
         if (e->kind == (int)kind && e->monospaced == monospaced && strcmp(e->key, key) == 0) return &e->list;
     }
     FSCandidateList list = {0};
@@ -1024,7 +1028,8 @@ list_fonts(FSContext *ctx, FSListKind kind, const char *name, bool monospaced) {
         }
     }
     grow(ctx->lists, ctx->num_lists, ctx->lists_capacity);
-    ListCacheEntry *e = ctx->lists + ctx->num_lists++;
+    ListCacheEntry *e = xcalloc(1, sizeof(ListCacheEntry));
+    ctx->lists[ctx->num_lists++] = e;
     *e = (ListCacheEntry){.kind = kind, .monospaced = monospaced, .key = xstrdup(key), .list = list};
     return &e->list;
 }
@@ -1040,7 +1045,7 @@ static const FSCandidateList *
 variable_fonts(FSContext *ctx, const char *family, bool monospaced) {
     RAII_ALLOC(char, key, fs_name_to_key(family));
     for (size_t i = 0; i < ctx->num_lists; i++) {
-        ListCacheEntry *e = ctx->lists + i;
+        const ListCacheEntry *e = ctx->lists[i];
         if (e->kind == FS_LIST_VARIABLE_FAMILY && e->monospaced == monospaced && strcmp(e->key, key) == 0) return &e->list;
     }
     const FSCandidateList *all = list_fonts(ctx, FS_LIST_FAMILY, family, monospaced);
@@ -1079,7 +1084,8 @@ variable_fonts(FSContext *ctx, const char *family, bool monospaced) {
     (void)cmp_by_path;
 #endif
     grow(ctx->lists, ctx->num_lists, ctx->lists_capacity);
-    ListCacheEntry *e = ctx->lists + ctx->num_lists++;
+    ListCacheEntry *e = xcalloc(1, sizeof(ListCacheEntry));
+    ctx->lists[ctx->num_lists++] = e;
     *e = (ListCacheEntry){.kind = FS_LIST_VARIABLE_FAMILY, .monospaced = monospaced, .key = xstrdup(key), .list = list};
     return &e->list;
 }
@@ -1088,12 +1094,13 @@ static const FSVariableData *
 variable_data(FSContext *ctx, const FSCandidate *c) {
     const char *path = c->path ? c->path : "";
     for (size_t i = 0; i < ctx->num_vds; i++) {
-        if (strcmp(ctx->vds[i].path, path) == 0) return &ctx->vds[i].vd;
+        if (strcmp(ctx->vds[i]->path, path) == 0) return &ctx->vds[i]->vd;
     }
     grow(ctx->vds, ctx->num_vds, ctx->vds_capacity);
-    ctx->vds[ctx->num_vds].path = xstrdup(path);
-    FSVariableData *vd = &ctx->vds[ctx->num_vds].vd;
-    ctx->num_vds++;
+    struct VariableDataCacheEntry *entry = xcalloc(1, sizeof(struct VariableDataCacheEntry));
+    ctx->vds[ctx->num_vds++] = entry;
+    entry->path = xstrdup(path);
+    FSVariableData *vd = &entry->vd;
     FSFontTables t = {0};
     if (!fs_backend_font_tables(ctx, c, &t)) memset(&t, 0, sizeof(t));
     fs_variable_data_from_tables(&t, vd);
