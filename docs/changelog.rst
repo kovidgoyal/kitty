@@ -131,6 +131,8 @@ Detailed list of changes
 
 - Fix animated images stopping when switching to a tab without animations and then back (:iss:`10894`)
 
+- Linux: Fix variable fonts that use axis values to substitute glyphs, such as the cursive axis of Annotation Mono, not rendering the substituted glyphs (:iss:`10897`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

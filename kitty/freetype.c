@@ -417,6 +417,12 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
             }
             if ((error = FT_Set_Var_Design_Coordinates(self->face, sz, coords))) return set_load_error(path, error);
         }
+        // The HarfBuzz font was created in init_ft_face() using the default
+        // variation coordinates, sync it with the ones set above, otherwise
+        // shaping ignores them, which breaks fonts that substitute glyphs based
+        // on axis values via GSUB FeatureVariations, see
+        // https://github.com/kovidgoyal/kitty/issues/10897
+        if ((ns || axes) && self->harfbuzz_font) hb_ft_font_changed(self->harfbuzz_font);
         if (!create_features_for_face(postscript_name_for_face((PyObject *)self), PyDict_GetItemString(descriptor, "features"), &self->font_features))
             return NULL;
         if (!read_matrix_from_descriptor(descriptor, &self->matrix, &self->has_matrix)) return NULL;

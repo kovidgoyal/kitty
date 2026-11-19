@@ -480,6 +480,28 @@ class Rendering(FontBaseTest):
             self.assertGreater(w, 64)
             self.assertGreater(h, 64)
 
+    @unittest.skipIf(is_macos, 'fontconfig descriptors are not used on macOS')
+    def test_shaping_uses_variation_axes(self):
+        # Annotation Mono switches to cursive glyphs via GSUB FeatureVariations
+        # conditioned on its CRSV axis, so shaping must use the variation
+        # coordinates set on the face, see https://github.com/kovidgoyal/kitty/issues/10897
+        path = self.path_for_font('AnnotationMono-VF-subset.ttf')
+        plain, cursive = [1, 3, 6, 8], [2, 4, 7, 9]  # a f k l and a.ital f.ital k.ital l.ital
+
+        def shaped_glyphs(**extra):
+            descriptor = {'descriptor_type': 'fontconfig', 'path': path, 'index': 0, 'hinting': True, 'hint_style': 3, **extra}
+            with setup_for_testing(size=self.font_size, dpi=self.dpi, main_face_descriptor=descriptor):
+                s = Screen(None, 1, 8)
+                s.draw('afkl')
+                return [g for group in test_shape(s.line(0), None) for g in group[3]]
+
+        # axes are in the order: wght, slnt, CRSV
+        self.ae(shaped_glyphs(axes=(250.0, 0.0, 0.0)), plain)
+        self.ae(shaped_glyphs(axes=(250.0, 0.0, 1.0)), cursive)
+        self.ae(shaped_glyphs(axes=(250.0, -15.0, 0.5)), cursive)
+        self.ae(shaped_glyphs(named_style=5), plain)  # DemiBold
+        self.ae(shaped_glyphs(named_style=35), cursive)  # DemiBold Upright Italic
+
     def test_color_emoji_not_shrunk(self):
         # Regression test for https://github.com/kovidgoyal/kitty/issues/10144.
         # fontconfig gives fixed-size color faces (e.g. Noto Color Emoji) a
