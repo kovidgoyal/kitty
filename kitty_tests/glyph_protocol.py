@@ -789,13 +789,15 @@ class GlyphRendering(FontBaseTest):
         cw, ch = self.cell_width, self.cell_height
         self.assertGreater(ch, cw)
         # a square glyph followed by a space is rendered across two cells, as
-        # its width when fitting the cell height is more than one cell
+        # its width when fitting the cell height is more than one cell. It is
+        # contained in the two cells, which can be narrower than the cell height.
         sq = 'fill=nonzero,fg:M0 0H24V24H0Z'
         self.register(s, 0x100000, sq)
         line = self.render(s, '\U00100000 x')
         left, right = self.sprite(line.sprite_at(0)), self.sprite(line.sprite_at(1))
         coverage = sum(p & 0xFF for p in left) + sum(p & 0xFF for p in right)
-        self.assertAlmostEqual(coverage / 255, ch * ch, delta=ch)
+        side = min(ch, 2 * cw)
+        self.assertAlmostEqual(coverage / 255, side * side, delta=side)
         # the glyph is centered in the two cells
         self.ae(sum(p & 0xFF for p in left), sum(p & 0xFF for p in right))
         # without a trailing space it is rendered in one cell
