@@ -152,6 +152,41 @@ typedef struct VGGlyph {
 // On failure returns NULL and sets *err and *err_msg, which points to a static string.
 VGGlyph *vg_parse(const uint8_t *payload, size_t sz, const GlyphPlacement *placement, VGError *err, const char **err_msg);
 VGGlyph *vg_incref(VGGlyph *g);
+
+// The result of rendering a glyph into an area of width x height pixels.
+// The rendered pixel with foreground color fg is color.rgb + fg * fg_weight
+// with alpha color.a, all premultiplied.
+typedef struct VGRender {
+    unsigned width, height;
+    // Premultiplied RGBA, 4 bytes per pixel. NULL if the glyph uses only the
+    // foreground color, in which case the color is fg * fg_weight with alpha
+    // fg_weight.
+    uint8_t *color;
+    // The weight of the foreground color, 1 byte per pixel. NULL if the glyph
+    // does not use the foreground color.
+    uint8_t *fg;
+    // The work done by the renderer, see vg_render_work_budget()
+    uint64_t work;
+} VGRender;
+
+typedef enum VGRenderResult {
+    VG_RENDER_OK,
+    VG_RENDER_OUT_OF_MEMORY,
+    // Rendering would take more than vg_render_work_budget()
+    VG_RENDER_TOO_COMPLEX,
+} VGRenderResult;
+
+// The maximum work rendering a glyph into an area of width x height pixels
+// may take, in units of roughly one cheap operation per point, sub-scanline
+// crossing or pixel
+#define VG_RENDER_WORK_BASE (1u << 20)
+#define VG_RENDER_WORK_PER_PIXEL 96u
+uint64_t vg_render_work_budget(unsigned width, unsigned height);
+
+// Render the glyph, placing its viewBox in the area according to its
+// placement and clipping to the area.
+VGRenderResult vg_render(const VGGlyph *g, unsigned width, unsigned height, VGRender *out);
+void vg_render_free(VGRender *r);
 // Always returns NULL
 VGGlyph *vg_decref(VGGlyph *g);
 
