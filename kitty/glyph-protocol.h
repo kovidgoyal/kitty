@@ -118,8 +118,9 @@ const char *parse_glyph_command(const uint8_t *buf, size_t sz, GlyphCommand *cmd
 // Parse a number as defined for SVG path data: an optional sign, then digits,
 // digits with a fraction or a fraction alone, then an optional exponent. A .
 // must be followed by a digit. On success, *pos is advanced to just after the
-// number. Fails if the number does not fit in a 32-bit float.
-bool glyph_parse_number(const uint8_t *buf, size_t sz, size_t *pos, float *ans);
+// number. If overflow is not NULL it is set to true when the failure is
+// because the number does not fit in a 32-bit float.
+bool glyph_parse_number(const uint8_t *buf, size_t sz, size_t *pos, float *ans, bool *overflow);
 
 const char *glyph_format_name(GlyphPayloadFormat fmt);
 

@@ -18,7 +18,8 @@ is_digit(uint8_t ch) {
 }
 
 bool
-glyph_parse_number(const uint8_t *buf, size_t sz, size_t *pos, float *ans) {
+glyph_parse_number(const uint8_t *buf, size_t sz, size_t *pos, float *ans, bool *overflow) {
+    if (overflow) *overflow = false;
     size_t i = *pos;
     bool negative = false;
     if (i < sz && (buf[i] == '+' || buf[i] == '-')) negative = buf[i++] == '-';
@@ -72,11 +73,14 @@ glyph_parse_number(const uint8_t *buf, size_t sz, size_t *pos, float *ans) {
     }
     double val = 0;
     if (mantissa) {
-        if (exponent > 400) return false;
         if (exponent < -400) val = 0;
-        else val = (double)mantissa * pow(10.0, (double)exponent);
+        else if (exponent <= 400) val = (double)mantissa * pow(10.0, (double)exponent);
+        else val = INFINITY;
     }
-    if (!isfinite(val) || val > FLT_MAX) return false;
+    if (!isfinite(val) || val > FLT_MAX) {
+        if (overflow) *overflow = true;
+        return false;
+    }
     *ans = (float)(negative ? -val : val);
     *pos = i;
     return true;
@@ -174,7 +178,7 @@ parse_viewbox(Field f, float vb[4]) {
             }
             if (pos == before) return false;
         }
-        if (!glyph_parse_number(f.data, f.sz, &pos, vb + n)) return false;
+        if (!glyph_parse_number(f.data, f.sz, &pos, vb + n, NULL)) return false;
         if (fabsf(vb[n]) > GLYPH_MAX_VIEWBOX_MAGNITUDE) return false;
     }
     if (pos != f.sz) return false;
