@@ -1117,24 +1117,9 @@ cell_update_uniform_block(
         color_type cell_fg = rd->default_fg, cell_bg = rd->bg_colors0;
         index_type cell_color_x = cursor->x;
         bool reversed = false;
-        if (cursor->x < screen->columns && cursor->y < screen->lines) {
-            if (screen->paused_rendering.expires_at) {
-                linebuf_init_line(screen->paused_rendering.linebuf, cursor->y);
-                line_for_cursor = screen->paused_rendering.linebuf->line;
-            } else {
-                linebuf_init_line(screen->linebuf, cursor->y);
-                line_for_cursor = screen->linebuf->line;
-                if (screen_is_overlay_active(screen) && cursor->y == screen->overlay_line.ynum) {
-                    // The linebuf holds the original line, the pre-edit text is
-                    // drawn over it only in the overlay cells, so use those to size
-                    // and color the cursor, for example when it is over a wide character.
-                    overlay_line_for_cursor = *line_for_cursor;
-                    overlay_line_for_cursor.cpu_cells = screen->overlay_line.cpu_cells;
-                    overlay_line_for_cursor.render_cells = screen->overlay_line.render_cells;
-                    line_for_cursor = &overlay_line_for_cursor;
-                }
-            }
-        }
+        // Size and color the cursor using the cell under it as rendered, for
+        // example when it is over a wide character or pre-edit text
+        line_for_cursor = screen_line_for_cursor(screen, cursor->x, cursor->y, &overlay_line_for_cursor);
         if (line_for_cursor) {
             colors_for_cell(line_for_cursor, cp, &cell_color_x, &cell_fg, &cell_bg, &reversed);
             const CPUCell *cursor_cell;

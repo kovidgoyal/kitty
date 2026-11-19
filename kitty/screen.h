@@ -416,6 +416,7 @@ bool get_line_edge_colors_at_row(Screen *self, index_type y, color_type *left, c
 bool parse_sgr(Screen *screen, const uint8_t *buf, unsigned int num, const char *report_name, bool is_deccara);
 bool screen_pause_rendering(Screen *self, bool pause, int for_in_ms);
 void screen_check_pause_rendering(Screen *self, monotonic_t now);
+Line *screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *overlay_line);
 void screen_designate_charset(Screen *self, uint32_t which, uint32_t as);
 void screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);

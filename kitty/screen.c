@@ -4720,6 +4720,46 @@ screen_update_only_line_graphics_data(Screen *self) {
     }
 }
 
+// The paused rendering snapshot holds the rows that were rendered when
+// rendering was paused: with pixel scrolling an extra leading row, then the
+// rows of the screen, which show the scrollback if it was scrolled back. Row
+// y of the linebuf, the coordinates of the cursor and of selections, is at
+// snapshot row y + paused_snapshot_row_offset(), so negative values of y are
+// scrollback rows.
+static int
+paused_snapshot_row_offset(const Screen *self) {
+    return (int)self->paused_rendering.pixel_scroll + (int)self->paused_rendering.scrolled_by;
+}
+
+static Line *
+paused_line_for_linebuf_row(Screen *self, int y) {
+    // Must only be called while rendering is paused, NULL if the row is not in the snapshot
+    const int row = y + paused_snapshot_row_offset(self);
+    if (row < 0 || row >= (int)self->paused_rendering.linebuf->ynum) return NULL;
+    linebuf_init_line(self->paused_rendering.linebuf, (index_type)row);
+    return self->paused_rendering.linebuf->line;
+}
+
+Line *
+screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *overlay_line) {
+    // The line, as rendered, with the cell under a cursor at (x, y) in linebuf
+    // coordinates, or NULL if there is no such cell. While rendering is paused
+    // that is a row of the snapshot. Otherwise it is the linebuf row, except
+    // on the row of an active overlay, whose pre-edit text is drawn over the
+    // linebuf only in the overlay cells, then it is overlay_line, set to the
+    // linebuf row with the overlay cells. Other than overlay_line, the
+    // returned line is the shared line object of the linebuf or the snapshot,
+    // so it is only valid until the next linebuf_init_line() on them.
+    if (x >= self->columns || y >= self->lines) return NULL;
+    if (self->paused_rendering.expires_at) return paused_line_for_linebuf_row(self, (int)y);
+    linebuf_init_line(self->linebuf, y);
+    if (!screen_is_overlay_active(self) || y != self->overlay_line.ynum) return self->linebuf->line;
+    *overlay_line = *self->linebuf->line;
+    overlay_line->cpu_cells = self->overlay_line.cpu_cells;
+    overlay_line->render_cells = self->overlay_line.render_cells;
+    return overlay_line;
+}
+
 void
 screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool cursor_has_moved) {
     if (self->paused_rendering.expires_at) {
@@ -4727,12 +4767,12 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
             LineBuf *linebuf = self->paused_rendering.linebuf;
             // The GPU buffer was invalidated so every row must be written. The
             // paused linebuf has exactly render_lines_for_screen() rows.
-            const index_type row_offset = self->paused_rendering.pixel_scroll;
+            const int row_offset = paused_snapshot_row_offset(self);
             for (index_type y = 0; y < linebuf->ynum; y++) {
                 linebuf_init_line(linebuf, y);
                 if (linebuf->line->attrs.has_dirty_text) {
-                    // The extra leading row is never the cursor row
-                    const index_type lnum = y < row_offset ? self->lines : y - row_offset;
+                    // The extra leading row and scrollback rows are never the cursor row
+                    const index_type lnum = (int)y < row_offset ? self->lines : y - (index_type)row_offset;
                     render_line(fonts_data, linebuf->line, lnum, &self->paused_rendering.cursor, self->disable_ligatures, self->lc);
                     // Cell images are not rendered here: this would modify the live grman using snapshot row numbers
                     if (linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, linebuf->line, &self->as_ansi_buf);
@@ -4971,11 +5011,8 @@ apply_selection(Screen *self, uint8_t *data, size_t stride, Selection *s, uint8_
     const int y_min = MAX(-extra_leading_rows - scrolled_by, s->last_rendered.y), y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - scrolled_by);
     for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
-            // paused_rendering.linebuf stores only the rendered rows captured at pause time
-            const int paused_y = y + scrolled_by + extra_leading_rows;
-            if (paused_y < 0 || paused_y >= (int)self->paused_rendering.linebuf->ynum) continue;
-            linebuf_init_line(self->paused_rendering.linebuf, paused_y);
-            line = self->paused_rendering.linebuf->line;
+            line = paused_line_for_linebuf_row(self, y);
+            if (!line) continue;
         } else {
             line = checked_range_line(self, y);
             if (!line) continue;
@@ -6377,6 +6414,17 @@ screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
     return PyLong_FromUnsignedLong(i);
 }
 
+
+static PyObject *
+test_text_of_line_for_cursor(Screen *self, PyObject *args) {
+    unsigned int x, y;
+    if (!PyArg_ParseTuple(args, "II", &x, &y)) return NULL;
+    Line overlay_line;
+    Line *line = screen_line_for_cursor(self, x, y, &overlay_line);
+    if (!line) Py_RETURN_NONE;
+    RAII_ANSIBuf(buf);
+    return line_as_unicode(line, false, &buf);
+}
 
 static PyObject *
 line(Screen *self, PyObject *val) {
@@ -8224,14 +8272,15 @@ static PyMethodDef methods[] = {
             MND(current_key_encoding_flags, METH_NOARGS) MND(text_for_selection, METH_VARARGS) MND(text_for_marked_url, METH_VARARGS)
                 MND(is_rectangle_select, METH_NOARGS) MND(scroll, METH_VARARGS) MND(scroll_to_absolute, METH_O) MND(fractional_scroll, METH_O)
                     MND(scroll_to_prompt, METH_VARARGS) MND(set_last_visited_prompt, METH_VARARGS) MND(send_escape_code_to_child, METH_VARARGS)
-                        MND(pause_rendering, METH_VARARGS) MND(hyperlink_at, METH_VARARGS) MND(toggle_alt_screen, METH_NOARGS) MND(reset_callbacks, METH_NOARGS)
-                            MND(paste, METH_O) MND(paste_bytes, METH_O) MND(focus_changed, METH_O) MND(has_focus, METH_NOARGS)
-                                MND(has_activity_since_last_focus, METH_NOARGS) MND(copy_colors_from, METH_O) MND(set_marker, METH_VARARGS)
-                                    MND(marked_cells, METH_NOARGS) MND(scroll_to_next_mark, METH_VARARGS) MND(update_only_line_graphics_data, METH_NOARGS)
-                                        MND(bell, METH_NOARGS) MND(current_selections, METH_NOARGS) MND(update_graphics_layers, METH_NOARGS)
-                                            MND(rendered_scroll_state, METH_NOARGS) MND(scrollbar_geometry, METH_NOARGS) MND(has_scrollbar, METH_O)
-                                                MND(is_selection_dirty,
-                                                    METH_NOARGS){"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
+                        MND(pause_rendering, METH_VARARGS) MND(test_text_of_line_for_cursor, METH_VARARGS) MND(hyperlink_at, METH_VARARGS)
+                            MND(toggle_alt_screen, METH_NOARGS) MND(reset_callbacks, METH_NOARGS) MND(paste, METH_O) MND(paste_bytes, METH_O)
+                                MND(focus_changed, METH_O) MND(has_focus, METH_NOARGS) MND(has_activity_since_last_focus, METH_NOARGS)
+                                    MND(copy_colors_from, METH_O) MND(set_marker, METH_VARARGS) MND(marked_cells, METH_NOARGS)
+                                        MND(scroll_to_next_mark, METH_VARARGS) MND(update_only_line_graphics_data, METH_NOARGS) MND(bell, METH_NOARGS)
+                                            MND(current_selections, METH_NOARGS) MND(update_graphics_layers, METH_NOARGS)
+                                                MND(rendered_scroll_state, METH_NOARGS) MND(scrollbar_geometry, METH_NOARGS) MND(has_scrollbar, METH_O)
+                                                    MND(is_selection_dirty,
+                                                        METH_NOARGS){"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL} /* Sentinel */
 };
