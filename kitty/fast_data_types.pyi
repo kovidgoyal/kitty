@@ -1781,3 +1781,17 @@ def request_callback_with_thumbnail(
 ) -> None: ...
 def png_from_32bit_rgba_data(data: bytes, width: int, height: int, flip_vertically: bool = False) -> bytes: ...
 def set_uint_at_address(address: int, value: int) -> None: ...
+
+class GlyphCommandDict(TypedDict, total=False):
+    verb: str
+    cp: int | None
+    grapheme: tuple[int, ...] | None
+    fmt: str
+    reply: int
+    vb: tuple[float, float, float, float]
+    fit: str
+    align: tuple[str, str]
+    placement_invalid: bool
+    payload: bytes
+
+def parse_glyph_command(data: bytes) -> GlyphCommandDict: ...
