@@ -2127,6 +2127,10 @@ class TestScreen(BaseTest):
         self.ae(s.current_url_text(), '123abcxyz')
         self.ae('2', s.hyperlink_at(1, 3))
         self.ae(s.current_url_text(), 'Z Z')
+        # out of bounds coordinates must not crash
+        self.assertIsNone(s.hyperlink_at(0, s.lines))
+        self.assertIsNone(s.hyperlink_at(71, 54))
+        self.assertIsNone(s.hyperlink_at(s.columns, 0))
 
     def test_automatic_hyperlink_collection(self) -> None:
         s = self.create_screen()

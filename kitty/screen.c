@@ -6716,6 +6716,7 @@ hyperlink_id_type
 screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
     self->url_ranges.count = 0;
     Line *line = screen_visual_line(self, y);
+    if (!line || x >= self->columns) return 0;
     hyperlink_id_type id = line->cpu_cells[x].hyperlink_id;
     if (!id) return 0;
     index_type ypos = y, last_marked_line = y;
