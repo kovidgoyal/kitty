@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from select import select
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from kitty.child import Child, KittyWrapper, children_of_process, cmdline_of_pid, cwd_of_process, memory_used_by_process_tree_rooted_at
 from kitty.constants import is_macos, kitten_exe, kitty_exe
@@ -603,3 +603,35 @@ read -r _
         # Reported only once
         log_error.assert_called_once()
         self.assertIn('Unterminated string', log_error.call_args.args[0])
+
+    def test_launch_wrapper_in_existing_panel(self):
+        from kittens.panel import main as panel
+
+        initial_args, _ = panel.parse_panel_args([])
+        cmd = ['/bin/prog', 'arg']
+        cases = (
+            ('new-tab', True, 'tab'),
+            ('new-window', True, 'window'),
+            ('new-window', False, 'tab'),
+        )
+        for mode, has_active_tab, launch_type in cases:
+            with self.subTest(mode=mode, has_active_tab=has_active_tab):
+                tab = SimpleNamespace(active_window_for_cwd=SimpleNamespace(id=2), new_special_window=Mock())
+                tm = SimpleNamespace(os_window_id=1, active_tab=tab if has_active_tab else None, new_tab=Mock())
+                boss = SimpleNamespace(os_window_map={1: tm}, focus_os_window=Mock(), window_id_map={})
+                with (
+                    patch.object(panel, 'args', initial_args),
+                    patch.object(panel, 'current_focused_os_window_id', return_value=0),
+                    patch.object(panel, 'layer_shell_config_for_os_window', return_value=None),
+                    patch.object(panel, 'set_layer_shell_config'),
+                    patch.object(panel, 'toggle_os_window_visibility'),
+                    patch('kitty.launch_wrapper.get_boss', return_value=boss),
+                ):
+                    panel.handle_single_instance_command(boss, ['panel', '--toggle-visibility', f'--if-running={mode}', *cmd], {})
+                    launch = tab.new_special_window if launch_type == 'window' else tm.new_tab
+                    launch.assert_called_once()
+                    sw = launch.call_args.args[0]
+                    _, _, argv = self._fork(argv=sw.cmd, launch_request=sw.launch_request, user_func=self._recording(['/bin/wrapper']))
+                self.ae(argv, ('/bin/wrapper', *cmd))
+                self.ae(self.contexts[-1].launch_type, launch_type)
+                self.ae(self.contexts[-1].source_window_id, 2 if has_active_tab else None)

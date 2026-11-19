@@ -164,13 +164,17 @@ def have_config_files_been_updated(config_files: Iterable[str]) -> bool:
 
 
 def run_in_existing_panel(boss: BossType, cmd: list[str], environ: Mapping[str, str], cwd: str) -> None:
+    from kitty.launch_wrapper import LaunchRequest
     from kitty.tabs import SpecialWindow
 
     tm = boss.os_window_map.get(current_focused_os_window_id()) or next(iter(boss.os_window_map.values()))
-    sw = SpecialWindow(cmd=cmd, env=dict(environ), cwd=cwd or None, hold=args.hold)
-    tab = tm.active_tab
-    if args.if_running == 'new-window' and tab is not None:
-        tab.new_special_window(sw)
+    active_tab = tm.active_tab
+    source_window = active_tab.active_window_for_cwd if active_tab is not None else None
+    target_tab = active_tab if args.if_running == 'new-window' else None
+    launch_request = LaunchRequest('window' if target_tab is not None else 'tab', source_window.id if source_window is not None else None)
+    sw = SpecialWindow(cmd=cmd, env=dict(environ), cwd=cwd or None, hold=args.hold, launch_request=launch_request)
+    if target_tab is not None:
+        target_tab.new_special_window(sw)
     else:
         tm.new_tab(sw)
     boss.focus_os_window(tm.os_window_id)
