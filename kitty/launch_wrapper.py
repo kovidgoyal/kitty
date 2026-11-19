@@ -107,7 +107,7 @@ def source_pid_for(window_id: int | None) -> int | None:
         return None
 
 
-def prefix_for_launch(req: LaunchRequest, argv: Sequence[str], cwd: str, env: Mapping[str, str]) -> tuple[str, ...]:
+def prefix_for_launch(req: LaunchRequest, argv: Sequence[str], cwd: str, env: Mapping[str, str], *, unmodified_argv: Sequence[str]) -> tuple[str, ...]:
     """
     Return the prefix to run argv with, from the user's launch wrapper. Any
     failure is reported and results in no prefix, so that a broken wrapper
@@ -124,7 +124,7 @@ def prefix_for_launch(req: LaunchRequest, argv: Sequence[str], cwd: str, env: Ma
         argv=tuple(argv),
         cwd=cwd,
         env=MappingProxyType(dict(env)),
-        is_default_shell=list(argv) == resolved_shell(get_options()),
+        is_default_shell=list(unmodified_argv) == resolved_shell(get_options()),
         window_id=window_id,
         launch_type=req.launch_type,
         source_window_id=req.source_window_id,
