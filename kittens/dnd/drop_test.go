@@ -3,6 +3,7 @@
 package dnd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -1220,6 +1221,37 @@ func TestUniqifyChildNamesNormalization(t *testing.T) {
 	want := []string{"caf\u00e9.txt", fmt.Sprintf(case_conflict_template, 1, "Cafe\u0301.txt"), "other"}
 	if !equalStringSlices(got, want) {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestUniqifyChildNamesCaseSensitive(t *testing.T) {
+	got := uniqify_child_names([]string{"x", "X", "x", "x"}, true)
+	want := []string{"x", "X", fmt.Sprintf(case_conflict_template, 1, "x"), fmt.Sprintf(case_conflict_template, 2, "x")}
+	if !equalStringSlices(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// A remote directory entry must never be created through a symlink staged
+// earlier by the remote source under the same name.
+func TestRemoteDirDoesNotFollowStagedSymlink(t *testing.T) {
+	staging, outside := t.TempDir(), t.TempDir()
+	h := new_dir_handle(openDir(t, staging))
+	defer h.unref()
+	buf := make([]byte, 4096)
+	link := &remote_dir_entry{base_dir: h.newref(), name: "x", item_type: 1, dest: &bufferWriteCloser{bytes.NewBufferString(outside)}}
+	if err := link.add_remote_data(nil, buf, false, true); err != nil {
+		t.Fatalf("staging symlink: %v", err)
+	}
+	dir := &remote_dir_entry{base_dir: h.newref(), name: "x", item_type: 2, dest: &bufferWriteCloser{bytes.NewBufferString("pwned")}}
+	if err := dir.add_remote_data(nil, buf, false, true); err == nil {
+		t.Fatal("creating a directory over a staged symlink unexpectedly succeeded")
+	}
+	if len(dir.children) != 0 {
+		t.Errorf("directory entry got children: %d", len(dir.children))
+	}
+	if entries, err := os.ReadDir(outside); err != nil || len(entries) != 0 {
+		t.Errorf("outside directory was modified: %v %v", entries, err)
 	}
 }
 

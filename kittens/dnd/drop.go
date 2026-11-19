@@ -117,28 +117,34 @@ type remote_dir_entry struct {
 
 const case_conflict_template = "case-conflict-%d-%s"
 
-// The key under which a case and normalization insensitive filesystem
-// stores name, so that names that would alias each other compare equal.
-func filesystem_name_key(name string) string {
+// The key under which the filesystem stores name, so that names that would
+// alias each other compare equal. On a case and normalization insensitive
+// filesystem, names differing only in case or normalization alias each other.
+func filesystem_name_key(name string, is_case_sensitive_filesystem bool) string {
+	if is_case_sensitive_filesystem {
+		return name
+	}
 	return strings.ToLower(norm.NFC.String(name))
 }
 
+// Ensure no two names in names refer to the same directory entry. This is
+// needed even on case sensitive filesystems as a remote source can send
+// duplicate names, which must not be allowed to alias each other, for example,
+// a symlink and a directory with the same name.
 func uniqify_child_names(names []string, is_case_sensitive_filesystem bool) []string {
-	if !is_case_sensitive_filesystem {
-		seen := utils.NewSet[string](len(names))
-		for i, x := range names {
-			names[i] = uniqify_name(x, seen)
-		}
+	seen := utils.NewSet[string](len(names))
+	for i, x := range names {
+		names[i] = uniqify_name(x, seen, is_case_sensitive_filesystem)
 	}
 	return names
 }
 
-func uniqify_name(name string, seen *utils.Set[string]) string {
+func uniqify_name(name string, seen *utils.Set[string], is_case_sensitive_filesystem bool) string {
 	ans := name
-	key := filesystem_name_key(ans)
+	key := filesystem_name_key(ans, is_case_sensitive_filesystem)
 	for q := 0; seen.Has(key); q++ {
 		ans = fmt.Sprintf(case_conflict_template, q+1, name)
-		key = filesystem_name_key(ans)
+		key = filesystem_name_key(ans, is_case_sensitive_filesystem)
 	}
 	seen.Add(key)
 	return ans
@@ -189,10 +195,7 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string, ac
 			if src_file, err = os.Open(path); err != nil {
 				return err
 			}
-			if err := utils.MkdirAt(dest_dir, name, st.Mode().Perm()); err != nil {
-				return err
-			}
-			d, err := utils.OpenDirAt(dest_dir, name)
+			d, err := utils.CreateExclusiveDirAt(dest_dir, name, st.Mode().Perm())
 			if err != nil {
 				return err
 			}
@@ -499,7 +502,9 @@ func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_m
 					return derr
 				}
 			} else { // directory
-				if f, derr := utils.CreateDirAt(d.base_dir.handle, d.name, 0o755); derr != nil {
+				// Never reuse an existing entry, it could be a symlink
+				// staged by the remote source.
+				if f, derr := utils.CreateExclusiveDirAt(d.base_dir.handle, d.name, 0o755); derr != nil {
 					return derr
 				} else {
 					handle := new_dir_handle(f)
@@ -987,9 +992,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 				drop_status.root_remote_dir.num_children_finished++
 			} else {
 				name := filepath.Base(u.path)
-				if !dnd.is_case_sensitive_filesystem {
-					name = uniqify_name(name, seen)
-				}
+				name = uniqify_name(name, seen, dnd.is_case_sensitive_filesystem)
 				c = &remote_dir_entry{base_dir: dnd.drop_status.dropping_to.newref(), name: name}
 				dnd.queue_data_request(DC{Type: 'r', X: idx + 1, Y: i + 1})
 			}

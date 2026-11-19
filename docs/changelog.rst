@@ -125,6 +125,8 @@ Detailed list of changes
 0.51.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- dnd kitten: Fix a malicious remote drop source being able to write files outside the staging directory by sending a directory with the same name as a previously sent symlink (follow up to :cve:`2026-54056`)
+
 - Fix a crash when calling :code:`Screen.hyperlink_at()` with coordinates outside the screen, such as from a watcher (:iss:`10890`)
 
 - Fix animated images stopping when switching to a tab without animations and then back (:iss:`10894`)
