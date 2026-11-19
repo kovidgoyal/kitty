@@ -1601,6 +1601,40 @@ class TestScreen(BaseTest):
         parse_bytes(s, b'\x1b[?2026h')
         self.ae(s.rendered_scroll_state(), (4, 0, s.historybuf.count))
 
+    def test_line_for_cursor_with_paused_rendering(self):
+        # The cursor is sized and colored from the cell under it as rendered.
+        # While rendering is paused that is in the snapshot, which has an extra
+        # leading row with pixel scroll and shows the scrollback when scrolled
+        # back, so screen row y is not snapshot row y.
+        def screen(pixel_scroll, scrolled_by=0):
+            s = self.create_screen(cols=10, lines=3, scrollback=50, options={'pixel_scroll': pixel_scroll})
+            for i in range(10):
+                parse_bytes(s, f'row{i:03d}\r\n'.encode())
+            parse_bytes(s, b'last')
+            if scrolled_by:
+                s.scroll(scrolled_by, True)
+            self.ae(s.scrolled_by, scrolled_by)
+            return s
+
+        def lines(s):
+            return [s.test_text_of_line_for_cursor(0, y) for y in range(s.lines)]
+
+        for pixel_scroll in (False, True):
+            for scrolled_by in (0, 2):
+                msg = f'{pixel_scroll=} {scrolled_by=}'
+                s = screen(pixel_scroll, scrolled_by)
+                live = [str(s.line(y)) for y in range(s.lines)]
+                self.ae(lines(s), live, msg)
+                self.assertTrue(s.pause_rendering(True, 5000))
+                parse_bytes(s, b'\x1b[H\x1b[2JXXXX')  # the live screen changes, the snapshot must not
+                # rows scrolled off the bottom of the frozen frame are not rendered
+                expected = [text if y + scrolled_by < s.lines else None for y, text in enumerate(live)]
+                self.ae(lines(s), expected, msg)
+                self.assertIsNone(s.test_text_of_line_for_cursor(s.columns, 0), msg)
+                self.assertIsNone(s.test_text_of_line_for_cursor(0, s.lines), msg)
+                self.assertTrue(s.pause_rendering(False))
+                self.ae(lines(s), ['XXXX', '', ''], msg)
+
     def test_selection_uses_rendered_scroll_state(self):
         # A selection rendered during a pause must match the frozen frame even
         # though output has moved the live view
