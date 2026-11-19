@@ -907,7 +907,13 @@ struct FSContext {
     ListCacheEntry **lists;
     size_t num_lists, lists_capacity;
     struct VariableDataCacheEntry {
+        // The path alone does not identify a face, as font collection files
+        // contain multiple faces. Use the face index for fontconfig and the
+        // postscript name for CoreText, which does not expose the face index.
+        // Entries with an empty path are never shared.
         char *path;
+        int face_index;
+        char *postscript_name;
         FSVariableData vd;
     } **vds;
     size_t num_vds, vds_capacity;
@@ -1019,6 +1025,7 @@ free_context(FSContext *ctx) {
     free(ctx->lists);
     for (size_t i = 0; i < ctx->num_vds; i++) {
         free(ctx->vds[i]->path);
+        free(ctx->vds[i]->postscript_name);
         fs_free_variable_data(&ctx->vds[i]->vd);
         free(ctx->vds[i]);
     }
@@ -1136,13 +1143,26 @@ variable_fonts(FSContext *ctx, const char *family, bool monospaced) {
 static const FSVariableData *
 variable_data(FSContext *ctx, const FSCandidate *c) {
     const char *path = c->path ? c->path : "";
-    for (size_t i = 0; i < ctx->num_vds; i++) {
-        if (strcmp(ctx->vds[i]->path, path) == 0) return &ctx->vds[i]->vd;
+    // The high 16 bits of the fontconfig index are the named instance, which
+    // has the same variable data as the face
+    const int face_index = c->index & 0xffff;
+#ifdef __APPLE__
+    const char *postscript_name = c->postscript_name ? c->postscript_name : "";
+#else
+    const char *postscript_name = "";
+#endif
+    if (path[0]) {
+        for (size_t i = 0; i < ctx->num_vds; i++) {
+            const struct VariableDataCacheEntry *e = ctx->vds[i];
+            if (e->face_index == face_index && strcmp(e->path, path) == 0 && strcmp(e->postscript_name, postscript_name) == 0) return &ctx->vds[i]->vd;
+        }
     }
     grow(ctx->vds, ctx->num_vds, ctx->vds_capacity);
     struct VariableDataCacheEntry *entry = xcalloc(1, sizeof(struct VariableDataCacheEntry));
     ctx->vds[ctx->num_vds++] = entry;
     entry->path = xstrdup(path);
+    entry->face_index = face_index;
+    entry->postscript_name = xstrdup(postscript_name);
     FSVariableData *vd = &entry->vd;
     FSFontTables t = {0};
     if (!fs_backend_font_tables(ctx, c, &t)) memset(&t, 0, sizeof(t));
