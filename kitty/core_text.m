@@ -144,19 +144,31 @@ dealloc(CTFace *self) {
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static const char *
-tag_to_string(uint32_t tag, uint8_t bytes[5]) {
-    bytes[0] = (tag >> 24) & 0xff;
-    bytes[1] = (tag >> 16) & 0xff;
-    bytes[2] = (tag >> 8) & 0xff;
-    bytes[3] = (tag) & 0xff;
-    bytes[4] = 0;
-    return (const char *)bytes;
+// OpenType tags are supposed to be printable ASCII but fonts in the wild can
+// contain arbitrary bytes, which are not valid UTF-8. Use Latin-1 so that any
+// tag converts to a four character string and back losslessly.
+static PyObject *
+tag_to_python(uint32_t tag) {
+    const char b[4] = {(char)(tag >> 24), (char)(tag >> 16), (char)(tag >> 8), (char)tag};
+    return PyUnicode_DecodeLatin1(b, sizeof(b), NULL);
 }
 
-static uint32_t
-string_to_tag(const uint8_t *bytes) {
-    return (((uint32_t)bytes[0]) << 24) | (((uint32_t)bytes[1]) << 16) | (((uint32_t)bytes[2]) << 8) | bytes[3];
+static bool
+tag_from_python(PyObject *s, uint32_t *tag) {
+    if (!PyUnicode_Check(s) || PyUnicode_GET_LENGTH(s) != 4) {
+        PyErr_Format(PyExc_ValueError, "%R is not a valid OpenType tag", s);
+        return false;
+    }
+    *tag = 0;
+    for (Py_ssize_t i = 0; i < 4; i++) {
+        const Py_UCS4 ch = PyUnicode_READ_CHAR(s, i);
+        if (ch > 0xff) {
+            PyErr_Format(PyExc_ValueError, "%R is not a valid OpenType tag", s);
+            return false;
+        }
+        *tag = (*tag << 8) | ch;
+    }
+    return true;
 }
 
 FontFeatures *
@@ -170,12 +182,12 @@ add_variation_pair(const void *key_, const void *value_, void *ctx) {
     CFNumberRef key = key_, value = value_;
     uint32_t tag;
     double val;
+    if (PyErr_Occurred()) return;
     if (!CFNumberGetValue(key, kCFNumberSInt32Type, &tag)) return;
     if (!CFNumberGetValue(value, kCFNumberDoubleType, &val)) return;
-    uint8_t tag_string[5];
-    tag_to_string(tag, tag_string);
+    RAII_PyObject(pykey, tag_to_python(tag));
     RAII_PyObject(pyval, PyFloat_FromDouble(val));
-    if (pyval) PyDict_SetItemString(ans, (const char *)tag_string, pyval);
+    if (pykey && pyval) PyDict_SetItem(ans, pykey, pyval);
 }
 
 static PyObject *
@@ -302,8 +314,10 @@ font_descriptor_from_python(PyObject *src, bool use_path) {
         PyObject *key, *value;
         Py_ssize_t pos = 0;
         while (PyDict_Next(t, &pos, &key, &value)) {
-            double val = PyFloat_AS_DOUBLE(value);
-            uint32_t tag = string_to_tag((const uint8_t *)PyUnicode_AsUTF8(key));
+            const double val = PyFloat_AsDouble(value);
+            if (val == -1 && PyErr_Occurred()) return NULL;
+            uint32_t tag;
+            if (!tag_from_python(key, &tag)) return NULL;
             RAII_CoreFoundation(CFNumberRef, cf_tag, CFNumberCreate(NULL, kCFNumberSInt32Type, &tag));
             RAII_CoreFoundation(CFNumberRef, cf_val, CFNumberCreate(NULL, kCFNumberDoubleType, &val));
             CFDictionaryAddValue(axis_map, cf_tag, cf_val);
@@ -1809,9 +1823,9 @@ fs_backend_descriptor(const FSFont *f) {
         RAII_PyObject(axis_map, PyDict_New());
         if (!axis_map) return NULL;
         for (size_t i = 0; i < f->num_axes; i++) {
-            uint8_t tag[5];
+            RAII_PyObject(tag, tag_to_python(f->axes[i].tag));
             RAII_PyObject(val, PyFloat_FromDouble(f->axes[i].value));
-            if (!val || PyDict_SetItemString(axis_map, tag_to_string(f->axes[i].tag, tag), val) != 0) return NULL;
+            if (!tag || !val || PyDict_SetItem(axis_map, tag, val) != 0) return NULL;
         }
         if (PyDict_SetItemString(ans, "axis_map", axis_map) != 0) return NULL;
     }

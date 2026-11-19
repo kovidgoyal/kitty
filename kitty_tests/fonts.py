@@ -318,6 +318,63 @@ class Selection(BaseTest):
         if self.is_ci and not count:
             raise AssertionError('No variable fonts found')
 
+    def test_variable_data_from_crafted_font(self):
+        import struct
+
+        from kitty.fast_data_types import variable_data_from_font_file
+
+        def name_table(names: dict[int, str]) -> bytes:
+            records, storage = b'', b''
+            for name_id, text in names.items():
+                data = text.encode('utf-16-be')
+                records += struct.pack('>6H', 3, 1, 1033, name_id, len(data), len(storage))
+                storage += data
+            return struct.pack('>3H', 0, len(names), 6 + len(records)) + records + storage
+
+        def fvar_table(axes: list[tuple[bytes, int]], instances: list[tuple[int, list[float], int]]) -> bytes:
+            instance_size = 4 + 4 * len(axes) + 2
+            ans = struct.pack('>8H', 1, 0, 16, 2, len(axes), 20, len(instances), instance_size)
+            for tag, name_id in axes:
+                ans += tag + struct.pack('>3iHH', 0, 0, 1000 << 16, 0, name_id)
+            for name_id, coords, psname_id in instances:
+                ans += struct.pack('>HH', name_id, 0) + b''.join(struct.pack('>i', int(c * 65536)) for c in coords) + struct.pack('>H', psname_id)
+            return ans
+
+        def sfnt(tables: dict[bytes, bytes]) -> bytes:
+            offset = 12 + 16 * len(tables)
+            header, data = struct.pack('>IHHHH', 0x00010000, len(tables), 0, 0, 0), b''
+            for tag, table in tables.items():
+                header += tag + struct.pack('>III', 0, offset + len(data), len(table))
+                data += table + b'\0' * (-len(table) % 4)
+            return header + data
+
+        names = {256: 'Weight', 257: 'Odd', 258: 'Bold', 259: 'Test-Bold', 1: 'Test', 25: 'TestVar'}
+        # An axis tag that is not valid UTF-8 and a duplicated axis tag
+        odd_tag = b'\xff\xfe\x80a'
+        fvar = fvar_table([(b'wght', 256), (odd_tag, 257), (b'wght', 256)], [(258, [700, 1, 800], 259)])
+        with tempfile.TemporaryDirectory() as tdir:
+            path = os.path.join(tdir, 'test.ttf')
+            with open(path, 'wb') as f:
+                f.write(sfnt({b'fvar': fvar, b'name': name_table(names)}))
+            vd = variable_data_from_font_file(path)
+            odd = odd_tag.decode('latin-1')
+            self.ae([a['tag'] for a in vd['axes']], ['wght', odd, 'wght'])
+            self.ae([a['strid'] for a in vd['axes']], ['Weight', 'Odd', 'Weight'])
+            self.ae(vd['variations_postscript_name_prefix'], 'TestVar')
+            self.ae(len(vd['named_styles']), 1)
+            ns = vd['named_styles'][0]
+            self.ae((ns['name'], ns['psname']), ('Bold', 'Test-Bold'))
+            # each tag used once, in order of first occurrence, with the value of the last occurrence
+            self.ae(list(ns['axis_values'].items()), [('wght', 800.0), (odd, 1.0)])
+
+            # A file that is not a valid font is a ValueError, not an OSError with a meaningless errno
+            with open(path, 'wb') as f:
+                f.write(b'\0\1\0\0\0')
+            with self.assertRaises(ValueError):
+                variable_data_from_font_file(path)
+            with self.assertRaises(FileNotFoundError):
+                variable_data_from_font_file(os.path.join(tdir, 'does-not-exist.ttf'))
+
     def test_invalid_font_feature(self):
         with self.assertRaises(ValueError) as cm:
             ParsedFontFeature('!!bad!!')
