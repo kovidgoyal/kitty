@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.fast_data_types import parse_glyph_command, parse_vg
+import math
+
+from kitty.fast_data_types import parse_glyph_command, parse_vg, render_vg
 
 from .base import BaseTest, parse_bytes
 
@@ -479,3 +481,219 @@ class TestGlyphProtocol(BaseTest):
                 parse_vg(payload.encode(), (0, 0, 24, 24))
             except ValueError as e:
                 self.assertRegex(str(e), '^(malformed_payload|outline_too_large): ')
+
+    def test_vg_rendering(self):
+        V = (0, 0, 24, 24)
+
+        def r(payload, w=24, h=24, vb=V, **kw):
+            return render_vg(payload.encode(), vb, w, h, **kw)
+
+        def mask(payload, w=24, h=24, vb=V, **kw):
+            ans = r(payload, w, h, vb, **kw)
+            self.assertIsNone(ans['color'])
+            return ans['fg']
+
+        def area(m):
+            return sum(m) / 255
+
+        def at(m, x, y, w=24):
+            return m[y * w + x]
+
+        # Simple fills
+        self.ae(set(mask('fill=nonzero,fg:M0 0H24V24H0Z')), {255})
+        self.ae(set(mask('fill=nonzero,fg:M0 0H24V24H0Z', 7, 13, fit='stretch')), {255})
+        m = mask('fill=nonzero,fg:M0 0H12.5V24H0Z')
+        self.ae({at(m, x, y) for x in range(12) for y in range(24)}, {255})
+        self.ae({at(m, x, y) for x in range(13, 24) for y in range(24)}, {0})
+        self.ae({at(m, 12, y) for y in range(24)}, {128})
+        # horizontal edges have coverage quantized to the sub-scanlines
+        m = mask('fill=nonzero,fg:M0 0H24V12.5H0Z')
+        self.ae({at(m, x, 12) for x in range(24)}, {128})
+        # open subpaths are closed for filling
+        self.ae(mask('fill=nonzero,fg:M0 0H24V24H0'), mask('fill=nonzero,fg:M0 0H24V24H0Z'))
+        # nothing to fill
+        self.ae(set(mask('fill=nonzero,fg:M0 0L24 24')), {0})
+        self.ae(set(mask('fill=nonzero,fg:M0 0')), {0})
+
+        # Circle area
+        sz = 120
+        m = mask('fill=nonzero,fg:M12 2A10 10 0 1 1 12 22A10 10 0 1 1 12 2Z', sz, sz)
+        expected = math.pi * (10 * sz / 24) ** 2
+        self.assertLess(abs(area(m) - expected) / expected, 0.002)
+
+        # Fill rules
+        same_dir = 'M2 2H22V22H2ZM7 7H17V17H7Z'
+        opposite_dir = 'M2 2H22V22H2ZM7 7V17H17V7Z'
+        self.ae(area(mask('fill=evenodd,fg:' + same_dir)), 400 - 100)
+        self.ae(area(mask('fill=nonzero,fg:' + same_dir)), 400)
+        self.ae(area(mask('fill=nonzero,fg:' + opposite_dir)), 400 - 100)
+        self.ae(area(mask('fill=evenodd,fg:' + opposite_dir)), 400 - 100)
+        # self intersecting path
+        self.ae(area(mask('fill=evenodd,fg:M0 0H24V24H0ZM0 0H24V24H0Z')), 0)
+        self.ae(area(mask('fill=nonzero,fg:M0 0H24V24H0ZM0 0V24H24V0Z')), 0)
+
+        # Placement
+        sq = 'fill=nonzero,fg:M0 0H24V24H0Z'
+
+        def columns(m, w):
+            return [x for x in range(w) if m[x] == 255]
+
+        self.ae(columns(mask(sq, 48, 24), 48), list(range(12, 36)))
+        self.ae(columns(mask(sq, 48, 24, align=('start', 'center')), 48), list(range(24)))
+        self.ae(columns(mask(sq, 48, 24, align=('end', 'center')), 48), list(range(24, 48)))
+        self.ae(set(mask(sq, 48, 24, fit='cover')), {255})
+        self.ae(set(mask(sq, 48, 24, fit='stretch')), {255})
+        m = mask(sq, 24, 48, align=('center', 'start'))
+        self.ae([y for y in range(48) if m[y * 24] == 255], list(range(24)))
+        m = mask(sq, 24, 48, align=('center', 'end'))
+        self.ae([y for y in range(48) if m[y * 24] == 255], list(range(24, 48)))
+        # cover crops, aligning picks the visible part
+        m = mask('fill=nonzero,fg:M0 0H12V24H0Z', 24, 48, fit='cover', align=('start', 'center'))
+        self.ae(set(m), {255})
+        m = mask('fill=nonzero,fg:M0 0H12V24H0Z', 24, 48, fit='cover', align=('end', 'center'))
+        self.ae(set(m), {0})
+        # the viewBox origin
+        self.ae(mask('fill=nonzero,fg:M10 10H34V34H10Z', vb=(10, 10, 24, 24)), mask(sq))
+        # ink outside the viewBox but inside the area is drawn, as SVG clips at the viewport
+        m = mask('fill=nonzero,fg:M-12 0H36V24H-12Z', 48, 24)
+        self.ae(set(m), {255})
+        # and ink outside the area is clipped
+        self.ae(area(mask('fill=nonzero,fg:M-24 -24H48V48H-24Z')), 24 * 24)
+
+        # Layer matrix
+        self.ae(area(mask('fill=nonzero,fg,m 0.5 0 0 0.5 0 0:M0 0H24V24H0Z')), 144)
+        self.ae(area(mask('fill=nonzero,fg,m 1 0 0 1 12 0:M0 0H24V24H0Z')), 288)
+        # a matrix with negative determinant reverses orientation, which does not affect filling
+        self.ae(area(mask('fill=nonzero,fg,m -1 0 0 1 24 0:M0 0H12V24H0Z')), 288)
+
+        # Strokes
+        def close(a, b, tolerance=0.01):
+            self.assertLess(abs(a - b) / b, tolerance, f'{a} != {b}')
+
+        sz = 240
+        scale = sz / 24
+        # butt caps
+        close(area(mask('stroke=2/butt,fg:M4 12H20', sz, sz)), 2 * 16 * scale**2)
+        # square caps extend by half the width at both ends
+        close(area(mask('stroke=2/square,fg:M4 12H20', sz, sz)), 2 * 18 * scale**2)
+        # round caps add a circle
+        close(area(mask('stroke=2/round,fg:M4 12H20', sz, sz)), (2 * 16 + math.pi) * scale**2)
+        # stroke is centered on the path
+        m = mask('stroke=2/butt,fg:M0 12H24', 24, 24)
+        self.ae([m[y * 24 + 5] for y in range(24)], [0] * 11 + [255] * 2 + [0] * 11)
+        # a closed rectangle: each side plus miter joins fill the corners
+        close(area(mask('stroke=2/butt/miter,fg:M4 4H20V20H4Z', sz, sz)), (18 * 18 - 14 * 14) * scale**2)
+        # bevel joins cut off the corners: 4 triangles of 1 x 1 / 2
+        close(area(mask('stroke=2/butt/bevel,fg:M4 4H20V20H4Z', sz, sz)), (18 * 18 - 14 * 14 - 2) * scale**2)
+        # round joins: quarter circles at the corners
+        close(area(mask('stroke=2/butt/round,fg:M4 4H20V20H4Z', sz, sz)), (18 * 18 - 14 * 14 - 4 + math.pi) * scale**2)
+        # an unclosed rectangle has caps instead of a join at its start
+        close(area(mask('stroke=2/butt/miter,fg:M4 4H20V20H4V4', sz, sz)), (18 * 18 - 14 * 14 - 1) * scale**2)
+        # miter limit: a sharp angle has a miter only if the limit allows it
+        sharp = 'M2 20L12 4L22 20'
+        bevelled = area(mask(f'stroke=2/butt/bevel,fg:{sharp}', sz, sz))
+        self.ae(area(mask(f'stroke=2/butt/miter1,fg:{sharp}', sz, sz)), bevelled)
+        self.assertGreater(area(mask(f'stroke=2/butt/miter10,fg:{sharp}', sz, sz)), bevelled + scale**2)
+        # zero length subpaths are dots with round and square caps only
+        close(area(mask('stroke=4/round,fg:M12 12Z', sz, sz)), math.pi * 4 * scale**2)
+        close(area(mask('stroke=4/round,fg:M12 12L12 12', sz, sz)), math.pi * 4 * scale**2)
+        close(area(mask('stroke=4/square,fg:M12 12Z', sz, sz)), 16 * scale**2)
+        self.ae(area(mask('stroke=4/butt,fg:M12 12Z', sz, sz)), 0)
+        # a moveto alone draws nothing
+        self.ae(area(mask('stroke=4/round,fg:M12 12', sz, sz)), 0)
+        # a non-uniform matrix gives an elliptical pen, here a vertical line
+        # stroked with a pen 3 times wider horizontally
+        close(area(mask('stroke=2/butt,fg,m 3 0 0 1 -24 0:M12 4V20', sz, sz)), 6 * 16 * scale**2)
+        # stroked curves: a semicircle of radius 8
+        close(area(mask('stroke=2/butt,fg:M4 12A8 8 0 0 1 20 12', sz, sz)), math.pi / 2 * (9 * 9 - 7 * 7) * scale**2)
+
+        # Colors
+        ans = r('fill=nonzero,#ff800080:M0 0H24V24H0Z')
+        self.assertIsNone(ans['fg'])
+        self.ae(set(zip(*[iter(ans['color'])] * 4)), {(128, 64, 0, 128)})
+        ans = r('fill=nonzero,fg@0.5:M0 0H24V24H0Z')
+        self.assertIsNone(ans['color'])
+        self.ae(set(ans['fg']), {128})
+        # mixed: fg layer under a half transparent red layer
+        ans = r('fill=nonzero,fg:M0 0H24V24H0Z|fill=nonzero,#ff000080:M0 0H24V24H0Z')
+        self.ae(set(zip(*[iter(ans['color'])] * 4)), {(128, 0, 0, 255)})
+        self.ae(set(ans['fg']), {127})
+        # fg layer over a red layer
+        ans = r('fill=nonzero,#ff0000:M0 0H24V24H0Z|fill=nonzero,fg@0.25:M0 0H24V24H0Z')
+        self.ae(set(zip(*[iter(ans['color'])] * 4)), {(191, 0, 0, 255)})
+        self.ae(set(ans['fg']), {64})
+
+        # Gradients
+        def row(m, y=0, w=24):
+            return list(m[y * w : (y + 1) * w])
+
+        m = mask('fill=nonzero,lin(0 0 24 0 / 0 fg@0 / 1 fg):M0 0H24V24H0Z')
+        self.ae(row(m), [round((x + 0.5) / 24 * 255) for x in range(24)])
+        self.ae(row(m), row(m, 23))
+        # pad
+        m = mask('fill=nonzero,lin(6 0 18 0 / 0 fg@0 / 1 fg):M0 0H24V24H0Z')
+        self.ae(row(m)[:6], [0] * 6)
+        self.ae(row(m)[18:], [255] * 6)
+        # repeat and reflect
+        m = mask('fill=nonzero,lin(0 0 12 0 repeat / 0 fg@0 / 1 fg):M0 0H24V24H0Z')
+        self.ae(row(m)[:12], row(m)[12:])
+        m = mask('fill=nonzero,lin(0 0 12 0 reflect / 0 fg@0 / 1 fg):M0 0H24V24H0Z')
+        self.ae(row(m)[:12], row(m)[12:][::-1])
+        # gradient matrix: rotated by 90 degrees, so the gradient is vertical
+        m = mask('fill=nonzero,lin(0 0 24 0 m 0 1 -1 0 0 0 / 0 fg@0 / 1 fg):M0 0H24V24H0Z')
+        self.ae([m[y * 24] for y in range(24)], [round((y + 0.5) / 24 * 255) for y in range(24)])
+        # the gradient goes through the layer matrix
+        m = mask('fill=nonzero,lin(0 0 12 0 / 0 fg@0 / 1 fg),m 2 0 0 1 0 0:M0 0H12V24H0Z')
+        self.ae(row(m), [round((x + 0.5) / 24 * 255) for x in range(24)])
+        # hard stops
+        m = mask('fill=nonzero,lin(0 0 24 0 / 0 fg / 0.5 fg / 0.5 fg@0 / 1 fg@0):M0 0H24V24H0Z')
+        self.ae(row(m), [255] * 12 + [0] * 12)
+        # radial
+        m = mask('fill=nonzero,rad(12 12 0 12 12 12 / 0 fg / 1 fg@0):M0 0H24V24H0Z')
+        self.ae(at(m, 12, 12), round(255 * (1 - math.hypot(0.5, 0.5) / 12)))
+        self.ae(at(m, 0, 0), 0)
+        self.ae(at(m, 0, 12), at(m, 12, 0))
+        # radial with the focal circle outside the end circle paints only inside the cone
+        m = mask('fill=nonzero,rad(2 12 1 18 12 3 / 0 fg / 1 fg):M0 0H24V24H0Z')
+        self.ae(at(m, 0, 0), 0)
+        self.ae(at(m, 12, 12), 255)
+        # degenerate gradients paint their last stop
+        self.ae(set(mask('fill=nonzero,lin(5 5 5 5 / 0 fg@0 / 1 fg):M0 0H24V24H0Z')), {255})
+        self.ae(set(mask('fill=nonzero,rad(5 5 2 5 5 2 / 0 fg@0 / 1 fg):M0 0H24V24H0Z')), {255})
+        # mixed fg and fixed stops
+        ans = r('fill=nonzero,lin(0 0 24 0 / 0 fg / 1 #ff0000):M0 0H24V24H0Z')
+        self.ae(ans['fg'][0] + ans['color'][0], 255)
+        self.assertGreater(ans['fg'][0], 240)
+        self.assertGreater(ans['color'][23 * 4], 240)
+        self.ae(set(ans['color'][3::4]), {255})
+
+        # Clips
+        circle = 'M12 2A10 10 0 1 1 12 22A10 10 0 1 1 12 2Z'
+        sz = 120
+        clipped = mask(f'clip=1,nonzero:{circle}|fill=nonzero,fg:M0 0H24V24H0Z', sz, sz)
+        self.ae(clipped, mask(f'fill=nonzero,fg:{circle}', sz, sz))
+        # clips apply only to the specified number of layers
+        m = mask(f'clip=1,nonzero:{circle}|fill=nonzero,fg:M0 0H1V1H0Z|fill=nonzero,fg:M23 23H24V24H23Z', sz, sz)
+        self.ae(m[0], 0)
+        self.ae(m[-1], 255)
+        m = mask(f'clip=2,nonzero:{circle}|fill=nonzero,fg:M0 0H1V1H0Z|fill=nonzero,fg:M23 23H24V24H23Z', sz, sz)
+        self.ae(set(m), {0})
+        # an empty clip hides everything
+        self.ae(set(mask('clip=1,nonzero:M0 0|fill=nonzero,fg:M0 0H24V24H0Z')), {0})
+        # evenodd clips
+        self.ae(area(mask('clip=1,evenodd:M2 2H22V22H2ZM7 7H17V17H7Z|fill=nonzero,fg:M0 0H24V24H0Z')), 300)
+
+        # Rendering is bounded in time: geometry that is huge relative to
+        # the area it is rendered into is rejected
+        bomb = 'stroke=0.001,fg:M0.5 0' + ' q2e-05 2e-05 0 4e-05 q-2e-05 -2e-05 0 -4e-05' * 64
+        with self.assertRaisesRegex(ValueError, '^too_complex'):
+            render_vg(bomb.encode(), (0, 0, 1, 1 / 4096), 80, 160, fit='cover')
+        self.assertIn('work', render_vg(bomb.encode(), (0, 0, 1, 1 / 4096), 80, 160, fit='contain'))
+        # the most expensive valid payloads are well within the limit
+        heavy = '|'.join(['fill=nonzero,rad(4 4 1 12 12 30 reflect / 0 fg / 0.3 #ff0000 / 0.6 #00ff0080 / 1 #0000ff):M0 0H24V24H0Z'] * 16)
+        for w, h in ((10, 20), (80, 160), (560, 1120)):
+            r(heavy, w, h, fit='stretch')
+
+        # Determinism
+        p = 'stroke=1.5,lin(0 0 24 24 reflect / 0 fg / 1 #00ff0080):M3 12c3-8 6-8 9 0s6 8 9 0|fill=evenodd,fg@0.5:' + circle
+        self.ae(r(p, 37, 71), r(p, 37, 71))
