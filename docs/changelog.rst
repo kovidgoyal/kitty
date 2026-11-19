@@ -133,6 +133,8 @@ Detailed list of changes
 
 - Linux: Fix variable fonts that use axis values to substitute glyphs, such as the cursive axis of Annotation Mono, not rendering the substituted glyphs (:iss:`10897`)
 
+- Fix a single window with :opt:`draw_window_borders_for_single_window` having no border, and with :opt:`window_border_radius` being hidden by an extra layer of background, when its margin is narrower than its border. Space for the border is now reserved between the margin and the window contents (:iss:`10899`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

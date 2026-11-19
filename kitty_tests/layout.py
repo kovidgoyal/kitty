@@ -1141,6 +1141,43 @@ class TestReservedSpaces(BaseSplitGeometryTest):
                                 self.assertFalse(overlaps, f'{a} overlaps {b}')
 
 
+class ThickBorderWindow(Window):
+    def effective_border(self):
+        return 3
+
+
+class TestSingleWindowBorders(BaseSplitGeometryTest):
+    def test_single_window_border_fits_in_central_area(self):
+        # With draw_window_borders_for_single_window the border of a single
+        # visible window must be reserved by the layout, it must not overlap
+        # the margin, which can be narrower than the border.
+        # A visible dock makes for more than one visible group, so borders are
+        # drawn around the single layoutable group, unless they are minimal.
+        central = Region((19, 47, 1518, 1146, 1500, 1100))
+        for draw, has_dock, minimal in ((True, False, False), (False, False, False), (False, True, False), (False, True, True), (True, True, True)):
+            self.set_options({'tab_bar_style': 'hidden', 'draw_window_borders_for_single_window': draw})
+            for cls in (Tall, Fat, Grid, Horizontal, Vertical, Splits, Stack):
+                for num in (1, 3):
+                    if num > 1 and cls is not Stack:
+                        continue
+                    layout = create_layout(cls)
+                    windows = create_windows(layout, num=num, window_class=ThickBorderWindow)
+                    self.stub_dimensions(layout, central, minimal=minimal)
+                    layout.has_more_than_one_visible_group = has_dock
+                    layout(windows)
+                    rects = []
+                    add_borders(rects, BorderColor.active, windows.active_group)
+                    frame = min(r.left for r in rects), min(r.top for r in rects), max(r.right for r in rects), max(r.bottom for r in rects)
+                    reserved = not minimal and (draw or (has_dock and cls is not Stack))
+                    with self.subTest(layout=cls.name, num=num, draw=draw, has_dock=has_dock, minimal=minimal):
+                        if reserved:
+                            # the margin of 1 is outside the border
+                            self.ae(frame, (central.left + 1, central.top + 1, central.left + central.width - 1, central.top + central.height - 1))
+                        else:
+                            # no space is reserved for the border, so it extends past the margin
+                            self.assertLess(frame[0], central.left)
+
+
 class WideMarginWindow(Window):
     def effective_margin(self, edge):
         return 5

@@ -36,7 +36,14 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
         sizes = session.os_window_size
         remember_window_size = False  # a size specified in the session takes precedence over the remembered size
     return WindowSizeData(
-        sizes, remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.single_window_padding_width, opts.window_padding_width
+        sizes,
+        remember_window_size,
+        opts.single_window_margin_width,
+        opts.window_margin_width,
+        opts.single_window_padding_width,
+        opts.window_padding_width,
+        opts.draw_window_borders_for_single_window,
+        opts.window_border_width,
     )
 
 

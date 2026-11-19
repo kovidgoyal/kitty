@@ -774,10 +774,16 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
         unsigned long color;
         long long border_type;
         BorderRect *r = br->rect_buf + i;
-        int horizontal, render;
-        if (!PyArg_ParseTuple(
-                pr, "IIIIkLppII", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &border_type, &horizontal, &render, &r->radius, &r->thickness))
+        int horizontal, render, left, top, right, bottom;
+        if (!PyArg_ParseTuple(pr, "iiiikLppII", &left, &top, &right, &bottom, &color, &border_type, &horizontal, &render, &r->radius, &r->thickness))
             return NULL;
+        // Borders can extend past the edges of the OS window, for instance when
+        // a window's margin is smaller than its border, so clip them to it.
+        const int vw = (int)osw->viewport_width, vh = (int)osw->viewport_height;
+        r->px.left = MIN(MAX(left, 0), vw);
+        r->px.top = MIN(MAX(top, 0), vh);
+        r->px.right = MIN(MAX(right, (int)r->px.left), vw);
+        r->px.bottom = MIN(MAX(bottom, (int)r->px.top), vh);
         r->left = gl_pos_x(r->px.left, osw->viewport_width);
         r->top = gl_pos_y(r->px.top, osw->viewport_height);
         r->right = r->left + gl_size(r->px.right - r->px.left, osw->viewport_width);

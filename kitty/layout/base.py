@@ -373,6 +373,7 @@ class Layout:
     name: str = ''
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
+    has_more_than_one_visible_group = False
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
     drag_overlay_mode: ClassVar[DragOverlayMode] = DragOverlayMode.full
@@ -697,7 +698,9 @@ class Layout:
         lgd.central, self.tab_dock_placements = carve_docks(tab_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
-        lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, all_windows.has_more_than_one_visible_group)
+        # Visible docks count, as borders are drawn around them too
+        self.has_more_than_one_visible_group = all_windows.has_more_than_one_visible_group
+        lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, self.has_more_than_one_visible_group)
 
     def __call__(self, all_windows: WindowList) -> None:
         self._set_dimensions(all_windows)
@@ -836,7 +839,12 @@ class Layout:
         dock.set_geometry(window_geometry_from_layouts(x, y))
 
     def layout_single_window_group(self, wg: WindowGroup) -> None:
-        bw = 1 if self.must_draw_borders else 0
+        # Reserve space for the border whenever a full border is drawn around
+        # the window (see Tab.relayout_borders() and Borders), otherwise it
+        # overlaps the margin and spills past the edges of the OS window when
+        # the margin is narrower than the border
+        draws_borders = get_options().draw_window_borders_for_single_window or (self.needs_window_borders and self.has_more_than_one_visible_group)
+        bw = 1 if self.must_draw_borders or (draws_borders and not lgd.draw_minimal_borders) else 0
         xdecoration_pairs = (
             (
                 wg.decoration('left', border_mult=bw, is_single_window=True),
