@@ -226,6 +226,12 @@ cell_set_chars(CPUCell *c, TextCache *tc, const ListOfChars *lc) {
     }
 }
 
+// The glyph registered with the glyph protocol bound to the cell when its text was printed
+static inline struct VGGlyph *
+cell_registered_glyph(const CPUCell *c, const TextCache *tc) {
+    return c->ch_is_idx ? tc_glyph_at_index(tc, c->ch_or_idx) : NULL;
+}
+
 static inline char_type
 cell_first_char(const CPUCell *c, const TextCache *tc) {
     if (c->ch_is_idx) {

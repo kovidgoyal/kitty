@@ -142,6 +142,8 @@ typedef struct {
         CursorRenderInfo cursor;
     } last_rendered;
     bool is_dirty, scroll_changed, reload_all_gpu_data, sgr_blink_was_used;
+    // When the text cache was last garbage collected to stay within the glyph protocol limits
+    monotonic_t last_glyph_limit_gc_at;
     // set once a multiline (scale > 1) char has been drawn, used to skip scanning for such chars in hot paths
     bool multiline_chars_used;
     // set when multiline chars may be cut off at the bottom of the main ([0]) or

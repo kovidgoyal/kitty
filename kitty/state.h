@@ -809,7 +809,8 @@ extern GlobalState global_state;
 
 static inline void
 sprite_index_to_pos(unsigned idx, unsigned xnum, unsigned ynum, unsigned *x, unsigned *y, unsigned *z) {
-    div_t r = div(idx & 0x7fffffff, ynum * xnum), r2 = div(r.rem, xnum);
+    // The two high bits are flags, see SPRITE_INDEX_MASK
+    div_t r = div(idx & 0x3fffffff, ynum * xnum), r2 = div(r.rem, xnum);
     *z = r.quot;
     *y = r2.quot;
     *x = r2.rem;

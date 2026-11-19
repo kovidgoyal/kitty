@@ -14,6 +14,14 @@ typedef struct Chars {
 } Chars;
 static_assert(sizeof(Chars) == sizeof(void *) + sizeof(size_t), "reorder Chars");
 
+// Entries bound to a glyph registered with the glyph protocol are rare, so
+// they are kept out of the main map, to not slow down the common case. They
+// are interned in a separate map, keyed by their text and glyph.
+typedef struct BoundChars {
+    Chars text;
+    VGGlyph *glyph;
+} BoundChars;
+
 #define NAME chars_map
 #define KEY_TY Chars
 #define VAL_TY char_type
@@ -21,6 +29,15 @@ static uint64_t hash_chars(Chars k);
 static bool cmpr_chars(Chars a, Chars b);
 #define HASH_FN hash_chars
 #define CMPR_FN cmpr_chars
+#include "kitty-verstable.h"
+
+#define NAME bound_chars_map
+#define KEY_TY BoundChars
+#define VAL_TY char_type
+static uint64_t hash_bound_chars(BoundChars k);
+static bool cmpr_bound_chars(BoundChars a, BoundChars b);
+#define HASH_FN hash_bound_chars
+#define CMPR_FN cmpr_bound_chars
 #include "kitty-verstable.h"
 
 #define MA_NAME Chars
@@ -40,6 +57,15 @@ typedef struct TextCache {
     unsigned adds_since_last_gc, adds_between_gcs;
     CellStyleTable *style_table;
     GlyphRegistry *glyph_registry;
+    // Parallel to array.items, the glyph bound to each entry, NULL until the
+    // first entry is bound. Entries own a reference to their glyph.
+    struct {
+        VGGlyph **items;
+        size_t capacity;
+    } glyphs;
+    bound_chars_map bound_map;
+    // The number of entries bound to glyphs and the memory of those glyphs
+    size_t bound_count, bound_memory;
 } TextCache;
 static uint64_t
 hash_chars(Chars k) {
@@ -48,6 +74,20 @@ hash_chars(Chars k) {
 static bool
 cmpr_chars(Chars a, Chars b) {
     return a.count == b.count && memcmp(a.chars, b.chars, sizeof(a.chars[0]) * a.count) == 0;
+}
+static uint64_t
+hash_bound_chars(BoundChars k) {
+    return hash_chars(k.text) ^ ((uint64_t)(uintptr_t)k.glyph * 0x9E3779B97F4A7C15ull);
+}
+static bool
+cmpr_bound_chars(BoundChars a, BoundChars b) {
+    return a.glyph == b.glyph && cmpr_chars(a.text, b.text);
+}
+
+static void
+release_glyphs(VGGlyph **items, size_t count) {
+    if (items)
+        for (size_t i = 0; i < count; i++) items[i] = vg_decref(items[i]);
 }
 
 #define TEXT_CACHE_IMPLEMENTATION
@@ -74,12 +114,16 @@ tc_alloc(void) {
         return NULL;
     }
     vt_init(&ans->map);
+    vt_init(&ans->bound_map);
     ans->refcnt = 1;
     return ans;
 }
 
 static void
 free_text_cache(TextCache *self) {
+    release_glyphs(self->glyphs.items, MIN(self->glyphs.capacity, self->array.count));
+    free(self->glyphs.items);
+    vt_cleanup(&self->bound_map);
     vt_cleanup(&self->map);
     Chars_free_all(&self->arena);
     free(self->array.items);
@@ -169,7 +213,7 @@ tc_chars_at_index_ansi(const TextCache *self, char_type idx, ANSIBuf *output) {
 }
 
 static char_type
-copy_and_insert(TextCache *self, const Chars key) {
+copy_and_insert(TextCache *self, const Chars key, VGGlyph *glyph) {
     if (self->array.count > MAX_CHAR_TYPE_VALUE) fatal("Too many items in TextCache");
     ensure_space_for(&(self->array), items, Chars, self->array.count + 1, capacity, 256, false);
     char_type *copy = Chars_get(&self->arena, key.count * sizeof(key.chars[0]));
@@ -179,20 +223,64 @@ copy_and_insert(TextCache *self, const Chars key) {
     Chars *k = self->array.items + self->array.count++;
     k->count = key.count;
     k->chars = copy;
-    chars_map_itr i = vt_insert(&self->map, *k, ans);
-    if (vt_is_end(i)) fatal("Out of memory");
+    if (glyph) {
+        if (self->glyphs.capacity <= ans) {
+            const size_t cap = MAX(self->array.capacity, (size_t)ans + 1);
+            VGGlyph **g = realloc(self->glyphs.items, cap * sizeof(g[0]));
+            if (!g) fatal("Out of memory");
+            memset(g + self->glyphs.capacity, 0, (cap - self->glyphs.capacity) * sizeof(g[0]));
+            self->glyphs.items = g;
+            self->glyphs.capacity = cap;
+        }
+        self->glyphs.items[ans] = vg_incref(glyph);
+        self->bound_count++;
+        self->bound_memory += glyph->memory_size;
+        if (vt_is_end(vt_insert(&self->bound_map, ((BoundChars){.text = *k, .glyph = glyph}), ans))) fatal("Out of memory");
+    } else if (vt_is_end(vt_insert(&self->map, *k, ans))) fatal("Out of memory");
     return ans;
+}
+
+VGGlyph *
+tc_glyph_at_index(const TextCache *self, char_type idx) {
+    return idx < self->glyphs.capacity ? self->glyphs.items[idx] : NULL;
+}
+
+static char_type
+get_or_insert(TextCache *self, Chars key, VGGlyph *glyph, bool *added) {
+    *added = false;
+    if (glyph) {
+        bound_chars_map_itr i = vt_get(&self->bound_map, ((BoundChars){.text = key, .glyph = glyph}));
+        if (!vt_is_end(i)) return i.data->val;
+    } else {
+        chars_map_itr i = vt_get(&self->map, key);
+        if (!vt_is_end(i)) return i.data->val;
+    }
+    *added = true;
+    return copy_and_insert(self, key, glyph);
 }
 
 char_type
 tc_get_or_insert_chars(TextCache *self, const ListOfChars *chars) {
-    Chars key = {.count = chars->count, .chars = chars->chars};
-    chars_map_itr i = vt_get(&self->map, key);
-    if (vt_is_end(i)) {
-        self->adds_since_last_gc++;
-        return copy_and_insert(self, key);
-    }
-    return i.data->val;
+    return tc_get_or_insert_chars_with_glyph(self, chars, NULL);
+}
+
+char_type
+tc_get_or_insert_chars_with_glyph(TextCache *self, const ListOfChars *chars, VGGlyph *glyph) {
+    bool added;
+    const char_type ans = get_or_insert(self, (Chars){.count = chars->count, .chars = chars->chars}, glyph, &added);
+    if (added) self->adds_since_last_gc++;
+    return ans;
+}
+
+void
+tc_bound_glyph_usage(const TextCache *self, size_t *count, size_t *memory) {
+    *count = self->bound_count;
+    *memory = self->bound_memory;
+}
+
+bool
+tc_has_adds_since_last_gc(const TextCache *self) {
+    return self->adds_since_last_gc > 0;
 }
 
 char_type
@@ -219,6 +307,8 @@ tc_should_gc(const TextCache *self) {
 struct TextCacheGCData {
     Chars *old_items;
     char_type old_count;
+    VGGlyph **old_glyphs;
+    size_t old_glyphs_capacity;
     CharsMonotonicArena old_arena;
     // old index -> new index + 1, 0 means not yet remapped
     char_type *map;
@@ -243,6 +333,14 @@ tc_gc_begin(TextCache *self) {
     self->array.capacity = 256;
     self->array.count = 0;
     zero_at_ptr(&self->arena);
+    gc->old_glyphs = self->glyphs.items;
+    gc->old_glyphs_capacity = self->glyphs.capacity;
+    zero_at_ptr(&self->glyphs);
+    // Recomputed as the live entries are re-inserted
+    self->bound_count = 0;
+    self->bound_memory = 0;
+    vt_cleanup(&self->bound_map);
+    vt_init(&self->bound_map);
     vt_cleanup(&self->map);
     vt_init(&self->map);
     // Avoid rehashing repeatedly as the live entries are re-inserted, the live
@@ -256,9 +354,9 @@ bool
 tc_gc_map_index(TextCache *self, TextCacheGCData *gc, char_type old_idx, char_type *new_idx) {
     if (old_idx >= gc->old_count) return false;
     if (!gc->map[old_idx]) {
-        Chars key = gc->old_items[old_idx];
-        chars_map_itr i = vt_get(&self->map, key);
-        char_type nidx = vt_is_end(i) ? copy_and_insert(self, key) : i.data->val;
+        VGGlyph *glyph = old_idx < gc->old_glyphs_capacity ? gc->old_glyphs[old_idx] : NULL;
+        bool added;
+        const char_type nidx = get_or_insert(self, gc->old_items[old_idx], glyph, &added);
         gc->map[old_idx] = nidx + 1;
     }
     *new_idx = gc->map[old_idx] - 1;
@@ -275,6 +373,9 @@ tc_gc_end(TextCache *self, TextCacheGCData *gc) {
     // is harmless, the map grows as needed.
     (void)vt_reserve(&self->map, self->array.count + MAX(TEXT_CACHE_ADDS_BETWEEN_GCS, self->array.count));
     free(gc->map);
+    // The entries that are still referenced hold their own reference to their glyph
+    release_glyphs(gc->old_glyphs, MIN(gc->old_glyphs_capacity, gc->old_count));
+    free(gc->old_glyphs);
     free(gc->old_items);
     Chars_free_all(&gc->old_arena);
     free(gc);

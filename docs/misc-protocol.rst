@@ -197,6 +197,45 @@ The status is shown in the tab bar via the :code:`tab.program_status` field of
 :code:`on_program_status_change`.
 
 
+Glyphs registered by programs
+---------------------------------
+
+kitty implements the `Glyph Protocol
+<https://github.com/raphamorim/rio/blob/main/specs/glyph-protocol.md>`__,
+which lets programs register vector glyphs for the codepoints
+:code:`U+100000` to :code:`U+1003FF` and then use them as icons in their
+output, without needing a font. kitty implements it as follows:
+
+* Only the :code:`vg` payload format, SVG path data with fills, strokes,
+  gradients and clips, is supported. The font based :code:`glyf`,
+  :code:`colrv0` and :code:`colrv1` formats are not.
+
+* The :code:`width` key is ignored. A glyph is rendered into the cells its
+  character occupies. Use the :doc:`text sizing protocol <text-sizing-protocol>`
+  to render glyphs in more than one cell or at a larger size. As with other
+  private use characters, a glyph followed by a space is rendered in two cells,
+  when the width of its viewBox, scaled to the height of a cell, is more than
+  one cell.
+
+* Queries for grapheme clusters are not supported. Queries for codepoints
+  outside the registration block are answered with :code:`reason=unknown`, as
+  kitty does not perform font lookups while parsing input. Queries for
+  codepoints in the registration block are answered from the registrations.
+
+* The glyph registered for a codepoint is bound to the text when it is
+  printed. Changing or clearing a registration affects only text printed
+  afterwards, so programs using the same codepoints for different glyphs do not
+  change each other's output, in the scrollback or on screen. Colors that use
+  the foreground color are applied when the glyph is drawn, so they follow
+  changes to the foreground color, such as selection and the cursor.
+
+* Each window can keep alive a limited number of glyphs, whether registered or
+  used by its text, including text in the scrollback. Beyond that, new
+  registrations fail with :code:`no_space` until text using glyphs is erased
+  or scrolls out of the scrollback. Glyphs and the GPU memory used to draw
+  them are released when no longer used by any text.
+
+
 kitty specific private escape codes
 ---------------------------------------
 
