@@ -22,6 +22,7 @@
 #include "data-types.h"
 #include "control-codes.h"
 #include "screen.h"
+#include "vector-glyph.h"
 #include "dnd.h"
 #include "state.h"
 #include "iqsort.h"
@@ -264,6 +265,7 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
         self->pixel_scroll_offset_y = 0;
         self->scroll_changed = true;
         clear_hyperlink_pool(self->hyperlink_pool);
+        glyph_registry_clear_all(tc_glyph_registry(self->text_cache));
         grman_clear(self->main_grman, false, self->cell_size); // dont delete images in scrollback
         grman_clear(self->alt_grman, true, self->cell_size);
     }
@@ -2473,8 +2475,8 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 #define GLYPH_SUPPORTED_FORMATS ""
 
 static bool
-glyph_is_registered(Screen *self UNUSED, char_type cp UNUSED) {
-    return false;
+glyph_is_registered(Screen *self, char_type cp) {
+    return glyph_registry_get(tc_glyph_registry(self->text_cache), cp) != NULL;
 }
 
 static void
@@ -2527,13 +2529,59 @@ glyph_handle_query(Screen *self, const GlyphCommand *cmd) {
     }
 }
 
+// Reply to r and c, reason is NULL on success
+static void
+glyph_reply_status(Screen *self, const GlyphCommand *cmd, const char *reason) {
+    if (cmd->reply == GLYPH_REPLY_NONE || (cmd->reply == GLYPH_REPLY_FAILURES && !reason)) return;
+    char cp[32] = {0};
+    if (cmd->has_cp && cmd->cp_valid) snprintf(cp, sizeof(cp), "cp=%x;", cmd->cp);
+    if (reason) glyph_reply(self, GLYPH_PROTOCOL_PREFIX "%c;%sstatus=1;reason=%s", cmd->verb, cp, reason);
+    else glyph_reply(self, GLYPH_PROTOCOL_PREFIX "%c;%sstatus=0", cmd->verb, cp);
+}
+
+static const char *
+glyph_register(Screen *self, const GlyphCommand *cmd, const uint8_t *buf) {
+    if (!cmd->has_cp || !cmd->cp_valid || !is_glyph_block_codepoint(cmd->cp)) return "out_of_namespace";
+    if (cmd->fmt != GLYPH_FMT_VG) return "unsupported_format";
+    if (!cmd->has_vb || !cmd->placement_valid) return "malformed_payload";
+    if (cmd->payload_sz > GLYPH_MAX_PAYLOAD_SIZE) return "payload_too_large";
+    VGError err;
+    const char *err_msg;
+    VGGlyph *g = vg_parse(buf + cmd->payload_start, cmd->payload_sz, &cmd->placement, &err, &err_msg);
+    if (!g) {
+        switch (err) {
+            case VG_OK:
+            case VG_MALFORMED: return "malformed_payload";
+            case VG_TOO_LARGE: return "outline_too_large";
+            case VG_OUT_OF_MEMORY: return "no_space";
+        }
+        return "malformed_payload";
+    }
+    const bool ok = glyph_registry_set(tc_glyph_registry(self->text_cache), cmd->cp, g);
+    vg_decref(g);
+    if (!ok) return "no_space";
+    self->is_dirty = true;
+    return NULL;
+}
+
+static const char *
+glyph_clear(Screen *self, const GlyphCommand *cmd) {
+    GlyphRegistry *r = tc_glyph_registry(self->text_cache);
+    if (cmd->has_cp) {
+        if (!cmd->cp_valid || !is_glyph_block_codepoint(cmd->cp)) return "out_of_namespace";
+        glyph_registry_clear(r, cmd->cp);
+    } else glyph_registry_clear_all(r);
+    self->is_dirty = true;
+    return NULL;
+}
+
 void
-screen_handle_glyph_command(Screen *self, const GlyphCommand *cmd, const uint8_t *buf UNUSED) {
+screen_handle_glyph_command(Screen *self, const GlyphCommand *cmd, const uint8_t *buf) {
     switch (cmd->verb) {
         case GLYPH_VERB_SUPPORT: glyph_reply(self, GLYPH_PROTOCOL_PREFIX "s;fmt=" GLYPH_SUPPORTED_FORMATS); break;
         case GLYPH_VERB_QUERY: glyph_handle_query(self, cmd); break;
-        case GLYPH_VERB_REGISTER:
-        case GLYPH_VERB_CLEAR: break;
+        case GLYPH_VERB_REGISTER: glyph_reply_status(self, cmd, glyph_register(self, cmd, buf)); break;
+        case GLYPH_VERB_CLEAR: glyph_reply_status(self, cmd, glyph_clear(self, cmd)); break;
     }
 }
 // }}}

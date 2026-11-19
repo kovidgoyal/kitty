@@ -7,6 +7,7 @@
 
 #include "data-types.h"
 #include "style-table.h"
+#include "vector-glyph.h"
 typedef struct Chars {
     const char_type *chars;
     size_t count;
@@ -38,6 +39,7 @@ typedef struct TextCache {
     CharsMonotonicArena arena;
     unsigned adds_since_last_gc, adds_between_gcs;
     CellStyleTable *style_table;
+    GlyphRegistry *glyph_registry;
 } TextCache;
 static uint64_t
 hash_chars(Chars k) {
@@ -63,7 +65,10 @@ tc_alloc(void) {
         return ans;
     }
     ans->style_table = style_table_alloc();
-    if (!ans->style_table) {
+    ans->glyph_registry = glyph_registry_alloc();
+    if (!ans->style_table || !ans->glyph_registry) {
+        style_table_free(ans->style_table);
+        glyph_registry_free(ans->glyph_registry);
         free(ans->array.items);
         free(ans);
         return NULL;
@@ -79,12 +84,18 @@ free_text_cache(TextCache *self) {
     Chars_free_all(&self->arena);
     free(self->array.items);
     style_table_free(self->style_table);
+    glyph_registry_free(self->glyph_registry);
     free(self);
 }
 
 CellStyleTable *
 tc_style_table(const TextCache *self) {
     return self->style_table;
+}
+
+GlyphRegistry *
+tc_glyph_registry(const TextCache *self) {
+    return self->glyph_registry;
 }
 
 TextCache *
