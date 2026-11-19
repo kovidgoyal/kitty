@@ -37,29 +37,48 @@ else:
         return Face(descriptor=descriptor)
 
 
-cache_for_variable_data_by_path: dict[str, VariableData] = {}
+# The path alone does not identify a face, as font collection files contain
+# multiple faces, so the key also has the face index for fontconfig and the
+# postscript name for CoreText, which does not expose the face index. The high
+# 16 bits of the fontconfig index are the named instance, which has the same
+# variable data as the face.
+VariableDataCacheKey = tuple[str, int, str]
+cache_for_variable_data: dict[VariableDataCacheKey, VariableData] = {}
 
 
 def clear_caches() -> None:
-    cache_for_variable_data_by_path.clear()
+    cache_for_variable_data.clear()
+
+
+def variable_data_cache_key_for_descriptor(d: Descriptor) -> VariableDataCacheKey:
+    if d['descriptor_type'] == 'core_text':
+        return d['path'], 0, d['postscript_name']
+    return d['path'], d.get('index', 0) & 0xFFFF, ''
+
+
+def variable_data_cache_key_for_face(face: Face) -> VariableDataCacheKey:
+    if is_macos:
+        return face.path or '', 0, face.postscript_name()
+    return face.path or '', cast('FT_Face', face).index & 0xFFFF, ''
 
 
 def get_variable_data_for_descriptor(d: Descriptor) -> VariableData:
     if not d['path']:
         return face_from_descriptor(d).get_variable_data()
-    ans = cache_for_variable_data_by_path.get(d['path'])
+    key = variable_data_cache_key_for_descriptor(d)
+    ans = cache_for_variable_data.get(key)
     if ans is None:
-        ans = cache_for_variable_data_by_path[d['path']] = face_from_descriptor(d).get_variable_data()
+        ans = cache_for_variable_data[key] = face_from_descriptor(d).get_variable_data()
     return ans
 
 
 def get_variable_data_for_face(d: Face) -> VariableData:
-    path = d.path
-    if not path:
+    if not d.path:
         return d.get_variable_data()
-    ans = cache_for_variable_data_by_path.get(path)
+    key = variable_data_cache_key_for_face(d)
+    ans = cache_for_variable_data.get(key)
     if ans is None:
-        ans = cache_for_variable_data_by_path[path] = d.get_variable_data()
+        ans = cache_for_variable_data[key] = d.get_variable_data()
     return ans
 
 
