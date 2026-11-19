@@ -219,10 +219,13 @@ pread_all(int fd, uint8_t *buf, size_t sz, off_t offset) {
     while (done < sz) {
         ssize_t n = pread(fd, buf + done, sz - done, offset + (off_t)done);
         if (n < 0) {
-            if (errno == EINTR) continue;
+            if (errno == EINTR) {
+                errno = 0;
+                continue;
+            }
             return false;
         }
-        if (n == 0) return false;
+        if (n == 0) return false; // truncated file, errno is left untouched
         done += (size_t)n;
     }
     return true;
@@ -524,11 +527,14 @@ end:
 }
 #endif
 
+// On failure errno is non-zero if the failure was caused by an OS error and
+// zero if the file is not a valid font or does not contain the specified face.
 bool
 fs_read_font_tables_from_file(const char *path, int index, FSFontTables *t) {
     memset(t, 0, sizeof(*t));
     int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) return false;
+    errno = 0;
     bool ok = false;
     uint8_t header[12];
     uint8_t *records = NULL;
@@ -580,13 +586,16 @@ fs_read_font_tables_from_file(const char *path, int index, FSFontTables *t) {
     ok = true;
 end:
     free(records);
+    const int saved_errno = errno;
     close(fd);
     if (!ok) fs_free_font_tables(t);
+    errno = saved_errno;
     return ok;
 }
 
 typedef struct NameRecord {
     uint16_t platform_id, encoding_id, language_id, name_id, length;
+    uint32_t order; // position in the name table
     const uint8_t *data;
 } NameRecord;
 
@@ -594,6 +603,13 @@ typedef struct NameTable {
     NameRecord *records;
     size_t count, capacity;
 } NameTable;
+
+static int
+cmp_name_records(const void *a_, const void *b_) {
+    const NameRecord *a = a_, *b = b_;
+    if (a->name_id != b->name_id) return a->name_id < b->name_id ? -1 : 1;
+    return a->order < b->order ? -1 : (a->order > b->order ? 1 : 0);
+}
 
 static void
 parse_name_table(const uint8_t *table, size_t table_len, NameTable *nt) {
@@ -608,9 +624,15 @@ parse_name_table(const uint8_t *table, size_t table_len, NameTable *nt) {
         const uint8_t *s = storage + be16(p + 10);
         if (s + r.length > limit) continue;
         r.data = s;
+        r.order = i;
         grow(nt->records, nt->count, nt->capacity);
         nt->records[nt->count++] = r;
     }
+    // Sort by name id, preserving table order within a name id, so that
+    // get_best_name() can find the records for a name id with a binary search
+    // rather than a linear scan, which would make reading a crafted font with
+    // many axes, instances and name records quadratic.
+    if (nt->count > 1) qsort(nt->records, nt->count, sizeof(nt->records[0]), cmp_name_records);
 }
 
 static size_t
@@ -677,25 +699,38 @@ decode_name_record(const NameRecord *r) {
 
 static char *
 get_best_name(const NameTable *nt, unsigned name_id) {
-    const NameRecord *only = NULL;
-    size_t count = 0;
-    for (size_t i = 0; i < nt->count; i++) {
-        if (nt->records[i].name_id == name_id) {
-            if (!count) only = nt->records + i;
-            count++;
-        }
+    // nt->records is sorted by name_id, find the first record with name_id
+    size_t lo = 0, hi = nt->count;
+    while (lo < hi) {
+        const size_t mid = lo + (hi - lo) / 2;
+        if (nt->records[mid].name_id < name_id) lo = mid + 1;
+        else hi = mid;
     }
+    size_t end = lo;
+    while (end < nt->count && nt->records[end].name_id == name_id) end++;
+    const size_t count = end - lo;
     if (!count) return xstrdup("");
-    if (count == 1) return decode_name_record(only);
+    if (count == 1) return decode_name_record(nt->records + lo);
     static const uint16_t priorities[][3] = {{3, 1, 1033}, {1, 0, 0}, {0, 6, 0}, {0, 4, 0}, {0, 3, 0}, {0, 2, 0}, {0, 1, 0}};
     for (size_t p = 0; p < arraysz(priorities); p++) {
-        for (size_t i = 0; i < nt->count; i++) {
+        for (size_t i = lo; i < end; i++) {
             const NameRecord *r = nt->records + i;
-            if (r->name_id == name_id && r->platform_id == priorities[p][0] && r->encoding_id == priorities[p][1] && r->language_id == priorities[p][2])
-                return decode_name_record(r);
+            if (r->platform_id == priorities[p][0] && r->encoding_id == priorities[p][1] && r->language_id == priorities[p][2]) return decode_name_record(r);
         }
     }
     return xstrdup("");
+}
+
+typedef struct TagIndex {
+    uint32_t tag;
+    size_t index;
+} TagIndex;
+
+static int
+cmp_tag_index(const void *a_, const void *b_) {
+    const TagIndex *a = a_, *b = b_;
+    if (a->tag != b->tag) return a->tag < b->tag ? -1 : 1;
+    return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
 }
 
 static void
@@ -717,23 +752,31 @@ read_fvar(const uint8_t *table, size_t table_len, const NameTable *nt, FSVariabl
         a->hidden = be16(pos + 16) & 1;
         a->strid = get_best_name(nt, be16(pos + 18));
     }
+    // A named style uses each tag at most once, like a dict: in the order the
+    // tag first occurs, with the value of its last occurrence. Compute the
+    // slot for each axis once, so that this is not quadratic in the number of
+    // axes for every instance, which a crafted font could exploit.
+    RAII_ALLOC(size_t, slots, xcalloc(vd->num_axes ? vd->num_axes : 1, sizeof(size_t)));
+    size_t num_slots = 0;
+    if (vd->num_axes) {
+        RAII_ALLOC(TagIndex, sorted, xcalloc(vd->num_axes, sizeof(TagIndex)));
+        for (size_t i = 0; i < vd->num_axes; i++) sorted[i] = (TagIndex){.tag = vd->axes[i].tag, .index = i};
+        qsort(sorted, vd->num_axes, sizeof(sorted[0]), cmp_tag_index);
+        // slots[i] temporarily holds the index of the first axis with the same tag as axis i
+        for (size_t i = 0, first = 0; i < vd->num_axes; i++) {
+            if (!i || sorted[i].tag != sorted[i - 1].tag) first = sorted[i].index;
+            slots[sorted[i].index] = first;
+        }
+        for (size_t i = 0; i < vd->num_axes; i++) slots[i] = slots[i] == i ? num_slots++ : slots[slots[i]];
+    }
     vd->named_styles = xcalloc(num_instances, sizeof(vd->named_styles[0]));
     for (const uint8_t *pos = table + offset_to_axes + (size_t)num_axes * axis_size; pos + instance_size <= limit && vd->num_named_styles < num_instances;
          pos += instance_size) {
         FSNamedStyle *ns = vd->named_styles + vd->num_named_styles++;
         ns->name = get_best_name(nt, be16(pos));
-        ns->values = xcalloc(vd->num_axes, sizeof(ns->values[0]));
-        for (size_t i = 0; i < vd->num_axes; i++) {
-            // use the same tag at most once, like a dict
-            bool found = false;
-            for (size_t j = 0; j < ns->num_values; j++) {
-                if (ns->values[j].tag == vd->axes[i].tag) {
-                    ns->values[j].value = fixed(pos + 4 + 4 * i);
-                    found = true;
-                }
-            }
-            if (!found) ns->values[ns->num_values++] = (FSAxisValue){.tag = vd->axes[i].tag, .value = fixed(pos + 4 + 4 * i)};
-        }
+        ns->values = xcalloc(num_slots ? num_slots : 1, sizeof(ns->values[0]));
+        ns->num_values = num_slots;
+        for (size_t i = 0; i < vd->num_axes; i++) ns->values[slots[i]] = (FSAxisValue){.tag = vd->axes[i].tag, .value = fixed(pos + 4 + 4 * i)};
         const uint16_t psname_id = has_postscript_name ? be16(pos + 4 + size_of_coordinates) : 0xffff;
         ns->psname = (psname_id != 0xffff && psname_id) ? get_best_name(nt, psname_id) : xstrdup("");
     }
@@ -2182,15 +2225,23 @@ finish_font_selection(PyObject *self UNUSED, PyObject *args UNUSED) {
     return ans;
 }
 
+// OpenType tags are supposed to be printable ASCII but fonts in the wild can
+// contain arbitrary bytes, which are not valid UTF-8. Decode as Latin-1 so that
+// any tag converts to a four character string and can be converted back losslessly.
+static PyObject *
+tag_to_python(uint32_t tag) {
+    const char b[4] = {(char)(tag >> 24), (char)(tag >> 16), (char)(tag >> 8), (char)tag};
+    return PyUnicode_DecodeLatin1(b, sizeof(b), NULL);
+}
+
 static PyObject *
 axis_values_to_python(const FSAxisValue *values, size_t count) {
     RAII_PyObject(ans, PyDict_New());
     if (!ans) return NULL;
     for (size_t i = 0; i < count; i++) {
-        char tag[5];
-        tag_to_str(values[i].tag, tag);
+        RAII_PyObject(tag, tag_to_python(values[i].tag));
         RAII_PyObject(v, PyFloat_FromDouble(values[i].value));
-        if (!v || PyDict_SetItemString(ans, tag, v) != 0) return NULL;
+        if (!tag || !v || PyDict_SetItem(ans, tag, v) != 0) return NULL;
     }
     Py_INCREF(ans);
     return ans;
@@ -2202,12 +2253,12 @@ variable_data_to_python(const FSVariableData *vd) {
     RAII_PyObject(named_styles, PyTuple_New(vd->num_named_styles));
     RAII_PyObject(design_axes, PyTuple_New(vd->num_design_axes));
     if (!axes || !named_styles || !design_axes) return NULL;
-    char tag[5];
     for (size_t i = 0; i < vd->num_axes; i++) {
         const FSVarAxis *a = vd->axes + i;
-        tag_to_str(a->tag, tag);
+        PyObject *tag = tag_to_python(a->tag);
+        if (!tag) return NULL;
         PyObject *x = Py_BuildValue(
-            "{sd sd sd sO ss ss}",
+            "{sd sd sd sO sN ss}",
             "minimum",
             a->minimum,
             "maximum",
@@ -2225,7 +2276,9 @@ variable_data_to_python(const FSVariableData *vd) {
     }
     for (size_t i = 0; i < vd->num_named_styles; i++) {
         const FSNamedStyle *ns = vd->named_styles + i;
-        PyObject *x = Py_BuildValue("{sN ss ss}", "axis_values", axis_values_to_python(ns->values, ns->num_values), "name", ns->name, "psname", ns->psname);
+        PyObject *axis_values = axis_values_to_python(ns->values, ns->num_values);
+        if (!axis_values) return NULL;
+        PyObject *x = Py_BuildValue("{sN ss ss}", "axis_values", axis_values, "name", ns->name, "psname", ns->psname);
         if (!x) return NULL;
         PyTuple_SET_ITEM(named_styles, i, x);
     }
@@ -2262,8 +2315,9 @@ variable_data_to_python(const FSVariableData *vd) {
             if (!x) return NULL;
             PyList_SET_ITEM(values, j, x);
         }
-        tag_to_str(da->tag, tag);
-        PyObject *x = Py_BuildValue("{ss ss sI sO}", "tag", tag, "name", da->name, "ordering", da->ordering, "values", values);
+        PyObject *tag = tag_to_python(da->tag);
+        if (!tag) return NULL;
+        PyObject *x = Py_BuildValue("{sN ss sI sO}", "tag", tag, "name", da->name, "ordering", da->ordering, "values", values);
         if (!x) return NULL;
         PyTuple_SET_ITEM(design_axes, i, x);
     }
@@ -2288,7 +2342,8 @@ variable_data_from_font_file(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "s|i", &path, &index)) return NULL;
     FSFontTables t = {0};
     if (!fs_read_font_tables_from_file(path, index, &t)) {
-        PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
+        if (errno) PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
+        else PyErr_Format(PyExc_ValueError, "%s is not a valid font file or does not contain a face with index %d", path, index);
         return NULL;
     }
     FSVariableData vd;
