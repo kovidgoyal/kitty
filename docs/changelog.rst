@@ -127,6 +127,8 @@ Detailed list of changes
 
 - Fix a crash when calling :code:`Screen.hyperlink_at()` with coordinates outside the screen, such as from a watcher (:iss:`10890`)
 
+- Fix animated images stopping when switching to a tab without animations and then back (:iss:`10894`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

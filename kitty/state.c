@@ -666,6 +666,10 @@ set_active_tab(id_type os_window_id, unsigned int idx) {
     WITH_OS_WINDOW(os_window_id)
     os_window->active_tab = idx;
     os_window->needs_render = true;
+    // Animations are only scanned in windows of the active tab, so if the
+    // previously active tab had none, scanning stopped and must be restarted
+    // for the newly active tab, see https://github.com/kovidgoyal/kitty/issues/10894
+    global_state.check_for_active_animated_images = true;
     update_os_window_visibility_reports(os_window);
     END_WITH_OS_WINDOW
 }
