@@ -1795,3 +1795,18 @@ class GlyphCommandDict(TypedDict, total=False):
 
 def parse_glyph_command(data: bytes) -> GlyphCommandDict: ...
 def parse_vg(payload: bytes, vb: tuple[float, float, float, float]) -> dict[str, Any]: ...
+
+class RenderedVG(TypedDict):
+    work: int
+    color: bytes | None
+    fg: bytes | None
+
+def render_vg(
+    payload: bytes,
+    vb: tuple[float, float, float, float],
+    width: int,
+    height: int,
+    fit: str = 'contain',
+    align: tuple[str, str] = ('center', 'center'),
+    repeat: int = 1,
+) -> RenderedVG: ...
