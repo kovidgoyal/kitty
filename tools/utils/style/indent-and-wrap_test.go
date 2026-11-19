@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 func TestFormatWithIndent(t *testing.T) {
@@ -87,14 +89,8 @@ func TestIncompleteExtendedColor(t *testing.T) {
 	initial := sgr_color{number: 201}
 	for _, params := range [][]int{nil, {5}, {2, 3, 4}} {
 		color := initial
-		if color.from_extended(params) || color != initial {
+		if consumed := color.from_params(params); consumed != min(len(params), 1) || color != initial {
 			t.Fatalf("incomplete extended color %v changed the current color to %+v", params, color)
-		}
-	}
-	for _, params := range [][]string{{"5"}, {"5", ""}, {"2", "3", "4"}} {
-		color := initial
-		if remaining := color.from_semicolon_params(params); len(remaining) != 0 || color != initial {
-			t.Fatalf("incomplete extended color %q left parameters %q and color %+v", params, remaining, color)
 		}
 	}
 }
@@ -141,14 +137,81 @@ func TestSGRStateParsing(t *testing.T) {
 		"48;2;1;2;3;4:3m": "4:3;48:2:1:2:3",
 		// unknown color types discard the rest of the parameters
 		"1;38;7;3m": "1",
-		// invalid colors are ignored
-		"38;5;x;3m": "3",
-		"38:5:x;3m": "3",
+		// invalid characters cause the whole code to be ignored
+		"1;38;5;x;3m": "",
+		"1;38:5:x;3m": "",
+		"?1m":         "",
+		">4;1m":       "",
+		"1 m":         "",
+		"1-m":         "",
+		"-m":          "",
+		// empty parameters terminated by a semicolon are zero, i.e. reset
+		";m":             "",
+		";1m":            "1",
+		"1;;3m":          "3",
+		"1;38;5;200;;3m": "3",
+		"1;38;5;;m":      "1;30",
+		"38;5;;1m":       "1;30",
+		// empty parameters terminated by a colon or the end are dropped
+		"1;38;5;m":     "1",
+		"1;38;2;1;2;m": "1",
+		"38:5::200m":   "38:5:200",
+		"1;4:m":        "1;4:1",
+		// empty sub-parameters terminated by a semicolon are zero
+		"4:;31m":       "31",
+		"4:3;38:5:;1m": "1;4:3;30",
+		// a leading colon makes the code invalid
+		":m":  "",
+		"::m": "",
+		// parameters are truncated to 16 digits and wrap at 32 bits
+		"4294967299m":          "3",
+		"1;00000000000000003m": "",
+		// negative parameters
+		"-5m":           "",
+		"-;3m":          "3",
+		"4:-3m":         "4:5",
+		"4:-8m":         "",
+		"4:-1m":         "",
+		"1;221m":        "",
+		"2;222m":        "",
+		"1;;:3m":        "",
+		"58:2::1:2:3m":  "58:2:1:2:3",
+		"38;2;1;2;3;4m": "4:1;38:2:1:2:3",
+		// underline styles
+		"4:3m":    "4:3",
+		"4:9m":    "4:5",
+		"21m":     "4:2",
+		"4:3;24m": "",
+		"4;4:0m":  "",
+		// sub-parameters of plain attributes are ignored
+		"1:2m": "1",
+		// misplaced sub-parameters discard the rest of the code
+		":1m":           "",
+		"3;38;5;1:2;1m": "3;31",
+		// colon and semicolon forms can be mixed
+		"38;:5;1;3m":  "1;3",
+		"38;5:200;1m": "1;38:5:200",
+		"38:5;200;1m": "1",
+		// out of range color indices wrap
+		"38;5;256m": "30",
+		"38;5;-1m":  "38:5:255",
+		// sub-parameters after a color are not part of it
+		"38;2;1;2;3:4;1m": "38:2:1:2:3",
 	} {
 		var s sgr_state
 		s.apply_csi(raw)
 		if actual := s.as_sgr(false); actual != expected {
 			t.Fatalf("Parsing SGR %q gave %q expected %q", raw, actual, expected)
+		}
+	}
+	// Codes with more than the maximum number of parameters are ignored
+	for _, n := range []int{max_csi_params, max_csi_params + 1} {
+		raw := strings.Repeat("1;", n-1) + "3m"
+		var s sgr_state
+		s.apply_csi(raw)
+		expected := utils.IfElse(n > max_csi_params, "", "1;3")
+		if actual := s.as_sgr(false); actual != expected {
+			t.Fatalf("Parsing SGR with %d parameters gave %q expected %q", n, actual, expected)
 		}
 	}
 }
