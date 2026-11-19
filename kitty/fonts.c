@@ -49,7 +49,15 @@ static hb_buffer_t *harfbuzz_buffer = NULL;
 static hb_feature_t hb_features[3] = {{0}};
 static struct {
     char_type *codepoints;
-    size_t capacity;
+    size_t capacity, num_codepoints;
+    // Maps HarfBuzz clusters to cells: for every codepoint offset i in
+    // [0, num_codepoints], ending_by is the number of cells all of whose
+    // codepoints are before i and starting_before the number of cells whose
+    // first codepoint is before i, both counting multicell cells by width
+    struct {
+        uint32_t ending_by, starting_before;
+    } *cells_at;
+    size_t cells_at_capacity;
 } shape_buffer = {0};
 static size_t max_texture_size = 1024, max_array_len = 1024;
 typedef enum { LIGA_FEATURE, DLIG_FEATURE, CALT_FEATURE } HBFeature;
@@ -1262,6 +1270,7 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
 static void
 load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *tc, ListOfChars *lc) {
     size_t num = 0;
+    uint32_t num_cells_done = 0;
     hb_buffer_clear_contents(harfbuzz_buffer);
     // Although hb_buffer_add_codepoints is supposedly an append, we have to
     // add all text in one call otherwise it breaks shaping, presumably because
@@ -1270,9 +1279,20 @@ load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *t
         if (first_cpu_cell->is_multicell && first_cpu_cell->x) continue;
         text_in_cell(first_cpu_cell, tc, lc);
         ensure_space_for((&shape_buffer), codepoints, shape_buffer.codepoints[0], lc->count + num, capacity, 512, false);
+        ensure_space_for((&shape_buffer), cells_at, shape_buffer.cells_at[0], lc->count + num + 1, cells_at_capacity, 512, false);
         memcpy(shape_buffer.codepoints + num, lc->chars, lc->count * sizeof(shape_buffer.codepoints[0]));
+        const uint32_t width = first_cpu_cell->is_multicell ? first_cpu_cell->width * first_cpu_cell->scale : 1;
+        for (size_t i = 0; i < lc->count; i++) {
+            shape_buffer.cells_at[num + i].ending_by = num_cells_done;
+            shape_buffer.cells_at[num + i].starting_before = i ? num_cells_done + width : num_cells_done;
+        }
         num += lc->count;
+        num_cells_done += width;
     }
+    ensure_space_for((&shape_buffer), cells_at, shape_buffer.cells_at[0], num + 1, cells_at_capacity, 512, false);
+    shape_buffer.cells_at[num].ending_by = num_cells_done;
+    shape_buffer.cells_at[num].starting_before = num_cells_done;
+    shape_buffer.num_codepoints = num;
     hb_buffer_add_codepoints(harfbuzz_buffer, shape_buffer.codepoints, num, 0, num);
     hb_buffer_guess_segment_properties(harfbuzz_buffer);
     if (OPT(force_ltr)) hb_buffer_set_direction(harfbuzz_buffer, HB_DIRECTION_LTR);
@@ -1473,24 +1493,18 @@ render_group(
 #undef failed
 }
 
-typedef struct {
-    CPUCell *cpu_cell;
-    GPUCell *gpu_cell;
-    unsigned int num_codepoints;
-    unsigned int codepoints_consumed;
-    char_type current_codepoint;
-} CellData;
-
 typedef ShapeGroup Group;
 
 typedef struct {
-    uint32_t previous_cluster;
+    // The codepoints [shaped_start, shaped_end) belong to the clusters of the
+    // glyphs grouped so far, which completed num_shaped_cells cells, see
+    // consume_cells_of_cluster()
+    uint32_t shaped_start, shaped_end, num_shaped_cells;
     bool prev_was_special, prev_was_empty;
-    CellData current_cell_data;
     Group *groups;
     size_t groups_capacity, group_idx, glyph_idx, cell_idx, num_cells, num_glyphs;
-    CPUCell *first_cpu_cell, *last_cpu_cell;
-    GPUCell *first_gpu_cell, *last_gpu_cell;
+    CPUCell *first_cpu_cell;
+    GPUCell *first_gpu_cell;
     hb_glyph_info_t *info, *info_storage;
     hb_glyph_position_t *positions, *pos_storage;
     size_t glyph_capacity;
@@ -1548,8 +1562,6 @@ restore_shaped_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type 
     group_state.cell_idx = 0;
     group_state.first_cpu_cell = first_cpu_cell;
     group_state.first_gpu_cell = first_gpu_cell;
-    group_state.last_cpu_cell = first_cpu_cell + (num_cells ? num_cells - 1 : 0);
-    group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     return true;
 }
 
@@ -1557,15 +1569,11 @@ static void
 shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb_font_t *font, Font *fobj, bool disable_ligature, const TextCache *tc) {
     if (!ensure_group_capacity(num_cells, 0)) fatal("Out of memory");
     RAII_ListOfChars(lc);
-    text_in_cell(first_cpu_cell, tc, &lc);
-    group_state.previous_cluster = UINT32_MAX;
+    group_state.shaped_start = UINT32_MAX;
+    group_state.shaped_end = 0;
+    group_state.num_shaped_cells = 0;
     group_state.prev_was_special = false;
     group_state.prev_was_empty = false;
-    group_state.current_cell_data.cpu_cell = first_cpu_cell;
-    group_state.current_cell_data.gpu_cell = first_gpu_cell;
-    group_state.current_cell_data.num_codepoints = MAX(1u, lc.count);
-    group_state.current_cell_data.codepoints_consumed = 0;
-    group_state.current_cell_data.current_codepoint = lc.chars[0];
     zero_at_ptr_count(group_state.groups, group_state.groups_capacity);
     group_state.group_idx = 0;
     group_state.glyph_idx = 0;
@@ -1573,8 +1581,6 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.num_cells = num_cells;
     group_state.first_cpu_cell = first_cpu_cell;
     group_state.first_gpu_cell = first_gpu_cell;
-    group_state.last_cpu_cell = first_cpu_cell + (num_cells ? num_cells - 1 : 0);
-    group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     load_hb_buffer(first_cpu_cell, num_cells, tc, &lc);
 
     size_t num_features = fobj->num_ffs_hb_features;
@@ -1588,13 +1594,24 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     else group_state.num_glyphs = MIN(info_length, positions_length);
 }
 
+static char_type
+codepoint_for_cluster(uint32_t cluster) {
+    // The first codepoint of the cluster, which is its offset into the shaped text
+    if (cluster >= shape_buffer.num_codepoints) return 0;
+    char_type cc = shape_buffer.codepoints[cluster];
+    // VS15/16 cause rendering to break, as they get marked as
+    // special glyphs, so map to 0, to avoid that
+    return (cc == VS15 || cc == VS16) ? 0 : cc;
+}
+
 static bool
-is_special_glyph(glyph_index glyph_id, Font *font, CellData *cell_data) {
+is_special_glyph(glyph_index glyph_id, Font *font, uint32_t cluster) {
     // A glyph is special if the codepoint it corresponds to matches a
     // different glyph in the font
     GlyphProperties s = find_glyph_properties(font->glyph_properties_hash_table, glyph_id);
     if (!s.special_set) {
-        bool is_special = cell_data->current_codepoint ? (glyph_id != glyph_id_for_codepoint(font->face, cell_data->current_codepoint) ? true : false) : false;
+        const char_type codepoint = codepoint_for_cluster(cluster);
+        bool is_special = codepoint ? (glyph_id != glyph_id_for_codepoint(font->face, codepoint) ? true : false) : false;
         s.special_set = 1;
         s.special_val = is_special;
         set_glyph_properties(font->glyph_properties_hash_table, glyph_id, s);
@@ -1612,30 +1629,6 @@ is_empty_glyph(glyph_index glyph_id, Font *font) {
         set_glyph_properties(font->glyph_properties_hash_table, glyph_id, s);
     }
     return s.empty_val;
-}
-
-static unsigned int
-check_cell_consumed(CellData *cell_data, CPUCell *last_cpu_cell, const TextCache *tc, ListOfChars *lc) {
-    cell_data->codepoints_consumed++;
-    if (cell_data->codepoints_consumed >= cell_data->num_codepoints) {
-        uint16_t width = 1;
-        if (cell_data->cpu_cell->is_multicell) width = cell_data->cpu_cell->width * cell_data->cpu_cell->scale;
-        cell_data->cpu_cell += width;
-        cell_data->gpu_cell += width;
-        cell_data->codepoints_consumed = 0;
-        if (cell_data->cpu_cell <= last_cpu_cell) {
-            text_in_cell(cell_data->cpu_cell, tc, lc);
-            cell_data->num_codepoints = lc->count;
-            cell_data->current_codepoint = lc->chars[0];
-        } else cell_data->current_codepoint = 0;
-        return width;
-    }
-    text_in_cell(cell_data->cpu_cell, tc, lc);
-    char_type cc = lc->chars[cell_data->codepoints_consumed];
-    // VS15/16 cause rendering to break, as they get marked as
-    // special glyphs, so map to 0, to avoid that
-    cell_data->current_codepoint = (cc == VS15 || cc == VS16) ? 0 : cc;
-    return 0;
 }
 
 static LigatureType
@@ -1661,6 +1654,38 @@ ligature_type_from_glyph_name(const char *glyph_name, SpacerStrategy strategy) {
 }
 
 #define G(x) (group_state.x)
+
+static unsigned int
+consume_cells_of_cluster(uint32_t cluster, uint32_t next_cluster) {
+    // Called for the last glyph of a cluster, that is, when next_cluster is
+    // different from cluster, returns the number of cells completed by the
+    // cluster and advances the cell cursor past them.
+    //
+    // Clusters are the offset of their first codepoint in the shaped text and
+    // a cluster covers the codepoints up to the nearest larger cluster. They
+    // increase in a forward (LTR) buffer and decrease in a backward (RTL) one,
+    // where HarfBuzz returns glyphs in visual order. So the clusters seen so
+    // far always cover a prefix of the text, or a suffix of it, and a cell is
+    // completed once all its codepoints are covered, which in a backward buffer
+    // happens with the cluster holding its first codepoint, not its last.
+    const uint32_t n = shape_buffer.num_codepoints;
+    if (cluster >= n) return 0; // cannot happen
+    // In a backward buffer only the first cluster can be the end of the text,
+    // so next_cluster is only needed for forward buffers
+    const uint32_t end = next_cluster > cluster ? next_cluster : n;
+    G(shaped_start) = MIN(G(shaped_start), cluster);
+    G(shaped_end) = MIN(n, MAX(G(shaped_end), end));
+    // cells inside [shaped_start, shaped_end) are those not starting before it
+    // and not ending after it, as the range is a prefix or suffix of the text
+    const uint32_t ending_by = shape_buffer.cells_at[G(shaped_end)].ending_by;
+    const uint32_t starting_before = shape_buffer.cells_at[G(shaped_start)].starting_before;
+    const uint32_t num_shaped_cells = ending_by > starting_before ? ending_by - starting_before : 0;
+    unsigned int num = num_shaped_cells > G(num_shaped_cells) ? num_shaped_cells - G(num_shaped_cells) : 0;
+    G(num_shaped_cells) = MAX(G(num_shaped_cells), num_shaped_cells);
+    num = MIN(num, G(num_cells) - G(cell_idx));
+    G(cell_idx) += num;
+    return num;
+}
 
 static bool
 shaped_glyphs_have_iosevka_join_names(hb_font_t *hbf) {
@@ -1693,7 +1718,7 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font, const TextCache *tc) {
     font->spacer_strategy = SPACERS_BEFORE;
     if (G(num_glyphs) > 1) {
         glyph_index glyph_id = G(info)[G(num_glyphs) - 1].codepoint;
-        bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
+        bool is_special = is_special_glyph(glyph_id, font, G(info)[G(num_glyphs) - 1].cluster);
         bool is_empty = is_special && is_empty_glyph(glyph_id, font);
         if (is_empty) font->spacer_strategy = SPACERS_AFTER;
     }
@@ -1713,7 +1738,7 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font, const TextCache *tc) {
         shape(cpu_cells, gpu_cells, len, hbf, font, false, tc);
         if (G(num_glyphs) > 1) {
             glyph_index glyph_id = G(info)[G(num_glyphs) - 1].codepoint;
-            bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
+            bool is_special = is_special_glyph(glyph_id, font, G(info)[G(num_glyphs) - 1].cluster);
             bool is_empty = is_special && is_empty_glyph(glyph_id, font);
             if (is_empty) font->spacer_strategy = SPACERS_AFTER;
         }
@@ -1750,7 +1775,7 @@ static LigatureType *ligature_types = NULL;
 static size_t ligature_types_sz = 0;
 
 static void
-group_iosevka(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
+group_iosevka(Font *font, hb_font_t *hbf) {
     // Group as per algorithm discussed in: https://github.com/be5invis/Iosevka/issues/1007
     if (ligature_types_sz <= G(num_glyphs)) {
         ligature_types_sz = G(num_glyphs) + 16;
@@ -1762,17 +1787,9 @@ group_iosevka(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) 
     uint32_t cluster, next_cluster;
     while (G(glyph_idx) < G(num_glyphs) && G(cell_idx) < G(num_cells)) {
         cluster = G(info)[G(glyph_idx)].cluster;
-        uint32_t num_codepoints_used_by_glyph = 0;
         bool is_last_glyph = G(glyph_idx) == G(num_glyphs) - 1;
         Group *current_group = G(groups) + G(group_idx);
-        if (is_last_glyph) {
-            num_codepoints_used_by_glyph = UINT32_MAX;
-            next_cluster = 0;
-        } else {
-            next_cluster = G(info)[G(glyph_idx) + 1].cluster;
-            // RTL languages like Arabic have decreasing cluster numbers
-            if (next_cluster != cluster) num_codepoints_used_by_glyph = cluster > next_cluster ? cluster - next_cluster : next_cluster - cluster;
-        }
+        next_cluster = is_last_glyph ? cluster : G(info)[G(glyph_idx) + 1].cluster;
         const LigatureType before = G(glyph_idx) ? ligature_types[G(glyph_idx - 1)] : LIGATURE_UNKNOWN;
         const LigatureType current = ligature_types[G(glyph_idx)];
         const LigatureType after = is_last_glyph ? LIGATURE_UNKNOWN : ligature_types[G(glyph_idx + 1)];
@@ -1799,23 +1816,14 @@ group_iosevka(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) 
                 current_group->num_cells += num_left;
                 G(cell_idx) += num_left;
             }
-        } else {
-            unsigned int num_cells_consumed = 0;
-            while (num_codepoints_used_by_glyph && G(cell_idx) < G(num_cells)) {
-                unsigned int w = check_cell_consumed(&G(current_cell_data), G(last_cpu_cell), tc, lc);
-                G(cell_idx) += w;
-                num_cells_consumed += w;
-                num_codepoints_used_by_glyph--;
-            }
-            current_group->num_cells += num_cells_consumed;
-        }
+        } else if (next_cluster != cluster) current_group->num_cells += consume_cells_of_cluster(cluster, next_cluster);
         if (end_current_group && current_group->num_cells) G(group_idx)++;
         G(glyph_idx)++;
     }
 }
 
 static void
-group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
+group_normal(Font *font, hb_font_t *hbf) {
     /* Now distribute the glyphs into groups of cells
      * Considerations to keep in mind:
      * Group sizes should be as small as possible for best performance
@@ -1841,20 +1849,11 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
         glyph_index glyph_id = G(info)[G(glyph_idx)].codepoint;
         LigatureType ligature_type = ligature_type_for_glyph(hbf, glyph_id, font->spacer_strategy);
         cluster = G(info)[G(glyph_idx)].cluster;
-        bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
+        bool is_special = is_special_glyph(glyph_id, font, cluster);
         bool is_empty = is_special && is_empty_glyph(glyph_id, font);
-        uint32_t num_codepoints_used_by_glyph = 0;
         bool is_last_glyph = G(glyph_idx) == G(num_glyphs) - 1;
         Group *current_group = G(groups) + G(group_idx);
-
-        if (is_last_glyph) {
-            num_codepoints_used_by_glyph = UINT32_MAX;
-            next_cluster = 0;
-        } else {
-            next_cluster = G(info)[G(glyph_idx) + 1].cluster;
-            // RTL languages like Arabic have decreasing cluster numbers
-            if (next_cluster != cluster) num_codepoints_used_by_glyph = cluster > next_cluster ? cluster - next_cluster : next_cluster - cluster;
-        }
+        next_cluster = is_last_glyph ? cluster : G(info)[G(glyph_idx) + 1].cluster;
         if (!current_group->num_glyphs) {
             add_to_current_group = true;
         } else if (current_group->started_with_infinite_ligature) {
@@ -1871,11 +1870,11 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
         }
 #if 0
         char ch[8] = {0};
-        encode_utf8(G(current_cell_data).current_codepoint, ch);
+        encode_utf8(codepoint_for_cluster(cluster), ch);
         printf("\x1b[32m→ %s\x1b[m glyph_idx: %zu glyph_id: %u group_idx: %zu cluster: %u -> %u is_special: %d\n"
-                "  num_codepoints_used_by_glyph: %u current_group: (%u cells, %u glyphs) add_to_current_group: %d\n",
+                "  current_group: (%u cells, %u glyphs) add_to_current_group: %d\n",
                 ch, G(glyph_idx), glyph_id, G(group_idx), cluster, next_cluster, is_special,
-                num_codepoints_used_by_glyph, current_group->num_cells, current_group->num_glyphs, add_to_current_group);
+                current_group->num_cells, current_group->num_glyphs, add_to_current_group);
 #endif
 
         if (!add_to_current_group) { current_group = G(groups) + ++G(group_idx); }
@@ -1893,14 +1892,8 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
                 current_group->num_cells += num_left;
                 G(cell_idx) += num_left;
             }
-        } else {
-            unsigned int num_cells_consumed = 0;
-            while (num_codepoints_used_by_glyph && G(cell_idx) < G(num_cells)) {
-                unsigned int w = check_cell_consumed(&G(current_cell_data), G(last_cpu_cell), tc, lc);
-                G(cell_idx) += w;
-                num_cells_consumed += w;
-                num_codepoints_used_by_glyph--;
-            }
+        } else if (next_cluster != cluster) {
+            unsigned int num_cells_consumed = consume_cells_of_cluster(cluster, next_cluster);
             if (num_cells_consumed) {
                 current_group->num_cells += num_cells_consumed;
                 if (!is_special) { // not a ligature, end the group
@@ -1912,7 +1905,6 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
 
         G(prev_was_special) = is_special;
         G(prev_was_empty) = is_empty;
-        G(previous_cluster) = cluster;
         prev_glyph_was_inifinte_ligature_end = ligature_type == INFINITE_LIGATURE_END;
         G(glyph_idx)++;
     }
@@ -1921,15 +1913,7 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
 
 static float
 shape_run(
-    CPUCell *first_cpu_cell,
-    GPUCell *first_gpu_cell,
-    index_type num_cells,
-    Font *font,
-    RunFont rf,
-    FontGroup *fg,
-    bool disable_ligature,
-    const TextCache *tc,
-    ListOfChars *lc) {
+    CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, RunFont rf, FontGroup *fg, bool disable_ligature, const TextCache *tc) {
     float scale = apply_scale_to_font_group(fg, &rf);
     const uint8_t key_scale = (uint8_t)MAX(1u, rf.scale);
     uint8_t subscale = ((rf.subscale_n & 0xf) << 4) | (rf.subscale_d & 0xf);
@@ -1945,8 +1929,8 @@ shape_run(
     hb_font_t *hbf = harfbuzz_font_for_face(font->face);
     if (font->spacer_strategy == SPACER_STRATEGY_UNKNOWN) detect_spacer_strategy(hbf, font, tc);
     shape(first_cpu_cell, first_gpu_cell, num_cells, hbf, font, disable_ligature, tc);
-    if (font->spacer_strategy == SPACERS_IOSEVKA) group_iosevka(font, hbf, tc, lc);
-    else group_normal(font, hbf, tc, lc);
+    if (font->spacer_strategy == SPACERS_IOSEVKA) group_iosevka(font, hbf);
+    else group_normal(font, hbf);
 #if 0
         static char dbuf[1024];
         // You can also generate this easily using hb-shape --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
@@ -2137,12 +2121,11 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         font = fg->fonts + fg->medium_font_idx;
     }
     RunFont rf = {0};
-    RAII_ListOfChars(lc);
     GPUCell *gpu_cells = expanded_line_for_render(line);
-    shape_run(line->cpu_cells, gpu_cells, num, font, rf, fg, false, line->text_cache, &lc);
+    shape_run(line->cpu_cells, gpu_cells, num, font, rf, fg, false, line->text_cache);
     PyObject *ans = shaped_groups_as_python();
     if (!ans) goto done;
-    shape_run(line->cpu_cells, gpu_cells, num, font, rf, fg, false, line->text_cache, &lc);
+    shape_run(line->cpu_cells, gpu_cells, num, font, rf, fg, false, line->text_cache);
     PyObject *cached = shaped_groups_as_python();
     if (!cached) {
         Py_CLEAR(ans);
@@ -2175,26 +2158,25 @@ render_run(
     bool center_glyph,
     int cursor_offset,
     DisableLigature disable_ligature_strategy,
-    const TextCache *tc,
-    ListOfChars *lc) {
+    const TextCache *tc) {
     float scale;
     switch (rf.font_idx) {
         default:
             scale = shape_run(
-                first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[rf.font_idx], rf, fg, disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc, lc);
+                first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[rf.font_idx], rf, fg, disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS, tc);
             if (pua_space_ligature) collapse_pua_space_ligature(num_cells);
             else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
                 split_run_at_offset(cursor_offset, &left, &right, scale);
                 if (right > left) {
                     if (left) {
-                        shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[rf.font_idx], rf, fg, false, tc, lc);
+                        shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[rf.font_idx], rf, fg, false, tc);
                         render_groups(fg, rf, center_glyph, tc);
                     }
-                    shape_run(first_cpu_cell + left, first_gpu_cell + left, right - left, &fg->fonts[rf.font_idx], rf, fg, true, tc, lc);
+                    shape_run(first_cpu_cell + left, first_gpu_cell + left, right - left, &fg->fonts[rf.font_idx], rf, fg, true, tc);
                     render_groups(fg, rf, center_glyph, tc);
                     if (right < num_cells) {
-                        shape_run(first_cpu_cell + right, first_gpu_cell + right, num_cells - right, &fg->fonts[rf.font_idx], rf, fg, false, tc, lc);
+                        shape_run(first_cpu_cell + right, first_gpu_cell + right, num_cells - right, &fg->fonts[rf.font_idx], rf, fg, false, tc);
                         render_groups(fg, rf, center_glyph, tc);
                     }
                     break;
@@ -2281,8 +2263,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             center_glyph,                                                                                               \
             cursor_offset,                                                                                              \
             disable_ligature_strategy,                                                                                  \
-            line->text_cache,                                                                                           \
-            lc);                                                                                                        \
+            line->text_cache);                                                                                          \
     }
     if (!line->render_cells) return; // lines without render data cannot be rendered
     FontGroup *fg = (FontGroup *)fg_;
@@ -2348,7 +2329,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 RENDER
                 center_glyph = false;
                 render_run(
-                    fg, line->cpu_cells + i, gpu_cells + i, num_spaces + 1, cell_font, true, center_glyph, -1, disable_ligature_strategy, line->text_cache, lc);
+                    fg, line->cpu_cells + i, gpu_cells + i, num_spaces + 1, cell_font, true, center_glyph, -1, disable_ligature_strategy, line->text_cache);
                 run_font = basic_font;
                 first_cell_in_run = i + num_spaces + 1;
                 i += num_spaces;
@@ -2583,6 +2564,7 @@ finalize(void) {
     }
     global_glyph_render_scratch = (GlyphRenderScratch){0};
     free(shape_buffer.codepoints);
+    free(shape_buffer.cells_at);
     zero_at_ptr(&shape_buffer);
 }
 

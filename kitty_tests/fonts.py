@@ -848,6 +848,106 @@ class Rendering(FontBaseTest):
         self.ae(groups('i\u0332\u0308', font='LiberationMono-Regular.ttf'), [(1, 2)])
         self.ae(groups('u\u0332 u\u0332\u0301', font='LiberationMono-Regular.ttf'), [(1, 2), (1, 1), (1, 2)])
 
+    def test_rtl_shaping(self):
+        # HarfBuzz shapes runs containing Hebrew as backward (RTL) buffers and
+        # returns their glyphs in visual order, that is, with the glyphs of the
+        # last cell first. Each group must still cover exactly the cells its
+        # glyphs come from.
+        lm = 'LiberationMono-Regular.ttf'
+
+        def shape(draw, font):
+            with setup_for_testing(size=self.font_size, dpi=self.dpi):
+                s = Screen(None, 4, 64)
+                draw(s)
+                return test_shape(s.line(0), self.path_for_font(font))
+
+        def ss(text, font=lm):
+            return shape(lambda s: s.draw(text), font)
+
+        def groups(text, font=lm):
+            return [g[:2] for g in ss(text, font)]
+
+        def check_units(units, font=lm, rtl=True):
+            # every unit is a single cell whose glyphs, shaped on its own,
+            # must be the glyphs of its group
+            text = ''.join(units)
+            shaped = ss(text, font)
+            self.ae([g[0] for g in shaped], [1] * len(units), f'cells per group for: {text!r}')
+            expected = [ss(u, font)[0][3] for u in (reversed(units) if rtl else units)]
+            self.ae([g[3] for g in shaped], expected, f'glyphs per group for: {text!r}')
+
+        hebrew_units = (
+            ('\u05e9', '\u05dc', '\u05d5', '\u05dd'),  # unpointed
+            # pointed, the shin and vav cells become a single composed glyph
+            ('\u05e9\u05b8\u05c1', '\u05dc', '\u05d5\u05b9', '\u05dd'),
+            ('\u05d1\u05bc', '\u05d2'),  # bet with dagesh composes into a single glyph
+            ('\u05ea\u05bc\u05c2', '\u05db', '\u05e1\u05b0\u05b7'),  # several marks per cell
+        )
+        for units in hebrew_units:
+            check_units(units)
+        # LTR text inside an RTL buffer
+        check_units(('\u05e9\u05b8\u05c1', '\u05dc', '\u05d5\u05b9', '\u05dd', ' ', 'a', 'b', '1'))
+        # the marks of a Latin letter come before it in an RTL buffer
+        self.ae(groups('\u05e9\u05b8\u05c1a\u0332'), [(1, 2), (1, 2)])
+        # mirrored brackets
+        self.ae(groups('(\u05e9\u05dc\u05d5\u05dd)'), [(1, 1)] * 6)
+        # the cells of a run that starts with an LTR letter are shaped as an
+        # LTR buffer, in logical order
+        check_units(('a', '\u05e9', '\u05dc'), rtl=False)
+        # forcing LTR gives logical order and the same per cell groups
+        with setup_for_testing(size=self.font_size, dpi=self.dpi):
+            self.set_options({'force_ltr': True})
+            s = Screen(None, 1, 64)
+            s.draw('\u05e9\u05b8\u05c1\u05dc\u05d5\u05b9\u05dd')
+            self.ae([g[:2] for g in test_shape(s.line(0), self.path_for_font(lm))], [(1, 2), (1, 1), (1, 1), (1, 1)])
+        self.set_options()
+
+        # cells wider than one column
+        self.ae(groups('\u05e9\u597d\u05dc'), [(1, 1), (2, 1), (1, 1)])
+        self.ae(groups('\u05e9\u2716\ufe0f\u05dc'), [(1, 1), (2, 2), (1, 1)])
+        for kw in ({'scale': 2}, {'width': 2}):
+
+            def draw(s, kw=kw):
+                s.draw('\u05e9')
+                draw_multicell(s, '\u05dc', **kw)
+                s.draw('\u05d5\u05dd')
+
+            shaped = shape(draw, lm)
+            self.ae([g[:2] for g in shaped], [(1, 1), (1, 1), (2, 1), (1, 1)], f'multicell: {kw}')
+            self.ae([g[3] for g in shaped], [ss(u)[0][3] for u in '\u05dd\u05d5\u05dc\u05e9'], f'multicell: {kw}')
+
+        def draw(s):
+            s.draw('\u05e9\u05b8\u05c1')
+            draw_multicell(s, '\u05d5\u05b9', scale=2)
+            s.draw('\u05dd')
+
+        self.ae([g[:2] for g in shape(draw, lm)], [(1, 1), (2, 1), (1, 2)])
+
+        # Arabic lam-alef is a single glyph covering two cells
+        dv = 'DejaVuSansMono.ttf'
+        lam_alef = ss('لا', dv)
+        self.ae([g[:2] for g in lam_alef], [(2, 1)])
+        self.ae(groups('سلام', dv), [(1, 1), (2, 1), (1, 1)])
+        self.ae(groups('السلام', dv), [(1, 1), (2, 1), (1, 1), (1, 1), (1, 1)])
+        # a mark on the lam, the ligature still spans both cells
+        self.ae(groups('لَا', dv), [(2, 2)])
+        # LTR text and wide cells next to the ligature
+        self.ae(groups('سلام abc', dv), [(1, 1)] * 4 + [(1, 1), (2, 1), (1, 1)])
+        self.ae(groups('لا好', dv), [(2, 1), (2, 1)])
+
+        # iosevka has no Hebrew so marks are not composed with their letters and
+        # come before them, its grouping must still give each letter its marks
+        self.ae(groups('\u05e9\u05b8\u05c1\u05dc\u05d5\u05b9\u05dd', 'iosevka-regular.ttf'), [(1, 1), (1, 2), (1, 1), (1, 3)])
+
+        # ligature fonts substitute glyphs designed for LTR in Hebrew runs, so
+        # only check that the cells are accounted for
+        for font in ('FiraCode-Medium.otf', 'CascadiaCode-Regular.otf', 'iosevka-regular.ttf'):
+            for text in ('\u05d0==\u05d1', '\u05d0===\u05d1', '\u05d0->\u05d1', '\u05d0<!--\u05d1', '\u05d0----\u05d1', '\u05e9==', '==\u05e9'):
+                g = groups(text, font)
+                self.assertTrue(all(n > 0 for n, _ in g), f'{font}: {text!r}: {g}')
+                self.ae(sum(n for n, _ in g), len(text), f'{font}: {text!r}: {g}')
+                self.ae(sum(n for _, n in g), len(text), f'{font}: {text!r}: {g}')
+
     def test_shaped_run_cache(self):
         # test_shape() already checks that a cached run matches the HarfBuzz
         # output for the same run, here we check that different runs sharing a
@@ -859,7 +959,21 @@ class Rendering(FontBaseTest):
             s.draw(text)
             return test_shape(s.line(0), None)
 
-        texts = ('abcd', 'a===b', '->', '<==>', '-' * 18, 'x' * 32, 'x' * 33, 'a<!--b', '\u00e1\u00e9', 'a>\u2060<b')
+        texts = (
+            'abcd',
+            'a===b',
+            '->',
+            '<==>',
+            '-' * 18,
+            'x' * 32,
+            'x' * 33,
+            'a<!--b',
+            '\u00e1\u00e9',
+            'a>\u2060<b',
+            '\u05e9\u05b8\u05c1\u05dc\u05d5\u05b9\u05dd',
+            '\u05e9\u597d\u05dc',
+            '\u05d0==\u05d1',
+        )
         cold = {}
         for text in texts:
             with ctx():  # a fresh font, and therefore an empty cache, for every run
