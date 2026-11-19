@@ -286,7 +286,12 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
     screen_cursor_position(self, 1, 1);
     set_dynamic_color(self, 111, NULL); // does default_bg_changed processing
     colorprofile_reset(self->color_profile);
-    if (is_hard_reset) reset_style_table_if_unused(self);
+    if (is_hard_reset) {
+        reset_style_table_if_unused(self);
+        // Release glyphs registered with the glyph protocol that were bound
+        // to cells that no longer exist
+        if (vg_live_glyph_memory()) screen_garbage_collect_text_cache(self);
+    }
     CALLBACK("on_reset", "O", is_hard_reset ? Py_True : Py_False);
 }
 
@@ -1319,6 +1324,8 @@ screen_garbage_collect_text_cache(Screen *self) {
     tc_gc_end(self->text_cache, gc);
     // the GC remaps all cache indices so the memoized tab indices are stale
     memset(&self->tab_cache, 0, sizeof(self->tab_cache));
+    GlyphRegistry *gr = tc_glyph_registry(self->text_cache);
+    memset(gr->bound_idx_plus_1, 0, sizeof(gr->bound_idx_plus_1));
 }
 
 static void
@@ -1412,6 +1419,28 @@ screen_garbage_collect_style_table(Screen *self) {
     }
 }
 
+// Glyph protocol print time binding: a cell with a codepoint from the
+// registration block that has a registered glyph stores the glyph in its text
+// cache entry, so that later changes to the registration do not affect it
+static void
+bind_registered_glyph(Screen *self, CPUCell *c, char_type first_char) {
+    GlyphRegistry *r = tc_glyph_registry(self->text_cache);
+    VGGlyph *g = glyph_registry_get(r, first_char);
+    if (!g) return;
+    const unsigned slot = first_char - GLYPH_BLOCK_FIRST;
+    if (!c->ch_is_idx && r->bound_idx_plus_1[slot]) {
+        // The common case of a cell with just the codepoint
+        c->ch_or_idx = r->bound_idx_plus_1[slot] - 1;
+        c->ch_is_idx = true;
+        return;
+    }
+    RAII_ListOfChars(lc);
+    text_in_cell(c, self->text_cache, &lc);
+    c->ch_or_idx = tc_get_or_insert_chars_with_glyph(self->text_cache, &lc, g);
+    c->ch_is_idx = true;
+    if (lc.count == 1) r->bound_idx_plus_1[slot] = c->ch_or_idx + 1;
+}
+
 static bool
 add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, index_type x, index_type y) {
     // Adds num_chars combining chars to the cell at x, y with a single lookup in the text cache
@@ -1426,7 +1455,8 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, inde
     ensure_space_for_chars(self->lc, self->lc->count + num_chars);
     memcpy(self->lc->chars + self->lc->count, chars, num_chars * sizeof(chars[0]));
     self->lc->count += num_chars;
-    cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, self->lc);
+    // A glyph bound to the cell when it was printed stays bound
+    cell->ch_or_idx = tc_get_or_insert_chars_with_glyph(self->text_cache, self->lc, cell_registered_glyph(cell, self->text_cache));
     cell->ch_is_idx = true;
     if (cell->is_multicell) {
         char_type ch_and_idx = cell->ch_and_idx;
@@ -1800,8 +1830,8 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
     // of width one or two in the current line, keeping all state in locals so it is
     // not reloaded for every char. Stops at the first char needing the scalar path:
     // ASCII, invalid, zero width, a char that combines with the previous cell, the
-    // image placeholder, a char that does not fit in the line or an existing multicell
-    // cell. The caller must ensure there is no charset translation or insert mode and
+    // image placeholder, a glyph protocol codepoint, a char that does not fit in the
+    // line or an existing multicell cell. The caller must ensure there is no charset translation or insert mode and
     // that the cursor is within the line. Returns the number of chars drawn.
     const index_type columns = self->columns;
     index_type x = self->cursor->x, last_x = x;
@@ -1824,7 +1854,7 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
     size_t i = 0;
     for (; i < num_chars; i++) {
         const char_type ch = chars[i];
-        if (ch < DEL || ch == IMAGE_PLACEHOLDER_CHAR) break;
+        if (ch < DEL || ch == IMAGE_PLACEHOLDER_CHAR || is_glyph_block_codepoint(ch)) break;
         const CharDrawInfo info = char_draw_info_for(ch);
         const index_type width = info.cells;
         if (width == 0 || x + width > columns || cp[x].is_multicell) break;
@@ -2012,6 +2042,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
         } else {
             *fc = s->cc;
             cell_set_char(fc, ch);
+            if (UNLIKELY(is_glyph_block_codepoint(ch))) bind_registered_glyph(self, fc, ch);
             s->prev.y = self->cursor->y;
             s->prev.x = self->cursor->x;
             s->prev.cc = fc;
@@ -2099,6 +2130,7 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc)
     mcd.hyperlink_id = s.cc.hyperlink_id;
     mcd.style_idx = s.cc.style_idx;
     cell_set_chars(&mcd, self->text_cache, lc);
+    if (lc->count && is_glyph_block_codepoint(lc->chars[0])) bind_registered_glyph(self, &mcd, lc->chars[0]);
     move_cursor_past_multicell(self, width);
     if (height > 1) {
         if (self->cursor->y <= self->margin_bottom) {
@@ -2472,7 +2504,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 // Glyph protocol {{{
 
 // The payload formats kitty supports, advertised in the reply to the s verb
-#define GLYPH_SUPPORTED_FORMATS ""
+#define GLYPH_SUPPORTED_FORMATS "vg"
 
 static bool
 glyph_is_registered(Screen *self, char_type cp) {
@@ -2539,6 +2571,28 @@ glyph_reply_status(Screen *self, const GlyphCommand *cmd, const char *reason) {
     else glyph_reply(self, GLYPH_PROTOCOL_PREFIX "%c;%sstatus=0", cmd->verb, cp);
 }
 
+// Whether the glyphs kept alive by this window are within the per window limits
+static bool
+glyph_window_within_limits(Screen *self, const VGGlyph *new_glyph) {
+    const GlyphRegistry *r = tc_glyph_registry(self->text_cache);
+    size_t count, memory;
+#define within                                                \
+    (tc_bound_glyph_usage(self->text_cache, &count, &memory), \
+     count + r->num_registered + 1 <= vg_window_glyph_limit && memory + r->memory + new_glyph->memory_size <= vg_window_memory_limit)
+    if (within) return true;
+    // Text that used glyphs may have been erased or scrolled out of the
+    // scrollback, garbage collect to release its glyphs. At most once a
+    // second, as it is expensive with a large scrollback.
+    const monotonic_t now = monotonic();
+    if (tc_has_adds_since_last_gc(self->text_cache) && (!self->last_glyph_limit_gc_at || now - self->last_glyph_limit_gc_at > s_double_to_monotonic_t(1.0))) {
+        self->last_glyph_limit_gc_at = now;
+        screen_garbage_collect_text_cache(self);
+        return within;
+    }
+#undef within
+    return false;
+}
+
 static const char *
 glyph_register(Screen *self, const GlyphCommand *cmd, const uint8_t *buf) {
     if (!cmd->has_cp || !cmd->cp_valid || !is_glyph_block_codepoint(cmd->cp)) return "out_of_namespace";
@@ -2557,10 +2611,16 @@ glyph_register(Screen *self, const GlyphCommand *cmd, const uint8_t *buf) {
         }
         return "malformed_payload";
     }
-    const bool ok = glyph_registry_set(tc_glyph_registry(self->text_cache), cmd->cp, g);
+    // A new glyph that takes the memory used by all glyphs over the budget
+    // is rejected, registering a glyph that already exists uses no memory
+    // Checked regardless of whether the glyph already exists, so that the
+    // result does not reveal whether other windows use it
+    if (vg_live_glyph_memory() > VG_MEMORY_BUDGET || !glyph_window_within_limits(self, g)) {
+        vg_decref(g);
+        return "no_space";
+    }
+    glyph_registry_set(tc_glyph_registry(self->text_cache), cmd->cp, g);
     vg_decref(g);
-    if (!ok) return "no_space";
-    self->is_dirty = true;
     return NULL;
 }
 
@@ -4588,6 +4648,9 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
         // free extra cursors
         free(self->paused_rendering.extra_cursors.locations);
         zero_at_ptr(&self->paused_rendering.extra_cursors);
+        // The snapshot is kept for reuse, but its text must not keep text
+        // cache entries, and the glyph protocol glyphs they hold, alive
+        if (self->paused_rendering.linebuf) linebuf_clear(self->paused_rendering.linebuf, BLANK_CHAR);
         return true;
     }
     if (self->paused_rendering.expires_at) return false;

@@ -16,6 +16,7 @@
 #include "shaped-run-cache.h"
 #include "print-graphics.h"
 #include "simd-string.h"
+#include "vector-glyph.h"
 
 #define MISSING_GLYPH 1
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
@@ -25,7 +26,13 @@
 static PyObject *python_send_to_gpu_impl = NULL;
 extern PyTypeObject Line_Type;
 
-enum { NO_FONT = -3, MISSING_FONT = -2, BLANK_FONT = -1, BOX_FONT = 0 };
+enum { GLYPH_FONT = -4, NO_FONT = -3, MISSING_FONT = -2, BLANK_FONT = -1, BOX_FONT = 0 };
+// The maximum number of sprite slots used for glyphs registered with the glyph
+// protocol in a font group, the number one window can use, and the maximum
+// number of sprites (one per cell) for each glyph, which can be rendered with
+// different parameters. Sprites are freed when their glyph is, these bound the
+// GPU memory programs can make kitty use.
+static size_t MAX_GLYPH_PROTOCOL_SPRITES = 65536u, MAX_GLYPH_PROTOCOL_SPRITES_PER_WINDOW = 16384u, MAX_GLYPH_PROTOCOL_ENTRIES_PER_GLYPH = 1024u;
 typedef enum { LIGATURE_UNKNOWN, INFINITE_LIGATURE_START, INFINITE_LIGATURE_MIDDLE, INFINITE_LIGATURE_END } LigatureType;
 
 
@@ -134,6 +141,62 @@ static bool
 cmpr_decorations_key(DecorationsKey a, DecorationsKey b) {
     return a.val == b.val;
 }
+// Sprites of glyphs registered with the glyph protocol. A glyph can be rendered
+// with different parameters, each of which has its own sprites. A sprite is
+// identified by the content hash of the glyph and the parameters.
+typedef struct GlyphSpriteKey {
+    uint64_t hash;
+    uint8_t col, num_cols, scale, subscale, multicell_y, align, unused1, unused2;
+} GlyphSpriteKey;
+static_assert(sizeof(GlyphSpriteKey) == 16, "Fix the ordering of GlyphSpriteKey");
+
+typedef struct GlyphSpriteValue {
+    SpritePosition sp;
+    // The id of the glyph registry of the window charged for the sprite slots
+    uint64_t owner;
+    // The number of slots in the sprite map used, zero for sprites that are
+    // MISSING_GLYPH because the glyph is too complex to render
+    uint8_t num_slots;
+} GlyphSpriteValue;
+
+static uint64_t
+hash_glyph_sprite_key(GlyphSpriteKey k) {
+    uint64_t params;
+    memcpy(&params, (const uint8_t *)&k + sizeof(k.hash), sizeof(params));
+    return vt_hash_integer(k.hash ^ (params * 0x9E3779B97F4A7C15ull));
+}
+
+static bool
+cmpr_glyph_sprite_key(GlyphSpriteKey a, GlyphSpriteKey b) {
+    return memcmp(&a, &b, sizeof(a)) == 0;
+}
+
+#define NAME glyph_sprite_map
+#define KEY_TY GlyphSpriteKey
+#define VAL_TY GlyphSpriteValue
+#define HASH_FN hash_glyph_sprite_key
+#define CMPR_FN cmpr_glyph_sprite_key
+#include "kitty-verstable.h"
+
+// The keys of the sprites of a glyph, so that they can be freed with the glyph
+typedef struct GlyphSprites {
+    size_t count, capacity;
+    GlyphSpriteKey *keys;
+} GlyphSprites;
+
+#define NAME glyph_sprites_map
+#define KEY_TY uint64_t
+#define VAL_TY GlyphSprites *
+#define HASH_FN vt_hash_integer
+#define CMPR_FN vt_cmpr_integer
+#include "kitty-verstable.h"
+
+// Sprite slots that were freed, for reuse
+typedef struct SpriteHoles {
+    sprite_index *items;
+    size_t count, capacity;
+} SpriteHoles;
+
 #define NAME decorations_index_map_t
 #define KEY_TY DecorationsKey
 #define VAL_TY DecorationMetadata
@@ -153,6 +216,15 @@ typedef struct {
     fallback_font_map_t fallback_font_map;
     scaled_font_map_t scaled_font_map;
     decorations_index_map_t decorations_index_map;
+    // Sprites for glyphs registered with the glyph protocol, keyed by the
+    // content hash of the glyph. The sprites of a glyph are freed when the
+    // glyph is, as no cell can use it then, and the freed slots are reused.
+    glyph_sprites_map glyph_sprites;
+    glyph_sprite_map glyph_sprite_positions;
+    // Freed single slots and pairs of adjacent slots in the same row of the sprite map
+    SpriteHoles single_holes, pair_holes;
+    // The number of slots in use by glyph sprites
+    size_t glyph_protocol_sprite_count;
 } FontGroup;
 
 static FontGroup *font_groups = NULL;
@@ -269,6 +341,17 @@ del_font_group(FontGroup *fg) {
     vt_cleanup(&fg->fallback_font_map);
     vt_cleanup(&fg->scaled_font_map);
     vt_cleanup(&fg->decorations_index_map);
+    for (glyph_sprites_map_itr i = vt_first(&fg->glyph_sprites); !vt_is_end(i); i = vt_next(i)) {
+        free(i.data->val->keys);
+        free(i.data->val);
+    }
+    vt_cleanup(&fg->glyph_sprites);
+    vt_cleanup(&fg->glyph_sprite_positions);
+    free(fg->single_holes.items);
+    free(fg->pair_holes.items);
+    zero_at_ptr(&fg->single_holes);
+    zero_at_ptr(&fg->pair_holes);
+    fg->glyph_protocol_sprite_count = 0;
     for (size_t i = 0; i < fg->fonts_count; i++) del_font(fg->fonts + i);
     free(fg->fonts);
     fg->fonts = NULL;
@@ -440,9 +523,7 @@ calculate_underline_exclusion_zones(pixel *buf, const FontGroup *fg, DecorationG
 }
 
 static sprite_index
-current_send_sprite_to_gpu(FontGroup *fg, pixel *buf, DecorationMetadata dec, FontCellMetrics scaled_metrics) {
-    sprite_index ans = current_sprite_index(&fg->sprite_tracker);
-    if (!do_increment(fg)) return 0;
+upload_sprite(FontGroup *fg, sprite_index ans, pixel *buf, DecorationMetadata dec, FontCellMetrics scaled_metrics) {
     if (python_send_to_gpu_impl) {
         python_send_to_gpu(fg, ans, buf);
         return ans;
@@ -456,6 +537,13 @@ current_send_sprite_to_gpu(FontGroup *fg, pixel *buf, DecorationMetadata dec, Fo
         printf("\n");
     }
     return ans;
+}
+
+static sprite_index
+current_send_sprite_to_gpu(FontGroup *fg, pixel *buf, DecorationMetadata dec, FontCellMetrics scaled_metrics) {
+    sprite_index ans = current_sprite_index(&fg->sprite_tracker);
+    if (!do_increment(fg)) return 0;
+    return upload_sprite(fg, ans, buf, dec, scaled_metrics);
 }
 
 
@@ -851,6 +939,7 @@ static bool allow_use_of_box_fonts = true;
 // - MISSING_FONT
 // - BLANK_FONT
 // - BOX_FONT
+// - GLYPH_FONT
 // - an index in the fonts list
 static ssize_t
 font_for_cell(
@@ -886,6 +975,9 @@ font_for_cell(
             if (allow_use_of_box_fonts) return BOX_FONT;
             /* fallthrough */
         default:
+            // Glyphs registered with the glyph protocol, bound to the cell
+            // when it was printed, take precedence over fonts
+            if (cell_registered_glyph(cpu_cell, tc)) return GLYPH_FONT;
             // Optimisation to avoid rendering spaces, except in the case of
             // scaled multicells as the decorations there have to rendered
             // scaled as well.
@@ -1097,8 +1189,9 @@ extract_cell_region(Canvas *canvas, unsigned i, Region *src, const Region *dest,
 
 static void
 set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
-    cell->sprite_idx = sp->idx & 0x7fffffff;
-    if (sp->colored) cell->sprite_idx |= 0x80000000;
+    cell->sprite_idx = sp->idx & SPRITE_INDEX_MASK;
+    if (sp->colored) cell->sprite_idx |= SPRITE_COLORED_FLAG;
+    if (sp->fg_mix) cell->sprite_idx |= SPRITE_FG_MIX_FLAG;
 }
 
 static Region
@@ -1266,6 +1359,273 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
 #undef sp
 #undef failed
 }
+
+// Glyph protocol {{{
+static inline uint8_t
+unpremultiply(uint8_t c, uint8_t a) {
+    if (!a) return 0;
+    const unsigned v = ((unsigned)c * 255u + a / 2u) / a;
+    return v > 255u ? 255u : (uint8_t)v;
+}
+
+// Write the rendered glyph into the canvas, at the specified offset. For
+// glyphs that mix the foreground color and fixed colors, also write the
+// foreground weight, relative to the alpha, into fg_canvas.
+static void
+copy_registered_glyph_to_canvas(const VGRender *r, pixel *canvas, pixel *fg_canvas, unsigned stride, unsigned x_offset) {
+    for (unsigned y = 0; y < r->height; y++) {
+        pixel *dest = canvas + (size_t)y * stride + x_offset, *fg_dest = fg_canvas ? fg_canvas + (size_t)y * stride + x_offset : NULL;
+        for (unsigned x = 0; x < r->width; x++) {
+            const size_t i = (size_t)y * r->width + x;
+            if (!r->color) {
+                dest[x] = 0xffffff00u | r->fg[i];
+                continue;
+            }
+            const uint8_t *c = r->color + 4 * i, a = c[3];
+            dest[x] = ((pixel)unpremultiply(c[0], a) << 24) | ((pixel)unpremultiply(c[1], a) << 16) | ((pixel)unpremultiply(c[2], a) << 8) | a;
+            if (fg_dest) fg_dest[x] = 0xffffff00u | unpremultiply(r->fg[i], a);
+        }
+    }
+}
+
+static bool
+push_hole(SpriteHoles *h, sprite_index idx) {
+    if (h->count >= h->capacity) {
+        const size_t cap = MAX(64u, h->capacity * 2);
+        sprite_index *items = realloc(h->items, cap * sizeof(items[0]));
+        if (!items) return false;
+        h->items = items;
+        h->capacity = cap;
+    }
+    h->items[h->count++] = idx;
+    return true;
+}
+
+// Allocate a slot in the sprite map for a glyph sprite, or two adjacent slots
+// in the same row if pair is true, reusing freed slots. Returns 0 on failure.
+static sprite_index
+alloc_glyph_sprite_slot(FontGroup *fg, bool pair) {
+    if (pair) {
+        if (fg->pair_holes.count) return fg->pair_holes.items[--fg->pair_holes.count];
+        if (fg->sprite_tracker.x + 1 >= fg->sprite_tracker.xnum) {
+            // The slot at the end of the row cannot start a pair
+            const sprite_index skipped = current_sprite_index(&fg->sprite_tracker);
+            if (!do_increment(fg)) return 0;
+            push_hole(&fg->single_holes, skipped);
+        }
+        const sprite_index ans = current_sprite_index(&fg->sprite_tracker);
+        if (!do_increment(fg) || !do_increment(fg)) return 0;
+        return ans;
+    }
+    if (fg->single_holes.count) return fg->single_holes.items[--fg->single_holes.count];
+    if (fg->pair_holes.count) {
+        const sprite_index ans = fg->pair_holes.items[--fg->pair_holes.count];
+        if (!push_hole(&fg->single_holes, ans + 1)) return 0;
+        return ans;
+    }
+    const sprite_index ans = current_sprite_index(&fg->sprite_tracker);
+    if (!do_increment(fg)) return 0;
+    return ans;
+}
+
+static void
+free_glyph_sprites(FontGroup *fg, uint64_t content_hash) {
+    glyph_sprites_map_itr i = vt_get(&fg->glyph_sprites, content_hash);
+    if (vt_is_end(i)) return;
+    GlyphSprites *gs = i.data->val;
+    for (size_t k = 0; k < gs->count; k++) {
+        glyph_sprite_map_itr si = vt_get(&fg->glyph_sprite_positions, gs->keys[k]);
+        if (vt_is_end(si)) continue;
+        const GlyphSpriteValue *v = &si.data->val;
+        if (v->num_slots) {
+            // If pushing fails the slot is leaked, which is harmless
+            push_hole(v->num_slots > 1 ? &fg->pair_holes : &fg->single_holes, v->sp.idx);
+            fg->glyph_protocol_sprite_count -= MIN(fg->glyph_protocol_sprite_count, (size_t)v->num_slots);
+            // The window may have been closed already
+            GlyphRegistry *owner = glyph_registry_for_id(v->owner);
+            if (owner) owner->sprite_slots -= MIN(owner->sprite_slots, (size_t)v->num_slots);
+        }
+        vt_erase_itr(&fg->glyph_sprite_positions, si);
+    }
+    free(gs->keys);
+    free(gs);
+    vt_erase_itr(&fg->glyph_sprites, i);
+}
+
+// Called when a glyph registered with the glyph protocol is freed. At that
+// point no cell uses the glyph, so its sprites can be reused. Lines that used
+// it have had their text changed and so are dirty and will be re-rendered
+// before their render data is next used.
+static void
+on_vector_glyph_freed(uint64_t content_hash) {
+    for (size_t i = 0; i < num_font_groups; i++) free_glyph_sprites(font_groups + i, content_hash);
+}
+
+// Create the entry for a sprite, the caller must ensure it does not exist
+static GlyphSpriteValue *
+create_glyph_sprite(FontGroup *fg, GlyphSpriteKey key) {
+    GlyphSprites *gs;
+    glyph_sprites_map_itr it = vt_get(&fg->glyph_sprites, key.hash);
+    if (vt_is_end(it)) {
+        gs = calloc(1, sizeof(GlyphSprites));
+        if (!gs) return NULL;
+        if (vt_is_end(vt_insert(&fg->glyph_sprites, key.hash, gs))) {
+            free(gs);
+            return NULL;
+        }
+    } else gs = it.data->val;
+    if (gs->count >= gs->capacity) {
+        const size_t cap = MAX(8u, gs->capacity * 2);
+        GlyphSpriteKey *k = realloc(gs->keys, cap * sizeof(k[0]));
+        if (!k) return NULL;
+        gs->keys = k;
+        gs->capacity = cap;
+    }
+    glyph_sprite_map_itr si = vt_insert(&fg->glyph_sprite_positions, key, (GlyphSpriteValue){0});
+    if (vt_is_end(si)) return NULL;
+    gs->keys[gs->count++] = key;
+    return &si.data->val;
+}
+
+static size_t
+num_glyph_sprite_entries(FontGroup *fg, uint64_t hash) {
+    glyph_sprites_map_itr it = vt_get(&fg->glyph_sprites, hash);
+    return vt_is_end(it) ? 0 : it.data->val->count;
+}
+
+// Render the glyph registered for the codepoint of cpu_cell into num_cols
+// cells, the glyph being rendered into an area of glyph_width scaled cells
+static void
+render_registered_glyph(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cells, unsigned num_cols, unsigned glyph_width, const TextCache *tc) {
+#define failed                                                                           \
+    {                                                                                    \
+        if (PyErr_Occurred()) PyErr_Print();                                             \
+        for (unsigned i = 0; i < num_cols; i++) gpu_cells[i].sprite_idx = MISSING_GLYPH; \
+        return;                                                                          \
+    }
+    const VGGlyph *g = cell_registered_glyph(cpu_cell, tc);
+    GlyphRegistry *owner = tc_glyph_registry(tc);
+    if (!g || num_cols > UINT8_MAX) failed;
+    const uint8_t subscale = ((rf.subscale_n & 0xf) << 4) | (rf.subscale_d & 0xf);
+    GlyphSpriteKey keys[UINT8_MAX];
+    GlyphSpriteValue *values[UINT8_MAX];
+    unsigned num_missing = 0;
+    for (unsigned i = 0; i < num_cols; i++) {
+        keys[i] = (GlyphSpriteKey){
+            .hash = g->content_hash,
+            .col = i,
+            .num_cols = num_cols,
+            .scale = rf.scale,
+            .subscale = subscale,
+            .multicell_y = rf.multicell_y,
+            .align = rf.align.val};
+        glyph_sprite_map_itr si = vt_get(&fg->glyph_sprite_positions, keys[i]);
+        values[i] = vt_is_end(si) ? NULL : &si.data->val;
+        if (!values[i]) num_missing++;
+    }
+    if (!num_missing) {
+        for (unsigned i = 0; i < num_cols; i++) set_cell_sprite(gpu_cells + i, &values[i]->sp);
+        return;
+    }
+    // Bound the sprites a glyph, a window and all windows can use, before creating anything
+    const char *limit = NULL;
+    if (num_glyph_sprite_entries(fg, g->content_hash) + num_missing > MAX_GLYPH_PROTOCOL_ENTRIES_PER_GLYPH) limit = "glyph";
+    else if (owner->sprite_slots + 2 * num_missing > MAX_GLYPH_PROTOCOL_SPRITES_PER_WINDOW) limit = "window";
+    else if (fg->glyph_protocol_sprite_count + 2 * num_missing > MAX_GLYPH_PROTOCOL_SPRITES) limit = "all windows";
+    if (limit) {
+        static monotonic_t last_warned = 0;
+        const monotonic_t now = monotonic();
+        if (!last_warned || now - last_warned > s_double_to_monotonic_t(60.0)) {
+            log_error("Too many sprites used by glyphs registered with the glyph protocol in %s, not rendering more of them", limit);
+            last_warned = now;
+        }
+        failed;
+    }
+    // The values are stored in a hash map, so insertions can invalidate pointers to them
+    for (unsigned i = 0; i < num_cols; i++) {
+        if (!values[i] && !create_glyph_sprite(fg, keys[i])) {
+            PyErr_NoMemory();
+            failed;
+        }
+    }
+    for (unsigned i = 0; i < num_cols; i++) {
+        glyph_sprite_map_itr si = vt_get(&fg->glyph_sprite_positions, keys[i]);
+        if (vt_is_end(si)) failed;
+        values[i] = &si.data->val;
+    }
+#define sp(i) (&values[i]->sp)
+    const FontCellMetrics unscaled_metrics = fg->fcm;
+    const float scale = apply_scale_to_font_group(fg, &rf);
+    const FontCellMetrics scaled_metrics = fg->fcm;
+    if (scale != 1) apply_scale_to_font_group(fg, NULL);
+    ensure_canvas_can_fit(fg, num_cols + 1, rf.scale);
+    const unsigned glyph_w = scaled_metrics.cell_width * glyph_width, glyph_h = scaled_metrics.cell_height;
+    const unsigned full_width = unscaled_metrics.cell_width * num_cols;
+    unsigned right_shift = 0;
+    if (rf.subscale_n && rf.subscale_d && rf.align.horizontal && glyph_w < full_width) {
+        right_shift = full_width - glyph_w;
+        if (rf.align.horizontal == 2) right_shift /= 2;
+    }
+    const unsigned stride = MAX(glyph_w + right_shift, full_width);
+    VGRender r;
+    switch (vg_render(g, glyph_w, glyph_h, &r)) {
+        case VG_RENDER_OK: break;
+        case VG_RENDER_OUT_OF_MEMORY: PyErr_NoMemory(); failed;
+        case VG_RENDER_TOO_COMPLEX:
+            // Remember the failure so the glyph is not rendered again
+            for (unsigned i = 0; i < num_cols; i++) {
+                if (!values[i]->sp.rendered) {
+                    values[i]->sp = (SpritePosition){.idx = MISSING_GLYPH, .rendered = true};
+                    values[i]->num_slots = 0;
+                }
+                set_cell_sprite(gpu_cells + i, &values[i]->sp);
+            }
+            return;
+    }
+    const bool fg_mix = r.color && r.fg;
+    RAII_ALLOC(pixel, fg_buf, fg_mix ? calloc(1, fg->canvas.size_in_bytes) : NULL);
+    if (fg_mix && !fg_buf) {
+        vg_render_free(&r);
+        PyErr_NoMemory();
+        failed;
+    }
+    copy_registered_glyph_to_canvas(&r, fg->canvas.buf, fg_buf, stride, right_shift);
+    const bool colored = r.color != NULL;
+    vg_render_free(&r);
+    Region src = {.right = stride, .bottom = glyph_h}, dest = src;
+    dest.right = full_width;
+    calculate_regions_for_line(rf, unscaled_metrics.cell_height, &src, &dest);
+    const DecorationMetadata dm = index_for_decorations(fg, rf, src, dest, scaled_metrics);
+    Canvas fg_canvas = {.buf = fg_buf, .size_in_bytes = fg->canvas.size_in_bytes};
+    for (unsigned i = 0; i < num_cols; i++) {
+        if (!sp(i)->rendered) {
+            // The foreground weight sprite of a glyph with foreground mixing
+            // must be in the same row of the sprite map, directly to the right
+            const sprite_index idx = alloc_glyph_sprite_slot(fg, fg_mix);
+            if (!idx) failed;
+            Region s = src;
+            pixel *b = extract_cell_region(&fg->canvas, i, &s, &dest, stride, unscaled_metrics);
+            upload_sprite(fg, idx, b, dm, scaled_metrics);
+            if (fg_mix) {
+                s = src;
+                b = extract_cell_region(&fg_canvas, i, &s, &dest, stride, unscaled_metrics);
+                upload_sprite(fg, idx + 1, b, (DecorationMetadata){0}, scaled_metrics);
+            }
+            fg->glyph_protocol_sprite_count += fg_mix ? 2 : 1;
+            owner->sprite_slots += fg_mix ? 2 : 1;
+            values[i]->owner = owner->id;
+            values[i]->num_slots = fg_mix ? 2 : 1;
+            sp(i)->idx = idx;
+            sp(i)->rendered = true;
+            sp(i)->colored = colored;
+            sp(i)->fg_mix = fg_mix;
+        }
+        set_cell_sprite(gpu_cells + i, sp(i));
+    }
+#undef sp
+#undef failed
+}
+// }}}
 
 static void
 load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *tc, ListOfChars *lc) {
@@ -2199,6 +2559,23 @@ render_run(
                 first_gpu_cell += rf.scale;
             }
             break;
+        case GLYPH_FONT:
+            if (pua_space_ligature) {
+                // A registered glyph followed by spaces, rendered across all the cells
+                render_registered_glyph(fg, rf, first_cpu_cell, first_gpu_cell, num_cells, num_cells, tc);
+                break;
+            }
+            while (num_cells) {
+                // Never write past the end of the run, even for a multicell
+                // char that is cut off
+                const unsigned cols = MIN(num_cells, MAX(1u, first_cpu_cell->is_multicell ? mcd_x_limit(first_cpu_cell) : 1u));
+                const unsigned glyph_width = first_cpu_cell->is_multicell ? first_cpu_cell->width : 1;
+                render_registered_glyph(fg, rf, first_cpu_cell, first_gpu_cell, cols, MAX(1u, glyph_width), tc);
+                num_cells -= cols;
+                first_cpu_cell += cols;
+                first_gpu_cell += cols;
+            }
+            break;
         case MISSING_FONT:
             while (num_cells--) {
                 first_gpu_cell->sprite_idx = MISSING_GLYPH;
@@ -2297,7 +2674,15 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         if (cell_font.font_idx != MISSING_FONT && ((!is_main_font && !is_emoji_presentation && cp.is_symbol) ||
                                                    (cell_font.font_idx != BOX_FONT && (is_private_use(cp))) || is_non_emoji_dingbat(first_ch, cp))) {
             unsigned int desired_cells = 1;
-            if (cell_font.font_idx > 0) {
+            if (cell_font.font_idx == GLYPH_FONT) {
+                // The width of the viewBox when it fits the height of the cell
+                const VGGlyph *g = cell_registered_glyph(cpu_cell, line->text_cache);
+                if (g) {
+                    const double w = (double)g->placement.vb[2] / g->placement.vb[3] * fg->fcm.cell_height;
+                    // Clamped before conversion, the number of cells is limited below in any case
+                    desired_cells = (unsigned int)MAX(1., MIN(256., ceil(w / fg->fcm.cell_width - 0.001)));
+                }
+            } else if (cell_font.font_idx > 0) {
                 Font *font = (fg->fonts + cell_font.font_idx);
                 glyph_index glyph_id = glyph_id_for_codepoint(font->face, first_ch);
 
@@ -2489,6 +2874,11 @@ initialize_font_group(FontGroup *fg) {
     vt_init(&fg->fallback_font_map);
     vt_init(&fg->scaled_font_map);
     vt_init(&fg->decorations_index_map);
+    vt_init(&fg->glyph_sprites);
+    vt_init(&fg->glyph_sprite_positions);
+    zero_at_ptr(&fg->single_holes);
+    zero_at_ptr(&fg->pair_holes);
+    fg->glyph_protocol_sprite_count = 0;
 #define I(attr)                                                                                             \
     if (descriptor_indices.attr) fg->attr##_font_idx = initialize_font(fg, descriptor_indices.attr, #attr); \
     else fg->attr##_font_idx = -1;
@@ -2911,6 +3301,16 @@ set_allow_use_of_box_fonts(PyObject *self UNUSED, PyObject *val) {
 }
 
 static PyObject *
+set_glyph_protocol_sprite_limits(PyObject *self UNUSED, PyObject *args) {
+    size_t total = 65536u, per_window = 16384u, per_glyph = 1024u;
+    if (!PyArg_ParseTuple(args, "|nnn", &total, &per_window, &per_glyph)) return NULL;
+    MAX_GLYPH_PROTOCOL_SPRITES = total;
+    MAX_GLYPH_PROTOCOL_SPRITES_PER_WINDOW = per_window;
+    MAX_GLYPH_PROTOCOL_ENTRIES_PER_GLYPH = per_glyph;
+    Py_RETURN_NONE;
+}
+
+static PyObject *
 sprite_idx_to_pos(PyObject *self UNUSED, PyObject *args) {
     unsigned x, y, z, idx, xnum, ynum;
     if (!PyArg_ParseTuple(args, "III", &idx, &xnum, &ynum)) return NULL;
@@ -2934,6 +3334,7 @@ pyrender_box_char(PyObject *self UNUSED, PyObject *args) {
 static PyMethodDef module_methods[] = {
     METHODB(set_font_data, METH_VARARGS),
     METHODB(sprite_idx_to_pos, METH_VARARGS),
+    METHODB(set_glyph_protocol_sprite_limits, METH_VARARGS),
     METHODB(free_font_data, METH_NOARGS),
     METHODB(create_test_font_group, METH_VARARGS),
     METHODB(sprite_map_set_layout, METH_VARARGS),
@@ -2954,6 +3355,7 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_fonts(PyObject *module) {
+    vg_set_free_callback(on_vector_glyph_freed);
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) {
         PyErr_NoMemory();

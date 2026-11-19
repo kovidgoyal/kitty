@@ -146,10 +146,19 @@ typedef struct VGGlyph {
     bool uses_fg, uses_fixed_color;
     // The number of bytes of memory used by this glyph
     size_t memory_size;
+    // A hash of the payload and placement, identifying the rendered glyph.
+    // Uses a random seed so that collisions cannot be engineered.
+    uint64_t content_hash;
+    bool interned;
+    // The serialized placement and payload, the identity of the glyph
+    uint8_t *key;
+    size_t key_len;
 } VGGlyph;
 
-// Parse a vg payload. On success returns a glyph with a reference count of one.
-// On failure returns NULL and sets *err and *err_msg, which points to a static string.
+// Parse a vg payload. On success returns a new reference to a glyph, which is
+// shared with all other glyphs with the same payload and placement. On
+// failure returns NULL and sets *err and *err_msg, which points to a static
+// string.
 VGGlyph *vg_parse(const uint8_t *payload, size_t sz, const GlyphPlacement *placement, VGError *err, const char **err_msg);
 VGGlyph *vg_incref(VGGlyph *g);
 
@@ -190,31 +199,56 @@ void vg_render_free(VGRender *r);
 // Always returns NULL
 VGGlyph *vg_decref(VGGlyph *g);
 
+// The memory used by all live glyphs
+size_t vg_live_glyph_memory(void);
+// Set a function to be called with the content hash of every glyph that is freed
+void vg_set_free_callback(void (*callback)(uint64_t content_hash));
+
 // Registrations {{{
-// The memory budget for registered glyphs, across all sessions
-#define VG_REGISTRY_MEMORY_BUDGET (64u * 1024u * 1024u)
+// The memory budget for all live glyphs, registered or bound to cells, across
+// all sessions. Registering new glyphs fails when it is exceeded. A backstop,
+// the per window limits below are what normally apply.
+#define VG_MEMORY_BUDGET (256u * 1024u * 1024u)
+// Limits on the glyphs a window (screen) can keep alive: those registered plus
+// those bound to text in the window. Glyphs used both ways are counted twice.
+// When they are exceeded, registering fails, so that a program that keeps
+// registering and printing new glyphs cannot exhaust memory or sprites for
+// other windows.
+#define VG_WINDOW_MEMORY_LIMIT (32u * 1024u * 1024u)
+#define VG_WINDOW_GLYPH_LIMIT 8192u
+extern size_t vg_window_memory_limit, vg_window_glyph_limit;
 
 // The glyphs registered for the codepoints of the registration block in one
 // session (screen)
 typedef struct GlyphRegistry {
     VGGlyph *glyphs[GLYPH_BLOCK_SIZE];
+    // For every slot, one plus the index in the text cache of the entry for
+    // the codepoint alone bound to the registered glyph, or zero. A cache for
+    // binding glyphs to cells when printing, must be cleared when text cache
+    // indices change.
+    char_type bound_idx_plus_1[GLYPH_BLOCK_SIZE];
     uint32_t num_registered;
+    // The memory used by the registered glyphs
+    size_t memory;
+    // Unique for every registry, never reused
+    uint64_t id;
+    // The number of sprite slots used for rendering glyphs in this window
+    size_t sprite_slots;
     // Incremented whenever a registration changes
     uint32_t generation;
 } GlyphRegistry;
 
 GlyphRegistry *glyph_registry_alloc(void);
+// Returns NULL if the registry no longer exists
+GlyphRegistry *glyph_registry_for_id(uint64_t id);
 void glyph_registry_free(GlyphRegistry *self);
 // Returns a borrowed reference or NULL
 static inline VGGlyph *
 glyph_registry_get(const GlyphRegistry *self, char_type cp) {
     return is_glyph_block_codepoint(cp) ? self->glyphs[cp - GLYPH_BLOCK_FIRST] : NULL;
 }
-// Register g for cp, taking a new reference to g. cp must be in the
-// registration block. Returns false if this would exceed the memory budget.
-bool glyph_registry_set(GlyphRegistry *self, char_type cp, VGGlyph *g);
+// Register g for cp, taking a new reference to g. cp must be in the registration block.
+void glyph_registry_set(GlyphRegistry *self, char_type cp, VGGlyph *g);
 void glyph_registry_clear(GlyphRegistry *self, char_type cp);
 void glyph_registry_clear_all(GlyphRegistry *self);
-// The memory used by all registrations in all sessions
-size_t glyph_registry_total_memory(void);
 // }}}

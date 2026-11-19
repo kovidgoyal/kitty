@@ -1,11 +1,24 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
+import array
 import math
 
-from kitty.fast_data_types import parse_glyph_command, parse_vg, render_vg
+from kitty.fast_data_types import (
+    DECAWM,
+    parse_glyph_command,
+    parse_vg,
+    render_vg,
+    set_glyph_protocol_sprite_limits,
+    sprite_idx_to_pos,
+    test_render_line,
+    vg_live_glyph_memory,
+    vg_set_window_limits,
+)
+from kitty.fonts.render import setup_for_testing
 
-from .base import BaseTest, parse_bytes
+from .base import BaseTest, draw_multicell, parse_bytes
+from .fonts import FontBaseTest
 
 
 class Dump(list):
@@ -147,9 +160,9 @@ class TestGlyphProtocol(BaseTest):
             parse_bytes(s, f'\x1b_25a1;{cmd}\x1b\\'.encode())
             self.ae(s.callbacks.wtcbuf.decode(), ''.join(f'\x1b_25a1;{x}\x1b\\' for x in expected))
 
-        q('s', ['s;fmt='])
+        q('s', ['s;fmt=vg'])
         # replies are sent in the order the requests arrive
-        q('s\x1b\\\x1b_25a1;q;cp=41', ['s;fmt=', 'q;cp=41;reason=unknown'])
+        q('s\x1b\\\x1b_25a1;q;cp=41', ['s;fmt=vg', 'q;cp=41;reason=unknown'])
         q('q;cp=E0A0', ['q;cp=e0a0;reason=unknown'])
         q('q;cp=100000', ['q;cp=100000;status='])
         q('q;cp=1003ff', ['q;cp=1003ff;status='])
@@ -697,3 +710,350 @@ class TestGlyphProtocol(BaseTest):
         # Determinism
         p = 'stroke=1.5,lin(0 0 24 24 reflect / 0 fg / 1 #00ff0080):M3 12c3-8 6-8 9 0s6 8 9 0|fill=evenodd,fg@0.5:' + circle
         self.ae(r(p, 37, 71), r(p, 37, 71))
+
+
+class GlyphRendering(FontBaseTest):
+    def sprite(self, sprite_idx):
+        pos = sprite_idx_to_pos(sprite_idx, setup_for_testing.xnum, setup_for_testing.ynum)
+        pixels = array.array('I', self.sprites[pos])
+        # the last row is the underline exclusion zone
+        return pixels[: self.cell_width * self.cell_height]
+
+    def register(self, s, cp, layers, vb='0 0 24 24', **kw):
+        extra = ''.join(f';{k}={v}' for k, v in kw.items())
+        s.callbacks.wtcbuf = b''
+        parse_bytes(s, f'\x1b_25a1;r;cp={cp:x};fmt=vg;vb={vb}{extra};{layers}\x1b\\'.encode())
+        self.ae(s.callbacks.wtcbuf, f'\x1b_25a1;r;cp={cp:x};status=0\x1b\\'.encode())
+
+    def render(self, s, text, y=0):
+        s.reset_mode(DECAWM)
+        s.cursor_position(y + 1, 1)
+        s.erase_in_line(2)
+        s.draw(text)
+        line = s.line(y)
+        test_render_line(line)
+        return line
+
+    def test_registered_glyph_rendering(self):
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        cw, ch = self.cell_width, self.cell_height
+        full = 'fill=nonzero,fg:M-24 -24H48V48H-24Z'
+        self.register(s, 0x100000, full)
+        line = self.render(s, '\U00100000x')
+        idx = line.sprite_at(0)
+        self.ae(idx & 0xC0000000, 0)
+        self.ae(set(self.sprite(idx)), {0xFFFFFF00 | 255})
+        # unregistered codepoints in the block are rendered via fonts
+        line = self.render(s, '\U00100001x')
+        self.assertNotEqual(line.sprite_at(0), idx)
+
+        # a glyph with fixed colors is a colored sprite with unpremultiplied colors
+        self.register(s, 0x100002, 'fill=nonzero,#ff000080:M-24 -24H48V48H-24Z')
+        line = self.render(s, '\U00100002x')
+        cidx = line.sprite_at(0)
+        self.ae(cidx & 0xC0000000, 0x80000000)
+        self.ae(set(self.sprite(cidx)), {0xFF000080})
+
+        # a glyph mixing fixed colors and the foreground color has the weight
+        # of the foreground color in the sprite to its right
+        self.register(s, 0x100003, 'fill=nonzero,fg:M-24 -24H48V48H-24Z|fill=nonzero,#0000ff80:M-24 -24H48V48H-24Z', fit='stretch')
+        line = self.render(s, '\U00100003x')
+        midx = line.sprite_at(0)
+        self.ae(midx & 0xC0000000, 0xC0000000)
+        midx &= 0x3FFFFFFF
+        pos, fg_pos = (sprite_idx_to_pos(i, setup_for_testing.xnum, setup_for_testing.ynum) for i in (midx, midx + 1))
+        self.ae(fg_pos, (pos[0] + 1, pos[1], pos[2]))
+        # K = (0, 0, 128) with A = 255 and F = 127, relative to alpha
+        self.ae(set(self.sprite(midx)), {0x000080FF})
+        self.ae(set(self.sprite(midx + 1)), {0xFFFFFF00 | 127})
+
+        # identical glyphs share sprites, even at different codepoints
+        self.register(s, 0x100004, full)
+        self.ae(self.render(s, '\U00100004x').sprite_at(0), idx)
+
+        # changing a registration changes the rendering
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H24V12H0Z', fit='stretch')
+        line = self.render(s, '\U00100000x')
+        half_idx = line.sprite_at(0)
+        self.assertNotEqual(half_idx, idx)
+        pixels = self.sprite(half_idx)
+        self.ae(set(pixels[: cw * (ch // 2 - 1)]), {0xFFFFFF00 | 255})
+        self.ae(set(pixels[cw * (ch // 2 + 1) :]), {0xFFFFFF00})
+
+        # a clear makes the codepoint render via fonts again
+        parse_bytes(s, b'\x1b_25a1;c;cp=100000;reply=0\x1b\\')
+        self.assertNotIn(self.render(s, '\U00100000x').sprite_at(0), (idx, half_idx))
+
+    def test_registered_glyph_width(self):
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        cw, ch = self.cell_width, self.cell_height
+        self.assertGreater(ch, cw)
+        # a square glyph followed by a space is rendered across two cells, as
+        # its width when fitting the cell height is more than one cell
+        sq = 'fill=nonzero,fg:M0 0H24V24H0Z'
+        self.register(s, 0x100000, sq)
+        line = self.render(s, '\U00100000 x')
+        left, right = self.sprite(line.sprite_at(0)), self.sprite(line.sprite_at(1))
+        coverage = sum(p & 0xFF for p in left) + sum(p & 0xFF for p in right)
+        self.assertAlmostEqual(coverage / 255, ch * ch, delta=ch)
+        # the glyph is centered in the two cells
+        self.ae(sum(p & 0xFF for p in left), sum(p & 0xFF for p in right))
+        # without a trailing space it is rendered in one cell
+        line = self.render(s, '\U00100000x')
+        self.assertAlmostEqual(sum(p & 0xFF for p in self.sprite(line.sprite_at(0))) / 255, cw * cw, delta=cw)
+        # a glyph whose viewBox fits in one cell is not widened
+        self.register(s, 0x100001, sq, vb='0 0 8 24')
+        line = self.render(s, '\U00100001 x')
+        self.ae(line.sprite_at(1), 0)
+
+    def test_registered_glyph_text_sizing(self):
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        cw, ch = self.cell_width, self.cell_height
+        # with s=2 the glyph covers 2x2 cells
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H24V24H0Z', fit='stretch')
+        draw_multicell(s, '\U00100000', scale=2)
+        total = 0
+        for y in range(2):
+            line = s.line(y)
+            test_render_line(line)
+            for x in range(2):
+                total += sum(p & 0xFF for p in self.sprite(line.sprite_at(x))) / 255
+        self.ae(total, 4 * cw * ch)
+        # with w=3 the glyph covers 3 cells
+        s.reset()
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H12V24H0Z', fit='stretch')
+        draw_multicell(s, '\U00100000', width=3)
+        line = s.line(0)
+        test_render_line(line)
+        cov = [sum(p & 0xFF for p in self.sprite(line.sprite_at(x))) / 255 for x in range(3)]
+        # the left half of the 3 cell wide area is covered
+        self.assertAlmostEqual(sum(cov), 1.5 * cw * ch, delta=ch)
+        self.ae(cov[0], cw * ch)
+        self.ae(cov[2], 0)
+
+    def test_registered_glyphs_are_bound_when_printed(self):
+        s = self.create_screen(cols=8, lines=4, scrollback=20)
+        base_memory = vg_live_glyph_memory()
+        circle = 'fill=nonzero,fg:M12 2A10 10 0 1 1 12 22A10 10 0 1 1 12 2Z'
+        square = 'fill=nonzero,fg:M2 2H22V22H2Z'
+        self.register(s, 0x100000, circle)
+        line = self.render(s, '\U00100000x')
+        circle_idx = line.sprite_at(0)
+        # the text of the cell is just the codepoint
+        self.ae(str(line), '\U00100000x')
+        # re-registering does not change what was already printed
+        self.register(s, 0x100000, square)
+        test_render_line(line)
+        self.ae(line.sprite_at(0), circle_idx)
+        # but text printed later uses the new glyph
+        line2 = self.render(s, '\U00100000x', y=1)
+        square_idx = line2.sprite_at(0)
+        self.assertNotEqual(square_idx, circle_idx)
+        # combining chars keep the glyph bound to the cell
+        s.cursor_position(1, 2)
+        s.draw('\u0301')
+        self.ae(str(s.line(0)), '\U00100000\u0301x')
+        line = s.line(0)
+        test_render_line(line)
+        self.ae(line.sprite_at(0), circle_idx)
+        # clearing does not affect printed text
+        parse_bytes(s, b'\x1b_25a1;c;reply=0\x1b\\')
+        for y, idx in ((0, circle_idx), (1, square_idx)):
+            line = s.line(y)
+            test_render_line(line)
+            self.ae(line.sprite_at(0), idx)
+        # but text printed later is not rendered with a registered glyph
+        self.assertNotIn(self.render(s, '\U00100000x', y=2).sprite_at(0), (circle_idx, square_idx))
+        # registering identical glyphs shares the glyph objects
+        self.register(s, 0x100001, circle)
+        self.register(s, 0x100002, circle)
+        self.ae(self.render(s, '\U00100001\U00100002', y=3).sprite_at(0), circle_idx)
+        self.ae(s.line(3).sprite_at(1), circle_idx)
+        # text with bound glyphs keeps them alive until the text is gone
+        self.assertGreater(vg_live_glyph_memory(), base_memory)
+        parse_bytes(s, b'\x1b_25a1;c;reply=0\x1b\\')
+        self.assertGreater(vg_live_glyph_memory(), base_memory)
+        s.erase_in_display(3, False)
+        s.erase_in_display(2, False)
+        s.garbage_collect_text_cache()
+        self.ae(vg_live_glyph_memory(), base_memory)
+        # text in the scrollback keeps its glyphs
+        self.register(s, 0x100003, circle)
+        s.draw('\U00100003')
+        for i in range(6):
+            s.index()
+        s.garbage_collect_text_cache()
+        self.assertGreater(vg_live_glyph_memory(), base_memory)
+        # RIS releases all glyphs
+        s.reset()
+        self.ae(vg_live_glyph_memory(), base_memory)
+
+    def test_registered_glyphs_in_multicell(self):
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H24V24H0Z', fit='stretch')
+        draw_multicell(s, '\U00100000', scale=2)
+        line = s.line(0)
+        test_render_line(line)
+        first = line.sprite_at(0)
+        # re-registering does not change the multicell char
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H12V24H0Z', fit='stretch')
+        for y in range(2):
+            line = s.line(y)
+            test_render_line(line)
+            self.ae(sum(p & 0xFF for x in range(2) for p in self.sprite(line.sprite_at(x))) / 255, 2 * self.cell_width * self.cell_height)
+        self.ae(s.line(0).sprite_at(0), first)
+
+    def test_registered_glyph_sprites_are_reused(self):
+        import gc
+
+        # free screens from earlier tests, as freeing their glyphs creates holes
+        gc.collect()
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+
+        def glyph(i, mixed=False):
+            ans = f'fill=nonzero,fg:M0 0H{1 + i % 23}V24H0Z'
+            if mixed:
+                ans += f'|fill=nonzero,#ff0000:M0 0H24V{1 + i % 23}H0Z'
+            return ans
+
+        def show(i, mixed=False):
+            self.register(s, 0x100000, glyph(i, mixed))
+            return self.render(s, '\U00100000x').sprite_at(0) & 0x3FFFFFFF
+
+        def release():
+            # erase the text and the registration, so the glyph is freed
+            s.erase_in_display(2, False)
+            parse_bytes(s, b'\x1b_25a1;c;reply=0\x1b\\')
+            s.garbage_collect_text_cache()
+
+        a = show(1)
+        release()
+        self.ae(show(2), a)
+        release()
+        # a pair of slots for a glyph mixing fg and fixed colors is reused for another such glyph
+        m = show(3, True)
+        release()
+        self.ae(show(4, True), m)
+        release()
+        # single slots are reused before pairs are split
+        self.ae(show(5), a)
+        # and then pairs are split into single slots
+        self.register(s, 0x100001, glyph(6))
+        self.register(s, 0x100002, glyph(7))
+        line = self.render(s, '\U00100001\U00100002', y=1)
+        self.ae([line.sprite_at(x) for x in range(2)], [m, m + 1])
+        release()
+
+        # registering and printing new glyphs uses a bounded number of sprites
+        before = len(self.sprites)
+        for i in range(200):
+            show(100 + i, i % 3 == 0)
+            if i % 10 == 9:
+                s.garbage_collect_text_cache()
+        self.assertLess(len(self.sprites) - before, 40)
+
+    def test_registered_glyph_window_limits(self):
+        self.addCleanup(vg_set_window_limits)
+        vg_set_window_limits(1 << 30, 10)
+        s = self.create_screen(cols=8, lines=4, scrollback=100)
+
+        def reg(screen, i):
+            screen.callbacks.wtcbuf = b''
+            parse_bytes(screen, f'\x1b_25a1;r;cp=100000;fmt=vg;vb=0 0 24 24;fill=nonzero,fg:M0 0H{i / 4}V1Z\x1b\\'.encode())
+            return screen.callbacks.wtcbuf.decode()
+
+        ok, full = '\x1b_25a1;r;cp=100000;status=0\x1b\\', '\x1b_25a1;r;cp=100000;status=1;reason=no_space\x1b\\'
+        # each new glyph printed into the scrollback is kept alive by the text
+        results = []
+        for i in range(1, 20):
+            results.append(reg(s, i))
+            s.draw('\U00100000')
+            s.linefeed()
+            s.carriage_return()
+        self.ae(results[:8], [ok] * 8)
+        self.ae(results[-1], full)
+        # other windows are not affected
+        s2 = self.create_screen()
+        self.ae(reg(s2, 50), ok)
+        # once the text is gone the glyphs are released and registering works again
+        s.erase_in_display(3, False)
+        s.erase_in_display(2, False)
+        s.garbage_collect_text_cache()
+        self.ae(reg(s, 60), ok)
+        # the text cache is garbage collected automatically when the limits are reached
+        s3 = self.create_screen(cols=8, lines=4, scrollback=0)
+        for i in range(1, 6):
+            self.ae(reg(s3, i), ok)
+            s3.draw('\U00100000')
+        s3.erase_in_display(2, False)
+        for i in range(6, 12):
+            self.ae(reg(s3, i), ok, f'registration {i} failed')
+            s3.draw('\U00100000')
+
+    def test_registered_glyph_sprite_limits(self):
+        import gc
+
+        gc.collect()
+        self.addCleanup(set_glyph_protocol_sprite_limits)
+        MISSING = 1
+
+        # each glyph can be rendered with a limited number of distinct parameters
+        set_glyph_protocol_sprite_limits(65536, 16384, 12)
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H24V24H0Z')
+        results = []
+        for n in range(1, 8):
+            s.reset_mode(DECAWM)
+            s.cursor_position(1, 1)
+            draw_multicell(s, '\U00100000', width=2, subscale_n=n, subscale_d=8)
+            line = s.line(0)
+            test_render_line(line)
+            results.append(line.sprite_at(0))
+        # 2 sprites per variant, the seventh variant exceeds the limit of 12
+        self.assertNotIn(MISSING, results[:6])
+        self.ae(results[6], MISSING)
+
+        # each window can use a limited number of sprite slots
+        # 2 slots are reserved per sprite, as glyphs mixing colors use a pair
+        set_glyph_protocol_sprite_limits(65536, 6, 1024)
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        for i in range(8):
+            self.register(s, 0x100000 + i, f'fill=nonzero,fg:M0 0H{i + 1}V24H0Z')
+        line = self.render(s, ''.join(chr(0x100000 + i) for i in range(8)))
+        sprites = [line.sprite_at(x) for x in range(8)]
+        self.assertNotIn(MISSING, sprites[:5])
+        self.ae(sprites[5:], [MISSING] * 3)
+        # other windows are not affected
+        s2 = self.create_screen(cols=8, lines=4, scrollback=0)
+        self.register(s2, 0x100000, 'fill=nonzero,fg:M0 0H20V24H0Z')
+        self.assertNotEqual(self.render(s2, '\U00100000').sprite_at(0), MISSING)
+        # once the glyphs are no longer used the window can render again
+        s.erase_in_display(2, False)
+        parse_bytes(s, b'\x1b_25a1;c;reply=0\x1b\\')
+        s.garbage_collect_text_cache()
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H21V24H0Z')
+        self.assertNotEqual(self.render(s, '\U00100000').sprite_at(0), MISSING)
+        set_glyph_protocol_sprite_limits()
+
+        # glyphs that are too complex to render are rendered as the missing glyph
+        s = self.create_screen(cols=8, lines=8, scrollback=0)
+        bomb = 'stroke=0.001,fg:M0.5 0' + ' q2e-05 2e-05 0 4e-05 q-2e-05 -2e-05 0 -4e-05' * 64
+        self.register(s, 0x100001, bomb, vb=f'0 0 1 {1 / 4096}', fit='cover')
+        draw_multicell(s, '\U00100001', scale=7)
+        for i in range(2):  # the second time the failure is cached
+            line = s.line(0)
+            test_render_line(line)
+            self.ae([line.sprite_at(x) for x in range(7)], [MISSING] * 7)
+
+    def test_paused_rendering_releases_glyphs(self):
+        import gc
+
+        gc.collect()
+        base = vg_live_glyph_memory()
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        self.register(s, 0x100000, 'fill=nonzero,fg:M0 0H24V24H0Z')
+        s.draw('\U00100000')
+        self.assertTrue(s.pause_rendering(True, 5000))
+        self.assertTrue(s.pause_rendering(False, 0))
+        s.reset()
+        self.ae(vg_live_glyph_memory(), base)

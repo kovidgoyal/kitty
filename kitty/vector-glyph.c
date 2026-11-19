@@ -8,7 +8,23 @@
 // Parsing of the vg payload format of the glyph protocol, see vector-glyph.h
 
 #include "vector-glyph.h"
+#include "cross-platform-random.h"
+#include "monotonic.h"
 #include <math.h>
+#include <xxhash.h>
+
+// Glyphs are interned by the hash of their content, so that registering the
+// same glyph again, at any codepoint in any screen, uses the same object
+#define NAME glyph_intern_map
+#define KEY_TY uint64_t
+#define VAL_TY VGGlyph *
+#define HASH_FN vt_hash_integer
+#define CMPR_FN vt_cmpr_integer
+#include "kitty-verstable.h"
+static glyph_intern_map interned_glyphs;
+static bool interned_glyphs_initialized = false;
+// The memory used by all live glyphs, whether registered or bound to cells
+static size_t live_glyph_memory = 0;
 
 // Matrices {{{
 void
@@ -45,11 +61,26 @@ vg_incref(VGGlyph *g) {
     return g;
 }
 
+static void (*free_callback)(uint64_t content_hash) = NULL;
+
+void
+vg_set_free_callback(void (*callback)(uint64_t content_hash)) {
+    free_callback = callback;
+}
+
 static void
 vg_free(VGGlyph *g) {
+    // Only successfully parsed glyphs have a hash and could have been rendered
+    if (free_callback && g->content_hash) free_callback(g->content_hash);
+    if (g->interned) {
+        glyph_intern_map_itr i = vt_get(&interned_glyphs, g->content_hash);
+        if (!vt_is_end(i) && i.data->val == g) vt_erase_itr(&interned_glyphs, i);
+        live_glyph_memory -= MIN(live_glyph_memory, g->memory_size);
+    }
     free(g->layers);
     free(g->verbs);
     free(g->points);
+    free(g->key);
     free(g);
 }
 
@@ -699,13 +730,73 @@ parse(Parser *p, const uint8_t *payload, size_t sz) {
     return validate_clips(p);
 }
 
+// The identity of a glyph: its placement and payload. Placement is serialized
+// explicitly to not depend on struct padding. Returns NULL on out of memory.
+static uint8_t *
+content_key(const uint8_t *payload, size_t sz, const GlyphPlacement *placement, size_t *key_len) {
+    const int32_t enums[3] = {placement->fit, placement->align_h, placement->align_v};
+    *key_len = sizeof(placement->vb) + sizeof(enums) + sz;
+    uint8_t *key = malloc(*key_len);
+    if (!key) return NULL;
+    memcpy(key, placement->vb, sizeof(placement->vb));
+    memcpy(key + sizeof(placement->vb), enums, sizeof(enums));
+    memcpy(key + sizeof(placement->vb) + sizeof(enums), payload, sz);
+    return key;
+}
+
+// The hash is seeded with a random value so that collisions cannot be
+// engineered. Interning compares the full content regardless.
+static uint64_t
+content_hash(const uint8_t *key, size_t key_len) {
+    static uint64_t seed = 0;
+    static bool seeded = false;
+    if (!seeded) {
+        if (!secure_random_bytes(&seed, sizeof(seed))) seed = (uint64_t)monotonic() ^ (uint64_t)(uintptr_t)&seed;
+        seeded = true;
+    }
+    const uint64_t ans = XXH3_64bits_withSeed(key, key_len, seed);
+    // Zero means no hash, see vg_free()
+    return ans ? ans : 1;
+}
+
+size_t
+vg_live_glyph_memory(void) {
+    return live_glyph_memory;
+}
+
 VGGlyph *
 vg_parse(const uint8_t *payload, size_t sz, const GlyphPlacement *placement, VGError *err, const char **err_msg) {
     *err = VG_OUT_OF_MEMORY;
     *err_msg = "out of memory";
+    if (!interned_glyphs_initialized) {
+        vt_init(&interned_glyphs);
+        interned_glyphs_initialized = true;
+    }
+    size_t key_len;
+    uint8_t *key = content_key(payload, sz, placement, &key_len);
+    if (!key) return NULL;
+    const uint64_t hash = content_hash(key, key_len);
+    glyph_intern_map_itr existing = vt_get(&interned_glyphs, hash);
+    if (!vt_is_end(existing)) {
+        VGGlyph *e = existing.data->val;
+        const bool same = e->key_len == key_len && memcmp(e->key, key, key_len) == 0;
+        free(key);
+        // Different content with the same hash cannot be interned, and the
+        // hash identifies sprites, so refuse it. Practically impossible with
+        // a random seed.
+        if (!same) return NULL;
+        *err = VG_OK;
+        *err_msg = NULL;
+        return vg_incref(e);
+    }
     VGGlyph *g = calloc(1, sizeof(VGGlyph));
-    if (!g) return NULL;
+    if (!g) {
+        free(key);
+        return NULL;
+    }
     g->refcnt = 1;
+    g->key = key;
+    g->key_len = key_len;
     g->placement = *placement;
     g->layers = malloc(VG_MAX_LAYERS * sizeof(g->layers[0]));
     if (!g->layers) return vg_decref(g);
@@ -725,30 +816,57 @@ vg_parse(const uint8_t *payload, size_t sz, const GlyphPlacement *placement, VGE
     // Release unused space
     VGLayer *layers = realloc(g->layers, MAX(1u, g->num_layers) * sizeof(g->layers[0]));
     if (layers) g->layers = layers;
-    g->memory_size =
-        sizeof(VGGlyph) + g->num_layers * sizeof(g->layers[0]) + p->verbs_capacity * sizeof(g->verbs[0]) + p->points_capacity * 2 * sizeof(g->points[0]);
+    g->memory_size = sizeof(VGGlyph) + g->num_layers * sizeof(g->layers[0]) + p->verbs_capacity * sizeof(g->verbs[0]) +
+                     p->points_capacity * 2 * sizeof(g->points[0]) + key_len;
+    // Every glyph must be interned, as sprites are identified by the hash
+    if (vt_is_end(vt_insert(&interned_glyphs, hash, g))) return vg_decref(g);
+    g->content_hash = hash;
+    g->interned = true;
+    live_glyph_memory += g->memory_size;
     *err = VG_OK;
     *err_msg = NULL;
     return g;
 }
 
 // Registrations {{{
-static size_t total_registered_memory = 0;
-
-size_t
-glyph_registry_total_memory(void) {
-    return total_registered_memory;
-}
+#define NAME registry_map
+#define KEY_TY uint64_t
+#define VAL_TY GlyphRegistry *
+#define HASH_FN vt_hash_integer
+#define CMPR_FN vt_cmpr_integer
+#include "kitty-verstable.h"
+static registry_map registries;
+static bool registries_initialized = false;
 
 GlyphRegistry *
 glyph_registry_alloc(void) {
-    return calloc(1, sizeof(GlyphRegistry));
+    static uint64_t id_counter = 0;
+    if (!registries_initialized) {
+        vt_init(&registries);
+        registries_initialized = true;
+    }
+    GlyphRegistry *ans = calloc(1, sizeof(GlyphRegistry));
+    if (!ans) return NULL;
+    ans->id = ++id_counter;
+    if (vt_is_end(vt_insert(&registries, ans->id, ans))) {
+        free(ans);
+        return NULL;
+    }
+    return ans;
+}
+
+GlyphRegistry *
+glyph_registry_for_id(uint64_t id) {
+    if (!registries_initialized) return NULL;
+    registry_map_itr i = vt_get(&registries, id);
+    return vt_is_end(i) ? NULL : i.data->val;
 }
 
 void
 glyph_registry_free(GlyphRegistry *self) {
     if (self) {
         glyph_registry_clear_all(self);
+        vt_erase(&registries, self->id);
         free(self);
     }
 }
@@ -756,25 +874,23 @@ glyph_registry_free(GlyphRegistry *self) {
 static void
 release(GlyphRegistry *self, unsigned idx) {
     VGGlyph *g = self->glyphs[idx];
+    self->bound_idx_plus_1[idx] = 0;
     if (g) {
-        total_registered_memory -= MIN(total_registered_memory, g->memory_size);
+        self->memory -= MIN(self->memory, g->memory_size);
         self->glyphs[idx] = vg_decref(g);
         self->num_registered--;
     }
 }
 
-bool
+void
 glyph_registry_set(GlyphRegistry *self, char_type cp, VGGlyph *g) {
     const unsigned idx = cp - GLYPH_BLOCK_FIRST;
-    const VGGlyph *existing = self->glyphs[idx];
-    const size_t freed = existing ? existing->memory_size : 0;
-    if (total_registered_memory - MIN(freed, total_registered_memory) + g->memory_size > VG_REGISTRY_MEMORY_BUDGET) return false;
+    vg_incref(g);
     release(self, idx);
-    self->glyphs[idx] = vg_incref(g);
-    total_registered_memory += g->memory_size;
+    self->glyphs[idx] = g;
+    self->memory += g->memory_size;
     self->num_registered++;
     self->generation++;
-    return true;
 }
 
 void
@@ -789,6 +905,7 @@ glyph_registry_clear(GlyphRegistry *self, char_type cp) {
 
 void
 glyph_registry_clear_all(GlyphRegistry *self) {
+    memset(self->bound_idx_plus_1, 0, sizeof(self->bound_idx_plus_1));
     if (!self->num_registered) return;
     for (unsigned i = 0; i < GLYPH_BLOCK_SIZE && self->num_registered; i++) release(self, i);
     self->generation++;
@@ -941,8 +1058,26 @@ py_parse_vg(PyObject *self UNUSED, PyObject *args) {
     return ans;
 }
 
+static PyObject *
+py_vg_live_glyph_memory(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyLong_FromSize_t(live_glyph_memory);
+}
+
+size_t vg_window_memory_limit = VG_WINDOW_MEMORY_LIMIT, vg_window_glyph_limit = VG_WINDOW_GLYPH_LIMIT;
+
+static PyObject *
+py_vg_set_window_limits(PyObject *self UNUSED, PyObject *args) {
+    size_t mem = VG_WINDOW_MEMORY_LIMIT, count = VG_WINDOW_GLYPH_LIMIT;
+    if (!PyArg_ParseTuple(args, "|nn", &mem, &count)) return NULL;
+    vg_window_memory_limit = mem;
+    vg_window_glyph_limit = count;
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef methods[] = {
     {"parse_vg", py_parse_vg, METH_VARARGS, "Parse a vg payload with the specified viewBox, for testing"},
+    {"vg_live_glyph_memory", py_vg_live_glyph_memory, METH_NOARGS, "The memory used by all live vector glyphs, for testing"},
+    {"vg_set_window_limits", py_vg_set_window_limits, METH_VARARGS, "Set the per window limits on glyphs, for testing"},
     {NULL, NULL, 0, NULL},
 };
 
