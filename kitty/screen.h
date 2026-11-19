@@ -11,6 +11,7 @@
 #include "monotonic.h"
 #include "line-buf.h"
 #include "history.h"
+#include "glyph-protocol.h"
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
@@ -389,6 +390,7 @@ hyperlink_id_type screen_mark_hyperlink(Screen *, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 void screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload);
 void screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload);
+void screen_handle_glyph_command(Screen *self, const GlyphCommand *cmd, const uint8_t *buf);
 bool screen_open_url(Screen *self, const char *callback);
 bool screen_set_last_visited_prompt(Screen *, index_type);
 bool screen_select_cmd_output(Screen *, index_type);
