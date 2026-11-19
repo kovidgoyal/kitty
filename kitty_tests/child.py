@@ -557,6 +557,19 @@ read -r _
                 self.ae(argv, ('/bin/prog', 'arg'))
         self.ae(len(errors), 4)
 
+    def test_launch_wrapper_default_bash_with_shell_integration(self):
+        from kitty.launch_wrapper import LaunchRequest
+
+        self.set_options({'shell': '/bin/bash', 'shell_integration': frozenset({'enabled'})})
+        req = LaunchRequest('tab')
+        # Exercise in-process shell integration even when Bash is the macOS login shell.
+        with patch('kitty.child.shell_path', '/bin/sh'):
+            for argv, is_default_shell in ((('/bin/bash',), True), (('/bin/bash', '--posix'), False)):
+                with self.subTest(argv=argv):
+                    self._fork(argv=argv, launch_request=req, user_func=self._recording(None))
+                    self.ae(self.contexts[-1].argv, ('/bin/bash', '--posix'))
+                    self.ae(self.contexts[-1].is_default_shell, is_default_shell)
+
     def test_launch_wrapper_invalid_shell(self):
         # An invalid shell option falls back to the login shell, with the
         # wrapper still applied

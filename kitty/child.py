@@ -625,7 +625,7 @@ class Child:
         if self.launch_request is not None:
             from .launch_wrapper import prefix_for_launch
 
-            if user_prefix := prefix_for_launch(self.launch_request, self.argv, self.cwd, self.final_env):
+            if user_prefix := prefix_for_launch(self.launch_request, self.argv, self.cwd, self.final_env, unmodified_argv=self.unmodified_argv):
                 # The user's wrapper goes inside /usr/bin/login, if present,
                 # but outside everything else, so that kitty's own helpers
                 # such as the run-shell kitten see the actual command.
