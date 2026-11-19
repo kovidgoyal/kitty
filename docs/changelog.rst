@@ -137,6 +137,8 @@ Detailed list of changes
 
 - Fix the :ref:`launch wrapper <launch_wrapper>` not being used for programs run in an already running panel or quick access terminal in single instance mode (:pull:`10900`)
 
+- panel kitten: In single instance mode, run the command in a new panel in the working directory it was invoked from and do not pass internal environment variables such as :code:`XDG_ACTIVATION_TOKEN` to commands run in panels, as for other single instance commands
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

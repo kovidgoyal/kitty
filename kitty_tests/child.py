@@ -636,14 +636,14 @@ read -r _
                     patch.object(panel, 'set_layer_shell_config'),
                     patch.object(panel, 'toggle_os_window_visibility'),
                 ):
-                    panel.handle_single_instance_command(boss, sys_args, {'X': 'y'}, cwd=cwd)
+                    panel.handle_single_instance_command(boss, sys_args, {'X': 'y', 'XDG_ACTIVATION_TOKEN': 't', 'VTE_VERSION': '1'}, cwd=cwd)
                 launch = tab.new_special_window if launch_type == 'window' else tm.new_tab
                 launch.assert_called_once()
                 sw = launch.call_args.args[0]
+                # Cleaned up as for other single instance commands
                 self.ae(sw.env, {'X': 'y'})
                 self.ae(sw.hold, hold)
-                # A new panel is not given the cwd of the invocation
-                self.ae(sw.cwd, None if launch_type == 'os-window' else cwd)
+                self.ae(sw.cwd, cwd)
                 wrapper = self._recording(['/bin/wrapper'])
                 _, _, argv = self._fork(argv=sw.cmd, launch_request=sw.launch_request, hold=sw.hold, cwd=sw.cwd or '/', user_func=wrapper)
                 self.ae(argv[-3:], ('/bin/wrapper', *cmd))
@@ -665,6 +665,8 @@ read -r _
         shell = resolved_shell(get_options())
         self.ae(sw.cmd, shell)
         self.ae(sw.launch_request.launch_type, 'os-window')
+        # No cwd sent by the client, so the default is used
+        self.assertIsNone(sw.cwd)
         self._fork(argv=sw.cmd, launch_request=sw.launch_request, user_func=self._recording(None))
         self.ae(self.contexts[-1].argv, tuple(shell))
         self.assertTrue(self.contexts[-1].is_default_shell)

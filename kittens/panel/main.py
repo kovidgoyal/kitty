@@ -170,11 +170,14 @@ def have_config_files_been_updated(config_files: Iterable[str]) -> bool:
 def window_for_command(cmd: list[str], environ: Mapping[str, str], launch_type: str, cwd: str = '') -> 'SpecialWindowInstance':
     # The command is requested by the user via a separate invocation of the
     # panel kitten, so it is passed to the launch wrapper, without a source
-    # window, since it is not run from any window in this kitty instance.
+    # window, since it is not run from any window in this kitty instance. The
+    # environment and working directory are those of the invocation, with the
+    # environment cleaned up as for other single instance commands.
+    from kitty.child import process_env
     from kitty.launch_wrapper import LaunchRequest
     from kitty.tabs import SpecialWindow
 
-    return SpecialWindow(cmd=cmd, env=dict(environ), cwd=cwd or None, hold=args.hold, launch_request=LaunchRequest(launch_type))
+    return SpecialWindow(cmd=cmd, env=process_env(environ), cwd=cwd or None, hold=args.hold, launch_request=LaunchRequest(launch_type))
 
 
 def run_in_existing_panel(boss: BossType, cmd: list[str], environ: Mapping[str, str], cwd: str) -> None:
@@ -224,7 +227,7 @@ def handle_single_instance_command(
     # Without a command run the shell, as a panel started without single
     # instance does. Not kitty's run-shell kitten, so that the launch wrapper
     # sees the actual shell.
-    tm.new_tab(window_for_command(items or resolved_shell(get_options()), environ, 'os-window'))
+    tm.new_tab(window_for_command(items or resolved_shell(get_options()), environ, 'os-window', cwd))
 
 
 def main(sys_args: list[str]) -> None:
