@@ -2461,6 +2461,77 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 }
 // }}}
 
+// Glyph protocol {{{
+
+// The payload formats kitty supports, advertised in the reply to the s verb
+#define GLYPH_SUPPORTED_FORMATS ""
+
+static bool
+glyph_is_registered(Screen *self UNUSED, char_type cp UNUSED) {
+    return false;
+}
+
+static void
+glyph_reply(Screen *self, const char *fmt, ...) {
+    char buf[512];
+    va_list args;
+    va_start(args, fmt);
+    int n = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    if (n > 0 && (size_t)n < sizeof(buf)) write_escape_code_to_child(self, ESC_APC, buf);
+}
+
+static void
+glyph_handle_query(Screen *self, const GlyphCommand *cmd) {
+    if (cmd->has_cp == cmd->has_grapheme) {
+        glyph_reply(self, GLYPH_PROTOCOL_PREFIX "q;reason=malformed_query");
+        return;
+    }
+    if (cmd->has_grapheme) {
+        // kitty does not support grapheme queries
+        if (!cmd->grapheme_valid) {
+            glyph_reply(self, GLYPH_PROTOCOL_PREFIX "q;reason=malformed_query");
+            return;
+        }
+        // At most six hex digits and a comma per codepoint
+        char hex[GLYPH_MAX_GRAPHEME_CODEPOINTS * 7 + 1];
+        static_assert(sizeof("10ffff,") - 1 == 7, "fix the size of hex");
+        size_t pos = 0;
+        for (unsigned i = 0; i < cmd->grapheme_count && pos < sizeof(hex); i++) {
+            const int n = snprintf(hex + pos, sizeof(hex) - pos, "%s%x", i ? "," : "", cmd->grapheme[i]);
+            if (n < 0) return;
+            pos += n;
+        }
+        if (pos >= sizeof(hex)) return;
+        glyph_reply(self, GLYPH_PROTOCOL_PREFIX "q;grapheme=%s;reason=unsupported", hex);
+        return;
+    }
+    if (!cmd->cp_valid) {
+        glyph_reply(self, GLYPH_PROTOCOL_PREFIX "q;reason=malformed_query");
+        return;
+    }
+    if (is_glyph_block_codepoint(cmd->cp)) {
+        // No font assigns glyphs to codepoints in the block, so whether the
+        // codepoint is covered is determined by the registrations alone.
+        glyph_reply(self, GLYPH_PROTOCOL_PREFIX "q;cp=%x;status=%s", cmd->cp, glyph_is_registered(self, cmd->cp) ? "glossary" : "");
+    } else {
+        // Determining font coverage requires font fallback which is too slow
+        // to do while parsing input, so kitty never does it.
+        glyph_reply(self, GLYPH_PROTOCOL_PREFIX "q;cp=%x;reason=unknown", cmd->cp);
+    }
+}
+
+void
+screen_handle_glyph_command(Screen *self, const GlyphCommand *cmd, const uint8_t *buf UNUSED) {
+    switch (cmd->verb) {
+        case GLYPH_VERB_SUPPORT: glyph_reply(self, GLYPH_PROTOCOL_PREFIX "s;fmt=" GLYPH_SUPPORTED_FORMATS); break;
+        case GLYPH_VERB_QUERY: glyph_handle_query(self, cmd); break;
+        case GLYPH_VERB_REGISTER:
+        case GLYPH_VERB_CLEAR: break;
+    }
+}
+// }}}
+
 // Modes {{{
 
 

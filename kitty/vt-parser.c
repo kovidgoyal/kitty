@@ -1575,10 +1575,28 @@ dispatch_csi(PS *self) {
 #include "parse-graphics-command.h"
 
 static void
+parse_glyph_protocol_code(PS *self, uint8_t *buf, size_t bufsz) {
+    GlyphCommand cmd;
+    const char *err = parse_glyph_command(buf, bufsz, &cmd);
+    if (err) {
+        REPORT_ERROR("Ignoring APC escape code that is not a valid glyph protocol message: %s", err);
+        return;
+    }
+#ifdef DUMP_COMMANDS
+    RAII_PyObject(d, glyph_command_as_dict(&cmd, buf));
+    if (d) {
+        REPORT_VA_COMMAND("K s O", self->window_id, "glyph_command", d);
+    } else PyErr_Clear();
+#endif
+    screen_handle_glyph_command(self->screen, &cmd, buf);
+}
+
+static void
 dispatch_apc(PS *self, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
     if (bufsz < 2) return;
     switch (buf[0]) {
         case 'G': parse_graphics_code(self, buf, bufsz); break;
+        case '2': parse_glyph_protocol_code(self, buf, bufsz); break;
         default: REPORT_ERROR("Unrecognized APC code: 0x%x", buf[0]); break;
     }
 }

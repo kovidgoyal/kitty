@@ -918,6 +918,7 @@ extern bool init_utmp(PyObject *module);
 extern bool init_loop_utils(PyObject *module);
 extern bool init_systemd_module(PyObject *module);
 extern bool init_mime_cache(PyObject *module);
+extern bool init_glyph_protocol(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
@@ -987,6 +988,7 @@ PyInit_fast_data_types(void) {
     if (!init_crypto_library(m)) return NULL;
     if (!init_systemd_module(m)) return NULL;
     if (!init_mime_cache(m)) return NULL;
+    if (!init_glyph_protocol(m)) return NULL;
     if (!init_animations(m)) return NULL;
 
     CellAttrs a;
