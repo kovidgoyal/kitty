@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from select import select
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from kitty.child import Child, KittyWrapper, children_of_process, cmdline_of_pid, cwd_of_process, memory_used_by_process_tree_rooted_at
 from kitty.constants import is_macos, kitten_exe, kitty_exe
@@ -280,7 +280,7 @@ class LaunchWrapperTest(BaseTest):
         load_prefix_func.clear_override()
         super().tearDown()
 
-    def _fork(self, argv=('/bin/prog', 'arg'), launch_request=None, hold=False, user_func=None):
+    def _fork(self, argv=('/bin/prog', 'arg'), launch_request=None, hold=False, user_func=None, cwd='/'):
         # Fork a Child with spawning faked, returning the Child and the
         # exe and argv that would have been spawned
         from kitty import child as child_module
@@ -294,7 +294,7 @@ class LaunchWrapperTest(BaseTest):
             return 1234567
 
         boss = SimpleNamespace(encryption_public_key='key', listening_on='', window_id_map={})
-        c = Child(list(argv), '/', env={'KITTY_WINDOW_ID': '7'}, hold=hold, launch_request=launch_request)
+        c = Child(list(argv), cwd, env={'KITTY_WINDOW_ID': '7'}, hold=hold, launch_request=launch_request)
         with (
             patch.object(child_module.fast_data_types, 'spawn', spawn),
             patch.object(child_module.fast_data_types, 'get_boss', return_value=boss),
@@ -603,3 +603,68 @@ read -r _
         # Reported only once
         log_error.assert_called_once()
         self.assertIn('Unterminated string', log_error.call_args.args[0])
+
+    def test_launch_wrapper_for_panel_commands(self):
+        # Commands sent to a running panel via single instance are user
+        # launches, not run from any window in the panel
+        from kittens.panel import main as panel
+        from kitty.fast_data_types import get_options
+        from kitty.utils import resolved_shell
+
+        cmd = ['/bin/prog', 'arg']
+        cwd = os.path.realpath(tempfile.gettempdir())
+        cases = (
+            # toggle-visibility, if-running, has active tab, hold, launch type
+            (True, 'new-tab', True, False, 'tab'),
+            (True, 'new-window', True, True, 'window'),
+            (True, 'new-window', False, False, 'tab'),
+            (False, 'new-tab', True, True, 'os-window'),
+        )
+        for toggle, mode, has_active_tab, hold, launch_type in cases:
+            with self.subTest(toggle=toggle, mode=mode, has_active_tab=has_active_tab, hold=hold):
+                # The panel has an active window, which must not be used as the source
+                tab = SimpleNamespace(active_window_for_cwd=SimpleNamespace(id=2), new_special_window=Mock())
+                tm = SimpleNamespace(os_window_id=1, active_tab=tab if has_active_tab else None, new_tab=Mock())
+                boss = Mock(os_window_map={1: tm}, os_window_death_actions={}, window_id_map={})
+                boss.add_os_panel.return_value = 1
+                sys_args = ['panel', f'--if-running={mode}', *(['--toggle-visibility'] if toggle else []), *(['--hold'] if hold else []), *cmd]
+                with (
+                    patch.object(panel, 'args', panel.parse_panel_args([])[0]),
+                    patch.object(panel, 'mtime_map', {}),
+                    patch.object(panel, 'current_focused_os_window_id', return_value=0),
+                    patch.object(panel, 'layer_shell_config_for_os_window', return_value=None),
+                    patch.object(panel, 'set_layer_shell_config'),
+                    patch.object(panel, 'toggle_os_window_visibility'),
+                ):
+                    panel.handle_single_instance_command(boss, sys_args, {'X': 'y'}, cwd=cwd)
+                launch = tab.new_special_window if launch_type == 'window' else tm.new_tab
+                launch.assert_called_once()
+                sw = launch.call_args.args[0]
+                self.ae(sw.env, {'X': 'y'})
+                self.ae(sw.hold, hold)
+                # A new panel is not given the cwd of the invocation
+                self.ae(sw.cwd, None if launch_type == 'os-window' else cwd)
+                wrapper = self._recording(['/bin/wrapper'])
+                _, _, argv = self._fork(argv=sw.cmd, launch_request=sw.launch_request, hold=sw.hold, cwd=sw.cwd or '/', user_func=wrapper)
+                self.ae(argv[-3:], ('/bin/wrapper', *cmd))
+                if hold:
+                    self.assertNotEqual(argv[0], '/bin/wrapper')
+                ctx = self.contexts[-1]
+                self.ae(ctx.launch_type, launch_type)
+                # The command does not come from the active window of the panel
+                self.assertIsNone(ctx.source_window_id)
+                self.assertIsNone(ctx.source_pid)
+        # A new panel without a command runs the default shell, not kitty's
+        # internal run-shell kitten, so the wrapper sees the actual shell
+        boss = Mock(os_window_map={1: tm}, os_window_death_actions={}, window_id_map={})
+        boss.add_os_panel.return_value = 1
+        tm.new_tab.reset_mock()
+        with patch.object(panel, 'args', panel.parse_panel_args([])[0]), patch.object(panel, 'mtime_map', {}):
+            panel.handle_single_instance_command(boss, ['panel'], {})
+        sw = tm.new_tab.call_args.args[0]
+        shell = resolved_shell(get_options())
+        self.ae(sw.cmd, shell)
+        self.ae(sw.launch_request.launch_type, 'os-window')
+        self._fork(argv=sw.cmd, launch_request=sw.launch_request, user_func=self._recording(None))
+        self.ae(self.contexts[-1].argv, tuple(shell))
+        self.assertTrue(self.contexts[-1].is_default_shell)

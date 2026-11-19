@@ -135,6 +135,8 @@ Detailed list of changes
 
 - Fix a single window with :opt:`draw_window_borders_for_single_window` having no border, and with :opt:`window_border_radius` being hidden by an extra layer of background, when its margin is narrower than its border. Space for the border is now reserved between the margin and the window contents (:iss:`10899`)
 
+- Fix the :ref:`launch wrapper <launch_wrapper>` not being used for programs run in an already running panel or quick access terminal in single instance mode (:pull:`10900`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
