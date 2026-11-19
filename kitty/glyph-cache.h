@@ -13,11 +13,19 @@ typedef union SpritePosition {
         sprite_index idx : sizeof(sprite_index) * 8;
         bool rendered : 1;
         bool colored : 1;
-        uint32_t : 30;
+        // A colored sprite that is followed by a sprite with the weight of
+        // the foreground color, see vector-glyph-render.c
+        bool fg_mix : 1;
+        uint32_t : 29;
     };
     uint64_t val;
 } SpritePosition;
 static_assert(sizeof(SpritePosition) == sizeof(uint64_t), "Fix ordering of SpritePosition");
+
+// Flags in the sprite index of a cell, must match cell.slang
+#define SPRITE_INDEX_MASK 0x3fffffffu
+#define SPRITE_FG_MIX_FLAG 0x40000000u
+#define SPRITE_COLORED_FLAG 0x80000000u
 
 typedef struct {
     int x;

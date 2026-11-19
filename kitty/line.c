@@ -746,7 +746,7 @@ add_combining_char(Line *self, PyObject *args) {
     text_in_cell(cell, self->text_cache, &lc);
     ensure_space_for_chars(&lc, lc.count + 1);
     lc.chars[lc.count++] = new_char;
-    cell->ch_or_idx = tc_get_or_insert_chars(self->text_cache, &lc);
+    cell->ch_or_idx = tc_get_or_insert_chars_with_glyph(self->text_cache, &lc, cell_registered_glyph(cell, self->text_cache));
     cell->ch_is_idx = true;
     Py_RETURN_NONE;
 }

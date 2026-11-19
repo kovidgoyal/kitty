@@ -26,13 +26,21 @@ static const bool ONLY_BACKGROUND = RENDER_MODE == 1;
 [[vk::binding(2)]]
 uniform Sampler2D<uint> sprite_decorations_map; // a single channel R32UI texture // binding slots: see SHADER_BINDING_SLOTS in slang.py
 
-static const uint SPRITE_INDEX_MASK = 0x7fffffff;
+// Must match SPRITE_INDEX_MASK and the flags in glyph-cache.h
+static const uint SPRITE_INDEX_MASK = 0x3fffffff;
 static const uint SPRITE_COLORED_MASK = 0x80000000;
 static const uint SPRITE_COLORED_SHIFT = 31u;
+// A colored sprite whose color is to be combined with the foreground color
+// weighted by the alpha of the sprite to its right in the sprite map, used for
+// glyphs registered with the glyph protocol, see vector-glyph-render.c
+static const uint SPRITE_FG_MIX_MASK = 0x40000000;
 // Set in underline_exclusion_pos when the glyph, decorations, and cursor sprite
 // are all 0. The block cursor is sprite 0 and its color is already in the
 // background. Packed into an existing flat varying to not use another slot.
 static const uint SKIP_TEXT_FLAG = 0x80000000u;
+// Set in underline_exclusion_pos when the sprite has SPRITE_FG_MIX_MASK set
+static const uint FG_MIX_FLAG = SPRITE_FG_MIX_MASK;
+static const uint UNDERLINE_EXCLUSION_POS_MASK = ~(SKIP_TEXT_FLAG | FG_MIX_FLAG);
 
 // The uniform parameters of the program, shared by all its stages. See
 // PUSH_CONSTANTS_MAX_SIZE in slang.py for why they are declared this way.
@@ -85,7 +93,7 @@ to_sprite_pos(uint2 pos, uint idx) {
 
 uint
 to_underline_exclusion_pos(uint2 sprite_idx) {
-    uint3 c = to_sprite_coords(sprite_idx[0]);
+    uint3 c = to_sprite_coords(sprite_idx[0] & SPRITE_INDEX_MASK);
     uint cell_top_px = c.y * (crd.cell_height + 1u);
     return cell_top_px + crd.cell_height;
 }
@@ -197,7 +205,7 @@ vertex_main([[vk::location(0)]] uint2 cell_input, [[vk::location(2)]] uint is_se
         uint cursor_sprite = cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor);
         vo.cursor_pos = to_sprite_pos(cell_data.pos, cursor_sprite);
         uint skip_text = uint((sprite_idx[0] & SPRITE_INDEX_MASK) == 0u && decs[0] == 0u && decs[1] == 0u && cursor_sprite == 0u);
-        vo.underline_exclusion_pos = to_underline_exclusion_pos(sprite_idx) | (skip_text * SKIP_TEXT_FLAG);
+        vo.underline_exclusion_pos = to_underline_exclusion_pos(sprite_idx) | (skip_text * SKIP_TEXT_FLAG) | (sprite_idx[0] & SPRITE_FG_MIX_MASK);
     }
     // }}}
 
@@ -268,11 +276,17 @@ foreground_contrast(float4 over, float3 under, float text_contrast, float text_g
 }
 
 float4
-load_text_foreground_color(float3 sprite_pos, float colored_sprite, float3 cell_foreground) {
+load_text_foreground_color(float3 sprite_pos, float colored_sprite, float3 cell_foreground, uint underline_exclusion_pos) {
     // For colored sprites use the color from the sprite rather than the text foreground
     // Return non-premultiplied foreground color
     float4 text_fg = sprites.SampleLevel(sprite_pos, 0);
-    return float4(lerp(cell_foreground, text_fg.xyz, colored_sprite), text_fg.w);
+    float3 rgb = lerp(cell_foreground, text_fg.xyz, colored_sprite);
+    if ((underline_exclusion_pos & FG_MIX_FLAG) != 0u) {
+        // The sprite to the right has the weight of the foreground color, relative to the alpha
+        float fg_weight = sprites.SampleLevel(sprite_pos + float3(1.0f / float(crd.sprites_xnum), 0.0f, 0.0f), 0).w;
+        rgb += cell_foreground * fg_weight;
+    }
+    return float4(rgb, text_fg.w);
 }
 
 float4
@@ -290,7 +304,7 @@ calculate_premul_foreground_from_sprites(
     float3 sz = float3(texture_size(sprites));
 
     float underline_alpha = sprites.SampleLevel(underline_pos, 0).w;
-    int3 fetch_coord = int3(int(sprite_pos.x * sz.x), int(underline_exclusion_pos), int(sprite_pos.z));
+    int3 fetch_coord = int3(int(sprite_pos.x * sz.x), int(underline_exclusion_pos & UNDERLINE_EXCLUSION_POS_MASK), int(sprite_pos.z));
     float underline_exclusion = texel_fetch(sprites, fetch_coord).w;
 
     underline_alpha *= 1.0 - underline_exclusion;
@@ -321,7 +335,7 @@ fragment_main(VertexOutput vo)
     // be undefined. The sprites texture has no mipmaps, so LOD 0 is identical.
     if (!ONLY_BACKGROUND && (vo.underline_exclusion_pos & SKIP_TEXT_FLAG) == 0u) {
         // blend in the foreground color
-        float4 text_fg = load_text_foreground_color(vo.sprite_pos, vo.colored_sprite, vo.cell_foreground);
+        float4 text_fg = load_text_foreground_color(vo.sprite_pos, vo.colored_sprite, vo.cell_foreground, vo.underline_exclusion_pos);
         text_fg = adjust_foreground_contrast_with_background(text_fg, vo.background, uniforms.text_contrast, uniforms.text_gamma_adjustment);
         float4 text_fg_premul = calculate_premul_foreground_from_sprites(
             vo.sprite_pos,
