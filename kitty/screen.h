@@ -265,7 +265,8 @@ typedef struct {
         DnDCommand metadata;
     } dnd_chunking;
     struct {
-        bool rtl; // direction set by SCP for the current buffer
+        bool rtl;           // direction set by SCP for the current buffer
+        index_type pending; // 1 + the row whose leading controls were written with no char drawn since, 0 for none
         struct {
             bool mBDSM, mBIDI_AUTODETECT, rtl;
         } main_stash; // main's controls while alt is active

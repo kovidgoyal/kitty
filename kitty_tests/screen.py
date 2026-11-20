@@ -2556,6 +2556,27 @@ class TestScreen(BaseTest):
         detect_url(self)
         detect_url(self, scale=2)
 
+    def test_detect_url_after_leading_mark(self):
+        # in bidi mode the URL starts in the line's first cell, whose text starts with the mark
+        for x in (0, 5):
+            s = self.create_screen(cols=30)
+            parse_bytes(s, b'\x1b[8h')
+            s.draw('\u200fhttp://moo.com x')
+            s.detect_url(x, 0)
+            self.ae(''.join(s.text_for_marked_url()), '\u200fhttp://moo.com')
+            self.ae(s.current_url_text(), 'http://moo.com')
+        # the bracket before the URL sets its end
+        s = self.create_screen(cols=30)
+        parse_bytes(s, b'\x1b[8h')
+        s.draw('\u200f(http://moo.com) x')
+        s.detect_url(5, 0)
+        self.ae(s.current_url_text(), 'http://moo.com')
+        # without bidi mode an OSC 66 cell whose text starts with a mark is read as it is
+        s = self.create_screen(cols=30)
+        parse_bytes(s, '\x1b]66;w=1;\u200fh\x07ttp://moo.com x'.encode())
+        s.detect_url(5, 0)
+        self.assertIsNone(s.current_url_text())
+
     def test_detect_url_regex(self):
         file_ref = r'[[:alnum:]_./-]+\.[[:alnum:]]+:[0-9]+'
 

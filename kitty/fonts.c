@@ -945,6 +945,21 @@ in_symbol_maps(FontGroup *fg, char_type ch) {
 
 
 static bool allow_use_of_box_fonts = true;
+// Set per line: a line holding a bidi record is rendered without the leading controls of its cells, any other line from its
+// text as it is
+static bool skip_leading_controls = false;
+
+// Tests ch_is_idx once, so a cell holding a single char costs what text_in_cell() does
+static inline void
+text_in_cell_for_render(const CPUCell *c, const TextCache *tc, ListOfChars *lc) {
+    if (!c->ch_is_idx) {
+        lc->count = 1;
+        lc->chars[0] = c->ch_or_idx;
+        return;
+    }
+    tc_chars_at_index(tc, c->ch_or_idx, lc);
+    if (UNLIKELY(skip_leading_controls)) strip_leading_controls(lc);
+}
 
 // Decides which 'font' to use for a given cell.
 //
@@ -960,7 +975,7 @@ font_for_cell(
     FontGroup *fg, const CPUCell *cpu_cell, const GPUCell *gpu_cell, bool *is_main_font, bool *is_emoji_presentation, TextCache *tc, ListOfChars *lc) {
     *is_main_font = false;
     *is_emoji_presentation = false;
-    text_in_cell(cpu_cell, tc, lc);
+    text_in_cell_for_render(cpu_cell, tc, lc);
     START_ALLOW_CASE_RANGE
     ssize_t ans;
     switch (lc->chars[0]) {
@@ -1658,7 +1673,7 @@ load_hb_buffer(CPUCell *first_cpu_cell, index_type num_cells, const TextCache *t
     // of context??
     for (; num_cells; first_cpu_cell++, num_cells--) {
         if (first_cpu_cell->is_multicell && first_cpu_cell->x) continue;
-        text_in_cell(first_cpu_cell, tc, lc);
+        text_in_cell_for_render(first_cpu_cell, tc, lc);
         ensure_space_for((&shape_buffer), codepoints, shape_buffer.codepoints[0], lc->count + num, capacity, 512, false);
         ensure_space_for((&shape_buffer), cells_at, shape_buffer.cells_at[0], lc->count + num + 1, cells_at_capacity, 512, false);
         memcpy(shape_buffer.codepoints + num, lc->chars, lc->count * sizeof(shape_buffer.codepoints[0]));
@@ -1793,7 +1808,7 @@ render_group(
     ensure_canvas_can_fit(fg, MAX(num_cells, num_scaled_cells) + 1, rf.scale);
     if (rendering_in_smaller_area) ensure_canvas_can_fit(fg, 2 * num_cells + 1, (unsigned)ceil(scale)); // scratch space
     pixel *scratch = fg->canvas.buf + canvas_width * unscaled_metrics.cell_height;
-    text_in_cell(cpu_cells, tc, global_glyph_render_scratch.lc);
+    text_in_cell_for_render(cpu_cells, tc, global_glyph_render_scratch.lc);
     bool is_only_filled_boxes = false;
     if (global_glyph_render_scratch.lc->chars[0] == 0x2588) {
         glyph_index box_glyph_id = global_glyph_render_scratch.glyphs[0];
@@ -2342,7 +2357,8 @@ shape_run(
     float scale = apply_scale_to_font_group(fg, &rf);
     const uint8_t key_scale = (uint8_t)MAX(1u, rf.scale);
     uint8_t subscale = ((rf.subscale_n & 0xf) << 4) | (rf.subscale_d & 0xf);
-    const uint8_t key_direction = dir == DIRECTION_GUESS ? OPT(force_ltr) : dir;
+    // a run shaped without the leading controls of its cells is not the run shaped from the same cells with them
+    const uint8_t key_direction = (dir == DIRECTION_GUESS ? OPT(force_ltr) : dir) | (skip_leading_controls ? 4 : 0);
     ShapedRun cached;
     if (shaped_run_get(font->shaped_run_hash_table, first_cpu_cell, num_cells, tc, disable_ligature, key_direction, key_scale, subscale, &cached)) {
         if (restore_shaped_run(first_cpu_cell, first_gpu_cell, num_cells, &cached)) {
@@ -2556,6 +2572,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     }
     RunFont rf = {0};
     GPUCell *gpu_cells = expanded_line_for_render(line);
+    skip_leading_controls = line->attrs.bidi_stamp != BIDI_STAMP_NONE;
     shape_run(line->cpu_cells, gpu_cells, num, font, rf, fg, rtl, line->text_cache, rtl ? DIRECTION_RTL : DIRECTION_GUESS);
     PyObject *ans = shaped_groups_as_python();
     if (!ans) goto done;
@@ -2734,6 +2751,7 @@ render_line(
     if (!line->render_cells) return; // lines without render data cannot be rendered
     const bool stamped = line->attrs.bidi_stamp != BIDI_STAMP_NONE;
     const ShapeDirection no_level_dir = stamped ? DIRECTION_LTR : DIRECTION_GUESS;
+    skip_leading_controls = stamped;
     FontGroup *fg = (FontGroup *)fg_;
     GPUCell *gpu_cells = expanded_line_for_render(line);
     CellStyleTable *style_table = line_style_table(line);
@@ -2765,7 +2783,7 @@ render_line(
                 cell_font.align.horizontal = cpu_cell->halign;
                 cell_font.multicell_y = cpu_cell->y;
             }
-            text_in_cell(cpu_cell, line->text_cache, lc);
+            text_in_cell_for_render(cpu_cell, line->text_cache, lc);
             bool is_main_font, is_emoji_presentation;
             GPUCell *gpu_cell = gpu_cells + i;
             const char_type first_ch = lc->chars[0];

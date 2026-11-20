@@ -62,8 +62,13 @@ clear_chars_in_line(CPUCell *cpu_cells, index_type xnum, char_type ch) {
 static inline index_type
 xlimit_for_line(const Line *line) {
     index_type xlimit = line->xnum;
-    while (xlimit > 0 && !line->cpu_cells[xlimit - 1].ch_and_idx) xlimit--;
+    while (xlimit > 0 && line_cell_is_blank(line, xlimit - 1)) xlimit--;
     return xlimit;
+}
+
+static inline bool
+line_is_blank(const Line *line) {
+    return !xlimit_for_line(line);
 }
 
 static inline void

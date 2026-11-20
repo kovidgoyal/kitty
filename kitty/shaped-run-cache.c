@@ -18,7 +18,7 @@
 
 typedef struct ShapedRunKey {
     uint32_t keysz_in_bytes;
-    uint8_t disable_ligature, direction, scale, subscale; // direction: 0 guess, 1 LTR, 2 RTL
+    uint8_t disable_ligature, direction, scale, subscale; // direction: 0 guess, 1 LTR, 2 RTL, | 4 without leading controls
     uint8_t data[];
 } ShapedRunKey;
 static_assert(sizeof(ShapedRunKey) == 8, "Fix the ordering of ShapedRunKey");

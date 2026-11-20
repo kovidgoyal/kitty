@@ -213,6 +213,25 @@ bracket is more than 32 characters after the previous strong character is not
 paired. Embeddings and overrides (LRE, RLE, LRO, RLO and PDF) are treated as
 neutral.
 
+The :doc:`text sizing protocol </text-sizing-protocol>` discards a zero-width
+code point that has no previous cell. As a special case, only in bidi mode,
+LRM and RLM are kept instead, so that they can start a line: the code point is
+stored at the start of the current cell, unless that cell is not the top left
+cell of a multicell character, holds a tab or has no room, and the cursor does
+not move. Until a character is drawn, text is erased, inserted, deleted or
+scrolled, the screen is resized or switched, or bidi mode is turned off, a
+character drawn into that cell while there is no previous cell is stored after
+them, and more marks written there are added to them. After that, a character
+or marks drawn there replace them, so a line redrawn from its start holds only
+the marks the redraw writes. A cell holding only such marks is shown empty,
+takes no combining character and is an empty cell wherever cells and rows are
+read as blank or copied (resize, tabs, copied text, clearing to the scrollback).
+Copied text includes marks stored before a character. A tab written over marks
+stored before a space replaces them, as it replaces the space. A character
+written into that cell with OSC 66 replaces it, marks included, so a program can
+put the mark in the OSC 66 text. Insert character and insert mode move the marks
+right with their cell. Without bidi mode nothing changes.
+
 An escape code to move the contents of the screen into the scrollback
 -------------------------------------------------------------------------------------
 

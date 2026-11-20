@@ -552,6 +552,7 @@ static void
 bidi_mark_seam(Screen *self, index_type y) {
     LineBuf *lb = self->linebuf;
     if (LIKELY(!lb->bidi_stamped)) return;
+    self->bidi.pending = 0;
     if (y && y <= lb->ynum) linebuf_mark_line_dirty(lb, y - 1);
     if (y < lb->ynum) linebuf_mark_line_dirty(lb, y);
 }
@@ -563,6 +564,7 @@ static inline void
 bidi_index_up_seams(Screen *self, index_type top, index_type bottom, bool to_history) {
     LineBuf *lb = self->linebuf;
     if (LIKELY(!lb->bidi_stamped)) return;
+    self->bidi.pending = 0;
     if (to_history && lb->line_attrs[top].bidi_stamp != BIDI_STAMP_NONE) self->historybuf->bidi_stamped = true;
     if (!to_history && top) linebuf_mark_line_dirty(lb, top - 1);
     if (top < bottom && (!to_history || lb->line_attrs[top].has_dirty_text)) linebuf_mark_line_dirty(lb, top + 1);
@@ -882,7 +884,7 @@ static bool
 preserve_blank_output_start_line(Cursor *cursor, LineBuf *linebuf) {
     if (cursor->x == 0 && cursor->y < linebuf->ynum && !linebuf_is_line_continued(linebuf, cursor->y)) {
         linebuf_init_line(linebuf, cursor->y);
-        if (!cell_has_text(linebuf->line->cpu_cells)) {
+        if (!cell_has_text(linebuf->line->cpu_cells) || line_is_blank(linebuf->line)) {
             // we have a blank output start line, we need it to be preserved by
             // reflow, so insert a dummy char
             cell_set_char(linebuf->line->cpu_cells + cursor->x++, '<');
@@ -911,6 +913,7 @@ remove_blank_output_line_reservation_marker(Cursor *cursor, LineBuf *linebuf) {
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     screen_pause_rendering(self, false, 0);
+    self->bidi.pending = 0;
     lines = MAX(1u, lines);
     columns = MAX(1u, columns);
 
@@ -1220,6 +1223,7 @@ record_written_line(Screen *self, index_type y, uint8_t record) {
 static inline void
 record_combining_write(Screen *self, const CPUCell *pc, index_type py, char_type before, bool was_multicell, uint8_t record) {
     if (pc->ch_and_idx == before) return;
+    self->bidi.pending = 0;
     record_written_line(self, py, record);
     // A widened narrow char can move to the cursor row
     if (!was_multicell && !pc->ch_and_idx) record_written_line(self, self->cursor->y, record);
@@ -1230,6 +1234,7 @@ bidi_clear_record_if_blank(Screen *self, index_type y) {
     // A row holding no text carries no record, the next write to it records the current controls
     LineBuf *lb = self->linebuf;
     if (LIKELY(!lb->bidi_stamped)) return;
+    self->bidi.pending = 0;
     linebuf_init_line(lb, y);
     if (!line_is_empty(lb->line)) return;
     LineAttrs *a = lb->line_attrs + y;
@@ -1829,15 +1834,36 @@ draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProp
     return draw_combining_char_run_(self, s, ch, props, rest, num_rest);
 }
 
+// A cell holding only the controls a line starts with takes no combining char, as an empty cell
+static inline bool
+cell_holds_only_leading_controls(const CPUCell *c, const TextCache *tc) {
+    char_type buf[MAX_NUM_CODEPOINTS_PER_CELL];
+    ListOfChars lc = {.chars = buf, .capacity = arraysz(buf)};
+    const unsigned n = cell_leading_controls(c, tc, &lc);
+    return n && n == lc.count;
+}
+
 static size_t
 draw_combining_char_run_implicit(Screen *self, text_loop_state *s, char_type ch, CharProps props, const uint32_t *rest, size_t num_rest, uint8_t record) {
     const CPUCell *pc = s->prev.cc;
+    if (cell_holds_only_leading_controls(pc, self->text_cache)) return 0;
     const index_type py = s->prev.y;
     const char_type before = pc->ch_and_idx;
     const bool was_multicell = pc->is_multicell;
     const size_t n = draw_combining_char_run_(self, s, ch, props, rest, num_rest);
     record_combining_write(self, pc, py, before, was_multicell, record);
     return n;
+}
+
+static void
+draw_zero_width_char_implicit(Screen *self, text_loop_state *s, char_type ch, uint8_t record) {
+    const CPUCell *pc = s->prev.cc;
+    if (cell_holds_only_leading_controls(pc, self->text_cache)) return;
+    const index_type py = s->prev.y;
+    const char_type before = pc->ch_and_idx;
+    const bool was_multicell = pc->is_multicell;
+    draw_combining_char(self, s, ch);
+    record_combining_write(self, pc, py, before, was_multicell, record);
 }
 
 static void
@@ -2011,6 +2037,40 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
     return i;
 }
 
+// Stores num leading controls in the text of the first cell of line y, after the controls it already starts with if append
+// is true, else in place of them. A cell holding no char keeps room for one.
+static bool
+put_leading_controls(Screen *self, index_type y, const char_type *controls, unsigned num, bool append, uint8_t record) {
+    CPUCell *c = linebuf_cpu_cells_for_line(self->linebuf, y);
+    // no cell can take them without moving the cursor
+    if (c->is_multicell && (c->x || c->y)) return false;
+    text_in_cell(c, self->text_cache, self->lc);
+    const unsigned count = cell_has_text(c) ? self->lc->count : 0;
+    unsigned at = 0;
+    while (at < count && is_leading_control(self->lc->chars[at])) at++;
+    // Readers take the char after a tab as the number of cells it skipped
+    if (at < count && self->lc->chars[at] == '\t') return false;
+    const unsigned kept = append ? at : 0, total = kept + num + count - at;
+    if (total > MAX_NUM_CODEPOINTS_PER_CELL - (at == count)) return false;
+    ensure_space_for_chars(self->lc, total);
+    memmove(self->lc->chars + kept + num, self->lc->chars + at, (count - at) * sizeof(char_type));
+    memcpy(self->lc->chars + kept, controls, num * sizeof(char_type));
+    self->lc->count = total;
+    // must be computed before the char is changed
+    const MulticellRows rows = multicell_char_rows(self, 0, y);
+    c->ch_or_idx = tc_get_or_insert_chars_with_glyph(self->text_cache, self->lc, cell_registered_glyph(c, self->text_cache));
+    c->ch_is_idx = true;
+    const char_type ch_and_idx = c->ch_and_idx;
+    const index_type x_limit = c->is_multicell ? MIN(mcd_x_limit(c), self->columns) : 1;
+    for (int v = rows.start; v < rows.limit; v++) {
+        CPUCell *cells = linebuf_cpu_cells_for_line(self->linebuf, v);
+        for (index_type h = 0; h < x_limit; h++) cells[h].ch_and_idx = ch_and_idx;
+        linebuf_mark_line_dirty(self->linebuf, v);
+        record_written_line(self, v, record);
+    }
+    return true;
+}
+
 static inline __attribute__((always_inline)) void
 draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s, const bool implicit, const uint8_t record) {
     init_text_loop_line(self, s);
@@ -2018,14 +2078,19 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
 #define TEMPLATE_CELLS 16
     CPUCell cpu_template[TEMPLATE_CELLS];
     bool templates_initialized = false;
+    char_type controls_buf[MAX_NUM_CODEPOINTS_PER_CELL];
+    ListOfChars controls = {.chars = controls_buf, .capacity = arraysz(controls_buf)};
     for (size_t i = 0; i < num_chars; i++) {
+        unsigned num_controls = 0;
+        index_type controls_y = 0;
         uint32_t ch = map_char(self, chars[i]);
         if (ch < DEL && s->seg.grapheme_break <= GBP_None) { // fast path for printable ASCII
             if (ch < ' ') {
                 draw_control_char(self, s, ch);
                 continue;
             }
-            if (LIKELY(!self->charset.current && !self->modes.mIRM && self->cursor->x < self->columns)) {
+            if (LIKELY(!self->charset.current && !self->modes.mIRM && self->cursor->x < self->columns) &&
+                !(implicit && !s->prev.cc && self->bidi.pending == self->cursor->y + 1)) {
                 // Batched fast path: write a run of printable ASCII chars into the
                 // current line in one go, keeping all state in locals so it is not
                 // reloaded for every char. Stops at the first char needing the
@@ -2072,7 +2137,10 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
                     s->prev.x = self->cursor->x + n - 1;
                     s->prev.cc = cp + n - 1;
                     self->cursor->x += n;
-                    if (implicit) record_written_line(self, self->cursor->y, record);
+                    if (implicit) {
+                        record_written_line(self, self->cursor->y, record);
+                        self->bidi.pending = 0;
+                    }
                     s->seg = (GraphemeSegmentationResult){.grapheme_break = GBP_None};
                     i += n - 1;
                     continue;
@@ -2085,10 +2153,13 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
         } else {
             s->line_has_no_multicell = false;
             if (ch > DEL && LIKELY(!self->charset.current && !self->modes.mIRM && self->cursor->x < self->columns) &&
-                !batched_non_ascii_draw_disabled_for_tests) {
+                !(implicit && !s->prev.cc && self->bidi.pending == self->cursor->y + 1) && !batched_non_ascii_draw_disabled_for_tests) {
                 const size_t n = draw_non_ascii_run(self, s, chars + i, num_chars - i);
                 if (n) {
-                    if (implicit) record_written_line(self, self->cursor->y, record);
+                    if (implicit) {
+                        record_written_line(self, self->cursor->y, record);
+                        self->bidi.pending = 0;
+                    }
                     i += n - 1;
                     continue;
                 }
@@ -2111,12 +2182,11 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
                     // they were not added to the prev cell by grapheme segmentation.
                     // Zero width chars can only be represented as combining chars.
                     if (s->prev.cc) {
-                        const CPUCell *pc = s->prev.cc;
-                        const index_type py = s->prev.y;
-                        const char_type before = pc->ch_and_idx;
-                        const bool was_multicell = pc->is_multicell;
-                        draw_combining_char(self, s, ch);
-                        if (implicit) record_combining_write(self, pc, py, before, was_multicell, record);
+                        if (implicit) draw_zero_width_char_implicit(self, s, ch, record);
+                        else draw_combining_char(self, s, ch);
+                    } else if (implicit && is_leading_control(ch)) {
+                        if (put_leading_controls(self, self->cursor->y, &ch, 1, self->bidi.pending == self->cursor->y + 1, record))
+                            self->bidi.pending = self->cursor->y + 1;
                     }
                     continue;
                 }
@@ -2124,6 +2194,11 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
             }
         }
 
+        // in insert mode the cell moves right with its controls
+        if (implicit && !s->prev.cc && !self->modes.mIRM && self->cursor->x < self->columns && self->bidi.pending == self->cursor->y + 1) {
+            num_controls = cell_leading_controls(s->cp + self->cursor->x, self->text_cache, &controls);
+            controls_y = self->cursor->y;
+        }
         if (self->cursor->x < self->columns && s->cp[self->cursor->x].is_multicell) {
             if (s->cp[self->cursor->x].y) {
                 move_cursor_past_multicell(self, 1);
@@ -2180,7 +2255,12 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
             self->cursor->x++;
             fc->is_multicell = false;
         }
-        if (implicit) record_written_line(self, s->prev.y, record);
+        if (implicit && UNLIKELY(num_controls) && !s->prev.x && s->prev.y == controls_y)
+            put_leading_controls(self, s->prev.y, controls.chars, num_controls, true, record);
+        if (implicit) {
+            self->bidi.pending = 0;
+            record_written_line(self, s->prev.y, record);
+        }
     }
 #undef init_line
 #undef TEMPLATE_CELLS
@@ -2208,10 +2288,11 @@ draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
     draw_text_loop_(self, chars, num_chars, &s, false, 0);
 }
 
-// Text written in implicit bidi mode records each line it is written to
+// Text written in implicit bidi mode records each line it is written to and keeps bidi controls at the start of a line
 static void
 draw_text_implicit(Screen *self, const uint32_t *chars, size_t num_chars) {
     if (OPT(force_ltr)) {
+        self->bidi.pending = 0;
         draw_text(self, chars, num_chars);
         return;
     }
@@ -2245,6 +2326,7 @@ screen_align(Screen *self) {
     self->margin_bottom = self->lines - 1;
     screen_cursor_position(self, 1, 1);
     linebuf_clear(self->linebuf, 'E');
+    self->bidi.pending = 0;
 }
 
 static size_t
@@ -2337,6 +2419,7 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
     ensure_space_for_chars(self->lc, cmd->payload_sz + 1);
     self->lc->count = decode_utf8_safe_string(payload, cmd->payload_sz, self->lc->chars);
     if (!self->lc->count) return;
+    self->bidi.pending = 0;
 #define M(x) ((1u << x) - 1u)
     CPUCell mcd = {
         .width = MIN(cmd->width, M(WIDTH_BITS)),
@@ -2804,6 +2887,7 @@ void
 screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_screen) {
     bool to_alt = self->linebuf == self->main_linebuf;
     self->active_hyperlink_id = 0;
+    self->bidi.pending = 0;
     reset_pixel_scroll(self, 0);
     if (to_alt) {
         if (clear_alt_screen) {
@@ -2881,7 +2965,10 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 
         case DECSCLM:
         case DECNRCM: break; // we ignore these modes
-        case BDSM: self->modes.mBDSM = val; break;
+        case BDSM:
+            self->modes.mBDSM = val;
+            if (!val) self->bidi.pending = 0;
+            break;
         case BIDI_AUTODETECT: self->modes.mBIDI_AUTODETECT = val; break;
         case DECCKM: self->modes.mDECCKM = val; break;
         case DECTCEM: self->modes.mDECTCEM = val; break;
@@ -3214,6 +3301,45 @@ screen_backspace(Screen *self) {
     screen_cursor_move(self, 1, -1, true);
 }
 
+static inline void
+write_tab(Screen *self, CPUCell *cpu_cell, combining_type diff) {
+    for (combining_type i = 0; i < diff; i++) {
+        CPUCell *c = cpu_cell + i;
+        cell_set_char(c, ' ');
+    }
+    char_type idx;
+    if (diff < arraysz(self->tab_cache.idx_plus_1) && self->tab_cache.idx_plus_1[diff]) idx = self->tab_cache.idx_plus_1[diff] - 1;
+    else {
+        self->lc->count = 2;
+        self->lc->chars[0] = '\t';
+        // number of blank cells after the tab cell that the tab covers
+        self->lc->chars[1] = diff - 1;
+        idx = tc_get_or_insert_chars(self->text_cache, self->lc);
+        if (diff < arraysz(self->tab_cache.idx_plus_1)) self->tab_cache.idx_plus_1[diff] = idx + 1;
+    }
+    cpu_cell->ch_or_idx = idx;
+    cpu_cell->ch_is_idx = true;
+}
+
+// Leading marks on a line with a bidi record are not text, so a cell holding only them, or them and a space, is blank for
+// a tab. Out of line, and reached by a tail call, so that screen_tab saves no more registers than without bidi support.
+static __attribute__((noinline)) void
+tab_over_marks(Screen *self, CPUCell *cpu_cell, combining_type diff) {
+    if (!self->linebuf->line_attrs[self->cursor->y].bidi_stamp) return;
+    char_type buf[MAX_NUM_CODEPOINTS_PER_CELL];
+    ListOfChars lc = {.chars = buf, .capacity = arraysz(buf)};
+    for (combining_type i = 0; i < diff; i++) {
+        const CPUCell *c = cpu_cell + i;
+        if (!cell_has_text(c) || cell_is_char(c, ' ')) continue;
+        if (c->is_multicell) return;
+        const unsigned n = cell_leading_controls(c, self->text_cache, &lc);
+        if (!n || (n < lc.count && (n + 1 < lc.count || lc.chars[n] != ' '))) return;
+    }
+    write_tab(self, cpu_cell, diff);
+    linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
+    self->is_dirty = true;
+}
+
 void
 screen_tab(Screen *self) {
     // Move to the next tab space, or the end of the screen if there aren't anymore left.
@@ -3229,32 +3355,15 @@ screen_tab(Screen *self) {
         if (self->cursor->x < self->columns) {
             CPUCell *cpu_cell = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y) + self->cursor->x;
             combining_type diff = found - self->cursor->x;
-            bool ok = true;
             for (combining_type i = 0; i < diff; i++) {
                 CPUCell *c = cpu_cell + i;
                 if (cell_has_text(c) && !cell_is_char(c, ' ')) {
-                    ok = false;
-                    break;
+                    self->cursor->x = found;
+                    tab_over_marks(self, cpu_cell, diff);
+                    return;
                 }
             }
-            if (ok) {
-                for (combining_type i = 0; i < diff; i++) {
-                    CPUCell *c = cpu_cell + i;
-                    cell_set_char(c, ' ');
-                }
-                char_type idx;
-                if (diff < arraysz(self->tab_cache.idx_plus_1) && self->tab_cache.idx_plus_1[diff]) idx = self->tab_cache.idx_plus_1[diff] - 1;
-                else {
-                    self->lc->count = 2;
-                    self->lc->chars[0] = '\t';
-                    // number of blank cells after the tab cell that the tab covers
-                    self->lc->chars[1] = diff - 1;
-                    idx = tc_get_or_insert_chars(self->text_cache, self->lc);
-                    if (diff < arraysz(self->tab_cache.idx_plus_1)) self->tab_cache.idx_plus_1[diff] = idx + 1;
-                }
-                cpu_cell->ch_or_idx = idx;
-                cpu_cell->ch_is_idx = true;
-            }
+            write_tab(self, cpu_cell, diff);
         }
         self->cursor->x = found;
     }
@@ -3701,14 +3810,16 @@ screen_fake_move_cursor_to_position(Screen *self, index_type start_x, index_type
         key = GLFW_FKEY_RIGHT;
     }
     unsigned int count = 0;
+    Line line = {.xnum = self->columns, .text_cache = self->text_cache};
 
     for (unsigned y = start->y, x = start->x; y <= end->y && y < self->lines; y++) {
+        linebuf_init_line_at(self->linebuf, y, &line);
         unsigned x_limit = y == end->y ? end->x : self->columns;
         x_limit = MIN(x_limit, self->columns);
         bool found_non_empty_cell = false;
         while (x < x_limit) {
-            const CPUCell *c = linebuf_cpu_cell_at(self->linebuf, x, y);
-            if (!cell_has_text(c)) {
+            const CPUCell *c = line.cpu_cells + x;
+            if (line_cell_is_blank(&line, x)) {
                 // we only stop counting the cells in the line at an empty cell
                 // if at least one non-empty cell is found. zsh uses empty cells
                 // between the end of the text ad the right prompt. fish uses empty
@@ -3826,7 +3937,7 @@ screen_move_into_scrollback(Screen *self) {
         // the lines of the screen, not the visual lines, which are lines from
         // the scrollback when it is scrolled
         linebuf_init_line(self->linebuf, num_of_lines_to_move - 1);
-        if (!line_is_empty(self->linebuf->line)) break;
+        if (!line_is_blank(self->linebuf->line)) break;
         num_of_lines_to_move--;
     }
     if (num_of_lines_to_move) {
@@ -3898,6 +4009,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         default: return;
     }
     if (b > a) {
+        self->bidi.pending = 0;
         if (how < 3) nuke_multiline_chars_split_by_erase(self, how, a, b);
         if (how != 3) screen_dirty_line_graphics(self, a, b, self->linebuf == self->main_linebuf);
         if (private) {
@@ -5028,14 +5140,15 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
         uint32_t cur_img_id_higher8bits = 0;
         uint32_t cur_img_row = 0;
         uint32_t cur_img_col = 0;
-        if (cell_first_char(cpu_cell, self->text_cache) == IMAGE_PLACEHOLDER_CHAR) {
+        const char_type first_char = line_cell_first_char(line, i);
+        if (first_char == IMAGE_PLACEHOLDER_CHAR) {
             line->attrs.has_image_placeholders = true;
             // The lower 24 bits of the image id are encoded in the foreground
             // color, and the placement id is (optionally) in the underline color.
             const CellStyle *st = style_table_get(self->style_table, cpu_cell->style_idx);
             cur_img_id_lower24bits = color_to_id(st->fg);
             cur_placement_id = color_to_id(st->decoration_fg);
-            text_in_cell(cpu_cell, self->text_cache, self->lc);
+            line_text_in_cell(line, i, self->lc);
             // If the char has diacritics, use them as row and column indices.
             if (self->lc->count > 1 && self->lc->chars[1]) cur_img_row = diacritic_to_rowcolumn(self->lc->chars[1]);
             if (self->lc->count > 2 && self->lc->chars[2]) cur_img_col = diacritic_to_rowcolumn(self->lc->chars[2]);
@@ -5064,7 +5177,7 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
                     self->grman, row, i - run_length, img_id, prev_placement_id, prev_img_col - run_length, prev_img_row - 1, run_length, 1, self->cell_size);
             }
             // Start a new run.
-            if (cell_first_char(cpu_cell, self->text_cache) == IMAGE_PLACEHOLDER_CHAR) {
+            if (first_char == IMAGE_PLACEHOLDER_CHAR) {
                 run_length = 1;
                 if (!cur_img_col) cur_img_col = 1;
                 if (!cur_img_row) cur_img_row = 1;
@@ -5436,7 +5549,10 @@ bidi_prepare_live(Screen *self, bool shown) {
     if (lb->bidi_stamped && !(lb == self->main_linebuf && hb->bidi_stamped && hb->count && history_buf_endswith_wrap(hb))) {
         bool stamped = false;
         for (index_type y = 0; y < lb->ynum && !stamped; y++) stamped = lb->line_attrs[y].bidi_stamp != BIDI_STAMP_NONE;
-        if (!stamped) bidi_unstamp(lb);
+        if (!stamped) {
+            bidi_unstamp(lb);
+            self->bidi.pending = 0;
+        }
     }
     // The history is the main screen's, shown above the alternate screen too when scrolled back
     if (!bidi_live_frame_reorders(self)) return NULL;
@@ -6000,6 +6116,10 @@ limit_without_trailing_whitespace(const Line *line, index_type limit) {
             limit--;
             continue;
         }
+        if (line_cell_is_blank(line, limit - 1)) {
+            limit--;
+            continue;
+        }
         if (cell->ch_is_idx) break;
         switch (cell->ch_or_idx) {
             case ' ':
@@ -6085,7 +6205,8 @@ flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int 
     while (*y_limit > *miny) {
         range_line(self, *y_limit - 1, &temp);
         for (index_type x = 0; x < temp.xnum; x++) {
-            if (is_cell_selected(sc, *y_limit - 1, x) && temp.cpu_cells[x].ch_and_idx && (!temp.cpu_cells[x].is_multicell || !temp.cpu_cells[x].y)) return true;
+            if (is_cell_selected(sc, *y_limit - 1, x) && !line_cell_is_blank(&temp, x) && (!temp.cpu_cells[x].is_multicell || !temp.cpu_cells[x].y))
+                return true;
         }
         (*y_limit)--;
     }
@@ -6122,7 +6243,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         const bool is_first_line = y == min_y, is_last_line = y + 1 >= y_limit;
         const bool add_trailing_newline = insert_newlines && !is_last_line;
         PyObject *text = NULL;
-        if (x_limit <= x_start && (is_only_whitespace_line || line_is_empty(line))) {
+        if (x_limit <= x_start && (is_only_whitespace_line || line_is_blank(line))) {
             // we want a newline on only whitespace lines even if they are continued
             text = add_trailing_newline ? nl : empty;
             text = Py_NewRef(text);
@@ -6176,7 +6297,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
             }
         }
 
-        if (x_limit <= x_start && (is_only_whitespace_line || line_is_empty(line))) {
+        if (x_limit <= x_start && (is_only_whitespace_line || line_is_blank(line))) {
             // we want a newline on only whitespace lines even if they are continued
             if (insert_newlines) need_newline = true;
             PyTuple_SET_ITEM(ans, i, Py_NewRef(need_newline ? nl : empty_string));
@@ -6230,6 +6351,30 @@ extend_tuple(PyObject *a, PyObject *b) {
     return a;
 }
 
+// The text of the rows of a URL range, without the leading controls of the cells at the start of a row on a line holding a bidi
+// record
+static PyObject *
+url_range_text(Screen *self, const Selection *s, PyObject *empty_string) {
+    int min_y, y_limit;
+    RAII_SelectedCells(sc);
+    if (!flag_selection_to_extract_text(self, s, &min_y, &y_limit, &sc)) return PyErr_NoMemory();
+    RAII_PyObject(rows, text_for_range(self, s, false, false));
+    if (!rows) return NULL;
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(rows); i++) {
+        const Line *line = checked_range_line(self, min_y + (int)i);
+        if (!line || !line->attrs.bidi_stamp) continue;
+        PyObject *row = PyTuple_GET_ITEM(rows, i);
+        Py_ssize_t start = 0, len = PyUnicode_GET_LENGTH(row);
+        while (start < len && is_leading_control(PyUnicode_READ_CHAR(row, start))) start++;
+        if (!start) continue;
+        PyObject *stripped = PyUnicode_Substring(row, start, len);
+        if (!stripped) return NULL;
+        Py_DECREF(row);
+        PyTuple_SET_ITEM(rows, i, stripped);
+    }
+    return PyUnicode_Join(empty_string, rows);
+}
+
 static PyObject *
 current_url_text(Screen *self, PyObject *args UNUSED) {
     RAII_PyObject(empty_string, PyUnicode_FromString(""));
@@ -6238,9 +6383,7 @@ current_url_text(Screen *self, PyObject *args UNUSED) {
     for (size_t i = 0; i < self->url_ranges.count; i++) {
         Selection *s = self->url_ranges.items + i;
         if (!is_selection_empty(s)) {
-            RAII_PyObject(temp, text_for_range(self, s, false, false));
-            if (!temp) return NULL;
-            RAII_PyObject(text, PyUnicode_Join(empty_string, temp));
+            RAII_PyObject(text, url_range_text(self, s, empty_string));
             if (!text) return NULL;
             if (ans) {
                 PyObject *t = PyUnicode_Concat(ans, text);
@@ -6250,7 +6393,8 @@ current_url_text(Screen *self, PyObject *args UNUSED) {
             } else ans = Py_NewRef(text);
         }
     }
-    return Py_NewRef(ans ? ans : Py_None);
+    if (!ans) Py_RETURN_NONE;
+    return Py_NewRef(ans);
 }
 
 
@@ -6310,7 +6454,7 @@ extend_url(
             next_line_starts_with_url_chars = line_startswith_url_chars(line, in_hostname, screen->lc);
             has_newline = !visual_line_is_continued(screen, *y + 2 * scale);
             if (next_line_starts_with_url_chars && has_newline && !newlines_allowed) next_line_starts_with_url_chars = false;
-            if (sentinel && next_line_starts_with_url_chars && cell_is_char(line->cpu_cells, sentinel)) next_line_starts_with_url_chars = false;
+            if (sentinel && next_line_starts_with_url_chars && line_cell_is_char(line, 0, sentinel)) next_line_starts_with_url_chars = false;
         }
         line = screen_visual_line(screen, *y + scale);
         if (!line) break;
@@ -6328,7 +6472,7 @@ extend_url(
     }
     if (sentinel && *x == 0 && *y > orig_y) {
         line = screen_visual_line(screen, *y);
-        if (line && cell_is_char(line->cpu_cells, sentinel)) {
+        if (line && line_cell_is_char(line, 0, sentinel)) {
             *y -= scale;
             *x = line->xnum - 1;
             if (line->cpu_cells[*x].is_multicell) *x -= line->cpu_cells[*x].x;
@@ -6370,15 +6514,14 @@ regex_line_append(const char *bytes, size_t num, index_type x, index_type y) {
 
 static void
 regex_line_append_row(Line *line, index_type y, ListOfChars *lc) {
-    index_type limit = line->xnum;
     // Ignore trailing empty cells, they are either unused space at the end of
     // the line or space left over when a wide character is wrapped onto the next line
-    while (limit && !line->cpu_cells[limit - 1].ch_and_idx) limit--;
+    index_type limit = xlimit_for_line(line);
     char utf8[8];
     for (index_type x = 0; x < limit; x++) {
         const CPUCell *c = line->cpu_cells + x;
         if (c->is_multicell && (c->x || c->y)) continue;
-        text_in_cell(c, line->text_cache, lc);
+        line_text_in_cell(line, x, lc);
         if (!lc->count || !lc->chars[0]) {
             regex_line_append(" ", 1, x, y);
         } else if (lc->chars[0] == '\t') {
@@ -7189,7 +7332,7 @@ cmd_output(Screen *self, PyObject *args) {
                     unsigned int num_lines = 0;
                     bool found_content = false;
                     while ((line = checked_range_line(self, y2)) && line->attrs.prompt_kind != PROMPT_START) {
-                        if (!found_content) found_content = !line_is_empty(line);
+                        if (!found_content) found_content = !line_is_blank(line);
                         num_lines++;
                         y2++;
                     }
@@ -7651,15 +7794,16 @@ text_for_marked_url(Screen *self, PyObject *args) {
 }
 
 static bool
-cell_is_blank(const CPUCell *c) {
-    return !cell_has_text(c) || cell_is_char(c, ' ');
+cell_is_blank(const Line *line, index_type x) {
+    const CPUCell *c = line->cpu_cells + x;
+    return line_cell_is_blank(line, x) || cell_is_char(c, ' ');
 }
 
 static void
 screen_selection_range_for_line_(Line *line, index_type *start, index_type *end) {
     index_type xlimit = line->xnum, xstart = 0;
-    while (xlimit > 0 && cell_is_blank(line->cpu_cells + xlimit - 1)) xlimit--;
-    while (xstart < xlimit && cell_is_blank(line->cpu_cells + xstart)) xstart++;
+    while (xlimit > 0 && cell_is_blank(line, xlimit - 1)) xlimit--;
+    while (xstart < xlimit && cell_is_blank(line, xstart)) xstart++;
     *start = xstart;
     *end = xlimit > 0 ? xlimit - 1 : 0;
 }
@@ -7689,7 +7833,7 @@ is_opt_word_char(char_type ch, bool forward) {
 
 static bool
 is_char_ok_for_word_extension(Line *line, index_type x, bool forward) {
-    char_type ch = cell_first_char(line->cpu_cells + x, line->text_cache);
+    const char_type ch = line_cell_first_char(line, x);
     if (char_props_for(ch).is_word_char || is_opt_word_char(ch, forward)) return true;
     // pass : from :// so that common URLs are matched
     return ch == ':' && x + 2 < line->xnum && cell_is_char(line->cpu_cells + x + 1, '/') && cell_is_char(line->cpu_cells + x + 2, '/');

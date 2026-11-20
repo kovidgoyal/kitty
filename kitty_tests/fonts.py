@@ -1282,9 +1282,9 @@ class BidiRenderingBase(FontBaseTest):
         sprites = self.sprites if sprites is None else sprites
         return idx, [bytes(sprites[sprite_idx_to_pos(i, setup_for_testing.xnum, setup_for_testing.ynum)]) for i in idx]
 
-    def line(self, text, cols=None, **opts):
+    def line(self, text, cols=None, bdsm=False, **opts):
         s = self.create_screen(cols=cols or len(text), lines=1, scrollback=0, options=opts)
-        parse_bytes(s, text.encode())
+        parse_bytes(s, (('\x1b[8h' if bdsm else '') + text).encode())
         return s.line(0)
 
     def render_text(self, text, cols=None, levels=None):
@@ -1400,6 +1400,45 @@ class BidiRendering(BidiRenderingBase):
         self.ae(self.render_text(text, levels=[1, 1])[1], [px0[1], px0[0]])
         self.ae(self.render_text(text, levels=[0, 1])[0][1], 0)
 
+    def test_leading_mark_not_rendered(self):
+        for text in ('abc', '\u05d0\u05d1\u05d2', '\u4f60x', '\u2588', '', '\U0001f600x', '\u2716\ufe0fx'):
+            for marks in ('\u200e', '\u200f', '\u200e\u200f'):
+                with self.subTest(text=text, marks=marks):
+                    rendered = (self.render_cells(self.line(m + text, len(text) + 2, bdsm=True))[1] for m in (marks, ''))
+                    self.ae(*rendered)
+
+    def test_leading_mark_shaped_as_is_without_record(self):
+        # A line holding no bidi record is shaped and rendered from its text as it is, a mark that starts an OSC 66 cell
+        # included, and a line holding one without its leading controls, whichever was shaped first
+        def glyphs(data, bdsm):
+            s = self.create_screen(cols=4, lines=1, scrollback=0)
+            parse_bytes(s, (('\x1b[8h' if bdsm else '') + data).encode())
+            return test_shape(s.line(0))
+
+        plain, osc = glyphs('ab', False), '\x1b]66;w=1;\u200ea\x07b'
+        self.assertNotEqual(glyphs(osc, False), plain)
+        self.ae(glyphs(osc, True), plain)
+        self.ae(glyphs('\u200eab', True), plain)
+        self.assertNotEqual(glyphs(osc, False), plain)
+
+    def test_leading_mark_font_as_is_without_record(self):
+        # the font is chosen from the text as it is on a line holding no bidi record: after a mark a box drawing char is not
+        # drawn as one
+        box = self.render_text('\u2500', 2)[1][0]
+        osc = '\x1b]66;w=1;\u200e\u2500\x07'
+        self.ae(self.render_cells(self.line(osc, 2, bdsm=True))[1][0], box)
+        self.assertFalse(self.render_cells(self.line(osc, 2))[1][0] == box, 'drawn as a box drawing char')
+
+    def test_stamped_line_without_levels_is_shaped_left_to_right(self):
+        # Without levels a line holding a bidi record is shaped left to right instead of guessed from its text, as the
+        # digits (bidi class EN) of a run in an RTL script are
+        text = 'n \u06f1\u06f2\u06f3 m'
+        cols = len(text) + 2
+        ltr = self.render_cells(self.line(text, cols), [0] * cols)[1]
+        guessed = self.render_cells(self.line(text, cols))[1]
+        self.assertNotEqual(guessed, ltr)
+        self.ae(self.render_cells(self.line('\x1b[8h' + text, cols))[1], ltr)
+
     def test_fractional_text_alignment_ignores_direction(self):
         # h=0 puts the ink of fractionally scaled text on the left of its area and h=1 on the right at any level; the cells
         # of an odd level are displayed last to first
@@ -1416,16 +1455,6 @@ class BidiRendering(BidiRenderingBase):
             with self.subTest(levels=levels):
                 self.assertLess(centroid(0, levels), 0.3)
                 self.assertGreater(centroid(1, levels), 0.7)
-
-    def test_stamped_line_without_levels_is_shaped_left_to_right(self):
-        # Without levels a line holding a bidi record is shaped left to right instead of guessed from its text, as the
-        # digits (bidi class EN) of a run in an RTL script are
-        text = 'n \u06f1\u06f2\u06f3 m'
-        cols = len(text) + 2
-        ltr = self.render_cells(self.line(text, cols), [0] * cols)[1]
-        guessed = self.render_cells(self.line(text, cols))[1]
-        self.assertNotEqual(guessed, ltr)
-        self.ae(self.render_cells(self.line('\x1b[8h' + text, cols))[1], ltr)
 
 
 class BidiLigatureRendering(BidiRenderingBase):
@@ -1458,6 +1487,12 @@ class BidiLigatureRendering(BidiRenderingBase):
             with self.subTest(strategy=strategy, cursor_x=cursor_x):
                 sprites = self.screen_sprites(text, strategy, cursor_x)
                 self.ae([sprites[x] for x in operators], expected)
+
+    def test_leading_mark_not_rendered(self):
+        for text in ('->', 'a->b'):
+            with self.subTest(text=text):
+                rendered = (self.render_cells(self.line(m + text, len(text) + 2, bdsm=True))[1] for m in ('\u200e', ''))
+                self.ae(*rendered)
 
     def test_ltr_ligatures_follow_disable_ligatures(self):
         single = self.render_text('=')[1][0]
