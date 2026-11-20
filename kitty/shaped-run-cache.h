@@ -37,7 +37,7 @@ bool shaped_run_get(
     index_type num_cells,
     const TextCache *tc,
     bool disable_ligature,
-    bool force_ltr,
+    uint8_t direction,
     uint8_t scale,
     uint8_t subscale,
     ShapedRun *result);
