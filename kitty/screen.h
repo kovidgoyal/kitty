@@ -379,6 +379,8 @@ bool screen_has_selection(Screen *);
 bool screen_is_cell_selected(Screen *, index_type x, index_type y);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool cursor_has_moved);
+index_type screen_cursor_drawn_x(Screen *self, index_type x, index_type y, CursorShape shape);
+index_type screen_ime_anchor_x(Screen *self);
 // Replaces x, the visual column of a click on screen row y, by its logical column
 void screen_bidi_logical_click(Screen *self, index_type *x, index_type y, bool *in_left_half);
 bool screen_is_cursor_visible(const Screen *self);

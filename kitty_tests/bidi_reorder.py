@@ -4,8 +4,17 @@
 import random
 import re
 import struct
+from itertools import product
 
-from kitty.fast_data_types import Screen, get_options, test_screen_update_cell_data
+from kitty.fast_data_types import (
+    CURSOR_BEAM,
+    CURSOR_BLOCK,
+    CURSOR_HOLLOW,
+    CURSOR_UNDERLINE,
+    Screen,
+    get_options,
+    test_screen_update_cell_data,
+)
 from kitty.fonts.render import setup_for_testing
 
 from .base import BaseTest, Callbacks, draw_multicell, parse_bytes
@@ -13,6 +22,7 @@ from .base import BaseTest, Callbacks, draw_multicell, parse_bytes
 A = 'אבג'  # three Hebrew letters, bidi class R
 MIXED = 'abc' + A
 NSI = 'אב 12'  # R R WS EN EN: its map (3, 4, 2, 1, 0) is not its own inverse
+RLM = '\u200f'
 ISOLATES = '\u2066\u2067\u2068\u2069'  # LRI RLI FSI PDI
 LRE, RLE, PDF, LRO, RLO = '\u202a\u202b\u202c\u202d\u202e'
 AUTO, SCP_RTL, SCP_LTR = '\x1b[?2501h', '\x1b[2 k', '\x1b[1 k'
@@ -595,6 +605,67 @@ class TestBidiReorder(BaseTest):
         raw, c = s.current_selections(), EXTRA_CURSOR
         offset = len(raw) // s.columns - s.lines
         self.ae(list(raw[10 * offset : 10 * offset + 20]), [c, 0, 0, 0, 0, c, 0, 0, 0, 0] + [0, 0, 0, c, 0, 0, 0, 0, 0, 0])
+        # beam extra cursors on logical cells 3, 5 and 0 are at the visual column of their own cell, RTL ones included
+        pb(s, '\x1b[>0;4 q\x1b[>2;2:1:4;2:1:6;2:1:1 q')
+        frame(s)
+        raw, b = s.current_selections(), 2 * EXTRA_CURSOR
+        self.ae(list(raw[10 * offset : 10 * offset + 10]), [b, 0, 0, b, 0, b, 0, 0, 0, 0])
+
+    def drawn(self, s, x, shape=CURSOR_BLOCK):
+        s.cursor_position(1, x + 1)
+        frame(s)
+        return s.test_cursor_x(shape)[0]
+
+    def test_beam_on_odd_level_cells(self):
+        # Every cursor shape is drawn at the visual column of the cursor's cell, the cell after the text included. A beam on an
+        # odd-level cell is on the left edge of the column past the cell's full width, in the last column on the cell's own edge.
+        def shapes(s, x):
+            return tuple(self.drawn(s, x, shape) for shape in (CURSOR_BLOCK, CURSOR_UNDERLINE, CURSOR_HOLLOW, CURSOR_BEAM))
+
+        s = self.screen(text=MIXED)
+        self.ae([shapes(s, x) for x in (0, 1, 3, 4, 5, 6)], [(0,) * 4, (1,) * 4, (5, 5, 5, 6), (4, 4, 4, 5), (3, 3, 3, 4), (6,) * 4])
+        self.ae(shapes(self.screen(cols=6, text=MIXED), 3), (5, 5, 5, 5))
+        s = self.screen(text='a')
+        draw_multicell(s, 'א', width=2)
+        draw_multicell(s, 'ב', width=2)
+        self.ae([shapes(s, x) for x in (1, 2, 3, 4)], [(3, 3, 3, 5), (3, 3, 3, 5), (1, 1, 1, 3), (1, 1, 1, 3)])
+        # until the next frame, maps sized for an old width are not used
+        s = self.screen(cols=20, lines=3, text=''.join(chr(0x5D0 + i) for i in range(20)))
+        self.ae(self.drawn(s, 2), 17)
+        s.resize(3, 10)
+        s.cursor_position(1, 3)
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], 2)
+        self.ae(self.drawn(s, 2), 7)
+
+    def test_ime_anchor_follows_visual_caret(self):
+        s = self.screen(text=MIXED)
+        s.cursor_position(1, 4)
+        frame(s)
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[1], 5)
+        # an edit that reorders the row moves the caret's cell, the anchor is read after the upload
+        s.draw('x')
+        frame(s)
+        self.ae((s.cursor.x, s.test_cursor_x(CURSOR_BLOCK)), (4, (5, 5)))
+
+    def test_maps_follow_the_frame(self):
+        # without pixel scroll the alternate screen has as many render rows as the main one: only the source and its stamp tell the maps apart
+        s = self.screen(text=MIXED, pixel_scroll=False)
+        self.ae((self.selected(s, 3, 4), s.test_cursor_x(CURSOR_BLOCK)[0]), ([4, 5], 6))
+        pb(s, '\x1b[?1049h\x1b[H')
+        s.draw(MIXED)
+        self.ae((self.selected(s, 3, 4), s.test_cursor_x(CURSOR_BLOCK)[0]), ([3, 4], 6))
+        # once stamped too, the alternate screen has no maps of its own until its next frame, nor the main one after
+        pb(s, '\x1b[8h\x1b[H' + MIXED + '\x1b[1;4H')
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], 3)
+        pb(s, '\x1b[?1049l\x1b[1;4H')
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], 3)
+        # force_ltr set at runtime: the next frame is uploaded in logical order, has no maps and redraws the selection
+        s = self.screen(text=MIXED)
+        self.ae(self.selected(s, 3, 4), [4, 5])
+        self.set_options({'force_ltr': True})
+        frame(s)
+        self.ae((order(s), s.test_cursor_x(CURSOR_BLOCK)[0], s.is_selection_dirty()), (None, 6, True))
+        self.ae(self.lit(s), [3, 4])
 
     def test_force_ltr_stores_nothing_and_keeps_the_program_modes(self):
         def reload(s):
@@ -720,6 +791,72 @@ class TestBidiReorder(BaseTest):
             s = self.screen(text=A + ' abc')
             pb(s, AUTO + SCP_RTL + clear + A + ' abc')
             self.ae(visual(s), '   abc גבא')
+
+    def preedit_reference(self, text, x, preedit='xy'):
+        # the row a screen that never sent CSI 8 h uploads for text with the pre-edit at x
+        f = self.create_screen(cols=10, lines=5, scrollback=5, options={})
+        draw_coloured(f, text)
+        f.cursor_position(1, x + 1)
+        self.assertTrue(any(sprites(f)))
+        f.test_update_overlay_text(preedit)
+        return uploaded(f)
+
+    def test_preedit(self):
+        # the pre-edit block starts at the visual column of the cursor cell and extends right, the rest of the row stays in visual order
+        ref = self.preedit_reference(MIXED, 1)
+        s = self.screen()
+        draw_coloured(s, MIXED)
+        s.cursor_position(1, 2)
+        before = uploaded(s)
+        self.ae(self.drawn(s, 1, CURSOR_BEAM), 1)
+        s.test_update_overlay_text('xy')
+        row = uploaded(s)
+        self.ae((s.test_cursor_x(CURSOR_BEAM), order(s)), ((3, 1), (0, 1, 2, 5, 4, 3, 6, 7, 8, 9)))
+        self.ae((row[:1] + row[3:], row[1:3]), (before[:1] + before[3:], ref[1:3]))
+        # also when the cell is at an odd level
+        ref = self.preedit_reference(A + ' ' + A, 7, 'xyzw')  # right-aligned there, at columns 6-9
+        s = self.screen(AUTO)
+        draw_coloured(s, A + ' ' + A)
+        before = uploaded(s)
+        s.test_update_overlay_text('xyzw')
+        row = uploaded(s)
+        self.ae((s.test_cursor_x(CURSOR_BEAM), row[2:6]), ((6, 2), ref[6:10]))
+        self.ae((row[:2] + row[6:], order(s)), (before[:2] + before[6:], tuple(range(9, -1, -1))))
+        # a block that cuts a wide character, at either edge, blanks the other half
+        for seq, text, x, preedit, blanked in (('', 'a', 3, 'x', 4), ('', 'a', 5, 'x', 2), ('', 'a', 2, 'x', 6), (SCP_RTL, '', 0, 'xyz', 6)):
+            s = self.screen(seq, text=text)
+            for ch in A:
+                draw_multicell(s, ch, width=2)
+            s.cursor_position(1, x + 1)
+            before = sprites(s)
+            s.test_update_overlay_text(preedit)
+            row = sprites(s)
+            start = s.test_cursor_x()[1]
+            expected = before[:start] + row[start : start + len(preedit)] + before[start + len(preedit) :]
+            expected[blanked] = 0
+            self.assertTrue(before[blanked])
+            self.ae(row, expected)
+            s.test_update_overlay_text('')
+        # a zero-width pre-edit covers no cell, also beside a wide char shown at column 0
+        for preedit, x in product(('́', '\u200c', RLM), (6, 7)):
+            s = self.screen(SCP_RTL, cols=8, text=A + A + '好')
+            s.cursor_position(1, x + 1)
+            before = sprites(s)
+            s.test_update_overlay_text(preedit)
+            self.ae(sprites(s), before, (preedit, x))
+            s.test_update_overlay_text('')
+        # a Latin row has no map: its pre-edit row is uploaded as without bidi, and the line record is left alone
+        ref = self.preedit_reference('abc def', 7)
+        s = self.screen(AUTO)
+        draw_coloured(s, 'abc def')
+        frame(s)
+        record = s.test_bidi_line_record(0)
+        s.test_update_overlay_text('xy')
+        self.ae((s.test_cursor_x(CURSOR_BEAM), uploaded(s), order(s)), ((9, 7), ref, None))
+        s.test_update_overlay_text(RLM + 'xy')
+        frame(s)
+        s.test_update_overlay_text('')
+        self.ae((s.test_bidi_line_record(0), orders(s)[0]), (record, None))
 
     # The randomized differential: after every frame, the cell data uploaded for a screen that is rendered after each operation
     # equals that of a fresh screen given the same operations and rendered once.

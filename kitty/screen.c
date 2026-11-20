@@ -5485,6 +5485,17 @@ screen_bidi_maps_usable(const Screen *self) {
 }
 
 static index_type
+bidi_visual_x(const BidiMaps *b, index_type r, index_type x, index_type span) {
+    if (r >= b->rows || x >= b->cols || !b->active[r]) return x;
+    const uint16_t *v2l = b->v2l + (size_t)r * b->cols;
+    const index_type end = x + MAX(span, 1u);
+    for (index_type v = 0; v < b->cols; v++) {
+        if (x <= v2l[v] && v2l[v] < end) return v;
+    }
+    return x;
+}
+
+static index_type
 bidi_logical_x(const BidiMaps *b, index_type r, index_type visual_x) {
     if (r >= b->rows || visual_x >= b->cols || !b->active[r]) return visual_x;
     return b->v2l[(size_t)r * b->cols + visual_x];
@@ -5521,6 +5532,61 @@ screen_bidi_logical_click(Screen *self, index_type *x, index_type y, bool *in_le
     *x = bidi_logical_x(b, render_row, *x);
     // The left half of a right-to-left cell is drawn on its right
     if (bidi_cell_is_rtl(b, render_row, *x)) *in_left_half = !*in_left_half;
+}
+
+static inline index_type
+cell_span(const CPUCell *c) {
+    return c->is_multicell && c->x == 0 ? mcd_x_limit(c) : 1;
+}
+
+// Indexes the bidi maps and the paused snapshot
+static inline index_type
+render_row_of(const Screen *self, index_type y) {
+    return y + rendered_scrolled_by(self) + pixel_scroll_enabled(self);
+}
+
+// For a beam of a right-to-left cell, the left edge of the column past its character
+static index_type
+cursor_cell_visual(Screen *self, index_type x, index_type y, CursorShape shape) {
+    if (x >= self->columns || !screen_bidi_maps_usable(self)) return x;
+    const BidiMaps *b = self->bidi_maps;
+    const index_type render_row = render_row_of(self, y);
+    if (render_row >= b->rows || !b->has_levels[render_row]) return x;
+    const CPUCell *cells = self->paused_rendering.expires_at ? linebuf_cpu_cells_for_line(self->paused_rendering.linebuf, render_row)
+                                                             : linebuf_cpu_cells_for_line(self->linebuf, y);
+    const bool beam_past = shape == CURSOR_BEAM && bidi_cell_is_rtl(b, render_row, x);
+    // Both cells of a wide character put the beam on the character's edge
+    if (beam_past && cells[x].is_multicell) x -= cells[x].x;
+    const index_type span = cell_span(cells + x), visual = bidi_visual_x(b, render_row, x, span);
+    return beam_past && visual + span < self->columns ? visual + span : visual;
+}
+
+static bool
+screen_overlay_visual_start(Screen *self, index_type *start) {
+    const OverlayLine *ol = &self->overlay_line;
+    if (!ol->is_active || self->paused_rendering.expires_at || !screen_bidi_maps_usable(self)) return false;
+    const BidiMaps *b = self->bidi_maps;
+    const index_type render_row = render_row_of(self, ol->ynum);
+    if (render_row >= b->rows || !b->has_levels[render_row]) return false;
+    *start = MIN(cursor_cell_visual(self, ol->xstart, ol->ynum, CURSOR_BLOCK), self->columns - MIN(ol->text_len, self->columns));
+    return true;
+}
+
+// Valid after the upload, when the maps are for the frame. A beam on an odd-level cell follows the text it would extend.
+index_type
+screen_cursor_drawn_x(Screen *self, index_type x, index_type y, CursorShape shape) {
+    index_type start;
+    // The pre-edit block is drawn left to right
+    if (screen_overlay_visual_start(self, &start)) return start + self->overlay_line.cursor_x - screen_overlay_line_start(self);
+    return cursor_cell_visual(self, x, y, shape);
+}
+
+index_type
+screen_ime_anchor_x(Screen *self) {
+    index_type x;
+    if (screen_is_overlay_active(self)) return screen_overlay_visual_start(self, &x) ? x : screen_overlay_line_start(self);
+    if (self->paused_rendering.expires_at) return self->cursor->x;
+    return cursor_cell_visual(self, self->cursor->x, self->cursor->y, CURSOR_BLOCK);
 }
 // }}}
 
@@ -6709,7 +6775,7 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
     line_save_cells(line, 0, line->xnum, ol.render_cells, ol.cpu_cells);
     line_reset_cells(line, 0, line->xnum, ol.original_line.render_cells, ol.original_line.cpu_cells);
     ol.is_dirty = false;
-    const index_type x = screen_overlay_line_start(self), y = MIN(ol.ynum + self->scrolled_by, self->lines - 1);
+    const index_type x = screen_ime_anchor_x(self), y = MIN(ol.ynum + self->scrolled_by, self->lines - 1);
     // The IME is anchored at the start of the pre-edit text, see prepare_ime_position_update_event()
     if (ol.last_ime_pos.x != x || ol.last_ime_pos.y != y) {
         ol.last_ime_pos.x = x;
@@ -6719,11 +6785,34 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
 #undef ol
 }
 
+// Blank the cell shown at visual column col of render row r if it is a half of a character whose other half is shown at the adjacent
+// column inner, which the pre-edit block covers
+static void
+bidi_blank_cut_half(const BidiMaps *b, const CPUCell *cells, index_type r, CellGPUData *row, index_type col, index_type inner) {
+    const index_type l = bidi_logical_x(b, r, col), m = bidi_logical_x(b, r, inner);
+    const CPUCell *c = cells + l, *d = cells + m;
+    if (!c->is_multicell || !d->is_multicell || c->y != d->y || l - c->x != m - d->x) return;
+    const RenderCell blank = {0};
+    cells_for_gpu(c, &blank, 1, row + col);
+}
+
 static void
 update_overlay_line_data(Screen *self, uint8_t *data) {
-    const int render_row_offset = pixel_scroll_enabled(self);
-    const size_t base = sizeof(CellGPUData) * (self->overlay_line.ynum + self->scrolled_by + render_row_offset) * self->columns;
-    cells_for_gpu(self->overlay_line.cpu_cells, self->overlay_line.render_cells, self->columns, (CellGPUData *)(data + base));
+    const index_type render_row = render_row_of(self, self->overlay_line.ynum);
+    CellGPUData *row = (CellGPUData *)(data + sizeof(CellGPUData) * render_row * self->columns);
+    index_type start;
+    if (screen_overlay_visual_start(self, &start)) {
+        // The row was uploaded through its map, only the pre-edit block goes over it
+        const index_type s = screen_overlay_line_start(self), n = MIN(self->overlay_line.text_len, self->columns);
+        if (!n) return;
+        cells_for_gpu(self->overlay_line.cpu_cells + s, self->overlay_line.render_cells + s, n, row + start);
+        // The block can cut a wide character, whose other half the bidi-off upload blanks
+        const CPUCell *cells = linebuf_cpu_cells_for_line(self->linebuf, self->overlay_line.ynum);
+        if (start) bidi_blank_cut_half(self->bidi_maps, cells, render_row, row, start - 1, start);
+        if (start + n < self->columns) bidi_blank_cut_half(self->bidi_maps, cells, render_row, row, start + n, start + n - 1);
+        return;
+    }
+    cells_for_gpu(self->overlay_line.cpu_cells, self->overlay_line.render_cells, self->columns, row);
 }
 
 // }}}
@@ -9045,6 +9134,19 @@ test_bidi_resolved(Screen *self, PyObject *a UNUSED) {
     return PyLong_FromUnsignedLong(self->bidi_maps->resolved);
 }
 
+// The drawn column of the cursor of the given shape, or of the pre-edit cursor while one is active, and the IME anchor column
+static PyObject *
+test_cursor_x(Screen *self, PyObject *args) {
+    int shape = CURSOR_BLOCK;
+    if (!PyArg_ParseTuple(args, "|i", &shape)) return NULL;
+    const Cursor *c = self->paused_rendering.expires_at ? &self->paused_rendering.cursor : self->cursor;
+    const bool overlay = screen_is_overlay_active(self);
+    return Py_BuildValue(
+        "II",
+        screen_cursor_drawn_x(self, overlay ? self->overlay_line.cursor_x : c->x, overlay ? self->overlay_line.ynum : c->y, shape),
+        screen_ime_anchor_x(self));
+}
+
 static PyObject *
 test_ch_and_idx(PyObject *self UNUSED, PyObject *val) {
     CPUCell c = {0};
@@ -9070,6 +9172,7 @@ static PyMethodDef methods[] = {
     METHODB(test_bidi_line_record, METH_O),
     METHODB(test_bidi_v2l, METH_O),
     METHODB(test_bidi_resolved, METH_NOARGS),
+    METHODB(test_cursor_x, METH_VARARGS),
     METHODB(test_gc_style_table, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
     METHODB(test_update_overlay_text, METH_VARARGS),
