@@ -20,6 +20,12 @@
 */
 #define IRM 4
 
+/* *Bi-Directional Support Mode*: When set (implicit), the terminal lays
+   out text written afterwards. When reset (explicit, the power-on state),
+   the application does.
+*/
+#define BDSM 8
+
 
 // Private modes.
 
@@ -90,6 +96,9 @@
 
 // Terminal visibility reports
 #define VISIBILITY_REPORTS (2033 << 5)
+
+// Detect each paragraph's direction from its first strong character
+#define BIDI_AUTODETECT (2501 << 5)
 
 // In-band resize notification mode
 #define INBAND_RESIZE_NOTIFICATION (2048 << 5)

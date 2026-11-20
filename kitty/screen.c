@@ -252,6 +252,7 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
         linebuf_clear(self->linebuf, BLANK_CHAR);
         historybuf_clear(self->historybuf);
         linebuf_clear(self->alt_linebuf, BLANK_CHAR);
+        self->main_linebuf->bidi_stamped = self->alt_linebuf->bidi_stamped = false;
         // all buffers are now empty
         self->multiline_chars_used = false;
         zero_at_ptr(&self->multiline_chars_cut_off_at_bottom);
@@ -266,6 +267,7 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
     }
     self->modes = empty_modes;
     self->saved_modes = empty_modes;
+    zero_at_ptr(&self->bidi);
     self->active_hyperlink_id = 0;
     zero_at_ptr(&self->color_profile->overridden);
     reset_vt_parser(self->vt_parser);
@@ -1126,6 +1128,55 @@ init_segmentation_state(Screen *self, text_loop_state *s) {
     }
 }
 
+static LineAttrs
+current_bidi_record(const Screen *self) {
+    LineAttrs ans = {0};
+    if (!self->modes.mBDSM || OPT(force_ltr)) return ans;
+    ans.bidi_stamp = BIDI_STAMP_IMPLICIT;
+    ans.bidi_rtl = self->bidi.rtl;
+    ans.bidi_auto = self->modes.mBIDI_AUTODETECT;
+    return ans;
+}
+
+static inline void
+set_bidi_record(LineAttrs *a, LineAttrs r) {
+    a->bidi_stamp = r.bidi_stamp;
+    a->bidi_rtl = r.bidi_rtl;
+    a->bidi_auto = r.bidi_auto;
+}
+
+static void
+stamp_line_for_bidi(Screen *self, index_type y, uint8_t record) {
+    LineAttrs *a = self->linebuf->line_attrs + y;
+    if (a->bidi_stamp || !record) return;
+    a->val |= record;
+    self->linebuf->bidi_stamped = true;
+}
+
+static inline void
+record_written_line(Screen *self, index_type y, uint8_t record) {
+    if (!self->linebuf->line_attrs[y].bidi_stamp) stamp_line_for_bidi(self, y, record);
+}
+
+static inline void
+record_combining_write(Screen *self, const CPUCell *pc, index_type py, char_type before, bool was_multicell, uint8_t record) {
+    if (pc->ch_and_idx == before) return;
+    record_written_line(self, py, record);
+    // A widened narrow char can move to the cursor row
+    if (!was_multicell && !pc->ch_and_idx) record_written_line(self, self->cursor->y, record);
+}
+
+static void
+bidi_clear_record_if_blank(Screen *self, index_type y) {
+    // A row holding no text carries no record, the next write to it records the current controls
+    LineBuf *lb = self->linebuf;
+    if (LIKELY(!lb->bidi_stamped)) return;
+    linebuf_init_line(lb, y);
+    if (!line_is_empty(lb->line)) return;
+    LineAttrs *a = lb->line_attrs + y;
+    set_bidi_record(a, (LineAttrs){0});
+}
+
 static void
 init_text_loop_line(Screen *self, text_loop_state *s) {
     // Also collect garbage in the text cache when starting a new line, not just
@@ -1677,8 +1728,8 @@ is_plain_combining_char(char_type ch, GraphemeSegmentationResult seg, CharProps 
     return ch != VS15 && ch != VS16 && !(seg.grapheme_break == GBP_SpacingMark && wcwidth_std(props) > 0);
 }
 
-static size_t
-draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProps props, const uint32_t *rest, size_t num_rest) {
+static inline size_t
+draw_combining_char_run_(Screen *self, text_loop_state *s, char_type ch, CharProps props, const uint32_t *rest, size_t num_rest) {
     // ch has been through grapheme segmentation, which added it to the previous
     // cell. Plain combining chars directly following it are added along with it,
     // with a single lookup in the text cache, rather than one for each char.
@@ -1711,6 +1762,22 @@ draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProp
     add_combining_chars(self, run, n, xpos, s->prev.y);
     s->seg = seg;
     return n - 1;
+}
+
+static size_t
+draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProps props, const uint32_t *rest, size_t num_rest) {
+    return draw_combining_char_run_(self, s, ch, props, rest, num_rest);
+}
+
+static size_t
+draw_combining_char_run_implicit(Screen *self, text_loop_state *s, char_type ch, CharProps props, const uint32_t *rest, size_t num_rest, uint8_t record) {
+    const CPUCell *pc = s->prev.cc;
+    const index_type py = s->prev.y;
+    const char_type before = pc->ch_and_idx;
+    const bool was_multicell = pc->is_multicell;
+    const size_t n = draw_combining_char_run_(self, s, ch, props, rest, num_rest);
+    record_combining_write(self, pc, py, before, was_multicell, record);
+    return n;
 }
 
 static void
@@ -1817,7 +1884,7 @@ write_wide_cells(CPUCell *dest, char_type ch, const WideCellWords *w) {
 }
 
 // Not inlined, so that it gets its own register allocation rather than competing
-// with the rest of draw_text_loop() for registers. It is called once per run.
+// with the rest of draw_text_loop_() for registers. It is called once per run.
 __attribute__((noinline)) static size_t
 draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size_t num_chars) {
     // Batched fast path: draw a run of non-ASCII chars each of which starts a new cell
@@ -1884,8 +1951,8 @@ draw_non_ascii_run(Screen *self, text_loop_state *s, const uint32_t *chars, size
     return i;
 }
 
-static void
-draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
+static inline __attribute__((always_inline)) void
+draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s, const bool implicit, const uint8_t record) {
     init_text_loop_line(self, s);
     int char_width;
 #define TEMPLATE_CELLS 16
@@ -1945,6 +2012,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                     s->prev.x = self->cursor->x + n - 1;
                     s->prev.cc = cp + n - 1;
                     self->cursor->x += n;
+                    if (implicit) record_written_line(self, self->cursor->y, record);
                     s->seg = (GraphemeSegmentationResult){.grapheme_break = GBP_None};
                     i += n - 1;
                     continue;
@@ -1960,6 +2028,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 !batched_non_ascii_draw_disabled_for_tests) {
                 const size_t n = draw_non_ascii_run(self, s, chars + i, num_chars - i);
                 if (n) {
+                    if (implicit) record_written_line(self, self->cursor->y, record);
                     i += n - 1;
                     continue;
                 }
@@ -1971,7 +2040,8 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             }
             s->seg = grapheme_segmentation_step(s->seg, cp);
             if (UNLIKELY(s->seg.add_to_current_cell && s->prev.cc)) {
-                i += draw_combining_char_run(self, s, ch, cp, chars + i + 1, num_chars - i - 1);
+                if (implicit) i += draw_combining_char_run_implicit(self, s, ch, cp, chars + i + 1, num_chars - i - 1, record);
+                else i += draw_combining_char_run(self, s, ch, cp, chars + i + 1, num_chars - i - 1);
                 continue;
             }
             char_width = wcwidth_std(cp);
@@ -1980,7 +2050,14 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                     // Preserve zero width chars as combining chars even though
                     // they were not added to the prev cell by grapheme segmentation.
                     // Zero width chars can only be represented as combining chars.
-                    if (s->prev.cc) draw_combining_char(self, s, ch);
+                    if (s->prev.cc) {
+                        const CPUCell *pc = s->prev.cc;
+                        const index_type py = s->prev.y;
+                        const char_type before = pc->ch_and_idx;
+                        const bool was_multicell = pc->is_multicell;
+                        draw_combining_char(self, s, ch);
+                        if (implicit) record_combining_write(self, pc, py, before, was_multicell, record);
+                    }
                     continue;
                 }
                 char_width = 1;
@@ -2043,6 +2120,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             self->cursor->x++;
             fc->is_multicell = false;
         }
+        if (implicit) record_written_line(self, s->prev.y, record);
     }
 #undef init_line
 #undef TEMPLATE_CELLS
@@ -2067,13 +2145,31 @@ static void
 draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
     PREPARE_FOR_DRAW_TEXT;
     self->is_dirty = true;
-    draw_text_loop(self, chars, num_chars, &s);
+    draw_text_loop_(self, chars, num_chars, &s, false, 0);
+}
+
+// Text written in implicit bidi mode records each line it is written to
+static void
+draw_text_implicit(Screen *self, const uint32_t *chars, size_t num_chars) {
+    if (OPT(force_ltr)) {
+        draw_text(self, chars, num_chars);
+        return;
+    }
+    PREPARE_FOR_DRAW_TEXT;
+    self->is_dirty = true;
+    draw_text_loop_(self, chars, num_chars, &s, true, current_bidi_record(self).val);
+}
+
+static void
+draw_text_in_mode(Screen *self, const uint32_t *chars, size_t num_chars) {
+    if (UNLIKELY(self->modes.mBDSM)) draw_text_implicit(self, chars, num_chars);
+    else draw_text(self, chars, num_chars);
 }
 
 void
 screen_draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
     screen_on_input(self);
-    draw_text(self, chars, num_chars);
+    draw_text_in_mode(self, chars, num_chars);
 }
 
 static void
@@ -2150,6 +2246,7 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc)
     for (index_type y = self->cursor->y; y < self->cursor->y + height; y++) {
         linebuf_init_cells(self->linebuf, y, &s.cp, NULL);
         linebuf_mark_line_dirty(self->linebuf, y);
+        if (UNLIKELY(self->modes.mBDSM) && !OPT(force_ltr)) stamp_line_for_bidi(self, y, current_bidi_record(self).val);
         mcd.x = 0;
         mcd.y = y - self->cursor->y;
         for (index_type x = self->cursor->x; x < self->cursor->x + width; x++, mcd.x++) {
@@ -2654,6 +2751,10 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
             grman_clear(self->alt_grman, true, self->cell_size);
         }
         if (save_cursor) screen_save_cursor(self);
+        self->bidi.main_stash.mBDSM = self->modes.mBDSM;
+        self->bidi.main_stash.mBIDI_AUTODETECT = self->modes.mBIDI_AUTODETECT;
+        self->bidi.main_stash.rtl = self->bidi.rtl;
+        self->modes.mBDSM = self->modes.mBIDI_AUTODETECT = self->bidi.rtl = false;
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
         self->key_encoding_flags = self->alt_key_encoding_flags;
@@ -2663,6 +2764,9 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
         self->alternate_screen.entered_at = monotonic();
     } else {
         self->alternate_screen.exited_at = monotonic();
+        self->modes.mBDSM = self->bidi.main_stash.mBDSM;
+        self->modes.mBIDI_AUTODETECT = self->bidi.main_stash.mBIDI_AUTODETECT;
+        self->bidi.rtl = self->bidi.main_stash.rtl;
         self->linebuf = self->main_linebuf;
         self->tabstops = self->main_tabstops;
         self->key_encoding_flags = self->main_key_encoding_flags;
@@ -2717,6 +2821,8 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 
         case DECSCLM:
         case DECNRCM: break; // we ignore these modes
+        case BDSM: self->modes.mBDSM = val; break;
+        case BIDI_AUTODETECT: self->modes.mBIDI_AUTODETECT = val; break;
         case DECCKM: self->modes.mDECCKM = val; break;
         case DECTCEM: self->modes.mDECTCEM = val; break;
         case DECSCNM:
@@ -3392,6 +3498,8 @@ copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, Scre
             break;
             SIDE_EFFECTS(DECOM)
             SIDE_EFFECTS(DECCOLM)
+            SIDE_EFFECTS(BDSM) // kitty extension
+            SIDE_EFFECTS(BIDI_AUTODETECT)
     }
 #undef SIMPLE_MODE
 #undef SIDE_EFFECTS
@@ -3425,6 +3533,8 @@ copy_specific_modes(Screen *self, const ScreenModes *src, ScreenModes *dest) {
     copy_specific_mode(self, MOUSE_BUTTON_TRACKING, src, dest);
     copy_specific_mode(self, MOUSE_UTF8_MODE, src, dest);
     copy_specific_mode(self, DECSCNM, src, dest);
+    copy_specific_mode(self, BDSM, src, dest);
+    copy_specific_mode(self, BIDI_AUTODETECT, src, dest);
 }
 
 void
@@ -3611,6 +3721,7 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
         self->is_dirty = true;
         clear_intersecting_selections(self, self->cursor->y);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
+        bidi_clear_record_if_blank(self, self->cursor->y);
     }
 }
 
@@ -3737,7 +3848,13 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     }
     if (how < 2) {
         screen_erase_in_line(self, how, private);
-        if (how == 1) linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
+        if (how == 1) {
+            // the record outlives the clear of the other attrs while the row holds text
+            LineAttrs *a = self->linebuf->line_attrs + self->cursor->y;
+            const LineAttrs record = *a;
+            linebuf_clear_attrs_and_dirty(self->linebuf, self->cursor->y);
+            if (UNLIKELY(self->linebuf->bidi_stamped)) set_bidi_record(a, record);
+        }
     }
     if (how == 3 && self->linebuf == self->main_linebuf) { screen_clear_scrollback(self); }
     if (how == 3) reset_style_table_if_unused(self);
@@ -3829,6 +3946,7 @@ screen_insert_characters(Screen *self, unsigned int count) {
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         self->is_dirty = true;
         clear_intersecting_selections(self, self->cursor->y);
+        bidi_clear_record_if_blank(self, self->cursor->y);
     }
 }
 
@@ -3872,6 +3990,7 @@ screen_delete_characters(Screen *self, unsigned int count) {
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         self->is_dirty = true;
         clear_intersecting_selections(self, self->cursor->y);
+        bidi_clear_record_if_blank(self, self->cursor->y);
     }
 }
 
@@ -3887,6 +4006,7 @@ screen_erase_characters(Screen *self, unsigned int count) {
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     self->is_dirty = true;
     clear_intersecting_selections(self, self->cursor->y);
+    bidi_clear_record_if_blank(self, self->cursor->y);
 }
 
 // }}}
@@ -4065,6 +4185,8 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         case MOUSE_UTF8_MODE: ans = self->modes.mouse_tracking_protocol == UTF8_PROTOCOL ? 1 : 2; break;
         case MOUSE_SGR_PIXEL_MODE: ans = self->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL ? 1 : 2; break;
         case PENDING_UPDATE: ans = self->paused_rendering.expires_at ? 1 : 2; break;
+        case BDSM: ans = OPT(force_ltr) ? 4 : (self->modes.mBDSM ? 1 : 2); break;
+        case BIDI_AUTODETECT: ans = OPT(force_ltr) ? 4 : (self->modes.mBIDI_AUTODETECT ? 1 : 2); break;
     }
     int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
     if (sz > 0) write_escape_code_to_child(self, ESC_CSI, buf);
@@ -4088,6 +4210,12 @@ screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
         // bottom margins of the scrolling region (DECSTBM) changes.
         screen_cursor_position(self, 1, 1);
     }
+}
+
+void
+screen_set_bidi_direction(Screen *self, unsigned int direction, unsigned int path_extent UNUSED) {
+    if (direction > 2) return;
+    self->bidi.rtl = direction == 2;
 }
 
 void
@@ -6644,7 +6772,7 @@ draw(Screen *self, PyObject *src) {
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
     Py_UCS4 *buf = PyUnicode_AsUCS4Copy(src);
     if (!buf) return NULL;
-    draw_text(self, buf, PyUnicode_GetLength(src));
+    draw_text_in_mode(self, buf, PyUnicode_GetLength(src));
     PyMem_Free(buf);
     Py_RETURN_NONE;
 }
@@ -8403,6 +8531,18 @@ test_set_style_table_limit(Screen *self, PyObject *val) {
 }
 
 static PyObject *
+test_bidi_line_record(Screen *self, PyObject *val) {
+    unsigned long y = PyLong_AsUnsignedLong(val);
+    if (PyErr_Occurred()) return NULL;
+    if (y >= self->lines) {
+        PyErr_SetString(PyExc_IndexError, "line out of range");
+        return NULL;
+    }
+    const LineAttrs a = self->linebuf->line_attrs[y];
+    return Py_BuildValue("iOO", (int)a.bidi_stamp, a.bidi_rtl ? Py_True : Py_False, a.bidi_auto ? Py_True : Py_False);
+}
+
+static PyObject *
 test_ch_and_idx(PyObject *self UNUSED, PyObject *val) {
     CPUCell c = {0};
     if (PyLong_Check(val)) {
@@ -8424,6 +8564,7 @@ static PyMethodDef methods[] = {
     METHODB(cell_style_idx, METH_VARARGS),
     METHODB(style_table_info, METH_NOARGS),
     METHODB(test_set_style_table_limit, METH_O),
+    METHODB(test_bidi_line_record, METH_O),
     METHODB(test_gc_style_table, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
     METHODB(test_update_overlay_text, METH_VARARGS),

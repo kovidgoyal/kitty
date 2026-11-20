@@ -1506,6 +1506,10 @@ dispatch_csi(PS *self) {
             if (!start_modifier && end_modifier == '*') { CALL_CSI_HANDLER1(screen_decsace, 0); }
             REPORT_ERROR("Unknown CSI x sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             break;
+        case 'k':
+            if (end_modifier == ' ' && !start_modifier) { CALL_CSI_HANDLER2(screen_set_bidi_direction, 0, 0); }
+            REPORT_ERROR("Unknown CSI k sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
+            break;
         case DECSCUSR:
             if (end_modifier == ' ') {
                 if (!start_modifier) { CALL_CSI_HANDLER1M(screen_set_cursor, 1); }
