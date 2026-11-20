@@ -1245,7 +1245,7 @@ class Window:
                 xnum=0,
                 ynum=1,
             )
-            self._title_bar_screen.layout(tb_geom)
+            self._title_bar_screen.layout(tb_geom, cell_width)
             set_window_title_bar_render_data(
                 self.os_window_id,
                 self.tab_id,
