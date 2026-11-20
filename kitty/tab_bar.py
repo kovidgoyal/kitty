@@ -1307,6 +1307,9 @@ class TabBar:
         if draw_ellipsis:
             s.cursor.x = 0
             s.cursor.y = row
+            # Do not let attributes left over from drawing the last tab
+            # bleed into the erased overflow row.
+            s.cursor.reset_display_attrs()
             s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
             s.cursor.fg = as_rgb(0xFF0000)
             # A custom tab style can draw a separator in the reserved row.

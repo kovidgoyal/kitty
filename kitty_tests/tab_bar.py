@@ -483,6 +483,10 @@ class TestTabBar(BaseTest):
                 screen.cursor.bg = as_rgb(0x600000)
                 screen.draw('─' * screen.columns)
                 screen.cursor.x, screen.cursor.y, screen.cursor.bg = end, y, bg
+            # Leave display attributes set, they must not leak into the overflow row
+            c = screen.cursor
+            c.reverse = c.bold = c.italic = c.dim = True
+            c.decoration = 1
             return end
 
         background = Color(0, 0, 100)
@@ -490,7 +494,10 @@ class TestTabBar(BaseTest):
             tb = self.vertical_tab_bar(num_tabs=9, tab_bar_style='custom', tab_bar_background=background)
         self.ae(self.screen_lines(tb), [f't{i}' for i in range(7)] + ['…'])
         overflow = tb.screen.line(tb.screen.lines - 1)
-        self.ae(overflow.cursor_from(tb.screen.columns - 1).bg, as_rgb(color_as_int(background)))
+        for x in range(tb.screen.columns):
+            c = overflow.cursor_from(x)
+            self.ae(c.bg, as_rgb(color_as_int(background)), f'x={x}')
+            self.ae((c.reverse, c.bold, c.italic, c.dim, c.decoration), (False, False, False, False, 0), f'x={x}')
 
     def test_wrap_title(self) -> None:
         self.ae(wrap_title('hello world foo', 6).split('\n'), ['hello ', 'world ', 'foo'])

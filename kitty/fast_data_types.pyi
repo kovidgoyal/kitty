@@ -1136,6 +1136,9 @@ class Cursor:
     text_blink: bool
     shape: int
 
+    def reset_display_attrs(self) -> None:
+        pass
+
 class ImageLayerRect(TypedDict):
     left: float
     top: float
