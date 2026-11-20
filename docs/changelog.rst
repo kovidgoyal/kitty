@@ -127,6 +127,8 @@ Detailed list of changes
 
 - dnd kitten: Fix a malicious remote drop source being able to write files outside the staging directory by sending a directory with the same name as a previously sent symlink (follow up to :cve:`2026-54056`)
 
+- File transfer protocol: Refuse to write files via a symlink created earlier in the same transfer, preventing a malicious sender from redirecting files outside the destination directory through intermediate path components (follow up to :cve:`2026-54055`)
+
 - Fix a crash when calling :code:`Screen.hyperlink_at()` with coordinates outside the screen, such as from a watcher (:iss:`10890`)
 
 - Fix animated images stopping when switching to a tab without animations and then back (:iss:`10894`)
