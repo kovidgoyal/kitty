@@ -122,12 +122,11 @@ def clear_caches() -> None:
 class WindowTitleBarScreen:
     def __init__(self, os_window_id: int, cell_width: int, cell_height: int):
         self.os_window_id = os_window_id
-        self.cell_width = cell_width
         self.screen = Screen(None, 1, 10, 0, cell_width, cell_height)
         self.screen.reset_mode(DECAWM)
 
-    def layout(self, geometry: WindowGeometry) -> None:
-        ncells = max(4, (geometry.right - geometry.left) // self.cell_width)
+    def layout(self, geometry: WindowGeometry, cell_width: int) -> None:
+        ncells = max(4, (geometry.right - geometry.left) // cell_width)
         self.screen.resize(1, ncells)
         self.geometry = geometry
 

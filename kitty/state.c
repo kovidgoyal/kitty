@@ -1251,6 +1251,9 @@ PYWRAP1(set_window_title_bar_render_data) {
     PA("KKKOIIII", &os_window_id, &tab_id, &window_id, &screen, &g.left, &g.top, &g.right, &g.bottom);
     WITH_WINDOW(os_window_id, tab_id, window_id)
     init_window_render_data(&window->window_title_render_data, g, screen);
+    // window may have moved to an OS window with a different font size
+    if (screen->cell_size.width != osw->fonts_data->fcm.cell_width || screen->cell_size.height != osw->fonts_data->fcm.cell_height)
+        resize_screen(osw, screen, false);
     screen->reload_all_gpu_data = true;
     END_WITH_WINDOW
     Py_RETURN_NONE;
@@ -1588,6 +1591,7 @@ PYWRAP1(os_window_font_size) {
             for (size_t wi = 0; wi < tab->num_windows; wi++) {
                 Window *w = tab->windows + wi;
                 resize_screen(os_window, w->render_data.screen, true);
+                resize_screen(os_window, w->window_title_render_data.screen, false);
             }
         }
         // On Wayland with CSD title needs to be re-rendered in a different font size
