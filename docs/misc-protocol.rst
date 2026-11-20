@@ -222,6 +222,11 @@ Right-to-left runs are shaped without contextual alternates (``calt``),
 whatever :opt:`disable_ligatures` is set to, as in a right-to-left run they can
 turn an operator such as ``=>`` into another one.
 
+The text cursor is drawn at the visual column of its cell. A beam cursor on a
+right-to-left cell is drawn past the cell, on its left edge in the last column.
+The input method editor is anchored at the left edge of the cursor cell, and
+the pre-edit text is drawn as without bidi mode.
+
 In a vertically scrolling
 :doc:`smooth scroll region </smooth-scrolling-protocol>` that spans the width
 of the screen, lines are laid out as outside a region, and the rows the region

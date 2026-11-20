@@ -11,7 +11,7 @@ actual cursor. This is sub-optimal since actual cursors implemented by the
 terminal have many niceties like smooth animation [anim]_, auto adjust colors [rv]_,
 etc. To address this and other use cases, this protocol allows terminal programs to
 request that the terminal display multiple cursors at specific locations on the
-screen.
+screen [bidi]_.
 
 Quickstart
 ----------------
@@ -246,3 +246,6 @@ Footnotes
    color of the cursor and the text under the cursor is adjusted based on the
    color of the cell under the cursor. This also cannot be implemented using
    fake cursors.
+
+.. [bidi] On lines reordered for :ref:`bidirectional text <bidi_support>`,
+   kitty draws extra cursors at the visual column of their cell.

@@ -1015,6 +1015,17 @@ bidi_store_line_levels(Line *line, const uint8_t *levels) {
 }
 
 index_type
+bidi_visual_x(const BidiMaps *b, index_type r, index_type x, index_type span) {
+    if (r >= b->rows || x >= b->cols || !b->active[r]) return x;
+    const uint16_t *v2l = b->v2l + (size_t)r * b->cols;
+    const index_type end = x + MAX(span, 1u);
+    for (index_type v = 0; v < b->cols; v++) {
+        if (x <= v2l[v] && v2l[v] < end) return v;
+    }
+    return x;
+}
+
+index_type
 bidi_logical_x(const BidiMaps *b, index_type r, index_type visual_x) {
     if (r >= b->rows || visual_x >= b->cols || !b->active[r]) return visual_x;
     return b->v2l[(size_t)r * b->cols + visual_x];
@@ -1023,4 +1034,15 @@ bidi_logical_x(const BidiMaps *b, index_type r, index_type visual_x) {
 bool
 bidi_cell_is_rtl(const BidiMaps *b, index_type r, index_type x) {
     return r < b->rows && x < b->cols && (b->levels[(size_t)r * b->cols + x] & 1);
+}
+
+// Blank the cell shown at visual column col of render row r if it is a half of a character whose other half is shown at the adjacent
+// column inner, which the pre-edit block covers
+void
+bidi_blank_cut_half(const BidiMaps *b, const CPUCell *cells, index_type r, CellGPUData *row, index_type col, index_type inner) {
+    const index_type l = bidi_logical_x(b, r, col), m = bidi_logical_x(b, r, inner);
+    const CPUCell *c = cells + l, *d = cells + m;
+    if (!c->is_multicell || !d->is_multicell || c->y != d->y || l - c->x != m - d->x) return;
+    const RenderCell blank = {0};
+    cells_for_gpu(c, &blank, 1, row + col);
 }

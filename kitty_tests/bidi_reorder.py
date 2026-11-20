@@ -9,7 +9,19 @@ import struct
 import tempfile
 from itertools import product
 
-from kitty.fast_data_types import Screen, get_options, sprite_idx_to_pos, test_render_line, test_set_batched_non_ascii_draw
+from kitty.fast_data_types import (
+    CURSOR_BEAM,
+    CURSOR_BLOCK,
+    CURSOR_HOLLOW,
+    CURSOR_UNDERLINE,
+    Screen,
+    create_mock_window,
+    get_options,
+    send_mock_mouse_event_to_window,
+    sprite_idx_to_pos,
+    test_render_line,
+    test_set_batched_non_ascii_draw,
+)
 from kitty.fonts.render import setup_for_testing
 
 from .base import BaseTest, Callbacks, draw_multicell, parse_bytes
@@ -1064,6 +1076,53 @@ class TestBidiReorder(BaseTest):
         raw, c = s.current_selections(), EXTRA_CURSOR
         offset = len(raw) // s.columns - s.lines
         self.ae(list(raw[10 * offset : 10 * offset + 20]), [c, 0, 0, 0, 0, c, 0, 0, 0, 0] + [0, 0, 0, c, 0, 0, 0, 0, 0, 0])
+        # beam extra cursors on logical cells 3, 5 and 0 are at the visual column of their own cell, RTL ones included
+        pb(s, '\x1b[>0;4 q\x1b[>2;2:1:4;2:1:6;2:1:1 q')
+        frame(s)
+        raw, b = s.current_selections(), 2 * EXTRA_CURSOR
+        self.ae(list(raw[10 * offset : 10 * offset + 10]), [b, 0, 0, b, 0, b, 0, 0, 0, 0])
+
+    def drawn(self, s, x, shape=CURSOR_BLOCK):
+        s.cursor_position(1, x + 1)
+        frame(s)
+        return s.test_cursor_x(shape)[0]
+
+    def test_beam_on_odd_level_cells(self):
+        # Every cursor shape is drawn at the visual column of the cursor's cell, the cell after the text included. A beam on an
+        # odd-level cell is on the left edge of the column past the cell's full width, in the last column on the cell's own edge.
+        def shapes(s, x):
+            return tuple(self.drawn(s, x, shape) for shape in (CURSOR_BLOCK, CURSOR_UNDERLINE, CURSOR_HOLLOW, CURSOR_BEAM))
+
+        s = self.screen(text=MIXED)
+        self.ae([shapes(s, x) for x in (0, 1, 3, 4, 5, 6)], [(0,) * 4, (1,) * 4, (5, 5, 5, 6), (4, 4, 4, 5), (3, 3, 3, 4), (6,) * 4])
+        self.ae(shapes(self.screen(cols=6, text=MIXED), 3), (5, 5, 5, 5))
+        s = self.screen(text='a')
+        draw_multicell(s, 'א', width=2)
+        draw_multicell(s, 'ב', width=2)
+        self.ae([shapes(s, x) for x in (1, 2, 3, 4)], [(3, 3, 3, 5), (3, 3, 3, 5), (1, 1, 1, 3), (1, 1, 1, 3)])
+        # until the next frame, maps sized for an old width are not used
+        s = self.screen(cols=20, lines=3, text=''.join(chr(0x5D0 + i) for i in range(20)))
+        self.ae(self.drawn(s, 2), 17)
+        s.resize(3, 10)
+        s.cursor_position(1, 3)
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], 2)
+        self.ae(self.drawn(s, 2), 7)
+
+    def test_block_on_a_wide_char_across_a_region_edge(self):
+        # the block on a wide char across the left edge of a region narrower than the screen covers the char's two visual columns
+        s = self.screen('\x1b]2254;a=d:i=1:x=6:y=1:w=10:h=3\x1b\\\x1b[1;1Hab' + 'אב' + '😀' + 'גד', cols=20, lines=4, pixel_scroll=False)
+        self.ae(self.drawn(s, 4), 4)
+        self.ae(order(s)[4:6], (4, 5))
+
+    def test_ime_anchor_follows_visual_caret(self):
+        s = self.screen(text=MIXED)
+        s.cursor_position(1, 4)
+        frame(s)
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[1], 5)
+        # an edit that reorders the row moves the caret's cell, the anchor is read after the upload
+        s.draw('x')
+        frame(s)
+        self.ae((s.cursor.x, s.test_cursor_x(CURSOR_BLOCK)), (4, (5, 5)))
 
     def test_click_on_a_reordered_row(self):
         # a click lands on the logical cell shown under it; the left half of a right-to-left cell is drawn on its right
@@ -1076,6 +1135,36 @@ class TestBidiReorder(BaseTest):
         s = self.screen(cols=5, text=NSI)
         frame(s)
         self.ae([s.test_bidi_logical_click(x, 0, True) for x in range(5)], [(3, True), (4, True), (2, False), (1, False), (0, False)])
+
+    def test_hyperlink_target_at_the_hovered_column(self):
+        # the hyperlink target is drawn at the column the pointer is over, the visual column of the hovered logical cell
+        s = self.screen(text='abc')
+        pb(s, '\x1b]8;;https://example.invalid/\x1b\\' + A + '\x1b]8;;\x1b\\')
+        frame(s)
+        w = create_mock_window(s)
+        for logical, shown in ((3, 5), (4, 4), (5, 3)):
+            send_mock_mouse_event_to_window(w, -1, 0, False, logical, 0, False, True)
+            self.ae(s.test_hyperlink_under_mouse(), (shown, 0))
+
+    def test_maps_follow_the_frame(self):
+        # without pixel scroll the alternate screen has as many render rows as the main one: only the source and its stamp tell the maps apart
+        s = self.screen(text=MIXED, pixel_scroll=False)
+        self.ae((self.selected(s, 3, 4), s.test_cursor_x(CURSOR_BLOCK)[0]), ([4, 5], 6))
+        pb(s, '\x1b[?1049h\x1b[H')
+        s.draw(MIXED)
+        self.ae((self.selected(s, 3, 4), s.test_cursor_x(CURSOR_BLOCK)[0]), ([3, 4], 6))
+        # once stamped too, the alternate screen has no maps of its own until its next frame, nor the main one after
+        pb(s, '\x1b[8h\x1b[H' + MIXED + '\x1b[1;4H')
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], 3)
+        pb(s, '\x1b[?1049l\x1b[1;4H')
+        self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], 3)
+        # force_ltr set at runtime: the next frame is uploaded in logical order, has no maps and redraws the selection
+        s = self.screen(text=MIXED)
+        self.ae(self.selected(s, 3, 4), [4, 5])
+        self.set_options({'force_ltr': True})
+        frame(s)
+        self.ae((order(s), s.test_cursor_x(CURSOR_BLOCK)[0], s.is_selection_dirty()), (None, 6, True))
+        self.ae(self.lit(s), [3, 4])
 
     def test_force_ltr_stores_nothing_and_keeps_the_program_modes(self):
         def reload(s):
@@ -1222,6 +1311,81 @@ class TestBidiReorder(BaseTest):
             s = self.screen(text=A + ' abc')
             pb(s, AUTO + SCP_RTL + clear + A + ' abc')
             self.ae(visual(s), '   abc גבא')
+
+    def preedit_reference(self, text, x, preedit='xy'):
+        # the row a screen that never sent CSI 8 h uploads for text with the pre-edit at x
+        f = self.create_screen(cols=10, lines=5, scrollback=5, options={})
+        draw_coloured(f, text)
+        f.cursor_position(1, x + 1)
+        self.assertTrue(any(sprites(f)))
+        f.test_update_overlay_text(preedit)
+        return uploaded(f)
+
+    def test_preedit(self):
+        # the pre-edit block starts at the visual column of the cursor cell and extends right, the rest of the row stays in visual order
+        ref = self.preedit_reference(MIXED, 1)
+        s = self.screen()
+        draw_coloured(s, MIXED)
+        s.cursor_position(1, 2)
+        before = uploaded(s)
+        self.ae(self.drawn(s, 1, CURSOR_BEAM), 1)
+        s.test_update_overlay_text('xy')
+        row = uploaded(s)
+        self.ae((s.test_cursor_x(CURSOR_BEAM), order(s)), ((3, 1), (0, 1, 2, 5, 4, 3, 6, 7, 8, 9)))
+        self.ae((row[:1] + row[3:], row[1:3]), (before[:1] + before[3:], ref[1:3]))
+        # also when the cell is at an odd level
+        ref = self.preedit_reference(A + ' ' + A, 7, 'xyzw')  # right-aligned there, at columns 6-9
+        s = self.screen(AUTO)
+        draw_coloured(s, A + ' ' + A)
+        before = uploaded(s)
+        s.test_update_overlay_text('xyzw')
+        row = uploaded(s)
+        self.ae((s.test_cursor_x(CURSOR_BEAM), row[2:6]), ((6, 2), ref[6:10]))
+        self.ae((row[:2] + row[6:], order(s)), (before[:2] + before[6:], tuple(range(9, -1, -1))))
+        # a block that cuts a wide character, at either edge, blanks the other half
+        for seq, text, x, preedit, blanked in (('', 'a', 3, 'x', 4), ('', 'a', 5, 'x', 2), ('', 'a', 2, 'x', 6), (SCP_RTL, '', 0, 'xyz', 6)):
+            s = self.screen(seq, text=text)
+            for ch in A:
+                draw_multicell(s, ch, width=2)
+            s.cursor_position(1, x + 1)
+            before = sprites(s)
+            s.test_update_overlay_text(preedit)
+            row = sprites(s)
+            start = s.test_cursor_x()[1]
+            expected = before[:start] + row[start : start + len(preedit)] + before[start + len(preedit) :]
+            expected[blanked] = 0
+            self.assertTrue(before[blanked])
+            self.ae(row, expected)
+            s.test_update_overlay_text('')
+        # a zero-width pre-edit covers no cell, also beside a wide char shown at column 0
+        for preedit, x in product(('́', '\u200c', RLM), (6, 7)):
+            s = self.screen(SCP_RTL, cols=8, text=A + A + '好')
+            s.cursor_position(1, x + 1)
+            before = sprites(s)
+            s.test_update_overlay_text(preedit)
+            self.ae(sprites(s), before, (preedit, x))
+            s.test_update_overlay_text('')
+        # a right-to-left pre-edit is drawn as without bidi mode, on a row with a map or without one
+        for text in ('abc ', A + ' '):
+            with self.subTest(text=text):
+                ref = self.preedit_reference(text, 4, A)
+                s = self.screen()
+                draw_coloured(s, text)
+                frame(s)
+                s.test_update_overlay_text(A)
+                self.ae(uploaded(s)[4:7], ref[4:7])
+        # a Latin row has no map: its pre-edit row is uploaded as without bidi, and the line record is left alone
+        ref = self.preedit_reference('abc def', 7)
+        s = self.screen(AUTO)
+        draw_coloured(s, 'abc def')
+        frame(s)
+        record = s.test_bidi_line_record(0)
+        s.test_update_overlay_text('xy')
+        self.ae((s.test_cursor_x(CURSOR_BEAM), uploaded(s), order(s)), ((9, 7), ref, None))
+        s.test_update_overlay_text(RLM + 'xy')
+        frame(s)
+        s.test_update_overlay_text('')
+        self.ae((s.test_bidi_line_record(0), orders(s)[0]), (record, None))
 
     # The randomized differential: after every frame, the cell data uploaded for a screen that is rendered after each operation
     # equals that of a fresh screen given the same operations and rendered once.
@@ -1670,13 +1834,15 @@ class TestBidiReorder(BaseTest):
         return s
 
     def test_full_width_region_moves_rows_with_their_order(self):
-        # the rows a full width region moves keep their order
+        # the rows a full width region moves keep their order; the cursor on a moved row is drawn at its visual column
         for pixel_scroll in (False, True):
             with self.subTest(pixel_scroll=pixel_scroll):
                 s = self.region_screen(pixel_scroll=pixel_scroll)
                 before = orders(s)
                 self.ae(s.smooth_scroll(1, 20), 1)  # one row up, unshifted
+                s.cursor_position(2, 1)  # the first cell of NSI, which moved to row 1
                 self.ae(orders(s)[1:4], before[2:5])
+                self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], before[2].index(0))
 
     def assert_full_width_strip(self, s, top, shown, regions=None):
         # the strip of region 1 shows its rows as the screen does, and in its partial row above the row that left as it was
