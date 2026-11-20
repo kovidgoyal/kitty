@@ -141,6 +141,8 @@ Detailed list of changes
 
 - panel kitten: In single instance mode, run the command in a new panel in the working directory it was invoked from and do not pass internal environment variables such as :code:`XDG_ACTIVATION_TOKEN` to commands run in panels, as for other single instance commands
 
+- :ref:`Launch wrapper <launch_wrapper>`: Allow the wrapper to keep windows created with :option:`launch --hold` open itself, so that the shell runs inside the wrapper, via a new ``hold`` field in ``LaunchContext`` and a new ``LaunchPrefix`` return type (:iss:`10901`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -491,19 +491,28 @@ read -r _
 
         if not shutil.which('timeout'):
             self.skipTest('No timeout program')
+        from kitty.launch_wrapper import LaunchPrefix, hold_prefix
+
         command = ('/bin/sh', '-c', self.report_pid, 'arg')
-        c, exe, argv = self._fork(argv=command, launch_request=LaunchRequest('tab'), hold=True, user_func=lambda ctx: ['timeout', '100'])
-        with subprocess.Popen(argv, executable=exe, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0) as p:
-            c.pid = p.pid
-            try:
-                command_pid = int(self._read_line(p))
-                if cmdline_of_pid(command_pid)[0] != command[0]:
-                    # Under emulation, such as qemu-user via binfmt_misc, the
-                    # cmdline of processes starts with the emulator
-                    self.skipTest('Running under emulation')
-                self._assert_root_pid_settles(c, command_pid)
-            finally:
-                self._stop_tree(p)
+        for kind, user_func in (
+            ('kitty holds', lambda ctx: ['timeout', '100']),
+            # The wrapper holds the window inside itself
+            ('wrapper holds', lambda ctx: LaunchPrefix(argv=['timeout', '100'] + hold_prefix(), handles_hold=True)),
+        ):
+            with self.subTest(kind=kind):
+                c, exe, argv = self._fork(argv=command, launch_request=LaunchRequest('tab'), hold=True, user_func=user_func)
+                self.ae(argv[0] == 'timeout', kind == 'wrapper holds')
+                with subprocess.Popen(argv, executable=exe, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0) as p:
+                    c.pid = p.pid
+                    try:
+                        command_pid = int(self._read_line(p))
+                        if cmdline_of_pid(command_pid)[0] != command[0]:
+                            # Under emulation, such as qemu-user via binfmt_misc, the
+                            # cmdline of processes starts with the emulator
+                            self.skipTest('Running under emulation')
+                        self._assert_root_pid_settles(c, command_pid)
+                    finally:
+                        self._stop_tree(p)
 
     def test_launch_wrapper(self):
         from kitty.launch_wrapper import LaunchRequest
@@ -534,28 +543,53 @@ read -r _
         self.ae(dict(ctx.user_vars), {'a': 'b'})
         self.ae(ctx.env['KITTY_WINDOW_ID'], '7')
         self.assertFalse(ctx.is_default_shell)
+        self.assertFalse(ctx.hold)
         with self.assertRaises(TypeError):
             ctx.env['x'] = 'y'
         # The hold wrapper runs outside the user's wrapper
         c, exe, argv = self._fork(launch_request=req, hold=True, user_func=self._recording(['/bin/wrapper']))
         self.ae(argv[-2:], ('/bin/prog', 'arg'))
         self.ae(argv[-3], '/bin/wrapper')
+        self.assertTrue(self.contexts[-1].hold)
         self.ae(c.kitty_wrappers[-1], KittyWrapper(('/bin/wrapper',), True, ('/bin/prog', 'arg')))
         self.ae(len(c.kitty_wrappers), 2)
         self.ae(c.kitty_wrappers[0].argv, argv[: len(c.kitty_wrappers[0].argv)])
+        # The full form of the return value
+        from kitty.launch_wrapper import LaunchPrefix, hold_prefix
+
+        c, exe, argv = self._fork(launch_request=req, user_func=self._recording(LaunchPrefix(argv=['/bin/wrapper', '-x'])))
+        self.ae(argv, ('/bin/wrapper', '-x', '/bin/prog', 'arg'))
+        self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper', '-x'), True, ('-x', '/bin/prog', 'arg')),))
+        # The wrapper can hold the window itself
+        c, exe, argv = self._fork(launch_request=req, hold=True, user_func=self._recording(LaunchPrefix(argv=['/bin/wrapper'], handles_hold=True)))
+        self.ae(argv, ('/bin/wrapper', '/bin/prog', 'arg'))
+        self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper',), True, ('/bin/prog', 'arg')),))
+        # using the same helper as kitty, which is then skipped over
+        hp = tuple(hold_prefix())
+        c, exe, argv = self._fork(launch_request=req, hold=True, user_func=self._recording(LaunchPrefix(argv=('/bin/wrapper',) + hp, handles_hold=True)))
+        self.ae(argv, ('/bin/wrapper',) + hp + ('/bin/prog', 'arg'))
+        self.ae(c.kitty_wrappers, (KittyWrapper(('/bin/wrapper',), True, hp + ('/bin/prog', 'arg')), KittyWrapper(hp, True)))
+        # handles_hold is ignored with no prefix, as nothing could hold the window
+        c, exe, argv = self._fork(launch_request=req, hold=True, user_func=self._recording(LaunchPrefix(handles_hold=True)))
+        self.ae(argv, hp + ('/bin/prog', 'arg'))
+        # and does nothing when the window is not held
+        c, exe, argv = self._fork(launch_request=req, user_func=self._recording(LaunchPrefix(argv=['/bin/wrapper'], handles_hold=True)))
+        self.ae(argv, ('/bin/wrapper', '/bin/prog', 'arg'))
+        with self.assertRaises(TypeError):
+            LaunchPrefix(['/bin/wrapper'])  # type: ignore
         # Failures and invalid return values result in no prefix
         from kitty import launch_wrapper
 
         errors = []
         with patch.object(launch_wrapper, 'log_error', lambda *a: errors.append(a)):
-            for bad in (ValueError('oops'), 'a string', ['ok', 1], 3):
+            for bad in (ValueError('oops'), 'a string', ['ok', 1], 3, LaunchPrefix(argv='a string'), LaunchPrefix(argv=['ok'], handles_hold=1)):
                 c, exe, argv = self._fork(launch_request=req, user_func=self._recording(bad))
                 self.ae(argv, ('/bin/prog', 'arg'))
                 self.ae(c.kitty_wrappers, ())
             for empty in (None, [], ()):
                 c, exe, argv = self._fork(launch_request=req, user_func=self._recording(empty))
                 self.ae(argv, ('/bin/prog', 'arg'))
-        self.ae(len(errors), 4)
+        self.ae(len(errors), 6)
 
     def test_launch_wrapper_default_bash_with_shell_integration(self):
         from kitty.launch_wrapper import LaunchRequest

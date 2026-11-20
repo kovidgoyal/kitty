@@ -622,10 +622,15 @@ class Child:
                 kitty_wrappers.insert(0, KittyWrapper(tuple(login_argv), False))
         self.final_exe = final_exe = which(argv[0]) or argv[0]
         self.final_argv0 = argv[0]
+        hold = self.hold
         if self.launch_request is not None:
             from .launch_wrapper import prefix_for_launch
 
-            if user_prefix := prefix_for_launch(self.launch_request, self.argv, self.cwd, self.final_env, unmodified_argv=self.unmodified_argv):
+            lp = prefix_for_launch(self.launch_request, self.argv, self.cwd, self.final_env, unmodified_argv=self.unmodified_argv, hold=hold)
+            if user_prefix := tuple(lp.argv):
+                # The wrapper can choose to hold the window itself, for
+                # example, so that the shell runs inside it
+                hold = hold and not lp.handles_hold
                 # The user's wrapper goes inside /usr/bin/login, if present,
                 # but outside everything else, so that kitty's own helpers
                 # such as the run-shell kitten see the actual command.
@@ -635,8 +640,18 @@ class Child:
                     final_exe = which(argv[0]) or argv[0]
                 # The wrapper either replaces itself with the command or runs
                 # it as a child, either way it is not the root process
-                kitty_wrappers.append(KittyWrapper(user_prefix, True, tuple(argv[pos + 1 :])))
-        if self.hold:
+                wrapper_argv, inner_hold_argv = user_prefix, ()
+                if self.hold and lp.handles_hold:
+                    # The wrapper holds the window via hold_prefix() at the
+                    # end of its prefix, which is a kitty helper to skip over
+                    held = tuple(cmdline_for_hold())
+                    if user_prefix[-len(held) :] == held:
+                        wrapper_argv, inner_hold_argv = user_prefix[: -len(held)], held
+                if wrapper_argv:
+                    kitty_wrappers.append(KittyWrapper(wrapper_argv, True, tuple(argv[pos + 1 :])))
+                if inner_hold_argv:
+                    kitty_wrappers.append(KittyWrapper(inner_hold_argv, True))
+        if hold:
             hold_argv = cmdline_for_hold()
             argv = hold_argv + argv
             final_exe = argv[0]
