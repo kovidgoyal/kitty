@@ -9,6 +9,7 @@ from .constants import config_dir
 from .fast_data_types import (
     DECAWM,
     Screen,
+    get_boss,
     get_options,
 )
 from .rgb import color_as_sgr, color_from_int, to_color
@@ -86,6 +87,26 @@ class WindowTitleData(NamedTuple):
     tab_id: int
     needs_attention: bool = False
     has_activity_since_last_focus: bool = False
+
+
+class WindowAccessor:
+    def __init__(self, window_id: int):
+        self.id = window_id
+
+    @property
+    def wd(self) -> str:
+        w = get_boss().window_id_map.get(self.id)
+        return (w.get_cwd_of_child() if w else '') or ''
+
+    @property
+    def columns(self) -> int:
+        w = get_boss().window_id_map.get(self.id)
+        return w.screen.columns if w else 0
+
+    @property
+    def lines(self) -> int:
+        w = get_boss().window_id_map.get(self.id)
+        return w.screen.lines if w else 0
 
 
 @run_once
@@ -170,6 +191,7 @@ class WindowTitleBarScreen:
             'activity_symbol': activity_symbol,
             'progress_percent': progress_percent,
             'custom': custom_result or '',
+            'window': WindowAccessor(data.window_id),
         }
         try:
             title = eval(_compile_template(template), {'__builtins__': safe_builtins}, eval_locals)
