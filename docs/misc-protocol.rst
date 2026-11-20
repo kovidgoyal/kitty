@@ -212,11 +212,9 @@ scale (``s``) above 1 is never moved. Each scaled character keeps its columns
 on every row it covers, the text on either side of it is reordered within its
 own span, and its text is shaped in the direction guessed from the text, as
 without bidi mode. A multicell character of scale 1 is reordered as one unit,
-which the algorithm sees as its first strong character, or its first character
-when it has none (as a neutral if that is an isolate).
-Its text is shaped in the direction of that unit, so text of mixed direction
-inside it is not reordered. A paragraph that holds an image placeholder is not
-reordered, and its text is shaped as without bidi mode.
+and its text is shaped in one direction, so text of mixed direction inside it
+is not reordered. A paragraph that holds an image placeholder is not reordered,
+and its text is shaped as without bidi mode.
 
 Right-to-left runs are shaped without contextual alternates (``calt``),
 whatever :opt:`disable_ligatures` is set to, as in a right-to-left run they can
@@ -226,6 +224,17 @@ The text cursor is drawn at the visual column of its cell. A beam cursor on a
 right-to-left cell is drawn past the cell, on its left edge in the last column.
 The input method editor is anchored at the left edge of the cursor cell, and
 the pre-edit text is drawn as without bidi mode.
+
+kitty honours isolates (LRI, RLI, FSI and PDI) and the marks LRM, RLM and ALM
+written after a character, but a mark directly between two letters of the
+other direction does not split their run. Embeddings and overrides (LRE,
+RLE, LRO, RLO and PDF) are treated as neutral. A paragraph is laid out from its
+rows in view and up to a screen height of its rows above and below them. With
+``CSI ? 2501 h`` the direction of a paragraph longer than that is taken from
+those rows, so it can change as the screen scrolls. Of the isolates in those
+rows the first 32 are honoured and later ones are treated as neutral. A
+private-use icon followed by spaces takes only its own cell where the
+embedding level changes between it and the spaces.
 
 In a vertically scrolling
 :doc:`smooth scroll region </smooth-scrolling-protocol>` that spans the width

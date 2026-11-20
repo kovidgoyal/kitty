@@ -630,6 +630,30 @@ class TestBidiReorder(BaseTest):
                 self.ae(orders(self.written(osc66_controls(text), cols=cols, lines=lines)), neutral)
         # an RLM in an OSC 66 cell of its own is a strong char: the digits after it read right to left with no RTL letter on the row
         self.ae(visual(self.written('\x1b]66;w=1;' + RLM + '\x07' + '12 34')), '34 12' + RLM)
+        # a mark in a multicell is not the letter it is fed as: laid out as UAX #9 lays out the plain text, the RLM after the
+        # neutral （ moves the digits after it, and the letters after the RLM keep their order
+        for text, want in (('（' + RLM + ' 12', (0, 1, 3, 4, 2, 5, 6, 7)), ('\x1b]66;w=4;' + RLM + 'abc\x07', None)):
+            with self.subTest(text=text):
+                self.ae(orders(self.written(text, cols=8))[0], want)
+
+    def test_tab_cell_holds_no_text(self):
+        # a tab cell stores after the tab the number of cells it skips minus one, which is not text: 1564 is U+061C (ALM)
+        def tabbed(skip):
+            return orders(self.written(f'\x1b[3g\x1b[{skip + 2}G\x1bH\ra\t12 34', cols=1600, lines=1))[0]
+
+        self.assertIsNone(tabbed(1565))
+        self.assertIsNone(tabbed(1564))
+        # a control written right after a tab that advanced one column is stored in the tab cell after that number, and is
+        # honoured as after a wider tab or a space: in each stream the cell before column 8, the tab stop, holds the control
+        for control, rest, at_8 in (
+            ('⁧', '12 34⁩', (11, 12, 10, 8, 9)),
+            (RLM, '1 2', (10, 9, 8)),  # the space takes the R of the mark (N1)
+            ('⁨', 'אב cd⁩', (11, 12, 10, 9, 8)),
+        ):
+            want = tuple(range(8)) + at_8 + tuple(range(8 + len(at_8), 20))
+            for lead in ('abcdefg\t', 'abcdef\t', 'abcdefg '):
+                with self.subTest(control=control, lead=lead):
+                    self.ae(orders(self.written(lead + control + rest, cols=20))[0], want)
 
     def test_text_after_a_tab_starts_at_the_tab_stop(self):
         # the cells a tab skips stay with it at the paragraph level, as without bidi mode the text after it starts at the stop
@@ -650,6 +674,90 @@ class TestBidiReorder(BaseTest):
         s = self.screen(AUTO, text='12 34 56 7')
         pb(s, '\x1b[8l' + A + ' xy')
         self.ae(orders(s)[:2], [(9, 8, 6, 7, 5, 3, 4, 2, 0, 1), (9, 8, 7, 6, 4, 5, 3, 2, 1, 0)])
+
+    def test_combined_isolates(self):
+        # each control is written right after a drawn char, so it is stored in that char's cell and takes no column
+        for text, cells in (
+            ('a\u2067bc\u2069', ['a\u2067', 'b', 'c\u2069']),
+            ('a\u2066b\u2069c', ['a\u2066', 'b\u2069', 'c']),
+            ('a' + RLE + 'bc' + PDF, ['a' + RLE, 'b', 'c' + PDF]),
+        ):
+            s = self.screen(text=text)
+            self.ae(([s.line(0)[i] for i in range(len(cells) + 1)], s.cursor.x), (cells + ['\x00'], len(cells)))
+        # a row ending in a space and a PDI, wrapped or ending its paragraph, resets both to the paragraph level
+        row = 'ab\u2067אג \u2069'
+        self.ae((orders(self.screen(cols=5, text=row))[0], orders(self.screen(cols=5, text=row + 'cd'))[0]), ((0, 1, 3, 2, 4),) * 2)
+        for text, seqs, cols, rows in (
+            ('a\u206712 34\u2069', (), 10, ['a\u206734\u2069 12']),  # RLI makes the digits level 2 and the space between them R
+            ('a\u2067bc!\u2069', (), 10, ['a\u2067!\u2069bc']),  # the ! takes the isolate's direction (N2, eos R)
+            ('a\u2068א!', (), 10, ['a\u2068!א']),  # without the FSI the ! would take the paragraph's L
+            ('a\u2067!b\u2069c', (), 10, ['a\u2067b\u2069!c']),  # the PDI ends the isolate
+            ('א\u2066!a\u2069ג', (AUTO,), 10, ['      ג!a\u2069א\u2066']),  # LRI in an RTL paragraph makes the ! L
+            ('a\u2067b😀\u2069c', (), 10, ['a\u2067😀\u2069bc']),  # a wide cell holds the PDI
+            ('a\u206712 中\u2069x', (), 10, ['a\u2067中\u2069 12x']),
+            ('a\u2068אבגדהו!', (), 5, ['a\u2068דגבא', '!וה']),  # an unmatched FSI isolates to the paragraph end, across the soft wrap
+            # marks combined after a char are fed too
+            ('C++' + LRM, (SCP_RTL,), 10, ['       C++' + LRM]),  # the + take the direction of C and the LRM (N1)
+            ('12' + RLM + ' 34', (), 10, ['12' + RLM + '34']),  # the space between the RLM and 34 is R
+            ('12\u061c 34', (), 10, ['12\u061c34']),  # ALM makes 34 an Arabic number (W2)
+        ):
+            with self.subTest(text=text):
+                s = self.screen(*seqs, cols=cols, lines=len(rows), text=text)
+                self.ae([visual(s, y) for y in range(len(rows))], rows)
+        # combined embeddings and overrides are never fed
+        for control in (LRE, RLE, LRO, RLO):
+            self.ae(orders(self.written('אa' + control + 'b!12' + PDF)), orders(self.written('אab!12')))
+        self.ae(orders(self.written('x' + RLO + 'abc' + PDF + 'd' + LRE + 'אב' + PDF)), orders(self.written('xabcdאב')))
+        # P2 and P3 skip the isolate: with no strong char before the FSI the paragraph takes the fallback direction
+        self.ae(visual(self.screen(AUTO, text='> שלום')), '    םולש >')
+        self.ae(visual(self.screen(AUTO, text='> \u2068שלום')), '> \u2068םולש')
+        # every mark combined after a char is fed, and a run of marks resolves as UAX #9 resolves it: as the run of its first and last
+        # mark and one of each other strong type in it, also inside a bracket pair and in an isolate that the walk of a pair back to
+        # a strong char crosses. With a FriBidi before 1.0.17 that walk counts every mark, so a pair more than 32 chars after the א is fed
+        # as two neutrals: ) then takes the paragraph's L, where paired it takes the R of ד
+        rli, pdi, run = ISOLATES[1], ISOLATES[3], (LRM + RLM) * 11 + LRM
+        slow = n0_walk_is_slow(self.written('a'))
+        for text, collapsed in (
+            ('א' + rli + 'b' + run + 'c' + run + 'd' + pdi + '(ד)', 'א' + rli + 'b' + LRM + RLM + LRM + 'c' + LRM + RLM + LRM + 'd' + pdi + '(ד)'),
+            ('א (!' + RLM + LRM * 21 + RLM + ')', 'א (!' + RLM + LRM + RLM + ')'),
+        ):
+            with self.subTest(text=text):
+                expected = orders(self.written(collapsed, cols=40))
+                if slow and text.index('(') > 32:
+                    unpaired = orders(self.written(text.replace('(', '!').replace(')', '!'), cols=40))
+                    self.assertNotEqual(unpaired, expected)
+                    expected = unpaired
+                self.ae(orders(self.written(text, cols=40)), expected)
+        # the LRM between the RLMs is a strong char of the embedding direction in the brackets (N0)
+        self.assertNotEqual(orders(self.written('א (!' + RLM + LRM + RLM + ')')), orders(self.written('א (!' + RLM + RLM + ')')))
+
+    def test_isolate_flood(self):
+        # every cell of a soft-wrapped paragraph holds a letter and 23 isolate controls, far over the cap: those past it are fed as
+        # neutrals, so dropping the controls of the last cell changes no other row
+        cell = (ISOLATES * 6)[:23]
+        n = 9000
+        s = self.written('a' + cell, cols=200)
+        self.ae(len(s.line(0)[0]), 24)
+        flood = orders(self.written('א' + cell + ('a' + cell) * (n - 1), cols=200, lines=50))
+        self.assertIsNotNone(flood[0])
+        last = n // 200 - 1
+        self.ae(orders(self.written('א' + cell + ('a' + cell) * (n - 2) + 'a', cols=200, lines=50))[:last], flood[:last])
+
+    def test_isolate_cap(self):
+        # later text never changes the layout of earlier text: RLI 12 34 PDI stays honoured whatever the number of empty isolates
+        # after it, up to the cap and past it
+        head = 'א a\u206712 34\u2069 '
+
+        def late(k):
+            # head after k empty isolates: the same order as without any isolate once its RLI is past the cap
+            text = 'b\u2066\u2069' * k + head
+            return orders(self.written(text, cols=60)) == orders(self.written(''.join(ch for ch in text if ch not in ISOLATES), cols=60))
+
+        cap = next(k for k in range(48) if late(k))
+        self.ae(cap, 32)
+        for groups in (16, 17, cap, cap + 1):
+            with self.subTest(groups=groups):
+                self.assertTrue(visual(self.written(head + 'b\u2066\u2069' * (groups - 1), cols=60)).startswith('א a\u206734\u2069 12 b'))
 
     def test_bracket_pairs(self):
         # With a FriBidi before 1.0.17 a pair is not resolved by N0 when its opening bracket is far after the previous letter or
@@ -681,6 +789,9 @@ class TestBidiReorder(BaseTest):
         self.ae(orders(far), ltr_paragraph(43 if slow else 44))
         far = self.written('a' + '!' * 40 + '(b)', SCP_RTL, cols=80)
         self.ae(orders(far), rtl_paragraph(43 if slow else 44))
+        # a bracket in an isolate pairs only within it: the ( before the isolate pairs with the ) after it
+        self.ae(orders(self.written('א(\u2067ב)\u2069ג)')), orders(self.written('א(\u2067ב!\u2069ג)')))
+        self.assertNotEqual(orders(self.written('א(\u2067ב)\u2069ג)')), orders(self.written('א!\u2067ב!\u2069ג!')))
 
     def test_incremental_frames_match_a_fresh_upload(self):
         # an edit, split, scroll or history change re-shapes every row whose levels it changes, written or not, on view or not
@@ -1586,6 +1697,14 @@ class TestBidiReorder(BaseTest):
                 pb(s, '\x1b[H' + clear + A + ' abc')
                 fresh = self.screen(cols=12, lines=2, text=A + ' abc')
                 self.ae((orders(s)[0], sprites(s)), (orders(fresh)[0], sprites(fresh)))
+
+    def test_pair_at_the_start_of_an_isolate(self):
+        # A pair is measured from the start of the isolate it is in, not from where an earlier isolate or the text start left off
+        text = 'b⁧(abc)d⁩'
+        for offset in (1, 41):
+            with self.subTest(offset=offset):
+                s = self.written('x' * (offset - 1) + text, cols=60, pixel_scroll=False)
+                self.ae(visual(s)[offset - 1 :].replace('⁧', '').replace('⁩', ''), 'bd)abc(')
 
     def test_line_left_without_text_by_a_scaled_char(self):
         # A line left without text by removing a scaled char through its other row, or in the history, has no record: text

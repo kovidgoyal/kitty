@@ -13,12 +13,28 @@
 // The longest walk from a bracket pair back to the previous strong char fed to a FriBidi before 1.0.17, which takes quadratic
 // time in such walks
 #define BIDI_N0_MAX_WALK 32
-// Flag in cell_of_char: the separator fed for a scaled cell
+// Flags in cell_of_char: a char that takes no column, fed in its cell's column, and the separator fed for a scaled cell
+#define BIDI_EXTRA_CHAR (1u << 31)
 #define BIDI_FIXED_CELL (1u << 30)
 
 static inline bool
 is_bidi_mark(char_type ch) {
     return (ch | 1) == 0x200f || ch == 0x61c;
+}
+
+// Stores in buf the isolate controls and marks among the chars after the cell's first char
+static inline unsigned
+cell_extra_chars(const CPUCell *c, const TextCache *tc, char_type buf[MAX_NUM_CODEPOINTS_PER_CELL]) {
+    if (!c->ch_is_idx || (c->is_multicell && (c->x || c->y))) return 0;
+    ListOfChars lc = {.chars = buf, .capacity = MAX_NUM_CODEPOINTS_PER_CELL};
+    if (!tc_chars_at_index_without_alloc(tc, c->ch_or_idx, &lc)) return 0;
+    unsigned n = 0;
+    // A tab's second char is the number of cells it skips
+    for (size_t i = lc.chars[0] == '\t' ? 2 : 1; i < lc.count; i++) {
+        const char_type ch = lc.chars[i];
+        if (ch - 0x2066u <= 0x2069u - 0x2066u || is_bidi_mark(ch)) buf[n++] = ch;
+    }
+    return n;
 }
 
 // The char a cell is fed as. A scale-1 multicell is shaped at the level resolved for it, so it is fed as one char: its first
@@ -63,7 +79,7 @@ bidi_scratch_trim(BidiScratch *s) {
     s->peak = 0;
 }
 
-// Whether some cell may be right-to-left, or is scaled
+// Whether some cell may be right-to-left, holds an RLI, RLM or ALM, or is scaled
 bool
 bidi_cells_may_reorder(const CPUCell *cells, index_type num, const TextCache *tc) {
     char_type buf[MAX_NUM_CODEPOINTS_PER_CELL];
@@ -86,6 +102,11 @@ bidi_cells_may_reorder(const CPUCell *cells, index_type num, const TextCache *tc
         }
         // An RLM written by OSC 66 as the only char of a cell is fed as a strong char
         if (bidi_codepoint_may_reorder(ch) || ch == 0x200f) return true;
+        if (!c->ch_is_idx) continue;
+        // Likewise an RLI, RLM or ALM after the first char
+        for (unsigned i = 0, k = cell_extra_chars(c, tc, buf); i < k; i++) {
+            if (buf[i] == 0x2067 || buf[i] == 0x200f || buf[i] == 0x61c) return true;
+        }
     }
     return false;
 }
@@ -133,6 +154,13 @@ feed_row(BidiScratch *s, const CPUCell *cells, index_type cols, const TextCache 
             const char_type ch = cell_lead_char(c, tc);
             *text++ = ch ? ch : ' ';
             *cell_of_char++ = col;
+            if (!c->ch_is_idx) continue;
+            char_type buf[MAX_NUM_CODEPOINTS_PER_CELL];
+            // Within the scratch: bidi_resolve_paragraph() sized it for MAX_NUM_CODEPOINTS_PER_CELL chars per cell
+            for (unsigned i = 0, k = cell_extra_chars(c, tc, buf); i < k; i++) {
+                *text++ = buf[i];
+                *cell_of_char++ = col | BIDI_EXTRA_CHAR;
+            }
             if (ch != '\t') continue;
             // The cells the tab skipped, while they hold the spaces it wrote, are fed as it is: at the paragraph level (L1) they
             // keep the text after the tab at the tab stop, as with bidi mode off
@@ -150,12 +178,27 @@ feed_row(BidiScratch *s, const CPUCell *cells, index_type cols, const TextCache 
     return n + (uint32_t)(text - text_start);
 }
 
-// Embeddings, overrides and isolates are never honoured: a cell can start with such a control only through OSC 66, which can
-// start any number of cells with one
+// Embeddings, overrides and isolate controls that start a cell (OSC 66) are fed as neutrals, and so are the isolates over
+// the BIDI_MAX_ISOLATES cap. A PDI matches a capped initiator while any is open, as those open after the honoured ones.
 static void
 retype_controls(BidiScratch *s, uint32_t n) {
+    unsigned honoured = 0, open_honoured = 0, open_capped = 0;
     for (uint32_t i = 0; i < n; i++) {
-        if (s->types[i] & (FRIBIDI_MASK_EXPLICIT | FRIBIDI_MASK_ISOLATE)) s->types[i] = FRIBIDI_TYPE_ON;
+        const FriBidiCharType t = s->types[i];
+        if (!(t & (FRIBIDI_MASK_EXPLICIT | FRIBIDI_MASK_ISOLATE))) continue;
+        if ((t & FRIBIDI_MASK_EXPLICIT) || !(s->cell_of_char[i] & BIDI_EXTRA_CHAR)) s->types[i] = FRIBIDI_TYPE_ON;
+        else if (t == FRIBIDI_TYPE_PDI) {
+            if (open_capped) {
+                open_capped--;
+                s->types[i] = FRIBIDI_TYPE_ON;
+            } else if (open_honoured) open_honoured--;
+        } else if (honoured < BIDI_MAX_ISOLATES) {
+            honoured++;
+            open_honoured++;
+        } else {
+            open_capped++;
+            s->types[i] = FRIBIDI_TYPE_ON;
+        }
     }
 }
 
@@ -257,8 +300,8 @@ bidi_resolve_paragraph(
     ensure_space_for(s, row_start, uint32_t, num_rows + 1, row_start_cap, num_rows + 1, false);
     uint32_t n = 0;
     for (unsigned r = 0; r < num_rows; r++) {
-        // A cell feeds at most one char, a scaled or fixed cell one char per column
-        const size_t cap = n + (size_t)cols;
+        // A cell feeds one char plus at most one for each char after its first, a scaled or fixed cell one char per column
+        const size_t cap = n + (size_t)cols * MAX_NUM_CODEPOINTS_PER_CELL;
         ensure_space_for(s, text, FriBidiChar, cap, text_cap, cap, false);
         ensure_space_for(s, cell_of_char, uint32_t, cap, cell_of_char_cap, cap, false);
         s->row_start[r] = n;
@@ -297,6 +340,7 @@ bidi_resolve_paragraph(
         uint8_t level = base_level;
         for (uint32_t i = row_first; i < row_end; i++) {
             const uint32_t entry = s->cell_of_char[i];
+            if (entry & BIDI_EXTRA_CHAR) continue;
             for (const index_type c = entry & ~BIDI_FIXED_CELL; col < c; col++) row[col] = level;
             level = entry & BIDI_FIXED_CELL ? BIDI_LEVEL_FIXED : (uint8_t)s->levels[i];
         }
