@@ -1087,10 +1087,10 @@ class Line:
     def sprite_at(self, cell: int) -> int: ...
     def cursor_from(self, x: int, y: int = 0) -> Cursor: ...
 
-def test_shape(line: Line, path: Optional[str] = None, index: int = 0) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
+def test_shape(line: Line, path: Optional[str] = None, index: int = 0, rtl: bool = False) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
     pass
 
-def test_render_line(line: Line) -> None:
+def test_render_line(line: Line, levels: Optional[bytes] = None) -> None:
     pass
 
 def sprite_map_set_limits(w: int, h: int) -> None:
