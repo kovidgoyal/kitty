@@ -143,6 +143,8 @@ Detailed list of changes
 
 - :ref:`Launch wrapper <launch_wrapper>`: Allow the wrapper to keep windows created with :option:`launch --hold` open itself, so that the shell runs inside the wrapper, via a new ``hold`` field in ``LaunchContext`` and a new ``LaunchPrefix`` return type (:iss:`10901`)
 
+- Fix the text in window title bars being drawn with the old cell size after changing the font size or moving a window to an OS window with a different font size (:pull:`10903`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

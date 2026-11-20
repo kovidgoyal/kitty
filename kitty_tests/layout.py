@@ -1265,6 +1265,22 @@ class TestFrameAlignment(BaseSplitGeometryTest):
                     self.check_frames(frames, (1, 1, 1, 1), 2, self.central)
                     self.ae(len(layout.blank_rects), sum(len(tuple(blank_rects_for_window(g))) for _, _, g in frames))
 
+    def test_title_bar_screen_uses_current_cell_width(self):
+        from kitty.window_title_bar import WindowTitleBarScreen
+
+        tb = WindowTitleBarScreen(10, 20)
+        geom = WindowGeometry(0, 0, 200, 20, 0, 1)
+        tb.layout(geom, 10)
+        self.ae(tb.screen.columns, 20)
+        # the font size changed, so the number of columns must follow the new cell width
+        tb.layout(geom, 20)
+        self.ae(tb.screen.columns, 10)
+        tb.layout(WindowGeometry(0, 0, 20, 20, 0, 1), 20)
+        self.ae(tb.screen.columns, 4)
+        # a cell width of zero, as reported for a missing OS window, must not raise
+        tb.layout(geom, 0)
+        self.ae(tb.screen.columns, 200)
+
     def test_collapse_window_margins(self):
         from unittest.mock import patch
 

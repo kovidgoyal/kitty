@@ -536,6 +536,11 @@ move_window_to_tab(id_type os_window_id, id_type src_tab_id, id_type dest_tab_id
     return false;
 }
 
+static bool
+cell_size_differs(const OSWindow *os_window, const Screen *screen) {
+    return screen->cell_size.width != os_window->fonts_data->fcm.cell_width || screen->cell_size.height != os_window->fonts_data->fcm.cell_height;
+}
+
 static void
 resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
     if (screen) {
@@ -558,9 +563,7 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
             remove_i_from_array(detached_windows.windows, i, detached_windows.num_windows);
             make_os_window_context_current(osw);
             create_gpu_resources_for_window(w);
-            if (w->render_data.screen->cell_size.width != osw->fonts_data->fcm.cell_width ||
-                w->render_data.screen->cell_size.height != osw->fonts_data->fcm.cell_height)
-                resize_screen(osw, w->render_data.screen, true);
+            if (cell_size_differs(osw, w->render_data.screen)) resize_screen(osw, w->render_data.screen, true);
             else screen_dirty_sprite_positions(w->render_data.screen);
             w->render_data.screen->reload_all_gpu_data = true;
             screen_visibility_changed(w->render_data.screen, is_os_window_potentially_visible(osw) && t == osw->active_tab && w->visible);
@@ -1252,8 +1255,7 @@ PYWRAP1(set_window_title_bar_render_data) {
     WITH_WINDOW(os_window_id, tab_id, window_id)
     init_window_render_data(&window->window_title_render_data, g, screen);
     // window may have moved to an OS window with a different font size
-    if (screen->cell_size.width != osw->fonts_data->fcm.cell_width || screen->cell_size.height != osw->fonts_data->fcm.cell_height)
-        resize_screen(osw, screen, false);
+    if (cell_size_differs(osw, screen)) resize_screen(osw, screen, false);
     screen->reload_all_gpu_data = true;
     END_WITH_WINDOW
     Py_RETURN_NONE;
