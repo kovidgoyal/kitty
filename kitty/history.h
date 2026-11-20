@@ -37,6 +37,12 @@ typedef struct {
     // line has the absolute line number num_pushed - 1, which does not change
     // while it is in the buffer.
     uint64_t num_pushed;
+    // Some line added holds a bidi record, until the buffer is cleared. Set by the code adding such a line, not by
+    // historybuf_add_line(), which the scroll path calls for every line
+    bool bidi_stamped;
+    // num_pushed at the last bidi walk of a view of history lines only, 0
+    // once lines were removed, see bidi_map_paragraph()
+    uint64_t bidi_walked;
     // Render data for history lines being displayed, see historybuf_init_line_for_render()
     struct {
         RenderCell *cells;

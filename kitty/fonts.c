@@ -2732,6 +2732,8 @@ render_line(
             dir);                                                                                                       \
     }
     if (!line->render_cells) return; // lines without render data cannot be rendered
+    const bool stamped = line->attrs.bidi_stamp != BIDI_STAMP_NONE;
+    const ShapeDirection no_level_dir = stamped ? DIRECTION_LTR : DIRECTION_GUESS;
     FontGroup *fg = (FontGroup *)fg_;
     GPUCell *gpu_cells = expanded_line_for_render(line);
     CellStyleTable *style_table = line_style_table(line);
@@ -2743,7 +2745,7 @@ render_line(
     // per cell
     while (i < line->xnum) {
         index_type end = line->xnum;
-        ShapeDirection dir = DIRECTION_GUESS;
+        ShapeDirection dir = no_level_dir;
         if (levels) {
             for (end = i + 1; end < line->xnum && levels[end] == levels[i];) end++;
             dir = (levels[i] & 1) ? DIRECTION_RTL : DIRECTION_LTR;
@@ -3143,6 +3145,25 @@ test_render_line(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+extern PyTypeObject Screen_Type;
+
+// Uploads repeat frames of the screen without a GPU, returning the cell data of the last
+static PyObject *
+test_screen_update_cell_data(PyObject UNUSED *self, PyObject *args) {
+    Screen *screen;
+    unsigned int repeat = 1;
+    if (!PyArg_ParseTuple(args, "O!|I", &Screen_Type, &screen, &repeat)) return NULL;
+    if (!num_font_groups) {
+        PyErr_SetString(PyExc_RuntimeError, "must create font group first");
+        return NULL;
+    }
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)(sizeof(CellGPUData) * render_lines_for_screen(screen) * screen->columns));
+    if (!ans) return NULL;
+    memset(PyBytes_AS_STRING(ans), 0, PyBytes_GET_SIZE(ans));
+    for (unsigned int i = 0; i < repeat; i++) screen_update_cell_data(screen, PyBytes_AS_STRING(ans), (FONTS_DATA_HANDLE)font_groups, false);
+    return ans;
+}
+
 static PyObject *
 render_decoration(PyObject *self UNUSED, PyObject *args) {
     const char *which;
@@ -3474,6 +3495,7 @@ static PyMethodDef module_methods[] = {
     METHODB(test_shape, METH_VARARGS),
     METHODB(current_fonts, METH_VARARGS),
     METHODB(test_render_line, METH_VARARGS),
+    METHODB(test_screen_update_cell_data, METH_VARARGS),
     METHODB(get_fallback_font, METH_VARARGS),
     {"specialize_font_descriptor", (PyCFunction)pyspecialize_font_descriptor, METH_VARARGS, ""},
     {"render_box_char", (PyCFunction)pyrender_box_char, METH_VARARGS, ""},

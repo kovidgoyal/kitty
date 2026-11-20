@@ -270,6 +270,7 @@ typedef struct {
             bool mBDSM, mBIDI_AUTODETECT, rtl;
         } main_stash; // main's controls while alt is active
     } bidi;
+    struct BidiMaps *bidi_maps; // allocated by the first upload of a stamped buffer
 } Screen;
 
 #define live_pixel_scroll_enabled(screen) (OPT(pixel_scroll) && (screen)->linebuf == (screen)->main_linebuf)
@@ -378,6 +379,8 @@ bool screen_has_selection(Screen *);
 bool screen_is_cell_selected(Screen *, index_type x, index_type y);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool cursor_has_moved);
+// Replaces x, the visual column of a click on screen row y, by its logical column
+void screen_bidi_logical_click(Screen *self, index_type *x, index_type y, bool *in_left_half);
 bool screen_is_cursor_visible(const Screen *self);
 unsigned screen_multi_cursor_count(const Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);

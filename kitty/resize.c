@@ -122,6 +122,7 @@ linebuf_next_dest_line(Rewrap *r, bool continued) {
             linebuf_init_line(dest, dest->ynum - 1);
             dest->line->attrs.has_dirty_text = true;
             historybuf_add_line(r->dest.hb, dest->line, r->as_ansi_buf);
+            if (dest->line->attrs.bidi_stamp != BIDI_STAMP_NONE) r->dest.hb->bidi_stamped = true;
         }
         linebuf_clear_line(dest, dest->ynum - 1, true);
     } else dest_y++;
@@ -307,6 +308,19 @@ fast_copy_src_to_dest(Rewrap *r) {
 }
 
 
+// A continuation joined onto a destination row without a bidi record brings its own
+static void
+join_bidi_record(Rewrap *r) {
+    const LineAttrs src = r->src.line.attrs;
+    if (src.bidi_stamp == BIDI_STAMP_NONE || !r->src_x_limit || r->dest.x >= dest_xnum) return;
+    LineAttrs *a = r->dest_line_from_linebuf ? r->dest.lb->line_attrs + r->dest.y : historybuf_attrs(r->dest.hb, 0);
+    if (a->bidi_stamp != BIDI_STAMP_NONE) return;
+    a->bidi_stamp = src.bidi_stamp;
+    a->bidi_rtl = src.bidi_rtl;
+    a->bidi_auto = src.bidi_auto;
+    if (!r->dest_line_from_linebuf) r->dest.hb->bidi_stamped = true;
+}
+
 static void
 rewrap(Rewrap *r) {
     r->src.hb_count = r->src.hb ? r->src.hb->count : 0;
@@ -333,7 +347,7 @@ rewrap(Rewrap *r) {
         if (init_src_line(r)) {
             if (r->src.y) next_dest_line(r, false);
             else first_dest_line(r);
-        }
+        } else join_bidi_record(r);
         if (r->current_src_line_has_multline_cells || r->current_dest_line_has_multiline_cells) multiline_copy_src_to_dest(r);
         else fast_copy_src_to_dest(r);
     }
@@ -407,6 +421,7 @@ resize_screen_buffers(
             for (index_type y = reused; y < hb->count; y++) {
                 historybuf_init_line(hb, hb->count - y - 1, &l);
                 historybuf_add_line(src_hb, &l, as_ansi_buf);
+                if (l.attrs.bidi_stamp != BIDI_STAMP_NONE) src_hb->bidi_stamped = true;
             }
         }
         ans.hb = historybuf_alloc_for_rewrap(columns, hb);

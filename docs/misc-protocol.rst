@@ -154,6 +154,58 @@ omitted::
     10;5;0;0;2:1;2;3;1;1       momentum scrolling ends
     10;5;0;120;1:5;1;0;0;5     a wheel click downwards with ctrl pressed
 
+.. _bidi_support:
+
+Bidirectional text
+-------------------------------------------------------------------------------------
+
+By default kitty leaves the layout of bidirectional text to the program, as
+described in the :opt:`force_ltr` option. A program can instead ask kitty to
+lay out the lines it writes afterwards, following the Unicode bidirectional
+algorithm (using FriBidi), by setting the ECMA-48 *Bi-Directional Support
+Mode* (BDSM), ``CSI 8 h``, the implicit mode. ``CSI 8 l`` returns to the
+default. Two more controls set the direction of a paragraph, the lines joined
+by soft wraps:
+
+``CSI ? 2501 h``
+    A private mode from the `BiDi in Terminal Emulators
+    <https://terminal-wg.pages.freedesktop.org/bidi/recommendation/escape-sequences.html>`__
+    recommendation, as implemented by VTE. Takes the direction of each
+    paragraph from its first strong character. ``CSI ? 2501 l`` turns this off.
+    It has no effect unless ``CSI 8 h`` is set.
+
+``CSI Ps SP k``
+    ECMA-48 *Select Character Path* (SCP), in the form ``CSI Ps ; Ps SP k``.
+    ``Ps`` of ``2`` makes paragraphs written afterwards right to left, ``1``
+    or ``0`` left to right. When ``CSI ? 2501 h`` is set it only sets the
+    direction of paragraphs that have no strong character. The second
+    parameter is accepted and ignored, as are values of ``3`` or more.
+
+A line keeps the settings in effect when its text was first written, until an
+erase leaves the line blank, which clears them. A line cleared by writing
+spaces over it keeps them.
+
+To detect support, query the modes (``CSI 8 $ p`` and ``CSI ? 2501 $ p``). A
+kitty without this feature answers ``0`` (unknown), and one with it ``2``
+(reset) or ``1`` (set). While the :opt:`force_ltr` option is set the answer is
+``4`` (permanently reset), as :opt:`force_ltr` turns all of this off wherever
+the modes are used. The modes keep what the program set, so after a
+configuration reload that clears :opt:`force_ltr` the answer goes back from
+``4`` to ``1`` or ``2`` and the program's settings apply again.
+
+The settings are per screen, like other per-screen modes. They are not carried
+into the alternate screen, which starts with them off, and the main screen's
+settings are restored on leaving it.
+
+Only the display is reordered. Text stays in logical order, so selecting and
+copying work on logical cells, and cell-based mouse reports carry logical
+columns. SGR-pixel mouse reports carry the pointer's pixel position as drawn.
+
+The text cursor is drawn at the visual column of its cell. A beam cursor on a
+right-to-left cell is drawn past the cell, on its left edge in the last column.
+The input method editor is anchored at the left edge of the cursor cell, and
+the pre-edit text is drawn left to right.
+
 An escape code to move the contents of the screen into the scrollback
 -------------------------------------------------------------------------------------
 

@@ -125,6 +125,8 @@ Detailed list of changes
 0.51.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Add support for bidirectional text. A program turns it on with the ECMA-48 mode ``CSI 8 h`` and kitty then lays out the lines it writes using the Unicode bidirectional algorithm. ``CSI ? 2501 h`` detects each paragraph's direction and ``CSI Ps SP k`` sets it. See :ref:`bidi_support` (:iss:`2109`)
+
 - Saving sessions: Fix programs running in a window being able to inject arbitrary commands into saved session files via line breaks in the working directory reported with OSC 7 or in user variables. Arguments with line breaks in :code:`launch` lines are now written using ANSI-C (:code:`$'...'`) quoting
 
 - dnd kitten: Fix a malicious remote drop source being able to write files outside the staging directory by sending a directory with the same name as a previously sent symlink (follow up to :cve:`2026-54056`)
