@@ -33,7 +33,7 @@ typedef struct SmoothScrollCommand {
 
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM, mCOLOR_PREFERENCE_NOTIFICATION, mBRACKETED_PASTE, mFOCUS_TRACKING,
-        mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS, mWHEEL_EVENTS;
+        mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS, mWHEEL_EVENTS, mBDSM, mBIDI_AUTODETECT;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
 } ScreenModes;
@@ -375,7 +375,21 @@ typedef struct {
         bool active;
         DnDCommand metadata;
     } dnd_chunking;
+    struct {
+        bool rtl;       // direction set by SCP for the current buffer
+        bool saved_rtl; // SCP direction saved by the bare XTSAVE, terminal-global like saved_modes
+        struct {
+            bool mBDSM, mBIDI_AUTODETECT, rtl;
+        } main_stash; // main's controls while alt is active
+    } bidi;
+    bool bidi_records_writes; // see screen_bidi_records_writes_changed()
 } Screen;
+
+// Text is drawn by the recording loop while bidi mode is on or the active buffer has a stamp, so that one load picks the loop
+static inline void
+screen_bidi_records_writes_changed(Screen *self) {
+    self->bidi_records_writes = self->modes.mBDSM || self->linebuf->bidi_stamped;
+}
 
 #define live_pixel_scroll_enabled(screen) (OPT(pixel_scroll) && (screen)->linebuf == (screen)->main_linebuf)
 // While rendering is paused the pixel scroll state captured at pause time is used so that pausing does not change what is rendered
@@ -427,6 +441,7 @@ void screen_reset(Screen *self);
 void screen_soft_reset(Screen *self);
 void screen_set_tab_stop(Screen *self);
 void screen_tab(Screen *self);
+void screen_tabn(Screen *self, unsigned int count);
 void screen_backtab(Screen *self, unsigned int);
 void screen_clear_tab_stop(Screen *self, unsigned int how);
 void screen_reset_tab_stops(Screen *self);
@@ -437,6 +452,7 @@ void screen_xtversion(Screen *self, unsigned int);
 void screen_insert_characters(Screen *self, unsigned int count);
 void screen_cursor_up(Screen *self, unsigned int count /*=1*/, bool do_carriage_return /*=false*/, int move_direction /*=-1*/);
 void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary);
+void screen_set_bidi_direction(Screen *self, unsigned int direction, unsigned int path_extent);
 void screen_cursor_to_column(Screen *self, unsigned int column);
 void screen_cursor_down(Screen *self, unsigned int count /*=1*/);
 void screen_cursor_forward(Screen *self, unsigned int count /*=1*/);
