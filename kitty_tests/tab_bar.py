@@ -471,6 +471,27 @@ class TestTabBar(BaseTest):
         self.ae(self.screen_lines(tb), ['t0', 'br', 't1', 'br', '…'])
         self.ae(tuple(te.y for te in tb.tab_extents), (CellRange(0, 1), CellRange(2, 3)))
 
+    def test_vertical_tab_bar_custom_overflow(self) -> None:
+        def draw_tab(
+            draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_tab_length: int, index: int, is_last: bool, extra_data: ExtraData
+        ) -> int:
+            screen.draw(tab.title)
+            end: int = screen.cursor.x
+            if not extra_data.for_layout and extra_data.next_tab is not None and screen.cursor.y + 1 < screen.lines:
+                y, bg = screen.cursor.y, screen.cursor.bg
+                screen.cursor.x, screen.cursor.y = 0, y + 1
+                screen.cursor.bg = as_rgb(0x600000)
+                screen.draw('─' * screen.columns)
+                screen.cursor.x, screen.cursor.y, screen.cursor.bg = end, y, bg
+            return end
+
+        background = Color(0, 0, 100)
+        with patch('kitty.tab_bar.load_custom_draw_tab', return_value=draw_tab):
+            tb = self.vertical_tab_bar(num_tabs=9, tab_bar_style='custom', tab_bar_background=background)
+        self.ae(self.screen_lines(tb), [f't{i}' for i in range(7)] + ['…'])
+        overflow = tb.screen.line(tb.screen.lines - 1)
+        self.ae(overflow.cursor_from(tb.screen.columns - 1).bg, as_rgb(color_as_int(background)))
+
     def test_wrap_title(self) -> None:
         self.ae(wrap_title('hello world foo', 6).split('\n'), ['hello ', 'world ', 'foo'])
         # a word longer than the width has to be broken mid-word
