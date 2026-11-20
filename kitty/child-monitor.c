@@ -1052,7 +1052,7 @@ sync_ime_position_with_cursor(OSWindow *os_window, Window *w) {
         ol->last_ime_cursor.valid = false;
         return;
     }
-    const index_type x = screen->cursor->x, y = screen->cursor->y;
+    const index_type x = screen_ime_anchor_x(screen), y = screen->cursor->y;
     if (ol->last_ime_cursor.valid && ol->last_ime_cursor.x == x && ol->last_ime_cursor.y == y) return;
     ol->last_ime_cursor.x = x;
     ol->last_ime_cursor.y = y;
@@ -1128,7 +1128,6 @@ prepare_to_render_os_window(
                 *active_window_id = w->id;
                 if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
                 WD.screen->cursor_render_info.is_focused = os_window->is_focused;
-                if (global_state.ime_used && os_window->is_focused) sync_ime_position_with_cursor(os_window, w);
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
                 {
@@ -1150,26 +1149,6 @@ prepare_to_render_os_window(
                     CHECK(alternate_screen.exited_at, ALTERNATE_SCREEN_EXIT);
 #undef CHECK
                     os_window->screen_state_checked_at = MAX(since, latest);
-                }
-                if (OPT(cursor_trail)) {
-                    if (os_window->last_active_tab != os_window->active_tab && os_window->last_active_tab < os_window->num_tabs) {
-                        tab->cursor_trail = os_window->tabs[os_window->last_active_tab].cursor_trail;
-                        tab->cursor_trail.needs_render = true;
-                        tab->cursor_trail.updated_at = now;
-                        os_window->cursor_blink_zero_time = now;
-                    }
-                    bool was_rendering = tab->cursor_trail.needs_render;
-                    if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
-                        needs_render = true;
-                        request_animation_frame(os_window);
-                    } else if (OPT(cursor_trail) > now - WD.screen->cursor->position_changed_by_client_at) {
-                        // If update_cursor_trail failed due to time threshold, the trail animation
-                        // should be evaluated again shortly. Schedule next update when enough time
-                        // has passed since the cursor was last moved.
-                        set_maximum_wait(OPT(cursor_trail) - now + WD.screen->cursor->position_changed_by_client_at);
-                    }
-                    if (tab->cursor_trail.target_updated) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE);
-                    if (was_rendering && !tab->cursor_trail.needs_render) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP);
                 }
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {
@@ -1194,6 +1173,30 @@ prepare_to_render_os_window(
                 }
             }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
+            if (is_active_window) {
+                // After the upload: the drawn cursor column depends on its bidi maps
+                if (global_state.ime_used && os_window->is_focused) sync_ime_position_with_cursor(os_window, w);
+                if (OPT(cursor_trail)) {
+                    if (os_window->last_active_tab != os_window->active_tab && os_window->last_active_tab < os_window->num_tabs) {
+                        tab->cursor_trail = os_window->tabs[os_window->last_active_tab].cursor_trail;
+                        tab->cursor_trail.needs_render = true;
+                        tab->cursor_trail.updated_at = now;
+                        os_window->cursor_blink_zero_time = now;
+                    }
+                    bool was_rendering = tab->cursor_trail.needs_render;
+                    if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
+                        needs_render = true;
+                        request_animation_frame(os_window);
+                    } else if (OPT(cursor_trail) > now - WD.screen->cursor->position_changed_by_client_at) {
+                        // If update_cursor_trail failed due to time threshold, the trail animation
+                        // should be evaluated again shortly. Schedule next update when enough time
+                        // has passed since the cursor was last moved.
+                        set_maximum_wait(OPT(cursor_trail) - now + WD.screen->cursor->position_changed_by_client_at);
+                    }
+                    if (tab->cursor_trail.target_updated) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE);
+                    if (was_rendering && !tab->cursor_trail.needs_render) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP);
+                }
+            }
             // Must be after send_cell_data_to_gpu() as that updates the graphics layers, which
             // determine whether there are images that need rendering in layers. Otherwise, a newly
             // placed image is not drawn until something else causes a re-render, see #10875

@@ -470,7 +470,8 @@ detect_url(Screen *screen, unsigned int x, unsigned int y, int modifiers) {
         screen->current_hyperlink_under_mouse.has_detected_url = hid < 0;
         if (hid > 0) {
             screen->current_hyperlink_under_mouse.id = (hyperlink_id_type)hid;
-            screen->current_hyperlink_under_mouse.x = x;
+            // The target is drawn at the column under the pointer
+            screen->current_hyperlink_under_mouse.x = screen->bidi_maps ? screen_bidi_visual_x(screen, x, y) : x;
             screen->current_hyperlink_under_mouse.y = y;
         }
     }

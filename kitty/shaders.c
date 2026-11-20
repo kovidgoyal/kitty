@@ -1135,13 +1135,14 @@ cell_update_uniform_block(
     // its shape, so the main cursor render data must be computed even when the
     // main cursor itself is hidden by DECTCEM.
     if (rd->cursor_opacity != 0 && (cursor->is_visible || cursor->multicursor_count)) {
-        rd->cursor_x1 = cursor->x, rd->cursor_y1 = cursor->y;
-        rd->cursor_x2 = cursor->x, rd->cursor_y2 = cursor->y;
+        const CursorShape cs = (cursor->is_focused || OPT(cursor_shape_unfocused) == NO_CURSOR_SHAPE) ? cursor->shape : OPT(cursor_shape_unfocused);
+        const index_type cursor_x = screen_cursor_drawn_x(screen, cursor->x, cursor->y, cs);
+        rd->cursor_x1 = cursor_x, rd->cursor_y1 = cursor->y;
+        rd->cursor_x2 = cursor_x, rd->cursor_y2 = cursor->y;
         if (pixel_scroll_enabled(screen)) {
             rd->cursor_y1 += 1;
             rd->cursor_y2 += 1;
         }
-        CursorShape cs = (cursor->is_focused || OPT(cursor_shape_unfocused) == NO_CURSOR_SHAPE) ? cursor->shape : OPT(cursor_shape_unfocused);
         rd->cursor_shape = cs;
         color_type cell_fg = rd->default_fg, cell_bg = rd->bg_colors0;
         index_type cell_color_x = cursor->x;

@@ -104,8 +104,10 @@ BidiMaps *bidi_prepare_live(Screen *self, bool shown);
 // as they were.
 bool bidi_walk_matches_full(Screen *self);
 void bidi_store_levels(const BidiMaps *b, index_type r, Line *line);
+index_type bidi_visual_x(const BidiMaps *b, index_type r, index_type x, index_type span);
 index_type bidi_logical_x(const BidiMaps *b, index_type r, index_type visual_x);
 bool bidi_cell_is_rtl(const BidiMaps *b, index_type r, index_type x);
+void bidi_blank_cut_half(const BidiMaps *b, const CPUCell *cells, index_type r, CellGPUData *row, index_type col, index_type inner);
 void bidi_maps_edges_changed(BidiMaps *b);
 // The visual order of n cells as a span of their own, from the levels stored in their render cells, NULL for the identity
 const uint16_t *bidi_span_order(BidiMaps *b, const RenderCell *rc, index_type n);
