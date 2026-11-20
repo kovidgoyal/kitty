@@ -207,8 +207,8 @@ historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
 }
 
-static void
-invalidate_render_cache(HistoryBuf *self) {
+void
+historybuf_invalidate_render_cache(HistoryBuf *self) {
     if (self->render_cache.keys) memset(self->render_cache.keys, 0, self->render_cache.num_rows * sizeof(self->render_cache.keys[0]));
 }
 
@@ -284,7 +284,9 @@ historybuf_clear(HistoryBuf *self) {
     self->segments = NULL;
     self->num_segments = 0;
     add_segment(self, 1);
-    invalidate_render_cache(self);
+    historybuf_invalidate_render_cache(self);
+    self->bidi_stamped = false;
+    self->line0_cache_valid = false;
 }
 
 static bool
@@ -442,6 +444,8 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
     init_line(self, idx, line);
     self->count--;
     self->num_pushed--;
+    self->bidi_walked = 0;
+    self->line0_cache_valid = false;
     return true;
 }
 
@@ -460,6 +464,8 @@ historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
     if (!count) return;
     count = MIN(self->count, count);
     self->num_pushed -= count;
+    self->bidi_walked = 0;
+    self->line0_cache_valid = false;
     self->count -= count - 1;
     // now nuke multi cell chars that overlap onto the last line
     index_type idx = (self->start_of_data + self->count - 1) % self->ynum;
@@ -527,6 +533,8 @@ historybuf_delete_lines(HistoryBuf *self, index_type num_newer, index_type count
     // Lines older than the deleted ones keep their absolute line numbers and
     // so their render cache rows, the moved newer lines are marked dirty above.
     self->num_pushed -= count;
+    self->bidi_walked = 0;
+    self->line0_cache_valid = false;
 }
 
 static PyObject *
@@ -575,6 +583,7 @@ push(HistoryBuf *self, PyObject *args) {
     if (!line_styles_are_valid(line)) return NULL;
     ANSIBuf as_ansi_buf = {0};
     historybuf_add_line(self, line, &as_ansi_buf);
+    historybuf_note_bidi(self, line->attrs);
     free(as_ansi_buf.buf);
     if (line->text_cache != self->text_cache) {
         historybuf_init_line(self, 0, self->line);
@@ -857,6 +866,7 @@ historybuf_next_dest_line(HistoryBuf *self, ANSIBuf *as_ansi_buf, Line *src_line
     bool needs_clear;
     index_type idx = historybuf_push(self, as_ansi_buf, &needs_clear);
     *attrptr(self, idx) = src_line->attrs;
+    historybuf_note_bidi(self, src_line->attrs);
     init_line(self, idx, dest_line);
     // the slot may hold a stale line from stolen segments
     zero_at_ptr_count(dest_line->cpu_cells, dest_line->xnum);
@@ -889,6 +899,8 @@ historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src, index_type count, bool
     dest->count = MIN(count, src->count);
     dest->num_pushed = dest->count;
     dest->start_of_data = src->start_of_data;
+    dest->bidi_stamped = src->bidi_stamped;
+    dest->line0_cache_valid = false;
     if (steal) {
         SWAP(dest->segments, src->segments);
         SWAP(dest->num_segments, src->num_segments);

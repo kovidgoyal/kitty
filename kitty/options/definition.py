@@ -71,7 +71,8 @@ opt(
     option_type='to_bool',
     ctype='bool',
     long_text="""
-kitty does not support BIDI (bidirectional text), however, for RTL scripts,
+By default kitty lays out BIDI (bidirectional text) only when a program asks it
+to, see :ref:`bidi_support`. Otherwise, for RTL scripts,
 words are automatically displayed in RTL. That is to say, in an RTL script, the
 words "HELLO WORLD" display in kitty as "WORLD HELLO", and if you try to select
 a substring of an RTL-shaped string, you will get the character that would be
@@ -84,7 +85,7 @@ option is provided to turn it off. Furthermore, this option can be used with the
 command line program :link:`GNU FriBidi
 <https://github.com/fribidi/fribidi#executable>` to get BIDI support, because it
 will force kitty to always treat the text as LTR, which FriBidi expects for
-terminals.
+terminals. It also turns off the layout that programs can ask kitty for.
 """,
 )
 
