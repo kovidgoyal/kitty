@@ -558,10 +558,11 @@ write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
             W('i');
             W('d');
             W('=');
-            while (key != partition) W(*(key++));
+            output->len += decode_utf8_string(key, (size_t)(partition - key), output->buf + output->len);
         }
         W(';');
-        while (*(++partition)) W(*partition);
+        const char *url = partition + 1;
+        output->len += decode_utf8_string(url, strlen(url), output->buf + output->len);
     }
     W(0x1b);
     W('\\');

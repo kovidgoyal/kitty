@@ -151,6 +151,8 @@ Detailed list of changes
 
 - Window drag and drop: In layouts that can only reorder windows, such as Tall and Grid, the whole window being dropped onto is highlighted and the dropped window takes its place, instead of highlighting a half that did not match where the window ended up. In the Splits layout, dropping onto the side of a window that the dragged window is already on swaps them instead of doing nothing (:pull:`10908`)
 
+- Preserve non-ASCII hyperlink IDs and URLs when exporting terminal text with ANSI formatting
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

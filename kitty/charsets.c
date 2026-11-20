@@ -207,7 +207,7 @@ decode_utf8(UTF8State* state, uint32_t* codep, uint8_t byte) {
 
 CHARSETS_STORAGE size_t
 decode_utf8_string(const char *src, size_t sz, uint32_t *dest) {
-    // dest must be a zeroed array of size at least sz
+    // dest must have space for at least sz code points.
     uint32_t codep = 0;
     UTF8State state = 0, prev = UTF8_ACCEPT;
     size_t i, d;
