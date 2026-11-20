@@ -7,6 +7,7 @@
 
 #include "hyperlink.h"
 #include "lineops.h"
+#include "charsets.h"
 #include <string.h>
 
 #define MAX_KEY_LEN 2048
@@ -132,14 +133,61 @@ screen_garbage_collect_hyperlink_pool(Screen *screen) {
 }
 
 
+START_ALLOW_CASE_RANGE
+static uint32_t
+graphical_char(uint32_t ch) {
+    switch (ch) {
+        case 0 ... 0x1f: return 0x2400 + ch;
+        case 0x7f: return 0x2421;
+        case 0x80 ... 0x9f: return 0xfffd; // C1 controls have no control pictures
+        default: return ch;
+    }
+}
+END_ALLOW_CASE_RANGE
+
+static size_t
+copy_as_valid_utf8(char *dest, size_t dest_sz, const char *src) {
+    // Copy src into dest replacing invalid UTF-8 with U+FFFD and control
+    // characters with their graphical alternatives, stopping before the first
+    // character that would not fit, so that dest is always valid UTF-8 without
+    // control characters. Returns the number of bytes written, does not null
+    // terminate.
+    uint32_t state = UTF8_ACCEPT, prev = UTF8_ACCEPT, codep = 0, ch;
+    size_t d = 0;
+    char encoded[4];
+    for (const char *p = src; *p; p++) {
+        switch (decode_utf8(&state, &codep, (uint8_t)*p)) {
+            case UTF8_ACCEPT: ch = graphical_char(codep); break;
+            case UTF8_REJECT:
+                ch = 0xfffd;
+                state = UTF8_ACCEPT;
+                // re-process the byte that terminated an incomplete sequence
+                if (prev != UTF8_ACCEPT) p--;
+                break;
+            default: prev = state; continue;
+        }
+        prev = state;
+        const unsigned n = encode_utf8(ch, encoded);
+        if (d + n > dest_sz) return d;
+        memcpy(dest + d, encoded, n);
+        d += n;
+    }
+    if (state != UTF8_ACCEPT && d + 3 <= dest_sz) d += encode_utf8(0xfffd, dest + d);
+    return d;
+}
+
 hyperlink_id_type
 get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     if (!url) return 0;
     HyperLinkPool *pool = (HyperLinkPool *)screen->hyperlink_pool;
     static char key[MAX_KEY_LEN] = {0};
-    int keylen = snprintf(key, MAX_KEY_LEN - 1, "%.*s:%s", MAX_ID_LEN, id ? id : "", url);
-    if (keylen < 0) keylen = strlen(key);
-    else keylen = MIN(keylen, MAX_KEY_LEN - 2); // snprintf returns how many chars it would have written in case of truncation
+    // Keys are stored as valid UTF-8 without control characters as they are
+    // passed to Python and written into ANSI escape codes. The key, without
+    // its trailing null, is at most MAX_KEY_LEN - 2 bytes.
+    const size_t id_len = id ? copy_as_valid_utf8(key, MAX_ID_LEN, id) : 0;
+    key[id_len] = ':';
+    const size_t url_len = copy_as_valid_utf8(key + id_len + 1, MAX_KEY_LEN - 3 - id_len, url);
+    const size_t keylen = id_len + 1 + url_len;
     key[keylen] = 0;
     hyperlink_map_itr itr = vt_get(&pool->map, key);
     if (!vt_is_end(itr)) return itr.data->val;
