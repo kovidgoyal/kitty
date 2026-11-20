@@ -125,6 +125,8 @@ Detailed list of changes
 0.51.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Saving sessions: Fix programs running in a window being able to inject arbitrary commands into saved session files via line breaks in the working directory reported with OSC 7 or in user variables. Arguments with line breaks in :code:`launch` lines are now written using ANSI-C (:code:`$'...'`) quoting
+
 - dnd kitten: Fix a malicious remote drop source being able to write files outside the staging directory by sending a directory with the same name as a previously sent symlink (follow up to :cve:`2026-54056`)
 
 - File transfer protocol: Refuse to write files via a symlink created earlier in the same transfer, preventing a malicious sender from redirecting files outside the destination directory through intermediate path components (follow up to :cve:`2026-54055`)

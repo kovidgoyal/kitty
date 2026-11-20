@@ -510,7 +510,7 @@ class Tab:  # {{{
         appended to it. The os_window_docks are written after the windows of this
         tab, but only if this tab has some windows to write.
         """
-        import shlex
+        from .session import is_safe_for_session_line, sanitize_for_session_line, session_launch_line
 
         launch_cmds = []
         active_group = self.windows.active_group
@@ -545,7 +545,10 @@ class Tab:  # {{{
         most_common_cwd = ''
         cwds = {w.id: make_relative(w.cwd_for_serialization) for g in groups for w in g}
         # The OS window docks do not belong to this tab, so they do not influence its cwd
-        if tab_cwds := [cwds[w.id] for g in groups if g.id not in os_window_dock_ids for w in g]:
+        # The tab cwd is written as is in a cd line, so only cwds that are safe
+        # for that are eligible. Windows with other cwds get an explicit,
+        # quoted --cwd in their launch command.
+        if tab_cwds := [cwds[w.id] for g in groups if g.id not in os_window_dock_ids for w in g if is_safe_for_session_line(cwds[w.id])]:
             from collections import Counter
 
             most_common_cwd, _ = Counter(tab_cwds).most_common(1)[0]
@@ -565,7 +568,7 @@ class Tab:  # {{{
                     ser_opts, '' if cwd == most_common_cwd else cwd, is_overlay=bool(gw), extra_launch_args=() if gw else dock_args.get(g.id, ())
                 )
                 if lc:
-                    gw.append(shlex.join(lc))
+                    gw.append(session_launch_line(lc))
                     if saved_windows is not None:
                         saved_windows.append(window)
             if gw:
@@ -580,7 +583,7 @@ class Tab:  # {{{
                 enabled_layouts.append(layout)
             return [
                 '',
-                f'new_tab {self.name}'.rstrip(),
+                f'new_tab {sanitize_for_session_line(self.name)}'.rstrip(),
                 f'layout {layout}',
                 f'enabled_layouts {",".join(enabled_layouts)}',
                 f'set_layout_state {json.dumps(self.serialize_layout_state_for_session())}',
@@ -2000,10 +2003,12 @@ class TabManager:  # {{{
                 ans.extend(lines)
         if ans:
             prefix = [] if is_first else ['', '', 'new_os_window']
+            from .session import sanitize_for_session_line
+
             if self.wm_class and self.wm_class != appname:
-                prefix.append(f'os_window_class {self.wm_class}')
+                prefix.append(f'os_window_class {sanitize_for_session_line(self.wm_class)}')
             if self.wm_name and self.wm_name != appname:
-                prefix.append(f'os_window_name {self.wm_name}')
+                prefix.append(f'os_window_name {sanitize_for_session_line(self.wm_name)}')
             if ser_opts.os_window_geometry:
                 prefix.extend(self.serialize_geometry_as_session())
             ans = prefix + ans
