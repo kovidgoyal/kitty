@@ -96,6 +96,7 @@ line_has_bidi_record(LineAttrs *a, const Line *line) {
     if (a->bidi_stamp == BIDI_STAMP_NONE) return false;
     if (!line_is_empty(line)) return true;
     line_attrs_set_bidi(a, (LineAttrs){0});
+    a->bidi_may_reorder = false;
     return false;
 }
 
@@ -160,6 +161,7 @@ void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_set_line_has_image_placeholders(HistoryBuf *self, index_type y, bool val);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
+void historybuf_invalidate_render_cache(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf);
 bool line_has_mark(Line *, uint16_t mark);
 PyObject *as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf, bool add_trailing_newline);

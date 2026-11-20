@@ -156,6 +156,91 @@ omitted::
     10;5;0;0;2:1;2;3;1;1       momentum scrolling ends
     10;5;0;120;1:5;1;0;0;5     a wheel click downwards with ctrl pressed
 
+.. _bidi_support:
+
+Bidirectional text
+-------------------------------------------------------------------------------------
+
+By default kitty leaves the layout of bidirectional text to the program, as
+described in the :opt:`force_ltr` option. A program can instead ask kitty to
+lay out the lines it writes afterwards, following the Unicode bidirectional
+algorithm (using FriBidi), by setting the ECMA-48 *Bi-Directional Support
+Mode* (BDSM), ``CSI 8 h``, the implicit mode. ``CSI 8 l`` returns to the
+default. Two more controls set the direction of a paragraph, the lines joined
+by soft wraps:
+
+``CSI ? 2501 h``
+    A private mode from the `BiDi in Terminal Emulators
+    <https://terminal-wg.pages.freedesktop.org/bidi/recommendation/escape-sequences.html>`__
+    recommendation, as implemented by VTE. Takes the direction of each
+    paragraph from its first strong character. ``CSI ? 2501 l`` turns this off.
+    It has no effect unless ``CSI 8 h`` is set.
+
+``CSI Ps SP k``
+    ECMA-48 *Select Character Path* (SCP), in the form ``CSI Ps ; Ps SP k``.
+    ``Ps`` of ``2`` makes paragraphs written afterwards right to left, ``1``
+    or ``0`` left to right. When ``CSI ? 2501 h`` is set it only sets the
+    direction of paragraphs that have no strong character. The second
+    parameter is accepted and ignored, as are values of ``3`` or more.
+
+A line takes the settings in effect when text is first written to it in bidi
+mode, and keeps them for as long as it holds text. A line left without text
+loses them. The lines of a paragraph are laid out together when any of them
+holds settings, including lines written with bidi mode off, and the first of
+them that holds settings gives the paragraph its direction.
+
+To detect support, query the modes (``CSI 8 $ p`` and ``CSI ? 2501 $ p``). A
+kitty without this feature answers ``0`` (unknown), and one with it ``2``
+(reset) or ``1`` (set). While the :opt:`force_ltr` option is set the answer is
+``4`` (permanently reset), as :opt:`force_ltr` turns all of this off wherever
+the modes are used. When :opt:`force_ltr` is cleared, the program's settings
+apply again.
+
+The settings are per screen, like other per-screen modes. They are not carried
+into the alternate screen, which starts with them off, and the main screen's
+settings are restored on leaving it. The exception is a soft reset (DECSTR) on
+the alternate screen, which clears them, so they are off when the main screen
+returns. ``CSI ? s`` and ``CSI ? r`` save and restore both modes and the
+direction set by SCP.
+
+Only the display is reordered. Text stays in logical order, so selecting and
+copying work on logical cells, and cell-based mouse reports carry logical
+columns. SGR-pixel mouse reports carry the pointer's pixel position as drawn.
+
+Text written with the :doc:`text sizing protocol </text-sizing-protocol>` at a
+scale (``s``) above 1 is never moved. Each scaled character keeps its columns
+on every row it covers, the text on either side of it is reordered within its
+own span, and its text is shaped in the direction guessed from the text, as
+without bidi mode. A multicell character of scale 1 is reordered as one unit,
+which the algorithm sees as its first strong character, or its first character
+when it has none (as a neutral if that is an isolate).
+Its text is shaped in the direction of that unit, so text of mixed direction
+inside it is not reordered. A paragraph that holds an image placeholder is not
+reordered, and its text is shaped as without bidi mode.
+
+Right-to-left runs are shaped without contextual alternates (``calt``),
+whatever :opt:`disable_ligatures` is set to, as in a right-to-left run they can
+turn an operator such as ``=>`` into another one.
+
+In a vertically scrolling
+:doc:`smooth scroll region </smooth-scrolling-protocol>` that spans the width
+of the screen, lines are laid out as outside a region, and the rows the region
+moves keep their order, as does its partially visible row. A vertically
+scrolling region narrower than the screen is a span of its own on the rows it
+covers: its text is reordered within the region, and the text on either side
+within its own span. Text shaped as one run across the edge of such a region,
+a ligature or an icon with its space, is split by the edge. Text moved onto a
+row that has text beside the region is laid out with that row's settings. The
+cells of a horizontally scrolling region keep their columns and are shaped in
+the direction guessed from the text in the region, the text on either side is
+reordered within its own span, and text that moved wholly into the columns
+kept on the sides of the region comes back without settings. The rows covered
+by a horizontally scrolling region as wide as the screen are not reordered.
+With :opt:`pixel_scroll` off, the partially visible scrollback row at the top
+of a region that uses the scrollback is drawn as without bidi mode. When the
+first rows of a paragraph move out of a region into the rows it keeps on its
+sides, the rows left on screen are laid out as a paragraph of their own.
+
 An escape code to move the contents of the screen into the scrollback
 -------------------------------------------------------------------------------------
 

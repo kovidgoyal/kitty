@@ -274,11 +274,13 @@ class TestBidi(BaseTest):
         # a resize drops a char too wide for the new width, and moves rows left without text into the history
         emptied(9, cup(2, 3) + s7w2, lambda s: s.resize(9, 11), range(1, 8), cols=16)
         emptied(9, s7w2 + cup(8, 1) + 'x' * 32, lambda s: (s.resize(9, 11), pb(s, '\x1b[+T')), (0,), cols=16)
-        # a rewrap that leaves the first row of a line blank drops its record there
+        # a rewrap that leaves the first row of a line blank, widening back joins the text and the record of the next row to it
         s = self.screen()
         pb(s, '\x1b[8h\x1b[2 k' + cup(1, 10) + 'ab\x1b[8l')
         s.resize(5, 5)
         self.ae(self.records(s, 0, 1, 2), [NONE, RTL, RTL])
+        s.resize(5, 10)
+        self.ae(self.records(s, 0, 1), [RTL, NONE])
         # the alternate screen resizes without rewrapping, removing the chars split at its new edges
         emptied(5, cup(1, 9) + '中', lambda s: s.resize(5, 9), (0,), pre='\x1b[?1049h')
         emptied(5, cup(4, 1) + s2, lambda s: s.resize(4, 10), (3,), pre='\x1b[?1049h')

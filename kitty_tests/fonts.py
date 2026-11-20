@@ -1541,10 +1541,12 @@ class BidiRendering(BidiRenderingBase):
 
     def test_rtl_split_multicell_char(self):
         # a char cut off by the end of the line or by the left edge of a region is drawn as the matching cells of the
-        # complete char drawn at the same level, odd or even. Four glyphs in two cells give each cell a different sprite at
-        # each level.
-        def screen(x, region_left=0, shift=0):
+        # complete char drawn at the same level: odd, even or BIDI_LEVEL_FIXED (0x80), on a line holding a bidi record as
+        # every line rendered at levels does. Four glyphs in two cells give each cell a different sprite at each level.
+        def screen(x, region_left=0, shift=0, bidi=True):
             s = self.create_screen(cols=10, lines=1, scrollback=0)
+            if bidi:
+                parse_bytes(s, b'\x1b[8h')
             s.cursor.x = x
             draw_multicell(s, 'אבגד', width=2)
             if shift:
@@ -1558,12 +1560,20 @@ class BidiRendering(BidiRenderingBase):
         for x, region_left, shift, present in ((8, 0, -1, {9: 0}), (2, 2, 1, {2: 1})):
             with self.subTest(x=x, shift=shift):
                 cut = screen(x, region_left, shift)
-                complete = {level: alpha(screen(x), [level] * 10) for level in (1, 0)}
+                complete = {level: alpha(screen(x), [level] * 10) for level in (1, 0x80, 0)}
                 for level, sprites in complete.items():
                     split = alpha(cut, [level] * 10)
                     for c, k in present.items():
                         self.assertNotEqual(sprites[x + k], complete[0 if level else 1][x + k], f'{level=} {c=}')
                         self.ae(split[c], sprites[x + k], f'{level=} {c=}')
+
+        # in a frame, the cut char is in the columns of a horizontal region, so it is drawn as with bidi mode off
+        def frame_sprite(bidi):
+            s = screen(8, 0, -1, bidi)
+            s.test_update_cell_data(self.font_size, self.dpi, self.dpi)
+            return s.line(0).sprite_at(9)
+
+        self.ae(frame_sprite(True), frame_sprite(False))
 
     def test_symbol_space_ligature_stops_at_level_change(self):
         text = self.pua + ' '
@@ -1590,9 +1600,29 @@ class BidiRendering(BidiRenderingBase):
                 self.assertLess(centroid(0, levels), 0.3)
                 self.assertGreater(centroid(1, levels), 0.7)
 
+    def test_stamped_line_without_levels_is_shaped_left_to_right(self):
+        # Without levels a line holding a bidi record is shaped left to right instead of guessed from its text, as the
+        # digits (bidi class EN) of a run in an RTL script are
+        text = 'n \u06f1\u06f2\u06f3 m'
+        cols = len(text) + 2
+        ltr = self.render_cells(self.line(text, cols), [0] * cols)[1]
+        guessed = self.render_cells(self.line(text, cols))[1]
+        self.assertNotEqual(guessed, ltr)
+        self.ae(self.render_cells(self.line('\x1b[8h' + text, cols))[1], ltr)
+
 
 class BidiLigatureRendering(BidiRenderingBase):
     font_name = 'FiraCode-Medium.otf'
+
+    def screen_sprites(self, text, strategy='never', cursor_x=None):
+        s = self.create_screen(cols=len(text) + 2, lines=1, scrollback=0)
+        s.disable_ligatures = strategy
+        parse_bytes(s, ('\x1b[8h' + text).encode())
+        if cursor_x is not None:
+            s.cursor.x = cursor_x
+        s.test_update_cell_data(self.font_size, self.dpi, self.dpi)
+        line = s.line(0)
+        return [bytes(self.sprites[sprite_idx_to_pos(line.sprite_at(x), setup_for_testing.xnum, setup_for_testing.ynum)]) for x in range(len(text))]
 
     def test_no_ligatures_in_rtl_runs(self):
         single = {ch: self.render_text(ch)[1][0] for ch in '=!'}
@@ -1600,6 +1630,25 @@ class BidiLigatureRendering(BidiRenderingBase):
         self.assertNotEqual(self.render_text('==', levels=[0, 0])[1], [single['=']] * 2)
         self.ae(self.render_text('==', levels=[1, 1])[1], [single['=']] * 2)
         self.ae(self.render_text('!=', levels=[1, 1])[1], [single['!'], single['=']])
+
+    def test_no_ligatures_in_rtl_runs_on_screen(self):
+        single = {ch: self.render_text(ch)[1][0] for ch in '=!'}
+        # Hebrew words around the operators put them in an RTL run
+        text = '\u05d0\u05d1 == != \u05d2\u05d3'
+        expected = [single['='], single['='], single['!'], single['=']]
+        operators = (3, 4, 6, 7)
+        for strategy, cursor_x in (('never', None), ('always', None), ('cursor', 6), ('cursor', 3), ('cursor', 5), ('cursor', 0)):
+            with self.subTest(strategy=strategy, cursor_x=cursor_x):
+                sprites = self.screen_sprites(text, strategy, cursor_x)
+                self.ae([sprites[x] for x in operators], expected)
+
+    def test_ltr_ligatures_follow_disable_ligatures(self):
+        single = self.render_text('=')[1][0]
+        text = 'a == b'
+        for strategy, cursor_x, ligated in (('never', None, True), ('always', None, False), ('cursor', 5, True), ('cursor', 2, False)):
+            with self.subTest(strategy=strategy, cursor_x=cursor_x):
+                sprites = self.screen_sprites(text, strategy, cursor_x)
+                self.ae(sprites[2:4] != [single, single], ligated)
 
 
 def test_chars(chars: str = '╌', sz: int = 128) -> None:

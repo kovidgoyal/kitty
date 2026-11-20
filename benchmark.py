@@ -30,6 +30,7 @@ PARSING_BENCHMARKS = (
     'unicode',
     'scrollback',
     'render',
+    'bidi',
     'unique_unicode',
     'csi',
     'images',

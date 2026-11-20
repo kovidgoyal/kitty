@@ -41,8 +41,15 @@ static_assert(sizeof(CellGPUData) == 8, "Fix the ordering of CellGPUData");
 typedef struct RenderCell {
     sprite_index sprite_idx;
     uint8_t mark;
-    uint8_t padding[3];
+    // the embedding level the cell was shaped at: written by the bidi upload, by the region code for kept rows and strip
+    // lines, and cleared by bidi_unstamp(); 0 without bidi
+    uint8_t level;
+    uint8_t padding[2];
 } RenderCell;
+// The level of cells that are never reordered and are shaped in the direction guessed from their text, such as scaled
+// cells, cells of a horizontally scrolling region, multicells across a span edge, the pre-edit text and the rows with a
+// record of a paragraph that is left unreordered. Even, and above the levels FriBidi resolves.
+#define BIDI_LEVEL_FIXED 0x80
 static_assert(sizeof(RenderCell) == 8, "Fix the ordering of RenderCell");
 
 #define SCALE_BITS 3
@@ -93,7 +100,10 @@ typedef union LineAttrs {
         uint8_t has_image_placeholders : 1;
         uint8_t prompt_kind : 2;
         // the bidi controls the line was first written under in implicit mode
-        uint8_t bidi_stamp : 2;
+        uint8_t bidi_stamp : 1;
+        // Clear only when no cell of the line may reorder, see bidi_cells_may_reorder(). Kept up to date only in a paragraph
+        // holding a stamp; elsewhere it may be stale, which costs only work.
+        uint8_t bidi_may_reorder : 1;
         uint8_t bidi_rtl : 1;
         uint8_t bidi_auto : 1;
     };
@@ -341,6 +351,15 @@ cells_for_gpu(const CPUCell *c, const RenderCell *r, index_type num, CellGPUData
     static_assert(MARK_MASK < (1u << CELL_GPU_STYLE_SHIFT), "Increase CELL_GPU_STYLE_SHIFT");
     for (index_type i = 0; i < num; i++) {
         const CellGPUData d = {.sprite_idx = r[i].sprite_idx, .style_and_mark = (c[i].style_idx << CELL_GPU_STYLE_SHIFT) | r[i].mark};
+        memcpy(dest + i, &d, sizeof(d));
+    }
+}
+
+static inline void
+cells_for_gpu_permuted(const CPUCell *c, const RenderCell *r, const uint16_t *v2l, index_type num, CellGPUData *dest) {
+    for (index_type i = 0; i < num; i++) {
+        const index_type l = v2l[i];
+        const CellGPUData d = {.sprite_idx = r[l].sprite_idx, .style_and_mark = (c[l].style_idx << CELL_GPU_STYLE_SHIFT) | r[l].mark};
         memcpy(dest + i, &d, sizeof(d));
     }
 }

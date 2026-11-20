@@ -38,6 +38,9 @@ type run_settings struct {
 	main_screen bool
 	// Allow the terminal to render while the data is being sent
 	render bool
+	// Turn on bidi mode (CSI 8 h) before the data, and off again in the
+	// reset that ends each loop
+	bidi bool
 }
 
 func default_settings() run_settings {
@@ -86,8 +89,12 @@ func benchmark_data(description string, data string, settings run_settings) (dur
 		}
 	}
 
-	start := time.Now()
 	end_of_loop_reset := desc
+	if settings.bidi {
+		data = "\x1b[8h" + data
+		end_of_loop_reset += "\x1b[8l"
+	}
+	start := time.Now()
 	if !settings.render {
 		end_of_loop_reset += resume_rendering + pause_rendering
 	}
@@ -226,6 +233,14 @@ func ascii_with_rendering() (r result, err error) {
 	s := default_settings()
 	s.render = true
 	return text_benchmark("ASCII text with rendering", data, cells, s)
+}
+
+func ascii_with_bidi() (r result, err error) {
+	data, cells := ascii_text()
+	s := default_settings()
+	s.render = true
+	s.bidi = true
+	return text_benchmark("ASCII text with rendering in bidi mode", data, cells, s)
 }
 
 func unicode_text() (string, int) {
@@ -445,6 +460,7 @@ func all_benchmarks() []benchmark {
 		{"unicode", "lines of non-ASCII text, the same lines, in cells, as ascii", unicode},
 		{"scrollback", "the ascii text, on the main screen so lines scrolled off the screen go into the scrollback", ascii_with_scrollback},
 		{"render", "the ascii text, with rendering allowed while it is processed", ascii_with_rendering},
+		{"bidi", "the ascii text, with rendering allowed while it is processed, in bidi mode", ascii_with_bidi},
 		{"unique_unicode", "cells with many distinct multi-codepoint graphemes", unique_unicode},
 		{"csi", "ASCII text mixed with many CSI escape codes", ascii_with_csi},
 		{"long_escape_codes", "long OSC escape codes", long_escape_codes},
@@ -515,7 +531,7 @@ func main(args []string) (err error) {
 	fmt.Print(reset)
 	fmt.Println(
 		"These results measure the time it takes the terminal to fully parse all the data sent to it.")
-	fmt.Println("Note that \x1b[31mrendering is suppressed\x1b[m (if the terminal supports the synchronized output escape code) to better benchmark parser performance, except in the render benchmark.")
+	fmt.Println("Note that \x1b[31mrendering is suppressed\x1b[m (if the terminal supports the synchronized output escape code) to better benchmark parser performance, except in the render and bidi benchmarks.")
 	fmt.Println()
 	fmt.Println("Results:")
 	mlen := 10
@@ -564,7 +580,7 @@ func write_results(path string, results []result) error {
 func help_text() string {
 	var b strings.Builder
 	b.WriteString("Benchmarking works by sending large amounts of data to the TTY device and waiting for the terminal to process the data and respond to queries sent to it in the data. ")
-	b.WriteString("Rendering is suppressed during benchmarking to focus on parser performance, using the synchronized output escape code, except in the render benchmark. ")
+	b.WriteString("Rendering is suppressed during benchmarking to focus on parser performance, using the synchronized output escape code, except in the render and bidi benchmarks. ")
 	b.WriteString("Note that rendering in modern terminals is typically asynchronous so it wont be properly benchmarked by this kitten. ")
 	b.WriteString("All benchmarks use the alternate screen, except the scrollback benchmark.\n\n")
 	b.WriteString("To run only particular benchmarks, specify them on the command line. The available benchmarks are:\n\n")

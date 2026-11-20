@@ -382,13 +382,21 @@ typedef struct {
             bool mBDSM, mBIDI_AUTODETECT, rtl;
         } main_stash; // main's controls while alt is active
     } bidi;
-    bool bidi_records_writes; // see screen_bidi_records_writes_changed()
+    struct BidiMaps *bidi_maps;      // allocated by the first upload of a stamped buffer
+    uint64_t bidi_layout_generation; // bumped where rows move or the inputs of their layout change, which reused maps would miss
+    bool bidi_records_writes;        // see screen_bidi_records_writes_changed()
+    bool bidi_history_bits_stale;    // see bidi_note_line_from_history()
 } Screen;
 
 // Text is drawn by the recording loop while bidi mode is on or the active buffer has a stamp, so that one load picks the loop
 static inline void
 screen_bidi_records_writes_changed(Screen *self) {
     self->bidi_records_writes = self->modes.mBDSM || self->linebuf->bidi_stamped;
+}
+
+static inline void
+bidi_layout_moved(Screen *self) {
+    self->bidi_layout_generation++;
 }
 
 #define live_pixel_scroll_enabled(screen) (OPT(pixel_scroll) && (screen)->linebuf == (screen)->main_linebuf)
@@ -498,6 +506,8 @@ bool screen_has_selection(Screen *);
 bool screen_is_cell_selected(Screen *, index_type x, index_type y);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool cursor_has_moved);
+// Replaces x, the visual column of a click on screen row y, by its logical column
+void screen_bidi_logical_click(Screen *self, index_type *x, index_type y, bool *in_left_half);
 bool screen_is_cursor_visible(const Screen *self);
 unsigned screen_multi_cursor_count(const Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
@@ -566,6 +576,7 @@ Line *screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *ove
 index_type screen_multicell_char_rows_for_cursor(Screen *self, const CPUCell *ref, index_type x, index_type y);
 void screen_designate_charset(Screen *self, uint32_t which, uint32_t as);
 void screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params);
+bool range_line_is_continued(Screen *self, int y);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

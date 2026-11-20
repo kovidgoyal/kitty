@@ -252,6 +252,11 @@ The skipping behavior of the last rule can be complex requiring the terminal to
 skip over lots of cells, but it is needed to allow wrapping in the presence of
 multicell characters that extend over more than a single line.
 
+In bidi mode, described in :ref:`bidi_support`, a multicell character with
+``s`` above 1 is never moved: it keeps its columns, and the text on either side
+of it is reordered within its own span. A multicell character with ``s=1`` is
+reordered as one unit, and text of mixed direction inside it is not reordered.
+
 .. _detect_text_sizing:
 
 Detecting if the terminal supports this protocol

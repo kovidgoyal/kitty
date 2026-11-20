@@ -340,6 +340,10 @@ The cursor
    The cursor is not moved when a region is scrolled. When it is in the
    rectangle of a region, it is drawn shifted with the cells of the region.
 
+Bidirectional text
+   See :ref:`bidi_support` for how text laid out by the terminal is drawn in
+   regions.
+
 .. _smooth_scroll_images:
 
 Images
