@@ -1309,6 +1309,8 @@ class TabBar:
             s.cursor.y = row
             s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
             s.cursor.fg = as_rgb(0xFF0000)
+            # A custom tab style can draw a separator in the reserved row.
+            s.erase_in_line(2, False)
             s.draw('…')
         self.tab_extents = tuple(cr)
         self.vertical_tab_spacing = spacing
