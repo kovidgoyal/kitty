@@ -3790,6 +3790,10 @@ class Boss:
         from .fonts.render import clear_font_caches
 
         clear_font_caches()
+        # must be cleared before apply_new_options() as that redraws the window title bars
+        from .window_title_bar import clear_caches
+
+        clear_caches()
         self.apply_new_options(opts)
         from .open_actions import clear_caches
 
