@@ -2158,7 +2158,9 @@ opt(
 A template to render the window title bar text. Uses the same template syntax as
 :opt:`tab_title_template`. Available variables include: :code:`{title}`,
 :code:`{bell_symbol}`, :code:`{activity_symbol}`, :code:`{progress_percent}`,
-:code:`{custom}`, :code:`{fmt}`, :code:`{is_active}`.
+:code:`{custom}`, :code:`{fmt}`, :code:`{is_active}` and :code:`{window}`, which has
+the fields :code:`{window.id}`, :code:`{window.wd}` (working directory of the foreground process),
+:code:`{window.columns}` and :code:`{window.lines}`.
 You can also provide a custom :code:`draw_window_title(data)` function in
 :file:`window_title_bar.py` in the kitty config directory, exposed as :code:`{custom}`.
 """,

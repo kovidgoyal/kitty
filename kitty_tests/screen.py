@@ -4227,6 +4227,8 @@ class TestScreen(BaseTest):
         delivered = []
 
         class FakeWindow:
+            _title_bar_screen = None
+
             def __init__(self):
                 self.watchers = Watchers()
                 self.watchers.on_cwd_change.append(lambda boss, window, data: None)
