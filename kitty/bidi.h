@@ -27,7 +27,7 @@ typedef struct BidiScratch {
 void bidi_scratch_free(BidiScratch *s);
 // Frees the buffers when far larger than the paragraphs resolved since the last call needed
 void bidi_scratch_trim(BidiScratch *s);
-// Whether the base codepoint of some cell may be right-to-left
+// Whether some cell may be right-to-left, or holds an RLI, RLM or ALM
 bool bidi_cells_may_reorder(const CPUCell *cells, index_type num, const TextCache *tc);
 // Resolves the paragraph rows[0..num_rows) from base into levels[r * cols + x], after UAX #9 L1 per row. Returns false, leaving
 // levels unwritten, when every level is 0 or a cell spans several rows, which is never reordered.

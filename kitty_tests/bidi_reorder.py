@@ -22,7 +22,7 @@ from .base import BaseTest, Callbacks, draw_multicell, parse_bytes
 A = 'אבג'  # three Hebrew letters, bidi class R
 MIXED = 'abc' + A
 NSI = 'אב 12'  # R R WS EN EN: its map (3, 4, 2, 1, 0) is not its own inverse
-RLM = '\u200f'
+LRM, RLM = '\u200e', '\u200f'
 ISOLATES = '\u2066\u2067\u2068\u2069'  # LRI RLI FSI PDI
 LRE, RLE, PDF, LRO, RLO = '\u202a\u202b\u202c\u202d\u202e'
 AUTO, SCP_RTL, SCP_LTR = '\x1b[?2501h', '\x1b[2 k', '\x1b[1 k'
@@ -251,6 +251,82 @@ class TestBidiReorder(BaseTest):
                 self.assertIsNotNone(neutral[0])
                 self.ae(orders(self.written(osc66_controls(text), cols=cols, lines=lines)), neutral)
 
+    def test_combined_isolates(self):
+        # each control is written right after a drawn char, so it is stored in that char's cell and takes no column
+        for text, cells in (
+            ('a\u2067bc\u2069', ['a\u2067', 'b', 'c\u2069']),
+            ('a\u2066b\u2069c', ['a\u2066', 'b\u2069', 'c']),
+            ('a' + RLE + 'bc' + PDF, ['a' + RLE, 'b', 'c' + PDF]),
+        ):
+            s = self.screen(text=text)
+            self.ae(([s.line(0)[i] for i in range(len(cells) + 1)], s.cursor.x), (cells + ['\x00'], len(cells)))
+        # a row ending in a space and a PDI, wrapped or ending its paragraph, resets both to the paragraph level
+        row = 'ab\u2067אג \u2069'
+        self.ae((orders(self.screen(cols=5, text=row))[0], orders(self.screen(cols=5, text=row + 'cd'))[0]), ((0, 1, 3, 2, 4),) * 2)
+        for text, seqs, cols, rows in (
+            ('a\u206712 34\u2069', (), 10, ['a\u206734\u2069 12']),  # RLI makes the digits level 2 and the space between them R
+            ('a\u2067bc!\u2069', (), 10, ['a\u2067!\u2069bc']),  # the ! takes the isolate's direction (N2, eos R)
+            ('a\u2068א!', (), 10, ['a\u2068!א']),  # without the FSI the ! would take the paragraph's L
+            ('a\u2067!b\u2069c', (), 10, ['a\u2067b\u2069!c']),  # the PDI ends the isolate
+            ('א\u2066!a\u2069ג', (AUTO,), 10, ['      ג!a\u2069א\u2066']),  # LRI in an RTL paragraph makes the ! L
+            ('a\u2067b😀\u2069c', (), 10, ['a\u2067😀\u2069bc']),  # a wide cell holds the PDI
+            ('a\u206712 中\u2069x', (), 10, ['a\u2067中\u2069 12x']),
+            ('a\u2068אבגדהו!', (), 5, ['a\u2068דגבא', '!וה']),  # an unmatched FSI isolates to the paragraph end, across the soft wrap
+            # marks combined after a char are fed too
+            ('C++' + LRM, (SCP_RTL,), 10, ['       C++' + LRM]),  # the + take the direction of C and the LRM (N1)
+            ('12' + RLM + ' 34', (), 10, ['12' + RLM + '34']),  # the space between the RLM and 34 is R
+            ('12\u061c 34', (), 10, ['12\u061c34']),  # ALM makes 34 an Arabic number (W2)
+        ):
+            with self.subTest(text=text):
+                s = self.screen(*seqs, cols=cols, lines=len(rows), text=text)
+                self.ae([visual(s, y) for y in range(len(rows))], rows)
+        # combined embeddings and overrides are never fed
+        for control in (LRE, RLE, LRO, RLO):
+            self.ae(orders(self.written('אa' + control + 'b!12' + PDF)), orders(self.written('אab!12')))
+        self.ae(orders(self.written('x' + RLO + 'abc' + PDF + 'd' + LRE + 'אב' + PDF)), orders(self.written('xabcdאב')))
+        # P2 and P3 skip the isolate: with no strong char before the FSI the paragraph takes the fallback direction
+        self.ae(visual(self.screen(AUTO, text='> שלום')), '    םולש >')
+        self.ae(visual(self.screen(AUTO, text='> \u2068שלום')), '> \u2068םולש')
+        # a run of marks in a cell is fed as its first and last mark and one of each other strong type in it, so it resolves as
+        # that run written by hand, also for a bracket pair whose walk back to a strong char crosses it
+        rli, pdi, run = ISOLATES[1], ISOLATES[3], (LRM + RLM) * 11 + LRM
+        for text, collapsed in (
+            ('א' + rli + 'b' + run + 'c' + run + 'd' + pdi + '(ד)', 'א' + rli + 'b' + LRM + RLM + LRM + 'c' + LRM + RLM + LRM + 'd' + pdi + '(ד)'),
+            ('א (!' + RLM + LRM * 21 + RLM + ')', 'א (!' + RLM + LRM + RLM + ')'),
+        ):
+            with self.subTest(text=text):
+                self.ae(orders(self.written(text, cols=40)), orders(self.written(collapsed, cols=40)))
+        # the LRM between the RLMs is a strong char of the embedding direction in the brackets (N0)
+        self.assertNotEqual(orders(self.written('א (!' + RLM + LRM + RLM + ')')), orders(self.written('א (!' + RLM + RLM + ')')))
+
+    def test_isolate_flood(self):
+        # every cell of a soft-wrapped paragraph holds a letter and 23 isolate controls, far over the cap: those past it are fed as
+        # neutrals, so dropping the controls of the last cell changes no other row
+        cell = (ISOLATES * 6)[:23]
+        n = 9000
+        s = self.written('a' + cell, cols=200)
+        self.ae(len(s.line(0)[0]), 24)
+        flood = orders(self.written('א' + cell + ('a' + cell) * (n - 1), cols=200, lines=50))
+        self.assertIsNotNone(flood[0])
+        last = n // 200 - 1
+        self.ae(orders(self.written('א' + cell + ('a' + cell) * (n - 2) + 'a', cols=200, lines=50))[:last], flood[:last])
+
+    def test_isolate_cap(self):
+        # later text never changes the layout of earlier text: RLI 12 34 PDI stays honoured whatever the number of empty isolates
+        # after it, up to the cap and past it
+        head = 'א a\u206712 34\u2069 '
+
+        def late(k):
+            # head after k empty isolates: the same order as without any isolate once its RLI is past the cap
+            text = 'b\u2066\u2069' * k + head
+            return orders(self.written(text, cols=60)) == orders(self.written(''.join(ch for ch in text if ch not in ISOLATES), cols=60))
+
+        cap = next(k for k in range(48) if late(k))
+        self.ae(cap, 32)
+        for groups in (16, 17, cap, cap + 1):
+            with self.subTest(groups=groups):
+                self.assertTrue(visual(self.written(head + 'b\u2066\u2069' * (groups - 1), cols=60)).startswith('א a\u206734\u2069 12 b'))
+
     def test_bracket_pairs(self):
         # A pair is not resolved by N0 when its opening bracket is far after the previous letter or digit, which no later text
         # changes: א(ב) keeps its mirrored pair whatever follows it
@@ -265,6 +341,9 @@ class TestBidiReorder(BaseTest):
         self.assertNotEqual(orders(near), orders(plain))
         far, plain = both('א' + '!' * 40 + '(ב)')
         self.ae(orders(far), orders(plain))
+        # a bracket in an isolate pairs only within it: the ( before the isolate pairs with the ) after it
+        self.ae(orders(self.written('א(\u2067ב)\u2069ג)')), orders(self.written('א(\u2067ב!\u2069ג)')))
+        self.assertNotEqual(orders(self.written('א(\u2067ב)\u2069ג)')), orders(self.written('א!\u2067ב!\u2069ג!')))
 
     def test_incremental_frames_match_a_fresh_upload(self):
         # an edit, split, scroll or history change re-shapes every row whose levels it changes, written or not, on view or not
@@ -998,3 +1077,11 @@ class TestBidiReorder(BaseTest):
         alone = [sprites(self.screen(text=ch, cols=3))[0] for ch in digits]
         shaped = sprites(self.screen(text=f'n {digits} m', cols=10))[2:5]
         self.ae(shaped, alone)
+
+    def test_pair_at_the_start_of_an_isolate(self):
+        # A pair is measured from the start of the isolate it is in, not from where an earlier isolate or the text start left off
+        text = 'b⁧(abc)d⁩'
+        for offset in (1, 41):
+            with self.subTest(offset=offset):
+                s = self.written('x' * (offset - 1) + text, cols=60, pixel_scroll=False)
+                self.ae(visual(s)[offset - 1 :].replace('⁧', '').replace('⁩', ''), 'bd)abc(')

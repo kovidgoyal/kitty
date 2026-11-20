@@ -206,6 +206,13 @@ right-to-left cell is drawn past the cell, on its left edge in the last column.
 The input method editor is anchored at the left edge of the cursor cell, and
 the pre-edit text is drawn left to right.
 
+kitty honours isolates (LRI, RLI, FSI and PDI) and the marks LRM, RLM and ALM
+written after a character. Of the isolates in a paragraph the first 32 are
+honoured and later ones are treated as neutral. A bracket pair whose opening
+bracket is more than 32 characters after the previous strong character is not
+paired. Embeddings and overrides (LRE, RLE, LRO, RLO and PDF) are treated as
+neutral.
+
 An escape code to move the contents of the screen into the scrollback
 -------------------------------------------------------------------------------------
 
