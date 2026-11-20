@@ -2158,9 +2158,12 @@ opt(
 A template to render the window title bar text. Uses the same template syntax as
 :opt:`tab_title_template`. Available variables include: :code:`{title}`,
 :code:`{bell_symbol}`, :code:`{activity_symbol}`, :code:`{progress_percent}`,
-:code:`{custom}`, :code:`{fmt}`, :code:`{is_active}` and :code:`{window}`, which has
-the fields :code:`{window.id}`, :code:`{window.wd}` (working directory of the foreground process),
-:code:`{window.columns}` and :code:`{window.lines}`.
+:code:`{custom}`, :code:`{fmt}`, :code:`{is_active}` and :code:`{window}`, which is the window id and has
+the fields :code:`{window.id}`, :code:`{window.wd}` (working directory of the foreground process
+on the local machine), :code:`{window.columns}` and :code:`{window.lines}`. Note that, as with
+the tab bar, the title bar is only redrawn when something changes, such as the window title or
+the working directory being reported by :ref:`shell_integration`, so :code:`{window.wd}` does not
+follow a change of directory that is not accompanied by one of these.
 You can also provide a custom :code:`draw_window_title(data)` function in
 :file:`window_title_bar.py` in the kitty config directory, exposed as :code:`{custom}`.
 """,

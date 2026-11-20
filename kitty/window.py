@@ -1701,7 +1701,8 @@ class Window:
 
     def on_cwd_change(self, raw_url: bytes) -> None:
         if self._title_bar_screen is not None and (t := self.tabref()) is not None:
-            t.update_window_title_bars()
+            # {window.wd} in the title bar template may have changed
+            self.update_title_bar(is_active=t.active_window is self)
         if self.watchers.on_cwd_change:
             url = raw_url.decode('utf-8', 'replace')
             host = ''

@@ -1281,6 +1281,25 @@ class TestFrameAlignment(BaseSplitGeometryTest):
         tb.layout(geom, 0)
         self.ae(tb.screen.columns, 200)
 
+    def test_title_bar_template_window_fields(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from kitty.window_title_bar import WindowTitleBarScreen, WindowTitleData
+
+        tb = WindowTitleBarScreen(10, 20)
+        tb.layout(WindowGeometry(0, 0, 400, 20, 0, 1), 10)
+        data = WindowTitleData(title='t', is_active=False, window_id=7, tab_id=1)
+        fake_window = SimpleNamespace(get_cwd_of_child=lambda: '/some/dir', screen=SimpleNamespace(columns=80, lines=24))
+        self.set_options({'window_title_template': '{window}|{window.id}|{window.wd}|{window.columns}x{window.lines}'})
+        with patch('kitty.window_title_bar.get_boss', return_value=SimpleNamespace(window_id_map={7: fake_window})):
+            self.ae(tb.render(data, ''), '7|7|/some/dir|80x24')
+        # a window that no longer exists or no boss must not break rendering
+        with patch('kitty.window_title_bar.get_boss', return_value=SimpleNamespace(window_id_map={})):
+            self.ae(tb.render(data, ''), '7|7||0x0')
+        with patch('kitty.window_title_bar.get_boss', return_value=None):
+            self.ae(tb.render(data, ''), '7|7||0x0')
+
     def test_collapse_window_margins(self):
         from unittest.mock import patch
 

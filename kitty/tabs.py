@@ -15,7 +15,7 @@ from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Concatenate, Deque, Literal, NamedTuple, Optional, ParamSpec, TypeVar, cast
 
 from .borders import Border, Borders
-from .child import Child
+from .child import Child, process_data_cache
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .constants import appname, is_wayland
 from .fast_data_types import (
@@ -686,10 +686,16 @@ class Tab:  # {{{
 
     def update_window_title_bars(self) -> None:
         active_group = self.windows.active_group
-        for wg in self.windows.iter_all_layoutable_groups(only_visible=True):
-            is_active = wg is active_group
-            for w in wg.windows:
-                w.update_title_bar(is_active=is_active)
+        # {window.wd} in the title bar template needs the process group map,
+        # share it between windows and rapid updates as the render loop does
+        prev = process_data_cache.start_caching()
+        try:
+            for wg in self.windows.iter_all_layoutable_groups(only_visible=True):
+                is_active = wg is active_group
+                for w in wg.windows:
+                    w.update_title_bar(is_active=is_active)
+        finally:
+            process_data_cache.stop_caching(prev)
 
     def title_changed(self, window: Window) -> None:
         self.update_window_title_bars()
