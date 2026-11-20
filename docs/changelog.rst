@@ -147,6 +147,8 @@ Detailed list of changes
 
 - Fix the text in window title bars being drawn with the old cell size after changing the font size or moving a window to an OS window with a different font size (:pull:`10903`)
 
+- Preserve non-ASCII hyperlink IDs and URLs when exporting terminal text with ANSI formatting
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

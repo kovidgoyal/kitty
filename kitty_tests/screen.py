@@ -1873,6 +1873,20 @@ class TestScreen(BaseTest):
         s.draw('bcdef')
         self.ae(as_text(s, True), f'{sgr0}a{hl("moo")}bcde{sgr0}f{hl()}\n\n\n')
 
+    def test_serialize_unicode_hyperlink(self):
+        from kitty.window import as_text
+
+        screen = self.create_screen(cols=20, lines=3)
+        opening = '\x1b]8;id=链接;file:///tmp/中文🙂.txt\x1b\\'
+        closing = '\x1b]8;;\x1b\\'
+        link = f'{opening}X{closing}'
+        parse_bytes(screen, link.encode('utf-8'))
+        self.assertIn(link, as_text(screen, as_ansi=True).encode('utf-8').decode('utf-8'))
+
+        parse_bytes(screen, b'\r\ntext' * 4)
+        self.assertNotIn('X', as_text(screen))
+        self.assertIn(link, as_text(screen, as_ansi=True, add_history=True).encode('utf-8').decode('utf-8'))
+
     def test_wrapping_serialization(self):
         from kitty.window import as_text
 
