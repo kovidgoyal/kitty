@@ -8,11 +8,11 @@ from unittest.mock import patch
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
-from kitty.layout.base import blank_rects_for_window, layout_dimension, lgd
+from kitty.layout.base import DragOverlayMode, blank_rects_for_window, layout_dimension, lgd
 from kitty.layout.interface import Fat, Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.rc.set_spacing import parse_spacing_settings
-from kitty.types import WindowGeometry
+from kitty.types import DockSpec, WindowGeometry
 from kitty.window import DeferredWatcherCalls, EdgeWidths, GlobalWatchers, Watchers
 from kitty.window_list import WindowList, reset_group_id_counter
 
@@ -313,6 +313,26 @@ class TestLayout(BaseTest):
         self.ae(q.neighbors_for_window(windows[1], all_windows), {'left': [1], 'bottom': [3, 4]})
         self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2]})
         self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'top': [2]})
+
+    def test_insert_window_next_to_changes_layout(self):
+        # In the reordering layouts only inserting a window on the side of its neighbour it is
+        # already on keeps the order. Docks are outside the layout so nothing is inserted next to them.
+        for layout_class in (Tall, Grid, Stack):
+            q = create_layout(layout_class)
+            windows = create_windows(q, num=3)
+            q.add_window(windows, Window(99), dock=DockSpec())
+            w1, w2, w3, dock = (windows.id_map[i] for i in (1, 2, 3, 99))
+            reorders = q.drag_overlay_mode is not DragOverlayMode.full
+            with self.subTest(layout=layout_class.name):
+                changes = q.insert_window_next_to_changes_layout
+                self.ae(changes(windows, w2, w1, False, True), not reorders)
+                self.ae(changes(windows, w1, w2, False, False), not reorders)
+                self.assertTrue(changes(windows, w2, w1, False, False))
+                self.assertTrue(changes(windows, w1, w3, False, True))
+                self.assertTrue(changes(windows, w3, w1, False, False))
+                self.assertFalse(changes(windows, w1, w1, False, True))
+                self.assertFalse(changes(windows, w1, dock, False, True))
+                self.assertFalse(changes(windows, dock, w1, False, True))
 
     def test_splits_reinsert_in_place(self):
         # Only re-inserting a window on its current side of its sibling does nothing, and that must

@@ -995,9 +995,11 @@ class Splits(Layout):
         return moved
 
     def insert_window_next_to_changes_layout(self, all_windows: WindowList, window: 'WindowType', next_to: 'WindowType', horizontal: bool, after: bool) -> bool:
+        if not super().insert_window_next_to_changes_layout(all_windows, window, next_to, horizontal, after):
+            return False
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
-        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
+        if src_wg is None or dest_wg is None:
             return False
         # Only a window that is already the sibling of next_to, split the same way and on
         # the same side, ends up where it started

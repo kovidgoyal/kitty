@@ -361,12 +361,14 @@ def create_window_id_map_for_unserialize(all_windows: WindowList) -> dict[int, i
 
 
 class DragOverlayMode(Enum):
-    "Controls drag-and-drop overlay display and valid direction axis for body drops"
+    "How a window dropped onto another window is placed and the area of the target window highlighted"
 
-    full = 'full'  # full-window overlay, positional swap (Stack and any unrecognised layout)
-    axis_x = 'axis_x'  # top/bottom halves only (Vertical, Tall, Grid)
-    axis_y = 'axis_y'  # left/right halves only (Horizontal, Fat)
-    free = 'free'  # 4-way free direction (Splits; handled by its own insert_window_next_to override)
+    full = 'full'  # whole window highlighted, swaps (Stack and any unrecognised layout)
+    # The windows can only be reordered, the whole window is highlighted and the dropped
+    # window takes its place
+    axis_x = 'axis_x'  # windows ordered left to right (Horizontal, Fat)
+    axis_y = 'axis_y'  # windows ordered top to bottom (Vertical, Tall, Grid)
+    free = 'free'  # half highlighted, splits the window at that edge (Splits)
 
 
 class Layout:
@@ -591,6 +593,14 @@ class Layout:
         after: bool,
     ) -> bool:
         "Whether insert_window_next_to() with these arguments would change the layout"
+        src_wg = all_windows.group_for_window(window)
+        dest_wg = all_windows.group_for_window(next_to)
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
+            return False
+        if self.drag_overlay_mode in (DragOverlayMode.axis_x, DragOverlayMode.axis_y):
+            # Inserting a group on the side of its neighbour it is already on keeps the order
+            ids = [g.id for g in all_windows.groups]
+            return ids.index(src_wg.id) != ids.index(dest_wg.id) + (1 if after else -1)
         return True
 
     def add_window(
