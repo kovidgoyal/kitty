@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 from kitty.boss import Boss
-from kitty.layout.interface import Splits, Stack, Tall
+from kitty.layout.interface import Fat, Horizontal, Splits, Stack, Tall
 from kitty.tab_bar import TabBarData, WindowDropTarget
 from kitty.tabs import DragOverlayMode, Tab, TabManager
 
@@ -862,7 +862,14 @@ class TestWindowDropTargets(BaseTest):
             resize=Mock(),
             set_drag_over_me=Mock(),
         )
-        for name in ('_find_window_at', '_pointer_in_title_bar_of', '_drop_direction_for', '_set_drag_target_window', 'on_window_drop_move'):
+        for name in (
+            '_find_window_at',
+            '_pointer_in_title_bar_of',
+            '_drop_direction_for',
+            '_window_drop_target',
+            '_set_drag_target_window',
+            'on_window_drop_move',
+        ):
             setattr(tm, name, partial(getattr(TabManager, name), tm))
         return tm, (central, tab_bar, central.right, central.bottom, 10, 20)
 
@@ -938,6 +945,53 @@ class TestWindowDropTargets(BaseTest):
                 self.ae((preview.quadrant, preview.direction), (6, direction))
                 boss._insert_window_in_direction.assert_called_once_with(src, dest, direction)
 
+    def drop_target_in(self, layout_class, num, src_id, dest_id, edge):
+        q = create_layout(layout_class)
+        windows = create_windows(q, num=num)
+        tab = SimpleNamespace(current_layout=q, windows=windows)
+        for i in range(1, num + 1):
+            windows.id_map[i].tabref = lambda: tab
+            windows.id_map[i].geometry = region(i * 100, 0, i * 100 + 90, 400)
+        tm = SimpleNamespace(active_tab=tab, _pointer_in_title_bar_of=lambda w, y: False)
+        tm._drop_direction_for = partial(TabManager._drop_direction_for, tm)
+        src, dest = windows.id_map[src_id], windows.id_map[dest_id]
+        with patch('kitty.tabs.get_boss', return_value=SimpleNamespace(window_id_map=windows.id_map)):
+            quadrant, direction = TabManager._window_drop_target(tm, src_id, dest, *self.edge_points(dest.geometry)[edge])
+        return q, windows, src, dest, quadrant, direction
+
+    def test_reordering_layouts_drop_into_the_place_of_the_target(self):
+        # The highlight is the area the window will occupy: the whole target window, as the
+        # dropped window takes its place, moving the windows in between along
+        for layout_class in (Fat, Tall, Horizontal):
+            for src_id in range(1, 5):
+                for dest_id in range(1, 5):
+                    for edge in ('left', 'right', 'top', 'bottom'):
+                        if src_id == dest_id:
+                            continue
+                        with self.subTest(layout=layout_class.name, src=src_id, dest=dest_id, edge=edge):
+                            q, windows, src, dest, quadrant, direction = self.drop_target_in(layout_class, 4, src_id, dest_id, edge)
+                            self.ae(quadrant, 6)
+                            assert direction is not None
+                            dest_idx = [g.id for g in windows.groups].index(windows.group_for_window(dest).id)
+                            q.insert_window_next_to(windows, src, dest, direction in ('left', 'right'), direction in ('right', 'bottom'))
+                            self.ae([g.id for g in windows.groups].index(windows.group_for_window(src).id), dest_idx)
+
+    def test_splits_drop_on_the_side_the_window_is_already_on_swaps(self):
+        q = create_layout(Splits)
+        windows = create_windows(q, num=0)
+        for i, loc in ((1, None), (2, 'vsplit'), (3, 'hsplit')):
+            q.add_window(windows, Window(i), location=loc)
+        tab = SimpleNamespace(current_layout=q, windows=windows)
+        two, three = windows.id_map[2], windows.id_map[3]
+        for w in (two, three):
+            w.tabref = lambda: tab
+        two.geometry = region(500, 0, 1000, 400)  # two is above three
+        tm = SimpleNamespace(active_tab=tab, _pointer_in_title_bar_of=lambda w, y: False)
+        tm._drop_direction_for = partial(TabManager._drop_direction_for, tm)
+        with patch('kitty.tabs.get_boss', return_value=SimpleNamespace(window_id_map=windows.id_map)):
+            for edge, expected in (('bottom', (5, None)), ('top', (3, 'top')), ('left', (1, 'left'))):
+                self.ae(TabManager._window_drop_target(tm, 3, two, *self.edge_points(two.geometry)[edge]), expected)
+
     def test_axis_layouts_restrict_the_direction(self):
         central = region(0, 30, 1000, 800)
         g = region(5, 35, 995, 795)
@@ -991,7 +1045,8 @@ class TestWindowDropTargets(BaseTest):
         x, y = (g.left + g.right) // 2, (g.top + g.bottom) // 2 + 5
         dest = self.make_window(20, g, show_title_bar=True)
         src = self.make_window(10, g)
-        tm, regions = self.make_tab_manager([dest], central, region(0, 0, 1000, 30), mode=DragOverlayMode.axis_y)
+        # only splits places the window at the edge the pointer is closest to
+        tm, regions = self.make_tab_manager([dest], central, region(0, 0, 1000, 30), mode=DragOverlayMode.free)
         self.hide_title_bar_on_clear(tm, dest)
         boss = self.make_boss(src, dest)
         preview = self.drop_window(tm, regions, boss, x, y, 10)
