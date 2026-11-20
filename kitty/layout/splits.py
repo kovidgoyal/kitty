@@ -994,11 +994,24 @@ class Splits(Layout):
             self.pairs_root.swap_windows(before.id, after.id)
         return moved
 
+    def insert_window_next_to_changes_layout(self, all_windows: WindowList, window: 'WindowType', next_to: 'WindowType', horizontal: bool, after: bool) -> bool:
+        src_wg = all_windows.group_for_window(window)
+        dest_wg = all_windows.group_for_window(next_to)
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
+            return False
+        # Only a window that is already the sibling of next_to, split the same way and on
+        # the same side, ends up where it started
+        pair = self.pairs_root.pair_for_window(dest_wg.id)
+        if pair is None or pair.horizontal != horizontal:
+            return True
+        return (pair.one, pair.two) != ((dest_wg.id, src_wg.id) if after else (src_wg.id, dest_wg.id))
+
     def insert_window_next_to(self, all_windows: WindowList, window: 'WindowType', next_to: 'WindowType', horizontal: bool, after: bool) -> None:
         """Reposition an existing window as a split adjacent to next_to"""
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
-        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
+        # Re-inserting a window where it already is would reset the bias of its pair
+        if src_wg is None or dest_wg is None or not self.insert_window_next_to_changes_layout(all_windows, window, next_to, horizontal, after):
             return
         # Remove from current position in pairs_root
         self.remove_windows(src_wg.id)

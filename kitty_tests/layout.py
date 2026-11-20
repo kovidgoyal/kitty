@@ -314,6 +314,27 @@ class TestLayout(BaseTest):
         self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2]})
         self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'top': [2]})
 
+    def test_splits_reinsert_in_place(self):
+        # Only re-inserting a window on its current side of its sibling does nothing, and that must
+        # not reset the bias of the pair
+        q = create_layout(Splits)
+        windows = create_windows(q, num=0)
+        for i, loc in ((1, None), (2, 'vsplit'), (3, 'hsplit')):
+            q.add_window(windows, Window(i), location=loc)
+        w1, w2, w3 = (windows.id_map[i] for i in (1, 2, 3))
+        q.pairs_root.two.bias = 0.8  # w1 | (w2 over w3)
+        changes = q.insert_window_next_to_changes_layout
+        self.assertFalse(changes(windows, w3, w2, False, True))
+        self.assertTrue(changes(windows, w3, w2, False, False))
+        self.assertTrue(changes(windows, w3, w2, True, True))
+        self.assertTrue(changes(windows, w3, w1, True, True))
+        self.assertFalse(changes(windows, w3, w3, True, True))
+        before = q.pairs_root.serialize()
+        q.insert_window_next_to(windows, w3, w2, False, True)
+        self.ae(q.pairs_root.serialize(), before)
+        q.insert_window_next_to(windows, w3, w2, False, False)
+        self.ae(list(q.pairs_root.all_window_ids()), [1, 3, 2])
+
     def test_splits_unserialize_into_unused_layout(self):
         # Restoring the state of a layout that was not the active one when the session
         # was saved: its pairs tree is empty, and the window list must not be

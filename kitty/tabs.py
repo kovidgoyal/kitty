@@ -2593,15 +2593,39 @@ class TabManager:  # {{{
         if dest_window is None or dest_window.id == window_id or active_tab is None:
             self._set_drag_target_window(0)
             return
+        self._set_drag_target_window(dest_window.id, *self._window_drop_target(window_id, dest_window, x, y))
+
+    def _window_drop_target(self, window_id: int, dest_window: 'Window', x: int, y: int) -> tuple[int, DropDirection | None]:
+        """The quadrant of dest_window to highlight for a window dropped at x, y, which is the area the
+        window will occupy, and the edge of dest_window it is placed at, None to swap with dest_window."""
         if self._pointer_in_title_bar_of(dest_window, y):
-            # Title bar hover: full window + title bar highlight (swap)
-            self._set_drag_target_window(dest_window.id, 5)
-            return
+            return 5, None
         direction = self._drop_direction_for(dest_window, x, y)
-        # In full mode the whole window is highlighted, but the drop still inserts
-        # directionally, so the resolved direction has to be remembered.
-        quadrant = 6 if active_tab.current_layout.drag_overlay_mode is DragOverlayMode.full else quadrant_for_direction[direction]
-        self._set_drag_target_window(dest_window.id, quadrant, direction)
+        if (tab := self.active_tab) is None:
+            return quadrant_for_direction[direction], direction
+        layout, windows = tab.current_layout, tab.windows
+        mode = layout.drag_overlay_mode
+        if mode is DragOverlayMode.full:
+            # The whole window is highlighted, but the drop still inserts directionally
+            return 6, direction
+        w = get_boss().window_id_map.get(window_id)
+        src = None if w is None or w.tabref() is not tab else windows.group_for_window(w)
+        if mode is DragOverlayMode.free:
+            if (
+                w is not None
+                and src is not None
+                and not layout.insert_window_next_to_changes_layout(windows, w, dest_window, direction in ('left', 'right'), direction in ('right', 'bottom'))
+            ):
+                # The window is already on this side of dest_window, all that is left is to swap them
+                return 5, None
+            return quadrant_for_direction[direction], direction
+        # The windows can only be reordered, so the window takes the place of dest_window, moving
+        # the windows in between along, which is placing it after dest_window when moving it forward
+        dest = windows.group_for_window(dest_window)
+        after = src is not None and dest is not None and windows.groups.index(src) < windows.groups.index(dest)
+        if mode is DragOverlayMode.axis_y:
+            return 6, ('bottom' if after else 'top')
+        return 6, ('right' if after else 'left')
 
     def _insert_window_as_tab(self, window: Window, before_tab_id: int) -> None:
         "Put window into a tab of its own, placed before the tab before_tab_id, or last if zero"
@@ -2645,8 +2669,7 @@ class TabManager:  # {{{
         dest_window = self._find_window_at(x, y) if tab_target is None and in_central else None
         if dest_window is not None and dest_window.id == window_id:
             dest_window = None
-        on_title_bar = dest_window is not None and self._pointer_in_title_bar_of(dest_window, y)
-        direction = self._drop_direction_for(dest_window, x, y) if dest_window is not None and not on_title_bar else None
+        direction = None if dest_window is None else self._window_drop_target(window_id, dest_window, x, y)[1]
         self._clear_force_show_title_bars()
         w = boss.window_id_map.get(window_id)
         if w is None:

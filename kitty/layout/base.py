@@ -582,6 +582,17 @@ class Layout:
             # 'full' fallback: swap (preserves existing behaviour for Stack etc.)
             self.move_window_to_group(all_windows, dest_wg.id)
 
+    def insert_window_next_to_changes_layout(
+        self,
+        all_windows: WindowList,
+        window: WindowType,
+        next_to: WindowType,
+        horizontal: bool,
+        after: bool,
+    ) -> bool:
+        "Whether insert_window_next_to() with these arguments would change the layout"
+        return True
+
     def add_window(
         self,
         all_windows: WindowList,
