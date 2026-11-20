@@ -552,6 +552,9 @@ def add_timer(callback: Callable[[Optional[int]], None], interval: float, repeat
 def remove_timer(timer_id: int) -> None:
     pass
 
+def schedule_main_loop_callback(callback: Callable[[], None]) -> None:
+    pass
+
 def monitor_pid(pid: int) -> None:
     pass
 

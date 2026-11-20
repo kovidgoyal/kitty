@@ -89,6 +89,7 @@ from .fast_data_types import (
     pt_to_px,
     remove_timer,
     replace_c0_codes_except_nl_space_tab,
+    schedule_main_loop_callback,
     set_redirect_keys_to_overlay,
     set_window_logo,
     set_window_padding,
@@ -445,16 +446,15 @@ class Watchers:
 
 class DeferredWatcherCalls:
     """
-    Deliver watcher calls on the next main loop tick, in order, using a single
-    timer. Deferring prevents infinite recursion when a watcher causes the
-    event it is watching (for example, resizing in on_resize). Using a single
-    timer prevents bursts of events from exhausting the fixed size timer table.
+    Deliver watcher calls in order, sharing one scheduled callback per batch.
+    Deferring prevents infinite recursion when a watcher causes the event it
+    is watching (for example, resizing in on_resize).
     Calls made during delivery are delivered in the next batch.
     """
 
     def __init__(self) -> None:
         self.pending: list[tuple[Callable[[], Optional['Window']], str, dict[str, Any]]] = []
-        self.timer_id = 0
+        self.scheduled = False
 
     def __call__(self, windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
         w = windowref()
@@ -464,13 +464,14 @@ class DeferredWatcherCalls:
         self.schedule()
 
     def schedule(self) -> None:
-        if not self.timer_id and self.pending:
-            self.timer_id = add_timer(self.deliver, 0, False)
-            if not self.timer_id:
-                log_error(f'Failed to schedule delivery of {len(self.pending)} watcher calls, will retry on the next watched event')
+        if not self.scheduled and self.pending:
+            if not add_timer(self.deliver, 0, False):
+                # The firing timer still owns its slot until its callback returns.
+                schedule_main_loop_callback(self.deliver)
+            self.scheduled = True
 
-    def deliver(self, timer_id: int | None) -> None:
-        self.timer_id = 0
+    def deliver(self, timer_id: int | None = None) -> None:
+        self.scheduled = False
         batch, self.pending = self.pending, []
         delivered = 0
         try:

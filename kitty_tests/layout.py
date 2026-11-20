@@ -1751,6 +1751,7 @@ class TestWindowHelpers(BaseTest):
 
     def test_deferred_watcher_calls(self):
         timers = []
+        main_loop_callbacks = []
         next_timer_id = [0]
 
         def add_timer(callback, interval, repeats=True):
@@ -1760,10 +1761,21 @@ class TestWindowHelpers(BaseTest):
             next_timer_id[0] += 1
             return next_timer_id[0]
 
+        def fire_timer():
+            try:
+                timers[0](1)
+            finally:
+                timers.pop(0)
+
         def fire_timers():
             while timers:
-                callback = timers.pop(0)
-                callback(1)
+                fire_timer()
+
+        def tick_main_loop():
+            callbacks = main_loop_callbacks[:]
+            main_loop_callbacks.clear()
+            for callback in callbacks:
+                callback()
 
         delivered = []
 
@@ -1779,7 +1791,7 @@ class TestWindowHelpers(BaseTest):
                 if data.get('recurse'):
                     dc(weakref.ref(self), 'on_resize', {'n': data['n'] + 1000})
 
-        with patch('kitty.window.add_timer', add_timer), patch('kitty.window.log_error', lambda *a: None):
+        with patch('kitty.window.add_timer', add_timer), patch('kitty.window.schedule_main_loop_callback', main_loop_callbacks.append):
             dc = DeferredWatcherCalls()
             windows = [FakeWindow(i) for i in range(10)]
             unwatched = FakeWindow(-1, watched=False)
@@ -1797,7 +1809,7 @@ class TestWindowHelpers(BaseTest):
             # calls made during delivery go to the next batch
             del delivered[:]
             dc(weakref.ref(windows[0]), 'on_resize', {'n': 1, 'recurse': True})
-            timers.pop(0)(1)
+            fire_timer()
             self.ae(delivered, [(0, 1)])
             self.ae(len(timers), 1)
             fire_timers()
@@ -1827,22 +1839,35 @@ class TestWindowHelpers(BaseTest):
             dc(weakref.ref(bad), 'on_resize', {'n': 2})
             dc(weakref.ref(windows[1]), 'on_resize', {'n': 3})
             with self.assertRaises(Interrupted):
-                timers.pop(0)(1)
+                fire_timer()
             self.ae(delivered, [(0, 1)])
             self.ae(len(timers), 1)
             fire_timers()
             self.ae(delivered, [(0, 1), (1, 3)])
 
-            # if the timer cannot be added, calls are kept and retried on the next event
+            # A one-shot timer still occupies its slot while its callback queues watcher calls.
             del delivered[:]
-            timers.extend([lambda timer_id: None] * 128)
-            dc(weakref.ref(windows[2]), 'on_resize', {'n': 1})
-            self.ae(dc.timer_id, 0)
-            del timers[:]
-            dc(weakref.ref(windows[3]), 'on_resize', {'n': 2})
-            self.ae(len(timers), 1)
-            fire_timers()
+
+            def queue_while_full(timer_id):
+                dc(weakref.ref(windows[2]), 'on_resize', {'n': 1})
+                dc(weakref.ref(windows[3]), 'on_resize', {'n': 2})
+
+            add_timer(queue_while_full, 0, False)
+            timers.extend([lambda timer_id: None] * 127)
+            fire_timer()
+            self.ae(delivered, [])
+            tick_main_loop()
             self.ae(delivered, [(2, 1), (3, 2)])
+
+            # The delivery timer itself can occupy the last slot when a watcher queues more work.
+            timers.clear()
+            del delivered[:]
+            dc(weakref.ref(windows[0]), 'on_resize', {'n': 1, 'recurse': True})
+            timers.extend([lambda timer_id: None] * 127)
+            fire_timer()
+            self.ae(delivered, [(0, 1)])
+            tick_main_loop()
+            self.ae(delivered, [(0, 1), (0, 1001)])
 
     def test_global_watchers(self):
         opts = SimpleNamespace(watcher={})

@@ -1440,6 +1440,32 @@ remove_python_timer(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *pending_main_loop_callbacks;
+
+static PyObject *
+schedule_main_loop_callback(PyObject *self UNUSED, PyObject *callback) {
+    if (!PyCallable_Check(callback)) return PyErr_Format(PyExc_TypeError, "Expected a callable");
+    if (!pending_main_loop_callbacks) {
+        pending_main_loop_callbacks = PyList_New(0);
+        if (!pending_main_loop_callbacks) return NULL;
+    }
+    if (PyList_Append(pending_main_loop_callbacks, callback) < 0) return NULL;
+    request_tick_callback();
+    Py_RETURN_NONE;
+}
+
+static void
+run_pending_main_loop_callbacks(void) {
+    RAII_PyObject(callbacks, pending_main_loop_callbacks);
+    // Callbacks queued during delivery belong to the next tick.
+    pending_main_loop_callbacks = NULL;
+    if (!callbacks) return;
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(callbacks); i++) {
+        RAII_PyObject(result, PyObject_CallNoArgs(PyList_GET_ITEM(callbacks, i)));
+        if (!result) PyErr_Print();
+    }
+}
+
 
 static void
 process_pending_resizes(monotonic_t now) {
@@ -1679,6 +1705,7 @@ process_global_state(void *data) {
     bool state_check_timer_enabled = false;
     bool input_read = false;
 
+    run_pending_main_loop_callbacks();
     monotonic_t now = monotonic();
     if (global_state.has_pending_resizes) {
         process_pending_resizes(now);
@@ -1711,6 +1738,7 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
 #define main_loop_doc "The main thread loop"
     state_check_timer = add_main_loop_timer(1000, true, do_state_check, self, NULL);
     run_main_loop(process_global_state, self);
+    Py_CLEAR(pending_main_loop_callbacks);
 #ifdef __APPLE__
     cocoa_free_actions_data();
 #endif
@@ -2639,6 +2667,7 @@ static PyMethodDef module_methods[] = {
     METHODB(safe_pipe, METH_VARARGS),
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
+    METHODB(schedule_main_loop_callback, METH_O),
     METHODB(monitor_pid, METH_VARARGS),
     METHODB(send_data_to_peer, METH_VARARGS),
     METHODB(cocoa_set_menubar_title, METH_VARARGS),
