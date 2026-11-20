@@ -1225,14 +1225,6 @@ static void
 screen_cursor_back1(Screen *s, unsigned int count) {
     screen_cursor_move(s, count, -1, false);
 }
-static void
-screen_tabn(Screen *s, unsigned int count) {
-    for (index_type i = 0; i < MAX(1u, count); i++) {
-        index_type x = s->cursor->x;
-        screen_tab(s);
-        if (s->cursor->x == x) break;
-    }
-}
 
 static const char *
 repr_csi_params(int *params, unsigned int num_params) {
@@ -1507,6 +1499,10 @@ dispatch_csi(PS *self) {
         case 'x':
             if (!start_modifier && end_modifier == '*') { CALL_CSI_HANDLER1(screen_decsace, 0); }
             REPORT_ERROR("Unknown CSI x sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
+            break;
+        case 'k':
+            if (end_modifier == ' ' && !start_modifier) { CALL_CSI_HANDLER2(screen_set_bidi_direction, 0, 0); }
+            REPORT_ERROR("Unknown CSI k sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             break;
         case DECSCUSR:
             if (end_modifier == ' ') {

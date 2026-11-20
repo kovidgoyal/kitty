@@ -92,12 +92,29 @@ typedef union LineAttrs {
         uint8_t has_dirty_text : 1;
         uint8_t has_image_placeholders : 1;
         uint8_t prompt_kind : 2;
-        // named so that initializers zero it, see CPUCell
-        uint8_t padding : 4;
+        // the bidi controls the line was first written under in implicit mode
+        uint8_t bidi_stamp : 2;
+        uint8_t bidi_rtl : 1;
+        uint8_t bidi_auto : 1;
     };
     uint8_t val;
 } LineAttrs;
+enum { BIDI_STAMP_NONE, BIDI_STAMP_IMPLICIT };
 static_assert(sizeof(LineAttrs) == sizeof(uint8_t), "Fix the ordering of LineAttrs");
+
+// A record
+static inline bool
+line_has_bidi_bits(LineAttrs a) {
+    return a.bidi_stamp != BIDI_STAMP_NONE;
+}
+
+// Copies the record of src, or clears it when src has none
+static inline void
+line_attrs_set_bidi(LineAttrs *dest, LineAttrs src) {
+    dest->bidi_stamp = src.bidi_stamp;
+    dest->bidi_rtl = src.bidi_rtl;
+    dest->bidi_auto = src.bidi_auto;
+}
 
 
 typedef struct {

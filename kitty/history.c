@@ -254,6 +254,11 @@ historybuf_cpu_cells(HistoryBuf *self, index_type lnum) {
     return cpu_lineptr(self, index_of(self, lnum));
 }
 
+LineAttrs *
+historybuf_attrs(HistoryBuf *self, index_type lnum) {
+    return attrptr(self, index_of(self, lnum));
+}
+
 void
 historybuf_mark_line_clean(HistoryBuf *self, index_type y) {
     attrptr(self, index_of(self, y))->has_dirty_text = false;

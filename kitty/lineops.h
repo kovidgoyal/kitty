@@ -89,6 +89,16 @@ line_is_empty(const Line *line) {
     return true;
 }
 
+// Whether the line has a bidi record. A line holding no text has none: a record it kept is dropped, so that the next text written
+// to it records the controls current then.
+static inline bool
+line_has_bidi_record(LineAttrs *a, const Line *line) {
+    if (a->bidi_stamp == BIDI_STAMP_NONE) return false;
+    if (!line_is_empty(line)) return true;
+    line_attrs_set_bidi(a, (LineAttrs){0});
+    return false;
+}
+
 typedef Line *(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
@@ -144,6 +154,7 @@ void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 bool historybuf_init_line_for_render(HistoryBuf *self, index_type lnum, Line *l, index_type num_rows);
 bool history_buf_endswith_wrap(HistoryBuf *self);
 CPUCell *historybuf_cpu_cells(HistoryBuf *self, index_type num);
+LineAttrs *historybuf_attrs(HistoryBuf *self, index_type num);
 void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_set_line_has_image_placeholders(HistoryBuf *self, index_type y, bool val);
