@@ -1706,12 +1706,120 @@ class TestBidiReorder(BaseTest):
                 s = self.written('x' * (offset - 1) + text, cols=60, pixel_scroll=False)
                 self.ae(visual(s)[offset - 1 :].replace('⁧', '').replace('⁩', ''), 'bd)abc(')
 
+    def test_leading_mark_direction(self):
+        # a leading mark sets the base direction of the paragraph it starts
+        for data, want in (
+            (RLM + 'abc', '       abc'),
+            (LRM + A, A[::-1]),
+            (A, '       ' + A[::-1]),
+            (RLM + 'a\r' + LRM + A, A[::-1]),
+            (RLM + '\x1b[31mabc', '       abc'),
+            ('abc\r' + RLM, '       abc'),
+            (RLM + LRM + 'abc', 'abc'),
+            (RLM + '\x1b[8l\x1b[8habc', '       abc'),
+        ):
+            with self.subTest(data=data):
+                self.ae(visual(self.written(data, AUTO)), want)
+        # the direction is that of the whole paragraph
+        s = self.written(RLM + 'abcdefghijkl', AUTO, lines=2)
+        self.ae([visual(s, y) for y in (0, 1)], ['abcdefghij', '        kl'])
+        # without ?2501 the mark changes nothing
+        for seqs, data, want in (
+            ((), RLM + 'abc', 'abc'),
+            ((), RLM + '1 2', '1 2'),
+            ((SCP_RTL,), LRM + A, '       ' + A[::-1]),
+            ((SCP_RTL,), LRM + 'abc', '       abc'),
+        ):
+            with self.subTest(seqs=seqs, data=data):
+                self.ae(visual(self.written(data, *seqs)), want)
+        s = self.written(RLM + 'abc' + '\r\n' * 5, AUTO, lines=5)
+        s.scroll(1, True)
+        frame(s)
+        self.ae(''.join(s.cpu_cells(-1, x)['text'] or ' ' for x in order(s)).rstrip(), '       abc')
+
+    def test_tab_after_leading_mark(self):
+        # a tab after a leading mark moves the cursor as CUP does, and the mark still sets the paragraph direction: left to right
+        # with the Hebrew reversed among its own cells, or right to left
+        ltr = [(*range(8), 9, 8), tuple(range(10))]
+        rtl = [(8, 9, *range(7, -1, -1)), tuple(range(9, -1, -1))]
+        for mark, text, want in ((LRM, A, ltr), (RLM, 'abc', rtl)):
+            with self.subTest(mark=mark):
+                moved = orders(self.written(mark + '\x1b[1;9H' + text, AUTO, lines=2))
+                self.ae((orders(self.written(mark + '\t' + text, AUTO, lines=2)), moved), (want, want))
+
+    def test_leading_mark_on_a_blank_line(self):
+        # A mark on a line holding no text sets only the direction its first text written in bidi mode takes: the line has no
+        # map and the cursor stays at its cell
+        for mark, rtl in ((LRM, False), (RLM, True)):
+            with self.subTest(mark=mark):
+                s = self.written(mark, AUTO)
+                frame(s)
+                self.ae((s.test_bidi_line_record(0), order(s), s.test_cursor_x(CURSOR_BLOCK)[0]), ((0, rtl, True), None, 0))
+        # text written once the mode is off is laid out as on a screen that never set it
+        prompt = 'user@host:~$ ls'
+        for pre in (RLM + '\x1b[8l', RLM + '\x1b[?2501l\x1b[8l'):
+            for data in ('abc', A, '12 34', prompt, '%' + ' ' * 19 + '\r' + prompt):
+                with self.subTest(pre=pre, data=data):
+                    s, plain = self.screen(AUTO, cols=20, lines=2), self.create_screen(cols=20, lines=2, options={})
+                    pb(s, pre)
+                    frame(s)
+                    pb(s, data)
+                    pb(plain, data)
+                    seen = [([x.cpu_cells(0, c)['text'] for c in range(20)], orders(x)[0], visual(x)) for x in (s, plain)]
+                    self.ae((seen[0], s.test_bidi_line_record(0)[0]), (seen[1], 0))
+        # an erase of the line, still blank, keeps the direction, with an upload before it too
+        for upload in (False, True):
+            with self.subTest(upload=upload):
+                s = self.written(RLM, AUTO)
+                if upload:
+                    frame(s)
+                pb(s, '\x1b[2Kabc')
+                self.ae((s.test_bidi_line_record(0), visual(s)), ((1, True, False), '       abc'))
+
+    def test_leading_mark_on_a_blank_line_through_the_history(self):
+        # The direction goes into the history with its line and comes back with it, by a scroll down or by a resize, with an
+        # upload of a screen holding no other bidi state before or not, and outlives an erase of the still blank line
+        back = {'resize': lambda s: s.resize(6, 10), 'SD from the history': lambda s: pb(s, '\x1b[+T')}
+        for (name, pull), upload, erase in product(back.items(), (False, True), ('', '\x1b[2K')):
+            with self.subTest(name, upload=upload, erase=erase):
+                s = self.screen(AUTO, RLM + '\x1b[5;1H\n', scrollback_fill_enlarged_window=True)
+                self.ae(s.test_bidi_line_record(0), (0, False, False))
+                if upload:
+                    frame(s)
+                pull(s)
+                self.ae(s.test_bidi_line_record(0), (0, True, True))
+                pb(s, '\x1b[H' + erase + 'abc')
+                self.ae(visual(s), '       abc')
+        # on a history line whose text, the top row of a scaled char written with bidi mode off, is removed through its screen
+        # row, it outlives the removal
+        for upload in (False, True):
+            with self.subTest('scaled char', upload=upload):
+                s = self.screen('\x1b[8l\x1b[2;1H\x1b]66;s=2;z\x07\x1b[8h', AUTO, '\x1b[2;1H' + RLM + '\x1b[8l\x1b[3;1H\n\n', lines=3)
+                if upload:
+                    frame(s)
+                pb(s, '\x1b[1;1H\x1b[2K\x1b[+T')
+                self.ae(s.test_bidi_line_record(0), (0, True, True))
+                pb(s, '\x1b[8h\x1b[Habc')
+                self.ae(visual(s), '       abc')
+
+    def test_leading_isolate_layout(self):
+        # an isolate after a char is honoured, one with no previous cell is dropped as without bidi mode
+        rli, pdi = ISOLATES[1], ISOLATES[3]
+        self.ae(orders(self.written('x' + rli + '12 34' + pdi))[0][:6], (0, 4, 5, 3, 1, 2))
+        for seqs in ((), (AUTO,)):
+            with self.subTest(seqs=seqs):
+                s = self.written(rli + '12 34' + pdi, *seqs)
+                self.ae((orders(s)[0], visual(s)), (None, '12 34' + pdi))
+                s = self.written(rli + pdi + 'ls -la', *seqs)
+                self.ae((orders(s)[0], visual(s)), (None, 'ls -la'))
+
     def test_line_left_without_text_by_a_scaled_char(self):
-        # A line left without text by removing a scaled char through its other row, or in the history, has no record: text
-        # written to it later is laid out as on a fresh screen, with bidi mode off or on
+        # A line left without text by removing a scaled char through its other row, or in the history, has no record nor a
+        # mark's direction: text written to it later is laid out as on a fresh screen, with bidi mode off or on
         s2 = '\x1b]66;s=2;א\x07'
         for lines, data, text in (
             (5, s2 + '\x1b[8l\x1b[2;1H\x1b[2K', A + ' abc'),
+            (5, AUTO + RLM + '\x1b[8l\x1b[1;1H\x1b]66;s=2;ab\x07\x1b[2;1H\x1b[2K', '\x1b[8h' + AUTO + 'abc ' + A),
             (3, '\x1b[2;1H' + s2 + '\x1b[3;1H\n\n\x1b[8l\x1b[1;1H\x1b[2K\x1b[+T', A + ' abc'),
             # a wide char written in place of a one-cell char in the last column wraps
             (5, SCP_RTL + '\x1b[1;10H\x1b]66;w=1;א\x07\x1b[8l\x1b[1;10H中\x1b[2;1H\x1b[K', A + ' abc'),
@@ -2209,6 +2317,10 @@ class TestBidiReorder(BaseTest):
             # the moved text keeps its settings on a row without text beside the region
             ('nothing beside', at(1) + SCP_RTL + A, at(2) + SCP_LTR + 'abc', (20,), (' ' * 5 + 'abc', (1, False, False))),
             ('bidi off text onto a recorded row', at(1) + A, at(2) + off(A), (20,), (' ' * 5 + A, (0, False, False))),
+            # blank cells onto a row without text keep the direction a leading mark set for its first text
+            ('blank cells onto a row a mark primed', AUTO + '\x1b[H' + RLM, '', (20,), ('', (0, True, True))),
+            # bidi off text onto it drops that direction, as when written there
+            ('bidi off text onto a row a mark primed', AUTO + '\x1b[H' + RLM, at(2) + off('abc'), (20,), (' ' * 5 + 'abc', (0, False, False))),
             # a row with text beside the region keeps what it has
             ('recorded text onto bidi off text', off(A), at(2) + A, (20,), (A + '  ' + A, (0, False, False))),
             ('onto a recorded row with text beside', SCP_RTL + 'אבגדה', at(2) + SCP_LTR + 'abc', (20,), ('הדגבא' + ' ' * 7 + 'abc', (1, True, False))),
