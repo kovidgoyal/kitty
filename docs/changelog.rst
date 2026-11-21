@@ -157,6 +157,8 @@ Detailed list of changes
 
 - Preserve non-ASCII hyperlink IDs and URLs when exporting terminal text with ANSI formatting. Also replace invalid UTF-8 in hyperlinks with U+FFFD and control characters with their graphical alternatives, and do not split multi-byte characters when truncating very long hyperlinks, which could cause errors when clicking them (:pull:`10909`)
 
+- macOS: Fix multiple font files sharing the same PostScript name causing incorrect variant to be loaded sometimes (:iss:`10906`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

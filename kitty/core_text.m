@@ -256,7 +256,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
 }
 
 static CTFontDescriptorRef
-font_descriptor_from_python(PyObject *src) {
+font_descriptor_from_python(PyObject *src, bool use_path) {
     CTFontSymbolicTraits symbolic_traits = 0;
     RAII_CoreFoundation(CFMutableDictionaryRef, ans, CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     PyObject *t = PyDict_GetItemString(src, "traits");
@@ -283,6 +283,18 @@ font_descriptor_from_python(PyObject *src) {
     SET(style, kCTFontStyleNameAttribute);
     SET(postscript_name, kCTFontNameAttribute);
 #undef SET
+    // Pin the descriptor to the font file it came from, as different font
+    // files can have the same PostScript name, for example, the default named
+    // instance of a variable font and the corresponding static font.
+    if (use_path && (t = PyDict_GetItemString(src, "path")) && PyUnicode_Check(t)) {
+        Py_ssize_t sz;
+        const char *path = PyUnicode_AsUTF8AndSize(t, &sz);
+        if (!path) return NULL;
+        if (sz) {
+            RAII_CoreFoundation(CFURLRef, url, CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (const unsigned char *)path, sz, false));
+            if (url) CFDictionaryAddValue(ans, kCTFontURLAttribute, url);
+        }
+    }
     if ((t = PyDict_GetItemString(src, "axis_map"))) {
         RAII_CoreFoundation(
             CFMutableDictionaryRef, axis_map, CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
@@ -297,7 +309,9 @@ font_descriptor_from_python(PyObject *src) {
         }
         CFDictionaryAddValue(ans, kCTFontVariationAttribute, axis_map);
     }
-    return CTFontDescriptorCreateWithAttributes(ans);
+    CTFontDescriptorRef desc = CTFontDescriptorCreateWithAttributes(ans);
+    if (!desc) PyErr_SetString(PyExc_ValueError, "Failed to create CTFontDescriptor object");
+    return desc;
 }
 
 static CTFontCollectionRef all_fonts_collection_data = NULL;
@@ -744,9 +758,28 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
             }
         }
     }
-    if (!desc) desc = font_descriptor_from_python(descriptor);
-    if (!desc) return NULL;
-    RAII_CoreFoundation(CTFontRef, font, CTFontCreateWithFontDescriptor(desc, fg ? scaled_point_sz(fg) : 12, NULL));
+    const CGFloat sz = fg ? scaled_point_sz(fg) : 12;
+    RAII_CoreFoundation(CTFontRef, font, NULL);
+    if (desc) font = CTFontCreateWithFontDescriptor(desc, sz, NULL);
+    else {
+        desc = font_descriptor_from_python(descriptor, true);
+        if (!desc) return NULL;
+        font = CTFontCreateWithFontDescriptor(desc, sz, NULL);
+        PyObject *dpath = PyDict_GetItemString(descriptor, "path");
+        if (font && dpath && PyUnicode_Check(dpath) && PyUnicode_GET_LENGTH(dpath)) {
+            // If the font file no longer exists CoreText returns some unrelated
+            // default font, so fall back to matching without the path.
+            RAII_PyObject(path, get_path_for_font(font));
+            if (!path) return NULL;
+            if (PyUnicode_Compare(path, dpath) != 0) {
+                CFRelease(font); font = NULL;
+                CFRelease(desc);
+                desc = font_descriptor_from_python(descriptor, false);
+                if (!desc) return NULL;
+                font = CTFontCreateWithFontDescriptor(desc, sz, NULL);
+            }
+        }
+    }
     if (!font) {
         PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object");
         return NULL;

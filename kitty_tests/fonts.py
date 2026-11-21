@@ -183,6 +183,31 @@ class Selection(BaseTest):
             self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
             self.ae(face_from_descriptor(ff['bold']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
+    def test_face_loaded_from_descriptor_path(self):
+        # Fonts in different files can share a PostScript name, for example the
+        # default named instance of a variable font and the corresponding static
+        # font. The face must be loaded from the file the descriptor came from.
+        if not is_macos:
+            self.skipTest('Only CoreText looks up fonts by name')
+        from kitty.fast_data_types import CTFace, add_font_file, coretext_all_fonts
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ComfyCode-Regular.ttf')
+        with tempfile.TemporaryDirectory() as tdir:
+            names = 'a.ttf', 'b.ttf'
+            for name in names:
+                p = os.path.join(tdir, name)
+                with open(src, 'rb') as s, open(p, 'wb') as d:
+                    d.write(s.read())
+                self.assertTrue(add_font_file(p))
+            # CoreText reports paths without resolving symlinks such as /var -> /private/var
+            descriptors = [d for d in coretext_all_fonts(False) if d['family'] == 'Comfy Code' and os.path.basename(d['path']) in names]
+            self.ae(len(descriptors), len(names))
+            self.ae(len({d['postscript_name'] for d in descriptors}), 1)
+            for d in descriptors:
+                self.ae(CTFace(descriptor=d).path, d['path'])
+            # A descriptor whose file no longer exists falls back to matching by name
+            d = dict(descriptors[0], path=os.path.join(tdir, 'missing.ttf'))
+            self.ae(CTFace(descriptor=d).postscript_name(), descriptors[0]['postscript_name'])
+
     def test_invalid_font_feature(self):
         with self.assertRaises(ValueError) as cm:
             ParsedFontFeature('!!bad!!')
