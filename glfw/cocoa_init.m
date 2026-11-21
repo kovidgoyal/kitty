@@ -1048,8 +1048,12 @@ create_tick_source(void) {
 static void
 queue_tick_callback(void) {
     CFRunLoopSourceSignal(tick_source);
-    // A running main thread checks signalled sources before it sleeps
-    if (!pthread_main_np()) CFRunLoopWakeUp(main_run_loop);
+    // Wake the run loop even on the main thread, as a source signalled from a
+    // kCFRunLoopBeforeWaiting observer, such as the AppKit display pass that calls
+    // updateLayer, is not checked again before the run loop sleeps. Since
+    // tick_callback_requested stays set until the tick runs, that would also make
+    // every later request, such as from the I/O thread, a no-op.
+    CFRunLoopWakeUp(main_run_loop);
 }
 
 void
@@ -1152,10 +1156,11 @@ timer_fired(CFRunLoopTimerRef os_timer, void *info) {
         if (timers[i].id == id) {
             const Timer timer = timers[i];
             if (timer.repeats) {
-                // Keep to the schedule, like a repeating NSTimer, unless it has fallen behind
+                // Keep to the schedule, like a repeating NSTimer, unless it has fallen
+                // behind or, as CFAbsoluteTime is wall clock time, the clock was set back
                 const CFAbsoluteTime now = CFAbsoluteTimeGetCurrent(), interval = monotonic_t_to_s_double(timer.interval);
                 timers[i].fire_at += interval;
-                if (timers[i].fire_at < now) timers[i].fire_at = now + interval;
+                if (timers[i].fire_at < now || timers[i].fire_at > now + interval) timers[i].fire_at = now + interval;
                 CFRunLoopTimerSetNextFireDate(os_timer, timers[i].fire_at);
             } else {
                 CFRunLoopTimerSetNextFireDate(os_timer, DISARMED_FIRE_DATE);
