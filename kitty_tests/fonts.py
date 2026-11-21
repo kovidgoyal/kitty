@@ -190,6 +190,7 @@ class Selection(BaseTest):
         if not is_macos:
             self.skipTest('Only CoreText looks up fonts by name')
         from kitty.fast_data_types import CTFace, add_font_file, coretext_all_fonts
+
         src = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ComfyCode-Regular.ttf')
         with tempfile.TemporaryDirectory() as tdir:
             names = 'a.ttf', 'b.ttf'

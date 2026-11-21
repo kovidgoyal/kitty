@@ -772,7 +772,8 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
             RAII_PyObject(path, get_path_for_font(font));
             if (!path) return NULL;
             if (PyUnicode_Compare(path, dpath) != 0) {
-                CFRelease(font); font = NULL;
+                CFRelease(font);
+                font = NULL;
                 CFRelease(desc);
                 desc = font_descriptor_from_python(descriptor, false);
                 if (!desc) return NULL;
