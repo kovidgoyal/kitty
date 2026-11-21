@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+# License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
+
+# Fast-forward the current branch of this tree to the same branch in the
+# kitty source tree on the ox machine, copying over any new commits.
+
+import os
+import shlex
+import subprocess
+import sys
+
+HOST = 'ox'
+REMOTE_PATH = '~/kitty-src'
+
+base = os.path.dirname(os.path.abspath(__file__))
+os.chdir(base)
+
+
+def run(what: str) -> None:
+    ret = subprocess.run(shlex.split(what))
+    if ret.returncode != 0:
+        raise SystemExit(ret.returncode)
+
+
+def output(what: str) -> None:
+    return subprocess.check_output(shlex.split(what)).decode('utf-8').strip()
+
+
+branch = sys.argv[1] if len(sys.argv) > 1 else output('git branch --show-current')
+if not branch:
+    raise SystemExit('Not on a branch and no branch specified')
+if output('git status --porcelain --untracked-files=no'):
+    raise SystemExit('Working tree has uncommitted changes, aborting')
+if output('git branch --show-current') != branch:
+    run(f'git checkout {branch}')
+
+before = output('git rev-parse HEAD')
+run(f'git fetch ssh://{HOST}/{REMOTE_PATH} {branch}')
+run('git merge --ff-only FETCH_HEAD')
+after = output('git rev-parse HEAD')
+if before != after:
+    run(f'git log --oneline {before}..{after}')
