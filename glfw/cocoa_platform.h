@@ -275,7 +275,6 @@ unsigned _glfwCreateDisplayLink(CGDirectDisplayID);
 void _glfwRequestRenderFrame(_GLFWwindow *w);
 
 // event loop
-void _glfwDispatchTickCallback(void);
 void _glfwCocoaPostEmptyEvent(void);
 
 uint32_t vk_to_unicode_key_with_current_layout(uint16_t keycode);
