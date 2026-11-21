@@ -609,6 +609,8 @@ does not support the queried action, or does not support feature queries at
 all, and the client has to fall back to other means of detecting features.
 
 
+.. _graphics_display_images:
+
 Display images on screen
 -----------------------------
 
@@ -1316,6 +1318,8 @@ Key      Value                 Default    Description
          )``.
 =======  ====================  =========  =================
 
+
+.. _graphics_interaction:
 
 Interaction with other terminal actions
 --------------------------------------------
