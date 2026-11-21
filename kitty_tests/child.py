@@ -280,7 +280,7 @@ class LaunchWrapperTest(BaseTest):
         load_prefix_func.clear_override()
         super().tearDown()
 
-    def _fork(self, argv=('/bin/prog', 'arg'), launch_request=None, hold=False, user_func=None, cwd='/'):
+    def _fork(self, argv=('/bin/prog', 'arg'), launch_request=None, hold=False, user_func=None, cwd='/', env=None):
         # Fork a Child with spawning faked, returning the Child and the
         # exe and argv that would have been spawned
         from kitty import child as child_module
@@ -294,7 +294,7 @@ class LaunchWrapperTest(BaseTest):
             return 1234567
 
         boss = SimpleNamespace(encryption_public_key='key', listening_on='', window_id_map={})
-        c = Child(list(argv), cwd, env={'KITTY_WINDOW_ID': '7'}, hold=hold, launch_request=launch_request)
+        c = Child(list(argv), cwd, env={'KITTY_WINDOW_ID': '7', **(env or {})}, hold=hold, launch_request=launch_request)
         with (
             patch.object(child_module.fast_data_types, 'spawn', spawn),
             patch.object(child_module.fast_data_types, 'get_boss', return_value=boss),
@@ -590,6 +590,74 @@ read -r _
                 c, exe, argv = self._fork(launch_request=req, user_func=self._recording(empty))
                 self.ae(argv, ('/bin/prog', 'arg'))
         self.ae(len(errors), 6)
+
+    def test_launch_wrapper_unresolved_argv(self):
+        # The program is run as requested, so that the wrapper looks it up in
+        # PATH, unless PATH would not find what kitty found
+        from kitty import child as child_module
+        from kitty.launch_wrapper import LaunchRequest
+
+        req = LaunchRequest('tab')
+        with tempfile.TemporaryDirectory() as tdir:
+            on_path, off_path, alt_path = os.path.join(tdir, 'on'), os.path.join(tdir, 'off'), os.path.join(tdir, 'alt')
+            for d, name in ((on_path, 'kitty-test-prog'), (off_path, 'kitty-test-other'), (alt_path, 'kitty-test-prog')):
+                os.makedirs(d, exist_ok=True)
+                exe = os.path.join(d, name)
+                with open(exe, 'w') as f:
+                    f.write('#!/bin/sh\n')
+                os.chmod(exe, 0o755)
+            path = os.pathsep.join((on_path, os.environ.get('PATH', os.defpath)))
+            self.set_options({'shell_integration': frozenset({'disabled'}), 'exe_search_path': {off_path: off_path}})
+            prog, other = os.path.join(on_path, 'kitty-test-prog'), os.path.join(off_path, 'kitty-test-other')
+            with patch.dict(os.environ, {'PATH': path}):
+                wrapper = self._recording(['/bin/wrapper'])
+                # Found in PATH, kept as requested
+                c, exe, argv = self._fork(argv=('kitty-test-prog', 'arg'), launch_request=req, user_func=wrapper)
+                self.ae(self.contexts[-1].argv, ('kitty-test-prog', 'arg'))
+                self.ae(argv, ('/bin/wrapper', 'kitty-test-prog', 'arg'))
+                self.ae(c.resolved_exe, prog)
+                # and without a wrapper, the resolved executable is run
+                c, exe, argv = self._fork(argv=('kitty-test-prog', 'arg'))
+                self.ae(argv, ('kitty-test-prog', 'arg'))
+                self.ae(exe, prog)
+                # Found only via exe_search_path, not in the PATH the child
+                # gets, so the full path is used
+                c, exe, argv = self._fork(argv=('kitty-test-other', 'arg'), launch_request=req, user_func=wrapper)
+                self.ae(self.contexts[-1].argv, (other, 'arg'))
+                self.ae(argv, ('/bin/wrapper', other, 'arg'))
+                # PATH in the child environment finds a different executable
+                # than kitty does
+                c, exe, argv = self._fork(argv=('kitty-test-prog',), launch_request=req, user_func=wrapper, env={'PATH': alt_path})
+                self.ae(self.contexts[-1].argv, (prog,))
+                # Relative entries in PATH are relative to the working
+                # directory of the child
+                c, exe, argv = self._fork(argv=('kitty-test-prog',), launch_request=req, user_func=wrapper, env={'PATH': '.'}, cwd=on_path)
+                self.ae(self.contexts[-1].argv, ('kitty-test-prog',))
+                c, exe, argv = self._fork(argv=('kitty-test-prog',), launch_request=req, user_func=wrapper, env={'PATH': '.'}, cwd=off_path)
+                self.ae(self.contexts[-1].argv, (prog,))
+                # Not found at all, left as is
+                c, exe, argv = self._fork(argv=('kitty-test-missing',), launch_request=req, user_func=wrapper)
+                self.ae(self.contexts[-1].argv, ('kitty-test-missing',))
+                # Paths are never modified
+                c, exe, argv = self._fork(argv=(prog,), launch_request=req, user_func=wrapper)
+                self.ae(self.contexts[-1].argv, (prog,))
+                # The default shell is recognized when requested by name
+                self.set_options({'shell_integration': frozenset({'disabled'}), 'shell': prog})
+                with patch.object(child_module, 'shell_path', prog):
+                    c, exe, argv = self._fork(argv=('kitty-test-prog',), launch_request=req, user_func=wrapper)
+                    self.assertTrue(c.is_default_shell)
+                    self.assertTrue(self.contexts[-1].is_default_shell)
+                    c, exe, argv = self._fork(argv=('kitty-test-prog', 'arg'), launch_request=req, user_func=wrapper)
+                    self.assertFalse(self.contexts[-1].is_default_shell)
+                # The shell is recognized when it is found via a different
+                # path to the same file
+                link = os.path.join(tdir, 'kitty-test-link')
+                os.symlink(prog, link)
+                self.set_options({'shell_integration': frozenset({'disabled'}), 'shell': link})
+                with patch.object(child_module, 'shell_path', link):
+                    c, exe, argv = self._fork(argv=('kitty-test-prog',), launch_request=req, user_func=wrapper)
+                    self.assertTrue(c.is_default_shell)
+                    self.assertTrue(self.contexts[-1].is_default_shell)
 
     def test_launch_wrapper_default_bash_with_shell_integration(self):
         from kitty.launch_wrapper import LaunchRequest

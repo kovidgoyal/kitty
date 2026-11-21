@@ -113,6 +113,7 @@ from .typing_compat import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int,
     docs_url,
+    is_same_executable,
     key_val_matcher,
     kitty_ansi_sanitizer_pat,
     log_error,
@@ -200,7 +201,7 @@ class CwdRequest:
         if reported_cwd:
             ssh_kitten_cmdline = window.ssh_kitten_cmdline()
             if ssh_kitten_cmdline:
-                run_shell = argv[0] == resolved_shell(get_options())[0]
+                run_shell = is_same_executable(argv[0], resolved_shell(get_options())[0])
                 server_args = [] if run_shell else list(argv)
                 from kittens.ssh.utils import set_cwd_in_cmdline, set_env_in_cmdline, set_server_args_in_cmdline
 

@@ -821,6 +821,23 @@ def which(name: str, only_system: bool = False) -> str | None:
     return None
 
 
+def is_same_executable(a: str, b: str) -> bool:
+    """
+    True if a and b, either of which can be a name to look up in PATH, run
+    the same executable file
+    """
+    if a == b:
+        return True
+    a, b = which(a) or a, which(b) or b
+    if a == b:
+        return True
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        # At least one of them does not exist, so they cannot be the same file
+        return False
+
+
 @lru_cache(4)
 def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[str, str]:
     import subprocess

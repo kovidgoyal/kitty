@@ -912,10 +912,6 @@ def _launch(
                         elif x == '@last-line-on-screen':
                             x = str(screen.visual_line(screen.lines - 1) or '')
             final_cmd.append(x)
-        if rc_from_window is None and final_cmd:
-            exe = which(final_cmd[0])
-            if exe:
-                final_cmd[0] = exe
         kw['cmd'] = final_cmd
     if force_window_launch and opts.type not in non_window_launch_types and opts.type not in dock_launch_types:
         opts.type = 'window'
@@ -930,6 +926,10 @@ def _launch(
         cmd = kw['cmd']
         if not cmd:
             raise ValueError('The cmd to run must be specified when running a background process')
+        if rc_from_window is None:
+            # Background processes are not run via Child, which handles
+            # programs that are not in PATH, such as via exe_search_path
+            cmd = [which(cmd[0]) or cmd[0]] + cmd[1:]
         boss.run_background_process(
             cmd,
             cwd=kw['cwd'],

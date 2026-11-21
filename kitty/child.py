@@ -15,7 +15,7 @@ import kitty.fast_data_types as fast_data_types
 
 from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
-from .utils import cmdline_for_hold, log_error, resolved_shell, which
+from .utils import cmdline_for_hold, is_same_executable, log_error, resolved_shell, which
 
 if TYPE_CHECKING:
     from .launch_wrapper import LaunchRequest
@@ -489,9 +489,37 @@ class Child:
         self.env = env or {}
         self.startup_command_via_shell_integration = startup_command_via_shell_integration
         self.final_env: dict[str, str] = {}
-        self.is_default_shell = bool(self.argv and self.argv[0] == shell_path)
+        # The command is kept as requested, the executable it resolves to
+        # is used to identify it
+        self.resolved_exe = (which(self.argv[0]) or self.argv[0]) if self.argv else ''
+        self.is_default_shell = bool(self.argv and is_same_executable(self.resolved_exe, shell_path))
         self.should_run_via_run_shell_kitten = is_macos and self.is_default_shell
         self.hold = hold
+
+    def use_resolved_exe_if_not_in_path(self, path: str) -> None:
+        # The command is run as requested, so that it is looked up in PATH
+        # by any wrapper that runs it and sees itself as invoked, the way a
+        # shell would run it. Unless PATH would not find the executable kitty
+        # found, for example, via exe_search_path, in which case the full path
+        # to the executable is used.
+        if not self.argv:
+            return
+        name = self.argv[0]
+        if os.sep in name or self.resolved_exe == name:
+            return
+        import shutil
+
+        # Relative entries in PATH are relative to the working directory of
+        # the child, not of kitty
+        path = os.pathsep.join(os.path.join(self.cwd, x) for x in path.split(os.pathsep)) if path else ''
+        found = shutil.which(name, path=path) if path else None
+        if found is not None:
+            try:
+                if os.path.samefile(found, self.resolved_exe):
+                    return
+            except OSError as err:
+                log_error(f'Failed to compare {found} with {self.resolved_exe} with error: {err}')
+        self.argv[0] = self.resolved_exe
 
     def get_final_env(self) -> tuple[dict[str, str], bool]:
         from kitty.options.utils import DELETE_ENV_VAR
@@ -530,6 +558,7 @@ class Child:
         elif opts.terminfo_type == 'direct':
             env['TERMINFO'] = base64_terminfo_data()
         env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
+        self.use_resolved_exe_if_not_in_path(env.get('PATH', os.defpath))
         self.unmodified_argv = list(self.argv)
         if not self.should_run_via_run_shell_kitten and 'disabled' not in opts.shell_integration:
             from .shell_integration import modify_shell_environ
@@ -620,7 +649,9 @@ class Child:
                 login_argv = ['/usr/bin/login', '-f', '-l', '-p', user]
                 argv = login_argv + argv
                 kitty_wrappers.insert(0, KittyWrapper(tuple(login_argv), False))
-        self.final_exe = final_exe = which(argv[0]) or argv[0]
+        # Use the executable the command was resolved to, if it is still
+        # what is run, so that the wrapper and kitty agree on what it is
+        self.final_exe = final_exe = self.resolved_exe if self.argv and argv[0] == self.argv[0] else (which(argv[0]) or argv[0])
         self.final_argv0 = argv[0]
         hold = self.hold
         if self.launch_request is not None:

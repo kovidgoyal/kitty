@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from .constants import config_dir, config_dir_files_ignored
 from .fast_data_types import get_boss, get_options
 from .types import run_once
-from .utils import cmdline_for_hold, log_error, resolved_shell
+from .utils import cmdline_for_hold, is_same_executable, log_error, resolved_shell
 
 if TYPE_CHECKING:
     from .window import CwdRequest
@@ -42,7 +42,9 @@ class LaunchRequest(NamedTuple):
 class LaunchContext(NamedTuple):
     # The command kitty will run, before kitty adds its own helpers, such as
     # the run-shell kitten or /usr/bin/login on macOS. These are inserted
-    # between the prefix and this command.
+    # between the prefix and this command. The program is as requested, for
+    # example, a name to be looked up in PATH, unless it would not be found in
+    # PATH from env, in which case it is the full path kitty found it at.
     argv: tuple[str, ...]
     # The working directory the command should run in
     cwd: str
@@ -140,6 +142,17 @@ def source_pid_for(window_id: int | None) -> int | None:
         return None
 
 
+def is_same_command(a: Sequence[str], b: Sequence[str]) -> bool:
+    # Commands are the same if their arguments are and they run the same
+    # executable, whether or not it is given as a full path
+    a, b = list(a), list(b)
+    if a == b:
+        return True
+    if not a or len(a) != len(b) or a[1:] != b[1:]:
+        return False
+    return is_same_executable(a[0], b[0])
+
+
 def prefix_for_launch(
     req: LaunchRequest, argv: Sequence[str], cwd: str, env: Mapping[str, str], *, unmodified_argv: Sequence[str], hold: bool = False
 ) -> LaunchPrefix:
@@ -159,7 +172,7 @@ def prefix_for_launch(
         argv=tuple(argv),
         cwd=cwd,
         env=MappingProxyType(dict(env)),
-        is_default_shell=list(unmodified_argv) == resolved_shell(get_options()),
+        is_default_shell=is_same_command(unmodified_argv, resolved_shell(get_options())),
         window_id=window_id,
         launch_type=req.launch_type,
         source_window_id=req.source_window_id,

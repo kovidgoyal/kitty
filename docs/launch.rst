@@ -300,7 +300,12 @@ unchanged. For example:
 The function is passed a ``LaunchContext`` object with the following fields:
 
 ``argv``
-    The command that will be run, as a tuple of strings
+    The command that will be run, as a tuple of strings. The program is as
+    requested, so a name such as ``vim`` is not resolved to a full path, it
+    is looked up in :envvar:`PATH` by the wrapper or the program that runs it,
+    as a shell would. The exception is a program that would not be found via
+    the :envvar:`PATH` in ``env``, for example one found via
+    :opt:`exe_search_path`, which is given as the full path kitty found it at.
 ``cwd``
     The working directory the command will run in
 ``env``
