@@ -268,16 +268,18 @@ unsigned
 dispatchTimers(EventLoopData *eld) {
     // Re-entrant calls are not supported, they would clobber pending_timer_frees
     if (eld->in_timer_dispatch || !eld->timers_count || eld->timers[0].trigger_at == MONOTONIC_T_MAX) return 0;
-    eld->in_timer_dispatch = true;
-    // Shrink here as pending_timer_frees must not be resized while it is in use below
-    if (eld->pending_timer_frees_capacity > eld->timers_capacity) {
-        resize_array((void **)&eld->pending_timer_frees, &eld->pending_timer_frees_capacity, eld->timers_capacity, sizeof(eld->pending_timer_frees[0]));
-    }
     // The array is sorted, so the due timers are at the start
     const monotonic_t now = monotonic();
     nfds_t num_due = 0;
     for (; num_due < eld->timers_count && eld->timers[num_due].trigger_at <= now; num_due++) {
         eld->timers[num_due].trigger_at = now + eld->timers[num_due].interval;
+    }
+    // Nothing changed, avoid sorting, this is called after every poll wakeup
+    if (!num_due) return 0;
+    eld->in_timer_dispatch = true;
+    // Shrink here as pending_timer_frees must not be resized while it is in use below
+    if (eld->pending_timer_frees_capacity > eld->timers_capacity) {
+        resize_array((void **)&eld->pending_timer_frees, &eld->pending_timer_frees_capacity, eld->timers_capacity, sizeof(eld->pending_timer_frees[0]));
     }
     // Call the timers in place. While callbacks run, removed timers are only
     // marked, new timers are appended and nothing is sorted, so the due
@@ -418,6 +420,8 @@ closeFds(int *fds, size_t count) {
 void
 finalizePollData(EventLoopData *eld) {
     (void)closeFds;
+    // Must not be called from a timer callback, as dispatchTimers() would
+    // then use the freed arrays. glfw is only terminated after the main loop exits.
     removeAllTimers(eld);
     free(eld->timers);
     eld->timers = NULL;

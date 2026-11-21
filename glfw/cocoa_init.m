@@ -1133,17 +1133,13 @@ maybe_shrink_timers(void) {
 static void
 remove_timer_at(size_t idx) {
     if (idx < num_timers) {
-        Timer *t = timers + idx;
-        if (t->os_timer) {
-            [t->os_timer invalidate];
-            t->os_timer = NULL;
-        }
-        if (t->callback_data && t->free_callback_data) {
-            t->free_callback_data(t->id, t->callback_data);
-            t->callback_data = NULL;
-        }
+        // Remove the timer from the array before calling its free callback,
+        // as that can add or remove timers, reallocating the array
+        const Timer removed = timers[idx];
         remove_i_from_array(timers, idx, num_timers);
         maybe_shrink_timers();
+        if (removed.os_timer) [removed.os_timer invalidate];
+        if (removed.callback_data && removed.free_callback_data) removed.free_callback_data(removed.id, removed.callback_data);
     }
 }
 
