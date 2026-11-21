@@ -36,6 +36,10 @@ cleanup_free(void *p) {
 #define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
 
 static bool being_tested = false;
+// The full command line to re-exec on --detach: for +kitten panel the
+// cli_spec's original_argv starts at "panel", not at the executable.
+static int full_argc = 0;
+static char **full_argv = NULL;
 
 #ifndef __FreeBSD__
 static bool
@@ -445,6 +449,7 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             printf("detach: true\n");
             printf("detached_log: %s\n", detached_log ? detached_log : "");
             printf("session: %s\n", opts.session ? opts.session : "");
+            output_argv("detach_exec_argv", full_argc, full_argv);
             exit(0);
         } else {
             int fds[2] = {0};
@@ -494,7 +499,7 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             setenv("KITTY_EXEC_FOR_DETACH", pid_str, 1);
             char exe_path[PATH_MAX] = {0};
             read_exe_path(exe_path, PATH_MAX);
-            execv(exe_path, cli_spec->original_argv);
+            execv(exe_path, full_argv);
             fprintf(stderr, "Failed to execv() for --detach with exe_path: %s\n", exe_path);
             exit(1);
 #endif
@@ -621,6 +626,8 @@ main(int argc_, char *argv_[], char *envp[]) {
 #endif
     (void)read_full_file;
     RAII_CLISpec(cli_spec);
+    full_argc = argva.count;
+    full_argv = argva.argv;
     bool handle_fast_commandline_called = delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir);
     bool ok = parse_and_check_kitty_cli(&cli_spec, argva.count, argva.argv);
     if (!ok) return 1;
