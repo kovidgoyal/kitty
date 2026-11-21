@@ -101,11 +101,34 @@ update_timers(EventLoopData *eld) {
     if (eld->timers_count > 1) qsort(eld->timers, eld->timers_count, sizeof(eld->timers[0]), compare_timers);
 }
 
+// Timers live in a growable array. Capacity starts at MIN_TIMERS_CAPACITY,
+// doubles when full and halves when less than a quarter is in use, but never
+// drops below MIN_TIMERS_CAPACITY, so normal usage never reallocates.
+#define MIN_TIMERS_CAPACITY 64u
+
+static bool
+resize_array(void **array, size_t *capacity, size_t new_capacity, size_t item_size) {
+    void *n = realloc(*array, new_capacity * item_size);
+    if (!n) return false;
+    *array = n;
+    *capacity = new_capacity;
+    return true;
+}
+
+static void
+maybe_shrink_timers(EventLoopData *eld) {
+    if (eld->timers_capacity > MIN_TIMERS_CAPACITY && eld->timers_count < eld->timers_capacity / 4) {
+        // A failed shrink leaves the larger, still valid, array in place
+        resize_array((void **)&eld->timers, &eld->timers_capacity, MAX(MIN_TIMERS_CAPACITY, eld->timers_capacity / 2), sizeof(eld->timers[0]));
+    }
+}
+
 id_type
 addTimer(
     EventLoopData *eld, const char *name, monotonic_t interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free) {
-    if (eld->timers_count >= sizeof(eld->timers) / sizeof(eld->timers[0])) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
+    if (eld->timers_count >= eld->timers_capacity &&
+        !resize_array((void **)&eld->timers, &eld->timers_capacity, MAX(MIN_TIMERS_CAPACITY, 2 * eld->timers_capacity), sizeof(eld->timers[0]))) {
+        _glfwInputError(GLFW_OUT_OF_MEMORY, "Out of memory adding timer: %s", name ? name : "unnamed");
         return 0;
     }
     Timer *t = eld->timers + eld->timers_count++;
@@ -124,6 +147,7 @@ addTimer(
 void
 removeTimer(EventLoopData *eld, id_type timer_id) {
     removeX(timers, timer_id, update_timers);
+    maybe_shrink_timers(eld);
 }
 
 void
@@ -132,6 +156,7 @@ removeAllTimers(EventLoopData *eld) {
         if (eld->timers[i].free && eld->timers[i].callback_data) eld->timers[i].free(eld->timers[i].id, eld->timers[i].callback_data);
     }
     eld->timers_count = 0;
+    maybe_shrink_timers(eld);
 }
 
 void
@@ -197,26 +222,28 @@ dispatchEvents(EventLoopData *eld) {
 unsigned
 dispatchTimers(EventLoopData *eld) {
     if (!eld->timers_count || eld->timers[0].trigger_at == MONOTONIC_T_MAX) return 0;
-    static struct {
-        timer_callback_func func;
-        id_type id;
-        void *data;
-        bool repeats;
-    } dispatches[sizeof(eld->timers) / sizeof(eld->timers[0])];
+    // Keep the dispatch buffer the same size as the timers array, so that it
+    // can hold every timer. It is resized only here, never while dispatching,
+    // as callbacks can add or remove timers. If growing fails, timers that do
+    // not fit are left due and dispatched on the next call.
+    if (eld->dispatches_capacity != eld->timers_capacity) {
+        resize_array((void **)&eld->dispatches, &eld->dispatches_capacity, eld->timers_capacity, sizeof(eld->dispatches[0]));
+    }
     unsigned num_dispatches = 0;
     monotonic_t now = monotonic();
-    for (nfds_t i = 0; i < eld->timers_count && eld->timers[i].trigger_at <= now; i++) {
+    for (nfds_t i = 0; i < eld->timers_count && i < eld->dispatches_capacity && eld->timers[i].trigger_at <= now; i++) {
         eld->timers[i].trigger_at = now + eld->timers[i].interval;
-        dispatches[num_dispatches].func = eld->timers[i].callback;
-        dispatches[num_dispatches].id = eld->timers[i].id;
-        dispatches[num_dispatches].data = eld->timers[i].callback_data;
-        dispatches[num_dispatches].repeats = eld->timers[i].repeats;
-        num_dispatches++;
+        TimerDispatch *d = eld->dispatches + num_dispatches++;
+        d->func = eld->timers[i].callback;
+        d->id = eld->timers[i].id;
+        d->data = eld->timers[i].callback_data;
+        d->repeats = eld->timers[i].repeats;
     }
     // we dispatch separately so that the callbacks can modify timers
     for (unsigned i = 0; i < num_dispatches; i++) {
-        dispatches[i].func(dispatches[i].id, dispatches[i].data);
-        if (!dispatches[i].repeats) { removeTimer(eld, dispatches[i].id); }
+        const TimerDispatch d = eld->dispatches[i];
+        d.func(d.id, d.data);
+        if (!d.repeats) { removeTimer(eld, d.id); }
     }
     if (num_dispatches) update_timers(eld);
     return num_dispatches;
@@ -315,6 +342,13 @@ closeFds(int *fds, size_t count) {
 void
 finalizePollData(EventLoopData *eld) {
     (void)closeFds;
+    removeAllTimers(eld);
+    free(eld->timers);
+    eld->timers = NULL;
+    eld->timers_capacity = 0;
+    free(eld->dispatches);
+    eld->dispatches = NULL;
+    eld->dispatches_capacity = 0;
 #ifdef HAS_EVENT_FD
     close(eld->wakeupFd);
     eld->wakeupFd = -1;

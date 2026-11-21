@@ -448,8 +448,9 @@ class DeferredWatcherCalls:
     Deliver watcher calls on the next main loop tick, in order, using a single
     timer. Deferring prevents infinite recursion when a watcher causes the
     event it is watching (for example, resizing in on_resize). Using a single
-    timer prevents bursts of events from exhausting the fixed size timer table.
-    Calls made during delivery are delivered in the next batch.
+    queue guarantees delivery order, which separate timers with the same
+    trigger time do not. Calls made during delivery are delivered in the next
+    batch.
     """
 
     def __init__(self) -> None:
@@ -466,8 +467,6 @@ class DeferredWatcherCalls:
     def schedule(self) -> None:
         if not self.timer_id and self.pending:
             self.timer_id = add_timer(self.deliver, 0, False)
-            if not self.timer_id:
-                log_error(f'Failed to schedule delivery of {len(self.pending)} watcher calls, will retry on the next watched event')
 
     def deliver(self, timer_id: int | None) -> None:
         self.timer_id = 0

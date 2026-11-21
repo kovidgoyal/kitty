@@ -131,6 +131,8 @@ Detailed list of changes
 
 - File transfer protocol: Refuse to write files via a symlink created earlier in the same transfer, preventing a malicious sender from redirecting files outside the destination directory through intermediate path components (follow up to :cve:`2026-54055`)
 
+- Remove the limit on the number of simultaneously active timers, which could cause scheduled actions, such as watcher calls, to fail with a "Too many timers added" error when many were pending at once
+
 - Fix a crash when calling :code:`Screen.hyperlink_at()` with coordinates outside the screen, such as from a watcher (:iss:`10890`)
 
 - Fix animated images stopping when switching to a tab without animations and then back (:iss:`10894`)

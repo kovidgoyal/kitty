@@ -1754,8 +1754,6 @@ class TestWindowHelpers(BaseTest):
         next_timer_id = [0]
 
         def add_timer(callback, interval, repeats=True):
-            if len(timers) >= 128:  # simulate the fixed size glfw timer table
-                return 0
             timers.append(callback)
             next_timer_id[0] += 1
             return next_timer_id[0]
@@ -1779,7 +1777,7 @@ class TestWindowHelpers(BaseTest):
                 if data.get('recurse'):
                     dc(weakref.ref(self), 'on_resize', {'n': data['n'] + 1000})
 
-        with patch('kitty.window.add_timer', add_timer), patch('kitty.window.log_error', lambda *a: None):
+        with patch('kitty.window.add_timer', add_timer):
             dc = DeferredWatcherCalls()
             windows = [FakeWindow(i) for i in range(10)]
             unwatched = FakeWindow(-1, watched=False)
@@ -1832,17 +1830,6 @@ class TestWindowHelpers(BaseTest):
             self.ae(len(timers), 1)
             fire_timers()
             self.ae(delivered, [(0, 1), (1, 3)])
-
-            # if the timer cannot be added, calls are kept and retried on the next event
-            del delivered[:]
-            timers.extend([lambda timer_id: None] * 128)
-            dc(weakref.ref(windows[2]), 'on_resize', {'n': 1})
-            self.ae(dc.timer_id, 0)
-            del timers[:]
-            dc(weakref.ref(windows[3]), 'on_resize', {'n': 2})
-            self.ae(len(timers), 1)
-            fire_timers()
-            self.ae(delivered, [(2, 1), (3, 2)])
 
     def test_global_watchers(self):
         opts = SimpleNamespace(watcher={})

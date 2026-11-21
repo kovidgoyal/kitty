@@ -1095,6 +1095,8 @@ _glfwPlatformInit(bool *supports_window_occlusion) {
 
 void
 _glfwPlatformTerminate(void) {
+    // Free timer callback data while the rest of the platform state is still alive
+    removeAllTimers(&_glfw.wl.eventLoopData);
     if (_glfw.wl.activation_requests.array) {
         for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
             glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;

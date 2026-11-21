@@ -69,6 +69,13 @@ typedef struct {
     bool repeats;
 } Timer;
 
+typedef struct {
+    timer_callback_func func;
+    id_type id;
+    void *data;
+    bool repeats;
+} TimerDispatch;
+
 #define MAX_NUM_OF_WATCHED_FDS 64
 
 typedef struct {
@@ -86,7 +93,11 @@ typedef struct {
     bool wakeup_data_read, wakeup_fd_ready, key_repeat_fd_ready;
     nfds_t watches_count, timers_count;
     Watch watches[MAX_NUM_OF_WATCHED_FDS];
-    Timer timers[128];
+    // Growable arrays, freed by finalizePollData()
+    Timer *timers;
+    size_t timers_capacity;
+    TimerDispatch *dispatches;
+    size_t dispatches_capacity;
 } EventLoopData;
 
 
