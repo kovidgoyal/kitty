@@ -62,8 +62,13 @@ clear_chars_in_line(CPUCell *cpu_cells, index_type xnum, char_type ch) {
 static inline index_type
 xlimit_for_line(const Line *line) {
     index_type xlimit = line->xnum;
-    while (xlimit > 0 && !line->cpu_cells[xlimit - 1].ch_and_idx) xlimit--;
+    while (xlimit > 0 && line_cell_is_blank(line, xlimit - 1)) xlimit--;
     return xlimit;
+}
+
+static inline bool
+line_is_blank(const Line *line) {
+    return !xlimit_for_line(line);
 }
 
 static inline void
@@ -144,11 +149,13 @@ void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 bool historybuf_init_line_for_render(HistoryBuf *self, index_type lnum, Line *l, index_type num_rows);
 bool history_buf_endswith_wrap(HistoryBuf *self);
 CPUCell *historybuf_cpu_cells(HistoryBuf *self, index_type num);
+LineAttrs *historybuf_attrs(HistoryBuf *self, index_type num);
 void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_set_line_has_image_placeholders(HistoryBuf *self, index_type y, bool val);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
+void historybuf_invalidate_render_cache(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf);
 bool line_has_mark(Line *, uint16_t mark);
 PyObject *as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf, bool add_trailing_newline);

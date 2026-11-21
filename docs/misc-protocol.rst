@@ -154,6 +154,84 @@ omitted::
     10;5;0;0;2:1;2;3;1;1       momentum scrolling ends
     10;5;0;120;1:5;1;0;0;5     a wheel click downwards with ctrl pressed
 
+.. _bidi_support:
+
+Bidirectional text
+-------------------------------------------------------------------------------------
+
+By default kitty leaves the layout of bidirectional text to the program, as
+described in the :opt:`force_ltr` option. A program can instead ask kitty to
+lay out the lines it writes afterwards, following the Unicode bidirectional
+algorithm (using FriBidi), by setting the ECMA-48 *Bi-Directional Support
+Mode* (BDSM), ``CSI 8 h``, the implicit mode. ``CSI 8 l`` returns to the
+default. Two more controls set the direction of a paragraph, the lines joined
+by soft wraps:
+
+``CSI ? 2501 h``
+    A private mode from the `BiDi in Terminal Emulators
+    <https://terminal-wg.pages.freedesktop.org/bidi/recommendation/escape-sequences.html>`__
+    recommendation, as implemented by VTE. Takes the direction of each
+    paragraph from its first strong character. ``CSI ? 2501 l`` turns this off.
+    It has no effect unless ``CSI 8 h`` is set.
+
+``CSI Ps SP k``
+    ECMA-48 *Select Character Path* (SCP), in the form ``CSI Ps ; Ps SP k``.
+    ``Ps`` of ``2`` makes paragraphs written afterwards right to left, ``1``
+    or ``0`` left to right. When ``CSI ? 2501 h`` is set it only sets the
+    direction of paragraphs that have no strong character. The second
+    parameter is accepted and ignored, as are values of ``3`` or more.
+
+A line keeps the settings in effect when its text was first written, until an
+erase leaves the line blank, which clears them. A line cleared by writing
+spaces over it keeps them.
+
+To detect support, query the modes (``CSI 8 $ p`` and ``CSI ? 2501 $ p``). A
+kitty without this feature answers ``0`` (unknown), and one with it ``2``
+(reset) or ``1`` (set). While the :opt:`force_ltr` option is set the answer is
+``4`` (permanently reset), as :opt:`force_ltr` turns all of this off wherever
+the modes are used. The modes keep what the program set, so after a
+configuration reload that clears :opt:`force_ltr` the answer goes back from
+``4`` to ``1`` or ``2`` and the program's settings apply again.
+
+The settings are per screen, like other per-screen modes. They are not carried
+into the alternate screen, which starts with them off, and the main screen's
+settings are restored on leaving it.
+
+Only the display is reordered. Text stays in logical order, so selecting and
+copying work on logical cells, and cell-based mouse reports carry logical
+columns. SGR-pixel mouse reports carry the pointer's pixel position as drawn.
+
+The text cursor is drawn at the visual column of its cell. A beam cursor on a
+right-to-left cell is drawn past the cell, on its left edge in the last column.
+The input method editor is anchored at the left edge of the cursor cell, and
+the pre-edit text is drawn left to right.
+
+kitty honours isolates (LRI, RLI, FSI and PDI) and the marks LRM, RLM and ALM
+written after a character. Of the isolates in a paragraph the first 32 are
+honoured and later ones are treated as neutral. A bracket pair whose opening
+bracket is more than 32 characters after the previous strong character is not
+paired. Embeddings and overrides (LRE, RLE, LRO, RLO and PDF) are treated as
+neutral.
+
+The :doc:`text sizing protocol </text-sizing-protocol>` discards a zero-width
+code point that has no previous cell. As a special case, only in bidi mode,
+LRM and RLM are kept instead, so that they can start a line: the code point is
+stored at the start of the current cell, unless that cell is not the top left
+cell of a multicell character, holds a tab or has no room, and the cursor does
+not move. Until a character is drawn, text is erased, inserted, deleted or
+scrolled, the screen is resized or switched, or bidi mode is turned off, a
+character drawn into that cell while there is no previous cell is stored after
+them, and more marks written there are added to them. After that, a character
+or marks drawn there replace them, so a line redrawn from its start holds only
+the marks the redraw writes. A cell holding only such marks is shown empty,
+takes no combining character and is an empty cell wherever cells and rows are
+read as blank or copied (resize, tabs, copied text, clearing to the scrollback).
+Copied text includes marks stored before a character. A tab written over marks
+stored before a space replaces them, as it replaces the space. A character
+written into that cell with OSC 66 replaces it, marks included, so a program can
+put the mark in the OSC 66 text. Insert character and insert mode move the marks
+right with their cell. Without bidi mode nothing changes.
+
 An escape code to move the contents of the screen into the scrollback
 -------------------------------------------------------------------------------------
 

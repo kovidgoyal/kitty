@@ -1377,3 +1377,20 @@ class TestParser(BaseTest):
         self.ae(s.cursor.x, 24)
         parse_bytes(s, b'\033[2147483647I')
         self.ae(s.cursor.x, s.columns - 1)
+
+    def test_bidi_controls(self):
+        s = self.create_screen()
+        c = s.callbacks
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033[2 k\033[ k', ('screen_set_bidi_direction', 2, 0), ('screen_set_bidi_direction', 0, 0))
+        pb('\033[2;5 k\033[;1 k', ('screen_set_bidi_direction', 2, 5), ('screen_set_bidi_direction', 0, 1))
+        pb('\033[1;2;3 k', ('CSI code k has 3 > 2 parameters',))
+        pb('\033[?1 k', ("Unknown CSI k sequence with start and end modifiers: '?' ' '",))
+        pb('\033[4;8h\033[?2501l', ('screen_set_mode', 4, 0), ('screen_set_mode', 8, 0), ('screen_reset_mode', 2501, 1))
+        for setup, bdsm, auto in (('', 1, 2), ('\033[?2501h', 1, 1), ('\033[8l', 2, 1), ('\033[?2501l', 2, 2)):
+            c.clear()
+            parse_bytes(s, f'{setup}\033[8$p\033[?2501$p'.encode())
+            self.ae(c.wtcbuf, f'\033[8;{bdsm}$y\033[?2501;{auto}$y'.encode(), setup)
+        s = self.create_screen(options={'force_ltr': True})
+        parse_bytes(s, b'\033[8h\033[?2501h\033[8$p\033[?2501$p')
+        self.ae(s.callbacks.wtcbuf, b'\033[8;4$y\033[?2501;4$y')

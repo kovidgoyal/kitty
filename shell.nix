@@ -9,6 +9,7 @@ in
       buildInputs =
         [
           harfbuzzWithCoreText
+          fribidi
           ncurses
           lcms2
           xxHash

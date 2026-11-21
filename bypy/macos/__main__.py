@@ -316,6 +316,7 @@ class Freeze(object):
             'sqlite3.0',
             'z.1',
             'harfbuzz.0',
+            'fribidi.0',
             'png16.16',
             'lcms2.2',
             'crypto.3',

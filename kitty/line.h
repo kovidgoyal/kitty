@@ -41,7 +41,9 @@ static_assert(sizeof(CellGPUData) == 8, "Fix the ordering of CellGPUData");
 typedef struct RenderCell {
     sprite_index sprite_idx;
     uint8_t mark;
-    uint8_t padding[3];
+    // the embedding level the cell was shaped at, written only by the bidi upload
+    uint8_t level;
+    uint8_t padding[2];
 } RenderCell;
 static_assert(sizeof(RenderCell) == 8, "Fix the ordering of RenderCell");
 
@@ -92,11 +94,15 @@ typedef union LineAttrs {
         uint8_t has_dirty_text : 1;
         uint8_t has_image_placeholders : 1;
         uint8_t prompt_kind : 2;
-        // named so that initializers zero it, see CPUCell
-        uint8_t padding : 4;
+        // the bidi controls the line was first written under in implicit mode
+        uint8_t bidi_stamp : 2;
+        uint8_t bidi_rtl : 1;
+        uint8_t bidi_auto : 1;
     };
     uint8_t val;
 } LineAttrs;
+// BIDI_STAMP_RTL is the upload's memo of an implicit line that holds right-to-left text
+enum { BIDI_STAMP_NONE, BIDI_STAMP_IMPLICIT, BIDI_STAMP_RTL };
 static_assert(sizeof(LineAttrs) == sizeof(uint8_t), "Fix the ordering of LineAttrs");
 
 
@@ -205,6 +211,48 @@ text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
     }
 }
 
+// LRM and RLM, which in bidi mode a cell drawn into with no previous cell can hold before its text
+static inline bool
+is_leading_control(char_type ch) {
+    return (ch | 1) == 0x200f;
+}
+
+// Stores in lc the text of a cell that starts with such controls, returning how many it starts with
+static inline unsigned
+cell_leading_controls(const CPUCell *c, const TextCache *tc, ListOfChars *lc) {
+    if (!c->ch_is_idx || (c->is_multicell && (c->x || c->y)) || !is_leading_control(tc_first_char_at_index(tc, c->ch_or_idx))) return 0;
+    if (!tc_chars_at_index_without_alloc(tc, c->ch_or_idx, lc)) return 0;
+    unsigned n = 0;
+    while (n < lc->count && is_leading_control(lc->chars[n])) n++;
+    return n;
+}
+
+// A cell holding only controls on a line with a bidi record reads as empty. An OSC 66 cell, or any cell without the record, stays text.
+static inline bool
+line_cell_is_blank(const Line *line, index_type x) {
+    const CPUCell *c = line->cpu_cells + x;
+    if (!c->ch_and_idx) return true;
+    if (c->is_multicell) return false;
+    if (!line->attrs.bidi_stamp || !c->ch_is_idx || !is_leading_control(tc_first_char_at_index(line->text_cache, c->ch_or_idx))) return false;
+    char_type buf[MAX_NUM_CODEPOINTS_PER_CELL];
+    ListOfChars lc = {.chars = buf, .capacity = arraysz(buf)};
+    if (!tc_chars_at_index_without_alloc(line->text_cache, c->ch_or_idx, &lc)) return false;
+    unsigned n = 0;
+    while (n < lc.count && is_leading_control(lc.chars[n])) n++;
+    return n == lc.count;
+}
+
+// Removes the leading controls a cell's text starts with, a cell holding only them reads as an empty one
+static inline void
+strip_leading_controls(ListOfChars *lc) {
+    unsigned n = 0;
+    while (n < lc->count && is_leading_control(lc->chars[n])) n++;
+    if (!n) return;
+    lc->count -= n;
+    memmove(lc->chars, lc->chars + n, lc->count * sizeof(lc->chars[0]));
+    if (!lc->count) lc->chars[lc->count++] = 0;
+}
+
 static inline bool
 text_in_cell_without_alloc(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
     if (c->ch_is_idx) {
@@ -239,6 +287,34 @@ cell_first_char(const CPUCell *c, const TextCache *tc) {
         return tc_first_char_at_index(tc, c->ch_or_idx);
     }
     return c->ch_or_idx;
+}
+
+// The leading controls of a cell are skipped only on a line holding a bidi record, not whenever bidi mode is on, so that an
+// OSC 66 cell written without bidi mode reads as it does without this feature
+static inline void
+line_text_in_cell(const Line *line, index_type x, ListOfChars *ans) {
+    const CPUCell *c = line->cpu_cells + x;
+    text_in_cell(c, line->text_cache, ans);
+    if (line->attrs.bidi_stamp && c->ch_is_idx) strip_leading_controls(ans);
+}
+
+static inline bool
+line_cell_is_char(const Line *line, index_type x, char_type ch) {
+    const CPUCell *c = line->cpu_cells + x;
+    if (cell_is_char(c, ch)) return true;
+    if (!line->attrs.bidi_stamp || !c->ch_is_idx || !is_leading_control(cell_first_char(c, line->text_cache))) return false;
+    RAII_ListOfChars(lc);
+    line_text_in_cell(line, x, &lc);
+    return lc.count == 1 && lc.chars[0] == ch;
+}
+
+static inline char_type
+line_cell_first_char(const Line *line, index_type x) {
+    const char_type ch = cell_first_char(line->cpu_cells + x, line->text_cache);
+    if (!line->attrs.bidi_stamp || !is_leading_control(ch)) return ch;
+    RAII_ListOfChars(lc);
+    line_text_in_cell(line, x, &lc);
+    return lc.chars[0];
 }
 
 static inline CellStyleTable *
@@ -289,6 +365,15 @@ cells_for_gpu(const CPUCell *c, const RenderCell *r, index_type num, CellGPUData
     static_assert(MARK_MASK < (1u << CELL_GPU_STYLE_SHIFT), "Increase CELL_GPU_STYLE_SHIFT");
     for (index_type i = 0; i < num; i++) {
         const CellGPUData d = {.sprite_idx = r[i].sprite_idx, .style_and_mark = (c[i].style_idx << CELL_GPU_STYLE_SHIFT) | r[i].mark};
+        memcpy(dest + i, &d, sizeof(d));
+    }
+}
+
+static inline void
+cells_for_gpu_permuted(const CPUCell *c, const RenderCell *r, const uint16_t *v2l, index_type num, CellGPUData *dest) {
+    for (index_type i = 0; i < num; i++) {
+        const index_type l = v2l[i];
+        const CellGPUData d = {.sprite_idx = r[l].sprite_idx, .style_and_mark = (c[l].style_idx << CELL_GPU_STYLE_SHIFT) | r[l].mark};
         memcpy(dest + i, &d, sizeof(d));
     }
 }

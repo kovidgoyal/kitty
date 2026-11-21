@@ -46,6 +46,7 @@ def binary_includes():
                 'pixman-1',
                 'cairo',
                 'harfbuzz',
+                'fribidi',
                 'xkbcommon',
                 'xkbcommon-x11',
                 # fontconfig is not bundled because in typical brain dead Linux

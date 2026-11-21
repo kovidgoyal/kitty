@@ -338,6 +338,7 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
         *x = qx;
         *y = qy;
         *in_left_half_of_cell = in_left_half;
+        if (screen->bidi_maps) screen_bidi_logical_click(screen, x, qy, in_left_half_of_cell);
         return true;
     }
     return false;

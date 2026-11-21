@@ -807,6 +807,11 @@ class GlyphRendering(FontBaseTest):
         self.register(s, 0x100001, sq, vb='0 0 8 24')
         line = self.render(s, '\U00100001 x')
         self.ae(line.sprite_at(1), 0)
+        # an LRM stored in the cell of the glyph in bidi mode does not change its width
+        parse_bytes(s, b'\x1b[8h\x1b[?2501h')
+        line = self.render(s, '\u200e\U00100000 x')
+        left, right = self.sprite(line.sprite_at(0)), self.sprite(line.sprite_at(1))
+        self.assertAlmostEqual((sum(p & 0xFF for p in left) + sum(p & 0xFF for p in right)) / 255, side * side, delta=side)
 
     def test_registered_glyph_text_sizing(self):
         s = self.create_screen(cols=8, lines=4, scrollback=0)
@@ -904,6 +909,26 @@ class GlyphRendering(FontBaseTest):
             test_render_line(line)
             self.ae(sum(p & 0xFF for x in range(2) for p in self.sprite(line.sprite_at(x))) / 255, 2 * self.cell_width * self.cell_height)
         self.ae(s.line(0).sprite_at(0), first)
+
+    def test_registered_glyphs_with_bidi_leading_marks(self):
+        s = self.create_screen(cols=8, lines=4, scrollback=0)
+        self.register(s, 0x100000, 'fill=nonzero,fg:M-24 -24H48V48H-24Z')
+        idx = self.render(s, '\U00100000x').sprite_at(0)
+        parse_bytes(s, b'\x1b[8h\x1b[?2501h')
+        lrm = '\u200e'
+        # marks stored in the cell of the glyph, and moved with it, keep the glyph bound
+        for text, x in (
+            (lrm + '\U00100000x', 0),
+            ('\U00100000x\r' + lrm, 0),
+            (lrm + '\U00100000x\r\x1b[4hX\x1b[4l', 1),
+            ('\U00100000x\r' + lrm + '\r\x1b[@', 1),
+        ):
+            s.cursor_position(1, 1)
+            s.erase_in_line(2)
+            parse_bytes(s, text.encode())
+            line = s.line(0)
+            test_render_line(line)
+            self.ae(line.sprite_at(x), idx, ascii(text))
 
     def test_registered_glyph_sprites_are_reused(self):
         import gc

@@ -44,20 +44,16 @@ setup_line(TextCache *tc, index_type xnum, Line *l) {
 
 static void
 exclude_empty_lines_at_bottom(Rewrap *r) {
-    index_type first, i;
+    index_type first;
     bool is_empty = true;
     // Find the first line that contains some content
 #define self (r->src.lb)
+    Line l = {.xnum = self->xnum, .text_cache = self->text_cache};
     first = self->ynum;
     do {
         first--;
-        CPUCell *cells = linebuf_cpu_cells_for_line(self, first);
-        for (i = 0; i < self->xnum; i++) {
-            if (cells[i].ch_or_idx || cells[i].ch_is_idx) {
-                is_empty = false;
-                break;
-            }
-        }
+        linebuf_init_line_at(self, first, &l);
+        is_empty = !xlimit_for_line(&l);
     } while (is_empty && first > 0);
     if (!is_empty) r->num_content_lines_before = first + 1;
 #undef self
@@ -80,11 +76,9 @@ static bool
 init_src_line(Rewrap *r) {
     bool newline_needed = !r->prev_src_line_ended_with_wrap;
     init_src_line_basic(r, r->src.y, &r->src.line, true);
-    r->src_x_limit = src_xnum;
     r->prev_src_line_ended_with_wrap = r->src.line.cpu_cells[src_xnum - 1].next_char_was_wrapped;
     r->src.line.cpu_cells[src_xnum - 1].next_char_was_wrapped = false;
-    // Trim trailing blanks
-    while (r->src_x_limit && r->src.line.cpu_cells[r->src_x_limit - 1].ch_and_idx == BLANK_CHAR) r->src_x_limit--;
+    r->src_x_limit = xlimit_for_line(&r->src.line);
     r->src.x = 0;
     r->current_src_line_has_multline_cells = false;
     for (index_type i = 0; i < r->src_x_limit; i++)
@@ -122,6 +116,7 @@ linebuf_next_dest_line(Rewrap *r, bool continued) {
             linebuf_init_line(dest, dest->ynum - 1);
             dest->line->attrs.has_dirty_text = true;
             historybuf_add_line(r->dest.hb, dest->line, r->as_ansi_buf);
+            if (dest->line->attrs.bidi_stamp != BIDI_STAMP_NONE) r->dest.hb->bidi_stamped = true;
         }
         linebuf_clear_line(dest, dest->ynum - 1, true);
     } else dest_y++;
@@ -307,6 +302,19 @@ fast_copy_src_to_dest(Rewrap *r) {
 }
 
 
+// A continuation joined onto a destination row without a bidi record brings its own
+static void
+join_bidi_record(Rewrap *r) {
+    const LineAttrs src = r->src.line.attrs;
+    if (src.bidi_stamp == BIDI_STAMP_NONE || !r->src_x_limit || r->dest.x >= dest_xnum) return;
+    LineAttrs *a = r->dest_line_from_linebuf ? r->dest.lb->line_attrs + r->dest.y : historybuf_attrs(r->dest.hb, 0);
+    if (a->bidi_stamp != BIDI_STAMP_NONE) return;
+    a->bidi_stamp = src.bidi_stamp;
+    a->bidi_rtl = src.bidi_rtl;
+    a->bidi_auto = src.bidi_auto;
+    if (!r->dest_line_from_linebuf) r->dest.hb->bidi_stamped = true;
+}
+
 static void
 rewrap(Rewrap *r) {
     r->src.hb_count = r->src.hb ? r->src.hb->count : 0;
@@ -333,7 +341,7 @@ rewrap(Rewrap *r) {
         if (init_src_line(r)) {
             if (r->src.y) next_dest_line(r, false);
             else first_dest_line(r);
-        }
+        } else join_bidi_record(r);
         if (r->current_src_line_has_multline_cells || r->current_dest_line_has_multiline_cells) multiline_copy_src_to_dest(r);
         else fast_copy_src_to_dest(r);
     }
@@ -353,8 +361,7 @@ reusable_history_lines(HistoryBuf *hb) {
     for (index_type y = 0; y + 1 < hb->count; y++) {
         historybuf_init_line(hb, hb->count - y - 1, &l);
         CPUCell *c = l.cpu_cells;
-        index_type limit = xnum;
-        while (limit && c[limit - 1].ch_and_idx == BLANK_CHAR) limit--;
+        const index_type limit = xlimit_for_line(&l);
         if (prev_wrapped && (!prev_full || !limit)) return ans;
         if (limit && c[limit - 1].is_multicell && c[limit - 1].x != mcd_x_limit(c + limit - 1) - 1) return ans;
         for (index_type x = 0; x < limit; x++)
@@ -371,8 +378,7 @@ clear_trailing_blanks(HistoryBuf *hb, index_type count) {
     Line l = {.xnum = hb->xnum, .text_cache = hb->text_cache};
     for (index_type y = 0; y < count; y++) {
         historybuf_init_line(hb, hb->count - y - 1, &l);
-        index_type limit = l.xnum;
-        while (limit && l.cpu_cells[limit - 1].ch_and_idx == BLANK_CHAR) limit--;
+        const index_type limit = xlimit_for_line(&l);
         zero_at_ptr_count(l.cpu_cells + limit, l.xnum - limit);
     }
 }
@@ -383,6 +389,7 @@ resize_screen_buffers(
     ResizeResult ans = {0};
     ans.lb = alloc_linebuf(lines, columns, lb->text_cache);
     if (!ans.lb) return ans;
+    ans.lb->bidi_stamped = lb->bidi_stamped;
     RAII_PyObject(raii_nlb, (PyObject *)ans.lb);
     (void)raii_nlb;
     // sb holds the rows below the first row of multiline chars
@@ -406,6 +413,7 @@ resize_screen_buffers(
             for (index_type y = reused; y < hb->count; y++) {
                 historybuf_init_line(hb, hb->count - y - 1, &l);
                 historybuf_add_line(src_hb, &l, as_ansi_buf);
+                if (l.attrs.bidi_stamp != BIDI_STAMP_NONE) src_hb->bidi_stamped = true;
             }
         }
         ans.hb = historybuf_alloc_for_rewrap(columns, hb);
@@ -482,6 +490,7 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
     ResizeResult ans = {0};
     ans.lb = alloc_linebuf(lines, columns, lb->text_cache);
     if (!ans.lb) return ans;
+    ans.lb->bidi_stamped = lb->bidi_stamped;
     Rewrap r = {
         .src = {.lb = lb},
     };

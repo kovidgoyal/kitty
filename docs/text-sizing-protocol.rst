@@ -403,7 +403,9 @@ For each decoded code point:
    the Unicode standard.
 
 #. If there is no previous cell and the code point's width is zero,
-   the code point is discarded and its processing is finished.
+   the code point is discarded and its processing is finished. In bidi mode
+   (``CSI 8 h``) the exception is the two zero-width marks described in
+   :ref:`bidi_support`, which are kept instead.
 
 #. If there is a previous cell, the
    `Grapheme segmentation algorithm UAX29-C1-1 <https://www.unicode.org/reports/tr29/#C1-1>`__

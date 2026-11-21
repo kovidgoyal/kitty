@@ -26,7 +26,7 @@ typedef struct DnDCommand {
 
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM, mCOLOR_PREFERENCE_NOTIFICATION, mBRACKETED_PASTE, mFOCUS_TRACKING,
-        mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS, mWHEEL_EVENTS;
+        mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS, mWHEEL_EVENTS, mBDSM, mBIDI_AUTODETECT;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
 } ScreenModes;
@@ -264,6 +264,14 @@ typedef struct {
         bool active;
         DnDCommand metadata;
     } dnd_chunking;
+    struct {
+        bool rtl;           // direction set by SCP for the current buffer
+        index_type pending; // 1 + the row whose leading controls were written with no char drawn since, 0 for none
+        struct {
+            bool mBDSM, mBIDI_AUTODETECT, rtl;
+        } main_stash; // main's controls while alt is active
+    } bidi;
+    struct BidiMaps *bidi_maps; // allocated by the first upload of a stamped buffer
 } Screen;
 
 #define live_pixel_scroll_enabled(screen) (OPT(pixel_scroll) && (screen)->linebuf == (screen)->main_linebuf)
@@ -326,6 +334,7 @@ void screen_xtversion(Screen *self, unsigned int);
 void screen_insert_characters(Screen *self, unsigned int count);
 void screen_cursor_up(Screen *self, unsigned int count /*=1*/, bool do_carriage_return /*=false*/, int move_direction /*=-1*/);
 void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary);
+void screen_set_bidi_direction(Screen *self, unsigned int direction, unsigned int path_extent);
 void screen_cursor_to_column(Screen *self, unsigned int column);
 void screen_cursor_down(Screen *self, unsigned int count /*=1*/);
 void screen_cursor_forward(Screen *self, unsigned int count /*=1*/);
@@ -371,6 +380,10 @@ bool screen_has_selection(Screen *);
 bool screen_is_cell_selected(Screen *, index_type x, index_type y);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool cursor_has_moved);
+index_type screen_cursor_drawn_x(Screen *self, index_type x, index_type y, CursorShape shape);
+index_type screen_ime_anchor_x(Screen *self);
+// Replaces x, the visual column of a click on screen row y, by its logical column
+void screen_bidi_logical_click(Screen *self, index_type *x, index_type y, bool *in_left_half);
 bool screen_is_cursor_visible(const Screen *self);
 unsigned screen_multi_cursor_count(const Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);

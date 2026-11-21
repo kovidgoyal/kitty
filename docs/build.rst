@@ -84,6 +84,7 @@ Run-time dependencies:
 
 * ``python`` >= 3.12
 * ``harfbuzz`` >= 2.2.0
+* ``fribidi`` >= 1.0
 * ``zlib``
 * ``libpng``
 * ``liblcms2``
