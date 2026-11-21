@@ -546,6 +546,9 @@ def remove_timer(timer_id: int) -> None:
 def monitor_pid(pid: int) -> None:
     pass
 
+def is_render_in_progress() -> bool:
+    pass
+
 def add_window(os_window_id: int, tab_id: int, title: str) -> int:
     pass
 
