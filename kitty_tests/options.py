@@ -360,8 +360,12 @@ def launcher(self):
     t('+open -1 --help', argv=['+open', '-1', '--help'])
     si('+open -1 moose', argv=[kexe, '+open', '-1', 'moose'], open_urls=['moose'])
     si('+open -1 --instance-group=g x y', instance_group='g', open_urls=['x', 'y'])
-    dt('--detach --session=moose --detached-log=xyz', detached_log='xyz', session='moose',
-       detach_exec_argv=[kexe, '--detach', '--session=moose', '--detached-log=xyz'])
+    dt(
+        '--detach --session=moose --detached-log=xyz',
+        detached_log='xyz',
+        session='moose',
+        detach_exec_argv=[kexe, '--detach', '--session=moose', '--detached-log=xyz'],
+    )
     pn('+kitten panel -1 --edge=left', edge='left')
     dt('+kitten panel --detach --edge=top', detach_exec_argv=[kexe, '+kitten', 'panel', '--detach', '--edge=top'])
     dt('+ kitten panel --detach', detach_exec_argv=[kexe, '+', 'kitten', 'panel', '--detach'])
