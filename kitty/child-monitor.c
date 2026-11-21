@@ -22,6 +22,9 @@
 #include <signal.h>
 #include <stdatomic.h>
 #include <limits.h>
+#ifdef __APPLE__
+#include <sys/event.h>
+#endif
 extern PyTypeObject Screen_Type;
 
 #if defined(__APPLE__) || defined(__OpenBSD__)
@@ -1945,7 +1948,7 @@ remove_children(ChildMonitor *self) {
 #endif
 
 static bool
-read_bytes(int fd, Screen *screen) {
+read_bytes(int fd, Screen *screen, size_t *bytes_read) {
     size_t total = 0;
     bool child_alive = true, read_more = true;
 
@@ -1973,6 +1976,7 @@ read_bytes(int fd, Screen *screen) {
         }
         vt_parser_commit_write(screen->vt_parser, len);
     }
+    *bytes_read += total;
     return child_alive;
 }
 
@@ -2093,12 +2097,83 @@ write_to_child(int fd, Screen *screen) {
     screen_mutex(unlock, write);
 }
 
+// Input that arrives within INPUT_WAKEUP_MIN_INTERVAL of the last wakeup for input
+// waits for the interval to pass, unless INPUT_WAKEUP_MIN_BYTES have been read. This
+// bounds the wakeup rate when the parser consumes input faster than it arrives, such
+// as for the payload of long escape codes, where the pty hands us a KB or two per
+// wait and the main loop would otherwise be woken for every one of them.
+#define INPUT_WAKEUP_MIN_INTERVAL (250 * MONOTONIC_T_1e3)
+#define INPUT_WAKEUP_MIN_BYTES (64u * 1024u)
+
+// poll() on children_fds with a timeout in nanoseconds, negative for no timeout, as
+// poll() itself has only millisecond resolution, which is too coarse for
+// INPUT_WAKEUP_MIN_INTERVAL.
+#ifdef __APPLE__
+static int io_kqueue = -1;
+
+static int
+poll_children_fds(nfds_t nfds, monotonic_t timeout) {
+    // Every call specifies the complete interest set, with unwanted filters disabled
+    // rather than deleted, so that the changes and the wait are a single syscall and
+    // no registration state needs to be tracked. Closing an fd removes its filters.
+    static struct kevent changes[2 * (MAX_CHILDREN + EXTRA_FDS)], events[2 * (MAX_CHILDREN + EXTRA_FDS)];
+    if (io_kqueue < 0 && (io_kqueue = kqueue()) < 0) return -1;
+    int nchanges = 0;
+    for (nfds_t i = 0; i < nfds; i++) {
+        struct pollfd *p = children_fds + i;
+        p->revents = 0;
+        if (p->fd < 0) continue;
+        EV_SET(changes + nchanges++, p->fd, EVFILT_READ, EV_ADD | (p->events & POLLIN ? EV_ENABLE : EV_DISABLE), 0, 0, (void *)(uintptr_t)i);
+        EV_SET(changes + nchanges++, p->fd, EVFILT_WRITE, EV_ADD | (p->events & POLLOUT ? EV_ENABLE : EV_DISABLE), 0, 0, (void *)(uintptr_t)i);
+    }
+    struct timespec ts = {.tv_sec = timeout / MONOTONIC_T_1e9, .tv_nsec = timeout % MONOTONIC_T_1e9};
+    // The event list must have room for an error for every change, as otherwise
+    // kevent() fails outright when a change fails, such as for a closed fd
+    int n = kevent(io_kqueue, changes, nchanges, events, nchanges, timeout < 0 ? NULL : &ts);
+    if (n <= 0) return n;
+    int ans = 0;
+    for (int k = 0; k < n; k++) {
+        const struct kevent *e = events + k;
+        struct pollfd *p = children_fds + (uintptr_t)e->udata;
+        const short before = p->revents;
+        if (e->flags & EV_ERROR) p->revents |= e->data == EBADF ? POLLNVAL : POLLERR;
+        else {
+            p->revents |= e->filter == EVFILT_READ ? POLLIN : POLLOUT;
+            if (e->flags & EV_EOF) p->revents |= POLLHUP;
+        }
+        if (!before && p->revents) ans++;
+    }
+    return ans;
+}
+
+static void
+cleanup_poll_children_fds(void) {
+    if (io_kqueue > -1) safe_close(io_kqueue, __FILE__, __LINE__);
+    io_kqueue = -1;
+}
+#else
+#ifdef __NetBSD__
+#define ppoll pollts
+#endif
+
+static int
+poll_children_fds(nfds_t nfds, monotonic_t timeout) {
+    struct timespec ts = {.tv_sec = timeout / MONOTONIC_T_1e9, .tv_nsec = timeout % MONOTONIC_T_1e9};
+    return ppoll(children_fds, nfds, timeout < 0 ? NULL : &ts, NULL);
+}
+
+static void
+cleanup_poll_children_fds(void) {}
+#endif
+
 static void *
 io_loop(void *data) {
     // The I/O thread loop
     size_t i;
     int ret;
-    bool has_more, child_data_received, wake_needed;
+    bool has_more, child_data_received, wake_needed, input_wakeup_deferred = false;
+    size_t bytes_since_input_wakeup = 0;
+    monotonic_t last_input_wakeup_at = 0, now;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor *)data;
     set_thread_name("KittyChildMon");
@@ -2130,7 +2205,11 @@ io_loop(void *data) {
         }
         // A removed child needs the main loop now, as it is no longer polled
         if (wake_needed) ret = 0;
-        else ret = poll(children_fds, self->count + EXTRA_FDS, -1);
+        else {
+            monotonic_t timeout = -1;
+            if (input_wakeup_deferred) timeout = MAX(0, last_input_wakeup_at + INPUT_WAKEUP_MIN_INTERVAL - monotonic());
+            ret = poll_children_fds(self->count + EXTRA_FDS, timeout);
+        }
         if (ret > 0) {
             if (children_fds[0].revents & POLLIN) drain_fd(children_fds[0].fd); // wakeup
             if (children_fds[1].revents & POLLIN) {
@@ -2148,7 +2227,7 @@ io_loop(void *data) {
             for (i = 0; i < self->count; i++) {
                 if (children_fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
                     child_data_received = true;
-                    has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen);
+                    has_more = read_bytes(children_fds[EXTRA_FDS + i].fd, children[i].screen, &bytes_since_input_wakeup);
                     if (!has_more) {
                         // child is dead. The next iteration queues it and wakes the main thread.
                         children_mutex(lock);
@@ -2181,10 +2260,23 @@ io_loop(void *data) {
         } else if (ret < 0) {
             if (errno != EAGAIN && errno != EINTR) { perror("Call to poll() failed"); }
         }
-        // Input is parsed as soon as it is read. Waking the main loop is expensive on some
-        // platforms, such as cocoa, so it is woken only if it is not already due to parse,
-        // which coalesces the wakeups of a continuous stream of output into one per parse.
-        if (child_data_received && !atomic_exchange(&input_wakeup_pending, true)) wake_needed = true;
+        // Waking the main loop is expensive on some platforms, such as cocoa, so it is
+        // woken only if it is not already due to parse, which coalesces the wakeups of a
+        // continuous stream of output into one per parse, and at most once per
+        // INPUT_WAKEUP_MIN_INTERVAL unless enough input has accumulated.
+        if (child_data_received || input_wakeup_deferred) {
+            input_wakeup_deferred = false;
+            // The parse the main loop was already woken for consumes this input
+            if (atomic_load(&input_wakeup_pending)) bytes_since_input_wakeup = 0;
+            else {
+                now = monotonic();
+                if (bytes_since_input_wakeup >= INPUT_WAKEUP_MIN_BYTES || now - last_input_wakeup_at >= INPUT_WAKEUP_MIN_INTERVAL) {
+                    if (!atomic_exchange(&input_wakeup_pending, true)) wake_needed = true;
+                    last_input_wakeup_at = now;
+                    bytes_since_input_wakeup = 0;
+                } else input_wakeup_deferred = true;
+            }
+        }
         if (wake_needed) WAKEUP;
     }
 #undef WAKEUP
@@ -2192,6 +2284,7 @@ io_loop(void *data) {
     for (i = 0; i < self->count; i++) children[i].needs_removal = true;
     remove_children(self);
     children_mutex(unlock);
+    cleanup_poll_children_fds();
     return 0;
 }
 // }}}
