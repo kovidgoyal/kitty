@@ -1394,12 +1394,16 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images, bo
     return needs_render;
 }
 
+// Set while render() runs, so that Python code it calls, such as for the tab bar,
+// can share expensive data such as the process group map between renders.
+static atomic_bool render_in_progress = false;
+
 static void
 render(monotonic_t now) {
     EVDBG("check_for_active_animated_images: %d\n", global_state.check_for_active_animated_images);
     const bool scan_for_animated_images = global_state.check_for_active_animated_images;
     global_state.check_for_active_animated_images = false;
-    call_boss(cache_process_data, "O", Py_True);
+    atomic_store(&render_in_progress, true);
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
@@ -1418,7 +1422,7 @@ render(monotonic_t now) {
             w->keep_rendering_till_swap--;
         }
     }
-    call_boss(cache_process_data, "O", Py_False);
+    atomic_store(&render_in_progress, false);
 #undef TD
 }
 
@@ -2773,8 +2777,15 @@ send_data_to_peer(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+is_render_in_progress(PyObject *self UNUSED, PyObject *args UNUSED) {
+    if (atomic_load(&render_in_progress)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(safe_pipe, METH_VARARGS),
+    METHODB(is_render_in_progress, METH_NOARGS),
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     METHODB(monitor_pid, METH_VARARGS),
