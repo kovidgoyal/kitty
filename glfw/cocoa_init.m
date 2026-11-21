@@ -416,14 +416,9 @@ glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
 
 
 @interface GLFWApplication : NSApplication
-- (void)tick_callback;
 @end
 
 @implementation GLFWApplication
-- (void)tick_callback {
-    _glfwDispatchTickCallback();
-}
-
 @end
 
 
@@ -781,6 +776,8 @@ glfwSetApplicationWillFinishLaunching(GLFWapplicationwillfinishlaunchingfun call
     return previous;
 }
 
+static void create_tick_source(void);
+
 int
 _glfwPlatformInit(bool *supports_window_occlusion) {
     @autoreleasepool {
@@ -792,6 +789,7 @@ _glfwPlatformInit(bool *supports_window_occlusion) {
         if (NSApp) _glfw.ns.finishedLaunching = true;
 
         [GLFWApplication sharedApplication];
+        create_tick_source();
 
         _glfw.ns.delegate = [[GLFWApplicationDelegate alloc] init];
         if (_glfw.ns.delegate == nil) {
@@ -1026,16 +1024,32 @@ static void *tick_callback_data = NULL;
 // Atomic rather than lock protected, as it can be set from other threads at
 // any time, including after the main loop has returned and before they are joined.
 static atomic_bool tick_callback_requested = false;
+// A run loop source rather than performSelectorOnMainThread, which allocates and
+// takes a process wide lock that the main thread also takes to run it, so that it
+// is cheap to request a tick many thousands of times a second. Never released,
+// as other threads can signal it until they are joined.
+static CFRunLoopSourceRef tick_source = NULL;
+static CFRunLoopRef main_run_loop = NULL;
+
+static void
+tick_source_perform(void *info UNUSED) {
+    if (!tick_callback) return;
+    while (atomic_exchange(&tick_callback_requested, false)) tick_callback(tick_callback_data);
+}
+
+static void
+create_tick_source(void) {
+    CFRunLoopSourceContext ctx = {.version = 0, .perform = tick_source_perform};
+    main_run_loop = CFRunLoopGetMain();
+    tick_source = CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &ctx);
+    CFRunLoopAddSource(main_run_loop, tick_source, kCFRunLoopCommonModes);
+}
 
 static void
 queue_tick_callback(void) {
-    [NSApp performSelectorOnMainThread:@selector(tick_callback) withObject:nil waitUntilDone:NO];
-}
-
-void
-_glfwDispatchTickCallback(void) {
-    if (!tick_callback) return;
-    while (atomic_exchange(&tick_callback_requested, false)) tick_callback(tick_callback_data);
+    CFRunLoopSourceSignal(tick_source);
+    // A running main thread checks signalled sources before it sleeps
+    if (!pthread_main_np()) CFRunLoopWakeUp(main_run_loop);
 }
 
 void
@@ -1054,7 +1068,7 @@ void
 _glfwPlatformRunMainLoop(GLFWtickcallback callback, void *data) {
     tick_callback = callback;
     tick_callback_data = data;
-    // A request made while there was no main loop may have had its selector
+    // A request made while there was no main loop may have had its signal
     // consumed without dispatch, so queue it again
     if (atomic_load(&tick_callback_requested)) queue_tick_callback();
     [NSApp run];
@@ -1064,7 +1078,9 @@ _glfwPlatformRunMainLoop(GLFWtickcallback callback, void *data) {
 
 
 typedef struct {
-    NSTimer *os_timer;
+    CFRunLoopTimerRef os_timer;
+    CFAbsoluteTime fire_at;
+    bool armed;
     unsigned long long id;
     bool repeats;
     monotonic_t interval;
@@ -1076,7 +1092,7 @@ typedef struct {
 // Timers live in a growable array. Capacity starts at MIN_TIMERS_CAPACITY,
 // doubles when full and halves when less than a quarter is in use, but never
 // drops below MIN_TIMERS_CAPACITY, so normal usage never reallocates. The
-// NSTimer blocks look up their timer by os_timer and copy it before calling
+// timer callbacks look up their timer by id and copy it before calling
 // the callback, so the array can be safely reallocated by callbacks.
 #define MIN_TIMERS_CAPACITY 64u
 static Timer *timers = NULL;
@@ -1107,7 +1123,10 @@ remove_timer_at(size_t idx) {
         const Timer removed = timers[idx];
         remove_i_from_array(timers, idx, num_timers);
         maybe_shrink_timers();
-        if (removed.os_timer) [removed.os_timer invalidate];
+        if (removed.os_timer) {
+            CFRunLoopTimerInvalidate(removed.os_timer);
+            CFRelease(removed.os_timer);
+        }
         if (removed.callback_data && removed.free_callback_data) removed.free_callback_data(removed.id, removed.callback_data);
     }
 }
@@ -1120,19 +1139,47 @@ remove_all_timers(void) {
     timers_capacity = 0;
 }
 
+// Fire date of a disarmed timer and the interval of all timers. Repeats are done in
+// timer_fired() so that the interval can be changed without creating a new timer,
+// the interval only stops CF from invalidating the timer after it fires.
+#define DISARMED_FIRE_DATE 1e12
+#define OS_TIMER_INTERVAL 1e9
+
 static void
-schedule_timer(Timer *t) {
-    t->os_timer = [NSTimer scheduledTimerWithTimeInterval:monotonic_t_to_s_double(t->interval)
-                                                  repeats:(t->repeats ? YES : NO)block:^(NSTimer *os_timer) {
-                                                    for (size_t i = 0; i < num_timers; i++) {
-                                                        if (timers[i].os_timer == os_timer) {
-                                                            const Timer timer = timers[i];
-                                                            timer.callback(timer.id, timer.callback_data);
-                                                            if (!timer.repeats) _glfwPlatformRemoveTimer(timer.id);
-                                                            break;
-                                                        }
-                                                    }
-                                                  }];
+timer_fired(CFRunLoopTimerRef os_timer, void *info) {
+    const unsigned long long id = (uintptr_t)info;
+    for (size_t i = 0; i < num_timers; i++) {
+        if (timers[i].id == id) {
+            const Timer timer = timers[i];
+            if (timer.repeats) {
+                // Keep to the schedule, like a repeating NSTimer, unless it has fallen behind
+                const CFAbsoluteTime now = CFAbsoluteTimeGetCurrent(), interval = monotonic_t_to_s_double(timer.interval);
+                timers[i].fire_at += interval;
+                if (timers[i].fire_at < now) timers[i].fire_at = now + interval;
+                CFRunLoopTimerSetNextFireDate(os_timer, timers[i].fire_at);
+            } else {
+                CFRunLoopTimerSetNextFireDate(os_timer, DISARMED_FIRE_DATE);
+                timers[i].armed = false;
+            }
+            timer.callback(timer.id, timer.callback_data);
+            if (!timer.repeats) _glfwPlatformRemoveTimer(timer.id);
+            break;
+        }
+    }
+}
+
+static void
+schedule_timer(Timer *t, bool enabled) {
+    if (!enabled && !t->armed) return;
+    const CFAbsoluteTime fire_at = enabled ? CFAbsoluteTimeGetCurrent() + monotonic_t_to_s_double(t->interval) : DISARMED_FIRE_DATE;
+    t->armed = enabled;
+    t->fire_at = fire_at;
+    if (t->os_timer) CFRunLoopTimerSetNextFireDate(t->os_timer, fire_at);
+    else {
+        CFRunLoopTimerContext ctx = {.info = (void *)(uintptr_t)t->id};
+        t->os_timer = CFRunLoopTimerCreate(kCFAllocatorDefault, fire_at, OS_TIMER_INTERVAL, 0, 0, timer_fired, &ctx);
+        CFRunLoopAddTimer(main_run_loop, t->os_timer, kCFRunLoopDefaultMode);
+    }
 }
 
 unsigned long long
@@ -1149,7 +1196,9 @@ _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callba
     t->callback = callback;
     t->callback_data = callback_data;
     t->free_callback_data = free_callback;
-    schedule_timer(t);
+    t->os_timer = NULL;
+    t->armed = false;
+    schedule_timer(t, true);
     return timer_counter;
 }
 
@@ -1168,12 +1217,8 @@ _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool
     for (size_t i = 0; i < num_timers; i++) {
         if (timers[i].id == timer_id) {
             Timer *t = timers + i;
-            if (t->os_timer) {
-                [t->os_timer invalidate];
-                t->os_timer = NULL;
-            }
             t->interval = interval;
-            if (enabled) schedule_timer(t);
+            schedule_timer(t, enabled);
             break;
         }
     }
