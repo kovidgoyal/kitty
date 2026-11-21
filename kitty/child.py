@@ -256,7 +256,12 @@ class CachedProcessData:
     ttl: float = 1
 
     def process_group_map(self) -> DefaultDict[int, list[int]]:
-        if self.cached_result is None or not self.cache_active:
+        use_cache = self.cache_active
+        if not use_cache and fast_data_types.is_render_in_progress():
+            # Code called while rendering, such as for the tab bar, shares the map
+            # between renders for ttl seconds
+            use_cache = monotonic() - self.cache_at <= self.ttl
+        if self.cached_result is None or not use_cache:
             try:
                 self.cached_result = process_group_map()
             except Exception:
