@@ -986,8 +986,9 @@ ssr_copy_row_to_slot(Screen *self, SmoothScrollRegion *r, index_type y, index_ty
 }
 
 // A row of a region narrower than the screen that holds no text outside it takes the settings of the text moved onto it: the
-// record of the row it came from, none when that has none or when blank cells move in. A row with text outside keeps its own,
-// so that the text the scroll did not move is laid out as before.
+// record of the row it came from, none when that has none. Blank cells moved in drop its record and keep the direction a leading
+// mark set for the row's first text. A row with text outside keeps its own, so that the text the scroll did not move is laid out
+// as before.
 static void
 ssr_carry_bidi_record(Screen *self, const SmoothScrollRegion *r, index_type y, const CPUCell *moved, LineAttrs src) {
     self->linebuf->line_attrs[y].bidi_may_reorder |= src.bidi_may_reorder;
@@ -2552,12 +2553,20 @@ current_bidi_record(const Screen *self) {
     return ans;
 }
 
-// A line without a record takes the record of the text written to it, which is empty with bidi mode off
+// A line without a record takes the record of the text written to it. With bidi mode off that record is empty, and the text drops
+// the direction a leading mark set.
 static void
 stamp_line_for_bidi(Screen *self, index_type y, uint8_t record) {
     LineAttrs *a = self->linebuf->line_attrs + y;
-    if (!record) return;
-    a->val |= record;
+    if (!record) {
+        a->bidi_rtl = a->bidi_auto = false;
+        return;
+    }
+    if (a->bidi_auto) {
+        // the direction a leading mark set
+        a->bidi_stamp = BIDI_STAMP_IMPLICIT;
+        a->bidi_auto = false;
+    } else a->val |= record;
     bidi_buffer_stamped(self, self->linebuf);
 }
 
@@ -2591,6 +2600,17 @@ bidi_line_gets_text(Screen *self, index_type y) {
 static inline void
 draw_loop_line_gets_text(Screen *self, index_type y) {
     if (self->linebuf->line_attrs[y].bidi_stamp != BIDI_STAMP_NONE) bidi_line_gets_text(self, y);
+}
+
+static void
+set_record_at_leading_mark(Screen *self, char_type ch, uint8_t record) {
+    // A leading mark fixes the direction of a line that would otherwise take it from its text. A line without a record gets
+    // none: its first text written in bidi mode takes the direction.
+    if (!((LineAttrs){.val = record}).bidi_auto) return;
+    LineAttrs *a = self->linebuf->line_attrs + self->cursor->y;
+    a->bidi_auto = a->bidi_stamp == BIDI_STAMP_NONE;
+    a->bidi_rtl = ch == 0x200f; // RLM
+    bidi_buffer_stamped(self, self->linebuf);
 }
 
 // After a combining char was drawn, before is the text its cell held: the cell is the loop's previous cell now, which a widening
@@ -3531,6 +3551,8 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
                         const char_type before = s->prev.cc->ch_and_idx;
                         draw_combining_char(self, s, ch);
                         if (implicit) record_combining_write(self, s, before, record, bidi_char_sets_may_reorder(ch));
+                    } else if (implicit && (ch | 1) == 0x200f) { // LRM, RLM
+                        set_record_at_leading_mark(self, ch, record);
                     }
                     continue;
                 }
@@ -4721,7 +4743,8 @@ screen_tab(Screen *self) {
 void
 screen_tabn(Screen *self, unsigned int count) {
     if (UNLIKELY(self->linebuf->bidi_stamped)) {
-        // The tab cells are written outside the draw loop, which checks and marks dirty the rows it writes
+        // The tab cells are written outside the draw loop, which checks and marks dirty the rows it writes. A tab does not
+        // take a leading mark's direction.
         bidi_line_gets_text(self, self->cursor->y);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     }

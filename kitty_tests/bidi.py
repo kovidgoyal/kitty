@@ -8,6 +8,9 @@ from itertools import product
 from .base import BaseTest, draw_multicell, parse_bytes
 
 NONE, LTR, RTL = (0, False, False), (1, False, False), (1, True, False)
+AUTO = (1, False, True)
+PRIMED_LTR, PRIMED_RTL = (0, False, True), (0, True, True)  # no record, the direction a leading mark set
+LRM, RLM, ALM = '\u200e', '\u200f', '\u061c'
 IA = '\x1b[8h\x1b[?2501h'
 CUP = '\x1b[{};1H'.format  # 1-based row
 
@@ -213,6 +216,206 @@ class TestBidi(BaseTest):
             s.resize(lines, cols)
             self.ae(self.records(s, 0), [RTL], (lines, cols))
 
+    def marked(self, *data, split=False, **kw):
+        # the data after IA, each item a draw call of its own when split
+        s = self.screen(**kw)
+        pb(s, IA)
+        if split:
+            for d in data:
+                pb(s, d)
+        else:
+            pb(s, ''.join(data))
+        return s
+
+    def test_leading_mark_sets_record(self):
+        # LRM or RLM drawn with no previous cell fixes the direction of a row the controls leave to its text; the mark is dropped
+        for split in (False, True):
+            for mark, want, primed in ((LRM, LTR, PRIMED_LTR), (RLM, RTL, PRIMED_RTL)):
+                for text in ('abc', 'אבג', ''):
+                    with self.subTest(split=split, mark=mark, text=text):
+                        s = self.marked(mark, text, split=split)
+                        self.ae((self.records(s, 0), s.cpu_cells(0, 0)['text']), ([want if text else primed], text[:1]))
+            with self.subTest(split=split):
+                self.ae(self.records(self.marked(ALM, 'abc', split=split), 0), [AUTO])
+                self.ae(self.records(self.marked(RLM, '\x1b[31m', 'abc', split=split), 0), [RTL])
+                self.ae(self.records(self.marked('abc\r', RLM, split=split), 0), [RTL])  # over existing text
+                self.ae(self.records(self.marked('abc\r', RLM, '\x1b[2CX', split=split), 0), [RTL])
+                self.ae(self.records(self.marked(RLM, '\tx', split=split), 0), [RTL])
+                self.ae(self.records(self.marked(CUP(3), RLM, split=split), 0, 2), [NONE, PRIMED_RTL])
+                self.ae(self.records(self.marked(CUP(3), RLM, 'x', split=split), 0, 2), [NONE, RTL])
+
+    def test_leading_mark_needs_auto(self):
+        for data, want in (('\x1b[8h' + RLM + 'abc', LTR), ('\x1b[8h\x1b[2 k' + LRM + 'abc', RTL), ('\x1b[8h\x1b[1 k' + RLM + '12 34', LTR)):
+            self.ae(self.written(data, 0), [want], data)
+        s = self.screen()
+        pb(s, '\x1b[8habc\x1b[?2501h\r' + RLM)  # the controls of the draw call decide, not the row's record
+        self.ae(self.records(s, 0), [RTL])
+        for data in ('\x1b[8h' + RLM, '\x1b[8h\x1b[2 k' + LRM, '\x1b[?2501h' + RLM):  # nor on a blank row
+            self.ae(self.written(data, 0), [NONE], data)
+
+    def test_leading_mark_not_at_line_start(self):
+        for data in ('ab' + RLM + 'c', 'abc\x1b[1;3H' + RLM, '\x1b[1;3H' + RLM + 'x'):
+            self.ae(self.records(self.marked(data), 0), [AUTO], data)
+        s = self.marked('abcdefghijkl')  # a continuation row has a previous cell, the mark joins it
+        pb(s, CUP(2) + RLM)
+        self.ae(self.records(s, 0, 1), [AUTO, AUTO])
+        for ch in ('\u200b', '\u200c', '\u200d', '\u2066', '\u2067', '\u2068', '\u2069', '\u202a', '\u202b'):
+            self.ae(self.records(self.marked(ch + 'abc'), 0), [AUTO], ch)
+        s = self.marked('\x1b]66;w=1;' + RLM + '\x07abc')  # an OSC 66 cell keeps its mark as text
+        self.ae((self.records(s, 0), s.cpu_cells(0, 0)['text']), ([AUTO], RLM))
+
+    def test_leading_mark_other_modes(self):
+        s = self.marked('abc\x1b[8l\r' + RLM + 'x')  # explicit mode drops the mark as upstream does
+        self.ae(self.records(s, 0), [AUTO])
+        s = self.screen(force_ltr=True)
+        pb(s, IA + RLM + 'abc')
+        self.ae((self.records(s, 0), s.cpu_cells(0, 0)['text']), ([NONE], 'a'))
+        # the cells are those written without bidi mode
+        for data, text in (('abc\r' + RLM, 'abc'), ('abc\r' + RLM + '\x1b[2CX', 'abX'), (RLM + '\tx', '\tx'), (RLM, ''), (RLM + 'hello world', 'hello world')):
+            for pre in ('', '\x1b[8h', IA):
+                s = self.screen(cols=12)
+                pb(s, pre + data)
+                self.ae(str(s.line(0)), text, (pre, data))
+
+    def test_leading_isolates_dropped(self):
+        # in bidi mode an isolate with no previous cell is dropped, as without it
+        for data in ('\u2066a', '\u206712 34\u2069', '\u2068x\u2069', '\u2069y', '\u2067\u2069ls -la', 'abc\r\u2067x', 'ab\r\u2066\u2069'):
+            for pre in ('\x1b[8h', IA):
+                texts = []
+                for modes in ('', pre):
+                    s = self.screen()
+                    pb(s, modes + data)
+                    s.start_selection(0, 0)
+                    s.update_selection(9, 0, True)
+                    texts.append(([s.cpu_cells(0, x)['text'] for x in range(10)], s.cursor.x, str(s.line(0)), s.text_for_selection(False, False)))
+                self.ae(*texts, (pre, data))
+
+    def test_leading_mark_last_one_wins(self):
+        for data, want in (
+            (RLM + 'a\r' + LRM + 'b', LTR),
+            (LRM + 'a\r' + RLM, RTL),
+            (LRM + RLM + 'a', RTL),
+            (LRM + RLM + 'a\r' + LRM + 'b', LTR),
+        ):
+            self.ae(self.records(self.marked(data), 0), [want], data)
+
+    def test_leading_mark_redraw(self):
+        # a redraw with the same bytes gives the same cells and record
+        for line in (RLM + 'שלום', LRM + '~ $ ls', LRM + RLM + '中 a'):
+            first = self.marked(line, cols=12)
+            want = ([first.cpu_cells(0, x)['text'] for x in range(12)], self.records(first, 0), first.cursor.x)
+            for n in (1, 2):
+                s = self.marked(line + ('\r' + line + '\x1b[K') * n, cols=12)
+                self.ae(([s.cpu_cells(0, x)['text'] for x in range(12)], self.records(s, 0), s.cursor.x), want, (line, n))
+
+    def test_leading_mark_record_lifetime(self):
+        # the record a mark sets ends as any record does: when an erase leaves the row blank
+        for op, want in (('\x1b[K', RTL), ('\x1b[1K', RTL), ('\x1b[2K', NONE), ('\x1b[2J', NONE), ('\x1b[M', NONE), ('\x1bc', NONE)):
+            s = self.marked(RLM + 'abc')
+            pb(s, '\x1b[1;2H' + op)
+            self.ae(self.records(s, 0), [want], op)
+        s = self.marked(RLM)  # the direction a mark sets on a blank row is not a record: an erase keeps it
+        pb(s, '\x1b[2K')
+        self.ae(self.records(s, 0), [PRIMED_RTL])
+        s = self.marked(RLM + 'שלום\rhello\x1b[K')  # a row rewritten without the mark keeps its direction
+        self.ae(self.records(s, 0), [RTL])
+        s = self.marked(CUP(5) + RLM + 'abc\n')  # scrolls with its row
+        self.ae(self.records(s, 3, 4), [RTL, NONE])
+        s = self.marked(RLM + 'abc\r\n')
+        s.resize(5, 6)
+        self.ae(self.records(s, 0), [RTL])
+
+    def test_leading_mark_on_a_blank_row(self):
+        # On a row with no record a mark sets none, only the direction its first text written in bidi mode takes. Text
+        # written with bidi mode off drops it.
+        self.ae([self.records(self.marked(mark), 0) for mark in (LRM, RLM)], [[PRIMED_LTR], [PRIMED_RTL]])
+        self.ae([self.written('abc' + IA + '\r' + RLM + data, 0) for data in ('', '\x1b[9Gx')], [[PRIMED_RTL], [RTL]])
+        for data, want in (
+            ((RLM, '\x1b[8l', 'abc'), NONE),
+            ((RLM, '\x1b[8l', '\r', IA, 'abc'), RTL),
+            ((RLM, 'abc'), RTL),
+            ((RLM, '\x1b[31m', 'abc'), RTL),
+            ((RLM, LRM, 'abc'), LTR),
+            ((RLM, '\x1b[8l', IA, 'abc'), RTL),
+            ((RLM, '\x1b[8l', 'abc', IA, '\rx'), AUTO),
+            ((RLM, '\x1b[?2501l', 'abc'), RTL),
+            ((RLM, '\x1b[2Kabc'), RTL),
+        ):
+            self.ae(self.records(self.marked(*data, split=True), 0), [want], data)
+
+    def test_leading_mark_on_a_blank_row_lifetime(self):
+        # the direction moves with its row and ends when text is stored on the row or its attributes are cleared, not when an
+        # erase inside the row leaves it blank
+        self.ae(self.records(self.marked(CUP(5), RLM, '\n'), 3, 4), [PRIMED_RTL, NONE])
+        self.ae(self.records(self.marked(CUP(2), RLM, CUP(1), '\x1b[L'), 1, 2), [NONE, PRIMED_RTL])
+        self.ae(self.records(self.marked(CUP(2), RLM, CUP(1), '\x1b[M'), 0, 1), [PRIMED_RTL, NONE])
+        self.ae(self.records(self.marked(CUP(2), RLM, CUP(1), '\x1b[Mabc'), 0), [RTL])
+        # ED 0 clears the cursor row as EL 0 does, keeping its attributes
+        for op in ('\x1b[K', '\x1b[2K', '\x1b[J', '\x1b[3X', '\x1b[3@', '\x1b[3P', '\x1b[2J', '\x1bc'):
+            kept = op not in ('\x1b[2J', '\x1bc')
+            s = self.marked(RLM, op)
+            self.ae(self.records(s, 0), [PRIMED_RTL if kept else NONE], op)
+            pb(s, IA + 'abc')
+            self.ae(self.records(s, 0), [RTL if kept else AUTO], op)
+        # it ends where text is stored with bidi mode off, not where the cursor moves onto the row or a line feed ends the text
+        self.ae(self.records(self.marked(RLM, '\x1b[8l\r\x1b[8habc'), 0), [RTL])
+        self.ae(self.records(self.marked(CUP(2), RLM, CUP(1), '\x1b[8lxyz\n\x1b[8h', 'abc'), 1), [RTL])
+        self.ae(self.records(self.marked(CUP(2), RLM, CUP(1), '\x1b[8lxyz\nabc\x1b[8h\r', 'abc'), 1), [AUTO])
+        # text written in bidi mode takes it, and a mark on a row holding a record sets the record's direction, which goes
+        # with the record: the next text on the blank row records the controls current then
+        self.ae(self.records(self.marked('abc\r', RLM, '\x1b[2K', 'xyz'), 0), [AUTO])
+        # a mark on a row whose text was written with bidi mode off is noted, and outlives an erase of that text
+        self.ae(self.written('abc' + IA + '\r' + RLM + '\x1b[2Kxyz', 0), [RTL])
+
+    def test_leading_mark_on_a_blank_row_resize(self):
+        # a resize keeps the direction a leading mark set with its row, holding text or not. The rewrap starts afresh the blank
+        # rows after the last text and the cursor, as it keeps only a blank cursor row at the line start.
+        for cols in (5, 20):
+            for data, kept in (
+                ((CUP(2), RLM), True),
+                ((CUP(2), RLM, CUP(4)), True),
+                ((CUP(2), RLM, CUP(4), 'xyz'), True),
+                ((CUP(2), RLM, '\x1b[5G'), False),
+                ((CUP(2), RLM, CUP(1)), False),
+            ):
+                s = self.marked(*data)
+                s.resize(5, cols)
+                self.ae(self.records(s, 1), [PRIMED_RTL if kept else NONE], (cols, data))
+                pb(s, CUP(2) + 'abc')
+                self.ae(self.records(s, 1), [RTL if kept else AUTO], (cols, data))
+            s = self.screen()
+            pb(s, 'abc' + IA + '\r' + RLM)
+            s.resize(5, cols)
+            self.ae(self.records(s, 0), [PRIMED_RTL], cols)
+
+    def test_leading_mark_on_the_alternate_screen(self):
+        s = self.marked('\x1b[?1049h' + RLM)  # the alternate screen starts with the modes reset
+        self.ae(self.records(s, 0), [NONE])
+        s = self.screen()
+        pb(s, '\x1b[?1049h' + IA + RLM)
+        self.ae(self.records(s, 0), [PRIMED_RTL])
+        pb(s, '\x1b[?1049l')
+        self.ae(self.records(s, 0), [NONE])
+        pb(s, '\x1b[?1049h' + IA + 'abc')
+        self.ae(self.records(s, 0), [AUTO])
+        # a main row keeps its direction over a visit to the alternate screen
+        s = self.marked(RLM, '\x1b[?1049h' + IA + LRM + 'x\x1b[?1049l', 'abc', split=True)
+        self.ae(self.records(s, 0), [RTL])
+
+    def test_erase_to_marks_only_clears_record(self):
+        # An erase that leaves nothing but a leading mark's column leaves the row blank, so the record goes as it does for the
+        # same stream without the mark, and text written once the mode is off is not reordered.
+        for controls in ('', '\x1b[?2501h\x1b[2 k'):
+            screens = []
+            for mark in (LRM, ''):
+                s = self.screen()
+                pb(s, '\x1b[8h' + controls + mark + '\x1b[1;3Ha\x1b[1;2H\x1b[K')
+                self.ae(self.records(s, 0), [NONE], f'{controls!r} mark {mark!r}')
+                pb(s, '\x1b[8l\rאב')
+                screens.append(s)
+            marked, plain = screens
+            self.ae((str(marked.line(0)), marked.cpu_cells(0, 0)['text']), (str(plain.line(0)), plain.cpu_cells(0, 0)['text']))
+
     def test_writes_to_rows_left_without_text(self):
         # A row left holding no text has no record: text written to it later records the controls current then, also when the
         # removed text is part of a scaled or wide char removed through another of its rows, or is in the history
@@ -221,16 +424,19 @@ class TestBidi(BaseTest):
         w1, s7w2 = '\x1b]66;w=1;א\x07', '\x1b]66;s=7:w=2;א\x07'
         in_history = cup(2, 1) + s2 + cup(3, 1) + '\n\n'  # on three lines the char's top row goes into the history
 
-        def emptied(lines, text, op, rows, pre='', cols=10):
-            # text written in bidi mode right to left, then op leaves rows without text, which text written with bidi mode off
-            # leaves without a record and text written in bidi mode records
-            for on in (False, True):
+        def emptied(lines, text, primed, op, rows, pre='', cols=10):
+            # text written in bidi mode right to left, or with it off on the rows a mark primed, then op leaves rows without
+            # text, which text written with bidi mode off leaves without a record and text written in bidi mode records
+            for mark, on in product((False, True), (False, True)):
                 s = self.screen(cols=cols, lines=lines)
-                pb(s, pre + '\x1b[8h\x1b[2 k' + text + '\x1b[8l')
+                if mark:
+                    pb(s, pre + IA + ''.join(CUP(y + 1) + RLM for y in primed) + '\x1b[8l\x1b[H' + text)
+                else:
+                    pb(s, pre + '\x1b[8h\x1b[2 k' + text + '\x1b[8l')
                 op(s) if callable(op) else pb(s, op)
-                self.assertFalse([y for y in rows if has_text(s, y)], (pre, text, op))
+                self.assertFalse([y for y in rows if has_text(s, y)], (pre, text, op, mark))
                 pb(s, ('\x1b[r\x1b[8h\x1b[1 k\x1b[?2501l' if on else '\x1b[r\x1b[8l') + ''.join(CUP(y + 1) + 'x' for y in rows))
-                self.ae(self.records(s, *rows), [LTR if on else NONE] * len(rows), (pre, text, op, on))
+                self.ae(self.records(s, *rows), [LTR if on else NONE] * len(rows), (pre, text, op, mark, on))
 
         def erase_command_and_pull(s):
             # the lower row of the char is the erased command's prompt line, its top row stays in the history
@@ -238,42 +444,42 @@ class TestBidi(BaseTest):
             pb(s, '\x1b[+T')
 
         for case in (
-            (5, s2, cup(2, 1) + '\x1b[2K', (0,)),
-            (5, s2, cup(2, 1) + '\x1b[K', (0,)),
-            (5, s2, cup(2, 1) + '\x1b[X', (0,)),
-            (5, s2, cup(2, 1) + '\x1b[P', (0,)),
-            (5, s2, cup(2, 1) + '\x1b[@', (0,)),
-            (5, s3, cup(2, 1) + '\x1b[J', (0,)),
-            (5, s3, cup(2, 1) + '\x1b[1J', (2,)),
-            (5, s2, cup(2, 1) + '\x1b[M', (0,)),
-            (5, cup(2, 1) + s2, cup(1, 1) + '\x1b[2M', (0,)),
-            (5, s2, cup(2, 1) + '\x1b[L', (0, 2)),
-            (5, cup(2, 1) + s2, '\x1b[1;2r\x1b[L\x1b[r', (2,)),
-            (5, cup(3, 1) + s2, '\x1b[1;3r' + cup(3, 1) + '\n\x1b[r', (1, 3)),
-            (5, cup(3, 1) + s2, '\x1b[1;3r\x1b[S\x1b[r', (1, 3)),
-            (5, cup(2, 1) + s2, '\x1b[3;5r' + cup(3, 1) + '\x1bM\x1b[r', (1, 3)),
-            (5, cup(2, 1) + s2, '\x1b[3;5r\x1b[T\x1b[r', (1, 3)),
-            (3, in_history, cup(1, 1) + '\x1b[2K\x1b[+T', (0,)),
-            (3, in_history, '\x1b[2J\x1b[+T', (0,)),
-            (3, in_history, lambda s: s.clear_scrollback(), (0,)),
-            (3, prompt + '$ p1\r\n' + s2 + cup(3, 3) + prompt + '\n\n', lambda s: s.erase_last_command(), (0,)),
-            (3, prompt + '$ p0\r\n' + s2 + cup(3, 3) + prompt + '$ p1\r\n\r\n\r\n' + prompt, erase_command_and_pull, (0,)),
-            (5, s2, cup(1, 1) + 'z', (1,)),
-            (5, s2, cup(1, 1) + '中', (1,)),
-            (5, s2, cup(1, 1) + '\x1b]66;w=1;z\x07', (1,)),
-            (5, 'y' + s2, cup(1, 1) + 'y\x1b[b', (1,)),
-            (5, cup(1, 2) + s2, cup(1, 1) + '☺' + vs16, (1,)),
-            (5, cup(2, 1) + s2, cup(1, 1) + '\x1b]66;s=2;zz\x07', (2,)),
+            (5, s2, (0,), cup(2, 1) + '\x1b[2K', (0,)),
+            (5, s2, (0,), cup(2, 1) + '\x1b[K', (0,)),
+            (5, s2, (0,), cup(2, 1) + '\x1b[X', (0,)),
+            (5, s2, (0,), cup(2, 1) + '\x1b[P', (0,)),
+            (5, s2, (0,), cup(2, 1) + '\x1b[@', (0,)),
+            (5, s3, (0,), cup(2, 1) + '\x1b[J', (0,)),
+            (5, s3, (2,), cup(2, 1) + '\x1b[1J', (2,)),
+            (5, s2, (0,), cup(2, 1) + '\x1b[M', (0,)),
+            (5, cup(2, 1) + s2, (2,), cup(1, 1) + '\x1b[2M', (0,)),
+            (5, s2, (0, 1), cup(2, 1) + '\x1b[L', (0, 2)),
+            (5, cup(2, 1) + s2, (2,), '\x1b[1;2r\x1b[L\x1b[r', (2,)),
+            (5, cup(3, 1) + s2, (2, 3), '\x1b[1;3r' + cup(3, 1) + '\n\x1b[r', (1, 3)),
+            (5, cup(3, 1) + s2, (2, 3), '\x1b[1;3r\x1b[S\x1b[r', (1, 3)),
+            (5, cup(2, 1) + s2, (1, 2), '\x1b[3;5r' + cup(3, 1) + '\x1bM\x1b[r', (1, 3)),
+            (5, cup(2, 1) + s2, (1, 2), '\x1b[3;5r\x1b[T\x1b[r', (1, 3)),
+            (3, in_history, (1,), cup(1, 1) + '\x1b[2K\x1b[+T', (0,)),
+            (3, in_history, (1,), '\x1b[2J\x1b[+T', (0,)),
+            (3, in_history, (2,), lambda s: s.clear_scrollback(), (0,)),
+            (3, prompt + '$ p1\r\n' + s2 + cup(3, 3) + prompt + '\n\n', (1, 2), lambda s: s.erase_last_command(), (0,)),
+            (3, prompt + '$ p0\r\n' + s2 + cup(3, 3) + prompt + '$ p1\r\n\r\n\r\n' + prompt, (1,), erase_command_and_pull, (0,)),
+            (5, s2, (1,), cup(1, 1) + 'z', (1,)),
+            (5, s2, (1,), cup(1, 1) + '中', (1,)),
+            (5, s2, (1,), cup(1, 1) + '\x1b]66;w=1;z\x07', (1,)),
+            (5, 'y' + s2, (1,), cup(1, 1) + 'y\x1b[b', (1,)),
+            (5, cup(1, 2) + s2, (1,), cup(1, 1) + '☺' + vs16, (1,)),
+            (5, cup(2, 1) + s2, (2,), cup(1, 1) + '\x1b]66;s=2;zz\x07', (2,)),
             # a wide char does not fit in the last column, it wraps or is discarded
-            (5, cup(1, 10) + w1, cup(1, 10) + '中', (0,)),
+            (5, cup(1, 10) + w1, (0,), cup(1, 10) + '中', (0,)),
             # the region scrolls up for a char that does not fit above its bottom margin, the rows below it are not written
-            (5, cup(3, 1) + s2, '\x1b[1;3r' + cup(3, 1) + '\x1b]66;s=2;zz\x07\x1b[r', (3,)),
-            (5, cup(3, 1) + s2, '\x1b[1;3r' + cup(3, 1) + '\x1b]66;s=3;z\x07\x1b[r', (3,)),
+            (5, cup(3, 1) + s2, (2, 3), '\x1b[1;3r' + cup(3, 1) + '\x1b]66;s=2;zz\x07\x1b[r', (3,)),
+            (5, cup(3, 1) + s2, (2, 3), '\x1b[1;3r' + cup(3, 1) + '\x1b]66;s=3;z\x07\x1b[r', (3,)),
         ):
             emptied(*case)
         # a resize drops a char too wide for the new width, and moves rows left without text into the history
-        emptied(9, cup(2, 3) + s7w2, lambda s: s.resize(9, 11), range(1, 8), cols=16)
-        emptied(9, s7w2 + cup(8, 1) + 'x' * 32, lambda s: (s.resize(9, 11), pb(s, '\x1b[+T')), (0,), cols=16)
+        emptied(9, cup(2, 3) + s7w2, range(1, 8), lambda s: s.resize(9, 11), range(1, 8), cols=16)
+        emptied(9, s7w2 + cup(8, 1) + 'x' * 32, range(7), lambda s: (s.resize(9, 11), pb(s, '\x1b[+T')), (0,), cols=16)
         # a rewrap that leaves the first row of a line blank, widening back joins the text and the record of the next row to it
         s = self.screen()
         pb(s, '\x1b[8h\x1b[2 k' + cup(1, 10) + 'ab\x1b[8l')
@@ -282,8 +488,8 @@ class TestBidi(BaseTest):
         s.resize(5, 10)
         self.ae(self.records(s, 0, 1), [RTL, NONE])
         # the alternate screen resizes without rewrapping, removing the chars split at its new edges
-        emptied(5, cup(1, 9) + '中', lambda s: s.resize(5, 9), (0,), pre='\x1b[?1049h')
-        emptied(5, cup(4, 1) + s2, lambda s: s.resize(4, 10), (3,), pre='\x1b[?1049h')
+        emptied(5, cup(1, 9) + '中', (0,), lambda s: s.resize(5, 9), (0,), pre='\x1b[?1049h')
+        emptied(5, cup(4, 1) + s2, (3,), lambda s: s.resize(4, 10), (3,), pre='\x1b[?1049h')
         # a widened char moved onto a row, OSC 66, CHT and DECALN on a row whose record was left without text
         stale = '\x1b[8h\x1b[2 k' + CUP(2) + 'אבג' + CUP(2) + '\x1b[2K'
         for data, rows, want in (
@@ -320,6 +526,11 @@ class TestBidi(BaseTest):
         # on a one-column screen a widened narrow char has no room and goes, as a wide char does, leaving the row without text
         self.ae(self.written('\x1b[8h☺' + vs16, 0, cols=1), [NONE])
         self.ae(self.written('\x1b[8h' + w1 + '\x1b[8l\x1b[H中', 0, cols=1), [NONE])
+        # a mark on a row holding no text gives it no record
+        self.ae(self.written(IA + RLM + '\x1b[?2501l\x1b[8l', 0), [PRIMED_RTL])
+        # a char written again after a mark keeps the direction the mark set
+        self.ae(self.written(IA + RLM + '中\r' + RLM + '中', 0), [RTL])
+        self.ae(self.written(IA + RLM + s2 + '\r' + RLM + s2, 0, 1), [RTL, AUTO])
 
     def test_record_on_the_row_holding_the_widened_char(self):
         # a char widened by a later code point that moves past a scaled char, scrolling a region, records the row it lands on
@@ -329,9 +540,10 @@ class TestBidi(BaseTest):
         self.ae([s.test_bidi_line_record(r) for r in range(s.lines)], [LTR if r == y else NONE for r in range(s.lines)])
 
     def test_writes_to_rows_without_text(self):
-        # Seeded random streams of operations that remove, move and write text. After each operation one writer writes to a row
-        # whose cells hold no text, and the row then has the record the same write gives on a fresh screen. DECALN clears the
-        # attributes of every row. Text that comes back from the kept columns of a horizontally scrolling region has no record.
+        # Seeded random streams of operations that remove, move and write text, with no leading mark, whose direction on a row
+        # without text is kept until text comes. After each operation one writer writes to a row whose cells hold no text, and
+        # the row then has the record the same write gives on a fresh screen. DECALN clears the attributes of every row. Text that
+        # comes back from the kept columns of a horizontally scrolling region has no record.
         ops = (
             *('\x1b[{y};{x}H', '\x1b[{y}H', 'a', 'אב', '中', 'z ', 'b\x1b[2b', '\t', '\r', '\n', '\x1bM'),
             *(f'\x1b]66;{t}\x07' for t in ('s=2;א', 's=2;ab', 's=3;א', 's=4;z', 'w=1;z', 'w=2;中')),

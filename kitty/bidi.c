@@ -606,7 +606,8 @@ bidi_resolve_rows(BidiMaps *b, const BidiRows *src, int first, int last) {
     ensure_space_for(b, para_rows, const CPUCell *, num_rows, para_rows_cap, num_rows, false);
     ensure_space_for(b, para_levels, uint8_t, num_cells, para_levels_cap, num_cells, false);
     bool rtl = false;
-    // The base comes from the first row with a record
+    // The base comes from the first row with a record. A row without one may hold the direction a leading mark set for its
+    // first text written in bidi mode.
     LineAttrs lead = {0};
     for (int y = first; y <= last; y++) {
         LineAttrs *a = bidi_row_attrs(src, y);
@@ -620,6 +621,7 @@ bidi_resolve_rows(BidiMaps *b, const BidiRows *src, int first, int last) {
         rtl |= a->bidi_may_reorder;
         if (lead.bidi_stamp == BIDI_STAMP_NONE) lead = *a;
     }
+    if (lead.bidi_stamp == BIDI_STAMP_NONE) lead.bidi_rtl = lead.bidi_auto = false;
     if (lead.bidi_stamp == BIDI_STAMP_NONE || !(rtl || lead.bidi_rtl)) memset(b->para_levels, 0, num_cells);
     else if (bidi_rows_hold_placeholder(src, first, last, b->para_rows, cols, tc)) {
         // Not laid out, its text shaped as with bidi mode off, in the direction guessed from it: at BIDI_LEVEL_FIXED on a row
@@ -949,9 +951,9 @@ bidi_live_frame_reorders_unstamped(const Screen *self) {
     return pixel_scroll_enabled(self) && self->historybuf->bidi_stamped && bidi_history_line0_recorded(self);
 }
 
-// NULL for a frame shown in logical order. The buffer drops its flag once none of its rows has a record, unless the main one
-// continues a history line while the history holds a record. A frame not shown (paused) does not mark its rows on view as
-// rendered with the history rows below them.
+// NULL for a frame shown in logical order. The buffer drops its flag once none of its rows has a record or a leading mark's
+// direction, unless the main one continues a history line while the history holds a record. A frame not shown (paused) does
+// not mark its rows on view as rendered with the history rows below them.
 BidiMaps *
 bidi_prepare_live(Screen *self, bool shown) {
     if (OPT(force_ltr)) return NULL;
@@ -964,9 +966,11 @@ bidi_prepare_live(Screen *self, bool shown) {
         Line line;
         for (index_type y = 0; y < lb->ynum && !stamped; y++) {
             LineAttrs *a = lb->line_attrs + y;
-            if (a->bidi_stamp == BIDI_STAMP_NONE) continue;
-            linebuf_init_line_at(lb, y, &line);
-            stamped = line_has_bidi_record(a, &line);
+            if (a->bidi_stamp == BIDI_STAMP_NONE) stamped = line_has_bidi_bits(*a);
+            else {
+                linebuf_init_line_at(lb, y, &line);
+                stamped = line_has_bidi_record(a, &line);
+            }
         }
         if (!stamped) {
             bidi_unstamp(lb);

@@ -90,7 +90,7 @@ line_is_empty(const Line *line) {
 }
 
 // Whether the line has a bidi record. A line holding no text has none: a record it kept is dropped, so that the next text written
-// to it records the controls current then.
+// to it records the controls current then. The direction a leading mark set for the line's first text is not a record.
 static inline bool
 line_has_bidi_record(LineAttrs *a, const Line *line) {
     if (a->bidi_stamp == BIDI_STAMP_NONE) return false;

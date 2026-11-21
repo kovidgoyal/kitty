@@ -408,7 +408,9 @@ For each decoded code point:
    the Unicode standard.
 
 #. If there is no previous cell and the code point's width is zero,
-   the code point is discarded and its processing is finished.
+   the code point is discarded and its processing is finished. In bidi mode
+   a discarded LRM or RLM can still set the direction of a paragraph, see
+   :ref:`bidi_support`.
 
 #. If there is a previous cell, the
    `Grapheme segmentation algorithm UAX29-C1-1 <https://www.unicode.org/reports/tr29/#C1-1>`__
