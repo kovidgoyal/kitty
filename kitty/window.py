@@ -1692,6 +1692,7 @@ class Window:
             self.needs_attention = False
             if (tab := self.tabref()) is not None:
                 tab.relayout_borders()
+                tab.mark_tab_bar_dirty()
 
     def title_changed(self, new_title: memoryview | None, is_base64: bool = False) -> None:
         self.child_title = process_title_from_child(new_title or memoryview(b''), is_base64, self.default_title)

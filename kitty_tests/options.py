@@ -512,6 +512,11 @@ def conf_parsing(self):
     self.ae(ka.func, 'change_font_size')
     self.ae(ka.args, (False, '+', 2.0))
 
+    opts = p('clear_all_shortcuts y', 'map f1 clear_bell_indicators')
+    self.ae((ac().func, ac().args), ('clear_bell_indicators', ()))
+    opts = p('clear_all_shortcuts y', 'map f1 clear_bell_indicators state:parent_active and not id:1')
+    self.ae((ac().func, ac().args), ('clear_bell_indicators', ('state:parent_active and not id:1',)))
+
     opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 combine : new_window : la ')
     self.ae((ac().func, ac(1).func), ('new_window', 'launch'))
 

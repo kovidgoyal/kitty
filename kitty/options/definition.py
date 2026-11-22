@@ -1635,6 +1635,8 @@ Some text or a Unicode symbol to show on the tab if a window in the tab that
 does not have focus has a bell. If you want to use leading or trailing
 spaces, surround the text with quotes. See :opt:`tab_title_template` for how
 this is rendered.
+The bell indicator is cleared when the window is focused or by
+the :ac:`clear_bell_indicators` action.
 
 For backwards compatibility, values of :code:`yes`, :code:`y` and :code:`true`
 are converted to the default bell symbol and :code:`no`, :code:`n`,

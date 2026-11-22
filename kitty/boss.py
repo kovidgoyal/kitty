@@ -4357,6 +4357,37 @@ class Boss:
         if tm is not None:
             tm.toggle_tab(match_expression)
 
+    @ac(
+        'win',
+        """
+        Clear the bell indicators of windows
+
+        Clears the visual indicators of a rung bell, such as :opt:`bell_border_color`
+        and :opt:`bell_on_tab`, without needing to focus the windows that rang
+        the bell. By default, clears them for all windows. Optionally, specify
+        an expression to only clear them for matching windows. See
+        :ref:`search_syntax` for details on the match expression. For example::
+
+            # Clear bell indicators in all windows
+            map f1 clear_bell_indicators
+            # Clear bell indicators only in the windows of the currently active tab
+            map f2 clear_bell_indicators state:parent_active
+            # Clear bell indicators only in the windows of the focused OS window
+            map f3 clear_bell_indicators state:focused_os_window
+        """,
+    )
+    def clear_bell_indicators(self, match_expression: str = '') -> None:
+        if match_expression:
+            try:
+                windows = list(self.match_windows(match_expression, self.window_for_dispatch or self.active_window))
+            except Exception as e:
+                self.show_error(_('Invalid match expression'), f'{match_expression}\n{e}')
+                return
+        else:
+            windows = list(self.all_windows)
+        for w in windows:
+            w.clear_needs_attention()
+
     def update_progress_in_dock(self) -> None:
         if not is_macos:
             return

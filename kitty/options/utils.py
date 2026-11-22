@@ -222,6 +222,7 @@ def detach_tab_parse(func: str, rest: str) -> FuncArgsType:
     'goto_layout',
     'toggle_layout',
     'toggle_tab',
+    'clear_bell_indicators',
     'kitty_shell',
     'show_kitty_doc',
     'set_tab_title',
