@@ -167,6 +167,8 @@ Detailed list of changes
 
 - :doc:`launch <launch>`: Run the program as requested instead of resolving it to a full path first, so that wrappers such as the :ref:`launch wrapper <launch_wrapper>` look it up in their own :envvar:`PATH` and the program sees itself invoked by name, as when run from a shell. Programs that would not be found in :envvar:`PATH`, such as ones found via :opt:`exe_search_path`, are still run via their full path (:iss:`10914`)
 
+- Preserve the command name passed to the :ref:`launch wrapper <launch_wrapper>` when an empty or deleted :envvar:`PATH` still resolves to the same executable
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
