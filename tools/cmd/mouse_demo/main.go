@@ -12,7 +12,6 @@ import (
 	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
@@ -117,13 +116,13 @@ func format_size(n int64) string {
 	}
 }
 
-func draw_rounded_box(lp *loop.Loop, width int, lines []string) {
+func rounded_box_lines(width int, lines []string) []string {
 	if width < 4 {
 		width = 4
 	}
 	inner_width := width - 2
-	// Top border
-	lp.QueueWriteString("╭" + strings.Repeat("─", inner_width) + "╮\r\n")
+	ans := make([]string, 0, len(lines)+2)
+	ans = append(ans, "╭"+strings.Repeat("─", inner_width)+"╮")
 	for _, line := range lines {
 		// Truncate to inner_width runes (not bytes) to handle multi-byte chars safely.
 		runes := []rune(line)
@@ -131,80 +130,17 @@ func draw_rounded_box(lp *loop.Loop, width int, lines []string) {
 			runes = runes[:inner_width]
 		}
 		padding := inner_width - len(runes)
-		lp.QueueWriteString("│" + string(runes) + strings.Repeat(" ", padding) + "│\r\n")
+		ans = append(ans, "│"+string(runes)+strings.Repeat(" ", padding)+"│")
 	}
-	// Bottom border
-	lp.QueueWriteString("╰" + strings.Repeat("─", inner_width) + "╯\r\n")
+	return append(ans, "╰"+strings.Repeat("─", inner_width)+"╯")
 }
 
-// A block drawn with the graphics protocol that is moved up and down by
-// scrolling, to demonstrate detailed wheel events
+// The top area of the screen has a fixed height, so that the text box below
+// it, which is scrolled smoothly, does not move
 const (
-	block_image_id    = 7523
-	block_columns     = 8
-	block_rows        = 4
-	lines_per_click   = 3 // used when the terminal does not send its multiplier
-	block_color_red   = 0x4a
-	block_color_green = 0x9e
-	block_color_blue  = 0xff
+	num_info_lines     = 7
+	num_drop_box_lines = 3
 )
-
-type scroll_block struct {
-	y float64 // position of the top of the block in pixels
-	// The pixel data of the block and the size it was created for
-	pixels                 []byte
-	pixels_for_cell_width  uint
-	pixels_for_cell_height uint
-}
-
-// scroll moves the block by the specified number of lines, keeping it on screen
-func (b *scroll_block) scroll(lines float64, sz loop.ScreenSize) {
-	b.y += lines * float64(sz.CellHeight)
-	b.clamp(sz)
-}
-
-func (b *scroll_block) clamp(sz loop.ScreenSize) {
-	max_y := float64(int(sz.HeightPx) - block_rows*int(sz.CellHeight))
-	b.y = max(0, min(b.y, max_y))
-}
-
-// draw places the block at its current position. The image is a solid
-// color, so it compresses to very little and is cheap to send with every
-// placement. It is drawn below the text so as not to obscure it.
-func (b *scroll_block) draw(lp *loop.Loop, sz loop.ScreenSize) {
-	if sz.CellHeight == 0 || sz.CellWidth == 0 || sz.WidthCells < block_columns {
-		return
-	}
-	width, height := block_columns*sz.CellWidth, block_rows*sz.CellHeight
-	if b.pixels_for_cell_width != sz.CellWidth || b.pixels_for_cell_height != sz.CellHeight {
-		b.pixels = make([]byte, 0, width*height*3)
-		for range width * height {
-			b.pixels = append(b.pixels, block_color_red, block_color_green, block_color_blue)
-		}
-		b.pixels_for_cell_width, b.pixels_for_cell_height = sz.CellWidth, sz.CellHeight
-	}
-	b.clamp(sz)
-	y := int(b.y)
-	row, offset := y/int(sz.CellHeight), y%int(sz.CellHeight)
-	lp.SaveCursorPosition()
-	defer lp.RestoreCursorPosition()
-	lp.MoveCursorTo(int(sz.WidthCells)-block_columns+1, row+1)
-	gc := &graphics.GraphicsCommand{}
-	gc.SetAction(graphics.GRT_action_transmit_and_display).SetFormat(graphics.GRT_format_rgb).SetDataWidth(uint64(width)).SetDataHeight(uint64(height))
-	gc.SetImageId(block_image_id).SetPlacementId(1).SetYOffset(uint64(offset))
-	gc.SetCursorMovement(graphics.GRT_cursor_static).SetQuiet(graphics.GRT_quiet_silent).SetZIndex(-1)
-	if err := gc.WriteWithPayloadToLoop(lp, b.pixels); err != nil {
-		debugprintln("Failed to draw the scroll block:", err)
-	}
-}
-
-func (b *scroll_block) delete(lp *loop.Loop) {
-	gc := &graphics.GraphicsCommand{}
-	gc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_by_id).SetImageId(block_image_id).SetQuiet(graphics.GRT_quiet_silent)
-	if err := gc.WriteWithPayloadToLoop(lp, nil); err != nil {
-		debugprintln("Failed to delete the scroll block:", err)
-	}
-}
 
 func Run(args []string) (rc int, err error) {
 	all_pointer_shapes := []loop.PointerShape{
@@ -256,7 +192,7 @@ func Run(args []string) (rc int, err error) {
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING).DetailedWheelEvents()
 	var current_mouse_event *loop.MouseEvent
 	var dnd dnd_state
-	var block scroll_block
+	var text text_area
 
 	// build_box_lines computes the drop box content lines based on current state.
 	build_box_lines := func() []string {
@@ -304,133 +240,150 @@ func Run(args []string) (rc int, err error) {
 		return []string{"Drop files here"}
 	}
 
-	draw_screen := func() {
-		lp.StartAtomicUpdate()
-		defer lp.EndAtomicUpdate()
+	screen_size := func() loop.ScreenSize {
+		if s, err := lp.ScreenSize(); err == nil {
+			return s
+		}
+		return loop.ScreenSize{WidthCells: 80, HeightCells: 24}
+	}
+	num_shape_rows := func(sw int) int {
+		num_cols := max(1, sw/col_width)
+		return (len(all_pointer_shapes) + num_cols - 1) / num_cols
+	}
+	// The height of the top area: the information about the last mouse
+	// event, the pointer shapes, a blank line, the drop box and a blank line
+	top_area_height := func(sw int) int {
+		return num_info_lines + num_shape_rows(sw) + 1 + num_drop_box_lines + 2 + 1
+	}
+
+	// draw_top draws the top area, without clearing the screen, which would
+	// erase the text box below it. Must be called in an atomic update.
+	draw_top := func() {
 		lp.AllowLineWrapping(false)
 		defer lp.AllowLineWrapping(true)
-		lp.ClearScreen()
-
-		sw := 80
-		sh := 24
-		if s, err := lp.ScreenSize(); err == nil {
-			sw = int(s.WidthCells)
-			sh = int(s.HeightCells)
-		}
-
-		// y tracks the next row to be printed; used for both content drawing
-		// and computing the drop box position.
+		sz := screen_size()
+		sw, sh := int(sz.WidthCells), int(sz.HeightCells)
+		// y is the next row to be drawn
 		y := 0
-
-		if s, err := lp.ScreenSize(); err == nil {
-			defer block.draw(lp, s)
+		line := func(text string) {
+			if y < sh {
+				lp.MoveCursorTo(1, y+1)
+				lp.QueueWriteString(text)
+				lp.ClearToEndOfLine()
+			}
+			y++
 		}
 
+		info := []string{}
 		if current_mouse_event == nil {
-			lp.Println(`Move the mouse or click to see mouse events`)
-			y++
-			lp.Println(`Scroll with a wheel or touchpad to move the block`)
-			y++
-			lp.Println("Hover the mouse over the names below to see the shapes")
-			y++
-			lp.Println()
-			y++
-			num_cols := max(1, sw/col_width)
-			colfmt := "%-" + strconv.Itoa(col_width) + "s"
-			for pos := 0; pos < len(all_pointer_shapes); {
-				for c := 0; c < num_cols && pos < len(all_pointer_shapes); c++ {
-					lp.Printf(colfmt, all_pointer_shape_names[pos])
-					pos++
-				}
-				lp.Println()
-				y++
-			}
+			info = append(info, `Move the mouse or click to see mouse events`, `Scroll with a wheel or touchpad to scroll the text below`)
 		} else if current_mouse_event.Event_type == loop.MOUSE_LEAVE {
-			lp.Println("Mouse has left the window")
-			y++
+			info = append(info, "Mouse has left the window")
 		} else {
-			lp.Printf("Position: %d, %d (pixels)\r\n", current_mouse_event.Pixel.X, current_mouse_event.Pixel.Y)
-			y++
-			lp.Printf("Cell    : %d, %d\r\n", current_mouse_event.Cell.X, current_mouse_event.Cell.Y)
-			y++
-			lp.Printf("Type    : %s\r\n", current_mouse_event.Event_type)
-			y++
+			info = append(info,
+				fmt.Sprintf("Position: %d, %d (pixels)", current_mouse_event.Pixel.X, current_mouse_event.Pixel.Y),
+				fmt.Sprintf("Cell    : %d, %d", current_mouse_event.Cell.X, current_mouse_event.Cell.Y),
+				fmt.Sprintf("Type    : %s", current_mouse_event.Event_type),
+			)
 			if current_mouse_event.Event_type == loop.MOUSE_WHEEL {
-				lp.Printf("Wheel   : %s\r\n", current_mouse_event.Wheel)
-				y++
+				info = append(info, fmt.Sprintf("Wheel   : %s", current_mouse_event.Wheel))
 			}
 			if current_mouse_event.Buttons != loop.NO_MOUSE_BUTTON {
-				lp.Println(current_mouse_event.Buttons.String())
-				y++
+				info = append(info, current_mouse_event.Buttons.String())
 			}
 			if mods := current_mouse_event.Mods.String(); mods != "" {
-				lp.Printf("Modifiers: %s\r\n", mods)
-				y++
+				info = append(info, fmt.Sprintf("Modifiers: %s", mods))
 			}
-			lp.Println("Hover the mouse over the names below to see the shapes")
-			y++
-
-			num_cols := max(1, sw/col_width)
-			pos := 0
-			colfmt := "%-" + strconv.Itoa(col_width) + "s"
-			is_on_name := false
-			var ps loop.PointerShape
-			for y < sh && pos < len(all_pointer_shapes) {
-				is_row := y == current_mouse_event.Cell.Y
-				for c := 0; c < num_cols && pos < len(all_pointer_shapes); c++ {
-					name := all_pointer_shape_names[pos]
-					is_hovered := false
-					if is_row {
-						start_x := c * col_width
-						x := current_mouse_event.Cell.X
-						if x < start_x+len(name) && x >= start_x {
-							is_on_name = true
-							is_hovered = true
-							ps = all_pointer_shapes[pos]
-						}
-					}
-					if is_hovered {
-						lp.QueueWriteString("\x1b[31m")
-					}
-					lp.Printf(colfmt, name)
-					lp.QueueWriteString("\x1b[m")
-					pos++
-				}
-				y++
-				lp.Println()
-			}
-			// Only change the pointer shape when it actually changes, as
-			// changing it restarts animated pointers.
-			cur, has_shape := lp.CurrentPointerShape()
-			if is_on_name {
-				if !has_shape || cur != ps {
-					lp.PopPointerShape()
-					lp.PushPointerShape(ps)
-				}
-			} else if has_shape {
-				lp.PopPointerShape()
+		}
+		info = append(info, "Hover the mouse over the names below to see the shapes")
+		for i := range num_info_lines {
+			if i < len(info) {
+				line(info[i])
+			} else {
+				line("")
 			}
 		}
 
-		// Draw the drop area below the pointer shapes list.
-		// y is now the row where the blank separator will be printed.
-		lp.Println()
-		y++ // blank separator line
+		num_cols := max(1, sw/col_width)
+		colfmt := "%-" + strconv.Itoa(col_width) + "s"
+		is_on_name := false
+		var ps loop.PointerShape
+		for pos := 0; pos < len(all_pointer_shapes); {
+			is_row := current_mouse_event != nil && current_mouse_event.Event_type != loop.MOUSE_LEAVE && y == current_mouse_event.Cell.Y
+			row := strings.Builder{}
+			for c := 0; c < num_cols && pos < len(all_pointer_shapes); c++ {
+				name := all_pointer_shape_names[pos]
+				is_hovered := false
+				if is_row {
+					start_x := c * col_width
+					x := current_mouse_event.Cell.X
+					if x < start_x+len(name) && x >= start_x {
+						is_on_name = true
+						is_hovered = true
+						ps = all_pointer_shapes[pos]
+					}
+				}
+				if is_hovered {
+					row.WriteString("\x1b[31m")
+				}
+				row.WriteString(fmt.Sprintf(colfmt, name))
+				row.WriteString("\x1b[m")
+				pos++
+			}
+			line(row.String())
+		}
+		// Only change the pointer shape when it actually changes, as
+		// changing it restarts animated pointers.
+		cur, has_shape := lp.CurrentPointerShape()
+		if is_on_name {
+			if !has_shape || cur != ps {
+				lp.PopPointerShape()
+				lp.PushPointerShape(ps)
+			}
+		} else if has_shape {
+			lp.PopPointerShape()
+		}
 
+		// The drop area below the pointer shapes list, with a fixed number of lines
+		line("")
 		box_width := min(sw, 60)
 		dnd.drop_box_width = box_width
 		box_lines := build_box_lines()
+		if len(box_lines) > num_drop_box_lines {
+			box_lines = append(box_lines[:num_drop_box_lines-1], fmt.Sprintf("… and %d more", len(box_lines)-num_drop_box_lines+1))
+		}
+		for len(box_lines) < num_drop_box_lines {
+			box_lines = append(box_lines, "")
+		}
 		dnd.drop_box_start_row = y
 		dnd.drop_box_end_row = y + len(box_lines) + 1 // top border + lines + bottom border
-
+		prefix := ""
 		if dnd.drag_over_box {
 			// Highlight the box in green when drag is over it.
-			lp.QueueWriteString("\x1b[32m")
-			draw_rounded_box(lp, box_width, box_lines)
-			lp.QueueWriteString("\x1b[m")
-		} else {
-			draw_rounded_box(lp, box_width, box_lines)
+			prefix = "\x1b[32m"
 		}
+		for _, bl := range rounded_box_lines(box_width, box_lines) {
+			line(prefix + bl + "\x1b[m")
+		}
+		line("")
+	}
+
+	// draw_all clears the screen and draws everything, defining the smooth
+	// scroll region of the text box
+	draw_all := func() {
+		lp.StartAtomicUpdate()
+		defer lp.EndAtomicUpdate()
+		lp.ClearScreen()
+		sz := screen_size()
+		text.layout(top_area_height(int(sz.WidthCells)), sz)
+		draw_top()
+		text.draw(lp)
+	}
+
+	draw_screen := func() {
+		lp.StartAtomicUpdate()
+		defer lp.EndAtomicUpdate()
+		draw_top()
 	}
 
 	// start_next_file_request sends a request for the next unread file URI,
@@ -635,31 +588,41 @@ func Run(args []string) (rc int, err error) {
 		lp.SetWindowTitle("kitty mouse features demo")
 		lp.SetCursorVisible(false)
 		lp.StartAcceptingDrops("", "text/plain", "text/uri-list")
-		draw_screen()
+		lp.QuerySmoothScrolling()
+		draw_all()
 		return "", nil
 	}
+	lp.OnEscapeCode = func(etype loop.EscapeCodeType, raw []byte) error {
+		if etype == loop.OSC && loop.IsSmoothScrollQueryResponse(raw) && !text.supported {
+			text.set_supported()
+			draw_all()
+		}
+		return nil
+	}
 	lp.OnFinalize = func() string {
-		block.delete(lp)
+		lp.RemoveSmoothScrollRegion(text_region_id)
 		lp.SetCursorVisible(true)
 		lp.StopAcceptingDrops()
 		return ""
 	}
 
 	lp.OnMouseEvent = func(ev *loop.MouseEvent) error {
-		if sz, err := lp.ScreenSize(); err == nil {
-			switch {
-			case ev.Event_type == loop.MOUSE_WHEEL:
-				_, lines := ev.Wheel.Lines(int(sz.CellHeight), lines_per_click)
-				block.scroll(lines, sz)
-			case ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.MOUSE_WHEEL_UP != 0:
-				// The terminal does not support detailed wheel events
-				block.scroll(-lines_per_click, sz)
-			case ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.MOUSE_WHEEL_DOWN != 0:
-				block.scroll(lines_per_click, sz)
-			}
+		// Scrolling and drawing the rows that move into the text box must be
+		// done in a single atomic update
+		lp.StartAtomicUpdate()
+		defer lp.EndAtomicUpdate()
+		switch {
+		case ev.Event_type == loop.MOUSE_WHEEL:
+			_, lines := ev.Wheel.Lines(text.cell_height, lines_per_click)
+			text.scroll(lp, lines)
+		case ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.MOUSE_WHEEL_UP != 0:
+			// The terminal does not support detailed wheel events
+			text.scroll(lp, -lines_per_click)
+		case ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.MOUSE_WHEEL_DOWN != 0:
+			text.scroll(lp, lines_per_click)
 		}
 		current_mouse_event = ev
-		draw_screen()
+		draw_top()
 		return nil
 	}
 	lp.OnKeyEvent = func(ev *loop.KeyEvent) error {
@@ -669,7 +632,8 @@ func Run(args []string) (rc int, err error) {
 		return nil
 	}
 	lp.OnResize = func(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
-		draw_screen()
+		// Resizing removes the smooth scroll region, it is defined again
+		draw_all()
 		return nil
 	}
 	lp.OnDnDData = handle_dnd_cmd

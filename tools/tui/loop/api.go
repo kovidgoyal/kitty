@@ -3,6 +3,7 @@
 package loop
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -769,4 +770,77 @@ func (self *Loop) StartOfferingDrags(machine_id string) {
 
 func (self *Loop) StopOfferingDrags() {
 	self.QueueDnDData(DndCommand{Type: 'o', X: 2})
+}
+
+// Smooth scrolling protocol, see docs/smooth-scrolling-protocol.rst
+
+const SMOOTH_SCROLL_CODE = 2254
+
+type SmoothScrollRegion struct {
+	// The id of the region, must be non-zero
+	Id uint32
+	// The top left cell of the region, one based, zero means one
+	X, Y uint32
+	// The size of the region in cells, zero means up to the edge of the screen
+	Width, Height uint32
+	// Scroll horizontally instead of vertically
+	Horizontal bool
+	// The number of rows (columns) the terminal keeps on each side of the
+	// region after they move out of it, zero means one
+	Capacity uint32
+	// Do not push rows moving out of a region at the top of the main screen into the scrollback
+	PrivateOverflow bool
+}
+
+func (self *Loop) write_smooth_scroll_command(payload string) {
+	self.QueueWriteString(fmt.Sprintf("\x1b]%d;%s\x1b\\", SMOOTH_SCROLL_CODE, payload))
+}
+
+func (self *Loop) DefineSmoothScrollRegion(r SmoothScrollRegion) {
+	payload := fmt.Sprintf("a=d:i=%d", r.Id)
+	add := func(key byte, val uint32) {
+		if val != 0 {
+			payload += fmt.Sprintf(":%c=%d", key, val)
+		}
+	}
+	add('x', r.X)
+	add('y', r.Y)
+	add('w', r.Width)
+	add('h', r.Height)
+	add('k', r.Capacity)
+	if r.Horizontal {
+		payload += ":o=h"
+	}
+	if r.PrivateOverflow {
+		payload += ":p=1"
+	}
+	self.write_smooth_scroll_command(payload)
+}
+
+// Scroll the region by delta_pixels, positive values scroll towards the end of
+// the content. Should be sent together with the drawing of the cells that move
+// into the region in a single atomic update.
+func (self *Loop) SmoothScroll(id uint32, delta_pixels int) {
+	self.write_smooth_scroll_command(fmt.Sprintf("a=s:i=%d:d=%d", id, delta_pixels))
+}
+
+// Remove the region with the specified id, or all regions if the id is zero
+func (self *Loop) RemoveSmoothScrollRegion(id uint32) {
+	if id == 0 {
+		self.write_smooth_scroll_command("a=r")
+	} else {
+		self.write_smooth_scroll_command(fmt.Sprintf("a=r:i=%d", id))
+	}
+}
+
+// Query the terminal for support for smooth scrolling, a terminal that
+// supports it replies with an OSC escape code, delivered to OnEscapeCode, see
+// IsSmoothScrollQueryResponse()
+func (self *Loop) QuerySmoothScrolling() {
+	self.write_smooth_scroll_command("a=q")
+}
+
+// Whether the OSC escape code is the reply to QuerySmoothScrolling()
+func IsSmoothScrollQueryResponse(raw []byte) bool {
+	return bytes.HasPrefix(raw, fmt.Appendf(nil, "%d;a=q", SMOOTH_SCROLL_CODE))
 }
