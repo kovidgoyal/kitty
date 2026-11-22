@@ -33,7 +33,7 @@ from kitty.fonts.common import FontSpec, all_fonts_map, face_from_descriptor, ge
 from kitty.fonts.render import coalesce_symbol_maps, create_face, render_string, setup_for_testing, shape_string
 from kitty.options.types import Options
 
-from .base import BaseTest, draw_multicell
+from .base import BaseTest, draw_multicell, parse_bytes
 
 
 def parse_font_spec(spec):
@@ -483,6 +483,21 @@ class Rendering(FontBaseTest):
         block_test(quarter_block, scale=1, subscale_n=1, subscale_d=2)
         block_test(upper_half_block, scale=1, subscale_n=1, subscale_d=2, text='██')
         block_test(lower_half_block, scale=1, subscale_n=1, subscale_d=2, text='██', vertical_align=1)
+
+    def test_subscaled_rendering_into_larger_area(self):
+        # Regression test for overlapping copies from the scratch area when the
+        # subscaled cell height is larger than the unscaled cell height
+        for scale in (2, 3, 4, 7):
+            s = self.create_screen(cols=8, lines=scale, scrollback=0)
+            parse_bytes(s, f'\x1b]66;s={scale}:n=5:d=9;a\x07'.encode())
+            for y in range(s.lines):
+                test_render_line(s.line(y))
+        # Rendering a run with an empty bitmap
+        s = self.create_screen(cols=6, lines=2, scrollback=0)
+        parse_bytes(s, '\x1b]66;s=2;\U0001f467\x07'.encode())
+        s.test_draw_overlay_line('\u3008a', 3, 0)
+        for y in range(s.lines):
+            test_render_line(s.line(y))
 
     def test_font_rendering(self):
         render_string('ab\u0347\u0305你好|\U0001f601|\U0001f64f|\U0001f63a|')

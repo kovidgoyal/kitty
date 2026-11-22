@@ -715,10 +715,11 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
     if (copy_buf) {
-        ans->buf = malloc(ans->rows * ans->stride);
+        const size_t sz = (size_t)ans->rows * ans->stride;
+        ans->buf = malloc(MAX(sz, 1u));
         if (!ans->buf) fatal("Out of memory");
         ans->needs_free = true;
-        memcpy(ans->buf, bitmap->buffer, ans->rows * ans->stride);
+        if (sz) memcpy(ans->buf, bitmap->buffer, sz);
     } else ans->buf = bitmap->buffer;
     ans->start_x = 0;
     ans->width = bitmap->width;

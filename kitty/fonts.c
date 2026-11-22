@@ -1374,7 +1374,9 @@ render_group(
 
     ensure_canvas_can_fit(fg, MAX(num_cells, num_scaled_cells) + 1, rf.scale);
     if (rendering_in_smaller_area) ensure_canvas_can_fit(fg, 2 * num_cells + 1, (unsigned)ceil(scale)); // scratch space
-    pixel *scratch = fg->canvas.buf + canvas_width * unscaled_metrics.cell_height;
+    // The scratch area must start after the last row that is copied back into the canvas from it, otherwise
+    // the copy will overwrite not yet copied rows of the scratch area.
+    pixel *scratch = fg->canvas.buf + canvas_width * MAX(unscaled_metrics.cell_height, scaled_metrics.cell_height);
     text_in_cell(cpu_cells, tc, global_glyph_render_scratch.lc);
     bool is_only_filled_boxes = false;
     if (global_glyph_render_scratch.lc->chars[0] == 0x2588) {
