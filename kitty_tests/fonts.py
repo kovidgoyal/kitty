@@ -191,13 +191,13 @@ class Selection(BaseTest):
             self.skipTest('Only CoreText looks up fonts by name')
         from kitty.fast_data_types import CTFace, add_font_file, coretext_all_fonts
 
-        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ComfyCode-Regular.ttf')
+        font_data = testing_font_data('ComfyCode-Regular.ttf')
         with tempfile.TemporaryDirectory() as tdir:
             names = 'a.ttf', 'b.ttf'
             for name in names:
                 p = os.path.join(tdir, name)
-                with open(src, 'rb') as s, open(p, 'wb') as d:
-                    d.write(s.read())
+                with open(p, 'wb') as d:
+                    d.write(font_data)
                 self.assertTrue(add_font_file(p))
             # CoreText reports paths without resolving symlinks such as /var -> /private/var
             descriptors = [d for d in coretext_all_fonts(False) if d['family'] == 'Comfy Code' and os.path.basename(d['path']) in names]
