@@ -967,6 +967,8 @@ ssr_nuke_overflow_parts(Screen *self, index_type x_start, index_type x_limit, Mu
     // a smooth scroll region. Must be called before the cells of the char on
     // screen are removed.
     if (rows.start < 0) return; // the char extends into the scrollback, which is never the overflow buffer of a region it is in
+    // The cells are in a screen buffer temporarily made current, which the regions are not on
+    if (self->linebuf != self->smooth_scroll.linebuf) return;
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
         SmoothScrollRegion *r = self->smooth_scroll.regions + i;
         if (x_start < r->left || x_limit > r->right) continue;
@@ -1129,6 +1131,9 @@ static void
 ssr_move_selections(Screen *self, Selections *selections, const SmoothScrollRegion *r, bool forward, bool via_history) {
     // Selections inside the rectangle move with its cells, selections that
     // cross its edges or move out of it into an overflow buffer are cleared.
+    // When the scrollback moves with the rows of the rectangle, via_history,
+    // it is treated as part of the rectangle, as for scrolling with SU.
+    const int top = via_history ? INT_MIN : (int)r->top;
     for (size_t i = 0; i < selections->count; i++) {
         Selection *s = selections->items + i;
         if (is_selection_empty(s)) continue;
@@ -1139,8 +1144,8 @@ ssr_move_selections(Screen *self, Selections *selections, const SmoothScrollRegi
             xmin = MIN(s->start.x, s->end.x);
             xmax = MAX(s->start.x, s->end.x);
         }
-        if (sbottom < (int)r->top || stop >= (int)r->bottom || xmax < r->left || xmin >= r->right) continue;
-        const bool inside = stop >= (int)r->top && sbottom < (int)r->bottom && xmin >= r->left && xmax < r->right;
+        if (sbottom < top || stop >= (int)r->bottom || xmax < r->left || xmin >= r->right) continue;
+        const bool inside = stop >= top && sbottom < (int)r->bottom && xmin >= r->left && xmax < r->right;
         bool moves_out;
         if (r->horizontal) moves_out = forward ? xmin == r->left : xmax == r->right - 1;
         else moves_out = forward ? (stop == (int)r->top && !via_history) : sbottom == (int)r->bottom - 1;
@@ -1154,9 +1159,9 @@ ssr_move_selections(Screen *self, Selections *selections, const SmoothScrollRegi
 }
 
 static void
-ssr_move_images(Screen *self, SmoothScrollRegion *r, bool forward) {
+ssr_move_images(Screen *self, SmoothScrollRegion *r, bool forward, bool via_history) {
+    // via_history is true when the scrollback moves with the rows of the rectangle
     if (LIKELY(!grman_has_any_images(self->grman))) return;
-    const bool via_history = ssr_uses_history(self, r);
     const index_type before_edge = r->horizontal ? r->left : r->top, after_edge = r->horizontal ? r->right : r->bottom;
     const SmoothScrollImageData d = {
         .region_id = r->id,
@@ -1178,7 +1183,13 @@ ssr_move_images(Screen *self, SmoothScrollRegion *r, bool forward) {
 static void
 ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
     // Move the cells of the rectangle by one row, up when up is true
-    const bool full_width = ssr_is_full_width(self, r), via_history = ssr_uses_history(self, r);
+    const bool full_width = ssr_is_full_width(self, r), uses_history = ssr_uses_history(self, r);
+    // Whether the scrollback moves with the rows of the rectangle, with a row
+    // moving into it or being taken back from it. Only rows that moved into it
+    // from the rectangle are taken back, so that scrolling back never takes
+    // lines that were in the scrollback before, for example, the output of
+    // commands run before the program.
+    const bool via_history = uses_history && (up || (r->pushed_to_history && self->historybuf->count));
     const index_type top = r->top, last = r->bottom - 1;
     ssr_nuke_straddling_chars(self, r);
     if (UNLIKELY(self->selections.count)) ssr_move_selections(self, &self->selections, r, up, via_history);
@@ -1193,6 +1204,8 @@ ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
             if (via_history) {
                 linebuf_init_line(self->linebuf, last);
                 historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf);
+                // The scrollback drops its oldest line when full
+                r->pushed_to_history = MIN(r->pushed_to_history + 1, self->historybuf->ynum);
                 // Keep a scrolled back viewport anchored on the same content
                 if (self->scrolled_by) {
                     if (self->scrolled_by < self->historybuf->count) self->scrolled_by++;
@@ -1228,6 +1241,7 @@ ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
         entered_blank = true;
         if (via_history) {
             if (historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) {
+                r->pushed_to_history--;
                 linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, top);
                 ssr_mark_row_dirty(self, top);
                 // Keep a scrolled back viewport anchored on the same content
@@ -1242,7 +1256,7 @@ ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
         if (entered_blank) ssr_blank_row(self, r, top);
         if (entered_blank && last > top) ssr_nuke_chars_next_to_blank_row(self, r, top + 1, false);
     }
-    ssr_move_images(self, r, up);
+    ssr_move_images(self, r, up, via_history);
     self->is_dirty = true;
 }
 
@@ -1321,7 +1335,7 @@ ssr_shift_by_one_column(Screen *self, SmoothScrollRegion *r, bool left) {
     if (*pushed < k) (*pushed)++;
     if (*popped) (*popped)--;
     if (entered_blank && w > 1) ssr_nuke_chars_next_to_blank_column(self, r, left ? last - 1 : first + 1, left);
-    ssr_move_images(self, r, left);
+    ssr_move_images(self, r, left, false);
     self->is_dirty = true;
 }
 
@@ -1407,6 +1421,7 @@ screen_smooth_scroll_define(
         PyErr_Clear();
         return false;
     }
+    self->smooth_scroll.linebuf = self->linebuf;
     SmoothScrollRegion *r = self->smooth_scroll.regions + self->smooth_scroll.count++;
     *r = (SmoothScrollRegion){
         .id = id,
@@ -1477,6 +1492,8 @@ ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool v
         SmoothScrollRegion *r = self->smooth_scroll.regions + i;
         if (!ssr_rows_intersect(r, top, bottom)) continue;
         if (up && via_history && top == 0 && bottom + 1 >= r->bottom && ssr_uses_history(self, r)) {
+            // The top row of the rectangle moves into the scrollback
+            r->pushed_to_history = MIN(r->pushed_to_history + 1, self->historybuf->ynum);
             ssr_nuke_chars_continuing_into_overflow(self, r, false);
             ssr_clear_overflow(r, false);
             ssr_release_images(self, r, false);
@@ -1485,6 +1502,17 @@ ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool v
                 self->smooth_scroll.offsets_changed = true;
             }
         } else ssr_discard_overflow(self, r);
+    }
+}
+
+static void
+ssr_row_cells_moved(Screen *self, index_type x, index_type y) {
+    // The cells of row y from column x to the end of the row were moved
+    // sideways, by inserting or deleting chars, so horizontally scrolled
+    // regions containing them no longer adjoin the columns in their overflow buffers
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (r->horizontal && r->top <= y && y < r->bottom && x < r->right) ssr_discard_overflow(self, r);
     }
 }
 
@@ -1498,13 +1526,20 @@ static unsigned
 ssr_live_render_regions(Screen *self, SmoothScrollRenderRegion *ans) {
     // The regions as they should be rendered now. Regions are shifted only
     // when the screen is not scrolled back, as their rectangles are in screen
-    // coordinates.
-    const bool live_view = !self->scrolled_by && !(live_pixel_scroll_enabled(self) && self->pixel_scroll_offset_y);
-    if (!live_view) return 0;
+    // coordinates. When it is scrolled back, they are only used to clip the
+    // images moving with them to their rectangles.
+    const int y_offset = (int)(self->scrolled_by * self->cell_size.height) + (live_pixel_scroll_enabled(self) ? (int)self->pixel_scroll_offset_y : 0);
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
         const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
         ans[i] = (SmoothScrollRenderRegion){
-            .id = r->id, .left = r->left, .top = r->top, .width = ssr_width(r), .height = ssr_height(r), .offset = r->offset, .horizontal = r->horizontal};
+            .id = r->id,
+            .left = r->left,
+            .top = r->top,
+            .width = ssr_width(r),
+            .height = ssr_height(r),
+            .offset = y_offset ? 0 : r->offset,
+            .y_offset = y_offset,
+            .horizontal = r->horizontal};
     }
     return self->smooth_scroll.count;
 }
@@ -1515,7 +1550,7 @@ static int paused_snapshot_row_offset(const Screen *self);
 static bool
 ssr_render_regions_equal(const SmoothScrollRenderRegion *a, const SmoothScrollRenderRegion *b) {
     return a->id == b->id && a->left == b->left && a->top == b->top && a->width == b->width && a->height == b->height && a->offset == b->offset &&
-           a->base_cell == b->base_cell && a->horizontal == b->horizontal;
+           a->y_offset == b->y_offset && a->base_cell == b->base_cell && a->horizontal == b->horizontal;
 }
 
 bool
@@ -1601,7 +1636,7 @@ ssr_update_strip_cell_data(Screen *self, uint8_t *address, FONTS_DATA_HANDLE fon
             CellGPUData *row = dest + (before ? 0 : (size_t)(rr->height + 1) * w);
             const Line *lp = NULL;
             index_type x = 0;
-            if (before && (paused ? self->paused_rendering.smooth_scroll.has_history_row : ssr_uses_history(self, r))) {
+            if (before && (paused ? self->paused_rendering.smooth_scroll.history_row_region == i + 1 : ssr_uses_history(self, r))) {
                 if (paused) {
                     LineBuf *hr = self->paused_rendering.smooth_scroll.history_row;
                     linebuf_init_line_at(hr, 0, &line);
@@ -1684,7 +1719,7 @@ ssr_capture_for_pause(Screen *self) {
     // Rendering is being paused, capture how the regions are rendered
     __typeof__(self->paused_rendering.smooth_scroll) *p = &self->paused_rendering.smooth_scroll;
     p->count = 0;
-    p->has_history_row = false;
+    p->history_row_region = 0;
     if (!self->smooth_scroll.count) return;
     const unsigned count = ssr_live_render_regions(self, p->regions);
     for (unsigned i = 0; i < count; i++) {
@@ -1709,7 +1744,7 @@ ssr_capture_for_pause(Screen *self) {
             linebuf_clear_line(p->history_row, 0, true);
             memcpy(p->history_row->cpu_cell_buf, l.cpu_cells, self->columns * sizeof(l.cpu_cells[0]));
             linebuf_mark_line_dirty(p->history_row, 0);
-            p->has_history_row = true;
+            p->history_row_region = i + 1;
         }
     }
     p->count = count;
@@ -1723,7 +1758,7 @@ ssr_release_pause_capture(Screen *self) {
         if (p->copies[i].overflow) linebuf_clear(p->copies[i].overflow, BLANK_CHAR);
     if (p->history_row) linebuf_clear(p->history_row, BLANK_CHAR);
     p->count = 0;
-    p->has_history_row = false;
+    p->history_row_region = 0;
 }
 // }}}
 
@@ -1743,16 +1778,17 @@ ssr_reply_to_query(Screen *self, const SmoothScrollCommand *cmd) {
         print(":n=%u", MAX_SMOOTH_SCROLL_REGIONS);
     } else if (strchr("dsrq", action)) {
         print(":e=%c", action);
-#define ECHO_UINT(key, attr) \
-    if (cmd->attr) print(":%c=%u", key, cmd->attr)
+        // Keys with default values are not echoed, zero means the default for all keys
+#define ECHO_UINT(key, attr, default_value) \
+    if (cmd->attr && cmd->attr != default_value) print(":%c=%u", key, cmd->attr)
         switch (action) {
             case 'd':
-                ECHO_UINT('x', x);
-                ECHO_UINT('y', y);
-                ECHO_UINT('w', width);
-                ECHO_UINT('h', height);
-                ECHO_UINT('k', capacity);
-                if (cmd->orientation) print(":o=%c", cmd->orientation);
+                ECHO_UINT('x', x, 1u);
+                ECHO_UINT('y', y, 1u);
+                ECHO_UINT('w', width, 0u);
+                ECHO_UINT('h', height, 0u);
+                ECHO_UINT('k', capacity, 1u);
+                if (cmd->orientation == 'h') print(":o=%c", cmd->orientation);
                 if (cmd->private_overflow == 1) print(":p=%u", 1u);
                 break;
             case 's':
@@ -1771,7 +1807,7 @@ screen_handle_smooth_scroll_command(Screen *self, const SmoothScrollCommand *cmd
     // See docs/smooth-scrolling-protocol.rst. Only queries reply, invalid commands are ignored.
     switch (cmd->action) {
         case 'd': {
-            if (!cmd->id) return;
+            if (!cmd->id || cmd->private_overflow > 1) return;
             // Coordinates are one based, zero for the defaults
             const uint64_t left = cmd->x ? cmd->x - 1u : 0, top = cmd->y ? cmd->y - 1u : 0;
             if (left >= self->columns || top >= self->lines) return;
@@ -2308,6 +2344,7 @@ range_line_is_continued(Screen *self, int y) {
 
 static void
 insert_characters(Screen *self, index_type at, index_type num, index_type y, bool replace_with_spaces) {
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_row_cells_moved(self, at, y);
     // insert num chars at x=at setting them to the value of the num chars at [at, at + num)
     // multiline chars at x >= at are deleted and multicell chars split at x=at
     // and x=at + num - 1 are deleted
@@ -2475,6 +2512,13 @@ reset_style_table_if_unused(Screen *self) {
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
         const LineBuf *lb = self->smooth_scroll.regions[i].overflow;
         if (cells_use_styles(lb->cpu_cell_buf, (size_t)lb->xnum * lb->ynum)) return;
+    }
+    if (self->paused_rendering.expires_at) {
+        const LineBuf *paused[MAX_SMOOTH_SCROLL_REGIONS + 1] = {self->paused_rendering.smooth_scroll.history_row};
+        for (unsigned i = 0; i < MAX_SMOOTH_SCROLL_REGIONS; i++) paused[i + 1] = self->paused_rendering.smooth_scroll.copies[i].overflow;
+        for (unsigned i = 0; i < arraysz(paused); i++) {
+            if (paused[i] && cells_use_styles(paused[i]->cpu_cell_buf, (size_t)paused[i]->xnum * paused[i]->ynum)) return;
+        }
     }
     if (self->overlay_line.original_line.cpu_cells && cells_use_styles(self->overlay_line.original_line.cpu_cells, self->columns)) return;
     style_table_reset(self->style_table);
@@ -4742,6 +4786,7 @@ dirty_scroll(Screen *self) {
 static void
 screen_clear_scrollback(Screen *self) {
     historybuf_clear(self->historybuf);
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) self->smooth_scroll.regions[i].pushed_to_history = 0;
     reset_pixel_scroll(self, 0);
     if (self->scrolled_by != 0) {
         self->scrolled_by = 0;
@@ -4968,6 +5013,7 @@ screen_repeat_character(Screen *self, unsigned int count) {
 
 static void
 remove_characters(Screen *self, index_type at, index_type num, index_type y, bool replace_with_spaces) {
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_row_cells_moved(self, at, y);
     // delete num chars at x=at setting them to the value of the num chars at [at + num, at + num + num)
     // multiline chars at x >= at are deleted and multicell chars split at x=at
     // and x=at + num - 1 are deleted
@@ -6437,8 +6483,10 @@ screen_scrollbar_geometry(const Screen *self, float *handle_position, float *vis
 void
 screen_apply_selection(Screen *self, void *address_, size_t num_cells, size_t stride) {
     uint8_t *address = address_, *strips = NULL;
+    // The data for the strips of the smooth scroll regions is written only
+    // when there is room for it, as when called by the renderer
     const size_t num_strip_cells = self->smooth_scroll_render.num_strip_cells;
-    if (num_strip_cells) {
+    if (num_strip_cells && num_cells == (size_t)render_lines_for_screen(self) * self->columns + num_strip_cells) {
         // The data for the strips is copied from the data for the screen,
         // which must be built elsewhere as address is write only memory
         num_cells -= num_strip_cells;
@@ -8679,9 +8727,9 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                 if (end.y >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf &&
                     (adjust_both_ends || !adjusted_boundary_is_before)) {
                     int range_bottom = (int)end.y - (int)self->scrolled_by;
-                    index_type num_after_viewport = continue_word_downwards_offscreen(self, range_bottom, &end.x);
-                    if (num_after_viewport) {
-                        s->end_scrolled_by -= num_after_viewport;
+                    index_type num_below_viewport = continue_word_downwards_offscreen(self, range_bottom, &end.x);
+                    if (num_below_viewport) {
+                        s->end_scrolled_by -= num_below_viewport;
                         s->end.x = end.x;
                     }
                 }
@@ -8749,9 +8797,9 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                         // extend below viewport if needed
                         if (bottom_line >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf) {
                             int range_bottom = (int)bottom_line - (int)self->scrolled_by;
-                            index_type num_after_viewport = continue_line_downwards_offscreen(self, range_bottom, &down_start, &down_end);
-                            if (num_after_viewport) {
-                                s->end_scrolled_by -= num_after_viewport;
+                            index_type num_below_viewport = continue_line_downwards_offscreen(self, range_bottom, &down_start, &down_end);
+                            if (num_below_viewport) {
+                                s->end_scrolled_by -= num_below_viewport;
                                 s->end.x = down_end.x;
                             }
                         }
@@ -8790,9 +8838,9 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                         // extend below viewport if needed
                         if (bottom_line >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf) {
                             int range_bottom = (int)bottom_line - (int)self->scrolled_by;
-                            index_type num_after_viewport = continue_line_downwards_offscreen(self, range_bottom, &down_start, &down_end);
-                            if (num_after_viewport) {
-                                s->end_scrolled_by -= num_after_viewport;
+                            index_type num_below_viewport = continue_line_downwards_offscreen(self, range_bottom, &down_start, &down_end);
+                            if (num_below_viewport) {
+                                s->end_scrolled_by -= num_below_viewport;
                                 s->end.x = down_end.x;
                             }
                         }

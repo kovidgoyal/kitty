@@ -718,6 +718,13 @@ class Rendering(FontBaseTest):
         self.ae(after[6], before[2])
         self.ae(after[7], before[7])
         self.ae(after[:2], before[:2])
+        # Chars split before they were ever rendered complete are rendered correctly
+        for delta, split_x, complete_x in ((10, 2, 3), (-40, 6, 2)):
+            s = self.create_screen(cols=8, lines=1, scrollback=0)
+            s.draw('xy好cdef')
+            self.assertTrue(s.smooth_scroll_define(1, 2, 0, 7, 1, 1, False, True))
+            s.smooth_scroll(1, delta)
+            self.ae(sprites()[split_x], before[complete_x])
 
     def test_line_thickness_scales_with_font_size(self):
         from kitty.fast_data_types import create_test_font_group, render_box_char

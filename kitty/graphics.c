@@ -1632,7 +1632,7 @@ grman_update_layers(
         }
         if (changed) {
             set_layers_dirty(self);
-            memcpy(self->last_layer_regions, regions, num_regions * sizeof(regions[0]));
+            if (num_regions) memcpy(self->last_layer_regions, regions, num_regions * sizeof(regions[0]));
             self->last_num_layer_regions = num_regions;
         }
     }

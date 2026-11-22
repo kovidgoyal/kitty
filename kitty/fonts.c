@@ -2622,6 +2622,32 @@ multicell_intersects_cursor(const Line *line, index_type lnum, const Cursor *cur
     } else return lnum == cursor->y;
 }
 
+// The maximum width in cells of a multicell char that is rendered when split, see render_line()
+#define MAX_SPLIT_CHAR_WIDTH 64u
+#define MAX_SPLIT_CHARS_PER_LINE 16u
+
+static void
+render_split_multicell_char(FONTS_DATA_HANDLE fg, const Line *line, index_type start, index_type count, DisableLigature strategy, ListOfChars *lc) {
+    // Render a multicell char whose cells [start, start + count) are all of its
+    // cells in the line, the others being elsewhere, by rendering the complete
+    // char in a scratch line and copying the sprites of the cells in the line
+    const CPUCell *first = line->cpu_cells + start;
+    const index_type width = mcd_x_limit(first);
+    if (width > MAX_SPLIT_CHAR_WIDTH || first->x + count > width) return;
+    CPUCell cells[MAX_SPLIT_CHAR_WIDTH];
+    RenderCell render_cells[MAX_SPLIT_CHAR_WIDTH] = {0};
+    for (index_type x = 0; x < width; x++) {
+        cells[x] = *first;
+        cells[x].x = x;
+    }
+    Line scratch = *line;
+    scratch.cpu_cells = cells;
+    scratch.render_cells = render_cells;
+    scratch.xnum = width;
+    render_line(fg, &scratch, 0, NULL, strategy, lc);
+    for (index_type k = 0; k < count; k++) line->render_cells[start + k].sprite_idx = render_cells[first->x + k].sprite_idx;
+}
+
 void
 render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc) {
 #define RENDER                                                                                                          \
@@ -2650,17 +2676,20 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
     bool center_glyph = false;
     bool disable_ligature_at_cursor = cursor != NULL && disable_ligature_strategy == DISABLE_LIGATURES_CURSOR;
     index_type first_cell_in_run, i;
+    struct {
+        index_type start, count;
+    } split_chars[MAX_SPLIT_CHARS_PER_LINE];
+    unsigned num_split_chars = 0;
     for (i = 0, first_cell_in_run = 0; i < line->xnum; i++) {
         cell_font = basic_font;
         CPUCell *cpu_cell = line->cpu_cells + i;
         if (cpu_cell->is_multicell) {
             // A multicell char can be split, with some of its columns in this
             // line and others elsewhere, by a horizontally scrolled smooth
-            // scroll region. Its cells in this line keep the sprites they were
-            // rendered with when the char was complete, and it must not be
-            // part of a run, as runs assume all the cells of their chars are
-            // present. A char cut off by the end of the line is rendered
-            // normally, as the end of a run.
+            // scroll region. It must not be part of a run, as runs assume all
+            // the cells of their chars are present, it is rendered separately,
+            // after the runs. A char cut off by the end of the line is
+            // rendered normally, as the end of a run.
             index_type num_incomplete = 0;
             if (cpu_cell->x) {
                 if (!i || !continues_multicell_char_horizontally(cpu_cell - 1, cpu_cell, cpu_cell->x - 1)) {
@@ -2676,6 +2705,10 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             }
             if (num_incomplete) {
                 RENDER
+                if (num_split_chars < arraysz(split_chars)) {
+                    split_chars[num_split_chars].start = i;
+                    split_chars[num_split_chars++].count = num_incomplete;
+                }
                 run_font = basic_font;
                 i += num_incomplete - 1;
                 first_cell_in_run = i + 1;
@@ -2757,6 +2790,9 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
     RENDER
 #undef RENDER
     for (index_type x = 0; x < line->xnum; x++) line->render_cells[x].sprite_idx = gpu_cells[x].sprite_idx;
+    // Must be after the sprites are copied, as rendering a line uses the shared render scratch space
+    for (unsigned k = 0; k < num_split_chars; k++)
+        render_split_multicell_char(fg_, line, split_chars[k].start, split_chars[k].count, disable_ligature_strategy, lc);
 }
 
 StringCanvas

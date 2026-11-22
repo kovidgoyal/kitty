@@ -89,8 +89,12 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
                     pos++;
                 }
 #define I(x) \
-    case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
+    case x: g.x = is_negative ? (int32_t)(-(int64_t)code) : (int32_t)code; break
                 READ_UINT;
+                if (code > (is_negative ? 2147483648u : 2147483647u)) {
+                    REPORT_ERROR("Malformed DnDCommand control block, number is too large");
+                    return;
+                }
                 switch (key) {
                     I(cell_x);
                     I(cell_y);

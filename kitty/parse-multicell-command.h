@@ -76,8 +76,10 @@ case horizontal_align: value_state = UINT; break;
 
                 is_negative = false;
                 if(parser_buf[pos] == '-') { is_negative = true; pos++; }
-#define I(x) case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
+#define I(x) case x: g.x = is_negative ? (int32_t)(-(int64_t)code) : (int32_t)code; break
                 READ_UINT;
+                if (code > (is_negative ? 2147483648u : 2147483647u)) {
+                    REPORT_ERROR("Malformed MultiCellCommand control block, number is too large"); return; }
                 switch(key) {
                     ;
                     default: break;

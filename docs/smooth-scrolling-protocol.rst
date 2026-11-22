@@ -235,6 +235,9 @@ the rows of the screen move under the region, as they no longer adjoin it:
   or when lines are inserted or deleted in them (IL and DL)
 * when the screen is erased with ED 2, ED 3 or ED 22, or filled with the
   alignment test pattern (DECALN)
+* for horizontally scrolling regions, when characters are inserted or
+  deleted in their rows (ICH, DCH or insert mode), moving the cells of their
+  rows sideways
 
 .. _smooth_scroll_scrollback:
 
@@ -245,8 +248,12 @@ Smooth scroll regions can be used in both the main and the alternate screens.
 When a vertically scrolling region spans the full width of the main screen and
 starts at its top, the rows that move out of its top go into the scrollback,
 exactly as when scrolling with the SU escape code, and are taken back from the
-scrollback when scrolling in the other direction. In this case, the capacity
-only applies to the rows below the region. Scrolling the screen into the
+scrollback when scrolling in the other direction. Only the rows that moved
+into the scrollback from the region are taken back, rows that were in the
+scrollback before, for example, the output of commands run before the
+program, are never taken. When there are no more rows to take back, blank
+rows move into the region, for the program to draw. In this case, the
+capacity only applies to the rows below the region. Scrolling the screen into the
 scrollback, for example, with a line feed at the bottom of the screen, then
 only discards the rows below the region. To keep the rows that move out of
 such a region private instead, define it with ``p=1``. This is useful, for

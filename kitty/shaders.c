@@ -2193,7 +2193,7 @@ smooth_scroll_region_rect(const UIRenderData *ui, const SmoothScrollRenderRegion
     // The rectangle of the region in framebuffer pixels
     return (Viewport){
         .left = ui->screen_left + r->left * ui->cell_width,
-        .top = ui->screen_top + r->top * ui->cell_height,
+        .top = ui->screen_top + r->top * ui->cell_height + (unsigned)MAX(0, r->y_offset),
         .width = r->width * ui->cell_width,
         .height = r->height * ui->cell_height};
 }

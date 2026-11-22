@@ -160,6 +160,9 @@ typedef struct SmoothScrollRegion {
     bool horizontal;
     // Do not use the scrollback as the overflow buffer above the rectangle
     bool private_overflow;
+    // The number of rows moved from the rectangle into the scrollback, when it
+    // is the overflow buffer. Only these rows are taken back from it.
+    index_type pushed_to_history;
     // For vertical scrolling, rows [0, capacity) are the rows above the
     // rectangle, nearest first, and rows [capacity, 2 * capacity) the rows
     // below it, nearest first, each of the width of the rectangle. For
@@ -174,6 +177,8 @@ typedef struct SmoothScroll {
     unsigned count;
     // Set when the offset of a region changes, to render it
     bool offsets_changed;
+    // The screen buffer the regions are on, regions are removed when switching buffers
+    const LineBuf *linebuf;
 } SmoothScroll;
 
 // How a smooth scroll region is rendered in a frame. A region that is
@@ -188,6 +193,10 @@ typedef struct SmoothScrollRenderRegion {
     uint32_t id;
     index_type left, top, width, height;
     int offset;
+    // The distance in pixels by which the rows of the screen are drawn below
+    // their usual position, when the screen is scrolled back. Regions are
+    // never shifted then, they are only used to clip the images moving with them.
+    int y_offset;
     bool horizontal;
     // The index in the cell buffer of the first cell of the strip, when shifted
     unsigned base_cell;
@@ -333,9 +342,11 @@ typedef struct {
             unsigned count;
             // Copies of the regions, with copies of their overflow buffers
             SmoothScrollRegion copies[MAX_SMOOTH_SCROLL_REGIONS];
-            // A copy of the last line of the scrollback, for a region using it as its overflow buffer
+            // A copy of the last line of the scrollback, for the region using it
+            // as its overflow buffer, whose index plus one is history_row_region,
+            // zero if no region uses it
             LineBuf *history_row;
-            bool has_history_row;
+            unsigned history_row_region;
         } smooth_scroll;
     } paused_rendering;
     SmoothScroll smooth_scroll;

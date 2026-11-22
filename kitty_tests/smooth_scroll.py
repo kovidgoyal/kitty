@@ -426,13 +426,18 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, 3 * H), 3)
         ae(rows(), [(6, 8)])  # the other image is in the scrollback
         ae(s.historybuf.count, 3)
+        ae(s.smooth_scroll(1, -2 * H), -2)
+        ae(rows(), [(0, 2), (6, 8)])  # taken back from the scrollback with its rows
+        ae(s.smooth_scroll(1, 2 * H), 2)
         s.smooth_scroll_remove(1)
         s.scroll(3, True)
         ae(rows(3), [(-2, 0)])  # the other image is below the viewport
         s.scroll(3, False)
+        # A new region does not take back rows that were in the scrollback before it was defined
         self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 4))
         ae(s.smooth_scroll(1, -2 * H), -2)
-        ae(rows(), [(0, 2), (6, 8)])
+        ae(s.historybuf.count, 3)
+        ae(rows(), [(6, 8)])
 
         # Images from unicode placeholders move with their cells
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=8)
@@ -708,3 +713,72 @@ class TestSmoothScroll(BaseTest):
         ae(reply('a=q:e=Z:d=1'), f'{prefix}\x1b\\')  # unknown action
         ae(reply('a=q:Z=1'), '')  # unknown keys make the command malformed
         ae(s.smooth_scroll_regions(), ())  # queries have no effect
+
+    def test_smooth_scroll_review_fixes(self):
+        from kitty.fast_data_types import SMOOTH_SCROLL_CODE
+
+        ae = self.ae
+
+        # Selections in the scrollback move with it when a region using it scrolls
+        s = self.create_screen(cols=4, lines=5, scrollback=10)
+        fill(s)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 4, 3))
+        s.start_selection(0, 0)
+        s.update_selection(1, 0)
+        ae(s.text_for_selection(False, False), ('AA',))
+        for _ in range(2):
+            ae(s.smooth_scroll(1, H), 1)
+            ae(s.text_for_selection(False, False), ('AA',))
+        ae(s.smooth_scroll(1, -H), -1)
+        ae(s.text_for_selection(False, False), ('AA',))
+
+        # Only rows that moved into the scrollback from the region are taken back
+        s = self.create_screen(cols=4, lines=5, scrollback=10)
+        s.draw('old')
+        parse_bytes(s, b'\r\n' * 5)  # push a line of earlier output into the scrollback
+        ae(s.historybuf.count, 1)
+        fill(s)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 4, 3))
+        ae(s.smooth_scroll(1, H), 1)
+        ae(s.historybuf.count, 2)
+        ae(s.smooth_scroll(1, -2 * H), -2)
+        ae(s.historybuf.count, 1)
+        ae(str(s.historybuf.line(0)), 'old')
+        ae(lines(s)[:3], ['', 'AAAA', 'BBBB'])
+        # Clearing the scrollback forgets the rows moved into it
+        ae(s.smooth_scroll(1, 2 * H), 2)
+        s.erase_in_display(3)
+        fill(s)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 4, 3))
+        ae(s.smooth_scroll(1, H), 1)
+        parse_bytes(s, b'\x1b[3J')
+        ae(s.smooth_scroll(1, -H), -1)
+        ae(s.historybuf.count, 0)
+
+        # Inserting or deleting chars discards the columns kept by horizontally scrolling regions
+        for cmd, x, discarded in ((b'@', 3, True), (b'P', 3, True), (b'P', 1, True), (b'@', 8, False), (b'P', 7, False)):
+            s = self.create_screen(cols=10, lines=4)
+            fill(s)
+            self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, 1, False, True))
+            ae(s.smooth_scroll(1, 1), 1)
+            parse_bytes(s, f'\x1b[2;{x}H\x1b[{cmd.decode()}'.encode())
+            ae(region(s)['num_before'] == 0, discarded, (cmd, x))
+        # but not for vertically scrolling ones
+        s = self.create_screen(cols=10, lines=4)
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3))
+        ae(s.smooth_scroll(1, 1), 1)
+        parse_bytes(s, b'\x1b[2;3H\x1b[P')
+        ae(region(s)['num_before'], 1)
+
+        # Feature queries do not echo keys with their default values and p must be 0 or 1
+        s = self.create_screen(cols=10, lines=4)
+
+        def reply(payload):
+            s.callbacks.clear()
+            parse_bytes(s, f'\x1b]{SMOOTH_SCROLL_CODE};{payload}\x1b\\'.encode())
+            return s.callbacks.wtcbuf.decode()
+
+        ae(reply('a=q:e=d:x=1:y=1:k=1:o=v:p=0'), f'\x1b]{SMOOTH_SCROLL_CODE};a=q:e=d\x1b\\')
+        ae(reply('a=q:e=d:p=2'), f'\x1b]{SMOOTH_SCROLL_CODE};a=q:e=d\x1b\\')
+        reply('a=d:i=1:p=2')
+        ae(s.smooth_scroll_regions(), ())

@@ -234,8 +234,10 @@ static inline void
 
                 is_negative = false;
                 if(parser_buf[pos] == '-') {{ is_negative = true; pos++; }}
-#define I(x) case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
+#define I(x) case x: g.x = is_negative ? (int32_t)(-(int64_t)code) : (int32_t)code; break
                 READ_UINT;
+                if (code > (is_negative ? 2147483648u : 2147483647u)) {{
+                    REPORT_ERROR("Malformed {command_class} control block, number is too large"); return; }}
                 switch(key) {{
                     {int_keys};
                     default: break;
