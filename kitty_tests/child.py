@@ -602,13 +602,22 @@ read -r _
                 f.write('#!/bin/sh\n')
             os.chmod(program, 0o755)
             opts, args = parse_launch_args(['--env=PATH=', f'--cwd={tdir}', name])
-            with patch.dict(os.environ, {'PATH': tdir}):
-                _, _, argv = self._fork(
-                    argv=args, launch_request=LaunchRequest(opts.type), user_func=self._recording(['/bin/wrapper']), cwd=opts.cwd, env=get_env(opts)
-                )
-            self.ae(self.contexts[-1].env['PATH'], '')
-            self.ae(self.contexts[-1].argv, (name,))
-            self.ae(argv, ('/bin/wrapper', name))
+            for hold in (False, True):
+                with self.subTest(hold=hold), patch.dict(os.environ, {'PATH': tdir}):
+                    _, _, argv = self._fork(
+                        argv=args,
+                        launch_request=LaunchRequest(opts.type),
+                        user_func=self._recording(['/bin/wrapper']),
+                        cwd=opts.cwd,
+                        env=get_env(opts),
+                        hold=hold,
+                    )
+                    self.ae(self.contexts[-1].env['PATH'], '')
+                    # The hold kitten does not search the working directory
+                    # for an empty PATH
+                    expected = program if hold else name
+                    self.ae(self.contexts[-1].argv, (expected,))
+                    self.ae(argv[-2:], ('/bin/wrapper', expected))
 
     def test_launch_wrapper_deleted_path(self):
         from kitty.launch import get_env, parse_launch_args
@@ -617,11 +626,17 @@ read -r _
         if not shutil.which('uname', path=os.defpath):
             self.skipTest('uname not found on the default PATH')
         opts, args = parse_launch_args(['--env=PATH', 'uname'])
-        with patch.dict(os.environ, {'PATH': os.defpath}):
-            _, _, argv = self._fork(argv=args, launch_request=LaunchRequest(opts.type), user_func=self._recording(['/bin/wrapper']), env=get_env(opts))
-        self.assertNotIn('PATH', self.contexts[-1].env)
-        self.ae(self.contexts[-1].argv, ('uname',))
-        self.ae(argv, ('/bin/wrapper', 'uname'))
+        for hold in (False, True):
+            with self.subTest(hold=hold), patch.dict(os.environ, {'PATH': os.defpath}):
+                _, _, argv = self._fork(
+                    argv=args, launch_request=LaunchRequest(opts.type), user_func=self._recording(['/bin/wrapper']), env=get_env(opts), hold=hold
+                )
+                self.assertNotIn('PATH', self.contexts[-1].env)
+                # The hold kitten uses its own default search path for an
+                # unset PATH
+                expected = shutil.which('uname') if hold else 'uname'
+                self.ae(self.contexts[-1].argv, (expected,))
+                self.ae(argv[-2:], ('/bin/wrapper', expected))
 
     def test_launch_wrapper_unresolved_argv(self):
         # The program is run as requested, so that the wrapper looks it up in

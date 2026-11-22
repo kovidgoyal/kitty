@@ -165,9 +165,7 @@ Detailed list of changes
 
 - :ac:`combine`: Fix the third and subsequent actions in a mouse mapping not being run for the window that was clicked. Also fix an error when a mapping refers to an action name that matches a non-action attribute of the window or tab
 
-- :doc:`launch <launch>`: Run the program as requested instead of resolving it to a full path first, so that wrappers such as the :ref:`launch wrapper <launch_wrapper>` look it up in their own :envvar:`PATH` and the program sees itself invoked by name, as when run from a shell. Programs that would not be found in :envvar:`PATH`, such as ones found via :opt:`exe_search_path`, are still run via their full path (:iss:`10914`)
-
-- Preserve the command name passed to the :ref:`launch wrapper <launch_wrapper>` when an empty or deleted :envvar:`PATH` still resolves to the same executable
+- :doc:`launch <launch>`: Run the program as requested instead of resolving it to a full path first, so that wrappers such as the :ref:`launch wrapper <launch_wrapper>` look it up in their own :envvar:`PATH` and the program sees itself invoked by name, as when run from a shell. Programs that would not be found in :envvar:`PATH`, such as ones found via :opt:`exe_search_path`, are still run via their full path. An empty or unset :envvar:`PATH` is handled the same way a shell would handle it (:iss:`10914`)
 
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
