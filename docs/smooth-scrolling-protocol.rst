@@ -26,17 +26,19 @@ the same units as used by this protocol.
 Quickstart
 --------------
 
-Define a region covering rows 2 to 21 of a screen 80 columns wide, using the
-id ``1``, then scroll it, wrapping every scroll and the drawing of the rows
-that move into the region in `synchronized output
+In the examples below, ``<OSC>`` is the bytes ``ESC ]``, ``<ST>`` is the bytes
+``ESC \`` (``BEL`` is also accepted) and ``<CSI>`` is the bytes ``ESC [``.
+
+Define a region covering rows 2 to 21, spanning the full width of the screen,
+using the id ``1``, then scroll it, wrapping every scroll and the drawing of
+the rows that move into the region in `synchronized output
 <https://gitlab.com/gnachman/iterm2/-/wikis/synchronized-updates-spec>`__::
 
     <OSC>2254;a=d:i=1:y=2:h=20<ST>
     ...
     <CSI>?2026h<OSC>2254;a=s:i=1:d=7<ST>... draw the rows that moved in ...<CSI>?2026l
 
-Here, ``<OSC>`` is the bytes ``ESC ]`` and ``<ST>`` is the bytes ``ESC \``
-(``BEL`` is also accepted). ``d=7`` scrolls the region by seven pixels
+Here, ``d=7`` scrolls the region by seven pixels
 towards the end of the content, that is, the content moves up. When the region
 is no longer needed, remove it::
 
@@ -84,16 +86,17 @@ Programs that need to know whether a feature is supported should use a
        the terminal. Commands without an action are ignored.
    * - ``i``
      - Integer, positive
-     - ``0``
+     - none
      - The id of the region, chosen by the program. Required for defining and
-       scrolling regions.
+       scrolling regions. When removing regions without an id, all regions are
+       removed.
    * - ``x``, ``y``
      - Integer, positive
      - ``1``
      - The column and row of the top left cell of the region, starting from
        ``1``, as for the cursor position escape code (CUP).
    * - ``w``, ``h``
-     - Integer, positive
+     - Integer, non-negative
      - ``0``
      - The width and height of the region, in cells. Zero means the region
        extends to the right or bottom edge of the screen.
@@ -123,6 +126,11 @@ Programs that need to know whether a feature is supported should use a
      - none
      - Only for :ref:`feature queries <smooth_scroll_queries>`, the action
        being queried.
+   * - ``n``
+     - Integer, positive
+     - none
+     - Only in replies to :ref:`queries <smooth_scroll_queries>`, the maximum
+       number of regions that can be defined at a time.
 
 All amounts in pixels are in the same pixel coordinate system as used for the
 ``CSI 14 t`` query, SGR pixel mouse reporting and :ref:`detailed scroll events
@@ -137,11 +145,16 @@ smooth scrolling::
 
     <OSC>2254;a=d:i=1:x=3:y=2:w=40:h=20:k=3<ST>
 
-A region must be inside the screen and must not overlap other regions. Up to
-four regions can be defined at a time, use a :ref:`query
-<smooth_scroll_queries>` to find out the maximum number of regions supported
-by the terminal. Defining a region with the id of an existing region replaces
-it. The direction in which a region scrolls is fixed when it is defined.
+A region must be inside the screen and must not overlap other regions. The
+number of regions that can be defined at a time is limited by the terminal
+(four in kitty), use a :ref:`query <smooth_scroll_queries>` to find it out.
+The direction in which a region scrolls is fixed when it is defined.
+
+Defining a region with the id of an existing region replaces it, exactly as if
+the existing region was :ref:`removed <smooth_scroll_remove>` first: its
+offset is reset to zero and the rows kept on its sides are discarded. The new
+rectangle may overlap the rectangle of the region it replaces. If the new
+definition is invalid, the existing region is left unchanged.
 
 Defining a region does not change the contents of the screen and while it is
 not scrolled, it is drawn exactly as before. The rectangle of a region is in
@@ -159,8 +172,10 @@ of pixels::
     <OSC>2254;a=s:i=1:d=-12<ST>
 
 The terminal keeps track of the *offset* of the region, the position of its
-first row (or column) relative to its top (or left) edge, in pixels. Its
-magnitude is always less than the height (or width) of a cell. When the
+first row (or column) relative to its top (or left) edge, in pixels. The cells
+of the region are drawn shifted by the offset: down (right) when it is
+positive and up (left) when it is negative. Its magnitude is always less than
+the height (or width) of a cell. When the
 content has moved by a full row, the terminal moves the cells in the rectangle
 by one row and adjusts the offset. The row that moves *into* the region, in
 the direction of scrolling, is always moved into the rectangle before any part
@@ -261,15 +276,22 @@ into the scrollback from the region are taken back, rows that were in the
 scrollback before, for example, the output of commands run before the
 program, are never taken. When there are no more rows to take back, blank
 rows move into the region, for the program to draw. In this case, the
-capacity only applies to the rows below the region. Scrolling the screen into the
-scrollback, for example, with a line feed at the bottom of the screen, then
-only discards the rows below the region. To keep the rows that move out of
+capacity only applies to the rows below the region.
+
+For such a region, scrolling the screen into the scrollback, for example,
+with a line feed at the bottom of the screen, moves the top row of the region
+into the scrollback, as if the region was scrolled by a whole row. This row
+can be taken back from the scrollback like the others, only the rows kept
+below the region are discarded, as described :ref:`above
+<smooth_scroll_overflow>`. To keep the rows that move out of
 such a region private instead, define it with ``p=1``. This is useful, for
 example, for a list at the top of the screen, whose rows should not be added
 to the scrollback.
 
 While the user views the scrollback, regions are drawn unshifted, as their
 rectangles are in screen coordinates.
+
+.. _smooth_scroll_remove:
 
 Removing regions
 --------------------
@@ -357,12 +379,13 @@ to which a terminal that supports them replies::
 
     <OSC>2254;a=q:e=d:o=h:k=3<ST>
 
-Keys can appear in the reply in any order. A key that is missing from the reply
-is not supported, at least not with the specified value. If ``e`` is missing
-from the reply, the action is not supported. The ``a``, ``i`` and ``e`` keys
-themselves and keys with default values are never included in the reply,
-other than the leading ``a=q`` and the ``e`` key indicating that the action is
-supported.
+The reply always starts with ``a=q``. It contains ``e``, with the queried
+action, when the action is supported, followed by every other key from the
+query that has a non-default value and is supported with that value. Keys can
+appear in the reply in any order. A key that is missing from the reply is not
+supported, at least not with the specified value. If ``e`` is missing from
+the reply, the action is not supported. The ``i`` key and keys with default
+values are never included in the reply.
 
 Future versions of this protocol may add new actions and new keys, for
 example, to have the terminal animate scrolling by itself. As commands with
