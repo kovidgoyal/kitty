@@ -280,6 +280,8 @@ grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
     dest->num_of_negative_refs = 0;
     dest->num_of_positive_refs = 0;
     dest->num_of_indexed_refs = 0;
+    dest->num_of_smooth_scroll_refs = 0;
+    dest->last_num_layer_regions = 0;
     if (self == NULL) return;
     dest->window_id = self->window_id;
     dest->layers_dirty = true;
@@ -1575,7 +1577,8 @@ resolve_cell_ref(const Image *img, id_type virt_ref_id, int32_t *start_row, int3
 }
 
 static bool
-resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t *start_row, int32_t *start_column, bool *has_virtual_ancestor) {
+resolve_parent_offset(
+    const GraphicsManager *self, const ImageRef *ref, int32_t *start_row, int32_t *start_column, bool *has_virtual_ancestor, uint32_t *smooth_scroll_region) {
     *start_row = 0;
     *start_column = 0;
     *has_virtual_ancestor = false;
@@ -1599,6 +1602,8 @@ resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t 
     }
     *start_row = ref->start_row + y;
     *start_column = ref->start_column + x;
+    // Images move with the smooth scroll region of their root ancestor
+    *smooth_scroll_region = ref->smooth_scroll_region;
     return true;
 }
 
@@ -1614,8 +1619,18 @@ grman_update_layers(
     float dy,
     unsigned int num_cols,
     unsigned int num_rows,
-    CellPixelSize cell) {
+    CellPixelSize cell,
+    const ImageLayerRegion *regions,
+    unsigned num_regions) {
+    num_regions = MIN(num_regions, MAX_IMAGE_LAYER_REGIONS);
     if (self->last_scrolled_by != scrolled_by || self->last_scroll_offset_lines != scroll_offset_lines) set_layers_dirty(self);
+    if (UNLIKELY(num_regions || self->last_num_layer_regions)) {
+        if (num_regions != self->last_num_layer_regions || memcmp(regions, self->last_layer_regions, num_regions * sizeof(regions[0])) != 0) {
+            set_layers_dirty(self);
+            memcpy(self->last_layer_regions, regions, num_regions * sizeof(regions[0]));
+            self->last_num_layer_regions = num_regions;
+        }
+    }
     self->last_scrolled_by = scrolled_by;
     self->last_scroll_offset_lines = scroll_offset_lines;
     if (!self->layers_dirty) return false;
@@ -1625,6 +1640,7 @@ grman_update_layers(
     self->num_of_negative_refs = 0;
     self->num_of_positive_refs = 0;
     self->num_of_indexed_refs = 0;
+    self->num_of_smooth_scroll_refs = 0;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
     // NDC y increases downwards, see gpu/api.h
@@ -1648,9 +1664,10 @@ grman_update_layers(
                 continue;
             }
             int32_t start_row = ref->start_row, start_column = ref->start_column;
+            uint32_t smooth_scroll_region = ref->smooth_scroll_region;
             if (ref->parent.img) {
                 bool has_virtual_ancestor;
-                if (!resolve_parent_offset(self, ref, &start_row, &start_column, &has_virtual_ancestor)) {
+                if (!resolve_parent_offset(self, ref, &start_row, &start_column, &has_virtual_ancestor, &smooth_scroll_region)) {
                     if (!has_virtual_ancestor) {
                         refitr = remove_ref_itr(img, refitr);
                         ref_removed = true;
@@ -1678,6 +1695,18 @@ grman_update_layers(
                 r.bottom = r.top + (float)((height_px / screen_height_px) * screen_height);
             }
 
+            uint8_t region_idx = 0;
+            if (UNLIKELY(smooth_scroll_region)) {
+                for (unsigned k = 0; k < num_regions; k++) {
+                    if (regions[k].id == smooth_scroll_region) {
+                        region_idx = k + 1;
+                        r.top += dy * regions[k].offset;
+                        r.bottom += dy * regions[k].offset;
+                        break;
+                    }
+                }
+            }
+
             if (r.top >= screen_bottom || r.bottom <= screen_top) {
                 refitr = vt_next(refitr);
                 continue;
@@ -1697,6 +1726,8 @@ grman_update_layers(
             rd->ref_id = ref->internal_id;
             rd->texture_id = texture_id_for_img(img);
             rd->indexed_px_sz = img->indexed_px_sz;
+            rd->smooth_scroll_region = region_idx;
+            if (region_idx) self->num_of_smooth_scroll_refs++;
             if (img->indexed_px_sz) {
                 self->num_of_indexed_refs++;
                 // The rect is in normalized device co-ordinates, so allow for rounding errors
@@ -1730,8 +1761,12 @@ grman_update_layers(
     while (i < self->render_data.count) {
         id_type num_identical = 1, image_id = self->render_data.item[i].image_id, start = i;
         const bool is_unscaled = self->render_data.item[i].is_unscaled;
+        // Refs clipped to different smooth scroll regions are drawn separately
+        const uint8_t region = self->render_data.item[i].smooth_scroll_region;
         while (++i < self->render_data.count) {
-            if (self->render_data.item[i].image_id != image_id || self->render_data.item[i].is_unscaled != is_unscaled) break;
+            if (self->render_data.item[i].image_id != image_id || self->render_data.item[i].is_unscaled != is_unscaled ||
+                self->render_data.item[i].smooth_scroll_region != region)
+                break;
             num_identical++;
         }
         while (num_identical > 0) { self->render_data.item[start++].group_count = num_identical--; }
@@ -3183,7 +3218,7 @@ W(update_layers) {
     float xstart, ystart, dx, dy, scroll_offset_lines = 0.0f;
     CellPixelSize cell;
     PA("IffffIIII|f", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy, &cell.width, &cell.height, &scroll_offset_lines);
-    grman_update_layers(self, scrolled_by, scroll_offset_lines, xstart, ystart, dx, dy, sx, sy, cell);
+    grman_update_layers(self, scrolled_by, scroll_offset_lines, xstart, ystart, dx, dy, sx, sy, cell, NULL, 0);
     return grman_render_data_as_python(self);
 }
 
@@ -3294,6 +3329,7 @@ grman_render_data(GraphicsManager *self) {
         .num_of_negative_refs = self->num_of_negative_refs,
         .num_of_positive_refs = self->num_of_positive_refs,
         .num_of_indexed_refs = self->num_of_indexed_refs,
+        .num_of_smooth_scroll_refs = self->num_of_smooth_scroll_refs,
     };
     return ans;
 }

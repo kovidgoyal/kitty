@@ -25,6 +25,10 @@ public struct CellRenderData {
     // The COLOR_IS_RGB/COLOR_IS_INDEX value for the extra cursor colors, zero
     // for the other color types which do not use it.
     public float4 extra_cursor_fg_lin, extra_cursor_bg_lin;
+    // The rectangles (x1, y1, x2, y2), exclusive of x2 and y2, of cells that
+    // are not drawn as they are drawn shifted, in separate passes, for the
+    // smooth scroll regions. The size is MAX_SMOOTH_SCROLL_REGIONS from screen.h.
+    public uint4 skip_rects[4];
 
     public float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
@@ -39,6 +43,7 @@ public struct CellRenderData {
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
     public uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
     public float bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
+    public uint num_skip_rects;
 };
 
 // Uniform Blocks (adjust binding slots as needed for your pipeline layout)

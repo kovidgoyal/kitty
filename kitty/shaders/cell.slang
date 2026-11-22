@@ -167,6 +167,15 @@ vertex_main([[vk::location(0)]] uint2 cell_input, [[vk::location(2)]] uint is_se
 
     BackgroundOutput bo = compute_background(colors, sprite_idx, is_selected, instance_id, vertex_id);
     vo.position = bo.position;
+    if (crd.num_skip_rects > 0) {
+        // The cell is drawn shifted by the pass for its smooth scroll region,
+        // so collapse it to a point outside the viewport
+        uint row = instance_id / crd.columns, column = instance_id - row * crd.columns;
+        for (uint i = 0; i < crd.num_skip_rects; i++) {
+            uint4 r = crd.skip_rects[i];
+            if (column >= r.x && column < r.z && row >= r.y && row < r.w) vo.position = float4(-2.0, -2.0, 0.0, 1.0);
+        }
+    }
     float3 background_rgb = bo.background_rgb;
     float3 foreground = bo.foreground;
     uint fg_as_uint = bo.fg_as_uint;

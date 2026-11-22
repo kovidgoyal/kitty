@@ -157,7 +157,32 @@ typedef struct SmoothScrollRegion {
 typedef struct SmoothScroll {
     SmoothScrollRegion regions[MAX_SMOOTH_SCROLL_REGIONS];
     unsigned count;
+    // Set when the offset of a region changes, to render it
+    bool offsets_changed;
 } SmoothScroll;
+
+// How a smooth scroll region is rendered in a frame. A region that is
+// shifted, that is, has a non-zero offset, has a strip of cells after the
+// cells of the screen in the cell buffer, of height + 2 rows of width cells:
+// the row above the rectangle, its rows and the row below it. The strip is
+// drawn in a separate pass, clipped to the rectangle, and the cells of the
+// rectangle are skipped when drawing the screen.
+typedef struct SmoothScrollRenderRegion {
+    uint32_t id;
+    index_type left, top, width, height;
+    int offset;
+    // The index in the cell buffer of the first cell of the strip, when shifted
+    unsigned base_cell;
+} SmoothScrollRenderRegion;
+
+typedef struct SmoothScrollRender {
+    SmoothScrollRenderRegion regions[MAX_SMOOTH_SCROLL_REGIONS];
+    unsigned count;
+    // The number of cells in the strips of the shifted regions
+    unsigned num_strip_cells;
+} SmoothScrollRender;
+
+#define smooth_scroll_render_region_is_shifted(r) ((r)->offset != 0)
 
 
 typedef struct {
@@ -283,8 +308,19 @@ typedef struct {
         GraphicsManager *grman;
         Selections selections, url_ranges;
         ExtraCursors extra_cursors;
+        struct {
+            SmoothScrollRenderRegion regions[MAX_SMOOTH_SCROLL_REGIONS];
+            unsigned count;
+            // The rows above and below the rectangle of each region, two rows per region
+            LineBuf *edges;
+        } smooth_scroll;
     } paused_rendering;
     SmoothScroll smooth_scroll;
+    // The smooth scroll regions as rendered in the current frame
+    SmoothScrollRender smooth_scroll_render;
+    // Scratch space for building the selection data when there are smooth scroll strips
+    uint8_t *selection_scratch;
+    size_t selection_scratch_sz;
     CharsetState charset;
     ListOfChars *lc;
     struct {
@@ -424,6 +460,8 @@ bool screen_smooth_scroll_define(
 bool screen_smooth_scroll_remove(Screen *self, uint32_t id);
 void screen_smooth_scroll_remove_all(Screen *self);
 bool screen_smooth_scroll(Screen *self, uint32_t id, int delta_pixels, int *rows_shifted);
+bool screen_prepare_smooth_scroll_render(Screen *self);
+void screen_provisional_smooth_scroll_command(Screen *self, const char *payload);
 PyObject *as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
 Line *screen_visual_line(Screen *self, index_type y);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);

@@ -449,3 +449,19 @@ class TestSmoothScroll(BaseTest):
         ae(rows(), [(2, 3)])
         ae(s.smooth_scroll(1, -H), -1)
         ae(rows(), [(3, 4)])
+
+    def test_smooth_scroll_pause_rendering(self):
+        ae = self.ae
+        for uses_history in (True, False):
+            s = self.create_screen(cols=4, lines=5, scrollback=10)
+            fill(s)
+            self.assertTrue(s.smooth_scroll_define(1, 0, 0, 4, 3, 1, not uses_history))
+            ae(s.smooth_scroll(1, 5), 1)
+            ae(s.smooth_scroll(1, -10), -2)
+            ae(region(s)['offset'], -15)
+            self.assertTrue(s.pause_rendering(True))
+            # changes while paused do not affect the captured state and do not crash
+            ae(s.smooth_scroll(1, 30), 3)
+            s.smooth_scroll_remove(1)
+            s.garbage_collect_text_cache()
+            self.assertTrue(s.pause_rendering(False))

@@ -1129,13 +1129,14 @@ ssr_discard_overflow(Screen *self, SmoothScrollRegion *r) {
     ssr_release_images(self, r, !ssr_uses_history(self, r));
     if (r->offset) {
         r->offset = 0;
-        self->is_dirty = true;
+        self->smooth_scroll.offsets_changed = true;
     }
 }
 
 static void
 ssr_remove_at(Screen *self, unsigned idx) {
     SmoothScrollRegion *r = self->smooth_scroll.regions + idx;
+    self->smooth_scroll.offsets_changed = true;
     ssr_discard_overflow(self, r);
     ssr_free(r);
     SmoothScroll *ss = &self->smooth_scroll;
@@ -1205,7 +1206,13 @@ screen_smooth_scroll(Screen *self, uint32_t id, int delta_pixels, int *rows_shif
     int64_t shift;
     if (delta_pixels > 0) shift = moved < 0 ? (-moved + h - 1) / h : 0;
     else shift = moved > 0 ? -((moved + h - 1) / h) : 0;
-    r->offset = (int)(moved + shift * h);
+    const int new_offset = (int)(moved + shift * h);
+    if (new_offset != r->offset) {
+        r->offset = new_offset;
+        self->smooth_scroll.offsets_changed = true;
+        // Images moving with the region are drawn shifted by the offset
+        if (grman_has_any_images(self->grman)) grman_mark_layers_dirty(self->grman);
+    }
     *rows_shifted = (int)MAX((int64_t)INT_MIN, MIN((int64_t)INT_MAX, shift));
     // Shifting by more than the rows in the rectangle and the overflow
     // buffer only moves blank rows. When the scrollback is the overflow
@@ -1235,7 +1242,7 @@ ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool v
             ssr_release_images(self, r, false);
             if (r->offset < 0) {
                 r->offset = 0;
-                self->is_dirty = true;
+                self->smooth_scroll.offsets_changed = true;
             }
         } else ssr_discard_overflow(self, r);
     }
@@ -1244,6 +1251,257 @@ ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool v
 static void
 ssr_screen_erased(Screen *self) {
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) ssr_discard_overflow(self, self->smooth_scroll.regions + i);
+}
+
+static unsigned
+ssr_live_render_regions(Screen *self, SmoothScrollRenderRegion *ans) {
+    // The regions as they should be rendered now. Regions are shifted only
+    // when the screen is not scrolled back, as their rectangles are in screen
+    // coordinates.
+    const bool live_view = !self->scrolled_by && !(live_pixel_scroll_enabled(self) && self->pixel_scroll_offset_y);
+    if (!live_view) return 0;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        ans[i] =
+            (SmoothScrollRenderRegion){.id = r->id, .left = r->left, .top = r->top, .width = ssr_width(r), .height = r->bottom - r->top, .offset = r->offset};
+    }
+    return self->smooth_scroll.count;
+}
+
+static bool screen_has_marker(Screen *self);
+static int paused_snapshot_row_offset(const Screen *self);
+
+static bool
+ssr_render_regions_equal(const SmoothScrollRenderRegion *a, const SmoothScrollRenderRegion *b) {
+    return a->id == b->id && a->left == b->left && a->top == b->top && a->width == b->width && a->height == b->height && a->offset == b->offset &&
+           a->base_cell == b->base_cell;
+}
+
+bool
+screen_prepare_smooth_scroll_render(Screen *self) {
+    // Compute how the smooth scroll regions are rendered in this frame,
+    // returns true if that is different from the previous frame
+    SmoothScrollRender *sr = &self->smooth_scroll_render;
+    if (!sr->count && !self->smooth_scroll.count && !self->paused_rendering.smooth_scroll.count) return false;
+    const SmoothScrollRender prev = *sr;
+    if (self->paused_rendering.expires_at) {
+        sr->count = self->paused_rendering.smooth_scroll.count;
+        memcpy(sr->regions, self->paused_rendering.smooth_scroll.regions, sr->count * sizeof(sr->regions[0]));
+    } else sr->count = ssr_live_render_regions(self, sr->regions);
+    sr->num_strip_cells = 0;
+    const unsigned base = render_lines_for_screen(self) * self->columns;
+    for (unsigned i = 0; i < sr->count; i++) {
+        SmoothScrollRenderRegion *rr = sr->regions + i;
+        rr->base_cell = 0;
+        if (smooth_scroll_render_region_is_shifted(rr)) {
+            rr->base_cell = base + sr->num_strip_cells;
+            sr->num_strip_cells += (rr->height + 2) * rr->width;
+        }
+    }
+    bool changed = self->smooth_scroll.offsets_changed || prev.count != sr->count || prev.num_strip_cells != sr->num_strip_cells;
+    for (unsigned i = 0; i < sr->count && !changed; i++) changed = !ssr_render_regions_equal(prev.regions + i, sr->regions + i);
+    self->smooth_scroll.offsets_changed = false;
+    return changed;
+}
+
+static void
+ssr_render_line_if_dirty(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data, const Cursor *cursor) {
+    // Render a row that is drawn only in the strip of a region. It is never the cursor row.
+    if (!line->attrs.has_dirty_text) return;
+    render_line(fonts_data, line, self->lines, (Cursor *)cursor, self->disable_ligatures, self->lc);
+    if (screen_has_marker(self)) mark_text_in_line(self->marker, line, &self->as_ansi_buf);
+}
+
+static void
+ssr_write_strip_row(const Line *line, index_type x, index_type width, CellGPUData *dest) {
+    if (line) cells_for_gpu(line->cpu_cells + x, line->render_cells + x, width, dest);
+    else memset(dest, 0, width * sizeof(dest[0]));
+}
+
+static void
+ssr_update_strip_cell_data(Screen *self, uint8_t *address, FONTS_DATA_HANDLE fonts_data) {
+    // Write the cells of the strips of the shifted regions, see SmoothScrollRenderRegion
+    const SmoothScrollRender *sr = &self->smooth_scroll_render;
+    const bool paused = self->paused_rendering.expires_at != 0;
+    const Cursor *cursor = paused ? &self->paused_rendering.cursor : self->cursor;
+    Line line = {.text_cache = self->text_cache};
+    for (unsigned i = 0; i < sr->count; i++) {
+        const SmoothScrollRenderRegion *rr = sr->regions + i;
+        if (!smooth_scroll_render_region_is_shifted(rr)) continue;
+        CellGPUData *dest = (CellGPUData *)address + rr->base_cell;
+        const index_type w = rr->width;
+        for (int edge = 0; edge < 2; edge++) {
+            const bool above = edge == 0;
+            CellGPUData *row = dest + (above ? 0 : (size_t)(rr->height + 1) * w);
+            Line *lp = NULL;
+            index_type x = 0;
+            if (paused) {
+                LineBuf *edges = self->paused_rendering.smooth_scroll.edges;
+                const index_type y = 2 * i + edge;
+                linebuf_init_line_at(edges, y, &line);
+                ssr_render_line_if_dirty(self, &line, fonts_data, cursor);
+                linebuf_mark_line_clean(edges, y);
+                lp = &line;
+            } else {
+                SmoothScrollRegion *r = ssr_for_id(self, rr->id);
+                if (!r) continue;
+                if (above && ssr_uses_history(self, r)) {
+                    if (self->historybuf->count) {
+                        if (historybuf_init_line_for_render(self->historybuf, 0, &line, render_lines_for_screen(self))) line.attrs.has_dirty_text = true;
+                        line.xnum = self->columns;
+                        ssr_render_line_if_dirty(self, &line, fonts_data, cursor);
+                        historybuf_mark_line_clean(self->historybuf, 0);
+                        lp = &line;
+                        x = r->left;
+                    }
+                } else if (above ? r->num_above : r->num_below) {
+                    const index_type slot = ssr_slot(r, above, 0);
+                    linebuf_init_line_at(r->overflow, slot, &line);
+                    ssr_render_line_if_dirty(self, &line, fonts_data, cursor);
+                    linebuf_mark_line_clean(r->overflow, slot);
+                    lp = &line;
+                }
+            }
+            ssr_write_strip_row(lp, x, w, row);
+        }
+        LineBuf *lb = paused ? self->paused_rendering.linebuf : self->linebuf;
+        const index_type row_offset = paused ? (index_type)paused_snapshot_row_offset(self) : 0;
+        for (index_type y = 0; y < rr->height; y++) {
+            linebuf_init_line_at(lb, rr->top + y + row_offset, &line);
+            ssr_write_strip_row(&line, rr->left, w, dest + (size_t)(y + 1) * w);
+        }
+    }
+}
+
+static void
+ssr_write_strip_selection_data(Screen *self, const uint8_t *screen_data, uint8_t *address, size_t stride) {
+    // The selection data of the strips of the shifted regions, copied from
+    // the data of the cells of the screen. The rows above and below the
+    // rectangles are never selected.
+    const SmoothScrollRender *sr = &self->smooth_scroll_render;
+    const index_type row_offset = pixel_scroll_enabled(self);
+    const size_t first_strip_cell = (size_t)render_lines_for_screen(self) * self->columns;
+    for (unsigned i = 0; i < sr->count; i++) {
+        const SmoothScrollRenderRegion *rr = sr->regions + i;
+        if (!smooth_scroll_render_region_is_shifted(rr)) continue;
+        uint8_t *dest = address + (rr->base_cell - first_strip_cell) * stride;
+        const size_t row_sz = (size_t)rr->width * stride;
+        memset(dest, 0, row_sz);
+        dest += row_sz;
+        for (index_type y = 0; y < rr->height; y++, dest += row_sz) {
+            memcpy(dest, screen_data + ((size_t)(rr->top + y + row_offset) * self->columns + rr->left) * stride, row_sz);
+        }
+        memset(dest, 0, row_sz);
+    }
+}
+
+static void
+ssr_capture_for_pause(Screen *self) {
+    // Rendering is being paused, capture how the regions are rendered
+    __typeof__(self->paused_rendering.smooth_scroll) *p = &self->paused_rendering.smooth_scroll;
+    p->count = 0;
+    if (!self->smooth_scroll.count) return;
+    if (!p->edges || p->edges->xnum != self->columns) {
+        Py_CLEAR(p->edges);
+        p->edges = alloc_linebuf(2 * MAX_SMOOTH_SCROLL_REGIONS, self->columns, self->text_cache);
+        if (!p->edges) {
+            PyErr_Clear();
+            return;
+        }
+    }
+    p->count = ssr_live_render_regions(self, p->regions);
+    for (unsigned i = 0; i < p->count; i++) {
+        SmoothScrollRegion *r = ssr_for_id(self, p->regions[i].id);
+        for (int edge = 0; edge < 2; edge++) {
+            const bool above = edge == 0;
+            const index_type dest_y = 2 * i + edge;
+            linebuf_clear_line(p->edges, dest_y, true);
+            const CPUCell *sc = NULL;
+            const RenderCell *sr = NULL;
+            if (above && ssr_uses_history(self, r)) {
+                if (self->historybuf->count) {
+                    Line l = {.text_cache = self->text_cache};
+                    historybuf_init_line(self->historybuf, 0, &l);
+                    sc = l.cpu_cells;
+                    sr = l.render_cells;
+                }
+            } else if (above ? r->num_above : r->num_below) {
+                CPUCell *c;
+                RenderCell *rc;
+                linebuf_init_cells(r->overflow, ssr_slot(r, above, 0), &c, &rc);
+                sc = c;
+                sr = rc;
+            }
+            if (sc) {
+                CPUCell *dc;
+                RenderCell *dr;
+                linebuf_init_cells(p->edges, dest_y, &dc, &dr);
+                memcpy(dc, sc, ssr_width(r) * sizeof(dc[0]));
+                // History lines have no render data of their own, the row is rendered as it is dirty
+                if (sr) memcpy(dr, sr, ssr_width(r) * sizeof(dr[0]));
+            }
+            linebuf_mark_line_dirty(p->edges, dest_y);
+        }
+    }
+}
+
+void
+screen_provisional_smooth_scroll_command(Screen *self, const char *payload) {
+    // A provisional escape code for testing smooth scroll regions, of the form
+    // OSC 5524 ; key=value,key=value ST with integer values. The keys are:
+    // a: the action, d to define a region, s to scroll it and r to remove it
+    // i: the id of the region, x, y, w, h: its rectangle, k: its overflow
+    // capacity, p: 1 to not use the scrollback and d: the amount to scroll by
+    // in pixels. It will be replaced by the final escape code.
+    char action = 0;
+    long long id = 0, x = 0, y = 0, w = 0, h = 0, k = 1, p = 0, d = 0;
+    for (const char *q = payload; *q;) {
+        const char key = *q++;
+        if (*q != '=') break;
+        q++;
+        if (key == 'a') {
+            action = *q;
+            if (*q) q++;
+        } else {
+            char *end;
+            long long v = strtoll(q, &end, 10);
+            if (end == q) break;
+            q = end;
+            switch (key) {
+                case 'i': id = v; break;
+                case 'x': x = v; break;
+                case 'y': y = v; break;
+                case 'w': w = v; break;
+                case 'h': h = v; break;
+                case 'k': k = v; break;
+                case 'p': p = v; break;
+                case 'd': d = v; break;
+                default: break;
+            }
+        }
+        if (*q == ',') q++;
+        else break;
+    }
+    if (id <= 0 || id > UINT32_MAX) return;
+#define U(v) ((index_type)MAX(0, MIN((v), (long long)UINT32_MAX)))
+    switch (action) {
+        case 'd': screen_smooth_scroll_define(self, (uint32_t)id, U(x), U(y), U(x + w), U(y + h), U(k), p != 0); break;
+        case 's': {
+            int rows_shifted;
+            screen_smooth_scroll(self, (uint32_t)id, (int)MAX(INT_MIN, MIN(d, INT_MAX)), &rows_shifted);
+        } break;
+        case 'r': screen_smooth_scroll_remove(self, (uint32_t)id); break;
+        default: break;
+    }
+#undef U
+}
+
+static void
+ssr_release_pause_capture(Screen *self) {
+    __typeof__(self->paused_rendering.smooth_scroll) *p = &self->paused_rendering.smooth_scroll;
+    // The rows must not keep text cache entries alive
+    if (p->count && p->edges) linebuf_clear(p->edges, BLANK_CHAR);
+    p->count = 0;
 }
 // }}}
 
@@ -1541,6 +1799,8 @@ dealloc(Screen *self) {
     Py_CLEAR(self->paused_rendering.linebuf);
     Py_CLEAR(self->paused_rendering.grman);
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) Py_CLEAR(self->smooth_scroll.regions[i].overflow);
+    Py_CLEAR(self->paused_rendering.smooth_scroll.edges);
+    free(self->selection_scratch);
     if (self->style_texture.texture) free_texture(&self->style_texture.texture);
     free(self->selections.items);
     free(self->url_ranges.items);
@@ -1833,6 +2093,7 @@ screen_garbage_collect_text_cache(Screen *self) {
     text_cache_gc_process_linebuf(self->text_cache, gc, self->main_linebuf);
     text_cache_gc_process_linebuf(self->text_cache, gc, self->alt_linebuf);
     text_cache_gc_process_linebuf(self->text_cache, gc, self->paused_rendering.linebuf);
+    text_cache_gc_process_linebuf(self->text_cache, gc, self->paused_rendering.smooth_scroll.edges);
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) text_cache_gc_process_linebuf(self->text_cache, gc, self->smooth_scroll.regions[i].overflow);
     // The overlay buffers have columns cells, overlay_line.xnum is the length of the overlay text, which can be larger
     if (self->overlay_line.cpu_cells) text_cache_gc_process_cells(self->text_cache, gc, self->overlay_line.cpu_cells, self->columns);
@@ -1877,6 +2138,7 @@ garbage_collect_style_table(Screen *self, unsigned quantize_bits, bool degraded_
     style_gc_process_linebuf(t, gc, self->main_linebuf);
     style_gc_process_linebuf(t, gc, self->alt_linebuf);
     style_gc_process_linebuf(t, gc, paused_linebuf_in_use(self));
+    if (self->paused_rendering.expires_at) style_gc_process_linebuf(t, gc, self->paused_rendering.smooth_scroll.edges);
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) style_gc_process_linebuf(t, gc, self->smooth_scroll.regions[i].overflow);
     // The overlay buffers have columns cells, overlay_line.xnum is the length of the overlay text
     if (self->overlay_line.cpu_cells) style_gc_process_cells(t, gc, self->overlay_line.cpu_cells, self->columns, false);
@@ -5181,6 +5443,7 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
         // The snapshot is kept for reuse, but its text must not keep text
         // cache entries, and the glyph protocol glyphs they hold, alive
         if (self->paused_rendering.linebuf) linebuf_clear(self->paused_rendering.linebuf, BLANK_CHAR);
+        ssr_release_pause_capture(self);
         return true;
     }
     if (self->paused_rendering.expires_at) return false;
@@ -5234,6 +5497,7 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
         }
     }
     grman_pause_rendering(self->grman, self->paused_rendering.grman);
+    ssr_capture_for_pause(self);
     return true;
 }
 
@@ -5525,6 +5789,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
                 }
                 update_line_data(linebuf->line, y, address);
             }
+            if (self->smooth_scroll_render.num_strip_cells) ssr_update_strip_cell_data(self, address, fonts_data);
         }
         return;
     }
@@ -5573,6 +5838,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         }
         update_overlay_line_data(self, address);
     }
+    if (self->smooth_scroll_render.num_strip_cells) ssr_update_strip_cell_data(self, address, fonts_data);
 }
 
 static bool
@@ -5822,6 +6088,12 @@ screen_update_graphics_layers(Screen *self) {
     // While rendering is paused, the frozen image placements must be positioned using the
     // scroll position captured with the frozen text, not the live one, which new output may have changed
     GraphicsManager *grman = self->paused_rendering.expires_at ? self->paused_rendering.grman : self->grman;
+    // Images moving with smooth scroll regions are drawn shifted with them
+    static_assert(MAX_IMAGE_LAYER_REGIONS == MAX_SMOOTH_SCROLL_REGIONS, "Fix MAX_IMAGE_LAYER_REGIONS");
+    ImageLayerRegion regions[MAX_SMOOTH_SCROLL_REGIONS];
+    const SmoothScrollRender *sr = &self->smooth_scroll_render;
+    for (unsigned i = 0; i < sr->count; i++)
+        regions[i] = (ImageLayerRegion){.id = sr->regions[i].id, .offset = (float)sr->regions[i].offset / (float)MAX(1u, self->cell_size.height)};
     return grman_update_layers(
         grman,
         rendered_scrolled_by(self),
@@ -5832,7 +6104,9 @@ screen_update_graphics_layers(Screen *self) {
         2.f / self->lines,
         self->columns,
         self->lines,
-        self->cell_size);
+        self->cell_size,
+        regions,
+        sr->count);
 }
 
 bool
@@ -5860,7 +6134,23 @@ screen_scrollbar_geometry(const Screen *self, float *handle_position, float *vis
 
 void
 screen_apply_selection(Screen *self, void *address_, size_t num_cells, size_t stride) {
-    uint8_t *address = address_;
+    uint8_t *address = address_, *strips = NULL;
+    const size_t num_strip_cells = self->smooth_scroll_render.num_strip_cells;
+    if (num_strip_cells) {
+        // The data for the strips is copied from the data for the screen,
+        // which must be built elsewhere as address is write only memory
+        num_cells -= num_strip_cells;
+        if (self->selection_scratch_sz < num_cells * stride) {
+            uint8_t *n = realloc(self->selection_scratch, num_cells * stride);
+            if (!n) fatal("Out of memory");
+            self->selection_scratch = n;
+            self->selection_scratch_sz = num_cells * stride;
+        }
+        strips = address + num_cells * stride;
+        address = self->selection_scratch;
+    }
+    uint8_t *const screen_data = address;
+    const size_t num_screen_cells = num_cells;
     memset(address, 0, num_cells * stride);
     const unsigned offset = pixel_scroll_enabled(self);
     const unsigned scrolled_by = rendered_scrolled_by(self);
@@ -5881,6 +6171,10 @@ screen_apply_selection(Screen *self, void *address_, size_t num_cells, size_t st
         if (ec->locations[i].cell < num_cells) address[(size_t)ec->locations[i].cell * stride] |= (ec->locations[i].shape & 7) << 2;
     }
     ec->dirty = false;
+    if (strips) {
+        memcpy(address_, screen_data, num_screen_cells * stride);
+        ssr_write_strip_selection_data(self, screen_data, strips, stride);
+    }
 }
 
 static index_type

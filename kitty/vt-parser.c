@@ -665,6 +665,14 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
                 shell_prompt_marking(self->screen, (char *)buf + i);
             }
             break;
+        case 5524:
+            // Provisional escape code for smooth scroll regions, only for
+            // testing, it will be replaced by the final escape code
+            if (limit > i) {
+                buf[limit] = 0; // safe to do as we have 8 extra bytes after PARSER_BUF_SZ
+                screen_provisional_smooth_scroll_command(self->screen, (char *)buf + i);
+            }
+            break;
         case FILE_TRANSFER_CODE:
             START_DISPATCH
             DISPATCH_OSC(file_transmission);

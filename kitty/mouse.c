@@ -334,6 +334,20 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
     }
     if (mouse_y >= g->bottom) qy = screen->lines - 1;
     else if (mouse_y >= g->top) { qy = (unsigned int)((double)(mouse_y - g->top - screen->pixel_scroll_offset_y) / os_window->fonts_data->fcm.cell_height); }
+    if (UNLIKELY(screen->smooth_scroll_render.num_strip_cells) && mouse_y >= g->top && mouse_y < g->bottom) {
+        // The cells of a shifted smooth scroll region are drawn shifted by its
+        // offset, so map the pointer to the cell drawn under it. The partially
+        // visible rows above and below the rectangle map to its edge rows.
+        const SmoothScrollRender *sr = &screen->smooth_scroll_render;
+        const double ch = os_window->fonts_data->fcm.cell_height;
+        for (unsigned i = 0; i < sr->count; i++) {
+            const SmoothScrollRenderRegion *r = sr->regions + i;
+            if (!smooth_scroll_render_region_is_shifted(r) || qx < r->left || qx >= r->left + r->width || qy < r->top || qy >= r->top + r->height) continue;
+            const double row = floor((mouse_y - g->top - r->top * ch - r->offset) / ch);
+            qy = r->top + (unsigned)MAX(0., MIN(row, (double)(r->height - 1)));
+            break;
+        }
+    }
     if (qx < screen->columns && qy < screen->lines) {
         *x = qx;
         *y = qy;

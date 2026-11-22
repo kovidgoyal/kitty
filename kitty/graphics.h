@@ -58,8 +58,20 @@ typedef struct {
     // True for indexed color images drawn at their natural size, which can use
     // a cheaper shader. Always false for normal images.
     bool is_unscaled;
+    // One plus the index of the smooth scroll region the image is drawn with,
+    // clipped to its rectangle, zero if none. See ImageLayerRegion.
+    uint8_t smooth_scroll_region;
     id_type image_id, ref_id;
 } ImageRenderData;
+
+#define MAX_IMAGE_LAYER_REGIONS 4u
+// A smooth scroll region of the screen, images moving with it are drawn
+// shifted by its offset and clipped to its rectangle
+typedef struct ImageLayerRegion {
+    uint32_t id;
+    // The offset in rows
+    float offset;
+} ImageLayerRegion;
 
 typedef struct {
     gpu_texture_t texture_id;
@@ -181,6 +193,10 @@ typedef struct {
     size_t num_of_indexed_refs;
     unsigned int last_scrolled_by;
     float last_scroll_offset_lines;
+    ImageLayerRegion last_layer_regions[MAX_IMAGE_LAYER_REGIONS];
+    unsigned last_num_layer_regions;
+    // The number of visible refs drawn clipped to a smooth scroll region
+    size_t num_of_smooth_scroll_refs;
     size_t used_storage;
     PyObject *disk_cache;
     bool has_images_needing_animation, context_made_current_for_this_command;
@@ -243,7 +259,7 @@ gl_pos_y(const int px_from_top_margin, const unsigned int viewport_size) {
 
 
 typedef struct GraphicsRenderData {
-    size_t count, capacity, num_of_below_refs, num_of_negative_refs, num_of_positive_refs, num_of_indexed_refs;
+    size_t count, capacity, num_of_below_refs, num_of_negative_refs, num_of_positive_refs, num_of_indexed_refs, num_of_smooth_scroll_refs;
     ImageRenderData *images;
 } GraphicsRenderData;
 
@@ -271,7 +287,9 @@ bool grman_update_layers(
     float dy,
     unsigned int num_cols,
     unsigned int num_rows,
-    CellPixelSize);
+    CellPixelSize,
+    const ImageLayerRegion *regions,
+    unsigned num_regions);
 void grman_scroll_images(GraphicsManager *self, const ScrollData *, CellPixelSize fg);
 void grman_smooth_scroll_images(GraphicsManager *self, const SmoothScrollImageData *data, CellPixelSize cell);
 void grman_smooth_scroll_release_images(GraphicsManager *self, uint32_t region_id, int32_t top, int32_t bottom, bool clip_top, CellPixelSize cell);

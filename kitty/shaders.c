@@ -921,10 +921,22 @@ bind_shader_globals_to_current_context(void) {
     bind_vao_uniform_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, program_uniform_block(BORDERS_PROGRAM, "Colors").slot);
 }
 
-#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, color_table_buffer, padding_cell_data_buffer, padding_selection_buffer };
+#define REGION_UNIFORM_BUFFER_BASE 6
+#define CELL_BUFFERS                                       \
+    enum {                                                 \
+        cell_data_buffer,                                  \
+        selection_buffer,                                  \
+        uniform_buffer,                                    \
+        color_table_buffer,                                \
+        padding_cell_data_buffer,                          \
+        padding_selection_buffer,                          \
+        region_uniform_buffer = REGION_UNIFORM_BUFFER_BASE \
+    }; /* followed by MAX_SMOOTH_SCROLL_REGIONS uniform buffers for the passes drawing the shifted smooth scroll regions */
 
 ssize_t
 create_cell_vao(void) {
+    CELL_BUFFERS;
+    static_assert(padding_selection_buffer + 1 == region_uniform_buffer, "Fix REGION_UNIFORM_BUFFER_BASE");
     ssize_t vao_idx = create_vao();
 #define A(name, size, dtype, offset, stride) \
     add_attribute_to_vao(                    \
@@ -944,6 +956,11 @@ create_cell_vao(void) {
 
     add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX); // padding_cell_data_buffer (slot 4)
     add_buffer_to_vao(vao_idx, GPU_BUFFER_VERTEX); // padding_selection_buffer  (slot 5)
+    // The uniform buffers for drawing the shifted smooth scroll regions, see draw_smooth_scroll_regions()
+    for (unsigned i = 0; i < MAX_SMOOTH_SCROLL_REGIONS; i++) {
+        size_t rb = add_buffer_to_vao(vao_idx, GPU_BUFFER_UNIFORM);
+        alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "CellRenderData").size, rb, GPU_UPDATE_EVERY_USE);
+    }
 
     return vao_idx;
 #undef A
@@ -1028,6 +1045,9 @@ cell_update_uniform_block(
         float default_fg_lin[4], default_bg_lin[4], highlight_fg_lin[4], highlight_bg_lin[4];
         float main_cursor_fg_lin[4], main_cursor_bg_lin[4], url_color_lin[4];
         float extra_cursor_fg_lin[4], extra_cursor_bg_lin[4];
+        // The rectangles [x1, y1, x2, y2) of cells that are not drawn as they
+        // are drawn shifted by the passes for the smooth scroll regions
+        uint32_t skip_rects[MAX_SMOOTH_SCROLL_REGIONS][4];
 
         float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
@@ -1039,6 +1059,7 @@ cell_update_uniform_block(
 
         uint32_t bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
         float bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
+        uint32_t num_skip_rects;
     };
     // Send the uniform data
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
@@ -1059,7 +1080,9 @@ cell_update_uniform_block(
         if ((size_t)crd_block.size < sizeof(struct GPUCellRenderData))
             fatal("The CellRenderData uniform block is %d bytes but the C struct mirroring it is %zu bytes", crd_block.size, sizeof(struct GPUCellRenderData));
     }
-    struct GPUCellRenderData *rd = (struct GPUCellRenderData *)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, crd_block.size);
+    // Built in local memory as it is copied into the buffers for the smooth
+    // scroll region passes as well, and the mapped buffers are write only
+    struct GPUCellRenderData crd_data = {0}, *rd = &crd_data;
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
     // The shaders need these only in linear space, they are converted and
     // written into rd just before the buffer is unmapped. The cursor colors
@@ -1202,6 +1225,43 @@ cell_update_uniform_block(
     linear_color_vec4(rd->extra_cursor_fg_lin, dynamic_color_for_gpu(cp, rd->extra_cursor_fg));
     linear_color_vec4(rd->extra_cursor_bg_lin, dynamic_color_for_gpu(cp, rd->extra_cursor_bg));
     color_type default_bg = rd->bg_colors0;
+    // The smooth scroll regions that are drawn shifted, in separate passes, each a
+    // grid of the cells of its strip, see SmoothScrollRenderRegion
+    const SmoothScrollRender *ssr = &screen->smooth_scroll_render;
+    const unsigned row_offset = pixel_scroll_enabled(screen);
+    const uint32_t cy1 = rd->cursor_y1 - row_offset, cy2 = rd->cursor_y2 - row_offset;
+    for (unsigned i = 0, n = 0; i < ssr->count; i++) {
+        const SmoothScrollRenderRegion *r = ssr->regions + i;
+        if (!smooth_scroll_render_region_is_shifted(r)) continue;
+        struct GPUCellRenderData regd = crd_data;
+        regd.num_skip_rects = 0;
+        regd.columns = r->width;
+        regd.lines = r->height;
+        regd.row_offset = (float)r->offset / (float)MAX(1u, screen->cell_size.height) - 1.f;
+        const bool has_cursor = rd->cursor_x1 >= r->left && rd->cursor_x2 < r->left + r->width && cy1 >= r->top && cy2 < r->top + r->height;
+        if (has_cursor) {
+            regd.cursor_x1 -= r->left;
+            regd.cursor_x2 -= r->left;
+            regd.cursor_y1 = cy1 - r->top + 1;
+            regd.cursor_y2 = cy2 - r->top + 1;
+        } else {
+            regd.cursor_x1 = r->width + 1;
+            regd.cursor_x2 = r->width;
+            regd.cursor_y1 = r->height + 3;
+            regd.cursor_y2 = r->height + 2;
+        }
+        void *dest = map_vao_buffer_for_write_only(vao_idx, REGION_UNIFORM_BUFFER_BASE + i, 0, crd_block.size);
+        memcpy(dest, &regd, sizeof(regd));
+        unmap_vao_buffer(vao_idx, REGION_UNIFORM_BUFFER_BASE + i);
+        uint32_t *sr = rd->skip_rects[n++];
+        sr[0] = r->left;
+        sr[1] = r->top + row_offset;
+        sr[2] = r->left + r->width;
+        sr[3] = r->top + r->height + row_offset;
+        rd->num_skip_rects = n;
+    }
+    void *dest = map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, crd_block.size);
+    memcpy(dest, rd, sizeof(*rd));
     unmap_vao_buffer(vao_idx, uniform_buffer);
     rd = NULL;
     return default_bg;
@@ -1287,11 +1347,14 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     // Garbage collecting the style table changes the style indices of cells, so all cell data must be uploaded again
     const bool styles_remapped = screen->style_texture.texture && screen->style_texture.generation != screen->style_table->generation;
     if (styles_remapped) screen->paused_rendering.cell_data_updated = false;
+    // The strips of the shifted smooth scroll regions are after the cells of the screen
+    const bool smooth_scroll_changed = screen_prepare_smooth_scroll_render(screen);
+    const size_t num_strip_cells = screen->smooth_scroll_render.num_strip_cells;
 
 #define update_cell_data                                                                               \
     {                                                                                                  \
         const unsigned int render_lines = render_lines_for_screen(screen);                             \
-        sz = sizeof(CellGPUData) * render_lines * screen->columns;                                     \
+        sz = sizeof(CellGPUData) * (render_lines * screen->columns + num_strip_cells);                 \
         address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, cell_data_buffer);            \
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
         unmap_vao_buffer(vao_idx, cell_data_buffer);                                                   \
@@ -1302,7 +1365,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) update_cell_data;
     } else if (
-        screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || styles_remapped ||
+        screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || styles_remapped || smooth_scroll_changed ||
         (disable_ligatures && cursor_pos_changed))
         update_cell_data;
     // After updating cell data as rendering lines can add styles
@@ -1315,7 +1378,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 #define update_selection_data                                                                                  \
     {                                                                                                          \
         const unsigned int render_lines = render_lines_for_screen(screen);                                     \
-        sz = (size_t)render_lines * screen->columns;                                                           \
+        sz = (size_t)render_lines * screen->columns + num_strip_cells;                                         \
         address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz * selection_stride, selection_buffer); \
         screen_apply_selection(screen, address, sz, selection_stride);                                         \
         unmap_vao_buffer(vao_idx, selection_buffer);                                                           \
@@ -1330,7 +1393,8 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
         }
         screen->paused_rendering.cell_data_updated = true;
     } else {
-        if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen)) update_selection_data;
+        // The selection data of the strips is copied from that of the screen, so it is also updated when the strips change
+        if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen) || smooth_scroll_changed) update_selection_data;
         if (screen_update_graphics_layers(screen)) changed = true;
     }
     screen->last_rendered.scrolled_by = rendered_scrolled_by(screen);
@@ -2115,6 +2179,41 @@ current_framebuffer_is_ok(void) {
 
 enum { DRAW_NEITHER_BG = 0, DRAW_DEFAULT_BG = 1, DRAW_NON_DEFAULT_BG = 2, DRAW_BOTH_BG = 3 };
 
+static void configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned int cell_step);
+
+static Viewport
+smooth_scroll_region_rect(const UIRenderData *ui, const SmoothScrollRenderRegion *r) {
+    // The rectangle of the region in framebuffer pixels
+    return (Viewport){
+        .left = ui->screen_left + r->left * ui->cell_width,
+        .top = ui->screen_top + r->top * ui->cell_height,
+        .width = r->width * ui->cell_width,
+        .height = r->height * ui->cell_height};
+}
+
+static void
+draw_smooth_scroll_regions(int program, const UIRenderData *ui, ssize_t vao_idx, bool for_final_output) {
+    // Draw the strips of the shifted smooth scroll regions, each as a grid of
+    // cells in the rectangle of the region, shifted by its offset and clipped
+    // to it, see SmoothScrollRenderRegion. The cells of the rectangles were
+    // skipped when drawing the screen.
+    const SmoothScrollRender *ssr = &ui->screen->smooth_scroll_render;
+    const uint32_t slot = program_uniform_block(program, "CellRenderData").slot;
+    for (unsigned i = 0; i < ssr->count; i++) {
+        const SmoothScrollRenderRegion *r = ssr->regions + i;
+        if (!smooth_scroll_render_region_is_shifted(r)) continue;
+        const Viewport vp = smooth_scroll_region_rect(ui, r);
+        bind_vao_uniform_buffer(vao_idx, REGION_UNIFORM_BUFFER_BASE + i, slot);
+        configure_cell_vao_attributes(vao_idx, r->base_cell, 1);
+        save_viewport(vp.left, vp.top, vp.width, vp.height);
+        enable_scissor(vp);
+        draw_quad(!for_final_output, (r->height + 2) * r->width);
+        disable_scissor();
+        restore_viewport();
+    }
+    configure_cell_vao_attributes(vao_idx, 0, 1);
+}
+
 static void
 call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for_final_output, unsigned draw_bg_bitfield) {
     bind_program(program);
@@ -2125,6 +2224,7 @@ call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for
     param_1ui(program_param(program, "draw_bg_bitfield"), draw_bg_bitfield);
     if (for_final_output) gpu_set_srgb_output(true);
     draw_quad(!for_final_output, render_lines_for_screen(ui->screen) * ui->screen->columns);
+    if (UNLIKELY(ui->screen->smooth_scroll_render.num_strip_cells)) draw_smooth_scroll_regions(program, ui, vao_idx, for_final_output);
     if (for_final_output) gpu_set_srgb_output(false);
 }
 
@@ -2344,19 +2444,25 @@ program_for_image(const ImageRenderData *rd) {
 
 static void
 draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, uint32_t start, uint32_t count) {
-    if (!ui->grd.num_of_indexed_refs) {
+    if (!ui->grd.num_of_indexed_refs && !ui->grd.num_of_smooth_scroll_refs) {
         draw_graphics(GRAPHICS_PROGRAM, ui->grd.images, start, count, ui->inactive_text_alpha);
         return;
     }
     CELL_BUFFERS;
     // The color table may not be bound yet, for example, when the window has a background image
-    bind_vao_uniform_buffer(vao_idx, color_table_buffer, program_uniform_block(GRAPHICS_INDEXED_PROGRAM, "ColorTable").slot);
+    if (ui->grd.num_of_indexed_refs) bind_vao_uniform_buffer(vao_idx, color_table_buffer, program_uniform_block(GRAPHICS_INDEXED_PROGRAM, "ColorTable").slot);
+    // Images moving with a smooth scroll region are clipped to its rectangle
+    const SmoothScrollRender *ssr = &ui->screen->smooth_scroll_render;
     const ImageRenderData *data = ui->grd.images;
     for (uint32_t run_start = start, end = start + count; run_start < end;) {
         const int program = program_for_image(data + run_start);
+        const uint8_t region = data[run_start].smooth_scroll_region;
         uint32_t run_end = run_start + 1;
-        while (run_end < end && program_for_image(data + run_end) == program) run_end++;
+        while (run_end < end && program_for_image(data + run_end) == program && data[run_end].smooth_scroll_region == region) run_end++;
+        const bool clipped = region && region <= ssr->count;
+        if (clipped) enable_scissor(smooth_scroll_region_rect(ui, ssr->regions + region - 1));
         draw_graphics(program, ui->grd.images, run_start, run_end - run_start, ui->inactive_text_alpha);
+        if (clipped) disable_scissor();
         run_start = run_end;
     }
 }
