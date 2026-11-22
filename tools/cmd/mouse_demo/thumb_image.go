@@ -11,8 +11,10 @@ import (
 
 // The thumb of the scroll indicator is drawn as an image, using the kitty
 // graphics protocol, positioned with pixel precision over the line in the
-// right edge of the box. Terminals that do not support the graphics protocol
-// are detected with a query, the thumb is then drawn with block characters.
+// right edge of the box. The image uses indexed color data, so that it is
+// drawn in the colors of the terminal color scheme, and redrawn when they
+// change. Terminals that do not support the graphics protocol, or indexed color
+// data, are detected with a query, the thumb is then drawn with block characters.
 
 const (
 	thumb_image_id     = 7301
@@ -21,11 +23,11 @@ const (
 	thumb_width_fraction = 0.45
 )
 
-type rgb struct{ r, g, b uint8 }
-
-var (
-	thumb_color         = rgb{0x26, 0xa6, 0xb8}
-	thumb_hovered_color = rgb{0x5c, 0xe1, 0xf5}
+// The colors of the thumb, as indices into the terminal color palette, the
+// same colors as are used to draw it with block characters: cyan and bright cyan
+const (
+	thumb_color         uint8 = 6
+	thumb_hovered_color uint8 = 14
 )
 
 // The appearance of the thumb image, it is transmitted again when it changes
@@ -35,7 +37,7 @@ type thumb_image_key struct {
 }
 
 type thumb_image struct {
-	// Whether the terminal supports the graphics protocol
+	// Whether the terminal supports the graphics protocol with indexed color data
 	supported bool
 	// The appearance of the image last transmitted, if any
 	transmitted     thumb_image_key
@@ -45,12 +47,12 @@ type thumb_image struct {
 }
 
 // query_graphics_support asks the terminal whether it supports the graphics
-// protocol, the response is handled by handle_graphics_response
+// protocol with indexed color data, the response is handled by handle_graphics_response
 func query_graphics_support(lp *loop.Loop) {
 	g := graphics.GraphicsCommand{}
-	g.SetAction(graphics.GRT_action_query).SetImageId(thumb_image_id).SetFormat(graphics.GRT_format_rgb)
+	g.SetAction(graphics.GRT_action_query).SetImageId(thumb_image_id).SetFormat(graphics.GRT_format_indexed)
 	g.SetDataWidth(1).SetDataHeight(1).SetTransmission(graphics.GRT_transmission_direct)
-	_ = g.WriteWithPayloadToLoop(lp, []byte{0, 0, 0})
+	_ = g.WriteWithPayloadToLoop(lp, []byte{0})
 }
 
 // is_graphics_support_response returns true if raw, the contents of an APC
@@ -60,7 +62,7 @@ func is_graphics_support_response(raw []byte) bool {
 	return g != nil && g.ImageId() == thumb_image_id && g.ResponseMessage() == "OK"
 }
 
-// render_thumb returns the RGBA pixels of a thumb of the specified size: a
+// render_thumb returns the pixels, as palette index and alpha pairs, of a thumb of the specified size: a
 // vertical bar with rounded ends, centered horizontally, anti-aliased
 func render_thumb(key thumb_image_key) []byte {
 	w, h := key.width, key.height
@@ -68,7 +70,7 @@ func render_thumb(key thumb_image_key) []byte {
 	if key.hovered {
 		c = thumb_hovered_color
 	}
-	ans := make([]byte, 4*w*h)
+	ans := make([]byte, 2*w*h)
 	radius := max(1, math.Round(float64(w)*thumb_width_fraction)) / 2
 	cx := float64(w) / 2
 	// The ends of the segment that is the axis of the bar
@@ -88,8 +90,8 @@ func render_thumb(key thumb_image_key) []byte {
 			dx := float64(x) + 0.5 - cx
 			coverage := max(0, min(1, radius-math.Hypot(dx, dy)+0.5))
 			if coverage > 0 {
-				i := 4 * (y*w + x)
-				ans[i], ans[i+1], ans[i+2], ans[i+3] = c.r, c.g, c.b, uint8(math.Round(coverage*255))
+				i := 2 * (y*w + x)
+				ans[i], ans[i+1] = c, uint8(math.Round(coverage*255))
 			}
 		}
 	}
@@ -104,7 +106,7 @@ func (ti *thumb_image) draw(lp *loop.Loop, key thumb_image_key, x, y, top int, c
 	if !ti.has_transmitted || ti.transmitted != key {
 		g := graphics.GraphicsCommand{}
 		g.SetAction(graphics.GRT_action_transmit).SetQuiet(graphics.GRT_quiet_silent).SetImageId(thumb_image_id)
-		g.SetFormat(graphics.GRT_format_rgba).SetDataWidth(uint64(key.width)).SetDataHeight(uint64(key.height))
+		g.SetFormat(graphics.GRT_format_indexed_alpha).SetDataWidth(uint64(key.width)).SetDataHeight(uint64(key.height))
 		_ = g.WriteWithPayloadToLoop(lp, render_thumb(key))
 		ti.transmitted, ti.has_transmitted = key, true
 	}
