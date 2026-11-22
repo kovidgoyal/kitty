@@ -93,6 +93,7 @@ typedef struct {
     index_type xstart, ynum, xnum, cursor_x, text_len;
     // Position of the IME cursor inside the pre-edit text in unicode code points, negative if unknown
     int preedit_cursor;
+    bool cursor_hidden;
     bool is_active;
     bool is_dirty;
     struct {
@@ -362,6 +363,11 @@ bool screen_is_cell_selected(Screen *, index_type x, index_type y);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool cursor_has_moved);
 bool screen_is_cursor_visible(const Screen *self);
+static inline bool
+screen_ime_hides_cursor(const Screen *self) {
+    return self->overlay_line.is_active && self->overlay_line.cursor_hidden;
+}
+bool screen_is_cursor_visible_for_rendering(const Screen *self);
 unsigned screen_multi_cursor_count(const Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
 bool
@@ -391,7 +397,7 @@ void screen_report_size(Screen *, unsigned which, unsigned modifier);
 void screen_manipulate_title_stack(Screen *, unsigned int op, unsigned int which);
 bool screen_is_overlay_active(Screen *self);
 index_type screen_overlay_line_start(const Screen *self);
-void screen_update_overlay_text(Screen *self, const char *utf8_text, int preedit_cursor);
+void screen_update_overlay_text(Screen *self, const char *utf8_text, int preedit_cursor, bool cursor_hidden);
 bool screen_ime_text_around_cursor(Screen *self, char **before, char **after);
 void screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how);
 void screen_push_key_encoding_flags(Screen *self, uint32_t val);

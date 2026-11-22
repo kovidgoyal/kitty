@@ -840,8 +840,9 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     ans->text_blink_opacity = 1;
     // Use the scroll position of the rendered frame so the cursor matches the frozen text while rendering is paused
     if (!rendered_scrolled_by(rd->screen)) {
+        // IME visibility applies to the primary cursor. Additional cursors belong to the terminal application.
         ans->multicursor_count = screen_multi_cursor_count(rd->screen);
-        ans->is_visible = screen_is_cursor_visible(rd->screen);
+        ans->is_visible = screen_is_cursor_visible_for_rendering(rd->screen);
     }
     if (!ans->is_visible && ans->multicursor_count == 0 && !rd->screen->sgr_blink_was_used) return cursor_needs_render(w);
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;

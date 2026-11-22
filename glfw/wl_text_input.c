@@ -12,12 +12,16 @@
 #include <string.h>
 #define debug debug_input
 
+typedef struct {
+    int32_t byte_offset;
+    bool hidden;
+} WaylandPreeditCursor;
+
 static struct zwp_text_input_v3 *text_input;
 static struct zwp_text_input_manager_v3 *text_input_manager;
 static char *pending_pre_edit = NULL;
 static char *current_pre_edit = NULL;
-// Byte offsets of the cursor in the pre-edit text, negative when there is no cursor
-static int32_t pending_pre_edit_cursor = -1, current_pre_edit_cursor = -1;
+static WaylandPreeditCursor pending_pre_edit_cursor, current_pre_edit_cursor;
 static char *pending_commit = NULL;
 static bool ime_focused = false;
 static int last_cursor_left = 0, last_cursor_top = 0, last_cursor_width = 0, last_cursor_height = 0;
@@ -56,16 +60,18 @@ text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *txt_input, struct 
 }
 
 static void
-send_text_with_cursor(const char *text, GLFWIMEState ime_state, int32_t cursor_byte_offset) {
+send_text(const char *text, GLFWIMEState ime_state, const WaylandPreeditCursor *cursor) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
         GLFWkeyevent fake_ev = {.action = text ? GLFW_PRESS : GLFW_RELEASE, .text = text, .ime_state = ime_state};
-        if (text && cursor_byte_offset >= 0) {
-            // Convert the byte offset into an offset in unicode code points by
-            // counting the bytes that are not UTF-8 continuation bytes
-            fake_ev.has_ime_cursor = true;
-            for (int32_t i = 0; i < cursor_byte_offset && text[i]; i++) {
-                if ((text[i] & 0xc0) != 0x80) fake_ev.ime_cursor++;
+        if (text && cursor) {
+            fake_ev.ime_cursor_hidden = cursor->hidden;
+            if (cursor->byte_offset >= 0) {
+                // Wayland sends byte offsets and the screen uses code point offsets.
+                fake_ev.has_ime_cursor = true;
+                for (int32_t i = 0; i < cursor->byte_offset && text[i]; i++) {
+                    if ((text[i] & 0xc0) != 0x80) fake_ev.ime_cursor++;
+                }
             }
         }
         w->callbacks.keyboard((GLFWwindow *)w, &fake_ev);
@@ -73,18 +79,11 @@ send_text_with_cursor(const char *text, GLFWIMEState ime_state, int32_t cursor_b
 }
 
 static void
-send_text(const char *text, GLFWIMEState ime_state) {
-    send_text_with_cursor(text, ime_state, -1);
-}
-
-static void
 text_input_preedit_string(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, const char *text, int32_t cursor_begin, int32_t cursor_end) {
     debug("text-input: preedit_string event: text: %s cursor_begin: %d cursor_end: %d\n", text, cursor_begin, cursor_end);
     free(pending_pre_edit);
     pending_pre_edit = text ? _glfw_strdup(text) : NULL;
-    // cursor_begin == cursor_end is a cursor, otherwise a selection, place the cursor at its start.
-    // Both being -1 means the cursor should be hidden, which we treat as no cursor information.
-    pending_pre_edit_cursor = pending_pre_edit ? cursor_begin : -1;
+    pending_pre_edit_cursor = (WaylandPreeditCursor){.byte_offset = cursor_begin, .hidden = cursor_begin == -1 && cursor_end == -1};
 }
 
 static void
@@ -110,7 +109,8 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
     // The cursor is compared as well as the text, as moving the cursor inside the
     // pre-edit text, as is done with Chewing, does not change the text.
     if ((pending_pre_edit == NULL && current_pre_edit == NULL) ||
-        (pending_pre_edit && current_pre_edit && strcmp(pending_pre_edit, current_pre_edit) == 0 && pending_pre_edit_cursor == current_pre_edit_cursor)) {
+        (pending_pre_edit && current_pre_edit && strcmp(pending_pre_edit, current_pre_edit) == 0 &&
+         pending_pre_edit_cursor.byte_offset == current_pre_edit_cursor.byte_offset && pending_pre_edit_cursor.hidden == current_pre_edit_cursor.hidden)) {
         free(pending_pre_edit);
         pending_pre_edit = NULL;
     } else {
@@ -119,14 +119,14 @@ text_input_done(void *data UNUSED, struct zwp_text_input_v3 *txt_input UNUSED, u
         current_pre_edit_cursor = pending_pre_edit_cursor;
         pending_pre_edit = NULL;
         if (current_pre_edit) {
-            send_text_with_cursor(current_pre_edit, bad_event ? GLFW_IME_WAYLAND_DONE_EVENT : GLFW_IME_PREEDIT_CHANGED, current_pre_edit_cursor);
+            send_text(current_pre_edit, bad_event ? GLFW_IME_WAYLAND_DONE_EVENT : GLFW_IME_PREEDIT_CHANGED, &current_pre_edit_cursor);
         } else {
             // Clear pre-edit text
-            send_text(NULL, GLFW_IME_WAYLAND_DONE_EVENT);
+            send_text(NULL, GLFW_IME_WAYLAND_DONE_EVENT, NULL);
         }
     }
     if (pending_commit) {
-        send_text(pending_commit, GLFW_IME_COMMIT_TEXT);
+        send_text(pending_commit, GLFW_IME_COMMIT_TEXT, NULL);
         free(pending_commit);
         pending_commit = NULL;
     }
@@ -181,7 +181,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
                 pending_pre_edit = NULL;
                 if (current_pre_edit) {
                     // Clear pre-edit text
-                    send_text(NULL, GLFW_IME_PREEDIT_CHANGED);
+                    send_text(NULL, GLFW_IME_PREEDIT_CHANGED, NULL);
                     free(current_pre_edit);
                     current_pre_edit = NULL;
                 }

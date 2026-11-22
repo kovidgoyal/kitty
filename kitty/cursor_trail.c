@@ -146,7 +146,7 @@ update_cursor_trail_opacity(CursorTrail *ct, Window *w, monotonic_t now) {
     const bool cursor_trail_always_visible = false;
     if (cursor_trail_always_visible) {
         ct->opacity = 1.0f;
-    } else if (WD.screen->modes.mDECTCEM) {
+    } else if (WD.screen->modes.mDECTCEM && !screen_ime_hides_cursor(WD.screen)) {
         ct->opacity += (float)monotonic_t_to_s_double(now - ct->updated_at) / OPT(cursor_trail_decay_slow);
         ct->opacity = fminf(ct->opacity, 1.0f);
     } else {

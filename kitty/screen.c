@@ -2554,6 +2554,11 @@ screen_is_cursor_visible(const Screen *self) {
     return self->paused_rendering.expires_at ? self->paused_rendering.cursor_visible : self->modes.mDECTCEM;
 }
 
+bool
+screen_is_cursor_visible_for_rendering(const Screen *self) {
+    return screen_is_cursor_visible(self) && !screen_ime_hides_cursor(self);
+}
+
 void
 screen_backspace(Screen *self) {
     screen_cursor_move(self, 1, -1, true);
@@ -5354,6 +5359,7 @@ deactivate_overlay_line(Screen *self) {
     self->overlay_line.xstart = 0;
     self->overlay_line.cursor_x = 0;
     self->overlay_line.preedit_cursor = -1;
+    self->overlay_line.cursor_hidden = false;
 }
 
 static index_type
@@ -5380,7 +5386,7 @@ overlay_line_cursor_x(const Screen *self) {
 }
 
 void
-screen_update_overlay_text(Screen *self, const char *utf8_text, int preedit_cursor) {
+screen_update_overlay_text(Screen *self, const char *utf8_text, int preedit_cursor, bool cursor_hidden) {
     if (screen_is_overlay_active(self)) deactivate_overlay_line(self);
     if (!utf8_text || !utf8_text[0]) return;
     PyObject *text = PyUnicode_FromString(utf8_text);
@@ -5395,6 +5401,7 @@ screen_update_overlay_text(Screen *self, const char *utf8_text, int preedit_curs
     self->overlay_line.xnum = !text_len ? 0 : PyLong_AsLong(text_len);
     self->overlay_line.text_len = self->overlay_line.xnum;
     self->overlay_line.preedit_cursor = preedit_cursor;
+    self->overlay_line.cursor_hidden = cursor_hidden;
     self->overlay_line.cursor_x = overlay_line_cursor_x(self);
     self->overlay_line.ynum = self->cursor->y;
     cursor_copy_to(self->cursor, &(self->overlay_line.original_line.cursor));
@@ -7573,6 +7580,7 @@ test_draw_overlay_line(Screen *self, PyObject *args) {
     self->overlay_line.xstart = xstart;
     self->overlay_line.ynum = ynum;
     self->overlay_line.preedit_cursor = preedit_cursor;
+    self->overlay_line.cursor_hidden = false;
     self->overlay_line.is_active = true;
     screen_draw_overlay_line(self);
     return PyLong_FromUnsignedLong(self->overlay_line.cursor_x);
@@ -7581,9 +7589,10 @@ test_draw_overlay_line(Screen *self, PyObject *args) {
 static PyObject *
 test_update_overlay_text(Screen *self, PyObject *args) {
     const char *text;
-    int preedit_cursor = -1;
-    if (!PyArg_ParseTuple(args, "s|i", &text, &preedit_cursor)) return NULL;
-    screen_update_overlay_text(self, text, preedit_cursor);
+    int preedit_cursor = -1, hidden = 0;
+    if (!PyArg_ParseTuple(args, "s|ip", &text, &preedit_cursor, &hidden)) return NULL;
+    screen_update_overlay_text(self, text, preedit_cursor, hidden);
+    if (!screen_is_cursor_visible_for_rendering(self)) Py_RETURN_NONE;
     // Nothing is drawn here, the cursor position must be correct without drawing
     return PyLong_FromUnsignedLong(self->overlay_line.cursor_x);
 }

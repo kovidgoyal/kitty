@@ -4178,6 +4178,15 @@ class TestScreen(BaseTest):
         self.ae(s.test_update_overlay_text('官大為好和', 0), 0)
         self.ae(s.test_update_overlay_text('官大為好和'), 6)
 
+    def test_ime_preedit_cursor_visibility(self):
+        s = self.create_screen(cols=20, lines=3)
+        s.draw('ab')
+        preedit = '新‸'
+        self.ae(s.test_update_overlay_text(preedit, 0), 2)
+        self.assertIsNone(s.test_update_overlay_text(preedit, -1, True))
+        self.assertTrue(s.cursor_visible)
+        self.ae(s.test_update_overlay_text(preedit, 0), 2)
+
     def test_ime_overlay_line_start(self):
         # The IME is anchored at the start of the pre-edit text as drawn,
         # which is shifted left when it would otherwise not fit on the line

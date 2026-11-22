@@ -125,6 +125,8 @@ Detailed list of changes
 0.51.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: Hide the cursor during pre-edit when the input method explicitly requests it
+
 - Docks: Fix docks changing size when switching tabs or opening and closing windows when :opt:`single_window_margin_width` or :opt:`single_window_padding_width` is set. A tab with docks no longer counts as showing a single window
 
 - Saving sessions: Fix programs running in a window being able to inject arbitrary commands into saved session files via line breaks in the working directory reported with OSC 7 or in user variables. Arguments with line breaks in :code:`launch` lines are now written using ANSI-C (:code:`$'...'`) quoting

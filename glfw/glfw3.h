@@ -1378,9 +1378,11 @@ typedef struct GLFWkeyevent {
     // True if this is a synthesized event on focus change
     bool fake_event_on_focus_change;
 
-    // For GLFW_IME_PREEDIT_CHANGED events: when has_ime_cursor is true, ime_cursor is the
-    // position of the cursor inside the pre-edit text, in unicode code points.
+    // For GLFW_IME_PREEDIT_CHANGED and GLFW_IME_WAYLAND_DONE_EVENT, ime_cursor
+    // is a Unicode code point offset when has_ime_cursor is true.
+    // ime_cursor_hidden requests a hidden pre-edit cursor and is only meaningful when text is non-NULL.
     bool has_ime_cursor;
+    bool ime_cursor_hidden;
     uint32_t ime_cursor;
 } GLFWkeyevent;
 
