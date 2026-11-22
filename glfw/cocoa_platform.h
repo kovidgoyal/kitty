@@ -136,6 +136,8 @@ typedef struct _GLFWwindowNS {
     id delegate;
     id view;
     id layer;
+    long attention_request_id;
+    bool attention_requested;
 
     bool maximized;
     bool retina;

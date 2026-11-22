@@ -2683,10 +2683,10 @@ _glfwPlatformHideWindow(_GLFWwindow *window) {
 }
 
 void
-_glfwPlatformRequestWindowAttention(_GLFWwindow *window) {
+_glfwPlatformSetWindowAttention(_GLFWwindow *window, bool requested) {
     if (!_glfw.x11.NET_WM_STATE || !_glfw.x11.NET_WM_STATE_DEMANDS_ATTENTION) return;
 
-    sendEventToWM(window, _glfw.x11.NET_WM_STATE, _NET_WM_STATE_ADD, _glfw.x11.NET_WM_STATE_DEMANDS_ATTENTION, 0, 1, 0);
+    sendEventToWM(window, _glfw.x11.NET_WM_STATE, requested ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE, _glfw.x11.NET_WM_STATE_DEMANDS_ATTENTION, 0, 1, 0);
 }
 
 int

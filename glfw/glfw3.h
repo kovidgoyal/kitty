@@ -3897,6 +3897,13 @@ GLFWAPI void glfwFocusWindow(GLFWwindow *window);
  */
 GLFWAPI void glfwRequestWindowAttention(GLFWwindow *window);
 
+/*! @brief Cancels the attention request for the specified window.
+ *
+ *  On Wayland, only requests that are still waiting for an activation token
+ *  can be canceled.
+ */
+GLFWAPI void glfwCancelWindowAttention(GLFWwindow *window);
+
 /*! @brief Sounds an audible bell associated with the window
  *
  *  This function sounds an audible bell, on platforms where it is

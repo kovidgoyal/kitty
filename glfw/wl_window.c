@@ -1903,18 +1903,24 @@ request_attention(GLFWwindow *window, const char *token, void *data UNUSED) {
         xdg_activation_v1_activate(_glfw.wl.xdg_activation_v1, token, ((_GLFWwindow *)window)->wl.surface);
 }
 
-static bool
-has_activation_in_flight(_GLFWwindow *window, GLFWactivationcallback callback) {
+static size_t
+find_activation_request(_GLFWwindow *window, GLFWactivationcallback callback) {
     for (size_t i = 0; i < _glfw.wl.activation_requests.sz; i++) {
         glfw_wl_xdg_activation_request *r = _glfw.wl.activation_requests.array + i;
-        if (r->window_id == window->id && r->callback == callback) return true;
+        if (r->window_id == window->id && r->callback == callback) return i;
     }
-    return false;
+    return _glfw.wl.activation_requests.sz;
 }
 
 void
-_glfwPlatformRequestWindowAttention(_GLFWwindow *window) {
-    if (!has_activation_in_flight(window, request_attention)) get_activation_token(window, 0, request_attention, NULL);
+_glfwPlatformSetWindowAttention(_GLFWwindow *window, bool requested) {
+    size_t i = find_activation_request(window, request_attention);
+    if (i == _glfw.wl.activation_requests.sz) {
+        if (requested) get_activation_token(window, 0, request_attention, NULL);
+    } else if (!requested) {
+        xdg_activation_token_v1_destroy(_glfw.wl.activation_requests.array[i].token);
+        remove_i_from_array(_glfw.wl.activation_requests.array, i, _glfw.wl.activation_requests.sz);
+    }
 }
 
 int
@@ -1939,7 +1945,8 @@ _glfwPlatformFocusWindow(_GLFWwindow *window UNUSED) {
     // Attempt to focus the window by using the activation protocol, whether it works
     // is entirely compositor dependent and as we all know Wayland and its ecosystem is
     // the product of morons.
-    if (_glfw.wl.input_serial && !has_activation_in_flight(window, focus_window)) get_activation_token(window, _glfw.wl.input_serial, focus_window, NULL);
+    if (_glfw.wl.input_serial && find_activation_request(window, focus_window) == _glfw.wl.activation_requests.sz)
+        get_activation_token(window, _glfw.wl.input_serial, focus_window, NULL);
 }
 
 void

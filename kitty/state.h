@@ -612,6 +612,7 @@ typedef struct OSWindow {
     } tab_bar_edge_color;
     bool tab_bar_data_updated;
     bool is_focused;
+    bool bell_attention_requested;
     monotonic_t cursor_blink_zero_time, last_mouse_activity_at, mouse_activate_deadline;
     bool user_is_idle;
     int mouse_show_threshold;

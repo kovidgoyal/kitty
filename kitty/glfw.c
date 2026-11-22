@@ -962,6 +962,14 @@ update_os_window_visibility_based_on_focus(id_type timer_id UNUSED, void *d) {
 }
 
 static void
+cancel_os_window_bell_attention(OSWindow *w) {
+    if (w && w->handle && w->bell_attention_requested) {
+        w->bell_attention_requested = false;
+        glfwCancelWindowAttention(w->handle);
+    }
+}
+
+static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
 #define osw global_state.callback_os_window
@@ -972,6 +980,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     monotonic_t now = monotonic();
     id_type wid = osw->id;
     if (focused) {
+        cancel_os_window_bell_attention(osw);
         cursor_active_callback(now);
         focus_in_event();
         osw->last_focused_counter = ++focus_counter;
@@ -3147,6 +3156,14 @@ request_attention(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+cancel_bell_attention(PyObject *self UNUSED, PyObject *os_window_id) {
+    id_type id = PyLong_AsUnsignedLongLong(os_window_id);
+    if (PyErr_Occurred()) return NULL;
+    cancel_os_window_bell_attention(os_window_for_id(id));
+    Py_RETURN_NONE;
+}
+
 
 static PyObject *
 get_content_scale_for_window(PYNOARG) {
@@ -3260,7 +3277,10 @@ request_window_attention(id_type kitty_window_id, bool audio_bell) {
     OSWindow *w = os_window_for_kitty_window(kitty_window_id);
     if (w) {
         if (audio_bell) ring_audio_bell(w);
-        if (OPT(window_alert_on_bell)) glfwRequestWindowAttention(w->handle);
+        if (OPT(window_alert_on_bell)) {
+            w->bell_attention_requested = true;
+            glfwRequestWindowAttention(w->handle);
+        }
 #ifdef __APPLE__
         if (OPT(macos_dock_badge_on_bell)) cocoa_set_dock_badge("!");
 #endif
@@ -4138,6 +4158,7 @@ static PyMethodDef module_methods[] = {
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(ring_bell, METH_VARARGS),
     METHODB(request_attention, METH_VARARGS),
+    METHODB(cancel_bell_attention, METH_O),
     METHODB(toggle_fullscreen, METH_VARARGS),
     METHODB(toggle_maximized, METH_VARARGS),
     METHODB(change_os_window_state, METH_VARARGS),

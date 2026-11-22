@@ -739,7 +739,7 @@ void _glfwPlatformRestoreWindow(_GLFWwindow *window);
 void _glfwPlatformMaximizeWindow(_GLFWwindow *window);
 void _glfwPlatformShowWindow(_GLFWwindow *window, bool move_to_active_screen);
 void _glfwPlatformHideWindow(_GLFWwindow *window);
-void _glfwPlatformRequestWindowAttention(_GLFWwindow *window);
+void _glfwPlatformSetWindowAttention(_GLFWwindow *window, bool requested);
 int _glfwPlatformWindowBell(_GLFWwindow *window);
 void _glfwPlatformFocusWindow(_GLFWwindow *window);
 void _glfwPlatformSetWindowMonitor(_GLFWwindow *window, _GLFWmonitor *monitor, int xpos, int ypos, int width, int height, int refreshRate);

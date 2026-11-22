@@ -1713,6 +1713,64 @@ class TestProportionalSplits(BaseTest):
 
 
 class TestWindowHelpers(BaseTest):
+    def test_clear_bell_indicators(self):
+        from kitty.boss import Boss
+        from kitty.window import Window
+
+        class Tab(list):
+            created_in_session_name = ''
+
+            def relayout_borders(self):
+                pass
+
+            def mark_tab_bar_dirty(self):
+                pass
+
+        class TabManager(list):
+            pass
+
+        boss = Boss.__new__(Boss)
+        boss.window_for_dispatch = None
+        boss.os_window_map = {}
+        boss.window_id_map = {}
+        for os_window_id in (1, 2):
+            manager = boss.os_window_map[os_window_id] = TabManager()
+            for index in (1, 2):
+                tab = Tab()
+                tab.tab_manager_ref = weakref.ref(manager)
+                manager.append(tab)
+                w = Window.__new__(Window)
+                w.id = 10 * os_window_id + index
+                w.os_window_id = os_window_id
+                w.tabref = weakref.ref(tab)
+                w.created_in_session_name = ''
+                w.needs_attention = True
+                boss.window_id_map[w.id] = w
+                tab.append(w)
+                tab.active_window = w
+            manager.active_tab = manager[0]
+
+        with (
+            patch('kitty.boss.current_focused_os_window_id', return_value=1),
+            patch('kitty.window.last_focused_os_window_id', return_value=1),
+            patch('kitty.boss.cancel_bell_attention') as cancel,
+        ):
+            boss.clear_bell_indicators('state:parent_focused')
+            self.ae({w.id for w in boss.all_windows if w.needs_attention}, {12, 21, 22})
+            cancel.assert_not_called()
+
+            boss.clear_bell_indicators('state:focused_os_window')
+            self.ae({w.id for w in boss.all_windows if w.needs_attention}, {21, 22})
+            cancel.assert_called_once_with(1)
+
+            cancel.reset_mock()
+            boss.clear_bell_indicators('id:999')
+            cancel.assert_not_called()
+
+            boss.clear_bell_indicators()
+            self.assertFalse(any(w.needs_attention for w in boss.all_windows))
+            self.ae({call.args[0] for call in cancel.call_args_list}, {1, 2})
+
     def test_edge_widths_launch_args(self):
         ew = EdgeWidths({'left': 1, 'right': 2, 'top': 3, 'bottom': 4})
         for prefix in ('padding', 'margin'):
