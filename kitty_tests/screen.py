@@ -485,6 +485,18 @@ class TestScreen(BaseTest):
         s.delete_characters(2)
         self.ae('cde', str(s.line(s.cursor.y)))
 
+        # ICH and DCH in pending wrap state must be no-ops
+        for op in (s.insert_characters, s.delete_characters):
+            s.reset()
+            s.cursor_position(2, 1)
+            s.draw('xy')
+            s.cursor_position(1, 1)
+            s.draw('ab界c')
+            self.ae(s.cursor.x, s.columns)
+            op(1)
+            self.ae(str(s.line(0)), 'ab界c')
+            self.ae(str(s.line(1)), 'xy')
+
         init()
         s.erase_characters(2)
         self.ae(str(s.line(0)), 'a  de')

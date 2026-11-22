@@ -684,6 +684,7 @@ nuke_multicell_char_intersecting_with(Screen *self, index_type x_start, index_ty
 
 static void
 nuke_split_multicell_char_at_left_boundary(Screen *self, index_type x, index_type y, bool replace_with_spaces) {
+    if (x >= self->columns) return;
     CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y);
     if (cp[x].is_multicell && cp[x].x) {
         nuke_multicell_char_at(self, x, y, replace_with_spaces); // remove split multicell char at left edge
@@ -3330,6 +3331,7 @@ screen_insert_characters(Screen *self, unsigned int count) {
     if (self->cursor->y <= bottom) {
         unsigned int x = self->cursor->x;
         unsigned int num = MIN(self->columns - x, count);
+        if (!num) return; // cursor is in pending wrap state
         insert_characters(self, x, num, self->cursor->y, false);
         linebuf_init_line(self->linebuf, self->cursor->y);
         line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
@@ -3376,6 +3378,7 @@ screen_delete_characters(Screen *self, unsigned int count) {
     if (self->cursor->y <= bottom) {
         unsigned int x = self->cursor->x;
         unsigned int num = MIN(self->columns - x, count);
+        if (!num) return; // cursor is in pending wrap state
         remove_characters(self, x, num, self->cursor->y, false);
         linebuf_init_line(self->linebuf, self->cursor->y);
         line_apply_cursor(self->linebuf->line, self->cursor, self->columns - num, num, true);
