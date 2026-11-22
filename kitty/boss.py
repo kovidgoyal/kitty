@@ -2108,7 +2108,7 @@ class Boss:
 
         if key_action is not None:
             f = getattr(self, key_action.func, None)
-            if f is not None:
+            if callable(f):
                 orig, self.window_for_dispatch = self.window_for_dispatch, window_for_dispatch
                 try:
                     report_match(f)
@@ -2126,7 +2126,8 @@ class Boss:
         if tab is None or window is None:
             return False
         if key_action is not None:
-            f = getattr(tab, key_action.func, getattr(window, key_action.func, None))
+            # Only call methods, not data attributes that happen to share the action's name
+            f = next((x for x in (getattr(tab, key_action.func, None), getattr(window, key_action.func, None)) if callable(x)), None)
             if f is not None:
                 passthrough = f(*key_action.args)
                 report_match(f)
@@ -3204,7 +3205,7 @@ class Boss:
         def callback(timer_id: int | None) -> None:
             self.dispatch_action(actions.pop(0), window_for_dispatch, dispatch_type)
             if actions:
-                self.drain_actions(actions)
+                self.drain_actions(actions, window_for_dispatch, dispatch_type)
 
         add_timer(callback, 0, False)
 

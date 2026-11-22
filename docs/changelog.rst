@@ -159,6 +159,8 @@ Detailed list of changes
 
 - macOS: Fix multiple font files sharing the same PostScript name causing incorrect variant to be loaded sometimes (:iss:`10906`)
 
+- :ac:`combine`: Fix the third and subsequent actions in a mouse mapping not being run for the window that was clicked. Also fix an error when a mapping refers to an action name that matches a non-action attribute of the window or tab
+
 - :doc:`launch <launch>`: Run the program as requested instead of resolving it to a full path first, so that wrappers such as the :ref:`launch wrapper <launch_wrapper>` look it up in their own :envvar:`PATH` and the program sees itself invoked by name, as when run from a shell. Programs that would not be found in :envvar:`PATH`, such as ones found via :opt:`exe_search_path`, are still run via their full path (:iss:`10914`)
 
 0.51.0 [2026-11-18]
