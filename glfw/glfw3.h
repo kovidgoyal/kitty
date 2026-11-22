@@ -3899,8 +3899,7 @@ GLFWAPI void glfwRequestWindowAttention(GLFWwindow *window);
 
 /*! @brief Cancels the attention request for the specified window.
  *
- *  On Wayland, only requests that are still waiting for an activation token
- *  can be canceled.
+ *  Does nothing on Wayland, where attention requests cannot be withdrawn.
  */
 GLFWAPI void glfwCancelWindowAttention(GLFWwindow *window);
 

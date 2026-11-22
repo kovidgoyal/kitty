@@ -1210,6 +1210,8 @@ class Boss:
             if tab is not None:
                 tab.remove_window(window)
                 self._cleanup_tab_after_window_removal(tab)
+            if window.needs_attention:
+                self.cancel_bell_attention_if_idle((os_window_id,))
             for removal_action in window.actions_on_removal:
                 try:
                     removal_action(window)
@@ -4371,7 +4373,7 @@ class Boss:
 
         The system attention request from :opt:`window_alert_on_bell` is
         dismissed once all bell indicators in its OS window have been cleared.
-        On Wayland, only pending activation requests can be canceled.
+        Not supported on Wayland, where such requests cannot be withdrawn.
 
         For example::
 
@@ -4394,9 +4396,12 @@ class Boss:
             windows = list(self.all_windows)
         for w in windows:
             w.clear_needs_attention()
-        affected_os_windows = {w.os_window_id for w in windows}
-        pending_os_windows = {w.os_window_id for w in self.all_windows if w.needs_attention}
-        for os_window_id in affected_os_windows - pending_os_windows:
+        self.cancel_bell_attention_if_idle({w.os_window_id for w in windows})
+
+    def cancel_bell_attention_if_idle(self, os_window_ids: Iterable[int]) -> None:
+        """Cancel the system attention request of the specified OS windows, if none of their windows need attention"""
+        pending = {w.os_window_id for w in self.all_windows if w.needs_attention}
+        for os_window_id in set(os_window_ids) - pending:
             cancel_bell_attention(os_window_id)
 
     def update_progress_in_dock(self) -> None:
