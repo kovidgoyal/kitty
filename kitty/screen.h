@@ -125,6 +125,40 @@ typedef struct ExtraCursors {
     bool dirty;
 } ExtraCursors;
 
+#define MAX_SMOOTH_SCROLL_REGIONS 4u
+
+// A rectangle of the screen that is scrolled smoothly, by fractions of a row.
+// The terminal moves the cells in the rectangle by whole rows and renders them
+// shifted by the remaining fraction of a row. Rows that move out of the
+// rectangle are kept in overflow buffers, so that they can be drawn in the
+// partially visible row at the edge and restored when the scroll direction is
+// reversed. See the "Smooth scroll regions" section of screen.c.
+typedef struct SmoothScrollRegion {
+    uint32_t id;
+    // The rectangle [left, right) x [top, bottom) in cells
+    index_type left, top, right, bottom;
+    // The maximum number of rows kept in each of the overflow buffers
+    index_type capacity;
+    // The number of rows currently kept above and below the rectangle
+    index_type num_above, num_below;
+    // The distance in pixels from the top edge of the rectangle to the top of
+    // its first row of cells. Its magnitude is less than the cell height. When
+    // positive, the row above the rectangle is partially visible, when
+    // negative, the row below it.
+    int offset;
+    // Do not use the scrollback as the overflow buffer above the rectangle
+    bool private_overflow;
+    // Rows [0, capacity) are the rows above the rectangle, nearest first, rows
+    // [capacity, 2 * capacity) the rows below it, nearest first. Each row has
+    // the width of the rectangle.
+    LineBuf *overflow;
+} SmoothScrollRegion;
+
+typedef struct SmoothScroll {
+    SmoothScrollRegion regions[MAX_SMOOTH_SCROLL_REGIONS];
+    unsigned count;
+} SmoothScroll;
+
 
 typedef struct {
     PyObject_HEAD
@@ -250,6 +284,7 @@ typedef struct {
         Selections selections, url_ranges;
         ExtraCursors extra_cursors;
     } paused_rendering;
+    SmoothScroll smooth_scroll;
     CharsetState charset;
     ListOfChars *lc;
     struct {
@@ -384,6 +419,11 @@ void screen_update_selection(Screen *self, index_type x, index_type y, bool in_l
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 void screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by);
 bool screen_apply_pixel_scroll(Screen *self, double delta_pixels);
+bool screen_smooth_scroll_define(
+    Screen *self, uint32_t id, index_type left, index_type top, index_type right, index_type bottom, index_type capacity, bool private_overflow);
+bool screen_smooth_scroll_remove(Screen *self, uint32_t id);
+void screen_smooth_scroll_remove_all(Screen *self);
+bool screen_smooth_scroll(Screen *self, uint32_t id, int delta_pixels, int *rows_shifted);
 PyObject *as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
 Line *screen_visual_line(Screen *self, index_type y);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);

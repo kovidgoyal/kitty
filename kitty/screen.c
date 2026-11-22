@@ -229,6 +229,7 @@ clamp_scroll_position(Screen *self) {
 static void
 do_screen_reset(Screen *self, bool is_hard_reset) {
     screen_pause_rendering(self, false, 0);
+    screen_smooth_scroll_remove_all(self);
     self->dnd_chunking.active = false;
     self->extra_cursors.count = 0;
     zero_at_ptr(&self->extra_cursors.color);
@@ -316,6 +317,10 @@ screen_dirty_sprite_positions(Screen *self) {
         linebuf_mark_line_dirty(self->alt_linebuf, i);
     }
     for (index_type i = 0; i < self->historybuf->count; i++) historybuf_mark_line_dirty(self->historybuf, i);
+    for (unsigned r = 0; r < self->smooth_scroll.count; r++) {
+        LineBuf *lb = self->smooth_scroll.regions[r].overflow;
+        for (index_type i = 0; i < lb->ynum; i++) linebuf_mark_line_dirty(lb, i);
+    }
 }
 
 typedef struct CursorTrack {
@@ -428,6 +433,32 @@ selection_intersects_screen_lines(const Selections *selections, int a, int b) {
 
 
 static void
+move_selection_by_one_row(const Screen *self, Selection *s, bool up) {
+    // Move the selection with its text when the lines it is on move up or down by one row
+    if (up) {
+        if (s->start.y == 0) s->start_scrolled_by += 1;
+        else {
+            s->start.y--;
+            if (s->input_start.y) s->input_start.y--;
+            if (s->input_current.y) s->input_current.y--;
+            if (s->initial_extent.start.y) s->initial_extent.start.y--;
+            if (s->initial_extent.end.y) s->initial_extent.end.y--;
+        }
+        if (s->end.y == 0) s->end_scrolled_by += 1;
+        else s->end.y--;
+    } else {
+        if (s->start.y >= self->lines - 1) s->start_scrolled_by -= 1;
+        else {
+            s->start.y++;
+            if (s->input_start.y < self->lines - 1) s->input_start.y++;
+            if (s->input_current.y < self->lines - 1) s->input_current.y++;
+        }
+        if (s->end.y >= self->lines - 1) s->end_scrolled_by -= 1;
+        else s->end.y++;
+    }
+}
+
+static void
 index_selection(const Screen *self, Selections *selections, bool up, index_type top, index_type bottom) {
     const bool needs_special_handling = self->linebuf == self->alt_linebuf && (top > 0 || bottom < self->lines - 1);
     for (size_t i = 0; i < selections->count; i++) {
@@ -450,27 +481,7 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
                 }
             }
         }
-        if (up) {
-            if (s->start.y == 0) s->start_scrolled_by += 1;
-            else {
-                s->start.y--;
-                if (s->input_start.y) s->input_start.y--;
-                if (s->input_current.y) s->input_current.y--;
-                if (s->initial_extent.start.y) s->initial_extent.start.y--;
-                if (s->initial_extent.end.y) s->initial_extent.end.y--;
-            }
-            if (s->end.y == 0) s->end_scrolled_by += 1;
-            else s->end.y--;
-        } else {
-            if (s->start.y >= self->lines - 1) s->start_scrolled_by -= 1;
-            else {
-                s->start.y++;
-                if (s->input_start.y < self->lines - 1) s->input_start.y++;
-                if (s->input_current.y < self->lines - 1) s->input_current.y++;
-            }
-            if (s->end.y >= self->lines - 1) s->end_scrolled_by -= 1;
-            else s->end.y++;
-        }
+        move_selection_by_one_row(self, s, up);
     }
 }
 
@@ -552,7 +563,10 @@ clear_scrolled_in_line(Screen *self, index_type y) {
     else linebuf_clear_line(self->linebuf, y, true);
 }
 
+static void ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool via_history);
+
 #define INDEX_DOWN(scroll_history)                                                                      \
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, top, bottom, false, scroll_history); \
     linebuf_reverse_index(self->linebuf, top, bottom);                                                  \
     clear_scrolled_in_line(self, top);                                                                  \
     last_visited_prompt_index(self, top, bottom, false, scroll_history);                                \
@@ -604,6 +618,9 @@ mark_range_line_dirty(Screen *self, int y) {
     else historybuf_mark_line_dirty(self->historybuf, -(y + 1));
 }
 
+static void ssr_nuke_overflow_parts(Screen *self, index_type x_start, index_type x_limit, MulticellRows rows, char_type ch);
+static inline void reset_pixel_scroll(Screen *self, unsigned val);
+
 static void
 nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
     const MulticellRows rows = multicell_char_rows(self, x_, y_);
@@ -611,6 +628,7 @@ nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_
     while (cp[x_].x && x_ > 0) x_--;
     const index_type x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
     const char_type ch = replace_with_spaces ? ' ' : 0;
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_nuke_overflow_parts(self, x_, x_limit, rows, ch);
     for (int y = rows.start; y < rows.limit; y++) {
         Line *line = range_line_(self, y);
         nuke_in_line(line->cpu_cells, x_, x_limit, ch);
@@ -732,6 +750,479 @@ nuke_multicell_char_intersecting_with(Screen *self, index_type x_start, index_ty
         }
     }
 }
+
+// Smooth scroll regions {{{
+// An application designates up to MAX_SMOOTH_SCROLL_REGIONS rectangles of the
+// screen for smooth scrolling and then scrolls them by amounts in pixels. The
+// terminal moves the cells in a rectangle by whole rows and the rectangle is
+// rendered shifted by the remaining fraction of a row, see SmoothScrollRegion.
+// The row that enters the rectangle in the direction of the scroll is always a
+// row of the rectangle, so that the application can draw it before it becomes
+// visible. The partially visible row at the other edge comes from the overflow
+// buffers. Rows that move out of the rectangle are pushed onto the overflow
+// buffer on that side and rows that move into it are popped from the overflow
+// buffer on their side, or are blank for the application to draw, if it is
+// empty. When the rectangle spans the full width of the main screen and starts
+// at its top, the scrollback is the overflow buffer above it, just as when
+// scrolling with SU, unless the application opts out.
+
+static bool
+ssr_is_full_width(const Screen *self, const SmoothScrollRegion *r) {
+    return r->left == 0 && r->right == self->columns;
+}
+
+static bool
+ssr_uses_history(const Screen *self, const SmoothScrollRegion *r) {
+    return !r->private_overflow && r->top == 0 && ssr_is_full_width(self, r) && self->linebuf == self->main_linebuf && self->historybuf->ynum > 0;
+}
+
+static index_type
+ssr_width(const SmoothScrollRegion *r) {
+    return r->right - r->left;
+}
+
+static index_type
+ssr_slot(const SmoothScrollRegion *r, bool above, index_type i) {
+    // The row of the overflow buffer holding the i-th nearest row above or below the rectangle
+    return above ? i : r->capacity + i;
+}
+
+static SmoothScrollRegion *
+ssr_for_id(Screen *self, uint32_t id) {
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++)
+        if (self->smooth_scroll.regions[i].id == id) return self->smooth_scroll.regions + i;
+    return NULL;
+}
+
+static bool
+ssr_rows_intersect(const SmoothScrollRegion *r, index_type top, index_type bottom) {
+    // Whether the rows [top, bottom] intersect the rectangle
+    return r->top <= bottom && top < r->bottom;
+}
+
+static CPUCell *
+ssr_overflow_cells(SmoothScrollRegion *r, index_type slot) {
+    return linebuf_cpu_cells_for_line(r->overflow, slot);
+}
+
+static void
+ssr_mark_row_dirty(Screen *self, index_type y) {
+    linebuf_mark_line_dirty(self->linebuf, y);
+    self->is_dirty = true;
+}
+
+static void
+ssr_copy_row_to_slot(Screen *self, SmoothScrollRegion *r, index_type y, index_type slot) {
+    CPUCell *sc, *dc;
+    RenderCell *sr, *dr;
+    linebuf_init_cells(self->linebuf, y, &sc, &sr);
+    linebuf_init_cells(r->overflow, slot, &dc, &dr);
+    const index_type w = ssr_width(r);
+    memcpy(dc, sc + r->left, w * sizeof(dc[0]));
+    memcpy(dr, sr + r->left, w * sizeof(dr[0]));
+    const LineAttrs src = self->linebuf->line_attrs[y];
+    LineAttrs *dest = r->overflow->line_attrs + slot;
+    if (ssr_is_full_width(self, r)) *dest = src;
+    else {
+        dest->val = 0;
+        dest->has_image_placeholders = src.has_image_placeholders;
+    }
+    dest->has_dirty_text = true;
+}
+
+static void
+ssr_copy_slot_to_row(Screen *self, SmoothScrollRegion *r, index_type slot, index_type y) {
+    CPUCell *sc, *dc;
+    RenderCell *sr, *dr;
+    linebuf_init_cells(r->overflow, slot, &sc, &sr);
+    linebuf_init_cells(self->linebuf, y, &dc, &dr);
+    const index_type w = ssr_width(r);
+    memcpy(dc + r->left, sc, w * sizeof(dc[0]));
+    memcpy(dr + r->left, sr, w * sizeof(dr[0]));
+    const LineAttrs src = r->overflow->line_attrs[slot];
+    LineAttrs *dest = self->linebuf->line_attrs + y;
+    if (ssr_is_full_width(self, r)) *dest = src;
+    else dest->has_image_placeholders |= src.has_image_placeholders;
+    ssr_mark_row_dirty(self, y);
+}
+
+static void
+ssr_copy_row_to_row(Screen *self, SmoothScrollRegion *r, index_type src_y, index_type dest_y) {
+    // Only used for rectangles narrower than the screen, full width rows are moved by rotating the line map
+    CPUCell *sc, *dc;
+    RenderCell *sr, *dr;
+    linebuf_init_cells(self->linebuf, src_y, &sc, &sr);
+    linebuf_init_cells(self->linebuf, dest_y, &dc, &dr);
+    const index_type w = ssr_width(r);
+    memcpy(dc + r->left, sc + r->left, w * sizeof(dc[0]));
+    memcpy(dr + r->left, sr + r->left, w * sizeof(dr[0]));
+    self->linebuf->line_attrs[dest_y].has_image_placeholders |= self->linebuf->line_attrs[src_y].has_image_placeholders;
+    ssr_mark_row_dirty(self, dest_y);
+}
+
+static void
+ssr_blank_row(Screen *self, SmoothScrollRegion *r, index_type y) {
+    if (ssr_is_full_width(self, r)) clear_scrolled_in_line(self, y);
+    else {
+#if BLANK_CHAR != 0
+#error This implementation is incorrect for BLANK_CHAR != 0
+#endif
+        CPUCell *c;
+        RenderCell *rc;
+        linebuf_init_cells(self->linebuf, y, &c, &rc);
+        zero_at_ptr_count(c + r->left, ssr_width(r));
+        zero_at_ptr_count(rc + r->left, ssr_width(r));
+    }
+    ssr_mark_row_dirty(self, y);
+}
+
+static index_type
+ssr_push_slot(SmoothScrollRegion *r, bool above) {
+    // Make room for a new nearest row in an overflow buffer, discarding its
+    // farthest row if it is full, and return the slot for the new row
+    const index_type base = ssr_slot(r, above, 0);
+    linebuf_reverse_index(r->overflow, base, base + r->capacity - 1);
+    index_type *n = above ? &r->num_above : &r->num_below;
+    if (*n < r->capacity) (*n)++;
+    return base;
+}
+
+static void
+ssr_pop_slot(SmoothScrollRegion *r, bool above) {
+    // Remove the nearest row of an overflow buffer, after it has been copied out
+    const index_type base = ssr_slot(r, above, 0);
+    // Cleared so that it does not keep text cache entries and styles alive
+    linebuf_clear_line(r->overflow, base, true);
+    linebuf_index(r->overflow, base, base + r->capacity - 1);
+    index_type *n = above ? &r->num_above : &r->num_below;
+    if (*n) (*n)--;
+}
+
+static void
+ssr_clear_overflow(SmoothScrollRegion *r, bool above) {
+    index_type *n = above ? &r->num_above : &r->num_below;
+    for (index_type i = 0; i < *n; i++) linebuf_clear_line(r->overflow, ssr_slot(r, above, i), true);
+    *n = 0;
+}
+
+static void
+ssr_nuke_overflow_parts(Screen *self, index_type x_start, index_type x_limit, MulticellRows rows, char_type ch) {
+    // Remove the rows of a multiline char, whose rows on screen are rows, that
+    // are in the overflow buffers of a smooth scroll region. Must be called
+    // before the rows of the char on screen are removed.
+    if (rows.start < 0) return; // the char extends into the scrollback, which is never the overflow buffer of a region it is in
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (x_start < r->left || x_limit > r->right) continue;
+        const index_type cx = x_start - r->left, cx_limit = x_limit - r->left;
+        if ((index_type)rows.start == r->top && r->num_above) {
+            const CPUCell edge = linebuf_cpu_cells_for_line(self->linebuf, r->top)[x_start];
+            for (index_type n = 0, ry = edge.y; n < r->num_above && ry > 0; n++, ry--) {
+                const index_type slot = ssr_slot(r, true, n);
+                CPUCell *cells = ssr_overflow_cells(r, slot);
+                if (!continues_multicell_char(cells + cx, &edge, ry - 1)) break;
+                nuke_in_line(cells, cx, cx_limit, ch);
+                linebuf_mark_line_dirty(r->overflow, slot);
+            }
+        }
+        if ((index_type)rows.limit == r->bottom && r->num_below) {
+            const CPUCell edge = linebuf_cpu_cells_for_line(self->linebuf, r->bottom - 1)[x_start];
+            for (index_type n = 0, ry = edge.y + 1u; n < r->num_below && ry < edge.scale; n++, ry++) {
+                const index_type slot = ssr_slot(r, false, n);
+                CPUCell *cells = ssr_overflow_cells(r, slot);
+                if (!continues_multicell_char(cells + cx, &edge, ry)) break;
+                nuke_in_line(cells, cx, cx_limit, ch);
+                linebuf_mark_line_dirty(r->overflow, slot);
+            }
+        }
+    }
+}
+
+static void
+ssr_nuke_straddling_chars(Screen *self, SmoothScrollRegion *r) {
+    // Remove multicell chars that cross the edges of the rectangle into cells
+    // outside it, as moving the cells of the rectangle would tear them. Chars
+    // that continue into the overflow buffers or, at the top of the main
+    // screen, into the scrollback when it is the overflow buffer, are kept.
+    for (index_type y = r->top; y < r->bottom; y++) {
+        const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y);
+        if (r->left > 0 && cp[r->left].is_multicell && cp[r->left].x > 0) nuke_multicell_char_at(self, r->left, y, false);
+        cp = linebuf_cpu_cells_for_line(self->linebuf, y);
+        if (r->right < self->columns && cp[r->right - 1].is_multicell && cp[r->right - 1].x + 1u < mcd_x_limit(cp + r->right - 1))
+            nuke_multicell_char_at(self, r->right - 1, y, false);
+    }
+    if (!self->multiline_chars_used) return;
+    // The row above the rectangle is on screen or, at the top of the main screen, in the scrollback
+    const int above = (int)r->top - 1;
+    const bool has_row_above = !ssr_uses_history(self, r) && (above >= 0 || (self->linebuf == self->main_linebuf && -above <= (int)self->historybuf->count));
+    if (has_row_above) {
+        for (index_type x = r->left; x < r->right; x++) {
+            const CPUCell c = linebuf_cpu_cells_for_line(self->linebuf, r->top)[x];
+            if (c.is_multicell && c.y > 0 && continues_multicell_char(range_line_(self, above)->cpu_cells + x, &c, c.y - 1))
+                nuke_multicell_char_at(self, x, r->top, false);
+        }
+    }
+    if (r->bottom < self->lines) {
+        for (index_type x = r->left; x < r->right; x++) {
+            const CPUCell c = linebuf_cpu_cells_for_line(self->linebuf, r->bottom - 1)[x];
+            if (c.is_multicell && c.y + 1u < c.scale && continues_multicell_char(linebuf_cpu_cells_for_line(self->linebuf, r->bottom) + x, &c, c.y + 1))
+                nuke_multicell_char_at(self, x, r->bottom - 1, false);
+        }
+    }
+}
+
+static void
+ssr_nuke_chars_next_to_blank_row(Screen *self, SmoothScrollRegion *r, index_type y, bool blank_row_is_below) {
+    // A blank row has come in next to row y of the rectangle, tearing the multiline chars that extend into it
+    if (!self->multiline_chars_used || y < r->top || y >= r->bottom) return;
+    for (index_type x = r->left; x < r->right; x++) {
+        const CPUCell c = linebuf_cpu_cells_for_line(self->linebuf, y)[x];
+        if (c.is_multicell && (blank_row_is_below ? c.y + 1u < c.scale : c.y > 0)) nuke_multicell_char_at(self, x, y, false);
+    }
+}
+
+static void
+ssr_nuke_chars_continuing_into_overflow(Screen *self, SmoothScrollRegion *r, bool above) {
+    // The overflow buffer is about to be discarded, tearing the multiline chars at the edge of the rectangle that continue into it
+    if (!self->multiline_chars_used || !(above ? r->num_above : r->num_below)) return;
+    const index_type y = above ? r->top : r->bottom - 1;
+    const CPUCell *nearest = ssr_overflow_cells(r, ssr_slot(r, above, 0));
+    for (index_type x = r->left; x < r->right; x++) {
+        const CPUCell c = linebuf_cpu_cells_for_line(self->linebuf, y)[x];
+        if (!c.is_multicell) continue;
+        if (above ? (c.y > 0 && continues_multicell_char(nearest + x - r->left, &c, c.y - 1))
+                  : (c.y + 1u < c.scale && continues_multicell_char(nearest + x - r->left, &c, c.y + 1)))
+            nuke_multicell_char_at(self, x, y, false);
+    }
+}
+
+static void
+ssr_move_selections(Screen *self, Selections *selections, const SmoothScrollRegion *r, bool up, bool via_history) {
+    // Selections inside the rectangle move with its cells, selections that
+    // cross its edges or move out of it into an overflow buffer are cleared.
+    for (size_t i = 0; i < selections->count; i++) {
+        Selection *s = selections->items + i;
+        if (is_selection_empty(s)) continue;
+        const int start = (int)s->start.y - (int)s->start_scrolled_by, end = (int)s->end.y - (int)s->end_scrolled_by;
+        const int stop = MIN(start, end), sbottom = MAX(start, end);
+        index_type xmin = 0, xmax = self->columns - 1;
+        if (start == end || s->rectangle_select) {
+            xmin = MIN(s->start.x, s->end.x);
+            xmax = MAX(s->start.x, s->end.x);
+        }
+        if (sbottom < (int)r->top || stop >= (int)r->bottom || xmax < r->left || xmin >= r->right) continue;
+        const bool inside = stop >= (int)r->top && sbottom < (int)r->bottom && xmin >= r->left && xmax < r->right;
+        const bool moves_out = up ? (stop == (int)r->top && !via_history) : sbottom == (int)r->bottom - 1;
+        if (!inside || moves_out) {
+            clear_selection(selections);
+            return;
+        }
+        move_selection_by_one_row(self, s, up);
+    }
+}
+
+static void
+ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
+    // Move the cells of the rectangle by one row, up when up is true
+    const bool full_width = ssr_is_full_width(self, r), via_history = ssr_uses_history(self, r);
+    const index_type top = r->top, last = r->bottom - 1;
+    ssr_nuke_straddling_chars(self, r);
+    if (UNLIKELY(self->selections.count)) ssr_move_selections(self, &self->selections, r, up, via_history);
+    if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
+    if (full_width) last_visited_prompt_index(self, top, last, up, via_history);
+    bool entered_blank;
+    if (up) {
+        // The top row leaves, a row enters at the bottom
+        if (full_width) {
+            linebuf_index(self->linebuf, top, last);
+            // The row that left is now at the bottom
+            if (via_history) {
+                linebuf_init_line(self->linebuf, last);
+                historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf);
+                // Keep a scrolled back viewport anchored on the same content
+                if (self->scrolled_by) {
+                    if (self->scrolled_by < self->historybuf->count) self->scrolled_by++;
+                    if (self->scrolled_by >= self->historybuf->count && self->pixel_scroll_offset_y) {
+                        reset_pixel_scroll(self, 0);
+                        self->scroll_changed = true;
+                    }
+                }
+            } else ssr_copy_row_to_slot(self, r, last, ssr_push_slot(r, true));
+            for (index_type y = top; y < last; y++) ssr_mark_row_dirty(self, y);
+        } else {
+            ssr_copy_row_to_slot(self, r, top, ssr_push_slot(r, true));
+            for (index_type y = top; y < last; y++) ssr_copy_row_to_row(self, r, y + 1, y);
+        }
+        entered_blank = !r->num_below;
+        if (entered_blank) ssr_blank_row(self, r, last);
+        else {
+            ssr_copy_slot_to_row(self, r, ssr_slot(r, false, 0), last);
+            ssr_pop_slot(r, false);
+        }
+        if (entered_blank && last > top) ssr_nuke_chars_next_to_blank_row(self, r, last - 1, true);
+    } else {
+        // The bottom row leaves, a row enters at the top
+        if (full_width) {
+            linebuf_reverse_index(self->linebuf, top, last);
+            // The row that left is now at the top
+            ssr_copy_row_to_slot(self, r, top, ssr_push_slot(r, false));
+            for (index_type y = top + 1; y <= last; y++) ssr_mark_row_dirty(self, y);
+        } else {
+            ssr_copy_row_to_slot(self, r, last, ssr_push_slot(r, false));
+            for (index_type y = last; y > top; y--) ssr_copy_row_to_row(self, r, y - 1, y);
+        }
+        entered_blank = true;
+        if (via_history) {
+            if (historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) {
+                linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, top);
+                ssr_mark_row_dirty(self, top);
+                // Keep a scrolled back viewport anchored on the same content
+                if (self->scrolled_by) self->scrolled_by--;
+                entered_blank = false;
+            }
+        } else if (r->num_above) {
+            ssr_copy_slot_to_row(self, r, ssr_slot(r, true, 0), top);
+            ssr_pop_slot(r, true);
+            entered_blank = false;
+        }
+        if (entered_blank) ssr_blank_row(self, r, top);
+        if (entered_blank && last > top) ssr_nuke_chars_next_to_blank_row(self, r, top + 1, false);
+    }
+    self->is_dirty = true;
+}
+
+static void
+ssr_free(SmoothScrollRegion *r) {
+    Py_CLEAR(r->overflow);
+    zero_at_ptr(r);
+}
+
+static void
+ssr_discard_overflow(Screen *self, SmoothScrollRegion *r) {
+    // The rows in the rectangle no longer adjoin the rows in the overflow
+    // buffers, so discard them and render the rectangle unshifted
+    ssr_nuke_chars_continuing_into_overflow(self, r, true);
+    ssr_nuke_chars_continuing_into_overflow(self, r, false);
+    ssr_clear_overflow(r, true);
+    ssr_clear_overflow(r, false);
+    if (r->offset) {
+        r->offset = 0;
+        self->is_dirty = true;
+    }
+}
+
+static void
+ssr_remove_at(Screen *self, unsigned idx) {
+    SmoothScrollRegion *r = self->smooth_scroll.regions + idx;
+    ssr_discard_overflow(self, r);
+    ssr_free(r);
+    SmoothScroll *ss = &self->smooth_scroll;
+    ss->count--;
+    if (idx < ss->count) {
+        memmove(ss->regions + idx, ss->regions + idx + 1, (ss->count - idx) * sizeof(ss->regions[0]));
+        zero_at_ptr(ss->regions + ss->count);
+    }
+}
+
+void
+screen_smooth_scroll_remove_all(Screen *self) {
+    while (self->smooth_scroll.count) ssr_remove_at(self, self->smooth_scroll.count - 1);
+}
+
+bool
+screen_smooth_scroll_remove(Screen *self, uint32_t id) {
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        if (self->smooth_scroll.regions[i].id == id) {
+            ssr_remove_at(self, i);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool
+screen_smooth_scroll_define(
+    Screen *self, uint32_t id, index_type left, index_type top, index_type right, index_type bottom, index_type capacity, bool private_overflow) {
+    if (!id || left >= right || top >= bottom || right > self->columns || bottom > self->lines) return false;
+    if (!capacity || capacity > bottom - top) return false;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *q = self->smooth_scroll.regions + i;
+        if (q->id != id && left < q->right && q->left < right && top < q->bottom && q->top < bottom) return false;
+    }
+    screen_smooth_scroll_remove(self, id);
+    if (self->smooth_scroll.count >= MAX_SMOOTH_SCROLL_REGIONS) return false;
+    LineBuf *overflow = alloc_linebuf(2 * capacity, right - left, self->text_cache);
+    if (!overflow) {
+        PyErr_Clear();
+        return false;
+    }
+    SmoothScrollRegion *r = self->smooth_scroll.regions + self->smooth_scroll.count++;
+    *r = (SmoothScrollRegion){
+        .id = id, .left = left, .top = top, .right = right, .bottom = bottom, .capacity = capacity, .private_overflow = private_overflow, .overflow = overflow};
+    return true;
+}
+
+bool
+screen_smooth_scroll(Screen *self, uint32_t id, int delta_pixels, int *rows_shifted) {
+    // Scroll the region by delta_pixels, positive values move the content up,
+    // that is, towards the end of the content, as for scroll wheel events. On
+    // return rows_shifted is the number of rows by which the cells were moved,
+    // positive for up. The rows that entered the rectangle at the edge in the
+    // direction of the scroll, are the ones the application must draw.
+    *rows_shifted = 0;
+    SmoothScrollRegion *r = ssr_for_id(self, id);
+    if (!r) return false;
+    const int h = (int)MAX(1u, self->cell_size.height);
+    if (!delta_pixels) return true;
+    // offset is the position of the first row of the rectangle relative to
+    // its top edge. Moving the content by delta moves it to offset - delta.
+    // The row entering in the direction of the scroll must be in the
+    // rectangle, so for scrolls up the offset must be in [0, h) and for
+    // scrolls down in (-h, 0].
+    const int64_t moved = (int64_t)r->offset - delta_pixels;
+    int64_t shift;
+    if (delta_pixels > 0) shift = moved < 0 ? (-moved + h - 1) / h : 0;
+    else shift = moved > 0 ? -((moved + h - 1) / h) : 0;
+    r->offset = (int)(moved + shift * h);
+    *rows_shifted = (int)MAX((int64_t)INT_MIN, MIN((int64_t)INT_MAX, shift));
+    // Shifting by more than the rows in the rectangle and the overflow
+    // buffer only moves blank rows. When the scrollback is the overflow
+    // buffer it would fill it with blank rows, so stop when every row of the
+    // rectangle has moved into it.
+    const bool up = shift > 0;
+    const int64_t height = r->bottom - r->top;
+    const int64_t limit = (up && ssr_uses_history(self, r)) ? height : height + r->capacity;
+    for (int64_t n = MIN(up ? shift : -shift, limit); n > 0; n--) ssr_shift_by_one_row(self, r, up);
+    self->is_dirty = true;
+    return true;
+}
+
+static void
+ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool via_history) {
+    // The lines [top, bottom] of the screen were scrolled by one line, or
+    // lines were inserted or deleted in them. Regions whose rows were moved no
+    // longer adjoin their overflow buffers, except when the lines are moved
+    // up into the scrollback and it is the overflow buffer above the region,
+    // in which case only the rows below the region are discarded.
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (!ssr_rows_intersect(r, top, bottom)) continue;
+        if (up && via_history && top == 0 && bottom + 1 >= r->bottom && ssr_uses_history(self, r)) {
+            ssr_nuke_chars_continuing_into_overflow(self, r, false);
+            ssr_clear_overflow(r, false);
+            if (r->offset < 0) {
+                r->offset = 0;
+                self->is_dirty = true;
+            }
+        } else ssr_discard_overflow(self, r);
+    }
+}
+
+static void
+ssr_screen_erased(Screen *self) {
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) ssr_discard_overflow(self, self->smooth_scroll.regions + i);
+}
+// }}}
 
 
 static void
@@ -858,6 +1349,7 @@ remove_blank_output_line_reservation_marker(Cursor *cursor, LineBuf *linebuf) {
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     screen_pause_rendering(self, false, 0);
+    screen_smooth_scroll_remove_all(self);
     lines = MAX(1u, lines);
     columns = MAX(1u, columns);
 
@@ -1025,6 +1517,7 @@ dealloc(Screen *self) {
     PyMem_Free(self->main_tabstops);
     Py_CLEAR(self->paused_rendering.linebuf);
     Py_CLEAR(self->paused_rendering.grman);
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) Py_CLEAR(self->smooth_scroll.regions[i].overflow);
     if (self->style_texture.texture) free_texture(&self->style_texture.texture);
     free(self->selections.items);
     free(self->url_ranges.items);
@@ -1317,6 +1810,7 @@ screen_garbage_collect_text_cache(Screen *self) {
     text_cache_gc_process_linebuf(self->text_cache, gc, self->main_linebuf);
     text_cache_gc_process_linebuf(self->text_cache, gc, self->alt_linebuf);
     text_cache_gc_process_linebuf(self->text_cache, gc, self->paused_rendering.linebuf);
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) text_cache_gc_process_linebuf(self->text_cache, gc, self->smooth_scroll.regions[i].overflow);
     // The overlay buffers have columns cells, overlay_line.xnum is the length of the overlay text, which can be larger
     if (self->overlay_line.cpu_cells) text_cache_gc_process_cells(self->text_cache, gc, self->overlay_line.cpu_cells, self->columns);
     if (self->overlay_line.original_line.cpu_cells)
@@ -1360,6 +1854,7 @@ garbage_collect_style_table(Screen *self, unsigned quantize_bits, bool degraded_
     style_gc_process_linebuf(t, gc, self->main_linebuf);
     style_gc_process_linebuf(t, gc, self->alt_linebuf);
     style_gc_process_linebuf(t, gc, paused_linebuf_in_use(self));
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) style_gc_process_linebuf(t, gc, self->smooth_scroll.regions[i].overflow);
     // The overlay buffers have columns cells, overlay_line.xnum is the length of the overlay text
     if (self->overlay_line.cpu_cells) style_gc_process_cells(t, gc, self->overlay_line.cpu_cells, self->columns, false);
     if (self->overlay_line.original_line.cpu_cells) style_gc_process_cells(t, gc, self->overlay_line.original_line.cpu_cells, self->columns, false);
@@ -1393,6 +1888,10 @@ reset_style_table_if_unused(Screen *self) {
         if (bufs[i] && cells_use_styles(bufs[i]->cpu_cell_buf, (size_t)bufs[i]->xnum * bufs[i]->ynum)) return;
     }
     if (self->overlay_line.cpu_cells && cells_use_styles(self->overlay_line.cpu_cells, self->columns)) return;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const LineBuf *lb = self->smooth_scroll.regions[i].overflow;
+        if (cells_use_styles(lb->cpu_cell_buf, (size_t)lb->xnum * lb->ynum)) return;
+    }
     if (self->overlay_line.original_line.cpu_cells && cells_use_styles(self->overlay_line.original_line.cpu_cells, self->columns)) return;
     style_table_reset(self->style_table);
 }
@@ -2091,6 +2590,7 @@ draw_codepoint(Screen *self, char_type ch) {
 
 void
 screen_align(Screen *self) {
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_screen_erased(self);
     self->margin_top = 0;
     self->margin_bottom = self->lines - 1;
     screen_cursor_position(self, 1, 1);
@@ -2233,6 +2733,7 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
 void
 screen_alignment_display(Screen *self) {
     // https://www.vt100.net/docs/vt510-rm/DECALN.html
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_screen_erased(self);
     screen_cursor_position(self, 1, 1);
     self->margin_top = 0;
     self->margin_bottom = self->lines - 1;
@@ -2652,6 +3153,8 @@ screen_handle_glyph_command(Screen *self, const GlyphCommand *cmd, const uint8_t
 void
 screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_screen) {
     bool to_alt = self->linebuf == self->main_linebuf;
+    // The regions are on the screen being switched away from
+    screen_smooth_scroll_remove_all(self);
     self->active_hyperlink_id = 0;
     reset_pixel_scroll(self, 0);
     if (to_alt) {
@@ -3211,6 +3714,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 }
 
 #define INDEX_UP(add_to_history)                                                                       \
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, top, bottom, true, add_to_history); \
     nuke_multiline_chars_torn_by_scroll(self, top, bottom, true, add_to_history);                      \
     linebuf_index(self->linebuf, top, bottom);                                                         \
     INDEX_GRAPHICS(-1, add_to_history)                                                                 \
@@ -3741,6 +4245,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             /* fallthrough */
         case 2:
         case 3:
+            if (UNLIKELY(self->smooth_scroll.count)) ssr_screen_erased(self);
             if (self->extra_cursors.count) {
                 self->extra_cursors.count = 0;
                 self->extra_cursors.dirty = true;
@@ -3788,6 +4293,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
         // remove chars straddling the bottom margin, as the lines at the bottom
         // of the region are pushed out, tearing them
         if (self->multiline_chars_used && !at_screen_bottom) nuke_multiline_chars_extending_below(self, bottom);
+        if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, self->cursor->y, bottom, false, false);
         screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         last_visited_prompt_insert_or_delete_lines(self, self->cursor->y, bottom, count, true);
@@ -3823,6 +4329,7 @@ screen_scroll_until_cursor_prompt(Screen *self, bool add_to_scrollback) {
 static void
 screen_delete_lines_impl(Screen *self, index_type start, index_type count, index_type top, index_type bottom) {
     index_type y = start;
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, start, bottom, true, false);
     nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
     y += count;
     y = MIN(bottom, y);
@@ -7758,6 +8265,89 @@ toggle_alt_screen(Screen *self, PyObject *a UNUSED) {
 }
 
 static PyObject *
+smooth_scroll_define(Screen *self, PyObject *args) {
+    unsigned int id, left, top, right, bottom, capacity = 1;
+    int private_overflow = 0;
+    if (!PyArg_ParseTuple(args, "IIIII|Ip", &id, &left, &top, &right, &bottom, &capacity, &private_overflow)) return NULL;
+    return Py_NewRef(screen_smooth_scroll_define(self, id, left, top, right, bottom, capacity, private_overflow) ? Py_True : Py_False);
+}
+
+static PyObject *
+smooth_scroll(Screen *self, PyObject *args) {
+    unsigned int id;
+    int delta, rows_shifted;
+    if (!PyArg_ParseTuple(args, "Ii", &id, &delta)) return NULL;
+    if (!screen_smooth_scroll(self, id, delta, &rows_shifted)) Py_RETURN_NONE;
+    return PyLong_FromLong(rows_shifted);
+}
+
+static PyObject *
+smooth_scroll_remove(Screen *self, PyObject *args) {
+    unsigned int id;
+    if (!PyArg_ParseTuple(args, "I", &id)) return NULL;
+    return Py_NewRef(screen_smooth_scroll_remove(self, id) ? Py_True : Py_False);
+}
+
+static PyObject *
+smooth_scroll_regions(Screen *self, PyObject *args UNUSED) {
+    RAII_PyObject(ans, PyTuple_New(self->smooth_scroll.count));
+    if (!ans) return NULL;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        PyObject *d = Py_BuildValue(
+            "{sI sI sI sI sI sI si sI sI sO sO}",
+            "id",
+            r->id,
+            "left",
+            r->left,
+            "top",
+            r->top,
+            "right",
+            r->right,
+            "bottom",
+            r->bottom,
+            "capacity",
+            r->capacity,
+            "offset",
+            r->offset,
+            "num_above",
+            r->num_above,
+            "num_below",
+            r->num_below,
+            "private_overflow",
+            r->private_overflow ? Py_True : Py_False,
+            "uses_history",
+            ssr_uses_history(self, r) ? Py_True : Py_False);
+        if (!d) return NULL;
+        PyTuple_SET_ITEM(ans, i, d);
+    }
+    return Py_NewRef(ans);
+}
+
+static PyObject *
+smooth_scroll_overflow(Screen *self, PyObject *args) {
+    // The text of the rows in an overflow buffer of a region, nearest first
+    unsigned int id;
+    int above;
+    if (!PyArg_ParseTuple(args, "Ip", &id, &above)) return NULL;
+    SmoothScrollRegion *r = ssr_for_id(self, id);
+    if (!r) {
+        PyErr_Format(PyExc_KeyError, "No smooth scroll region with id: %u", id);
+        return NULL;
+    }
+    const index_type n = above ? r->num_above : r->num_below;
+    RAII_PyObject(ans, PyTuple_New(n));
+    if (!ans) return NULL;
+    for (index_type i = 0; i < n; i++) {
+        linebuf_init_line(r->overflow, ssr_slot(r, above, i));
+        PyObject *t = line_as_unicode(r->overflow->line, false, &self->as_ansi_buf);
+        if (!t) return NULL;
+        PyTuple_SET_ITEM(ans, i, t);
+    }
+    return Py_NewRef(ans);
+}
+
+static PyObject *
 pause_rendering(Screen *self, PyObject *args) {
     int msec = 100;
     int pause = 1;
@@ -8487,15 +9077,16 @@ static PyMethodDef methods[] = {
             MND(current_key_encoding_flags, METH_NOARGS) MND(text_for_selection, METH_VARARGS) MND(text_for_marked_url, METH_VARARGS)
                 MND(is_rectangle_select, METH_NOARGS) MND(scroll, METH_VARARGS) MND(scroll_to_absolute, METH_O) MND(fractional_scroll, METH_O)
                     MND(scroll_to_prompt, METH_VARARGS) MND(set_last_visited_prompt, METH_VARARGS) MND(send_escape_code_to_child, METH_VARARGS)
-                        MND(pause_rendering, METH_VARARGS) MND(test_text_of_line_for_cursor, METH_VARARGS) MND(hyperlink_at, METH_VARARGS)
-                            MND(toggle_alt_screen, METH_NOARGS) MND(reset_callbacks, METH_NOARGS) MND(paste, METH_O) MND(paste_bytes, METH_O)
-                                MND(focus_changed, METH_O) MND(has_focus, METH_NOARGS) MND(has_activity_since_last_focus, METH_NOARGS)
-                                    MND(copy_colors_from, METH_O) MND(set_marker, METH_VARARGS) MND(marked_cells, METH_NOARGS)
-                                        MND(scroll_to_next_mark, METH_VARARGS) MND(update_only_line_graphics_data, METH_NOARGS) MND(bell, METH_NOARGS)
-                                            MND(current_selections, METH_NOARGS) MND(update_graphics_layers, METH_NOARGS)
-                                                MND(rendered_scroll_state, METH_NOARGS) MND(scrollbar_geometry, METH_NOARGS) MND(has_scrollbar, METH_O)
-                                                    MND(is_selection_dirty,
-                                                        METH_NOARGS){"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
+                        MND(pause_rendering, METH_VARARGS) MND(smooth_scroll_define, METH_VARARGS) MND(smooth_scroll, METH_VARARGS)
+                            MND(smooth_scroll_remove, METH_VARARGS) MND(smooth_scroll_regions, METH_NOARGS) MND(smooth_scroll_overflow, METH_VARARGS)
+                                MND(test_text_of_line_for_cursor, METH_VARARGS) MND(hyperlink_at, METH_VARARGS) MND(toggle_alt_screen, METH_NOARGS)
+                                    MND(reset_callbacks, METH_NOARGS) MND(paste, METH_O) MND(paste_bytes, METH_O) MND(focus_changed, METH_O)
+                                        MND(has_focus, METH_NOARGS) MND(has_activity_since_last_focus, METH_NOARGS) MND(copy_colors_from, METH_O)
+                                            MND(set_marker, METH_VARARGS) MND(marked_cells, METH_NOARGS) MND(scroll_to_next_mark, METH_VARARGS)
+                                                MND(update_only_line_graphics_data, METH_NOARGS) MND(bell, METH_NOARGS) MND(current_selections, METH_NOARGS)
+                                                    MND(update_graphics_layers, METH_NOARGS) MND(rendered_scroll_state, METH_NOARGS)
+                                                        MND(scrollbar_geometry, METH_NOARGS) MND(has_scrollbar, METH_O) MND(is_selection_dirty, METH_NOARGS){
+                                                            "select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL} /* Sentinel */
 };

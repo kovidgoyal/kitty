@@ -109,6 +109,10 @@ remap_hyperlink_ids(Screen *self, bool preserve_hyperlinks_in_history, hyperlink
     LineBuf *second = self->linebuf, *first = second == self->main_linebuf ? self->alt_linebuf : self->main_linebuf;
     for (index_type i = 0; i < self->lines * self->columns; i++) process_cell(pool, map, clone, first->cpu_cell_buf + i);
     for (index_type i = 0; i < self->lines * self->columns; i++) process_cell(pool, map, clone, second->cpu_cell_buf + i);
+    for (unsigned r = 0; r < self->smooth_scroll.count; r++) {
+        const LineBuf *lb = self->smooth_scroll.regions[r].overflow;
+        for (size_t i = 0; i < (size_t)lb->xnum * lb->ynum; i++) process_cell(pool, map, clone, lb->cpu_cell_buf + i);
+    }
 }
 
 static void

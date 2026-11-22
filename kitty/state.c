@@ -545,6 +545,9 @@ cell_size_differs(const OSWindow *os_window, const Screen *screen) {
 static void
 resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
     if (screen) {
+        // Scroll offsets are in pixels so the regions are invalid with a new cell size
+        if (screen->cell_size.height != os_window->fonts_data->fcm.cell_height || screen->cell_size.width != os_window->fonts_data->fcm.cell_width)
+            screen_smooth_scroll_remove_all(screen);
         screen->cell_size.width = os_window->fonts_data->fcm.cell_width;
         screen->cell_size.height = os_window->fonts_data->fcm.cell_height;
         screen_dirty_sprite_positions(screen);
