@@ -42,6 +42,14 @@ is no longer needed, remove it::
 
     <OSC>2254;a=r:i=1<ST>
 
+To see smooth scrolling in action, run the following command inside kitty and
+scroll the box of text with a touchpad or a high resolution mouse wheel::
+
+    kitten mouse-demo
+
+Its source code, in :file:`tools/cmd/mouse_demo/text_area.go`, is a complete
+example of using this protocol.
+
 The escape code
 -----------------
 

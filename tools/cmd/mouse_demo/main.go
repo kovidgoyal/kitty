@@ -306,7 +306,7 @@ func Run(args []string) (rc int, err error) {
 
 		num_cols := max(1, sw/col_width)
 		colfmt := "%-" + strconv.Itoa(col_width) + "s"
-		is_on_name := false
+		want_shape := false
 		var ps loop.PointerShape
 		for pos := 0; pos < len(all_pointer_shapes); {
 			is_row := current_mouse_event != nil && current_mouse_event.Event_type != loop.MOUSE_LEAVE && y == current_mouse_event.Cell.Y
@@ -318,7 +318,7 @@ func Run(args []string) (rc int, err error) {
 					start_x := c * col_width
 					x := current_mouse_event.Cell.X
 					if x < start_x+len(name) && x >= start_x {
-						is_on_name = true
+						want_shape = true
 						is_hovered = true
 						ps = all_pointer_shapes[pos]
 					}
@@ -334,8 +334,16 @@ func Run(args []string) (rc int, err error) {
 		}
 		// Only change the pointer shape when it actually changes, as
 		// changing it restarts animated pointers.
+		// The scroll indicator of the text box takes precedence, the mouse
+		// can be anywhere while dragging its thumb
+		switch {
+		case text.dragging:
+			want_shape, ps = true, loop.GRABBING_POINTER
+		case text.hovering_thumb:
+			want_shape, ps = true, loop.GRAB_POINTER
+		}
 		cur, has_shape := lp.CurrentPointerShape()
-		if is_on_name {
+		if want_shape {
 			if !has_shape || cur != ps {
 				lp.PopPointerShape()
 				lp.PushPointerShape(ps)
@@ -589,18 +597,25 @@ func Run(args []string) (rc int, err error) {
 		lp.SetCursorVisible(false)
 		lp.StartAcceptingDrops("", "text/plain", "text/uri-list")
 		lp.QuerySmoothScrolling()
+		query_graphics_support(lp)
 		draw_all()
 		return "", nil
 	}
 	lp.OnEscapeCode = func(etype loop.EscapeCodeType, raw []byte) error {
-		if etype == loop.OSC && loop.IsSmoothScrollQueryResponse(raw) && !text.supported {
+		switch {
+		case etype == loop.OSC && loop.IsSmoothScrollQueryResponse(raw) && !text.supported:
 			text.set_supported()
 			draw_all()
+		case etype == loop.APC && is_graphics_support_response(raw):
+			lp.StartAtomicUpdate()
+			text.set_images_supported(lp)
+			lp.EndAtomicUpdate()
 		}
 		return nil
 	}
 	lp.OnFinalize = func() string {
 		lp.RemoveSmoothScrollRegion(text_region_id)
+		text.thumb_image.free(lp)
 		lp.SetCursorVisible(true)
 		lp.StopAcceptingDrops()
 		return ""
@@ -612,6 +627,7 @@ func Run(args []string) (rc int, err error) {
 		lp.StartAtomicUpdate()
 		defer lp.EndAtomicUpdate()
 		switch {
+		case text.handle_mouse(lp, ev):
 		case ev.Event_type == loop.MOUSE_WHEEL:
 			_, lines := ev.Wheel.Lines(text.cell_height, lines_per_click)
 			text.scroll(lp, lines)
