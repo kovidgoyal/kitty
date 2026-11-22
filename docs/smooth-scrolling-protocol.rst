@@ -157,7 +157,9 @@ rectangle may overlap the rectangle of the region it replaces. If the new
 definition is invalid, the existing region is left unchanged.
 
 Defining a region does not change the contents of the screen and while it is
-not scrolled, it is drawn exactly as before. The rectangle of a region is in
+not scrolled, it is drawn exactly as before, except for images extending out
+of it in the direction of scrolling, which are :ref:`clipped to it
+<smooth_scroll_images>`. The rectangle of a region is in
 screen coordinates and does not move with the contents of the screen, so a
 program normally defines its regions once, after drawing its user interface,
 and redefines them when the layout of its user interface changes, for example,
@@ -312,17 +314,7 @@ Interactions with other features
 ------------------------------------
 
 Images
-   Images, including images displayed using Unicode placeholders, inside the
-   rectangle of a region move with its cells and are drawn shifted and clipped
-   to the rectangle. Images crossing the edges of the rectangle are left in
-   place. When the rows kept on the sides of a region are discarded, images
-   extending into them are clipped to the rectangle.
-
-   In kitty, images displayed using Unicode placeholders are not drawn in the
-   partially visible column at the edge of a horizontally scrolling region,
-   only in its rectangle, as they are created from the placeholder cells on
-   the screen. They are drawn normally again once they move back into the
-   rectangle.
+   See :ref:`smooth_scroll_images`.
 
 Characters occupying multiple cells
    Wide characters and characters drawn using the :doc:`text sizing protocol
@@ -330,7 +322,9 @@ Characters occupying multiple cells
    outside it are removed when the region is scrolled, as moving the cells of
    the rectangle would tear them apart. Characters that are split by
    scrolling, with some of their cells inside the rectangle and the others in
-   the rows kept by the terminal, are kept and drawn partially.
+   the rows kept by the terminal, are kept and drawn partially. Note that this
+   is different from images, which are never removed because they cross the
+   edges of the rectangle.
 
 Selections
    Selections inside the rectangle of a region move with its cells.
@@ -345,6 +339,70 @@ The mouse
 The cursor
    The cursor is not moved when a region is scrolled. When it is in the
    rectangle of a region, it is drawn shifted with the cells of the region.
+
+.. _smooth_scroll_images:
+
+Images
+----------
+
+The rules below are for vertically scrolling regions. For horizontally
+scrolling regions, swap rows and columns, top and left, and bottom and right.
+They apply to images displayed using the :doc:`graphics protocol
+<graphics-protocol>`. Images displayed using Unicode placeholders are drawn
+from their placeholder cells, which move like all other cells, see below.
+
+An image *moves with* a region when it is entirely within the columns of the
+rectangle of the region and either:
+
+* it intersects the rows of the rectangle, or
+* it moved with the region before and at least part of it is still in the
+  rectangle or in the rows kept on its sides.
+
+This is determined continuously, not only when the region is scrolled, so
+images placed at any time, including while the region is shifted by a
+non-zero offset, are immediately drawn correctly. Images that move with a
+region move with its cells, are drawn shifted by its offset and are clipped to
+its rectangle. Parts of them outside the rectangle, above or below it, are
+treated as being in the rows beyond the rectangle: they are not drawn and
+become visible when the region is scrolled to bring them into it. This means
+that an image placed near the bottom of a region and extending below it is
+clipped to the region and the rest of it is revealed by scrolling, without
+the program having to draw it again. It also means that defining a region
+clips the images extending out of it, above or below.
+
+An image that moves with a region is kept whole, while any part of it is in
+the rectangle or in the rows kept on its sides. When it moves entirely beyond
+the rows kept on a side, it is deleted. As a result, scrolling back can bring
+back an image whole, even though the text in the rows beyond the capacity of
+the region was discarded and is blank, for the program to draw again. Programs
+that draw images again with the rows that move into the region should use a
+placement id (the ``p`` key of the graphics protocol), so that drawing an image
+that is still there replaces it, instead of creating a second copy.
+
+When the rows kept on the sides of a region are discarded, as described in
+:ref:`smooth_scroll_overflow`, or the region is removed or redefined, images
+moving with it are clipped to its rectangle, the parts outside it are deleted.
+For a region that uses the :ref:`scrollback <smooth_scroll_scrollback>`, images
+move into the scrollback with the rows they are in and are taken back with
+them, and the parts of images in the scrollback are never clipped.
+
+Images that extend out of the columns of the rectangle never move with it and
+are drawn unshifted and unclipped, on top of or below the moving cells.
+
+Images placed relative to another image, using the ``P`` key of the graphics
+protocol, move with the region if the image at the root of their chain of
+parents does, regardless of their own position. When the root is an image
+displayed using Unicode placeholders, they move with the region if the
+placeholder cell they are placed relative to is in its rectangle.
+
+Images displayed using Unicode placeholders are drawn from the placeholder
+cells on the screen, so they always follow their cells. The part of such an
+image whose placeholder cells are inside the rectangle moves with it, while
+the part whose cells are outside it does not. In kitty, these images are not
+drawn in the partially visible column at the edge of a horizontally scrolling
+region, only in its rectangle, as they are created from the placeholder cells
+on the screen. They are drawn normally again once they move back into the
+rectangle.
 
 .. _smooth_scroll_queries:
 
