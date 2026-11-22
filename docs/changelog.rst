@@ -161,7 +161,7 @@ Detailed list of changes
 
 - macOS: Fix multiple font files sharing the same PostScript name causing incorrect variant to be loaded sometimes (:iss:`10906`)
 
-- A new :ac:`clear_bell_indicators` action to clear the bell indicators of all windows, or windows matching an expression, without needing to focus them (:iss:`10916`)
+- A new :ac:`clear_bell_indicators` action to clear the bell indicators of all windows, or windows matching an expression, without needing to focus them. This also dismisses system attention requests on macOS and X11 when the OS window has no remaining bell indicators (:iss:`10916`)
 
 - :ac:`combine`: Fix the third and subsequent actions in a mouse mapping not being run for the window that was clicked. Also fix an error when a mapping refers to an action name that matches a non-action attribute of the window or tab
 

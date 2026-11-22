@@ -2224,6 +2224,10 @@ typedef void (*glfwRequestWindowAttention_func)(GLFWwindow*);
 GFW_EXTERN glfwRequestWindowAttention_func glfwRequestWindowAttention_impl;
 #define glfwRequestWindowAttention glfwRequestWindowAttention_impl
 
+typedef void (*glfwCancelWindowAttention_func)(GLFWwindow*);
+GFW_EXTERN glfwCancelWindowAttention_func glfwCancelWindowAttention_impl;
+#define glfwCancelWindowAttention glfwCancelWindowAttention_impl
+
 typedef int (*glfwWindowBell_func)(GLFWwindow*);
 GFW_EXTERN glfwWindowBell_func glfwWindowBell_impl;
 #define glfwWindowBell glfwWindowBell_impl

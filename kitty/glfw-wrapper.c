@@ -221,6 +221,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwRequestWindowAttention_impl) = dlsym(handle, "glfwRequestWindowAttention");
     if (glfwRequestWindowAttention_impl == NULL) fail("Failed to load glfw function glfwRequestWindowAttention with error: %s", dlerror());
 
+    *(void **) (&glfwCancelWindowAttention_impl) = dlsym(handle, "glfwCancelWindowAttention");
+    if (glfwCancelWindowAttention_impl == NULL) fail("Failed to load glfw function glfwCancelWindowAttention with error: %s", dlerror());
+
     *(void **) (&glfwWindowBell_impl) = dlsym(handle, "glfwWindowBell");
     if (glfwWindowBell_impl == NULL) fail("Failed to load glfw function glfwWindowBell with error: %s", dlerror());
 

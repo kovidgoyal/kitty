@@ -2755,6 +2755,7 @@ _glfwPlatformCreateWindow(
 void
 _glfwPlatformDestroyWindow(_GLFWwindow *window) {
     GLFWWindow *w = window->ns.object;
+    _glfwPlatformSetWindowAttention(window, false);
     if (_glfw.ns.disabledCursorWindow == window) _glfw.ns.disabledCursorWindow = NULL;
     free_drop_data(window);
     if (window->ns.notch_cover_window) {
@@ -3285,8 +3286,10 @@ _glfwPlatformHideWindow(_GLFWwindow *window) {
 }
 
 void
-_glfwPlatformRequestWindowAttention(_GLFWwindow *window UNUSED) {
-    [NSApp requestUserAttention:NSInformationalRequest];
+_glfwPlatformSetWindowAttention(_GLFWwindow *window, bool requested) {
+    if (window->ns.attention_requested) [NSApp cancelUserAttentionRequest:window->ns.attention_request_id];
+    window->ns.attention_requested = requested && ![NSApp isActive];
+    if (window->ns.attention_requested) window->ns.attention_request_id = [NSApp requestUserAttention:NSInformationalRequest];
 }
 
 int

@@ -342,7 +342,7 @@ _glfwPlatformShowWindow(_GLFWwindow *window) {
 }
 
 void
-_glfwPlatformRequestWindowAttention(_GLFWwindow *window UNUSED) {}
+_glfwPlatformSetWindowAttention(_GLFWwindow *window UNUSED, bool requested UNUSED) {}
 
 int
 _glfwPlatformWindowBell(_GLFWwindow *window UNUSED) {
