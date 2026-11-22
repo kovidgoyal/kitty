@@ -591,6 +591,38 @@ read -r _
                 self.ae(argv, ('/bin/prog', 'arg'))
         self.ae(len(errors), 6)
 
+    def test_launch_wrapper_empty_path(self):
+        from kitty.launch import get_env, parse_launch_args
+        from kitty.launch_wrapper import LaunchRequest
+
+        with tempfile.TemporaryDirectory() as tdir:
+            name = 'kitty-test-cwd-prog'
+            program = os.path.join(tdir, name)
+            with open(program, 'w') as f:
+                f.write('#!/bin/sh\n')
+            os.chmod(program, 0o755)
+            opts, args = parse_launch_args(['--env=PATH=', f'--cwd={tdir}', name])
+            with patch.dict(os.environ, {'PATH': tdir}):
+                _, _, argv = self._fork(
+                    argv=args, launch_request=LaunchRequest(opts.type), user_func=self._recording(['/bin/wrapper']), cwd=opts.cwd, env=get_env(opts)
+                )
+            self.ae(self.contexts[-1].env['PATH'], '')
+            self.ae(self.contexts[-1].argv, (name,))
+            self.ae(argv, ('/bin/wrapper', name))
+
+    def test_launch_wrapper_deleted_path(self):
+        from kitty.launch import get_env, parse_launch_args
+        from kitty.launch_wrapper import LaunchRequest
+
+        if not shutil.which('uname', path=os.defpath):
+            self.skipTest('uname not found on the default PATH')
+        opts, args = parse_launch_args(['--env=PATH', 'uname'])
+        with patch.dict(os.environ, {'PATH': os.defpath}):
+            _, _, argv = self._fork(argv=args, launch_request=LaunchRequest(opts.type), user_func=self._recording(['/bin/wrapper']), env=get_env(opts))
+        self.assertNotIn('PATH', self.contexts[-1].env)
+        self.ae(self.contexts[-1].argv, ('uname',))
+        self.ae(argv, ('/bin/wrapper', 'uname'))
+
     def test_launch_wrapper_unresolved_argv(self):
         # The program is run as requested, so that the wrapper looks it up in
         # PATH, unless PATH would not find what kitty found

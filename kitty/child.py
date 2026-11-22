@@ -509,10 +509,13 @@ class Child:
             return
         import shutil
 
-        # Relative entries in PATH are relative to the working directory of
-        # the child, not of kitty
-        path = os.pathsep.join(os.path.join(self.cwd, x) for x in path.split(os.pathsep)) if path else ''
-        found = shutil.which(name, path=path) if path else None
+        if path:
+            # Resolve relative PATH entries from the child's working directory.
+            path = os.pathsep.join(os.path.join(self.cwd, x) for x in path.split(os.pathsep))
+            found = shutil.which(name, path=path)
+        else:
+            # An empty PATH searches the child's working directory.
+            found = shutil.which(os.path.join(self.cwd, name))
         if found is not None:
             try:
                 if os.path.samefile(found, self.resolved_exe):
@@ -558,7 +561,8 @@ class Child:
         elif opts.terminfo_type == 'direct':
             env['TERMINFO'] = base64_terminfo_data()
         env['KITTY_INSTALLATION_DIR'] = kitty_base_dir
-        self.use_resolved_exe_if_not_in_path(env.get('PATH', os.defpath))
+        path = env.get('PATH', os.defpath)
+        self.use_resolved_exe_if_not_in_path(os.defpath if path is DELETE_ENV_VAR else path)
         self.unmodified_argv = list(self.argv)
         if not self.should_run_via_run_shell_kitten and 'disabled' not in opts.shell_integration:
             from .shell_integration import modify_shell_environ
