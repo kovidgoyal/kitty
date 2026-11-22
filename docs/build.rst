@@ -88,6 +88,7 @@ Run-time dependencies:
 * ``libpng``
 * ``liblcms2``
 * ``libxxhash``
+* ``libfribidi``
 * ``openssl``
 * ``shader-slang`` (needed only if you use custom shaders)
 * ``pixman`` (not needed on macOS)
@@ -123,6 +124,7 @@ Build-time dependencies:
   - ``libxxhash-dev``
   - ``libsimde-dev``
   - ``libcairo2-dev``
+  - ``libfribidi-dev``
 
   .. _x11-dev-libs:
 
