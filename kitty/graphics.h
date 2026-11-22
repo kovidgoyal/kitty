@@ -69,8 +69,9 @@ typedef struct {
 // shifted by its offset and clipped to its rectangle
 typedef struct ImageLayerRegion {
     uint32_t id;
-    // The offset in rows
+    // The offset in rows, or in columns when horizontal
     float offset;
+    bool horizontal;
 } ImageLayerRegion;
 
 typedef struct {
@@ -219,15 +220,17 @@ typedef struct {
 
 typedef struct SmoothScrollImageData {
     uint32_t region_id;
-    // -1 when the rows of the region move up, 1 when they move down
+    // -1 when the rows (columns) of the region move up (left), 1 when they move down (right)
     int32_t amt;
+    // Whether the columns rather than the rows of the region move
+    bool horizontal;
     // The rectangle of the region [left, right) x [top, bottom)
     int32_t left, right, top, bottom;
-    // Images that move entirely above above_limit or to below_limit or below
-    // it are removed. When the scrollback is the overflow buffer above the
-    // region, images above above_limit are in the scrollback, they are only
-    // removed when they move above history_limit.
-    int32_t above_limit, below_limit, history_limit;
+    // Images that move entirely before (above or left of) before_limit or to
+    // after_limit or after it are removed. When the scrollback is the overflow
+    // buffer above the region, images above before_limit are in the
+    // scrollback, they are only removed when they move above history_limit.
+    int32_t before_limit, after_limit, history_limit;
     bool uses_history;
 } SmoothScrollImageData;
 
@@ -292,7 +295,8 @@ bool grman_update_layers(
     unsigned num_regions);
 void grman_scroll_images(GraphicsManager *self, const ScrollData *, CellPixelSize fg);
 void grman_smooth_scroll_images(GraphicsManager *self, const SmoothScrollImageData *data, CellPixelSize cell);
-void grman_smooth_scroll_release_images(GraphicsManager *self, uint32_t region_id, int32_t top, int32_t bottom, bool clip_top, CellPixelSize cell);
+void grman_smooth_scroll_release_images(
+    GraphicsManager *self, uint32_t region_id, int32_t left, int32_t top, int32_t right, int32_t bottom, bool horizontal, bool clip_before, CellPixelSize cell);
 bool grman_has_any_images(GraphicsManager *self);
 void grman_resize(GraphicsManager *, index_type, index_type, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);

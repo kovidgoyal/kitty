@@ -167,14 +167,14 @@ class TestSmoothScroll(BaseTest):
             self.assertTrue(s.smooth_scroll_define(1, 0, 1, 4, 4, **kw))
             ae(s.smooth_scroll(1, 5), 1)
             ae(s.smooth_scroll(1, -10), -2)
-            ae((region(s)['num_above'], region(s)['num_below'], region(s)['offset']), (0, 1, -15))
+            ae((region(s)['num_before'], region(s)['num_after'], region(s)['offset']), (0, 1, -15))
             ae(s.smooth_scroll(1, 2), 1)
-            ae((region(s)['num_above'], region(s)['num_below'], region(s)['offset']), (1, 0, 3))
+            ae((region(s)['num_before'], region(s)['num_after'], region(s)['offset']), (1, 0, 3))
             return s
 
         def discarded(s):
             r = region(s)
-            ae((r['num_above'], r['num_below'], r['offset']), (0, 0, 0))
+            ae((r['num_before'], r['num_after'], r['offset']), (0, 0, 0))
 
         # Moving the lines of the screen discards the overflow buffers
         for cmd in (b'\x1b[6H\n', b'\x1b[S', b'\x1b[T', b'\x1bM', b'\x1b[2;1H\x1b[L', b'\x1b[2;1H\x1b[M', b'\x1b[2J', b'\x1b[3J', b'\x1b[22J', b'\x1b#8'):
@@ -184,11 +184,11 @@ class TestSmoothScroll(BaseTest):
         # but not moving lines that do not intersect the region
         s = setup()
         parse_bytes(s, b'\x1b[5;6r\x1b[6H\n\x1b[r')
-        ae(region(s)['num_above'], 1)
+        ae(region(s)['num_before'], 1)
         # Erasing parts of the screen does not affect the region
         s = setup()
         parse_bytes(s, b'\x1b[2;1H\x1b[K\x1b[J\x1b[1J')
-        ae(region(s)['num_above'], 1)
+        ae(region(s)['num_before'], 1)
         # Removing all regions
         for cmd in (b'\x1bc', b'\x1b[!p', b'\x1b[?1049h'):
             s = setup()
@@ -204,12 +204,12 @@ class TestSmoothScroll(BaseTest):
         fill(s)
         self.assertTrue(s.smooth_scroll_define(1, 0, 0, 4, 3))
         ae(s.smooth_scroll(1, -5), -1)
-        ae((region(s)['num_below'], region(s)['offset']), (1, -15))
+        ae((region(s)['num_after'], region(s)['offset']), (1, -15))
         parse_bytes(s, b'\x1b[5H\n')
-        ae((region(s)['num_below'], region(s)['offset']), (0, 0))
+        ae((region(s)['num_after'], region(s)['offset']), (0, 0))
         ae(s.smooth_scroll(1, 5), 1)
         parse_bytes(s, b'\x1b[5H\n')
-        ae((region(s)['num_below'], region(s)['offset']), (0, 15))
+        ae((region(s)['num_after'], region(s)['offset']), (0, 15))
 
     def test_smooth_scroll_selections(self):
         ae = self.ae
@@ -312,7 +312,7 @@ class TestSmoothScroll(BaseTest):
         ae(str(s.line(4)), '  x')
         self.assertIsNone(cell(s, 3, 4)['mcd'])
         r = region(s)
-        ae(s.smooth_scroll_overflow(1, False), ('',) * r['num_below'])
+        ae(s.smooth_scroll_overflow(1, False), ('',) * r['num_after'])
         ae(s.smooth_scroll(1, 3 * H), 3)
         for y in range(6):
             for x in (2, 3):
@@ -465,3 +465,191 @@ class TestSmoothScroll(BaseTest):
             s.smooth_scroll_remove(1)
             s.garbage_collect_text_cache()
             self.assertTrue(s.pause_rendering(False))
+
+    def test_smooth_scroll_horizontal(self):
+        ae = self.ae
+        W = 10  # the cell width used by create_screen()
+        s = self.create_screen(cols=10, lines=4)
+        # the capacity is limited by the width for horizontal scrolling
+        self.assertFalse(s.smooth_scroll_define(1, 2, 1, 6, 3, 5, False, True))
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, 4, False, True))
+        ae(region(s)['uses_history'], False)
+        for y in range(s.lines):
+            s.cursor_position(y + 1, 1)
+            s.draw('0123456789')
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, 1, False, True))
+        ae(region(s)['horizontal'], True)
+        ae(s.smooth_scroll(1, 3), 1)
+        ae(region(s)['offset'], W - 3)
+        ae(lines(s), ['0123456789', '01345 6789', '01345 6789', '0123456789'])
+        ae(s.smooth_scroll_overflow(1, True), ('2', '2'))
+        ae(s.smooth_scroll_overflow(1, False), ('', ''))
+        ae(s.smooth_scroll(1, 7), 0)
+        ae(region(s)['offset'], 0)
+        ae(s.smooth_scroll(1, 1), 1)
+        ae(lines(s)[1], '0145  6789')
+        ae(s.smooth_scroll_overflow(1, True), ('3', '3'))
+        # Reversing the direction restores columns from the overflow buffers
+        ae(s.smooth_scroll(1, -1), -1)
+        ae(region(s)['offset'], 0)
+        ae(lines(s)[1], '01345 6789')
+        ae(s.smooth_scroll(1, -1), -1)
+        ae(region(s)['offset'], -(W - 1))
+        ae(lines(s)[1], '01 3456789')
+        ae(s.smooth_scroll_overflow(1, True), ('', ''))
+        ae(s.smooth_scroll_overflow(1, False), ('', ''))
+        # Huge scrolls only move as many columns as there are in the rectangle and its overflow buffer
+        ae(s.smooth_scroll(1, 1000 * W), 1001)
+        ae(lines(s)[1], '01    6789')
+
+        # Selections inside the rectangle move with it
+        s = self.create_screen(cols=10, lines=4)
+        for y in range(s.lines):
+            s.cursor_position(y + 1, 1)
+            s.draw('0123456789')
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, 1, False, True))
+        s.start_selection(3, 1)
+        s.update_selection(4, 1)
+        ae(s.text_for_selection(False, False), ('34',))
+        ae(s.smooth_scroll(1, 1), 1)
+        ae(s.text_for_selection(False, False), ('34',))
+        ae(s.smooth_scroll(1, -1), -1)
+        ae(s.smooth_scroll(1, -W), -1)
+        ae(s.text_for_selection(False, False), ('34',))
+        ae(s.smooth_scroll(1, 2 * W), 2)
+        ae(s.text_for_selection(False, False), ('34',))
+        ae(s.smooth_scroll(1, W), 1)
+        self.assertFalse(s.has_selection())  # moved out of the rectangle
+
+        # Moving the lines of the screen discards the overflow buffers
+        s = self.create_screen(cols=10, lines=4)
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, 1, False, True))
+        ae(s.smooth_scroll(1, 1), 1)
+        parse_bytes(s, b'\x1b[S')
+        r = region(s)
+        ae((r['num_before'], r['num_after'], r['offset']), (0, 0, 0))
+
+    def test_smooth_scroll_horizontal_multicell(self):
+        ae = self.ae
+        W = 10
+
+        def cell(s, x, y):
+            return s.cpu_cells(y, x)
+
+        def setup(k=1):
+            s = self.create_screen(cols=10, lines=4)
+            self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, k, False, True))
+            s.cursor_position(2, 3)
+            s.draw('好xy')
+            return s
+
+        # Wide chars split between the rectangle and its overflow buffers are kept
+        s = setup()
+        ae(s.smooth_scroll(1, 1), 1)
+        ae(s.smooth_scroll_overflow(1, True), ('好', ''))
+        ae((cell(s, 2, 1)['x'], cell(s, 2, 1)['mcd']['width']), (1, 2))
+        ae(str(s.line(1)), '  xy')
+        # and restored when scrolling back
+        ae(s.smooth_scroll(1, -1), -1)
+        ae((cell(s, 2, 1)['x'], cell(s, 3, 1)['x']), (0, 1))
+        ae(str(s.line(1)), '  好xy')
+        ae(s.smooth_scroll_overflow(1, True), ('', ''))
+        # overwriting a split char removes its part in the overflow buffer too
+        ae(s.smooth_scroll(1, 1), 1)
+        s.cursor_position(2, 3)
+        s.draw('Z')
+        ae(str(s.line(1)), '  Zxy')
+        ae(s.smooth_scroll_overflow(1, True), (' ', ''))  # replaced by a space, as when overwriting chars on screen
+        # also on the right
+        s = setup()
+        ae(s.smooth_scroll(1, -2 * W), -2)
+        ae(str(s.line(1)), '    好')
+        ae(s.smooth_scroll(1, -1), -1)
+        ae(s.smooth_scroll_overflow(1, False), ('', ''))  # the char is followed by blank cells, nearest first
+        ae(cell(s, 5, 1)['x'], 0)
+        ae(s.smooth_scroll(1, 2 * W), 3)
+        s = setup()
+        ae(s.smooth_scroll(1, -3 * W), -3)
+        ae(cell(s, 5, 1)['x'], 0)
+        ae(s.smooth_scroll_overflow(1, False)[0], '')  # the right half of the char
+        s.cursor_position(2, 6)
+        s.draw('Z')
+        self.assertIsNone(cell(s, 5, 1)['mcd'])
+        ae(s.smooth_scroll(1, 1), 1)
+        self.assertIsNone(cell(s, 5, 1)['mcd'])
+
+        # A char whose other half was dropped from the overflow buffer is torn
+        # when a blank column enters next to it
+        s = setup()
+        ae(s.smooth_scroll(1, 2 * W), 2)  # both halves moved out, the left half dropped
+        ae(s.smooth_scroll(1, -W), -1)
+        ae(cell(s, 2, 1)['x'], 1)
+        ae(s.smooth_scroll(1, -W), -1)
+        self.assertIsNone(cell(s, 3, 1)['mcd'])
+
+        # Wide chars crossing the edges into cells outside the rectangle are removed
+        s = self.create_screen(cols=10, lines=4)
+        s.cursor_position(2, 2)
+        s.draw('好')
+        s.cursor_position(3, 6)
+        s.draw('好')
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, 1, False, True))
+        s.smooth_scroll(1, 1)
+        ae(lines(s), ['', '', '', ''])
+        # Multiline chars crossing the top or bottom edge are removed as well
+        s = self.create_screen(cols=10, lines=6)
+        s.cursor_position(1, 3)
+        multicell(s, 'A', scale=2)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 1, 10, 4, 1, False, True))
+        s.smooth_scroll(1, 1)
+        for y in range(6):
+            for x in range(10):
+                self.assertIsNone(cell(s, x, y)['mcd'], (x, y))
+
+    def test_smooth_scroll_horizontal_images(self):
+        from .graphics import put_helpers
+
+        ae = self.ae
+        cw, ch = 10, H
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=6)
+
+        def cols():
+            s.update_only_line_graphics_data()
+            return sorted((round((r['dest_rect']['left'] + 1) / dx), round((r['dest_rect']['right'] + 1) / dx)) for r in layers(s))
+
+        def put(x, y, num_cols=2, num_lines=1):
+            s.cursor_position(y + 1, x + 1)
+            put_image(s, cw * num_cols, ch * num_lines, num_cols=num_cols, num_lines=num_lines, cursor_movement=1)
+
+        put(3, 2)  # inside
+        put(1, 3)  # crossing the left edge
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 8, 5, 2, False, True))
+        ae(cols(), [(1, 3), (3, 5)])
+        ae(s.smooth_scroll(1, 1), 1)
+        ae(cols(), [(1, 3), (2, 4)])
+        ae(s.smooth_scroll(1, 2 * cw), 2)
+        ae(cols(), [(0, 2), (1, 3)])  # in the overflow buffer
+        ae(s.smooth_scroll(1, 2 * cw), 2)
+        ae(cols(), [(1, 3)])  # moved out of the two columns of the overflow buffer
+        ae(s.smooth_scroll(1, cw - 1), 0)
+        ae(region(s)['offset'], 0)
+        # When the region is removed images are clipped to its rectangle
+        put(2, 2)
+        ae(s.smooth_scroll(1, 1), 1)
+        ae(cols(), [(1, 3), (1, 3)])
+        s.smooth_scroll_remove(1)
+        ae(cols(), [(1, 3), (2, 3)])
+
+    def test_smooth_scroll_horizontal_pause_rendering(self):
+        ae = self.ae
+        s = self.create_screen(cols=10, lines=4)
+        for y in range(s.lines):
+            s.cursor_position(y + 1, 1)
+            s.draw('0123456789')
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 6, 3, 2, False, True))
+        ae(s.smooth_scroll(1, 3), 1)
+        self.assertTrue(s.pause_rendering(True))
+        ae(s.smooth_scroll(1, -13), -2)
+        s.smooth_scroll_remove(1)
+        s.garbage_collect_text_cache()
+        self.assertTrue(s.pause_rendering(False))

@@ -195,6 +195,13 @@ continues_multicell_char(const CPUCell *c, const CPUCell *ref, index_type y) {
            c->subscale_d == ref->subscale_d && c->ch_and_idx == ref->ch_and_idx;
 }
 
+static inline bool
+continues_multicell_char_horizontally(const CPUCell *c, const CPUCell *ref, index_type x) {
+    // Whether c is the cell in column x of the same multicell char as ref in the same row.
+    return c->is_multicell && c->x == x && c->y == ref->y && c->scale == ref->scale && c->width == ref->width && c->subscale_n == ref->subscale_n &&
+           c->subscale_d == ref->subscale_d && c->ch_and_idx == ref->ch_and_idx;
+}
+
 static inline void
 text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
     if (c->ch_is_idx) {

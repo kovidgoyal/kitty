@@ -339,12 +339,17 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
         // offset, so map the pointer to the cell drawn under it. The partially
         // visible rows above and below the rectangle map to its edge rows.
         const SmoothScrollRender *sr = &screen->smooth_scroll_render;
-        const double ch = os_window->fonts_data->fcm.cell_height;
+        const double ch = os_window->fonts_data->fcm.cell_height, cw = os_window->fonts_data->fcm.cell_width;
         for (unsigned i = 0; i < sr->count; i++) {
             const SmoothScrollRenderRegion *r = sr->regions + i;
             if (!smooth_scroll_render_region_is_shifted(r) || qx < r->left || qx >= r->left + r->width || qy < r->top || qy >= r->top + r->height) continue;
-            const double row = floor((mouse_y - g->top - r->top * ch - r->offset) / ch);
-            qy = r->top + (unsigned)MAX(0., MIN(row, (double)(r->height - 1)));
+            if (r->horizontal) {
+                const double col = floor((mouse_x - g->left - r->left * cw - r->offset) / cw);
+                qx = r->left + (unsigned)MAX(0., MIN(col, (double)(r->width - 1)));
+            } else {
+                const double row = floor((mouse_y - g->top - r->top * ch - r->offset) / ch);
+                qy = r->top + (unsigned)MAX(0., MIN(row, (double)(r->height - 1)));
+            }
             break;
         }
     }

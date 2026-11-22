@@ -127,30 +127,38 @@ typedef struct ExtraCursors {
 
 #define MAX_SMOOTH_SCROLL_REGIONS 4u
 
-// A rectangle of the screen that is scrolled smoothly, by fractions of a row.
-// The terminal moves the cells in the rectangle by whole rows and renders them
-// shifted by the remaining fraction of a row. Rows that move out of the
-// rectangle are kept in overflow buffers, so that they can be drawn in the
-// partially visible row at the edge and restored when the scroll direction is
-// reversed. See the "Smooth scroll regions" section of screen.c.
+// A rectangle of the screen that is scrolled smoothly, by fractions of a row,
+// or of a column, for horizontal scrolling. The terminal moves the cells in
+// the rectangle by whole rows (columns) and renders them shifted by the
+// remaining fraction. Rows (columns) that move out of the rectangle are kept
+// in overflow buffers, so that they can be drawn in the partially visible row
+// (column) at the edge and restored when the scroll direction is reversed.
+// See the "Smooth scroll regions" section of screen.c. In the following,
+// before means above or to the left of the rectangle and after below or to
+// its right.
 typedef struct SmoothScrollRegion {
     uint32_t id;
     // The rectangle [left, right) x [top, bottom) in cells
     index_type left, top, right, bottom;
-    // The maximum number of rows kept in each of the overflow buffers
+    // The maximum number of rows (columns) kept in each of the overflow buffers
     index_type capacity;
-    // The number of rows currently kept above and below the rectangle
-    index_type num_above, num_below;
-    // The distance in pixels from the top edge of the rectangle to the top of
-    // its first row of cells. Its magnitude is less than the cell height. When
-    // positive, the row above the rectangle is partially visible, when
-    // negative, the row below it.
+    // The number of rows (columns) currently kept before and after the rectangle
+    index_type num_before, num_after;
+    // The distance in pixels from the top (left) edge of the rectangle to the
+    // top (left) of its first row (column) of cells. Its magnitude is less
+    // than the cell height (width). When positive, the row (column) before
+    // the rectangle is partially visible, when negative, the one after it.
     int offset;
+    // Scrolled horizontally rather than vertically
+    bool horizontal;
     // Do not use the scrollback as the overflow buffer above the rectangle
     bool private_overflow;
-    // Rows [0, capacity) are the rows above the rectangle, nearest first, rows
-    // [capacity, 2 * capacity) the rows below it, nearest first. Each row has
-    // the width of the rectangle.
+    // For vertical scrolling, rows [0, capacity) are the rows above the
+    // rectangle, nearest first, and rows [capacity, 2 * capacity) the rows
+    // below it, nearest first, each of the width of the rectangle. For
+    // horizontal scrolling, row i of the rectangle has its columns to the left
+    // in row i, of capacity cells with the nearest last, and its columns to
+    // the right in row height + i, with the nearest first.
     LineBuf *overflow;
 } SmoothScrollRegion;
 
@@ -163,14 +171,17 @@ typedef struct SmoothScroll {
 
 // How a smooth scroll region is rendered in a frame. A region that is
 // shifted, that is, has a non-zero offset, has a strip of cells after the
-// cells of the screen in the cell buffer, of height + 2 rows of width cells:
-// the row above the rectangle, its rows and the row below it. The strip is
-// drawn in a separate pass, clipped to the rectangle, and the cells of the
-// rectangle are skipped when drawing the screen.
+// cells of the screen in the cell buffer. For vertical scrolling the strip is
+// height + 2 rows of width cells: the row above the rectangle, its rows and
+// the row below it. For horizontal scrolling it is height rows of width + 2
+// cells: the column to the left of the rectangle, its columns and the column
+// to its right. The strip is drawn in a separate pass, clipped to the
+// rectangle, and the cells of the rectangle are skipped when drawing the screen.
 typedef struct SmoothScrollRenderRegion {
     uint32_t id;
     index_type left, top, width, height;
     int offset;
+    bool horizontal;
     // The index in the cell buffer of the first cell of the strip, when shifted
     unsigned base_cell;
 } SmoothScrollRenderRegion;
@@ -183,6 +194,8 @@ typedef struct SmoothScrollRender {
 } SmoothScrollRender;
 
 #define smooth_scroll_render_region_is_shifted(r) ((r)->offset != 0)
+#define smooth_scroll_render_region_strip_width(r) ((r)->width + ((r)->horizontal ? 2u : 0u))
+#define smooth_scroll_render_region_strip_height(r) ((r)->height + ((r)->horizontal ? 0u : 2u))
 
 
 typedef struct {
@@ -311,8 +324,11 @@ typedef struct {
         struct {
             SmoothScrollRenderRegion regions[MAX_SMOOTH_SCROLL_REGIONS];
             unsigned count;
-            // The rows above and below the rectangle of each region, two rows per region
-            LineBuf *edges;
+            // Copies of the regions, with copies of their overflow buffers
+            SmoothScrollRegion copies[MAX_SMOOTH_SCROLL_REGIONS];
+            // A copy of the last line of the scrollback, for a region using it as its overflow buffer
+            LineBuf *history_row;
+            bool has_history_row;
         } smooth_scroll;
     } paused_rendering;
     SmoothScroll smooth_scroll;
@@ -456,7 +472,15 @@ bool screen_history_scroll(Screen *self, int amt, bool upwards);
 void screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by);
 bool screen_apply_pixel_scroll(Screen *self, double delta_pixels);
 bool screen_smooth_scroll_define(
-    Screen *self, uint32_t id, index_type left, index_type top, index_type right, index_type bottom, index_type capacity, bool private_overflow);
+    Screen *self,
+    uint32_t id,
+    index_type left,
+    index_type top,
+    index_type right,
+    index_type bottom,
+    index_type capacity,
+    bool private_overflow,
+    bool horizontal);
 bool screen_smooth_scroll_remove(Screen *self, uint32_t id);
 void screen_smooth_scroll_remove_all(Screen *self);
 bool screen_smooth_scroll(Screen *self, uint32_t id, int delta_pixels, int *rows_shifted);

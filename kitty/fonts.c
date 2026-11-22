@@ -2654,6 +2654,33 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         cell_font = basic_font;
         CPUCell *cpu_cell = line->cpu_cells + i;
         if (cpu_cell->is_multicell) {
+            // A multicell char can be split, with some of its columns in this
+            // line and others elsewhere, by a horizontally scrolled smooth
+            // scroll region. Its cells in this line keep the sprites they were
+            // rendered with when the char was complete, and it must not be
+            // part of a run, as runs assume all the cells of their chars are
+            // present. A char cut off by the end of the line is rendered
+            // normally, as the end of a run.
+            index_type num_incomplete = 0;
+            if (cpu_cell->x) {
+                if (!i || !continues_multicell_char_horizontally(cpu_cell - 1, cpu_cell, cpu_cell->x - 1)) {
+                    num_incomplete = 1;
+                    while (i + num_incomplete < line->xnum &&
+                           continues_multicell_char_horizontally(cpu_cell + num_incomplete, cpu_cell, cpu_cell->x + num_incomplete))
+                        num_incomplete++;
+                }
+            } else if (mcd_x_limit(cpu_cell) > 1) {
+                index_type n = 1;
+                while (n < mcd_x_limit(cpu_cell) && i + n < line->xnum && continues_multicell_char_horizontally(cpu_cell + n, cpu_cell, n)) n++;
+                if (n < mcd_x_limit(cpu_cell) && i + n < line->xnum) num_incomplete = n;
+            }
+            if (num_incomplete) {
+                RENDER
+                run_font = basic_font;
+                i += num_incomplete - 1;
+                first_cell_in_run = i + 1;
+                continue;
+            }
             if (cpu_cell->x) {
                 if (cpu_cell->x + 1u < mcd_x_limit(cpu_cell)) i += mcd_x_limit(cpu_cell) - cpu_cell->x - 1u;
                 continue;

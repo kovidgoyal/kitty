@@ -690,6 +690,35 @@ class Rendering(FontBaseTest):
             self.ae([line.sprite_at(x) for x in range(s.columns)], [0] * s.columns)
             s.cursor_position(1, 1)
 
+    def test_render_line_with_split_multicell_chars(self):
+        # A horizontally scrolled smooth scroll region can split wide chars,
+        # leaving some of their cells in a line without the others. These
+        # cells keep their sprites and do not shift the other cells of the run.
+        s = self.create_screen(cols=8, lines=1, scrollback=0)
+        s.draw('xy好cdef')
+
+        def sprites():
+            line = s.line(0)
+            test_render_line(line)
+            return [line.sprite_at(x) for x in range(s.columns)]
+
+        before = sprites()
+        self.assertTrue(s.smooth_scroll_define(1, 2, 0, 7, 1, 1, False, True))
+        s.smooth_scroll(1, 1)  # the right half of the wide char is at the left edge of the region
+        after = sprites()
+        self.ae(after[2], before[3])
+        self.ae(after[3:6], before[4:7])
+        self.ae(after[7], before[7])
+        s = self.create_screen(cols=8, lines=1, scrollback=0)
+        s.draw('xy好cdef')
+        before = sprites()
+        self.assertTrue(s.smooth_scroll_define(1, 2, 0, 7, 1, 1, False, True))
+        s.smooth_scroll(1, -40)  # four columns of the default cell width of 10
+        after = sprites()  # the left half of the wide char is at the right edge of the region
+        self.ae(after[6], before[2])
+        self.ae(after[7], before[7])
+        self.ae(after[:2], before[:2])
+
     def test_line_thickness_scales_with_font_size(self):
         from kitty.fast_data_types import create_test_font_group, render_box_char
         from kitty.fonts.render import set_font_family

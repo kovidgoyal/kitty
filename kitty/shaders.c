@@ -1235,20 +1235,27 @@ cell_update_uniform_block(
         if (!smooth_scroll_render_region_is_shifted(r)) continue;
         struct GPUCellRenderData regd = crd_data;
         regd.num_skip_rects = 0;
-        regd.columns = r->width;
+        // The strip is drawn as a grid of its cells, for vertical scrolling in
+        // a viewport that is the rectangle of the region, shifted by the row
+        // offset, for horizontal scrolling in a viewport that is the
+        // rectangle widened by a column on each side and shifted by the
+        // offset, see draw_smooth_scroll_regions()
+        const unsigned sw = smooth_scroll_render_region_strip_width(r), sh = smooth_scroll_render_region_strip_height(r);
+        const unsigned strip_x = r->horizontal ? 1 : 0, strip_y = r->horizontal ? 0 : 1;
+        regd.columns = sw;
         regd.lines = r->height;
-        regd.row_offset = (float)r->offset / (float)MAX(1u, screen->cell_size.height) - 1.f;
+        regd.row_offset = r->horizontal ? 0.f : (float)r->offset / (float)MAX(1u, screen->cell_size.height) - 1.f;
         const bool has_cursor = rd->cursor_x1 >= r->left && rd->cursor_x2 < r->left + r->width && cy1 >= r->top && cy2 < r->top + r->height;
         if (has_cursor) {
-            regd.cursor_x1 -= r->left;
-            regd.cursor_x2 -= r->left;
-            regd.cursor_y1 = cy1 - r->top + 1;
-            regd.cursor_y2 = cy2 - r->top + 1;
+            regd.cursor_x1 = rd->cursor_x1 - r->left + strip_x;
+            regd.cursor_x2 = rd->cursor_x2 - r->left + strip_x;
+            regd.cursor_y1 = cy1 - r->top + strip_y;
+            regd.cursor_y2 = cy2 - r->top + strip_y;
         } else {
-            regd.cursor_x1 = r->width + 1;
-            regd.cursor_x2 = r->width;
-            regd.cursor_y1 = r->height + 3;
-            regd.cursor_y2 = r->height + 2;
+            regd.cursor_x1 = sw + 1;
+            regd.cursor_x2 = sw;
+            regd.cursor_y1 = sh + 1;
+            regd.cursor_y2 = sh;
         }
         void *dest = map_vao_buffer_for_write_only(vao_idx, REGION_UNIFORM_BUFFER_BASE + i, 0, crd_block.size);
         memcpy(dest, &regd, sizeof(regd));
@@ -2205,9 +2212,13 @@ draw_smooth_scroll_regions(int program, const UIRenderData *ui, ssize_t vao_idx,
         const Viewport vp = smooth_scroll_region_rect(ui, r);
         bind_vao_uniform_buffer(vao_idx, REGION_UNIFORM_BUFFER_BASE + i, slot);
         configure_cell_vao_attributes(vao_idx, r->base_cell, 1);
-        save_viewport(vp.left, vp.top, vp.width, vp.height);
+        if (r->horizontal) {
+            // The viewport can extend beyond the framebuffer, the scissor rectangle clips to the rectangle of the region
+            const int32_t x = (int32_t)vp.left - (int32_t)ui->cell_width + r->offset;
+            save_viewport(x, (int32_t)vp.top, vp.width + 2 * ui->cell_width, vp.height);
+        } else save_viewport((int32_t)vp.left, (int32_t)vp.top, vp.width, vp.height);
         enable_scissor(vp);
-        draw_quad(!for_final_output, (r->height + 2) * r->width);
+        draw_quad(!for_final_output, smooth_scroll_render_region_strip_width(r) * smooth_scroll_render_region_strip_height(r));
         disable_scissor();
         restore_viewport();
     }
