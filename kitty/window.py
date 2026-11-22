@@ -933,12 +933,15 @@ class Window:
             return pt_to_px(q, self.os_window_id)
         return self.default_margin(edge)
 
+    def _use_single_window_spacing(self) -> bool:
+        tab = self.tabref()
+        # OS window docks have shared scope even while parked outside the active tab.
+        return tab is not None and tab.has_single_window_visible() and not any(self in dock for dock in tab.windows.os_window_docks)
+
     def default_margin(self, edge: EdgeLiteral) -> int:
         "The margin from the options, ignoring any margin set for this window specifically"
         opts = get_options()
-        tab = self.tabref()
-        is_single_window = tab is not None and tab.has_single_window_visible()
-        if is_single_window:
+        if self._use_single_window_spacing():
             q = getattr(opts.single_window_margin_width, edge)
             if q > -0.1:
                 return pt_to_px(q, self.os_window_id)
@@ -950,9 +953,7 @@ class Window:
         if q is not None:
             return pt_to_px(q, self.os_window_id)
         opts = get_options()
-        tab = self.tabref()
-        is_single_window = tab is not None and tab.has_single_window_visible()
-        if is_single_window:
+        if self._use_single_window_spacing():
             q = getattr(opts.single_window_padding_width, edge)
             if q > -0.1:
                 return pt_to_px(q, self.os_window_id)

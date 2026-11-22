@@ -12,7 +12,8 @@ from kitty.layout.interface import Splits, Stack, Tall
 from kitty.tabs import DetachedGroup
 from kitty.tabs import Tab as RealTab
 from kitty.tabs import TabManager as RealTabManager
-from kitty.types import DockSpec, parse_dock_spec
+from kitty.types import DockSpec, FloatEdges, parse_dock_spec
+from kitty.window import Window as RealWindow
 from kitty.window_list import WindowGroup, WindowList, reset_group_id_counter
 
 from .base import BaseTest
@@ -36,6 +37,14 @@ class CountingWindow(Window):
 
     def change_tab(self, tab):
         self.tab = tab
+
+
+class ConfiguredWindow(CountingWindow, RealWindow):
+    change_tab = RealWindow.change_tab
+    default_margin = RealWindow.default_margin
+    effective_margin = RealWindow.effective_margin
+    effective_padding = RealWindow.effective_padding
+    effective_border = RealWindow.effective_border
 
 
 class OSWindowTab:
@@ -65,6 +74,7 @@ class OSWindowTab:
     _last_used_layout = None
     _current_layout_name = ''
     take_over_from = RealTab.take_over_from
+    has_single_window_visible = RealTab.has_single_window_visible
     os_window_docks_changed = RealTab.os_window_docks_changed
     resize_window_by = RealTab.resize_window_by
     resize_dock = RealTab.resize_dock
@@ -523,6 +533,52 @@ class TestDocks(BaseTest):
         self.ae(tm.os_window_docks, [])
         t2.relayout()
         self.ae(rect(lgd.central), (0, 0, 1000, 600))
+
+    def os_window_dock_geometry_on_tab_switch(self, size, **spacing):
+        self.set_options({'tab_bar_style': 'hidden', 'window_border_width': (1, 'px'), **spacing})
+        self.patch_c_calls()
+        reset_group_id_counter()
+        manager = OSWindowTabManager()
+        one, two = OSWindowTab(manager, 101), OSWindowTab(manager, 102)
+        with patch('kitty.window.pt_to_px', side_effect=lambda value, os_window_id: round(value)):
+            for tab, ids in ((one, (1,)), (two, (2, 3))):
+                for window_id in ids:
+                    window = ConfiguredWindow(window_id)
+                    window.change_tab(tab)
+                    tab.current_layout.add_window(tab.windows, window)
+            manager.active_tab = one
+            manager.sync_os_window_docks()
+            dock = ConfiguredWindow(10)
+            dock.change_tab(one)
+            one.current_layout.add_window(one.windows, dock, dock=parse_dock_spec('left', size), os_window_dock=True)
+            one.relayout()
+            one.os_window_docks_changed()
+            before = dock.geometry
+            reserved = two.current_layout.tab_dock_area
+            manager.active_tab = two
+            manager.sync_os_window_docks()
+            self.assertIs(two.windows.id_map[dock.id], dock)
+            self.ae(dock.geometry, before)
+            self.ae(two.current_layout.tab_dock_area, reserved)
+            self.check_no_overlaps(two.windows)
+            manager.active_tab = one
+            manager.sync_os_window_docks()
+            self.ae(dock.geometry, before)
+            self.check_no_overlaps(one.windows)
+            return before, one.current_layout.tab_dock_area
+
+    def test_os_window_dock_fixed_cells_ignores_single_window_padding(self):
+        geometry, _ = self.os_window_dock_geometry_on_tab_switch('10', single_window_padding_width=FloatEdges(20, 20, 20, 20))
+        self.ae(geometry.xnum, 10)
+        self.ae(rect(outer_region_of(geometry)), (0, 0, 102, 600))
+
+    def test_os_window_dock_percentage_ignores_single_window_collapsed_margin(self):
+        geometry, tab_area = self.os_window_dock_geometry_on_tab_switch(
+            '10%', collapse_window_margins=True, window_margin_width=FloatEdges(4, 4, 4, 4), single_window_margin_width=FloatEdges(20, 20, 20, 20)
+        )
+        self.ae(rect(outer_region_of(geometry)), (2, 2, 101, 598))
+        self.ae(geometry.xnum, 9)
+        self.ae(tab_area.top, 10)
 
     def test_cleanup_of_tab_with_only_os_window_docks(self):
         reset_group_id_counter()

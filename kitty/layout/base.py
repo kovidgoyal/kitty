@@ -178,6 +178,25 @@ class Rect(NamedTuple):
     bottom: int
 
 
+def region_rect(area: Region) -> Rect:
+    return Rect(area.left, area.top, area.left + area.width, area.top + area.height)
+
+
+def rects_outside(outer: Rect, inner: Rect) -> Iterator[Rect]:
+    "Yield disjoint strips of outer around its intersection with inner."
+    left, top, right, bottom = outer
+    if right <= left or bottom <= top:
+        return
+    il, it = max(left, inner.left), max(top, inner.top)
+    ir, ib = min(right, inner.right), min(bottom, inner.bottom)
+    if ir <= il or ib <= it:
+        yield outer
+        return
+    for r in (Rect(left, top, right, it), Rect(left, ib, right, bottom), Rect(left, it, il, ib), Rect(ir, it, right, ib)):
+        if r.right > r.left and r.bottom > r.top:
+            yield r
+
+
 def blank_rects_for_window(wg: WindowGeometry) -> Generator[Rect, None, None]:
     left, top, right, bottom = wg.left, wg.top, wg.right, wg.bottom
     left_width, top_height, right_width, bottom_height = wg.spaces
@@ -263,6 +282,16 @@ def outer_region_of(geom: WindowGeometry) -> Region:
     "The region occupied by a window including its decorations"
     s = geom.spaces
     return region(geom.left - s.left, geom.top - s.top, geom.right - geom.left + s.left + s.right, geom.bottom - geom.top + s.top + s.bottom)
+
+
+def inset_collapsed_margins(area: Region, window: WindowType) -> Region:
+    # The remaining half of each collapsed margin is supplied at the layout boundary.
+    def inset(edge: EdgeLiteral) -> int:
+        margin = window.default_margin(edge)
+        return margin - collapsed_margin(margin, edge)
+
+    ml, mt, mr, mb = inset('left'), inset('top'), inset('right'), inset('bottom')
+    return region(area.left + ml, area.top + mt, area.width - ml - mr, area.height - mt - mb)
 
 
 def carve_docks(area: Region, docks: Iterable[WindowGroup], cell_width: int, cell_height: int) -> tuple[Region, list[tuple[WindowGroup, Region]]]:
@@ -686,33 +715,50 @@ class Layout:
             for window in dock:
                 window.set_visible_in_layout(False)
 
-    def _set_dimensions(self, all_windows: WindowList) -> None:
-        full_area, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
-        opts = get_options()
-        self.collapsed_margin_rects = []
-        if opts.collapse_window_margins and (w := next(iter(all_windows), None)) is not None:
-            # Windows use only part of their margins, see collapsed_margin(),
-            # so supply the rest at the edges of the layout area
-            def inset(edge: EdgeLiteral) -> int:
-                m = w.default_margin(edge)
-                return m - collapsed_margin(m, edge)
+    def _tab_area_with_collapsed_margins(self, viewport: Region, remaining: Region, window: WindowType) -> Region:
+        frame, dock_area, tab_area = region_rect(viewport), region_rect(self.os_window_dock_area), region_rect(remaining)
 
-            ml, mt, mr, mb = inset('left'), inset('top'), inset('right'), inset('bottom')
-            left, top, right, bottom = full_area.left, full_area.top, full_area.left + full_area.width, full_area.top + full_area.height
-            full_area = region(left + ml, top + mt, full_area.width - ml - mr, full_area.height - mt - mb)
-            il, it = full_area.left, full_area.top
-            ir, ib = il + full_area.width, it + full_area.height
-            self.collapsed_margin_rects = [
-                r
-                for r in (Rect(left, top, right, it), Rect(left, ib, right, bottom), Rect(left, it, il, ib), Rect(ir, it, right, ib))
-                if r.right > r.left and r.bottom > r.top
-            ]
+        def tab_bounds(outer: Rect) -> Rect:
+            # A dock on an edge supplies the boundary there. On exposed edges
+            # the tab can use its own outer margin.
+            return Rect(
+                tab_area.left if tab_area.left != dock_area.left else outer.left,
+                tab_area.top if tab_area.top != dock_area.top else outer.top,
+                tab_area.right if tab_area.right != dock_area.right else outer.right,
+                tab_area.bottom if tab_area.bottom != dock_area.bottom else outer.bottom,
+            )
+
+        tab_frame = tab_bounds(frame)
+        inset_tab = tab_bounds(region_rect(inset_collapsed_margins(viewport, window)))
+        # Paint the outer dock gutters only where the tab does not extend into them.
+        self.collapsed_margin_rects = [r for gutter in rects_outside(frame, dock_area) for r in rects_outside(gutter, tab_frame)]
+        self.collapsed_margin_rects.extend(rects_outside(tab_frame, inset_tab))
+        left, top = min(inset_tab.left, tab_frame.right), min(inset_tab.top, tab_frame.bottom)
+        return region(left, top, max(0, inset_tab.right - left), max(0, inset_tab.bottom - top))
+
+    def _set_dimensions(self, all_windows: WindowList) -> None:
+        viewport, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
+        opts = get_options()
+        dock_area = viewport
+        tab_window = None
+        os_docks = all_windows.os_window_docks
+        self.collapsed_margin_rects = []
+        if opts.collapse_window_margins:
+            tab_window = next(all_windows.iter_tab_windows(), None)
+            margin_window = next((window for dock in os_docks for window in dock), tab_window)
+            if margin_window is not None:
+                dock_area = inset_collapsed_margins(viewport, margin_window)
         # The OS window docks and then the tab docks reduce the area available to
         # the layout. Space for the OS window docks is reserved even in the tabs
         # that do not currently host them, so that their windows are not resized
         # when switching tabs.
-        self.os_window_dock_area = full_area
-        tab_area, self.os_window_dock_placements = carve_docks(full_area, all_windows.os_window_docks, lgd.cell_width, lgd.cell_height)
+        self.os_window_dock_area = dock_area
+        tab_area, self.os_window_dock_placements = carve_docks(dock_area, os_docks, lgd.cell_width, lgd.cell_height)
+        if opts.collapse_window_margins:
+            if os_docks and tab_window is not None:
+                tab_area = self._tab_area_with_collapsed_margins(viewport, tab_area, tab_window)
+            else:
+                self.collapsed_margin_rects = list(rects_outside(region_rect(viewport), region_rect(dock_area)))
         if not all_windows.hosts_os_window_docks:
             self.os_window_dock_placements = []
         self.tab_dock_area = tab_area
@@ -771,8 +817,7 @@ class Layout:
 
     def tab_content_area(self, all_windows: WindowList) -> Region:
         "The area left for the layout after the OS window docks and the tab docks, as of the last call to _set_dimensions()"
-        tab_area = carve_docks(self.os_window_dock_area, all_windows.os_window_docks, lgd.cell_width, lgd.cell_height)[0]
-        return carve_docks(tab_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)[0]
+        return carve_docks(self.tab_dock_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)[0]
 
     def room_for_os_window_docks(self, all_windows: WindowList, is_horizontal: bool) -> int:
         "The space along an axis that the OS window docks can grow into without shrinking the tab docks of this tab"
