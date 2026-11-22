@@ -281,6 +281,12 @@ Images
    place. When the rows kept on the sides of a region are discarded, images
    extending into them are clipped to the rectangle.
 
+   In kitty, images displayed using Unicode placeholders are not drawn in the
+   partially visible column at the edge of a horizontally scrolling region,
+   only in its rectangle, as they are created from the placeholder cells on
+   the screen. They are drawn normally again once they move back into the
+   rectangle.
+
 Characters occupying multiple cells
    Wide characters and characters drawn using the :doc:`text sizing protocol
    <text-sizing-protocol>` that cross the edges of the rectangle into cells
