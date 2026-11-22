@@ -886,7 +886,9 @@ ssr_copy_slot_to_row(Screen *self, SmoothScrollRegion *r, index_type slot, index
 
 static void
 ssr_copy_row_to_row(Screen *self, SmoothScrollRegion *r, index_type src_y, index_type dest_y) {
-    // Only used for rectangles narrower than the screen, full width rows are moved by rotating the line map
+    // Only used for rectangles narrower than the screen, full width rows are
+    // moved by rotating the line map. The row is rendered again, as the
+    // shaping of its cells can depend on the cells outside the rectangle.
     CPUCell *sc, *dc;
     RenderCell *sr, *dr;
     linebuf_init_cells(self->linebuf, src_y, &sc, &sr);
@@ -1200,7 +1202,8 @@ ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
                     }
                 }
             } else ssr_copy_row_to_slot(self, r, last, ssr_push_slot(r, true));
-            for (index_type y = top; y < last; y++) ssr_mark_row_dirty(self, y);
+            // The rows moved intact, with their render data, as when scrolling
+            // with SU, so they do not need to be rendered again
         } else {
             ssr_copy_row_to_slot(self, r, top, ssr_push_slot(r, true));
             for (index_type y = top; y < last; y++) ssr_copy_row_to_row(self, r, y + 1, y);
@@ -1218,7 +1221,6 @@ ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
             linebuf_reverse_index(self->linebuf, top, last);
             // The row that left is now at the top
             ssr_copy_row_to_slot(self, r, top, ssr_push_slot(r, false));
-            for (index_type y = top + 1; y <= last; y++) ssr_mark_row_dirty(self, y);
         } else {
             ssr_copy_row_to_slot(self, r, last, ssr_push_slot(r, false));
             for (index_type y = last; y > top; y--) ssr_copy_row_to_row(self, r, y - 1, y);
