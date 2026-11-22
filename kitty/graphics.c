@@ -2535,6 +2535,44 @@ src_pixels_per_screen_pixel(const ImageRef *ref, CellPixelSize cell) {
 }
 
 static bool
+clip_ref_to_rows(ImageRef *ref, Image *img, int32_t top, int32_t bottom, bool clip_top, bool clip_bottom, CellPixelSize cell) {
+    // Clip the image to the rows [top, bottom], only at the top or bottom as
+    // specified. Returns true if nothing of the image is left.
+    if ((clip_top && ref->start_row + (int32_t)ref->effective_num_rows <= top) || (clip_bottom && ref->start_row > bottom)) return true;
+    uint32_t clipped_rows;
+    float clip_amt;
+    const float scale = src_pixels_per_screen_pixel(ref, cell);
+    if (clip_top && ref->start_row < top) {
+        // image moved up
+        clipped_rows = top - ref->start_row;
+        clip_amt = scale * (float)(cell.height * clipped_rows - ref->cell_y_offset);
+        if (ref->src_height <= clip_amt) return true;
+        ref->src_y += clip_amt;
+        ref->src_height -= clip_amt;
+        ref->effective_num_rows -= clipped_rows;
+        if (ref->num_rows) ref->num_rows -= clipped_rows;
+        ref->cell_y_offset = 0;
+        update_src_rect(ref, img);
+        ref->start_row += clipped_rows;
+    }
+    if (clip_bottom && ref->start_row + (int32_t)ref->effective_num_rows - 1 > bottom) {
+        // image moved down
+        clipped_rows = ref->start_row + ref->effective_num_rows - 1 - bottom;
+        // the last row may be only partially covered by the image,
+        // so calculate the clip amount from the height that remains visible
+        float visible_height_px = (float)(cell.height * (ref->effective_num_rows - clipped_rows)) - (float)ref->cell_y_offset;
+        float new_src_height = scale * visible_height_px;
+        if (new_src_height <= 0) return true;
+        clip_amt = ref->src_height - new_src_height;
+        if (clip_amt > 0) ref->src_height -= clip_amt;
+        ref->effective_num_rows -= clipped_rows;
+        if (ref->num_rows) ref->num_rows -= clipped_rows;
+        update_src_rect(ref, img);
+    }
+    return false;
+}
+
+static bool
 scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
     if (ref->is_virtual_ref) return false;
     ScrollData *d = (ScrollData *)data;
@@ -2549,35 +2587,7 @@ scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixe
         ref->start_row += d->amt;
         if (ref_outside_region(ref, d->margin_top, d->margin_bottom)) return true;
         // Clip the image if scrolling has resulted in part of it being outside the page area
-        uint32_t clipped_rows;
-        float clip_amt;
-        const float scale = src_pixels_per_screen_pixel(ref, cell);
-        if (ref->start_row < (int32_t)d->margin_top) {
-            // image moved up
-            clipped_rows = d->margin_top - ref->start_row;
-            clip_amt = scale * (float)(cell.height * clipped_rows - ref->cell_y_offset);
-            if (ref->src_height <= clip_amt) return true;
-            ref->src_y += clip_amt;
-            ref->src_height -= clip_amt;
-            ref->effective_num_rows -= clipped_rows;
-            if (ref->num_rows) ref->num_rows -= clipped_rows;
-            ref->cell_y_offset = 0;
-            update_src_rect(ref, img);
-            ref->start_row += clipped_rows;
-        } else if (ref->start_row + (int32_t)ref->effective_num_rows - 1 > (int32_t)d->margin_bottom) {
-            // image moved down
-            clipped_rows = ref->start_row + ref->effective_num_rows - 1 - d->margin_bottom;
-            // the last row may be only partially covered by the image,
-            // so calculate the clip amount from the height that remains visible
-            float visible_height_px = (float)(cell.height * (ref->effective_num_rows - clipped_rows)) - (float)ref->cell_y_offset;
-            float new_src_height = scale * visible_height_px;
-            if (new_src_height <= 0) return true;
-            clip_amt = ref->src_height - new_src_height;
-            if (clip_amt > 0) ref->src_height -= clip_amt;
-            ref->effective_num_rows -= clipped_rows;
-            if (ref->num_rows) ref->num_rows -= clipped_rows;
-            update_src_rect(ref, img);
-        }
+        if (clip_ref_to_rows(ref, img, d->margin_top, d->margin_bottom, true, true, cell)) return true;
         return ref_outside_region(ref, d->margin_top, d->margin_bottom);
     }
     return false;
@@ -2588,6 +2598,69 @@ grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize
     if (vt_size(&self->images_by_internal_id)) {
         set_layers_dirty(self);
         modify_refs(self, data, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
+    }
+}
+
+static bool
+smooth_scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+    // Images are positioned relative to their parent, so move only images without one
+    if (ref->is_virtual_ref || ref->parent.img) return false;
+    const SmoothScrollImageData *d = data;
+    const int32_t rows = (int32_t)ref->effective_num_rows;
+    if (ref->smooth_scroll_region != d->region_id) {
+        if (ref->smooth_scroll_region) return false; // moving with another region
+        if (ref->start_column < d->left || ref->start_column + (int32_t)ref->effective_num_cols > d->right) return false;
+        // Images crossing the edges of the rectangle into cells outside it
+        // are left in place. When the scrollback is the overflow buffer above
+        // the rectangle, the images in it move as well.
+        if (ref->start_row + rows > d->bottom) return false;
+        if (!d->uses_history && ref->start_row < d->top) return false;
+    }
+    ref->start_row += d->amt;
+    const int32_t limit = ref->start_row + rows;
+    if (ref->start_row >= d->below_limit) return true;
+    if (d->uses_history) {
+        if (limit <= d->history_limit) return true;
+        // Images in the scrollback that are not next to the rectangle are no longer drawn with it
+        ref->smooth_scroll_region = limit > d->above_limit ? d->region_id : 0;
+        return false;
+    }
+    if (limit <= d->above_limit) return true;
+    ref->smooth_scroll_region = d->region_id;
+    return false;
+}
+
+void
+grman_smooth_scroll_images(GraphicsManager *self, const SmoothScrollImageData *data, CellPixelSize cell) {
+    if (vt_size(&self->images_by_internal_id)) {
+        set_layers_dirty(self);
+        modify_refs(self, data, smooth_scroll_filter_func, cell);
+    }
+}
+
+typedef struct SmoothScrollReleaseData {
+    uint32_t region_id;
+    int32_t top, bottom;
+    bool clip_top;
+} SmoothScrollReleaseData;
+
+static bool
+smooth_scroll_release_filter_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
+    const SmoothScrollReleaseData *d = data;
+    if (ref->smooth_scroll_region != d->region_id) return false;
+    ref->smooth_scroll_region = 0;
+    return clip_ref_to_rows(ref, img, d->top, d->bottom - 1, d->clip_top, true, cell);
+}
+
+void
+grman_smooth_scroll_release_images(GraphicsManager *self, uint32_t region_id, int32_t top, int32_t bottom, bool clip_top, CellPixelSize cell) {
+    // The images moving with the region are no longer moving with it, clip
+    // them to its rectangle, [top, bottom), as the overflow buffers they
+    // extend into are discarded
+    if (vt_size(&self->images_by_internal_id)) {
+        set_layers_dirty(self);
+        const SmoothScrollReleaseData d = {.region_id = region_id, .top = top, .bottom = bottom, .clip_top = clip_top};
+        modify_refs(self, &d, smooth_scroll_release_filter_func, cell);
     }
 }
 

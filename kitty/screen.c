@@ -1088,7 +1088,28 @@ ssr_shift_by_one_row(Screen *self, SmoothScrollRegion *r, bool up) {
         if (entered_blank) ssr_blank_row(self, r, top);
         if (entered_blank && last > top) ssr_nuke_chars_next_to_blank_row(self, r, top + 1, false);
     }
+    if (UNLIKELY(grman_has_any_images(self->grman))) {
+        const SmoothScrollImageData d = {
+            .region_id = r->id,
+            .amt = up ? -1 : 1,
+            .left = r->left,
+            .right = r->right,
+            .top = r->top,
+            .bottom = r->bottom,
+            // When the scrollback is the overflow buffer images in its last line are drawn with the region
+            .above_limit = via_history ? (int32_t)r->top - 1 : (int32_t)r->top - (int32_t)r->capacity,
+            .below_limit = (int32_t)(r->bottom + r->capacity),
+            .history_limit = -(int32_t)self->historybuf->ynum,
+            .uses_history = via_history,
+        };
+        grman_smooth_scroll_images(self->grman, &d, self->cell_size);
+    }
     self->is_dirty = true;
+}
+
+static void
+ssr_release_images(Screen *self, SmoothScrollRegion *r, bool clip_top) {
+    if (UNLIKELY(grman_has_any_images(self->grman))) grman_smooth_scroll_release_images(self->grman, r->id, r->top, r->bottom, clip_top, self->cell_size);
 }
 
 static void
@@ -1105,6 +1126,7 @@ ssr_discard_overflow(Screen *self, SmoothScrollRegion *r) {
     ssr_nuke_chars_continuing_into_overflow(self, r, false);
     ssr_clear_overflow(r, true);
     ssr_clear_overflow(r, false);
+    ssr_release_images(self, r, !ssr_uses_history(self, r));
     if (r->offset) {
         r->offset = 0;
         self->is_dirty = true;
@@ -1210,6 +1232,7 @@ ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool v
         if (up && via_history && top == 0 && bottom + 1 >= r->bottom && ssr_uses_history(self, r)) {
             ssr_nuke_chars_continuing_into_overflow(self, r, false);
             ssr_clear_overflow(r, false);
+            ssr_release_images(self, r, false);
             if (r->offset < 0) {
                 r->offset = 0;
                 self->is_dirty = true;

@@ -85,6 +85,10 @@ typedef struct {
     // Virtual refs are not displayed but they can be used as prototypes for
     // refs placed using unicode placeholders.
     bool is_virtual_ref;
+    // The id of the smooth scroll region of the screen this image is moving
+    // with, zero if none. Images moving with a region can be partially or
+    // entirely outside its rectangle, in its overflow buffers.
+    uint32_t smooth_scroll_region;
 
     struct {
         id_type img, ref;
@@ -197,6 +201,20 @@ typedef struct {
     bool scroll_history;
 } ScrollData;
 
+typedef struct SmoothScrollImageData {
+    uint32_t region_id;
+    // -1 when the rows of the region move up, 1 when they move down
+    int32_t amt;
+    // The rectangle of the region [left, right) x [top, bottom)
+    int32_t left, right, top, bottom;
+    // Images that move entirely above above_limit or to below_limit or below
+    // it are removed. When the scrollback is the overflow buffer above the
+    // region, images above above_limit are in the scrollback, they are only
+    // removed when they move above history_limit.
+    int32_t above_limit, below_limit, history_limit;
+    bool uses_history;
+} SmoothScrollImageData;
+
 
 static inline float
 gl_size(const unsigned int sz, const unsigned int viewport_size) {
@@ -255,6 +273,8 @@ bool grman_update_layers(
     unsigned int num_rows,
     CellPixelSize);
 void grman_scroll_images(GraphicsManager *self, const ScrollData *, CellPixelSize fg);
+void grman_smooth_scroll_images(GraphicsManager *self, const SmoothScrollImageData *data, CellPixelSize cell);
+void grman_smooth_scroll_release_images(GraphicsManager *self, uint32_t region_id, int32_t top, int32_t bottom, bool clip_top, CellPixelSize cell);
 bool grman_has_any_images(GraphicsManager *self);
 void grman_resize(GraphicsManager *, index_type, index_type, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
