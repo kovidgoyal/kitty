@@ -38,6 +38,7 @@ def binary_includes():
                 'crypto',
                 'crypt',
                 'iconv',
+                'fribidi',
                 'pcre2-8',
                 'graphite2',
                 'glib-2.0',

@@ -289,6 +289,16 @@
     },
 
     {
+        "name": "fribidi 1.0.18",
+        "unix": {
+            "file_extension": "tar.xz",
+            "hash": "sha256:1de5e8073d035388b71d0b2d452b1da1f8caeea8a7702997b401fe1b6250727f",
+            "urls": ["https://github.com/fribidi/fribidi/releases/download/v{version}/fribidi-{version}.tar.xz"]
+        }
+    },
+
+
+    {
         "name": "wayland 1.26.0",
         "os": "linux",
         "unix": {

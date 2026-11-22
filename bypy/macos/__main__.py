@@ -321,6 +321,7 @@ class Freeze(object):
             'crypto.3',
             'ssl.3',
             'xxhash.0',
+            'fribidi.0',
         ):
             print('\nAdding', x)
             x = f'lib{x}.dylib'
