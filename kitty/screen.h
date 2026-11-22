@@ -24,6 +24,13 @@ typedef struct DnDCommand {
     uint32_t operation;
 } DnDCommand;
 
+// A command of the smooth scrolling protocol, see docs/smooth-scrolling-protocol.rst
+typedef struct SmoothScrollCommand {
+    char action, query_action, orientation;
+    uint32_t id, x, y, width, height, capacity, private_overflow;
+    int32_t delta;
+} SmoothScrollCommand;
+
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM, mCOLOR_PREFERENCE_NOTIFICATION, mBRACKETED_PASTE, mFOCUS_TRACKING,
         mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS, mWHEEL_EVENTS;
@@ -485,7 +492,7 @@ bool screen_smooth_scroll_remove(Screen *self, uint32_t id);
 void screen_smooth_scroll_remove_all(Screen *self);
 bool screen_smooth_scroll(Screen *self, uint32_t id, int delta_pixels, int *rows_shifted);
 bool screen_prepare_smooth_scroll_render(Screen *self);
-void screen_provisional_smooth_scroll_command(Screen *self, const char *payload);
+void screen_handle_smooth_scroll_command(Screen *self, const SmoothScrollCommand *cmd);
 PyObject *as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
 Line *screen_visual_line(Screen *self, index_type y);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);

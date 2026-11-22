@@ -106,22 +106,18 @@ def cmd_for_report(report_name: str, keymap: KeymapType, type_map: dict[str, Any
 
     fmt = f'{flag_fmt} {uint_fmt} {int_fmt}'
     if payload_allowed:
-        ans = [f'REPORT_VA_COMMAND("K s {{{fmt} ss#}}", self->window_id, "{report_name}",\n']
+        ans = [f'REPORT_VA_COMMAND("K s {{{fmt} ss#}}", self->window_id, "{report_name}"']
     else:
-        ans = [f'REPORT_VA_COMMAND("K s {{{fmt}}}", self->window_id, "{report_name}",\n']
-    if flag_attrs:
-        ans.append(f'{flag_attrs},\n')
-    if uint_attrs:
-        ans.append(f'{uint_attrs},\n')
-    if int_attrs:
-        ans.append(f'{int_attrs},\n')
+        ans = [f'REPORT_VA_COMMAND("K s {{{fmt}}}", self->window_id, "{report_name}"']
+    for attrs in (flag_attrs, uint_attrs, int_attrs):
+        if attrs:
+            ans.append(attrs)
     if payload_allowed:
         if payload_is_base64:
             ans.append('"", (char*)parser_buf, g.payload_sz')
         else:
             ans.append('"", (char*)parser_buf + payload_start, g.payload_sz')
-    ans.append(');')
-    return '\n'.join(ans)
+    return ',\n'.join(ans) + ');'
 
 
 def generate(
@@ -190,7 +186,7 @@ static inline void
     unsigned int i, code;
     uint64_t lcode;
     bool is_negative; (void)is_negative;
-    size_t sz;
+    size_t sz; (void)sz;
     {keys_enum}
     enum KEYS key = '{initial_key}';
     if (parser_buf[pos] == ';') state = AFTER_VALUE;
@@ -378,6 +374,32 @@ def parsers() -> None:
         'parse_dnd_code', 'screen_handle_dnd_command', 'dnd_command', keymap, 'DnDCommand', payload_is_base64=False, start_parsing_at=0, field_sep=':'
     )
     write_header(text, 'kitty/parse-dnd-command.h')
+
+    keymap = {
+        'a': ('action', flag('dsrq')),
+        # any letter is accepted so that feature queries for unknown actions get a reply
+        'e': ('query_action', flag(string.ascii_letters)),
+        'i': ('id', 'uint'),
+        'x': ('x', 'uint'),
+        'y': ('y', 'uint'),
+        'w': ('width', 'uint'),
+        'h': ('height', 'uint'),
+        'o': ('orientation', flag('vh')),
+        'k': ('capacity', 'uint'),
+        'p': ('private_overflow', 'uint'),
+        'd': ('delta', 'int'),
+    }
+    text = generate(
+        'parse_smooth_scroll_code',
+        'screen_handle_smooth_scroll_command',
+        'smooth_scroll_command',
+        keymap,
+        'SmoothScrollCommand',
+        payload_allowed=False,
+        start_parsing_at=0,
+        field_sep=':',
+    )
+    write_header(text, 'kitty/parse-smooth-scroll-command.h')
 
 
 def main(args: list[str] = sys.argv) -> None:

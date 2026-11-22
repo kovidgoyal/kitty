@@ -1725,57 +1725,74 @@ ssr_release_pause_capture(Screen *self) {
 }
 // }}}
 
-void
-screen_provisional_smooth_scroll_command(Screen *self, const char *payload) {
-    // A provisional escape code for testing smooth scroll regions, of the form
-    // OSC 5524 ; key=value,key=value ST with integer values. The keys are:
-    // a: the action, d to define a region, s to scroll it and r to remove it
-    // i: the id of the region, x, y, w, h: its rectangle, k: its overflow
-    // capacity, p: 1 to not use the scrollback, o: 1 for horizontal scrolling
-    // and d: the amount to scroll by in pixels. It will be replaced by the
-    // final escape code.
-    char action = 0;
-    long long id = 0, x = 0, y = 0, w = 0, h = 0, k = 1, p = 0, d = 0, o = 0;
-    for (const char *q = payload; *q;) {
-        const char key = *q++;
-        if (*q != '=') break;
-        q++;
-        if (key == 'a') {
-            action = *q;
-            if (*q) q++;
-        } else {
-            char *end;
-            long long v = strtoll(q, &end, 10);
-            if (end == q) break;
-            q = end;
-            switch (key) {
-                case 'i': id = v; break;
-                case 'x': x = v; break;
-                case 'y': y = v; break;
-                case 'w': w = v; break;
-                case 'h': h = v; break;
-                case 'k': k = v; break;
-                case 'p': p = v; break;
-                case 'd': d = v; break;
-                case 'o': o = v; break;
-                default: break;
-            }
+static void
+ssr_reply_to_query(Screen *self, const SmoothScrollCommand *cmd) {
+    // A query, a=q, replies with the maximum number of regions. A feature
+    // query, a=q with e=<action>, replies with e and every key of the query
+    // that has a non-default value, which is supported with that action. The
+    // other keys and e itself are omitted from the reply when not supported.
+    char buf[256];
+    size_t pos = 0;
+#define print(fmt, ...) \
+    if (sizeof(buf) - 1 > pos) pos += snprintf(buf + pos, sizeof(buf) - pos, fmt, __VA_ARGS__)
+    print("%d;a=q", SMOOTH_SCROLL_CODE);
+    const char action = cmd->query_action;
+    if (!action) {
+        print(":n=%u", MAX_SMOOTH_SCROLL_REGIONS);
+    } else if (strchr("dsrq", action)) {
+        print(":e=%c", action);
+#define ECHO_UINT(key, attr) \
+    if (cmd->attr) print(":%c=%u", key, cmd->attr)
+        switch (action) {
+            case 'd':
+                ECHO_UINT('x', x);
+                ECHO_UINT('y', y);
+                ECHO_UINT('w', width);
+                ECHO_UINT('h', height);
+                ECHO_UINT('k', capacity);
+                if (cmd->orientation) print(":o=%c", cmd->orientation);
+                if (cmd->private_overflow == 1) print(":p=%u", 1u);
+                break;
+            case 's':
+                if (cmd->delta) print(":d=%d", cmd->delta);
+                break;
+            default: break;
         }
-        if (*q == ',') q++;
-        else break;
+#undef ECHO_UINT
     }
-    if (id <= 0 || id > UINT32_MAX) return;
-#define U(v) ((index_type)MAX(0, MIN((v), (long long)UINT32_MAX)))
-    switch (action) {
-        case 'd': screen_smooth_scroll_define(self, (uint32_t)id, U(x), U(y), U(x + w), U(y + h), U(k), p != 0, o == 1); break;
-        case 's': {
-            int cells_shifted;
-            screen_smooth_scroll(self, (uint32_t)id, (int)MAX(INT_MIN, MIN(d, INT_MAX)), &cells_shifted);
+#undef print
+    write_escape_code_to_child(self, ESC_OSC, buf);
+}
+
+void
+screen_handle_smooth_scroll_command(Screen *self, const SmoothScrollCommand *cmd) {
+    // See docs/smooth-scrolling-protocol.rst. Only queries reply, invalid commands are ignored.
+    switch (cmd->action) {
+        case 'd': {
+            if (!cmd->id) return;
+            // Coordinates are one based, zero for the defaults
+            const uint64_t left = cmd->x ? cmd->x - 1u : 0, top = cmd->y ? cmd->y - 1u : 0;
+            if (left >= self->columns || top >= self->lines) return;
+            const uint64_t right = cmd->width ? left + cmd->width : self->columns, bottom = cmd->height ? top + cmd->height : self->lines;
+            if (right > self->columns || bottom > self->lines) return;
+            const bool horizontal = cmd->orientation == 'h';
+            const uint64_t length = horizontal ? right - left : bottom - top;
+            const index_type capacity = (index_type)MAX(1u, MIN((uint64_t)cmd->capacity, length));
+            screen_smooth_scroll_define(
+                self, cmd->id, (index_type)left, (index_type)top, (index_type)right, (index_type)bottom, capacity, cmd->private_overflow == 1, horizontal);
         } break;
-        case 'r': screen_smooth_scroll_remove(self, (uint32_t)id); break;
+        case 's': {
+            if (!cmd->id) return;
+            int cells_shifted;
+            screen_smooth_scroll(self, cmd->id, cmd->delta, &cells_shifted);
+        } break;
+        case 'r':
+            if (cmd->id) screen_smooth_scroll_remove(self, cmd->id);
+            else screen_smooth_scroll_remove_all(self);
+            break;
+        case 'q': ssr_reply_to_query(self, cmd); break;
         default: break;
     }
-#undef U
 }
 // }}}
 

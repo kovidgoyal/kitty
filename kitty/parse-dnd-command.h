@@ -16,6 +16,7 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
     bool is_negative;
     (void)is_negative;
     size_t sz;
+    (void)sz;
 
     enum KEYS { type = 't', more = 'm', client_id = 'i', operation = 'o', cell_x = 'x', cell_y = 'y', pixel_x = 'X', pixel_y = 'Y' };
 
@@ -148,17 +149,14 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
         "K s {sc sI sI sI si si si si ss#}",
         self->window_id,
         "dnd_command",
-
         "type",
         g.type,
-
         "more",
         (unsigned int)g.more,
         "client_id",
         (unsigned int)g.client_id,
         "operation",
         (unsigned int)g.operation,
-
         "cell_x",
         (int)g.cell_x,
         "cell_y",
@@ -167,7 +165,6 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
         (int)g.pixel_x,
         "pixel_y",
         (int)g.pixel_y,
-
         "",
         (char *)parser_buf + payload_start,
         g.payload_sz);

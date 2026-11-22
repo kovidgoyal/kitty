@@ -12,7 +12,7 @@ import sys
 from contextlib import suppress
 from typing import Any
 
-from .fast_data_types import DND_CODE, TEXT_SIZE_CODE
+from .fast_data_types import DND_CODE, SMOOTH_SCROLL_CODE, TEXT_SIZE_CODE
 
 CSI = '\x1b['
 OSC = '\x1b]'
@@ -302,6 +302,23 @@ def dnd_command(payload: str) -> None:
     write(f'{OSC}{DND_CODE};{m};{text}\x1b\\')
 
 
+def smooth_scroll_command(payload: str) -> None:
+    c = json.loads(payload)
+    parts = []
+    for key, attr in (('a', 'action'), ('e', 'query_action'), ('o', 'orientation')):
+        v = c.pop(attr, '')
+        if isinstance(v, (bytes, memoryview)):
+            v = str(v, 'utf-8', 'replace')
+        if v and v != '\0':
+            parts.append(f'{key}={v}')
+    for key, attr in (('i', 'id'), ('x', 'x'), ('y', 'y'), ('w', 'width'), ('h', 'height'), ('k', 'capacity'), ('p', 'private_overflow'), ('d', 'delta')):
+        if v := c.pop(attr, 0):
+            parts.append(f'{key}={v}')
+    if c:
+        raise Exception('Unknown keys in smooth_scroll_command: ' + ', '.join(c))
+    write(f'{OSC}{SMOOTH_SCROLL_CODE};{":".join(parts)}\x1b\\')
+
+
 def multicell_command(payload: str) -> None:
     c = json.loads(payload)
     text = c.pop('', '')
@@ -340,6 +357,7 @@ def replay(raw: str) -> None:
             'clipboard_control',
             'shell_prompt_marking',
             'multicell_command',
+            'smooth_scroll_command',
             'screen_multi_cursor',
             'dnd_command',
         }

@@ -1044,6 +1044,7 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, ESC_PM);
     PyModule_AddIntMacro(m, TEXT_SIZE_CODE);
     PyModule_AddIntMacro(m, DND_CODE);
+    PyModule_AddIntMacro(m, SMOOTH_SCROLL_CODE);
     PyModule_AddIntMacro(m, COLOR_NOT_SET);
     PyModule_AddIntMacro(m, COLOR_IS_SPECIAL);
     PyModule_AddIntMacro(m, COLOR_IS_INDEX);

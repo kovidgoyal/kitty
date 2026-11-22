@@ -14,7 +14,7 @@ parse_multicell_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos)
     unsigned int i, code;
     uint64_t lcode;
     bool is_negative; (void)is_negative;
-    size_t sz;
+    size_t sz; (void)sz;
 
     enum KEYS {
         width='w',
@@ -135,11 +135,8 @@ case horizontal_align: value_state = UINT; break;
     }
 
     REPORT_VA_COMMAND("K s { sI sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
-
 "width", (unsigned int)g.width, "scale", (unsigned int)g.scale, "subscale_n", (unsigned int)g.subscale_n, "subscale_d", (unsigned int)g.subscale_d, "vertical_align", (unsigned int)g.vertical_align, "horizontal_align", (unsigned int)g.horizontal_align,
-
-"", (char*)parser_buf + payload_start, g.payload_sz
-);
+"", (char*)parser_buf + payload_start, g.payload_sz);
 
     screen_handle_multicell_command(self->screen, &g, parser_buf + payload_start);
 }

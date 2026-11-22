@@ -446,6 +446,7 @@ find_st_terminator(PS *self, size_t *end_pos) {
 
 #include "parse-multicell-command.h"
 #include "parse-dnd-command.h"
+#include "parse-smooth-scroll-command.h"
 
 static bool
 is_osc_52(PS *self) {
@@ -665,14 +666,7 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
                 shell_prompt_marking(self->screen, (char *)buf + i);
             }
             break;
-        case 5524:
-            // Provisional escape code for smooth scroll regions, only for
-            // testing, it will be replaced by the final escape code
-            if (limit > i) {
-                buf[limit] = 0; // safe to do as we have 8 extra bytes after PARSER_BUF_SZ
-                screen_provisional_smooth_scroll_command(self->screen, (char *)buf + i);
-            }
-            break;
+        case SMOOTH_SCROLL_CODE: parse_smooth_scroll_code(self, buf + i, limit - i); break;
         case FILE_TRANSFER_CODE:
             START_DISPATCH
             DISPATCH_OSC(file_transmission);

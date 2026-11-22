@@ -237,3 +237,4 @@
 #define TEXT_SIZE_CODE 66
 // Drag and drop protocol
 #define DND_CODE 72
+#define SMOOTH_SCROLL_CODE 2254

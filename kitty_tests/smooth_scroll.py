@@ -653,3 +653,58 @@ class TestSmoothScroll(BaseTest):
         s.smooth_scroll_remove(1)
         s.garbage_collect_text_cache()
         self.assertTrue(s.pause_rendering(False))
+
+    def test_smooth_scroll_protocol(self):
+        from kitty.fast_data_types import SMOOTH_SCROLL_CODE
+
+        ae = self.ae
+        s = self.create_screen(cols=10, lines=6)
+
+        def cmd(payload):
+            parse_bytes(s, f'\x1b]{SMOOTH_SCROLL_CODE};{payload}\x1b\\'.encode())
+
+        def rect(id=1):
+            r = region(s, id)
+            return r['left'], r['top'], r['right'], r['bottom'], r['capacity'], r['horizontal'], r['private_overflow']
+
+        def reply(payload):
+            s.callbacks.clear()
+            cmd(payload)
+            return s.callbacks.wtcbuf.decode()
+
+        # coordinates are one based, the size defaults to the rest of the screen
+        cmd('a=d:i=1')
+        ae(rect(), (0, 0, 10, 6, 1, False, False))
+        cmd('a=d:i=1:x=3:y=2:w=4:h=3:k=2:p=1')
+        ae(rect(), (2, 1, 6, 4, 2, False, True))
+        cmd('a=d:i=2:x=7:o=h:k=100')
+        ae(rect(2), (6, 0, 10, 6, 4, True, False))  # the capacity is clamped to the width
+        # invalid commands are ignored
+        for bad in ('a=d', 'a=d:i=3:x=11', 'a=d:i=3:y=7', 'a=d:i=3:x=9:w=3', 'a=d:i=3:y=6:h=2', 'a=d:i=3:x=3:y=3', 'a=d:i=3:Q=1'):
+            cmd(bad)
+            ae(len(s.smooth_scroll_regions()), 2, bad)
+        self.assertEqual(s.callbacks.wtcbuf, b'')  # nothing but queries reply
+        # scrolling
+        fill(s)
+        cmd('a=s:i=1:d=5')
+        ae((region(s)['offset'], region(s)['num_before']), (H - 5, 1))
+        cmd('a=s:i=1:d=-5')
+        ae(region(s)['offset'], 0)
+        cmd('a=s:d=5')  # no id
+        ae(region(s)['offset'], 0)
+        # removing
+        cmd('a=r:i=1')
+        ae([r['id'] for r in s.smooth_scroll_regions()], [2])
+        cmd('a=d:i=1:h=1')
+        cmd('a=r')
+        ae(s.smooth_scroll_regions(), ())
+
+        # queries
+        prefix = f'\x1b]{SMOOTH_SCROLL_CODE};a=q'
+        ae(reply('a=q'), f'{prefix}:n=4\x1b\\')
+        ae(reply('a=q:e=d:o=h:k=3:p=1:x=2:d=4'), f'{prefix}:e=d:x=2:k=3:o=h:p=1\x1b\\')
+        ae(reply('a=q:e=s:d=-4:x=2'), f'{prefix}:e=s:d=-4\x1b\\')
+        ae(reply('a=q:e=r:i=3'), f'{prefix}:e=r\x1b\\')
+        ae(reply('a=q:e=Z:d=1'), f'{prefix}\x1b\\')  # unknown action
+        ae(reply('a=q:Z=1'), '')  # unknown keys make the command malformed
+        ae(s.smooth_scroll_regions(), ())  # queries have no effect

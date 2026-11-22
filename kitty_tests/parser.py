@@ -1326,6 +1326,35 @@ class TestParser(BaseTest):
         e('s==', 'Malformed GraphicsCommand control block, expecting an integer value for key: s')
         e('s=1=', 'Malformed GraphicsCommand control block, expecting a , or semi-colon after a value, found: 0x3d')
 
+    def test_smooth_scroll_command(self):
+        from kitty.fast_data_types import SMOOTH_SCROLL_CODE
+
+        def c(**k):
+            for f in ('action', 'query_action', 'orientation'):
+                k[f] = k.get(f, '\0').encode('ascii')
+            for f in 'id x y width height capacity private_overflow delta'.split():
+                k.setdefault(f, 0)
+            return ('smooth_scroll_command', k)
+
+        def t(cmd, **kw):
+            pb(f'\033]{SMOOTH_SCROLL_CODE};{cmd}\033\\', c(**kw))
+
+        def e(cmd, err):
+            pb(f'\033]{SMOOTH_SCROLL_CODE};{cmd}\033\\', (err,))
+
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        t('a=d:i=1:x=2:y=3:w=4:h=5:o=h:k=2:p=1', action='d', id=1, x=2, y=3, width=4, height=5, orientation='h', capacity=2, private_overflow=1)
+        t('a=s:i=1:d=-17', action='s', id=1, delta=-17)
+        t('a=s:i=1:d=17', action='s', id=1, delta=17)
+        t('a=r', action='r')
+        t('a=q:e=Z', action='q', query_action='Z')
+        e('a=x', 'Malformed SmoothScrollCommand control block, unknown flag value for action: 0x78')
+        e('a=d:o=x', 'Malformed SmoothScrollCommand control block, unknown flag value for orientation: 0x78')
+        e('a=d:Z=1', 'Malformed SmoothScrollCommand control block, invalid key character: 0x5a')
+        e('a=d,i=1', 'Malformed SmoothScrollCommand control block, expecting a : or semi-colon after a value, found: 0x2c')
+        e('a=s:i=1;payload', 'Malformed SmoothScrollCommand control block, expecting a : or semi-colon after a value, found: 0x3b')
+
     def test_deccara(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)

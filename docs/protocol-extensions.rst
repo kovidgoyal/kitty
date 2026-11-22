@@ -28,6 +28,7 @@ please do so by opening issues in the `GitHub bug tracker
    graphics-protocol
    keyboard-protocol
    text-sizing-protocol
+   smooth-scrolling-protocol
    dnd-protocol
    multiple-cursors-protocol
    file-transfer-protocol

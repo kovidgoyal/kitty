@@ -56,6 +56,8 @@ resolution wheels and touchpads, which report scrolling in fractions of a
 wheel click or in pixels, have gestures that begin and end and continue scrolling
 with momentum after the fingers are lifted. kitty has a mode that makes it
 report scroll events with all this information instead.
+Programs can use these events with the :doc:`smooth scrolling protocol
+<smooth-scrolling-protocol>` to scroll their content by pixels.
 
 The mode is private mode ``5523``. A program turns it on with
 ``CSI ? 5523 h`` and off with ``CSI ? 5523 l``. It can check whether the
