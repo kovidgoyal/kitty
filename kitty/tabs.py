@@ -329,12 +329,15 @@ class Tab:  # {{{
             tm.update_progress()
 
     def has_single_window_visible(self) -> bool:
-        if self.current_layout.only_active_window_visible:
-            return True
-        for i, g in enumerate(self.windows.iter_all_layoutable_groups(only_visible=True)):
-            if i > 0:
-                return False
-        return True
+        if not self.current_layout.only_active_window_visible:
+            for i, g in enumerate(self.windows.iter_all_layoutable_groups(only_visible=True)):
+                if i > 0:
+                    return False
+        # Docks are shown alongside the windows of the layout, so a tab with
+        # docks never shows a single window. This keeps the spacing of the docks,
+        # and hence their size, independent of the number of windows in the tab,
+        # and the same in every tab for the OS window docks.
+        return not self.windows.has_docks
 
     def set_enabled_layouts(self, val: Iterable[str]) -> None:
         self.enabled_layouts = [x.lower() for x in val] or ['tall']

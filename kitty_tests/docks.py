@@ -12,7 +12,9 @@ from kitty.layout.interface import Splits, Stack, Tall
 from kitty.tabs import DetachedGroup
 from kitty.tabs import Tab as RealTab
 from kitty.tabs import TabManager as RealTabManager
-from kitty.types import DockSpec, parse_dock_spec
+from kitty.types import DockSpec, FloatEdges, parse_dock_spec
+from kitty.window import EdgeWidths
+from kitty.window import Window as RealWindow
 from kitty.window_list import WindowGroup, WindowList, reset_group_id_counter
 
 from .base import BaseTest
@@ -36,6 +38,18 @@ class CountingWindow(Window):
 
     def change_tab(self, tab):
         self.tab = tab
+
+
+NORMAL_SPACING, SINGLE_WINDOW_SPACING = 1, 7
+
+
+class SpacingWindow(CountingWindow):
+    "A window that, like real windows, uses different spacing when its tab shows a single window"
+
+    def spacing(self, edge):
+        return SINGLE_WINDOW_SPACING if self.tab is not None and self.tab.has_single_window_visible() else NORMAL_SPACING
+
+    default_margin = effective_margin = effective_padding = spacing
 
 
 class OSWindowTab:
@@ -65,6 +79,7 @@ class OSWindowTab:
     _last_used_layout = None
     _current_layout_name = ''
     take_over_from = RealTab.take_over_from
+    has_single_window_visible = RealTab.has_single_window_visible
     os_window_docks_changed = RealTab.os_window_docks_changed
     resize_window_by = RealTab.resize_window_by
     resize_dock = RealTab.resize_dock
@@ -523,6 +538,165 @@ class TestDocks(BaseTest):
         self.ae(tm.os_window_docks, [])
         t2.relayout()
         self.ae(rect(lgd.central), (0, 0, 1000, 600))
+
+    def add_spacing_windows(self, tab, *window_ids):
+        for wid in window_ids:
+            w = SpacingWindow(wid)
+            w.change_tab(tab)
+            tab.current_layout.add_window(tab.windows, w)
+
+    def test_docks_prevent_single_window_spacing(self):
+        reset_group_id_counter()
+        tm = OSWindowTabManager()
+        self.patch_c_calls()
+        t1, t2 = OSWindowTab(tm, 101), OSWindowTab(tm, 102)
+        self.add_spacing_windows(t1, 1)
+        self.add_spacing_windows(t2, 2)
+        tm.active_tab = t1
+        tm.sync_os_window_docks()
+        self.assertTrue(t1.has_single_window_visible())
+        # Docks of every kind count as visible windows
+        for kind in ('window', 'tab', 'os-window'):
+            with self.subTest(kind=kind):
+                dock = SpacingWindow(10)
+                dock.change_tab(t1)
+                owner = t1.windows.groups[0] if kind == 'window' else None
+                t1.current_layout.add_window(t1.windows, dock, dock=parse_dock_spec('left', '3'), dock_owner=owner, os_window_dock=kind == 'os-window')
+                self.assertFalse(t1.has_single_window_visible())
+                # The OS window docks count in tabs that do not currently host them
+                self.ae(t2.has_single_window_visible(), kind != 'os-window')
+                t1.windows.remove_window(dock)
+                self.assertTrue(t1.has_single_window_visible())
+                self.assertTrue(t2.has_single_window_visible())
+        # Docks also count in layouts that show only the active window
+        stack = OSWindowTab(OSWindowTabManager(2), 201)
+        stack.current_layout = make_layout(Stack)
+        self.add_spacing_windows(stack, 3, 4)
+        self.assertTrue(stack.has_single_window_visible())
+        add_dock(stack.current_layout, stack.windows, 11, 'top')
+        self.assertFalse(stack.has_single_window_visible())
+        # Docks whose owner was closed are hidden, so they do not count
+        q = make_layout(Tall)
+        windows = WindowList(t2)
+        q.add_window(windows, SpacingWindow(4))
+        q.add_window(windows, SpacingWindow(5))
+        add_dock(q, windows, 12, owner=windows.groups[1])
+        windows.remove_window(windows.id_map[5])
+        self.ae(len(windows.orphaned_docks), 1)
+        self.assertFalse(windows.has_docks)
+
+    def test_real_windows_use_normal_spacing_in_tabs_with_docks(self):
+        self.set_options(
+            {
+                'tab_bar_style': 'hidden',
+                'window_margin_width': FloatEdges(1, 1, 1, 1),
+                'single_window_margin_width': FloatEdges(7, 7, 7, 7),
+                'window_padding_width': FloatEdges(2, 2, 2, 2),
+                'single_window_padding_width': FloatEdges(9, 9, 9, 9),
+            }
+        )
+        reset_group_id_counter()
+        tab = OSWindowTab(OSWindowTabManager(), 101, 1)
+        window = SimpleNamespace(tabref=lambda: tab, os_window_id=1, padding=EdgeWidths())
+
+        def spacing():
+            return RealWindow.default_margin(window, 'left'), RealWindow.effective_padding(window, 'left')
+
+        with patch('kitty.window.pt_to_px', side_effect=lambda val, os_window_id: round(val)):
+            self.ae(spacing(), (7, 9))
+            add_dock(tab.current_layout, tab.windows, 10, 'top')
+            self.ae(spacing(), (1, 2))
+
+    def check_aligned(self, dock, window, edges):
+        "The frames of the dock and the window line up along the given edges"
+
+        def frame(w):
+            # The outer edges and the spacing inside them. Borders are not
+            # compared, as whether they are drawn depends on the layout.
+            outer = dict(zip(('left', 'top', 'right', 'bottom'), rect(outer_region_of(w.geometry))))
+            return {e: (outer[e], w.effective_margin(e), w.effective_padding(e)) for e in edges}
+
+        self.ae(frame(dock), frame(window), f'dock: {dock.geometry} window: {window.geometry}')
+
+    def test_os_window_dock_geometry_independent_of_windows_in_tabs(self):
+        for collapse in (False, True):
+            with self.subTest(collapse_window_margins=collapse):
+                self.set_options({'tab_bar_style': 'hidden', 'collapse_window_margins': collapse})
+                reset_group_id_counter()
+                tm = OSWindowTabManager()
+                self.patch_c_calls()
+                single, multiple = OSWindowTab(tm, 101), OSWindowTab(tm, 102)
+                self.add_spacing_windows(single, 1)
+                self.add_spacing_windows(multiple, 2, 3)
+                tm.active_tab = single
+                tm.sync_os_window_docks()
+                dock = SpacingWindow(10)
+                dock.change_tab(single)
+                single.current_layout.add_window(single.windows, dock, dock=parse_dock_spec('left', '10%'), os_window_dock=True)
+                single.os_window_docks_changed()
+                single.relayout()
+                geometry = dock.geometry
+                self.check_aligned(dock, single.windows.id_map[1], ('top', 'bottom'))
+                self.check_no_overlaps(single.windows)
+                tm.active_tab = multiple
+                tm.sync_os_window_docks()
+                multiple.relayout()
+                self.ae(dock.geometry, geometry)
+                self.check_aligned(dock, multiple.windows.id_map[2], ('top', 'bottom'))
+                self.check_no_overlaps(multiple.windows)
+                # Closing windows does not change it either
+                multiple.windows.remove_window(multiple.windows.id_map[3])
+                multiple.relayout()
+                self.ae(dock.geometry, geometry)
+                self.check_aligned(dock, multiple.windows.id_map[2], ('top', 'bottom'))
+                tm.active_tab = single
+                tm.sync_os_window_docks()
+                single.relayout()
+                self.ae(dock.geometry, geometry)
+                # Adding and closing the dock relayouts the other tabs, which
+                # stop and start using the single window spacing
+                other = multiple.windows.id_map[2]
+
+                def decoration():
+                    g = other.geometry
+                    return g.spaces.top - g.compensatory.top
+
+                outer, normal_decoration = rect(outer_region_of(other.geometry)), decoration()
+                single.windows.remove_window(dock)
+                single.os_window_docks_changed()
+                self.assertGreater(decoration(), normal_decoration)
+                # The space reserved for the dock is released
+                self.assertLess(rect(outer_region_of(other.geometry))[0], outer[0])
+                dock = SpacingWindow(11)
+                dock.change_tab(single)
+                single.current_layout.add_window(single.windows, dock, dock=parse_dock_spec('left', '10%'), os_window_dock=True)
+                single.os_window_docks_changed()
+                self.ae(rect(outer_region_of(other.geometry)), outer)
+                self.ae(decoration(), normal_decoration)
+
+    def test_dock_geometry_independent_of_number_of_windows(self):
+        for collapse in (False, True):
+            for kind in ('tab', 'window'):
+                with self.subTest(collapse_window_margins=collapse, kind=kind):
+                    self.set_options({'tab_bar_style': 'hidden', 'collapse_window_margins': collapse})
+                    reset_group_id_counter()
+                    tab = OSWindowTab(OSWindowTabManager(), 101)
+                    self.add_spacing_windows(tab, 1)
+                    owner = tab.windows.groups[0] if kind == 'window' else None
+                    # A dock at the bottom keeps its full width when a window is added to the right
+                    dock = SpacingWindow(10)
+                    dock.change_tab(tab)
+                    tab.current_layout.add_window(tab.windows, dock, dock=parse_dock_spec('bottom', '2'), dock_owner=owner)
+                    tab.relayout()
+                    before = dock.geometry
+                    self.check_aligned(dock, tab.windows.id_map[1], ('left',))
+                    self.add_spacing_windows(tab, 2)
+                    tab.relayout()
+                    self.ae((dock.geometry.ynum, dock.geometry.spaces), (before.ynum, before.spaces))
+                    if kind == 'tab':
+                        self.ae(dock.geometry, before)
+                    self.check_aligned(dock, tab.windows.id_map[1], ('left',))
+                    self.check_no_overlaps(tab.windows)
 
     def test_cleanup_of_tab_with_only_os_window_docks(self):
         reset_group_id_counter()

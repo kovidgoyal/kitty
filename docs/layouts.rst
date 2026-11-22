@@ -338,6 +338,12 @@ on, including in :ref:`kitten @ ls <at-ls>` and in saved sessions. Resetting
 window sizes does not change the size of docks, as they are not part of the
 layout.
 
+A tab that has docks, including the docks of its OS window, never counts as
+showing a single window, so :opt:`single_window_margin_width` and
+:opt:`single_window_padding_width` do not apply to it. This keeps the docks the
+same size as windows are opened and closed and tabs are switched, and keeps them
+aligned with the other windows.
+
 A :code:`window-dock` belongs to the window it is docked to. It is shown
 whenever that window is shown, moves with it when it is moved to another tab
 and is closed when it is closed. A :code:`tab-dock` is closed when the last
