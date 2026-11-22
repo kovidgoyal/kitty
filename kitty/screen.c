@@ -1367,10 +1367,25 @@ ssr_discard_overflow(Screen *self, SmoothScrollRegion *r) {
 }
 
 static void
+ssr_dirty_line_graphics(Screen *self, const SmoothScrollRegion *r) {
+    // Images displayed using Unicode placeholders are split at the edges of
+    // regions, see screen_render_line_graphics(), so render the lines with
+    // placeholders again. Their cell images are replaced when they are
+    // rendered, until then they move with the cells of the region.
+    for (index_type y = r->top; y < r->bottom; y++) {
+        if (self->linebuf->line_attrs[y].has_image_placeholders) {
+            linebuf_mark_line_dirty(self->linebuf, y);
+            self->is_dirty = true;
+        }
+    }
+}
+
+static void
 ssr_remove_at(Screen *self, unsigned idx) {
     SmoothScrollRegion *r = self->smooth_scroll.regions + idx;
     self->smooth_scroll.offsets_changed = true;
     ssr_discard_overflow(self, r);
+    ssr_dirty_line_graphics(self, r);
     ssr_free(r);
     SmoothScroll *ss = &self->smooth_scroll;
     ss->count--;
@@ -1433,6 +1448,7 @@ screen_smooth_scroll_define(
         .horizontal = horizontal,
         .private_overflow = private_overflow,
         .overflow = overflow};
+    ssr_dirty_line_graphics(self, r);
     return true;
 }
 
@@ -1539,7 +1555,8 @@ ssr_live_render_regions(Screen *self, SmoothScrollRenderRegion *ans) {
             .height = ssr_height(r),
             .offset = y_offset ? 0 : r->offset,
             .y_offset = y_offset,
-            .horizontal = r->horizontal};
+            .horizontal = r->horizontal,
+            .uses_history = ssr_uses_history(self, r)};
     }
     return self->smooth_scroll.count;
 }
@@ -1550,7 +1567,7 @@ static int paused_snapshot_row_offset(const Screen *self);
 static bool
 ssr_render_regions_equal(const SmoothScrollRenderRegion *a, const SmoothScrollRenderRegion *b) {
     return a->id == b->id && a->left == b->left && a->top == b->top && a->width == b->width && a->height == b->height && a->offset == b->offset &&
-           a->y_offset == b->y_offset && a->base_cell == b->base_cell && a->horizontal == b->horizontal;
+           a->y_offset == b->y_offset && a->base_cell == b->base_cell && a->horizontal == b->horizontal && a->uses_history == b->uses_history;
 }
 
 bool
@@ -5966,6 +5983,18 @@ color_to_id(color_type c) {
     return (c >> 8) & 0xffffff;
 }
 
+static bool
+ssr_is_column_edge(const Screen *self, int32_t row, index_type x) {
+    // Whether x is the left or right edge of the rectangle of a smooth scroll
+    // region intersecting the row, the cells on either side of which move
+    // independently
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if ((int32_t)r->top <= row && row < (int32_t)r->bottom && (x == r->left || x == r->right)) return true;
+    }
+    return false;
+}
+
 // Scan the line and create cell images in place of unicode placeholders
 // reserved for image placement.
 static void
@@ -6009,15 +6038,20 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
         // The current run is continued if the lower 24 bits of the image id and
         // the placement id are the same as in the previous cell and everything
         // else is unknown or compatible with the previous cell.
-        if (run_length > 0 && cur_img_id_lower24bits == prev_img_id_lower24bits && cur_placement_id == prev_placement_id &&
-            (!cur_img_row || cur_img_row == prev_img_row) && (!cur_img_col || cur_img_col == prev_img_col + 1) &&
-            (!cur_img_id_higher8bits || cur_img_id_higher8bits == prev_img_id_higher8bits)) {
-            // This cell continues the current run.
-            run_length++;
+        const bool continues_run = run_length > 0 && cur_img_id_lower24bits == prev_img_id_lower24bits && cur_placement_id == prev_placement_id &&
+                                   (!cur_img_row || cur_img_row == prev_img_row) && (!cur_img_col || cur_img_col == prev_img_col + 1) &&
+                                   (!cur_img_id_higher8bits || cur_img_id_higher8bits == prev_img_id_higher8bits);
+        if (continues_run) {
             // If some values are unknown, infer them from the previous cell.
             cur_img_row = MAX(prev_img_row, 1u);
             cur_img_col = prev_img_col + 1;
             cur_img_id_higher8bits = MAX(prev_img_id_higher8bits, 1u);
+        }
+        // Runs are split at the edges of smooth scroll regions, so that the
+        // parts of the image on either side move with their cells
+        if (continues_run && !(UNLIKELY(self->smooth_scroll.count) && ssr_is_column_edge(self, row, i))) {
+            // This cell continues the current run.
+            run_length++;
         } else {
             // This cell breaks the current run. Render the current run if it
             // has a non-zero length.
@@ -6441,7 +6475,11 @@ screen_update_graphics_layers(Screen *self) {
         regions[i] = (ImageLayerRegion){
             .id = sr->regions[i].id,
             .horizontal = sr->regions[i].horizontal,
-            .offset = (float)sr->regions[i].offset / (float)MAX(1u, sr->regions[i].horizontal ? self->cell_size.width : self->cell_size.height)};
+            .offset = (float)sr->regions[i].offset / (float)MAX(1u, sr->regions[i].horizontal ? self->cell_size.width : self->cell_size.height),
+            .left = (int32_t)sr->regions[i].left,
+            .top = (int32_t)sr->regions[i].top,
+            .right = (int32_t)(sr->regions[i].left + sr->regions[i].width),
+            .bottom = (int32_t)(sr->regions[i].top + sr->regions[i].height)};
     return grman_update_layers(
         grman,
         rendered_scrolled_by(self),
@@ -9394,6 +9432,7 @@ current_selections(Screen *self, PyObject *a UNUSED) {
 
 static PyObject *
 update_graphics_layers(Screen *self, PyObject *a UNUSED) {
+    screen_prepare_smooth_scroll_render(self); // mimic what the renderer does
     screen_update_graphics_layers(self);
     return grman_render_data_as_python(self->paused_rendering.expires_at ? self->paused_rendering.grman : self->grman);
 }

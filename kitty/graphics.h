@@ -72,6 +72,8 @@ typedef struct ImageLayerRegion {
     // The offset in rows, or in columns when horizontal
     float offset;
     bool horizontal;
+    // The rectangle of the region [left, right) x [top, bottom), in cells
+    int32_t left, top, right, bottom;
 } ImageLayerRegion;
 
 typedef struct {

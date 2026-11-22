@@ -198,6 +198,9 @@ typedef struct SmoothScrollRenderRegion {
     // never shifted then, they are only used to clip the images moving with them.
     int y_offset;
     bool horizontal;
+    // Whether the scrollback is the overflow buffer above the region, the
+    // images in it are then not clipped when the screen is scrolled back
+    bool uses_history;
     // The index in the cell buffer of the first cell of the strip, when shifted
     unsigned base_cell;
 } SmoothScrollRenderRegion;

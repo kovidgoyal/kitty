@@ -1159,6 +1159,9 @@ class ImageLayer(TypedDict):
     ref_id: int
     indexed_px_sz: int
     is_unscaled: bool
+    # One plus the index of the smooth scroll region the image is drawn
+    # shifted with and clipped to, zero if none
+    smooth_scroll_region: int
 
 class Screen:
     color_profile: ColorProfile

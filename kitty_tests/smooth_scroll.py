@@ -384,39 +384,97 @@ class TestSmoothScroll(BaseTest):
                 for r in layers(s, scrolled_by)
             )
 
-        def put(x, y, num_cols=2, num_lines=2):
-            s.cursor_position(y + 1, x + 1)
-            put_image(s, cw * num_cols, ch * num_lines, num_cols=num_cols, num_lines=num_lines, cursor_movement=1)
+        def drawn():
+            # (top, bottom, region) of the images as drawn, with top and bottom in pixels
+            return sorted(
+                (round((r['dest_rect']['top'] + 1) / dy * H), round((r['dest_rect']['bottom'] + 1) / dy * H), r['smooth_scroll_region'])
+                for r in s.update_graphics_layers()
+            )
 
-        # Images inside the rectangle move with it, images crossing its edges
-        # or outside it do not
+        def put(x, y, num_cols=2, num_lines=2, **kw):
+            s.cursor_position(y + 1, x + 1)
+            return put_image(s, cw * num_cols, ch * num_lines, num_cols=num_cols, num_lines=num_lines, cursor_movement=1, **kw)[0]
+
+        def fresh():
+            nonlocal s, dx, dy, put_image, put_ref, layers, rect_eq
+            s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=8)
+
+        # Images inside the rectangle or crossing its edges in the direction of
+        # scrolling move with it, images outside it or crossing its edges
+        # across the direction of scrolling do not
         put(2, 2)  # inside
         put(6, 1)  # crossing the top edge
         put(0, 4, num_cols=1)  # outside
+        put(1, 4)  # crossing the left edge
         self.assertTrue(s.smooth_scroll_define(1, 2, 2, 8, 6, 2))
-        ae(rows(), [(1, 3), (2, 4), (4, 6)])
+        ae(rows(), [(1, 3), (2, 4), (4, 6), (4, 6)])
+        ae([d[2] for d in drawn()], [1, 1, 0, 0])
         ae(s.smooth_scroll(1, 1), 1)
-        ae(rows(), [(1, 3), (1, 3), (4, 6)])
+        ae(rows(), [(0, 2), (1, 3), (4, 6), (4, 6)])
         ae(s.smooth_scroll(1, -1), -1)
-        ae(rows(), [(1, 3), (2, 4), (4, 6)])
+        ae(rows(), [(1, 3), (2, 4), (4, 6), (4, 6)])
         ae(s.smooth_scroll(1, -2 * H), -2)
-        ae(rows(), [(1, 3), (4, 6), (4, 6)])
+        ae(rows(), [(3, 5), (4, 6), (4, 6), (4, 6)])
         # Images in the overflow buffers are kept as long as part of them is in them
         ae(s.smooth_scroll(1, -3 * H), -3)
-        ae(rows(), [(1, 3), (4, 6), (7, 9)])
+        ae(rows(), [(4, 6), (4, 6), (6, 8), (7, 9)])
         ae(s.smooth_scroll(1, -H), -1)
-        ae(rows(), [(1, 3), (4, 6)])  # moved out of the two rows of the overflow buffer
+        ae(rows(), [(4, 6), (4, 6), (7, 9)])  # moved out of the two rows of the overflow buffer
 
-        # When the region is removed images are clipped to its rectangle
+        # Images placed while the region is shifted are drawn shifted with it
+        fresh()
+        self.assertTrue(s.smooth_scroll_define(1, 0, 2, 10, 6, 2))
+        ae(s.smooth_scroll(1, 7), 1)
+        ae(region(s)['offset'], 13)
+        put(2, 3)  # inside
+        put(4, 0, num_lines=1)  # outside
+        ae(drawn(), [(0, H, 0), (3 * H + 13, 5 * H + 13, 1)])
+        ae(s.smooth_scroll(1, 1), 0)
+        ae(drawn(), [(0, H, 0), (3 * H + 12, 5 * H + 12, 1)])
+
+        # Images extending out of the region in the direction of scrolling are
+        # kept whole, clipped to it, and revealed by scrolling
+        fresh()
+        put(2, 4, num_lines=4)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 2, 10, 6, 1))
+        ae(drawn(), [(4 * H, 8 * H, 1)])
+        ae(s.smooth_scroll(1, 2 * H), 2)
+        ae(rows(), [(2, 6)])
+        ae(s.smooth_scroll(1, 4 * H), 4)
+        ae(rows(), [(-2, 2)])  # kept whole while part of it is in the overflow buffer
+        ae(s.smooth_scroll(1, -2 * H), -2)
+        ae(rows(), [(0, 4)])  # and brought back whole
+        ae(s.smooth_scroll(1, 3 * H), 3)
+        ae(rows(), [])  # deleted once it moved out of the overflow buffer
+        ae(s.smooth_scroll(1, -5 * H), -5)
+        ae(rows(), [])
+
+        # When the region is removed images are clipped to its rectangle,
+        # including images extending out of it that never moved
+        fresh()
         put(2, 2)
+        put(6, 4, num_lines=4)
+        self.assertTrue(s.smooth_scroll_define(1, 2, 2, 8, 6, 2))
         ae(s.smooth_scroll(1, 1), 1)
-        ae(rows(), [(1, 3), (1, 3), (4, 6)])
+        ae(rows(), [(1, 3), (3, 7)])
         s.smooth_scroll_remove(1)
-        ae(rows(), [(1, 3), (2, 3), (4, 6)])
+        ae(rows(), [(2, 3), (3, 6)])
+        ae([d[2] for d in drawn()], [0, 0])
         # and no longer move with it
         self.assertTrue(s.smooth_scroll_define(1, 2, 3, 8, 6, 2))
         ae(s.smooth_scroll(1, -1), -1)
-        ae(rows(), [(1, 3), (2, 3), (4, 6)])
+        ae(rows(), [(2, 3), (4, 7)])
+
+        # Images placed relative to another image move with the region when
+        # the root of their chain of parents does
+        fresh()
+        inside = put(2, 2, num_lines=1, placement_id=1)
+        outside = put(2, 0, num_lines=1, placement_id=1)
+        put(0, 0, num_lines=1, parent_id=inside, parent_placement_id=1, offset_from_parent_y=-2)  # outside the rectangle
+        put(0, 0, num_lines=1, parent_id=outside, parent_placement_id=1, offset_from_parent_y=3)  # inside the rectangle
+        self.assertTrue(s.smooth_scroll_define(1, 0, 2, 10, 6, 2))
+        ae(s.smooth_scroll(1, -H // 2), -1)
+        ae(drawn(), [(0, H, 0), (H // 2, 3 * H // 2, 1), (5 * H // 2, 7 * H // 2, 1), (3 * H, 4 * H, 0)])
 
         # With the scrollback as the overflow buffer, images move into it and stay there
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=8)
@@ -438,6 +496,18 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, -2 * H), -2)
         ae(s.historybuf.count, 3)
         ae(rows(), [(6, 8)])
+        # Images crossing the bottom edge move with the region as well
+        fresh()
+        put(2, 3)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 4))
+        ae([d[2] for d in drawn()], [1])
+        ae(s.smooth_scroll(1, 2 * H), 2)
+        ae(rows(), [(1, 3)])
+        ae(s.smooth_scroll(1, 3 * H), 3)
+        ae(rows(), [])
+        ae(rows(2), [(-2, 0)])  # in the scrollback
+        ae(s.smooth_scroll(1, -5 * H), -5)
+        ae(rows(), [(3, 5)])
 
         # Images from unicode placeholders move with their cells
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=8)
@@ -627,23 +697,41 @@ class TestSmoothScroll(BaseTest):
             put_image(s, cw * num_cols, ch * num_lines, num_cols=num_cols, num_lines=num_lines, cursor_movement=1)
 
         put(3, 2)  # inside
-        put(1, 3)  # crossing the left edge
+        put(1, 3)  # crossing the left edge, in the direction of scrolling
+        put(4, 0, num_lines=2)  # crossing the top edge, across the direction of scrolling
         self.assertTrue(s.smooth_scroll_define(1, 2, 1, 8, 5, 2, False, True))
-        ae(cols(), [(1, 3), (3, 5)])
+        ae(cols(), [(1, 3), (3, 5), (4, 6)])
         ae(s.smooth_scroll(1, 1), 1)
-        ae(cols(), [(1, 3), (2, 4)])
+        ae(cols(), [(0, 2), (2, 4), (4, 6)])
         ae(s.smooth_scroll(1, 2 * cw), 2)
-        ae(cols(), [(0, 2), (1, 3)])  # in the overflow buffer
+        ae(cols(), [(0, 2), (4, 6)])  # in the overflow buffer, the other one moved out of it
         ae(s.smooth_scroll(1, 2 * cw), 2)
-        ae(cols(), [(1, 3)])  # moved out of the two columns of the overflow buffer
+        ae(cols(), [(4, 6)])  # moved out of the two columns of the overflow buffer
         ae(s.smooth_scroll(1, cw - 1), 0)
         ae(region(s)['offset'], 0)
         # When the region is removed images are clipped to its rectangle
         put(2, 2)
         ae(s.smooth_scroll(1, 1), 1)
-        ae(cols(), [(1, 3), (1, 3)])
+        ae(cols(), [(1, 3), (4, 6)])
         s.smooth_scroll_remove(1)
-        ae(cols(), [(1, 3), (2, 3)])
+        ae(cols(), [(2, 3), (4, 6)])
+
+        # Images from unicode placeholders are split at the edges of the
+        # rectangle, so that each part moves with its cells
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=6)
+        put_image(s, 4 * cw, ch, num_cols=4, num_lines=1, unicode_placeholder=1, id=42)
+        s.cursor_position(3, 1)
+        s.apply_sgr('38;5;42')
+        s.draw(''.join('\U0010eeee\u0305' + c for c in '\u0305\u030d\u030e\u0310'))
+        s.apply_sgr('39')
+        ae(cols(), [(0, 4)])
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 8, 5, 2, False, True))
+        ae(cols(), [(0, 2), (2, 4)])
+        s.smooth_scroll_remove(1)
+        ae(cols(), [(0, 4)])
+        self.assertTrue(s.smooth_scroll_define(1, 2, 1, 8, 5, 2, False, True))
+        ae(s.smooth_scroll(1, 1), 1)
+        ae(cols(), [(0, 2), (2, 3)])  # not drawn in the partially visible column
 
     def test_smooth_scroll_horizontal_pause_rendering(self):
         ae = self.ae

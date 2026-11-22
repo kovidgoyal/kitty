@@ -2471,7 +2471,16 @@ draw_image_layer(const UIRenderData *ui, ssize_t vao_idx, uint32_t start, uint32
         uint32_t run_end = run_start + 1;
         while (run_end < end && program_for_image(data + run_end) == program && data[run_end].smooth_scroll_region == region) run_end++;
         const bool clipped = region && region <= ssr->count;
-        if (clipped) enable_scissor(smooth_scroll_region_rect(ui, ssr->regions + region - 1));
+        if (clipped) {
+            const SmoothScrollRenderRegion *r = ssr->regions + region - 1;
+            Viewport vp = smooth_scroll_region_rect(ui, r);
+            if (r->uses_history) {
+                // The images in the scrollback above the region are visible when the screen is scrolled back
+                vp.height += vp.top - ui->screen_top;
+                vp.top = ui->screen_top;
+            }
+            enable_scissor(vp);
+        }
         draw_graphics(program, ui->grd.images, run_start, run_end - run_start, ui->inactive_text_alpha);
         if (clipped) disable_scissor();
         run_start = run_end;

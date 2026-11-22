@@ -1576,9 +1576,16 @@ resolve_cell_ref(const Image *img, id_type virt_ref_id, int32_t *start_row, int3
     return found;
 }
 
+// The placement at the root of the chain of parents of an image, which
+// decides whether it moves with a smooth scroll region
+typedef struct RootPlacement {
+    int32_t start_row, start_column, num_rows, num_cols;
+    uint32_t smooth_scroll_region;
+} RootPlacement;
+
 static bool
 resolve_parent_offset(
-    const GraphicsManager *self, const ImageRef *ref, int32_t *start_row, int32_t *start_column, bool *has_virtual_ancestor, uint32_t *smooth_scroll_region) {
+    const GraphicsManager *self, const ImageRef *ref, int32_t *start_row, int32_t *start_column, bool *has_virtual_ancestor, RootPlacement *root) {
     *start_row = 0;
     *start_column = 0;
     *has_virtual_ancestor = false;
@@ -1602,9 +1609,41 @@ resolve_parent_offset(
     }
     *start_row = ref->start_row + y;
     *start_column = ref->start_column + x;
-    // Images move with the smooth scroll region of their root ancestor
-    *smooth_scroll_region = ref->smooth_scroll_region;
+    // Images move with the smooth scroll region of their root ancestor. A
+    // root displayed using Unicode placeholders is the placeholder cell.
+    *root = (RootPlacement){
+        .start_row = ref->start_row,
+        .start_column = ref->start_column,
+        .num_rows = MAX(1, (int32_t)ref->effective_num_rows),
+        .num_cols = MAX(1, (int32_t)ref->effective_num_cols),
+        .smooth_scroll_region = ref->smooth_scroll_region};
     return true;
+}
+
+static bool
+image_in_smooth_scroll_region(
+    int32_t start_row, int32_t start_column, int32_t num_rows, int32_t num_cols, bool horizontal, int32_t left, int32_t top, int32_t right, int32_t bottom) {
+    // Whether an image that is not yet moving with a region moves with it: it
+    // must be within the rectangle across the direction of scrolling and
+    // intersect it along it. See docs/smooth-scrolling-protocol.rst
+    if (horizontal) return start_row >= top && start_row + num_rows <= bottom && start_column < right && start_column + num_cols > left;
+    return start_column >= left && start_column + num_cols <= right && start_row < bottom && start_row + num_rows > top;
+}
+
+static uint8_t
+layer_region_for_image(const ImageLayerRegion *regions, unsigned num_regions, const RootPlacement *p) {
+    // One plus the index of the region the image is drawn with, zero if none
+    if (p->smooth_scroll_region) {
+        for (unsigned k = 0; k < num_regions; k++)
+            if (regions[k].id == p->smooth_scroll_region) return (uint8_t)(k + 1);
+        return 0;
+    }
+    for (unsigned k = 0; k < num_regions; k++) {
+        const ImageLayerRegion *r = regions + k;
+        if (image_in_smooth_scroll_region(p->start_row, p->start_column, p->num_rows, p->num_cols, r->horizontal, r->left, r->top, r->right, r->bottom))
+            return (uint8_t)(k + 1);
+    }
+    return 0;
 }
 
 
@@ -1628,7 +1667,8 @@ grman_update_layers(
         bool changed = num_regions != self->last_num_layer_regions;
         for (unsigned k = 0; k < num_regions && !changed; k++) {
             const ImageLayerRegion *a = regions + k, *b = self->last_layer_regions + k;
-            changed = a->id != b->id || a->offset != b->offset || a->horizontal != b->horizontal;
+            changed = a->id != b->id || a->offset != b->offset || a->horizontal != b->horizontal || a->left != b->left || a->top != b->top ||
+                      a->right != b->right || a->bottom != b->bottom;
         }
         if (changed) {
             set_layers_dirty(self);
@@ -1669,10 +1709,15 @@ grman_update_layers(
                 continue;
             }
             int32_t start_row = ref->start_row, start_column = ref->start_column;
-            uint32_t smooth_scroll_region = ref->smooth_scroll_region;
+            RootPlacement root = {
+                .start_row = start_row,
+                .start_column = start_column,
+                .num_rows = MAX(1, (int32_t)ref->effective_num_rows),
+                .num_cols = MAX(1, (int32_t)ref->effective_num_cols),
+                .smooth_scroll_region = ref->smooth_scroll_region};
             if (ref->parent.img) {
                 bool has_virtual_ancestor;
-                if (!resolve_parent_offset(self, ref, &start_row, &start_column, &has_virtual_ancestor, &smooth_scroll_region)) {
+                if (!resolve_parent_offset(self, ref, &start_row, &start_column, &has_virtual_ancestor, &root)) {
                     if (!has_virtual_ancestor) {
                         refitr = remove_ref_itr(img, refitr);
                         ref_removed = true;
@@ -1700,20 +1745,15 @@ grman_update_layers(
                 r.bottom = r.top + (float)((height_px / screen_height_px) * screen_height);
             }
 
-            uint8_t region_idx = 0;
-            if (UNLIKELY(smooth_scroll_region)) {
-                for (unsigned k = 0; k < num_regions; k++) {
-                    if (regions[k].id == smooth_scroll_region) {
-                        region_idx = k + 1;
-                        if (regions[k].horizontal) {
-                            r.left += dx * regions[k].offset;
-                            r.right += dx * regions[k].offset;
-                        } else {
-                            r.top += dy * regions[k].offset;
-                            r.bottom += dy * regions[k].offset;
-                        }
-                        break;
-                    }
+            const uint8_t region_idx = UNLIKELY(num_regions) ? layer_region_for_image(regions, num_regions, &root) : 0;
+            if (region_idx) {
+                const ImageLayerRegion *lr = regions + region_idx - 1;
+                if (lr->horizontal) {
+                    r.left += dx * lr->offset;
+                    r.right += dx * lr->offset;
+                } else {
+                    r.top += dy * lr->offset;
+                    r.bottom += dy * lr->offset;
                 }
             }
 
@@ -2701,12 +2741,13 @@ smooth_scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, Ce
     const int32_t rows = (int32_t)ref->effective_num_rows, cols = (int32_t)ref->effective_num_cols;
     if (ref->smooth_scroll_region != d->region_id) {
         if (ref->smooth_scroll_region) return false; // moving with another region
-        // Images crossing the edges of the rectangle into cells outside it
-        // are left in place. When the scrollback is the overflow buffer above
-        // the rectangle, the images in it move as well.
-        if (ref->start_column < d->left || ref->start_column + cols > d->right) return false;
-        if (ref->start_row + rows > d->bottom) return false;
-        if (!d->uses_history && ref->start_row < d->top) return false;
+        if (d->uses_history) {
+            // The scrollback is the overflow buffer above the full width
+            // rectangle and moves with its rows, as do the images in it
+            if (ref->start_row >= d->bottom) return false;
+        } else if (!image_in_smooth_scroll_region(
+                       ref->start_row, ref->start_column, MAX(1, rows), MAX(1, cols), d->horizontal, d->left, d->top, d->right, d->bottom))
+            return false;
     }
     int32_t *pos = d->horizontal ? &ref->start_column : &ref->start_row;
     *pos += d->amt;
@@ -2740,7 +2781,22 @@ typedef struct SmoothScrollReleaseData {
 static bool
 smooth_scroll_release_filter_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
     const SmoothScrollReleaseData *d = data;
-    if (ref->smooth_scroll_region != d->region_id) return false;
+    if (ref->smooth_scroll_region != d->region_id) {
+        // Images that have not moved yet also move with the region when they
+        // are in its rectangle, see layer_region_for_image()
+        if (ref->smooth_scroll_region || ref->is_virtual_ref || ref->parent.img) return false;
+        if (!image_in_smooth_scroll_region(
+                ref->start_row,
+                ref->start_column,
+                MAX(1, (int32_t)ref->effective_num_rows),
+                MAX(1, (int32_t)ref->effective_num_cols),
+                d->horizontal,
+                d->left,
+                d->top,
+                d->right,
+                d->bottom))
+            return false;
+    }
     ref->smooth_scroll_region = 0;
     if (d->horizontal) return clip_ref_to_columns(ref, img, d->left, d->right - 1, d->clip_before, true, cell);
     return clip_ref_to_rows(ref, img, d->top, d->bottom - 1, d->clip_before, true, cell);
@@ -3259,7 +3315,7 @@ grman_render_data_as_python(GraphicsManager *self) {
             ans,
             i,
             Py_BuildValue(
-                "{sN sN sI si sK sK sI sO}",
+                "{sN sN sI si sK sK sI sO sI}",
                 "src_rect",
                 R(src_rect),
                 "dest_rect",
@@ -3275,7 +3331,9 @@ grman_render_data_as_python(GraphicsManager *self) {
                 "indexed_px_sz",
                 (unsigned int)r->indexed_px_sz,
                 "is_unscaled",
-                r->is_unscaled ? Py_True : Py_False));
+                r->is_unscaled ? Py_True : Py_False,
+                "smooth_scroll_region",
+                (unsigned int)r->smooth_scroll_region));
 #undef R
     }
     return ans;
