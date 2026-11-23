@@ -1228,6 +1228,47 @@ class TestScreen(BaseTest):
         self.ae(s.text_for_selection(False, True), ('1234 ', '5'))
         self.ae(s.text_for_selection(True, True), ('1234 ', '5', ''))
 
+    def test_selection_during_partial_scroll(self):
+        def screen(start, end=None):
+            s = self.create_screen(cols=10, lines=6)
+            parse_bytes(s, b'11111\r\n22222\r\n33333\r\n44444\r\n55555\r\n66666')
+            s.start_selection(0, start)
+            s.update_selection(5, start if end is None else end, True)
+            return s
+
+        # Codex appends history above its live viewport using a scroll region.
+        append_history = b'\x1b[?2026h\x1b[1;3r\x1b[3;1H\r\nnew\x1b[r\x1b[?2026l'
+        s = screen(4)
+        before = s.current_selections()
+        parse_bytes(s, append_history)
+        self.ae(s.text_for_selection(), ('55555',))
+        self.ae(s.current_selections(), before)
+
+        for row, expected in ((0, '11111'), (1, '22222')):
+            with self.subTest(scroll='up', row=row):
+                s = screen(row)
+                parse_bytes(s, append_history)
+                self.ae(s.text_for_selection(), (expected,))
+
+        scroll_down = b'\x1b[3;5r\x1b[1T'
+        for row, expected in ((1, ('22222',)), (3, ('44444',)), (4, ()), (5, ('66666',))):
+            with self.subTest(scroll='down', row=row):
+                s = screen(row)
+                parse_bytes(s, scroll_down)
+                self.ae(s.text_for_selection(), expected)
+
+        # A single selection cannot follow both the moving and stationary rows.
+        s = screen(1, 2)
+        parse_bytes(s, scroll_down)
+        self.ae(s.text_for_selection(), ())
+
+        s = screen(0)
+        parse_bytes(s, append_history)
+        parse_bytes(s, b'\x1b[1;3r\x1b[1T')
+        self.ae(s.text_for_selection(), ('11111',))
+        parse_bytes(s, b'\x1b[1+T')
+        self.ae(s.text_for_selection(), ('11111',))
+
     def test_scrollback_anchored_against_new_output(self):
         # When scrolled back, lines added to the scrollback must not move the
         # viewport. The anchoring must be applied immediately, not deferred to

@@ -416,26 +416,23 @@ selection_intersects_screen_lines(const Selections *selections, int a, int b) {
 
 
 static void
-index_selection(const Screen *self, Selections *selections, bool up, index_type top, index_type bottom) {
-    const bool needs_special_handling = self->linebuf == self->alt_linebuf && (top > 0 || bottom < self->lines - 1);
+reindex_selections(Screen *self, bool up, index_type top, index_type bottom, bool via_history) {
+    Selections *selections = &self->selections;
+    const bool partial_scroll = top > 0 || bottom < self->lines - 1;
+    // Pushing or pulling a history line also shifts the older rows above the screen.
+    const int first_affected = via_history ? INT_MIN : (int)top, last_affected = (int)bottom;
     for (size_t i = 0; i < selections->count; i++) {
         Selection *s = selections->items + i;
-        if (needs_special_handling) {
-            if (is_selection_empty(s)) continue;
-            int start = (int)s->start.y - s->start_scrolled_by;
-            int end = (int)s->end.y - s->end_scrolled_by;
-            int stop = MIN(start, end);
-            int sbottom = MAX(start, end);
-            if (stop < (int)top) {
-                if (sbottom < (int)top) continue;
+        if (partial_scroll) {
+            if (self->linebuf == self->alt_linebuf && is_selection_empty(s)) continue;
+            const int start = (int)s->start.y - (int)s->start_scrolled_by;
+            const int end = (int)s->end.y - (int)s->end_scrolled_by;
+            const int first_selected = MIN(start, end), last_selected = MAX(start, end);
+            if (last_selected < first_affected || first_selected > last_affected) continue;
+            const bool discards_selected_row = up ? !via_history && first_selected == (int)top : last_selected == last_affected;
+            if (first_selected < first_affected || last_selected > last_affected || discards_selected_row) {
                 clear_selection(selections);
                 return;
-            } else {
-                if (stop > (int)bottom) continue;
-                if (sbottom > (int)bottom) {
-                    clear_selection(selections);
-                    return;
-                }
             }
         }
         if (up) {
@@ -538,7 +535,7 @@ last_visited_prompt_viewport(const Screen *self, index_type *y, unsigned int *sc
     last_visited_prompt_index(self, top, bottom, false, scroll_history);                                \
     INDEX_GRAPHICS(1, scroll_history)                                                                   \
     self->is_dirty = true;                                                                              \
-    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, false, top, bottom); \
+    if (UNLIKELY(self->selections.count)) reindex_selections(self, false, top, bottom, scroll_history); \
     if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
 
 
@@ -2740,7 +2737,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     last_visited_prompt_index(self, top, bottom, true, add_to_history);                                \
     linebuf_clear_line(self->linebuf, bottom, true);                                                   \
     self->is_dirty = true;                                                                             \
-    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, true, top, bottom); \
+    if (UNLIKELY(self->selections.count)) reindex_selections(self, true, top, bottom, add_to_history); \
     if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
 
 void
