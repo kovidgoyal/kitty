@@ -725,6 +725,46 @@ class Rendering(FontBaseTest):
             self.assertTrue(s.smooth_scroll_define(1, 2, 0, 7, 1, 1, False, True))
             s.smooth_scroll(1, delta)
             self.ae(sprites()[split_x], before[complete_x])
+        # A char cut off by the end of the line, with its other cells in the
+        # overflow of the region, is rendered like one cut off by the edge of
+        # a region, as the leading part of the complete char, whether or not
+        # the complete char was rendered before
+
+        def char_at_end(ch, shift, scale=1):
+            lines = scale
+            s = self.create_screen(cols=10, lines=lines, scrollback=0)
+            width = 3 if scale == 1 else 1
+            s.cursor.x = 10 - width * scale
+            draw_multicell(s, ch, width=width, scale=scale)
+            if shift:
+                self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, lines, 1, False, True))
+                s.smooth_scroll(1, -10 * shift)
+            return s
+
+        def sprites_of(s, y=0):
+            line = s.line(y)
+            test_render_line(line)
+            return [line.sprite_at(x) for x in range(s.columns)]
+
+        for ch, shift, scale, cut_first in (
+            ('r', 1, 1, True),
+            ('s', 2, 1, True),
+            ('t', 1, 1, False),
+            ('u', 2, 1, False),
+            ('v', 1, 2, True),
+            ('w', 1, 2, False),
+        ):
+            start = 10 - 3 * (scale == 1) - 2 * (scale == 2)
+            for y in range(scale):
+                if cut_first:
+                    cut = sprites_of(char_at_end(ch, shift, scale), y)
+                complete = sprites_of(char_at_end(ch, 0, scale), y)
+                self.assertTrue(all(complete[start:]), f'{ch=} {y=}')
+                if not cut_first:
+                    cut = sprites_of(char_at_end(ch, shift, scale), y)
+                msg = f'{ch=} {shift=} {scale=} {y=} {cut_first=}'
+                self.ae(cut[start + shift :], complete[start : 10 - shift], msg)
+                self.ae(cut[: start + shift], [0] * (start + shift), msg)
 
     def test_line_thickness_scales_with_font_size(self):
         from kitty.fast_data_types import create_test_font_group, render_box_char
@@ -1153,6 +1193,25 @@ class Rendering(FontBaseTest):
         with ctx():  # all runs now share a single cache
             for text in texts + tuple(reversed(texts)):
                 self.ae(cold[text], shape(text), f'cached shaping differs for: {text!r}')
+        # A multicell char cut off by the end of the line, as can happen in a
+        # horizontally scrolled smooth scroll region, does not use the cached
+        # shaping of the complete char, which covers more cells than the line has
+        with ctx():
+            s = Screen(None, 1, 11)
+            s.draw('zabcdefg')
+            draw_multicell(s, 'w', width=3)
+            self.ae(test_shape(s.line(0), None)[-1][0], 3)
+            s = Screen(None, 1, 10)
+            s.draw('abcdefg')
+            draw_multicell(s, 'w', width=3)
+            self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 1, 1, False, True))
+            s.smooth_scroll(1, -10)
+            s.cursor.x = 0
+            s.draw('z')
+            self.ae(str(s.line(0)), 'zabcdefgw')
+            groups = test_shape(s.line(0), None)
+            self.ae(groups[-1][0], 2)
+            self.ae(sum(g[0] for g in groups), s.columns)
 
     def test_shaping_with_many_combining_chars(self):
         # cells can hold more codepoints than MAX_NUM_CODEPOINTS_PER_CELL when

@@ -2452,8 +2452,9 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     const CPUCell *c;
     while (num < line->xnum && cell_has_text(line->cpu_cells + num)) {
         index_type width = 1;
-        if ((c = line->cpu_cells + num)->is_multicell) { width = c->width * c->scale; }
-        num += width;
+        if ((c = line->cpu_cells + num)->is_multicell) { width = mcd_x_limit(c) - c->x; }
+        // a multicell char can be cut off by the end of the line
+        num = MIN(num + width, line->xnum);
     }
     PyObject *face = NULL;
     Font *font;
@@ -2688,8 +2689,8 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             // line and others elsewhere, by a horizontally scrolled smooth
             // scroll region. It must not be part of a run, as runs assume all
             // the cells of their chars are present, it is rendered separately,
-            // after the runs. A char cut off by the end of the line is
-            // rendered normally, as the end of a run.
+            // after the runs. This includes a char cut off by the end of the
+            // line, with its other cells in the overflow of a region.
             index_type num_incomplete = 0;
             if (cpu_cell->x) {
                 if (!i || !continues_multicell_char_horizontally(cpu_cell - 1, cpu_cell, cpu_cell->x - 1)) {
@@ -2701,7 +2702,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
             } else if (mcd_x_limit(cpu_cell) > 1) {
                 index_type n = 1;
                 while (n < mcd_x_limit(cpu_cell) && i + n < line->xnum && continues_multicell_char_horizontally(cpu_cell + n, cpu_cell, n)) n++;
-                if (n < mcd_x_limit(cpu_cell) && i + n < line->xnum) num_incomplete = n;
+                if (n < mcd_x_limit(cpu_cell)) num_incomplete = n;
             }
             if (num_incomplete) {
                 RENDER
@@ -2715,7 +2716,9 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 continue;
             }
             if (cpu_cell->x) {
-                if (cpu_cell->x + 1u < mcd_x_limit(cpu_cell)) i += mcd_x_limit(cpu_cell) - cpu_cell->x - 1u;
+                // Skip the remaining cells of the char. Chars cut off by the
+                // end of the line are handled above, the bound is a safeguard.
+                if (cpu_cell->x + 1u < mcd_x_limit(cpu_cell)) i = MIN(i + (mcd_x_limit(cpu_cell) - cpu_cell->x - 1u), line->xnum - 1u);
                 continue;
             }
             cell_font.scale = cpu_cell->scale;

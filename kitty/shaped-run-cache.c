@@ -141,7 +141,12 @@ fill_key(
         // (only possible via the Python API) are simply not cached
         if (lc.count > MAX_NUM_CODEPOINTS_PER_CELL) return false;
         uint16_t advance = 1;
-        if (cells->is_multicell) advance = (uint16_t)(cells->width * cells->scale);
+        // A multicell char cut off by the end of the run is keyed by the
+        // number of its cells actually present, so that it never shares the
+        // key of the complete char, whose shaping covers more cells than the
+        // run has. render_line() does not put such chars in runs, but
+        // test_shape() can.
+        if (cells->is_multicell) advance = (uint16_t)MIN((index_type)cells->width * cells->scale, num_cells);
         uint32_t hdr = ((uint32_t)advance << 16) | (uint32_t)lc.count;
         memcpy(scratch->data + used, &hdr, sizeof(hdr));
         used += sizeof(hdr);
