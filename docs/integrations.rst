@@ -81,6 +81,13 @@ also render images with the kitty graphics protocol.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Tool to browse images in a terminal using kitty's graphics protocol.
 
+.. _tool_mangap:
+
+`mangap <https://github.com/hongnoul/mangap>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Read manga in the terminal, with cover thumbnails in search results and pages
+rendered using kitty's graphics protocol.
+
 .. _tool_koneko:
 
 `koneko <https://github.com/twenty5151/koneko>`_
