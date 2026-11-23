@@ -176,12 +176,12 @@ by soft wraps:
     paragraph from its first strong character. ``CSI ? 2501 l`` turns this off.
     It has no effect unless ``CSI 8 h`` is set.
 
-``CSI Ps SP k``
-    ECMA-48 *Select Character Path* (SCP), in the form ``CSI Ps ; Ps SP k``.
-    ``Ps`` of ``2`` makes paragraphs written afterwards right to left, ``1``
-    or ``0`` left to right. When ``CSI ? 2501 h`` is set it only sets the
-    direction of paragraphs that have no strong character. The second
-    parameter is accepted and ignored, as are values of ``3`` or more.
+``CSI Ps ; Ps SP k``
+    ECMA-48 *Select Character Path* (SCP). A first parameter of ``2`` makes
+    paragraphs written afterwards right to left, ``1`` or ``0`` left to right.
+    When ``CSI ? 2501 h`` is set it only sets the direction of paragraphs that
+    have no strong character. The second parameter is accepted and ignored, as
+    are values of ``3`` or more.
 
 A line takes the settings in effect when text is first written to it in bidi
 mode, and keeps them for as long as it holds text. A line left without text
@@ -189,88 +189,82 @@ loses them. The lines of a paragraph are laid out together when any of them
 holds settings, including lines written with bidi mode off, and the first of
 them that holds settings gives the paragraph its direction.
 
+In bidi mode with ``CSI ? 2501 h`` set, an LRM or RLM written at the start of
+a line that starts a paragraph sets the direction of that paragraph, in place
+of its first strong character. The mark itself is discarded, as the
+:doc:`text sizing protocol </text-sizing-protocol>` requires for a zero width
+code point with no previous cell, and if several are written the last one
+wins. Whether ``CSI ? 2501 h`` is set when the mark is written decides
+whether it applies. ALM and the isolates have no effect there. The direction
+becomes part of the line's settings when text is written to the line in bidi
+mode, and ends with them. Until then it is dropped when text is written to the
+line with bidi mode off, or the line is erased as a whole by ED, DECALN or
+RIS, and it may
+be lost when the screen is resized.
+
 To detect support, query the modes (``CSI 8 $ p`` and ``CSI ? 2501 $ p``). A
 kitty without this feature answers ``0`` (unknown), and one with it ``2``
 (reset) or ``1`` (set). While the :opt:`force_ltr` option is set the answer is
-``4`` (permanently reset), as :opt:`force_ltr` turns all of this off wherever
-the modes are used. When :opt:`force_ltr` is cleared, the program's settings
-apply again.
+``4`` (permanently reset) and nothing is laid out. Lines written while it is
+set get no settings, so when it is cleared the program's settings apply to
+text written afterwards.
 
 The settings are per screen, like other per-screen modes. They are not carried
 into the alternate screen, which starts with them off, and the main screen's
 settings are restored on leaving it. The exception is a soft reset (DECSTR) on
 the alternate screen, which clears them, so they are off when the main screen
 returns. ``CSI ? s`` and ``CSI ? r`` save and restore both modes and the
-direction set by SCP.
+direction set by SCP. As for other modes, the saved values are shared by the
+two screens, so ``CSI ? r`` on the alternate screen can turn on settings saved
+on the main screen.
 
 Only the display is reordered. Text stays in logical order, so selecting and
 copying work on logical cells, and cell-based mouse reports carry logical
 columns. SGR-pixel mouse reports carry the pointer's pixel position as drawn.
+The text cursor, and any :doc:`extra cursors </multiple-cursors-protocol>`,
+are drawn at the visual column of their cell. A beam cursor on a right-to-left
+cell is drawn on the right edge of the cell, except in the last column, where it
+is drawn on its left edge.
+The input method editor is anchored at the left edge of the cursor cell, and
+the pre-edit text is drawn as without bidi mode.
 
 Text written with the :doc:`text sizing protocol </text-sizing-protocol>` at a
-scale (``s``) above 1 is never moved. Each scaled character keeps its columns
-on every row it covers, the text on either side of it is reordered within its
-own span, and its text is shaped in the direction guessed from the text, as
-without bidi mode. A multicell character of scale 1 is reordered as one unit,
-and its text is shaped in one direction, so text of mixed direction inside it
-is not reordered. A paragraph that holds an image placeholder is not reordered,
-and its text is shaped as without bidi mode.
+scale (``s``) above 1 is never moved: it keeps its columns, and the text on
+either side of it is reordered within its own span. A multicell character of
+scale 1 is reordered as one unit, so text of mixed direction inside it is not
+reordered. A paragraph that holds an image placeholder is not reordered.
 
 Right-to-left runs are shaped without contextual alternates (``calt``),
 whatever :opt:`disable_ligatures` is set to, as in a right-to-left run they can
 turn an operator such as ``=>`` into another one.
 
-The text cursor is drawn at the visual column of its cell. A beam cursor on a
-right-to-left cell is drawn past the cell, on its left edge in the last column.
-The input method editor is anchored at the left edge of the cursor cell, and
-the pre-edit text is drawn as without bidi mode.
-
-kitty honours isolates (LRI, RLI, FSI and PDI) and the marks LRM, RLM and ALM
-written after a character, but a mark directly between two letters of the
-other direction does not split their run. Embeddings and overrides (LRE,
-RLE, LRO, RLO and PDF) are treated as neutral. A paragraph is laid out from its
-rows in view and up to a screen height of its rows above and below them. With
-``CSI ? 2501 h`` the direction of a paragraph longer than that is taken from
-those rows, so it can change as the screen scrolls. Of the isolates in those
-rows the first 32 are honoured and later ones are treated as neutral. A
-private-use icon followed by spaces takes only its own cell where the
-embedding level changes between it and the spaces.
-
-The :doc:`text sizing protocol </text-sizing-protocol>` discards a zero-width
-code point that has no previous cell. In bidi mode with ``CSI ? 2501 h`` set,
-an LRM or RLM discarded this way still sets the direction of the paragraph
-its line starts, LRM left to right and RLM right to left, in place of that of
-its first strong character. If several are written, the last one wins. On a
-line with no settings, that is, none of whose text was written in bidi mode,
-the mark stays until text is written to it with bidi mode off, or the line is
-cleared as a whole: by ED 2 or ED 3, by ED 0 or ED 1 from another line, by
-DECALN or by RIS. Once text is written in bidi mode, the direction is part of
-the line's settings. It ends with them when an erase leaves the line without
-text, such as EL 0 from column 1, EL 2, ED 0 from column 1, ECH or DCH. On
-a line that holds no text yet it may be lost when the screen is resized. The
-mode when the mark is written decides: a mark written under ``CSI ? 2501 h``
-still applies if ``CSI ? 2501 l`` comes before its text, and a mark written
-with it reset has no effect. ALM and the isolates discarded this way have no
-effect either.
-
 In a vertically scrolling
-:doc:`smooth scroll region </smooth-scrolling-protocol>` that spans the width
-of the screen, lines are laid out as outside a region, and the rows the region
-moves keep their order, as does its partially visible row. A vertically
-scrolling region narrower than the screen is a span of its own on the rows it
-covers: its text is reordered within the region, and the text on either side
-within its own span. Text shaped as one run across the edge of such a region,
-a ligature or an icon with its space, is split by the edge. Text moved onto a
-row that has text beside the region is laid out with that row's settings. The
-cells of a horizontally scrolling region keep their columns and are shaped in
-the direction guessed from the text in the region, the text on either side is
-reordered within its own span, and text that moved wholly into the columns
-kept on the sides of the region comes back without settings. The rows covered
-by a horizontally scrolling region as wide as the screen are not reordered.
-With :opt:`pixel_scroll` off, the partially visible scrollback row at the top
-of a region that uses the scrollback is drawn as without bidi mode. When the
-first rows of a paragraph move out of a region into the rows it keeps on its
-sides, the rows left on screen are laid out as a paragraph of their own.
+:doc:`smooth scroll region </smooth-scrolling-protocol>` as wide as the screen,
+lines are laid out as outside a region. A vertically scrolling region narrower
+than the screen is a span of its own: its text is reordered within the region,
+and the text on either side within its own span. The cells of a horizontally
+scrolling region keep their columns, and the text on either side is reordered
+within its own span.
+
+Limitations:
+
+* Embeddings and overrides (LRE, RLE, LRO, RLO and PDF) are treated as
+  neutral. Of the isolates (LRI, RLI, FSI and PDI) in the rows laid out, only
+  the first 32 are honoured. A mark written between two letters of the other
+  direction does not split their run.
+* A paragraph is laid out from its rows in view and up to a screen height of
+  its rows above and below them. With ``CSI ? 2501 h`` the direction of a
+  longer paragraph is taken from those rows, so it can change as the screen
+  scrolls.
+* A ligature, or an icon with its trailing spaces, that crosses the edge of a
+  region narrower than the screen or a change of embedding level is split
+  there.
+* When a region moves the first rows of a paragraph into the rows it keeps out
+  of view, the rows left on screen are laid out as a paragraph of their own.
+  Text a horizontally scrolling region moves out of view comes back without
+  settings.
+* With :opt:`pixel_scroll` off, the partially visible scrollback row at the top
+  of a region that uses the scrollback is drawn as without bidi mode.
 
 An escape code to move the contents of the screen into the scrollback
 -------------------------------------------------------------------------------------

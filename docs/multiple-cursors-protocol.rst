@@ -11,7 +11,7 @@ actual cursor. This is sub-optimal since actual cursors implemented by the
 terminal have many niceties like smooth animation [anim]_, auto adjust colors [rv]_,
 etc. To address this and other use cases, this protocol allows terminal programs to
 request that the terminal display multiple cursors at specific locations on the
-screen [bidi]_.
+screen.
 
 Quickstart
 ----------------
@@ -50,7 +50,7 @@ one of:
 
 * ``2``: In this case the following co-ordinates are pairs of numbers pointing
   to cells in the form ``y:x`` with the origin in the top left corner at
-  ``1,1``. There can be any number of pairs, the terminal must treat each pair
+  ``1,1`` [bidi]_. There can be any number of pairs, the terminal must treat each pair
   as a new location to set a cursor.
 
 * ``4``: In this case the following co-ordinates are sets of four numbers that

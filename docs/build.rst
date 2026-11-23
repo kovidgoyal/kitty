@@ -84,12 +84,11 @@ Run-time dependencies:
 
 * ``python`` >= 3.12
 * ``harfbuzz`` >= 2.2.0
-* ``fribidi`` >= 1.0
 * ``zlib``
 * ``libpng``
 * ``liblcms2``
 * ``libxxhash``
-* ``libfribidi``
+* ``libfribidi`` >= 1.0
 * ``openssl``
 * ``shader-slang`` (needed only if you use custom shaders)
 * ``pixman`` (not needed on macOS)
