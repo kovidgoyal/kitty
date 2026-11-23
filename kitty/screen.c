@@ -6558,26 +6558,30 @@ screen_scrollbar_geometry(const Screen *self, float *handle_position, float *vis
 
 void
 screen_apply_selection(Screen *self, void *address_, size_t num_cells, size_t stride) {
-    uint8_t *address = address_, *strips = NULL;
+    // address_ is write only memory when called by the renderer, so the data
+    // is built in system memory and copied to it at the end, never read from it.
+    uint8_t *const dest = address_, *strips = NULL;
     // The data for the strips of the smooth scroll regions is written only
     // when there is room for it, as when called by the renderer
     const size_t num_strip_cells = self->smooth_scroll_render.num_strip_cells;
     if (num_strip_cells && num_cells == (size_t)render_lines_for_screen(self) * self->columns + num_strip_cells) {
-        // The data for the strips is copied from the data for the screen,
-        // which must be built elsewhere as address is write only memory
         num_cells -= num_strip_cells;
-        if (self->selection_scratch_sz < num_cells * stride) {
-            uint8_t *n = realloc(self->selection_scratch, num_cells * stride);
-            if (!n) fatal("Out of memory");
-            self->selection_scratch = n;
-            self->selection_scratch_sz = num_cells * stride;
-        }
-        strips = address + num_cells * stride;
-        address = self->selection_scratch;
+        strips = dest + num_cells * stride;
     }
-    uint8_t *const screen_data = address;
-    const size_t num_screen_cells = num_cells;
-    memset(address, 0, num_cells * stride);
+    const size_t num_screen_cells = num_cells, sz = num_screen_cells * stride;
+    if (!sz) {
+        // There are no screen cells for the strips to be copied from
+        if (strips) memset(strips, 0, num_strip_cells * stride);
+        return;
+    }
+    if (self->selection_scratch_sz < sz) {
+        uint8_t *n = realloc(self->selection_scratch, sz);
+        if (!n) fatal("Out of memory");
+        self->selection_scratch = n;
+        self->selection_scratch_sz = sz;
+    }
+    uint8_t *const screen_data = self->selection_scratch, *address = screen_data;
+    memset(address, 0, sz);
     const unsigned offset = pixel_scroll_enabled(self);
     const unsigned scrolled_by = rendered_scrolled_by(self);
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
@@ -6597,10 +6601,8 @@ screen_apply_selection(Screen *self, void *address_, size_t num_cells, size_t st
         if (ec->locations[i].cell < num_cells) address[(size_t)ec->locations[i].cell * stride] |= (ec->locations[i].shape & 7) << 2;
     }
     ec->dirty = false;
-    if (strips) {
-        memcpy(address_, screen_data, num_screen_cells * stride);
-        ssr_write_strip_selection_data(self, screen_data, strips, stride);
-    }
+    memcpy(dest, screen_data, sz);
+    if (strips) ssr_write_strip_selection_data(self, screen_data, strips, stride);
 }
 
 static index_type
