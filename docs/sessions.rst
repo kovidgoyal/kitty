@@ -481,11 +481,20 @@ Restored windows get back their size and position, tabs, layouts, splits and
 working directories.
 Programs that were running at the shell prompt are only restarted if they are
 listed in :opt:`restore_last_session_programs`, which by default contains
-common editors, pagers, system monitors and :program:`ssh`. Other windows are
+common editors, pagers, system monitors, :program:`ssh` and :program:`claude`. Other windows are
 restored as a shell in the same working directory, so that commands such as
 :code:`make deploy` are never re-run unexpectedly. Restarting programs
 requires :ref:`shell_integration`. The terminal output (scrollback) of windows
 is not restored.
+
+Windows running `Claude Code <https://claude.com/claude-code>`__ are restored
+by resuming the same conversation in the same tab and split, with
+:code:`claude --resume <session id>`. kitty finds the id of each running
+conversation in the files Claude Code keeps in :file:`~/.claude/sessions`
+(or under :code:`$CLAUDE_CONFIG_DIR`). Only the conversation is resumed,
+other arguments :program:`claude` was started with, such as an initial prompt,
+are not run again. This also applies to :ac:`save_as_session` with
+:code:`--use-foreground-process`.
 
 This complements :opt:`restore_session_after_logout` (see
 :ref:`restore_after_logout`), which saves kitty, including scrollback, only when

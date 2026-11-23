@@ -3263,7 +3263,7 @@ config is not supported.
 
 opt(
     'restore_last_session_programs',
-    'vim nvim vi nano emacs hx helix micro less man more htop btop top ssh',
+    'vim nvim vi nano emacs hx helix micro less man more htop btop top ssh claude',
     option_type='restore_last_session_programs',
     long_text="""
 A space separated list of programs that are re-started when restoring the last
@@ -3272,7 +3272,10 @@ other program at its shell prompt, it is restored as just the shell in the
 same working directory. This prevents commands such as :file:`rm` or
 :code:`make deploy` from being re-run automatically. The names are matched
 against the name of the program executable. Use :code:`*` to restart all
-programs. Use :code:`none` to never restart any programs.
+programs. Use :code:`none` to never restart any programs. Windows running
+:program:`claude` (Claude Code) are restored by resuming the same
+conversation, with :code:`claude --resume <session id>`, other
+arguments it was started with, such as a prompt, are not re-run.
 """,
 )
 

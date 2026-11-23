@@ -661,7 +661,7 @@ class Options:
     resize_in_steps: bool = False
     restore_last_session: bool = False
     restore_last_session_interval: float = 30.0
-    restore_last_session_programs: frozenset[str] = frozenset({'btop', 'emacs', 'helix', 'htop', 'hx', 'less', 'man', 'micro', 'more', 'nano', 'nvim', 'ssh', 'top', 'vi', 'vim'})
+    restore_last_session_programs: frozenset[str] = frozenset({'btop', 'claude', 'emacs', 'helix', 'htop', 'hx', 'less', 'man', 'micro', 'more', 'nano', 'nvim', 'ssh', 'top', 'vi', 'vim'})
     restore_session_after_logout: bool = False
     scrollback_fill_enlarged_window: bool = False
     scrollback_lines: int = 2000

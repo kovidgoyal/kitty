@@ -162,3 +162,78 @@ class TestLastSession(BaseTest):
             self.ae(content(), 'launch')
         finally:
             set_options(None)
+
+    def write_claude_registry(self, config_dir, file_pid, **fields):
+        import json
+
+        d = {'pid': file_pid, 'sessionId': '0d6f3f2e-5b8a-4c1e-9f00-1234567890ab', 'cwd': '/x', 'kind': 'interactive'}
+        d.update(fields)
+        os.makedirs(os.path.join(config_dir, 'sessions'), exist_ok=True)
+        with open(os.path.join(config_dir, 'sessions', f'{file_pid}.json'), 'w') as f:
+            json.dump(d, f)
+
+    def test_is_claude_cmdline(self):
+        from kitty.session import is_claude_cmdline as q
+
+        self.assertTrue(q(['claude']))
+        self.assertTrue(q(['claude', '--resume']))
+        self.assertTrue(q(['/Users/x/.local/bin/claude', '--model', 'opus']))
+        self.assertTrue(q(['node', '/usr/local/bin/claude']))
+        self.assertTrue(q(['/opt/homebrew/bin/node', '/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/cli.js']))
+        self.assertFalse(q([]))
+        self.assertFalse(q(None))
+        self.assertFalse(q(['vim', 'claude']))
+        self.assertFalse(q(['node', 'server.js']))
+        self.assertFalse(q(['claude-monitor']))
+
+    def test_claude_session_id_for_pid(self):
+        from kitty.session import claude_session_id_for_pid as q
+
+        cdir = os.path.join(self.tdir, 'claude-config')
+        self.write_claude_registry(cdir, 101)
+        self.ae(q(101, cdir), '0d6f3f2e-5b8a-4c1e-9f00-1234567890ab')
+        self.ae(q(102, cdir), '')  # no registry file
+        self.write_claude_registry(cdir, 103, pid=999)  # file not written by this process
+        self.ae(q(103, cdir), '')
+        self.write_claude_registry(cdir, 104, kind='bg')  # background agents are not panes to resume
+        self.ae(q(104, cdir), '')
+        self.write_claude_registry(cdir, 105, sessionId='x; rm -rf ~')  # must be safe to run in a shell
+        self.ae(q(105, cdir), '')
+        self.write_claude_registry(cdir, 106, sessionId=7)
+        self.ae(q(106, cdir), '')
+        with open(os.path.join(cdir, 'sessions', '107.json'), 'w') as f:
+            f.write('{not json')
+        self.ae(q(107, cdir), '')
+        self.write_claude_registry(cdir, 108)
+        os.remove(os.path.join(cdir, 'sessions', '108.json'))
+        os.makedirs(os.path.join(cdir, 'sessions', '108.json'))  # not a file
+        self.ae(q(108, cdir), '')
+        # CLAUDE_CONFIG_DIR is honoured when no directory is given
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {'CLAUDE_CONFIG_DIR': cdir}):
+            self.ae(q(101), '0d6f3f2e-5b8a-4c1e-9f00-1234567890ab')
+
+    def test_claude_resume_cmdline(self):
+        from kitty.session import claude_resume_cmdline as q
+
+        cdir = os.path.join(self.tdir, 'claude-config')
+        self.write_claude_registry(cdir, 201, sessionId='aaaa-1111')
+        self.write_claude_registry(cdir, 202, sessionId='bbbb-2222')
+        procs = [
+            {'pid': 200, 'cmdline': ['less', 'x'], 'cwd': '/x'},
+            {'pid': 201, 'cmdline': ['claude', '--model', 'opus', 'fix the bug'], 'cwd': '/x'},
+        ]
+        # Only the session is resumed, other arguments such as a prompt are not re-run
+        self.ae(q(procs, cdir), ['claude', '--resume', 'aaaa-1111'])
+        self.ae(q([{'pid': 202, 'cmdline': ['/usr/bin/node', '/usr/lib/node_modules/@anthropic-ai/claude-code/cli.js'], 'cwd': '/x'}], cdir),
+                ['claude', '--resume', 'bbbb-2222'])
+        self.ae(q(procs[:1], cdir), [])
+        self.ae(q([{'pid': 203, 'cmdline': ['claude'], 'cwd': '/x'}], cdir), [])  # claude without a registered session
+        self.ae(q([{'pid': 201, 'cmdline': None, 'cwd': None}], cdir), [])
+        # the default allowlist restarts claude
+        from kitty.options.types import defaults
+        from kitty.session import foreground_process_allowed, last_session_save_opts
+
+        self.assertIn('claude', defaults.restore_last_session_programs)
+        self.assertTrue(foreground_process_allowed(last_session_save_opts(defaults), ['claude', '--resume', 'aaaa-1111']))

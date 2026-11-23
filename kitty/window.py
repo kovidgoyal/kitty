@@ -2654,6 +2654,12 @@ class Window:
         if self.creation_spec and self.creation_spec.cmd:
             if self.creation_spec.cmd != resolved_shell(get_options()):
                 cmd = self.creation_spec.cmd
+                if ser_opts.use_foreground_process:
+                    from .session import claude_resume_cmdline, is_claude_cmdline
+
+                    if is_claude_cmdline(cmd) and (ccmd := claude_resume_cmdline(self.child.foreground_processes)):
+                        # keep the original executable, the window is not started via the shell so PATH may differ
+                        cmd = [cmd[0]] + ccmd[1:]
                 if is_ssh_kitten_cmdline(cmd):
                     if self.at_prompt:
                         if self.screen.last_reported_cwd:
@@ -2680,7 +2686,11 @@ class Window:
                         set_single_env_var_in_cmdline('KITTY_SI_RUN_COMMAND_AT_STARTUP', self.last_cmd_cmdline, kssh_cmdline)
                 unserialize_data['cmd_at_shell_startup'] = kssh_cmdline
             elif not self.at_prompt:
-                if self.last_cmd_cmdline:
+                from .session import claude_resume_cmdline
+
+                if ccmd := claude_resume_cmdline(self.child.foreground_processes):
+                    unserialize_data['cmd_at_shell_startup'] = ccmd
+                elif self.last_cmd_cmdline:
                     unserialize_data['cmd_at_shell_startup'] = self.last_cmd_cmdline
                 elif self.child.root_pid != (pid := self.child.pid_for_cwd) and pid is not None:
                     # we have a shell running some command

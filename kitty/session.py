@@ -6,7 +6,7 @@ import os
 import re
 import shlex
 import sys
-from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
@@ -789,6 +789,56 @@ def foreground_process_allowed(ser_opts: SaveAsSessionOptions, cmd: str | Sequen
     if not parts:
         return False
     return os.path.basename(parts[0]) in allowed
+
+
+# Claude Code sessions {{{
+# Claude Code records every running session in <config dir>/sessions/<pid>.json, so a window running
+# claude can be saved as "claude --resume <session id>" to get back the same conversation.
+claude_session_id_pat = re.compile(r'[0-9A-Za-z][0-9A-Za-z_-]{0,127}')
+
+
+def claude_config_dir() -> str:
+    return os.path.abspath(os.path.expanduser(os.environ.get('CLAUDE_CONFIG_DIR') or '~/.claude'))
+
+
+def is_claude_cmdline(cmdline: Sequence[str] | None) -> bool:
+    if not cmdline:
+        return False
+    if os.path.basename(cmdline[0]) == 'claude':
+        return True
+    # npm installs run the CLI with node
+    return (
+        os.path.basename(cmdline[0]).startswith('node')
+        and len(cmdline) > 1
+        and (os.path.basename(cmdline[1]) == 'claude' or '/@anthropic-ai/claude-code/' in cmdline[1])
+    )
+
+
+def claude_session_id_for_pid(pid: int, config_dir: str = '') -> str:
+    ''' The id of the interactive Claude Code session run by the process pid or an empty string. '''
+    path = os.path.join(config_dir or claude_config_dir(), 'sessions', f'{pid}.json')
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return ''
+    if not isinstance(data, dict) or data.get('pid') != pid or data.get('kind', 'interactive') != 'interactive':
+        return ''
+    sid = data.get('sessionId')
+    # The id is run in a shell when restoring, so only accept ids that cannot contain shell syntax
+    if isinstance(sid, str) and claude_session_id_pat.fullmatch(sid):
+        return sid
+    return ''
+
+
+def claude_resume_cmdline(processes: Iterable[Mapping[str, Any]], config_dir: str = '') -> list[str]:
+    ''' A command to resume the Claude Code session running in one of processes, or an empty list.
+    Other arguments, such as a prompt, are deliberately not kept so they are not re-run. '''
+    for p in processes:
+        if is_claude_cmdline(p.get('cmdline')) and (sid := claude_session_id_for_pid(p['pid'], config_dir)):
+            return ['claude', '--resume', sid]
+    return []
+# }}}
 
 
 # Restore last session {{{

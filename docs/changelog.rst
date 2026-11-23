@@ -127,6 +127,8 @@ Detailed list of changes
 
 - Optionally restore the last session when kitty starts, asking whether to save it when quitting and saving it periodically in the background to recover from crashes, see :opt:`restore_last_session`
 
+- :ac:`save_as_session` and :opt:`restore_last_session`: Windows running Claude Code are saved as :code:`claude --resume <session id>`, so the same conversations come back in the same tabs and splits
+
 - :ac:`save_as_session`: A new :code:`--allow-foreground-process` option to only save some foreground programs
 
 - Allow docking kitty windows to an edge of the OS window, below the tab bar,
