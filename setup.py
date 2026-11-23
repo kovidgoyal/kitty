@@ -1634,6 +1634,15 @@ def parse_go_version(x: str) -> Tuple[int, int, int]:
     return ans[0], ans[1], ans[2]
 
 
+def go_experiments_env(env: dict[str, str]) -> dict[str, str]:
+    # The simd experiment is needed for the simd package used by tools/simdstring
+    experiments = [x for x in env.get('GOEXPERIMENT', '').split(',') if x]
+    if 'simd' not in experiments and 'nosimd' not in experiments:
+        experiments.append('simd')
+    env['GOEXPERIMENT'] = ','.join(experiments)
+    return env
+
+
 @lru_cache(2)
 def go_cmd() -> list[str]:
     go = shutil.which('go')
@@ -1699,7 +1708,7 @@ def build_static_kittens(
         c = cmd + ['-o', dest, src]
         if args.verbose:
             print(shlex.join(c))
-        e = os.environ.copy()
+        e = go_experiments_env(os.environ.copy())
         # https://github.com/kovidgoyal/kitty/issues/6051#issuecomment-1441369828
         e.pop('PWD', None)
         if for_platform:

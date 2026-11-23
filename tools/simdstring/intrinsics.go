@@ -2,12 +2,10 @@
 
 package simdstring
 
-import (
-	"runtime"
-
-	"golang.org/x/sys/cpu"
-)
-
+// Whether hardware accelerated SIMD implementations are in use, and the
+// size of the vectors they use, in bytes. When the program is built without
+// GOEXPERIMENT=simd or the CPU has no usable SIMD instructions, the scalar
+// implementations are used and VectorSize is 1.
 var Have128bit = false
 var Have256bit = false
 var VectorSize = 1
@@ -44,40 +42,41 @@ var NotIndexByte2 func(data []byte, a, b byte) int = not_index_byte2_scalar
 // Return the index of the first byte in text that is neither a nor b. If all bytes are a or b, -1 is returned.
 var NotIndexByte2String func(text string, a, b byte) int = not_index_byte2_string_scalar
 
-func init() {
-	switch runtime.GOARCH {
-	case "amd64":
-		if cpu.Initialized {
-			Have128bit = cpu.X86.HasSSE42 && HasSIMD128Code
-			Have256bit = cpu.X86.HasAVX2 && HasSIMD256Code
-		}
-	case "arm64":
-		Have128bit = HasSIMD128Code
-		Have256bit = HasSIMD256Code
+// A set of implementations of all the functions in this package
+type impl_set struct {
+	name                   string
+	index_byte             func(data []byte, b byte) int
+	index_byte_string      func(text string, b byte) int
+	index_byte2            func(data []byte, a, b byte) int
+	index_byte2_string     func(text string, a, b byte) int
+	index_c0               func(data []byte) int
+	index_c0_string        func(text string) int
+	not_index_byte         func(data []byte, b byte) int
+	not_index_byte_string  func(text string, b byte) int
+	not_index_byte2        func(data []byte, a, b byte) int
+	not_index_byte2_string func(text string, a, b byte) int
+}
+
+func scalar_impl() *impl_set {
+	return &impl_set{
+		"scalar",
+		index_byte_scalar, index_byte_string_scalar, index_byte2_scalar, index_byte2_string_scalar,
+		index_c0_scalar, index_c0_string_scalar, not_index_byte_scalar, not_index_byte_string_scalar,
+		not_index_byte2_scalar, not_index_byte2_string_scalar,
 	}
-	if Have256bit {
-		IndexByte = index_byte_asm_256
-		IndexByteString = index_byte_string_asm_256
-		IndexByte2 = index_byte2_asm_256
-		IndexByte2String = index_byte2_string_asm_256
-		IndexC0 = index_c0_asm_256
-		IndexC0String = index_c0_string_asm_256
-		NotIndexByte = not_index_byte_asm_256
-		NotIndexByteString = not_index_byte_string_asm_256
-		NotIndexByte2 = not_index_byte2_asm_256
-		NotIndexByte2String = not_index_byte2_string_asm_256
-		VectorSize = 32
-	} else if Have128bit {
-		IndexByte = index_byte_asm_128
-		IndexByteString = index_byte_string_asm_128
-		IndexByte2 = index_byte2_asm_128
-		IndexByte2String = index_byte2_string_asm_128
-		IndexC0 = index_c0_asm_128
-		IndexC0String = index_c0_string_asm_128
-		NotIndexByte = not_index_byte_asm_128
-		NotIndexByteString = not_index_byte_string_asm_128
-		NotIndexByte2 = not_index_byte2_asm_128
-		NotIndexByte2String = not_index_byte2_string_asm_128
-		VectorSize = 16
+}
+
+func init() {
+	VectorSize = max(1, simd_vector_size())
+	Have128bit = VectorSize >= 16
+	Have256bit = VectorSize >= 32
+	if impls := simd_impls(); len(impls) > 0 {
+		// the first implementation is the fastest
+		i := impls[0]
+		IndexByte, IndexByteString = i.index_byte, i.index_byte_string
+		IndexByte2, IndexByte2String = i.index_byte2, i.index_byte2_string
+		IndexC0, IndexC0String = i.index_c0, i.index_c0_string
+		NotIndexByte, NotIndexByteString = i.not_index_byte, i.not_index_byte_string
+		NotIndexByte2, NotIndexByte2String = i.not_index_byte2, i.not_index_byte2_string
 	}
 }

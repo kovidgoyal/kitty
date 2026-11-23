@@ -20,7 +20,7 @@ func haystack(filler, needle byte, pos int) []byte {
 	return data
 }
 
-var sizes = []int{6, 327, 9875, 1198673}
+var sizes = []int{6, 15, 40, 327, 9875, 1198673}
 
 func BenchmarkIndexByte(b *testing.B) {
 	t := func(pos int, which string) {
