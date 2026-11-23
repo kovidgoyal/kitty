@@ -2379,13 +2379,13 @@ insert_characters(Screen *self, index_type at, index_type num, index_type y, boo
 }
 
 static void
-halve_multicell_width(Screen *self, index_type x_, index_type y_) {
-    const MulticellRows rows = multicell_char_rows(self, x_, y_);
+halve_multicell_width(Screen *self, MulticellColumns cols, MulticellRows rows, index_type y_) {
+    // Halve the width of the multicell char in the columns cols of rows,
+    // whose top row is y_. Only called for complete chars, as found by
+    // add_combining_chars(), which also provides cols and rows.
     const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y_);
+    const index_type x_ = cols.start;
     const unsigned new_width = cp[x_].width / 2;
-    // Only called for complete chars, see add_combining_chars()
-    const MulticellColumns cols = multicell_char_columns(cp, self->columns, x_);
-    x_ = cols.start;
     const index_type ws = mcd_x_limit(&cp[x_]);
     const index_type x_limit = cols.limit;
     const index_type half_x_limit = MIN(x_limit, x_ + ws / 2);
@@ -2590,8 +2590,12 @@ bind_registered_glyph(Screen *self, CPUCell *c, char_type first_char) {
 }
 
 static bool
-add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, index_type x, index_type y) {
-    // Adds num_chars combining chars to the cell at x, y with a single lookup in the text cache
+add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, MulticellColumns cols, index_type y, MulticellRows *rows_of_char) {
+    // Adds num_chars combining chars to the char whose cells in row y are in
+    // the columns cols, as found by multicell_char_columns(), with a single
+    // lookup in the text cache. When the char is a multicell char, its rows
+    // are stored in rows_of_char, if not NULL.
+    const index_type x = cols.start;
     CPUCell *cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, y);
     CPUCell *cell = cpu_cells + x;
     if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return false; // don't allow adding combining chars to a null cell
@@ -2599,7 +2603,6 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, inde
     if (self->lc->count >= MAX_NUM_CODEPOINTS_PER_CELL) return false; // don't allow too many combining chars to prevent DoS attacks
     // must be computed before the char is changed
     const MulticellRows rows = cell->is_multicell ? multicell_char_rows(self, x, y) : (MulticellRows){0};
-    const MulticellColumns cols = multicell_char_columns(cpu_cells, self->columns, x);
     // The text of a multicell char is in all its cells, so it can only be
     // changed if they are all present, rather than some of them being in the
     // overflow buffers of a smooth scroll region, which would leave cells
@@ -2624,13 +2627,9 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, inde
             for (index_type h = cols.start; h < cols.limit; h++) cpu_cells[h].ch_and_idx = ch_and_idx;
             linebuf_mark_line_dirty(self->linebuf, v);
         }
+        if (rows_of_char) *rows_of_char = rows;
     }
     return true;
-}
-
-static bool
-add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
-    return add_combining_chars(self, &ch, 1, x, y);
 }
 
 
@@ -2744,8 +2743,11 @@ static void
 draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     CPUCell *cp;
     linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
-    const index_type xpos = multicell_char_columns(cp, self->columns, s->prev.x).start;
-    if (!add_combining_char(self, ch, xpos, s->prev.y) || self->lc->count < 2) return;
+    // the extent of the char is found once, and used for both adding the char and halving its width
+    const MulticellColumns cols = multicell_char_columns(cp, self->columns, s->prev.x);
+    const index_type xpos = cols.start;
+    MulticellRows rows = {0};
+    if (!add_combining_chars(self, &ch, 1, cols, s->prev.y, &rows) || self->lc->count < 2) return;
     unsigned base_pos = self->lc->count - 2;
     if (ch == VS16) { // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
         if (self->lc->chars[base_pos + 1] == VS16 && !cp[xpos].is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
@@ -2760,7 +2762,7 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
             is_emoji_presentation_base(self->lc->chars[base_pos])) {
             const index_type old_limit = xpos + cpu_cell->scale * cpu_cell->width;
             const index_type new_limit = old_limit - (cpu_cell->scale * cpu_cell->width) / 2;
-            halve_multicell_width(self, xpos, s->prev.y);
+            halve_multicell_width(self, cols, rows, s->prev.y);
             // The cursor only needs to move if it is on the same line as the
             // narrowed char, the char can also be on the previous line when the
             // cursor is at the start of a line that the char soft wrapped onto.
@@ -2867,8 +2869,7 @@ draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProp
     }
     CPUCell *cp;
     linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
-    const index_type xpos = multicell_char_columns(cp, self->columns, s->prev.x).start;
-    add_combining_chars(self, run, n, xpos, s->prev.y);
+    add_combining_chars(self, run, n, multicell_char_columns(cp, self->columns, s->prev.x), s->prev.y, NULL);
     s->seg = seg;
     return n - 1;
 }
