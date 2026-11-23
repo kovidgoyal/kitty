@@ -120,11 +120,11 @@ def load_helpers(self):
     return s, g, pl, sl
 
 
-def put_helpers(self, cw, ch, cols=10, lines=5):
+def put_helpers(self, cw, ch, cols=10, lines=5, scrollback=5):
     iid = 0
 
     def create_screen():
-        s = self.create_screen(cols, lines, cell_width=cw, cell_height=ch)
+        s = self.create_screen(cols, lines, scrollback=scrollback, cell_width=cw, cell_height=ch)
         return s, 2 / s.columns, 2 / s.lines
 
     def put_cmd(
@@ -954,6 +954,32 @@ class TestGraphics(BaseTest):
         self.ae(put_image(s, 2 * cw, 2 * ch, num_cols=3)[1], 'OK')
         self.ae((s.cursor.x, s.cursor.y), (3, 2))
         rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + 3 * dx, 1 - 3 * dy)
+
+    def test_image_put_taller_than_screen(self):
+        # Placing an image that overflows the bottom of the screen by more than
+        # the screen height must scroll the image (and the text above it) by
+        # the full amount so that the image ends at the cursor line.
+        cw, ch = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, scrollback=100)
+        s.draw('abc')
+        s.carriage_return(), s.linefeed()
+        rows = 4 * s.lines
+        self.ae(put_image(s, cw, ch, num_cols=1, num_lines=rows)[1], 'OK')
+        self.ae((s.cursor.x, s.cursor.y), (1, s.lines - 1))
+        rect_eq(layers(s)[0]['dest_rect'], -1, 1 + (rows - s.lines) * dy, -1 + dx, -1)
+        self.ae(str(s.historybuf.line(rows - s.lines)), 'abc')
+        self.ae(str(s.linebuf.line(s.lines - 1)), '')
+        # The text following the image is drawn below it
+        s.carriage_return(), s.linefeed()
+        s.draw('xyz')
+        self.ae(str(s.linebuf.line(s.lines - 1)), 'xyz')
+        rect_eq(layers(s)[0]['dest_rect'], -1, 1 + (rows - s.lines + 1) * dy, -1 + dx, -1 + dy)
+        # A huge number of rows must not hang
+        s.reset()
+        s.draw('abc')
+        self.ae(put_image(s, cw, ch, num_cols=1, num_lines=2**31)[1], 'OK')
+        self.ae(s.cursor.y, s.lines - 1)
+        self.ae(str(s.historybuf.line(0)), '')
 
     def test_graphics_put_with_pixel_offsets(self):
         cw, ch = 10, 20

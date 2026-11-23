@@ -48,6 +48,11 @@
 static const ScreenModes empty_modes = {0, .mDECAWM = true, .mDECTCEM = true, .mDECARM = true};
 
 #define CSI_REP_MAX_REPETITIONS 65535u
+// Images at their natural size are at most 10000 pixels tall, so this is
+// enough lines to scroll even the tallest such image fully into the history.
+#define MAX_BLANK_LINES_SCROLLED_PAST_IMAGE 10000u
+
+static void scroll_past_image(Screen *self, unsigned int count);
 
 // Constructor/destructor {{{
 
@@ -2142,7 +2147,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
             self->cursor->x = 0;
             self->cursor->y++;
         }
-        if (self->cursor->y > self->margin_bottom) screen_scroll(self, self->cursor->y - self->margin_bottom);
+        if (self->cursor->y > self->margin_bottom) scroll_past_image(self, self->cursor->y - self->margin_bottom);
         screen_ensure_bounds(self, false, in_margins);
     }
     if (cmd->unicode_placement) {
@@ -2772,6 +2777,31 @@ screen_scroll(Screen *self, unsigned int count) {
         count--;
         INDEX_UP(add_to_history);
     }
+}
+
+static void
+scroll_past_image(Screen *self, unsigned int count) {
+    // Scroll the screen up by count lines after an image taller than the
+    // available space has been placed. Unlike screen_scroll() this does not
+    // stop after the scroll region is blank, as images (and the text above
+    // them in the history) must move by the full amount to end up above the
+    // cursor.
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    const bool add_to_history = self->linebuf == self->main_linebuf && self->margin_top == 0;
+    unsigned int n = MIN(count, self->lines);
+    count -= n;
+    while (n-- > 0) { INDEX_UP(add_to_history); }
+    if (!count) return;
+    // The scroll region is now blank so further scrolling only adds blank lines
+    // to the history and moves images. Bound the number of blank lines as the
+    // row count of an image is controlled by the client and the history can be
+    // unlimited in size. Anything further up is gone anyway.
+    if (add_to_history) {
+        n = MIN(count, MIN(self->historybuf->ynum, MAX_BLANK_LINES_SCROLLED_PAST_IMAGE));
+        count -= n;
+        while (n-- > 0) { INDEX_UP(true); }
+    }
+    if (count) INDEX_GRAPHICS(-(int)MIN(count, (unsigned int)(INT32_MAX / 2)), add_to_history);
 }
 
 void

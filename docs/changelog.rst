@@ -167,6 +167,8 @@ Detailed list of changes
 
 - :doc:`launch <launch>`: Run the program as requested instead of resolving it to a full path first, so that wrappers such as the :ref:`launch wrapper <launch_wrapper>` look it up in their own :envvar:`PATH` and the program sees itself invoked by name, as when run from a shell. Programs that would not be found in :envvar:`PATH`, such as ones found via :opt:`exe_search_path`, are still run via their full path. An empty or unset :envvar:`PATH` is handled the same way a shell would handle it (:iss:`10914`)
 
+- Graphics: Fix images that extend past the bottom of the screen by more than the screen height, such as tall images displayed by :doc:`icat <kittens/icat>`, not being scrolled fully, causing subsequent output to be drawn over them (:iss:`10924`)
+
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
