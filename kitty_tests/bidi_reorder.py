@@ -528,6 +528,17 @@ class TestBidiReorder(BaseTest):
         pb(s, '\x1b#8')
         frame(s)
         self.assertFalse(s.test_writes_are_recorded())
+        # wrapped output into a history that no longer holds the record does not keep the loop
+        s = self.create_screen(cols=5, lines=3, scrollback=3, options=opts)
+        pb(s, '\x1b[8hx\x1b[8l\r\n' + '\r\n'.join(['y'] * 10) + '\r\n' + 'z' * 23)
+        frame(s)
+        self.assertFalse(s.test_writes_are_recorded())
+        # while a record in the paragraph row 0 continues does
+        s = self.create_screen(cols=5, lines=2, scrollback=10, options=opts)
+        pb(s, '\x1b[8habcde\x1b[8lfghijklmn')
+        self.ae(s.historybuf.count, 1)
+        frame(s)
+        self.assertTrue(s.test_writes_are_recorded())
 
     def test_writes_follow_the_active_buffer_across_the_alternate_screen(self):
         s = self.create_screen(cols=5, lines=2, scrollback=10, options={'pixel_scroll': False})
@@ -1737,6 +1748,19 @@ class TestBidiReorder(BaseTest):
         frame(s)
         self.ae(''.join(s.cpu_cells(-1, x)['text'] or ' ' for x in order(s)).rstrip(), '       abc')
 
+    def test_mark_at_the_start_of_a_continuation_row(self):
+        # an RLM at the start of a row continuing the row above starts no paragraph, whether the row above is on screen or in
+        # the history
+        for lines in (2, 3):
+            with self.subTest(lines=lines):
+                s = self.create_screen(cols=5, lines=lines, scrollback=5)
+                pb(s, '\x1b[?2501habcde\x1b[8hfg' + ('\r\n' if lines == 2 else ''))
+                y = lines - 2
+                pb(s, f'\x1b[{y + 1};1H{RLM}f')
+                frame(s)
+                self.assertIsNone(order(s, y))
+                self.ae(s.test_bidi_line_record(y), (1, False, True))
+
     def test_tab_after_leading_mark(self):
         # a tab after a leading mark moves the cursor as CUP does, and the mark still sets the paragraph direction: left to right
         # with the Hebrew reversed among its own cells, or right to left
@@ -2070,6 +2094,24 @@ class TestBidiReorder(BaseTest):
                 s.cursor_position(2, 1)  # the first cell of NSI, which moved to row 1
                 self.ae(orders(s)[1:4], before[2:5])
                 self.ae(s.test_cursor_x(CURSOR_BLOCK)[0], before[2].index(0))
+
+    def test_rows_moved_onto_or_off_region_rows(self):
+        # the kept columns and span edges of a row depend on its screen row: a row moved by a scroll or IL/DL onto or off the
+        # rows of a horizontal or narrow region is laid out as a new screen would lay it out
+        for name, region in (('horizontal', (3, 5, 3, 8, 4, 2, False, True)), ('narrow', (3, 2, 3, 6, 4, 1, False))):
+            for op in ('\x1b[6;1H\n', '\x1b[1;1H\x1bM', '\x1b[2;1H\x1b[L', '\x1b[2;1H\x1b[M'):
+                seen = []
+                for framed in (True, False):
+                    s = self.screen('\x1b[2 k\x1b[3;2Hאב1c\x1b[4;6H1א\x1b[5;3Hdאג', cols=8, lines=6, scrollback=10)
+                    self._screens_to_verify_styles.remove(s)
+                    self.assertTrue(s.smooth_scroll_define(*region))
+                    if framed:
+                        frame(s)
+                    pb(s, op)
+                    frame(s)
+                    seen.append([(order(s, y), s.test_render_levels(y)) for y in range(s.lines)])
+                with self.subTest(region=name, op=op):
+                    self.ae(seen[0], seen[1])
 
     def assert_full_width_strip(self, s, top, shown, regions=None):
         # the strip of region 1 shows its rows as the screen does, and in its partial row above the row that left as it was

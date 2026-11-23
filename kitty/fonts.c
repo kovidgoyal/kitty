@@ -2387,7 +2387,7 @@ shape_run(
     float scale = apply_scale_to_font_group(fg, &rf);
     const uint8_t key_scale = (uint8_t)MAX(1u, rf.scale);
     uint8_t subscale = ((rf.subscale_n & 0xf) << 4) | (rf.subscale_d & 0xf);
-    const uint8_t key_direction = dir == DIRECTION_GUESS ? OPT(force_ltr) : dir;
+    const uint8_t key_direction = (dir == DIRECTION_GUESS && OPT(force_ltr)) ? DIRECTION_LTR : dir;
     ShapedRun cached;
     if (shaped_run_get(font->shaped_run_hash_table, first_cpu_cell, num_cells, tc, disable_ligature, key_direction, key_scale, subscale, &cached)) {
         if (restore_shaped_run(first_cpu_cell, first_gpu_cell, num_cells, &cached)) {
@@ -2465,38 +2465,32 @@ render_groups_(FontGroup *fg, RunFont rf, bool center_glyph, const TextCache *tc
         // group->num_glyphs, group->first_glyph_idx, group->first_cell_idx, group_state.num_glyphs);
         if (group->num_glyphs) {
             ensure_glyph_render_scratch_space(MAX(group->num_glyphs, group->num_cells));
-#define render(info, positions)                    \
-    render_group(                                  \
-        fg,                                        \
-        group->num_cells,                          \
-        group->num_glyphs,                         \
-        G(first_cpu_cell) + group->first_cell_idx, \
-        G(first_gpu_cell) + group->first_cell_idx, \
-        info,                                      \
-        positions,                                 \
-        rf,                                        \
-        global_glyph_render_scratch.glyphs,        \
-        group->num_glyphs,                         \
-        center_glyph,                              \
-        tc,                                        \
-        scale,                                     \
-        unscaled_metrics,                          \
-        rtl)
-            if (rtl) {
-                hb_glyph_info_t *info = G(info) + group->first_glyph_idx;
-                hb_glyph_position_t *positions = G(positions) + group->first_glyph_idx;
-                // A group of one glyph is in visual order already
-                if (group->num_glyphs > 1) {
-                    copy_rtl_glyphs_in_visual_order(info, positions, group->num_glyphs);
-                    info = global_glyph_render_scratch.info;
-                    positions = global_glyph_render_scratch.positions;
-                } else global_glyph_render_scratch.glyphs[0] = info->codepoint;
-                render(info, positions);
+            hb_glyph_info_t *info = G(info) + group->first_glyph_idx;
+            hb_glyph_position_t *positions = G(positions) + group->first_glyph_idx;
+            if (rtl && group->num_glyphs > 1) {
+                copy_rtl_glyphs_in_visual_order(info, positions, group->num_glyphs);
+                info = global_glyph_render_scratch.info;
+                positions = global_glyph_render_scratch.positions;
             } else {
-                for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
-                render(G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx);
+                // Left to right groups and groups of one glyph are in visual order already
+                for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = info[i].codepoint;
             }
-#undef render
+            render_group(
+                fg,
+                group->num_cells,
+                group->num_glyphs,
+                G(first_cpu_cell) + group->first_cell_idx,
+                G(first_gpu_cell) + group->first_cell_idx,
+                info,
+                positions,
+                rf,
+                global_glyph_render_scratch.glyphs,
+                group->num_glyphs,
+                center_glyph,
+                tc,
+                scale,
+                unscaled_metrics,
+                rtl);
         }
         idx++;
     }
@@ -2930,8 +2924,8 @@ render_line(
                 }
                 if (cpu_cell->x) {
                     // Skip the remaining cells of the char. Chars cut off by the
-                    // end of the line are handled above, the bound is a safeguard.
-                    if (cpu_cell->x + 1u < mcd_x_limit(cpu_cell)) i = MIN(i + (mcd_x_limit(cpu_cell) - cpu_cell->x - 1u), line->xnum - 1u);
+                    // end of the stretch are handled above, the bound is a safeguard.
+                    if (cpu_cell->x + 1u < mcd_x_limit(cpu_cell)) i = MIN(i + (mcd_x_limit(cpu_cell) - cpu_cell->x - 1u), end - 1u);
                     continue;
                 }
                 cell_font.scale = cpu_cell->scale;

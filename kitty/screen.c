@@ -398,7 +398,7 @@ bidi_buffer_rewrapped(Screen *self, LineBuf *lb) {
         bidi_recompute_may_reorder(self, lb);
         return;
     }
-    bool stamped = lb == self->main_linebuf && self->historybuf->bidi_stamped && self->historybuf->count && history_buf_endswith_wrap(self->historybuf);
+    bool stamped = lb == self->main_linebuf && bidi_main_continues_recorded_history(self);
     for (index_type y = 0; y < lb->ynum && !stamped; y++) stamped = line_has_bidi_bits(lb->line_attrs[y]);
     if (stamped) bidi_buffer_stamped(self, lb);
 }
@@ -636,6 +636,22 @@ bidi_mark_seam(Screen *self, index_type y) {
     if (y < lb->ynum) linebuf_mark_line_dirty(lb, y);
 }
 
+// The columns a row keeps and the edges of its spans depend on the regions covering its screen row, so the stored levels of a
+// row that moves between screen rows are only valid while no region is horizontal or narrower than the screen. Otherwise every
+// row in [top, bottom] is marked to be laid out again.
+static void
+bidi_mark_rows_moved_near_regions(Screen *self, index_type top, index_type bottom) {
+    if (LIKELY(!self->smooth_scroll.count)) return;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (r->horizontal || r->left || r->right != self->columns) {
+            LineBuf *lb = self->linebuf;
+            for (index_type y = top; y <= bottom && y < lb->ynum; y++) linebuf_mark_line_dirty(lb, y);
+            return;
+        }
+    }
+}
+
 // Before the rows [top, bottom] scroll up by one. An edit to a row going into the history is no longer seen, as the upload
 // does not check rows above the view, so the row below it is marked instead. Only a stamped buffer has rows holding a record,
 // so the history learns here that it gets one.
@@ -645,7 +661,16 @@ bidi_index_up_seams(Screen *self, index_type top, index_type bottom, bool to_his
     if (LIKELY(!lb->bidi_stamped)) return;
     lb->bidi_maybe_unstamp = true;
     bidi_layout_moved(self);
-    if (to_history) historybuf_note_bidi(self->historybuf, lb->line_attrs[top]);
+    bidi_mark_rows_moved_near_regions(self, top, bottom);
+    if (to_history) {
+        // A record left on a line erased of its text is not pushed, so that it does not keep the history stamped
+        LineAttrs *a = lb->line_attrs + top;
+        if (a->bidi_stamp != BIDI_STAMP_NONE) {
+            linebuf_init_line(lb, top);
+            line_has_bidi_record(a, lb->line);
+        }
+        historybuf_note_bidi(self->historybuf, *a);
+    }
     if (!to_history && top) linebuf_mark_line_dirty(lb, top - 1);
     if (top < bottom && (!to_history || lb->line_attrs[top].has_dirty_text)) linebuf_mark_line_dirty(lb, top + 1);
     linebuf_mark_line_dirty(lb, bottom);
@@ -661,8 +686,7 @@ bidi_note_line_from_history(Screen *self, index_type y) {
     if (lb->bidi_stamped) {
         bidi_line_may_reorder_from_cells(self, lb, y);
         if (history_buf_endswith_wrap(self->historybuf)) self->bidi_history_bits_stale = true;
-    } else if (line_has_bidi_bits(lb->line_attrs[y]) || (self->historybuf->bidi_stamped && history_buf_endswith_wrap(self->historybuf)))
-        bidi_buffer_gets_stamp(self, lb);
+    } else if (line_has_bidi_bits(lb->line_attrs[y]) || bidi_main_continues_recorded_history(self)) bidi_buffer_gets_stamp(self, lb);
 }
 
 static void
@@ -670,6 +694,7 @@ bidi_index_down_seams(Screen *self, index_type top, index_type bottom) {
     if (LIKELY(!self->linebuf->bidi_stamped)) return;
     self->linebuf->bidi_maybe_unstamp = true;
     bidi_layout_moved(self);
+    bidi_mark_rows_moved_near_regions(self, top, bottom);
     bidi_mark_seam(self, top);
     bidi_mark_seam(self, top + 1);
     bidi_mark_seam(self, bottom + 1);
@@ -2607,6 +2632,9 @@ set_record_at_leading_mark(Screen *self, char_type ch, uint8_t record) {
     // A leading mark fixes the direction of a line that would otherwise take it from its text. A line without a record gets
     // none: its first text written in bidi mode takes the direction.
     if (!((LineAttrs){.val = record}).bidi_auto) return;
+    // Main buffer row 0 continuing a history line starts no paragraph, as no other continuation row does, though the draw loop
+    // has no previous cell for it
+    if (!self->cursor->y && self->linebuf == self->main_linebuf && history_buf_endswith_wrap(self->historybuf)) return;
     LineAttrs *a = self->linebuf->line_attrs + self->cursor->y;
     a->bidi_auto = a->bidi_stamp == BIDI_STAMP_NONE;
     a->bidi_rtl = ch == 0x200f; // RLM
@@ -5483,6 +5511,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
         if (UNLIKELY(self->linebuf->bidi_stamped)) {
             self->linebuf->bidi_maybe_unstamp = true;
             bidi_layout_moved(self);
+            bidi_mark_rows_moved_near_regions(self, self->cursor->y, bottom);
             bidi_mark_seam(self, self->cursor->y);
             bidi_mark_seam(self, self->cursor->y + MIN(count, bottom + 1 - self->cursor->y));
             bidi_mark_seam(self, bottom + 1);
@@ -5533,6 +5562,7 @@ screen_delete_lines_impl(Screen *self, index_type start, index_type count, index
     if (UNLIKELY(self->linebuf->bidi_stamped)) {
         self->linebuf->bidi_maybe_unstamp = true;
         bidi_layout_moved(self);
+        bidi_mark_rows_moved_near_regions(self, start, bottom);
         bidi_mark_seam(self, start);
         bidi_mark_seam(self, bottom + 1 - MIN(count, bottom + 1 - start));
         bidi_mark_seam(self, bottom + 1);

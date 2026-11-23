@@ -162,6 +162,14 @@ bidi_history_line0_recorded(const Screen *self) {
     return ans;
 }
 
+// Whether main buffer row 0 continues a history paragraph holding a record within the rows its layout reads, which keeps the
+// main buffer stamped while none of its rows holds one
+static inline bool
+bidi_main_continues_recorded_history(const Screen *self) {
+    HistoryBuf *hb = self->historybuf;
+    return hb->bidi_stamped && hb->count && history_buf_endswith_wrap(hb) && bidi_history_line0_recorded(self);
+}
+
 bool bidi_live_frame_reorders_unstamped(const Screen *self);
 
 static inline bool

@@ -22,7 +22,9 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
         case CURSOR_BEAM:
         case CURSOR_UNDERLINE: {
             const CursorRenderInfo *cri = &WD.screen->cursor_render_info;
-            left = g.xstart + screen_cursor_drawn_x(WD.screen, cri->x, cri->y, cri->shape) * g.dx;
+            // The shape the cursor is drawn with, as in cell_update_uniform_block(), decides its column on a right-to-left cell
+            const CursorShape drawn_shape = (cri->is_focused || OPT(cursor_shape_unfocused) == NO_CURSOR_SHAPE) ? cri->shape : OPT(cursor_shape_unfocused);
+            left = g.xstart + screen_cursor_drawn_x(WD.screen, cri->x, cri->y, drawn_shape) * g.dx;
             bottom = g.ystart + (cri->y + 1) * g.dy;
             break;
         }
