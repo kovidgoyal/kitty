@@ -966,14 +966,14 @@ class TestGraphics(BaseTest):
         rows = 4 * s.lines
         self.ae(put_image(s, cw, ch, num_cols=1, num_lines=rows)[1], 'OK')
         self.ae((s.cursor.x, s.cursor.y), (1, s.lines - 1))
-        rect_eq(layers(s)[0]['dest_rect'], -1, 1 + (rows - s.lines) * dy, -1 + dx, -1)
+        rect_eq(layers(s)[0]['dest_rect'], -1, -1 - (rows - s.lines) * dy, -1 + dx, 1)
         self.ae(str(s.historybuf.line(rows - s.lines)), 'abc')
         self.ae(str(s.linebuf.line(s.lines - 1)), '')
         # The text following the image is drawn below it
         s.carriage_return(), s.linefeed()
         s.draw('xyz')
         self.ae(str(s.linebuf.line(s.lines - 1)), 'xyz')
-        rect_eq(layers(s)[0]['dest_rect'], -1, 1 + (rows - s.lines + 1) * dy, -1 + dx, -1 + dy)
+        rect_eq(layers(s)[0]['dest_rect'], -1, -1 - (rows - s.lines + 1) * dy, -1 + dx, 1 - dy)
         # A huge number of rows must not hang
         s.reset()
         s.draw('abc')
