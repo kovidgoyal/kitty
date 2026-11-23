@@ -18,14 +18,14 @@ from kitty.options.utils import (
     hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map, modify_font,
     mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
     parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remap_modifiers,
-    remote_control_password, resize_debounce_time, scrollback_lines, scrollback_pager_history_size,
-    scrollbar_color, shell_integration, show_hyperlink_targets, store_multiple, symbol_map,
-    tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
-    tab_font_style, tab_separator, tab_title_template, tab_title_wrap, text_fg_override_threshold,
-    titlebar_color, to_cursor_shape, to_cursor_unfocused_shape, to_font_size, to_layout_names,
-    to_modifiers, transparent_background_colors, underline_exclusion, url_prefixes, url_style,
-    visual_bell_duration, visual_window_select_characters, window_border_width, window_logo_scale,
-    window_size
+    remote_control_password, resize_debounce_time, restore_last_session_programs, scrollback_lines,
+    scrollback_pager_history_size, scrollbar_color, shell_integration, show_hyperlink_targets,
+    store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
+    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, tab_title_wrap,
+    text_fg_override_threshold, titlebar_color, to_cursor_shape, to_cursor_unfocused_shape,
+    to_font_size, to_layout_names, to_modifiers, transparent_background_colors, underline_exclusion,
+    url_prefixes, url_style, visual_bell_duration, visual_window_select_characters, window_border_width,
+    window_logo_scale, window_size
 )
 
 
@@ -1278,6 +1278,15 @@ class Parser:
 
     def resize_in_steps(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['resize_in_steps'] = to_bool(val)
+
+    def restore_last_session(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['restore_last_session'] = to_bool(val)
+
+    def restore_last_session_interval(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['restore_last_session_interval'] = positive_float(val)
+
+    def restore_last_session_programs(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['restore_last_session_programs'] = restore_last_session_programs(val)
 
     def restore_session_after_logout(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['restore_session_after_logout'] = to_bool(val)

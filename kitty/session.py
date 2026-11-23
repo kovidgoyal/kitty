@@ -6,7 +6,7 @@ import os
 import re
 import shlex
 import sys
-from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
@@ -683,6 +683,16 @@ the session is executed if you use this option and it is unsafe to use if you ar
 Note that this option requires :ref:`shell_integration` to work.
 
 
+--allow-foreground-process
+type=list
+Only used together with :option:`--use-foreground-process`. When specified, only
+foreground processes whose program name is in this list are saved, other windows are
+saved as just the shell in the same working directory. Can be specified multiple times
+to allow multiple programs, for example: :code:`--allow-foreground-process=vim --allow-foreground-process=less`.
+The program name is the name of the executable, without its directory. Windows running
+the ssh kitten are matched by the name :code:`ssh`. The special value :code:`*` allows all programs.
+
+
 --relocatable
 type=bool-set
 When saving the working directory for windows, do so as paths relative to the directory in which
@@ -759,6 +769,152 @@ def parse_save_as_options_spec_args(args: list[str]) -> tuple[SaveAsSessionOptio
 
 def default_save_as_session_opts() -> SaveAsSessionOptions:
     return parse_save_as_options_spec_args([])[0]
+
+
+def foreground_process_allowed(ser_opts: SaveAsSessionOptions, cmd: str | Sequence[str]) -> bool:
+    ''' Return True if the foreground command cmd may be saved, given the --allow-foreground-process setting. '''
+    allowed = ser_opts.allow_foreground_process
+    if not allowed or '*' in allowed:
+        return True
+    if isinstance(cmd, str):
+        try:
+            parts = shlex.split(cmd)
+        except ValueError:
+            parts = cmd.split()
+    else:
+        parts = list(cmd)
+    # skip leading environment variable assignments such as FOO=bar vim
+    while parts and '=' in parts[0] and not parts[0].startswith(('/', '=')):
+        parts = parts[1:]
+    if not parts:
+        return False
+    return os.path.basename(parts[0]) in allowed
+
+
+# Claude Code sessions {{{
+# Claude Code records every running session in <config dir>/sessions/<pid>.json, so a window running
+# claude can be saved as "claude --resume <session id>" to get back the same conversation.
+claude_session_id_pat = re.compile(r'[0-9A-Za-z][0-9A-Za-z_-]{0,127}')
+
+
+def claude_config_dir() -> str:
+    return os.path.abspath(os.path.expanduser(os.environ.get('CLAUDE_CONFIG_DIR') or '~/.claude'))
+
+
+def is_claude_cmdline(cmdline: Sequence[str] | None) -> bool:
+    if not cmdline:
+        return False
+    if os.path.basename(cmdline[0]) == 'claude':
+        return True
+    # npm installs run the CLI with node
+    return (
+        os.path.basename(cmdline[0]).startswith('node')
+        and len(cmdline) > 1
+        and (os.path.basename(cmdline[1]) == 'claude' or '/@anthropic-ai/claude-code/' in cmdline[1])
+    )
+
+
+def claude_session_id_for_pid(pid: int, config_dir: str = '') -> str:
+    ''' The id of the interactive Claude Code session run by the process pid or an empty string. '''
+    path = os.path.join(config_dir or claude_config_dir(), 'sessions', f'{pid}.json')
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return ''
+    if not isinstance(data, dict) or data.get('pid') != pid or data.get('kind', 'interactive') != 'interactive':
+        return ''
+    sid = data.get('sessionId')
+    # The id is run in a shell when restoring, so only accept ids that cannot contain shell syntax
+    if isinstance(sid, str) and claude_session_id_pat.fullmatch(sid):
+        return sid
+    return ''
+
+
+def claude_resume_cmdline(processes: Iterable[Mapping[str, Any]], config_dir: str = '') -> list[str]:
+    ''' A command to resume the Claude Code session running in one of processes, or an empty list.
+    Other arguments, such as a prompt, are deliberately not kept so they are not re-run. '''
+    for p in processes:
+        if is_claude_cmdline(p.get('cmdline')) and (sid := claude_session_id_for_pid(p['pid'], config_dir)):
+            return ['claude', '--resume', sid]
+    return []
+# }}}
+
+
+# Restore last session {{{
+LAST_SESSION_NAME = 'last-session.kitty-session'
+
+
+def last_session_path() -> str:
+    from .constants import cache_dir
+
+    return os.path.join(cache_dir(), LAST_SESSION_NAME)
+
+
+def last_session_save_opts(opts: Options | None = None) -> SaveAsSessionOptions:
+    opts = opts or get_options()
+    args = ['--save-only', '--use-foreground-process', '--os-window-geometry']
+    programs = opts.restore_last_session_programs
+    if '*' in programs:
+        args.append('--allow-foreground-process=*')
+    else:
+        # A value that cannot be a program name means "allow nothing" when the list is empty
+        args.extend(f'--allow-foreground-process={p}' for p in sorted(programs or ('/',)))
+    return parse_save_as_options_spec_args(args)[0]
+
+
+def is_last_session_instance(opts: Options, args: CLIOptions, is_panel: bool = False) -> bool:
+    ''' True if this kitty instance restores and remembers the last session. Instances started
+    to run a specific command or session neither restore nor overwrite it. '''
+    if not opts.restore_last_session or is_panel:
+        return False
+    if getattr(args, 'session', '') or getattr(args, 'args', None):
+        return False
+    if opts.startup_session and opts.startup_session != 'none':
+        return False
+    return True
+
+
+def should_restore_last_session(opts: Options, args: CLIOptions, path: str, is_panel: bool = False) -> bool:
+    ''' Decide whether the saved last session should be used as the startup session. '''
+    return is_last_session_instance(opts, args, is_panel) and os.path.isfile(path)
+
+
+class LastSessionSaver:
+    ''' Writes the last session state file, skipping writes when nothing changed. '''
+
+    def __init__(self, path: str = '') -> None:
+        self.path = path or last_session_path()
+        self.last_written = ''
+        self.disabled = False
+
+    def save(self, boss: BossType, force: bool = False) -> bool:
+        ''' Save the session. Never writes an empty session. Returns True if the file was written. '''
+        if self.disabled or not boss.os_window_map:
+            return False
+        try:
+            text = '\n'.join(boss.serialize_state_as_session(self.path, last_session_save_opts()))
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
+            return False
+        if not text.strip() or (text == self.last_written and not force):
+            return False
+        from .config import atomic_save
+
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        atomic_save(text.encode(), self.path)
+        self.last_written = text
+        return True
+
+    def discard(self) -> None:
+        ''' Delete the saved session and stop any further saves. '''
+        self.disabled = True
+        self.last_written = ''
+        with suppress(FileNotFoundError):
+            os.remove(self.path)
+# }}}
 
 
 def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
