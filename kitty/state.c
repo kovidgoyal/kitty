@@ -769,6 +769,10 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
     WITH_TAB(os_window_id, tab_id)
     BorderRects *br = &tab->border_rects;
     br->is_dirty = true;
+    // Border colors can change without anything else in the OS window
+    // changing, for instance when clearing bell indicators in an unfocused OS
+    // window, so ensure it is re-rendered.
+    osw->needs_render = true;
     br->num_border_rects = PyList_GET_SIZE(rects);
     br->num_rounded_rects = 0;
     ensure_space_for(br, rect_buf, BorderRect, br->num_border_rects + 1, capacity, 32, false);
