@@ -3,6 +3,21 @@
 // Distributed under terms of the GPLv3 license.
 
 
+// Internals, not part of the documented API
+// Must match CUSTOM_SHADER_WINDOW_TEXELS and CUSTOM_SHADER_WINDOWS_PER_ROW in state.h
+static const uint KITTY_WINDOW_TEXELS = 16;
+static const uint KITTY_WINDOWS_PER_ROW = 64;
+
+// Reads a texel of a combined texture sampler, see texel_fetch() in
+// kitty/shaders/utils.slang for why this is needed.
+uint
+kitty_fetch_texel(Sampler2D<uint> s, int2 pos) {
+    __target_switch {
+    case metal: __intrinsic_asm "$0.read(uint2($2))$z";
+    default: return s[pos];
+    }
+}
+
 public struct KittyCustomShaderData {
     public float4 src_rect, dest_rect; // used by the vertex shader internally
 
@@ -120,6 +135,9 @@ public struct KittyCustomShaderData {
     // Seconds since a command last started or finished in the active window,
     // negative if none has. Use with the command-start and command-finish events.
     public float active_window_command_state_age;
+    // The number of visible windows in the active tab, available via
+    // KittyTextures.windows. Zero in shaders that do not use KittyTextures.windows.
+    public uint num_windows;
 
     // Seconds since kitty was started, wrapped to [0, period_seconds). Unlike
     // timestamp, this keeps sub-millisecond precision however long kitty runs,
@@ -160,6 +178,133 @@ public struct KittyTexture {
     }
 }
 
+// The values of KittyWindow.progress_state
+public static const uint KITTY_PROGRESS_UNSET = 0;
+public static const uint KITTY_PROGRESS_SET = 1;
+public static const uint KITTY_PROGRESS_ERROR = 2;
+public static const uint KITTY_PROGRESS_INDETERMINATE = 3;
+public static const uint KITTY_PROGRESS_PAUSED = 4;
+
+// A visible window in the active tab
+public struct KittyWindow {
+    // Geometry of the window contents in UV co-ordinates (origin bottom-left).
+    // .xy = lower-left corner, .zw = width and height. Same as
+    // KittyCustomShaderData.active_window_geometry for the active window.
+    public float4 geometry;
+    // Extents beyond the contents, including a visible title bar, margin,
+    // border, padding and cell-size compensation.
+    // .xy = left/bottom, .zw = right/top, in viewport UV units. Same as
+    // KittyCustomShaderData.active_window_padding for the active window.
+    public float4 padding;
+    // The state of the progress bar set by the program running in the window
+    // with OSC 9;4, one of the KITTY_PROGRESS_* constants above.
+    public uint progress_state;
+    // The progress in [0, 1]. Meaningful only for KITTY_PROGRESS_SET and
+    // KITTY_PROGRESS_PAUSED, zero otherwise.
+    public float progress;
+    // The values of progress_state and progress before they last changed, so
+    // that shaders can animate from them to the current values, using progress_age.
+    public uint previous_progress_state;
+    public float previous_progress;
+    // Seconds since progress_state or progress last changed, negative if they never have.
+    public float progress_age;
+    public bool is_active;           // true for the active window
+    public bool is_alternate_screen; // true if the window is showing the alternate screen
+    public bool is_command_running;  // true while a command is running, requires shell integration
+    public bool is_last_bell_window; // true if the most recent bell was in this window
+
+    // Whether pos (UV co-ordinates) is inside the contents of this window, or,
+    // if include_padding is true, inside the area including the padding.
+    public bool
+    contains(float2 pos, bool include_padding = false) {
+        float2 lo = geometry.xy, hi = geometry.xy + geometry.zw;
+        if (include_padding) {
+            lo -= padding.xy;
+            hi += padding.zw;
+        }
+        return all(pos >= lo) && all(pos < hi);
+    }
+}
+
+// The visible windows in the active tab. Loop over them with:
+//   for (uint i = 0; i < t.windows.count; i++) { KittyWindow w = t.windows.get(i); ... }
+// or use window_at() to find the window at a position.
+public struct KittyWindows {
+    // The number of windows, the same as KittyCustomShaderData.num_windows
+    public uint count;
+    // The texture describing the windows. Use get() rather than reading it directly.
+    public Sampler2D<uint> data;
+    // Copies of KittyCustomShaderData.viewport_size_pixels, timestamp_seconds and timestamp_fraction
+    public uint2 viewport_size_pixels;
+    public uint timestamp_seconds;
+    public float timestamp_fraction;
+
+    uint
+    texel(uint idx, uint offset) {
+        uint x = (idx % KITTY_WINDOWS_PER_ROW) * KITTY_WINDOW_TEXELS + offset;
+        return kitty_fetch_texel(data, int2(int(x), int(idx / KITTY_WINDOWS_PER_ROW)));
+    }
+
+    // The geometry of window idx, as KittyWindow.geometry. Cheaper than get()
+    // when only the geometry is needed, for example, when searching for a window.
+    public float4
+    geometry(uint idx) {
+        // left, top, right, bottom in pixels, with the origin at the top left
+        float4 edges = float4(texel(idx, 0), texel(idx, 1), texel(idx, 2), texel(idx, 3));
+        float2 size = max(float2(viewport_size_pixels), float2(1.f));
+        return float4(edges.x / size.x, 1.f - edges.w / size.y, (edges.z - edges.x) / size.x, (edges.w - edges.y) / size.y);
+    }
+
+    // The padding of window idx, as KittyWindow.padding
+    public float4
+    padding(uint idx) {
+        float2 size = max(float2(viewport_size_pixels), float2(1.f));
+        return float4(texel(idx, 4), texel(idx, 5), texel(idx, 6), texel(idx, 7)) / float4(size, size);
+    }
+
+    // The window at index idx, which must be less than count
+    public KittyWindow
+    get(uint idx) {
+        KittyWindow w;
+        w.geometry = geometry(idx);
+        w.padding = padding(idx);
+        uint flags = texel(idx, 8);
+        w.progress_state = flags & 7u;
+        w.previous_progress_state = (flags >> 7) & 7u;
+        w.is_active = (flags & (1u << 3)) != 0u;
+        w.is_alternate_screen = (flags & (1u << 4)) != 0u;
+        w.is_command_running = (flags & (1u << 5)) != 0u;
+        w.is_last_bell_window = (flags & (1u << 6)) != 0u;
+        uint percents = texel(idx, 9);
+        w.progress = float(percents & 0xffu) / 100.f;
+        w.previous_progress = float((percents >> 8) & 0xffu) / 100.f;
+        uint changed_seconds = texel(idx, 10);
+        if (changed_seconds == 0xffffffffu) w.progress_age = -1.f;
+        // Subtract as integers first to stay exact however long kitty runs
+        else w.progress_age = max(0.f, float(int(timestamp_seconds - changed_seconds)) + (timestamp_fraction - float(texel(idx, 11)) * 1e-9f));
+        return w;
+    }
+
+    // The index of the window containing pos (UV co-ordinates), or -1 if there
+    // is none. With include_padding, the area around the window contents, as
+    // described by KittyWindow.padding, counts too. This checks every window,
+    // so it is best called once per pixel, using get() on the result.
+    public int
+    window_at(float2 pos, bool include_padding = false) {
+        for (uint i = 0; i < count; i++) {
+            float4 g = geometry(i);
+            float2 lo = g.xy, hi = g.xy + g.zw;
+            if (include_padding) {
+                float4 p = padding(i);
+                lo -= p.xy;
+                hi += p.zw;
+            }
+            if (all(pos >= lo) && all(pos < hi)) return int(i);
+        }
+        return -1;
+    }
+}
+
 public struct KittyTextures {
     // the buffer containing the original rendered pixels from kitty's own rendering. This will
     // be updated with the output color only after all custom shaders in this group have run
@@ -171,6 +316,8 @@ public struct KittyTextures {
     public KittyTexture a;
     public KittyTexture b;
     public KittyTexture persist;
+    // The visible windows in the active tab
+    public KittyWindows windows;
 
     public float2 pos; // the position of this pixel in the viewport (UV coordinates, [0,1] range, origin at bottom-left)
 

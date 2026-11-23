@@ -68,6 +68,8 @@ uniform Sampler2D a;
 uniform Sampler2D b;
 [[vk::binding(5)]]
 uniform Sampler2D persist;
+[[vk::binding(12)]]
+uniform Sampler2D<uint> kitty_windows; // a single channel R32UI texture describing the visible windows
 
 // The size of the pointer map grid, POINTER_MAP_SIZE is defined by kitty from state.h when compiling
 static const float pointer_map_size = POINTER_MAP_SIZE;
@@ -118,6 +120,7 @@ pipeline_fragment_main(float2 backbuffer_pos, int group, float4 viewport, float 
         { a, src_scale, max_pos },
         { b, src_scale, max_pos },
         { persist, src_scale, max_pos },
+        { csd.num_windows, kitty_windows, csd.viewport_size_pixels, csd.timestamp_seconds, csd.timestamp_fraction },
         viewport_pos,
         viewport,
         animation_progress,

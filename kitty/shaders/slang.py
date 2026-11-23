@@ -1504,6 +1504,7 @@ SHADER_BINDING_SLOTS = MappingProxyType(
         'KittyCustomShaderData': 10,
         # textures added after the uniform blocks
         'cell_styles': 11,
+        'kitty_windows': 12,
     }
 )
 
@@ -1995,6 +1996,8 @@ SHADER_ANIMATION_EVENTS: frozenset[str] = frozenset(
         'command-finish',
         'alternate-screen-enter',
         'alternate-screen-exit',
+        'progress-start',
+        'progress-stop',
     }
 )
 

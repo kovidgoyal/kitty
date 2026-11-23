@@ -150,6 +150,28 @@ def screen_shake(window_id: str, geometry: tuple[int, int, int, int]) -> None:
         remote_control('send-text', '-m', f'id:{wid}', "printf '\\\\a'\r")
 
 
+def set_progress(wid: int, state: int, percent: int = 0) -> None:
+    # Have the shell in the window report progress with OSC 9;4. Backslashes
+    # are doubled as send-text interprets escapes.
+    cmd = f"printf '\\033]9;4;{state};{percent}\\033\\\\'"
+    remote_control('send-text', '-m', f'id:{wid}', cmd.replace('\\', '\\\\') + '\r')
+
+
+def progress_bar(window_id: str, geometry: tuple[int, int, int, int]) -> None:
+    # Progress of unknown length in one window, a bar filling up in another
+    # and an error in the third
+    time.sleep(0.2)
+    set_progress(2, 3)
+    for percent in (10, 35, 60, 85, 100):
+        set_progress(1, 1, percent)
+        time.sleep(0.6)
+    set_progress(3, 2)
+    time.sleep(0.8)
+    set_progress(1, 0)
+    time.sleep(0.8)
+    set_progress(3, 0)
+
+
 metadata: dict[str, dict[str, Any]] = {
     # Background
     'inside-the-matrix': {'category': 'background', 'tagline': 'See the bones of reality.'},
@@ -202,6 +224,14 @@ metadata: dict[str, dict[str, Any]] = {
         'animate': screen_shake,
         'category': 'bell',
         'tagline': 'Shake the window that rang the bell in random directions.',
+        'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
+    },
+    # Progress
+    'progress-bar': {
+        'animate': progress_bar,
+        'duration': 5,
+        'category': 'progress',
+        'tagline': 'Draw the progress bars reported by programs with a glow.',
         'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
     },
     # Retro terminals

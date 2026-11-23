@@ -304,6 +304,9 @@ typedef struct {
     ProgressBarState progress_state;
     uint8_t progress_percent;                   // 0-100
     monotonic_t progress_indeterminate_anim_at; // animation start time for indeterminate progress
+    uint8_t progress_previous_percent;          // the value of progress_percent before the last change
+    ProgressBarState progress_previous_state;   // the value of progress_state before the last change
+    monotonic_t progress_changed_at;            // when progress_state or progress_percent last changed, zero if never
     struct {
         char ch;
         uint8_t *canvas;

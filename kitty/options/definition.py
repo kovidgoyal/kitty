@@ -730,6 +730,10 @@ as the scrollbar .
     a horizontal progress bar on the bottom edge
 :code:`hidden`
     dont show the progress bar
+
+To draw progress bars with a shader instead, use :opt:`custom_shaders`, for example:
+:code:`custom_shaders progress-bar`. Custom shaders that react to progress replace
+the builtin progress bar regardless of this setting.
 """,
 )
 

@@ -34,6 +34,7 @@ from kitty.shaders.slang import (
     defines_pointer_map,
     fixup_metal_code,
     get_custom_pipeline_src,
+    get_custom_shader_src,
     metal_compiler_available,
     msl_validation_command,
     parse_pipeline_definition,
@@ -357,6 +358,34 @@ struct vertex_main_Result_0
             (True, False, False, False, True),  # and over a simultaneous start
         ]
         self.ae(simulate_custom_shader_animation(p, ticks), expected)
+
+    def test_custom_shader_progress_events_and_windows(self):
+        import re
+
+        from kitty.fast_data_types import CUSTOM_SHADER_WINDOW_TEXELS, CUSTOM_SHADER_WINDOWS_PER_ROW, simulate_custom_shader_animation
+
+        # The layout of the windows texture must be the same in C and the shaders
+        src = get_custom_shader_src('types').decode()
+
+        def slang_constant(name: str) -> int:
+            m = re.search(rf'static const uint {name} = (\d+);', src)
+            assert m is not None, f'{name} not found in types.slang'
+            return int(m.group(1))
+
+        self.ae(slang_constant('KITTY_WINDOW_TEXELS'), CUSTOM_SHADER_WINDOW_TEXELS)
+        self.ae(slang_constant('KITTY_WINDOWS_PER_ROW'), CUSTOM_SHADER_WINDOWS_PER_ROW)
+        # The texels used by KittyWindows.get() must fit in a window's texels
+        used = [int(x) for x in re.findall(r'texel\(idx, (\d+)\)', src)]
+        self.assertTrue(used)
+        self.assertLess(max(used), CUSTOM_SHADER_WINDOW_TEXELS)
+
+        p = parse_pipeline_definition(
+            ['startgroup', 'animation_start progress-start', 'animation_stop progress-stop', 'animation_step 0', 'shaders progress-bar', 'endgroup'], 'test'
+        )
+        self.ae(p['groups'][0]['animation_start'], ('progress-start',))
+        self.ae(p['groups'][0]['animation_end_events'], ('progress-stop',))
+        ticks: list[tuple[str, ...]] = [(), ('progress-start',), (), ('progress-stop',), ()]
+        self.ae(simulate_custom_shader_animation(p, ticks), [(False,), (True,), (True,), (False,), (False,)])
 
     def test_custom_shader_focus_changes_between_frames(self):
         # https://github.com/kovidgoyal/kitty/issues/10871 focus changes that

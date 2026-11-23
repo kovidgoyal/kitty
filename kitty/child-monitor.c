@@ -1099,6 +1099,7 @@ prepare_to_render_os_window(
     *all_windows_have_same_bg = true;
     *num_visible_windows = 0;
     color_type first_window_bg = 0;
+    bool progress_bar_visible = false;
     os_window->needs_layers = os_window->needs_layers || (OPT(cursor_trail) && tab->cursor_trail.needs_render);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
@@ -1106,6 +1107,7 @@ prepare_to_render_os_window(
         if (w->visible && WD.screen) {
             screen_check_pause_rendering(WD.screen, now);
             *num_visible_windows += 1;
+            if (WD.screen->progress_state != PROGRESS_STATE_UNSET) progress_bar_visible = true;
             color_type window_bg =
                 colorprofile_to_color(
                     WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg)
@@ -1197,7 +1199,7 @@ prepare_to_render_os_window(
             // placed image is not drawn until something else causes a re-render, see #10875
             os_window->needs_layers = os_window->needs_layers || screen_needs_rendering_in_layers(os_window, w, WD.screen);
             if (WD.screen->start_visual_bell_at | WD.screen->start_drag_overlay_at) needs_render = true;
-            if (OPT(progress_bar) != PROGRESS_BAR_HIDDEN && WD.screen->progress_state == PROGRESS_STATE_INDETERMINATE) needs_render = true;
+            if (progress_bar_is_animating(WD.screen, now)) needs_render = true;
             // Prepare window title bar screen data for GPU
             WindowRenderData *trd = &w->window_title_render_data;
             if (trd->screen && trd->geometry.bottom > trd->geometry.top && trd->geometry.right > trd->geometry.left) {
@@ -1217,6 +1219,11 @@ prepare_to_render_os_window(
             // this deadline; do it here so user-idle fires on time
             set_maximum_wait(OPT(cursor_stop_blinking_after) - time_since_last_activity);
         }
+    }
+    if (progress_bar_visible != os_window->progress_bar_visible) {
+        // Changes of the active tab and of which windows are visible count too
+        os_window->progress_bar_visible = progress_bar_visible;
+        os_window->shader_anim_event_registry |= 1u << (progress_bar_visible ? SHADER_ANIM_EVENT_PROGRESS_START : SHADER_ANIM_EVENT_PROGRESS_STOP);
     }
     {
         ShaderAnimEventMask events = os_window->shader_anim_event_registry;
@@ -1307,7 +1314,7 @@ render_prepared_os_window(
             if (is_active_window) active_window = w;
             draw_cells(&WD, os_window, is_active_window, false, num_of_visible_windows == 1, w, NULL, now);
             if (WD.screen->start_visual_bell_at | WD.screen->start_drag_overlay_at) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
-            if (OPT(progress_bar) != PROGRESS_BAR_HIDDEN && WD.screen->progress_state == PROGRESS_STATE_INDETERMINATE) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
+            if (progress_bar_is_animating(WD.screen, now)) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
             WindowRenderData *trd = &w->window_title_render_data;
             if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top)
                 draw_cells(trd, os_window, i == tab->active_window, true, false, NULL, w, now);

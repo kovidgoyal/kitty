@@ -1,0 +1,15 @@
+# Draw the progress bars reported by programs with OSC 9;4 using a shader,
+# replacing kitty's builtin progress bars, as this group subscribes to
+# progress-start.
+startgroup
+    animation_start progress-start
+    animation_stop progress-stop
+    # keep the group running for a little while after the last bar is cleared,
+    # so that the shader can fade it out
+    animation_duration 1
+    animation_reverse 600
+    # no periodic redraws, kitty renders frames for a second after the
+    # progress changes and continuously for bars of unknown length
+    animation_step 0
+    shaders progress-bar
+endgroup

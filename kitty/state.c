@@ -631,6 +631,9 @@ destroy_os_window_item(OSWindow *w) {
     if (w->persist_fbo_id) free_framebuffer(&w->persist_fbo_id);
     free(w->pointer_map.data);
     zero_at_ptr(&w->pointer_map);
+    if (w->shader_windows.texture) free_texture(&w->shader_windows.texture);
+    free(w->shader_windows.uploaded);
+    zero_at_ptr(&w->shader_windows);
 }
 
 bool

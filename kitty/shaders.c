@@ -396,6 +396,7 @@ typedef struct CustomShaderPipeline {
     size_t num_groups;
     bool active;
     bool bypass_builtin_trail;                      // true when any group subscribes to cursor-trail-move
+    bool bypass_builtin_progress_bar;               // true when any group subscribes to progress-start
     ShaderAnimEventMask all_animation_start_events; // union of the start and toggle events of all groups
     bool has_pointer_map;                           // true when a shader defines pointer_map() to move pointer events
     uint32_t pointer_map_groups;                    // bitmask of the groups with shaders whose pointer_map() is used
@@ -678,6 +679,9 @@ init_custom_programs(void) {
         // after shader compilation (the focus-in event fired before shaders were
         // compiled and was consumed without being processed).
         if (osw->is_focused) record_os_window_focus_change_for_shaders(osw, true);
+        // Similarly, make progress-start fire on the first render if progress
+        // bars are already being shown
+        osw->progress_bar_visible = false;
     }
     debug_rendering(
         "Custom shaders: %zu program(s), %zu group(s), textures_mask=0x%x, initially_active=%d\n",
@@ -735,6 +739,8 @@ shader_anim_event_mask_str(ShaderAnimEventMask mask) {
         {1u << SHADER_ANIM_EVENT_COMMAND_FINISH, "command-finish"},
         {1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_ENTER, "alternate-screen-enter"},
         {1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_EXIT, "alternate-screen-exit"},
+        {1u << SHADER_ANIM_EVENT_PROGRESS_START, "progress-start"},
+        {1u << SHADER_ANIM_EVENT_PROGRESS_STOP, "progress-stop"},
     };
     bool first = true;
     for (size_t i = 0; i < sizeof(events) / sizeof(events[0]); i++) {
@@ -1951,9 +1957,28 @@ draw_scrollbar(const UIRenderData *ui) {
 }
 
 static bool
+custom_shaders_draw_progress_bars(void) {
+    return custom_shaders.end.active && custom_shaders.end.bypass_builtin_progress_bar;
+}
+
+bool
+builtin_progress_bar_enabled(void) {
+    return OPT(progress_bar) != PROGRESS_BAR_HIDDEN && !custom_shaders_draw_progress_bars();
+}
+
+// How long after a change in progress frames are rendered so that custom
+// shaders can animate the change, see docs/custom-shaders.rst
+#define PROGRESS_CHANGE_ANIMATION_TIME s_double_to_monotonic_t(1.0)
+
+bool
+progress_bar_is_animating(const Screen *screen, monotonic_t now) {
+    if (screen->progress_state == PROGRESS_STATE_INDETERMINATE) return OPT(progress_bar) != PROGRESS_BAR_HIDDEN || custom_shaders_draw_progress_bars();
+    return screen->progress_changed_at && now - screen->progress_changed_at < PROGRESS_CHANGE_ANIMATION_TIME && custom_shaders_draw_progress_bars();
+}
+
+static bool
 has_progress_bar(Screen *screen) {
-    if (OPT(progress_bar) == PROGRESS_BAR_HIDDEN) return false;
-    return screen && screen->progress_state != PROGRESS_STATE_UNSET;
+    return screen && screen->progress_state != PROGRESS_STATE_UNSET && builtin_progress_bar_enabled();
 }
 
 static void
@@ -3131,6 +3156,11 @@ update_pointer_map(OSWindow *os_window, int32_t group_loc) {
         uint32_t slot;
         if (try_program_texture_slot(CUSTOM_END_PROGRAM, names[i], &slot)) gpu_bind_texture(slot, global_state.layers_render_texture.texture_id);
     }
+    // The windows texture is an integer texture, so it needs one of its own,
+    // run_custom_end_shader() has created it before calling us
+    uint32_t windows_slot;
+    if (os_window->shader_windows.texture && try_program_texture_slot(CUSTOM_END_PROGRAM, "kitty_windows", &windows_slot))
+        gpu_bind_texture(windows_slot, os_window->shader_windows.texture);
     bind_framebuffer_for_output(pointer_map_target.framebuffer_id);
     gpu_set_viewport(0, 0, POINTER_MAP_SIZE, POINTER_MAP_SIZE);
     param_1i(group_loc, -1);
@@ -3160,6 +3190,129 @@ free_pointer_map_target(void) {
     if (pointer_map_target.texture_id) free_texture(&pointer_map_target.texture_id);
     if (pointer_map_target.framebuffer_id) free_framebuffer(&pointer_map_target.framebuffer_id);
 }
+
+// The visible windows texture for custom shaders {{{
+// Fill ans with the space in pixels the layout reserved around the content of
+// w: margin, border (only if the layout reserves it), padding, cell-size
+// compensation and a visible title bar, as (left, bottom, right, top).
+static void
+window_padding_in_pixels(const Window *w, uint32_t ans[4]) {
+    const WindowGeometry *g = &w->render_data.geometry;
+    ans[0] = g->spaces.left;
+    ans[1] = g->spaces.bottom;
+    ans[2] = g->spaces.right;
+    ans[3] = g->spaces.top;
+    // The content geometry excludes the title bar. Include it before
+    // extending to the outer padding, so the effect boundary cannot
+    // cut through a title bar at either edge of the window.
+    const WindowRenderData *trd = &w->window_title_render_data;
+    if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top) {
+        if (trd->geometry.top < g->top) ans[3] += g->top - trd->geometry.top;
+        if (trd->geometry.bottom > g->bottom) ans[1] += trd->geometry.bottom - g->bottom;
+    }
+}
+
+// As above, in viewport UV units
+static void
+window_padding_in_uv(const Window *w, float width, float height, float ans[4]) {
+    uint32_t px[4];
+    window_padding_in_pixels(w, px);
+    ans[0] = (float)px[0] / width;
+    ans[1] = (float)px[1] / height;
+    ans[2] = (float)px[2] / width;
+    ans[3] = (float)px[3] / height;
+}
+
+// Describe w in the CUSTOM_SHADER_WINDOW_TEXELS texels at t, see KittyWindows in
+// shaders/custom/types.slang for the layout, which must be kept in sync. Only
+// integers are used, as reinterpreting their bits as floats in shaders needs
+// GLSL extensions.
+static void
+describe_window_for_custom_shaders(const OSWindow *os_window, const Window *w, bool is_active, uint32_t *t) {
+    const WindowGeometry *g = &w->render_data.geometry;
+    // In pixels, with the origin at the top left of the viewport
+    t[0] = g->left;
+    t[1] = g->top;
+    t[2] = g->right;
+    t[3] = g->bottom;
+    window_padding_in_pixels(w, t + 4);
+    const Screen *s = w->render_data.screen;
+    uint32_t flags = (uint32_t)s->progress_state & 7u;
+    if (is_active) flags |= 1u << 3;
+    if (s->linebuf == s->alt_linebuf) flags |= 1u << 4;
+    if (s->command_state.running) flags |= 1u << 5;
+    if (os_window->last_bell_window_id == w->id) flags |= 1u << 6;
+    flags |= ((uint32_t)s->progress_previous_state & 7u) << 7;
+    t[8] = flags;
+    // The percentage is meaningful only in these states
+#define PERCENT(state, percent) ((state) == PROGRESS_STATE_SET || (state) == PROGRESS_STATE_PAUSED ? (uint32_t)(percent) : 0u)
+    t[9] = PERCENT(s->progress_state, s->progress_percent) | (PERCENT(s->progress_previous_state, s->progress_previous_percent) << 8);
+#undef PERCENT
+    // The change time is split into seconds and nanoseconds so that it is
+    // exact however long kitty runs, and it, rather than the time since
+    // the change, is used so that the texels do not change from frame to
+    // frame, avoiding re-uploads.
+    if (s->progress_changed_at) {
+        t[10] = (uint32_t)(s->progress_changed_at / MONOTONIC_T_1e9);
+        t[11] = (uint32_t)(s->progress_changed_at % MONOTONIC_T_1e9);
+    } else {
+        t[10] = UINT32_MAX;
+        t[11] = 0;
+    }
+    for (unsigned i = 12; i < CUSTOM_SHADER_WINDOW_TEXELS; i++) t[i] = 0;
+}
+
+// Upload the description of the visible windows of the active tab to the
+// texture of os_window, if it changed since the last upload, and return the
+// number of windows described.
+static uint32_t
+sync_custom_shader_windows_texture(OSWindow *os_window) {
+    __typeof__(os_window->shader_windows) *sw = &os_window->shader_windows;
+    const float vpw = (float)os_window->viewport_width, vph = (float)os_window->viewport_height;
+    size_t count = 0;
+    Tab *tab = NULL;
+    if (os_window->num_tabs > 0 && os_window->active_tab < os_window->num_tabs && vpw > 0 && vph > 0) {
+        tab = os_window->tabs + os_window->active_tab;
+        for (unsigned i = 0; i < tab->num_windows; i++) {
+            const Window *w = tab->windows + i;
+            if (w->visible && w->render_data.screen && w->render_data.geometry.right > w->render_data.geometry.left) count++;
+        }
+    }
+    const uint32_t rows = MAX(1u, (uint32_t)((count + CUSTOM_SHADER_WINDOWS_PER_ROW - 1) / CUSTOM_SHADER_WINDOWS_PER_ROW));
+    const uint32_t width = CUSTOM_SHADER_WINDOW_TEXELS * CUSTOM_SHADER_WINDOWS_PER_ROW;
+    if ((int32_t)rows > max_texture_size) fatal("Max texture size too small for the custom shader windows texture");
+    const size_t num_texels = (size_t)rows * width;
+    uint32_t *texels = calloc(num_texels, sizeof(uint32_t));
+    if (!texels) fatal("Out of memory allocating the custom shader windows texture data");
+    if (count) {
+        size_t n = 0;
+        for (unsigned i = 0; i < tab->num_windows; i++) {
+            const Window *w = tab->windows + i;
+            if (w->visible && w->render_data.screen && w->render_data.geometry.right > w->render_data.geometry.left)
+                describe_window_for_custom_shaders(os_window, w, i == tab->active_window, texels + CUSTOM_SHADER_WINDOW_TEXELS * n++);
+        }
+    }
+    const bool resized = !sw->texture || rows > sw->height;
+    if (resized) {
+        const GPUTextureDesc desc = {
+            .kind = GPU_TEXTURE_2D, .format = GPU_FORMAT_R32UI, .width = width, .height = rows, .filter = GPU_FILTER_NEAREST, .wrap = GPU_WRAP_CLAMP_TO_EDGE};
+        if (sw->texture) {
+            if (!gpu_texture_reset(sw->texture, &desc, NULL)) fatal("Failed to re-allocate the custom shader windows texture with error: %s", gpu_last_error());
+        } else sw->texture = create_texture_or_die(&desc, NULL);
+        sw->height = rows;
+    }
+    const size_t used = count * CUSTOM_SHADER_WINDOW_TEXELS;
+    if (resized || count != sw->uploaded_count || (used && memcmp(texels, sw->uploaded, used * sizeof(uint32_t)) != 0)) {
+        // Upload whole rows, the trailing zeros mark the unused entries
+        const GPUPixelData pixels = {.layout = GPU_PIXELS_R32UI, .row_alignment = 4, .data = texels};
+        gpu_texture_upload(sw->texture, 0, 0, 0, width, rows, &pixels);
+        free(sw->uploaded);
+        sw->uploaded = texels;
+        sw->uploaded_count = count;
+    } else free(texels);
+    return (uint32_t)count;
+}
+// }}}
 
 static void
 run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) {
@@ -3201,6 +3354,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float active_window_command_running;
         float active_window_alternate_screen_age;
         float active_window_command_state_age;
+        uint32_t num_windows;
     };
     // This struct is a hand written mirror of the std140 layout of
     // KittyCustomShaderData in types.slang, so check that they match once.
@@ -3214,8 +3368,14 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
                 data_block.size,
                 sizeof(struct GPUCustomEndData));
     }
+    // Only pipelines that use KittyTextures.windows pay for describing the windows.
+    // Done before mapping the uniform buffer, as this uploads to a texture.
+    uint32_t windows_slot = 0;
+    const bool has_windows_slot = try_program_texture_slot(CUSTOM_END_PROGRAM, "kitty_windows", &windows_slot);
+    const uint32_t num_windows = has_windows_slot ? sync_custom_shader_windows_texture(os_window) : 0;
     struct GPUCustomEndData *d = (struct GPUCustomEndData *)map_vao_buffer_for_write_only(custom_end_vao_idx, 0, 0, data_block.size);
     memset(d, 0, sizeof(struct GPUCustomEndData));
+    d->num_windows = num_windows;
     // The viewport is in the top left corner of the texture, see gpu/api.h
     d->src_rect[2] = sx;
     d->src_rect[3] = sy;
@@ -3243,26 +3403,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         if (t->num_windows) {
             Window *w = t->windows + t->active_window;
             active_win_geom = w->render_data.geometry;
-            if (os_window->viewport_width && os_window->viewport_height) {
-                const float width = (float)os_window->viewport_width, height = (float)os_window->viewport_height;
-                // spaces is all the space the layout reserved around the window:
-                // margin, border (only if the layout reserves it), padding and
-                // cell-size compensation.
-                const WindowGeometry *sg = &w->render_data.geometry;
-                d->active_window_padding[0] = (float)sg->spaces.left / width;
-                d->active_window_padding[1] = (float)sg->spaces.bottom / height;
-                d->active_window_padding[2] = (float)sg->spaces.right / width;
-                d->active_window_padding[3] = (float)sg->spaces.top / height;
-                // The content geometry excludes the title bar. Include it before
-                // extending to the outer padding, so the effect boundary cannot
-                // cut through a title bar at either edge of the window.
-                const WindowRenderData *trd = &w->window_title_render_data;
-                if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top) {
-                    if (trd->geometry.top < active_win_geom.top) d->active_window_padding[3] += (float)(active_win_geom.top - trd->geometry.top) / height;
-                    if (trd->geometry.bottom > active_win_geom.bottom)
-                        d->active_window_padding[1] += (float)(trd->geometry.bottom - active_win_geom.bottom) / height;
-                }
-            }
+            if (os_window->viewport_width && os_window->viewport_height)
+                window_padding_in_uv(w, (float)os_window->viewport_width, (float)os_window->viewport_height, d->active_window_padding);
             Screen *s = w->render_data.screen;
             if (s) {
                 active_bg = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
@@ -3484,6 +3626,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             }
             if (has_named_tex_slot[t]) gpu_bind_texture(named_tex_slots[t], tex);
         }
+        if (has_windows_slot) gpu_bind_texture(windows_slot, os_window->shader_windows.texture);
 
         // Set the output framebuffer
         if (is_last) {
@@ -3731,6 +3874,8 @@ shader_anim_event_bit(const char *s, CustomShaderPipeline *p) {
     if (strcmp(s, "command-finish") == 0) return 1u << SHADER_ANIM_EVENT_COMMAND_FINISH;
     if (strcmp(s, "alternate-screen-enter") == 0) return 1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_ENTER;
     if (strcmp(s, "alternate-screen-exit") == 0) return 1u << SHADER_ANIM_EVENT_ALTERNATE_SCREEN_EXIT;
+    if (strcmp(s, "progress-start") == 0) return 1u << SHADER_ANIM_EVENT_PROGRESS_START;
+    if (strcmp(s, "progress-stop") == 0) return 1u << SHADER_ANIM_EVENT_PROGRESS_STOP;
     static const char user_prefix[] = "user:";
     if (strncmp(s, user_prefix, sizeof(user_prefix) - 1) == 0) {
         const char *name = s + sizeof(user_prefix) - 1;
@@ -3844,6 +3989,7 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
     p->all_animation_start_events = 0;
     for (size_t i = 0; i < p->num_groups; i++) p->all_animation_start_events |= p->groups[i].animation_start_events | p->groups[i].animation_toggle_events;
     p->bypass_builtin_trail = (p->all_animation_start_events & (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE)) != 0;
+    p->bypass_builtin_progress_bar = (p->all_animation_start_events & (1u << SHADER_ANIM_EVENT_PROGRESS_START)) != 0;
 #undef is_seq
     return true;
 }
@@ -4204,6 +4350,8 @@ init_shaders(PyObject *module) {
     C(MAX_SHADER_ANIM_USER_EVENTS);
     C(MAX_SHADER_ANIM_USER_EVENT_NAME_LEN);
     C(POINTER_MAP_SIZE);
+    C(CUSTOM_SHADER_WINDOW_TEXELS);
+    C(CUSTOM_SHADER_WINDOWS_PER_ROW);
     C(ANIMATION_SAMPLE_WAIT);
 
 #undef C

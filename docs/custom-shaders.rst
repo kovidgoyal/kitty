@@ -105,6 +105,16 @@ bell character when the last command exits with an error.
 
 .. include:: generated/custom-shaders-bell.rst
 
+Progress bars
+-----------------
+
+Programs can report their progress with the OSC 9;4 escape code, which
+kitty shows as a progress bar along the edge of the window, see
+:opt:`progress_bar`. Shaders can draw these bars instead, see
+:ref:`custom_shader_windows`.
+
+.. include:: generated/custom-shaders-progress.rst
+
 Retro Terminals
 -----------------
 
@@ -261,6 +271,37 @@ The two structs passed into this function have the definition shown below:
    :end-before: END_TYPES_DEFINITION
 
 Shaders take their inputs and use them to transform the color as they see fit.
+
+.. _custom_shader_windows:
+
+Information about all visible windows
+_________________________________________
+
+``KittyCustomShaderData`` describes only the active window. The geometry and
+state, such as OSC 9;4 progress, of every visible window in the active tab is
+available via ``t.windows``. For example, to tint every window that is showing
+a progress bar::
+
+    public float4
+    fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
+        int idx = t.windows.window_at(t.pos);
+        if (idx < 0) return color;
+        KittyWindow w = t.windows.get(uint(idx));
+        if (w.progress_state == KITTY_PROGRESS_UNSET) return color;
+        return float4(lerp(color.rgb, float3(0, 0, 1), 0.2 * w.progress), color.a);
+    }
+
+While any visible window is showing progress of unknown length, and for a
+second after the progress in a visible window changes, kitty keeps rendering
+frames, as it would to animate its own progress bars. So pipelines that draw
+progress bars can use ``animation_step 0`` and still animate them, without
+redrawing continuously while the progress is not changing.
+
+The windows are stored in a small texture, so their number is unlimited.
+Finding the window at a position checks every window, so do it only once per
+pixel. The texture is only created and updated for pipelines that use
+``t.windows``. For a complete example, see the ``progress-bar`` shader that
+comes with kitty, which you can use with ``custom_shaders progress-bar``.
 
 .. _custom_shader_pointer_map:
 
@@ -682,11 +723,23 @@ be combined with ``|`` — any one of them will trigger the action.
    * - ``alternate-screen-exit``
      - The active window switches back to the main screen.
 
+   * - ``progress-start``
+     - A program in a visible window starts reporting progress with the OSC
+       9;4 escape code, when no other visible window is showing progress.
+       Also fires when switching tabs or the layout makes a window showing
+       progress visible. Pipelines that use this event replace the builtin
+       progress bars, see :opt:`progress_bar`. The state and geometry of
+       every visible window is available via ``t.windows``, see
+       :ref:`custom_shader_windows`.
+
+   * - ``progress-stop``
+     - No visible window is showing progress any more.
+
    * - ``user:<name>``
      - Sent by the :ac:`shader_event` action, typically from a mapping, see
        :ref:`custom_shader_mappings`. ``<name>`` can be any combination of
        letters, digits, underscores, hyphens and periods, up to 63 characters.
-       A pipeline can use up to 48 different user events.
+       A pipeline can use up to 44 different user events.
 
 The command and alternate screen events only fire for changes in the active
 window. Switching to another window fires ``window-focus-in`` instead, after
