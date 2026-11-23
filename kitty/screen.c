@@ -624,22 +624,9 @@ static inline void reset_pixel_scroll(Screen *self, unsigned val);
 static void
 nuke_multicell_char_at(Screen *self, index_type x_, index_type y_, bool replace_with_spaces) {
     const MulticellRows rows = multicell_char_rows(self, x_, y_);
-    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y_);
-    index_type x_limit;
-    if (UNLIKELY(self->smooth_scroll.count)) {
-        // Chars can be split between a horizontally scrolled smooth scroll
-        // region and its overflow buffers, so include only the cells that
-        // actually continue the char
-        const CPUCell ref = cp[x_];
-        index_type x = x_;
-        while (x > 0 && cp[x].x && continues_multicell_char_horizontally(cp + x - 1, &ref, cp[x].x - 1)) x--;
-        x_limit = x_ + 1;
-        while (x_limit < self->columns && continues_multicell_char_horizontally(cp + x_limit, &ref, cp[x_limit - 1].x + 1)) x_limit++;
-        x_ = x;
-    } else {
-        while (cp[x_].x && x_ > 0) x_--;
-        x_limit = MIN(self->columns, x_ + mcd_x_limit(&cp[x_]));
-    }
+    const MulticellColumns cols = multicell_char_columns(linebuf_cpu_cells_for_line(self->linebuf, y_), self->columns, x_);
+    x_ = cols.start;
+    const index_type x_limit = cols.limit;
     const char_type ch = replace_with_spaces ? ' ' : 0;
     if (UNLIKELY(self->smooth_scroll.count)) ssr_nuke_overflow_parts(self, x_, x_limit, rows, ch);
     for (int y = rows.start; y < rows.limit; y++) {
@@ -1022,6 +1009,21 @@ ssr_nuke_overflow_parts(Screen *self, index_type x_start, index_type x_limit, Mu
             }
         }
     }
+}
+
+static bool
+ssr_char_continues_into_overflow_below(Screen *self, const CPUCell *ref, index_type x, MulticellRows rows) {
+    // Whether the multicell char, whose top row is the first of rows on screen
+    // and whose cell in column x of it is ref, continues into the overflow
+    // buffer below a vertically scrolled smooth scroll region
+    if (!self->smooth_scroll.count || self->linebuf != self->smooth_scroll.linebuf || rows.start < 0) return false;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (r->horizontal || !r->num_after || rows.limit != (int)r->bottom || x < r->left || x >= r->right) continue;
+        const CPUCell *nearest = ssr_overflow_cells(r, ssr_slot(r, false, 0));
+        if (continues_multicell_char(nearest + x - r->left, ref, ref->y + (index_type)(rows.limit - rows.start))) return true;
+    }
+    return false;
 }
 
 static void
@@ -2381,10 +2383,12 @@ halve_multicell_width(Screen *self, index_type x_, index_type y_) {
     const MulticellRows rows = multicell_char_rows(self, x_, y_);
     const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, y_);
     const unsigned new_width = cp[x_].width / 2;
-    while (cp[x_].x && x_ > 0) x_--;
+    // Only called for complete chars, see add_combining_chars()
+    const MulticellColumns cols = multicell_char_columns(cp, self->columns, x_);
+    x_ = cols.start;
     const index_type ws = mcd_x_limit(&cp[x_]);
-    const index_type x_limit = MIN(self->columns, x_ + ws);
-    const index_type half_x_limit = MIN(self->columns, x_ + ws / 2);
+    const index_type x_limit = cols.limit;
+    const index_type half_x_limit = MIN(x_limit, x_ + ws / 2);
     for (int y = rows.start; y < rows.limit; y++) {
         Line *line = range_line_(self, y);
         CPUCell *c = line->cpu_cells;
@@ -2595,6 +2599,16 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, inde
     if (self->lc->count >= MAX_NUM_CODEPOINTS_PER_CELL) return false; // don't allow too many combining chars to prevent DoS attacks
     // must be computed before the char is changed
     const MulticellRows rows = cell->is_multicell ? multicell_char_rows(self, x, y) : (MulticellRows){0};
+    const MulticellColumns cols = multicell_char_columns(cpu_cells, self->columns, x);
+    // The text of a multicell char is in all its cells, so it can only be
+    // changed if they are all present, rather than some of them being in the
+    // overflow buffers of a smooth scroll region, which would leave cells
+    // that no longer continue the char. A char cut off at the bottom of the
+    // screen is fine, its rows below the screen are gone. Its top row is on
+    // screen as cell->y is zero.
+    if (cell->is_multicell && (!multicell_char_columns_are_complete(cpu_cells, cols) ||
+                               (rows.limit - rows.start < (int)cell->scale && ssr_char_continues_into_overflow_below(self, cell, x, rows))))
+        return false;
     num_chars = MIN(num_chars, MAX_NUM_CODEPOINTS_PER_CELL - self->lc->count);
     ensure_space_for_chars(self->lc, self->lc->count + num_chars);
     memcpy(self->lc->chars + self->lc->count, chars, num_chars * sizeof(chars[0]));
@@ -2604,12 +2618,10 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, inde
     cell->ch_is_idx = true;
     if (cell->is_multicell) {
         char_type ch_and_idx = cell->ch_and_idx;
-        while (cell->x && x) cell = cpu_cells + --x;
-        index_type x_limit = MIN(x + mcd_x_limit(cell), self->columns);
         // the cell has y == 0 so rows.start == y, the lower rows can be cut off at the bottom of the screen
         for (int v = rows.start; v < rows.limit; v++) {
             cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, v);
-            for (index_type h = x; h < x_limit; h++) cpu_cells[h].ch_and_idx = ch_and_idx;
+            for (index_type h = cols.start; h < cols.limit; h++) cpu_cells[h].ch_and_idx = ch_and_idx;
             linebuf_mark_line_dirty(self->linebuf, v);
         }
     }
@@ -2732,8 +2744,7 @@ static void
 draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     CPUCell *cp;
     linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
-    index_type xpos = s->prev.x;
-    while (xpos && cp[xpos].is_multicell && cp[xpos].x) xpos--;
+    const index_type xpos = multicell_char_columns(cp, self->columns, s->prev.x).start;
     if (!add_combining_char(self, ch, xpos, s->prev.y) || self->lc->count < 2) return;
     unsigned base_pos = self->lc->count - 2;
     if (ch == VS16) { // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
@@ -2856,8 +2867,7 @@ draw_combining_char_run(Screen *self, text_loop_state *s, char_type ch, CharProp
     }
     CPUCell *cp;
     linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
-    index_type xpos = s->prev.x;
-    while (xpos && cp[xpos].is_multicell && cp[xpos].x) xpos--;
+    const index_type xpos = multicell_char_columns(cp, self->columns, s->prev.x).start;
     add_combining_chars(self, run, n, xpos, s->prev.y);
     s->seg = seg;
     return n - 1;
@@ -4903,6 +4913,12 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         default: return;
     }
     if (b > a) {
+        // Multicell chars in smooth scroll regions can have parts in the
+        // overflow buffers of the regions, which must be removed with them,
+        // rather than being left to come back into the region later, no
+        // longer continuing a char. Erasing the complete display discards the
+        // overflow buffers above.
+        if (how < 2 && UNLIKELY(self->smooth_scroll.count)) nuke_multicell_char_intersecting_with(self, 0, self->columns, a, b, false);
         if (how < 3) nuke_multiline_chars_split_by_erase(self, how, a, b);
         if (how != 3) screen_dirty_line_graphics(self, a, b, self->linebuf == self->main_linebuf);
         if (private) {
@@ -6148,6 +6164,30 @@ screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *overlay_l
     return overlay_line;
 }
 
+index_type
+screen_multicell_char_rows_for_cursor(Screen *self, const CPUCell *ref, index_type x, index_type y) {
+    // The number of rows, from row y down, of the multicell char whose cell,
+    // as rendered, at (x, y) in linebuf coordinates is ref. Only the rows that
+    // actually continue the char are counted, as the char can be cut off at
+    // the bottom of the screen or split by a vertically scrolled smooth scroll
+    // region, with its lower rows in the overflow buffer. Does not change the
+    // shared line objects, so the line returned by screen_line_for_cursor()
+    // stays valid.
+    LineBuf *lb = self->linebuf;
+    int offset = 0;
+    if (self->paused_rendering.expires_at) {
+        lb = self->paused_rendering.linebuf;
+        offset = paused_snapshot_row_offset(self);
+    }
+    index_type n = 1;
+    for (; ref->y + n < ref->scale; n++) {
+        const int row = (int)(y + n) + offset;
+        if (y + n >= self->lines || row < 0 || row >= (int)lb->ynum) break;
+        if (!continues_multicell_char(linebuf_cpu_cells_for_line(lb, (index_type)row) + x, ref, ref->y + n)) break;
+    }
+    return n;
+}
+
 void
 screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool cursor_has_moved) {
     if (self->paused_rendering.expires_at) {
@@ -6365,13 +6405,10 @@ static XRange
 xrange_for_iteration_with_multicells(const IterationData *idata, const int y, const Line *line) {
     XRange ans = xrange_for_iteration(idata, y, line);
     if (ans.x_limit > ans.x) {
-        CPUCell *c;
-        index_type ml;
-        if (ans.x && (c = &line->cpu_cells[ans.x])->is_multicell && c->x) ans.x = ans.x > c->x ? ans.x - c->x : 0;
-        if (ans.x_limit < line->xnum && (c = &line->cpu_cells[ans.x_limit - 1])->is_multicell && c->x + 1u < (ml = mcd_x_limit(c))) {
-            ans.x_limit += ml - 1 - c->x;
-            if (ans.x_limit > line->xnum) ans.x_limit = line->xnum;
-        }
+        // Extend the range to include all the cells of the multicell chars at
+        // its ends, that are present in the line
+        if (ans.x < line->xnum) ans.x = multicell_char_columns(line->cpu_cells, line->xnum, ans.x).start;
+        if (ans.x_limit < line->xnum) ans.x_limit = multicell_char_columns(line->cpu_cells, line->xnum, ans.x_limit - 1).limit;
     }
     return ans;
 }
@@ -6906,7 +6943,7 @@ extend_url(
         if (line && cell_is_char(line->cpu_cells, sentinel)) {
             *y -= scale;
             *x = line->xnum - 1;
-            if (line->cpu_cells[*x].is_multicell) *x -= line->cpu_cells[*x].x;
+            *x = multicell_char_columns(line->cpu_cells, line->xnum, *x).start;
         }
     }
 }
@@ -7005,8 +7042,8 @@ detect_url_with_regex(Screen *self, index_type x, index_type y, TextCache *text_
             if (end > mouse_start && end > start) {
                 RegexCellPos s = regex_line.positions.items[start], e = regex_line.positions.items[end - 1];
                 visual_line(self, e.y, &line);
-                const CPUCell *c = line.cpu_cells + e.x;
-                if (c->is_multicell) e.x = MIN(self->columns - 1, e.x + mcd_x_limit(c) - 1);
+                // end at the last cell of the char, that is present in the line
+                e.x = multicell_char_columns(line.cpu_cells, line.xnum, e.x).limit - 1;
                 self->url_ranges.count = 0;
                 add_url_range(self, s.x, s.y, e.x, e.y, false);
                 return true;
@@ -7029,11 +7066,20 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y, bool mark) {
     Line *line = screen_visual_line(screen, y);
     if (!line || x >= screen->columns) return 0;
     if (line->cpu_cells[x].is_multicell && line->cpu_cells[x].scale > 1 && line->cpu_cells[x].y) {
-        if (line->cpu_cells[x].y > y) return 0;
-        y -= line->cpu_cells[x].y;
+        // Move to the top row of the char, following the rows that actually
+        // continue it, as it can be split by a vertically scrolled smooth
+        // scroll region, with its top rows in the overflow buffer
+        const CPUCell ref = line->cpu_cells[x];
+        index_type ry = ref.y;
+        for (; ry && y; ry--, y--) {
+            Line *above = screen_visual_line(screen, y - 1);
+            if (!above || !continues_multicell_char(above->cpu_cells + x, &ref, ry - 1)) break;
+        }
+        if (ry) return 0;
         line = screen_visual_line(screen, y);
+        if (!line) return 0;
     }
-    if (line->cpu_cells[x].is_multicell && line->cpu_cells[x].x) x = x > line->cpu_cells[x].x ? x - line->cpu_cells[x].x : 0;
+    x = multicell_char_columns(line->cpu_cells, line->xnum, x).start;
     hyperlink_id_type hid;
     if ((hid = line->cpu_cells[x].hyperlink_id)) {
         // Marking a hyperlink scans the surrounding lines, so skip it when not needed

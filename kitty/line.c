@@ -198,20 +198,26 @@ is_url_lc(const ListOfChars *lc) {
     return true;
 }
 
+// The extent of chars is found from the cells that actually continue them, as
+// a multicell char can be split by a horizontally scrolled smooth scroll
+// region, so that the x of a cell does not give the position of the first cell
+// of its char, and every step moves by at least one cell.
+
 index_type
 next_char_pos(const Line *self, index_type x, index_type num) {
-    const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells + self->xnum;
-    while (num-- && ans < limit) ans += ans->is_multicell ? mcd_x_limit(ans) - ans->x : 1;
-    return ans - self->cpu_cells;
+    while (num-- && x < self->xnum) x = multicell_char_columns(self->cpu_cells, self->xnum, x).limit;
+    return x;
 }
 
 index_type
 prev_char_pos(const Line *self, index_type x, index_type num) {
-    const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells - 1;
-    if (ans->is_multicell) ans -= ans->x;
-    while (num-- && --ans > limit)
-        if (ans->is_multicell) ans -= ans->x;
-    return ans > limit ? (index_type)(ans - self->cpu_cells) : self->xnum;
+    if (x >= self->xnum) return self->xnum;
+    x = multicell_char_columns(self->cpu_cells, self->xnum, x).start;
+    while (num--) {
+        if (!x) return self->xnum;
+        x = multicell_char_columns(self->cpu_cells, self->xnum, x - 1).start;
+    }
+    return x;
 }
 
 
@@ -303,8 +309,8 @@ index_type
 line_url_start_at(Line *self, index_type x, ListOfChars *lc) {
     // Find the starting cell for a URL that contains the position x. A URL is defined as
     // known-prefix://url-chars. If no URL is found self->xnum is returned.
-    if (self->cpu_cells[x].is_multicell && self->cpu_cells[x].x) x = x > self->cpu_cells[x].x ? x - self->cpu_cells[x].x : 0;
     if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return self->xnum;
+    x = multicell_char_columns(self->cpu_cells, self->xnum, x).start;
     index_type ds_pos = 0, t, scale = cell_scale(self->cpu_cells + x);
     // First look for :// ahead of x
     ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2, lc, scale);
@@ -865,7 +871,7 @@ resolve_color(const ColorProfile *cp, color_type val, color_type defval) {
 bool
 colors_for_cell(Line *self, const ColorProfile *cp, index_type *x, color_type *fg, color_type *bg, bool *reversed) {
     if (*x >= self->xnum) return false;
-    while (self->cpu_cells[*x].is_multicell && self->cpu_cells[*x].x && *x) (*x)--;
+    *x = multicell_char_columns(self->cpu_cells, self->xnum, *x).start;
     const CellStyle *st = line_cell_style(self, *x);
     *fg = resolve_color(cp, st->fg, *fg);
     *bg = resolve_color(cp, st->bg, *bg);

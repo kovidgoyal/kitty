@@ -681,6 +681,142 @@ class TestSmoothScroll(BaseTest):
             for x in range(10):
                 self.assertIsNone(cell(s, x, y)['mcd'], (x, y))
 
+    def test_smooth_scroll_split_char_edits(self):
+        # Chars split between a region and its overflow buffers cannot be
+        # changed by combining chars or variation selectors, as that would
+        # leave the cells in the overflow buffers no longer continuing them
+        ae = self.ae
+        W = 10
+
+        def cell(s, x, y):
+            return s.cpu_cells(y, x)
+
+        def setup(text='abcdefg', width=3, k=2):
+            s = self.create_screen(cols=10, lines=2)
+            multicell(s, 'X', width=width)
+            s.draw(text)
+            self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 1, k, False, True))
+            return s
+
+        # the first cell is in the overflow buffer on the left
+        s = setup()
+        ae(s.smooth_scroll(1, 2 * W), 2)
+        s.cursor_position(1, 2)
+        s.draw('́')
+        ae(str(s.line(0)), 'abcdefg')
+        ae([cell(s, x, 0)['text'] for x in range(1, 3)], ['a', 'b'])
+        ae(s.smooth_scroll(1, -2 * W), -2)
+        ae(str(s.line(0)), 'Xabcdefg')
+        ae([cell(s, x, 0)['x'] for x in range(3)], [0, 1, 2])
+        s.smooth_scroll_remove(1)
+        ae(str(s.line(0)), 'Xabcdefg')
+        # the last cells are in the overflow buffer on the right
+        s = setup(k=8)
+        ae(s.smooth_scroll(1, -8 * W), -8)
+        ae(cell(s, 8, 0)['x'], 0)
+        s.cursor_position(1, 10)
+        s.draw('́')
+        ae(cell(s, 8, 0)['text'], 'X')
+        ae(s.smooth_scroll(1, 8 * W), 8)
+        ae(str(s.line(0)), 'Xabcdefg')
+        # a complete char in a region can be changed
+        s = setup()
+        s.cursor_position(1, 4)
+        s.draw('́')
+        ae(str(s.line(0)), 'X́abcdefg')
+        ae(s.smooth_scroll(1, W), 1)
+        ae(s.smooth_scroll(1, -W), -1)
+        ae(str(s.line(0)), 'X́abcdefg')
+        # VS15 does not narrow a split wide char
+        s = self.create_screen(cols=10, lines=2)
+        s.draw('⌚abc')
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 1, 1, False, True))
+        ae(s.smooth_scroll(1, W), 1)
+        s.cursor_position(1, 2)
+        s.draw('︎')
+        ae(str(s.line(0)), 'abc')
+        ae((cell(s, 0, 0)['x'], cell(s, 0, 0)['mcd']['width']), (1, 2))
+        ae(s.smooth_scroll(1, -W), -1)
+        ae(str(s.line(0)), '⌚abc')
+        # URL detection treats a split char like the complete char
+        s = self.create_screen(cols=20, lines=2)
+        s.draw('http://exampleabcdef⌚abc')
+        self.assertTrue(s.smooth_scroll_define(1, 0, 1, 20, 2, 1, False, True))
+        ae(s.smooth_scroll(1, W), 1)
+        s.detect_url(3, 0)
+        # the URL continues over the char, as when it is complete, only the
+        # text of its first cell, which is in the overflow buffer, is missing
+        ae(''.join(s.text_for_marked_url()), 'http://exampleabcdefabc')
+
+        # A selection starting on a split char does not extend to the cells
+        # before it, outside the region, which are not part of the char
+        s = self.create_screen(cols=8, lines=1, scrollback=0)
+        s.draw('xy好cd')
+        self.assertTrue(s.smooth_scroll_define(1, 2, 0, 7, 1, 1, False, True))
+        ae(s.smooth_scroll(1, W), 1)
+        s.start_selection(2, 0)
+        s.update_selection(3, 0)
+        ae(s.text_for_selection(False, False), ('c',))
+
+        # A multiline char with its lower row in the overflow buffer below a vertically scrolled region
+        s = self.create_screen(cols=10, lines=4)
+        s.cursor_position(2, 1)
+        multicell(s, 'X', scale=2)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 3, 1, False, False))
+        ae(s.smooth_scroll(1, -H), -1)
+        ae((cell(s, 0, 2)['y'], cell(s, 0, 2)['text']), (0, 'X'))
+        s.cursor_position(3, 3)
+        s.draw('́')
+        ae(cell(s, 0, 2)['text'], 'X')
+        ae(s.smooth_scroll(1, H), 1)
+        ae([cell(s, 0, y)['text'] for y in (1, 2)], ['X', ''])
+        ae([cell(s, 0, y)['y'] for y in (1, 2)], [0, 1])
+
+        # A multiline char cut off at the bottom of the screen in a region,
+        # with nothing in the overflow buffers, can be changed
+        for horizontal in (False, True):
+            s = self.create_screen(cols=10, lines=3)
+            s.cursor_position(2, 1)
+            multicell(s, 'X', scale=2)
+            s.cursor_position(1, 1)
+            s.reverse_index()
+            ae((cell(s, 0, 2)['y'], cell(s, 0, 2)['text']), (0, 'X'))
+            self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 3, 1, False, horizontal))
+            s.cursor_position(3, 3)
+            s.draw('\u0301')
+            ae(cell(s, 0, 2)['text'], 'X\u0301')
+
+        # URL detection on a lower row of a multiline char whose top row is
+        # in the overflow buffer does not look at the row above the region
+        s = self.create_screen(cols=20, lines=4, scrollback=0)
+        s.draw('http://example.com/')
+        s.cursor_position(2, 1)
+        multicell(s, 'X', scale=2)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 1, 20, 4, 1, False, False))
+        ae(s.smooth_scroll(1, H), 1)
+        ae(cell(s, 0, 1)['y'], 1)
+        s.detect_url(0, 1)
+        ae(s.text_for_marked_url(), ())
+
+        # Erasing the display removes the parts of erased chars in the overflow buffers
+        for how, cursor_y in ((0, 1), (1, 3)):
+            s = self.create_screen(cols=10, lines=3)
+            s.cursor_position(2, 1)
+            multicell(s, 'X', width=3)
+            s.draw('abcdefg')
+            self.assertTrue(s.smooth_scroll_define(1, 0, 1, 10, 2, 1, False, True))
+            ae(s.smooth_scroll(1, W), 1)
+            s.cursor_position(cursor_y, 1)
+            parse_bytes(s, f'\x1b[{how}J'.encode())
+            ae(s.smooth_scroll_overflow(1, True), ('',))
+            ae(s.smooth_scroll(1, -W), -1)
+            for x in range(10):
+                self.assertIsNone(cell(s, x, 1)['mcd'], (how, x))
+            s.smooth_scroll_remove(1)
+            s.cursor_position(2, 1)
+            s.draw('Z')
+            ae(str(s.line(1)), 'Z')
+
     def test_smooth_scroll_horizontal_images(self):
         from .graphics import put_helpers
 

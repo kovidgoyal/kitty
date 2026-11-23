@@ -202,6 +202,34 @@ continues_multicell_char_horizontally(const CPUCell *c, const CPUCell *ref, inde
            c->subscale_d == ref->subscale_d && c->ch_and_idx == ref->ch_and_idx;
 }
 
+typedef struct MulticellColumns {
+    index_type start, limit;
+} MulticellColumns;
+
+static inline MulticellColumns
+multicell_char_columns(const CPUCell *cells, index_type xnum, index_type x) {
+    // The columns [start, limit) of the cells of the multicell char whose cell
+    // is at x in a line of xnum cells. Only the cells that actually continue
+    // the char are included, rather than trusting the x and width of cells, as
+    // the char may be split, with some of its cells elsewhere, by a
+    // horizontally scrolled smooth scroll region, or cut off by the end of the
+    // line.
+    const CPUCell *ref = cells + x;
+    MulticellColumns ans = {.start = x, .limit = x + 1};
+    if (!ref->is_multicell) return ans;
+    while (ans.start > 0 && cells[ans.start].x && continues_multicell_char_horizontally(cells + ans.start - 1, ref, cells[ans.start].x - 1u)) ans.start--;
+    while (ans.limit < xnum && cells[ans.limit - 1].x + 1u < mcd_x_limit(ref) &&
+           continues_multicell_char_horizontally(cells + ans.limit, ref, cells[ans.limit - 1].x + 1u))
+        ans.limit++;
+    return ans;
+}
+
+static inline bool
+multicell_char_columns_are_complete(const CPUCell *cells, MulticellColumns c) {
+    // Whether all the columns of the char are present
+    return cells[c.start].x == 0 && c.limit - c.start == mcd_x_limit(cells + c.start);
+}
+
 static inline void
 text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
     if (c->ch_is_idx) {

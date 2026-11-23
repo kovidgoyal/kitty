@@ -1148,16 +1148,22 @@ cell_update_uniform_block(
             const CPUCell *cursor_cell;
             const bool large_cursor = ((cursor_cell = &line_for_cursor->cpu_cells[cursor->x])->is_multicell) && cursor_cell->x == 0 && cursor_cell->y == 0;
             if (large_cursor) {
+                // The cursor covers the cells of the char that are present, a
+                // char can be cut off at the edges of the screen or split by a
+                // smooth scroll region, with its other cells in the overflow buffers
+                const index_type num_rows = screen_multicell_char_rows_for_cursor(screen, cursor_cell, cursor->x, cursor->y);
+                const index_type num_cols = multicell_char_columns(line_for_cursor->cpu_cells, line_for_cursor->xnum, cursor->x).limit - cursor->x;
                 switch (cs) {
-                    case CURSOR_BEAM: rd->cursor_y2 += cursor_cell->scale - 1; break;
+                    case CURSOR_BEAM: rd->cursor_y2 += num_rows - 1; break;
                     case CURSOR_UNDERLINE:
-                        rd->cursor_y1 += cursor_cell->scale - 1;
+                        // under the lowest row of the char that is present
+                        rd->cursor_y1 += num_rows - 1;
                         rd->cursor_y2 = rd->cursor_y1;
-                        rd->cursor_x2 += mcd_x_limit(cursor_cell) - 1;
+                        rd->cursor_x2 += num_cols - 1;
                         break;
                     case CURSOR_BLOCK:
-                        rd->cursor_y2 += cursor_cell->scale - 1;
-                        rd->cursor_x2 += mcd_x_limit(cursor_cell) - 1;
+                        rd->cursor_y2 += num_rows - 1;
+                        rd->cursor_x2 += num_cols - 1;
                         break;
                     case CURSOR_HOLLOW:
                     case NUM_OF_CURSOR_SHAPES:

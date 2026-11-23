@@ -257,12 +257,22 @@ multiline_copy_src_to_dest(Rewrap *r) {
     while (r->src.x < r->src_x_limit) {
         c = &r->src.line.cpu_cells[r->src.x];
         if (c->is_multicell) {
-            mc_width = mcd_x_limit(c);
+            // The char can be missing some of its columns, if it was split by
+            // a horizontally scrolled smooth scroll region, so only the cells
+            // that actually continue it are used, and it is dropped if it is
+            // incomplete, as it cannot be placed consistently in dest
+            const MulticellColumns cols = multicell_char_columns(r->src.line.cpu_cells, src_xnum, r->src.x);
+            const bool complete = cols.start == r->src.x && multicell_char_columns_are_complete(r->src.line.cpu_cells, cols);
+            mc_width = complete ? mcd_x_limit(c) : cols.limit - r->src.x;
             if (mc_width > dest_xnum) {
                 update_tracked_cursors(r, mc_width, r->src.y, r->dest.y, r->src_x_limit);
                 r->src.x += mc_width;
                 continue;
             } else if (c->y) {
+                r->src.x += mc_width;
+                continue;
+            } else if (!complete) {
+                update_tracked_cursors_for_dropped_cells(r, mc_width);
                 r->src.x += mc_width;
                 continue;
             } else if (c->scale > 1 && !multiline_char_is_complete(r, c)) {
