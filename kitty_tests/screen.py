@@ -1328,6 +1328,18 @@ class TestScreen(BaseTest):
         s.erase_characters(2)
         self.ae(s.linebuf.dirty_lines(), [0, 1, 2])
 
+        # combining chars written at the start of a soft wrapped line are
+        # added to the last cell of the row above, which must be redrawn
+        for combining in ('́', '́̂'):
+            s = self.create_screen()
+            s.draw('a' * (s.columns + 2))
+            s.carriage_return()
+            s.update_only_line_graphics_data()  # marks all lines clean
+            self.assertFalse(s.linebuf.dirty_lines())
+            s.draw(combining)
+            self.ae(str(s.line(0)), 'a' * (s.columns - 1) + 'a' + combining)
+            self.ae(s.linebuf.dirty_lines(), [0, 1])
+
     def test_selection_as_text(self):
         s = self.create_screen()
         for i in range(2 * s.lines):

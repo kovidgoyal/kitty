@@ -2633,6 +2633,11 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, Mult
             linebuf_mark_line_dirty(self->linebuf, v);
         }
         if (rows_of_char) *rows_of_char = rows;
+    } else {
+        // The char can be on the row above the cursor, when the cursor is at
+        // the start of a line that the char soft wrapped onto, and the text
+        // loop only marks the cursor row dirty.
+        linebuf_mark_line_dirty(self->linebuf, y);
     }
     return true;
 }
