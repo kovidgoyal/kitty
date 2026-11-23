@@ -239,7 +239,6 @@ class Grid(Layout):
             all_groups_in_order.append(wg)
             layout_data_map[wg.id] = xl, yl
         is_last_column = {groups[x].id for x in prev_col_windows}
-        active_group = windows.active_group
 
         def ends(yl: LayoutData) -> tuple[int, int]:
             return yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after
@@ -266,7 +265,7 @@ class Grid(Layout):
         for wg in all_groups_in_order:
             color = BorderColor.inactive
             if needs_borders_map.get(wg.id):
-                color = BorderColor.active if wg is active_group else BorderColor.bell
+                color = BorderColor.bell if wg.needs_attention else BorderColor.active
             wid = wg.active_window_id
             yield from borders_for_window(wg.id, color, wid)
 

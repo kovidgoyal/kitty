@@ -714,7 +714,17 @@ glfwRequestWindowAttention(GLFWwindow *handle) {
 
     _GLFW_REQUIRE_INIT();
 
-    _glfwPlatformRequestWindowAttention(window);
+    _glfwPlatformSetWindowAttention(window, true);
+}
+
+GLFWAPI void
+glfwCancelWindowAttention(GLFWwindow *handle) {
+    _GLFWwindow *window = (_GLFWwindow *)handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT();
+
+    _glfwPlatformSetWindowAttention(window, false);
 }
 
 GLFWAPI int

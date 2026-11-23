@@ -1635,6 +1635,8 @@ Some text or a Unicode symbol to show on the tab if a window in the tab that
 does not have focus has a bell. If you want to use leading or trailing
 spaces, surround the text with quotes. See :opt:`tab_title_template` for how
 this is rendered.
+The bell indicator is cleared when the window is focused or by
+the :ac:`clear_bell_indicators` action.
 
 For backwards compatibility, values of :code:`yes`, :code:`y` and :code:`true`
 are converted to the default bell symbol and :code:`no`, :code:`n`,
@@ -1848,10 +1850,11 @@ opt(
     option_type='optional_edge_width',
     long_text="""
 The window margin to use when only a single window is visible (in pts). Negative
-values will cause the value of :opt:`window_margin_width` to be used instead. A
-single value sets all four sides. Two values set the vertical and horizontal
-sides. Three values set top, horizontal and bottom. Four values set top, right,
-bottom and left.
+values will cause the value of :opt:`window_margin_width` to be used instead.
+A tab that has docks, including the docks of its OS window, never counts as
+showing a single window, see :ref:`docks`. A single value sets all four sides.
+Two values set the vertical and horizontal sides. Three values set top,
+horizontal and bottom. Four values set top, right, bottom and left.
 """,
 )
 
@@ -1887,10 +1890,11 @@ opt(
     option_type='optional_edge_width',
     long_text="""
 The window padding to use when only a single window is visible (in pts). Negative
-values will cause the value of :opt:`window_padding_width` to be used instead. A
-single value sets all four sides. Two values set the vertical and horizontal
-sides. Three values set top, horizontal and bottom. Four values set top, right,
-bottom and left.
+values will cause the value of :opt:`window_padding_width` to be used instead.
+A tab that has docks, including the docks of its OS window, never counts as
+showing a single window, see :ref:`docks`. A single value sets all four sides.
+Two values set the vertical and horizontal sides. Three values set top,
+horizontal and bottom. Four values set top, right, bottom and left.
 """,
 )
 
@@ -2158,7 +2162,12 @@ opt(
 A template to render the window title bar text. Uses the same template syntax as
 :opt:`tab_title_template`. Available variables include: :code:`{title}`,
 :code:`{bell_symbol}`, :code:`{activity_symbol}`, :code:`{progress_percent}`,
-:code:`{custom}`, :code:`{fmt}`, :code:`{is_active}`.
+:code:`{custom}`, :code:`{fmt}`, :code:`{is_active}` and :code:`{window}`, which is the window id and has
+the fields :code:`{window.id}`, :code:`{window.wd}` (working directory of the foreground process
+on the local machine), :code:`{window.columns}` and :code:`{window.lines}`. Note that, as with
+the tab bar, the title bar is only redrawn when something changes, such as the window title or
+the working directory being reported by :ref:`shell_integration`, so :code:`{window.wd}` does not
+follow a change of directory that is not accompanied by one of these.
 You can also provide a custom :code:`draw_window_title(data)` function in
 :file:`window_title_bar.py` in the kitty config directory, exposed as :code:`{custom}`.
 """,

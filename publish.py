@@ -27,6 +27,9 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 docs_dir = os.path.abspath('docs')
 publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'kitty'))
 building_nightly = False
+# The git branch the release is being made from, either master or a version-X.Y branch for patch releases
+release_branch = 'master'
+VERSION_BRANCH_PAT = re.compile(r'^version-(\d+)\.(\d+)$')
 with open('kitty/constants.py') as f:
     raw = f.read()
 nv = re.search(r'^version: Version\s+=\s+Version\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE)
@@ -112,7 +115,10 @@ def run_build(args: Any) -> None:
 
 
 def run_tag(args: Any) -> None:
-    call('git push')
+    if release_branch == 'master':
+        call('git push')
+    else:
+        call('git', 'push', '-u', 'origin', release_branch)
     call('git tag -s v{0} -m version-{0}'.format(version))
     call(f'git push origin v{version}')
 
@@ -175,6 +181,9 @@ def run_docs(args: Any) -> None:
 
 
 def run_website(args: Any) -> None:
+    if not is_newest_release():
+        print(f'\x1b[93mNot updating website as a release newer than {version} exists\x1b[m', flush=True)  # ]]
+        return
     if os.path.exists(publish_dir):
         shutil.rmtree(publish_dir)
     shutil.copytree(os.path.join(docs_dir, '_build', 'dirhtml'), publish_dir, symlinks=True)
@@ -260,8 +269,19 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
 class GitHub:  # {{{
     API = 'https://api.github.com'
 
-    def __init__(self, files: Dict[str, str], reponame: str, version: str, username: str, password: str, replace: bool = False):
+    def __init__(
+        self,
+        files: Dict[str, str],
+        reponame: str,
+        version: str,
+        username: str,
+        password: str,
+        replace: bool = False,
+        target_commitish: str = 'master',
+        make_latest: bool = True,
+    ):
         self.files, self.reponame, self.version, self.username, self.password, self.replace = (files, reponame, version, username, password, replace)
+        self.target_commitish, self.make_latest = target_commitish, make_latest
         self.current_tag_name = self.version if self.version == 'nightly' else f'v{self.version}'
         self.is_nightly = self.current_tag_name == 'nightly'
         self.auth = 'Basic ' + base64.standard_b64encode(f'{self.username}:{self.password}'.encode()).decode()
@@ -440,13 +460,14 @@ class GitHub:  # {{{
             self.fail(r, 'No existing nightly release found on GitHub')
         data = {
             'tag_name': self.current_tag_name,
-            'target_commitish': 'master',
+            'target_commitish': self.target_commitish,
             'name': f'version {self.version}',
             'body': f'Release version {self.version}.'
             ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog/#detailed-list-of-changes'
             ' GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg',
             'draft': False,
             'prerelease': False,
+            'make_latest': 'true' if self.make_latest else 'false',
         }
         with contextlib.closing(self.make_request(self.url_base, method='POST', data=data)) as conn:
             r = conn.getresponse()
@@ -503,7 +524,7 @@ def files_for_upload() -> Dict[str, str]:
 def run_upload(args: Any) -> None:
     gd = get_github_data()
     files = files_for_upload()
-    gh = GitHub(files, appname, version, gd['username'], gd['password'])
+    gh = GitHub(files, appname, version, gd['username'], gd['password'], target_commitish=release_branch, make_latest=is_newest_release())
     gh()
 
 
@@ -523,6 +544,55 @@ def current_branch() -> str:
 def require_git_master(branch: str = 'master') -> None:
     if current_branch() != branch:
         raise SystemExit(f'You must be in the {branch} git branch')
+
+
+def parse_version(v: str) -> Optional[Tuple[int, int, int]]:
+    m = re.match(r'^v?(\d+)\.(\d+)\.(\d+)$', v)
+    if m is None:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+
+def released_versions() -> List[Tuple[int, int, int]]:
+    tags = subprocess.check_output(['git', 'tag', '--list', 'v*']).decode('utf-8').split()
+    return [v for v in map(parse_version, tags) if v is not None]
+
+
+def is_newest_release() -> bool:
+    current = parse_version(version)
+    if current is None:
+        raise SystemExit(f'Invalid version: {version}')
+    return not any(v > current for v in released_versions())
+
+
+def git_ref_exists(ref: str) -> bool:
+    return subprocess.run(['git', 'rev-parse', '-q', '--verify', '--end-of-options', ref], stdout=subprocess.DEVNULL).returncode == 0
+
+
+def check_release_branch(will_tag: bool) -> str:
+    "Return the branch to release from, ensuring it is either master or a valid version-X.Y branch"
+    branch = current_branch()
+    if branch == 'master':
+        return branch
+    m = VERSION_BRANCH_PAT.match(branch)
+    if m is None:
+        raise SystemExit('You must be in the master git branch or a version-X.Y git branch')
+    current = parse_version(version)
+    if current is None:
+        raise SystemExit(f'Invalid version: {version}')
+    major, minor = int(m.group(1)), int(m.group(2))
+    if current[:2] != (major, minor):
+        raise SystemExit(f'The version {version} in kitty/constants.py does not match the branch {branch}')
+    if current[2] == 0:
+        raise SystemExit(f'Cannot release {version} from the branch {branch}, X.Y.0 releases must be made from master')
+    base_tag = f'v{major}.{minor}.0'
+    if not git_ref_exists(f'refs/tags/{base_tag}'):
+        raise SystemExit(f'The tag {base_tag} does not exist')
+    if subprocess.run(['git', 'merge-base', '--is-ancestor', base_tag, 'HEAD']).returncode != 0:
+        raise SystemExit(f'The branch {branch} is not based on the release {base_tag}')
+    if will_tag and git_ref_exists(f'refs/tags/v{version}'):
+        raise SystemExit(f'The tag v{version} already exists')
+    return branch
 
 
 def safe_read(path: str) -> str:
@@ -576,7 +646,7 @@ def exec_actions(actions: Iterable[str], args: Any) -> None:
 
 
 def main() -> None:
-    global building_nightly
+    global building_nightly, release_branch
     parser = argparse.ArgumentParser(description='Publish kitty')
     parser.add_argument(
         '--only', default=False, action='store_true', help='Only run the specified action, by default the specified action and all sub-sequent actions are run'
@@ -591,7 +661,6 @@ def main() -> None:
             exec_actions(NIGHTLY_ACTIONS, args)
             subprocess.run(['make', 'clean', 'debug'])
         return
-    require_git_master()
     if args.action == 'all':
         actions = list(ALL_ACTIONS)
     elif args.action == 'upload_nightly':
@@ -601,9 +670,14 @@ def main() -> None:
         actions = ALL_ACTIONS[idx:]
     if args.only:
         del actions[1:]
+    if actions == ['upload_nightly']:
+        require_git_master()
     else:
+        release_branch = check_release_branch('tag' in actions)
+    if not args.only:
+        from_branch = '' if release_branch == 'master' else f' from branch \033[91m{release_branch}\033[m'
         try:
-            ans = input(f'Publish version \033[91m{version}\033[m (y/n): ')
+            ans = input(f'Publish version \033[91m{version}\033[m{from_branch} (y/n): ')
         except KeyboardInterrupt:
             ans = 'n'
         if ans.lower() != 'y':
@@ -611,6 +685,11 @@ def main() -> None:
     if actions == ['website']:
         actions.insert(0, 'html')
     exec_actions(actions, args)
+    if release_branch != 'master':
+        print(
+            f'\n\x1b[93mReminder: Add the changelog entry for {version} to the master branch'
+            f' and ensure the version on master is greater than {version} before its next release\x1b[m'  # ]]
+        )
 
 
 if __name__ == '__main__':

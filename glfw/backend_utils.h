@@ -67,7 +67,16 @@ typedef struct {
     GLFWuserdatafreefun free;
     const char *name;
     bool repeats;
+    // Set when the timer is removed while timers are being dispatched, the
+    // timer is then dropped from the array once dispatching is done
+    bool removed;
 } Timer;
+
+typedef struct {
+    GLFWuserdatafreefun free;
+    id_type id;
+    void *data;
+} TimerFree;
 
 #define MAX_NUM_OF_WATCHED_FDS 64
 
@@ -86,7 +95,16 @@ typedef struct {
     bool wakeup_data_read, wakeup_fd_ready, key_repeat_fd_ready;
     nfds_t watches_count, timers_count;
     Watch watches[MAX_NUM_OF_WATCHED_FDS];
-    Timer timers[128];
+    // Growable arrays, freed by finalizePollData(). pending_timer_frees is
+    // always at least as large as timers.
+    Timer *timers;
+    size_t timers_capacity;
+    TimerFree *pending_timer_frees;
+    size_t pending_timer_frees_capacity;
+    // in_timer_dispatch is set for the whole of dispatchTimers(),
+    // calling_timers only while timer callbacks are running
+    bool in_timer_dispatch, calling_timers;
+    size_t num_removed_timers;
 } EventLoopData;
 
 

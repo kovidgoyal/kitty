@@ -149,6 +149,60 @@ class TestSessions(BaseTest):
                     assert_error('None of the matching windows')
         boss.edit_file.assert_not_called()
 
+    def test_save_as_session_line_injection(self) -> None:
+        # Values such as the cwd reported via OSC 7 or user vars are under the
+        # control of programs running in the window and must not be able to
+        # inject lines into the session file
+        from urllib.parse import quote
+
+        from kitty.session import default_save_as_session_opts, session_launch_line, session_line_break_pat
+        from kitty.tabs import Tab
+        from kitty.utils import path_from_osc7_url
+
+        breaks = {chr(c) for c in range(0x110000) if len(f'a{chr(c)}b'.splitlines()) > 1}
+        self.ae(breaks, {chr(c) for c in range(0x110000) if session_line_break_pat.search(chr(c))})
+        opts = self.set_options()
+        for args in (['launch', 'a b', "it's"], ['launch', "a\nb'c\\d e\x85f\x1b", '$HOME']):
+            line = session_launch_line(args)
+            self.ae(line.splitlines(), [line])
+            (s,) = parse_session(line, opts)
+            self.ae(s.tabs[-1].windows[-1].launch_spec.args, args[1:])
+
+        injected = '\nlaunch --type=background touch /tmp/pwned\n#'
+        evil_cwd = path_from_osc7_url('file://host/tmp/x' + quote(injected))
+        evil_var = 'k=a launch --type=background touch /tmp/pwned'
+
+        class Group(list[SimpleNamespace]):
+            def __init__(self, gid: int, *cwds: str):
+                super().__init__(
+                    SimpleNamespace(
+                        id=gid * 10 + i,
+                        cwd_for_serialization=cwd,
+                        as_launch_command=lambda ser_opts, cwd, **kw: ['launch'] + ([f'--cwd={cwd}'] if cwd else []) + [f'--var={evil_var}'],
+                    )
+                    for i, cwd in enumerate(cwds)
+                )
+                self.id, self.docks = gid, ()
+
+        groups = [Group(1, evil_cwd, evil_cwd), Group(2, '/home')]
+        tab = SimpleNamespace(
+            windows=SimpleNamespace(active_group=groups[0], groups=groups, tab_docks=(), dock_owner=lambda g: None),
+            enabled_layouts=['tall'],
+            _current_layout_name='tall',
+            name='name' + injected,
+            serialize_layout_state_for_session=dict,
+        )
+        lines = Tab.serialize_state_as_session(cast(Tab, tab), '', None, default_save_as_session_opts())
+        text = '\n'.join(lines)
+        self.ae(text.splitlines(), lines)
+        self.ae(sum(1 for x in lines if x.startswith('launch')), 3)
+        (s,) = parse_session(text, opts)
+        (t,) = s.tabs
+        self.ae(t.cwd, '/home')
+        self.ae([w.launch_spec.opts.cwd for w in t.windows], [evil_cwd, evil_cwd, '/home'])
+        self.ae({tuple(w.launch_spec.opts.var) for w in t.windows}, {(evil_var,)})
+        self.ae({w.launch_spec.opts.type for w in t.windows}, {'window'})
+
     def test_scrollback_for_restore(self) -> None:
         from kitty.logout_session import sanitize_restored_output, scrollback_for_restore
         from kitty.window import as_text

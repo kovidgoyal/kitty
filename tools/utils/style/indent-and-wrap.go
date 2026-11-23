@@ -28,7 +28,7 @@ func (self sgr_color) as_sgr(base int) string {
 			if n <= 7 {
 				return strconv.Itoa(base + n)
 			}
-			return strconv.Itoa(base + 60 + n - 7)
+			return strconv.Itoa(base + 60 + n - 8)
 		}
 		return fmt.Sprintf("%d:5:%d", base+8, n)
 	}
@@ -39,29 +39,115 @@ func as_uint8(x int) uint8 {
 	return uint8(uint(x) & 0xff)
 }
 
-func (self *sgr_color) from_extended(nums []int) bool {
-	switch nums[0] {
-	case 5:
-		if len(nums) > 1 {
-			self.number = 1 + nums[1]
+// The limits used by the kitty CSI parser in vt-parser.c
+const (
+	max_csi_params = 256
+	max_csi_digits = 16
+)
+
+// Splits the body of a CSI SGR escape code into its parameters, mirroring
+// csi_parse_loop() in kitty/vt-parser.c. An empty field terminated by a
+// semicolon is zero, while an empty field terminated by a colon or the end of
+// the code is dropped. is_sub_param[i] is true when params[i] was preceded by a
+// colon. Returns ok == false if the code is not a plain SGR code, for example
+// because it has a private or intermediate byte or an invalid character, in
+// which case the terminal ignores it.
+func parse_csi_params(raw string) (params []int, is_sub_param []bool, ok bool) {
+	params = make([]int, 0, 16)
+	is_sub_param = make([]bool, 0, 16)
+	next_is_sub_param := false
+	var accumulator uint64
+	num_digits, mult := 0, int64(1)
+	commit := func() bool {
+		if num_digits == 0 {
 			return true
 		}
-	case 2:
-		if len(nums) > 3 {
-			self.number = -1
-			self.color.Red = as_uint8(nums[1])
-			self.color.Green = as_uint8(nums[2])
-			self.color.Blue = as_uint8(nums[3])
-			return true
+		if len(params) >= max_csi_params {
+			return false
+		}
+		// The C parser stores into an int, truncating to 32 bits
+		params = append(params, int(int32(mult*int64(accumulator))))
+		is_sub_param = append(is_sub_param, next_is_sub_param)
+		accumulator, num_digits, mult = 0, 0, 1
+		return true
+	}
+	for i := 0; i < len(raw); i++ {
+		switch ch := raw[i]; {
+		case '0' <= ch && ch <= '9':
+			if num_digits < max_csi_digits {
+				num_digits++
+				accumulator = accumulator*10 + uint64(ch-'0')
+			}
+		case ch == ':':
+			// A colon is not valid as the first character of a CSI code
+			if i == 0 || !commit() {
+				return nil, nil, false
+			}
+			next_is_sub_param = true
+		case ch == ';':
+			if num_digits == 0 {
+				num_digits = 1 // Empty means zero
+			}
+			if !commit() {
+				return nil, nil, false
+			}
+			next_is_sub_param = false
+		case ch == '-' && num_digits == 0 && i < len(raw)-1:
+			// A minus sign starting a parameter makes it negative. Anywhere
+			// else it is an intermediate byte, so this is not an SGR code.
+			mult, num_digits = -1, 1
+		default:
+			return nil, nil, false
 		}
 	}
-	return false
+	if !commit() {
+		return nil, nil, false
+	}
+	return params, is_sub_param, true
+}
+
+// Mirrors parse_color() in kitty/cursor.c, returns the number of parameters consumed
+func (self *sgr_color) from_params(params []int) int {
+	if len(params) == 0 {
+		return 0
+	}
+	switch params[0] {
+	case 5:
+		if len(params) > 1 {
+			self.number = 1 + int(as_uint8(params[1]))
+			return 2
+		}
+	case 2:
+		if len(params) > 3 {
+			i := 1
+			if len(params) > 4 {
+				// Ignore the color space id in 38:2:<id>:r:g:b
+				i++
+			}
+			self.number = -1
+			self.color.Red = as_uint8(params[i])
+			self.color.Green = as_uint8(params[i+1])
+			self.color.Blue = as_uint8(params[i+2])
+			return i + 3
+		}
+	}
+	return 1
 }
 
 type sgr_state struct {
 	italic, reverse, bold, dim, strikethrough bool
 	underline_style                           underline_style
 	fg, bg, uc                                sgr_color
+}
+
+func (self *sgr_state) extended_color(code int) *sgr_color {
+	switch code {
+	case 48:
+		return &self.bg
+	case 58:
+		return &self.uc
+	}
+	return &self.fg
 }
 
 func (self *sgr_state) reset() {
@@ -144,29 +230,14 @@ func (self sgr_state) as_escape_codes(for_close bool) string {
 	return fmt.Sprintf("\x1b[%sm", q)
 }
 
-func (self *sgr_state) apply_csi(raw string) {
-	if !strings.HasSuffix(raw, "m") {
-		return
-	}
-	raw = raw[:len(raw)-1]
-	if raw == "" {
-		raw = "0"
-	}
-	parts := strings.Split(raw, ";")
-	nums := make([]int, 0, 8)
-	for _, part := range parts {
-		subparts := strings.Split(part, ":")
-		nums = nums[:0]
-		for _, b := range subparts {
-			q, err := strconv.Atoi(b)
-			if err == nil {
-				nums = append(nums, q)
-			}
-		}
-		if len(nums) == 0 {
-			continue
-		}
-		switch nums[0] {
+// Applies a group of SGR parameters, mirroring cursor_from_sgr() in
+// kitty/cursor.c. When is_group is true the parameters are a single attribute
+// with its sub-parameters, such as 4:3 or 38:2:r:g:b.
+func (self *sgr_state) apply_sgr(params []int, is_group bool) {
+	for i := 0; i < len(params); {
+		attr := params[i]
+		i++
+		switch attr {
 		case 0:
 			self.reset()
 		case 1:
@@ -191,49 +262,130 @@ func (self *sgr_state) apply_csi(raw string) {
 			self.strikethrough = true
 		case 29:
 			self.strikethrough = false
+		case 21:
+			self.underline_style = double_underline
 		case 24:
 			self.underline_style = no_underline
 		case 4:
-			us := 1
-			if len(nums) > 1 {
-				us = nums[1]
-			}
-			switch us {
-			case 0:
-				self.underline_style = no_underline
-			case 1:
+			if is_group && i < len(params) {
+				// Large styles are clamped to the last style and the result is
+				// stored in three bits, so negative styles wrap around. The
+				// unused styles 6 and 7 cannot be represented, so ignore them.
+				if us := underline_style(min(params[i], int(dashed_underline)) & 7); us <= dashed_underline {
+					self.underline_style = us
+				}
+				i++
+			} else {
 				self.underline_style = straight_underline
-			case 2:
-				self.underline_style = double_underline
-			case 3:
-				self.underline_style = curly_underline
-			case 4:
-				self.underline_style = dotted_underline
-			case 5:
-				self.underline_style = dashed_underline
 			}
 		case 30, 31, 32, 33, 34, 35, 36, 37:
-			self.fg.number = nums[0] + 1 - 30
+			self.fg.number = attr + 1 - 30
 		case 90, 91, 92, 93, 94, 95, 96, 97:
-			self.fg.number = nums[0] + 1 - 82
-		case 38:
-			self.fg.from_extended(nums[1:])
+			self.fg.number = attr + 1 - 82
+		case 38, 48, 58:
+			i += self.extended_color(attr).from_params(params[i:])
 		case 39:
 			self.fg.number = 0
 		case 40, 41, 42, 43, 44, 45, 46, 47:
-			self.bg.number = nums[0] + 1 - 40
+			self.bg.number = attr + 1 - 40
 		case 100, 101, 102, 103, 104, 105, 106, 107:
-			self.bg.number = nums[0] + 1 - 92
-		case 48:
-			self.bg.from_extended(nums[1:])
+			self.bg.number = attr + 1 - 92
 		case 49:
 			self.bg.number = 0
-		case 58:
-			self.uc.from_extended(nums[1:])
 		case 59:
 			self.uc.number = 0
 		}
+		if is_group {
+			break
+		}
 	}
+}
+
+// Applies the body of a CSI escape code, such as "1;38:5:200m". Mirrors
+// _parse_sgr() in kitty/vt-parser.c, which splits the parameters into
+// attributes with sub-parameters and semicolon separated extended colors.
+// As in the terminal, an invalid sub-parameter or color type discards the
+// rest of the parameters, but the attributes before it remain applied.
+func (self *sgr_state) apply_csi(raw string) {
+	if !strings.HasSuffix(raw, "m") {
+		return
+	}
+	params, is_sub_param, ok := parse_csi_params(raw[:len(raw)-1])
+	if !ok {
+		return
+	}
+	if len(params) == 0 {
+		params, is_sub_param = []int{0}, []bool{false}
+	}
+	type parse_state int
+	const (
+		normal parse_state = iota
+		sub_params
+		color
+		color1
+		color3
+	)
+	state := normal
+	first_param, num_params := 0, 0
+	send := func() {
+		if num_params > 0 {
+			self.apply_sgr(params[first_param:first_param+num_params], state != normal)
+			state = normal
+			first_param += num_params
+			num_params = 0
+		}
+	}
+	for pos := 0; pos < len(params); pos++ {
+		switch state {
+		case normal:
+			if is_sub_param[pos] {
+				if num_params == 0 || pos == 0 {
+					return
+				}
+				// The previous parameter starts a group of sub-parameters
+				num_params--
+				send()
+				state = sub_params
+				first_param = pos - 1
+				num_params = 1
+			}
+			switch params[pos] {
+			case 38, 48, 58:
+				send()
+				state = color
+				first_param = pos
+				num_params = 1
+			default:
+				num_params++
+			}
+		case sub_params:
+			if is_sub_param[pos] {
+				num_params++
+			} else {
+				send()
+				pos--
+			}
+		case color:
+			switch params[pos] {
+			case 2:
+				state = utils.IfElse(is_sub_param[pos], sub_params, color3)
+			case 5:
+				state = utils.IfElse(is_sub_param[pos], sub_params, color1)
+			default:
+				return
+			}
+			num_params++
+		case color1:
+			num_params++
+			send()
+		case color3:
+			num_params++
+			if num_params >= 5 {
+				send()
+			}
+		}
+	}
+	send()
 }
 
 type hyperlink_state struct {

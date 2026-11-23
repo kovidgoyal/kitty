@@ -417,6 +417,12 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
             }
             if ((error = FT_Set_Var_Design_Coordinates(self->face, sz, coords))) return set_load_error(path, error);
         }
+        // The HarfBuzz font was created in init_ft_face() using the default
+        // variation coordinates, sync it with the ones set above, otherwise
+        // shaping ignores them, which breaks fonts that substitute glyphs based
+        // on axis values via GSUB FeatureVariations, see
+        // https://github.com/kovidgoyal/kitty/issues/10897
+        if ((ns || axes) && self->harfbuzz_font) hb_ft_font_changed(self->harfbuzz_font);
         if (!create_features_for_face(postscript_name_for_face((PyObject *)self), PyDict_GetItemString(descriptor, "features"), &self->font_features))
             return NULL;
         if (!read_matrix_from_descriptor(descriptor, &self->matrix, &self->has_matrix)) return NULL;
@@ -670,7 +676,7 @@ typedef struct {
     size_t start_x, width, stride;
     size_t rows;
     FT_Pixel_Mode pixel_mode;
-    bool needs_free;
+    bool needs_free, rescaled;
     unsigned int factor, right_edge;
     int bitmap_left, bitmap_top;
 } ProcessedBitmap;
@@ -709,10 +715,11 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
     if (copy_buf) {
-        ans->buf = malloc(ans->rows * ans->stride);
+        const size_t sz = (size_t)ans->rows * ans->stride;
+        ans->buf = malloc(MAX(sz, 1u));
         if (!ans->buf) fatal("Out of memory");
         ans->needs_free = true;
-        memcpy(ans->buf, bitmap->buffer, ans->rows * ans->stride);
+        if (sz) memcpy(ans->buf, bitmap->buffer, sz);
     } else ans->buf = bitmap->buffer;
     ans->start_x = 0;
     ans->width = bitmap->width;
@@ -769,10 +776,15 @@ render_bitmap(
         size_t extra = ans->width - max_width;
         if (italic && extra < cell_width / 2) {
             trim_borders(ans, extra);
-        } else if (extra == 2 && num_cells == 1) {
-            // there exist fonts that have bitmaps just a couple of pixels
-            // wider than their advances, rather than rescale, which looks
-            // bad, we just crop the bitmap on the right. See https://github.com/kovidgoyal/kitty/issues/352
+        } else if (num_cells == 1 && (extra <= 2 || extra * 10 <= cell_width * 2)) {
+            // there exist fonts that have glyphs a little wider than their
+            // advances, such as wide letters that borrow space from a narrow
+            // neighbor. Rather than rescale, which looks bad, we just crop the
+            // bitmap to the cell. The allowance is 2/10 of the cell width,
+            // with a minimum of 2px for smaller cells, which is what this was
+            // originally tuned for. Cropping removes ink, so the allowance is
+            // kept small.
+            // See https://github.com/kovidgoyal/kitty/issues/352
         } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)ans->width;
@@ -786,6 +798,7 @@ render_bitmap(
                     fg->fcm.cell_height)) {
                 free_processed_bitmap(ans);
                 if (!render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, false, fg)) return false;
+                ans->rescaled = true;
                 if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0, fg->fcm.cell_height)) return false;
             } else return false;
         }
@@ -1222,7 +1235,7 @@ render_glyphs_in_cells(
     Face *self = (Face *)f;
     bool is_emoji = *was_colored;
     *was_colored = is_emoji && self->has_color;
-    float x = 0.f, y = 0.f;
+    float x = 0.f, y = 0.f, shift = 0.f;
     ProcessedBitmap bm;
     unsigned int canvas_width = cell_width * num_cells;
     GlyphColorType colored;
@@ -1247,6 +1260,13 @@ render_glyphs_in_cells(
             }
         }
         float x_offset = x + (float)positions[i].x_offset / 64.0f;
+        // A rescaled glyph, such as a letter with marks that hang to the left
+        // of its cell, is shifted so that the marks are not cut off. The
+        // combining marks that follow it, which have no advance, are shifted
+        // with it, so that they stay in place relative to it.
+        if (positions[i].x_advance) shift = 0;
+        if (bm.rescaled && x_offset + shift + (float)bm.bitmap_left < 0) shift = -(x_offset + (float)bm.bitmap_left);
+        x_offset += shift;
         y = (float)positions[i].y_offset / 64.0f;
         if (debug_placement) printf("%d: x=%f canvas: %u", i, x_offset, canvas_width);
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {

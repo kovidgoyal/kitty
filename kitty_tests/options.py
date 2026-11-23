@@ -360,8 +360,15 @@ def launcher(self):
     t('+open -1 --help', argv=['+open', '-1', '--help'])
     si('+open -1 moose', argv=[kexe, '+open', '-1', 'moose'], open_urls=['moose'])
     si('+open -1 --instance-group=g x y', instance_group='g', open_urls=['x', 'y'])
-    dt('--detach --session=moose --detached-log=xyz', detached_log='xyz', session='moose')
+    dt(
+        '--detach --session=moose --detached-log=xyz',
+        detached_log='xyz',
+        session='moose',
+        detach_exec_argv=[kexe, '--detach', '--session=moose', '--detached-log=xyz'],
+    )
     pn('+kitten panel -1 --edge=left', edge='left')
+    dt('+kitten panel --detach --edge=top', detach_exec_argv=[kexe, '+kitten', 'panel', '--detach', '--edge=top'])
+    dt('+ kitten panel --detach', detach_exec_argv=[kexe, '+', 'kitten', 'panel', '--detach'])
 
     if is_macos:
         with tempfile.TemporaryDirectory() as tdir:
@@ -504,6 +511,11 @@ def conf_parsing(self):
     ka = ac()
     self.ae(ka.func, 'change_font_size')
     self.ae(ka.args, (False, '+', 2.0))
+
+    opts = p('clear_all_shortcuts y', 'map f1 clear_bell_indicators')
+    self.ae((ac().func, ac().args), ('clear_bell_indicators', ()))
+    opts = p('clear_all_shortcuts y', 'map f1 clear_bell_indicators state:parent_active and not id:1')
+    self.ae((ac().func, ac().args), ('clear_bell_indicators', ('state:parent_active and not id:1',)))
 
     opts = p('clear_all_shortcuts y', 'action_alias la launch --moo', 'map f1 combine : new_window : la ')
     self.ae((ac().func, ac(1).func), ('new_window', 'launch'))

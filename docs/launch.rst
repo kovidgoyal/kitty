@@ -300,7 +300,12 @@ unchanged. For example:
 The function is passed a ``LaunchContext`` object with the following fields:
 
 ``argv``
-    The command that will be run, as a tuple of strings
+    The command that will be run, as a tuple of strings. The program is as
+    requested, so a name such as ``vim`` is not resolved to a full path, it
+    is looked up in :envvar:`PATH` by the wrapper or the program that runs it,
+    as a shell would. The exception is a program that would not be found via
+    the :envvar:`PATH` in ``env``, for example one found via
+    :opt:`exe_search_path`, which is given as the full path kitty found it at.
 ``cwd``
     The working directory the command will run in
 ``env``
@@ -328,6 +333,9 @@ The function is passed a ``LaunchContext`` object with the following fields:
     Since user variables are saved in :doc:`sessions <sessions>`, you can use
     them to start a restored window via the same wrapper as the original,
     for example, by setting a user variable from a :ref:`watcher <watchers>`.
+``hold``
+    True if the window will be kept open after the command exits, as with
+    :option:`launch --hold`. See :ref:`launch_wrapper_hold`.
 
 The wrapper is used for windows created at your request: by the
 :doc:`launch <launch>` command, including via :doc:`remote control
@@ -366,6 +374,40 @@ Keep the following in mind when writing a wrapper:
 
 The file is re-loaded when the kitty config is reloaded, and is ignored when
 kitty is run with :option:`kitty --config` = :code:`NONE`.
+
+Instead of a list of strings, the function can return a ``LaunchPrefix``
+object, which allows for more control. A list is the same as
+``LaunchPrefix(argv=the_list)``. Its fields, all of which must be passed as
+keyword arguments, are:
+
+``argv``
+    The prefix, as a list of strings
+``handles_hold``
+    If ``True``, the wrapper is responsible for keeping the window open after the
+    command exits, see below. Ignored if ``argv`` is empty
+
+.. _launch_wrapper_hold:
+
+Windows that are kept open after the command exits
+_____________________________________________________
+
+By default, kitty keeps windows created with :option:`launch --hold` open by
+running the wrapper via :program:`kitten run-shell`, which runs the shell
+after the command exits. This way the window stays open, showing any errors,
+even if the wrapper itself fails. However, it means that the shell runs outside
+the wrapper. To have the shell run inside the wrapper, as the command does,
+use ``handles_hold``, with the prefix kitty uses to keep windows open, from
+``hold_prefix()``, after your wrapper:
+
+.. code-block:: python
+
+    from kitty.launch_wrapper import LaunchContext, LaunchPrefix, hold_prefix
+
+    def prefix_for_launch(ctx: LaunchContext) -> LaunchPrefix:
+        prefix = ['distrobox', 'enter', 'mybox', '--']
+        if ctx.hold:
+            return LaunchPrefix(argv=prefix + hold_prefix(), handles_hold=True)
+        return LaunchPrefix(argv=prefix)
 
 Why a prefix, rather than a new command and environment?
 ____________________________________________________________

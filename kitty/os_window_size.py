@@ -29,6 +29,8 @@ class WindowSizeData(NamedTuple):
     window_margin_width: FloatEdges
     single_window_padding_width: FloatEdges
     window_padding_width: FloatEdges
+    draw_window_borders_for_single_window: bool = False
+    window_border_width: tuple[float, str] = (0, 'px')
 
 
 def sanitize_window_size(x: Any) -> int:
@@ -83,16 +85,24 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]
                 ans = getattr(opts.window_padding_width, which)
             return ans
 
+        def border(dpi: float) -> float:
+            # The layout reserves space for the border around a single window
+            # only when draw_window_borders_for_single_window is set
+            if not opts.draw_window_borders_for_single_window:
+                return 0
+            val, unit = opts.window_border_width
+            return 2 * (max(1 if val > 0 else 0, val * dpi / 72) if unit == 'pt' else val)
+
         if w_unit == 'cells':
             spacing = effective_margin('left') + effective_margin('right')
             spacing += effective_padding('left') + effective_padding('right')
-            width = cell_width * w / xscale + (dpi_x / 72) * spacing + 1
+            width = cell_width * w / xscale + (dpi_x / 72) * spacing + border(dpi_x) + 1
         else:
             width = w
         if h_unit == 'cells':
             spacing = effective_margin('top') + effective_margin('bottom')
             spacing += effective_padding('top') + effective_padding('bottom')
-            height = cell_height * h / yscale + (dpi_y / 72) * spacing + 1
+            height = cell_height * h / yscale + (dpi_y / 72) * spacing + border(dpi_y) + 1
         else:
             height = h
         return int(width), int(height)

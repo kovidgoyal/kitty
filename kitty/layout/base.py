@@ -361,18 +361,21 @@ def create_window_id_map_for_unserialize(all_windows: WindowList) -> dict[int, i
 
 
 class DragOverlayMode(Enum):
-    "Controls drag-and-drop overlay display and valid direction axis for body drops"
+    "How a window dropped onto another window is placed and the area of the target window highlighted"
 
-    full = 'full'  # full-window overlay, positional swap (Stack and any unrecognised layout)
-    axis_x = 'axis_x'  # top/bottom halves only (Vertical, Tall, Grid)
-    axis_y = 'axis_y'  # left/right halves only (Horizontal, Fat)
-    free = 'free'  # 4-way free direction (Splits; handled by its own insert_window_next_to override)
+    full = 'full'  # whole window highlighted, swaps (Stack and any unrecognised layout)
+    # The windows can only be reordered, the whole window is highlighted and the dropped
+    # window takes its place
+    axis_x = 'axis_x'  # windows ordered left to right (Horizontal, Fat)
+    axis_y = 'axis_y'  # windows ordered top to bottom (Vertical, Tall, Grid)
+    free = 'free'  # half highlighted, splits the window at that edge (Splits)
 
 
 class Layout:
     name: str = ''
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
+    has_more_than_one_visible_group = False
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
     drag_overlay_mode: ClassVar[DragOverlayMode] = DragOverlayMode.full
@@ -581,6 +584,25 @@ class Layout:
             # 'full' fallback: swap (preserves existing behaviour for Stack etc.)
             self.move_window_to_group(all_windows, dest_wg.id)
 
+    def insert_window_next_to_changes_layout(
+        self,
+        all_windows: WindowList,
+        window: WindowType,
+        next_to: WindowType,
+        horizontal: bool,
+        after: bool,
+    ) -> bool:
+        "Whether insert_window_next_to() with these arguments would change the layout"
+        src_wg = all_windows.group_for_window(window)
+        dest_wg = all_windows.group_for_window(next_to)
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
+            return False
+        if self.drag_overlay_mode in (DragOverlayMode.axis_x, DragOverlayMode.axis_y):
+            # Inserting a group on the side of its neighbour it is already on keeps the order
+            ids = [g.id for g in all_windows.groups]
+            return ids.index(src_wg.id) != ids.index(dest_wg.id) + (1 if after else -1)
+        return True
+
     def add_window(
         self,
         all_windows: WindowList,
@@ -697,7 +719,9 @@ class Layout:
         lgd.central, self.tab_dock_placements = carve_docks(tab_area, all_windows.tab_docks, lgd.cell_width, lgd.cell_height)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
-        lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, all_windows.has_more_than_one_visible_group)
+        # Visible docks count, as borders are drawn around them too
+        self.has_more_than_one_visible_group = all_windows.has_more_than_one_visible_group
+        lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, self.has_more_than_one_visible_group)
 
     def __call__(self, all_windows: WindowList) -> None:
         self._set_dimensions(all_windows)
@@ -836,7 +860,12 @@ class Layout:
         dock.set_geometry(window_geometry_from_layouts(x, y))
 
     def layout_single_window_group(self, wg: WindowGroup) -> None:
-        bw = 1 if self.must_draw_borders else 0
+        # Reserve space for the border whenever a full border is drawn around
+        # the window (see Tab.relayout_borders() and Borders), otherwise it
+        # overlaps the margin and spills past the edges of the OS window when
+        # the margin is narrower than the border
+        draws_borders = get_options().draw_window_borders_for_single_window or (self.needs_window_borders and self.has_more_than_one_visible_group)
+        bw = 1 if self.must_draw_borders or (draws_borders and not lgd.draw_minimal_borders) else 0
         xdecoration_pairs = (
             (
                 wg.decoration('left', border_mult=bw, is_single_window=True),
@@ -910,7 +939,6 @@ class Layout:
     def dock_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         "Borders on the inner edges of docked groups, separating them from the content they are docked to"
         needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
-        active_group = windows.active_group
         for g in windows.iter_dock_groups(only_visible=True):
             if g.dock is None or (geom := g.geometry) is None or not (bw := g.effective_border()):
                 continue
@@ -931,7 +959,7 @@ class Layout:
                     edges, horizontal, wid = Edges(left + margin, top, left + margin + bw, bottom), False, -wid
             color = BorderColor.inactive
             if needs_borders_map.get(g.id):
-                color = BorderColor.active if g is active_group else BorderColor.bell
+                color = BorderColor.bell if g.needs_attention else BorderColor.active
             yield BorderLine(edges, color, wid, horizontal)
 
     def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:

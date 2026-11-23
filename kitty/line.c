@@ -543,7 +543,9 @@ static void
 write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
 #define W(c) output->buf[output->len++] = c
     const char *key = hid ? get_hyperlink_for_id(output->hyperlink_pool, hid, false) : NULL;
-    if (!key) hid = 0;
+    // keys are of the form id:url, are valid UTF-8 and id cannot contain a colon
+    const char *partition = key ? strchr(key, ':') : NULL;
+    if (!partition) hid = 0;
     output->active_hyperlink_id = hid;
     W(0x1b);
     W(']');
@@ -552,16 +554,16 @@ write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
         W(';');
         W(';');
     } else {
-        const char *partition = strstr(key, ":");
         W(';');
         if (partition != key) {
             W('i');
             W('d');
             W('=');
-            while (key != partition) W(*(key++));
+            output->len += decode_utf8_string(key, (size_t)(partition - key), output->buf + output->len);
         }
         W(';');
-        while (*(++partition)) W(*partition);
+        const char *url = partition + 1;
+        output->len += decode_utf8_string(url, strlen(url), output->buf + output->len);
     }
     W(0x1b);
     W('\\');

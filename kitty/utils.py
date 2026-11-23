@@ -703,6 +703,12 @@ def func_name(f: Any) -> str:
     return str(f)
 
 
+@lru_cache(maxsize=2)
+def report_invalid_shell(shell: str, err: str) -> None:
+    # Report only once per value, as the shell is resolved for every new window
+    log_error(f'The shell option {shell!r} is invalid with error: {err}, using {shell_path} instead')
+
+
 def resolved_shell(opts: Options | None = None) -> list[str]:
     q: str = getattr(opts, 'shell', '.')
     if q == '.':
@@ -723,7 +729,11 @@ def resolved_shell(opts: Options | None = None) -> list[str]:
         def expand(x: str) -> str:
             return expandvars(x, env)
 
-        ans = list(map(expand, shlex_split(q)))
+        try:
+            ans = list(map(expand, shlex_split(q)))
+        except ValueError as e:
+            report_invalid_shell(q, str(e))
+            ans = [shell_path]
     return ans
 
 
@@ -809,6 +819,23 @@ def which(name: str, only_system: bool = False) -> str | None:
                 return ans
             tried_paths |= set(paths)
     return None
+
+
+def is_same_executable(a: str, b: str) -> bool:
+    """
+    True if a and b, either of which can be a name to look up in PATH, run
+    the same executable file
+    """
+    if a == b:
+        return True
+    a, b = which(a) or a, which(b) or b
+    if a == b:
+        return True
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        # At least one of them does not exist, so they cannot be the same file
+        return False
 
 
 @lru_cache(4)

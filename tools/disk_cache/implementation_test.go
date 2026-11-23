@@ -129,6 +129,9 @@ func TestDiskCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	key, _, err := dc.GetPath(path, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err = dc.AddPath(path, "", key, map[string][]byte{"1": []byte("1")}); err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +142,14 @@ func TestDiskCache(t *testing.T) {
 	if err = os.WriteFile(path, []byte("changed contents"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = dc.AddPath(path, "", key, map[string][]byte{"1": []byte("2")}); err != nil {
+	new_key, _, err := dc.GetPath(path, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if new_key == key {
+		t.Fatal("expected a new key after changing the file")
+	}
+	if _, err = dc.AddPath(path, "", new_key, map[string][]byte{"1": []byte("2")}); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(1, len(dc.entries.PathMap)); diff != "" {
@@ -363,6 +373,42 @@ func TestDiskCachePathExtraKey(t *testing.T) {
 		if again != key {
 			t.Fatalf("extra key %q did not give a stable key", extra)
 		}
+	}
+}
+
+func TestDiskCacheRejectsStalePathKey(t *testing.T) {
+	tdir := t.TempDir()
+	dc, err := NewDiskCache(filepath.Join(tdir, "cache"), 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(tdir, "source")
+	if err = os.WriteFile(path, []byte("original"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	key, _, err := dc.GetPath(path, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(tdir, "replacement")
+	if err = os.WriteFile(replacement, []byte("replaced"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Chtimes(replacement, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Rename(replacement, path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = dc.AddPath(path, "", key, map[string][]byte{"data": []byte("preview")}); err == nil {
+		t.Fatal("AddPath accepted a key for the replaced file")
+	}
+	if ans, err := dc.Get(key); err != nil || len(ans) != 0 {
+		t.Fatalf("stale key should have no cached items, got %v, %v", ans, err)
 	}
 }
 

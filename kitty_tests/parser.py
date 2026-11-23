@@ -1080,6 +1080,7 @@ class TestParser(BaseTest):
         pb('\033]8;moo\x07', ('Ignoring malformed OSC 8 code',))
         pb('\033]8;id=xyz;\x07', ('set_active_hyperlink', 'xyz', None))
         pb('\033]8;moo:x=z:id=xyz:id=abc;http://yay;.com\x07', ('set_active_hyperlink', 'xyz', 'http://yay;.com'))
+        pb(b'\033]8;id=a\xffb;http://x/\xffa\xe4\xb8b\xe4\xb8\x07', ('set_active_hyperlink', 'a\ufffdb', 'http://x/\ufffda\ufffdb\ufffd'))
         c.clear()
         payload = '1' * 1024
         pb(f'\033]52;p;{payload}\x07', ('clipboard_control', 52, f'p;{payload}'))

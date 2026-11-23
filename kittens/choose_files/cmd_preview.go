@@ -35,6 +35,10 @@ func (c cmd_renderer) CacheKeyExtra(path string) string {
 	return fmt.Sprintf("%q", append(slices.Clone(c.cmdline), path))
 }
 
+// NeedsSelectedPath returns true as the command is documented to receive the
+// selected path.
+func (c cmd_renderer) NeedsSelectedPath() bool { return true }
+
 type CmdResult struct {
 	Lines      []string `json:"lines"`
 	Image      string   `json:"image"`

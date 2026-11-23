@@ -36,7 +36,14 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
         sizes = session.os_window_size
         remember_window_size = False  # a size specified in the session takes precedence over the remembered size
     return WindowSizeData(
-        sizes, remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.single_window_padding_width, opts.window_padding_width
+        sizes,
+        remember_window_size,
+        opts.single_window_margin_width,
+        opts.window_margin_width,
+        opts.single_window_padding_width,
+        opts.window_padding_width,
+        opts.draw_window_borders_for_single_window,
+        opts.window_border_width,
     )
 
 
@@ -128,7 +135,9 @@ class Session:
         needs_expandvars = False
         if isinstance(cmd, str):
             needs_expandvars = True
-            cmd = list(shlex_split(cmd)) if cmd else []
+            # ANSI-C quoting is needed to read arguments containing line
+            # breaks, see session_launch_line()
+            cmd = list(shlex_split(cmd, True)) if cmd else []
         serialize_data: dict[str, Any] = {'id': 0, 'cmd_at_shell_startup': ()}
         if cmd and cmd[0].startswith(unserialize_launch_flag):
             serialize_data = json.loads(cmd[0][len(unserialize_launch_flag) :])
@@ -195,6 +204,35 @@ class Session:
 
 
 SESSION_FILE_EXTENSIONS = {'session', 'kitty-session', 'kitty_session'}
+# Session files are parsed with str.splitlines() which treats all these as line
+# boundaries. Values written into session files can come from untrusted sources,
+# such as the cwd reported by programs via OSC 7, so they must never contain
+# these characters, otherwise they could inject arbitrary lines, such as launch
+# commands, into the session file.
+session_line_break_pat = re.compile('[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]')
+# Control characters and line breaks are escaped in ANSI-C quoted strings
+ansi_c_quote_table: dict[int, str] = {c: f'\\u{c:04x}' for c in (*range(0x20), *range(0x7F, 0xA0), 0x2028, 0x2029)} | {ord('\\'): '\\\\', ord("'"): "\\'"}
+
+
+def is_safe_for_session_line(text: str) -> bool:
+    "Return True if text can be written as is into a single line of a session file"
+    return session_line_break_pat.search(text) is None and text == text.strip()
+
+
+def sanitize_for_session_line(text: str) -> str:
+    return session_line_break_pat.sub(' ', text).strip()
+
+
+def session_launch_line(args: Sequence[str]) -> str:
+    """
+    Join args into a single line suitable for use in a session file. Arguments
+    containing line breaks are written using ANSI-C quoting so that they cannot
+    break out of the line.
+    """
+    ans = shlex.join(args)
+    if session_line_break_pat.search(ans) is None:
+        return ans
+    return ' '.join("$'" + x.translate(ansi_c_quote_table) + "'" if session_line_break_pat.search(x) is not None else shlex.quote(x) for x in args)
 
 
 def has_session_extension(path: str) -> bool:

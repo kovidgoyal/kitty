@@ -340,6 +340,72 @@ class TestFileTransmission(BaseTest):
         self.assertPathEqual(os.path.dirname(tf.name), base)
         os.remove(tf.name)
 
+    def test_file_put_via_planted_symlink(self):
+        def start_receiving():
+            ft = FileTransmission()
+            ft.handle_serialized_command(serialized_cmd(action='send'))
+            ft.test_responses = []
+            return ft
+
+        def statuses(ft):
+            return [str(r.get('status', '')).partition(':')[0] for r in ft.test_responses]
+
+        base = os.path.join(self.tdir, 'planted')
+        dest = os.path.join(base, 'dest')
+        outside = os.path.join(base, 'outside')
+        os.makedirs(dest)
+        os.makedirs(outside)
+        link = os.path.join(dest, 'link')
+
+        def plant(ft):
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='s', name=link, ftype='symlink'))
+            ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='s', data='path:' + outside))
+            self.assertTrue(os.path.islink(link))
+            ft.test_responses = []
+
+        # a regular file started after the symlink is created
+        ft = start_receiving()
+        plant(ft)
+        ft.handle_serialized_command(serialized_cmd(action='file', file_id='f', name=os.path.join(link, 'evil'), ftype='regular'))
+        ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='f', data='pwned'))
+        self.assertIn('EPERM', statuses(ft))
+        self.ae(set(names_in(outside)), set())
+        os.remove(link)
+
+        # a regular file started before the symlink is created but written after
+        ft = start_receiving()
+        ft.handle_serialized_command(serialized_cmd(action='file', file_id='f', name=os.path.join(link, 'sub', 'evil'), ftype='regular'))
+        plant(ft)
+        ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='f', data='pwned'))
+        self.assertIn('EPERM', statuses(ft))
+        self.ae(set(names_in(outside)), set())
+        os.remove(link)
+
+        # directories, symlinks and paths using .. after the planted symlink
+        for ftype, name, data in (
+            ('directory', os.path.join(link, 'd'), None),
+            ('symlink', os.path.join(link, 's'), 'path:/'),
+            ('regular', link + os.sep + '..' + os.sep + 'evil', 'pwned'),
+        ):
+            ft = start_receiving()
+            plant(ft)
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='x', name=name, ftype=ftype))
+            if data is not None:
+                ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='x', data=data))
+            self.assertIn('EPERM', statuses(ft), ftype)
+            self.ae(set(names_in(outside)), set())
+            self.ae(set(names_in(base)), {'dest', 'outside', 'dest/link'})
+            os.remove(link)
+
+        # pre-existing symlinks in the destination path are still followed
+        os.symlink(outside, link)
+        ft = start_receiving()
+        ft.handle_serialized_command(serialized_cmd(action='file', file_id='f', name=os.path.join(link, 'ok'), ftype='regular'))
+        ft.handle_serialized_command(serialized_cmd(action='end_data', file_id='f', data='fine'))
+        self.assertNotIn('EPERM', statuses(ft))
+        with open(os.path.join(outside, 'ok')) as f:
+            self.ae(f.read(), 'fine')
+
     def test_file_put_existing_directory(self):
         def start_receiving():
             ft = FileTransmission()

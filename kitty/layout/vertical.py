@@ -16,7 +16,6 @@ def borders(
     data: Iterable[tuple[WindowGroup, LayoutData, LayoutData]], is_horizontal: bool, all_windows: WindowList, start_offset: int = 1, end_offset: int = 1
 ) -> Generator[BorderLine, None, None]:
     borders: list[BorderLine] = []
-    active_group = all_windows.active_group
     needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
     try:
         bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
@@ -54,7 +53,7 @@ def borders(
             )
         color = BorderColor.inactive
         if needs_borders_map.get(wg.id):
-            color = BorderColor.active if wg is active_group else BorderColor.bell
+            color = BorderColor.bell if wg.needs_attention else BorderColor.active
         borders.append(BorderLine(e1, color, -wg.active_window_id, not is_horizontal))
         borders.append(BorderLine(e2, color, wg.active_window_id, not is_horizontal))
 

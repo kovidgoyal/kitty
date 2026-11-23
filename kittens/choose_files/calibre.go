@@ -299,6 +299,10 @@ func resolve_path(path string) (string, error) {
 // checks that cached metadata belongs to the selected book.
 func (c calibre_renderer) CacheKeyExtra(string) string { return "" }
 
+// NeedsSelectedPath returns true as calibre reads metadata from the file name
+// and from an .opf file next to it.
+func (c calibre_renderer) NeedsSelectedPath() bool { return true }
+
 func (c calibre_renderer) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[CALIBRE_METADATA_KEY])
 	if err != nil {

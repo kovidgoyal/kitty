@@ -163,6 +163,25 @@ func TestCreateDirAt(t *testing.T) {
 		t.Fatalf("CreateDirAt existing: %v", err)
 	}
 	sub2.Close()
+
+	if err := os.Symlink(tmp, filepath.Join(tmp, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if sub3, err := CreateDirAt(d, "link", 0700); err == nil {
+		sub3.Close()
+		t.Fatal("CreateDirAt followed a symlink")
+	}
+	for _, name := range []string{"mydir", "link"} {
+		if sub4, err := CreateExclusiveDirAt(d, name, 0700); err == nil {
+			sub4.Close()
+			t.Fatalf("CreateExclusiveDirAt succeeded for existing entry: %s", name)
+		}
+	}
+	sub5, err := CreateExclusiveDirAt(d, "newdir", 0700)
+	if err != nil {
+		t.Fatalf("CreateExclusiveDirAt new: %v", err)
+	}
+	sub5.Close()
 }
 
 func TestSymlinkAt(t *testing.T) {

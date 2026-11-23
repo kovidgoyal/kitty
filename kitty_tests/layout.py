@@ -8,11 +8,11 @@ from unittest.mock import patch
 from kitty.borders import Border, BorderColor, add_borders
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
-from kitty.layout.base import blank_rects_for_window, layout_dimension, lgd
+from kitty.layout.base import DragOverlayMode, blank_rects_for_window, layout_dimension, lgd
 from kitty.layout.interface import Fat, Grid, Horizontal, Splits, Stack, Tall, Vertical
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.rc.set_spacing import parse_spacing_settings
-from kitty.types import WindowGeometry
+from kitty.types import DockSpec, WindowGeometry
 from kitty.window import DeferredWatcherCalls, EdgeWidths, GlobalWatchers, Watchers
 from kitty.window_list import WindowList, reset_group_id_counter
 
@@ -313,6 +313,47 @@ class TestLayout(BaseTest):
         self.ae(q.neighbors_for_window(windows[1], all_windows), {'left': [1], 'bottom': [3, 4]})
         self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2]})
         self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'top': [2]})
+
+    def test_insert_window_next_to_changes_layout(self):
+        # In the reordering layouts only inserting a window on the side of its neighbour it is
+        # already on keeps the order. Docks are outside the layout so nothing is inserted next to them.
+        for layout_class in (Tall, Grid, Stack):
+            q = create_layout(layout_class)
+            windows = create_windows(q, num=3)
+            q.add_window(windows, Window(99), dock=DockSpec())
+            w1, w2, w3, dock = (windows.id_map[i] for i in (1, 2, 3, 99))
+            reorders = q.drag_overlay_mode is not DragOverlayMode.full
+            with self.subTest(layout=layout_class.name):
+                changes = q.insert_window_next_to_changes_layout
+                self.ae(changes(windows, w2, w1, False, True), not reorders)
+                self.ae(changes(windows, w1, w2, False, False), not reorders)
+                self.assertTrue(changes(windows, w2, w1, False, False))
+                self.assertTrue(changes(windows, w1, w3, False, True))
+                self.assertTrue(changes(windows, w3, w1, False, False))
+                self.assertFalse(changes(windows, w1, w1, False, True))
+                self.assertFalse(changes(windows, w1, dock, False, True))
+                self.assertFalse(changes(windows, dock, w1, False, True))
+
+    def test_splits_reinsert_in_place(self):
+        # Only re-inserting a window on its current side of its sibling does nothing, and that must
+        # not reset the bias of the pair
+        q = create_layout(Splits)
+        windows = create_windows(q, num=0)
+        for i, loc in ((1, None), (2, 'vsplit'), (3, 'hsplit')):
+            q.add_window(windows, Window(i), location=loc)
+        w1, w2, w3 = (windows.id_map[i] for i in (1, 2, 3))
+        q.pairs_root.two.bias = 0.8  # w1 | (w2 over w3)
+        changes = q.insert_window_next_to_changes_layout
+        self.assertFalse(changes(windows, w3, w2, False, True))
+        self.assertTrue(changes(windows, w3, w2, False, False))
+        self.assertTrue(changes(windows, w3, w2, True, True))
+        self.assertTrue(changes(windows, w3, w1, True, True))
+        self.assertFalse(changes(windows, w3, w3, True, True))
+        before = q.pairs_root.serialize()
+        q.insert_window_next_to(windows, w3, w2, False, True)
+        self.ae(q.pairs_root.serialize(), before)
+        q.insert_window_next_to(windows, w3, w2, False, False)
+        self.ae(list(q.pairs_root.all_window_ids()), [1, 3, 2])
 
     def test_splits_unserialize_into_unused_layout(self):
         # Restoring the state of a layout that was not the active one when the session
@@ -1083,6 +1124,32 @@ class TestSplitBorderResize(BaseSplitGeometryTest):
         self.assertIsNone(data.vertical_id)
 
 
+class BellWindow(Window):
+    needs_attention = False
+
+
+class TestMinimalBorderColors(BaseSplitGeometryTest):
+    def test_active_window_needing_attention_uses_bell_color(self):
+        # The active window can need attention when its OS window is unfocused,
+        # its minimal borders must then use the bell color not the active color
+        for layout_class in (Tall, Fat, Grid, Horizontal, Vertical, Splits):
+            for draw_active_borders in (True, False):
+                with self.subTest(layout=layout_class.name, draw_active_borders=draw_active_borders):
+                    layout = create_layout(layout_class)
+                    windows = create_windows(layout, num=3, window_class=BellWindow)
+                    self.stub_dimensions(layout, Region((0, 0, 1499, 1099, 1500, 1100)))
+                    layout(windows)
+                    lgd.draw_active_borders = draw_active_borders
+                    active = windows.active_window
+
+                    def colors():
+                        return {b.color for b in layout.get_minimal_borders(windows) if abs(b.window_id) == active.id}
+
+                    self.ae(colors(), {BorderColor.active} if draw_active_borders else {BorderColor.inactive})
+                    active.needs_attention = True
+                    self.ae(colors(), {BorderColor.bell})
+
+
 class TestReservedSpaces(BaseSplitGeometryTest):
     def test_reserved_spaces_do_not_overlap(self):
         # Custom shaders treat the space a layout reserves around the active
@@ -1113,6 +1180,43 @@ class TestReservedSpaces(BaseSplitGeometryTest):
                             for b in boxes[i + 1 :]:
                                 overlaps = a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
                                 self.assertFalse(overlaps, f'{a} overlaps {b}')
+
+
+class ThickBorderWindow(Window):
+    def effective_border(self):
+        return 3
+
+
+class TestSingleWindowBorders(BaseSplitGeometryTest):
+    def test_single_window_border_fits_in_central_area(self):
+        # With draw_window_borders_for_single_window the border of a single
+        # visible window must be reserved by the layout, it must not overlap
+        # the margin, which can be narrower than the border.
+        # A visible dock makes for more than one visible group, so borders are
+        # drawn around the single layoutable group, unless they are minimal.
+        central = Region((19, 47, 1518, 1146, 1500, 1100))
+        for draw, has_dock, minimal in ((True, False, False), (False, False, False), (False, True, False), (False, True, True), (True, True, True)):
+            self.set_options({'tab_bar_style': 'hidden', 'draw_window_borders_for_single_window': draw})
+            for cls in (Tall, Fat, Grid, Horizontal, Vertical, Splits, Stack):
+                for num in (1, 3):
+                    if num > 1 and cls is not Stack:
+                        continue
+                    layout = create_layout(cls)
+                    windows = create_windows(layout, num=num, window_class=ThickBorderWindow)
+                    self.stub_dimensions(layout, central, minimal=minimal)
+                    layout.has_more_than_one_visible_group = has_dock
+                    layout(windows)
+                    rects = []
+                    add_borders(rects, BorderColor.active, windows.active_group)
+                    frame = min(r.left for r in rects), min(r.top for r in rects), max(r.right for r in rects), max(r.bottom for r in rects)
+                    reserved = not minimal and (draw or (has_dock and cls is not Stack))
+                    with self.subTest(layout=cls.name, num=num, draw=draw, has_dock=has_dock, minimal=minimal):
+                        if reserved:
+                            # the margin of 1 is outside the border
+                            self.ae(frame, (central.left + 1, central.top + 1, central.left + central.width - 1, central.top + central.height - 1))
+                        else:
+                            # no space is reserved for the border, so it extends past the margin
+                            self.assertLess(frame[0], central.left)
 
 
 class WideMarginWindow(Window):
@@ -1201,6 +1305,41 @@ class TestFrameAlignment(BaseSplitGeometryTest):
                         self.ae(g.compensatory.top if position == 'top' else g.compensatory.bottom, 0)
                     self.check_frames(frames, (1, 1, 1, 1), 2, self.central)
                     self.ae(len(layout.blank_rects), sum(len(tuple(blank_rects_for_window(g))) for _, _, g in frames))
+
+    def test_title_bar_screen_uses_current_cell_width(self):
+        from kitty.window_title_bar import WindowTitleBarScreen
+
+        tb = WindowTitleBarScreen(10, 20)
+        geom = WindowGeometry(0, 0, 200, 20, 0, 1)
+        tb.layout(geom, 10)
+        self.ae(tb.screen.columns, 20)
+        # the font size changed, so the number of columns must follow the new cell width
+        tb.layout(geom, 20)
+        self.ae(tb.screen.columns, 10)
+        tb.layout(WindowGeometry(0, 0, 20, 20, 0, 1), 20)
+        self.ae(tb.screen.columns, 4)
+        # a cell width of zero, as reported for a missing OS window, must not raise
+        tb.layout(geom, 0)
+        self.ae(tb.screen.columns, 200)
+
+    def test_title_bar_template_window_fields(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from kitty.window_title_bar import WindowTitleBarScreen, WindowTitleData
+
+        tb = WindowTitleBarScreen(10, 20)
+        tb.layout(WindowGeometry(0, 0, 400, 20, 0, 1), 10)
+        data = WindowTitleData(title='t', is_active=False, window_id=7, tab_id=1)
+        fake_window = SimpleNamespace(get_cwd_of_child=lambda: '/some/dir', screen=SimpleNamespace(columns=80, lines=24))
+        self.set_options({'window_title_template': '{window}|{window.id}|{window.wd}|{window.columns}x{window.lines}'})
+        with patch('kitty.window_title_bar.get_boss', return_value=SimpleNamespace(window_id_map={7: fake_window})):
+            self.ae(tb.render(data, ''), '7|7|/some/dir|80x24')
+        # a window that no longer exists or no boss must not break rendering
+        with patch('kitty.window_title_bar.get_boss', return_value=SimpleNamespace(window_id_map={})):
+            self.ae(tb.render(data, ''), '7|7||0x0')
+        with patch('kitty.window_title_bar.get_boss', return_value=None):
+            self.ae(tb.render(data, ''), '7|7||0x0')
 
     def test_collapse_window_margins(self):
         from unittest.mock import patch
@@ -1574,6 +1713,42 @@ class TestProportionalSplits(BaseTest):
 
 
 class TestWindowHelpers(BaseTest):
+    def test_clear_bell_indicators(self):
+        from kitty.boss import Boss
+        from kitty.window import Window
+
+        class Tab(list):
+            def relayout_borders(self):
+                pass
+
+            def mark_tab_bar_dirty(self):
+                pass
+
+        boss = Boss.__new__(Boss)
+        boss.window_for_dispatch = None
+        boss.os_window_map, boss.window_id_map = {}, {}
+        for os_window_id in (1, 2):
+            tab = Tab()
+            boss.os_window_map[os_window_id] = [tab]
+            for wid in (10 * os_window_id + 1, 10 * os_window_id + 2):
+                w = Window.__new__(Window)
+                w.id, w.os_window_id, w.tabref, w.needs_attention = wid, os_window_id, weakref.ref(tab), True
+                boss.window_id_map[wid] = w
+                tab.append(w)
+
+        with patch('kitty.boss.cancel_bell_attention') as cancel:
+            boss.clear_bell_indicators('id:11')
+            cancel.assert_not_called()  # window 12 still rings in OS window 1
+            boss.clear_bell_indicators('id:12')
+            cancel.assert_called_once_with(1)
+            cancel.reset_mock()
+            boss.os_window_map[2][0].pop()  # close window 22
+            boss.cancel_bell_attention_if_idle((2,))
+            cancel.assert_not_called()  # window 21 still rings in OS window 2
+            boss.clear_bell_indicators()
+            self.assertFalse(any(w.needs_attention for w in boss.all_windows))
+            self.ae({c.args[0] for c in cancel.call_args_list}, {1, 2})
+
     def test_edge_widths_launch_args(self):
         ew = EdgeWidths({'left': 1, 'right': 2, 'top': 3, 'bottom': 4})
         for prefix in ('padding', 'margin'):
@@ -1615,8 +1790,6 @@ class TestWindowHelpers(BaseTest):
         next_timer_id = [0]
 
         def add_timer(callback, interval, repeats=True):
-            if len(timers) >= 128:  # simulate the fixed size glfw timer table
-                return 0
             timers.append(callback)
             next_timer_id[0] += 1
             return next_timer_id[0]
@@ -1640,7 +1813,7 @@ class TestWindowHelpers(BaseTest):
                 if data.get('recurse'):
                     dc(weakref.ref(self), 'on_resize', {'n': data['n'] + 1000})
 
-        with patch('kitty.window.add_timer', add_timer), patch('kitty.window.log_error', lambda *a: None):
+        with patch('kitty.window.add_timer', add_timer):
             dc = DeferredWatcherCalls()
             windows = [FakeWindow(i) for i in range(10)]
             unwatched = FakeWindow(-1, watched=False)
@@ -1693,17 +1866,6 @@ class TestWindowHelpers(BaseTest):
             self.ae(len(timers), 1)
             fire_timers()
             self.ae(delivered, [(0, 1), (1, 3)])
-
-            # if the timer cannot be added, calls are kept and retried on the next event
-            del delivered[:]
-            timers.extend([lambda timer_id: None] * 128)
-            dc(weakref.ref(windows[2]), 'on_resize', {'n': 1})
-            self.ae(dc.timer_id, 0)
-            del timers[:]
-            dc(weakref.ref(windows[3]), 'on_resize', {'n': 2})
-            self.ae(len(timers), 1)
-            fire_timers()
-            self.ae(delivered, [(2, 1), (3, 2)])
 
     def test_global_watchers(self):
         opts = SimpleNamespace(watcher={})

@@ -399,8 +399,11 @@ offset_for_plus_subcommand(int argc, char **argv, const char *name) {
     return offset;
 }
 
+// full_argc/full_argv are the complete command line, used to re-exec on
+// --detach. They differ from cli_spec->original_argv for +kitten panel, where
+// original_argv starts at "panel", not at the executable.
 static void
-handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
+handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix, int full_argc, char **full_argv) {
     CLIOptions opts = {0};
     RAII_CLISpec(subcommand_cli_spec);
 #define swap_cli_spec                                            \
@@ -445,6 +448,7 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             printf("detach: true\n");
             printf("detached_log: %s\n", detached_log ? detached_log : "");
             printf("session: %s\n", opts.session ? opts.session : "");
+            output_argv("detach_exec_argv", full_argc, full_argv);
             exit(0);
         } else {
             int fds[2] = {0};
@@ -494,7 +498,7 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             setenv("KITTY_EXEC_FOR_DETACH", pid_str, 1);
             char exe_path[PATH_MAX] = {0};
             read_exe_path(exe_path, PATH_MAX);
-            execv(exe_path, cli_spec->original_argv);
+            execv(exe_path, full_argv);
             fprintf(stderr, "Failed to execv() for --detach with exe_path: %s\n", exe_path);
             exit(1);
 #endif
@@ -538,7 +542,7 @@ delegate_to_kitten_if_possible(int argc, char **argv, char *exe_dir) {
         if (strcmp(kitten, "panel") == 0) {
             offset++;
             CLISpec t = {.original_argv = argv + offset, .original_argc = argc - offset};
-            handle_fast_commandline(&t, "panel");
+            handle_fast_commandline(&t, "panel", argc, argv);
             return true;
         }
     }
@@ -624,7 +628,7 @@ main(int argc_, char *argv_[], char *envp[]) {
     bool handle_fast_commandline_called = delegate_to_kitten_if_possible(argva.count, argva.argv, exe_dir);
     bool ok = parse_and_check_kitty_cli(&cli_spec, argva.count, argva.argv);
     if (!ok) return 1;
-    if (!handle_fast_commandline_called) handle_fast_commandline(&cli_spec, NULL);
+    if (!handle_fast_commandline_called) handle_fast_commandline(&cli_spec, NULL, argva.count, argva.argv);
     int ret = 0;
     char lib[PATH_MAX + 1] = {0};
     if (KITTY_LIB_PATH[0] == '/') {

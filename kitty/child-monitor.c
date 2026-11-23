@@ -946,7 +946,6 @@ prepare_to_render_os_window(
         Window *w = tab->windows + i;
 #define WD w->render_data
         if (w->visible && WD.screen) {
-            os_window->needs_layers = os_window->needs_layers || screen_needs_rendering_in_layers(os_window, w, WD.screen);
             screen_check_pause_rendering(WD.screen, now);
             *num_visible_windows += 1;
             color_type window_bg =
@@ -1037,6 +1036,10 @@ prepare_to_render_os_window(
                 }
             }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
+            // Must be after send_cell_data_to_gpu() as that updates the graphics layers, which
+            // determine whether there are images that need rendering in layers. Otherwise, a newly
+            // placed image is not drawn until something else causes a re-render, see #10875
+            os_window->needs_layers = os_window->needs_layers || screen_needs_rendering_in_layers(os_window, w, WD.screen);
             if (WD.screen->start_visual_bell_at | WD.screen->start_drag_overlay_at) needs_render = true;
             if (OPT(progress_bar) != PROGRESS_BAR_HIDDEN && WD.screen->progress_state == PROGRESS_STATE_INDETERMINATE) needs_render = true;
             // Prepare window title bar screen data for GPU
@@ -1404,6 +1407,9 @@ python_timer_callback(id_type timer_id, void *data) {
     PyObject *ret = PyObject_CallFunction(callback, "K", id);
     if (ret == NULL) PyErr_Print();
     else Py_DECREF(ret);
+    // Timers are dispatched outside the main loop tick, so ensure any state
+    // changed by the callback is processed and rendered
+    request_tick_callback();
 }
 
 static void

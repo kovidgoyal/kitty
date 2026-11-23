@@ -970,6 +970,8 @@ get_process_start_time(pid_t pid) {
     return nil;
 }
 
+static void remove_all_timers(void);
+
 void
 _glfwPlatformTerminate(void) {
     @autoreleasepool {
@@ -996,6 +998,7 @@ _glfwPlatformTerminate(void) {
         }
 
         _glfwClearDisplayLinks();
+        remove_all_timers();
 
         if (_glfw.ns.inputSource) {
             CFRelease(_glfw.ns.inputSource);
@@ -1101,23 +1104,51 @@ typedef struct {
     GLFWuserdatafun free_callback_data;
 } Timer;
 
-static Timer timers[128] = {{0}};
-static size_t num_timers = 0;
+// Timers live in a growable array. Capacity starts at MIN_TIMERS_CAPACITY,
+// doubles when full and halves when less than a quarter is in use, but never
+// drops below MIN_TIMERS_CAPACITY, so normal usage never reallocates. The
+// NSTimer blocks look up their timer by os_timer and copy it before calling
+// the callback, so the array can be safely reallocated by callbacks.
+#define MIN_TIMERS_CAPACITY 64u
+static Timer *timers = NULL;
+static size_t num_timers = 0, timers_capacity = 0;
+
+static bool
+resize_timers(size_t new_capacity) {
+    Timer *n = realloc(timers, new_capacity * sizeof(timers[0]));
+    if (!n) return false;
+    timers = n;
+    timers_capacity = new_capacity;
+    return true;
+}
+
+static void
+maybe_shrink_timers(void) {
+    if (timers_capacity > MIN_TIMERS_CAPACITY && num_timers < timers_capacity / 4) {
+        // A failed shrink leaves the larger, still valid, array in place
+        resize_timers(MAX(MIN_TIMERS_CAPACITY, timers_capacity / 2));
+    }
+}
 
 static void
 remove_timer_at(size_t idx) {
     if (idx < num_timers) {
-        Timer *t = timers + idx;
-        if (t->os_timer) {
-            [t->os_timer invalidate];
-            t->os_timer = NULL;
-        }
-        if (t->callback_data && t->free_callback_data) {
-            t->free_callback_data(t->id, t->callback_data);
-            t->callback_data = NULL;
-        }
+        // Remove the timer from the array before calling its free callback,
+        // as that can add or remove timers, reallocating the array
+        const Timer removed = timers[idx];
         remove_i_from_array(timers, idx, num_timers);
+        maybe_shrink_timers();
+        if (removed.os_timer) [removed.os_timer invalidate];
+        if (removed.callback_data && removed.free_callback_data) removed.free_callback_data(removed.id, removed.callback_data);
     }
+}
+
+static void
+remove_all_timers(void) {
+    while (num_timers) remove_timer_at(num_timers - 1);
+    free(timers);
+    timers = NULL;
+    timers_capacity = 0;
 }
 
 static void
@@ -1138,8 +1169,8 @@ schedule_timer(Timer *t) {
 unsigned long long
 _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback) {
     static unsigned long long timer_counter = 0;
-    if (num_timers >= sizeof(timers) / sizeof(timers[0]) - 1) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
+    if (num_timers >= timers_capacity && !resize_timers(MAX(MIN_TIMERS_CAPACITY, 2 * timers_capacity))) {
+        _glfwInputError(GLFW_OUT_OF_MEMORY, "Out of memory adding timer");
         return 0;
     }
     Timer *t = timers + num_timers++;

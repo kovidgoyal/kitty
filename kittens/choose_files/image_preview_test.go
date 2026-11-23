@@ -1,6 +1,7 @@
 package choose_files
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -17,17 +18,25 @@ import (
 
 var _ = fmt.Print
 
-type fake_preview_renderer struct{}
+type fake_preview_renderer struct {
+	before_render func(string) error
+}
 
 func (r fake_preview_renderer) String() string { return "fake_preview_renderer" }
 func (r fake_preview_renderer) Unmarshall(map[string]string) (any, error) {
 	return nil, nil
 }
-func (r fake_preview_renderer) Render(string) (map[string][]byte, metadata, *images.ImageData, error) {
+func (r fake_preview_renderer) Render(path string) (map[string][]byte, metadata, *images.ImageData, error) {
+	if r.before_render != nil {
+		if err := r.before_render(path); err != nil {
+			return nil, metadata{}, nil, err
+		}
+	}
 	return map[string][]byte{"rendered": []byte("data")}, metadata{custom: "rendered"}, nil, nil
 }
 func (r fake_preview_renderer) ShowMetadata(*Handler, ShowData) int { return 0 }
 func (r fake_preview_renderer) CacheKeyExtra(string) string         { return "" }
+func (r fake_preview_renderer) NeedsSelectedPath() bool             { return false }
 
 func new_test_image_preview(t *testing.T) *ImagePreview {
 	t.Helper()
@@ -131,6 +140,115 @@ func TestImagePreviewConcurrentRender(t *testing.T) {
 	}
 	if !p.ready.Load() {
 		t.Fatal("worker did not mark the preview as ready")
+	}
+}
+
+func TestImagePreviewRetriesChangedFile(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		changes int
+	}{
+		{"stable on retry", 1},
+		{"changes again", 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := new_test_image_preview(t)
+			renders := 0
+			p.renderer = fake_preview_renderer{before_render: func(path string) error {
+				renders++
+				if renders <= tc.changes {
+					return os.WriteFile(path, []byte(strings.Repeat("updated ", renders)), 0o600)
+				}
+				return nil
+			}}
+			p.start_rendering(p.render_channel)
+			result := <-p.render_channel
+			if renders != 2 {
+				t.Fatalf("rendered %d times, want 2", renders)
+			}
+			if tc.changes == 2 {
+				if !errors.Is(result.err, disk_cache.ErrPathChanged) {
+					t.Fatalf("expected a file change error, got %v", result.err)
+				}
+			} else if result.err != nil || result.cached_data["rendered"] == "" {
+				t.Fatalf("retry did not return a cached preview: %+v", result)
+			}
+		})
+	}
+}
+
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	ans, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ans
+}
+
+func TestImagePreviewRendersSymlinkTarget(t *testing.T) {
+	for _, tc := range []struct {
+		name, target_name string
+		want_target       bool
+	}{
+		{"same extension", "target.png", true},
+		{"different extension", "target.blob", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := new_test_image_preview(t)
+			dir := filepath.Dir(p.abspath)
+			target := filepath.Join(dir, tc.target_name)
+			other := filepath.Join(dir, "other"+filepath.Ext(tc.target_name))
+			for _, path := range []string{target, other} {
+				if err := os.WriteFile(path, []byte(filepath.Base(path)), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			link := filepath.Join(dir, "link.png")
+			retarget := func(dest string) error {
+				temp := link + ".temp"
+				if err := os.Symlink(dest, temp); err != nil {
+					return err
+				}
+				return os.Rename(temp, link)
+			}
+			if err := retarget(target); err != nil {
+				t.Fatal(err)
+			}
+			p.abspath = link
+			var rendered_path, rendered_contents string
+			p.renderer = fake_preview_renderer{before_render: func(path string) error {
+				// Retarget the link to another file while rendering and
+				// restore it before AddPath() checks the key again.
+				if err := retarget(other); err != nil {
+					return err
+				}
+				data, err := os.ReadFile(path)
+				rendered_path, rendered_contents = path, string(data)
+				if rerr := retarget(target); rerr != nil {
+					return rerr
+				}
+				return err
+			}}
+			p.start_rendering(p.render_channel)
+			if result := <-p.render_channel; result.err != nil {
+				t.Fatalf("unexpected error: %v", result.err)
+			}
+			if !tc.want_target {
+				// Renderers can detect the format from the extension, so
+				// they get the selected path when the target has a different one.
+				if rendered_path != link {
+					t.Fatalf("rendered %s, want %s", rendered_path, link)
+				}
+				return
+			}
+			if want := resolved(t, target); rendered_path != want {
+				t.Fatalf("rendered %s, want %s", rendered_path, want)
+			}
+			if rendered_contents != filepath.Base(target) {
+				t.Fatalf("rendered the contents %q of the wrong file", rendered_contents)
+			}
+		})
 	}
 }
 

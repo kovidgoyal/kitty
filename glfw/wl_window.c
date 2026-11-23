@@ -1913,8 +1913,9 @@ has_activation_in_flight(_GLFWwindow *window, GLFWactivationcallback callback) {
 }
 
 void
-_glfwPlatformRequestWindowAttention(_GLFWwindow *window) {
-    if (!has_activation_in_flight(window, request_attention)) get_activation_token(window, 0, request_attention, NULL);
+_glfwPlatformSetWindowAttention(_GLFWwindow *window, bool requested) {
+    // Activation requests cannot be withdrawn once made
+    if (requested && !has_activation_in_flight(window, request_attention)) get_activation_token(window, 0, request_attention, NULL);
 }
 
 int

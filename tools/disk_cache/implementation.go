@@ -95,25 +95,27 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	return ans, nil
 }
 
-func key_for_path(path, extra_key string) (key string, err error) {
-	resolved_path, err := filepath.EvalSymlinks(path)
-	if err != nil {
+// key_for_path returns the cache key for path and the absolute path of the
+// file it resolves to, whose state the key describes.
+func key_for_path(path, extra_key string) (key, resolved_path string, err error) {
+	if resolved_path, err = filepath.EvalSymlinks(path); err != nil {
 		return
 	}
 	if resolved_path, err = filepath.Abs(resolved_path); err != nil {
 		return
 	}
 
-	s, err := os.Stat(resolved_path)
+	info, err := os.Stat(resolved_path)
 	if err != nil {
 		return
 	}
-	data := fmt.Sprintf("%s\x00%d\x00%d", resolved_path, s.Size(), s.ModTime().UnixNano())
+	s := get_file_state(info)
+	data := fmt.Sprintf("%s\x00%d\x00%d\x00%d", resolved_path, s.Inode, s.Size, s.ModTime.UnixNano())
 	if extra_key != "" {
 		data += "\x00" + extra_key
 	}
 	sum := sha256.Sum256(utils.UnsafeStringToBytes(data))
-	return hex.EncodeToString(sum[:]), nil
+	return hex.EncodeToString(sum[:]), resolved_path, nil
 }
 
 // lock() and unlock() must be paired: unlock() must only be called after a

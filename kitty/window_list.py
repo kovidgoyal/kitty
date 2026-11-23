@@ -448,6 +448,17 @@ class WindowList:
             if not only_visible or d.is_visible_in_layout:
                 yield d
 
+    @property
+    def has_docks(self) -> bool:
+        """
+        True if any docks are shown alongside the windows of the layout. The OS
+        window docks count even when this list does not host them, as every tab
+        in the OS window reserves space for them. Docks of groups hidden by the
+        layout count too, so that the spacing of windows does not change when
+        switching between groups. Orphaned docks are hidden and do not count.
+        """
+        return bool(self.os_window_docks or self.tab_docks) or any(g.docks for g in self.groups)
+
     def hosted_os_window_docks(self) -> Sequence[WindowGroup]:
         "The OS window docks if this list hosts them, outermost first"
         return self.os_window_docks if self.hosts_os_window_docks else ()

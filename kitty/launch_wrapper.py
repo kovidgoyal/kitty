@@ -7,13 +7,14 @@
 
 import os
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, NamedTuple
 
 from .constants import config_dir, config_dir_files_ignored
 from .fast_data_types import get_boss, get_options
 from .types import run_once
-from .utils import log_error, resolved_shell
+from .utils import cmdline_for_hold, is_same_executable, log_error, resolved_shell
 
 if TYPE_CHECKING:
     from .window import CwdRequest
@@ -41,7 +42,9 @@ class LaunchRequest(NamedTuple):
 class LaunchContext(NamedTuple):
     # The command kitty will run, before kitty adds its own helpers, such as
     # the run-shell kitten or /usr/bin/login on macOS. These are inserted
-    # between the prefix and this command.
+    # between the prefix and this command. The program is as requested, for
+    # example, a name to be looked up in PATH, unless it would not be found in
+    # PATH from env, in which case it is the full path kitty found it at.
     argv: tuple[str, ...]
     # The working directory the command should run in
     cwd: str
@@ -60,9 +63,41 @@ class LaunchContext(NamedTuple):
     source_pid: int | None
     # User variables from launch --var
     user_vars: Mapping[str, str]
+    # True if the window is held open after the command exits, as with launch
+    # --hold. Unless the wrapper returns a LaunchPrefix with handles_hold set,
+    # kitty holds the window by running the command via the run-shell kitten,
+    # placed outside the prefix, so that the window is held even if the
+    # wrapper fails. The shell the window is held at thus runs outside the
+    # wrapper.
+    hold: bool = False
 
 
-PrefixFunc = Callable[[LaunchContext], Sequence[str] | None]
+@dataclass(frozen=True, kw_only=True)
+class LaunchPrefix:
+    """
+    The full form of the value returned by the launch wrapper function. A plain
+    list of strings is the same as LaunchPrefix(argv=the_list). Fields are
+    keyword only, so that more can be added in the future.
+    """
+
+    # The prefix to run the command with
+    argv: Sequence[str] = ()
+    # If True and the window is held, as indicated by LaunchContext.hold,
+    # kitty does not hold the window itself, the prefix is responsible for
+    # doing so, for example, by using hold_prefix(). Ignored if argv is empty.
+    handles_hold: bool = False
+
+
+PrefixFunc = Callable[[LaunchContext], LaunchPrefix | Sequence[str] | None]
+
+
+def hold_prefix() -> list[str]:
+    """
+    The prefix kitty uses to hold windows open: it runs the command and then
+    the shell, with shell integration, once the command exits. For use in a
+    LaunchPrefix with handles_hold set.
+    """
+    return cmdline_for_hold()
 
 
 @run_once
@@ -107,15 +142,28 @@ def source_pid_for(window_id: int | None) -> int | None:
         return None
 
 
-def prefix_for_launch(req: LaunchRequest, argv: Sequence[str], cwd: str, env: Mapping[str, str]) -> tuple[str, ...]:
+def is_same_command(a: Sequence[str], b: Sequence[str]) -> bool:
+    # Commands are the same if their arguments are and they run the same
+    # executable, whether or not it is given as a full path
+    a, b = list(a), list(b)
+    if a == b:
+        return True
+    if not a or len(a) != len(b) or a[1:] != b[1:]:
+        return False
+    return is_same_executable(a[0], b[0])
+
+
+def prefix_for_launch(
+    req: LaunchRequest, argv: Sequence[str], cwd: str, env: Mapping[str, str], *, unmodified_argv: Sequence[str], hold: bool = False
+) -> LaunchPrefix:
     """
-    Return the prefix to run argv with, from the user's launch wrapper. Any
-    failure is reported and results in no prefix, so that a broken wrapper
-    does not prevent new windows from being opened.
+    Return the prefix to run argv with, from the user's launch wrapper, with
+    argv as a tuple. Any failure is reported and results in no prefix, so that
+    a broken wrapper does not prevent new windows from being opened.
     """
     func = load_prefix_func()
     if func is None:
-        return ()
+        return LaunchPrefix()
     try:
         window_id = int(env.get('KITTY_WINDOW_ID', '0'))
     except ValueError:
@@ -124,12 +172,13 @@ def prefix_for_launch(req: LaunchRequest, argv: Sequence[str], cwd: str, env: Ma
         argv=tuple(argv),
         cwd=cwd,
         env=MappingProxyType(dict(env)),
-        is_default_shell=list(argv) == resolved_shell(get_options()),
+        is_default_shell=is_same_command(unmodified_argv, resolved_shell(get_options())),
         window_id=window_id,
         launch_type=req.launch_type,
         source_window_id=req.source_window_id,
         source_pid=source_pid_for(req.source_window_id),
         user_vars=MappingProxyType(dict(req.user_vars)),
+        hold=hold,
     )
     try:
         ans = func(ctx)
@@ -138,13 +187,21 @@ def prefix_for_launch(req: LaunchRequest, argv: Sequence[str], cwd: str, env: Ma
 
         traceback.print_exc()
         log_error(f'The {FUNCTION_NAME}() function in {MODULE_NAME} failed with error: {e}, running the command without a wrapper')
-        return ()
+        return LaunchPrefix()
     if ans is None:
-        return ()
-    if isinstance(ans, str) or not isinstance(ans, Sequence) or not all(isinstance(x, str) for x in ans):
-        log_error(f'The {FUNCTION_NAME}() function in {MODULE_NAME} must return a list of strings or None, got: {ans!r}, ignoring it')
-        return ()
-    return tuple(ans)
+        return LaunchPrefix()
+    if isinstance(ans, LaunchPrefix):
+        argv, handles_hold = ans.argv, ans.handles_hold
+        if not isinstance(handles_hold, bool):
+            log_error(f'The {FUNCTION_NAME}() function in {MODULE_NAME} returned a LaunchPrefix with a non-boolean handles_hold: {handles_hold!r}, ignoring it')
+            return LaunchPrefix()
+    else:
+        argv, handles_hold = ans, False
+    if isinstance(argv, str) or not isinstance(argv, Sequence) or not all(isinstance(x, str) for x in argv):
+        log_error(f'The {FUNCTION_NAME}() function in {MODULE_NAME} must return a LaunchPrefix, a list of strings or None, got: {ans!r}, ignoring it')
+        return LaunchPrefix()
+    argv = tuple(argv)
+    return LaunchPrefix(argv=argv, handles_hold=handles_hold and bool(argv))
 
 
 def user_launch_request(launch_type: str, cwd_from: 'CwdRequest | None' = None) -> LaunchRequest:

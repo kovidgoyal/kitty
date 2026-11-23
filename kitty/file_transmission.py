@@ -449,7 +449,10 @@ class PatchFile:
 
 
 class DestFile:
-    def __init__(self, ftc: FileTransmissionCommand) -> None:
+    def __init__(self, ftc: FileTransmissionCommand, created_symlinks: set[tuple[int, int]] | None = None) -> None:
+        # (st_dev, st_ino) of the symlinks created so far by the transfer this
+        # file is part of, shared between all files in the transfer
+        self.created_symlinks: set[tuple[int, int]] = set() if created_symlinks is None else created_symlinks
         self.name = ftc.name
         if not os.path.isabs(self.name):
             self.name = expand_home(self.name)
@@ -498,7 +501,29 @@ class DestFile:
                 self.actual_file.close()
                 self.actual_file = None
 
+    def check_parents(self) -> None:
+        # O_NOFOLLOW and friends only protect the final path component. Refuse
+        # to create anything whose path passes through a symlink created
+        # earlier in this same transfer, as otherwise a sender could plant a
+        # symlink and then use it to redirect subsequent entries elsewhere.
+        if not self.created_symlinks:
+            return
+        drive, rest = os.path.splitdrive(self.name)
+        components = [c for c in rest.replace(os.altsep or os.sep, os.sep).split(os.sep) if c]
+        prefix = drive + (os.sep if os.path.isabs(self.name) else '')
+        for c in components[:-1]:
+            prefix = os.path.join(prefix, c)
+            try:
+                st = os.stat(prefix, follow_symlinks=False)
+            except OSError:
+                return  # nothing below a non-existent path can exist either
+            if stat.S_ISLNK(st.st_mode) and (st.st_dev, st.st_ino) in self.created_symlinks:
+                raise TransmissionError(
+                    code=ErrorCode.EPERM, file_id=self.file_id, msg=f'Refusing to write {self.name} via the symlink {prefix} created earlier in this transfer'
+                )
+
     def check_destination(self) -> None:
+        self.check_parents()
         if self.ftype is FileType.directory or self.existing_stat is None:
             return
         is_dir = stat.S_ISDIR(self.existing_stat.st_mode)
@@ -512,6 +537,7 @@ class DestFile:
             raise TransmissionError(code=ErrorCode.EISDIR, file_id=self.file_id, msg=f'Cannot replace the existing directory {self.name} with a file')
 
     def make_parent_dirs(self) -> str:
+        self.check_parents()
         d = os.path.dirname(self.name)
         if d:
             try:
@@ -570,6 +596,8 @@ class DestFile:
                     raise TransmissionError(msg='Unknown link target type', file_id=self.file_id)
                 if self.ftype is FileType.symlink:
                     os.symlink(lt, self.name)
+                    st = os.stat(self.name, follow_symlinks=False)
+                    self.created_symlinks.add((st.st_dev, st.st_ino))
                 else:
                     os.link(lt, self.name)
                 self.close()
@@ -636,6 +664,7 @@ class ActiveReceive:
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
         self.send_errors = quiet < 2
+        self.created_symlinks: set[tuple[int, int]] = set()
         self.pending_files_to_transmit_signature_of: Deque[tuple[PatchFile, str]] = deque()
         self.signature_pending_chunks: Deque[FileTransmissionCommand] = deque()
 
@@ -658,7 +687,7 @@ class ActiveReceive:
                 msg=f'The file_id {ftc.file_id} already exists',
                 file_id=ftc.file_id,
             )
-        self.files[ftc.file_id] = df = DestFile(ftc)
+        self.files[ftc.file_id] = df = DestFile(ftc, self.created_symlinks)
         try:
             df.check_destination()
         except TransmissionError:
