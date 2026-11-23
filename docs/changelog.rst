@@ -122,52 +122,78 @@ for seamless and intuitive session file creation.
 Detailed list of changes
 -------------------------------------
 
-0.51.1 [future]
+0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Docks: Fix docks changing size when switching tabs or opening and closing windows when :opt:`single_window_margin_width` or :opt:`single_window_padding_width` is set. A tab with docks no longer counts as showing a single window
+- A new :ac:`clear_bell_indicators` action to clear the bell indicators of all
+  windows, or windows matching an expression, without needing to focus them.
+  This also dismisses system attention requests on macOS and X11 (:iss:`10916`)
 
-- Saving sessions: Fix programs running in a window being able to inject arbitrary commands into saved session files via line breaks in the working directory reported with OSC 7 or in user variables. Arguments with line breaks in :code:`launch` lines are now written using ANSI-C (:code:`$'...'`) quoting
+- :ref:`Launch wrapper <launch_wrapper>`: Allow the wrapper to keep windows
+  created with :option:`launch --hold` open itself, so that the shell runs
+  inside the wrapper, via a new ``hold`` field in ``LaunchContext`` and a new
+  ``LaunchPrefix`` return type. Fix the wrapper not being used for programs run
+  in an already running panel or quick access terminal in single instance mode
+  (:iss:`10901`, :pull:`10900`)
 
-- dnd kitten: Fix a malicious remote drop source being able to write files outside the staging directory by sending a directory with the same name as a previously sent symlink (follow up to :cve:`2026-54056`)
+- :doc:`launch <launch>`: Run the program by name instead of resolving it to a
+  full path first, so that wrappers look it up in their own :envvar:`PATH` and
+  the program sees itself invoked by name, as when run from a shell. Programs
+  found only via :opt:`exe_search_path` are still run via their full path
+  (:iss:`10914`)
 
-- File transfer protocol: Refuse to write files via a symlink created earlier in the same transfer, preventing a malicious sender from redirecting files outside the destination directory through intermediate path components (follow up to :cve:`2026-54055`)
+- :opt:`window_title_template`: Add :code:`{window}` with the window id,
+  working directory and size (:pull:`10905`)
 
-- Remove the limit on the number of simultaneously active timers, which could cause scheduled actions, such as watcher calls, to fail with a "Too many timers added" error when many were pending at once
+- Window drag and drop: In layouts that can only reorder windows, such as Tall
+  and Grid, highlight the whole target window and have the dropped window take
+  its place. In the Splits layout, dropping onto the side of a window that the
+  dragged window is already on now swaps them (:pull:`10908`)
 
-- Linux: Fix a crash when a timer, such as one scheduled by a watcher or kitten, is removed by another timer that fires at the same time
+- Security: Fix programs running in a window being able to inject arbitrary
+  commands into saved session files via line breaks in the working directory
+  or user variables. Fix a malicious remote drop source in the dnd kitten or
+  sender in the file transfer protocol being able to write files outside the
+  destination directory via previously sent symlinks (follow up to
+  :cve:`2026-54056` and :cve:`2026-54055`)
 
-- Fix a crash when calling :code:`Screen.hyperlink_at()` with coordinates outside the screen, such as from a watcher (:iss:`10890`)
+- Docks: Fix docks changing size when switching tabs or opening and closing
+  windows when :opt:`single_window_margin_width` or
+  :opt:`single_window_padding_width` is set
 
-- Fix animated images stopping when switching to a tab without animations and then back (:iss:`10894`)
+- Graphics: Fix animated images stopping when switching to a tab without
+  animations and back and images taller than the screen, such as those
+  displayed by :doc:`icat <kittens/icat>`, not being scrolled fully, causing
+  subsequent output to be drawn over them (:iss:`10894`, :iss:`10924`)
 
-- Linux: Fix variable fonts that use axis values to substitute glyphs, such as the cursive axis of Annotation Mono, not rendering the substituted glyphs (:iss:`10897`)
+- Fix a single window with :opt:`draw_window_borders_for_single_window` having
+  no border, or its rounded border being hidden, when its margin is narrower
+  than its border. Fix the text in window title bars being drawn with the old
+  cell size after a font size change (:iss:`10899`, :pull:`10903`)
 
-- Fix a single window with :opt:`draw_window_borders_for_single_window` having no border, and with :opt:`window_border_radius` being hidden by an extra layer of background, when its margin is narrower than its border. Space for the border is now reserved between the margin and the window contents (:iss:`10899`)
+- Watchers and kittens: Remove the limit on the number of simultaneously
+  pending timers, which caused "Too many timers added" errors. Fix crashes
+  when a timer is removed by another timer firing at the same time on Linux and
+  when calling :code:`Screen.hyperlink_at()` with coordinates outside the
+  screen (:iss:`10890`)
 
-- Fix the :ref:`launch wrapper <launch_wrapper>` not being used for programs run in an already running panel or quick access terminal in single instance mode (:pull:`10900`)
+- :ac:`combine`: Fix the third and subsequent actions in a mouse mapping not
+  being run for the window that was clicked
 
-- panel kitten: In single instance mode, run the command in a new panel in the working directory it was invoked from and do not pass internal environment variables such as :code:`XDG_ACTIVATION_TOKEN` to commands run in panels, as for other single instance commands
+- Preserve non-ASCII hyperlink IDs and URLs when exporting terminal text with
+  ANSI formatting and sanitize invalid UTF-8 and control characters in them
+  (:pull:`10909`)
 
-- :ref:`Launch wrapper <launch_wrapper>`: Allow the wrapper to keep windows created with :option:`launch --hold` open itself, so that the shell runs inside the wrapper, via a new ``hold`` field in ``LaunchContext`` and a new ``LaunchPrefix`` return type (:iss:`10901`)
+- panel kitten: In single instance mode, run the command in the working
+  directory it was invoked from and do not pass internal environment variables
+  such as :code:`XDG_ACTIVATION_TOKEN` to it
 
-- Fix the text in window title bars being drawn with the old cell size after changing the font size or moving a window to an OS window with a different font size (:pull:`10903`)
+- Linux: Fix variable fonts that use axis values to substitute glyphs, such as
+  the cursive axis of Annotation Mono, not rendering the substituted glyphs
+  (:iss:`10897`)
 
-- :opt:`window_title_template`: Add :code:`{window}` with the window id, working directory and size (:pull:`10905`)
-
-- Window drag and drop: In layouts that can only reorder windows, such as Tall and Grid, the whole window being dropped onto is highlighted and the dropped window takes its place, instead of highlighting a half that did not match where the window ended up. In the Splits layout, dropping onto the side of a window that the dragged window is already on swaps them instead of doing nothing (:pull:`10908`)
-
-- Preserve non-ASCII hyperlink IDs and URLs when exporting terminal text with ANSI formatting. Also replace invalid UTF-8 in hyperlinks with U+FFFD and control characters with their graphical alternatives, and do not split multi-byte characters when truncating very long hyperlinks, which could cause errors when clicking them (:pull:`10909`)
-
-- macOS: Fix multiple font files sharing the same PostScript name causing incorrect variant to be loaded sometimes (:iss:`10906`)
-
-- A new :ac:`clear_bell_indicators` action to clear the bell indicators of all windows, or windows matching an expression, without needing to focus them. This also dismisses system attention requests on macOS and X11 when the OS window has no remaining bell indicators (:iss:`10916`)
-
-- :ac:`combine`: Fix the third and subsequent actions in a mouse mapping not being run for the window that was clicked. Also fix an error when a mapping refers to an action name that matches a non-action attribute of the window or tab
-
-- :doc:`launch <launch>`: Run the program as requested instead of resolving it to a full path first, so that wrappers such as the :ref:`launch wrapper <launch_wrapper>` look it up in their own :envvar:`PATH` and the program sees itself invoked by name, as when run from a shell. Programs that would not be found in :envvar:`PATH`, such as ones found via :opt:`exe_search_path`, are still run via their full path. An empty or unset :envvar:`PATH` is handled the same way a shell would handle it (:iss:`10914`)
-
-- Graphics: Fix images that extend past the bottom of the screen by more than the screen height, such as tall images displayed by :doc:`icat <kittens/icat>`, not being scrolled fully, causing subsequent output to be drawn over them (:iss:`10924`)
+- macOS: Fix multiple font files sharing the same PostScript name sometimes
+  causing the wrong variant to be loaded (:iss:`10906`)
 
 0.51.0 [2026-11-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
