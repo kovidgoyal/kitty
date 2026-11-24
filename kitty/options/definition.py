@@ -470,6 +470,8 @@ controls when the animation is triggered. It is a number of milliseconds. The
 trail animation only follows cursors that have stayed in their position for longer
 than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
+When :ref:`shell_integration` is active, the trail is not shown for cursor movement in the
+output of commands or when moving to the next prompt after a command finishes.
 See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_trail_start_threshold`
 to control when a cursor trail is started. You can also have different styles of trail by
 using the :opt:`custom_shaders` option, for example: :code:`custom_shaders cursor-trail-blaze`.
