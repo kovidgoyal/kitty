@@ -635,6 +635,135 @@ class TestBidi(BaseTest):
                 want = {r: fresh.test_bidi_line_record(r) for r in (range(s.lines) if kind == 'decaln' else (y,))}
                 self.ae({r: s.test_bidi_line_record(r) for r in want}, want, f'seed {seed}, {kind} to row {y} after {done!r}')
 
+    def test_ansi_output(self):
+        from kitty.utils import kitty_ansi_sanitizer_pat
+        from kitty.window import as_text, cmd_output
+
+        H = 'אבג'
+        on, off = '\x1b[8h', '\x1b[8l'
+
+        def ansi(s, **kw):
+            return as_text(s, as_ansi=True, **kw)
+
+        # Text written without bidi mode is serialized as before
+        s = self.create_screen(cols=5, lines=3, scrollback=5)
+        pb(s, 'abc' + H + '\r\n' + LRM + 'x')
+        self.ae(ansi(s), '\x1b[mabcאב\x1b[mג\n\x1b[mx')
+        # A paragraph is written under the controls of its record, reset to their defaults where it ends, so that they are
+        # the defaults at every hard line break
+        for modes, prefix, suffix in (
+            (on, on, off),
+            (IA, IA, off + '\x1b[?2501l'),
+            (on + '\x1b[2 k', on + '\x1b[2 k', off + '\x1b[0 k'),
+            (IA + '\x1b[2 k', IA + '\x1b[2 k', off + '\x1b[?2501l\x1b[0 k'),
+            # a leading mark sets the direction of the record
+            (IA + RLM, on + '\x1b[2 k', off + '\x1b[0 k'),
+        ):
+            s = self.create_screen(cols=5, lines=4, scrollback=5)
+            pb(s, modes + 'abc' + H + '\r\n' + modes + 'x' + off + '\x1b[?2501l\x1b[0 k\r\ny')
+            self.ae(ansi(s), f'\x1b[m{prefix}abcאב\x1b[mג{suffix}\n\x1b[m{prefix}x{suffix}\n\x1b[my', repr(modes))
+            self.ae(kitty_ansi_sanitizer_pat().sub('', ansi(s)), 'abcאבג\nx\ny')
+        # The text of the lines before the first one holding a record is written without the controls, as it was
+        s = self.create_screen(cols=5, lines=3, scrollback=0)
+        pb(s, 'abcde' + on + 'f' + H + off)
+        self.ae(ansi(s), f'\x1b[mabcde\x1b[m{on}fאבג{off}\n')
+        # Lines starting inside a paragraph are written under its controls, wherever its record is
+        s = self.create_screen(cols=5, lines=2, scrollback=5)
+        pb(s, on + 'abcde' + H * 2 + off)
+        self.ae(ansi(s), f'\x1b[m{on}אבגאב\x1b[mג{off}')
+        # ...and those ending inside one reset them
+        self.ae(ansi(s, add_history=True), f'\x1b[m{on}abcde\x1b[m\x1b[mאבגאב\x1b[mג{off}')
+        h = []
+        s.as_text_for_history_buf(h.append, True)
+        self.ae(''.join(h), f'\x1b[m{on}abcde{off}')
+
+        # The scrollback pager history leaves a paragraph open until its last line is written to it, which the history
+        # then continues
+        s = self.create_screen(cols=5, lines=2, scrollback=2)
+        pb(s, on + '\x1b[2 k' + 'x' * 5 + H * 3 + off + '\x1b[0 k\r\nend\r\nmore')
+        rtl, ltr = on + '\x1b[2 k', off + '\x1b[0 k'
+        self.ae(s.historybuf.pagerhist_as_text(), f'\x1b[m{rtl}xxxxx\r')
+        self.ae(ansi(s, add_history=True), f'\x1b[m{rtl}xxxxx\x1b[mאבגאב\x1b[mגאבג{ltr}\n\x1b[m\x1b[mend\n\x1b[mmore')
+        h = []
+        s.as_text_for_history_buf(h.append, True)
+        self.ae(''.join(h), f'\x1b[m{rtl}אבגאב\x1b[mגאבג{ltr}\n')
+        self.ae(as_text(s, add_history=True), 'xxxxxאבגאבגאבג\nend\nmore')
+        pb(s, '\r\nmore\r\nmore')
+        self.ae(s.historybuf.pagerhist_as_text(), f'\x1b[m{rtl}xxxxx\r\x1b[mאבגאב\r\x1b[mגאבג{ltr}\r\n')
+        s.historybuf.pagerhist_rewrap(3)
+        self.ae(s.historybuf.pagerhist_as_text(), f'\x1b[m{rtl}xxx\rxx\x1b[mא\rבגא\rב\x1b[mגא\rבג{ltr}\n')
+
+        # Selections
+        s = self.create_screen(cols=5, lines=4, scrollback=0)
+        pb(s, IA + 'ab' + H + 'cdefg' + off + '\x1b[?2501l\r\n\r\n' + on + ' ' * 5 + off)
+        s.start_selection(1, 1)
+        s.update_selection(2, 1, True)
+        self.ae(s.text_for_selection(True, False), (f'{IA}d{off}\x1b[?2501l', '\x1b[m'))
+        s.start_selection(1, 0)
+        s.update_selection(2, 3, True)
+        self.ae(s.text_for_selection(True, False), (f'{IA}bאבג', f'cdefg{off}\x1b[?2501l', '\n', f'\n{on}  {off}', '\x1b[m'))
+
+        # Command output
+        s = self.create_screen(cols=5, lines=6, scrollback=5)
+        pb(s, '\x1b]133;A\x07$ cmd\r\n\x1b]133;C\x07' + on + 'ab' + H + 'cd' + off + '\r\n\x1b]133;A\x07$ ')
+        self.ae(cmd_output(s, as_ansi=True), f'\x1b[m{on}abאבג\x1b[mcd{off}')
+
+    def test_ansi_output_after_pagerhist_cut_at_output_start(self):
+        from kitty.window import cmd_output
+
+        # The controls of a paragraph are written after the mark that starts its line, so output cut at the mark keeps them
+        s = self.create_screen(cols=5, lines=2, scrollback=1)
+        pb(s, '\x1b]133;A\x07$\r\n\x1b]133;C\x07\x1b[8h' + 'abcde' + 'אבג' * 5 + 'x\x1b[8l\r\n\x1b]133;A\x07$ ')
+        self.assertIn('\x1b]133;C\x1b\\\x1b[8habcde', s.historybuf.pagerhist_as_text())
+        out = cmd_output(s, as_ansi=True)
+        self.ae(out.count('\x1b[8h'), 1)
+        self.ae(out.count('\x1b[8l'), 1)
+        self.assertLess(out.index('\x1b[8h'), out.index('abcde'))
+
+    def test_ansi_round_trip_records(self):
+        # Output written back gives every paragraph the record it was laid out with: that of its first line holding one
+        from kitty.window import as_text
+
+        rng = random.Random(1234)
+        words = ('abc', 'אבג', '12', ' ', '⁧', '⁩', LRM, RLM)
+        controls = ('\x1b[8h', '\x1b[8l', '\x1b[?2501h', '\x1b[?2501l', '\x1b[2 k', '\x1b[1 k', '\x1b[0 k')
+        for seed in range(200):
+            rng.seed(seed)
+            cols, lines = rng.randrange(4, 9), rng.randrange(3, 7)
+            data = []
+            for _ in range(rng.randrange(5, 60)):
+                r = rng.random()
+                data.append(rng.choice(controls) if r < 0.2 else '\r\n' if r < 0.3 else rng.choice(words))
+            data = ''.join(data)
+            # all of it in the history, and with lines moved out of it into the scrollback pager history
+            whole = self.create_screen(cols=cols, lines=lines, scrollback=500)
+            pb(whole, data)
+            for scrollback in (500, rng.randrange(1, 6)):
+                src = self.create_screen(cols=cols, lines=lines, scrollback=scrollback)
+                pb(src, data)
+                out = as_text(src, as_ansi=True, add_history=True)
+                for line in out.split('\n'):
+                    # the controls are the defaults at every hard line break
+                    self.assertFalse(line.count('\x1b[8h') > 1 or line.count('\x1b[8h') != line.count('\x1b[8l'), (seed, data, line))
+                dest = self.create_screen(cols=cols, lines=lines, scrollback=500)
+                pb(dest, out.replace('\n', '\r\n'))
+                self.ae(as_text(dest, add_history=True), as_text(whole, add_history=True), (seed, data, scrollback))
+                self.ae(paragraph_records(dest), paragraph_records(whole), (seed, data, scrollback, out))
+
 
 def has_text(s, y):
     return any(c['text'] or c['mcd'] is not None for c in s.cpu_cells(y))
+
+
+def paragraph_records(s):
+    # the record of each paragraph of the screen and its history: that of its first line holding one
+    ans, current, in_paragraph = [], NONE, False
+    for y in range(-s.historybuf.count, s.lines):
+        record, continued = s.test_bidi_range_line_record(y)
+        if not continued and in_paragraph:
+            ans.append(current)
+            current = NONE
+        in_paragraph = True
+        if current == NONE:
+            current = record
+    return ans + [current]

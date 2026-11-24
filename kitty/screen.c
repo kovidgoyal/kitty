@@ -2762,6 +2762,35 @@ range_line_is_continued(Screen *self, int y) {
     return self->linebuf == self->main_linebuf ? history_buf_endswith_wrap(self->historybuf) : false;
 }
 
+// The bidi record the text of range line y continues: that of the first line of its paragraph above it holding one, the
+// scrollback pager history included, 0 for none. Serializing lines from y writes the paragraph under it, see
+// ansi_bidi_continue().
+static uint8_t
+screen_bidi_record_above(Screen *self, int y) {
+    HistoryBuf *hb = self->historybuf;
+    const bool continues_history = self->linebuf == self->main_linebuf && hb->count;
+    if (y <= 0 && !continues_history) return 0;
+    // Only the rows of the active buffer and the history can be read, and a record can be on them only when their flags say so
+    if (!self->linebuf->bidi_stamped && !(continues_history && (hb->bidi_stamped || historybuf_pagerhist_bidi_open(hb)))) return 0;
+    uint8_t ans = 0;
+    Line line = {.xnum = self->columns, .text_cache = self->text_cache};
+    for (; range_line_is_continued(self, y); y--) {
+        if (y == -(int)hb->count) {
+            // the oldest history line continues the pager history, whose paragraph comes first
+            const uint8_t p = historybuf_pagerhist_bidi_open(hb);
+            if (p) ans = p;
+            break;
+        }
+        if (y == 0 && !continues_history) break;
+        const LineAttrs *a = y - 1 < 0 ? historybuf_attrs(hb, -y) : self->linebuf->line_attrs + y - 1;
+        if (a->bidi_stamp == BIDI_STAMP_NONE) continue;
+        range_line(self, y - 1, &line);
+        const uint8_t rec = line_bidi_record_for_ansi(&line);
+        if (rec) ans = rec;
+    }
+    return ans;
+}
+
 static void
 insert_characters(Screen *self, index_type at, index_type num, index_type y, bool replace_with_spaces) {
     if (UNLIKELY(self->smooth_scroll.count)) ssr_row_cells_moved(self, at, y);
@@ -7532,10 +7561,13 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     if (!ans || !nl || !empty_string) return NULL;
     bool has_escape_codes = false;
     bool need_newline = false;
+    ansi_bidi_continue(&s, screen_bidi_record_above(self, min_y), false);
     for (int i = 0, y = min_y; y < y_limit && i < PyTuple_GET_SIZE(ans) - 1; y++, i++) {
         const bool is_first_line = y == min_y;
         s.output_buf->len = 0;
         Line *line = range_line_(self, y);
+        ansi_bidi_row_start(&s, line);
+        const bool bidi_continued = line->cpu_cells[line->xnum - 1].next_char_was_wrapped && y + 1 < y_limit;
         index_type x_limit = line->xnum, x_start = 0;
         while (x_limit && !is_cell_selected(&sc, y, x_limit - 1)) x_limit--;
         while (x_start < x_limit && !is_cell_selected(&sc, y, x_start)) x_start++;
@@ -7554,7 +7586,21 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         if (x_limit <= x_start && (is_only_whitespace_line || line_is_empty(line))) {
             // we want a newline on only whitespace lines even if they are continued
             if (insert_newlines) need_newline = true;
-            PyTuple_SET_ITEM(ans, i, Py_NewRef(need_newline ? nl : empty_string));
+            if (UNLIKELY(s.bidi_open)) {
+                // the controls of a paragraph opened or ended on this line
+                if (need_newline) {
+                    ensure_space_for(s.output_buf, buf, Py_UCS4, s.output_buf->len + 1, capacity, 2048, false);
+                    s.output_buf->buf[s.output_buf->len++] = '\n';
+                }
+                if (s.bidi_prefix) ansi_bidi_write_prefix(&s);
+                ansi_bidi_row_end(&s, bidi_continued);
+                has_escape_codes = true;
+            }
+            if (s.output_buf->len) {
+                PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, s.output_buf->buf, s.output_buf->len);
+                if (!t) return NULL;
+                PyTuple_SET_ITEM(ans, i, t);
+            } else PyTuple_SET_ITEM(ans, i, Py_NewRef(need_newline ? nl : empty_string));
         } else {
             char_type prefix_char = need_newline ? '\n' : 0;
             while (x_start < x_limit) {
@@ -7565,12 +7611,21 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
                 prefix_char = 0;
                 x_start = MAX(x_start + 1, end);
             }
+            if (UNLIKELY(s.bidi_open) && !bidi_continued) {
+                ansi_bidi_close(&s);
+                has_escape_codes = true;
+            }
             PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, s.output_buf->buf, s.output_buf->len);
             if (!t) return NULL;
             PyTuple_SET_ITEM(ans, i, t);
         }
     }
-    PyObject *t = PyUnicode_FromFormat("%s%s", has_escape_codes ? "\x1b[m" : "", s.output_buf->active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
+    // A paragraph cut by the end of the selection
+    s.output_buf->len = 0;
+    if (s.bidi_open) ansi_bidi_close(&s);
+    RAII_PyObject(bidi_close, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, s.output_buf->buf, s.output_buf->len));
+    if (!bidi_close) return NULL;
+    PyObject *t = PyUnicode_FromFormat("%U%s%s", bidi_close, has_escape_codes ? "\x1b[m" : "", s.output_buf->active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
     if (!t) return NULL;
     PyTuple_SET_ITEM(ans, PyTuple_GET_SIZE(ans) - 1, t);
     return Py_NewRef(ans);
@@ -8307,14 +8362,25 @@ get_range_line(void *x, int y) {
     return range_line_(x, y);
 }
 
+static uint8_t
+visual_bidi_above(void *x) {
+    Screen *self = x;
+    return screen_bidi_record_above(self, -(int)self->scrolled_by);
+}
+
+static uint8_t
+range_bidi_above(void *x) {
+    return screen_bidi_record_above(x, 0);
+}
+
 static PyObject *
 as_text(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_visual_line, self->lines, &self->as_ansi_buf, false);
+    return as_text_generic(args, self, get_visual_line, self->lines, &self->as_ansi_buf, false, visual_bidi_above, false);
 }
 
 static PyObject *
 as_text_non_visual(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_range_line, self->lines, &self->as_ansi_buf, false);
+    return as_text_generic(args, self, get_range_line, self->lines, &self->as_ansi_buf, false, range_bidi_above, false);
 }
 
 static PyObject *
@@ -8324,7 +8390,7 @@ as_text_for_history_buf(Screen *self, PyObject *args) {
 
 static PyObject *
 as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
-    return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf, false);
+    return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf, false, range_bidi_above, false);
 }
 
 static PyObject *
@@ -8347,6 +8413,12 @@ static Line *
 get_line_from_offset(void *x, int y) {
     OutputOffset *r = x;
     return range_line_(r->screen, r->start + y);
+}
+
+static uint8_t
+offset_bidi_above(void *x) {
+    OutputOffset *r = x;
+    return screen_bidi_record_above(r->screen, r->start);
 }
 
 static bool
@@ -8612,11 +8684,14 @@ cmd_output(Screen *self, PyObject *args) {
         } break;
         default: PyErr_Format(PyExc_KeyError, "%u is not a valid type of command", which); return NULL;
     }
+    // The caller then puts the scrollback pager history before the output
+    const bool after_pagerhist = oo.reached_upper_limit && self->linebuf == self->main_linebuf && OPT(scrollback_pager_history_size) > 0;
     if (found) {
-        RAII_PyObject(ret, as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf, false));
+        RAII_PyObject(
+            ret, as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf, false, offset_bidi_above, after_pagerhist));
         if (!ret) return NULL;
     }
-    if (oo.reached_upper_limit && self->linebuf == self->main_linebuf && OPT(scrollback_pager_history_size) > 0) Py_RETURN_TRUE;
+    if (after_pagerhist) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
 
@@ -10638,6 +10713,27 @@ test_bidi_line_record(Screen *self, PyObject *val) {
     return Py_BuildValue("iOO", (int)a.bidi_stamp, a.bidi_rtl ? Py_True : Py_False, a.bidi_auto ? Py_True : Py_False);
 }
 
+// The record of range line y as a serializer reads it, see line_bidi_record_for_ansi(), and whether the line continues the one
+// above it
+static PyObject *
+test_bidi_range_line_record(Screen *self, PyObject *val) {
+    const long y = PyLong_AsLong(val);
+    if (PyErr_Occurred()) return NULL;
+    if (y < -(long)self->historybuf->count || y >= (long)self->lines) {
+        PyErr_SetString(PyExc_IndexError, "line out of range");
+        return NULL;
+    }
+    Line line = {.xnum = self->columns, .text_cache = self->text_cache};
+    range_line(self, (int)y, &line);
+    const LineAttrs a = {.val = line_bidi_record_for_ansi(&line)};
+    return Py_BuildValue(
+        "(iOO)O",
+        (int)a.bidi_stamp,
+        a.bidi_rtl ? Py_True : Py_False,
+        a.bidi_auto ? Py_True : Py_False,
+        range_line_is_continued(self, (int)y) ? Py_True : Py_False);
+}
+
 static PyObject *
 test_writes_are_recorded(Screen *self, PyObject *args UNUSED) {
     return PyBool_FromLong(self->bidi_records_writes);
@@ -10779,6 +10875,7 @@ static PyMethodDef methods[] = {
     METHODB(style_table_info, METH_NOARGS),
     METHODB(test_set_style_table_limit, METH_O),
     METHODB(test_bidi_line_record, METH_O),
+    METHODB(test_bidi_range_line_record, METH_O),
     METHODB(test_bidi_may_reorder, METH_O),
     METHODB(test_writes_are_recorded, METH_NOARGS),
     METHODB(test_bidi_v2l, METH_O),

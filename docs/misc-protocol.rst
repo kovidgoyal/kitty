@@ -228,6 +228,16 @@ is drawn on its left edge.
 The input method editor is anchored at the left edge of the cursor cell, and
 the pre-edit text is drawn as without bidi mode.
 
+When kitty writes the screen and scrollback as text with formatting, for the
+scrollback pager, ``kitten @ get-text --ansi`` or a saved session, the settings
+are included. The controls a paragraph's settings stand for are set where the
+text of its first line holding settings starts, and reset to their defaults,
+with ``CSI 8 l``, ``CSI ? 2501 l`` and ``CSI 0 SP k``, where the paragraph ends.
+Only the controls that differ from their defaults are written. So the controls
+are at their defaults at every hard line break, and text written back is laid
+out as it was. When the oldest text of the scrollback pager history is dropped
+to make room, the history may start inside a paragraph, without its controls.
+
 Text written with the :doc:`text sizing protocol </text-sizing-protocol>` at a
 scale (``s``) above 1 is never moved: it keeps its columns, and the text on
 either side of it is reordered within its own span. A multicell character of

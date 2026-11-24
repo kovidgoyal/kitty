@@ -119,6 +119,7 @@ pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
 static void
 pagerhist_clear(HistoryBuf *self) {
     if (self->pagerhist && self->pagerhist->ringbuf) {
+        self->pagerhist->bidi_open = 0;
         ringbuf_reset(self->pagerhist->ringbuf);
         size_t rsz = initial_pagerhist_ringbuf_sz(self->pagerhist->maximum_size);
         void *rbuf = ringbuf_new(rsz);
@@ -338,15 +339,19 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     if (!ph) return;
     Line l = {.xnum = self->xnum, .text_cache = self->text_cache};
     init_line(self, self->start_of_data, &l);
-    ANSILineState s = {.output_buf = as_ansi_buf};
+    ANSILineState s = {.output_buf = as_ansi_buf, .bidi_open = ph->bidi_open};
     as_ansi_buf->len = 0;
+    const bool continued = l.cpu_cells[l.xnum - 1].next_char_was_wrapped;
+    ansi_bidi_row_start(&s, &l);
     line_as_ansi(&l, &s, 0, l.xnum, 0, true);
+    ansi_bidi_row_end(&s, continued);
     pagerhist_write_bytes(ph, (const uint8_t *)"\x1b[m", 3);
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) {
+        ph->bidi_open = s.bidi_open;
         char line_end[2];
         size_t num = 0;
         line_end[num++] = '\r';
-        if (!l.cpu_cells[l.xnum - 1].next_char_was_wrapped) line_end[num++] = '\n';
+        if (!continued) line_end[num++] = '\n';
         pagerhist_write_bytes(ph, (const uint8_t *)line_end, num);
     }
 }
@@ -598,11 +603,15 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     Line l = {.xnum = self->xnum, .text_cache = self->text_cache};
     ANSIBuf output = {0};
     ANSILineState s = {.output_buf = &output};
+    ansi_bidi_continue(&s, historybuf_pagerhist_bidi_open(self), false);
     for (unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         output.len = 0;
+        const bool continued = l.cpu_cells[l.xnum - 1].next_char_was_wrapped;
+        ansi_bidi_row_start(&s, &l);
         line_as_ansi(&l, &s, 0, l.xnum, 0, true);
-        if (!l.cpu_cells[l.xnum - 1].next_char_was_wrapped) {
+        ansi_bidi_row_end(&s, continued && i + 1 < self->count);
+        if (!continued) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = '\n';
         }
@@ -648,6 +657,7 @@ pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     PagerHistoryBuf *nph = calloc(1, sizeof(PagerHistoryBuf));
     if (!nph) return;
     nph->maximum_size = ph->maximum_size;
+    nph->bidi_open = ph->bidi_open;
     nph->ringbuf = ringbuf_new(MIN(ph->maximum_size, ringbuf_capacity(ph->ringbuf) + 4096));
     if (!nph->ringbuf) {
         free(nph);
@@ -769,12 +779,17 @@ get_line_wrapper(void *x, int y) {
     return &glw->line;
 }
 
+static uint8_t
+pagerhist_bidi_above(void *x) {
+    return historybuf_pagerhist_bidi_open(((GetLineWrapper *)x)->self);
+}
+
 PyObject *
 as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output) {
     GetLineWrapper glw = {.self = self};
     glw.line.xnum = self->xnum;
     glw.line.text_cache = self->text_cache;
-    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, output, true);
+    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, output, true, pagerhist_bidi_above, false);
     return ans;
 }
 

@@ -156,6 +156,9 @@ typedef struct ANSILineOutput {
     index_type pos, limit;
     ANSIBuf *output_buf;
     bool escape_code_written;
+    // The bidi record of the paragraph being written, see ansi_bidi_row_start(), 0 when none is open, and the record whose
+    // controls line_as_ansi() is to write before the text of the next line it writes
+    uint8_t bidi_open, bidi_prefix;
 } ANSILineState;
 
 static inline void

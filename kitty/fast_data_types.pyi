@@ -1215,6 +1215,7 @@ class Screen:
     def test_gc_style_table(self, quantize_bits: int = 0) -> None: ...
     def test_set_style_table_limit(self, limit: int) -> None: ...
     def test_bidi_line_record(self, y: int) -> tuple[int, bool, bool]: ...
+    def test_bidi_range_line_record(self, y: int) -> tuple[tuple[int, bool, bool], bool]: ...
     def test_bidi_may_reorder(self, y: int) -> bool: ...
     def test_writes_are_recorded(self) -> bool: ...
     def test_bidi_v2l(self, render_row: int) -> tuple[int, ...] | None: ...
@@ -1350,7 +1351,17 @@ class Screen:
         pass
     paste = paste_bytes
 
-    def as_text(self, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> None:
+    def as_text(
+        self,
+        callback: Callable[[str], None],
+        as_ansi: bool = False,
+        insert_wrap_markers: bool = False,
+        continues_previous: bool = False,
+        continued_by_next: bool = False,
+    ) -> None:
+        # continues_previous: the output is appended to that of the lines above (the scrollback pager history for
+        # as_text_for_history_buf, the history for the others), so a bidi paragraph that opened stays open.
+        # continued_by_next: the output of the lines below is appended to it, so a bidi paragraph they continue is left open.
         pass
     as_text_non_visual = as_text
     as_text_alternate = as_text

@@ -321,13 +321,14 @@ def scrollback_for_restore(screen: Screen) -> bytes:
     # new screen. The current shell prompt, if any, is not included, as the restored shell will show a new one, and neither are
     # trailing blank lines. Wrapped lines are joined so that they are re-wrapped to the width of the new screen.
     history: list[str] = []
-    screen.as_text_for_history_buf(history.append, True, True)
+    # The screen continues the last bidi paragraph of the history, as the main screen is serialized in both cases
+    screen.as_text_for_history_buf(history.append, True, True, False, True)
     on_screen: list[str] = []
     if screen.is_using_alternate_linebuf():
-        screen.as_text_alternate(on_screen.append, True, True)
+        screen.as_text_alternate(on_screen.append, True, True, True)
         prompt_line = -1  # the cursor is on the alternate screen
     else:
-        screen.as_text_non_visual(on_screen.append, True, True)
+        screen.as_text_non_visual(on_screen.append, True, True, True)
         prompt_line = screen.cursor_prompt_line()
     # With wrap markers every line ends with \r, followed by \n unless the line is continued on the next line
     screen_lines = ''.join(on_screen).split('\r')
@@ -338,12 +339,16 @@ def scrollback_for_restore(screen: Screen) -> bytes:
     pat = kitty_ansi_sanitizer_pat()
     while lines and not pat.sub('', lines[-1]).strip():
         lines.pop()
-    return '\r\n'.join(lines).encode()
+    ans = '\r\n'.join(lines)
+    if ans.rfind('\x1b[8h') > ans.rfind('\x1b[8l'):
+        # The controls of a bidi paragraph whose end was removed with the prompt are still set
+        ans += '\x1b[8l\x1b[?2501l\x1b[0 k'
+    return ans.encode()
 
 
 @run_once
 def restored_output_sanitizer_pat() -> 're.Pattern[str]':
-    allowed = r'\x1b\[[0-9:;]*m|\x1b\](?:8|66);[^\x07\x1b]*(?:\x07|\x1b\\)'
+    allowed = r'\x1b\[[0-9:;]*m|\x1b\[8[hl]|\x1b\[\?2501[hl]|\x1b\[[02] k|\x1b\](?:8|66);[^\x07\x1b]*(?:\x07|\x1b\\)'
     escape_code = r'\x1b(?:\[[0-?]*[ -/]*[@-~]?|[\]PX^_][^\x07\x1b]*(?:\x07|\x1b\\)?|.?)'
     controls = r'[\x00-\x08\x0b\x0c\x0e-\x1a\x1c-\x1f\x7f-\x9f]'
     return re.compile(f'({allowed})|{escape_code}|{controls}', re.DOTALL)
@@ -351,8 +356,8 @@ def restored_output_sanitizer_pat() -> 're.Pattern[str]':
 
 def sanitize_restored_output(text: str) -> str:
     # Restored output is parsed as though it came from the child, so allow only the escape codes kitty uses for formatting text:
-    # SGR, hyperlinks (OSC 8) and text sizing (OSC 66). Shell integration marks (OSC 133) are removed as well, so that the
-    # restored output is not treated as the output of commands run in the window.
+    # SGR, hyperlinks (OSC 8), text sizing (OSC 66) and the bidi controls (BDSM, CSI ? 2501 and SCP). Shell integration marks
+    # (OSC 133) are removed as well, so that the restored output is not treated as the output of commands run in the window.
     return restored_output_sanitizer_pat().sub(lambda m: m.group(1) or '', text)
 
 

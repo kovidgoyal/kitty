@@ -14,6 +14,7 @@ from kitty.fast_data_types import (
     CURSOR_BLOCK,
     CURSOR_HOLLOW,
     CURSOR_UNDERLINE,
+    SCROLL_FULL,
     Screen,
     create_mock_window,
     get_options,
@@ -2548,3 +2549,41 @@ class TestBidiReorder(BaseTest):
                     layers = s.update_graphics_layers()
                     self.assertTrue(layers)
                     self.ae(layers, plain.update_graphics_layers(), f'after {delta}')
+
+    def test_ansi_round_trip_layout(self):
+        # The ANSI output of a screen and its history, the scrollback pager history included, written back to a screen of the
+        # same size is laid out as the screen the output came from was
+        from kitty.window import as_text
+
+        rng = random.Random()
+        words = ('abc', A, NSI, '12', ' ', '(', ')', ISOLATES[1], ISOLATES[3], LRM, RLM)
+        controls = ('\x1b[8h', '\x1b[8l', AUTO, '\x1b[?2501l', SCP_RTL, SCP_LTR, '\x1b[0 k')
+        for seed in range(40):
+            rng.seed(seed)
+            cols, lines = rng.randrange(5, 10), 8
+            data, para = [], 0
+            for _ in range(rng.randrange(10, 80)):
+                r = rng.random()
+                # paragraphs shorter than the screen, which are laid out from all their rows
+                if r < 0.1 or para > cols * 3:
+                    data.append('\r\n')
+                    para = 0
+                elif r < 0.3:
+                    data.append(rng.choice(controls))
+                else:
+                    w = rng.choice(words)
+                    data.append(w)
+                    para += len(w)
+            data = ''.join(data)
+            whole = self.create_screen(cols=cols, lines=lines, scrollback=500)
+            pb(whole, data)
+            src = self.create_screen(cols=cols, lines=lines, scrollback=rng.randrange(1, 6))
+            pb(src, data)
+            dest = self.create_screen(cols=cols, lines=lines, scrollback=500)
+            pb(dest, as_text(src, as_ansi=True, add_history=True).replace('\n', '\r\n'))
+            self.ae(dest.historybuf.count, whole.historybuf.count, (seed, data))
+            for scrolled_by in range(0, whole.historybuf.count + 1, lines // 2):
+                for s in (whole, dest):
+                    s.scroll(SCROLL_FULL, False)
+                    s.scroll(scrolled_by, True)
+                self.ae([visual(dest, y) for y in range(lines)], [visual(whole, y) for y in range(lines)], (seed, data, scrolled_by))

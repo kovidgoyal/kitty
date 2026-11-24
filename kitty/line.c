@@ -625,6 +625,33 @@ write_mark_to_ansi_buf(ANSILineState *s, const char *m) {
     write_mark(m, s->output_buf);
 }
 
+static void
+write_ascii_to_ansi_buf(ANSILineState *s, const char *x) {
+    const size_t n = strlen(x);
+    ensure_space_in_ansi_output_buf(s, n);
+    for (size_t i = 0; i < n; i++) s->output_buf->buf[s->output_buf->len++] = x[i];
+    s->escape_code_written = true;
+}
+
+// The controls that differ from their defaults: BDSM, CSI ? 2501 and SCP
+void
+ansi_bidi_write_prefix(ANSILineState *s) {
+    const LineAttrs a = {.val = s->bidi_prefix};
+    s->bidi_prefix = 0;
+    write_ascii_to_ansi_buf(s, "\x1b[8h");
+    if (a.bidi_auto) write_ascii_to_ansi_buf(s, "\x1b[?2501h");
+    if (a.bidi_rtl) write_ascii_to_ansi_buf(s, "\x1b[2 k");
+}
+
+void
+ansi_bidi_close(ANSILineState *s) {
+    const LineAttrs a = {.val = s->bidi_open};
+    s->bidi_open = s->bidi_prefix = 0;
+    write_ascii_to_ansi_buf(s, "\x1b[8l");
+    if (a.bidi_auto) write_ascii_to_ansi_buf(s, "\x1b[?2501l");
+    if (a.bidi_rtl) write_ascii_to_ansi_buf(s, "\x1b[0 k");
+}
+
 bool
 line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char, bool skip_multiline_non_zero_lines) {
     s->limit = MIN(stop_before, xlimit_for_line(self));
@@ -640,6 +667,8 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
             case OUTPUT_START: write_mark_to_ansi_buf(s, "C"); break;
         }
     }
+    // after the mark, so that output cut at the mark keeps it
+    if (UNLIKELY(s->bidi_prefix)) ansi_bidi_write_prefix(s);
     if (s->limit <= start_at) {
         if (s->output_buf->active_hyperlink_id && start_at == 0 && !self->cpu_cells[0].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
         return s->escape_code_written;
@@ -684,7 +713,9 @@ as_ansi(Line *self, PyObject *a UNUSED) {
     if (!line_styles_are_valid(self)) return NULL;
     ANSIBuf output = {0};
     ANSILineState s = {.output_buf = &output};
+    ansi_bidi_row_start(&s, self);
     line_as_ansi(self, &s, 0, self->xnum, 0, true);
+    if (s.bidi_open) ansi_bidi_close(&s);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
     free(output.buf);
     return ans;
@@ -1132,7 +1163,15 @@ mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf) {
 }
 
 PyObject *
-as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf, bool add_trailing_newline) {
+as_text_generic(
+    PyObject *args,
+    void *container,
+    get_line_func get_line,
+    index_type lines,
+    ANSIBuf *ansibuf,
+    bool add_trailing_newline,
+    ansi_bidi_above_func *bidi_above,
+    bool continues_previous) {
 #define APPEND(x)                                                           \
     {                                                                       \
         PyObject *retval = PyObject_CallFunctionObjArgs(callback, x, NULL); \
@@ -1151,8 +1190,11 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         Py_DECREF(retval);                                                  \
     }
     PyObject *callback;
-    int as_ansi = 0, insert_wrap_markers = 0;
-    if (!PyArg_ParseTuple(args, "O|pp", &callback, &as_ansi, &insert_wrap_markers)) return NULL;
+    // continues_previous: the output is appended to that of the lines above, so a bidi paragraph it opened stays open, see
+    // ansi_bidi_continue(). continued_by_next: the output of the lines below is appended to it, so a paragraph they continue is
+    // left open.
+    int as_ansi = 0, insert_wrap_markers = 0, continues_previous_arg = 0, continued_by_next = 0;
+    if (!PyArg_ParseTuple(args, "O|pppp", &callback, &as_ansi, &insert_wrap_markers, &continues_previous_arg, &continued_by_next)) return NULL;
     PyObject *t = NULL;
     RAII_PyObject(nl, PyUnicode_FromString("\n"));
     RAII_PyObject(cr, PyUnicode_FromString("\r"));
@@ -1160,7 +1202,9 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     if (nl == NULL || cr == NULL || sgr_reset == NULL) return NULL;
     ANSILineState s = {.output_buf = ansibuf};
     ansibuf->active_hyperlink_id = 0;
-    bool need_newline = false;
+    // before any line is got, as the lines may be views that reading the lines above changes
+    if (as_ansi && bidi_above && lines) ansi_bidi_continue(&s, bidi_above(container), continues_previous || continues_previous_arg);
+    bool need_newline = false, last_continued = false;
     for (index_type y = 0; y < lines; y++) {
         Line *line = get_line(container, y);
         if (!line) {
@@ -1176,7 +1220,10 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
             // makes writing pagers easier.
             // see https://github.com/kovidgoyal/kitty/issues/2381
             zero_at_ptr(&s.prev_style);
+            ansi_bidi_row_start(&s, line);
             line_as_ansi(line, &s, 0, line->xnum, 0, true);
+            // the paragraph is cut by the end of the lines unless the output below continues it
+            ansi_bidi_row_end(&s, line->cpu_cells[line->xnum - 1].next_char_was_wrapped && (y + 1 < lines || continued_by_next));
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
             if (t && ansibuf->len > 0) APPEND(sgr_reset);
         } else {
@@ -1184,7 +1231,15 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         }
         APPEND_AND_DECREF(t);
         if (insert_wrap_markers) APPEND(cr);
-        need_newline = !line->cpu_cells[line->xnum - 1].next_char_was_wrapped;
+        last_continued = line->cpu_cells[line->xnum - 1].next_char_was_wrapped;
+        need_newline = !last_continued;
+    }
+    // A paragraph cut by a line that could not be got
+    if (s.bidi_open && !(continued_by_next && last_continued)) {
+        ansibuf->len = 0;
+        ansi_bidi_close(&s);
+        t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
+        APPEND_AND_DECREF(t);
     }
     if (need_newline && add_trailing_newline) APPEND(nl);
     if (ansibuf->active_hyperlink_id) {

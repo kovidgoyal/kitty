@@ -533,7 +533,8 @@ def as_text(
         f = screen.as_text_alternate
     else:
         f = screen.as_text_non_visual if add_history else screen.as_text
-    f(lines.append, as_ansi, add_wrap_markers)
+    # The history is put before the screen, see below, which continues its last bidi paragraph
+    f(lines.append, as_ansi, add_wrap_markers, add_history, False)
     ctext = ''
     if add_cursor:
         ctext += '\x1b[?25' + ('h' if screen.cursor_visible else 'l')
@@ -550,7 +551,7 @@ def as_text(
     if add_history:
         pht = pagerhist(screen, as_ansi, add_wrap_markers)
         h: list[str] = [pht] if pht else []
-        screen.as_text_for_history_buf(h.append, as_ansi, add_wrap_markers)
+        screen.as_text_for_history_buf(h.append, as_ansi, add_wrap_markers, bool(pht), True)
         if h:
             if as_ansi:
                 h[-1] += '\x1b[m'

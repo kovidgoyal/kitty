@@ -100,7 +100,45 @@ line_has_bidi_record(LineAttrs *a, const Line *line) {
     return false;
 }
 
+// The bidi record a line's text is serialized with, see line_has_bidi_record(), 0 for none. Unlike that function it leaves a
+// record kept by a line without text where it is, as serializing does not write to the line.
+static inline uint8_t
+line_bidi_record_for_ansi(const Line *line) {
+    if (line->attrs.bidi_stamp == BIDI_STAMP_NONE || line_is_empty(line)) return 0;
+    LineAttrs a = {0};
+    line_attrs_set_bidi(&a, line->attrs);
+    return a.val;
+}
+
+// Serializing bidi text as ANSI: the controls a paragraph was written under are set where the text of its first line holding
+// a record starts and reset to their defaults where the paragraph ends, so that the state is the default at every hard line
+// break and a paragraph written back is laid out as it was. Call ansi_bidi_row_start() before line_as_ansi() writes a line,
+// which writes the controls opened, and ansi_bidi_row_end() after it.
+static inline void
+ansi_bidi_row_start(ANSILineState *s, const Line *line) {
+    if (LIKELY(s->bidi_open || line->attrs.bidi_stamp == BIDI_STAMP_NONE)) return;
+    s->bidi_open = s->bidi_prefix = line_bidi_record_for_ansi(line);
+}
+// Writes the controls opened by ansi_bidi_row_start() that line_as_ansi() did not write
+void ansi_bidi_write_prefix(ANSILineState *s);
+// Resets the controls of the open paragraph to their defaults
+void ansi_bidi_close(ANSILineState *s);
+// After a line was written, continued when the next line continues its paragraph
+static inline void
+ansi_bidi_row_end(ANSILineState *s, bool continued) {
+    if (UNLIKELY(s->bidi_open) && !continued) ansi_bidi_close(s);
+}
+// Starts writing lines whose paragraph holds the record above in the lines before them, see screen_bidi_record_above(). Unless
+// written is set, the output before them did not open it, so its controls are written before the first line.
+static inline void
+ansi_bidi_continue(ANSILineState *s, uint8_t above, bool written) {
+    s->bidi_open = above;
+    s->bidi_prefix = written ? 0 : above;
+}
+
 typedef Line *(get_line_func)(void *, int);
+// The record of the lines above the first one as_text_generic() writes, see ansi_bidi_continue()
+typedef uint8_t(ansi_bidi_above_func)(void *);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 char_type line_get_char(Line *self, index_type at);
@@ -164,5 +202,13 @@ void historybuf_clear(HistoryBuf *self);
 void historybuf_invalidate_render_cache(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf);
 bool line_has_mark(Line *, uint16_t mark);
-PyObject *as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf, bool add_trailing_newline);
+PyObject *as_text_generic(
+    PyObject *args,
+    void *container,
+    get_line_func get_line,
+    index_type lines,
+    ANSIBuf *ansibuf,
+    bool add_trailing_newline,
+    ansi_bidi_above_func *bidi_above,
+    bool continues_previous);
 bool colors_for_cell(Line *self, const ColorProfile *cp, index_type *x, color_type *fg, color_type *bg, bool *reversed);

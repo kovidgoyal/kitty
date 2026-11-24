@@ -260,6 +260,23 @@ class TestSessions(BaseTest):
         self.assertIn(b'\x1b]133;C', data)
         self.assertNotIn('\x1b]133;', sanitize_restored_output(data.decode()))
 
+        # Bidi text is restored with the controls it was written under, which are left at their defaults
+        src = self.create_screen(cols=10, lines=4, scrollback=20)
+        parse_bytes(src, '\x1b[8h\x1b[?2501h\x1b[2 kabc אבג 12 abcdefgh\r\n\x1b[8lplain\r\n'.encode())
+        data = scrollback_for_restore(src)
+        restored = restore(data)
+        self.ae(as_text(restored, as_ansi=True, add_history=True), as_text(src, as_ansi=True, add_history=True))
+        self.ae([restored.test_bidi_line_record(y) for y in range(4)], [src.test_bidi_line_record(y) for y in range(4)])
+        # a paragraph cut by the removal of the prompt it ends in
+        src = self.create_screen(cols=10, lines=6, scrollback=20)
+        parse_bytes(src, ('\x1b[8h\x1b[?2501h\x1b[2 k' + 'אבג' * 3 + 'ab\x1b]133;A\x07$ \x1b[8l').encode())
+        data = scrollback_for_restore(src)
+        self.ae(data.decode(), '\x1b[m\x1b[m\x1b[8h\x1b[?2501h\x1b[2 k' + 'אבג' * 3 + 'a\x1b[8l\x1b[?2501l\x1b[0 k')
+        restored = restore(data)
+        self.ae(restored.test_bidi_line_record(0), (1, True, True))
+        parse_bytes(restored, b'\r\nx')
+        self.ae(restored.test_bidi_line_record(1), (0, False, False))
+
         # Output larger than the parser buffer
         big = self.create_screen(cols=80, lines=4, scrollback=20)
         big.restore_scrollback(b''.join(b'%05d %s\r\n' % (i, b'x' * 70) for i in range(16000)))

@@ -524,7 +524,9 @@ as_ansi(LineBuf *self, PyObject *callback) {
         bool output_newline = !linebuf_line_ends_with_continuation(self, i);
         output.len = 0;
         init_line(self, &l, self->line_map[i]);
+        ansi_bidi_row_start(&s, &l);
         line_as_ansi(&l, &s, 0, l.xnum, 0, true);
+        ansi_bidi_row_end(&s, !output_newline && i < ylimit);
         if (output_newline) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n
@@ -555,7 +557,7 @@ get_line(void *x, int y) {
 static PyObject *
 as_text(LineBuf *self, PyObject *args) {
     ANSIBuf output = {0};
-    PyObject *ans = as_text_generic(args, self, get_line, self->ynum, &output, false);
+    PyObject *ans = as_text_generic(args, self, get_line, self->ynum, &output, false, NULL, false);
     free(output.buf);
     return ans;
 }

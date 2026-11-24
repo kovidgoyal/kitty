@@ -20,6 +20,9 @@ typedef struct {
     void *ringbuf;
     size_t maximum_size;
     bool rewrap_needed;
+    // The bidi record of the paragraph its text ends in, which the history lines continuing it continue, see
+    // ansi_bidi_row_start()
+    uint8_t bidi_open;
 } PagerHistoryBuf;
 
 
@@ -76,6 +79,12 @@ historybuf_finish_writes(void) {
 static inline void
 historybuf_note_bidi(HistoryBuf *hb, LineAttrs a) {
     if (line_has_bidi_bits(a)) hb->bidi_stamped = true;
+}
+
+// The bidi record that the paragraph of the oldest line continues from the scrollback pager history, 0 for none
+static inline uint8_t
+historybuf_pagerhist_bidi_open(const HistoryBuf *hb) {
+    return hb->pagerhist ? hb->pagerhist->bidi_open : 0;
 }
 
 HistoryBuf *historybuf_alloc_for_rewrap(unsigned int columns, HistoryBuf *self);
