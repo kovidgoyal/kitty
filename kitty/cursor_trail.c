@@ -83,6 +83,14 @@ should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_wind
 
     if (!WD.screen->modes.mDECTCEM && ct->opacity <= 0.0f) { return true; }
 
+    // with shell integration, only animate moves within a shell prompt, not
+    // in command output or onto the next prompt after a command finishes
+    const Screen *s = WD.screen;
+    if (!ct->window_changed && s->linebuf == s->main_linebuf &&
+        (s->command_state.running || (ct->target_updated && s->command_state.finished_at != ct->command_finished_at))) {
+        return true;
+    }
+
     // moving to a different window is a change of context, so always show the trail for it
     if ((OPT(cursor_trail_start_threshold_x) > 0 || OPT(cursor_trail_start_threshold_y) > 0) && !ct->needs_render && !ct->window_changed) {
         int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / g.dx);
@@ -198,7 +206,9 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     }
     if (ct->target_updated && had_prev_edge) ct->cursor_changed_at = now;
 
+    const bool target_updated = ct->target_updated;
     update_cursor_trail_corners(ct, g, now, os_window, w);
+    if (target_updated) ct->command_finished_at = WD.screen->command_state.finished_at;
     // update_cursor_trail_corners() clears target_updated for moves too small to start a trail
     if (ct->target_updated && had_prev_edge) record_cursor_move(ct, now);
     update_cursor_trail_opacity(ct, w, now);
