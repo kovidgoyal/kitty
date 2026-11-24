@@ -692,6 +692,16 @@ class TestBidi(BaseTest):
         self.ae(s.historybuf.pagerhist_as_text(), f'\x1b[m{rtl}xxxxx\r\x1b[mאבגאב\r\x1b[mגאבג{ltr}\r\n')
         s.historybuf.pagerhist_rewrap(3)
         self.ae(s.historybuf.pagerhist_as_text(), f'\x1b[m{rtl}xxx\rxx\x1b[mא\rבגא\rב\x1b[mגא\rבג{ltr}\n')
+        # A paragraph the scrollback pager history ends in is closed there when the lines of the history continuing it leave it
+        s = self.create_screen(cols=5, lines=2, scrollback=1, options={'scrollback_fill_enlarged_window': True})
+        pb(s, IA + 'x' * 5 + H * 8 + '\x1b[?2501l' + H * 4 + 'yy' + off + '\r\nz')
+        self.assertIn(IA, s.historybuf.pagerhist_as_text())
+        s.resize(8, 5)
+        self.ae(s.historybuf.count, 0)
+        self.assertTrue(s.historybuf.pagerhist_as_text().endswith(off + '\x1b[?2501l'))
+        out = ansi(s, add_history=True)
+        self.ae(out.count(IA), out.count(off + '\x1b[?2501l'))
+        self.ae(out.rpartition('\n\x1b[m')[2].rstrip('\n'), 'z')
 
         # Selections
         s = self.create_screen(cols=5, lines=4, scrollback=0)
@@ -702,6 +712,17 @@ class TestBidi(BaseTest):
         s.start_selection(1, 0)
         s.update_selection(2, 3, True)
         self.ae(s.text_for_selection(True, False), (f'{IA}bאבג', f'cdefg{off}\x1b[?2501l', '\n', f'\n{on}  {off}', '\x1b[m'))
+
+        # A line without selected text writes no controls, and those of an open paragraph are reset before the newline that
+        # can be forced on it
+        s = self.create_screen(cols=5, lines=4, scrollback=0)
+        pb(s, on + 'ab' + H + 'xxxxxcd' + off + '\x1b[2;1H\x1b[2K')
+        s.start_selection(0, 0)
+        s.update_selection(4, 2, True)
+        self.ae(s.text_for_selection(True, True), (f'{on}abאבג', f'{off}\n', f'\n{on}cd{off}', '\x1b[m'))
+        s.start_selection(0, 1)
+        s.update_selection(4, 2, True)
+        self.ae(s.text_for_selection(True, True), ('\n', f'\n{on}cd{off}', '\x1b[m'))
 
         # Command output
         s = self.create_screen(cols=5, lines=6, scrollback=5)

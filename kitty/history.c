@@ -356,6 +356,19 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     }
 }
 
+// Called when the history becomes empty: no history line is left to continue the paragraph the scrollback pager history ends
+// in, and the serializers of the screen do not look up its record, so its controls are reset where its text ends
+static void
+pagerhist_close_bidi_if_history_empty(HistoryBuf *self) {
+    PagerHistoryBuf *ph = self->pagerhist;
+    if (self->count || !ph || !ph->bidi_open) return;
+    ANSIBuf buf = {0};
+    ANSILineState s = {.output_buf = &buf, .bidi_open = ph->bidi_open};
+    ansi_bidi_close(&s);
+    if (pagerhist_write_ucs4(ph, buf.buf, buf.len)) ph->bidi_open = 0;
+    free(buf.buf);
+}
+
 static index_type
 historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, bool *needs_clear) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
@@ -451,6 +464,7 @@ historybuf_pop_line(HistoryBuf *self, Line *line) {
     self->num_pushed--;
     self->bidi_walked = 0;
     self->line0_cache_valid = false;
+    pagerhist_close_bidi_if_history_empty(self);
     return true;
 }
 
@@ -487,6 +501,7 @@ historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
             }
         }
     }
+    pagerhist_close_bidi_if_history_empty(self);
 }
 
 void
@@ -540,6 +555,7 @@ historybuf_delete_lines(HistoryBuf *self, index_type num_newer, index_type count
     self->num_pushed -= count;
     self->bidi_walked = 0;
     self->line0_cache_valid = false;
+    pagerhist_close_bidi_if_history_empty(self);
 }
 
 static PyObject *
@@ -906,6 +922,7 @@ historybuf_finish_rewrap(HistoryBuf *dest, HistoryBuf *src) {
     dest->pagerhist = src->pagerhist;
     src->pagerhist = NULL;
     if (dest->pagerhist && dest->xnum != src->xnum && ringbuf_bytes_used(dest->pagerhist->ringbuf)) dest->pagerhist->rewrap_needed = true;
+    pagerhist_close_bidi_if_history_empty(dest);
 }
 
 void

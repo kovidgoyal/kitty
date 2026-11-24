@@ -524,6 +524,8 @@ as_ansi(LineBuf *self, PyObject *callback) {
         bool output_newline = !linebuf_line_ends_with_continuation(self, i);
         output.len = 0;
         init_line(self, &l, self->line_map[i]);
+        // only the bidi record, as init_line() does not set the attrs
+        line_attrs_set_bidi(&l.attrs, self->line_attrs[i]);
         ansi_bidi_row_start(&s, &l);
         line_as_ansi(&l, &s, 0, l.xnum, 0, true);
         ansi_bidi_row_end(&s, !output_newline && i < ylimit);

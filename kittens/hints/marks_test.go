@@ -149,6 +149,8 @@ func TestHintMarking(t *testing.T) {
 	reset()
 	opts.Type = "word"
 	r(`#one (two) 😍 a-1b `, `#one`, `two`, `a-1b`)
+	// the bidi controls kitty writes around the text of a paragraph are not part of it
+	r("\x1b[m\x1b[8h\x1b[?2501h\x1b[2 kone two\x1b[8l\x1b[?2501l\x1b[0 k\n\x1b[mx", `one`, `two`, `x`)
 	r("fōtiz час a\u0310b ", `fōtiz`, `час`, "a\u0310b")
 
 	reset()

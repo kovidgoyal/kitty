@@ -7587,14 +7587,21 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
             // we want a newline on only whitespace lines even if they are continued
             if (insert_newlines) need_newline = true;
             if (UNLIKELY(s.bidi_open)) {
-                // the controls of a paragraph opened or ended on this line
+                // No text of the paragraph is written here, so its controls are not opened here. Those written are reset before
+                // the newline, which can be forced on a continued line, so that they are the defaults at every hard line break,
+                // and opened again before the next text of the paragraph.
+                const uint8_t record = s.bidi_open;
+                const bool written = !s.bidi_prefix;
+                if (written && (need_newline || !bidi_continued)) {
+                    ansi_bidi_close(&s);
+                    has_escape_codes = true;
+                }
                 if (need_newline) {
                     ensure_space_for(s.output_buf, buf, Py_UCS4, s.output_buf->len + 1, capacity, 2048, false);
                     s.output_buf->buf[s.output_buf->len++] = '\n';
                 }
-                if (s.bidi_prefix) ansi_bidi_write_prefix(&s);
-                ansi_bidi_row_end(&s, bidi_continued);
-                has_escape_codes = true;
+                if (bidi_continued) ansi_bidi_continue(&s, record, written && !need_newline);
+                else s.bidi_open = s.bidi_prefix = 0;
             }
             if (s.output_buf->len) {
                 PyObject *t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, s.output_buf->buf, s.output_buf->len);
@@ -7622,7 +7629,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     }
     // A paragraph cut by the end of the selection
     s.output_buf->len = 0;
-    if (s.bidi_open) ansi_bidi_close(&s);
+    if (s.bidi_open && !s.bidi_prefix) ansi_bidi_close(&s);
     RAII_PyObject(bidi_close, PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, s.output_buf->buf, s.output_buf->len));
     if (!bidi_close) return NULL;
     PyObject *t = PyUnicode_FromFormat("%U%s%s", bidi_close, has_escape_codes ? "\x1b[m" : "", s.output_buf->active_hyperlink_id ? "\x1b]8;;\x1b\\" : "");
