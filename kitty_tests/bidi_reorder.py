@@ -1748,6 +1748,15 @@ class TestBidiReorder(BaseTest):
         frame(s)
         self.ae(''.join(s.cpu_cells(-1, x)['text'] or ' ' for x in order(s)).rstrip(), '       abc')
 
+    def test_prompt_row_restored_after_a_resize(self):
+        # the prompt row copied back over the rewrapped row after a resize does not leave it without bidi_may_reorder
+        s = self.screen(cols=1, lines=4, scrollback=0, text='─ﻻb')
+        pb(s, '\x1b]133;A\x07')
+        s.resize(6, 12)
+        self.assertIn('ﻻ', str(s.line(0)))
+        self.assertTrue(s.test_bidi_may_reorder(0))
+        frame(s)
+
     def test_mark_at_the_start_of_a_continuation_row(self):
         # an RLM at the start of a row continuing the row above starts no paragraph, whether the row above is on screen or in
         # the history

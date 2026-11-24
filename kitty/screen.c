@@ -2408,6 +2408,10 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
              y++, src_line++) {
             linebuf_init_line(src, src_line);
             linebuf_copy_line_to(self->main_linebuf, src->line, y);
+            // The copy takes the prompt line's attrs, whose bidi_may_reorder is not that of the cells the row now holds
+            LineBuf *lb = self->main_linebuf;
+            if (UNLIKELY(lb->bidi_stamped)) bidi_line_may_reorder_from_cells(self, lb, y);
+            else if (UNLIKELY(line_has_bidi_bits(lb->line_attrs[y]))) bidi_buffer_stamped(self, lb);
         }
     }
     return true;
@@ -2528,6 +2532,8 @@ clear_intersecting_selections(Screen *self, index_type y) {
 static void
 init_prev_cell(Screen *self, text_loop_state *s) {
     zero_at_ptr(&s->prev);
+    // The pre-edit text does not combine with the cells before it, which can be on the row above
+    if (UNLIKELY(self->overlay_line.drawing) && self->cursor->x <= self->overlay_line.draw_left) return;
     if (self->cursor->x) {
         s->prev.y = self->cursor->y;
         s->prev.x = self->cursor->x - 1;
@@ -3095,6 +3101,8 @@ move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell
     // can include its current cell
     const CPUCell c = *cpu_cell;
     *cpu_cell = (CPUCell){0};
+    // Taken before the move, which can scroll the char's row up
+    const bool may_reorder = self->linebuf->line_attrs[ypos].bidi_may_reorder;
     self->cursor->x = xpos;
     self->cursor->y = ypos;
     if (move_cursor_past_multicell(self, 2)) {
@@ -3103,7 +3111,7 @@ move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         if (UNLIKELY(self->linebuf->bidi_stamped)) {
             bidi_line_gets_text(self, self->cursor->y);
-            self->linebuf->line_attrs[self->cursor->y].bidi_may_reorder |= self->linebuf->line_attrs[ypos].bidi_may_reorder;
+            self->linebuf->line_attrs[self->cursor->y].bidi_may_reorder |= may_reorder;
         }
         cp[self->cursor->x] = c;
         self->cursor->x++;
@@ -3111,7 +3119,8 @@ move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell
         cp[self->cursor->x].x = 1;
         self->cursor->x++;
     }
-    if (self->cursor->y == before) init_segmentation_state(self, s);
+    // A move from the bottom row scrolls, leaving the cursor on the same row number with s->cp pointing at the row above it
+    if (self->cursor->y == before && linebuf_cpu_cells_for_line(self->linebuf, before) == s->cp) init_segmentation_state(self, s);
     else init_text_loop_line(self, s);
 }
 
@@ -3314,8 +3323,11 @@ draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
                 } else if (self->columns > 0) {
                     self->cursor->x = self->columns - 1;
                     if (s->cp[self->cursor->x].is_multicell) {
-                        if (s->cp[self->cursor->x].y) move_cursor_past_multicell(self, 1);
-                        else replace_multicell_char_under_cursor_with_spaces(self);
+                        if (s->cp[self->cursor->x].y) {
+                            // The move can go to another row or scroll
+                            move_cursor_past_multicell(self, 1);
+                            init_text_loop_line(self, s);
+                        } else replace_multicell_char_under_cursor_with_spaces(self);
                     }
                     screen_tab(self);
                 }
@@ -8072,13 +8084,34 @@ screen_draw_overlay_line(Screen *self) {
             c++;
         }
     }
+    // Chars of several rows in the cells the text covers are blanked on this row only. The draw would otherwise move the text
+    // to another row past them, or remove them from all their rows.
+    {
+        CPUCell *cells = self->linebuf->line->cpu_cells;
+        const index_type limit = MIN(self->columns, xstart + self->overlay_line.text_len);
+        for (index_type x = xstart; x < limit; x++) {
+            const CPUCell *c = cells + x;
+            if (!c->is_multicell || (c->scale < 2 && !c->y)) continue;
+            const index_type start = x - MIN(x, (index_type)c->x), end = MIN(self->columns, start + mcd_x_limit(c));
+            for (index_type cx = MAX(start, xstart); cx < end; cx++) {
+                const CPUCell old = cells[cx];
+                cells[cx] = (CPUCell){.ch_or_idx = ' ', .hyperlink_id = old.hyperlink_id, .style_idx = old.style_idx};
+            }
+            x = MAX(x, end) - 1;
+        }
+    }
+    self->overlay_line.drawing = true;
+    self->overlay_line.draw_left = xstart;
     index_type before;
     const int kind = PyUnicode_KIND(self->overlay_line.overlay_text);
     const void *data = PyUnicode_DATA(self->overlay_line.overlay_text);
     const Py_ssize_t sz = PyUnicode_GET_LENGTH(self->overlay_line.overlay_text);
     for (Py_ssize_t pos = 0; pos < sz; pos++) {
         before = self->cursor->x;
-        draw_codepoint(self, PyUnicode_READ(kind, data, pos));
+        const char_type ch = PyUnicode_READ(kind, data, pos);
+        // A control char would act on the screen: a line feed scrolls it
+        if (ch < ' ' || (0x7f <= ch && ch < 0xa0)) continue;
+        draw_codepoint(self, ch);
         index_type len = self->cursor->x - before;
         if (columns_exceeded > 0) {
             // Reset the cursor to maintain right alignment when the overlay exceeds the screen width.
@@ -8108,6 +8141,7 @@ screen_draw_overlay_line(Screen *self) {
         }
         self->overlay_line.xnum += len;
     }
+    self->overlay_line.drawing = false;
     self->overlay_line.cursor_x = overlay_line_cursor_x(self);
     self->cursor->style = orig_style;
     self->cursor = orig_cursor;

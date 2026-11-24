@@ -5,7 +5,7 @@ import os
 import re
 import tempfile
 
-from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, SCROLL_LINE, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
+from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, SCROLL_LINE, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor, test_set_batched_non_ascii_draw
 from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
 from kitty.utils import path_from_osc7_url
 from kitty.window import is_conemu_osc9_command, pagerhist
@@ -4354,6 +4354,47 @@ class TestScreen(BaseTest):
         self.assertFalse(s.cursor.italic)
         self.ae(s.cursor.decoration, before.decoration)
         self.ae(s.cursor.decoration_fg, before.decoration_fg)
+
+    def test_ime_preedit_stays_on_its_row(self):
+        # Only the pre-edit row is restored after the pre-edit text is drawn into it, so the draw must not change other rows
+        # A combining mark at column 0 does not join the wrapped last cell of the row above
+        s = self.create_screen(cols=2, lines=3)
+        s.draw('你b')
+        s.test_draw_overlay_line('\u064e1', 0, 1)
+        self.ae(str(s.line(0)), '你')
+        # nor one at the start of the text, the cell before it
+        s = self.create_screen(cols=5, lines=3)
+        s.draw('ab')
+        s.test_draw_overlay_line('\u0301x', 2, 0)
+        self.ae(str(s.line(0))[:2], 'ab')
+        # The text over the lower row of a scaled char is not moved to the next row, and the char keeps its other rows
+        s = self.create_screen(cols=4, lines=4)
+        parse_bytes(s, b'\x1b]66;s=2;ab\x07')
+        s.test_draw_overlay_line('xy', 0, 1)
+        self.ae(str(s.line(2)), '')
+        self.ae(str(s.line(0)), 'ab')
+        self.ae(str(s.line(1))[:2], 'xy')
+        # A control char does not act on the screen
+        s = self.create_screen(cols=5, lines=3)
+        s.draw('top')
+        s.test_draw_overlay_line('a\nb', 0, 2)
+        self.ae(str(s.line(0)), 'top')
+        self.ae(str(s.line(2)), 'ab')
+
+    def test_widened_char_moved_by_a_scroll(self):
+        # A char widened by VS16 that moves past a multiline char at the bottom row scrolls the screen: the text after it is
+        # drawn on the cursor's row, not the row above
+        for batched in (False, True):
+            with self.subTest(batched=batched):
+                test_set_batched_non_ascii_draw(batched)
+                try:
+                    s = self.create_screen(cols=3, lines=4, scrollback=20)
+                    s.draw('a1😀')
+                    s.draw('\n😀☺️ا')
+                finally:
+                    test_set_batched_non_ascii_draw(True)
+                self.assertIn('ا', str(s.line(s.cursor.y)))
+                self.ae(s.cursor.x, str(s.line(s.cursor.y)).index('ا') + 1)
 
     def test_ime_preedit_cursor(self):
         # The cursor is placed where the IME says it is inside the pre-edit

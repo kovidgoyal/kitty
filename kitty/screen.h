@@ -103,6 +103,9 @@ typedef struct {
     int preedit_cursor;
     bool is_active;
     bool is_dirty;
+    // While the pre-edit text is drawn into its row: the draw must not reach any other row, as only that row is restored
+    bool drawing;
+    index_type draw_left; // the column the drawn text starts at
     struct {
         CPUCell *cpu_cells;
         RenderCell *render_cells;
