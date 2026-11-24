@@ -149,6 +149,96 @@ class TestSessions(BaseTest):
                     assert_error('None of the matching windows')
         boss.edit_file.assert_not_called()
 
+    def test_save_as_session_preserves_literal_dollars(self) -> None:
+        from functools import partial
+
+        from kitty.boss import Boss
+        from kitty.child import Child
+        from kitty.launch import LaunchSpec, get_env
+        from kitty.session import default_save_as_session_opts, save_as_session_part2
+        from kitty.tabs import Tab, TabManager
+        from kitty.utils import resolve_custom_file
+        from kitty.window import EdgeWidths, Window, WindowCreationSpec
+
+        opts = self.set_options()
+        literal = 'literal $KITTY_SESSION_TEST ${KITTY_SESSION_TEST} $$'
+        cmd = ['/bin/true', literal]
+        creation_spec = WindowCreationSpec(cmd=cmd, env=(('SESSION_VALUE', literal),))
+        save_opts = default_save_as_session_opts()
+        save_opts.save_only = True
+
+        class Group(list[SimpleNamespace]):
+            docks = ()
+
+            def __init__(self, window: SimpleNamespace) -> None:
+                super().__init__([window])
+                self.id = window.id
+
+        def make_group(wid: int, path: Path) -> Group:
+            w = SimpleNamespace(
+                id=wid,
+                os_window_id=0,
+                tab_id=0,
+                cwd_for_serialization=str(path),
+                last_focused_at=0,
+                creation_spec=creation_spec,
+                actions_on_close=(),
+                actions_on_focus_change=(),
+                actions_on_removal=(),
+                allow_remote_control=False,
+                remote_control_passwords=None,
+                user_vars={'name': literal},
+                override_title=literal,
+                padding=EdgeWidths(),
+                margin=EdgeWidths(),
+            )
+            w.as_launch_command = partial(Window.as_launch_command, cast(Window, w))
+            return Group(w)
+
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', KITTY_SESSION_TEST='expanded'):
+            base = Path(tmp).resolve()
+            original = base / 'original'
+            names = ('common ' + literal, 'override ' + literal, 'current', '~root')
+            for name in names:
+                (original / name).mkdir(parents=True)
+            groups = [make_group(i, original / name) for i, name in enumerate(names, 1)]
+            tab = SimpleNamespace(
+                windows=SimpleNamespace(active_group=groups[0], groups=groups, tab_docks=(), dock_owner=lambda g: None),
+                enabled_layouts=['tall'],
+                _current_layout_name='tall',
+                name=literal,
+                serialize_layout_state_for_session=dict,
+            )
+            tab.serialize_state_as_session = partial(Tab.serialize_state_as_session, cast(Tab, tab))
+            tm = SimpleNamespace(tabs=[tab], active_tab=tab, wm_class=literal, wm_name=literal, os_window_docks=())
+            tm.serialize_state_as_session = partial(TabManager.serialize_state_as_session, cast(TabManager, tm))
+            boss = SimpleNamespace(os_window_map={1: tm})
+            boss.serialize_state_as_session = partial(Boss.serialize_state_as_session, cast(Boss, boss))
+            logo_path = str(base / (literal + '.png'))
+            filename = 'test.kitty-session'
+            for relocatable in (False, True):
+                with self.subTest(relocatable=relocatable):
+                    save_opts.relocatable = relocatable
+                    with patch('kitty.window.get_window_logo_settings_if_not_default', return_value=(logo_path, 1.0, (0.5,) * 4)):
+                        save_as_session_part2(boss, save_opts, str(original / filename))
+                    root = original
+                    if relocatable:
+                        root = original.rename(base / ('relocated ' + literal))
+                    path = root / filename
+                    (session,) = parse_session(path.read_text(), opts, session_path=str(path))
+                    (saved_tab,) = session.tabs
+                    self.ae((saved_tab.name, session.os_window_class, session.os_window_name), (literal, literal, literal))
+                    self.ae(len(saved_tab.windows), len(names))
+                    for window, name in zip(saved_tab.windows, names):
+                        spec = window.launch_spec
+                        assert isinstance(spec, LaunchSpec)
+                        self.ae(spec.args, cmd)
+                        self.ae(spec.opts.window_title, literal)
+                        self.ae(spec.opts.var, ['name=' + literal])
+                        self.ae(resolve_custom_file(spec.opts.logo), logo_path)
+                        child = Child(spec.args, spec.opts.cwd, env=get_env(spec.opts))
+                        self.ae((child.cwd, child.env['SESSION_VALUE']), (str(root / name), literal))
+
     def test_save_as_session_line_injection(self) -> None:
         # Values such as the cwd reported via OSC 7 or user vars are under the
         # control of programs running in the window and must not be able to

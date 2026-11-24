@@ -218,6 +218,9 @@ Detailed list of changes
 
 - macOS: Fix notification urgency being ignored
 
+- Sessions: Preserve literal dollar signs in working directories, titles and
+  other values when restoring a saved session
+
 - Use an accurate title for the overlay showing errors during startup that are
   not caused by invalid config
 

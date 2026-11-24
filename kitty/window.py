@@ -2613,7 +2613,9 @@ class Window:
             # such windows are typically UI kittens. The actions are not
             # serializable anyway, so skip.
             return []
-        ans = ['launch']
+        from .session import escape_session_value
+
+        ans: list[str] = []
         if cwd:
             ans.append(f'--cwd={cwd}')
         if self.allow_remote_control:
@@ -2627,7 +2629,8 @@ class Window:
             if self.creation_spec.env:
                 for k, v in self.creation_spec.env:
                     if k not in ('KITTY_PIPE_DATA',):
-                        ans.append(f'--env={k}={v}')
+                        # Environment values are expanded again when launching the child.
+                        ans.append(f'--env={k}={escape_session_value(v)}')
             for cs in self.creation_spec.colors:
                 ans.append(f'--color={cs}')
             for wr in self.creation_spec.watchers:
@@ -2644,7 +2647,8 @@ class Window:
         wl = get_window_logo_settings_if_not_default(self.os_window_id, self.tab_id, self.id)
         if wl is not None:
             logo_path, logo_alpha, logo_pos = wl
-            ans.extend((f'--logo={logo_path}', f'--logo-alpha={logo_alpha}'))
+            # set_logo() expands variables while resolving its path.
+            ans.extend((f'--logo={escape_session_value(logo_path)}', f'--logo-alpha={logo_alpha}'))
             xpos = ypos = ''
             if logo_pos[0] == logo_pos[2] != 0.5:
                 xpos = 'right' if logo_pos[0] else 'left'
@@ -2701,9 +2705,8 @@ class Window:
                         if fcmd:
                             make_exe_absolute(fcmd, pid)
                             unserialize_data['cmd_at_shell_startup'] = fcmd
-        ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
-        ans.extend(cmd)
-        return ans
+        # Session parsing expands options, while the metadata and command are read verbatim.
+        return ['launch', unserialize_launch_flag + json.dumps(unserialize_data), *map(escape_session_value, ans), *cmd]
 
     # }}}
 

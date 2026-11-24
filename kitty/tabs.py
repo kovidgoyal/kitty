@@ -513,7 +513,7 @@ class Tab:  # {{{
         appended to it. The os_window_docks are written after the windows of this
         tab, but only if this tab has some windows to write.
         """
-        from .session import is_safe_for_session_line, sanitize_for_session_line, session_launch_line
+        from .session import escape_session_value, is_safe_for_session_line, sanitize_for_session_line, session_launch_line
 
         launch_cmds = []
         active_group = self.windows.active_group
@@ -542,7 +542,8 @@ class Tab:  # {{{
 
         def make_relative(cwd: str) -> str:
             if session_base_dir and ser_opts.relocatable:
-                cwd = os.path.relpath(cwd, session_base_dir)
+                # The prefix keeps directory names such as current and ~user literal.
+                cwd = os.path.join('.', os.path.relpath(cwd, session_base_dir))
             return cwd
 
         most_common_cwd = ''
@@ -590,7 +591,7 @@ class Tab:  # {{{
                 f'layout {layout}',
                 f'enabled_layouts {",".join(enabled_layouts)}',
                 f'set_layout_state {json.dumps(self.serialize_layout_state_for_session())}',
-                f'cd {most_common_cwd}',
+                f'cd {escape_session_value(most_common_cwd)}',
                 '',
             ] + launch_cmds
         return []

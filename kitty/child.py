@@ -447,6 +447,10 @@ class KittyWrapper(NamedTuple):
 child_counter = count()
 
 
+class ResolvedCwd(str):
+    """A working directory that has already been expanded by the caller."""
+
+
 class Child:
     child_fd: int | None = None
     pid: int | None = None
@@ -487,7 +491,7 @@ class Child:
                 cwd = cwd_from.modify_argv_for_launch_with_cwd(self.argv, env, hold_after_ssh=hold_after_ssh) or cwd
             except Exception as err:
                 log_error(f'Failed to read cwd of {cwd_from} with error: {err}')
-        else:
+        elif not isinstance(cwd, ResolvedCwd):
             cwd = os.path.expandvars(os.path.expanduser(cwd or os.getcwd()))
         self.cwd = os.path.abspath(cwd)
         self.stdin = stdin
