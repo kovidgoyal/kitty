@@ -656,6 +656,8 @@ def main() -> None:
     args = parser.parse_args()
     require_penv()
     if args.nightly:
+        if os.path.exists('/t/disable-kitty-nightly'):
+            raise SystemExit('Building of nightly is currently disabled by /t/disable-kitty-nightly')
         with change_to_git_master():
             building_nightly = True
             exec_actions(NIGHTLY_ACTIONS, args)
