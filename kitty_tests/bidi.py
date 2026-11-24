@@ -692,6 +692,14 @@ class TestBidi(BaseTest):
         self.ae(s.historybuf.pagerhist_as_text(), f'\x1b[m{rtl}xxxxx\r\x1b[mאבגאב\r\x1b[mגאבג{ltr}\r\n')
         s.historybuf.pagerhist_rewrap(3)
         self.ae(s.historybuf.pagerhist_as_text(), f'\x1b[m{rtl}xxx\rxx\x1b[mא\rבגא\rב\x1b[mגא\rבג{ltr}\n')
+        # HistoryBuf.as_ansi continues that paragraph from the oldest line, also once lines were pushed out of the buffer
+        s = self.create_screen(cols=5, lines=2, scrollback=3)
+        pb(s, '\r\n'.join(str(i) for i in range(4)) + '\r\n' + on + '\x1b[2 k' + 'x' * 5 + H * 4 + '\x1b[0 k' + off + '\r\nend\r\nmore')
+        self.assertTrue(s.historybuf.pagerhist_as_text().endswith(f'{rtl}xxxxx\r'))
+        h = []
+        s.historybuf.as_ansi(h.append)
+        self.ae(h, [f'{rtl}אבגאב', 'גאבגא', f'בג{ltr}\n'])
+
         # A paragraph the scrollback pager history ends in is closed there when the lines of the history continuing it leave it
         s = self.create_screen(cols=5, lines=2, scrollback=1, options={'scrollback_fill_enlarged_window': True})
         pb(s, IA + 'x' * 5 + H * 8 + '\x1b[?2501l' + H * 4 + 'yy' + off + '\r\nz')

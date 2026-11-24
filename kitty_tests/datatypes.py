@@ -998,6 +998,13 @@ class TestDataTypes(BaseTest):
         a = []
         hb.as_ansi(a.append)
         self.ae(a, [str(hb.line(i)) + '\n' for i in range(hb.count - 1, -1, -1)])
+        # oldest line first after lines were pushed out of the buffer
+        lb = filled_line_buf(8, 5)
+        for i in range(lb.ynum):
+            hb.push(lb.line(i))
+        a = []
+        hb.as_ansi(a.append)
+        self.ae(a, [str(lb.line(i)) + '\n' for i in range(3, 8)])
 
     def test_strip_csi(self):
         def q(x, y=''):

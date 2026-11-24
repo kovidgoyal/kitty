@@ -620,8 +620,9 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     ANSIBuf output = {0};
     ANSILineState s = {.output_buf = &output};
     ansi_bidi_continue(&s, historybuf_pagerhist_bidi_open(self), false);
+    // oldest first, so line number count - 1 first
     for (unsigned int i = 0; i < self->count; i++) {
-        init_line(self, i, &l);
+        init_line(self, index_of(self, self->count - 1 - i), &l);
         output.len = 0;
         const bool continued = l.cpu_cells[l.xnum - 1].next_char_was_wrapped;
         ansi_bidi_row_start(&s, &l);
