@@ -25,6 +25,9 @@ Execute the following command to compile all modules and check for syntax or typ
 make debug
 ```
 
+When creating a work tree always copy the ./fonts directory, otherwise building
+in the work tree will fail.
+
 ### Lint commands
 
 Execute the following two commands to fix any formatting issues in your code:
