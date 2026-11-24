@@ -1402,6 +1402,107 @@ class TestScreen(BaseTest):
         self.ae(s.text_for_selection(False, True), ('1234 ', '5'))
         self.ae(s.text_for_selection(True, True), ('1234 ', '5', ''))
 
+    def test_selection_during_partial_scroll(self):
+        # Scrolling only part of the screen must leave selections on the rows
+        # outside the scroll region alone and move the ones inside it with their text
+        def screen(start, end=None, alt=False):
+            s = self.create_screen(cols=10, lines=6)
+            if alt:
+                parse_bytes(s, b'\x1b[?1049h')
+            parse_bytes(s, b'11111\r\n22222\r\n33333\r\n44444\r\n55555\r\n66666')
+            s.start_selection(0, start)
+            s.update_selection(5, start if end is None else end, True)
+            return s
+
+        def check(start, end, scroll, moved, alt=False):
+            s = screen(start, end, alt)
+            before = s.text_for_selection()
+            parse_bytes(s, scroll)
+            self.ae(s.text_for_selection(), before if moved else ())
+            return s
+
+        # Append a line above a fixed area at the bottom of the screen, pushing
+        # the top line into the scrollback, as done by programs such as Codex
+        append_history = b'\x1b[1;3r\x1b[3;1H\x1bDnew\x1b[r'
+        for row in range(6):
+            with self.subTest(scroll='up via history', row=row):
+                check(row, None, append_history, True)
+        # A selection entirely inside the region and the scrollback moves with
+        # it, one spanning moving and stationary rows cannot follow both
+        for start, end, moved in ((0, 2, True), (2, 3, False)):
+            with self.subTest(scroll='spanning via history', start=start, end=end):
+                check(start, end, append_history, moved)
+        # A selection moved into the scrollback keeps following its text
+        with self.subTest(scroll='further into scrollback'):
+            s = check(1, None, append_history, True)
+            parse_bytes(s, b'\x1b[6;1H\x1bD')
+            self.ae(s.text_for_selection(), ('22222',))
+
+        for alt in (False, True):
+            # Scroll a region not touching the top of the screen up, discarding its top line
+            for row in range(6):
+                with self.subTest(scroll='up', row=row, alt=alt):
+                    check(row, None, b'\x1b[2;5r\x1b[1S', row != 1, alt)
+            # Scroll a region down, discarding its bottom line
+            for row in range(6):
+                with self.subTest(scroll='down', row=row, alt=alt):
+                    check(row, None, b'\x1b[3;5r\x1b[1T', row != 4, alt)
+            for start, end, moved in ((1, 2, False), (4, 5, False), (2, 3, True), (0, 1, True)):
+                with self.subTest(scroll='spanning', start=start, end=end, alt=alt):
+                    check(start, end, b'\x1b[3;5r\x1b[1T', moved, alt)
+
+        # Lines pulled back from the scrollback carry their selection back onto the screen
+        for row in (0, 1, 5):
+            with self.subTest(scroll='down via history', row=row):
+                s = check(row, None, append_history, True)
+                before = s.text_for_selection()
+                parse_bytes(s, b'\x1b[1;3r\x1b[1+T')
+                self.ae(s.text_for_selection(), before)
+                self.ae(str(s.line(0)), '11111')
+        # A selection spanning the bottom of a region filled from the scrollback
+        with self.subTest(scroll='spanning bottom of region filled from scrollback'):
+            check(4, 5, append_history + b'\x1b[1;5r\x1b[1+T', False)
+
+        for alt in (False, True):
+            # Reverse index at the top of the region, discarding its bottom line
+            for row in range(6):
+                with self.subTest(scroll='reverse index', row=row, alt=alt):
+                    check(row, None, b'\x1b[2;4r\x1b[2;1H\x1bM', row != 3, alt)
+            # On the alternate screen there is no scrollback for the top line to go into
+            if alt:
+                for row in range(6):
+                    with self.subTest(scroll='up from top of alt screen', row=row):
+                        check(row, None, b'\x1b[1;4r\x1b[1S', row != 0, alt)
+            # Full screen scrolls that discard a line
+            for row in range(6):
+                with self.subTest(scroll='full down', row=row, alt=alt):
+                    check(row, None, b'\x1b[1T', row != 5, alt)
+            if alt:
+                for row in range(6):
+                    with self.subTest(scroll='full up on alt screen', row=row):
+                        check(row, None, b'\x1b[1S', row != 0, alt)
+
+        # Selections in a scrollback that does not move stay on their text
+        for scroll in (b'\x1b[H\x1bM', b'\x1b[1T', b'\x1b[3;5r\x1b[1T'):
+            with self.subTest(scroll='scrollback stays', seq=scroll):
+                s = self.create_screen(cols=10, lines=6)
+                parse_bytes(s, b'aaaaa\r\nbbbbb\r\n11111\r\n22222\r\n33333\r\n44444\r\n55555\r\n66666')
+                s.scroll(SCROLL_LINE, True)
+                s.scroll(SCROLL_LINE, True)
+                s.start_selection(0, 0)
+                s.update_selection(5, 0, True)
+                self.ae(s.text_for_selection(), ('aaaaa',))
+                parse_bytes(s, scroll)
+                self.ae(s.text_for_selection(), ('aaaaa',))
+
+        # An empty, in progress selection follows its text and the selection can then be extended
+        with self.subTest(scroll='empty selection'):
+            s = screen(2)
+            s.start_selection(0, 2)
+            parse_bytes(s, b'\x1b[2;5r\x1b[1S')
+            s.update_selection(5, 1, True)
+            self.ae(s.text_for_selection(), ('33333',))
+
     def test_scrollback_anchored_against_new_output(self):
         # When scrolled back, lines added to the scrollback must not move the
         # viewport. The anchoring must be applied immediately, not deferred to

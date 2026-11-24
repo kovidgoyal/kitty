@@ -530,27 +530,24 @@ move_selection_by_one_row(const Screen *self, Selection *s, bool up) {
 }
 
 static void
-index_selection(const Screen *self, Selections *selections, bool up, index_type top, index_type bottom) {
-    const bool needs_special_handling = self->linebuf == self->alt_linebuf && (top > 0 || bottom < self->lines - 1);
+index_selection(const Screen *self, Selections *selections, bool up, index_type top, index_type bottom, bool via_history) {
+    // Keep selections on the same text when the lines in [top, bottom] are
+    // scrolled by one. via_history means the line scrolled off the top goes
+    // into the scrollback (up) or the line scrolled in at the top comes from
+    // it (down), so the scrollback rows move as well. Selections on the rows
+    // that stay in place, including those in the scrollback when it does not
+    // move, are left alone and selections that span moving and stationary rows
+    // or are on the line that is discarded are cleared.
+    const int first_moving = via_history ? INT_MIN : (int)top, last_moving = bottom;
     for (size_t i = 0; i < selections->count; i++) {
         Selection *s = selections->items + i;
-        if (needs_special_handling) {
-            if (is_selection_empty(s)) continue;
-            int start = (int)s->start.y - s->start_scrolled_by;
-            int end = (int)s->end.y - s->end_scrolled_by;
-            int stop = MIN(start, end);
-            int sbottom = MAX(start, end);
-            if (stop < (int)top) {
-                if (sbottom < (int)top) continue;
-                clear_selection(selections);
-                return;
-            } else {
-                if (stop > (int)bottom) continue;
-                if (sbottom > (int)bottom) {
-                    clear_selection(selections);
-                    return;
-                }
-            }
+        const int start = (int)s->start.y - (int)s->start_scrolled_by, end = (int)s->end.y - (int)s->end_scrolled_by;
+        const int stop = MIN(start, end), sbottom = MAX(start, end);
+        if (sbottom < first_moving || stop > last_moving) continue;
+        const bool discarded = up ? (!via_history && stop == (int)top) : sbottom == last_moving;
+        if (stop < first_moving || sbottom > last_moving || discarded) {
+            clear_selection(selections);
+            return;
         }
         move_selection_by_one_row(self, s, up);
     }
@@ -710,15 +707,15 @@ clear_scrolled_in_line(Screen *self, index_type y) {
 
 static void ssr_lines_moved(Screen *self, index_type top, index_type bottom, bool up, bool via_history);
 
-#define INDEX_DOWN(scroll_history)                                                                      \
-    if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, top, bottom, false, scroll_history); \
-    linebuf_reverse_index(self->linebuf, top, bottom);                                                  \
-    clear_scrolled_in_line(self, top);                                                                  \
-    bidi_index_down_seams(self, top, bottom);                                                           \
-    last_visited_prompt_index(self, top, bottom, false, scroll_history);                                \
-    INDEX_GRAPHICS(1, scroll_history)                                                                   \
-    self->is_dirty = true;                                                                              \
-    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, false, top, bottom); \
+#define INDEX_DOWN(scroll_history)                                                                                      \
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, top, bottom, false, scroll_history);                 \
+    linebuf_reverse_index(self->linebuf, top, bottom);                                                                  \
+    clear_scrolled_in_line(self, top);                                                                                  \
+    bidi_index_down_seams(self, top, bottom);                                                                           \
+    last_visited_prompt_index(self, top, bottom, false, scroll_history);                                                \
+    INDEX_GRAPHICS(1, scroll_history)                                                                                   \
+    self->is_dirty = true;                                                                                              \
+    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, false, top, bottom, scroll_history); \
     if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
 
 
@@ -4936,29 +4933,29 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     }
 }
 
-#define INDEX_UP(add_to_history)                                                                       \
-    if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, top, bottom, true, add_to_history); \
-    nuke_multiline_chars_torn_by_scroll(self, top, bottom, true, add_to_history);                      \
-    bidi_index_up_seams(self, top, bottom, add_to_history);                                            \
-    linebuf_index(self->linebuf, top, bottom);                                                         \
-    INDEX_GRAPHICS(-1, add_to_history)                                                                 \
-    if (add_to_history) {                                                                              \
-        /* Only add to history when no top margin has been set */                                      \
-        linebuf_init_line(self->linebuf, bottom);                                                      \
-        historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf);                \
-        /* Keep a scrolled back viewport anchored on the same content */                               \
-        if (self->scrolled_by) {                                                                       \
-            if (self->scrolled_by < self->historybuf->count) self->scrolled_by++;                      \
-            if (self->scrolled_by >= self->historybuf->count && self->pixel_scroll_offset_y) {         \
-                reset_pixel_scroll(self, 0);                                                           \
-                self->scroll_changed = true;                                                           \
-            }                                                                                          \
-        }                                                                                              \
-    }                                                                                                  \
-    last_visited_prompt_index(self, top, bottom, true, add_to_history);                                \
-    clear_scrolled_in_line(self, bottom);                                                              \
-    self->is_dirty = true;                                                                             \
-    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, true, top, bottom); \
+#define INDEX_UP(add_to_history)                                                                                       \
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, top, bottom, true, add_to_history);                 \
+    nuke_multiline_chars_torn_by_scroll(self, top, bottom, true, add_to_history);                                      \
+    bidi_index_up_seams(self, top, bottom, add_to_history);                                                            \
+    linebuf_index(self->linebuf, top, bottom);                                                                         \
+    INDEX_GRAPHICS(-1, add_to_history)                                                                                 \
+    if (add_to_history) {                                                                                              \
+        /* Only add to history when no top margin has been set */                                                      \
+        linebuf_init_line(self->linebuf, bottom);                                                                      \
+        historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf);                                \
+        /* Keep a scrolled back viewport anchored on the same content */                                               \
+        if (self->scrolled_by) {                                                                                       \
+            if (self->scrolled_by < self->historybuf->count) self->scrolled_by++;                                      \
+            if (self->scrolled_by >= self->historybuf->count && self->pixel_scroll_offset_y) {                         \
+                reset_pixel_scroll(self, 0);                                                                           \
+                self->scroll_changed = true;                                                                           \
+            }                                                                                                          \
+        }                                                                                                              \
+    }                                                                                                                  \
+    last_visited_prompt_index(self, top, bottom, true, add_to_history);                                                \
+    clear_scrolled_in_line(self, bottom);                                                                              \
+    self->is_dirty = true;                                                                                             \
+    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, true, top, bottom, add_to_history); \
     if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
 
 void
