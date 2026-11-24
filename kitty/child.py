@@ -447,10 +447,6 @@ class KittyWrapper(NamedTuple):
 child_counter = count()
 
 
-class ResolvedCwd(str):
-    """A working directory that has already been expanded by the caller."""
-
-
 class Child:
     child_fd: int | None = None
     pid: int | None = None
@@ -475,6 +471,7 @@ class Child:
         hold_after_ssh: bool = False,
         startup_command_via_shell_integration: Sequence[str] | str = (),
         launch_request: Optional['LaunchRequest'] = None,
+        expand_cwd: bool = True,
     ):
         self.is_clone_launch = is_clone_launch
         self.launch_request = launch_request
@@ -491,8 +488,11 @@ class Child:
                 cwd = cwd_from.modify_argv_for_launch_with_cwd(self.argv, env, hold_after_ssh=hold_after_ssh) or cwd
             except Exception as err:
                 log_error(f'Failed to read cwd of {cwd_from} with error: {err}')
-        elif not isinstance(cwd, ResolvedCwd):
-            cwd = os.path.expandvars(os.path.expanduser(cwd or os.getcwd()))
+        elif not cwd:
+            cwd = os.getcwd()
+        elif expand_cwd:
+            # cwd values from sessions are already expanded, see Tab.launch_child()
+            cwd = os.path.expandvars(os.path.expanduser(cwd))
         self.cwd = os.path.abspath(cwd)
         self.stdin = stdin
         self.env = env or {}

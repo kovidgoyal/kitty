@@ -2634,6 +2634,8 @@ class Window:
             for cs in self.creation_spec.colors:
                 ans.append(f'--color={cs}')
             for wr in self.creation_spec.watchers:
+                # These are the paths as specified by the user, before expansion,
+                # so the expansion when loading the watcher must happen again.
                 ans.append(f'--watcher={wr}')
             if self.creation_spec.hold:
                 ans.append('--hold')
@@ -2705,7 +2707,11 @@ class Window:
                         if fcmd:
                             make_exe_absolute(fcmd, pid)
                             unserialize_data['cmd_at_shell_startup'] = fcmd
-        # Session parsing expands options, while the metadata and command are read verbatim.
+        # Session parsing expands variables in options once, so every option
+        # is escaped once here. Options whose already expanded values are
+        # expanded again when the window is created, such as --env, must be
+        # escaped once more where they are added above. The metadata and
+        # command are read verbatim.
         return ['launch', unserialize_launch_flag + json.dumps(unserialize_data), *map(escape_session_value, ans), *cmd]
 
     # }}}

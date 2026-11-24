@@ -221,6 +221,9 @@ Detailed list of changes
 - Sessions: Preserve literal dollar signs in working directories, titles and
   other values when restoring a saved session
 
+- Sessions: Resolve relative paths in :option:`launch --cwd` with respect to
+  the directory containing the session file, as is done for ``cd``
+
 - Use an accurate title for the overlay showing errors during startup that are
   not caused by invalid config
 

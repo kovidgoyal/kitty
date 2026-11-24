@@ -12,7 +12,6 @@ from functools import partial
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from .child import ResolvedCwd
 from .cli_stub import CLIOptions, GotoSessionOptions, SaveAsSessionOptions
 from .constants import config_dir, unserialize_launch_flag
 from .fast_data_types import get_options
@@ -51,8 +50,8 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
 ResizeSpec = tuple[str, int]
 
 
-def resolve_session_cwd(path: str, session_base_dir: str) -> ResolvedCwd:
-    return ResolvedCwd(os.path.abspath(os.path.join(session_base_dir, os.path.expanduser(path))))
+def resolve_session_cwd(path: str, session_base_dir: str) -> str:
+    return os.path.abspath(os.path.join(session_base_dir, os.path.expanduser(path)))
 
 
 class WindowSpec:
@@ -83,6 +82,7 @@ class Tab:
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
         self.layout_state: dict[str, Any] | None = None
+        # Always absolute with variables expanded, see set_cwd()
         self.cwd: str | None = None
         self.next_title: str | None = None
 
@@ -144,9 +144,7 @@ class Session:
             # breaks, see session_launch_line()
             cmd = list(shlex_split(cmd, True)) if cmd else []
         serialize_data: dict[str, Any] = {'id': 0, 'cmd_at_shell_startup': ()}
-        saved_window = False
         if cmd and cmd[0].startswith(unserialize_launch_flag):
-            saved_window = True
             serialize_data = json.loads(cmd[0][len(unserialize_launch_flag) :])
             del cmd[0]
         spec = parse_launch_args(cmd)
@@ -159,11 +157,11 @@ class Session:
         t = self.tabs[-1]
         if t.next_title and not spec.opts.window_title:
             spec.opts.window_title = t.next_title
-        if saved_window and spec.opts.cwd:
+        if spec.opts.cwd:
             from .window import CwdRequestType
 
-            # A saved --cwd is a path relative to the session file when it is
-            # not absolute. Keep special cwd requests in edited sessions.
+            # Relative paths are resolved with respect to the session file, as
+            # for cd. The result is not expanded again, see Tab._startup().
             if spec.opts.cwd not in CwdRequestType.__members__:
                 spec.opts.cwd = resolve_session_cwd(spec.opts.cwd, session_base_dir)
         spec.opts.cwd = spec.opts.cwd or t.cwd

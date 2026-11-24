@@ -75,6 +75,7 @@ class OSWindowTab:
         return self.tm
 
     name = cwd = created_in_session_name = ''
+    cwd_is_expanded = False
     enabled_layouts = ('tall',)
     _last_used_layout = None
     _current_layout_name = ''

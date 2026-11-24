@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 from kitty.fast_data_types import Screen
@@ -163,7 +164,9 @@ class TestSessions(BaseTest):
         opts = self.set_options()
         literal = 'literal $KITTY_SESSION_TEST ${KITTY_SESSION_TEST} $$'
         cmd = ['/bin/true', literal]
-        creation_spec = WindowCreationSpec(cmd=cmd, env=(('SESSION_VALUE', literal),))
+        # Watchers are stored as specified by the user, so $$ is a literal $
+        watcher = '/watchers/w $$KITTY_SESSION_TEST.py'
+        creation_spec = WindowCreationSpec(cmd=cmd, env=(('SESSION_VALUE', literal),), watchers=(watcher,))
         save_opts = default_save_as_session_opts()
         save_opts.save_only = True
 
@@ -229,6 +232,7 @@ class TestSessions(BaseTest):
                     (saved_tab,) = session.tabs
                     self.ae((saved_tab.name, session.os_window_class, session.os_window_name), (literal, literal, literal))
                     self.ae(len(saved_tab.windows), len(names))
+                    self.ae(saved_tab.cwd, str(root / names[0]))
                     for window, name in zip(saved_tab.windows, names):
                         spec = window.launch_spec
                         assert isinstance(spec, LaunchSpec)
@@ -236,8 +240,69 @@ class TestSessions(BaseTest):
                         self.ae(spec.opts.window_title, literal)
                         self.ae(spec.opts.var, ['name=' + literal])
                         self.ae(resolve_custom_file(spec.opts.logo), logo_path)
-                        child = Child(spec.args, spec.opts.cwd, env=get_env(spec.opts))
+                        self.ae([resolve_custom_file(x) for x in spec.opts.watcher], ['/watchers/w $KITTY_SESSION_TEST.py'])
+                        # Tab._startup() launches session windows without expanding the cwd again
+                        child = Child(spec.args, spec.opts.cwd, env=get_env(spec.opts), expand_cwd=False)
                         self.ae((child.cwd, child.env['SESSION_VALUE']), (str(root / name), literal))
+
+    def test_session_cwd_resolution(self) -> None:
+        from kitty.child import Child
+        from kitty.launch import LaunchSpec
+
+        opts = self.set_options()
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', KITTY_SESSION_TEST='expanded'):
+            base = Path(tmp).resolve()
+            path = base / 'test.kitty-session'
+            text = (
+                'cd tab$$KITTY_SESSION_TEST\nlaunch\nlaunch --cwd=win$KITTY_SESSION_TEST\nlaunch --cwd=~\nlaunch --cwd=current\n'
+                'launch --cwd=/abs$$KITTY_SESSION_TEST\n'
+            )
+            (session,) = parse_session(text, opts, session_path=str(path))
+            (tab,) = session.tabs
+            self.ae(tab.cwd, str(base / 'tab$KITTY_SESSION_TEST'))
+            cwds = []
+            for w in tab.windows:
+                assert isinstance(w.launch_spec, LaunchSpec)
+                cwds.append(w.launch_spec.opts.cwd)
+            self.ae(cwds, [tab.cwd, str(base / 'winexpanded'), os.path.expanduser('~'), 'current', '/abs$KITTY_SESSION_TEST'])
+            # Other callers still get their cwd expanded by Child
+            self.ae(Child(['/bin/true'], str(base / '$KITTY_SESSION_TEST')).cwd, str(base / 'expanded'))
+            self.ae(Child(['/bin/true'], str(base / '$KITTY_SESSION_TEST'), expand_cwd=False).cwd, str(base / '$KITTY_SESSION_TEST'))
+
+    def test_session_cwd_is_not_expanded_again(self) -> None:
+        from kitty.launch import launch, parse_launch_args
+        from kitty.session import Tab as SessionTab
+        from kitty.session import WindowSpec
+        from kitty.tabs import Tab
+
+        self.set_options()
+        # Tab._startup() launches session windows without expanding the cwd
+        session_tab = SimpleNamespace(windows=[WindowSpec(parse_launch_args([]))], active_window_idx=0, layout_state=None)
+        stub = SimpleNamespace(created_in_session_name='')
+        with patch('kitty.tabs.get_boss'), patch('kitty.launch.launch', return_value=None) as launch_mock:
+            Tab._startup(cast(Tab, stub), cast(SessionTab, session_tab))
+        self.ae(launch_mock.call_args.kwargs['expand_cwd'], False)
+        # launch() passes it on
+        boss = SimpleNamespace(active_window=None)
+        with patch('kitty.launch._launch', return_value=None) as _launch_mock:
+            launch(cast(Any, boss), cast(Any, SimpleNamespace(keep_focus=False)), [], expand_cwd=False)
+        self.ae(_launch_mock.call_args.args[-1], False)
+
+        # Tab.launch_child() decides whether Child expands the cwd
+        def child_kwargs(tab_cwd_is_expanded: bool, **kw: Any) -> tuple[str, bool]:
+            stub = SimpleNamespace(cwd='/tab$X', cwd_is_expanded=tab_cwd_is_expanded, os_window_id=0, args=SimpleNamespace(args=()))
+            with patch('kitty.tabs.Child') as child_mock, patch('kitty.tabs.platform_window_id', return_value=None):
+                Tab.launch_child(cast(Tab, stub), cmd=kw.pop('cmd', ['/bin/true']), **kw)
+            return child_mock.call_args.args[1], child_mock.call_args.kwargs['expand_cwd']
+
+        self.ae(child_kwargs(False, cwd='/w$X'), ('/w$X', True))
+        self.ae(child_kwargs(True, cwd='/w$X', expand_cwd=False), ('/w$X', False))
+        self.ae(child_kwargs(True), ('/tab$X', False))
+        self.ae(child_kwargs(False), ('/tab$X', True))
+        with TemporaryDirectory() as tmp:
+            d = os.path.join(tmp, 'd$X')
+            os.mkdir(d)
+            self.ae(child_kwargs(False, cmd=[d]), (d, False))
 
     def test_save_as_session_line_injection(self) -> None:
         # Values such as the cwd reported via OSC 7 or user vars are under the
@@ -707,6 +772,7 @@ class TestSessions(BaseTest):
 
         class FakeTab:
             name = cwd = ''
+            cwd_is_expanded = False
             enabled_layouts, _last_used_layout, _current_layout_name = ['tall'], None, ''
 
             def __init__(self, tm: 'FakeTabManager', session: str, *windows: FakeWindow) -> None:

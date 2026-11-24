@@ -383,6 +383,8 @@ documentation for them.
     no command is specified. See :doc:`launch` for details. Note that creating
     tabs and OS Windows using launch is not supported in session files, use the
     dedicated keywords for these.
+    A relative path given to :option:`launch --cwd` is resolved with respect to
+    the directory containing the session file, as for ``cd``.
 
 ``layout name``
     Set the layout for the current tab to the specified layout, including any

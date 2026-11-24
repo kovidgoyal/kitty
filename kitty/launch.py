@@ -679,6 +679,7 @@ class LaunchKwds(TypedDict):
     hold: bool
     bias: float | None
     hold_after_ssh: bool
+    expand_cwd: bool
 
 
 def apply_colors(window: Window, spec: Sequence[str]) -> None:
@@ -764,6 +765,7 @@ def _launch(
     startup_command_via_shell_integration: Sequence[str] | str = (),
     restored_scrollback: bytes = b'',
     use_launch_wrapper: bool = True,
+    expand_cwd: bool = True,
 ) -> Window | None:
     source_window = boss.active_window_for_cwd
     if opts.source_window:
@@ -823,6 +825,7 @@ def _launch(
         'hold': False,
         'bias': None,
         'hold_after_ssh': False,
+        'expand_cwd': expand_cwd,
     }
     spacing = {}
     if opts.spacing:
@@ -1043,6 +1046,7 @@ def launch(
     startup_command_via_shell_integration: Sequence[str] | str = (),
     restored_scrollback: bytes = b'',
     use_launch_wrapper: bool = True,
+    expand_cwd: bool = True,
 ) -> Window | None:
     active = boss.active_window
     if opts.keep_focus and active:
@@ -1061,6 +1065,7 @@ def launch(
             startup_command_via_shell_integration,
             restored_scrollback,
             use_launch_wrapper,
+            expand_cwd,
         )
     finally:
         if opts.keep_focus and active:
