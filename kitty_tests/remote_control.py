@@ -182,7 +182,7 @@ class TestRemoteControl(BaseTest):
         from base64 import standard_b64encode
 
         from kitty.boss import Boss as KittyBoss
-        from kitty.remote_control import abort_active_stream, abort_active_streams_from, active_streams, handle_cmd, is_cmd_allowed, register_active_stream
+        from kitty.remote_control import abort_active_stream, abort_active_streams_from, active_streams, handle_cmd, is_cmd_allowed
 
         self.set_options({'remote_control_password': {'secret': frozenset(('ls',))}})
         command = command_for_name('run')
@@ -224,11 +224,12 @@ class TestRemoteControl(BaseTest):
         cancel = {'cmd': 'run', 'version': [0, 26, 0], 'stream_id': 's1', 'async': 'a-s1', 'cancel_async': True}
         self.assertIsNone(handle_cmd(Mock(spec=KittyBoss), None, dict(cancel), 8, None))
         self.assertIn('s1', active_streams)
-        self.ae(command.stream_in_flight.stream_id, 's1')
+        buffers = command.stream_in_flight.buffers
+        s1 = buffers['s1']
         self.assertIsNone(handle_cmd(Mock(spec=KittyBoss), None, dict(cancel), 7, None))
         self.assertNotIn('s1', active_streams)
-        self.ae(command.stream_in_flight.stream_id, '')
-        self.assertIsNone(command.stream_in_flight.tempfile)
+        self.assertNotIn('s1', buffers)
+        self.assertTrue(s1.closed)
         self.assertFalse(allowed(chunk('s1'), 7))
 
         # streams are aborted when the peer or window that opened them goes away
@@ -239,24 +240,131 @@ class TestRemoteControl(BaseTest):
         abort_active_streams_from(peer_id=7)
         self.assertNotIn('s2', active_streams)
         self.assertIn('s3', active_streams)
-        self.ae(command.stream_in_flight.stream_id, 's3')
+        self.assertNotIn('s2', buffers)
+        self.assertIn('s3', buffers)
         abort_active_streams_from(window_id=w.id)
         self.assertNotIn('s3', active_streams)
-        self.ae(command.stream_in_flight.stream_id, '')
+        self.assertNotIn('s3', buffers)
 
-        # a command has only one stream in flight, opening another aborts the first
+        # streams of the same command can be in flight together and are aborted independently
         open_stream('s4', peer_id=7)
         open_stream('s5', peer_id=8)
+        self.assertIn('s4', active_streams)
+        abort_active_stream('s4')
         self.assertNotIn('s4', active_streams)
+        self.assertNotIn('s4', buffers)
+        self.ae(buffers['s5'].getvalue(), b'x')
         self.assertFalse(allowed(chunk('s4'), 7))
         self.assertTrue(allowed(chunk('s5'), 8))
 
-        # the number of registered streams is bounded
+        # the number of registered streams and hence of their buffers is bounded
         for i in range(40):
-            register_active_stream(f'many-{i}', chunk(f'many-{i}'), None, 9)
+            open_stream(f'many-{i}', peer_id=9)
+        self.ae(set(buffers), set(active_streams))
         self.ae(len(active_streams), 32)
         self.assertNotIn('many-0', active_streams)
         self.assertIn('many-39', active_streams)
+
+    def test_stream_buffers(self):
+        from base64 import standard_b64encode
+
+        from kitty.boss import Boss as KittyBoss
+        from kitty.rc.base import StreamError
+        from kitty.remote_control import abort_active_stream, active_streams, handle_cmd
+
+        self.set_options()
+        command = command_for_name('run')
+        buffers = command.stream_in_flight.buffers
+        boss = Mock(spec=KittyBoss)
+
+        def cleanup() -> None:
+            for sid in tuple(active_streams):
+                abort_active_stream(sid)
+            for sid in tuple(buffers):
+                command.stream_in_flight.discard(sid)
+
+        self.addCleanup(cleanup)
+
+        def send(sid: str, data: bytes, peer_id: int = 7, in_payload: bool = False) -> None:
+            payload: dict[str, Any] = {'cmdline': ['cat'], 'data': standard_b64encode(data).decode('ascii')}
+            request: dict[str, Any] = {'cmd': 'run', 'version': [0, 26, 0], 'async': 'a-' + sid, 'payload': payload}
+            if in_payload:
+                payload['stream_id'] = sid
+            else:
+                request['stream_id'] = sid
+            handle_cmd(boss, None, request, peer_id, None)
+
+        # interleaved streams each deliver all their data
+        chunks = {'a': (b'a1\x00', b'a2\xff'), 'b': (b'b1\xff', b'b2\x00')}
+        with patch.object(command, 'create_async_responder'):
+            for i in range(3):
+                for peer_id, (sid, parts) in enumerate(chunks.items(), start=7):
+                    send(sid, parts[i] if i < len(parts) else b'', peer_id)
+        stdins = [c.kwargs['stdin'] for c in boss.run_background_process.call_args_list]
+        self.ae(stdins, [b'a1\x00a2\xff', b'b1\xffb2\x00'])
+        self.ae(buffers, {})
+        self.assertNotIn('a', active_streams)
+        self.assertNotIn('b', active_streams)
+
+        # buffers of streams that are not registered and do not complete are dropped
+        send('u1', b'x', in_payload=True)
+        self.assertNotIn('u1', active_streams)
+        self.assertIn('u1', buffers)
+        send('r1', b'x')
+        self.assertNotIn('u1', buffers)
+        send('u2', b'x', in_payload=True)
+        send('u3', b'x', in_payload=True)
+        self.ae(set(buffers), {'r1', 'u3'})
+        # a stream registered for a different command does not keep the buffer alive
+        other = command_for_name('set-window-logo')
+        with patch.object(other, 'response_from_kitty'):
+            handle_cmd(boss, None, {'cmd': 'set-window-logo', 'version': [0, 26, 0], 'stream_id': 'u3', 'payload': {}}, 7, None)
+        self.assertIn('u3', active_streams)
+        send('r2', b'x')
+        self.ae(set(buffers), {'r1', 'r2'})
+        abort_active_stream('u3')
+
+        # the data buffered for a stream and for all streams of a command is limited
+        sif = type(command.stream_in_flight)
+        with patch.object(sif, 'max_stream_data', 6), patch.object(sif, 'max_buffered_data', 10):
+            send('r1', b'12345')
+            with self.assertRaises(StreamError):
+                send('r1', b'6')
+            self.assertNotIn('r1', active_streams)
+            self.assertNotIn('r1', buffers)
+            send('r2', b'12345')
+            send('r3', b'1234')
+            with self.assertRaises(StreamError):
+                send('r3', b'5')
+            self.assertNotIn('r3', active_streams)
+            self.assertNotIn('r3', buffers)
+            self.assertIn('r2', active_streams)
+            send('r2', b'')
+            self.ae(boss.run_background_process.call_args.kwargs['stdin'], b'x12345')
+            self.ae(buffers, {})
+
+    def test_stream_buffers_of_failed_mapping(self):
+        from kitty.boss import Boss as KittyBoss
+
+        command = command_for_name('set-background-image')
+        buffers = command.stream_in_flight.buffers
+        with tempfile.NamedTemporaryFile(suffix='.png') as f:
+            f.write(b'\x89PNG\r\n\x1a\n' + b'x' * 2048)
+            f.flush()
+            calls = 0
+            orig = KittyBoss.call_remote_control
+
+            def response_from_kitty(boss: Any, window: Any, payload_get: PayloadGetter) -> Any:
+                nonlocal calls
+                calls += 1
+                if calls > 2:
+                    raise ValueError('failed')
+                return command.handle_streamed_data(b'x', payload_get)
+
+            with patch.object(command, 'response_from_kitty', response_from_kitty), self.assertRaises(ValueError):
+                orig(Mock(), None, ('set-background-image', f.name))
+        self.ae(calls, 3)
+        self.ae(buffers, {})
 
     def test_kitten_password_restrictions(self):
         from kitty.remote_control import kitten_password_restrictions, remote_control_allowed

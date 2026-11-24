@@ -293,41 +293,46 @@ class ArgsHandling:
 
 
 class StreamInFlight:
+    # The maximum amount of data buffered for a single stream and for all in
+    # flight streams of a command
+    max_stream_data = 128 * 1024 * 1024
+    max_buffered_data = 2 * max_stream_data
+
     def __init__(self) -> None:
-        self.stream_id = ''
-        self.tempfile: BytesIO | None = None
+        # Data received so far on streams that have not completed, by stream id.
+        # Streams from different clients can be interleaved, so each has its own buffer.
+        self.buffers: dict[str, BytesIO] = {}
 
     def discard(self, stream_id: str) -> None:
         # Drop any data received for the specified stream, if it is in flight
-        if stream_id and stream_id == self.stream_id:
-            self.stream_id = ''
-            if self.tempfile is not None:
-                self.tempfile.close()
-                self.tempfile = None
+        if (t := self.buffers.pop(stream_id, None)) is not None:
+            t.close()
 
     def handle_data(self, stream_id: str, data: bytes) -> AsyncResponse | BytesIO:
-        from ..remote_control import close_active_stream
+        from ..remote_control import active_streams, close_active_stream
 
-        def abort_stream() -> None:
-            close_active_stream(self.stream_id)
-            self.discard(self.stream_id)
+        def is_registered(sid: str) -> bool:
+            s = active_streams.get(sid)
+            return s is not None and command_for_name(s.cmd).stream_in_flight is self
 
-        if stream_id != self.stream_id:
-            abort_stream()
-            self.stream_id = stream_id
-        if self.tempfile is None:
-            self.tempfile = BytesIO()
-        t = self.tempfile
+        t = self.buffers.get(stream_id)
+        if t is None:
+            # Buffers of registered streams are discarded when the stream is
+            # aborted. Unregistered streams, such as those from remote control
+            # mappings, which are sent synchronously, are never aborted, so
+            # drop any left over from a stream that did not complete.
+            for sid in [sid for sid in self.buffers if not is_registered(sid)]:
+                self.discard(sid)
+            t = self.buffers[stream_id] = BytesIO()
         if data:
-            if (t.tell() + len(data)) > 128 * 1024 * 1024:
-                abort_stream()
+            if t.tell() + len(data) > self.max_stream_data or sum(b.tell() for b in self.buffers.values()) + len(data) > self.max_buffered_data:
+                close_active_stream(stream_id)
+                self.discard(stream_id)
                 raise StreamError('Too much data being sent')
             t.write(data)
             return AsyncResponse()
-        close_active_stream(self.stream_id)
-        self.stream_id = ''
-        self.tempfile = None
-        t.flush()
+        close_active_stream(stream_id)
+        del self.buffers[stream_id]
         return t
 
 

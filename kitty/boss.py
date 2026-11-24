@@ -1052,8 +1052,16 @@ class Boss:
 
         try:
             if isinstance(payload, types.GeneratorType):
-                for x in payload:
-                    c.response_from_kitty(self, self_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
+                stream_id = ''
+                try:
+                    for x in payload:
+                        pd = x if isinstance(x, dict) else {}
+                        stream_id = str(pd.get('stream_id') or stream_id)
+                        c.response_from_kitty(self, self_window, PayloadGetter(c, pd))
+                finally:
+                    # Drop data already received if the stream did not complete
+                    if stream_id:
+                        c.stream_in_flight.discard(stream_id)
                 return None
             pd = cast(dict[str, Any], payload if isinstance(payload, dict) else {})
             return c.response_from_kitty(self, self_window, PayloadGetter(c, pd))
