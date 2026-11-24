@@ -122,6 +122,108 @@ for seamless and intuitive session file creation.
 Detailed list of changes
 -------------------------------------
 
+1.0.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- New rendering engine with pluggable GPU drivers: kitty now renders with
+  **Metal** on macOS and **Vulkan** on Linux and BSD, falling back to OpenGL.
+  On systems with no usable GPU, such as virtual machines, it falls back to
+  CPU rendering with the Mesa lavapipe/llvmpipe software renderers. The new
+  :opt:`gpu_driver` option controls which drivers are tried and in what order,
+  use :option:`kitty --debug-rendering` to see which one was chosen and why
+
+- Support for **bidirectional text** (Arabic, Hebrew, etc.) using FriBidi, with
+  the ECMA-48 bidi mode (``CSI 8 h``), automatic paragraph direction
+  (``CSI ? 2501 h``) and Select Character Path controls. Right-to-left runs are
+  shaped in their correct direction, the cursor, IME and selections work on
+  reordered lines and bidi settings are preserved in the scrollback pager,
+  copied ANSI text and saved sessions, see :ref:`bidi_support`
+
+- A new :doc:`smooth scrolling protocol <smooth-scrolling-protocol>` that lets
+  programs define up to four rectangular regions of the screen that the
+  terminal scrolls, vertically or horizontally, by amounts in pixels, with
+  images moving along with the text
+
+- A new mode (``5523``) to :ref:`report scroll events to programs in full detail
+  <detailed_wheel_events>`, with pixel or high resolution deltas, the device
+  kind, gesture phase and momentum/natural scrolling flags. Kittens can use it
+  via ``Loop.DetailedWheelEvents()``
+
+- Initial support for the proposed glyph protocol (:iss:`10872`), allowing
+  programs to register their own vector glyphs for codepoints in a reserved
+  block and have kitty render them, including multi-color glyphs and gradients
+
+- Much faster startup, the first frame is shown ~25-35ms sooner on Linux and
+  even more on macOS: fonts are now selected in C, in a background thread, the
+  GPU driver is loaded in a thread on Wayland, slow Python imports are deferred
+  and garbage collection is disabled during startup. A new
+  :option:`kitty --debug-startup` flag prints timings for the phases of startup
+
+- Major throughput improvements, see :doc:`performance` for updated
+  comparisons with other terminals: output is parsed as soon as it arrives
+  rather than in delayed chunks, a batched drawing path speeds up non-ASCII and
+  CJK text by up to 70%, a new :term:`SIMD` UTF-8 decoder is 2.6x faster,
+  common CSI escape codes are parsed in a single fast pass, text that scrolls
+  the screen and cells with many combining chars are processed faster, and
+  adding lines to the scrollback uses non-temporal stores (~30% faster)
+
+- Greatly reduced memory use of the scrollback: cell colors and attributes are
+  now stored in a per screen table of styles and looked up in the shaders, so
+  each scrollback cell uses 12 bytes instead of 32. This also makes plain text
+  output up to 48% faster and uploads 60% less data to the GPU per cell
+
+- The ``sync_to_monitor`` and ``repaint_delay`` options are replaced by the new
+  :opt:`render_interval` option, which by default syncs redraws to the monitor
+  refresh rate, using the Present extension on X11, with an optional
+  frame rate cap, and stops rendering hidden windows. The old options are
+  converted automatically. The ``input_delay`` option has been removed as it is
+  no longer needed
+
+- :doc:`Custom shaders </custom-shaders>`: Allow shaders to draw the progress
+  bars reported by programs with OSC 9;4, via new ``progress-start`` and
+  ``progress-stop`` events and a per window texture describing all visible
+  windows. A sample progress bar shader is included (:iss:`10923`)
+
+- macOS: kitty now requires macOS 14 or newer and uses ``CADisplayLink`` for
+  render timing. Main loop wakeups and timers are cheaper, speeding up output
+  with long escape codes and images by ~70% on Apple silicon
+
+- Remote control: Automatically remove stale UNIX sockets left behind by a
+  killed kitty instance when using :option:`kitty --listen-on`
+
+- Fix selections jumping to other text when only part of the screen scrolls,
+  for example, in programs that use a scroll region to append output above
+  their input area (:iss:`10930`)
+
+- Fix pointed Hebrew and Arabic lam-alef ligatures being grouped with the
+  wrong cells (:iss:`10891`)
+
+- Fix the cursor taking the colors of the cell above it while rendering is
+  paused with pixel scrolling (:iss:`10892`)
+
+- Fix combining chars written at the start of a soft wrapped line not being
+  drawn until the row above is redrawn (:iss:`10929`)
+
+- Fix the wrong face being selected for named styles of variable fonts in font
+  collection files, and fonts with non UTF-8 axis tags breaking font selection
+  on macOS. Variable fonts in WOFF/WOFF2 files are now supported
+
+- Fix the colors of the window size text shown during live resize being too
+  dark
+
+- macOS: Fix notification urgency being ignored
+
+- Use an accurate title for the overlay showing errors during startup that are
+  not caused by invalid config
+
+- :doc:`benchmark kitten <performance>`: Add benchmarks for text with many
+  distinct colors, scrollback, rendering and bidi, a ``--output`` flag to save
+  results as JSON and a script to compare multiple terminals
+
+- Building kitty now requires libfribidi, libbrotlidec (except on macOS) and,
+  for the Vulkan driver, the Vulkan headers. The Go SIMD code now uses the
+  Go ``simd`` package with ``GOEXPERIMENT=simd``
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
