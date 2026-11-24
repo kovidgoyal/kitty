@@ -38,6 +38,16 @@ class TestConfParsing(BaseTest):
     def test_render_interval(self):
         render_interval_parsing(self)
 
+    def test_cursor_trail_start_threshold(self):
+        from kitty.options.utils import cursor_trail_start_threshold as c
+
+        self.ae(c('3'), (3, 3, False))
+        self.ae(c('1 4'), (1, 4, False))
+        self.ae(c('2 prompt'), (2, 2, True))
+        self.ae(c('1 4 Prompt'), (1, 4, True))
+        for bad in ('', 'prompt', '1 2 3', 'prompt 2'):
+            self.assertRaises(ValueError, c, bad)
+
     def test_font_size_clamping(self):
         font_size_clamping(self)
 

@@ -184,6 +184,11 @@ Detailed list of changes
   ``progress-stop`` events and a per window texture describing all visible
   windows. A sample progress bar shader is included (:iss:`10923`)
 
+- :opt:`cursor_trail_start_threshold`: Add a ``prompt`` keyword to show the
+  cursor trail only for movement at the shell prompt, not in the output of
+  commands or for the jump to the next prompt, when using
+  :ref:`shell_integration` (:iss:`8147`)
+
 - macOS: kitty now requires macOS 14 or newer and uses ``CADisplayLink`` for
   render timing. Main loop wakeups and timers are cheaper, speeding up output
   with long escape codes and images by ~70% on Apple silicon

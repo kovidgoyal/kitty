@@ -309,6 +309,7 @@ static inline void
 cursor_trail_start_threshold(PyObject *src, Options *opts) {
     opts->cursor_trail_start_threshold_x = (int)PyLong_AsLong(PyTuple_GET_ITEM(src, 0));
     opts->cursor_trail_start_threshold_y = (int)PyLong_AsLong(PyTuple_GET_ITEM(src, 1));
+    opts->cursor_trail_only_at_prompt = PyObject_IsTrue(PyTuple_GET_ITEM(src, 2));
 }
 
 static inline void

@@ -473,8 +473,6 @@ controls when the animation is triggered. It is a number of milliseconds. The
 trail animation only follows cursors that have stayed in their position for longer
 than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
-When :ref:`shell_integration` is active, the trail is not shown for cursor movement in the
-output of commands or when moving to the next prompt after a command finishes.
 See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_trail_start_threshold`
 to control when a cursor trail is started. You can also have different styles of trail by
 using the :opt:`custom_shaders` option, for example: :code:`custom_shaders cursor-trail-blaze`.
@@ -516,6 +514,16 @@ number of cells the cursor must move in each dimension before the trail is
 started. When the cursor moves less than the threshold in both dimensions,
 the trail is skipped, reducing unnecessary cursor trail animation. The
 threshold does not apply when the cursor moves to a different window.
+
+Add the word :code:`prompt` at the end, for example,
+:code:`cursor_trail_start_threshold 2 prompt`, to show the trail only for
+cursor movement at the shell prompt. Then, when :ref:`shell_integration` is
+active, there is no trail for cursor movement in the output of commands or for
+the jump to the next prompt after a command finishes. Note that this means no
+trail for programs that run in the main screen without shell integration of
+their own, such as REPLs or :program:`ssh` to a computer without shell
+integration. Full screen programs such as editors and moving to a different
+window are not affected.
 """,
 )
 

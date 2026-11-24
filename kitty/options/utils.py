@@ -710,14 +710,18 @@ def cursor_trail_decay(x: str) -> tuple[float, float]:
     return fast, slow
 
 
-def cursor_trail_start_threshold(x: str) -> tuple[int, int]:
+def cursor_trail_start_threshold(x: str) -> tuple[int, int, bool]:
     parts = x.split()
+    only_at_prompt = False
+    if parts and parts[-1].lower() == 'prompt':
+        only_at_prompt = True
+        parts.pop()
     if len(parts) == 1:
         val = positive_int(parts[0])
-        return val, val
+        return val, val, only_at_prompt
     if len(parts) == 2:
-        return positive_int(parts[0]), positive_int(parts[1])
-    raise ValueError(f'cursor_trail_start_threshold must have 1 or 2 values, got: {x!r}')
+        return positive_int(parts[0]), positive_int(parts[1]), only_at_prompt
+    raise ValueError(f'cursor_trail_start_threshold must have 1 or 2 numbers optionally followed by prompt, got: {x!r}')
 
 
 def scrollback_lines(x: str) -> int:
