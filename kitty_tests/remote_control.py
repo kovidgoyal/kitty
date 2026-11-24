@@ -135,7 +135,7 @@ class TestRemoteControl(BaseTest):
         from base64 import standard_b64encode
 
         from kitty.boss import Boss as KittyBoss
-        from kitty.remote_control import abort_active_stream, abort_active_streams_from, active_streams, handle_cmd, is_cmd_allowed, register_active_stream
+        from kitty.remote_control import abort_active_stream, abort_active_streams_from, active_streams, handle_cmd, is_cmd_allowed
 
         self.set_options({'remote_control_password': {'secret': frozenset(('ls',))}})
         command = command_for_name('run')
@@ -177,11 +177,10 @@ class TestRemoteControl(BaseTest):
         cancel = {'cmd': 'run', 'version': [0, 26, 0], 'stream_id': 's1', 'async': 'a-s1', 'cancel_async': True}
         self.assertIsNone(handle_cmd(Mock(spec=KittyBoss), None, dict(cancel), 8, None))
         self.assertIn('s1', active_streams)
-        self.ae(command.stream_in_flight.stream_id, 's1')
+        self.assertIn('s1', command.stream_in_flight.tempfiles)
         self.assertIsNone(handle_cmd(Mock(spec=KittyBoss), None, dict(cancel), 7, None))
         self.assertNotIn('s1', active_streams)
-        self.ae(command.stream_in_flight.stream_id, '')
-        self.assertIsNone(command.stream_in_flight.tempfile)
+        self.assertNotIn('s1', command.stream_in_flight.tempfiles)
         self.assertFalse(allowed(chunk('s1'), 7))
 
         # streams are aborted when the peer or window that opened them goes away
@@ -192,24 +191,70 @@ class TestRemoteControl(BaseTest):
         abort_active_streams_from(peer_id=7)
         self.assertNotIn('s2', active_streams)
         self.assertIn('s3', active_streams)
-        self.ae(command.stream_in_flight.stream_id, 's3')
+        self.assertNotIn('s2', command.stream_in_flight.tempfiles)
+        self.assertIn('s3', command.stream_in_flight.tempfiles)
         abort_active_streams_from(window_id=w.id)
         self.assertNotIn('s3', active_streams)
-        self.ae(command.stream_in_flight.stream_id, '')
+        self.assertNotIn('s3', command.stream_in_flight.tempfiles)
 
-        # a command has only one stream in flight, opening another aborts the first
+        # streams for the same command can be interleaved and aborted independently
         open_stream('s4', peer_id=7)
+        s4 = command.stream_in_flight.tempfiles['s4']
         open_stream('s5', peer_id=8)
+        self.assertTrue(allowed(chunk('s4'), 7))
+        self.assertTrue(allowed(chunk('s5'), 8))
+        abort_active_stream('s4')
+        self.assertTrue(s4.closed)
         self.assertNotIn('s4', active_streams)
         self.assertFalse(allowed(chunk('s4'), 7))
         self.assertTrue(allowed(chunk('s5'), 8))
+        self.ae(command.stream_in_flight.tempfiles['s5'].getvalue(), b'x')
 
-        # the number of registered streams is bounded
-        for i in range(40):
-            register_active_stream(f'many-{i}', chunk(f'many-{i}'), None, 9)
+        # the number of registered streams and their buffers is bounded
+        open_stream('many-0', peer_id=9)
+        first_buffer = command.stream_in_flight.tempfiles['many-0']
+        for i in range(1, 40):
+            open_stream(f'many-{i}', peer_id=9)
         self.ae(len(active_streams), 32)
+        self.ae(len(command.stream_in_flight.tempfiles), 32)
+        self.assertTrue(first_buffer.closed)
         self.assertNotIn('many-0', active_streams)
         self.assertIn('many-39', active_streams)
+
+    def test_stream_data_limit(self):
+        from base64 import standard_b64encode
+
+        from kitty.boss import Boss as KittyBoss
+        from kitty.rc.base import StreamError
+        from kitty.remote_control import abort_active_stream, active_streams, handle_cmd
+
+        self.set_options()
+        command = command_for_name('run')
+        boss = Mock(spec=KittyBoss)
+
+        def send(sid, data):
+            request = {
+                'cmd': 'run',
+                'version': [0, 26, 0],
+                'stream_id': sid,
+                'payload': {'cmdline': ['true'], 'data': standard_b64encode(data).decode('ascii')},
+            }
+            handle_cmd(boss, None, request, 7, None)
+
+        for sid in ('large', 'other'):
+            self.addCleanup(abort_active_stream, sid)
+            send(sid, b'prefix')
+        large = command.stream_in_flight.tempfiles['large']
+        large.seek(128 * 1024 * 1024)
+        with self.assertRaises(StreamError):
+            send('large', b'x')
+        self.assertTrue(large.closed)
+        self.assertNotIn('large', active_streams)
+        self.assertNotIn('large', command.stream_in_flight.tempfiles)
+        send('other', b'-suffix')
+        self.assertIn('other', active_streams)
+        self.ae(command.stream_in_flight.tempfiles['other'].getvalue(), b'prefix-suffix')
+        boss.run_background_process.assert_not_called()
 
     def test_kitten_password_restrictions(self):
         from kitty.remote_control import kitten_password_restrictions, remote_control_allowed
@@ -394,6 +439,55 @@ class TestRemoteControl(BaseTest):
                 call = boss.run_background_process.call_args
                 self.ae(call.args[0], ['cat'])
                 self.ae(call.kwargs['stdin'], b'')
+
+    def test_run_interleaved_stdin(self):
+        from base64 import standard_b64decode, standard_b64encode
+
+        from kitty.boss import Boss as KittyBoss
+        from kitty.remote_control import abort_active_stream, active_async_requests, active_streams, handle_cmd
+
+        self.set_options()
+        chunks = {'a': (b'A-first-\x00', b'A-last-\xff'), 'b': (b'B-first-\xff', b'B-last-\x00')}
+        for sid in chunks:
+            self.addCleanup(abort_active_stream, sid)
+            self.addCleanup(active_async_requests.pop, 'run-' + sid, None)
+
+        def run_process(cmdline, *, stdin, stdout, stderr, notify_on_death, **kw):
+            subprocess.run(cmdline, input=stdin, stdout=stdout, stderr=stderr, check=True)
+            notify_on_death(0, None)
+
+        for interleaved in (False, True):
+            with self.subTest(interleaved=interleaved):
+                boss = Mock(spec=KittyBoss, run_background_process=Mock(side_effect=run_process))
+
+                def send(sid, i):
+                    data = chunks[sid][i] if i < 2 else b''
+                    request = {
+                        'cmd': 'run',
+                        'version': [0, 26, 0],
+                        'stream_id': sid,
+                        'async': 'run-' + sid,
+                        'stream': i == 0,
+                        'payload': {'cmdline': ['/bin/cat'], 'data': standard_b64encode(data).decode('ascii')},
+                    }
+                    handle_cmd(boss, None, request, 7 if sid == 'a' else 8, None)
+
+                with patch('kitty.remote_control.send_response_to_client') as respond:
+                    if interleaved:
+                        for i in range(3):
+                            for sid in chunks:
+                                send(sid, i)
+                    else:
+                        for sid in chunks:
+                            for i in range(3):
+                                send(sid, i)
+                self.ae(boss.run_background_process.call_count, 2)
+                self.ae(respond.call_count, 2)
+                outputs = {c.kwargs['async_id']: c.kwargs['data'] for c in respond.call_args_list}
+                for sid, parts in chunks.items():
+                    self.ae(standard_b64decode(outputs['run-' + sid]['stdout']), b''.join(parts))
+                    self.ae(outputs['run-' + sid]['exit_code'], 0)
+                    self.assertNotIn(sid, active_streams)
 
     def test_set_enabled_layouts_configured(self):
         from kitty.boss import Boss as KittyBoss

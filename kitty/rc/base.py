@@ -294,39 +294,29 @@ class ArgsHandling:
 
 class StreamInFlight:
     def __init__(self) -> None:
-        self.stream_id = ''
-        self.tempfile: BytesIO | None = None
+        self.tempfiles: dict[str, BytesIO] = {}
 
     def discard(self, stream_id: str) -> None:
         # Drop any data received for the specified stream, if it is in flight
-        if stream_id and stream_id == self.stream_id:
-            self.stream_id = ''
-            if self.tempfile is not None:
-                self.tempfile.close()
-                self.tempfile = None
+        t = self.tempfiles.pop(stream_id, None)
+        if t is not None:
+            t.close()
 
     def handle_data(self, stream_id: str, data: bytes) -> AsyncResponse | BytesIO:
         from ..remote_control import close_active_stream
 
-        def abort_stream() -> None:
-            close_active_stream(self.stream_id)
-            self.discard(self.stream_id)
-
-        if stream_id != self.stream_id:
-            abort_stream()
-            self.stream_id = stream_id
-        if self.tempfile is None:
-            self.tempfile = BytesIO()
-        t = self.tempfile
+        t = self.tempfiles.get(stream_id)
+        if t is None:
+            t = self.tempfiles[stream_id] = BytesIO()
         if data:
             if (t.tell() + len(data)) > 128 * 1024 * 1024:
-                abort_stream()
+                close_active_stream(stream_id)
+                self.discard(stream_id)
                 raise StreamError('Too much data being sent')
             t.write(data)
             return AsyncResponse()
-        close_active_stream(self.stream_id)
-        self.stream_id = ''
-        self.tempfile = None
+        close_active_stream(stream_id)
+        del self.tempfiles[stream_id]
         t.flush()
         return t
 

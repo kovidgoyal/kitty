@@ -122,6 +122,12 @@ for seamless and intuitive session file creation.
 Detailed list of changes
 -------------------------------------
 
+0.51.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Remote control: Fix concurrent :code:`kitten @ run` commands losing standard
+  input data when their input streams are interleaved.
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
