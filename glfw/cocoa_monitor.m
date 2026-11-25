@@ -215,16 +215,23 @@ getFallbackRefreshRate(CGDirectDisplayID displayID) {
 
     while ((service = IOIteratorNext(it)) != 0) {
         const CFNumberRef indexRef = IORegistryEntryCreateCFProperty(service, CFSTR("IOFramebufferOpenGLIndex"), kCFAllocatorDefault, kNilOptions);
-        if (!indexRef) continue;
+        if (!indexRef) {
+            IOObjectRelease(service);
+            continue;
+        }
 
         uint32_t index = 0;
         CFNumberGetValue(indexRef, kCFNumberIntType, &index);
         CFRelease(indexRef);
 
-        if (CGOpenGLDisplayMaskToDisplayID(1 << index) != displayID) continue;
+        if (CGOpenGLDisplayMaskToDisplayID(1 << index) != displayID) {
+            IOObjectRelease(service);
+            continue;
+        }
 
         const CFNumberRef clockRef = IORegistryEntryCreateCFProperty(service, CFSTR("IOFBCurrentPixelClock"), kCFAllocatorDefault, kNilOptions);
         const CFNumberRef countRef = IORegistryEntryCreateCFProperty(service, CFSTR("IOFBCurrentPixelCount"), kCFAllocatorDefault, kNilOptions);
+        IOObjectRelease(service);
 
         uint32_t clock = 0, count = 0;
 
