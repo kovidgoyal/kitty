@@ -2648,7 +2648,7 @@ request_drop_data(_GLFWWaylandDataOffer *offer, const char *mime) {
     safe_close(pipefd[1]);
     // Flush to ensure the compositor processes the receive request
     wl_display_flush(_glfw.wl.display);
-    id_type watch_id = addWatch(&_glfw.wl.eventLoopData, "drop_data", pipefd[0], POLLIN | POLLERR | POLLHUP, true, drop_data_available, NULL);
+    id_type watch_id = addWatch(&_glfw.wl.eventLoopData, pipefd[0], POLLIN | POLLERR | POLLHUP, true, drop_data_available, NULL);
     if (!watch_id) {
         safe_close(pipefd[0]);
         return ERANGE;
@@ -3467,7 +3467,7 @@ ready_for_drag_data(int fd, int events UNUSED, void *data UNUSED) {
 
 static GLFWid
 add_drag_watch(int fd) {
-    return addWatch(&_glfw.wl.eventLoopData, "drag_source", fd, POLLOUT | POLLERR | POLLHUP, true, ready_for_drag_data, NULL);
+    return addWatch(&_glfw.wl.eventLoopData, fd, POLLOUT | POLLERR | POLLHUP, true, ready_for_drag_data, NULL);
 }
 
 int

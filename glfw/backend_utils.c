@@ -34,45 +34,31 @@ update_fds(EventLoopData *eld) {
 
 
 id_type
-addWatch(EventLoopData *eld, const char *name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
+addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
     if (eld->watches_count >= sizeof(eld->watches) / sizeof(eld->watches[0])) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Too many watches added");
         return 0;
     }
     static id_type watch_counter = 0;
     Watch *w = eld->watches + eld->watches_count++;
-    w->name = name;
     w->fd = fd;
     w->events = events;
     w->enabled = enabled;
     w->callback = cb;
     w->callback_data = cb_data;
-    w->free = NULL;
     w->id = ++watch_counter;
     update_fds(eld);
     return w->id;
 }
 
-#define removeX(which, item_id, update_func)                                                                                                   \
-    {                                                                                                                                          \
-        for (nfds_t i = 0; i < eld->which##_count; i++) {                                                                                      \
-            if (eld->which[i].id == item_id) {                                                                                                 \
-                eld->which##_count--;                                                                                                          \
-                if (eld->which[i].callback_data && eld->which[i].free) {                                                                       \
-                    eld->which[i].free(eld->which[i].id, eld->which[i].callback_data);                                                         \
-                    eld->which[i].callback_data = NULL;                                                                                        \
-                    eld->which[i].free = NULL;                                                                                                 \
-                }                                                                                                                              \
-                if (i < eld->which##_count) { memmove(eld->which + i, eld->which + i + 1, sizeof(eld->which[0]) * (eld->which##_count - i)); } \
-                update_func(eld);                                                                                                              \
-                break;                                                                                                                         \
-            }                                                                                                                                  \
-        }                                                                                                                                      \
-    }
-
 void
 removeWatch(EventLoopData *eld, id_type watch_id) {
-    removeX(watches, watch_id, update_fds);
+    for (nfds_t i = 0; i < eld->watches_count; i++) {
+        if (eld->watches[i].id != watch_id) continue;
+        remove_i_from_array(eld->watches, i, eld->watches_count);
+        update_fds(eld);
+        return;
+    }
 }
 
 void
@@ -147,7 +133,6 @@ addTimer(
     }
     Timer *t = eld->timers + eld->timers_count++;
     t->interval = interval;
-    t->name = name;
     t->trigger_at = enabled ? monotonic() + interval : MONOTONIC_T_MAX;
     t->repeats = repeats;
     t->removed = false;
@@ -358,7 +343,7 @@ mark_key_repeat_fd_ready(int fd UNUSED, int events UNUSED, void *data) {
 
 bool
 initPollData(EventLoopData *eld, int display_fd) {
-    if (!addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL)) return false;
+    if (!addWatch(eld, display_fd, POLLIN, 1, NULL, NULL)) return false;
 #ifdef HAS_EVENT_FD
     eld->wakeupFd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
     if (eld->wakeupFd == -1) return false;
@@ -367,7 +352,7 @@ initPollData(EventLoopData *eld, int display_fd) {
     if (pipe2(eld->wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
     const int wakeup_fd = eld->wakeupFds[0];
 #endif
-    if (!addWatch(eld, "wakeup", wakeup_fd, POLLIN, 1, mark_wakep_fd_ready, eld)) return false;
+    if (!addWatch(eld, wakeup_fd, POLLIN, 1, mark_wakep_fd_ready, eld)) return false;
 
 #ifdef HAS_TIMER_FD
     eld->key_repeat_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
@@ -378,7 +363,7 @@ initPollData(EventLoopData *eld, int display_fd) {
     const int key_repeat_fd = eld->key_repeat_fds[0];
 #endif
 #ifdef _GLFW_WAYLAND
-    if (!addWatch(eld, "key_repeat", key_repeat_fd, POLLIN, 1, mark_key_repeat_fd_ready, eld)) return false;
+    if (!addWatch(eld, key_repeat_fd, POLLIN, 1, mark_key_repeat_fd_ready, eld)) return false;
 #else
     (void)key_repeat_fd;
     (void)mark_key_repeat_fd_ready;
