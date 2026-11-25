@@ -4,6 +4,7 @@ package loop
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -469,8 +470,8 @@ func decode_wheel_event(text string, screen_size ScreenSize) *MouseEvent {
 		ans.Mods = KeyModifiers(nums[8] - 1)
 	}
 	if len(parts) > 9 {
-		us, err := strconv.ParseUint(strings.SplitN(parts[9], ":", 2)[0], 10, 63)
-		if err != nil {
+		us, err := strconv.ParseUint(strings.SplitN(parts[9], ":", 2)[0], 10, 64)
+		if err != nil || us > uint64(math.MaxInt64/int64(time.Microsecond)) {
 			return nil
 		}
 		w.Timestamp, w.HasTimestamp = time.Duration(us)*time.Microsecond, true

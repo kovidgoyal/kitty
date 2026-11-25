@@ -474,13 +474,13 @@ releaseMonitor(_GLFWwindow *window) {
 }
 
 // Converts the time of an event, in seconds since system startup, to
-// monotonic() time. The clocks differ, so only the age of the event is used. An
-// implausible age means the event happened now.
+// monotonic() time. The clocks differ, so only the age of the event is used. See
+// MAX_INPUT_EVENT_AGE_SECONDS for implausible ages.
 static monotonic_t
 event_timestamp_to_monotonic(NSEvent *event) {
     const monotonic_t now = monotonic();
     const NSTimeInterval age = [[NSProcessInfo processInfo] systemUptime] - [event timestamp];
-    if (!(age >= 0 && age <= 1)) return now;
+    if (!(age >= 0 && age <= MAX_INPUT_EVENT_AGE_SECONDS)) return now;
     return now - s_double_to_monotonic_t(age);
 }
 

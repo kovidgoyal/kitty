@@ -29,6 +29,8 @@ func TestDecodeWheelEvent(t *testing.T) {
 		">45;65;0;120;1:5000;1;0;0;1;0M": ev(45, 65, 0, WheelEvent{DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL, HasTimestamp: true}),
 		">45;65;0;120;1;1;0;0;1;-5M":     nil,
 		">45;65;0;120;1;1;0;0;1;xM":      nil,
+		// Too large to be represented as a time.Duration
+		">45;65;0;120;1;1;0;0;1;9223372036854776M": nil,
 		// Unknown parameters and sub-parameters are ignored
 		">45;65:7;0;120:3;1:5000:9;1;0;0;1;99:1;7M": ev(45, 65, 0, WheelEvent{
 			DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL, Timestamp: 99 * time.Microsecond, HasTimestamp: true}),

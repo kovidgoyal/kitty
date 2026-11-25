@@ -68,7 +68,8 @@ x11_scroll_stop_timer_callback(unsigned long long timer_id UNUSED, void *data UN
         x11_momentum_scroll_state.last_event.unscaled.x = 0;
         x11_momentum_scroll_state.last_event.unscaled.y = 0;
         x11_momentum_scroll_state.last_event.phase = GLFW_SCROLL_PHASE_ENDED;
-        x11_momentum_scroll_state.last_event.timestamp = monotonic();
+        // The gesture ended when its last event happened, not when this timer
+        // fired, so the end keeps the time of the last event
         glfw_handle_scroll_event_for_momentum(w, &x11_momentum_scroll_state.last_event, true, true);
     } else {
         // Window no longer exists, cancel any ongoing momentum

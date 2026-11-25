@@ -34,6 +34,12 @@
 #endif
 
 #define arraysz(x) (sizeof(x) / sizeof(x[0]))
+// The largest plausible age, in seconds, of an input event from the system when
+// it is processed. Event times that are older than this, or in the future, are
+// taken to be on a different clock, and the event to have happened now. It is
+// large so that events delivered late, because the event loop was blocked, keep
+// their times.
+#define MAX_INPUT_EVENT_AGE_SECONDS 30
 #define MAX(x, y)              \
     __extension__({            \
         __typeof__(x) a = (x); \

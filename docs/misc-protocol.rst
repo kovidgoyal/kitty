@@ -148,9 +148,14 @@ They are:
     instance, to calculate the velocity of a gesture for momentum scrolling,
     without being affected by delays in delivering the events to the
     program. The time is that of the input event from the operating system,
-    where available, not the time the terminal processed or sent it. Events
-    that the terminal generates itself, such as momentum scrolling it
-    synthesizes, have the time they were generated. The origin is arbitrary,
+    where available, not the time the terminal processed or sent it. kitty
+    uses the time from the operating system for events processed up to 30
+    seconds after they happened, later ones, for example, because kitty was
+    unresponsive, have the time they were processed. Events that the
+    terminal generates itself, such as momentum scrolling it synthesizes,
+    have the time they were generated. When the terminal detects the end of
+    a gesture itself, because the operating system does not report it, the
+    end has the time of the last event of the gesture. The origin is arbitrary,
     kitty uses the time the mode was turned on. The time never decreases
     from one event to the next while the mode stays on. On platforms that
     provide event times only in milliseconds, the differences between them

@@ -609,13 +609,12 @@ createAnonymousFile(off_t size) {
 
 // Input event times from Wayland compositors and X servers are on the
 // CLOCK_MONOTONIC clock, which is not the clock of monotonic(), so only the age
-// of an event is used, measured against CLOCK_MONOTONIC. An implausible age
-// means the event time is on some other clock, then the event is taken to have
-// happened now.
+// of an event is used, measured against CLOCK_MONOTONIC. See
+// MAX_INPUT_EVENT_AGE_SECONDS for implausible ages.
 static monotonic_t
 event_age_to_monotonic(monotonic_t age) {
     const monotonic_t now = monotonic();
-    if (age < 0 || age > s_to_monotonic_t(1ll)) return now;
+    if (age < 0 || age > s_to_monotonic_t(MAX_INPUT_EVENT_AGE_SECONDS)) return now;
     return now - age;
 }
 
