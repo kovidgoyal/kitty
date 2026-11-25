@@ -606,3 +606,35 @@ createAnonymousFile(off_t size) {
     }
     return fd;
 }
+
+// Input event times from Wayland compositors and X servers are on the
+// CLOCK_MONOTONIC clock, which is not the clock of monotonic(), so only the age
+// of an event is used, measured against CLOCK_MONOTONIC. An implausible age
+// means the event time is on some other clock, then the event is taken to have
+// happened now.
+static monotonic_t
+event_age_to_monotonic(monotonic_t age) {
+    const monotonic_t now = monotonic();
+    if (age < 0 || age > s_to_monotonic_t(1ll)) return now;
+    return now - age;
+}
+
+// Converts an event time in milliseconds, which wraps at 32 bits, as used by
+// wl_pointer, wl_touch and X11 events
+monotonic_t
+event_time_ms_to_monotonic(uint32_t time_ms) {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return monotonic();
+    const uint32_t now_ms = (uint32_t)((uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u);
+    return event_age_to_monotonic(ms_to_monotonic_t((monotonic_t)(uint32_t)(now_ms - time_ms)));
+}
+
+// Converts an event time in nanoseconds, as used by the input timestamps protocol
+monotonic_t
+event_time_ns_to_monotonic(uint64_t time_ns) {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return monotonic();
+    const uint64_t now_ns = (uint64_t)ts.tv_sec * 1000000000u + (uint64_t)ts.tv_nsec;
+    if (time_ns > now_ns) return monotonic();
+    return event_age_to_monotonic((monotonic_t)(now_ns - time_ns));
+}

@@ -131,3 +131,5 @@ bool initPollData(EventLoopData *eld, int display_fd);
 void wakeupEventLoop(EventLoopData *eld);
 char *utf_8_strndup(const char *source, size_t max_length);
 int createAnonymousFile(off_t size);
+monotonic_t event_time_ms_to_monotonic(uint32_t time_ms);
+monotonic_t event_time_ns_to_monotonic(uint64_t time_ns);

@@ -68,6 +68,7 @@ x11_scroll_stop_timer_callback(unsigned long long timer_id UNUSED, void *data UN
         x11_momentum_scroll_state.last_event.unscaled.x = 0;
         x11_momentum_scroll_state.last_event.unscaled.y = 0;
         x11_momentum_scroll_state.last_event.phase = GLFW_SCROLL_PHASE_ENDED;
+        x11_momentum_scroll_state.last_event.timestamp = monotonic();
         glfw_handle_scroll_event_for_momentum(w, &x11_momentum_scroll_state.last_event, true, true);
     } else {
         // Window no longer exists, cancel any ongoing momentum
@@ -99,6 +100,7 @@ x11_cancel_scroll_gesture(void) {
         ev.unscaled.x = 0;
         ev.unscaled.y = 0;
         ev.phase = GLFW_SCROLL_PHASE_CANCELLED;
+        ev.timestamp = monotonic();
         _glfwInputScroll(w, &ev);
     }
 }
@@ -1592,6 +1594,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
                 .offset_type = type,
                 .source = d->is_finger_based ? GLFW_SCROLL_SOURCE_FINGER
                                              : (type == GLFW_SCROLL_OFFEST_HIGHRES ? GLFW_SCROLL_SOURCE_UNKNOWN : GLFW_SCROLL_SOURCE_WHEEL),
+                .timestamp = event_time_ms_to_monotonic((uint32_t)de->time),
             };
 
             // For high-resolution, finger-based scrolling, use a timer to detect
@@ -2195,19 +2198,43 @@ processEvent(XEvent *event) {
             else if (event->xbutton.button == Button4) {
                 if (!isEmulatedScrollButton(&event->xbutton))
                     _glfwInputScroll(
-                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .y_offset = 1, .unscaled.y = 1});
+                        window,
+                        &(GLFWScrollEvent){
+                            .keyboard_modifiers = mods,
+                            .source = GLFW_SCROLL_SOURCE_WHEEL,
+                            .y_offset = 1,
+                            .unscaled.y = 1,
+                            .timestamp = event_time_ms_to_monotonic((uint32_t)event->xbutton.time)});
             } else if (event->xbutton.button == Button5) {
                 if (!isEmulatedScrollButton(&event->xbutton))
                     _glfwInputScroll(
-                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .y_offset = -1, .unscaled.y = -1});
+                        window,
+                        &(GLFWScrollEvent){
+                            .keyboard_modifiers = mods,
+                            .source = GLFW_SCROLL_SOURCE_WHEEL,
+                            .y_offset = -1,
+                            .unscaled.y = -1,
+                            .timestamp = event_time_ms_to_monotonic((uint32_t)event->xbutton.time)});
             } else if (event->xbutton.button == Button6) {
                 if (!isEmulatedScrollButton(&event->xbutton))
                     _glfwInputScroll(
-                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .x_offset = 1, .unscaled.x = 1});
+                        window,
+                        &(GLFWScrollEvent){
+                            .keyboard_modifiers = mods,
+                            .source = GLFW_SCROLL_SOURCE_WHEEL,
+                            .x_offset = 1,
+                            .unscaled.x = 1,
+                            .timestamp = event_time_ms_to_monotonic((uint32_t)event->xbutton.time)});
             } else if (event->xbutton.button == Button7) {
                 if (!isEmulatedScrollButton(&event->xbutton))
                     _glfwInputScroll(
-                        window, &(GLFWScrollEvent){.keyboard_modifiers = mods, .source = GLFW_SCROLL_SOURCE_WHEEL, .x_offset = -1, .unscaled.x = -1});
+                        window,
+                        &(GLFWScrollEvent){
+                            .keyboard_modifiers = mods,
+                            .source = GLFW_SCROLL_SOURCE_WHEEL,
+                            .x_offset = -1,
+                            .unscaled.x = -1,
+                            .timestamp = event_time_ms_to_monotonic((uint32_t)event->xbutton.time)});
             }
 
             else {

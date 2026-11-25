@@ -35,6 +35,7 @@
 #include "wl_text_input.h"
 #include "wayland-text-input-unstable-v3-client-protocol.h"
 #include "wayland-pointer-gestures-unstable-v1-client-protocol.h"
+#include "wayland-input-timestamps-unstable-v1-client-protocol.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -134,8 +135,40 @@ pointerHandleLeave(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_
     } else csd_handle_pointer_event(window, -3, -3, surface);
 }
 
+// Converts the time of a wl_pointer event to monotonic() time, using the high
+// resolution time from the input timestamps protocol, if it was sent for this
+// event. Must be called for every wl_pointer event that carries a time, as the
+// high resolution time belongs to the next such event.
+static monotonic_t
+pointer_event_time(uint32_t time_ms) {
+    if (_glfw.wl.pointer_hires_time.pending) {
+        _glfw.wl.pointer_hires_time.pending = false;
+        // Check that it is for this event, the millisecond time may be rounded
+        // rather than truncated
+        const uint32_t hires_ms = (uint32_t)(_glfw.wl.pointer_hires_time.time_ns / 1000000u);
+        if (hires_ms - time_ms <= 1u || time_ms - hires_ms <= 1u) return event_time_ns_to_monotonic(_glfw.wl.pointer_hires_time.time_ns);
+    }
+    return event_time_ms_to_monotonic(time_ms);
+}
+
 static void
-pointerHandleMotion(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t time UNUSED, wl_fixed_t sx, wl_fixed_t sy) {
+pointerTimestampsHandleTimestamp(
+    void *data UNUSED, struct zwp_input_timestamps_v1 *timestamps UNUSED, uint32_t tv_sec_hi, uint32_t tv_sec_lo, uint32_t tv_nsec) {
+    if (tv_nsec > 999999999u) return;
+    const uint64_t secs = ((uint64_t)tv_sec_hi << 32) | tv_sec_lo;
+    if (secs > UINT64_MAX / 1000000000u - 1) return;
+    _glfw.wl.pointer_hires_time.time_ns = secs * 1000000000u + tv_nsec;
+    _glfw.wl.pointer_hires_time.pending = true;
+}
+
+static const struct zwp_input_timestamps_v1_listener pointerTimestampsListener = {
+    .timestamp = pointerTimestampsHandleTimestamp,
+};
+
+static void
+pointerHandleMotion(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t time, wl_fixed_t sx, wl_fixed_t sy) {
+    // Only scroll events use the time, but the high resolution time sent for this event must be consumed
+    pointer_event_time(time);
     _GLFWwindow *window = _glfw.wl.pointerFocus;
     if (!window || window->cursorMode == GLFW_CURSOR_DISABLED) return;
     window->wl.allCursorPosX = wl_fixed_to_double(sx);
@@ -151,7 +184,8 @@ pointerHandleMotion(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32
 }
 
 static void
-pointerHandleButton(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t serial, uint32_t time UNUSED, uint32_t button, uint32_t state) {
+pointerHandleButton(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
+    pointer_event_time(time);
     glfw_cancel_momentum_scroll();
     _glfw.wl.serial = serial;
     _glfw.wl.input_serial = serial;
@@ -218,16 +252,10 @@ pointer_handle_axis_common(enum _GLFWWaylandAxisEvent type, uint32_t axis, wl_fi
 
 static void
 pointer_handle_axis(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t time, uint32_t axis, wl_fixed_t value) {
+    const monotonic_t t = pointer_event_time(time);
     _GLFWwindow *window = _glfw.wl.pointerFocus;
     if (!window) return;
-    switch (axis) {
-        case WL_POINTER_AXIS_VERTICAL_SCROLL:
-            if (!info.y_start_time) info.y_start_time = ms_to_monotonic_t(time);
-            break;
-        case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
-            if (!info.x_start_time) info.x_start_time = ms_to_monotonic_t(time);
-            break;
-    }
+    info.time = t;
     pointer_handle_axis_common(AXIS_EVENT_CONTINUOUS, axis, value);
 }
 
@@ -235,7 +263,8 @@ static void
 pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     _GLFWwindow *window = _glfw.wl.pointerFocus;
     if (!window) return;
-    GLFWScrollEvent ev = {.keyboard_modifiers = _glfw.wl.xkb.states.modifiers};
+    // A frame without a timed event, for example, with only axis_source, happens now
+    GLFWScrollEvent ev = {.keyboard_modifiers = _glfw.wl.xkb.states.modifiers, .timestamp = info.time ? info.time : monotonic()};
     bool found = false;
 
     if (info.discrete.y_axis_type != AXIS_EVENT_UNKNOWN) {
@@ -302,18 +331,14 @@ pointer_handle_axis_source(void *data UNUSED, struct wl_pointer *pointer UNUSED,
 }
 
 static void
-pointer_handle_axis_stop(void *data UNUSED, struct wl_pointer *wl_pointer UNUSED, uint32_t time UNUSED, uint32_t axis) {
+pointer_handle_axis_stop(void *data UNUSED, struct wl_pointer *wl_pointer UNUSED, uint32_t time, uint32_t axis) {
+    const monotonic_t t = pointer_event_time(time);
     _GLFWwindow *window = _glfw.wl.pointerFocus;
     if (!window) return;
+    info.time = t;
     switch (axis) {
-        case WL_POINTER_AXIS_VERTICAL_SCROLL:
-            info.y_stop_received = true;
-            info.y_stop_time = ms_to_monotonic_t(time);
-            break;
-        case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
-            info.x_stop_received = true;
-            info.x_stop_time = ms_to_monotonic_t(time);
-            break;
+        case WL_POINTER_AXIS_VERTICAL_SCROLL: info.y_stop_received = true; break;
+        case WL_POINTER_AXIS_HORIZONTAL_SCROLL: info.x_stop_received = true; break;
     }
 }
 
@@ -371,20 +396,10 @@ touch_record_time(uint32_t time) {
     touch.has_event_time = true;
 }
 
-// Converts the time of the last wl_touch event to monotonic() time. The base of
-// Wayland event times is unspecified and they wrap, so only the age of the event
-// is used, which is measured against CLOCK_MONOTONIC, the clock compositors use
+// Converts the time of the last wl_touch event to monotonic() time
 static monotonic_t
 touch_event_timestamp(void) {
-    const monotonic_t now = monotonic();
-    if (!touch.has_event_time) return now;
-    struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return now;
-    const uint32_t now_ms = (uint32_t)((uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u);
-    const uint32_t age_ms = now_ms - touch.last_event_time;
-    // An implausible age means the compositor uses some other clock
-    if (age_ms > 1000) return now;
-    return now - ms_to_monotonic_t(age_ms);
+    return touch.has_event_time ? event_time_ms_to_monotonic(touch.last_event_time) : monotonic();
 }
 
 static bool
@@ -775,6 +790,10 @@ seatHandleCapabilities(void *data UNUSED, struct wl_seat *seat, enum wl_seat_cap
             _glfw.wl.pointer_gesture_hold = zwp_pointer_gestures_v1_get_hold_gesture(_glfw.wl.pointer_gestures, _glfw.wl.pointer);
             zwp_pointer_gesture_hold_v1_add_listener(_glfw.wl.pointer_gesture_hold, &holdGestureListener, NULL);
         }
+        if (_glfw.wl.input_timestamps_manager) {
+            _glfw.wl.pointer_timestamps = zwp_input_timestamps_manager_v1_get_pointer_timestamps(_glfw.wl.input_timestamps_manager, _glfw.wl.pointer);
+            zwp_input_timestamps_v1_add_listener(_glfw.wl.pointer_timestamps, &pointerTimestampsListener, NULL);
+        }
     } else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && _glfw.wl.pointer) {
         if (_glfw.wl.wp_cursor_shape_device_v1) wp_cursor_shape_device_v1_destroy(_glfw.wl.wp_cursor_shape_device_v1);
         _glfw.wl.wp_cursor_shape_device_v1 = NULL;
@@ -782,6 +801,11 @@ seatHandleCapabilities(void *data UNUSED, struct wl_seat *seat, enum wl_seat_cap
             zwp_pointer_gesture_hold_v1_destroy(_glfw.wl.pointer_gesture_hold);
             _glfw.wl.pointer_gesture_hold = NULL;
         }
+        if (_glfw.wl.pointer_timestamps) {
+            zwp_input_timestamps_v1_destroy(_glfw.wl.pointer_timestamps);
+            _glfw.wl.pointer_timestamps = NULL;
+        }
+        _glfw.wl.pointer_hires_time.pending = false;
         wl_pointer_destroy(_glfw.wl.pointer);
         _glfw.wl.pointer = NULL;
         if (_glfw.wl.cursorAnimationTimer) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
@@ -914,6 +938,8 @@ registryHandleGlobal(void *data UNUSED, struct wl_registry *registry, uint32_t n
         _glfw.wl.keyboard_shortcuts_inhibit_manager = wl_registry_bind(registry, name, &zwp_keyboard_shortcuts_inhibit_manager_v1_interface, 1);
     } else if (is(zwp_pointer_gestures_v1)) {
         if (version >= 3) _glfw.wl.pointer_gestures = wl_registry_bind(registry, name, &zwp_pointer_gestures_v1_interface, 3);
+    } else if (is(zwp_input_timestamps_manager_v1)) {
+        _glfw.wl.input_timestamps_manager = wl_registry_bind(registry, name, &zwp_input_timestamps_manager_v1_interface, 1);
     } else if (is(xdg_toplevel_icon_manager_v1)) {
         _glfw.wl.xdg_toplevel_icon_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_icon_manager_v1_interface, 1);
     } else if (is(xdg_system_bell_v1)) {
@@ -1034,6 +1060,7 @@ get_compositor_missing_capabilities(void) {
     C(top_level_drag, xdg_toplevel_drag_manager_v1);
     C(output_manager, xdg_output_manager);
     C(pointer_gestures, pointer_gestures);
+    C(input_timestamps, input_timestamps_manager);
 #define P(x) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", x);
     if (_glfw.wl.xdg_wm_base_version < 6) P("window-state-suspended");
     if (_glfw.wl.xdg_wm_base_version < 5) P("window-capabilities");
@@ -1193,6 +1220,8 @@ _glfwPlatformTerminate(void) {
     if (_glfw.wl.keyboard_shortcuts_inhibit_manager) zwp_keyboard_shortcuts_inhibit_manager_v1_destroy(_glfw.wl.keyboard_shortcuts_inhibit_manager);
     if (_glfw.wl.pointer_gesture_hold) zwp_pointer_gesture_hold_v1_destroy(_glfw.wl.pointer_gesture_hold);
     if (_glfw.wl.pointer_gestures) zwp_pointer_gestures_v1_release(_glfw.wl.pointer_gestures);
+    if (_glfw.wl.pointer_timestamps) zwp_input_timestamps_v1_destroy(_glfw.wl.pointer_timestamps);
+    if (_glfw.wl.input_timestamps_manager) zwp_input_timestamps_manager_v1_destroy(_glfw.wl.input_timestamps_manager);
 
     if (_glfw.wl.registry) wl_registry_destroy(_glfw.wl.registry);
     // The GPU driver must have released all its resources, such as EGL

@@ -68,7 +68,7 @@ itself, to scroll its scrollback. While both are on, scroll events are no
 longer reported as button 4 to 7 presses. Instead, every scroll event from
 the operating system is reported as a single escape code of the form::
 
-    CSI > x ; y ; dx ; dy ; unit ; source ; phase ; flags ; mods M
+    CSI > x ; y ; dx ; dy ; unit ; source ; phase ; flags ; mods ; t M
 
 Spaces in the above are for clarity only. All parameters are always present.
 They are:
@@ -142,6 +142,20 @@ They are:
     where ``shift=1``, ``alt=2``, ``ctrl=4``, ``super=8``, ``hyper=16``,
     ``meta=32``, ``caps_lock=64`` and ``num_lock=128``.
 
+``t``
+    The time of the event, in microseconds, as a non-negative integer. Only
+    the differences between the times of events are meaningful, for
+    instance, to calculate the velocity of a gesture for momentum scrolling,
+    without being affected by delays in delivering the events to the
+    program. The time is that of the input event from the operating system,
+    where available, not the time the terminal processed or sent it. Events
+    that the terminal generates itself, such as momentum scrolling it
+    synthesizes, have the time they were generated. The origin is arbitrary,
+    kitty uses the time the mode was turned on. The time never decreases
+    from one event to the next while the mode stays on. On platforms that
+    provide event times only in milliseconds, the differences between them
+    are accurate only to a millisecond.
+
 More parameters may be added at the end in the future, and sub-parameters
 (separated by colons) may be added to any parameter. Programs must ignore any
 parameters and sub-parameters they do not recognise.
@@ -149,14 +163,14 @@ parameters and sub-parameters they do not recognise.
 A few examples, with the escape code introducer ``CSI >`` and the final ``M``
 omitted::
 
-    10;5;0;120;1:5;1;0;0;1     one click of a wheel, downwards
-    10;5;0;-30;1:5;1;0;0;1     a quarter click of a high resolution wheel, upwards
-    10;5;0;0;2:1;2;1;0;1       two fingers start a scroll on a touchpad
-    10;5;3;-42;2:1;2;2;0;1     the fingers move upwards by 42 pixels
-    10;5;0;0;2:1;2;3;0;1       the fingers are lifted
-    10;5;0;-35;2:1;2;1;1;1     momentum scrolling begins
-    10;5;0;0;2:1;2;3;1;1       momentum scrolling ends
-    10;5;0;120;1:5;1;0;0;5     a wheel click downwards with ctrl pressed
+    10;5;0;120;1:5000;1;0;0;1;1520000     one click of a wheel, downwards
+    10;5;0;-30;1:5000;1;0;0;1;2310000     a quarter click of a high resolution wheel, upwards
+    10;5;0;0;2:1000;2;1;0;1;4000125       two fingers start a scroll on a touchpad
+    10;5;3;-42;2:1000;2;2;0;1;4008453     the fingers move upwards by 42 pixels, 8.3 ms later
+    10;5;0;0;2:1000;2;3;0;1;4016790       the fingers are lifted
+    10;5;0;-35;2:1000;2;1;1;1;4017002     momentum scrolling begins
+    10;5;0;0;2:1000;2;3;1;1;4615002       momentum scrolling ends
+    10;5;0;120;1:5000;1;0;0;5;7000000     a wheel click downwards with ctrl pressed
 
 .. _bidi_support:
 

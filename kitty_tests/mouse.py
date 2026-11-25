@@ -686,9 +686,10 @@ class TestMouse(BaseTest):
         self.set_options({'pixel_scroll': False, 'wheel_scroll_multiplier': 5.0, 'touch_scroll_multiplier': 1.5})
         w = create_mock_window(s)
 
-        def scroll(y=0.0, x=0.0, offset_type=LINES, mods=0, momentum=0, source=0, phase=0, inverted=False):
+        def scroll(y=0.0, x=0.0, offset_type=LINES, mods=0, momentum=0, source=0, phase=0, inverted=False, t=0):
+            # t is the time of the event in microseconds since the mode was turned on
             s.callbacks.wtcbuf = b''
-            send_mock_scroll_event_to_window(w, offset_type, float(x), float(y), mods, momentum, source, phase, inverted)
+            send_mock_scroll_event_to_window(w, offset_type, float(x), float(y), mods, momentum, source, phase, inverted, t)
             return s.callbacks.wtcbuf.decode()
 
         def ae(expected, **kw):
@@ -701,37 +702,54 @@ class TestMouse(BaseTest):
         parse_bytes(s, b'\x1b[?1000h')
         # Wheels report whole clicks as 120, positive is downwards, the
         # multiplier is only a hint and the deltas are not repeated
-        ae(['0;-360;1:5000;1;0;0;1'], y=3, source=WHEEL)
-        ae(['0;120;1:5000;1;0;0;1'], y=-1, source=WHEEL)
+        ae(['0;-360;1:5000;1;0;0;1;0'], y=3, source=WHEEL)
+        ae(['0;120;1:5000;1;0;0;1;0'], y=-1, source=WHEEL)
         # Horizontal scrolling, positive is rightwards
-        ae(['-120;0;1:5000;1;0;0;1'], x=1, source=WHEEL)
+        ae(['-120;0;1:5000;1;0;0;1;0'], x=1, source=WHEEL)
         # High resolution wheels
-        ae(['0;30;1:5000;0;0;0;1'], y=-30, offset_type=V120)
+        ae(['0;30;1:5000;0;0;0;1;0'], y=-30, offset_type=V120)
         # Modifiers use the keyboard protocol encoding
-        ae(['0;120;1:5000;0;0;0;7'], y=-1, mods=GLFW_MOD_CONTROL | GLFW_MOD_ALT)
-        ae(['0;120;1:5000;0;0;0;65'], y=-1, mods=GLFW_MOD_CAPS_LOCK)
+        ae(['0;120;1:5000;0;0;0;7;0'], y=-1, mods=GLFW_MOD_CONTROL | GLFW_MOD_ALT)
+        ae(['0;120;1:5000;0;0;0;65;0'], y=-1, mods=GLFW_MOD_CAPS_LOCK)
         # A touchpad gesture with fractional pixels, which are accumulated
-        ae(['0;0;2:1500;2;1;0;1'], y=0, offset_type=HIGHRES, source=FINGER, phase=BEGAN)
-        ae(['3;-2;2:1500;2;2;0;1'], x=-3.5, y=2.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
-        ae(['1;-1;2:1500;2;2;0;1'], x=-0.5, y=0.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['0;0;2:1500;2;1;0;1;0'], y=0, offset_type=HIGHRES, source=FINGER, phase=BEGAN)
+        ae(['3;-2;2:1500;2;2;0;1;0'], x=-3.5, y=2.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['1;-1;2:1500;2;2;0;1;0'], x=-0.5, y=0.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
         # Less than a pixel in the same phase has nothing to report
         ae([], y=0.25, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
-        ae(['0;-1;2:1500;2;2;0;1'], y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['0;-1;2:1500;2;2;0;1;0'], y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
         # A change of phase is always reported
-        ae(['0;0;2:1500;2;3;0;1'], offset_type=HIGHRES, source=FINGER, phase=ENDED)
+        ae(['0;0;2:1500;2;3;0;1;0'], offset_type=HIGHRES, source=FINGER, phase=ENDED)
         # Momentum
-        ae(['0;-10;2:1500;2;1;1;1'], y=10, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_BEGAN)
-        ae(['0;-5;2:1500;2;2;1;1'], y=5, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ACTIVE)
-        ae(['0;0;2:1500;2;3;1;1'], offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ENDED)
+        ae(['0;-10;2:1500;2;1;1;1;0'], y=10, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_BEGAN)
+        ae(['0;-5;2:1500;2;2;1;1;0'], y=5, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ACTIVE)
+        ae(['0;0;2:1500;2;3;1;1;0'], offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ENDED)
         # Natural scrolling
-        ae(['0;-10;2:1500;2;1;2;1'], y=10, offset_type=HIGHRES, source=FINGER, phase=BEGAN, inverted=True)
+        ae(['0;-10;2:1500;2;1;2;1;0'], y=10, offset_type=HIGHRES, source=FINGER, phase=BEGAN, inverted=True)
         # A negative multiplier reverses the deltas and the inverted flag
         self.set_options({'pixel_scroll': False, 'wheel_scroll_multiplier': -2.25})
-        ae(['0;-120;1:2250;1;0;2;1'], y=-1, source=WHEEL)
-        ae(['0;-120;1:2250;1;0;0;1'], y=-1, source=WHEEL, inverted=True)
+        ae(['0;-120;1:2250;1;0;2;1;0'], y=-1, source=WHEEL)
+        ae(['0;-120;1:2250;1;0;0;1;0'], y=-1, source=WHEEL, inverted=True)
         # SGR pixel mode reports the position in pixels
         parse_bytes(s, b'\x1b[?1016h')
-        self.ae(scroll(y=-1, source=WHEEL), '\x1b[>0;0;0;-120;1:2250;1;0;2;1M')
+        self.ae(scroll(y=-1, source=WHEEL), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;0M')
+        # The time of the event, in microseconds since the mode was turned on
+        self.ae(scroll(y=-1, source=WHEEL, t=1520042), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;1520042M')
+        # Times never decrease, even if events arrive out of order
+        self.ae(scroll(y=-1, source=WHEEL, t=1000), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;1520042M')
+        self.ae(scroll(y=-1, source=WHEEL, t=1520043), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;1520043M')
+        # Unreported events do not affect the time
+        parse_bytes(s, b'\x1b[?1016l')
+        self.ae(scroll(y=0.25, offset_type=HIGHRES, source=FINGER, phase=CHANGED, t=9000000), '')
+        self.ae(scroll(y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED, t=2000000), '\x1b[>1;1;0;-1;2:1000;2;2;0;1;2000000M')
+        # Turning the mode on again resets the origin, events from before it are at zero
+        parse_bytes(s, b'\x1b[?5523l\x1b[?5523h')
+        self.ae(scroll(y=-1, source=WHEEL, t=-5000), '\x1b[>1;1;0;-120;1:2250;1;0;2;1;0M')
+        self.ae(scroll(y=-1, source=WHEEL, t=7), '\x1b[>1;1;0;-120;1:2250;1;0;2;1;7M')
+        # Setting the mode while it is on does not reset the origin
+        parse_bytes(s, b'\x1b[?5523h')
+        self.ae(scroll(y=-1, source=WHEEL, t=3), '\x1b[>1;1;0;-120;1:2250;1;0;2;1;7M')
+        parse_bytes(s, b'\x1b[?1016h')
         # Turning the mode off restores legacy reporting
         parse_bytes(s, b'\x1b[?1016l\x1b[?1006h\x1b[?5523l')
         self.assertFalse(s.wheel_events)

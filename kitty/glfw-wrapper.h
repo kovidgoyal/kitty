@@ -336,6 +336,11 @@ typedef struct GLFWScrollEvent {
     // true if the offsets are reversed relative to the physical movement of
     // the device, for example, because natural scrolling is enabled
     bool direction_inverted;
+    // When the system generated the event, on the same clock as monotonic().
+    // Events synthesized by GLFW, such as for momentum scrolling, have the time
+    // they were synthesized. Events can be delivered in bursts, so use this
+    // rather than the time of delivery to measure scroll velocity.
+    monotonic_t timestamp;
 } GLFWScrollEvent;
 
 // Touch events are reported only for direct touch devices, i.e. touchscreens,

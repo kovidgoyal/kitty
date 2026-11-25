@@ -473,6 +473,17 @@ releaseMonitor(_GLFWwindow *window) {
     _glfwRestoreVideoModeNS(window->monitor);
 }
 
+// Converts the time of an event, in seconds since system startup, to
+// monotonic() time. The clocks differ, so only the age of the event is used. An
+// implausible age means the event happened now.
+static monotonic_t
+event_timestamp_to_monotonic(NSEvent *event) {
+    const monotonic_t now = monotonic();
+    const NSTimeInterval age = [[NSProcessInfo processInfo] systemUptime] - [event timestamp];
+    if (!(age >= 0 && age <= 1)) return now;
+    return now - s_double_to_monotonic_t(age);
+}
+
 // Translates macOS key modifiers into GLFW ones
 //
 static int
@@ -1419,7 +1430,10 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
 - (void)scrollWheel:(NSEvent *)event {
     GLFWScrollEvent ev = {
-        .keyboard_modifiers = translateFlags([event modifierFlags]), .unscaled.x = [event scrollingDeltaX], .unscaled.y = [event scrollingDeltaY]};
+        .keyboard_modifiers = translateFlags([event modifierFlags]),
+        .unscaled.x = [event scrollingDeltaX],
+        .unscaled.y = [event scrollingDeltaY],
+        .timestamp = event_timestamp_to_monotonic(event)};
     ev.x_offset = ev.unscaled.x;
     ev.y_offset = ev.unscaled.y;
     if ([event hasPreciseScrollingDeltas]) {

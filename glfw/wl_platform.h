@@ -206,10 +206,10 @@ typedef struct _GLFWwindowWayland {
             float y;
         } discrete, continuous;
 
-        /* Event timestamp in nanoseconds */
         bool x_stop_received, y_stop_received, source_received, direction_inverted_received, direction_inverted;
         uint32_t source_type;
-        monotonic_t x_start_time, x_stop_time, y_stop_time, y_start_time;
+        // The time of the latest axis or axis_stop event in the frame, on the clock of monotonic(), zero if none
+        monotonic_t time;
     } pointer_curr_axis_info;
     GLFWOffsetType prev_frame_offset_type;
     // Axis state that compositors need not repeat in every frame of a gesture
@@ -400,6 +400,14 @@ typedef struct _GLFWlibraryWayland {
     struct zwp_keyboard_shortcuts_inhibit_manager_v1 *keyboard_shortcuts_inhibit_manager;
     struct zwp_pointer_gestures_v1 *pointer_gestures;
     struct zwp_pointer_gesture_hold_v1 *pointer_gesture_hold;
+    struct zwp_input_timestamps_manager_v1 *input_timestamps_manager;
+    struct zwp_input_timestamps_v1 *pointer_timestamps;
+    // The high resolution time, in nanoseconds of the compositor clock, of the
+    // next wl_pointer event that carries a time, from the input timestamps protocol
+    struct {
+        uint64_t time_ns;
+        bool pending;
+    } pointer_hires_time;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     // Outputs that have been bound but not yet announced to GLFW via
     // wl_output.done. They are not in _glfw.monitors yet but must still be

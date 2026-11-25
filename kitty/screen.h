@@ -271,6 +271,13 @@ typedef struct {
     struct {
         monotonic_t entered_at, exited_at;
     } alternate_screen;
+    // Detailed wheel event timestamps: the time the mode was turned on, which
+    // is their origin, and the last reported timestamp, in microseconds since
+    // the origin, so that they never decrease
+    struct {
+        monotonic_t origin;
+        unsigned long long last_reported;
+    } wheel_events_clock;
     monotonic_t start_drag_overlay_at; // 0 = inactive
     uint8_t drag_overlay_quadrant;     // 1=left 2=right 3=top 4=bottom 0=none
 

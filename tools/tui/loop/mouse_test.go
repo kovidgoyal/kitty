@@ -4,6 +4,7 @@ package loop
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -22,8 +23,15 @@ func TestDecodeWheelEvent(t *testing.T) {
 			DX: -3, DY: -42, Unit: WHEEL_UNIT_PIXELS, Multiplier: 1.5, Source: WHEEL_SOURCE_FINGER, Phase: WHEEL_PHASE_CHANGED}),
 		">45;65;0;0;2;2;3;3;1M": ev(45, 65, 0, WheelEvent{
 			Unit: WHEEL_UNIT_PIXELS, Source: WHEEL_SOURCE_FINGER, Phase: WHEEL_PHASE_ENDED, Momentum: true, Inverted: true}),
+		// The timestamp is in microseconds
+		">45;65;0;120;1:5000;1;0;0;1;1520042M": ev(45, 65, 0, WheelEvent{
+			DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL, Timestamp: 1520042 * time.Microsecond, HasTimestamp: true}),
+		">45;65;0;120;1:5000;1;0;0;1;0M": ev(45, 65, 0, WheelEvent{DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL, HasTimestamp: true}),
+		">45;65;0;120;1;1;0;0;1;-5M":     nil,
+		">45;65;0;120;1;1;0;0;1;xM":      nil,
 		// Unknown parameters and sub-parameters are ignored
-		">45;65:7;0;120:3;1:5000:9;1;0;0;1;99:1M": ev(45, 65, 0, WheelEvent{DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL}),
+		">45;65:7;0;120:3;1:5000:9;1;0;0;1;99:1;7M": ev(45, 65, 0, WheelEvent{
+			DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL, Timestamp: 99 * time.Microsecond, HasTimestamp: true}),
 		// Too few parameters or wrong final byte
 		">45;65;0;120;1;1;0;0M":     nil,
 		">45;65;0;120;1;1;0;0;1m":   nil,

@@ -146,7 +146,8 @@ Detailed list of changes
 
 - A new mode (``5523``) to :ref:`report scroll events to programs in full detail
   <detailed_wheel_events>`, with pixel or high resolution deltas, the device
-  kind, gesture phase and momentum/natural scrolling flags. Kittens can use it
+  kind, gesture phase, momentum/natural scrolling flags and the time of the
+  event. Kittens can use it
   via ``Loop.DetailedWheelEvents()``
 
 - Initial support for the proposed glyph protocol (:iss:`10872`), allowing

@@ -187,7 +187,8 @@ send_momentum_event(bool is_start) {
         .y_offset = s.scale * s.velocity.y,
         .source = GLFW_SCROLL_SOURCE_FINGER,
         .direction_inverted = s.direction_inverted,
-        .keyboard_modifiers = s.keyboard_modifiers};
+        .keyboard_modifiers = s.keyboard_modifiers,
+        .timestamp = monotonic()};
     _glfwInputScroll(w, &e);
 }
 
@@ -291,8 +292,9 @@ glfwFeedMomentumScroller(GLFWwindow *handle, double dx, double dy, int keyboard_
         .y_offset = dy * (yscale > 0 ? yscale : 1),
         .keyboard_modifiers = keyboard_modifiers,
         .source = GLFW_SCROLL_SOURCE_FINGER,
+        .timestamp = timestamp > 0 ? timestamp : monotonic(),
     };
-    handle_scroll_event(w, &ev, stopped, true, timestamp > 0 ? timestamp : monotonic(), false);
+    handle_scroll_event(w, &ev, stopped, true, ev.timestamp, false);
 }
 
 // Stops any momentum scroll that is coasting

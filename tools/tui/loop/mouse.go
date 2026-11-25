@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var _ = fmt.Print
@@ -307,6 +308,11 @@ type WheelEvent struct {
 	// Inverted is true when the deltas are reversed relative to the physical
 	// movement of the device, for example, because of natural scrolling.
 	Momentum, Inverted bool
+	// The time of the event, only differences between the times of events
+	// are meaningful. Valid only if HasTimestamp is true, which it is when
+	// the terminal sent the time.
+	Timestamp    time.Duration
+	HasTimestamp bool
 }
 
 func (w WheelEvent) String() string {
@@ -319,6 +325,9 @@ func (w WheelEvent) String() string {
 	}
 	if w.Inverted {
 		ans += " inverted"
+	}
+	if w.HasTimestamp {
+		ans += " t=" + w.Timestamp.String()
 	}
 	return ans
 }
@@ -423,7 +432,7 @@ func decode_sgr_mouse(text string, screen_size ScreenSize, last_letter byte) *Mo
 }
 
 // Decodes a detailed wheel event:
-// CSI > x ; y ; dx ; dy ; unit[:multiplier in thousandths] ; source ; phase ; flags ; mods M
+// CSI > x ; y ; dx ; dy ; unit[:multiplier in thousandths] ; source ; phase ; flags ; mods [; t in microseconds] M
 // Unknown trailing parameters and sub-parameters are ignored, as required by
 // the specification.
 func decode_wheel_event(text string, screen_size ScreenSize) *MouseEvent {
@@ -458,6 +467,13 @@ func decode_wheel_event(text string, screen_size ScreenSize) *MouseEvent {
 	w.Inverted = nums[7]&WHEEL_FLAG_INVERTED != 0
 	if nums[8] > 0 {
 		ans.Mods = KeyModifiers(nums[8] - 1)
+	}
+	if len(parts) > 9 {
+		us, err := strconv.ParseUint(strings.SplitN(parts[9], ":", 2)[0], 10, 63)
+		if err != nil {
+			return nil
+		}
+		w.Timestamp, w.HasTimestamp = time.Duration(us)*time.Microsecond, true
 	}
 	ans.Cell.X = pixel_to_cell(ans.Pixel.X, int(screen_size.WidthPx), int(screen_size.CellWidth))
 	ans.Cell.Y = pixel_to_cell(ans.Pixel.Y, int(screen_size.HeightPx), int(screen_size.CellHeight))

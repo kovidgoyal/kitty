@@ -4409,7 +4409,6 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
     switch (mode) {
         SIMPLE_MODE(LNM)
         SIMPLE_MODE(PASTE_EVENTS)
-        SIMPLE_MODE(WHEEL_EVENTS)
         SIMPLE_MODE(IRM)
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
@@ -4424,6 +4423,14 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         MOUSE_MODE(MOUSE_SGR_PIXEL_MODE, mouse_tracking_protocol, SGR_PIXEL_PROTOCOL)
         MOUSE_MODE(MOUSE_URXVT_MODE, mouse_tracking_protocol, URXVT_PROTOCOL)
 
+        case WHEEL_EVENTS:
+            // The timestamps of wheel events are relative to when the mode was turned on
+            if (val && !self->modes.mWHEEL_EVENTS) {
+                self->wheel_events_clock.origin = monotonic();
+                self->wheel_events_clock.last_reported = 0;
+            }
+            self->modes.mWHEEL_EVENTS = val;
+            break;
         case DECSCLM:
         case DECNRCM: break; // we ignore these modes
         case BDSM:
@@ -5129,7 +5136,7 @@ copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, Scre
         SIMPLE_MODE(FOCUS_TRACKING)
         SIMPLE_MODE(COLOR_PREFERENCE_NOTIFICATION)
         SIMPLE_MODE(PASTE_EVENTS)
-        SIMPLE_MODE(WHEEL_EVENTS)
+        SIDE_EFFECTS(WHEEL_EVENTS)
         SIMPLE_MODE(INBAND_RESIZE_NOTIFICATION)
         SIMPLE_MODE(VISIBILITY_REPORTS)
         SIMPLE_MODE(DECCKM)
