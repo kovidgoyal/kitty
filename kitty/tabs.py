@@ -2649,14 +2649,13 @@ class TabManager:  # {{{
         if mode is DragOverlayMode.full:
             # The whole window is highlighted, but the drop still inserts directionally
             return WHOLE_WINDOW_QUADRANT, direction
-        if mode is DragOverlayMode.free:
-            if (
-                w is not None
-                and src is not None
-                and not layout.insert_window_next_to_changes_layout(windows, w, dest_window, direction in ('left', 'right'), direction in ('right', 'bottom'))
-            ):
-                # The window is already on this side of dest_window, all that is left is to swap them
-                return SWAP_QUADRANT, None
+        if (
+            mode is DragOverlayMode.free
+            and src is not None
+            and not layout.insert_window_next_to_changes_layout(windows, src, dest, direction in ('left', 'right'), direction in ('right', 'bottom'))
+        ):
+            # The window is already on this side of dest_window, all that is left is to swap them
+            return SWAP_QUADRANT, None
         # The window is split off dest_window, which first takes over the space the window leaves if
         # they are next to each other, so the dropped window gets that side of the enlarged dest_window
         return quadrant_for_direction[direction], direction
