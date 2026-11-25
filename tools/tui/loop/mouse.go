@@ -423,7 +423,7 @@ func decode_sgr_mouse(text string, screen_size ScreenSize, last_letter byte) *Mo
 }
 
 // Decodes a detailed wheel event:
-// CSI > x ; y ; dx ; dy ; unit[:multiplier] ; source ; phase ; flags ; mods M
+// CSI > x ; y ; dx ; dy ; unit[:multiplier in thousandths] ; source ; phase ; flags ; mods M
 // Unknown trailing parameters and sub-parameters are ignored, as required by
 // the specification.
 func decode_wheel_event(text string, screen_size ScreenSize) *MouseEvent {
@@ -447,8 +447,9 @@ func decode_wheel_event(text string, screen_size ScreenSize) *MouseEvent {
 	w.DX, w.DY = nums[2], nums[3]
 	w.Unit = WheelUnit(nums[4])
 	if len(subparams[4]) > 1 {
-		if m, err := strconv.ParseFloat(subparams[4][1], 64); err == nil && m > 0 {
-			w.Multiplier = m
+		// The multiplier is sent in thousandths
+		if m, err := strconv.Atoi(subparams[4][1]); err == nil && m > 0 {
+			w.Multiplier = float64(m) / 1000
 		}
 	}
 	w.Source = WheelSource(nums[5])

@@ -17,13 +17,13 @@ func TestDecodeWheelEvent(t *testing.T) {
 		return ans
 	}
 	for csi, expected := range map[string]*MouseEvent{
-		">45;65;0;120;1:5;1;0;0;1M": ev(45, 65, 0, WheelEvent{DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL}),
-		">45;65;-3;-42;2:1.5;2;2;0;5M": ev(45, 65, CTRL, WheelEvent{
+		">45;65;0;120;1:5000;1;0;0;1M": ev(45, 65, 0, WheelEvent{DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL}),
+		">45;65;-3;-42;2:1500;2;2;0;5M": ev(45, 65, CTRL, WheelEvent{
 			DX: -3, DY: -42, Unit: WHEEL_UNIT_PIXELS, Multiplier: 1.5, Source: WHEEL_SOURCE_FINGER, Phase: WHEEL_PHASE_CHANGED}),
 		">45;65;0;0;2;2;3;3;1M": ev(45, 65, 0, WheelEvent{
 			Unit: WHEEL_UNIT_PIXELS, Source: WHEEL_SOURCE_FINGER, Phase: WHEEL_PHASE_ENDED, Momentum: true, Inverted: true}),
 		// Unknown parameters and sub-parameters are ignored
-		">45;65:7;0;120:3;1:5:9;1;0;0;1;99:1M": ev(45, 65, 0, WheelEvent{DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL}),
+		">45;65:7;0;120:3;1:5000:9;1;0;0;1;99:1M": ev(45, 65, 0, WheelEvent{DY: 120, Unit: WHEEL_UNIT_V120, Multiplier: 5, Source: WHEEL_SOURCE_WHEEL}),
 		// Too few parameters or wrong final byte
 		">45;65;0;120;1;1;0;0M":     nil,
 		">45;65;0;120;1;1;0;0;1m":   nil,

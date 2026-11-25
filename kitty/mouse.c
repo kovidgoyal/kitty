@@ -1925,18 +1925,14 @@ wheel_event_source(GLFWScrollSource s) {
     return 0;
 }
 
-// Formats a positive number as a short decimal, without an exponent or
-// trailing zeros, as needed by the escape code
-static void
-format_wheel_multiplier(double val, char *buf, size_t sz) {
-    if (!isfinite(val) || val < 0) val = 0;
-    int n = snprintf(buf, sz, "%.3f", val);
-    if (n <= 0 || (size_t)n >= sz) {
-        snprintf(buf, sz, "1");
-        return;
-    }
-    while (n > 1 && buf[n - 1] == '0') buf[--n] = 0;
-    if (n > 1 && buf[n - 1] == '.') buf[--n] = 0;
+// Converts a scroll multiplier to the whole number of thousandths sent in the
+// escape code. A decimal point cannot be used as it is not a valid CSI
+// parameter byte.
+static unsigned
+wheel_multiplier_in_thousandths(double val) {
+    if (!isfinite(val) || val <= 0) return 0;
+    const double ans = round(val * 1000);
+    return ans > UINT_MAX ? UINT_MAX : (unsigned)ans;
 }
 
 // Adds delta to the unreported remainder and returns the whole part of the
@@ -2004,19 +2000,17 @@ encode_wheel_event(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
         x = (int)round(w->mouse_pos.global_x);
         y = (int)round(w->mouse_pos.global_y);
     }
-    char mult[32];
-    format_wheel_multiplier(fabs(multiplier), mult, sizeof(mult));
     const unsigned mods = 1 + ((unsigned)ev->keyboard_modifiers & 0xff);
     const int n = snprintf(
         mouse_event_buf,
         sizeof(mouse_event_buf),
-        ">%d;%d;%d;%d;%d:%s;%u;%u;%u;%uM",
+        ">%d;%d;%d;%d;%d:%u;%u;%u;%u;%uM",
         x,
         y,
         idx,
         idy,
         unit,
-        mult,
+        wheel_multiplier_in_thousandths(fabs(multiplier)),
         wheel_event_source(ev->source),
         phase,
         flags,

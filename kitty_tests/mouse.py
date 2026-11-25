@@ -701,37 +701,37 @@ class TestMouse(BaseTest):
         parse_bytes(s, b'\x1b[?1000h')
         # Wheels report whole clicks as 120, positive is downwards, the
         # multiplier is only a hint and the deltas are not repeated
-        ae(['0;-360;1:5;1;0;0;1'], y=3, source=WHEEL)
-        ae(['0;120;1:5;1;0;0;1'], y=-1, source=WHEEL)
+        ae(['0;-360;1:5000;1;0;0;1'], y=3, source=WHEEL)
+        ae(['0;120;1:5000;1;0;0;1'], y=-1, source=WHEEL)
         # Horizontal scrolling, positive is rightwards
-        ae(['-120;0;1:5;1;0;0;1'], x=1, source=WHEEL)
+        ae(['-120;0;1:5000;1;0;0;1'], x=1, source=WHEEL)
         # High resolution wheels
-        ae(['0;30;1:5;0;0;0;1'], y=-30, offset_type=V120)
+        ae(['0;30;1:5000;0;0;0;1'], y=-30, offset_type=V120)
         # Modifiers use the keyboard protocol encoding
-        ae(['0;120;1:5;0;0;0;7'], y=-1, mods=GLFW_MOD_CONTROL | GLFW_MOD_ALT)
-        ae(['0;120;1:5;0;0;0;65'], y=-1, mods=GLFW_MOD_CAPS_LOCK)
+        ae(['0;120;1:5000;0;0;0;7'], y=-1, mods=GLFW_MOD_CONTROL | GLFW_MOD_ALT)
+        ae(['0;120;1:5000;0;0;0;65'], y=-1, mods=GLFW_MOD_CAPS_LOCK)
         # A touchpad gesture with fractional pixels, which are accumulated
-        ae(['0;0;2:1.5;2;1;0;1'], y=0, offset_type=HIGHRES, source=FINGER, phase=BEGAN)
-        ae(['3;-2;2:1.5;2;2;0;1'], x=-3.5, y=2.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
-        ae(['1;-1;2:1.5;2;2;0;1'], x=-0.5, y=0.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['0;0;2:1500;2;1;0;1'], y=0, offset_type=HIGHRES, source=FINGER, phase=BEGAN)
+        ae(['3;-2;2:1500;2;2;0;1'], x=-3.5, y=2.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['1;-1;2:1500;2;2;0;1'], x=-0.5, y=0.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
         # Less than a pixel in the same phase has nothing to report
         ae([], y=0.25, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
-        ae(['0;-1;2:1.5;2;2;0;1'], y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['0;-1;2:1500;2;2;0;1'], y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
         # A change of phase is always reported
-        ae(['0;0;2:1.5;2;3;0;1'], offset_type=HIGHRES, source=FINGER, phase=ENDED)
+        ae(['0;0;2:1500;2;3;0;1'], offset_type=HIGHRES, source=FINGER, phase=ENDED)
         # Momentum
-        ae(['0;-10;2:1.5;2;1;1;1'], y=10, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_BEGAN)
-        ae(['0;-5;2:1.5;2;2;1;1'], y=5, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ACTIVE)
-        ae(['0;0;2:1.5;2;3;1;1'], offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ENDED)
+        ae(['0;-10;2:1500;2;1;1;1'], y=10, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_BEGAN)
+        ae(['0;-5;2:1500;2;2;1;1'], y=5, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ACTIVE)
+        ae(['0;0;2:1500;2;3;1;1'], offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ENDED)
         # Natural scrolling
-        ae(['0;-10;2:1.5;2;1;2;1'], y=10, offset_type=HIGHRES, source=FINGER, phase=BEGAN, inverted=True)
+        ae(['0;-10;2:1500;2;1;2;1'], y=10, offset_type=HIGHRES, source=FINGER, phase=BEGAN, inverted=True)
         # A negative multiplier reverses the deltas and the inverted flag
         self.set_options({'pixel_scroll': False, 'wheel_scroll_multiplier': -2.25})
-        ae(['0;-120;1:2.25;1;0;2;1'], y=-1, source=WHEEL)
-        ae(['0;-120;1:2.25;1;0;0;1'], y=-1, source=WHEEL, inverted=True)
+        ae(['0;-120;1:2250;1;0;2;1'], y=-1, source=WHEEL)
+        ae(['0;-120;1:2250;1;0;0;1'], y=-1, source=WHEEL, inverted=True)
         # SGR pixel mode reports the position in pixels
         parse_bytes(s, b'\x1b[?1016h')
-        self.ae(scroll(y=-1, source=WHEEL), '\x1b[>0;0;0;-120;1:2.25;1;0;2;1M')
+        self.ae(scroll(y=-1, source=WHEEL), '\x1b[>0;0;0;-120;1:2250;1;0;2;1M')
         # Turning the mode off restores legacy reporting
         parse_bytes(s, b'\x1b[?1016l\x1b[?1006h\x1b[?5523l')
         self.assertFalse(s.wheel_events)

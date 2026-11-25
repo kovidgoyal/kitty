@@ -103,10 +103,12 @@ They are:
 
     This parameter can have an optional sub-parameter, the scroll multiplier
     the user has configured in the terminal for this kind of scrolling, as a
-    positive decimal number, for example, ``1:5`` or ``2:1.5``. It is a hint
-    that programs can use to make their scrolling match that of the terminal,
-    for instance, by scrolling ``5`` lines per wheel click. Terminals are not
-    required to send it and programs are free to ignore it. The deltas
+    positive integer number of thousandths, for example, ``1:5000`` for a
+    multiplier of ``5`` or ``2:1500`` for ``1.5``. A decimal point is not used
+    as it is not a valid byte in the parameters of a CSI escape code. It is a
+    hint that programs can use to make their scrolling match that of the
+    terminal, for instance, by scrolling ``5`` lines per wheel click. Terminals
+    are not required to send it and programs are free to ignore it. The deltas
     themselves are never scaled by the multiplier.
 
 ``source``
