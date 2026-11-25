@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 // testBinding creates a Binding where Action, ActionDisplay, and Definition all
@@ -1444,5 +1446,37 @@ func TestQueryRankingCrossColumnVsCategoryOnly(t *testing.T) {
 		if action == "clear_terminal" && i < 2 {
 			t.Fatalf("clear_terminal (category-only match) should rank below action matches, but got position %d", i+1)
 		}
+	}
+}
+
+func TestCommandPaletteLoopSetup(t *testing.T) {
+	lp, err := loop.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := setup_loop(lp)
+	if h == nil {
+		t.Fatal("expected handler to be non-nil")
+	}
+	if lp.KittenRequiringKeyboardProtocol() != kittenName {
+		t.Fatalf("expected loop to require keyboard protocol for %q, got %q", kittenName, lp.KittenRequiringKeyboardProtocol())
+	}
+	if lp.OnInitialize == nil {
+		t.Fatal("expected OnInitialize to be registered")
+	}
+	if lp.OnFinalize == nil {
+		t.Fatal("expected OnFinalize to be registered")
+	}
+	if lp.OnKeyEvent == nil {
+		t.Fatal("expected OnKeyEvent to be registered")
+	}
+	if lp.OnText == nil {
+		t.Fatal("expected OnText to be registered")
+	}
+	if lp.OnResize == nil {
+		t.Fatal("expected OnResize to be registered")
+	}
+	if lp.OnMouseEvent == nil {
+		t.Fatal("expected OnMouseEvent to be registered")
 	}
 }
