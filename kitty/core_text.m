@@ -408,7 +408,8 @@ nerd_font(CGFloat sz) {
             bool is_nerd_font = cf_string_equals(name, CFSTR("SymbolsNFM"));
             CFRelease(name);
             if (is_nerd_font) {
-                _nerd_font_descriptor = CTFontDescriptorCreateCopyWithAttributes(descriptor, CTFontDescriptorCopyAttributes(descriptor));
+                RAII_CoreFoundation(CFDictionaryRef, attributes, CTFontDescriptorCopyAttributes(descriptor));
+                _nerd_font_descriptor = CTFontDescriptorCreateCopyWithAttributes(descriptor, attributes);
                 break;
             }
         }
@@ -1096,12 +1097,12 @@ ensure_ui_font(size_t in_height) {
 
 bool
 cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height) {
+    if (!ensure_ui_font(height)) return false;
     CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
     if (color_space == NULL) return false;
     CGContextRef ctx = CGBitmapContextCreate(rgba_output, width, height, 8, 4 * width, color_space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrderDefault);
     CGColorSpaceRelease(color_space);
     if (ctx == NULL) return false;
-    if (!ensure_ui_font(height)) return false;
 
     CGContextSetShouldAntialias(ctx, true);
     CGContextSetShouldSmoothFonts(ctx, true); // sub-pixel antialias

@@ -956,7 +956,6 @@ _glfwPlatformTerminate(void) {
                     NSDate *st = get_process_start_time(app.processIdentifier);
                     if (st != nil) {
                         NSTimeInterval timeDifference = [application_finished_launching_at timeIntervalSinceDate:st];
-                        [st release];
                         if (fabs(timeDifference) <= 5) [app forceTerminate];
                     }
                 }

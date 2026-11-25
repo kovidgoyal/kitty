@@ -1574,9 +1574,9 @@ cocoa_get_machine_id(PyObject *self UNUSED, PyObject *args UNUSED) {
         if (service) {
             CFTypeRef uuid = IORegistryEntryCreateCFProperty(service, CFSTR("IOPlatformUUID"), kCFAllocatorDefault, 0);
             if (uuid) {
-                // Transfer ownership to NSString using ARC __bridge_transfer
                 NSString *s = (NSString *)uuid;
                 [s getCString:ans maxLength:sizeof(ans) encoding:NSUTF8StringEncoding];
+                CFRelease(uuid);
             }
             // Release the I/O object
             IOObjectRelease(service);
