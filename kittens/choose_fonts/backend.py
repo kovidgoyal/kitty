@@ -56,7 +56,7 @@ def send_to_kitten(x: Any) -> None:
         f.buffer.write(b'\n')
         f.buffer.flush()
     except BrokenPipeError:
-        raise SystemExit('Pipe to kitten was broken while sending data to it')
+        raise SystemExit(0)
 
 
 class TextStyle(TypedDict):

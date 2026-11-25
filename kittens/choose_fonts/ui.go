@@ -60,6 +60,7 @@ type handler struct {
 
 	panes        []pane
 	current_pane pane
+	initialized  bool
 }
 
 func (h *handler) set_worker_error(err error) {
@@ -76,6 +77,7 @@ func (h *handler) get_worker_error() error {
 
 // Events {{{
 func (h *handler) initialize() (err error) {
+	h.initialized = true
 	h.lp.SetCursorVisible(false)
 	h.lp.OnQueryResponse = h.on_query_response
 	h.lp.QueryTerminal("font_size", "dpi_x", "dpi_y", "foreground", "background")
@@ -109,7 +111,9 @@ func (h *handler) finalize() {
 	}
 	h.lp.SetCursorVisible(true)
 	h.lp.SetCursorShape(loop.BLOCK_CURSOR, true)
-	h.graphics_manager.finalize()
+	if h.initialized {
+		h.graphics_manager.finalize()
+	}
 }
 
 func (h *handler) on_query_response(key, val string, valid bool) error {

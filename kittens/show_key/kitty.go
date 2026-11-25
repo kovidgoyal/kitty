@@ -16,11 +16,10 @@ func csi(csi string) string {
 	return "CSI " + strings.NewReplacer(":", " : ", ";", " ; ").Replace(csi[:len(csi)-1]) + " " + csi[len(csi)-1:]
 }
 
-func run_kitty_loop(_ *Options) (err error) {
-	lp, err := loop.New(loop.FullKeyboardProtocol)
-	if err != nil {
-		return err
-	}
+const kittenName = "show_key"
+
+func setup_kitty_loop(lp *loop.Loop) {
+	lp.RequireKittyKeyboardProtocol(kittenName)
 	ctx := markup.New(true)
 
 	lp.OnInitialize = func() (string, error) {
@@ -69,6 +68,14 @@ func run_kitty_loop(_ *Options) (err error) {
 		lp.Printf("%s: %s\n\n", ctx.Green("Text"), text)
 		return nil
 	}
+}
+
+func run_kitty_loop(_ *Options) (err error) {
+	lp, err := loop.New(loop.FullKeyboardProtocol)
+	if err != nil {
+		return err
+	}
+	setup_kitty_loop(lp)
 
 	err = lp.Run()
 	if err != nil {

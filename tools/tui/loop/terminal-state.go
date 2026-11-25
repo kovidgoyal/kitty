@@ -199,6 +199,7 @@ func (self *TerminalStateOptions) ResetStateEscapeCodes() string {
 		reset_modes(&sb, INBAND_RESIZE_NOTIFICATION)
 	}
 	sb.WriteString(RESTORE_PRIVATE_MODE_VALUES)
+	set_modes(&sb, DECAWM, DECTCEM)
 	if self.restore_colors {
 		sb.WriteString(RESTORE_COLORS)
 	}

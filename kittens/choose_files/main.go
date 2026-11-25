@@ -866,6 +866,96 @@ func for_shell_relative(x string) string {
 	return shlex.Quote(x)
 }
 
+const kittenName = "choose_files"
+
+func setup_loop(lp *loop.Loop, opts *Options, conf *Config, args []string) (*Handler, error) {
+	lp.RequireKittyKeyboardProtocol(kittenName)
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
+	lp.ColorSchemeChangeNotifications()
+	handler := &Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
+	getcwd := func() string {
+		ans := handler.state.CurrentDir()
+		if ans == "" {
+			var err error
+			ans, err = os.Getwd()
+			if err != nil {
+				ans = "."
+			}
+		}
+		return ans
+	}
+	handler.rl = readline.New(lp, readline.RlInit{
+		Prompt: "> ", ContinuationPrompt: ". ", Completer: FilePromptCompleter(getcwd),
+	})
+	handler.search_rl = readline.New(lp, readline.RlInit{DontMarkPrompts: true})
+	if err := handler.set_state_from_config(conf, opts); err != nil {
+		return nil, err
+	}
+	handler.result_manager = NewResultManager(handler.err_chan, &handler.state, lp.WakeupMainThread)
+	handler.preview_manager = NewPreviewManager(handler.err_chan, &handler.state, lp.WakeupMainThread)
+	var cwd string
+	switch len(args) {
+	case 0:
+		var err error
+		if cwd, err = os.Getwd(); err != nil {
+			return nil, err
+		}
+	case 1:
+		cwd = args[0]
+	default:
+		return nil, fmt.Errorf("Can only specify one directory to search in")
+	}
+	cwd = utils.Expanduser(cwd)
+	var err error
+	if default_cwd, err = filepath.Abs(cwd); err != nil {
+		return nil, err
+	}
+
+	lp.OnInitialize = func() (string, error) {
+		if opts.WritePidTo != "" {
+			if err := utils.AtomicWriteFile(opts.WritePidTo, bytes.NewReader([]byte(strconv.Itoa(os.Getpid()))), 0600); err != nil {
+				return "", err
+			}
+		}
+		if opts.Title != "" {
+			lp.SetWindowTitle(opts.Title)
+		}
+		lp.RequestCurrentColorScheme()
+		return handler.OnInitialize()
+	}
+	lp.OnFinalize = func() string {
+		handler.graphics_handler.Finalize(lp)
+		return ""
+	}
+	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
+		handler.init_sizes(new_size)
+		handler.clear_cached_previews()
+		return handler.draw_screen()
+	}
+	lp.OnColorSchemeChange = func(p loop.ColorPreference) (err error) {
+		new_val := p == loop.LIGHT_COLOR_PREFERENCE
+		if new_val != use_light_colors {
+			use_light_colors = new_val
+			handler.preview_manager.invalidate_color_scheme_based_cached_items()
+			return handler.draw_screen()
+		}
+		return
+	}
+	lp.OnKeyEvent = handler.OnKeyEvent
+	lp.OnText = handler.OnText
+	lp.OnMouseEvent = handler.OnMouseEvent
+	lp.OnEscapeCode = handler.on_escape_code
+	lp.OnWakeup = func() (err error) {
+		select {
+		case err = <-handler.err_chan:
+		default:
+			err = handler.draw_screen()
+		}
+		return
+	}
+	return handler, nil
+}
+
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if opts.ClearCache {
 		c, err := preview_cache()
@@ -941,88 +1031,12 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
-	lp.ColorSchemeChangeNotifications()
-	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
-	defer handler.graphics_handler.Cleanup()
-	defer calibre_cleanup()
-	getcwd := func() string {
-		ans := handler.state.CurrentDir()
-		if ans == "" {
-			var err error
-			ans, err = os.Getwd()
-			if err != nil {
-				ans = "."
-			}
-		}
-		return ans
-	}
-	handler.rl = readline.New(lp, readline.RlInit{
-		Prompt: "> ", ContinuationPrompt: ". ", Completer: FilePromptCompleter(getcwd),
-	})
-	handler.search_rl = readline.New(lp, readline.RlInit{DontMarkPrompts: true})
-	if err = handler.set_state_from_config(conf, opts); err != nil {
+	handler, err := setup_loop(lp, opts, conf, args)
+	if err != nil {
 		return 1, err
 	}
-	handler.result_manager = NewResultManager(handler.err_chan, &handler.state, lp.WakeupMainThread)
-	handler.preview_manager = NewPreviewManager(handler.err_chan, &handler.state, lp.WakeupMainThread)
-	switch len(args) {
-	case 0:
-		if default_cwd, err = os.Getwd(); err != nil {
-			return
-		}
-	case 1:
-		default_cwd = args[0]
-	default:
-		return 1, fmt.Errorf("Can only specify one directory to search in")
-	}
-	default_cwd = utils.Expanduser(default_cwd)
-	if default_cwd, err = filepath.Abs(default_cwd); err != nil {
-		return
-	}
-
-	lp.OnInitialize = func() (string, error) {
-		if opts.WritePidTo != "" {
-			if err := utils.AtomicWriteFile(opts.WritePidTo, bytes.NewReader([]byte(strconv.Itoa(os.Getpid()))), 0600); err != nil {
-				return "", err
-			}
-		}
-		if opts.Title != "" {
-			lp.SetWindowTitle(opts.Title)
-		}
-		lp.RequestCurrentColorScheme()
-		return handler.OnInitialize()
-	}
-	lp.OnFinalize = func() string {
-		handler.graphics_handler.Finalize(lp)
-		return ""
-	}
-	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
-		handler.init_sizes(new_size)
-		handler.clear_cached_previews()
-		return handler.draw_screen()
-	}
-	lp.OnColorSchemeChange = func(p loop.ColorPreference) (err error) {
-		new_val := p == loop.LIGHT_COLOR_PREFERENCE
-		if new_val != use_light_colors {
-			use_light_colors = new_val
-			handler.preview_manager.invalidate_color_scheme_based_cached_items()
-			return handler.draw_screen()
-		}
-		return
-	}
-	lp.OnKeyEvent = handler.OnKeyEvent
-	lp.OnText = handler.OnText
-	lp.OnMouseEvent = handler.OnMouseEvent
-	lp.OnEscapeCode = handler.on_escape_code
-	lp.OnWakeup = func() (err error) {
-		select {
-		case err = <-handler.err_chan:
-		default:
-			err = handler.draw_screen()
-		}
-		return
-	}
+	defer handler.graphics_handler.Cleanup()
+	defer calibre_cleanup()
 	err = lp.Run()
 	handler.state.save_cached_values()
 	if err != nil {

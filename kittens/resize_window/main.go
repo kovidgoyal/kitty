@@ -233,15 +233,10 @@ func (h *handler) draw_screen() {
 	}
 }
 
-func run_loop(opts *Options, seen map[string]bool) (rc int, err error) {
-	_, err = parse_fraction(opts.Fraction)
-	if err != nil {
-		return 1, err
-	}
-	lp, err := loop.New(loop.FullKeyboardProtocol)
-	if err != nil {
-		return 1, err
-	}
+const kittenName = "resize_window"
+
+func setup_loop(lp *loop.Loop, opts *Options, seen map[string]bool) (*handler, error) {
+	lp.RequireKittyKeyboardProtocol(kittenName)
 	path := filepath.Join(utils.ConfigDir(), "resize-window.json")
 	settings, load_err := settings_for_invocation(path, opts, seen)
 	h := &handler{lp: lp, opts: opts, settings: settings, settings_path: path, ctx: markup.New(true)}
@@ -249,7 +244,7 @@ func run_loop(opts *Options, seen map[string]bool) (rc int, err error) {
 		h.status = "Could not load settings: " + load_err.Error()
 	}
 	if err := h.sync_preferences(); err != nil {
-		return 1, err
+		return nil, err
 	}
 	lp.OnInitialize = func() (string, error) {
 		sz, err := lp.ScreenSize()
@@ -276,6 +271,22 @@ func run_loop(opts *Options, seen map[string]bool) (rc int, err error) {
 	}
 	lp.OnKeyEvent = h.on_key
 	lp.OnRCResponse = h.on_rc_response
+	return h, nil
+}
+
+func run_loop(opts *Options, seen map[string]bool) (rc int, err error) {
+	_, err = parse_fraction(opts.Fraction)
+	if err != nil {
+		return 1, err
+	}
+	lp, err := loop.New(loop.FullKeyboardProtocol)
+	if err != nil {
+		return 1, err
+	}
+	h, err := setup_loop(lp, opts, seen)
+	if err != nil {
+		return 1, err
+	}
 	err = lp.Run()
 	if err != nil {
 		return 1, err

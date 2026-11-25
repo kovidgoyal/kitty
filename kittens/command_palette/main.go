@@ -1009,17 +1009,10 @@ func (h *Handler) triggerSelected() {
 	h.lp.Quit(0)
 }
 
-// main runs the command palette TUI as a kitty overlay.
-func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
-	if tty.IsTerminal(os.Stdin.Fd()) {
-		return 1, fmt.Errorf("This kitten must only be run via the command_palette action mapped to a shortcut in kitty.conf")
-	}
-	output := tui.KittenOutputSerializer()
-	lp, err := loop.New()
-	if err != nil {
-		return 1, err
-	}
+const kittenName = "command_palette"
 
+func setup_loop(lp *loop.Loop) *Handler {
+	lp.RequireKittyKeyboardProtocol(kittenName)
 	handler := &Handler{lp: lp}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 
@@ -1031,6 +1024,21 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	lp.OnText = handler.onText
 	lp.OnResize = handler.onResize
 	lp.OnMouseEvent = handler.onMouseEvent
+	return handler
+}
+
+// main runs the command palette TUI as a kitty overlay.
+func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
+	if tty.IsTerminal(os.Stdin.Fd()) {
+		return 1, fmt.Errorf("This kitten must only be run via the command_palette action mapped to a shortcut in kitty.conf")
+	}
+	output := tui.KittenOutputSerializer()
+	lp, err := loop.New()
+	if err != nil {
+		return 1, err
+	}
+
+	handler := setup_loop(lp)
 
 	err = lp.Run()
 	if err != nil {

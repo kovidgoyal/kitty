@@ -141,6 +141,9 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 		return nil
 	case 'c':
 		if strings.HasPrefix(csi, "?") {
+			if self.kitten_requiring_keyboard_protocol != "" && !self.TerminalCapabilities.KeyboardProtocol {
+				return errors.New(keyboardProtocolErrorMessage(self.kitten_requiring_keyboard_protocol))
+			}
 			if self.OnCapabilitiesReceived != nil {
 				if err = self.OnCapabilitiesReceived(self.TerminalCapabilities); err != nil {
 					return err
@@ -151,6 +154,10 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 		if strings.HasPrefix(csi, "?") {
 			self.TerminalCapabilities.KeyboardProtocol = true
 			self.TerminalCapabilities.KeyboardProtocolResponseReceived = true
+			if self.keyboard_protocol_watchdog_timer != 0 {
+				self.remove_timer(self.keyboard_protocol_watchdog_timer)
+				self.keyboard_protocol_watchdog_timer = 0
+			}
 		}
 	case 'n':
 		if strings.HasPrefix(csi, "?997;") {
@@ -179,6 +186,22 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 	}
 	if self.OnEscapeCode != nil {
 		return self.OnEscapeCode(CSI, raw)
+	}
+	return nil
+}
+
+const KEYBOARD_PROTOCOL_WATCHDOG_TIMEOUT = 2 * time.Second
+
+func (self *Loop) start_keyboard_protocol_watchdog() error {
+	if self.kitten_requiring_keyboard_protocol != "" && self.keyboard_protocol_watchdog_timer == 0 {
+		self.QueryCapabilities()
+		tid, err := self.add_timer(KEYBOARD_PROTOCOL_WATCHDOG_TIMEOUT, false, func(timer_id IdType) error {
+			return errors.New(keyboardProtocolErrorMessage(self.kitten_requiring_keyboard_protocol))
+		})
+		if err != nil {
+			return err
+		}
+		self.keyboard_protocol_watchdog_timer = tid
 	}
 	return nil
 }
@@ -553,6 +576,10 @@ func (self *Loop) run() (err error) {
 	}()
 
 	go write_to_tty(w_r, controlling_term, self.tty_write_channel, err_channel, write_done_channel)
+
+	if err = self.start_keyboard_protocol_watchdog(); err != nil {
+		return err
+	}
 
 	if self.OnInitialize != nil {
 		finalizer, err = self.OnInitialize()

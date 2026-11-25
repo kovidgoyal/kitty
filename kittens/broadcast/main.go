@@ -53,21 +53,26 @@ func (h *handler) end_line() {
 	h.lp.SaveCursorPosition()
 }
 
-func (h *handler) initialize() (string, error) {
+const kittenName = "broadcast"
+
+func (h *handler) on_capabilities_received(tc loop.TerminalCapabilities) error {
+	if h.session_started {
+		return nil
+	}
 	h.session_started = true
 	ec, err := session_escape_code(h.payload, true)
 	if err != nil {
-		return "", err
+		return err
 	}
 	h.lp.QueueWriteString(ec)
 	h.lp.Println("Type the text to broadcast below, press", h.ctx.Yellow(h.opts.EndSession), "to quit:")
 	for _, x := range h.initial_strings {
 		if err := h.broadcast_text(x); err != nil {
-			return "", err
+			return err
 		}
 	}
 	h.lp.SaveCursorPosition()
-	return "", nil
+	return nil
 }
 
 func (h *handler) on_text(text string) error {
@@ -129,11 +134,8 @@ func (h *handler) on_key(e *loop.KeyEvent) error {
 	return nil
 }
 
-func run_loop(opts *Options, args []string) (rc int, err error) {
-	lp, err := loop.New(loop.FullKeyboardProtocol, loop.NoAlternateScreen)
-	if err != nil {
-		return 1, err
-	}
+func setup_loop(lp *loop.Loop, opts *Options, args []string) *handler {
+	lp.RequireKittyKeyboardProtocol(kittenName)
 	h := &handler{lp: lp, opts: opts, ctx: markup.New(true), initial_strings: args}
 	h.payload = broadcast_payload{
 		ExcludeActive: true, Match: opts.Match, MatchTab: opts.MatchTab, SessionId: new_session_id(),
@@ -141,10 +143,19 @@ func run_loop(opts *Options, args []string) (rc int, err error) {
 	if opts.Match == "" && opts.MatchTab == "" {
 		h.payload.All = true
 	}
-	lp.OnInitialize = h.initialize
+	lp.OnCapabilitiesReceived = h.on_capabilities_received
 	lp.OnResize = func(old, new loop.ScreenSize) error { h.commit_line(); return nil }
 	lp.OnText = func(text string, from_key_event, in_bracketed_paste bool) error { return h.on_text(text) }
 	lp.OnKeyEvent = h.on_key
+	return h
+}
+
+func run_loop(opts *Options, args []string) (rc int, err error) {
+	lp, err := loop.New(loop.FullKeyboardProtocol, loop.NoAlternateScreen)
+	if err != nil {
+		return 1, err
+	}
+	h := setup_loop(lp, opts, args)
 	err = lp.Run()
 	if h.session_started {
 		if ec, err2 := session_escape_code(h.payload, false); err2 == nil {

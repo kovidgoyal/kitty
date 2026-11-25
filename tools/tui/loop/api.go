@@ -75,6 +75,8 @@ type Loop struct {
 		active   bool
 		metadata DndCommand
 	}
+	kitten_requiring_keyboard_protocol string
+	keyboard_protocol_watchdog_timer   IdType
 
 	// Queried capabilities from terminal
 	TerminalCapabilities TerminalCapabilities
@@ -625,6 +627,22 @@ func (self *Loop) CurrentPointerShape() (ans PointerShape, has_shape bool) {
 // function should be called as early as possible ideally in OnInitialize.
 func (self *Loop) QueryCapabilities() {
 	self.QueueWriteString("\x1b[?u\x1b[?996n\x1b[c")
+}
+
+func keyboardProtocolErrorMessage(kitten string) string {
+	return fmt.Sprintf("This terminal does not support the kitty keyboard protocol, or you are running inside a terminal multiplexer that is blocking querying for kitty keyboard protocol support. The %s kitten cannot function without it.", kitten)
+}
+
+func (self *Loop) RequireKittyKeyboardProtocol(kitten string) *Loop {
+	self.kitten_requiring_keyboard_protocol = kitten
+	if self.timers != nil {
+		_ = self.start_keyboard_protocol_watchdog()
+	}
+	return self
+}
+
+func (self *Loop) KittenRequiringKeyboardProtocol() string {
+	return self.kitten_requiring_keyboard_protocol
 }
 
 type Alignment int

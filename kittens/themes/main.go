@@ -52,20 +52,11 @@ func non_interactive(opts *Options, theme_name string) (rc int, err error) {
 	return
 }
 
-func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
-	if len(args) > 1 {
-		args = []string{strings.Join(args, ` `)}
-	}
-	if len(args) == 1 {
-		return non_interactive(opts, args[0])
-	}
-	lp, err := loop.New()
-	if err != nil {
-		return 1, err
-	}
-	cv := utils.NewCachedValues("themes", &CachedData{Category: "All"})
-	h := &handler{lp: lp, opts: opts, cached_data: cv.Load()}
-	defer cv.Save()
+const kittenName = "themes"
+
+func setup_loop(lp *loop.Loop, opts *Options, cached_data *CachedData) *handler {
+	lp.RequireKittyKeyboardProtocol(kittenName)
+	h := &handler{lp: lp, opts: opts, cached_data: cached_data}
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(`Choose a theme for kitty`)
@@ -84,6 +75,23 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	lp.OnKeyEvent = h.on_key_event
 	lp.OnText = h.on_text
+	return h
+}
+
+func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
+	if len(args) > 1 {
+		args = []string{strings.Join(args, ` `)}
+	}
+	if len(args) == 1 {
+		return non_interactive(opts, args[0])
+	}
+	lp, err := loop.New()
+	if err != nil {
+		return 1, err
+	}
+	cv := utils.NewCachedValues("themes", &CachedData{Category: "All"})
+	defer cv.Save()
+	setup_loop(lp, opts, cv.Load())
 	err = lp.Run()
 	if err != nil {
 		return 1, err

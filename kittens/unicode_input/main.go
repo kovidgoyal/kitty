@@ -547,17 +547,11 @@ func (self *handler) refresh() {
 	self.draw_screen()
 }
 
-func run_loop(opts *Options) (lp *loop.Loop, err error) {
-	output := tui.KittenOutputSerializer()
-	lp, err = loop.New()
-	if err != nil {
-		return
-	}
-	cv := utils.NewCachedValues("unicode-input", &CachedData{Recent: DEFAULT_SET, Mode: DEFAULT_MODE})
-	cached_data = cv.Load()
-	defer cv.Save()
+const kittenName = "unicode_input"
 
-	h := handler{recent: cached_data.Recent, lp: lp, emoji_variation: opts.EmojiVariation}
+func setup_loop(lp *loop.Loop, opts *Options, cached_data *CachedData) *handler {
+	lp.RequireKittyKeyboardProtocol(kittenName)
+	h := &handler{recent: cached_data.Recent, lp: lp, emoji_variation: opts.EmojiVariation}
 	switch opts.Tab {
 	case "previous":
 		switch cached_data.Mode {
@@ -603,6 +597,20 @@ func run_loop(opts *Options) (lp *loop.Loop, err error) {
 	lp.OnText = h.on_text
 	lp.OnFinalize = h.finalize
 	lp.OnKeyEvent = h.on_key_event
+	return h
+}
+
+func run_loop(opts *Options) (lp *loop.Loop, err error) {
+	output := tui.KittenOutputSerializer()
+	lp, err = loop.New()
+	if err != nil {
+		return
+	}
+	cv := utils.NewCachedValues("unicode-input", &CachedData{Recent: DEFAULT_SET, Mode: DEFAULT_MODE})
+	cached_data = cv.Load()
+	defer cv.Save()
+
+	h := setup_loop(lp, opts, cached_data)
 
 	err = lp.Run()
 	if err != nil {

@@ -13,30 +13,22 @@ var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
 var output_on_exit string
 
-func main(opts *Options) (rc int, err error) {
-	if err = kitty_font_backend.start(); err != nil {
-		return 1, err
-	}
-	defer func() {
-		if werr := kitty_font_backend.release(); werr != nil {
-			if err == nil {
-				err = werr
-			}
-			if rc == 0 {
-				rc = 1
-			}
-		}
-	}()
-	lp, err := loop.New()
-	if err != nil {
-		return 1, err
-	}
+const kittenName = "choose_fonts"
+
+func setup_loop(lp *loop.Loop, opts *Options) *handler {
+	lp.RequireKittyKeyboardProtocol(kittenName)
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 	h := &handler{lp: lp, opts: opts}
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(`Choose a font for kitty`)
-		return "", h.initialize()
+		return "", nil
+	}
+	lp.OnCapabilitiesReceived = func(tc loop.TerminalCapabilities) error {
+		if err := kitty_font_backend.start(); err != nil {
+			return err
+		}
+		return h.initialize()
 	}
 	lp.OnWakeup = h.on_wakeup
 	lp.OnEscapeCode = h.on_escape_code
@@ -51,6 +43,25 @@ func main(opts *Options) (rc int, err error) {
 	}
 	lp.OnKeyEvent = h.on_key_event
 	lp.OnText = h.on_text
+	return h
+}
+
+func main(opts *Options) (rc int, err error) {
+	defer func() {
+		if werr := kitty_font_backend.release(); werr != nil {
+			if err == nil {
+				err = werr
+			}
+			if rc == 0 {
+				rc = 1
+			}
+		}
+	}()
+	lp, err := loop.New()
+	if err != nil {
+		return 1, err
+	}
+	setup_loop(lp, opts)
 	err = lp.Run()
 	if err != nil {
 		return 1, err

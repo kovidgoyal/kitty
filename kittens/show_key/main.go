@@ -10,11 +10,19 @@ import (
 
 var _ = fmt.Print
 
+var runner = struct {
+	kitty  func(*Options) error
+	legacy func(*Options) error
+}{
+	kitty:  run_kitty_loop,
+	legacy: run_legacy_loop,
+}
+
 func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if opts.KeyMode == "kitty" {
-		err = run_kitty_loop(opts)
+		err = runner.kitty(opts)
 	} else {
-		err = run_legacy_loop(opts)
+		err = runner.legacy(opts)
 	}
 	if err != nil {
 		rc = 1
