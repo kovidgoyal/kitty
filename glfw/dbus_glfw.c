@@ -74,9 +74,9 @@ events_for_watch(DBusWatch *watch) {
 }
 
 static dbus_bool_t
-add_dbus_watch(DBusWatch *watch, void *data) {
+add_dbus_watch(DBusWatch *watch, void *data UNUSED) {
     id_type watch_id =
-        addWatch(dbus_data->eld, data, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch), on_dbus_watch_ready, watch);
+        addWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch), on_dbus_watch_ready, watch);
     if (!watch_id) return FALSE;
     id_type *idp = malloc(sizeof(id_type));
     if (!idp) return FALSE;
@@ -153,7 +153,7 @@ glfw_dbus_connect_to(const char *path, const char *err_msg, const char *name, bo
             return NULL;
         }
     }
-    if (!dbus_connection_set_watch_functions(ans, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, (void *)name, NULL)) {
+    if (!dbus_connection_set_watch_functions(ans, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, NULL, NULL)) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS watches on connection to: %s", path);
         dbus_connection_close(ans);
         dbus_connection_unref(ans);
@@ -394,7 +394,7 @@ glfw_dbus_connect_to_session_bus(void) {
         return;
     }
     static const char *name = "session-bus";
-    if (!dbus_connection_set_watch_functions(session_bus, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, (void *)name, NULL)) {
+    if (!dbus_connection_set_watch_functions(session_bus, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, NULL, NULL)) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS watches on connection to: %s", name);
         dbus_connection_close(session_bus);
         dbus_connection_unref(session_bus);

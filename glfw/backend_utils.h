@@ -54,9 +54,7 @@ typedef struct {
     int fd, events, enabled, ready;
     watch_callback_func callback;
     void *callback_data;
-    GLFWuserdatafreefun free;
     id_type id;
-    const char *name;
 } Watch;
 
 typedef struct {
@@ -65,7 +63,6 @@ typedef struct {
     timer_callback_func callback;
     void *callback_data;
     GLFWuserdatafreefun free;
-    const char *name;
     bool repeats;
     // Set when the timer is removed while timers are being dispatched, the
     // timer is then dropped from the array once dispatching is done
@@ -109,7 +106,7 @@ typedef struct {
 
 
 void check_for_wakeup_events(EventLoopData *eld);
-id_type addWatch(EventLoopData *eld, const char *name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
+id_type addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
 void removeWatch(EventLoopData *eld, id_type watch_id);
 void toggleWatch(EventLoopData *eld, id_type watch_id, int enabled);
 id_type addTimer(
