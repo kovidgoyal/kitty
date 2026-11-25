@@ -592,7 +592,8 @@ class Layout:
         horizontal: bool,
         after: bool,
     ) -> bool:
-        "Whether inserting the source group next to the destination would change the layout"
+        """Whether inserting src_wg next to dest_wg would change the layout. Both groups must be
+        groups of all_windows, as returned by all_windows.group_for_window()."""
         if src_wg.id == dest_wg.id or src_wg.dock is not None or dest_wg.dock is not None:
             return False
         if self.drag_overlay_mode in (DragOverlayMode.axis_x, DragOverlayMode.axis_y):

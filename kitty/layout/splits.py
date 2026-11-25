@@ -997,7 +997,7 @@ class Splits(Layout):
     def insert_window_next_to_changes_layout(self, all_windows: WindowList, src_wg: WindowGroup, dest_wg: WindowGroup, horizontal: bool, after: bool) -> bool:
         if not super().insert_window_next_to_changes_layout(all_windows, src_wg, dest_wg, horizontal, after):
             return False
-        # Only a window that is already the sibling of next_to, split the same way and on
+        # Only a group that is already the sibling of dest_wg, split the same way and on
         # the same side, ends up where it started
         pair = self.pairs_root.pair_for_window(dest_wg.id)
         if pair is None or pair.horizontal != horizontal:
