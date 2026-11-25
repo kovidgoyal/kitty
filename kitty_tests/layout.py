@@ -321,18 +321,18 @@ class TestLayout(BaseTest):
             q = create_layout(layout_class)
             windows = create_windows(q, num=3)
             q.add_window(windows, Window(99), dock=DockSpec())
-            w1, w2, w3, dock = (windows.id_map[i] for i in (1, 2, 3, 99))
+            g1, g2, g3, dock = (windows.group_for_window(i) for i in (1, 2, 3, 99))
             reorders = q.drag_overlay_mode is not DragOverlayMode.full
             with self.subTest(layout=layout_class.name):
                 changes = q.insert_window_next_to_changes_layout
-                self.ae(changes(windows, w2, w1, False, True), not reorders)
-                self.ae(changes(windows, w1, w2, False, False), not reorders)
-                self.assertTrue(changes(windows, w2, w1, False, False))
-                self.assertTrue(changes(windows, w1, w3, False, True))
-                self.assertTrue(changes(windows, w3, w1, False, False))
-                self.assertFalse(changes(windows, w1, w1, False, True))
-                self.assertFalse(changes(windows, w1, dock, False, True))
-                self.assertFalse(changes(windows, dock, w1, False, True))
+                self.ae(changes(windows, g2, g1, False, True), not reorders)
+                self.ae(changes(windows, g1, g2, False, False), not reorders)
+                self.assertTrue(changes(windows, g2, g1, False, False))
+                self.assertTrue(changes(windows, g1, g3, False, True))
+                self.assertTrue(changes(windows, g3, g1, False, False))
+                self.assertFalse(changes(windows, g1, g1, False, True))
+                self.assertFalse(changes(windows, g1, dock, False, True))
+                self.assertFalse(changes(windows, dock, g1, False, True))
 
     def test_splits_reinsert_in_place(self):
         # Only re-inserting a window on its current side of its sibling does nothing, and that must
@@ -341,14 +341,15 @@ class TestLayout(BaseTest):
         windows = create_windows(q, num=0)
         for i, loc in ((1, None), (2, 'vsplit'), (3, 'hsplit')):
             q.add_window(windows, Window(i), location=loc)
-        w1, w2, w3 = (windows.id_map[i] for i in (1, 2, 3))
+        w2, w3 = windows.id_map[2], windows.id_map[3]
+        g1, g2, g3 = (windows.group_for_window(i) for i in (1, 2, 3))
         q.pairs_root.two.bias = 0.8  # w1 | (w2 over w3)
         changes = q.insert_window_next_to_changes_layout
-        self.assertFalse(changes(windows, w3, w2, False, True))
-        self.assertTrue(changes(windows, w3, w2, False, False))
-        self.assertTrue(changes(windows, w3, w2, True, True))
-        self.assertTrue(changes(windows, w3, w1, True, True))
-        self.assertFalse(changes(windows, w3, w3, True, True))
+        self.assertFalse(changes(windows, g3, g2, False, True))
+        self.assertTrue(changes(windows, g3, g2, False, False))
+        self.assertTrue(changes(windows, g3, g2, True, True))
+        self.assertTrue(changes(windows, g3, g1, True, True))
+        self.assertFalse(changes(windows, g3, g3, True, True))
         before = q.pairs_root.serialize()
         q.insert_window_next_to(windows, w3, w2, False, True)
         self.ae(q.pairs_root.serialize(), before)
