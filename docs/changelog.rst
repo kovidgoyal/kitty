@@ -239,6 +239,10 @@ Detailed list of changes
   too fast or the mouse wheel not scrolling, when both a touchpad and a mouse
   wheel are used (:iss:`10938`)
 
+- Linux: Fix events for file descriptors being dispatched to the wrong handler
+  when a handler, such as a drag and drop or DBus one, stops watching a file
+  descriptor while events are being processed
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

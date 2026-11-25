@@ -55,6 +55,9 @@ typedef struct {
     watch_callback_func callback;
     void *callback_data;
     id_type id;
+    // Set when the watch is removed while watches are being dispatched, the
+    // watch is then dropped from the array once dispatching is done
+    bool removed;
 } Watch;
 
 typedef struct {
@@ -102,6 +105,10 @@ typedef struct {
     // calling_timers only while timer callbacks are running
     bool in_timer_dispatch, calling_timers;
     size_t num_removed_timers;
+    // Set from when poll() returns until watches have been dispatched, as
+    // fds[i].revents is only valid for watches[i] during that time
+    bool defer_watch_removal;
+    size_t num_removed_watches;
 } EventLoopData;
 
 

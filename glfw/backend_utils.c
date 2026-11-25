@@ -27,8 +27,9 @@ void
 update_fds(EventLoopData *eld) {
     for (nfds_t i = 0; i < eld->watches_count; i++) {
         Watch *w = eld->watches + i;
-        eld->fds[i].fd = w->fd;
-        eld->fds[i].events = w->enabled ? w->events : 0;
+        // poll() ignores negative fds, so removed watches are not polled
+        eld->fds[i].fd = w->removed ? -1 : w->fd;
+        eld->fds[i].events = w->enabled && !w->removed ? w->events : 0;
     }
 }
 
@@ -40,7 +41,13 @@ addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_fun
         return 0;
     }
     static id_type watch_counter = 0;
+    // Clear any revents left over from a previously removed watch, so that a
+    // watch added after poll() returns, for example by a timer callback, is not
+    // reported as ready
+    eld->fds[eld->watches_count].revents = 0;
     Watch *w = eld->watches + eld->watches_count++;
+    w->ready = 0;
+    w->removed = false;
     w->fd = fd;
     w->events = events;
     w->enabled = enabled;
@@ -54,8 +61,16 @@ addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_fun
 void
 removeWatch(EventLoopData *eld, id_type watch_id) {
     for (nfds_t i = 0; i < eld->watches_count; i++) {
-        if (eld->watches[i].id != watch_id) continue;
-        remove_i_from_array(eld->watches, i, eld->watches_count);
+        Watch *w = eld->watches + i;
+        if (w->id != watch_id) continue;
+        if (w->removed) return;
+        if (eld->defer_watch_removal) {
+            // Removing would move watches that are yet to be dispatched out of
+            // sync with the revents of their fds
+            w->removed = true;
+            w->ready = 0;
+            eld->num_removed_watches++;
+        } else remove_i_from_array(eld->watches, i, eld->watches_count);
         update_fds(eld);
         return;
     }
@@ -65,6 +80,7 @@ void
 toggleWatch(EventLoopData *eld, id_type watch_id, int enabled) {
     for (nfds_t i = 0; i < eld->watches_count; i++) {
         if (eld->watches[i].id == watch_id) {
+            if (eld->watches[i].removed) break;
             if (eld->watches[i].enabled != enabled) {
                 eld->watches[i].enabled = enabled;
                 update_fds(eld);
@@ -239,14 +255,33 @@ pollWithTimeout(struct pollfd *fds, nfds_t nfds, monotonic_t timeout) {
 
 static void
 dispatchEvents(EventLoopData *eld) {
-    for (nfds_t i = 0; i < eld->watches_count; i++) {
+    // Callbacks can add or remove watches. Removed watches are only marked as
+    // such so that watches[i] and fds[i] stay in sync. Watches added during
+    // dispatch are not dispatched as they were not polled.
+    const nfds_t count = eld->watches_count;
+    for (nfds_t i = 0; i < count; i++) {
         Watch *ww = eld->watches + i;
-        struct pollfd *pfd = eld->fds + i;
-        if (pfd->revents & ww->events) {
+        const int revents = eld->fds[i].revents;
+        if (!ww->removed && ww->enabled && (revents & ww->events)) {
             ww->ready = 1;
-            if (ww->callback) ww->callback(ww->fd, pfd->revents, ww->callback_data);
+            if (ww->callback) ww->callback(ww->fd, revents, ww->callback_data);
         } else ww->ready = 0;
     }
+}
+
+static void
+drop_removed_watches(EventLoopData *eld) {
+    eld->defer_watch_removal = false;
+    if (!eld->num_removed_watches) return;
+    nfds_t dest = 0;
+    for (nfds_t i = 0; i < eld->watches_count; i++) {
+        if (eld->watches[i].removed) continue;
+        if (dest != i) eld->watches[dest] = eld->watches[i];
+        dest++;
+    }
+    eld->watches_count = dest;
+    eld->num_removed_watches = 0;
+    update_fds(eld);
 }
 
 unsigned
@@ -452,13 +487,16 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
             errno = 0;
             result = pollWithTimeout(eld->fds, eld->watches_count, timeout);
             int saved_errno = errno;
+            // Callbacks below can remove watches
+            eld->defer_watch_removal = true;
             if (display_callback) display_callback(result, display_fd_ready(eld), NULL);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
                 read_ok = eld->watches[0].ready;
-                break;
             }
+            drop_removed_watches(eld);
+            if (result > 0) break;
             timeout = end_time - monotonic();
             if (timeout <= 0) break;
             if (result < 0 && (saved_errno == EINTR || saved_errno == EAGAIN)) continue;
@@ -467,12 +505,15 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
             errno = 0;
             result = poll(eld->fds, eld->watches_count, -1);
             int saved_errno = errno;
+            // Callbacks below can remove watches
+            eld->defer_watch_removal = true;
             if (display_callback) display_callback(result, display_fd_ready(eld), NULL);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
                 read_ok = eld->watches[0].ready;
             }
+            drop_removed_watches(eld);
             if (result < 0 && (saved_errno == EINTR || saved_errno == EAGAIN)) continue;
             break;
         }
