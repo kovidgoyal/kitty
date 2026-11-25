@@ -255,6 +255,7 @@ read_xi_scroll_devices(void) {
                     .is_finger_based = is_finger_based,
                     .deviceid = device->deviceid,
                     .sourceid = scroll->sourceid,
+                    .is_xwayland = strncmp(device->name, "xwayland-", sizeof("xwayland-") - 1) == 0,
                 };
                 if (is_highres) {
                     d->type_detected = true;

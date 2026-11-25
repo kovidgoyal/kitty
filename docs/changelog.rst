@@ -235,6 +235,10 @@ Detailed list of changes
   for the Vulkan driver, the Vulkan headers. The Go SIMD code now uses the
   Go ``simd`` package with ``GOEXPERIMENT=simd``
 
+- XWayland: Fix scrolling with the touchpad being too slow, and becoming much
+  too fast or the mouse wheel not scrolling, when both a touchpad and a mouse
+  wheel are used (:iss:`10938`)
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

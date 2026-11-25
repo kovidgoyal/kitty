@@ -315,6 +315,10 @@ typedef struct XIScrollDevice {
     unsigned num_events;
     GLFWOffsetType offset_type;
     bool v120_offset_needs_scaling;
+    // XWayland uses a single device for both wheels and touchpads, so the
+    // offset type is detected per event rather than once per device
+    bool is_xwayland;
+    monotonic_t last_highres_event_at;
 } XIScrollDevice;
 
 typedef struct XdndSelectionRequest {
