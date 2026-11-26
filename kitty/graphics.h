@@ -281,6 +281,7 @@ void grman_put_cell_image(
     uint32_t y,
     uint32_t w,
     uint32_t h,
+    uint32_t smooth_scroll_region,
     CellPixelSize cell);
 bool grman_update_layers(
     GraphicsManager *self,
@@ -302,7 +303,14 @@ void grman_smooth_scroll_release_images(
 bool grman_has_any_images(GraphicsManager *self);
 void grman_resize(GraphicsManager *, index_type, index_type, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
-void grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom);
+// The rows of a vertically scrolling smooth scroll region. The cell images
+// moving with it that are outside these rows are in its overflow buffers.
+typedef struct CellImageRegionRows {
+    uint32_t id;
+    int32_t top, bottom;
+} CellImageRegionRows;
+void grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom, const CellImageRegionRows *kept, unsigned num_kept);
+void grman_remove_region_cell_images(GraphicsManager *self, int32_t row, uint32_t region_id);
 void grman_remove_all_cell_images(GraphicsManager *self);
 void gpu_data_for_image(ImageRenderData *ans, float left, float top, float right, float bottom);
 bool png_from_file_pointer(FILE *fp, const char *path, uint8_t **data, unsigned int *width, unsigned int *height, size_t *sz);

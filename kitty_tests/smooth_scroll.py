@@ -525,6 +525,98 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, -H), -1)
         ae(rows(), [(3, 4)])
 
+    def test_smooth_scroll_placeholder_edge_rows(self):
+        # Images from unicode placeholders in the partially visible rows at the
+        # edges of a vertically scrolling region are drawn from the cells of
+        # those rows, even when they changed without being rendered on screen
+        from .graphics import put_helpers, send_command
+
+        ae = self.ae
+        cw, ch = 10, H
+
+        def setup(top=2, left=2, right=8, render=True, private=False):
+            s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=8)
+            for i in (42, 43):
+                put_image(s, cw, ch, num_cols=1, num_lines=1, unicode_placeholder=1, id=i)
+            put_image(s, cw, ch, id=44, a='t')  # no virtual placement yet
+
+            def draw(img):
+                s.cursor_position(top + 1, left + 1)
+                s.apply_sgr(f'38;5;{img}')
+                s.draw('\U0010eeee\u0305')
+                s.apply_sgr('39')
+
+            def images():
+                # (row, image id, drawn with the region) of the drawn images
+                s.update_only_line_graphics_data()
+                client_ids = {s.grman.image_for_client_id(i)['internal_id']: i for i in (42, 43, 44)}
+                offset = region(s)['offset'] / H if s.smooth_scroll_regions() else 0
+                return sorted(
+                    (
+                        round((r['dest_rect']['top'] + 1) / dy - (offset if r['smooth_scroll_region'] else 0)),
+                        client_ids[r['image_id']],
+                        bool(r['smooth_scroll_region']),
+                    )
+                    for r in s.update_graphics_layers()
+                )
+
+            draw(42)
+            if render:
+                ae(images(), [(top, 42, False)])
+            self.assertTrue(s.smooth_scroll_define(1, left, top, right, top + 4, 1, private))
+            # the placeholder row moves out of the rectangle, into the partially visible row above it
+            ae(s.smooth_scroll(1, 1), 1)
+            return s, draw, images
+
+        def redraw(img=0):
+            # Scroll the row at the edge back into the rectangle, redraw it and
+            # scroll it out again, without rendering, as with synchronized output
+            ae(s.smooth_scroll(1, -1), -1)
+            if img:
+                draw(img)
+            else:
+                s.cursor_position(top + 1, 1)
+                s.erase_in_line(2)
+            ae(s.smooth_scroll(1, 1), 1)
+
+        for kw in (
+            {},
+            {'render': False},
+            {'left': 0, 'right': 10},
+            {'top': 0, 'left': 0, 'right': 10},  # the scrollback is the overflow buffer above the rectangle
+            {'top': 0, 'left': 0, 'right': 10, 'private': True},
+        ):
+            top = kw.get('top', 2)
+            edge = top - 1
+            s, draw, images = setup(**kw)
+            ae(images(), [(edge, 42, True)], kw)
+            redraw(43)
+            ae(images(), [(edge, 43, True)], kw)
+            ae(s.smooth_scroll(1, -1), -1)
+            ae(images(), [(top, 43, True)], kw)
+            ae(s.smooth_scroll(1, 1), 1)
+            ae(images(), [(edge, 43, True)], kw)
+            redraw()
+            ae(images(), [], kw)
+            redraw(42)
+            ae(images(), [(edge, 42, True)], kw)
+            if top:
+                # Changing the row of the screen at the same position as the
+                # edge row does not affect its images
+                s.cursor_position(top, 1)
+                s.erase_in_line(2)
+                s.draw('x')
+                ae(images(), [(edge, 42, True)], kw)
+            # Placeholders in the edge row for an image without a virtual
+            # placement are drawn when the placement is created
+            redraw(44)
+            ae(images(), [], kw)
+            send_command(s, 'a=p,i=44,U=1,c=1,r=1')
+            ae(images(), [(edge, 44, True)], kw)
+            # and changing the virtual placement of another image does not remove them
+            send_command(s, 'a=p,i=42,U=1,c=1,r=1')
+            ae(images(), [(edge, 44, True)], kw)
+
     def test_smooth_scroll_pause_rendering(self):
         ae = self.ae
         for uses_history in (True, False):

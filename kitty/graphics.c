@@ -1267,6 +1267,7 @@ grman_put_cell_image(
     uint32_t img_row,
     uint32_t columns,
     uint32_t rows,
+    uint32_t smooth_scroll_region,
     CellPixelSize cell) {
     Image *img = img_by_client_id(self, image_id);
     if (img == NULL) return;
@@ -1298,6 +1299,7 @@ grman_put_cell_image(
     // reference if the image is completely out of bounds.
     ImageRef ref = {0};
     ref.virtual_ref_id = virt_img_ref->internal_id;
+    ref.smooth_scroll_region = smooth_scroll_region;
 
     uint32_t img_rows = virt_img_ref->num_rows;
     uint32_t img_columns = virt_img_ref->num_cols;
@@ -2828,12 +2830,26 @@ grman_has_any_images(GraphicsManager *self) {
     return vt_size(&self->images_by_internal_id) > 0;
 }
 
+typedef struct CellImageRowsFilterData {
+    int32_t top, bottom;
+    const CellImageRegionRows *kept;
+    unsigned num_kept;
+} CellImageRowsFilterData;
+
 static bool
 cell_image_row_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     if (ref->is_virtual_ref || !is_cell_image(ref)) return false;
-    int32_t top = *(int32_t *)data;
-    int32_t bottom = *((int32_t *)data + 1);
-    return ref_within_region(ref, top, bottom);
+    const CellImageRowsFilterData *d = data;
+    if (!ref_within_region(ref, d->top, d->bottom)) return false;
+    if (ref->smooth_scroll_region) {
+        // Cell images in the overflow buffers of a region are created from
+        // the cells of those buffers, not from the cells of the screen
+        for (unsigned i = 0; i < d->num_kept; i++) {
+            const CellImageRegionRows *r = d->kept + i;
+            if (r->id == ref->smooth_scroll_region) return r->top <= ref->start_row && ref->start_row < r->bottom;
+        }
+    }
+    return true;
 }
 
 static bool
@@ -2841,12 +2857,32 @@ cell_image_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data 
     return !ref->is_virtual_ref && is_cell_image(ref);
 }
 
-// Remove cell images within the given region.
+// Remove cell images within the given rows, except the ones moving with the
+// regions in kept that are outside the rows of their region.
 void
-grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom) {
+grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom, const CellImageRegionRows *kept, unsigned num_kept) {
     CellPixelSize dummy = {0};
-    int32_t data[] = {top, bottom};
-    filter_refs(self, data, false, cell_image_row_filter_func, dummy, false, true);
+    const CellImageRowsFilterData data = {.top = top, .bottom = bottom, .kept = kept, .num_kept = num_kept};
+    filter_refs(self, &data, false, cell_image_row_filter_func, dummy, false, true);
+}
+
+typedef struct RegionCellImageFilterData {
+    int32_t row;
+    uint32_t region_id;
+} RegionCellImageFilterData;
+
+static bool
+region_cell_image_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+    const RegionCellImageFilterData *d = data;
+    return !ref->is_virtual_ref && is_cell_image(ref) && ref->smooth_scroll_region == d->region_id && ref->start_row == d->row;
+}
+
+// Remove the cell images in the row that are moving with the smooth scroll region
+void
+grman_remove_region_cell_images(GraphicsManager *self, int32_t row, uint32_t region_id) {
+    CellPixelSize dummy = {0};
+    const RegionCellImageFilterData data = {.row = row, .region_id = region_id};
+    filter_refs(self, &data, false, region_cell_image_filter_func, dummy, false, true);
 }
 
 void

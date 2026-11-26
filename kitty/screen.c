@@ -925,6 +925,20 @@ ssr_uses_history(const Screen *self, const SmoothScrollRegion *r) {
            self->historybuf->ynum > 0;
 }
 
+static unsigned
+ssr_cell_image_region_rows(const Screen *self, const LineBuf *linebuf, uint32_t except, CellImageRegionRows *ans) {
+    // The rows of the vertically scrolling regions on linebuf, other than
+    // except. The cell images moving with them outside these rows are created
+    // from the cells in their overflow buffers, see ssr_render_edge_line_graphics()
+    unsigned n = 0;
+    if (linebuf != self->smooth_scroll.linebuf) return 0;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (!r->horizontal && r->id != except) ans[n++] = (CellImageRegionRows){.id = r->id, .top = (int32_t)r->top, .bottom = (int32_t)r->bottom};
+    }
+    return n;
+}
+
 static index_type
 ssr_width(const SmoothScrollRegion *r) {
     return r->right - r->left;
@@ -4106,7 +4120,28 @@ screen_dirty_line_graphics(Screen *self, const unsigned int top, const unsigned 
             self->is_dirty = true;
         }
     }
-    if (need_to_remove) grman_remove_cell_images(main_buf ? self->main_grman : self->alt_grman, top, bottom);
+    if (need_to_remove) {
+        CellImageRegionRows kept[MAX_SMOOTH_SCROLL_REGIONS];
+        const unsigned num_kept = ssr_cell_image_region_rows(self, linebuf, 0, kept);
+        grman_remove_cell_images(main_buf ? self->main_grman : self->alt_grman, top, bottom, kept, num_kept);
+    }
+}
+
+static void
+ssr_dirty_overflow_line_graphics(Screen *self) {
+    // Render the placeholders in the overflow buffers of the vertically
+    // scrolling regions again, see ssr_render_edge_line_graphics()
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (r->horizontal || !r->overflow) continue;
+        for (index_type y = 0; y < r->overflow->ynum; y++) {
+            LineAttrs *a = r->overflow->line_attrs + y;
+            if (a->has_image_placeholders) {
+                a->has_dirty_text = true;
+                self->is_dirty = true;
+            }
+        }
+    }
 }
 
 void
@@ -4188,6 +4223,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
     if (cmd->unicode_placement) {
         // Make sure the placeholders are redrawn if we add or change a virtual placement.
         screen_dirty_line_graphics(self, 0, self->lines, self->linebuf == self->main_linebuf);
+        ssr_dirty_overflow_line_graphics(self);
     }
 }
 // }}}
@@ -6659,14 +6695,38 @@ ssr_is_column_edge(const Screen *self, int32_t row, index_type x) {
     return false;
 }
 
+static uint32_t
+ssr_history_region_for_row(const Screen *self, int32_t row) {
+    // The region whose overflow buffer above it is the scrollback, when row
+    // is the last line of the scrollback, drawn with the region
+    if (row != -1) return 0;
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (ssr_uses_history(self, r)) return r->id;
+    }
+    return 0;
+}
+
 // Scan the line and create cell images in place of unicode placeholders
-// reserved for image placement.
+// reserved for image placement. The line is at row of the screen and starts
+// at column x. When overflow_region is non-zero, the line is in the overflow
+// buffer of that region and the images are created moving with it.
 static void
-screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
+render_line_graphics(Screen *self, Line *line, int32_t row, index_type x, uint32_t overflow_region) {
     // If there are no image placeholders now, no need to rescan the line.
     if (!line->attrs.has_image_placeholders) return;
     // Remove existing images.
-    grman_remove_cell_images(self->grman, row, row);
+    uint32_t region = overflow_region;
+    if (overflow_region) grman_remove_region_cell_images(self->grman, row, overflow_region);
+    else {
+        // The images of the cells of the screen do not replace the images
+        // in the overflow buffers of regions at the same row, except for the
+        // scrollback, which is the overflow buffer of the region using it
+        region = UNLIKELY(self->smooth_scroll.count) ? ssr_history_region_for_row(self, row) : 0;
+        CellImageRegionRows kept[MAX_SMOOTH_SCROLL_REGIONS];
+        const unsigned num_kept = UNLIKELY(self->smooth_scroll.count) ? ssr_cell_image_region_rows(self, self->linebuf, region, kept) : 0;
+        grman_remove_cell_images(self->grman, row, row, kept, num_kept);
+    }
     // The placeholders might be erased. We will update the attribute.
     line->attrs.has_image_placeholders = false;
     index_type i;
@@ -6713,7 +6773,7 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
         }
         // Runs are split at the edges of smooth scroll regions, so that the
         // parts of the image on either side move with their cells
-        if (continues_run && !(UNLIKELY(self->smooth_scroll.count) && ssr_is_column_edge(self, row, i))) {
+        if (continues_run && !(UNLIKELY(self->smooth_scroll.count) && !overflow_region && ssr_is_column_edge(self, row, i))) {
             // This cell continues the current run.
             run_length++;
         } else {
@@ -6722,7 +6782,17 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
             if (run_length > 0) {
                 uint32_t img_id = prev_img_id_lower24bits | (prev_img_id_higher8bits - 1) << 24;
                 grman_put_cell_image(
-                    self->grman, row, i - run_length, img_id, prev_placement_id, prev_img_col - run_length, prev_img_row - 1, run_length, 1, self->cell_size);
+                    self->grman,
+                    row,
+                    x + i - run_length,
+                    img_id,
+                    prev_placement_id,
+                    prev_img_col - run_length,
+                    prev_img_row - 1,
+                    run_length,
+                    1,
+                    region,
+                    self->cell_size);
             }
             // Start a new run.
             if (cell_first_char(cpu_cell, self->text_cache) == IMAGE_PLACEHOLDER_CHAR) {
@@ -6742,7 +6812,56 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
         // Render the last run.
         uint32_t img_id = prev_img_id_lower24bits | (prev_img_id_higher8bits - 1) << 24;
         grman_put_cell_image(
-            self->grman, row, i - run_length, img_id, prev_placement_id, prev_img_col - run_length, prev_img_row - 1, run_length, 1, self->cell_size);
+            self->grman,
+            row,
+            x + i - run_length,
+            img_id,
+            prev_placement_id,
+            prev_img_col - run_length,
+            prev_img_row - 1,
+            run_length,
+            1,
+            region,
+            self->cell_size);
+    }
+}
+
+static void
+screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
+    render_line_graphics(self, line, row, 0, 0);
+}
+
+static void
+ssr_render_edge_line_graphics(Screen *self) {
+    // The images of the unicode placeholders in the partially visible rows at
+    // the edges of the shifted vertically scrolling regions are created from
+    // the cells of those rows, in their overflow buffers. The images moving
+    // with the region are only replaced when the rows change, as they might
+    // have been changed while in the rectangle without being rendered, for
+    // example, when redrawn inside a synchronized update.
+    if (UNLIKELY(self->paused_rendering.expires_at) || self->scrolled_by || !grman_has_any_images(self->grman)) return;
+    Line line = {.text_cache = self->text_cache};
+    for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
+        SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (r->horizontal || !r->offset || !r->overflow) continue;
+        for (int edge = 0; edge < 2; edge++) {
+            const bool before = edge == 0;
+            if (before && ssr_uses_history(self, r)) {
+                // With pixel scrolling the last line of the scrollback is rendered with the screen
+                if (!pixel_scroll_enabled(self) && self->historybuf->count) {
+                    historybuf_init_line(self->historybuf, 0, &line);
+                    line.xnum = self->columns;
+                    screen_render_line_graphics(self, &line, -1);
+                }
+                continue;
+            }
+            if (!(before ? r->num_before : r->num_after)) continue;
+            const index_type slot = ssr_slot(r, before, 0);
+            linebuf_init_line_at(r->overflow, slot, &line);
+            if (!line.attrs.has_dirty_text) continue;
+            render_line_graphics(self, &line, before ? (int32_t)r->top - 1 : (int32_t)r->bottom, r->left, r->id);
+            r->overflow->line_attrs[slot].has_image_placeholders = line.attrs.has_image_placeholders;
+        }
     }
 }
 
@@ -6772,6 +6891,7 @@ screen_update_only_line_graphics_data(Screen *self) {
             }
         }
     }
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_render_edge_line_graphics(self);
 }
 
 // The paused rendering snapshot holds the rows that were rendered when
@@ -7056,8 +7176,10 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         }
         update_overlay_line_data(self, address);
     }
-    if (self->smooth_scroll_render.num_strip_cells)
+    if (self->smooth_scroll_render.num_strip_cells) {
+        ssr_render_edge_line_graphics(self);
         ssr_update_strip_cell_data(self, address, fonts_data, self->bidi_maps && self->bidi_maps->live ? self->bidi_maps : NULL);
+    }
 }
 
 static bool
