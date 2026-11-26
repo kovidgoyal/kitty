@@ -75,6 +75,28 @@ for globally known sessions.
 You can also close sessions using the :ac:`close_session` action, which closes
 all windows in the session with a single keypress.
 
+.. _moving_to_session:
+
+Moving windows and tabs to another session
+---------------------------------------------
+
+Windows and tabs keep their session when they are moved to another tab or OS
+Window, with :ac:`detach_window`, :ac:`detach_tab` or drag and drop. To change
+the session an existing window or tab belongs to, use the :ac:`set_session`
+action or the :ref:`kitten @ set-session <at-set-session>` remote control
+command. For example::
+
+    # Move the active window to the session named work
+    map f8 set_session work
+    # Move the active tab, with all its windows, to the session named work
+    map f9 set_session --match-tab=state:active work
+
+A window moved alone in its tab takes its tab along with it. A window that
+shares its tab with windows of other sessions stays in the tab, use
+:ac:`detach_window` to first move it to a tab of its own. As with
+:option:`launch --add-to-session`, this is temporary and does not change any
+session files, for that, resave the session.
+
 
 Displaying the currently active session name
 ----------------------------------------------

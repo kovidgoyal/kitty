@@ -751,8 +751,9 @@ class TestSessions(BaseTest):
         from kitty.boss import Boss
         from kitty.layout.interface import Tall
         from kitty.tabs import Tab
+        from kitty.types import DockSpec
         from kitty.window import Window as RealWindow
-        from kitty.window_list import WindowList, reset_group_id_counter
+        from kitty.window_list import WindowGroup, WindowList, reset_group_id_counter
 
         from .layout import Window as LayoutWindow
         from .layout import create_layout
@@ -828,13 +829,18 @@ class TestSessions(BaseTest):
             def sync_os_window_docks(self) -> None:
                 pass
 
+            def __iter__(self) -> Iterator[FakeTab]:
+                return iter(self.tabs)
+
+            update_tab_bar_data = mark_tab_bar_dirty = sync_os_window_docks
+
         class FakeBoss:
             shutting_down = False
             suppress_focus_change_events = nullcontext
 
             def __init__(self) -> None:
                 self.os_window_map: dict[int, FakeTabManager] = {}
-                real = '_move_window_to _move_tab_to _insert_window_in_direction _new_os_window_for_session _cleanup_tab_after_window_removal'
+                real = '_move_window_to _move_tab_to _insert_window_in_direction _new_os_window_for_session _cleanup_tab_after_window_removal _set_session_of'
                 for name in real.split():
                     setattr(self, name, getattr(Boss, name).__get__(self))
 
@@ -847,6 +853,10 @@ class TestSessions(BaseTest):
             def all_tabs(self) -> Iterator[FakeTab]:
                 for tm in self.os_window_map.values():
                     yield from tm.tabs
+
+            @property
+            def all_tab_managers(self) -> Iterator[FakeTabManager]:
+                return iter(self.os_window_map.values())
 
             def mark_os_window_for_close(self, os_window_id: int) -> None:
                 pass
@@ -911,3 +921,131 @@ class TestSessions(BaseTest):
             tab_a.created_in_session_name = boss.os_window_map[1].created_in_session_name = ''
             cast(Boss, boss)._move_window_to(cast(RealWindow, unnamed), 'new')
             self.ae(sessions(unnamed), ('', '', ''))
+
+            # set-session: changing the session of existing windows and tabs in place
+            def set_session(boss: FakeBoss, name: str, windows: tuple[FakeWindow, ...] = (), tabs: tuple[FakeTab, ...] = ()) -> None:
+                cast(Boss, boss)._set_session_of(name, cast(tuple[RealWindow, ...], windows), cast(tuple[Tab, ...], tabs))
+
+            # A window sharing its tab with windows of another session stays in its tab, which keeps its session
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            last = list(tab_a)[-1]
+            set_session(boss, 'x', (unnamed,))
+            self.ae(sessions(unnamed), ('x', 'a', 'a'))
+            self.ae([w.effective_session_name for w in tab_a], ['x', 'b', 'a'])
+            self.ae(last.created_in_session_name, '')
+            # Removing it from its session leaves it in the session of its tab
+            set_session(boss, '', (unnamed,))
+            self.ae(sessions(unnamed), ('a', 'a', 'a'))
+
+            # Moving all windows of a tab moves the tab, and the OS Window when all its tabs are moved
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            set_session(boss, 'x', tuple(tab_a))
+            self.ae(sessions(unnamed), ('x', 'x', 'a'))
+            set_session(boss, 'x', tuple(boss.os_window_map[1].tabs[1]))
+            self.ae(sessions(unnamed), ('x', 'x', 'x'))
+
+            # A window alone in its tab takes the tab and OS Window with it, also when moved to no session
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            (only,) = tuple(tab_b)
+            set_session(boss, 'x', (only,))
+            self.ae(sessions(only), ('x', 'x', 'x'))
+            set_session(boss, '', (only,))
+            self.ae((sessions(only), only.created_in_session_name), (('', '', ''), ''))
+
+            # The tab is moved when the other windows in it are already in the target session,
+            # without changing the session of windows that belong to it through their tab
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            set_session(boss, 'a', (from_b,))
+            self.ae((sessions(from_b), tab_a.created_in_session_name), (('a', 'a', 'a'), 'a'))
+            set_session(boss, 'b', (from_b,))
+            self.ae(sessions(from_b), ('b', 'a', 'a'))
+            set_session(boss, '', (from_b,))
+            self.ae((sessions(from_b), from_b.created_in_session_name), (('a', 'a', 'a'), ''))
+            self.ae([w.created_in_session_name for w in tab_a], ['', '', ''])
+
+            # A whole tab is moved with all its windows, whatever their session
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            set_session(boss, 'x', tabs=(tab_a,))
+            self.ae([w.created_in_session_name for w in tab_a], ['x'] * 3)
+            self.ae(sessions(unnamed), ('x', 'x', 'a'))
+            # Windows in a matched tab are not considered separately
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            set_session(boss, 'x', (unnamed,), (tab_b,))
+            self.ae((sessions(unnamed), sessions(next(iter(tab_b)))), (('x', 'a', 'a'), ('x', 'x', 'x')))
+
+            # Overlays and the docks of a window go with it, the docks of a tab go with the tab
+            def add(
+                tab: FakeTab, session: str, group_of: FakeWindow | None = None, dock: DockSpec | None = None, dock_owner: WindowGroup | None = None
+            ) -> FakeWindow:
+                w = FakeWindow(session)
+                w.change_tab(tab)
+                tab.windows.add_window(cast(RealWindow, w), group_of=cast(RealWindow | None, group_of), dock=dock, dock_owner=dock_owner)
+                return w
+
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            (only,) = tuple(tab_b)
+            overlay = add(tab_b, 'b', group_of=only)
+            group = tab_b.windows.group_for_window(only)
+            window_dock = add(tab_b, '', dock=DockSpec(), dock_owner=group)
+            tab_dock, tab_dock_of_no_session = add(tab_b, 'b', dock=DockSpec()), add(tab_b, '', dock=DockSpec())
+            set_session(boss, 'x', (only,))
+            self.ae(sessions(only), ('x', 'x', 'x'))
+            self.ae([w.effective_session_name for w in (overlay, window_dock, tab_dock, tab_dock_of_no_session)], ['x'] * 4)
+            # A tab dock is not moved with a window that does not take its tab along
+            boss, unnamed, from_b, tab_a, tab_b = world()
+            tab_dock = add(tab_a, '', dock=DockSpec())
+            set_session(boss, 'x', (unnamed,))
+            self.ae((sessions(unnamed), tab_dock.effective_session_name), (('x', 'a', 'a'), 'a'))
+
+    def test_set_session_command(self) -> None:
+        from kitty.boss import Boss
+        from kitty.options.utils import KeyAction, parse_key_action
+        from kitty.rc.base import MatchError, PayloadGetter, RemoteControlErrorWithoutTraceback
+        from kitty.rc.set_session import set_session
+        from kitty.window import Window
+
+        # The action accepts the arguments of the remote control command
+        self.ae(parse_key_action('set_session --match-tab=state:active "my work"'), KeyAction('set_session', ('--match-tab=state:active', 'my work')))
+        self.ae(parse_key_action('set_session !'), KeyAction('set_session', ('!',)))
+
+        calls: list[tuple[str, list[object], list[object]]] = []
+        own, active = SimpleNamespace(effective_session_name='mine'), SimpleNamespace(effective_session_name='act')
+
+        class FakeBoss:
+            active_window: object = active
+
+            def match_windows(self, match: str, self_window: object = None) -> list[object]:
+                return [match] if match != 'none' else []
+
+            def match_tabs(self, match: str) -> list[object]:
+                return [f'tab:{match}'] if match != 'none' else []
+
+            def _set_session_of(self, name: str, ws: list[object], tabs: list[object]) -> None:
+                calls.append((name, ws, tabs))
+
+        def run(payload: dict[str, str | bool], window: object = own, active_window: object = active) -> tuple[str, list[object], list[object]]:
+            calls.clear()
+            boss = FakeBoss()
+            boss.active_window = active_window
+            set_session.response_from_kitty(cast(Boss, boss), cast(Window, window), PayloadGetter(set_session, dict(payload)))
+            return calls[0]
+
+        # By default the active window, with --self the window the command is run in
+        self.ae(run({'session': 'work'}), ('work', [active], []))
+        self.ae(run({'session': 'work', 'self': True}), ('work', [own], []))
+        self.ae(run({'session': 'work', 'self': True}, None), ('work', [active], []))
+        # . is the session of the window the command is run in, else of the active window
+        self.ae(run({'session': '.'}), ('mine', [active], []))
+        self.ae(run({'session': '.'}, None), ('act', [active], []))
+        self.ae(run({'session': '!'}), ('', [active], []))
+        self.ae(run({'session': 'w', 'match': 'id:1'}), ('w', ['id:1'], []))
+        self.ae(run({'session': 'w', 'match_tab': 'id:2'}), ('w', [], ['tab:id:2']))
+        self.ae(run({'session': 'w', 'match': 'id:1', 'match_tab': 'id:2'}), ('w', ['id:1'], ['tab:id:2']))
+        for payload in ({'session': 'w', 'match': 'none'}, {'session': 'w', 'match_tab': 'none'}):
+            with self.assertRaises(MatchError):
+                run(payload)
+        for payload in ({}, {'session': ''}):
+            with self.assertRaises(RemoteControlErrorWithoutTraceback):
+                run(payload)
+        with self.assertRaises(RemoteControlErrorWithoutTraceback):
+            run({'session': '.'}, None, None)

@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from functools import partial
 from gettext import gettext as _
 from gettext import ngettext
+from itertools import chain
 from time import sleep
 from typing import (
     TYPE_CHECKING,
@@ -4063,6 +4064,60 @@ class Boss:
         target_tab.make_active()
         return target_tab
 
+    def _set_session_of(self, session_name: str, windows: Iterable[Window] = (), tabs: Iterable[Tab] = ()) -> None:
+        """
+        Change the session the specified windows and tabs belong to, in place. A tab is moved
+        along with all its windows, including the docks of the tab. A window is moved along with
+        its overlays and the docks attached to it. Its tab, with the docks of the tab, is moved
+        too if every other window in the tab is already in the target session, so that, for
+        example, a window alone in its tab moves completely and a window moved to no session
+        does not keep belonging to the session of its tab. The docks of the OS Window merely
+        follow its active tab and are never moved. An OS Window is moved when all its tabs are.
+        """
+        whole_tabs = dict.fromkeys(tabs)
+        matched: dict[Window, None] = {}
+        for w in windows:
+            if (tab := w.tabref()) is None or tab in whole_tabs:
+                continue
+            if (group := tab.windows.group_for_window(w)) is not None:
+                matched.update(dict.fromkeys(group))
+                if group.dock is None:
+                    for dock in group.docks:
+                        matched.update(dict.fromkeys(dock))
+            else:
+                matched[w] = None
+
+        def windows_of_tab_docks(tab: Tab) -> Iterator[Window]:
+            wl = tab.windows
+            for g in chain(wl.tab_docks, wl.orphaned_docks):
+                yield from g
+
+        # Decided before any change, as windows of no session belong to the session of their tab
+        tabs_of_matched = dict.fromkeys(tab for w in matched if (tab := w.tabref()) is not None)
+        relabeled_tabs: list[Tab] = []
+        for tab in tabs_of_matched:
+            excluded = set(chain(windows_of_tab_docks(tab), tab.windows.iter_os_window_dock_windows()))
+            if all(w.effective_session_name == session_name for w in tab if w not in matched and w not in excluded):
+                relabeled_tabs.append(tab)
+        for w in matched:
+            w.created_in_session_name = session_name
+        for tab in whole_tabs:
+            for w in tab:
+                if not tab.windows.is_in_os_window_dock(w):
+                    w.created_in_session_name = session_name
+        for tab in relabeled_tabs:
+            for w in windows_of_tab_docks(tab):
+                w.created_in_session_name = session_name
+        for tab in chain(whole_tabs, relabeled_tabs):
+            tab.created_in_session_name = session_name
+        for tm in dict.fromkeys(tm for tab in chain(whole_tabs, tabs_of_matched) if (tm := tab.tab_manager_ref()) is not None):
+            if all(t.created_in_session_name == session_name for t in tm):
+                tm.created_in_session_name = session_name
+        # The active session, used by tab_bar_filter, may have changed, so refresh all tab bars
+        for tm in self.all_tab_managers:
+            tm.update_tab_bar_data()
+            tm.mark_tab_bar_dirty()
+
     def choose_entry[_T](
         self,
         title: str,
@@ -4124,6 +4179,24 @@ class Boss:
     )
     def close_session(self, *cmdline: str) -> None:
         close_session_with_confirm(self, cmdline)
+
+    @ac(
+        'session',
+        """
+        Change the session the active window belongs to. Accepts the same arguments as
+        :ref:`kitten @ set-session <at-set-session>`, so it can be used for tabs and
+        other windows as well. See :ref:`moving_to_session` for details.
+        Examples::
+            # Move the active window to the session named work
+            map f1 set_session work
+            # Move the active tab and all its windows to the session named work
+            map f2 set_session --match-tab=state:active work
+            # Remove the active window from its session
+            map f3 set_session !
+    """,
+    )
+    def set_session(self, *args: str) -> None:
+        self.remote_control('set-session', *args)
 
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:

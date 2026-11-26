@@ -150,6 +150,10 @@ Detailed list of changes
   event. Kittens can use it
   via ``Loop.DetailedWheelEvents()``
 
+- Sessions: A new :ac:`set_session` action and :ref:`kitten @ set-session
+  <at-set-session>` remote control command to move existing windows and tabs
+  to another session (:iss:`10941`)
+
 - Initial support for the proposed glyph protocol (:iss:`10872`), allowing
   programs to register their own vector glyphs for codepoints in a reserved
   block and have kitty render them, including multi-color glyphs and gradients
