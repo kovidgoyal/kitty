@@ -232,6 +232,26 @@ leaving it with an offset of ``0``.
 Programs can write to the cells of a region at any time, in the usual way.
 This only changes its contents and does not affect its offset.
 
+The partially visible row at the edge of a region is not on the screen, so it
+cannot be written to directly. To update it, for example, when the line of
+text it shows changes, scroll it back into the rectangle, draw it and scroll
+it out again, in a single synchronized output block, so that only the result
+is shown. Scrolling by the amount that brings the offset back to zero moves it
+into the row at the edge of the rectangle, and scrolling by the opposite
+amount restores the offset. With ``h`` and ``r`` as in the calculation above,
+when ``r`` is positive, the row above the rectangle is partially visible::
+
+    <CSI>?2026h<OSC>2254;a=s:i=1:d=-(h-r)<ST>... draw the top row of the rectangle ...<OSC>2254;a=s:i=1:d=h-r<ST><CSI>?2026l
+
+and when ``r`` is negative, the row below it is::
+
+    <CSI>?2026h<OSC>2254;a=s:i=1:d=h+r<ST>... draw the bottom row of the rectangle ...<OSC>2254;a=s:i=1:d=-(h+r)<ST><CSI>?2026l
+
+with the expressions for ``d`` replaced by their values. The rows at the other
+edge of the rectangle move out of it and back in, unchanged. Images in the
+redrawn row, including ones displayed using Unicode placeholders, are drawn in
+the partially visible row, as for any other row.
+
 When the scroll amounts come from :ref:`detailed scroll events
 <detailed_wheel_events>` in pixels, programs can use the deltas directly, as
 positive deltas scroll towards the end of the content in both protocols. A
