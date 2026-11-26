@@ -1678,7 +1678,7 @@ update_drop_state(_GLFWwindow *window, size_t accepted_count) {
     reply.xclient.data.l[2] = 0; // Specify an empty rectangle
     reply.xclient.data.l[3] = 0;
 
-    if (accepted && dnd.format_priority > 0) {
+    if (accepted) {
         // Reply that we are ready to copy the dragged data
         reply.xclient.data.l[1] = 1; // Accept with no rectangle
         if (_glfw.x11.xdnd.version >= 2) reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
@@ -1813,17 +1813,17 @@ drop_start(_GLFWwindow *window, XEvent *event) {
     dnd.version = event->xclient.data.l[1] >> 24;
     dnd.target_window = window->x11.handle;
     dnd.format[0] = 0;
-    dnd.format_priority = 0;
     update_dnd_mimes(event);
     dnd.from_self = _glfw.x11.drag.source_window != None && dnd.source == _glfw.x11.drag.source_window;
     update_drop_source_actions(window);
-    // Position is not known yet at enter time, will be updated with XdndPosition
+    // XdndEnter carries no position, it arrives with the following
+    // XdndPosition. Use the current pointer position so that the enter event
+    // is not attributed to whatever is at the top left corner of the window.
+    double xpos = 0, ypos = 0;
+    _glfwPlatformGetCursorPos(window, &xpos, &ypos);
     if (reset_dnd_copy_mimes()) {
-        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, 0, 0, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
+        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
         update_drop_state(window, accepted_count);
-        // Set format_priority when the callback accepted at least one MIME type.
-        // dnd.format has already been updated by update_drop_state.
-        if (accepted_count > 0) dnd.format_priority = 1;
     }
 }
 

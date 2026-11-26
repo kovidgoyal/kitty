@@ -252,6 +252,9 @@ Detailed list of changes
   when a handler, such as a drag and drop or DBus one, stops watching a file
   descriptor while events are being processed
 
+- X11: Fix dropping files into programs that accept drops, such as the
+  :doc:`dnd kitten </kittens/dnd>`, failing silently (:iss:`10944`)
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
