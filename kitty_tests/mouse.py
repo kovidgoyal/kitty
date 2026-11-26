@@ -745,11 +745,13 @@ class TestMouse(BaseTest):
         self.set_options({'pixel_scroll': False, 'wheel_scroll_multiplier': -2.25})
         ae(['0;120:1;1:2250;1;0;2'], y=-1, source=WHEEL)
         ae(['0;120:1;1:2250;1;0;0'], y=-1, source=WHEEL, inverted=True)
-        # The time of the event, as seconds:microseconds since the mode was turned on
-        self.ae(scroll(y=-1, source=WHEEL, t=1520042), '\x1b[>4:S;1;1;0;0;0;1;1:520042;0;120:1;1:2250;1;0;2M')
+        # The time of the event, as seconds:microseconds since the mode was
+        # turned on, rounded down to a whole millisecond
+        self.ae(scroll(y=-1, source=WHEEL, t=1520042), '\x1b[>4:S;1;1;0;0;0;1;1:520000;0;120:1;1:2250;1;0;2M')
         # Times never decrease, even if events arrive out of order
-        self.ae(scroll(y=-1, source=WHEEL, t=1000), '\x1b[>4:S;1;1;0;0;0;1;1:520042;0;120:1;1:2250;1;0;2M')
-        self.ae(scroll(y=-1, source=WHEEL, t=1520043), '\x1b[>4:S;1;1;0;0;0;1;1:520043;0;120:1;1:2250;1;0;2M')
+        self.ae(scroll(y=-1, source=WHEEL, t=1000), '\x1b[>4:S;1;1;0;0;0;1;1:520000;0;120:1;1:2250;1;0;2M')
+        self.ae(scroll(y=-1, source=WHEEL, t=1520999), '\x1b[>4:S;1;1;0;0;0;1;1:520000;0;120:1;1:2250;1;0;2M')
+        self.ae(scroll(y=-1, source=WHEEL, t=1521000), '\x1b[>4:S;1;1;0;0;0;1;1:521000;0;120:1;1:2250;1;0;2M')
         # Unreported events do not affect the time
         self.ae(scroll(y=0.25, offset_type=HIGHRES, source=FINGER, phase=CHANGED, t=9000000), '')
         self.ae(scroll(y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED, t=2000000), '\x1b[>4:S;1;1;0;0;0;1;2:0;0;1:1;2:1000;2;2;0M')
@@ -757,10 +759,10 @@ class TestMouse(BaseTest):
         # at zero, and the mouse has to enter the window again
         parse_bytes(s, b'\x1b[?5523l\x1b[?5523h')
         self.ae(scroll(y=-1, source=WHEEL, t=-5000), '\x1b[>5:S;1;1;0;0;0;1;0:0M\x1b[>4:S;1;1;0;0;0;1;0:0;0;120:1;1:2250;1;0;2M')
-        self.ae(scroll(y=-1, source=WHEEL, t=7), '\x1b[>4:S;1;1;0;0;0;1;0:7;0;120:1;1:2250;1;0;2M')
+        self.ae(scroll(y=-1, source=WHEEL, t=7300), '\x1b[>4:S;1;1;0;0;0;1;0:7000;0;120:1;1:2250;1;0;2M')
         # Setting the mode while it is on does not reset the origin
         parse_bytes(s, b'\x1b[?5523h')
-        self.ae(scroll(y=-1, source=WHEEL, t=3), '\x1b[>4:S;1;1;0;0;0;1;0:7;0;120:1;1:2250;1;0;2M')
+        self.ae(scroll(y=-1, source=WHEEL, t=3000), '\x1b[>4:S;1;1;0;0;0;1;0:7000;0;120:1;1:2250;1;0;2M')
         # Turning the mode off restores legacy reporting
         parse_bytes(s, b'\x1b[?1006h\x1b[?5523l')
         self.assertFalse(s.detailed_mouse_events)

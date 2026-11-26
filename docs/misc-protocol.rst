@@ -230,13 +230,16 @@ The common parameters are:
 ``t``
     The time of the event, as ``seconds:microseconds``, where ``seconds`` is a
     non-negative integer and ``microseconds`` is from ``0`` to ``999999``.
+    Terminals may report times with less precision than a microsecond, kitty
+    reports them rounded down to a whole millisecond, so ``microseconds`` is
+    always a multiple of ``1000``.
     Only the differences between the times of events are meaningful, for
     instance, to calculate the velocity of a scroll gesture for momentum
     scrolling, without being affected by delays in delivering the events to
     the program. The time is that of the input event from the operating
     system, where available, not the time the terminal processed or sent it.
     The times of all types of events are on the same clock. kitty uses the
-    time from the operating system for events processed up to one second
+    time from the operating system for events processed up to thirty seconds
     after they happened, later ones, for example, because kitty was
     unresponsive, have the time they were processed. Events that do not come
     from an input event of the operating system, such as momentum scrolling
@@ -246,8 +249,7 @@ The common parameters are:
     does not report it, the end has the time of the last event of the
     gesture. The origin is arbitrary, kitty uses the time the mode was turned
     on. The time never decreases from one event to the next while the mode
-    stays on. On platforms that provide event times only in milliseconds, the
-    differences between them are accurate only to a millisecond.
+    stays on.
 
 The mouse buttons are numbered as ``1`` left, ``2`` middle, ``3`` right,
 ``4`` back, ``5`` forward and ``6`` and higher for any additional buttons.
@@ -418,10 +420,10 @@ A few examples, for cells ten pixels wide and twenty pixels high, with the
 escape code introducer ``CSI >`` and the final ``M`` omitted::
 
     1:101;10;5;95;83;1;1;4:16000;1;1                  the left button is pressed in the cell (10, 5)
-    3:102;11;5;104;83;1;1;4:24310                     the mouse moves to the next cell, with the left button held
-    3:103;1;5;30:1;83;1;1;4:40002                     ... and out of the window, thirty pixels to the left of the first cell
-    2:104;1;5;30:1;83;0;1;4:52110;1;1                 the left button is released outside the window
-    6:105;1;5;30:1;83;0;1;4:52110                     ... so the mouse leaves the window
+    3:102;11;5;104;83;1;1;4:24000                     the mouse moves to the next cell, with the left button held
+    3:103;1;5;30:1;83;1;1;4:40000                     ... and out of the window, thirty pixels to the left of the first cell
+    2:104;1;5;30:1;83;0;1;4:52000;1;1                 the left button is released outside the window
+    6:105;1;5;30:1;83;0;1;4:52000                     ... so the mouse leaves the window
     5:106;1;5;2:1;83;0;1;5:300000                     the mouse enters the window, in the padding to the left of the first cell
     1:107;10;5;95;83;4;5;7:100000;3;1                 the right button is pressed with ctrl held
     2:108;10;5;95;83;0;5;7:180000;3;1                 the right button is released
@@ -430,9 +432,9 @@ escape code introducer ``CSI >`` and the final ``M`` omitted::
     4:111;10;5;95;83;0;1;9:520000;0;120;1:5000;1;0;0  one click of a wheel, downwards
     4:112;10;5;95;83;0;1;9:830000;0;30:1;1:5000;1;0;0 a quarter click of a high resolution wheel, upwards
     4:113;10;5;95;83;0;1;12:0;0;0;2:1000;2;1;0        two fingers start a scroll on a touchpad
-    4:114;10;5;95;83;0;1;12:8453;0;42:1;2:1000;2;2;0  the fingers move upwards by 42 pixels, 8.5 ms later
-    4:115;10;5;95;83;0;1;12:16790;0;0;2:1000;2;3;0    the fingers are lifted
-    4:116;10;5;95;83;0;1;12:17002;0;35:1;2:1000;2;1;1 momentum scrolling begins
+    4:114;10;5;95;83;0;1;12:8000;0;42:1;2:1000;2;2;0  the fingers move upwards by 42 pixels, 8 ms later   
+    4:115;10;5;95;83;0;1;12:16000;0;0;2:1000;2;3;0    the fingers are lifted
+    4:116;10;5;95;83;0;1;12:17000;0;35:1;2:1000;2;1;1 momentum scrolling begins
     6:117;10;5;95;83;0;1;15:0                         the mouse leaves the window
 
 .. _bidi_support:

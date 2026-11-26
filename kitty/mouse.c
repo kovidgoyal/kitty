@@ -800,13 +800,14 @@ format_detailed_signed(char *buf, size_t sz, long long val) {
 }
 
 // Returns the time of an event as reported to the program, in microseconds
-// since the mode was turned on. Reported times never decrease, as events can
-// come from different sources, such as the system and the synthesized momentum
-// scrolling, whose clocks need not agree.
+// since the mode was turned on, rounded down to a whole millisecond, so that
+// programs do not get precise timings of the user's input. Reported times never
+// decrease, as events can come from different sources, such as the system and
+// the synthesized momentum scrolling, whose clocks need not agree.
 static unsigned long long
 detailed_event_time(Screen *screen, monotonic_t timestamp) {
     const monotonic_t since_origin = timestamp - screen->mouse_events.clock_origin;
-    unsigned long long ans = since_origin > 0 ? (unsigned long long)(since_origin / 1000) : 0;
+    unsigned long long ans = since_origin > 0 ? (unsigned long long)(since_origin / 1000000) * 1000u : 0;
     if (ans < screen->mouse_events.last_reported_time) ans = screen->mouse_events.last_reported_time;
     screen->mouse_events.last_reported_time = ans;
     return ans;
