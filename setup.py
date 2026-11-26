@@ -76,10 +76,6 @@ link_targets: List[str] = []
 macos_universal_arches = ('arm64', 'x86_64') if is_arm else ('x86_64', 'arm64')
 
 
-def null_func() -> None:
-    return None
-
-
 class CompileKey(NamedTuple):
     src: str
     dest: str
@@ -89,7 +85,7 @@ class Command(NamedTuple):
     desc: str
     cmd: Sequence[str]
     is_newer_func: Callable[[], bool]
-    on_success: Callable[[], None] = null_func
+    on_success: Optional[Callable[[], None]] = None
     key: Optional[CompileKey] = None
     keyfile: Optional[str] = None
 
@@ -223,14 +219,11 @@ class CompilationDatabase:
         keyfile: Optional[str] = None,
         is_post_link: bool = False,
     ) -> None:
-        def no_op() -> None:
-            pass
-
         if is_post_link:
             queue = self.post_link_commands
         else:
             queue = self.link_commands if keyfile is None else self.compile_commands
-        queue.append(Command(desc, cmd, is_newer_func, on_success or no_op, key, keyfile))
+        queue.append(Command(desc, cmd, is_newer_func, on_success, key, keyfile))
 
     def build_all(self) -> None:
 
@@ -1750,29 +1743,6 @@ def build_static_binaries(args: Options, launcher_dir: str) -> None:
         for arch in arches_:
             print('Cross compiling static kitten for:', os_, arch)
             build_static_kittens(args, launcher_dir, args.dir_for_static_binaries, for_platform=(os_, arch))
-
-
-def read_bool_options(path: str = 'kitty/cli.py') -> Tuple[str, ...]:
-    with open(os.path.join(src_base, path)) as f:
-        raw = f.read()
-    m = re.search(r"^\s*OPTIONS = r?'''(.+?)'''", raw, flags=re.MULTILINE | re.DOTALL)
-    assert m is not None
-    ans: List[str] = []
-    in_option: List[str] = []
-    prev_line_was_blank = False
-    for line in m.group(1).splitlines():
-        if in_option:
-            is_blank = not line.strip()
-            if is_blank:
-                if prev_line_was_blank:
-                    in_option = []
-            prev_line_was_blank = is_blank
-            if line.startswith('type=bool-'):
-                ans.extend(x.lstrip('-') for x in in_option)
-        else:
-            if line.startswith('-'):
-                in_option = line.strip().split()
-    return tuple(ans)
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> str:
