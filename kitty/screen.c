@@ -5017,7 +5017,7 @@ scroll_past_image(Screen *self, unsigned int count) {
     const bool add_to_history = self->linebuf == self->main_linebuf && self->margin_top == 0;
     unsigned int n = MIN(count, self->lines);
     count -= n;
-    while (n-- > 0) { INDEX_UP(add_to_history); }
+    screen_scroll(self, n);
     if (!count) return;
     // The scroll region is now blank so further scrolling only adds blank lines
     // to the history and moves images. Bound the number of blank lines as the
