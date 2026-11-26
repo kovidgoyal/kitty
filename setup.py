@@ -22,7 +22,7 @@ from contextlib import suppress
 from enum import Enum
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Any, Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Sequence, Tuple, Union, cast
 
 src_base = os.path.dirname(os.path.abspath(__file__))
 glfw_base = os.path.join(src_base, 'glfw')
@@ -257,7 +257,6 @@ class CompilationDatabase:
         return database.get(command.key) != command.cmd
 
     def __enter__(self) -> 'CompilationDatabase':
-        self.all_keys: Set[CompileKey] = set()
         self.dbpath = os.path.abspath(os.path.join(build_dir, 'compile_commands.json'))
         self.linkdbpath = os.path.join(os.path.dirname(self.dbpath), 'link_commands.json')
         try:
@@ -276,9 +275,6 @@ class CompilationDatabase:
         return self
 
     def __exit__(self, *a: object) -> None:
-        cdb = self.db
-        for key in set(cdb) - self.all_keys:
-            del cdb[key]
         compilation_database = [
             {'file': c.key.src, 'arguments': c.cmd, 'directory': src_base, 'output': c.key.dest} for c in self.compile_commands if c.key is not None
         ]
