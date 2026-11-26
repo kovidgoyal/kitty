@@ -452,9 +452,16 @@ touch_send_to_window(GLFWid window_id, GLFWTouchEventType type, TouchReportMode 
     _glfwInputTouch(window, &ev);
 }
 
+static void touchHandleFrame(void *data, struct wl_touch *wl_touch);
+
 static void
 touchHandleDown(
     void *data UNUSED, struct wl_touch *wl_touch UNUSED, uint32_t serial, uint32_t time, struct wl_surface *surface, int32_t id, wl_fixed_t sx, wl_fixed_t sy) {
+    // The id of a point is released by its up event and may be reused by a
+    // down in the same frame, so finish off the released point before
+    // accepting the new one
+    const ssize_t existing = touch_point_index(id);
+    if (existing > -1 && touch.points[existing].state == GLFW_TOUCH_POINT_RELEASED) touchHandleFrame(data, wl_touch);
     // A finger landing stops any scroll that is coasting, as on every touch system
     glfw_cancel_momentum_scroll();
     csd_drop_stale_touch(id);

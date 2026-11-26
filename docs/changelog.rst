@@ -248,6 +248,10 @@ Detailed list of changes
   too fast or the mouse wheel not scrolling, when both a touchpad and a mouse
   wheel are used (:iss:`10938`)
 
+- Wayland: Fix a touch being ignored when the compositor reuses the id of a
+  touch point that was lifted, before ending the frame of the lift
+  (:iss:`10947`)
+
 - Linux: Fix events for file descriptors being dispatched to the wrong handler
   when a handler, such as a drag and drop or DBus one, stops watching a file
   descriptor while events are being processed
