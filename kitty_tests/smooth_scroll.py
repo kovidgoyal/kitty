@@ -534,8 +534,8 @@ class TestSmoothScroll(BaseTest):
         ae = self.ae
         cw, ch = 10, H
 
-        def setup(top=2, left=2, right=8, render=True, private=False):
-            s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=8)
+        def setup(top=2, left=2, right=8, render=True, private=False, pixel_scroll=True):
+            s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, cols=10, lines=8, options={'pixel_scroll': pixel_scroll})
             for i in (42, 43):
                 put_image(s, cw, ch, num_cols=1, num_lines=1, unicode_placeholder=1, id=i)
             put_image(s, cw, ch, id=44, a='t')  # no virtual placement yet
@@ -584,6 +584,7 @@ class TestSmoothScroll(BaseTest):
             {'render': False},
             {'left': 0, 'right': 10},
             {'top': 0, 'left': 0, 'right': 10},  # the scrollback is the overflow buffer above the rectangle
+            {'top': 0, 'left': 0, 'right': 10, 'pixel_scroll': False},  # the last line of the scrollback is only drawn in the strip
             {'top': 0, 'left': 0, 'right': 10, 'private': True},
         ):
             top = kw.get('top', 2)
@@ -616,6 +617,20 @@ class TestSmoothScroll(BaseTest):
             # and changing the virtual placement of another image does not remove them
             send_command(s, 'a=p,i=42,U=1,c=1,r=1')
             ae(images(), [(edge, 44, True)], kw)
+
+        # Images in the scrollback from before a region using it was defined do
+        # not move with it, as their rows are not taken back from the scrollback
+        for pixel_scroll in (True, False):
+            s, draw, images = setup(top=0, left=0, right=10, pixel_scroll=pixel_scroll)
+            s.smooth_scroll_remove(1)  # the placeholder row stays in the scrollback
+            self.assertTrue(s.smooth_scroll_define(1, 0, 0, 10, 4))
+            ae(images(), [])
+            ae(s.smooth_scroll(1, -5), -1)
+            ae(images(), [], pixel_scroll)
+            ae(s.smooth_scroll(1, 5), 1)
+            ae(s.smooth_scroll(1, 5), 1)
+            ae(s.smooth_scroll(1, -10), -2)
+            ae(images(), [], pixel_scroll)
 
     def test_smooth_scroll_pause_rendering(self):
         ae = self.ae

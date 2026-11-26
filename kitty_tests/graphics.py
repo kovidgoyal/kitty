@@ -120,11 +120,11 @@ def load_helpers(self):
     return s, g, pl, sl
 
 
-def put_helpers(self, cw, ch, cols=10, lines=5, scrollback=5):
+def put_helpers(self, cw, ch, cols=10, lines=5, scrollback=5, options=None):
     iid = 0
 
     def create_screen():
-        s = self.create_screen(cols, lines, scrollback=scrollback, cell_width=cw, cell_height=ch)
+        s = self.create_screen(cols, lines, scrollback=scrollback, cell_width=cw, cell_height=ch, options=options)
         return s, 2 / s.columns, 2 / s.lines
 
     def put_cmd(

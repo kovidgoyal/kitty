@@ -4133,6 +4133,10 @@ ssr_dirty_overflow_line_graphics(Screen *self) {
     // scrolling regions again, see ssr_render_edge_line_graphics()
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
         const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
+        if (ssr_uses_history(self, r) && self->historybuf->count) {
+            historybuf_mark_line_dirty(self->historybuf, 0);
+            self->is_dirty = true;
+        }
         if (r->horizontal || !r->overflow) continue;
         for (index_type y = 0; y < r->overflow->ynum; y++) {
             LineAttrs *a = r->overflow->line_attrs + y;
@@ -6698,11 +6702,13 @@ ssr_is_column_edge(const Screen *self, int32_t row, index_type x) {
 static uint32_t
 ssr_history_region_for_row(const Screen *self, int32_t row) {
     // The region whose overflow buffer above it is the scrollback, when row
-    // is the last line of the scrollback, drawn with the region
-    if (row != -1) return 0;
+    // is the last line of the scrollback and it moved there from the region.
+    // Other lines of the scrollback, and their images, never move with it, see
+    // ssr_shift_by_one_row().
+    if (row != -1 || !self->historybuf->count) return 0;
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
         const SmoothScrollRegion *r = self->smooth_scroll.regions + i;
-        if (ssr_uses_history(self, r)) return r->id;
+        if (ssr_uses_history(self, r)) return r->pushed_to_history ? r->id : 0;
     }
     return 0;
 }
@@ -6832,13 +6838,15 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
 }
 
 static void
-ssr_render_edge_line_graphics(Screen *self) {
+ssr_render_edge_line_graphics(Screen *self, bool mark_clean) {
     // The images of the unicode placeholders in the partially visible rows at
     // the edges of the shifted vertically scrolling regions are created from
     // the cells of those rows, in their overflow buffers. The images moving
     // with the region are only replaced when the rows change, as they might
     // have been changed while in the rectangle without being rendered, for
-    // example, when redrawn inside a synchronized update.
+    // example, when redrawn inside a synchronized update. The rows are marked
+    // clean when their text is rendered, by ssr_update_strip_cell_data(),
+    // unless mark_clean is true.
     if (UNLIKELY(self->paused_rendering.expires_at) || self->scrolled_by || !grman_has_any_images(self->grman)) return;
     Line line = {.text_cache = self->text_cache};
     for (unsigned i = 0; i < self->smooth_scroll.count; i++) {
@@ -6850,8 +6858,10 @@ ssr_render_edge_line_graphics(Screen *self) {
                 // With pixel scrolling the last line of the scrollback is rendered with the screen
                 if (!pixel_scroll_enabled(self) && self->historybuf->count) {
                     historybuf_init_line(self->historybuf, 0, &line);
+                    if (!line.attrs.has_dirty_text) continue;
                     line.xnum = self->columns;
                     screen_render_line_graphics(self, &line, -1);
+                    if (mark_clean) historybuf_mark_line_clean(self->historybuf, 0);
                 }
                 continue;
             }
@@ -6861,6 +6871,7 @@ ssr_render_edge_line_graphics(Screen *self) {
             if (!line.attrs.has_dirty_text) continue;
             render_line_graphics(self, &line, before ? (int32_t)r->top - 1 : (int32_t)r->bottom, r->left, r->id);
             r->overflow->line_attrs[slot].has_image_placeholders = line.attrs.has_image_placeholders;
+            if (mark_clean) linebuf_mark_line_clean(r->overflow, slot);
         }
     }
 }
@@ -6891,7 +6902,7 @@ screen_update_only_line_graphics_data(Screen *self) {
             }
         }
     }
-    if (UNLIKELY(self->smooth_scroll.count)) ssr_render_edge_line_graphics(self);
+    if (UNLIKELY(self->smooth_scroll.count)) ssr_render_edge_line_graphics(self, true);
 }
 
 // The paused rendering snapshot holds the rows that were rendered when
@@ -7177,7 +7188,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         update_overlay_line_data(self, address);
     }
     if (self->smooth_scroll_render.num_strip_cells) {
-        ssr_render_edge_line_graphics(self);
+        ssr_render_edge_line_graphics(self, false);
         ssr_update_strip_cell_data(self, address, fonts_data, self->bidi_maps && self->bidi_maps->live ? self->bidi_maps : NULL);
     }
 }
