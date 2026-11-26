@@ -4183,9 +4183,10 @@ class Boss:
     @ac(
         'session',
         """
-        Change the session the active window belongs to. Accepts the same arguments as
-        :ref:`kitten @ set-session <at-set-session>`, so it can be used for tabs and
-        other windows as well. See :ref:`moving_to_session` for details.
+        Change the session the active window belongs to.
+        Accepts the same arguments as :ref:`kitten @ set-session <at-set-session>`,
+        so it can be used for tabs and other windows as well. See :ref:`moving_to_session` for details.
+
         Examples::
             # Move the active window to the session named work
             map f1 set_session work
