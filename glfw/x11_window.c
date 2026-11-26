@@ -1728,6 +1728,7 @@ free_dnd_data(void) {
     dnd.source = None;
     dnd.target_window = None;
     dnd.drag_accepted = false;
+    dnd.dropped = false;
     free_dnd_mimes();
     if (dnd.selection_requests) {
         for (size_t i = 0; i < dnd.selection_requests_count; i++) {
@@ -1806,11 +1807,12 @@ update_drop_source_actions(_GLFWwindow *window) {
 static void
 drop_start(_GLFWwindow *window, XEvent *event) {
     // A drag operation has entered the window
-    if (dnd.version > _GLFW_XDND_VERSION) return;
+    const int version = event->xclient.data.l[1] >> 24;
+    if (version > _GLFW_XDND_VERSION) return;
     debug_input("Drop start on window: %llu\n", window->id);
     free_dnd_data();
     dnd.source = event->xclient.data.l[0];
-    dnd.version = event->xclient.data.l[1] >> 24;
+    dnd.version = version;
     dnd.target_window = window->x11.handle;
     dnd.format[0] = 0;
     update_dnd_mimes(event);
@@ -3242,7 +3244,7 @@ _glfwPlatformPostEmptyEvent(void) {
 void
 _glfwPlatformGetCursorPos(_GLFWwindow *window, double *xpos, double *ypos) {
     Window root, child;
-    int rootX, rootY, childX, childY;
+    int rootX = 0, rootY = 0, childX = 0, childY = 0;
     unsigned int mask;
 
     XQueryPointer(_glfw.x11.display, window->x11.handle, &root, &child, &rootX, &rootY, &childX, &childY, &mask);
