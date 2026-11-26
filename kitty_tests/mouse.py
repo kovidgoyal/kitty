@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import re
 from functools import partial
 from time import sleep
 
@@ -12,14 +13,21 @@ from kitty.fast_data_types import (
     GLFW_MOD_SHIFT,
     GLFW_MOD_SUPER,
     GLFW_MOUSE_BUTTON_LEFT,
+    GLFW_MOUSE_BUTTON_MIDDLE,
     GLFW_MOUSE_BUTTON_RIGHT,
     MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
+    PRESS,
+    RELEASE,
     create_mock_window,
     mock_mouse_selection,
     send_mock_mouse_event_to_window,
+    send_mock_mouse_events,
     send_mock_scroll_event_to_window,
     set_options,
     update_mock_pointer,
+)
+from kitty.fast_data_types import (
+    send_mouse_event as send_simulated_mouse_event,
 )
 
 from .base import BaseTest, parse_bytes
@@ -39,6 +47,11 @@ def send_mouse_event(
     ix = int(x)
     in_left_half_of_cell = x - ix < 0.5
     return send_mock_mouse_event_to_window(window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell, pixel_x, pixel_y)
+
+
+def strip_serials(text):
+    # Replaces the serials of detailed mouse events with S
+    return re.sub(r'(\x1b\[>\d+):\d+;', r'\1:S;', text)
 
 
 class TestMouse(BaseTest):
@@ -690,69 +703,67 @@ class TestMouse(BaseTest):
             # t is the time of the event in microseconds since the mode was turned on
             s.callbacks.wtcbuf = b''
             send_mock_scroll_event_to_window(w, offset_type, float(x), float(y), mods, momentum, source, phase, inverted, t)
-            return s.callbacks.wtcbuf.decode()
+            return strip_serials(s.callbacks.wtcbuf.decode())
 
-        def ae(expected, **kw):
-            self.ae(scroll(**kw), ''.join(f'\x1b[>1;1;{e}M' for e in expected))
+        def ae(expected, mods=1, t='0:0', **kw):
+            # The common parameters: the position of the mouse, the buttons held, the modifiers and the time
+            self.ae(scroll(mods=kw.pop('glfw_mods', 0), **kw), ''.join(f'\x1b[>4:S;1;1;0;0;0;{mods};{t};{e}M' for e in expected))
 
         # Without mouse tracking the mode has no effect and the scrollback scrolls
         parse_bytes(s, b'\x1b[?5523h')
-        self.assertTrue(s.wheel_events)
-        ae([], y=1)
+        self.assertTrue(s.detailed_mouse_events)
+        self.ae(scroll(y=1), '')
         parse_bytes(s, b'\x1b[?1000h')
         # Wheels report whole clicks as 120, positive is downwards, the
-        # multiplier is only a hint and the deltas are not repeated
-        ae(['0;-360;1:5000;1;0;0;1;0'], y=3, source=WHEEL)
-        ae(['0;120;1:5000;1;0;0;1;0'], y=-1, source=WHEEL)
+        # multiplier is only a hint and the deltas are not repeated. As the
+        # mouse never entered the window, entering is reported first.
+        self.ae(scroll(y=3, source=WHEEL), '\x1b[>5:S;1;1;0;0;0;1;0:0M\x1b[>4:S;1;1;0;0;0;1;0:0;0;360:1;1:5000;1;0;0M')
+        ae(['0;120;1:5000;1;0;0'], y=-1, source=WHEEL)
         # Horizontal scrolling, positive is rightwards
-        ae(['-120;0;1:5000;1;0;0;1;0'], x=1, source=WHEEL)
+        ae(['120:1;0;1:5000;1;0;0'], x=1, source=WHEEL)
         # High resolution wheels
-        ae(['0;30;1:5000;0;0;0;1;0'], y=-30, offset_type=V120)
+        ae(['0;30;1:5000;0;0;0'], y=-30, offset_type=V120)
         # Modifiers use the keyboard protocol encoding
-        ae(['0;120;1:5000;0;0;0;7;0'], y=-1, mods=GLFW_MOD_CONTROL | GLFW_MOD_ALT)
-        ae(['0;120;1:5000;0;0;0;65;0'], y=-1, mods=GLFW_MOD_CAPS_LOCK)
+        ae(['0;120;1:5000;0;0;0'], y=-1, glfw_mods=GLFW_MOD_CONTROL | GLFW_MOD_ALT, mods=7)
+        ae(['0;120;1:5000;0;0;0'], y=-1, glfw_mods=GLFW_MOD_CAPS_LOCK, mods=65)
         # A touchpad gesture with fractional pixels, which are accumulated
-        ae(['0;0;2:1500;2;1;0;1;0'], y=0, offset_type=HIGHRES, source=FINGER, phase=BEGAN)
-        ae(['3;-2;2:1500;2;2;0;1;0'], x=-3.5, y=2.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
-        ae(['1;-1;2:1500;2;2;0;1;0'], x=-0.5, y=0.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['0;0;2:1500;2;1;0'], y=0, offset_type=HIGHRES, source=FINGER, phase=BEGAN)
+        ae(['3;2:1;2:1500;2;2;0'], x=-3.5, y=2.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['1;1:1;2:1500;2;2;0'], x=-0.5, y=0.5, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
         # Less than a pixel in the same phase has nothing to report
         ae([], y=0.25, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
-        ae(['0;-1;2:1500;2;2;0;1;0'], y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
+        ae(['0;1:1;2:1500;2;2;0'], y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED)
         # A change of phase is always reported
-        ae(['0;0;2:1500;2;3;0;1;0'], offset_type=HIGHRES, source=FINGER, phase=ENDED)
+        ae(['0;0;2:1500;2;3;0'], offset_type=HIGHRES, source=FINGER, phase=ENDED)
         # Momentum
-        ae(['0;-10;2:1500;2;1;1;1;0'], y=10, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_BEGAN)
-        ae(['0;-5;2:1500;2;2;1;1;0'], y=5, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ACTIVE)
-        ae(['0;0;2:1500;2;3;1;1;0'], offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ENDED)
+        ae(['0;10:1;2:1500;2;1;1'], y=10, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_BEGAN)
+        ae(['0;5:1;2:1500;2;2;1'], y=5, offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ACTIVE)
+        ae(['0;0;2:1500;2;3;1'], offset_type=HIGHRES, source=FINGER, momentum=MOMENTUM_ENDED)
         # Natural scrolling
-        ae(['0;-10;2:1500;2;1;2;1;0'], y=10, offset_type=HIGHRES, source=FINGER, phase=BEGAN, inverted=True)
+        ae(['0;10:1;2:1500;2;1;2'], y=10, offset_type=HIGHRES, source=FINGER, phase=BEGAN, inverted=True)
         # A negative multiplier reverses the deltas and the inverted flag
         self.set_options({'pixel_scroll': False, 'wheel_scroll_multiplier': -2.25})
-        ae(['0;-120;1:2250;1;0;2;1;0'], y=-1, source=WHEEL)
-        ae(['0;-120;1:2250;1;0;0;1;0'], y=-1, source=WHEEL, inverted=True)
-        # SGR pixel mode reports the position in pixels
-        parse_bytes(s, b'\x1b[?1016h')
-        self.ae(scroll(y=-1, source=WHEEL), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;0M')
-        # The time of the event, in microseconds since the mode was turned on
-        self.ae(scroll(y=-1, source=WHEEL, t=1520042), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;1520042M')
+        ae(['0;120:1;1:2250;1;0;2'], y=-1, source=WHEEL)
+        ae(['0;120:1;1:2250;1;0;0'], y=-1, source=WHEEL, inverted=True)
+        # The time of the event, as seconds:microseconds since the mode was turned on
+        self.ae(scroll(y=-1, source=WHEEL, t=1520042), '\x1b[>4:S;1;1;0;0;0;1;1:520042;0;120:1;1:2250;1;0;2M')
         # Times never decrease, even if events arrive out of order
-        self.ae(scroll(y=-1, source=WHEEL, t=1000), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;1520042M')
-        self.ae(scroll(y=-1, source=WHEEL, t=1520043), '\x1b[>0;0;0;-120;1:2250;1;0;2;1;1520043M')
+        self.ae(scroll(y=-1, source=WHEEL, t=1000), '\x1b[>4:S;1;1;0;0;0;1;1:520042;0;120:1;1:2250;1;0;2M')
+        self.ae(scroll(y=-1, source=WHEEL, t=1520043), '\x1b[>4:S;1;1;0;0;0;1;1:520043;0;120:1;1:2250;1;0;2M')
         # Unreported events do not affect the time
-        parse_bytes(s, b'\x1b[?1016l')
         self.ae(scroll(y=0.25, offset_type=HIGHRES, source=FINGER, phase=CHANGED, t=9000000), '')
-        self.ae(scroll(y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED, t=2000000), '\x1b[>1;1;0;-1;2:1000;2;2;0;1;2000000M')
-        # Turning the mode on again resets the origin, events from before it are at zero
+        self.ae(scroll(y=0.75, offset_type=HIGHRES, source=FINGER, phase=CHANGED, t=2000000), '\x1b[>4:S;1;1;0;0;0;1;2:0;0;1:1;2:1000;2;2;0M')
+        # Turning the mode on again resets the origin, events from before it are
+        # at zero, and the mouse has to enter the window again
         parse_bytes(s, b'\x1b[?5523l\x1b[?5523h')
-        self.ae(scroll(y=-1, source=WHEEL, t=-5000), '\x1b[>1;1;0;-120;1:2250;1;0;2;1;0M')
-        self.ae(scroll(y=-1, source=WHEEL, t=7), '\x1b[>1;1;0;-120;1:2250;1;0;2;1;7M')
+        self.ae(scroll(y=-1, source=WHEEL, t=-5000), '\x1b[>5:S;1;1;0;0;0;1;0:0M\x1b[>4:S;1;1;0;0;0;1;0:0;0;120:1;1:2250;1;0;2M')
+        self.ae(scroll(y=-1, source=WHEEL, t=7), '\x1b[>4:S;1;1;0;0;0;1;0:7;0;120:1;1:2250;1;0;2M')
         # Setting the mode while it is on does not reset the origin
         parse_bytes(s, b'\x1b[?5523h')
-        self.ae(scroll(y=-1, source=WHEEL, t=3), '\x1b[>1;1;0;-120;1:2250;1;0;2;1;7M')
-        parse_bytes(s, b'\x1b[?1016h')
+        self.ae(scroll(y=-1, source=WHEEL, t=3), '\x1b[>4:S;1;1;0;0;0;1;0:7;0;120:1;1:2250;1;0;2M')
         # Turning the mode off restores legacy reporting
-        parse_bytes(s, b'\x1b[?1016l\x1b[?1006h\x1b[?5523l')
-        self.assertFalse(s.wheel_events)
+        parse_bytes(s, b'\x1b[?1006h\x1b[?5523l')
+        self.assertFalse(s.detailed_mouse_events)
         self.ae(scroll(y=-1, source=WHEEL), '\x1b[<64;1;1M')
         # DECRQM
         s.callbacks.wtcbuf = b''
@@ -761,6 +772,241 @@ class TestMouse(BaseTest):
         s.callbacks.wtcbuf = b''
         parse_bytes(s, b'\x1b[?5523h\x1b[?5523$p')
         self.ae(s.callbacks.wtcbuf, b'\x1b[?5523;1$y')
+
+    def test_detailed_mouse_events(self):
+        L, M, R = GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_MOUSE_BUTTON_RIGHT
+        s = self.create_screen(cols=10, lines=5, options={'wheel_scroll_multiplier': 5.0, 'click_interval': 0.5})
+        w = create_mock_window(s)
+        selections = []
+        s.callbacks.mouse_selection = selections.append
+        send_mock_mouse_events(w, [], True)
+        last_serial = 0
+
+        # The mock window has cells 10x20 pixels, the first one at (20, 20),
+        # and padding of 10 pixels, so it spans from (10, 10) to (130, 130).
+        # t is in microseconds since the mode was turned on.
+        def e(kind, x=0, y=0, t=-1, button=0, mods=0):
+            if kind == 'call':
+                return (kind, x)
+            return (kind, button, float(x), float(y), t, mods)
+
+        def ae(events, *expected, serials_restart=False):
+            nonlocal last_serial
+            s.callbacks.wtcbuf = b''
+            send_mock_mouse_events(w, list(events))
+            actual = s.callbacks.wtcbuf.decode()
+            if serials_restart:  # the mode was turned on again
+                last_serial = 0
+            # Every event has the next serial
+            for serial in map(int, re.findall(r'\x1b\[>\d+:(\d+);', actual)):
+                self.ae(serial, last_serial + 1)
+                last_serial = serial
+            self.ae(re.sub(r'\x1b\[>?', ' ', strip_serials(actual)).split(), [x.rstrip('M') + 'M' for x in expected])
+
+        # Without mouse tracking nothing is reported
+        parse_bytes(s, b'\x1b[?5523h')
+        ae([e('move', 65, 50, 1000), e('press', 65, 50, 1000, L), e('release', 65, 50, 1000, L)])
+        parse_bytes(s, b'\x1b[?1003h')
+        # The mouse moving into the window is reported as entering, motion is
+        # reported when the position in pixels changes
+        ae(
+            [e('move', 0, 0, 0), e('move', 65, 50, 1000), e('move', 65.2, 50, 1500), e('move', 66, 50, 2000)],
+            '5:S;5;2;45;30;0;1;0:1000',
+            '3:S;5;2;46;30;0;1;0:2000',
+        )
+        # A press grabs the mouse: events are reported wherever the mouse is,
+        # with the cell nearest to it and the position in pixels, which is
+        # negative to the left of the first cell. Leaving is reported after
+        # the release outside the window.
+        ae(
+            [e('press', 66, 50, 3000, L), e('move', 5, 50, 4000), e('release', 5, 50, 5000, L)],
+            '1:S;5;2;46;30;1;1;0:3000;1;1',
+            '3:S;1;2;15:1;30;1;1;0:4000',
+            '2:S;1;2;15:1;30;0;1;0:5000;1;1',
+            '6:S;1;2;15:1;30;0;1;0:5000',
+        )
+        # The padding is in the window
+        ae([e('move', 15, 50, 6000), e('move', 14, 50, 7000)], '5:S;1;2;5:1;30;0;1;0:6000', '3:S;1;2;6:1;30;0;1;0:7000')
+        # Times are seconds:microseconds
+        ae([e('move', 66, 50, 1000000)], '3:S;5;2;46;30;0;1;1:0')
+        # Click counts: presses of the same button, each within the double
+        # click interval and a small distance of the previous one, keep
+        # counting up. Releases have the count of their press.
+        ae(
+            [
+                e('press', 66, 50, 1000000, L),
+                e('release', 66, 50, 1100000, L),
+                e('press', 67, 51, 1300000, L),
+                e('release', 67, 51, 1350000, L),
+                e('press', 66, 50, 1700000, L),
+                e('release', 66, 50, 1750000, L),
+                e('press', 66, 50, 1800000, L),
+                e('release', 66, 50, 1850000, L),
+            ],
+            '1:S;5;2;46;30;1;1;1:0;1;1',
+            '2:S;5;2;46;30;0;1;1:100000;1;1',
+            '1:S;5;2;47;31;1;1;1:300000;1;2',
+            '2:S;5;2;47;31;0;1;1:350000;1;2',
+            '1:S;5;2;46;30;1;1;1:700000;1;3',
+            '2:S;5;2;46;30;0;1;1:750000;1;3',
+            '1:S;5;2;46;30;1;1;1:800000;1;4',
+            '2:S;5;2;46;30;0;1;1:850000;1;4',
+        )
+        # Another button, a press after the interval and one too far away start counting again
+        ae(
+            [
+                e('press', 66, 50, 1900000, R),
+                e('release', 66, 50, 1950000, R),
+                e('press', 66, 50, 2600000, R),
+                e('release', 66, 50, 2650000, R),
+                e('press', 80, 50, 2700000, R),
+                e('release', 80, 50, 2750000, R),
+            ],
+            '1:S;5;2;46;30;4;1;1:900000;3;1',
+            '2:S;5;2;46;30;0;1;1:950000;3;1',
+            '1:S;5;2;46;30;4;1;2:600000;3;1',
+            '2:S;5;2;46;30;0;1;2:650000;3;1',
+            '1:S;7;2;60;30;4;1;2:700000;3;1',
+            '2:S;7;2;60;30;0;1;2:750000;3;1',
+        )
+        # Several buttons: the buttons held are reported with every event and
+        # the mouse stays grabbed until all of them are released, scroll events
+        # too go to the window that has grabbed the mouse
+        ae(
+            [
+                e('press', 80, 50, 3000000, L),
+                e('press', 140, 50, 3100000, R),
+                e('release', 140, 50, 3200000, L),
+                e('scroll', 140, 50, 3300000, 1),
+                e('release', 140, 50, 3400000, R),
+            ],
+            '1:S;7;2;60;30;1;1;3:0;1;1',
+            '1:S;10;2;120;30;5;1;3:100000;3;1',
+            '2:S;10;2;120;30;4;1;3:200000;1;1',
+            '4:S;10;2;120;30;4;1;3:300000;0;120;1:5000;1;0;0',
+            '2:S;10;2;120;30;0;1;3:400000;3;1',
+            '6:S;10;2;120;30;0;1;3:400000',
+        )
+        # Neither the press nor the release of a click kitty handles is reported
+        ae(
+            [e('move', 66, 50, 4000000), e('press', 66, 50, 4100000, L, GLFW_MOD_SHIFT), e('release', 66, 50, 4200000, L, GLFW_MOD_SHIFT)],
+            '5:S;5;2;46;30;0;1;4:0',
+        )
+        self.assertTrue(selections)
+        # The lock modifiers are reported
+        ae(
+            [e('press', 66, 50, 5000000, M, GLFW_MOD_CAPS_LOCK), e('release', 66, 50, 5100000, M, GLFW_MOD_CAPS_LOCK)],
+            '1:S;5;2;46;30;2;65;5:0;2;1',
+            '2:S;5;2;46;30;0;65;5:100000;2;1',
+        )
+        # The mouse leaving and entering the OS window, these events have the
+        # time they are processed, which is just after the mode was turned on
+        ae([e('leave', 66, 50), e('enter', 66, 50)], '6:S;5;2;46;30;0;1;5:100000', '5:S;5;2;46;30;0;1;5:100000')
+        # The window disappearing from under the mouse, the position of leaving
+        # is the last reported one. Entering is always reported before other events.
+        ae([e('hide', 66, 50), e('show', 66, 50), e('move', 67, 50, 7000000)], '6:S;5;2;46;30;0;1;5:100000', '5:S;5;2;47;30;0;1;7:0')
+        # Turning mouse tracking off and on with the mouse in the window
+        # reports entering. In mode 1000, motion is not reported.
+        ae(
+            [
+                e('call', lambda: parse_bytes(s, b'\x1b[?1003l')),
+                e('move', 68, 50, 8000000),
+                e('call', lambda: parse_bytes(s, b'\x1b[?1000h')),
+                e('move', 69, 50, 8100000),
+                e('press', 69, 50, 8200000, L),
+                e('move', 70, 50, 8300000),
+                e('release', 70, 50, 8400000, L),
+            ],
+            '5:S;5;2;48;30;0;1;7:0',
+            '1:S;5;2;49;30;1;1;8:200000;1;1',
+            '2:S;6;2;50;30;0;1;8:400000;1;1',
+        )
+        # In mode 1002, only motion with a button held is reported
+        ae(
+            [
+                e('call', lambda: parse_bytes(s, b'\x1b[?1002h')),
+                e('move', 71, 50, 9000000),
+                e('press', 71, 50, 9100000, L),
+                e('move', 72, 50, 9200000),
+                e('release', 72, 50, 9300000, L),
+                e('move', 73, 50, 9400000),
+            ],
+            '1:S;6;2;51;30;1;1;9:100000;1;1',
+            '3:S;6;2;52;30;1;1;9:200000',
+            '2:S;6;2;52;30;0;1;9:300000;1;1',
+        )
+        # Turning mouse tracking off while a button is held: its release is not
+        # reported, and when it is turned on again, nothing is held
+        ae(
+            [
+                e('press', 73, 50, 10000000, L),
+                e('call', lambda: parse_bytes(s, b'\x1b[?1002l')),
+                e('release', 73, 50, 10100000, L),
+                e('call', lambda: parse_bytes(s, b'\x1b[?1003h')),
+                e('move', 75, 50, 10200000),
+            ],
+            '1:S;6;2;53;30;1;1;10:0;1;1',
+            '5:S;6;2;53;30;0;1;10:0',
+            '3:S;6;2;55;30;0;1;10:200000',
+        )
+        # A press of a button that is held means its release was lost, which is reported first
+        ae(
+            [e('press', 75, 50, 11000000, L), e('press', 75, 50, 11100000, L), e('release', 75, 50, 11200000, L)],
+            '1:S;6;2;55;30;1;1;11:0;1;1',
+            '2:S;6;2;55;30;0;1;11:100000;1;1',
+            '1:S;6;2;55;30;1;1;11:100000;1;2',
+            '2:S;6;2;55;30;0;1;11:200000;1;2',
+        )
+        # Scrolling outside the window is not reported, even though kitty scrolls the active window
+        ae([e('move', 5, 50, 12000000), e('scroll', 5, 50, 12100000, 1), e('move', 75, 50, 12200000)], '6:S;6;2;55;30;0;1;12:0', '5:S;6;2;55;30;0;1;12:200000')
+        # In mode 1002, motion with a button held whose press kitty handled is not reported
+        ae(
+            [
+                e('call', lambda: parse_bytes(s, b'\x1b[?1002h')),
+                e('press', 75, 50, 13000000, L, GLFW_MOD_SHIFT),
+                e('move', 85, 50, 13100000),
+                e('release', 85, 50, 13200000, L, GLFW_MOD_SHIFT),
+                e('call', lambda: parse_bytes(s, b'\x1b[?1003h')),
+            ],
+        )
+        # A drag tracked for the legacy encodings whose release was lost does not prevent the grab
+        ae(
+            [
+                e('call', lambda: parse_bytes(s, b'\x1b[?5523l\x1b[?1006h\x1b[?1016h')),
+                e('move', 75, 50),
+                e('press', 75, 50, -1, L),
+                e('move', 5, 50),
+                e('call', lambda: parse_bytes(s, b'\x1b[?1016l\x1b[?1006l\x1b[?5523h')),
+                e('move', 75, 50, 14000000),
+                e('press', 75, 50, 14100000, L),
+                e('move', 5, 50, 14200000),
+                e('release', 5, 50, 14300000, L),
+            ],
+            # The legacy SGR pixel encoding uses negative positions
+            '<35;55;30M',
+            '<0;55;30M',
+            '<32;-15;30M',
+            '5:S;6;2;55;30;0;1;14:0',
+            '1:S;6;2;55;30;1;1;14:100000;1;1',
+            '3:S;1;2;15:1;30;1;1;14:200000',
+            '2:S;1;2;15:1;30;0;1;14:300000;1;1',
+            '6:S;1;2;15:1;30;0;1;14:300000',
+            serials_restart=True,
+        )
+        # Events simulated by kittens, buttons are numbered as in X11
+        for args, expected in (
+            ((PRESS, 0), '1:S;3;4;25;65;1;1;14:300000;1;1'),
+            ((RELEASE, GLFW_MOD_SHIFT), '2:S;3;4;25;65;0;2;14:300000;1;1'),
+            ((PRESS, 0, 5), '4:S;3;4;25;65;0;1;14:300000;0;120;1;0;0;0'),
+            ((PRESS, 0, 8), '1:S;3;4;25;65;8;1;14:300000;4;1'),
+        ):
+            s.callbacks.wtcbuf = b''
+            action, mods, *button = args
+            self.assertTrue(send_simulated_mouse_event(s, 2, 3, button[0] if button else 1, action, mods, 25, 65))
+            self.ae(strip_serials(s.callbacks.wtcbuf.decode()), f'\x1b[>{expected}M')
+        # Turning the mode off restores the other encodings
+        parse_bytes(s, b'\x1b[?1006h\x1b[?5523l')
+        ae([e('move', 86, 50)], '<35;7;2M')
 
     def test_mapped_scroll(self):
         from kitty.config import load_config

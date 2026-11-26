@@ -444,7 +444,8 @@ void colorprofile_report_stack(ColorProfile *, unsigned int *, unsigned int *);
 void set_mouse_cursor(MouseShape);
 void enter_event(int modifiers, bool cursor_moved);
 void leave_event(int modifiers);
-void mouse_event(const int, int, int);
+// timestamp is the time of the event, on the clock of monotonic(), zero if it is not known
+void mouse_event(const int button, int modifiers, int action, monotonic_t timestamp);
 void focus_in_event(void);
 void scroll_event(const GLFWScrollEvent *ev);
 void on_key_input(const GLFWkeyevent *ev);

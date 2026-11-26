@@ -760,7 +760,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
     if (_glfw.ns.disabledCursorWindow != window && cursorInContentArea(window)) {
         double x = 0, y = 0;
         _glfwPlatformGetCursorPos(window, &x, &y);
-        _glfwInputCursorPos(window, x, y);
+        _glfwInputCursorPos(window, x, y, 0);
     }
     // macOS will send a delayed event to update the cursor to arrow after switching desktops.
     // So we need to delay and update the cursor once after that.
@@ -1050,7 +1050,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 
 - (void)mouseDown:(NSEvent *)event {
     if (!window) return;
-    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, translateFlags([event modifierFlags]), event_timestamp_to_monotonic(event));
 }
 
 - (void)mouseDragged:(NSEvent *)event {
@@ -1059,7 +1059,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 
 - (void)mouseUp:(NSEvent *)event {
     if (!window) return;
-    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, translateFlags([event modifierFlags]), event_timestamp_to_monotonic(event));
 }
 
 - (void)mouseMoved:(NSEvent *)event {
@@ -1068,13 +1068,13 @@ static void flush_focus_loss_text(_GLFWwindow *window);
         const double dx = [event deltaX] - window->ns.cursorWarpDeltaX;
         const double dy = [event deltaY] - window->ns.cursorWarpDeltaY;
 
-        _glfwInputCursorPos(window, window->virtualCursorPosX + dx, window->virtualCursorPosY + dy);
+        _glfwInputCursorPos(window, window->virtualCursorPosX + dx, window->virtualCursorPosY + dy, event_timestamp_to_monotonic(event));
     } else {
         const NSRect contentRect = [window->ns.view frame];
         // NOTE: The returned location uses base 0,1 not 0,0
         const NSPoint pos = [event locationInWindow];
 
-        _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y);
+        _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y, event_timestamp_to_monotonic(event));
     }
 
     window->ns.cursorWarpDeltaX = 0;
@@ -1088,7 +1088,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 
 - (void)rightMouseDown:(NSEvent *)event {
     if (!window) return;
-    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, translateFlags([event modifierFlags]), event_timestamp_to_monotonic(event));
 }
 
 - (void)rightMouseDragged:(NSEvent *)event {
@@ -1097,12 +1097,12 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 
 - (void)rightMouseUp:(NSEvent *)event {
     if (!window) return;
-    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, translateFlags([event modifierFlags]), event_timestamp_to_monotonic(event));
 }
 
 - (void)otherMouseDown:(NSEvent *)event {
     if (!window) return;
-    _glfwInputMouseClick(window, (int)[event buttonNumber], GLFW_PRESS, translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window, (int)[event buttonNumber], GLFW_PRESS, translateFlags([event modifierFlags]), event_timestamp_to_monotonic(event));
 }
 
 - (void)otherMouseDragged:(NSEvent *)event {
@@ -1111,7 +1111,7 @@ static void flush_focus_loss_text(_GLFWwindow *window);
 
 - (void)otherMouseUp:(NSEvent *)event {
     if (!window) return;
-    _glfwInputMouseClick(window, (int)[event buttonNumber], GLFW_RELEASE, translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window, (int)[event buttonNumber], GLFW_RELEASE, translateFlags([event modifierFlags]), event_timestamp_to_monotonic(event));
 }
 
 - (void)mouseExited:(NSEvent *)event {

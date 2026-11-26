@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -21,9 +23,11 @@ const (
 	MOUSE_MOVE
 	MOUSE_CLICK
 	MOUSE_LEAVE
-	// A scroll event reported with detailed wheel events, see
-	// Loop.DetailedWheelEvents(). The details are in MouseEvent.Wheel.
+	// A scroll event reported with detailed mouse events, see
+	// Loop.DetailedMouseEvents(). The details are in MouseEvent.Wheel.
 	MOUSE_WHEEL
+	// The mouse entered the window, reported only with detailed mouse events
+	MOUSE_ENTER
 )
 
 func (e MouseEventType) String() string {
@@ -40,6 +44,8 @@ func (e MouseEventType) String() string {
 		return "leave"
 	case MOUSE_WHEEL:
 		return "wheel"
+	case MOUSE_ENTER:
+		return "enter"
 	}
 	return strconv.Itoa(int(e))
 }
@@ -176,34 +182,26 @@ const (
 )
 
 var bmap = [...]MouseButtonFlag{LEFT_MOUSE_BUTTON, MIDDLE_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON}
+
+// The buttons of detailed mouse events, numbered from one
+var detailed_bmap = [...]MouseButtonFlag{
+	LEFT_MOUSE_BUTTON, MIDDLE_MOUSE_BUTTON, RIGHT_MOUSE_BUTTON, FOURTH_MOUSE_BUTTON, FIFTH_MOUSE_BUTTON, SIXTH_MOUSE_BUTTON, SEVENTH_MOUSE_BUTTON}
 var ebmap = [...]MouseButtonFlag{FOURTH_MOUSE_BUTTON, FIFTH_MOUSE_BUTTON, SIXTH_MOUSE_BUTTON, SEVENTH_MOUSE_BUTTON}
 var wbmap = [...]MouseButtonFlag{MOUSE_WHEEL_UP, MOUSE_WHEEL_DOWN, MOUSE_WHEEL_LEFT, MOUSE_WHEEL_RIGHT}
 
 func (b MouseButtonFlag) String() string {
 	ans := ""
-	switch {
-	case b&LEFT_MOUSE_BUTTON != 0:
-		ans += "|LEFT"
-	case b&MIDDLE_MOUSE_BUTTON != 0:
-		ans += "|MIDDLE"
-	case b&RIGHT_MOUSE_BUTTON != 0:
-		ans += "|RIGHT"
-	case b&FOURTH_MOUSE_BUTTON != 0:
-		ans += "|FOURTH"
-	case b&FIFTH_MOUSE_BUTTON != 0:
-		ans += "|FIFTH"
-	case b&SIXTH_MOUSE_BUTTON != 0:
-		ans += "|SIXTH"
-	case b&SEVENTH_MOUSE_BUTTON != 0:
-		ans += "|SEVENTH"
-	case b&MOUSE_WHEEL_UP != 0:
-		ans += "|WHEEL_UP"
-	case b&MOUSE_WHEEL_DOWN != 0:
-		ans += "|WHEEL_DOWN"
-	case b&MOUSE_WHEEL_LEFT != 0:
-		ans += "|WHEEL_LEFT"
-	case b&MOUSE_WHEEL_RIGHT != 0:
-		ans += "|WHEEL_RIGHT"
+	for _, x := range []struct {
+		flag MouseButtonFlag
+		name string
+	}{
+		{LEFT_MOUSE_BUTTON, "LEFT"}, {MIDDLE_MOUSE_BUTTON, "MIDDLE"}, {RIGHT_MOUSE_BUTTON, "RIGHT"}, {FOURTH_MOUSE_BUTTON, "FOURTH"},
+		{FIFTH_MOUSE_BUTTON, "FIFTH"}, {SIXTH_MOUSE_BUTTON, "SIXTH"}, {SEVENTH_MOUSE_BUTTON, "SEVENTH"}, {MOUSE_WHEEL_UP, "WHEEL_UP"},
+		{MOUSE_WHEEL_DOWN, "WHEEL_DOWN"}, {MOUSE_WHEEL_LEFT, "WHEEL_LEFT"}, {MOUSE_WHEEL_RIGHT, "WHEEL_RIGHT"},
+	} {
+		if b&x.flag != 0 {
+			ans += "|" + x.name
+		}
 	}
 	ans = strings.TrimLeft(ans, "|")
 	if ans == "" {
@@ -295,7 +293,7 @@ const (
 	WHEEL_FLAG_INVERTED = 2
 )
 
-// The details of a scroll event reported with detailed wheel events
+// The details of a scroll event reported with detailed mouse events
 type WheelEvent struct {
 	// Positive DY is downwards, towards the end of the content, positive DX is rightwards
 	DX, DY int
@@ -309,11 +307,6 @@ type WheelEvent struct {
 	// Inverted is true when the deltas are reversed relative to the physical
 	// movement of the device, for example, because of natural scrolling.
 	Momentum, Inverted bool
-	// The time of the event, only differences between the times of events
-	// are meaningful. Valid only if HasTimestamp is true, which it is when
-	// the terminal sent the time.
-	Timestamp    time.Duration
-	HasTimestamp bool
 }
 
 func (w WheelEvent) String() string {
@@ -326,9 +319,6 @@ func (w WheelEvent) String() string {
 	}
 	if w.Inverted {
 		ans += " inverted"
-	}
-	if w.HasTimestamp {
-		ans += " t=" + w.Timestamp.String()
 	}
 	return ans
 }
@@ -357,19 +347,38 @@ func (w WheelEvent) Lines(cell_height int, default_lines_per_click float64) (dx,
 }
 
 type MouseEvent struct {
-	Event_type  MouseEventType
-	Buttons     MouseButtonFlag
-	Mods        KeyModifiers
+	Event_type MouseEventType
+	// The button pressed or released, for presses and releases, the buttons
+	// held down, for motion
+	Buttons MouseButtonFlag
+	Mods    KeyModifiers
+	// The cell is zero based. The pixel position is relative to the top left
+	// corner of the first cell and is negative to the left of or above it.
 	Cell, Pixel struct{ X, Y int }
 	// Set only for events of type MOUSE_WHEEL
 	Wheel WheelEvent
+	// True if the event was reported with detailed mouse events, see
+	// Loop.DetailedMouseEvents(), the fields below are set only for these
+	Detailed bool
+	// The buttons held down after the event
+	HeldButtons MouseButtonFlag
+	// The number of successive presses of the button, for presses and releases
+	ClickCount int
+	// Identifies the event, opaque, only comparisons for equality are meaningful
+	Serial uint32
+	// The time of the event, only differences between the times of events are meaningful
+	Timestamp time.Duration
 }
 
 func (e MouseEvent) String() string {
-	if e.Event_type == MOUSE_WHEEL {
-		return fmt.Sprintf("MouseEvent{%s %s %s Cell:%v Pixel:%v}", e.Event_type, e.Wheel, e.Mods, e.Cell, e.Pixel)
+	var details string
+	if e.Detailed {
+		details = fmt.Sprintf(" held:%s count:%d serial:%d t:%s", e.HeldButtons, e.ClickCount, e.Serial, e.Timestamp)
 	}
-	return fmt.Sprintf("MouseEvent{%s %s %s Cell:%v Pixel:%v}", e.Event_type, e.Buttons, e.Mods, e.Cell, e.Pixel)
+	if e.Event_type == MOUSE_WHEEL {
+		return fmt.Sprintf("MouseEvent{%s %s %s Cell:%v Pixel:%v%s}", e.Event_type, e.Wheel, e.Mods, e.Cell, e.Pixel, details)
+	}
+	return fmt.Sprintf("MouseEvent{%s %s %s Cell:%v Pixel:%v%s}", e.Event_type, e.Buttons, e.Mods, e.Cell, e.Pixel, details)
 }
 
 func pixel_to_cell(px, length, cell_length int) int {
@@ -432,52 +441,127 @@ func decode_sgr_mouse(text string, screen_size ScreenSize, last_letter byte) *Mo
 	return &ans
 }
 
-// Decodes a detailed wheel event:
-// CSI > x ; y ; dx ; dy ; unit[:multiplier in thousandths] ; source ; phase ; flags ; mods [; t in microseconds] M
-// Unknown trailing parameters and sub-parameters are ignored, as required by
-// the specification.
-func decode_wheel_event(text string, screen_size ScreenSize) *MouseEvent {
-	parts := strings.Split(text[:len(text)-1], ";")
-	if len(parts) < 9 {
+// A parameter of a detailed mouse event, split into its sub-parameters
+type detailed_param []string
+
+func (p detailed_param) uint(i int) (int, bool) {
+	if i >= len(p) {
+		return 0, false
+	}
+	n, err := strconv.ParseUint(p[i], 10, 32)
+	// Values that do not fit in an int, on 32-bit platforms, are rejected
+	if err != nil || n > math.MaxInt {
+		return 0, false
+	}
+	return int(n), true
+}
+
+// A signed value: the absolute value followed by the sub-parameter 1 if it is negative
+func (p detailed_param) signed() (int, bool) {
+	n, ok := p.uint(0)
+	if ok && len(p) > 1 && p[1] == "1" {
+		n = -n
+	}
+	return n, ok
+}
+
+// Decodes a detailed mouse event:
+// CSI > type:serial ; x ; y ; px ; py ; buttons ; mods ; seconds:microseconds ; ... M
+// Unknown trailing parameters and sub-parameters, and events of unknown types,
+// are ignored, as required by the specification.
+func decode_detailed_mouse_event(text string) *MouseEvent {
+	raw := strings.Split(text[:len(text)-1], ";")
+	params := make([]detailed_param, len(raw))
+	for i, x := range raw {
+		params[i] = strings.Split(x, ":")
+	}
+	if len(params) < 8 {
 		return nil
 	}
-	var subparams [9][]string
-	nums := [9]int{}
-	for i := range subparams {
-		subparams[i] = strings.Split(parts[i], ":")
-		n, err := strconv.Atoi(subparams[i][0])
-		if err != nil {
+	var ok [9]bool
+	var etype, serial, x, y, buttons, mods, secs, usecs int
+	ans := MouseEvent{Detailed: true}
+	etype, ok[0] = params[0].uint(0)
+	serial, ok[1] = params[0].uint(1)
+	x, ok[2] = params[1].uint(0)
+	y, ok[3] = params[2].uint(0)
+	ans.Pixel.X, ok[4] = params[3].signed()
+	ans.Pixel.Y, ok[5] = params[4].signed()
+	buttons, ok[6] = params[5].uint(0)
+	mods, ok[7] = params[6].uint(0)
+	secs, ok[8] = params[7].uint(0)
+	for _, x := range ok {
+		if !x {
 			return nil
 		}
-		nums[i] = n
 	}
-	ans := MouseEvent{Event_type: MOUSE_WHEEL}
-	ans.Pixel.X, ans.Pixel.Y = nums[0], nums[1]
-	w := &ans.Wheel
-	w.DX, w.DY = nums[2], nums[3]
-	w.Unit = WheelUnit(nums[4])
-	if len(subparams[4]) > 1 {
+	if usecs, ok[0] = params[7].uint(1); !ok[0] || usecs > 999999 {
+		return nil
+	}
+	ans.Serial = uint32(serial)
+	ans.Cell.X, ans.Cell.Y = max(0, x-1), max(0, y-1)
+	for i, b := range detailed_bmap {
+		if buttons&(1<<i) != 0 {
+			ans.HeldButtons |= b
+		}
+	}
+	if mods > 0 {
+		ans.Mods = KeyModifiers(mods - 1)
+	}
+	ans.Timestamp = time.Duration(secs)*time.Second + time.Duration(usecs)*time.Microsecond
+	extra := params[8:]
+	switch etype {
+	case 1, 2:
+		if len(extra) < 2 {
+			return nil
+		}
+		button, ok1 := extra[0].uint(0)
+		count, ok2 := extra[1].uint(0)
+		if !ok1 || !ok2 {
+			return nil
+		}
+		ans.Event_type = utils.IfElse(etype == 1, MOUSE_PRESS, MOUSE_RELEASE)
+		if button > 0 && button <= len(detailed_bmap) {
+			ans.Buttons = detailed_bmap[button-1]
+		}
+		ans.ClickCount = count
+	case 3:
+		ans.Event_type = MOUSE_MOVE
+		ans.Buttons = ans.HeldButtons
+	case 4:
+		if len(extra) < 6 {
+			return nil
+		}
+		var nums [6]int
+		var oks [6]bool
+		w := &ans.Wheel
+		w.DX, oks[0] = extra[0].signed()
+		w.DY, oks[1] = extra[1].signed()
+		for i := 2; i < 6; i++ {
+			nums[i], oks[i] = extra[i].uint(0)
+		}
+		for _, x := range oks {
+			if !x {
+				return nil
+			}
+		}
+		ans.Event_type = MOUSE_WHEEL
+		w.Unit = WheelUnit(nums[2])
 		// The multiplier is sent in thousandths
-		if m, err := strconv.Atoi(subparams[4][1]); err == nil && m > 0 {
+		if m, ok := extra[2].uint(1); ok && m > 0 {
 			w.Multiplier = float64(m) / 1000
 		}
+		w.Source = WheelSource(nums[3])
+		w.Phase = WheelPhase(nums[4])
+		w.Momentum = nums[5]&WHEEL_FLAG_MOMENTUM != 0
+		w.Inverted = nums[5]&WHEEL_FLAG_INVERTED != 0
+	case 5:
+		ans.Event_type = MOUSE_ENTER
+	case 6:
+		ans.Event_type = MOUSE_LEAVE
+	default:
+		return nil
 	}
-	w.Source = WheelSource(nums[5])
-	w.Phase = WheelPhase(nums[6])
-	w.Momentum = nums[7]&WHEEL_FLAG_MOMENTUM != 0
-	w.Inverted = nums[7]&WHEEL_FLAG_INVERTED != 0
-	if nums[8] > 0 {
-		ans.Mods = KeyModifiers(nums[8] - 1)
-	}
-	if len(parts) > 9 {
-		us, err := strconv.ParseUint(strings.SplitN(parts[9], ":", 2)[0], 10, 64)
-		if err != nil || us > uint64(math.MaxInt64/int64(time.Microsecond)) {
-			return nil
-		}
-		w.Timestamp, w.HasTimestamp = time.Duration(us)*time.Microsecond, true
-	}
-	ans.Cell.X = pixel_to_cell(ans.Pixel.X, int(screen_size.WidthPx), int(screen_size.CellWidth))
-	ans.Cell.Y = pixel_to_cell(ans.Pixel.Y, int(screen_size.HeightPx), int(screen_size.CellHeight))
 	return &ans
 }
 
@@ -494,7 +578,7 @@ func MouseEventFromCSI(csi string, screen_size ScreenSize) *MouseEvent {
 		return decode_sgr_mouse(csi[1:], screen_size, last_char)
 	case '>':
 		if last_char == 'M' {
-			return decode_wheel_event(csi[1:], screen_size)
+			return decode_detailed_mouse_event(csi[1:])
 		}
 		return nil
 	default:

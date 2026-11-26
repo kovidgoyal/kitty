@@ -106,8 +106,8 @@
 // Paste events mode https://rockorager.dev/misc/bracketed-paste-mime/
 #define PASTE_EVENTS (5522 << 5)
 
-// Detailed reporting of scroll wheel and touchpad events, see the misc-protocol docs
-#define WHEEL_EVENTS (5523 << 5)
+// Detailed reporting of mouse events, see the misc-protocol docs
+#define DETAILED_MOUSE_EVENTS (5523 << 5)
 
 // Handle Ctrl-C/Ctrl-Z mode
 #define HANDLE_TERMIOS_SIGNALS (19997 << 5)

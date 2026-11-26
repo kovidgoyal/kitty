@@ -33,7 +33,7 @@ typedef struct SmoothScrollCommand {
 
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM, mCOLOR_PREFERENCE_NOTIFICATION, mBRACKETED_PASTE, mFOCUS_TRACKING,
-        mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS, mWHEEL_EVENTS, mBDSM, mBIDI_AUTODETECT;
+        mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS, mDETAILED_MOUSE_EVENTS, mBDSM, mBIDI_AUTODETECT;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
 } ScreenModes;
@@ -220,6 +220,37 @@ typedef struct SmoothScrollRender {
 #define smooth_scroll_render_region_strip_height(r) ((r)->height + ((r)->horizontal ? 0u : 2u))
 
 
+// The state of the detailed reporting of mouse events, mode 5523
+typedef struct DetailedMouseEventsState {
+    // The time the mode was turned on, which is the origin of the times of
+    // the events, and the last reported time, in microseconds since the
+    // origin, so that reported times never decrease
+    monotonic_t clock_origin;
+    unsigned long long last_reported_time;
+    // The serial of the last reported event
+    uint32_t serial;
+    // The GLFW buttons whose presses were reported and that have not been
+    // released since, as a bit field
+    uint32_t reported_buttons;
+    // The click counts of the reported presses of these buttons, by GLFW button
+    unsigned press_counts[8];
+    // Whether the mouse entering the window was reported and leaving it was not since
+    bool entered;
+    // The position reported with the last event
+    struct {
+        unsigned x, y;
+        long long px, py;
+        bool valid;
+    } last_position;
+    // The last reported press, to count clicks
+    struct {
+        int button;
+        unsigned count;
+        unsigned long long time;
+        double px, py;
+    } last_press;
+} DetailedMouseEventsState;
+
 typedef struct {
     PyObject_HEAD
 
@@ -271,13 +302,7 @@ typedef struct {
     struct {
         monotonic_t entered_at, exited_at;
     } alternate_screen;
-    // Detailed wheel event timestamps: the time the mode was turned on, which
-    // is their origin, and the last reported timestamp, in microseconds since
-    // the origin, so that they never decrease
-    struct {
-        monotonic_t origin;
-        unsigned long long last_reported;
-    } wheel_events_clock;
+    DetailedMouseEventsState mouse_events;
     monotonic_t start_drag_overlay_at; // 0 = inactive
     uint8_t drag_overlay_quadrant;     // 1=left 2=right 3=top 4=bottom 0=none
 
@@ -590,6 +615,9 @@ Line *screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *ove
 index_type screen_multicell_char_rows_for_cursor(Screen *self, const CPUCell *ref, index_type x, index_type y);
 void screen_designate_charset(Screen *self, uint32_t which, uint32_t as);
 void screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params);
+// Must be called when the detailed reporting of mouse events or mouse tracking
+// is turned on or off, defined in mouse.c
+void detailed_mouse_events_changed(Screen *self);
 bool range_line_is_continued(Screen *self, int y);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)

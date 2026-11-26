@@ -69,7 +69,17 @@ encode_button(unsigned int button) {
     }
 }
 
-static char mouse_event_buf[128];
+static char mouse_event_buf[256];
+// The window that has grabbed the mouse because it was reported a press with
+// the detailed reporting of mouse events, see report_detailed_press()
+static id_type grab_window_id = 0;
+// The time of the mouse event being processed, on the clock of monotonic(),
+// zero if there is none
+static monotonic_t current_event_time = 0;
+static void report_detailed_enter(Window *w, int mods);
+static bool pointer_over_scrollbar(Window *w);
+static void report_detailed_leave(Window *w, int mods);
+static void end_grab_after_release(int mods);
 
 static int
 encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
@@ -186,12 +196,21 @@ set_currently_hovered_window(id_type window_id, int modifiers, bool focus_follow
             if (left_window->scrollbar.is_hovering) update_scrollbar_hover_state(left_window, false);
             if (left_window->render_data.screen) screen_mark_url(left_window->render_data.screen, 0, 0, 0, 0);
             if (left_window->drop.hovered) drop_left_child(left_window);
-            int sz = encode_mouse_event(left_window, 0, LEAVE, modifiers);
-            if (sz > 0) {
-                mouse_event_buf[sz] = 0;
-                write_escape_code_to_child(left_window->render_data.screen, ESC_CSI, mouse_event_buf);
-                debug("Sent mouse leave event to window: %llu currently hovering: %llu\n", left_window->id, window_id);
+            if (left_window->render_data.screen && left_window->render_data.screen->modes.mDETAILED_MOUSE_EVENTS) {
+                report_detailed_leave(left_window, modifiers);
+            } else {
+                int sz = encode_mouse_event(left_window, 0, LEAVE, modifiers);
+                if (sz > 0) {
+                    mouse_event_buf[sz] = 0;
+                    write_escape_code_to_child(left_window->render_data.screen, ESC_CSI, mouse_event_buf);
+                    debug("Sent mouse leave event to window: %llu currently hovering: %llu\n", left_window->id, window_id);
+                }
             }
+        }
+        if (window_id) {
+            // The scrollbar is not part of the window, the mouse enters it when moving off the scrollbar
+            Window *entered_window = window_for_id(window_id);
+            if (entered_window && !pointer_over_scrollbar(entered_window)) report_detailed_enter(entered_window, modifiers);
         }
         if (focus_follows && window_id && OPT(focus_follows_mouse).on_cross && global_state.callback_os_window && global_state.callback_os_window->num_tabs) {
             Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
@@ -655,6 +674,13 @@ handle_scrollbar_drag(Window *w, double mouse_y) {
 static const MouseShape scrollbar_drag_mouse_cursor = NS_RESIZE_POINTER;
 
 static bool
+pointer_over_scrollbar(Window *w) {
+    const OSWindow *osw = global_state.callback_os_window;
+    if (!OPT(scrollbar_interactive) || !osw) return false;
+    return w->scrollbar.is_dragging || get_scrollbar_hit_type(w, osw->mouse_x, osw->mouse_y) != SCROLLBAR_HIT_NONE;
+}
+
+static bool
 handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers UNUSED) {
     if (!w || !OPT(scrollbar_interactive) || !global_state.callback_os_window) return false;
 
@@ -710,6 +736,282 @@ distance(double x1, double y1, double x2, double y2) {
     return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 }
 
+static double
+radius_for_multiclick(void) {
+    return 0.5 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->fcm.cell_height : 8);
+}
+
+// Detailed reporting of mouse events {{{
+// See the section on the detailed reporting of mouse events in docs/misc-protocol.rst
+
+typedef enum DetailedMouseEventType {
+    DETAILED_MOUSE_PRESS = 1,
+    DETAILED_MOUSE_RELEASE = 2,
+    DETAILED_MOUSE_MOTION = 3,
+    DETAILED_MOUSE_SCROLL = 4,
+    DETAILED_MOUSE_ENTER = 5,
+    DETAILED_MOUSE_LEAVE = 6,
+} DetailedMouseEventType;
+
+typedef struct DetailedMousePosition {
+    // 1-based cell
+    unsigned x, y;
+    // pixels relative to the top left corner of the first cell
+    long long px, py;
+} DetailedMousePosition;
+
+static_assert(arraysz(((DetailedMouseEventsState *)0)->press_counts) > GLFW_MOUSE_BUTTON_LAST, "There must be a click count for every button");
+
+// Whether simulated events are being written, which do not change the state of the reporting
+static bool writing_simulated_events = false;
+
+static bool
+detailed_mouse_events(const Screen *screen) {
+    return screen->modes.mDETAILED_MOUSE_EVENTS && screen->modes.mouse_tracking_mode != NO_TRACKING;
+}
+
+// The number of a GLFW button in the escape code
+static unsigned
+detailed_button_number(int button) {
+    switch (button) {
+        case GLFW_MOUSE_BUTTON_LEFT: return 1;
+        case GLFW_MOUSE_BUTTON_MIDDLE: return 2;
+        case GLFW_MOUSE_BUTTON_RIGHT: return 3;
+        default: return (unsigned)button + 1; // back, forward and the others
+    }
+}
+
+static unsigned
+detailed_held_buttons(const Screen *screen) {
+    unsigned ans = 0;
+    for (int b = 0; b <= GLFW_MOUSE_BUTTON_LAST; b++) {
+        if (screen->mouse_events.reported_buttons & (1u << b)) ans |= 1u << (detailed_button_number(b) - 1);
+    }
+    return ans;
+}
+
+// Formats a signed value, as the absolute value followed by the sub-parameter
+// 1 when it is negative, as negative numbers are not valid in CSI parameters
+static const char *
+format_detailed_signed(char *buf, size_t sz, long long val) {
+    if (val < 0) snprintf(buf, sz, "%llu:1", -(unsigned long long)val);
+    else snprintf(buf, sz, "%lld", val);
+    return buf;
+}
+
+// Returns the time of an event as reported to the program, in microseconds
+// since the mode was turned on. Reported times never decrease, as events can
+// come from different sources, such as the system and the synthesized momentum
+// scrolling, whose clocks need not agree.
+static unsigned long long
+detailed_event_time(Screen *screen, monotonic_t timestamp) {
+    const monotonic_t since_origin = timestamp - screen->mouse_events.clock_origin;
+    unsigned long long ans = since_origin > 0 ? (unsigned long long)(since_origin / 1000) : 0;
+    if (ans < screen->mouse_events.last_reported_time) ans = screen->mouse_events.last_reported_time;
+    screen->mouse_events.last_reported_time = ans;
+    return ans;
+}
+
+static monotonic_t
+event_time_or_now(monotonic_t t) {
+    if (t) return t;
+    return current_event_time ? current_event_time : monotonic();
+}
+
+// The position of the mouse pointer to report to the program in w. When the
+// pointer is not over a cell, the cell is the one nearest to it.
+static DetailedMousePosition
+detailed_mouse_position(Window *w) {
+    DetailedMousePosition ans = {.x = w->mouse_pos.cell_x + 1, .y = w->mouse_pos.cell_y + 1};
+    OSWindow *osw = global_state.callback_os_window;
+    if (osw && osw->fonts_data) {
+        const bool saved = clamp_to_window;
+        clamp_to_window = true;
+        unsigned x, y;
+        bool in_left_half_of_cell;
+        if (cell_for_pos(w, &x, &y, &in_left_half_of_cell, osw)) {
+            ans.x = x + 1;
+            ans.y = y + 1;
+        }
+        clamp_to_window = saved;
+    }
+    ans.px = llround(w->mouse_pos.global_x);
+    ans.py = llround(w->mouse_pos.global_y);
+    return ans;
+}
+
+// Writes the escape code for an event to the program. extra is the parameters
+// specific to the type of the event, without the leading semi-colon.
+static void
+write_detailed_mouse_event(
+    Screen *screen, DetailedMouseEventType type, int mods, monotonic_t t, const DetailedMousePosition *p, unsigned buttons, const char *extra) {
+    DetailedMouseEventsState *s = &screen->mouse_events;
+    if (!writing_simulated_events) {
+        switch (type) {
+            case DETAILED_MOUSE_ENTER:
+                if (s->entered) return;
+                s->entered = true;
+                break;
+            case DETAILED_MOUSE_LEAVE:
+                if (!s->entered) return;
+                s->entered = false;
+                break;
+            default:
+                // Entering and leaving strictly alternate, starting with
+                // entering, so the program is told the mouse is in the window,
+                // if it was not already, for example, because the window
+                // appeared under the mouse without the mouse moving
+                if (!s->entered) write_detailed_mouse_event(screen, DETAILED_MOUSE_ENTER, mods, t, p, buttons, "");
+                break;
+        }
+    }
+    s->serial = s->serial >= INT32_MAX ? 1 : s->serial + 1;
+    const unsigned long long us = detailed_event_time(screen, event_time_or_now(t));
+    char px[32], py[32];
+    const int n = snprintf(
+        mouse_event_buf,
+        sizeof(mouse_event_buf),
+        ">%u:%u;%u;%u;%s;%s;%u;%u;%llu:%llu%s%sM",
+        (unsigned)type,
+        s->serial,
+        p->x,
+        p->y,
+        format_detailed_signed(px, sizeof(px), p->px),
+        format_detailed_signed(py, sizeof(py), p->py),
+        buttons,
+        1u + ((unsigned)mods & 0xff),
+        us / 1000000,
+        us % 1000000,
+        extra[0] ? ";" : "",
+        extra);
+    if (n <= 0 || (size_t)n >= sizeof(mouse_event_buf)) {
+        log_error("Detailed mouse event too long to encode");
+        return;
+    }
+    s->last_position.x = p->x;
+    s->last_position.y = p->y;
+    s->last_position.px = p->px;
+    s->last_position.py = p->py;
+    s->last_position.valid = true;
+    write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
+}
+
+static void
+report_detailed_mouse_event(Window *w, DetailedMouseEventType type, int mods, monotonic_t t, const char *extra) {
+    Screen *screen = w->render_data.screen;
+    const DetailedMousePosition p = detailed_mouse_position(w);
+    write_detailed_mouse_event(screen, type, mods, t, &p, detailed_held_buttons(screen), extra);
+}
+
+static void
+report_detailed_enter(Window *w, int mods) {
+    Screen *screen = w->render_data.screen;
+    if (screen && detailed_mouse_events(screen)) report_detailed_mouse_event(w, DETAILED_MOUSE_ENTER, mods, 0, "");
+}
+
+static void
+report_detailed_leave(Window *w, int mods) {
+    Screen *screen = w->render_data.screen;
+    if (!screen || !detailed_mouse_events(screen)) return;
+    // The window can be in another OS window than the one the event is for,
+    // so the position is the last reported one
+    const DetailedMouseEventsState *s = &screen->mouse_events;
+    DetailedMousePosition p = {.x = w->mouse_pos.cell_x + 1, .y = w->mouse_pos.cell_y + 1};
+    if (s->last_position.valid) p = (DetailedMousePosition){s->last_position.x, s->last_position.y, s->last_position.px, s->last_position.py};
+    write_detailed_mouse_event(screen, DETAILED_MOUSE_LEAVE, mods, 0, &p, detailed_held_buttons(screen), "");
+}
+
+// Reports motion, if the position changed since the last reported event. If
+// the mouse entering the window was not reported, reports that instead, as it
+// has the position.
+static void
+report_detailed_motion(Window *w, int mods) {
+    Screen *screen = w->render_data.screen;
+    const DetailedMouseEventsState *s = &screen->mouse_events;
+    const DetailedMousePosition p = detailed_mouse_position(w);
+    if (s->entered && s->last_position.valid && s->last_position.px == p.px && s->last_position.py == p.py) return;
+    write_detailed_mouse_event(screen, s->entered ? DETAILED_MOUSE_MOTION : DETAILED_MOUSE_ENTER, mods, 0, &p, detailed_held_buttons(screen), "");
+}
+
+// Reports a press and grabs the mouse for w, until the presses of all buttons
+// reported to it are released
+static void
+report_detailed_press(Window *w, int button, int mods) {
+    if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST) return;
+    Screen *screen = w->render_data.screen;
+    DetailedMouseEventsState *s = &screen->mouse_events;
+    const DetailedMousePosition p = detailed_mouse_position(w);
+    const monotonic_t t = event_time_or_now(0);
+    // Report entering before changing the state, so that it does not include this press
+    if (!s->entered) write_detailed_mouse_event(screen, DETAILED_MOUSE_ENTER, mods, t, &p, detailed_held_buttons(screen), "");
+    // The count uses the times as reported to the program
+    const unsigned long long now = detailed_event_time(screen, t);
+    const unsigned long long interval = OPT(click_interval) > 0 ? (unsigned long long)(OPT(click_interval) / 1000) : 0;
+    unsigned count = 1;
+    if (s->last_press.count && s->last_press.button == button && now - s->last_press.time <= interval &&
+        distance(w->mouse_pos.global_x, w->mouse_pos.global_y, s->last_press.px, s->last_press.py) <= radius_for_multiclick())
+        count = s->last_press.count + 1;
+    s->last_press.button = button;
+    s->last_press.count = count;
+    s->last_press.time = now;
+    s->last_press.px = w->mouse_pos.global_x;
+    s->last_press.py = w->mouse_pos.global_y;
+    s->press_counts[button] = count;
+    s->reported_buttons |= 1u << button;
+    if (!grab_window_id) {
+        grab_window_id = w->id;
+        // Any drag tracked for the legacy encodings is over, its release was lost
+        global_state.tracked_drag_in_window = 0;
+    }
+    char extra[64];
+    snprintf(extra, sizeof(extra), "%u;%u", detailed_button_number(button), count);
+    write_detailed_mouse_event(screen, DETAILED_MOUSE_PRESS, mods, t, &p, detailed_held_buttons(screen), extra);
+}
+
+// Reports a release, if the press of the button was reported
+static void
+report_detailed_release(Window *w, int button, int mods) {
+    if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST) return;
+    Screen *screen = w->render_data.screen;
+    DetailedMouseEventsState *s = &screen->mouse_events;
+    if (!(s->reported_buttons & (1u << button))) return;
+    s->reported_buttons &= ~(1u << button);
+    char extra[64];
+    snprintf(extra, sizeof(extra), "%u;%u", detailed_button_number(button), s->press_counts[button]);
+    report_detailed_mouse_event(w, DETAILED_MOUSE_RELEASE, mods, 0, extra);
+}
+
+// Returns the window that has grabbed the mouse, if any, ending the grab if
+// it is no longer valid, for example, because the program turned off the
+// reporting of mouse events
+static Window *
+grabbing_window(void) {
+    if (!grab_window_id) return NULL;
+    Window *w = window_for_id(grab_window_id);
+    Screen *screen = w ? w->render_data.screen : NULL;
+    if (screen && detailed_mouse_events(screen) && screen->mouse_events.reported_buttons) return w;
+    grab_window_id = 0;
+    return NULL;
+}
+
+// Reports the releases of all the buttons held in the window that grabbed the
+// mouse and ends the grab, for when their releases will not be delivered, for
+// example, because the mouse was taken over by drag and drop
+static void
+release_mouse_grab(int mods) {
+    Window *w = grabbing_window();
+    if (w) {
+        for (int b = 0; b <= GLFW_MOUSE_BUTTON_LAST; b++) report_detailed_release(w, b, mods);
+    }
+    grab_window_id = 0;
+}
+
+void
+cancel_mouse_grab(void) {
+    release_mouse_grab(global_state.mods_at_last_key_or_button_event);
+}
+// }}}
+
 static void
 clear_click_queue(Window *w, int button) {
     if (0 <= button && button < (ssize_t)arraysz(w->click_queues)) w->click_queues[button].length = 0;
@@ -752,20 +1054,34 @@ handle_potential_drag(Window *w, int button) {
 }
 
 HANDLER(handle_move_event) {
+    const int all_modifiers = modifiers;
     modifiers &= ~GLFW_LOCK_MASK;
 
-    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) return;
+    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) {
+        // The scrollbar is not part of the window for the detailed reporting of mouse events
+        report_detailed_leave(w, all_modifiers);
+        return;
+    }
 
     bool mouse_cell_changed = false;
     bool cell_half_changed = false;
+    Screen *screen = w->render_data.screen;
     if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) {
         if (w->scrollbar.is_hovering) { update_scrollbar_hover_state(w, false); }
+        // The mouse is in the padding, which programs receiving detailed mouse
+        // events are told about, but which kitty otherwise ignores
+        if (screen && detailed_mouse_events(screen) && !should_handle_in_kitty(w, screen, button) &&
+            (screen->modes.mouse_tracking_mode == ANY_MODE || screen->mouse_events.reported_buttons))
+            report_detailed_motion(w, all_modifiers);
         return;
     }
-    Screen *screen = w->render_data.screen;
     if (OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, modifiers);
     if (should_handle_in_kitty(w, screen, button)) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
+    } else if (detailed_mouse_events(screen)) {
+        // In mode 1002 only motion with a button held is reported, which the
+        // program knows about only if its press was reported
+        if (screen->modes.mouse_tracking_mode == ANY_MODE || screen->mouse_events.reported_buttons) report_detailed_motion(w, all_modifiers);
     } else {
         if (mouse_cell_changed || screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
             int sz = encode_mouse_button(w, button, button >= 0 ? DRAG : MOVE, modifiers);
@@ -779,11 +1095,6 @@ HANDLER(handle_move_event) {
 }
 
 #define N(n) (q->clicks[q->length - n])
-
-static double
-radius_for_multiclick(void) {
-    return 0.5 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->fcm.cell_height : 8);
-}
 
 static bool
 release_is_click(const Window *w, int button) {
@@ -957,6 +1268,7 @@ arm_potential_drag(Window *w, int button) {
 }
 
 HANDLER(handle_button_event) {
+    const int all_modifiers = modifiers;
     modifiers &= ~GLFW_LOCK_MASK;
     OSWindow *osw = global_state.callback_os_window;
     if (!osw) return;
@@ -978,7 +1290,10 @@ HANDLER(handle_button_event) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && !is_release) osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS);
     id_type wid = w->id;
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
-        if (screen->modes.mouse_tracking_mode != 0) {
+        if (detailed_mouse_events(screen)) {
+            // Releases are reported below, if their presses were reported
+            if (!is_release) report_detailed_press(w, button, all_modifiers);
+        } else if (screen->modes.mouse_tracking_mode != 0) {
             int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
             if (sz > 0) {
                 mouse_event_buf[sz] = 0;
@@ -990,6 +1305,13 @@ HANDLER(handle_button_event) {
     w = NULL;
     for (size_t i = 0; i < t->num_windows && !w; i++)
         if (t->windows[i].id == wid) w = t->windows + i;
+    // The release of every button whose press was reported is reported, even
+    // if kitty also handled it
+    if (w && is_release && w->render_data.screen && detailed_mouse_events(w->render_data.screen)) {
+        report_detailed_release(w, button, all_modifiers);
+        end_grab_after_release(all_modifiers);
+        w = window_for_id(wid);
+    }
     if (w) {
         if (is_release) dispatch_possible_click(w, button, modifiers);
         else add_press(w, button, modifiers);
@@ -1005,7 +1327,8 @@ currently_pressed_button(void) {
 }
 
 HANDLER(handle_event) {
-    modifiers &= ~GLFW_LOCK_MASK;
+    // The handlers remove the lock modifiers themselves, as programs receiving
+    // detailed mouse events are told about them
     set_mouse_cursor_for_screen(w->render_data.screen);
     set_currently_hovered_window(w->id, modifiers, true);
     if (button == -1) {
@@ -1241,7 +1564,7 @@ update_mouse_pointer_shape(void) {
 
 void
 leave_event(int modifiers) {
-    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
+    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window || grab_window_id) return;
     set_currently_hovered_window(0, modifiers, false);
 }
 
@@ -1257,7 +1580,7 @@ window_in_active_tab(OSWindow *osw, id_type window_id) {
 
 static bool
 mouse_is_busy(void) {
-    return global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window ||
+    return global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window || grab_window_id ||
            global_state.tab_being_dragged.id || global_state.window_being_dragged.id || global_state.active_drag_resize;
 }
 
@@ -1273,6 +1596,96 @@ hovered_window(OSWindow **osw) {
         w = window_in_active_tab(*osw, wid);
     }
     return w;
+}
+
+// Hovers the window under the mouse, telling the windows the mouse leaves and
+// enters, needs global_state.callback_os_window
+static void
+update_hovered_window(int mods) {
+    MouseRegion r = mouse_region(true, true);
+    set_currently_hovered_window(r.window && !r.window_border && !r.in_title_bar ? r.window->id : 0, mods, false);
+}
+
+// Ends the grab of the mouse when the last button whose press was reported to
+// the grabbing window is released. The mouse may then be outside the window.
+static void
+end_grab_after_release(int mods) {
+    if (!grab_window_id || grabbing_window()) return;
+    grab_window_id = 0;
+    update_hovered_window(mods);
+}
+
+// Handles an event while a window has grabbed the mouse, all events are
+// reported to it, wherever the mouse is
+static void
+handle_grabbed_event(Window *w, int button, int modifiers, int action) {
+    Screen *screen = w->render_data.screen;
+    const int kitty_modifiers = modifiers & ~GLFW_LOCK_MASK;
+    if (button < 0) {
+        if (screen->modes.mouse_tracking_mode >= MOTION_MODE) report_detailed_motion(w, modifiers);
+        // A drag can start the drag source protocol, must be last as it can call into Python
+        handle_potential_drag(w, global_state.callback_os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_LEFT] ? GLFW_MOUSE_BUTTON_LEFT : -1);
+        return;
+    }
+    if (button > GLFW_MOUSE_BUTTON_LAST) return;
+    // Keep the position kitty uses up to date, as for button events in the window
+    bool cell_changed, half_changed;
+    clamp_to_window = true;
+    set_mouse_position(w, &cell_changed, &half_changed);
+    clamp_to_window = false;
+    const id_type wid = w->id;
+    const bool is_release = action == GLFW_RELEASE;
+    // A press of a button that is already held means its release was lost
+    if (!is_release) report_detailed_release(w, button, modifiers);
+    const bool handled = dispatch_mouse_event(w, button, is_release ? -1 : 1, kitty_modifiers, true);
+    // The windows array might have been re-alloced in dispatch_mouse_event
+    if (!(w = window_for_id(wid)) || !w->render_data.screen) return;
+    if (is_release) {
+        report_detailed_release(w, button, modifiers);
+        end_grab_after_release(modifiers);
+        // Clicks for mouse_map, must be last as it can call into Python
+        if ((w = window_for_id(wid))) dispatch_possible_click(w, button, kitty_modifiers);
+    } else {
+        if (!handled) report_detailed_press(w, button, modifiers);
+        add_press(w, button, kitty_modifiers);
+    }
+}
+
+void
+update_mouse_hover_for_os_window(OSWindow *osw) {
+    // Only when the mouse is over a window in this OS window, as otherwise
+    // the position of the mouse in it is not known
+    if (!global_state.mouse_hover_in_window || mouse_is_busy() || !osw->fonts_data) return;
+    bool found = false;
+    for (size_t t = 0; t < osw->num_tabs && !found; t++) {
+        for (size_t i = 0; i < osw->tabs[t].num_windows && !found; i++) found = osw->tabs[t].windows[i].id == global_state.mouse_hover_in_window;
+    }
+    if (!found) return;
+    OSWindow *callback_os_window = global_state.callback_os_window;
+    global_state.callback_os_window = osw;
+    update_hovered_window(global_state.mods_at_last_key_or_button_event);
+    global_state.callback_os_window = callback_os_window;
+}
+
+void
+detailed_mouse_events_changed(Screen *screen) {
+    DetailedMouseEventsState *s = &screen->mouse_events;
+    if (!detailed_mouse_events(screen)) {
+        // Programs must consider all buttons released when the mode or mouse
+        // tracking is turned off
+        s->entered = false;
+        s->reported_buttons = 0;
+        return;
+    }
+    if (s->entered) return;
+    // Tell the program if the mouse is in its window
+    OSWindow *osw = NULL;
+    Window *w = hovered_window(&osw);
+    if (!w || w->render_data.screen != screen || mouse_is_busy()) return;
+    OSWindow *callback_os_window = global_state.callback_os_window;
+    global_state.callback_os_window = osw;
+    report_detailed_enter(w, global_state.mods_at_last_key_or_button_event);
+    global_state.callback_os_window = callback_os_window;
 }
 
 // Output can clear the link hover highlight, so keep the pointer and the
@@ -1341,7 +1754,7 @@ enter_event(int modifiers, bool cursor_moved) {
 #endif
     // If the mouse is grabbed send a move event to update the cursor position
     // since the last report.
-    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
+    if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window || grab_window_id) return;
     MouseRegion r = mouse_region(false, false);
     Window *w = r.window;
     set_currently_hovered_window(w ? w->id : 0, modifiers, cursor_moved);
@@ -1354,6 +1767,10 @@ enter_event(int modifiers, bool cursor_moved) {
     Screen *screen = w->render_data.screen;
     int button = currently_pressed_button();
     if (!screen || should_handle_in_kitty(w, screen, button)) return;
+    if (detailed_mouse_events(screen)) {
+        report_detailed_motion(w, modifiers);
+        return;
+    }
     int sz = encode_mouse_button(w, button, button >= 0 ? DRAG : MOVE, modifiers);
     if (sz > 0) {
         mouse_event_buf[sz] = 0;
@@ -1462,8 +1879,8 @@ border_name(int edges) {
     return "unknown";
 }
 
-void
-mouse_event(const int button, int modifiers, int action) {
+static void
+mouse_event_impl(const int button, int modifiers, int action) {
     MouseShape old_cursor = mouse_cursor_shape;
     unsigned int window_idx = 0;
     Window *w = NULL;
@@ -1477,6 +1894,8 @@ mouse_event(const int button, int modifiers, int action) {
         }
     }
     if (global_state.redirect_mouse_handling) {
+        // The window that grabbed the mouse no longer gets its events
+        if (grab_window_id) release_mouse_grab(modifiers);
         MouseRegion r = mouse_region(false, false);
         w = r.window;
         call_boss(
@@ -1515,6 +1934,14 @@ mouse_event(const int button, int modifiers, int action) {
                 dispatch_possible_click(w, button, modifiers);
                 return;
             }
+        }
+    }
+    if (grab_window_id) {
+        Window *gw = grabbing_window();
+        if (gw) {
+            handle_grabbed_event(gw, button, modifiers, action);
+            debug("handled by the window that grabbed the mouse\n");
+            return;
         }
     }
     if (global_state.tracked_drag_in_window) {
@@ -1636,6 +2063,14 @@ mouse_event(const int button, int modifiers, int action) {
         debug("no window for event\n");
     }
     if (mouse_cursor_shape != old_cursor) set_mouse_cursor(mouse_cursor_shape);
+}
+
+void
+mouse_event(const int button, int modifiers, int action, monotonic_t timestamp) {
+    const monotonic_t saved = current_event_time;
+    current_event_time = timestamp ? timestamp : monotonic();
+    mouse_event_impl(button, modifiers, action);
+    current_event_time = saved;
 }
 
 static int
@@ -1885,8 +2320,7 @@ scroll_phase(GLFWMomentumType t) {
 }
 
 
-// Detailed wheel event reporting {{{
-// See the section on detailed wheel events in docs/misc-protocol.rst
+// Scroll events in the detailed reporting of mouse events {{{
 
 typedef enum WheelEventUnit { WHEEL_UNIT_V120 = 1, WHEEL_UNIT_PIXELS = 2 } WheelEventUnit;
 enum { WHEEL_FLAG_MOMENTUM = 1, WHEEL_FLAG_INVERTED = 2 };
@@ -1949,25 +2383,10 @@ take_whole_wheel_delta(double delta, double *remainder) {
     return (int)whole;
 }
 
-// Returns the time of an event as reported to the program, in microseconds
-// since the mode was turned on. Reported times never decrease, as events can
-// come from different sources, such as the system and the synthesized momentum
-// scrolling, whose clocks need not agree.
-static unsigned long long
-wheel_event_timestamp(Screen *screen, monotonic_t timestamp) {
-    const monotonic_t since_origin = timestamp - screen->wheel_events_clock.origin;
-    unsigned long long ans = since_origin > 0 ? (unsigned long long)(since_origin / 1000) : 0;
-    if (ans < screen->wheel_events_clock.last_reported) ans = screen->wheel_events_clock.last_reported;
-    screen->wheel_events_clock.last_reported = ans;
-    return ans;
-}
-
-// Reports a scroll event to the program in the detailed wheel event format.
-// Returns the number of bytes written to mouse_event_buf or zero if nothing
-// is to be reported.
-static int
-encode_wheel_event(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
-    Screen *screen = w->render_data.screen;
+// Reports a scroll event to the program as a detailed mouse event, unless it
+// has nothing to report
+static void
+report_detailed_scroll(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
     // GLFW offsets are positive upwards and leftwards, while the escape code
     // uses positive downwards and rightwards
     double dx = -ev->x_offset, dy = -ev->y_offset, multiplier;
@@ -2007,40 +2426,30 @@ encode_wheel_event(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
     const int idy = take_whole_wheel_delta(dy, &osw->scroll.reported_remainder_y);
     // An event that neither scrolls a whole unit nor changes the phase has
     // nothing to report, its fraction is reported with a later event
-    if (!idx && !idy && (phase == 0 || phase == 2)) return 0;
-    int x = w->mouse_pos.cell_x + 1, y = w->mouse_pos.cell_y + 1;
-    if (screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
-        x = (int)round(w->mouse_pos.global_x);
-        y = (int)round(w->mouse_pos.global_y);
-    }
-    const unsigned mods = 1 + ((unsigned)ev->keyboard_modifiers & 0xff);
-    const int n = snprintf(
-        mouse_event_buf,
-        sizeof(mouse_event_buf),
-        ">%d;%d;%d;%d;%d:%u;%u;%u;%u;%u;%lluM",
-        x,
-        y,
-        idx,
-        idy,
+    if (!idx && !idy && (phase == 0 || phase == 2)) return;
+    char extra[128], sdx[32], sdy[32];
+    snprintf(
+        extra,
+        sizeof(extra),
+        "%s;%s;%d:%u;%u;%u;%u",
+        format_detailed_signed(sdx, sizeof(sdx), idx),
+        format_detailed_signed(sdy, sizeof(sdy), idy),
         unit,
         wheel_multiplier_in_thousandths(fabs(multiplier)),
         wheel_event_source(ev->source),
         phase,
-        flags,
-        mods,
-        wheel_event_timestamp(screen, ev->timestamp));
-    if (n <= 0 || (size_t)n >= sizeof(mouse_event_buf)) {
-        log_error("Detailed wheel event too long to encode");
-        return 0;
-    }
-    return n;
+        flags);
+    report_detailed_mouse_event(w, DETAILED_MOUSE_SCROLL, ev->keyboard_modifiers, ev->timestamp, extra);
 }
+
+// Whether the mouse is in the window the scroll event being processed is
+// for, as it can be for the active window when the mouse is not over a window
+static bool scroll_event_in_reporting_area = true;
 
 static bool
 report_wheel_event(OSWindow *osw, Window *w, const GLFWScrollEvent *ev) {
-    Screen *screen = w->render_data.screen;
-    if (!screen->modes.mWHEEL_EVENTS || screen->modes.mouse_tracking_mode == NO_TRACKING) return false;
-    if (encode_wheel_event(osw, w, ev) > 0) write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
+    if (!detailed_mouse_events(w->render_data.screen)) return false;
+    if (scroll_event_in_reporting_area) report_detailed_scroll(osw, w, ev);
     return true;
 }
 // }}}
@@ -2159,6 +2568,14 @@ scroll_event(const GLFWScrollEvent *ev) {
     }
     MouseRegion r = mouse_region(false, true);
     Window *w = r.window;
+    // A window that has grabbed the mouse gets all events
+    Window *gw = grabbing_window();
+    if (gw) {
+        w = gw;
+        r.in_tab_bar = false;
+    }
+    // Programs are told only about events in their window
+    const bool in_reporting_area = gw || (w && w == r.window && !r.in_title_bar && !pointer_over_scrollbar(w));
     if (!w && !r.in_tab_bar) {
         // fallback to last active window
         Tab *t = osw->tabs + osw->active_tab;
@@ -2177,7 +2594,44 @@ scroll_event(const GLFWScrollEvent *ev) {
             w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
         }
     }
+    scroll_event_in_reporting_area = in_reporting_area;
     scroll_event_in_window(osw, w, ev, osw->fonts_data->fcm.cell_width, osw->fonts_data->fcm.cell_height);
+    scroll_event_in_reporting_area = true;
+}
+
+// Sends an event simulated by a kitten as a detailed mouse event. The button
+// uses the X11 numbering, as for the other encodings. Simulated events do not
+// change the state of the reporting, such as the buttons held down.
+static bool
+send_simulated_detailed_mouse_event(Screen *screen, const DetailedMousePosition *p, int button, int action, int mods) {
+    unsigned number = 0; // in the numbering of the escape code
+    if (button >= 1 && button <= 3) number = button;
+    else if (button >= 8 && button <= 11) number = button - 4;
+    const unsigned bit = number ? 1u << (number - 1) : 0;
+    char extra[128];
+    switch (action) {
+        case PRESS:
+            if (button >= 4 && button <= 7) {
+                // One click of a wheel, buttons 4 and 5 scroll up and down, 6 and 7 left and right
+                char sdx[32], sdy[32];
+                const int dx = button == 6 ? -120 : (button == 7 ? 120 : 0), dy = button == 4 ? -120 : (button == 5 ? 120 : 0);
+                snprintf(extra, sizeof(extra), "%s;%s;1;0;0;0", format_detailed_signed(sdx, sizeof(sdx), dx), format_detailed_signed(sdy, sizeof(sdy), dy));
+                write_detailed_mouse_event(screen, DETAILED_MOUSE_SCROLL, mods, 0, p, 0, extra);
+                return true;
+            }
+            if (!number) return false;
+            snprintf(extra, sizeof(extra), "%u;1", number);
+            write_detailed_mouse_event(screen, DETAILED_MOUSE_PRESS, mods, 0, p, bit, extra);
+            return true;
+        case RELEASE:
+            if (!number) return false;
+            snprintf(extra, sizeof(extra), "%u;1", number);
+            write_detailed_mouse_event(screen, DETAILED_MOUSE_RELEASE, mods, 0, p, 0, extra);
+            return true;
+        case DRAG: write_detailed_mouse_event(screen, DETAILED_MOUSE_MOTION, mods, 0, p, bit, ""); return true;
+        case MOVE: write_detailed_mouse_event(screen, DETAILED_MOUSE_MOTION, mods, 0, p, 0, ""); return true;
+    }
+    return false;
 }
 
 static PyObject *
@@ -2193,6 +2647,14 @@ send_mouse_event(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
 
     MouseTrackingMode mode = screen->modes.mouse_tracking_mode;
     if (mode == ANY_MODE || (mode == MOTION_MODE && action != MOVE) || (mode == BUTTON_MODE && (action == PRESS || action == RELEASE))) {
+        if (detailed_mouse_events(screen)) {
+            const DetailedMousePosition p = {.x = x + 1, .y = y + 1, .px = px, .py = py};
+            writing_simulated_events = true;
+            const bool sent = send_simulated_detailed_mouse_event(screen, &p, button, action, mods);
+            writing_simulated_events = false;
+            if (sent) Py_RETURN_TRUE;
+            Py_RETURN_FALSE;
+        }
         MousePosition mpos = {.cell_x = x, .cell_y = y, .global_x = px, .global_y = py, .in_left_half_of_cell = in_left_half_of_cell};
         int sz = encode_mouse_event_impl(&mpos, screen->modes.mouse_tracking_protocol, button, action, mods);
         if (sz > 0) {
@@ -2349,10 +2811,10 @@ update_mock_pointer(PyObject *self UNUSED, PyObject *args) {
     global_state.tab_being_dragged.id = global_state.window_being_dragged.id = 0;
     global_state.redirect_mouse_handling = false;
     global_state.mods_at_last_key_or_button_event = old_mods;
-    mouse_event(-1, old_mods, -1);
+    mouse_event(-1, old_mods, -1, 0);
     if (in_padding) {
         osw.mouse_x = geometry.right + 5;
-        mouse_event(-1, old_mods, -1);
+        mouse_event(-1, old_mods, -1, 0);
     }
     if (!inside) leave_event(old_mods);
     if (drag == 1) global_state.active_drag_in_window = w->id;
@@ -2383,6 +2845,148 @@ update_mock_pointer(PyObject *self UNUSED, PyObject *args) {
     mouse_cursor_shape = saved_shape;
     if (PyErr_Occurred()) return NULL;
     return Py_BuildValue("(iO)", result, updated ? Py_True : Py_False);
+}
+
+// Sends a sequence of events from the OS to a mock OS window containing only
+// the window, which has cells 10 by 20 pixels, the first one at (20, 20), and
+// padding of 10 pixels on all sides, so the window spans from (10, 10) to
+// (30 + 10 * columns, 30 + 20 * lines). The OS window extends 50 pixels beyond
+// it to the right and bottom. Each event is a tuple of: (kind, button, x, y, t,
+// mods) where x and y are in the OS window, t is the time of the event in
+// microseconds since the detailed reporting of mouse events was turned on, or
+// negative for none, and kind is one of: press, release, move, scroll (button
+// is the number of wheel clicks downwards), leave or enter (the mouse leaves or
+// enters the OS window), hide or show (the window is hidden or shown, as when
+// switching tabs). Or (call, callable), to call it, for example, to change
+// modes while the mouse is over the window. The state of the mouse, such as the
+// window it is over, is kept from one call to the next, until reset is true.
+static PyObject *
+send_mock_mouse_events(PyObject *self UNUSED, PyObject *args) {
+    static struct {
+        id_type mouse_hover_in_window, grab_window_id;
+        bool mouse_button_pressed[GLFW_MOUSE_BUTTON_LAST + 1];
+    } mock_state = {0};
+    PyObject *capsule, *events;
+    int reset = 0;
+    if (!PyArg_ParseTuple(args, "O!O!|p", &PyCapsule_Type, &capsule, &PyList_Type, &events, &reset)) return NULL;
+    Window *w = PyCapsule_GetPointer(capsule, "Window");
+    if (!w) return NULL;
+    if (reset) zero_at_ptr(&mock_state);
+    Screen *screen = w->render_data.screen;
+    struct {
+        OSWindow *callback_os_window;
+        id_type mouse_hover_in_window, active_drag_in_window, tracked_drag_in_window, grab_window_id;
+    } saved = {
+        global_state.callback_os_window,
+        global_state.mouse_hover_in_window,
+        global_state.active_drag_in_window,
+        global_state.tracked_drag_in_window,
+        grab_window_id};
+    MouseShape saved_shape = mouse_cursor_shape;
+    // The window is placed in the tab by value and copied back afterwards, see update_mock_pointer()
+    const WindowGeometry saved_geometry = w->render_data.geometry;
+    const __typeof__(w->padding) saved_padding = w->padding;
+    const WindowGeometry geometry = {.left = 20, .top = 20, .right = 20 + screen->columns * 10, .bottom = 20 + screen->lines * 20};
+    Window windows[1] = {*w};
+    windows[0].render_data.geometry = geometry;
+    windows[0].padding.left = windows[0].padding.top = windows[0].padding.right = windows[0].padding.bottom = 10;
+    windows[0].visible = true;
+    Tab tab = {.windows = windows, .num_windows = 1};
+    struct {
+        FONTS_DATA_HEAD
+    } fonts = {.logical_dpi_x = 72, .logical_dpi_y = 72, .fcm = {.cell_width = 10, .cell_height = 20}};
+    OSWindow osw = {
+        .tabs = &tab,
+        .num_tabs = 1,
+        .has_too_few_tabs = true,
+        .fonts_data = (FONTS_DATA_HANDLE)&fonts,
+        .viewport_width = geometry.right + 10 + 50,
+        .viewport_height = geometry.bottom + 10 + 50};
+    memcpy(osw.mouse_button_pressed, mock_state.mouse_button_pressed, sizeof(mock_state.mouse_button_pressed));
+    global_state.callback_os_window = &osw;
+    global_state.active_drag_in_window = 0;
+    global_state.mouse_hover_in_window = mock_state.mouse_hover_in_window;
+    global_state.tracked_drag_in_window = 0;
+    grab_window_id = mock_state.grab_window_id;
+    bool ok = true;
+    for (Py_ssize_t i = 0; ok && i < PyList_GET_SIZE(events); i++) {
+        PyObject *ev = PyList_GET_ITEM(events, i);
+        if (!PyTuple_Check(ev) || PyTuple_GET_SIZE(ev) < 2) {
+            PyErr_SetString(PyExc_TypeError, "events must be tuples");
+            ok = false;
+            break;
+        }
+        const char *kind = PyUnicode_AsUTF8(PyTuple_GET_ITEM(ev, 0));
+        if (!kind) {
+            ok = false;
+            break;
+        }
+        if (strcmp(kind, "call") == 0) {
+            RAII_PyObject(ret, PyObject_CallNoArgs(PyTuple_GET_ITEM(ev, 1)));
+            ok = ret != NULL;
+            continue;
+        }
+        int button, mods;
+        double x, y;
+        long long t;
+        if (!PyArg_ParseTuple(ev, "siddLi", &kind, &button, &x, &y, &t, &mods)) {
+            ok = false;
+            break;
+        }
+        const monotonic_t timestamp = t < 0 ? 0 : screen->mouse_events.clock_origin + t * 1000;
+        osw.mouse_x = x;
+        osw.mouse_y = y;
+        if (strcmp(kind, "press") == 0 || strcmp(kind, "release") == 0) {
+            if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST) {
+                PyErr_SetString(PyExc_ValueError, "invalid button");
+                ok = false;
+                break;
+            }
+            const bool is_press = kind[0] == 'p';
+            // There is no event loop to dispatch clicks to kitty from
+            if (!is_press) windows[0].click_queues[button].length = 0;
+            osw.mouse_button_pressed[button] = is_press;
+            mouse_event(button, mods, is_press ? GLFW_PRESS : GLFW_RELEASE, timestamp);
+        } else if (strcmp(kind, "move") == 0) {
+            mouse_event(-1, mods, -1, timestamp);
+        } else if (strcmp(kind, "scroll") == 0) {
+            GLFWScrollEvent sev = {
+                .offset_type = GLFW_SCROLL_OFFSET_LINES,
+                .y_offset = -button,
+                .unscaled.y = -button,
+                .keyboard_modifiers = mods,
+                .source = GLFW_SCROLL_SOURCE_WHEEL,
+                .timestamp = timestamp};
+            const monotonic_t saved_time = current_event_time;
+            current_event_time = timestamp;
+            scroll_event(&sev);
+            current_event_time = saved_time;
+        } else if (strcmp(kind, "leave") == 0) {
+            leave_event(mods);
+        } else if (strcmp(kind, "enter") == 0) {
+            enter_event(mods, true);
+        } else if (strcmp(kind, "hide") == 0 || strcmp(kind, "show") == 0) {
+            windows[0].visible = kind[0] == 's';
+            update_mouse_hover_for_os_window(&osw);
+        } else {
+            PyErr_Format(PyExc_ValueError, "unknown kind of event: %s", kind);
+            ok = false;
+        }
+    }
+    mock_state.mouse_hover_in_window = global_state.mouse_hover_in_window;
+    mock_state.grab_window_id = grab_window_id;
+    memcpy(mock_state.mouse_button_pressed, osw.mouse_button_pressed, sizeof(mock_state.mouse_button_pressed));
+    *w = windows[0];
+    w->render_data.geometry = saved_geometry;
+    w->padding = saved_padding;
+    global_state.callback_os_window = saved.callback_os_window;
+    global_state.mouse_hover_in_window = saved.mouse_hover_in_window;
+    global_state.active_drag_in_window = saved.active_drag_in_window;
+    global_state.tracked_drag_in_window = saved.tracked_drag_in_window;
+    grab_window_id = saved.grab_window_id;
+    mouse_cursor_shape = saved_shape;
+    if (!ok || PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyObject *
@@ -2467,7 +3071,7 @@ send_mock_scroll_event_to_window(PyObject *self UNUSED, PyObject *args) {
     ev.direction_inverted = inverted;
     ev.unscaled.x = ev.x_offset;
     ev.unscaled.y = ev.y_offset;
-    ev.timestamp = w->render_data.screen->wheel_events_clock.origin + timestamp_us * 1000;
+    ev.timestamp = w->render_data.screen->mouse_events.clock_origin + timestamp_us * 1000;
     scroll_event_in_window(&osw, w, &ev, w->render_data.screen->cell_size.width, w->render_data.screen->cell_size.height);
     Py_RETURN_NONE;
 }
@@ -2480,6 +3084,7 @@ static PyMethodDef module_methods[] = {
     METHODB(send_mock_mouse_event_to_window, METH_VARARGS),
     METHODB(update_mock_pointer, METH_VARARGS),
     METHODB(send_mock_scroll_event_to_window, METH_VARARGS),
+    METHODB(send_mock_mouse_events, METH_VARARGS),
     METHODB(mock_mouse_selection, METH_VARARGS),
     {NULL, NULL, 0, NULL} /* Sentinel */
 };

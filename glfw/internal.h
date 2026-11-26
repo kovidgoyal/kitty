@@ -683,8 +683,12 @@ void _glfwInputKeyboard(_GLFWwindow *window, GLFWkeyevent *ev);
 void _glfwInputClipboardLost(GLFWClipboardType which);
 void _glfwInputScroll(_GLFWwindow *window, const GLFWScrollEvent *ev);
 void _glfwInputTouch(_GLFWwindow *window, const GLFWTouchEvent *ev);
-void _glfwInputMouseClick(_GLFWwindow *window, int button, int action, int mods);
-void _glfwInputCursorPos(_GLFWwindow *window, double xpos, double ypos);
+// timestamp is when the system generated the event, on the clock of
+// monotonic(), zero for events that do not come from the system, which then
+// have the time they are delivered
+void _glfwInputMouseClick(_GLFWwindow *window, int button, int action, int mods, monotonic_t timestamp);
+void _glfwInputCursorPos(_GLFWwindow *window, double xpos, double ypos, monotonic_t timestamp);
+void _glfwInputReleaseHeldMouseButtons(_GLFWwindow *window);
 void _glfwInputCursorEnter(_GLFWwindow *window, bool entered);
 // Platform functions for drop data reading
 void _glfwPlatformRequestDropUpdate(_GLFWwindow *window);

@@ -1495,7 +1495,7 @@ typedef void (*GLFWwindowcontentscalefun)(GLFWwindow *, float, float);
  *  This is the function pointer type for mouse button callback functions.
  *  A mouse button callback function has the following signature:
  *  @code
- *  void function_name(GLFWwindow* window, int button, int action, int mods)
+ *  void function_name(GLFWwindow* window, int button, int action, int mods, monotonic_t timestamp)
  *  @endcode
  *
  *  @param[in] window The window that received the event.
@@ -1505,6 +1505,10 @@ typedef void (*GLFWwindowcontentscalefun)(GLFWwindow *, float, float);
  *  may add more actions.
  *  @param[in] mods Bit field describing which [modifier keys](@ref mods) were
  *  held down.
+ *  @param[in] timestamp When the system generated the event, on the same
+ *  clock as monotonic(). Events synthesized by GLFW, such as releases of the
+ *  buttons that were held down when the window lost focus, have the time they
+ *  were synthesized.
  *
  *  @sa @ref input_mouse_button
  *  @sa @ref glfwSetMouseButtonCallback
@@ -1514,14 +1518,14 @@ typedef void (*GLFWwindowcontentscalefun)(GLFWwindow *, float, float);
  *
  *  @ingroup input
  */
-typedef void (*GLFWmousebuttonfun)(GLFWwindow *, int, int, int);
+typedef void (*GLFWmousebuttonfun)(GLFWwindow *, int, int, int, monotonic_t);
 
 /*! @brief The function pointer type for cursor position callbacks.
  *
  *  This is the function pointer type for cursor position callbacks.  A cursor
  *  position callback function has the following signature:
  *  @code
- *  void function_name(GLFWwindow* window, double xpos, double ypos);
+ *  void function_name(GLFWwindow* window, double xpos, double ypos, monotonic_t timestamp);
  *  @endcode
  *
  *  @param[in] window The window that received the event.
@@ -1529,6 +1533,10 @@ typedef void (*GLFWmousebuttonfun)(GLFWwindow *, int, int, int);
  *  the content area.
  *  @param[in] ypos The new cursor y-coordinate, relative to the top edge of the
  *  content area.
+ *  @param[in] timestamp When the system generated the event, on the same
+ *  clock as monotonic(). Positions that do not come from a motion event, such
+ *  as when the cursor is warped or the window gains focus, have the time they
+ *  were reported.
  *
  *  @sa @ref cursor_pos
  *  @sa @ref glfwSetCursorPosCallback
@@ -1537,7 +1545,7 @@ typedef void (*GLFWmousebuttonfun)(GLFWwindow *, int, int, int);
  *
  *  @ingroup input
  */
-typedef void (*GLFWcursorposfun)(GLFWwindow *, double, double);
+typedef void (*GLFWcursorposfun)(GLFWwindow *, double, double, monotonic_t);
 
 /*! @brief The function pointer type for cursor enter/leave callbacks.
  *
@@ -4743,7 +4751,7 @@ GLFWAPI void glfwUpdateIMEState(GLFWwindow *window, const GLFWIMEUpdateEvent *ev
  *
  *  @callback_signature
  *  @code
- *  void function_name(GLFWwindow* window, int button, int action, int mods)
+ *  void function_name(GLFWwindow* window, int button, int action, int mods, monotonic_t timestamp)
  *  @endcode
  *  For more information about the callback parameters, see the
  *  [function pointer type](@ref GLFWmousebuttonfun).
@@ -4776,7 +4784,7 @@ GLFWAPI GLFWmousebuttonfun glfwSetMouseButtonCallback(GLFWwindow *window, GLFWmo
  *
  *  @callback_signature
  *  @code
- *  void function_name(GLFWwindow* window, double xpos, double ypos);
+ *  void function_name(GLFWwindow* window, double xpos, double ypos, monotonic_t timestamp);
  *  @endcode
  *  For more information about the callback parameters, see the
  *  [function pointer type](@ref GLFWcursorposfun).

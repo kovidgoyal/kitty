@@ -1358,6 +1358,11 @@ render_prepared_os_window(
 bool
 render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images, bool ignore_frame_pacing) {
     if (!w->num_tabs) return false;
+    if (w->needs_mouse_hover_update) {
+        // Done before rendering, once the changes to the layout are complete
+        w->needs_mouse_hover_update = false;
+        update_mouse_hover_for_os_window(w);
+    }
     if (!should_os_window_be_rendered(w) && global_state.thumbnail_callback.os_window != w->id) {
         update_os_window_title(w);
         if (w->is_focused) change_menubar_title(w->window_title);

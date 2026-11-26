@@ -144,11 +144,15 @@ Detailed list of changes
   terminal scrolls, vertically or horizontally, by amounts in pixels, with
   images moving along with the text
 
-- A new mode (``5523``) to :ref:`report scroll events to programs in full detail
-  <detailed_wheel_events>`, with pixel or high resolution deltas, the device
-  kind, gesture phase, momentum/natural scrolling flags and the time of the
-  event. Kittens can use it
-  via ``Loop.DetailedWheelEvents()``
+- A new mode (``5523``) to :ref:`report all mouse events to programs in full
+  detail <detailed_mouse_events>`, in an encoding that is valid ECMA-48, unlike
+  SGR pixel mouse reporting, which uses negative numbers. Every event has the
+  cell and pixel position, the buttons held, the modifiers, the time of the
+  event and a serial. Presses and releases have click counts that respect the
+  double click interval of the desktop, the mouse entering and leaving the
+  window is reported and scroll events have pixel or high resolution deltas,
+  the device kind, gesture phase and momentum/natural scrolling flags. Kittens
+  can use it via ``Loop.DetailedMouseEvents()``
 
 - Sessions: A new :ac:`set_session` action and :ref:`kitten @ set-session
   <at-set-session>` remote control command to move existing windows and tabs

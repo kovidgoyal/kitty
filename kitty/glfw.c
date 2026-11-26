@@ -744,17 +744,17 @@ refresh_mouse_position_for_hit_test(GLFWwindow *w, OSWindow *window) {
 }
 
 static void
-dispatch_mouse_button(OSWindow *window, int button, int action, int mods) {
+dispatch_mouse_button(OSWindow *window, int button, int action, int mods, monotonic_t timestamp) {
     window->mouse_button_pressed[button] = action == GLFW_PRESS;
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         window->mouse_left_press_x = window->mouse_x;
         window->mouse_left_press_y = window->mouse_y;
     }
-    if (is_window_ready_for_callbacks()) mouse_event(button, mods, action);
+    if (is_window_ready_for_callbacks()) mouse_event(button, mods, action, timestamp);
 }
 
 static void
-mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
+mouse_button_callback(GLFWwindow *w, int button, int action, int mods, monotonic_t timestamp) {
     if (!set_callback_window(w)) return;
 #ifdef __APPLE__
     cocoa_clear_dock_badge_if_set();
@@ -773,16 +773,16 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
                 glfwGetCursorPos(w, &x, &y);
                 set_os_window_mouse_position(window, x, y);
             }
-            if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
+            if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1, timestamp);
         }
-        dispatch_mouse_button(window, button, action, mods);
+        dispatch_mouse_button(window, button, action, mods, timestamp);
     }
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }
 
 static void
-on_mouse_position_update(double x, double y) {
+on_mouse_position_update(double x, double y, monotonic_t timestamp) {
     monotonic_t now = monotonic();
     cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
@@ -791,14 +791,14 @@ on_mouse_position_update(double x, double y) {
     global_state.callback_os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
     set_os_window_mouse_position(global_state.callback_os_window, x, y);
     global_state.callback_os_window->has_received_cursor_pos_event = true;
-    if (is_window_ready_for_callbacks()) mouse_event(-1, global_state.mods_at_last_key_or_button_event, -1);
+    if (is_window_ready_for_callbacks()) mouse_event(-1, global_state.mods_at_last_key_or_button_event, -1, timestamp);
     request_tick_callback();
 }
 
 static void
-cursor_pos_callback(GLFWwindow *w, double x, double y) {
+cursor_pos_callback(GLFWwindow *w, double x, double y, monotonic_t timestamp) {
     if (!set_callback_window(w)) return;
-    on_mouse_position_update(x, y);
+    on_mouse_position_update(x, y, timestamp);
     global_state.callback_os_window = NULL;
 }
 
@@ -868,13 +868,13 @@ touch_move_mouse(OSWindow *osw, double x, double y, int mods) {
     osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
     set_os_window_mouse_position(osw, x, y);
     osw->has_received_cursor_pos_event = true;
-    if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
+    if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1, 0);
 }
 
 static void
 touch_press_left_button(OSWindow *osw, int action, int mods) {
     global_state.mods_at_last_key_or_button_event = mods;
-    dispatch_mouse_button(osw, GLFW_MOUSE_BUTTON_LEFT, action, mods);
+    dispatch_mouse_button(osw, GLFW_MOUSE_BUTTON_LEFT, action, mods, 0);
 }
 
 // The momentum scroller delivers its scroll events through scroll_callback() at
@@ -1253,7 +1253,7 @@ drop_dest_callback(GLFWwindow *window, GLFWDropEvent *ev) {
         case GLFW_DROP_MOVE:
             global_state.drop_dest.drop_has_happened = false;
             global_state.drop_dest.os_window_id = os_window->id;
-            on_mouse_position_update(ev->xpos, ev->ypos);
+            on_mouse_position_update(ev->xpos, ev->ypos, 0);
             os_window->last_drag_event.x = (int)os_window->mouse_x;
             os_window->last_drag_event.y = (int)os_window->mouse_y;
             // Re-evaluate which kitty window is now under the cursor after the
@@ -4302,6 +4302,8 @@ start_window_drag(Window *w, bool in_test_mode) {
     global_state.drag_source.from_os_window = osw->id;
     global_state.drag_source.thumbnail_idx = w->drag_source.img_idx < num_images ? (int)w->drag_source.img_idx : -1;
     global_state.tracked_drag_in_window = 0; // this is now an OS global drag
+    // which consumes the release of the button
+    cancel_mouse_grab();
     if (in_test_mode) return 0;
     GLFWDragOperationType ops = GLFW_DRAG_OPERATION_NONE;
     if (w->drag_source.allowed_operations & 1) ops |= GLFW_DRAG_OPERATION_COPY;

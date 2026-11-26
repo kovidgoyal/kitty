@@ -641,6 +641,8 @@ typedef struct OSWindow {
     } tab_bar_edge_color;
     bool tab_bar_data_updated;
     bool is_focused;
+    // The windows may have moved under the mouse, see update_mouse_hover_for_os_window()
+    bool needs_mouse_hover_update;
     bool bell_attention_requested;
     monotonic_t cursor_blink_zero_time, last_mouse_activity_at, mouse_activate_deadline;
     bool user_is_idle;
@@ -932,6 +934,10 @@ void update_menu_bar_title(PyObject *title UNUSED);
 void change_live_resize_state(OSWindow *, bool);
 bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images, bool ignore_frame_pacing);
 void update_mouse_pointer_shape(void);
+void update_mouse_hover_for_os_window(OSWindow *os_window);
+// Ends the grab of the mouse by a window that was reported a press, reporting
+// the releases of the held buttons, for when their releases will not be delivered
+void cancel_mouse_grab(void);
 void update_pointer_shape_for_kitty_window(id_type kitty_window_id);
 bool update_link_hover_for_modifiers(int old_mods, int new_mods);
 void link_hover_cleared_by_output(Screen *screen);

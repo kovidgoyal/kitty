@@ -189,7 +189,7 @@ func Run(args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING).DetailedWheelEvents()
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING).DetailedMouseEvents()
 	var current_mouse_event *loop.MouseEvent
 	var dnd dnd_state
 	var text text_area
@@ -287,6 +287,13 @@ func Run(args []string) (rc int, err error) {
 			)
 			if current_mouse_event.Event_type == loop.MOUSE_WHEEL {
 				info = append(info, fmt.Sprintf("Wheel   : %s", current_mouse_event.Wheel))
+			}
+			if e := current_mouse_event; e.Detailed {
+				d := fmt.Sprintf("Detailed: held=%s time=%s serial=%d", e.HeldButtons, e.Timestamp, e.Serial)
+				if e.Event_type == loop.MOUSE_PRESS || e.Event_type == loop.MOUSE_RELEASE {
+					d += fmt.Sprintf(" clicks=%d", e.ClickCount)
+				}
+				info = append(info, d)
 			}
 			if current_mouse_event.Buttons != loop.NO_MOUSE_BUTTON {
 				info = append(info, current_mouse_event.Buttons.String())

@@ -130,6 +130,7 @@ pointerHandleLeave(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_
     }
     if (window->wl.surface == surface) {
         window->wl.hovered = false;
+        _glfwInputReleaseHeldMouseButtons(window);
         _glfwInputCursorEnter(window, false);
         _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
     } else csd_handle_pointer_event(window, -3, -3, surface);
@@ -167,8 +168,7 @@ static const struct zwp_input_timestamps_v1_listener pointerTimestampsListener =
 
 static void
 pointerHandleMotion(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t time, wl_fixed_t sx, wl_fixed_t sy) {
-    // Only scroll events use the time, but the high resolution time sent for this event must be consumed
-    pointer_event_time(time);
+    const monotonic_t t = pointer_event_time(time);
     _GLFWwindow *window = _glfw.wl.pointerFocus;
     if (!window || window->cursorMode == GLFW_CURSOR_DISABLED) return;
     window->wl.allCursorPosX = wl_fixed_to_double(sx);
@@ -178,14 +178,14 @@ pointerHandleMotion(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32
     } else {
         window->wl.cursorPosX = x;
         window->wl.cursorPosY = y;
-        _glfwInputCursorPos(window, x, y);
+        _glfwInputCursorPos(window, x, y, t);
         _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
     }
 }
 
 static void
 pointerHandleButton(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
-    pointer_event_time(time);
+    const monotonic_t t = pointer_event_time(time);
     glfw_cancel_momentum_scroll();
     _glfw.wl.serial = serial;
     _glfw.wl.input_serial = serial;
@@ -203,7 +203,7 @@ pointerHandleButton(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32
     /* Makes left, right and middle 0, 1 and 2. Overall order follows evdev
      * codes. */
     int glfwButton = button - BTN_LEFT;
-    _glfwInputMouseClick(window, glfwButton, state == WL_POINTER_BUTTON_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE, _glfw.wl.xkb.states.modifiers);
+    _glfwInputMouseClick(window, glfwButton, state == WL_POINTER_BUTTON_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE, _glfw.wl.xkb.states.modifiers, t);
 }
 #undef x
 #undef y

@@ -45,46 +45,261 @@ be ignored as they may not be accurate.
 
 .. _detailed_wheel_events:
 
-Detailed reporting of scroll wheel and touchpad events
+.. _detailed_mouse_events:
+
+Detailed reporting of mouse events
 --------------------------------------------------------
 
 .. versionadded:: 1.0.0
 
-Traditionally, terminals report scrolling to programs as presses of the mouse
-buttons 4 to 7. This is a poor fit for modern input devices such as high
-resolution wheels and touchpads, which report scrolling in fractions of a
-wheel click or in pixels, have gestures that begin and end and continue scrolling
-with momentum after the fingers are lifted. kitty has a mode that makes it
-report scroll events with all this information instead.
-Programs can use these events with the :doc:`smooth scrolling protocol
-<smooth-scrolling-protocol>` to scroll their content by pixels.
+The traditional mouse reporting protocols have several shortcomings:
+
+* Scrolling is reported as presses of the mouse buttons 4 to 7. This is a poor
+  fit for modern input devices such as high resolution wheels and touchpads,
+  which report scrolling in fractions of a wheel click or in pixels, have
+  gestures that begin and end and continue scrolling with momentum after the
+  fingers are lifted.
+
+* SGR pixel mouse reporting (mode ``1016``) reports positions to the left of
+  or above the window as negative numbers. These are not valid in the
+  parameters of a CSI escape code, as per ECMA-48, the ``-`` byte is an
+  *intermediate byte*, so a conforming parser cannot read them.
+
+* Programs have to choose between cell and pixel positions, the button and
+  modifiers are packed together into a single bit field, there is no way to
+  know which other buttons are held down, no time for the events and every
+  program has to detect double and triple clicks itself.
+
+kitty has a mode that makes it report all mouse events in a single, extensible
+format that has none of these problems. Programs can use the scroll events it
+reports with the :doc:`smooth scrolling protocol <smooth-scrolling-protocol>`
+to scroll their content by pixels.
+
+Turning it on
+~~~~~~~~~~~~~~~~
 
 The mode is private mode ``5523``. A program turns it on with
 ``CSI ? 5523 h`` and off with ``CSI ? 5523 l``. It can check whether the
-terminal supports it with the standard DECRQM query, ``CSI ? 5523 $ p``. The
-mode has an effect only while mouse tracking is turned on (one of the modes
-``1000``, ``1002`` or ``1003``), as otherwise the terminal uses scroll events
-itself, to scroll its scrollback. While both are on, scroll events are no
-longer reported as button 4 to 7 presses. Instead, every scroll event from
-the operating system is reported as a single escape code of the form::
+terminal supports it with the standard DECRQM query, ``CSI ? 5523 $ p``,
+which reports whether the mode is set, regardless of whether mouse tracking is
+on.
 
-    CSI > x ; y ; dx ; dy ; unit ; source ; phase ; flags ; mods ; t M
+The mode only changes *how* mouse events are reported. It has an effect only
+while mouse tracking is turned on with one of the modes below, which continue
+to control *which* events are reported:
 
-Spaces in the above are for clarity only. All parameters are always present.
-They are:
+``1000``
+    Button presses and releases, scroll events, and the mouse entering and
+    leaving the window.
+
+``1002``
+    In addition, motion while any button whose press was reported is held
+    down.
+
+``1003``
+    In addition, all motion.
+
+It has no effect with the X10 (``9``) and highlight (``1001``) mouse tracking
+modes. While mouse tracking is off, the terminal uses mouse events itself, for
+instance, scroll events to scroll its scrollback, and reports nothing. While
+the mode is on, the encodings selected by modes ``1005``, ``1006``, ``1015``
+and ``1016`` are not used. These modes keep their values and the encoding
+they select is used again once this mode is turned off.
+
+The mode is reset, saved and restored in the same way as the mouse tracking
+modes. When the mode or mouse tracking is turned off, no more events are
+reported in this encoding for the buttons that are still held down, so
+programs must then consider all buttons released.
+
+Note that programs that do not use this mode must not turn it on, for
+instance, by restoring modes they did not save. Parsers that ignore the ``>``
+byte would read the escape codes as reports in the ``1015`` encoding.
+
+The window
+~~~~~~~~~~~~~
+
+Events are reported for the *window* of the program, the area in which the
+terminal draws its screen, including any padding around the cells, but not
+any borders, scroll bars, tab bars or title bars. In kitty, this is the
+kitty window running the program.
+
+Events are reported while the mouse pointer is in the window. The terminal
+may handle some events itself rather than reporting them, for instance,
+clicks with modifiers the user configured for selecting text. It then reports
+neither the press of the button nor its release.
+
+When a button press is reported, the pointer is *grabbed* by the window,
+until all the buttons whose presses were reported are released. While the
+pointer is grabbed, all events are reported to the window, wherever the
+pointer is, even outside the window, and the release of every button whose
+press was reported is always reported to it, even if, for example, the
+window loses the keyboard focus. When the terminal will not receive the
+release of a button, for example, because the mouse was taken over by drag
+and drop, it reports the release as soon as it knows that.
+
+The pointer entering and leaving the window is reported, strictly
+alternating, starting with entering. Entering is reported when the pointer
+moves into the window, when the window appears under the pointer, for
+example, when switching to its tab, and, if the pointer is in the window,
+when this mode or mouse tracking is turned on. Terminals may report entering
+only just before the next event they report to the window, when it is not
+practical to detect the pointer entering, for example, when the window
+appears under the pointer because of a change in the layout of the windows.
+Entering is always reported before any other event. Leaving is reported when
+the pointer moves out of the window or the window disappears from under it.
+While the pointer is grabbed, leaving is not reported. If the pointer is
+outside the window when it stops being grabbed, leaving is reported right
+after the release of the last button.
+
+Terminals should report the click that gives the keyboard focus to a window
+like any other.
+
+The escape code
+~~~~~~~~~~~~~~~~~~
+
+Every mouse event is reported as a single escape code of the form::
+
+    CSI > type : serial ; x ; y ; px ; py ; buttons ; mods ; t ; ... M
+
+Spaces in the above are for clarity only. The parameters up to and including
+``t`` are common to all events and are always present. They are followed by
+parameters specific to the type of the event, described :ref:`below
+<mouse_event_types>`, which are also always present. Parameters are never
+empty. The final byte is always ``M``, including for releases.
+
+All numbers are non-negative decimal integers that fit in 32 bits, that is,
+are at most ``4294967295``. Programs using this mode must be able to parse
+numbers this large and escape codes with at least ``32`` numbers in total,
+counting both parameters and sub-parameters.
+
+Values that can be negative are sent as their absolute value, followed by the
+sub-parameter ``1`` when they are negative. For example, ``42`` is ``42`` and
+``42:1`` is ``-42``. Terminals may send ``42:0`` for ``42`` and must do so
+if they send further sub-parameters for the value. They never send ``0:1``,
+programs should read it as zero. For example, in Python:
+
+.. code-block:: python
+
+    def signed(param: str) -> int:
+        magnitude, _, rest = param.partition(':')
+        sign = rest.partition(':')[0]
+        return -int(magnitude) if sign == '1' else int(magnitude)
+
+The common parameters are:
+
+``type``
+    The type of the event: ``1`` a button press, ``2`` a button release,
+    ``3`` motion, ``4`` scrolling, ``5`` the mouse entered the window and
+    ``6`` the mouse left the window.
+
+``serial``
+    An integer identifying the event, from ``0`` to ``2147483647``, see
+    :ref:`mouse_event_serials`.
 
 ``x ; y``
-    The position of the mouse pointer. This is a 1-based cell position,
-    unless SGR pixel mouse reporting (mode ``1016``) is on, in which case it
-    is the position in pixels, exactly as for other mouse events.
+    The 1-based position of the cell under the mouse pointer. This is the
+    cell whose contents are drawn under the pointer, taking into account, for
+    example, the offsets of :doc:`smooth scroll regions
+    <smooth-scrolling-protocol>`, so it cannot always be calculated from the
+    pixel position. It is always on the screen: when the pointer is not over
+    a cell, for example, when it is in the padding or outside the window,
+    while it is grabbed, it is the cell nearest to the pointer.
+
+``px ; py``
+    The position of the mouse pointer in pixels, as signed values, relative
+    to the top left corner of the first cell of the screen. This is the same
+    pixel coordinate system as used for SGR pixel mouse reporting and the
+    ``CSI 14 t`` query. It is negative when the pointer is to the left of or
+    above the first cell, for example, ``7:1`` when it is seven pixels to its
+    left, in the padding or outside the window.
+
+``buttons``
+    The buttons held down after the event, among those whose presses were
+    reported, as a bit field, where button ``n`` (see below) is the bit
+    ``2ⁿ⁻¹``, so ``1`` for the left button, ``2`` for the middle button,
+    ``4`` for the right button, and so on. For a press, it includes the
+    pressed button and for a release, it does not include the released
+    button.
+
+``mods``
+    The keyboard modifiers that were pressed, encoded as in the
+    :ref:`keyboard protocol <modifiers>`, that is, one plus a bit field
+    where ``shift=1``, ``alt=2``, ``ctrl=4``, ``super=8``, ``hyper=16``,
+    ``meta=32``, ``caps_lock=64`` and ``num_lock=128``.
+
+``t``
+    The time of the event, as ``seconds:microseconds``, where ``seconds`` is a
+    non-negative integer and ``microseconds`` is from ``0`` to ``999999``.
+    Only the differences between the times of events are meaningful, for
+    instance, to calculate the velocity of a scroll gesture for momentum
+    scrolling, without being affected by delays in delivering the events to
+    the program. The time is that of the input event from the operating
+    system, where available, not the time the terminal processed or sent it.
+    The times of all types of events are on the same clock. kitty uses the
+    time from the operating system for events processed up to one second
+    after they happened, later ones, for example, because kitty was
+    unresponsive, have the time they were processed. Events that do not come
+    from an input event of the operating system, such as momentum scrolling
+    the terminal synthesizes or, on some platforms, the pointer entering and
+    leaving the window, have the time they were generated. When the terminal
+    detects the end of a scroll gesture itself, because the operating system
+    does not report it, the end has the time of the last event of the
+    gesture. The origin is arbitrary, kitty uses the time the mode was turned
+    on. The time never decreases from one event to the next while the mode
+    stays on. On platforms that provide event times only in milliseconds, the
+    differences between them are accurate only to a millisecond.
+
+The mouse buttons are numbered as ``1`` left, ``2`` middle, ``3`` right,
+``4`` back, ``5`` forward and ``6`` and higher for any additional buttons.
+Note that, unlike in the traditional protocols, the buttons ``4`` to ``7``
+are not used for scrolling, which is reported with its own type of event.
+
+.. _mouse_event_types:
+
+The types of events
+~~~~~~~~~~~~~~~~~~~~~~
+
+Press (type ``1``)
+    ``button ; count``, where ``button`` is the number of the button pressed
+    and ``count`` is the number of successive presses of the button, ``1``
+    for a single click, ``2`` for a double click, ``3`` for a triple click
+    and so on, see :ref:`mouse_click_count`.
+
+Release (type ``2``)
+    ``button ; count``, where ``button`` is the number of the button released
+    and ``count`` is the count of the press it releases.
+
+Motion (type ``3``)
+    No additional parameters. Whether a button is held down, that is, whether
+    the motion is a drag, is given by ``buttons``. Motion is reported when the
+    position of the pointer changes, by at least a pixel, including within a
+    cell and in the padding. Terminals may report only the latest of several
+    motions, for example, when the program is not reading its input fast
+    enough.
+
+Scrolling (type ``4``)
+    ``dx ; dy ; unit ; source ; phase ; flags``, described below. Every
+    scroll event from the operating system is reported as at most one
+    escape code. Events that scroll less than a whole unit (see ``unit``
+    below) and do not change the ``phase`` are not reported, the amount they
+    scroll is reported with a later event.
+
+Entering and leaving the window (types ``5`` and ``6``)
+    No additional parameters. For leaving, the position is the one reported
+    with the previous event, as the terminal may not know where the pointer
+    is once it has left the window.
+
+The parameters of scroll events are:
 
 ``dx ; dy``
-    The amount scrolled, as signed integers. A positive ``dy`` means scrolling
+    The amount scrolled, as signed values. A positive ``dy`` means scrolling
     towards the end of the content, that is, the direction of the
     traditional button 5 (wheel down). A positive ``dx`` means scrolling to
-    the right, the direction of button 7. The deltas have any natural
-    scrolling preference of the user already applied, see ``flags`` below.
-    Events that carry only a change of ``phase`` have both deltas zero.
+    the right, the direction of the traditional button 7. The deltas have any
+    natural scrolling preference of the user and the sign of any negative
+    scroll multiplier the user configured in the terminal already applied,
+    see ``flags`` below. Events that carry only a change of ``phase`` have
+    both deltas zero.
 
 ``unit``
     The unit of ``dx`` and ``dy``:
@@ -96,20 +311,18 @@ They are:
         report multiples of ``120``.
 
     ``2``
-        Pixels, in the same pixel coordinate system as used for SGR pixel
-        mouse reporting and the ``CSI 14 t`` query. Fractions of a pixel are
-        accumulated by the terminal and reported in a later event, so nothing
-        is lost over a gesture.
+        Pixels, in the same pixel coordinate system as ``px`` and ``py``.
+        Fractions of a pixel are accumulated by the terminal and reported in
+        a later event, so nothing is lost over a gesture.
 
-    This parameter can have an optional sub-parameter, the scroll multiplier
-    the user has configured in the terminal for this kind of scrolling, as a
-    positive integer number of thousandths, for example, ``1:5000`` for a
-    multiplier of ``5`` or ``2:1500`` for ``1.5``. A decimal point is not used
-    as it is not a valid byte in the parameters of a CSI escape code. It is a
+    This parameter can have an optional sub-parameter, the magnitude of the
+    scroll multiplier the user has configured in the terminal for this kind
+    of scrolling, as a positive integer number of thousandths, for example,
+    ``1:5000`` for a multiplier of ``5`` or ``2:1500`` for ``1.5``. It is a
     hint that programs can use to make their scrolling match that of the
-    terminal, for instance, by scrolling ``5`` lines per wheel click. Terminals
-    are not required to send it and programs are free to ignore it. The deltas
-    themselves are never scaled by the multiplier.
+    terminal, for instance, by scrolling ``5`` lines per wheel click.
+    Terminals are not required to send it and programs are free to ignore
+    it. The deltas themselves are never scaled by the multiplier.
 
 ``source``
     The kind of device the event comes from: ``0`` unknown, ``1`` a wheel,
@@ -136,46 +349,91 @@ They are:
     scrolling. Programs that need the physical direction, for example, to
     move a slider, can use it to undo the reversal.
 
-``mods``
-    The keyboard modifiers that were pressed, encoded as in the
-    :ref:`keyboard protocol <modifiers>`, that is, one plus a bit field
-    where ``shift=1``, ``alt=2``, ``ctrl=4``, ``super=8``, ``hyper=16``,
-    ``meta=32``, ``caps_lock=64`` and ``num_lock=128``.
+.. _mouse_click_count:
 
-``t``
-    The time of the event, in microseconds, as a non-negative integer. Only
-    the differences between the times of events are meaningful, for
-    instance, to calculate the velocity of a gesture for momentum scrolling,
-    without being affected by delays in delivering the events to the
-    program. The time is that of the input event from the operating system,
-    where available, not the time the terminal processed or sent it. kitty
-    uses the time from the operating system for events processed up to 30
-    seconds after they happened, later ones, for example, because kitty was
-    unresponsive, have the time they were processed. Events that the
-    terminal generates itself, such as momentum scrolling it synthesizes,
-    have the time they were generated. When the terminal detects the end of
-    a gesture itself, because the operating system does not report it, the
-    end has the time of the last event of the gesture. The origin is arbitrary,
-    kitty uses the time the mode was turned on. The time never decreases
-    from one event to the next while the mode stays on. On platforms that
-    provide event times only in milliseconds, the differences between them
-    are accurate only to a millisecond.
+Click counts
+~~~~~~~~~~~~~~~
 
-More parameters may be added at the end in the future, and sub-parameters
-(separated by colons) may be added to any parameter. Programs must ignore any
-parameters and sub-parameters they do not recognise.
+The terminal counts successive presses so that programs do not have to, and
+so that the double click interval the user configured is respected by all
+programs. A press continues the count of the previous reported press if all
+of these hold:
 
-A few examples, with the escape code introducer ``CSI >`` and the final ``M``
-omitted::
+* it is of the same button
+* the time between the two presses, as given by ``t``, is at most the
+  double click interval
+* the distance between the positions of the two presses is at most a small
+  radius
 
-    10;5;0;120;1:5000;1;0;0;1;1520000     one click of a wheel, downwards
-    10;5;0;-30;1:5000;1;0;0;1;2310000     a quarter click of a high resolution wheel, upwards
-    10;5;0;0;2:1000;2;1;0;1;4000125       two fingers start a scroll on a touchpad
-    10;5;3;-42;2:1000;2;2;0;1;4008453     the fingers move upwards by 42 pixels, 8.3 ms later
-    10;5;0;0;2:1000;2;3;0;1;4016790       the fingers are lifted
-    10;5;0;-35;2:1000;2;1;1;1;4017002     momentum scrolling begins
-    10;5;0;0;2:1000;2;3;1;1;4615002       momentum scrolling ends
-    10;5;0;120;1:5000;1;0;0;5;7000000     a wheel click downwards with ctrl pressed
+Otherwise, the count starts again from ``1``. As each press is compared to
+the previous one, a long series of presses, each within the double click
+interval of the previous one, keeps counting up. Changes in the keyboard
+modifiers do not affect the count. The count has no upper limit, programs
+decide what to do with large counts, for instance, treating counts larger
+than three as three, or cycling with ``(count - 1) % 3 + 1``.
+
+.. note::
+   kitty uses the :opt:`click_interval` option as the double click interval,
+   which, by default, is the double click interval of the desktop
+   environment, and half the height of a cell as the radius.
+
+.. _mouse_event_serials:
+
+Serials
+~~~~~~~~~~
+
+Every event has a serial, which is different from the serials of the events
+reported recently. Serials increase by an unspecified amount from one event
+to the next and wrap around from ``2147483647`` to ``1``. Terminals never use
+the serial ``0``. Serials are opaque, programs must not interpret them, other
+than comparing them for equality.
+
+Serials are reserved for future protocols that allow programs to refer to a
+particular event, for instance, to ask the terminal to open a URL the user
+clicked on. A terminal can then check that the request is the result of a
+recent, real click by the user in the window of the program. Such protocols
+will accept only the serials of button presses and releases, only once, only
+for a short time after the event and only from the program the event was
+reported to. They cannot check that the user clicked on the URL itself, as
+the program decides which URL is at the position of the click.
+
+Programs, such as terminal multiplexers, that forward the events they
+receive to other programs, adjusting their positions, must forward the
+serials unchanged. Events that they generate themselves, for example,
+entering and leaving the panes they display, must have the serial ``0``.
+
+Extending the protocol
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+More parameters may be added at the end of the parameters of any type of
+event and more sub-parameters may be added to any parameter, after the
+existing ones, so for signed values, after the sign. New types of events may be
+added. Programs must ignore any parameters and sub-parameters they do not
+recognise and any events of a type they do not recognise.
+
+Examples
+~~~~~~~~~~~
+
+A few examples, for cells ten pixels wide and twenty pixels high, with the
+escape code introducer ``CSI >`` and the final ``M`` omitted::
+
+    1:101;10;5;95;83;1;1;4:16000;1;1                  the left button is pressed in the cell (10, 5)
+    3:102;11;5;104;83;1;1;4:24310                     the mouse moves to the next cell, with the left button held
+    3:103;1;5;30:1;83;1;1;4:40002                     ... and out of the window, thirty pixels to the left of the first cell
+    2:104;1;5;30:1;83;0;1;4:52110;1;1                 the left button is released outside the window
+    6:105;1;5;30:1;83;0;1;4:52110                     ... so the mouse leaves the window
+    5:106;1;5;2:1;83;0;1;5:300000                     the mouse enters the window, in the padding to the left of the first cell
+    1:107;10;5;95;83;4;5;7:100000;3;1                 the right button is pressed with ctrl held
+    2:108;10;5;95;83;0;5;7:180000;3;1                 the right button is released
+    1:109;10;5;95;83;4;5;7:350000;3;2                 the right button is pressed again, within the double click interval
+    2:110;10;5;95;83;0;5;7:420000;3;2                 ... and released, completing a double click
+    4:111;10;5;95;83;0;1;9:520000;0;120;1:5000;1;0;0  one click of a wheel, downwards
+    4:112;10;5;95;83;0;1;9:830000;0;30:1;1:5000;1;0;0 a quarter click of a high resolution wheel, upwards
+    4:113;10;5;95;83;0;1;12:0;0;0;2:1000;2;1;0        two fingers start a scroll on a touchpad
+    4:114;10;5;95;83;0;1;12:8453;0;42:1;2:1000;2;2;0  the fingers move upwards by 42 pixels, 8.5 ms later
+    4:115;10;5;95;83;0;1;12:16790;0;0;2:1000;2;3;0    the fingers are lifted
+    4:116;10;5;95;83;0;1;12:17002;0;35:1;2:1000;2;1;1 momentum scrolling begins
+    6:117;10;5;95;83;0;1;15:0                         the mouse leaves the window
 
 .. _bidi_support:
 

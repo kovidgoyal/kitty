@@ -1439,7 +1439,7 @@ onConfigChange(void) {
 }
 
 static void
-handle_mouse_move_event(_GLFWwindow *window, const int x, const int y) {
+handle_mouse_move_event(_GLFWwindow *window, const int x, const int y, Time time) {
     if (x != window->x11.warpCursorPosX || y != window->x11.warpCursorPosY) {
         // The cursor was moved by something other than GLFW
         if (window->cursorMode == GLFW_CURSOR_DISABLED) {
@@ -1447,8 +1447,8 @@ handle_mouse_move_event(_GLFWwindow *window, const int x, const int y) {
             if (window->rawMouseMotion) return;
             const int dx = x - window->x11.lastCursorPosX;
             const int dy = y - window->x11.lastCursorPosY;
-            _glfwInputCursorPos(window, window->virtualCursorPosX + dx, window->virtualCursorPosY + dy);
-        } else _glfwInputCursorPos(window, x, y);
+            _glfwInputCursorPos(window, window->virtualCursorPosX + dx, window->virtualCursorPosY + dy, event_time_ms_to_monotonic((uint32_t)time));
+        } else _glfwInputCursorPos(window, x, y, event_time_ms_to_monotonic((uint32_t)time));
     }
     window->x11.lastCursorPosX = x;
     window->x11.lastCursorPosY = y;
@@ -1627,7 +1627,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     else {
         x11_cancel_scroll_gesture();
         glfw_cancel_momentum_scroll();
-        handle_mouse_move_event(window, (int)de->event_x, (int)de->event_y);
+        handle_mouse_move_event(window, (int)de->event_x, (int)de->event_y, de->time);
     }
 }
 
@@ -1849,7 +1849,7 @@ drop_move(_GLFWwindow *window, XEvent *event) {
     XTranslateCoordinates(_glfw.x11.display, _glfw.x11.root, window->x11.handle, xabs, yabs, &xpos, &ypos, &dummy);
     int x_error = _glfwPopErrorTrapX11();
     if (x_error != Success) _glfwInputErrorX11(GLFW_PLATFORM_ERROR, x_error, "X11: Failed to get DND event position");
-    _glfwInputCursorPos(window, xpos, ypos);
+    _glfwInputCursorPos(window, xpos, ypos, 0);
     if (reset_dnd_copy_mimes()) {
         size_t mimes_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
         update_drop_state(window, mimes_count);
@@ -2037,7 +2037,7 @@ processEvent(XEvent *event) {
 
                             if (XIMaskIsSet(re->valuators.mask, 1)) ypos += *values;
 
-                            _glfwInputCursorPos(window, xpos, ypos);
+                            _glfwInputCursorPos(window, xpos, ypos, event_time_ms_to_monotonic((uint32_t)re->time));
                         }
                     }
                 }
@@ -2183,13 +2183,13 @@ processEvent(XEvent *event) {
 
             if (event->xbutton.button == Button1) {
                 cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods);
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             } else if (event->xbutton.button == Button2) {
                 cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, mods);
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             } else if (event->xbutton.button == Button3) {
                 cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, mods);
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             }
 
             // Modern X provides scroll events as mouse button presses. Ignore
@@ -2242,7 +2242,7 @@ processEvent(XEvent *event) {
                 cancel_momentum();
                 // Additional buttons after 7 are treated as regular buttons
                 // We subtract 4 to fill the gap left by scroll input above
-                _glfwInputMouseClick(window, event->xbutton.button - Button1 - 4, GLFW_PRESS, mods);
+                _glfwInputMouseClick(window, event->xbutton.button - Button1 - 4, GLFW_PRESS, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             }
 
             return;
@@ -2259,18 +2259,19 @@ processEvent(XEvent *event) {
 
             if (event->xbutton.button == Button1) {
                 cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, mods);
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             } else if (event->xbutton.button == Button2) {
                 cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, mods);
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             } else if (event->xbutton.button == Button3) {
                 cancel_momentum();
-                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, mods);
+                _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_RELEASE, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             } else if (event->xbutton.button > Button7) {
                 cancel_momentum();
                 // Additional buttons after 7 are treated as regular buttons
                 // We subtract 4 to fill the gap left by scroll input above
-                _glfwInputMouseClick(window, event->xbutton.button - Button1 - 4, GLFW_RELEASE, mods);
+                _glfwInputMouseClick(
+                    window, event->xbutton.button - Button1 - 4, GLFW_RELEASE, mods, event_time_ms_to_monotonic((uint32_t)event->xbutton.time));
             }
 
             return;
@@ -2287,7 +2288,7 @@ processEvent(XEvent *event) {
             if (window->cursorMode == GLFW_CURSOR_HIDDEN) updateCursorImage(window);
 
             _glfwInputCursorEnter(window, true);
-            _glfwInputCursorPos(window, x, y);
+            _glfwInputCursorPos(window, x, y, event_time_ms_to_monotonic((uint32_t)event->xcrossing.time));
 
             window->x11.lastCursorPosX = x;
             window->x11.lastCursorPosY = y;
@@ -2311,7 +2312,7 @@ processEvent(XEvent *event) {
 
             x11_cancel_scroll_gesture();
             glfw_cancel_momentum_scroll();
-            handle_mouse_move_event(window, event->xmotion.x, event->xmotion.y);
+            handle_mouse_move_event(window, event->xmotion.x, event->xmotion.y, event->xmotion.time);
             return;
         }
 

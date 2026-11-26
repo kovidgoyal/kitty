@@ -335,7 +335,7 @@ _glfwInputTouch(_GLFWwindow *window, const GLFWTouchEvent *ev) {
 // Notifies shared code of a mouse button click event
 //
 void
-_glfwInputMouseClick(_GLFWwindow *window, int button, int action, int mods) {
+_glfwInputMouseClick(_GLFWwindow *window, int button, int action, int mods, monotonic_t timestamp) {
     if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST) return;
 
     if (!window->lockKeyMods) mods &= ~(GLFW_MOD_CAPS_LOCK | GLFW_MOD_NUM_LOCK);
@@ -343,20 +343,38 @@ _glfwInputMouseClick(_GLFWwindow *window, int button, int action, int mods) {
     if (action == GLFW_RELEASE && window->stickyMouseButtons) window->mouseButtons[button] = _GLFW_STICK;
     else window->mouseButtons[button] = (char)action;
 
-    if (window->callbacks.mouseButton) window->callbacks.mouseButton((GLFWwindow *)window, button, action, mods);
+    // Events that do not come from the system, such as releases synthesized on
+    // focus loss, happen now
+    if (window->callbacks.mouseButton) window->callbacks.mouseButton((GLFWwindow *)window, button, action, mods, timestamp ? timestamp : monotonic());
+}
+
+// Releases the mouse buttons that are held down, for when their releases will
+// not be delivered, for example, on focus loss
+void
+_glfwInputReleaseHeldMouseButtons(_GLFWwindow *window) {
+    for (int button = 0; button <= GLFW_MOUSE_BUTTON_LAST; button++) {
+        if (window->mouseButtons[button] == GLFW_PRESS) {
+            // Skip releasing the left mouse button when a drag is in
+            // progress from this window to avoid spurious release events.
+            // The release will be sent after the drag completes.
+            if (button == GLFW_MOUSE_BUTTON_LEFT && _glfw.drag.window_id == window->id) continue;
+            _glfwInputMouseClick(window, button, GLFW_RELEASE, 0, 0);
+        }
+    }
 }
 
 // Notifies shared code of a cursor motion event
 // The position is specified in content area relative screen coordinates
 //
 void
-_glfwInputCursorPos(_GLFWwindow *window, double xpos, double ypos) {
+_glfwInputCursorPos(_GLFWwindow *window, double xpos, double ypos, monotonic_t timestamp) {
     if (window->virtualCursorPosX == xpos && window->virtualCursorPosY == ypos) return;
 
     window->virtualCursorPosX = xpos;
     window->virtualCursorPosY = ypos;
 
-    if (window->callbacks.cursorPos) window->callbacks.cursorPos((GLFWwindow *)window, xpos, ypos);
+    // Positions that do not come from a motion event from the system happen now
+    if (window->callbacks.cursorPos) window->callbacks.cursorPos((GLFWwindow *)window, xpos, ypos, timestamp ? timestamp : monotonic());
 }
 
 // Notifies shared code of a cursor enter/leave event
@@ -1160,7 +1178,7 @@ _glfwFreeDragSourceData(void) {
     if (drag_window_id) {
         _GLFWwindow *drag_window = _glfwWindowForId(drag_window_id);
         if (drag_window && drag_window->mouseButtons[GLFW_MOUSE_BUTTON_LEFT] == GLFW_PRESS)
-            _glfwInputMouseClick(drag_window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, 0);
+            _glfwInputMouseClick(drag_window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, 0, 0);
     }
 }
 

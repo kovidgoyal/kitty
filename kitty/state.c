@@ -676,6 +676,8 @@ set_active_tab(id_type os_window_id, unsigned int idx) {
     WITH_OS_WINDOW(os_window_id)
     os_window->active_tab = idx;
     os_window->needs_render = true;
+    // The window under the mouse changes
+    os_window->needs_mouse_hover_update = true;
     // Animations are only scanned in windows of the active tab, so if the
     // previously active tab had none, scanning stopped and must be restarted
     // for the newly active tab, see https://github.com/kovidgoyal/kitty/issues/10894
@@ -1498,6 +1500,7 @@ PYWRAP1(set_window_render_data) {
 
     WITH_WINDOW(os_window_id, tab_id, window_id);
     init_window_render_data(&window->render_data, g, screen);
+    osw->needs_mouse_hover_update = true;
     window->size_mismatch_padding.left = cl;
     window->size_mismatch_padding.top = ct;
     window->size_mismatch_padding.right = cr;
@@ -1515,6 +1518,7 @@ PYWRAP1(update_window_visibility) {
     WITH_WINDOW(os_window_id, tab_id, window_id);
     bool was_visible = window->visible & 1;
     window->visible = visible & 1;
+    if (was_visible != window->visible) osw->needs_mouse_hover_update = true;
     if (!was_visible && window->visible) global_state.check_for_active_animated_images = true;
     if (window->render_data.screen) {
         screen_visibility_changed(window->render_data.screen, is_os_window_potentially_visible(osw) && t == osw->active_tab && window->visible);
