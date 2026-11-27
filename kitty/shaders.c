@@ -1370,15 +1370,15 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     const bool smooth_scroll_changed = screen_prepare_smooth_scroll_render(screen);
     const size_t num_strip_cells = screen->smooth_scroll_render.num_strip_cells;
 
-#define update_cell_data                                                                               \
-    {                                                                                                  \
-        const unsigned int render_lines = render_lines_for_screen(screen);                             \
-        sz = sizeof(CellGPUData) * (render_lines * screen->columns + num_strip_cells);                 \
-        address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, cell_data_buffer);            \
-        screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
-        unmap_vao_buffer(vao_idx, cell_data_buffer);                                                   \
-        address = NULL;                                                                                \
-        changed = true;                                                                                \
+#define update_cell_data                                                                                       \
+    {                                                                                                          \
+        const unsigned int render_lines = render_lines_for_screen(screen);                                     \
+        sz = sizeof(CellGPUData) * ((size_t)render_lines * (size_t)screen->columns + (size_t)num_strip_cells); \
+        address = alloc_and_map_vao_buffer_for_full_rewrite(vao_idx, sz, cell_data_buffer);                    \
+        screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed);         \
+        unmap_vao_buffer(vao_idx, cell_data_buffer);                                                           \
+        address = NULL;                                                                                        \
+        changed = true;                                                                                        \
     }
 
     if (screen->paused_rendering.expires_at) {

@@ -546,12 +546,21 @@ func decode_detailed_mouse_event(text string) *MouseEvent {
 			}
 		}
 		ans.Event_type = MOUSE_WHEEL
+		if nums[2] < 0 || nums[2] > math.MaxUint8 {
+			return nil
+		}
 		w.Unit = WheelUnit(nums[2])
 		// The multiplier is sent in thousandths
 		if m, ok := extra[2].uint(1); ok && m > 0 {
 			w.Multiplier = float64(m) / 1000
 		}
+		if nums[3] < 0 || nums[3] > math.MaxUint8 {
+			return nil
+		}
 		w.Source = WheelSource(nums[3])
+		if nums[4] < 0 || nums[4] > math.MaxUint8 {
+			return nil
+		}
 		w.Phase = WheelPhase(nums[4])
 		w.Momentum = nums[5]&WHEEL_FLAG_MOMENTUM != 0
 		w.Inverted = nums[5]&WHEEL_FLAG_INVERTED != 0
