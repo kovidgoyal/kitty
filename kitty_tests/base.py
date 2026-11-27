@@ -101,6 +101,9 @@ class Callbacks:
     def program_status_report(self, data):
         self.program_status_reports.append(str(data, 'utf-8'))
 
+    def activation_token_request(self, data):
+        self.activation_token_requests.append(str(data, 'utf-8'))
+
     def icon_changed(self, data) -> None:
         self.iconbuf += str(data, 'utf-8')
 
@@ -150,6 +153,7 @@ class Callbacks:
         self.color_control_responses = []
         self.notifications = []
         self.program_status_reports = []
+        self.activation_token_requests = []
         self.open_urls = []
         self.cc_buf = []
         self.bell_count = 0

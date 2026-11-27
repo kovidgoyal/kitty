@@ -516,6 +516,7 @@ void screen_handle_kitty_dcs(Screen *, const char *callback_name, PyObject *cmd)
 void set_title(Screen *self, PyObject *);
 void osc_context(Screen *self, PyObject *ctx);
 void program_status_report(Screen *self, PyObject *data);
+void activation_token_request(Screen *self, PyObject *data);
 void desktop_notify(Screen *self, unsigned int, PyObject *);
 void set_icon(Screen *self, PyObject *);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject *);

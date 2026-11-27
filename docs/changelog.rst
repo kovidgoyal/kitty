@@ -133,6 +133,10 @@ Detailed list of changes
   uses it to implement the AppChooser portal, used by programs such as
   Flatpaks to choose the application to open files and links with
 
+- A new escape code to allow programs to request :ref:`XDG activation tokens
+  <activation_tokens>`, so that programs they launch can get keyboard focus on
+  Wayland
+
 - :doc:`desktop-ui kitten </kittens/desktop-ui>`: Provide the icon theme to
   programs via the settings portal, from the new ``icon_theme`` option or the
   KDE and GTK configuration

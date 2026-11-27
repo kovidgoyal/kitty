@@ -29,6 +29,61 @@ there is only one number to reset these attributes, SGR 22, which resets both.
 There is no way to reset one and not the other. kitty uses 221 and 222 to reset
 bold and faint independently.
 
+.. _activation_tokens:
+
+Requesting XDG activation tokens
+----------------------------------
+
+.. versionadded:: 1.0.0
+
+On Wayland, a newly launched program gets keyboard focus only if it is started
+with an `XDG activation token
+<https://wayland.app/protocols/xdg-activation-v1>`__, typically via the
+:envvar:`XDG_ACTIVATION_TOKEN` environment variable. The compositor gives
+tokens only to windows the user has recently interacted with. A program running
+in a terminal, such as an application launcher or file manager, cannot obtain one
+itself, as the window is the terminal's. kitty allows such programs to ask it for a token,
+with the escape code::
+
+    <OSC> 5524 ; i=<id> <ST>
+
+Here, ``<id>`` is an identifier chosen by the program, of up to 64 characters from
+``a-z A-Z 0-9 _ + . -``, used to match the reply to the request. kitty replies with::
+
+    <OSC> 5524 ; i=<id> ; <token> <ST>
+
+where ``<token>`` is the token, :ref:`base64` encoded. Note that getting a token
+requires a round trip to the compositor, so the reply can come after replies to later
+requests, such as the primary device attributes request. If a token cannot be provided,
+kitty replies with::
+
+    <OSC> 5524 ; i=<id> : e=<code> <ST>
+
+where ``<code>`` is one of:
+
+``EUNSUPPORTED``
+    Tokens are not supported, for example, when not running under Wayland
+
+``ENOTFOCUSED``
+    The window the program is running in is not the active window of the focused
+    OS window. A token allows another program to take keyboard focus, so it is
+    given only to the window the user is interacting with.
+
+``EFAILED``
+    The compositor did not provide a token, for example, because it does not
+    support XDG activation, or a request from this window is already in progress.
+
+Tokens are single use, programs should request a new one for every program they
+launch. Requests with an invalid identifier are ignored. To find out if the terminal
+supports this, send::
+
+    <OSC> 5524 ; i=<id> : p=? <ST>
+
+kitty replies immediately with ``<OSC> 5524 ; i=<id> : p=? ; ok <ST>``. Programs can
+send the primary device attributes request (``<CSI> c``) right after, as all terminals reply to it,
+if its reply arrives without a reply to the query, the terminal does not support
+this protocol. Unknown keys in the metadata are ignored.
+
 .. _mouse_leave_window:
 
 Reporting when the mouse leaves the window

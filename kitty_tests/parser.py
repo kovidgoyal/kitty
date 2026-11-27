@@ -1238,6 +1238,9 @@ class TestParser(BaseTest):
         pb('\033]7501;?\033\\', ('program_status_report', '?'))
         pb('\033]7501;state=working:progress=40\x07', ('program_status_report', 'state=working:progress=40'))
         self.ae(c.program_status_reports, ['?', 'state=working:progress=40'])
+        pb('\033]5524;i=x1\033\\', ('activation_token_request', 'i=x1'))
+        pb('\033]5524;i=x2:p=?\x07', ('activation_token_request', 'i=x2:p=?'))
+        self.ae(c.activation_token_requests, ['i=x1', 'i=x2:p=?'])
 
     def test_dcs_codes(self):
         s = self.create_screen()

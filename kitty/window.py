@@ -35,6 +35,7 @@ from .constants import (
     config_dir,
     config_dir_files_ignored,
     is_macos,
+    is_wayland,
     kitten_exe,
     unserialize_launch_flag,
     wakeup_io_loop,
@@ -80,6 +81,7 @@ from .fast_data_types import (
     glfw_get_system_color_theme,
     is_css_pointer_name_valid,
     is_modifier_key,
+    is_os_window_focused,
     last_focused_os_window_id,
     mark_os_window_dirty,
     monotonic,
@@ -89,6 +91,7 @@ from .fast_data_types import (
     pt_to_px,
     remove_timer,
     replace_c0_codes_except_nl_space_tab,
+    run_with_activation_token,
     set_redirect_keys_to_overlay,
     set_window_logo,
     set_window_padding,
@@ -874,6 +877,7 @@ class Window:
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self.needs_attention = False
+        self.activation_token_pending = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
         self.default_title = os.path.basename(child.argv[0] or appname)
@@ -1718,6 +1722,50 @@ class Window:
 
     def osc_context(self, ctx_data: memoryview) -> None:
         pass  # this is systemd's useless OSC 3008 context protocol https://systemd.io/OSC_CONTEXT/
+
+    def activation_token_request(self, raw_data: memoryview) -> None:
+        # OSC 5524, see docs/misc-protocol.rst
+        from .activation_token import InvalidRequest, error_reply, parse_request, query_reply, token_reply
+
+        try:
+            req = parse_request(str(raw_data, 'utf-8', 'replace'))
+        except InvalidRequest as e:
+            log_error(f'Ignoring invalid OSC 5524 activation token request: {e}')
+            return
+
+        def send(payload: str) -> None:
+            self.screen.send_escape_code_to_child(ESC_OSC, payload)
+
+        if req.is_query:
+            send(query_reply(req))
+            return
+        if not is_wayland():
+            send(error_reply(req, 'EUNSUPPORTED'))
+            return
+        # A token allows another program to take focus, so only grant it to
+        # the window the user is interacting with: the active window of the
+        # OS window that has keyboard focus. Check that the OS window is also
+        # the most recently focused one, as OS windows that never had keyboard
+        # focus, such as hidden panels, can be considered focused.
+        tm = get_boss().os_window_map.get(self.os_window_id)
+        if tm is None or tm.active_window is not self or not is_os_window_focused(self.os_window_id) or last_focused_os_window_id() != self.os_window_id:
+            send(error_reply(req, 'ENOTFOCUSED'))
+            return
+        if self.activation_token_pending:
+            send(error_reply(req, 'EFAILED'))
+            return
+        self.activation_token_pending = True
+        window_id = self.id
+
+        def on_token(token: str) -> None:
+            w = get_boss().window_id_map.get(window_id)
+            if w is not None:
+                w.activation_token_pending = False
+                w.screen.send_escape_code_to_child(ESC_OSC, token_reply(req, token) if token else error_reply(req, 'EFAILED'))
+
+        if not run_with_activation_token(on_token):
+            self.activation_token_pending = False
+            send(error_reply(req, 'EFAILED'))
 
     def program_status_report(self, raw_data: memoryview) -> None:
         # OSC 7501 https://www.superlogical.com/rex/docs/build/program-status

@@ -1132,6 +1132,14 @@ PYWRAP0(last_focused_os_window_id) { return PyLong_FromUnsignedLongLong(last_foc
 
 PYWRAP0(current_focused_os_window_id) { return PyLong_FromUnsignedLongLong(current_focused_os_window_id()); }
 
+PYWRAP1(is_os_window_focused) {
+    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    if (PyErr_Occurred()) return NULL;
+    OSWindow *w = os_window_for_id(os_window_id);
+    if (w && w->is_focused) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 
 PYWRAP1(handle_for_window_id) {
     id_type os_window_id;
@@ -2212,6 +2220,7 @@ static PyMethodDef module_methods[] = {
     MW(next_window_id, METH_NOARGS),
     MW(last_focused_os_window_id, METH_NOARGS),
     MW(current_focused_os_window_id, METH_NOARGS),
+    MW(is_os_window_focused, METH_O),
     MW(set_options, METH_VARARGS),
     MW(get_options, METH_NOARGS),
     MW(click_mouse_url, METH_VARARGS),

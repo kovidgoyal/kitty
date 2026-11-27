@@ -238,3 +238,5 @@
 // Drag and drop protocol
 #define DND_CODE 72
 #define SMOOTH_SCROLL_CODE 2254
+// Requesting XDG activation tokens
+#define ACTIVATION_TOKEN_CODE 5524
