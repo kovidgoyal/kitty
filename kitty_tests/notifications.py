@@ -483,6 +483,22 @@ class TestNotifications(BaseTest):
                 self.ae(desktop_file_id_for_appname('kitty'), 'sub-net.kovidgoyal.kitty')
                 touch(sysdir, 'applications', 'kitty.desktop')
                 self.ae(desktop_file_id_for_appname('kitty'), 'kitty')
+
+                # icons for application names, the users own desktop files
+                # take precedence
+                from kitty.xdg import AppIconCache
+
+                def desktop(base: str, name: str, icon: str) -> None:
+                    with open(os.path.join(base, 'applications', name), 'w') as f:
+                        f.write(f'[Desktop Entry]\nName=x\nIcon={icon}\n')
+
+                desktop(sysdir, 'net.example.app.desktop', 'system-icon')
+                desktop(sysdir, 'other-app.desktop', 'other-icon')
+                desktop(home, 'net.example.app.desktop', 'user-icon')
+                c = AppIconCache()
+                self.ae(c.icon_for_appname('app'), 'user-icon')
+                self.ae(c.icon_for_appname('net.example.app'), 'user-icon')
+                self.ae(c.icon_for_appname('other-app'), 'other-icon')
             finally:
                 xdg_data_home.clear_override()
                 xdg_data_dirs.clear_override()

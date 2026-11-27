@@ -136,7 +136,8 @@ class AppIconCache:
 
     def scan(self) -> None:
         self.scanned = True
-        for d in xdg_data_dirs():
+        # Earlier directories take precedence as per the XDG spec
+        for d in (xdg_data_home(),) + xdg_data_dirs():
             d = os.path.join(d, 'applications')
             with suppress(OSError):
                 for dirpath, dirnames, filenames in os.walk(d):
@@ -150,8 +151,8 @@ class AppIconCache:
         bname = os.path.basename(relpath)
         parts = bname.split('.')[:-1]
         appname = parts[-1]
-        self.lcase_app_name_to_path[appname.lower()] = path
-        self.lcase_full_name_to_path['.'.join(parts).lower()] = path
+        self.lcase_app_name_to_path.setdefault(appname.lower(), path)
+        self.lcase_full_name_to_path.setdefault('.'.join(parts).lower(), path)
 
     def icon_for_appname(self, appname: str) -> str:
         if not self.scanned:
