@@ -1744,11 +1744,9 @@ class Window:
             return
         # A token allows another program to take focus, so only grant it to
         # the window the user is interacting with: the active window of the
-        # OS window that has keyboard focus. Check that the OS window is also
-        # the most recently focused one, as OS windows that never had keyboard
-        # focus, such as hidden panels, can be considered focused.
+        # OS window that has keyboard focus.
         tm = get_boss().os_window_map.get(self.os_window_id)
-        if tm is None or tm.active_window is not self or not is_os_window_focused(self.os_window_id) or last_focused_os_window_id() != self.os_window_id:
+        if tm is None or tm.active_window is not self or not is_os_window_focused(self.os_window_id):
             send(error_reply(req, 'ENOTFOCUSED'))
             return
         if self.activation_token_pending:

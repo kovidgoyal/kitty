@@ -689,6 +689,17 @@ keyboardHandleEnter(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint
     }
 }
 
+// Removes keyboard focus from the window, if it has it
+void
+_glfwWaylandDropKeyboardFocus(_GLFWwindow *window) {
+    if (!window || _glfw.wl.keyboardFocusId != window->id) return;
+    _glfw.wl.keyboardFocusId = 0;
+    const id_type window_id = window->id;
+    _glfwInputWindowFocus(window, false);
+    _glfwWaylandKeyboardFocusChanged(window_id);
+    stop_key_repeat_timer();
+}
+
 static void
 keyboardHandleLeave(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint32_t serial, struct wl_surface *surface UNUSED) {
     _GLFWwindow *window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
@@ -696,11 +707,7 @@ keyboardHandleLeave(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint
     if (!window) return;
 
     _glfw.wl.serial = serial;
-    _glfw.wl.keyboardFocusId = 0;
-    const id_type window_id = window->id;
-    _glfwInputWindowFocus(window, false);
-    _glfwWaylandKeyboardFocusChanged(window_id);
-    stop_key_repeat_timer();
+    _glfwWaylandDropKeyboardFocus(window);
 }
 
 static void

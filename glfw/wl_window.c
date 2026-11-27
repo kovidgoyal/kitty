@@ -1851,6 +1851,11 @@ _glfwPlatformHideWindow(_GLFWwindow *window) {
     window->wl.visible = false;
     commit_window_surface(window);
     debug("Window %llu unmapped\n", window->id);
+    // Some compositors, such as sway, do not send a keyboard leave event when
+    // a layer shell surface is unmapped, and a hidden window cannot have
+    // keyboard focus. The compositor sends the leave event when the window is
+    // shown again, which is then ignored, as the window no longer has focus.
+    _glfwWaylandDropKeyboardFocus(window);
 }
 
 bool
