@@ -18,6 +18,9 @@ features are:
   fast and keyboard centric :doc:`choose-files </kittens/choose-files>` kitten
   running in a semi-transparent kitty overlay.
 
+* Replace the :guilabel:`Open with` application choosers that programs show when opening files and links,
+  with the :doc:`choose-app </kittens/choose-app>` kitten.
+
 * Allow simple command line based management of the desktop light/dark modes.
 
 
@@ -52,6 +55,15 @@ your desktop by running::
 Check the current value using::
 
     dbus-send --session --print-reply --dest=org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop org.freedesktop.portal.Settings.Read string:org.freedesktop.appearance string:color-scheme
+
+Programs that open files and links using the OpenURI portal, such as Flatpak
+applications, will show the :doc:`choose-app kitten </kittens/choose-app>`
+when they need you to choose the application to open a file with. Applications
+chosen there are shared with :program:`kitten choose-app --open`, the
+:program:`xdg-open` replacement. Commands typed in the chooser, instead of
+choosing an installed application, are saved as hidden :file:`.desktop` files
+named :file:`kitty-choose-app-*.desktop` in :file:`~/.local/share/applications`,
+as the portal can only open files with installed applications.
 
 How it works
 ----------------
@@ -128,7 +140,7 @@ applications' developers.
 
 .. note::
 
-   File chooser integration requires your window manager to support
+   File and app chooser integration requires your window manager to support
    :ref:`panels <panel_compat>` so check the compatibility table.
 
 Configuration

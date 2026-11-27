@@ -129,7 +129,9 @@ Detailed list of changes
   application used to open files and URLs, from a grid of application icons,
   using a keyboard first interface. It finds applications the same way KDE and
   GNOME do, remembers choices and can be used as a replacement for
-  :program:`xdg-open`
+  :program:`xdg-open`. The :doc:`desktop-ui kitten </kittens/desktop-ui>`
+  uses it to implement the AppChooser portal, used by programs such as
+  Flatpaks to choose the application to open files and links with
 
 - New rendering engine with pluggable GPU drivers: kitty now renders with
   **Metal** on macOS and **Vulkan** on Linux and BSD, falling back to OpenGL.

@@ -189,7 +189,7 @@ func (h *Handler) command_preview() (lines []string) {
 	if err == nil {
 		var e *DesktopEntry
 		if e, err = c.Entry(h.db); err == nil {
-			cmds, err = e.Commands(h.targets...)
+			cmds, err = e.Commands(h.preview_targets()...)
 		}
 	}
 	if err != nil {
@@ -277,4 +277,21 @@ func program_exists(program string) bool {
 		return err == nil && !s.IsDir() && unix.Access(program, unix.X_OK) == nil
 	}
 	return utils.Which(program) != ""
+}
+
+// preview_targets returns the targets to show in the preview of the command.
+// When choosing without any files, such as for the AppChooser portal, the
+// display name is used instead.
+func (h *Handler) preview_targets() []Target {
+	if len(h.targets) > 0 {
+		return h.targets
+	}
+	name := h.input.DisplayName
+	if name == "" {
+		name = "FILE"
+	}
+	if strings.Contains(name, "://") {
+		return []Target{{URL: name}}
+	}
+	return []Target{{Path: name}}
 }
