@@ -283,6 +283,13 @@ on_key_input(const GLFWkeyevent *ev) {
         return;
     }
     send_pending_click_to_window(w, -1);
+    // Dispatching pending clicks can run Python callbacks that add or remove
+    // windows (e.g. a hyperlink click opening an overlay), which can
+    // reallocate the windows array and leave w dangling, so look it up again.
+    if (!global_state.callback_os_window || !global_state.callback_os_window->num_tabs || !(w = active_window())) {
+        debug("no active window after dispatching pending clicks, ignoring\n");
+        return;
+    }
     if (OPT(mouse_hide.hide_wait) < 0 && !is_no_action_key(key, native_key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
     id_type active_window_id = w->id;

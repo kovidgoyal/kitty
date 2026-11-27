@@ -276,6 +276,9 @@ Detailed list of changes
 
 - Add support for Unicode 18
 
+- Fix a crash when pressing a key immediately after clicking a hyperlink that
+  opens an overlay window (:iss:`10953`)
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
