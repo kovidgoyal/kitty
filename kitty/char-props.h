@@ -186,11 +186,18 @@ wcwidth_std(CharProps ch) {
 #define MAX_SPACING_MARK_CELL_WIDTH 4u
 
 static inline unsigned
+cell_width_with_spacing_width(unsigned cell_width, unsigned spacing_width) {
+    // The width of a cell of width cell_width after spacing marks with a total
+    // spacing width of spacing_width are added to it. A cell of width zero means
+    // there is no previous cell, so the marks are in a cell of their own.
+    if (cell_width >= MAX_SPACING_MARK_CELL_WIDTH) return cell_width;
+    const unsigned w = cell_width + spacing_width;
+    return w > MAX_SPACING_MARK_CELL_WIDTH ? MAX_SPACING_MARK_CELL_WIDTH : w;
+}
+
+static inline unsigned
 cell_width_with_spacing_mark(unsigned cell_width, CharProps spacing_mark) {
-    // The width of a cell of width cell_width after spacing_mark is added to it.
-    // A cell of width zero means there is no previous cell, so the mark is in a cell of its own.
-    const unsigned w = cell_width + spacing_mark.spacing_width;
-    return cell_width >= MAX_SPACING_MARK_CELL_WIDTH ? cell_width : (w > MAX_SPACING_MARK_CELL_WIDTH ? MAX_SPACING_MARK_CELL_WIDTH : w);
+    return cell_width_with_spacing_width(cell_width, spacing_mark.spacing_width);
 }
 static inline bool
 is_private_use(CharProps ch) {

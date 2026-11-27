@@ -3033,18 +3033,20 @@ bind_registered_glyph(Screen *self, CPUCell *c, char_type first_char) {
     if (lc.count == 1) r->bound_idx_plus_1[slot] = c->ch_or_idx + 1;
 }
 
-static bool
+static size_t
 add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, MulticellColumns cols, index_type y, MulticellRows *rows_of_char) {
     // Adds num_chars combining chars to the char whose cells in row y are in
     // the columns cols, as found by multicell_char_columns(), with a single
     // lookup in the text cache. When the char is a multicell char, its rows
-    // are stored in rows_of_char, if not NULL.
+    // are stored in rows_of_char, if not NULL. Returns the number of chars
+    // added, which is less than num_chars when the cell has no room for all of
+    // them and zero when they cannot be added at all.
     const index_type x = cols.start;
     CPUCell *cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, y);
     CPUCell *cell = cpu_cells + x;
-    if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return false; // don't allow adding combining chars to a null cell
+    if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return 0; // don't allow adding combining chars to a null cell
     text_in_cell(cell, self->text_cache, self->lc);
-    if (self->lc->count >= MAX_NUM_CODEPOINTS_PER_CELL) return false; // don't allow too many combining chars to prevent DoS attacks
+    if (self->lc->count >= MAX_NUM_CODEPOINTS_PER_CELL) return 0; // don't allow too many combining chars to prevent DoS attacks
     // must be computed before the char is changed
     const MulticellRows rows = cell->is_multicell ? multicell_char_rows(self, x, y) : (MulticellRows){0};
     // The text of a multicell char is in all its cells, so it can only be
@@ -3055,7 +3057,7 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, Mult
     // screen as cell->y is zero.
     if (cell->is_multicell && (!multicell_char_columns_are_complete(cpu_cells, cols) ||
                                (rows.limit - rows.start < (int)cell->scale && ssr_char_continues_into_overflow_below(self, cell, x, rows))))
-        return false;
+        return 0;
     num_chars = MIN(num_chars, MAX_NUM_CODEPOINTS_PER_CELL - self->lc->count);
     ensure_space_for_chars(self->lc, self->lc->count + num_chars);
     memcpy(self->lc->chars + self->lc->count, chars, num_chars * sizeof(chars[0]));
@@ -3078,7 +3080,7 @@ add_combining_chars(Screen *self, const char_type *chars, size_t num_chars, Mult
         // loop only marks the cursor row dirty.
         linebuf_mark_line_dirty(self->linebuf, y);
     }
-    return true;
+    return num_chars;
 }
 
 
@@ -3314,42 +3316,69 @@ map_char(Screen *self, const uint32_t ch) {
 static bool batched_non_ascii_draw_disabled_for_tests = false;
 
 static bool
-is_plain_combining_char(char_type ch, CharProps props) {
-    // A combining char that only adds to the text of a cell, see draw_combining_char()
-    return ch != VS15 && ch != VS16 && !props.spacing_width;
+is_batchable_combining_char(char_type ch) {
+    // A combining char that only adds to the text of a cell or, for spacing marks,
+    // also widens it, see draw_combining_char()
+    return ch != VS15 && ch != VS16;
 }
 
 static inline __attribute__((always_inline)) size_t
 draw_combining_char_run_(Screen *self, text_loop_state *s, char_type ch, CharProps props, const uint32_t *rest, size_t num_rest) {
     // ch has been through grapheme segmentation, which added it to the previous
-    // cell. Plain combining chars directly following it are added along with it,
-    // with a single lookup in the text cache, rather than one for each char.
+    // cell. Combining chars directly following it are added along with it,
+    // with a single lookup in the text cache, rather than one for each char, and
+    // the cell is widened once for all the spacing marks among them.
     // Returns the number of chars from rest that were drawn.
 #define MAX_RUN 32u
     char_type run[MAX_RUN];
     size_t n = 0;
+    unsigned spacing_width = props.spacing_width;
     GraphemeSegmentationResult seg = s->seg;
-    if (!batched_non_ascii_draw_disabled_for_tests && is_plain_combining_char(ch, props)) {
+    if (!batched_non_ascii_draw_disabled_for_tests && is_batchable_combining_char(ch)) {
         run[n++] = ch;
         for (size_t k = 0; k < num_rest && n < MAX_RUN; k++) {
             const char_type c = map_char(self, rest[k]);
             const CharProps p = char_props_for(c);
-            if (p.is_invalid) break;
+            if (p.is_invalid || !is_batchable_combining_char(c)) break;
             const GraphemeSegmentationResult next = grapheme_segmentation_step(seg, p);
-            if (!next.add_to_current_cell || !is_plain_combining_char(c, p)) break;
+            // zero width chars after a grapheme boundary are also added to the previous cell, see draw_text_loop_()
+            if (!next.add_to_current_cell && wcwidth_std(p) != 0) break;
             seg = next;
             run[n++] = c;
+            spacing_width += p.spacing_width;
         }
     }
 #undef MAX_RUN
+    CPUCell *cp;
+    linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
+    const MulticellColumns cols = multicell_char_columns(cp, self->columns, s->prev.x);
+    unsigned old_width = 0, new_width = 0;
+    if (spacing_width && n > 1 && cell_can_be_widened_by_spacing_mark(cp + cols.start)) {
+        old_width = cp[cols.start].is_multicell ? cp[cols.start].width : 1;
+        new_width = cell_width_with_spacing_width(old_width, spacing_width);
+        // A char that cannot be widened where it is, is moved or discarded by
+        // widen_cell(), which does so as soon as one of the spacing marks makes it too
+        // wide, after the ones before it have widened it where it is, so draw them one
+        // at a time, to have the same result as drawing them one at a time. This
+        // happens at most once per line, at its end.
+        if (new_width > old_width && (cols.start + new_width > self->columns || has_multiline_cells_in_span(cp, cols.start + old_width, new_width - old_width)))
+            n = 1;
+    }
     if (n < 2) {
         draw_combining_char(self, s, ch, props);
         return 0;
     }
-    CPUCell *cp;
-    linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
-    add_combining_chars(self, run, n, multicell_char_columns(cp, self->columns, s->prev.x), s->prev.y, NULL);
+    const size_t added = add_combining_chars(self, run, n, cols, s->prev.y, NULL);
     s->seg = seg;
+    if (new_width > old_width) {
+        // Only the spacing marks that the cell had room for widen it
+        if (added < n) {
+            spacing_width = 0;
+            for (size_t i = 0; i < added; i++) spacing_width += char_props_for(run[i]).spacing_width;
+            new_width = cell_width_with_spacing_width(old_width, spacing_width);
+        }
+        if (new_width > old_width) widen_cell(self, s, cp, cols.start, new_width);
+    }
     return n - 1;
 }
 

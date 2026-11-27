@@ -1019,6 +1019,15 @@ class TestScreen(BaseTest):
             '\u0300\ufe0f\u0301',
             '👍\u0300\u200d',
             'ก\u0e33\u0300',
+            # spacing marks, which widen the cell they are added to
+            '\u0915\u093f',
+            '\u0937\u0903\u0903',
+            '\u0b9f\u0bca',
+            '\u0b9f\u0bc6\u0bbe',
+            '\u1000\u1031\u102c',
+            '\u0995\u09cb\u0982',
+            '\u093f\u0300\u0903',
+            '\u0937' + '\u0903' * 6,
         )
 
         def ops_for(seed, cols):
