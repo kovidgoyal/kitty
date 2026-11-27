@@ -147,3 +147,21 @@ func TestIconThemeSetting(t *testing.T) {
 		t.Fatalf("Icon theme setting not used: %#v", theme)
 	}
 }
+
+func TestSettingsCanary(t *testing.T) {
+	p, err := NewPortal(NewConfig(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, _ := p.ReadAll(nil)
+	if !has_settings_canary(all) {
+		t.Fatalf("Settings from this kitten not detected: %v", all)
+	}
+	filtered, _ := p.ReadAll([]string{PORTAL_APPEARANCE_NAMESPACE})
+	if has_settings_canary(filtered) {
+		t.Fatalf("Canary detected in settings that do not include it: %v", filtered)
+	}
+	if has_settings_canary(ReadAllType{SETTINGS_CANARY_NAMESPACE: {}}) || has_settings_canary(nil) {
+		t.Fatalf("Canary detected without the canary key")
+	}
+}

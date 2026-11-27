@@ -311,8 +311,10 @@ func show_settings(opts *ShowSettingsOptions) (err error) {
 		return fmt.Errorf("failed to connect to system bus with error: %w", err)
 	}
 	defer conn.Close()
-	var response ReadAllType
-	response, err = fetch_settings(conn, opts.InNamespace...)
+	response, err := fetch_settings(conn, opts.InNamespace...)
+	if err != nil {
+		return err
+	}
 	if opts.AsJson {
 		unwrapped := make(map[string]map[string]any, len(response))
 		for ns, m := range response {
@@ -336,15 +338,28 @@ func show_settings(opts *ShowSettingsOptions) (err error) {
 		}
 	}
 	if !opts.AllowOtherBackends {
-		is_running_self := false
-		if m, found := response[SETTINGS_CANARY_NAMESPACE]; found {
-			_, is_running_self = m[SETTINGS_CANARY_KEY]
+		canary := response
+		if _, found := response[SETTINGS_CANARY_NAMESPACE]; !found && len(opts.InNamespace) > 0 {
+			// The namespace used to detect this kitten was not requested, so fetch it separately
+			if canary, err = fetch_settings(conn, SETTINGS_CANARY_NAMESPACE); err != nil {
+				return fmt.Errorf("failed to check which portal backend provides the settings: %w", err)
+			}
 		}
-		if !is_running_self {
-			err = fmt.Errorf("the settings did not come from the desktop-ui kitten. Some other portal backend is providing the service.")
+		if !has_settings_canary(canary) {
+			return fmt.Errorf("the settings did not come from the desktop-ui kitten. Some other portal backend is providing the service.")
 		}
 	}
-	return
+	return nil
+}
+
+// has_settings_canary returns true if the settings contain the setting
+// that only this kitten provides
+func has_settings_canary(settings ReadAllType) bool {
+	if m, found := settings[SETTINGS_CANARY_NAMESPACE]; found {
+		_, found = m[SETTINGS_CANARY_KEY]
+		return found
+	}
+	return false
 }
 
 var DataDirs = sync.OnceValue(func() (ans []string) {
