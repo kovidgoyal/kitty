@@ -54,6 +54,7 @@ type Handler struct {
 	db       *AppDatabase
 	store    *ChoiceStore
 	dirs     *XDGDirs
+	input    *ChooserInput
 	targets  []Target
 
 	all_items []*item
@@ -91,9 +92,9 @@ type Handler struct {
 	result *Result
 }
 
-func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *ChoiceStore, targets []Target) *Handler {
+func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *ChoiceStore, input *ChooserInput) *Handler {
 	h := &Handler{
-		lp: lp, settings: settings, db: db, store: store, dirs: db.dirs, targets: targets,
+		lp: lp, settings: settings, db: db, store: store, dirs: db.dirs, input: input, targets: input.Targets,
 		matcher: fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME), remember: settings.Remember_choice,
 		icon_renderer: NewIconRenderer(IconCacheDir()),
 	}
@@ -106,8 +107,14 @@ func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *Choic
 	h.search_rl = readline.New(lp, readline.RlInit{DontMarkPrompts: true})
 	h.init_command_rl()
 	h.command_entry = new_command_entry_item()
-	h.all_items = build_items(db, store, targets)
+	h.all_items = build_items(db, store, input)
 	h.matches = h.all_items
+	if input.Preselect != "" {
+		ps := ChoiceForDesktopID(input.Preselect)
+		if idx := slices.IndexFunc(h.all_items, func(it *item) bool { return it.choice.Equal(ps) }); idx > -1 {
+			h.current = idx
+		}
+	}
 	return h
 }
 
@@ -436,19 +443,23 @@ func (h *Handler) draw_screen() (err error) {
 func (h *Handler) draw_header() {
 	text := "Choose an application"
 	icon := "󰀻"
-	switch len(h.targets) {
-	case 0:
-	case 1:
+	types := h.styled(dim_style, " · "+strings.Join(h.input.MimeTypes, ", "))
+	switch {
+	case h.input.DisplayName != "":
+		text = "Open " + sanitize(h.input.DisplayName) + types
+		icon = icons.IconForPath(h.input.DisplayName)
+	case len(h.targets) == 1:
 		t := h.targets[0]
 		if t.URL != "" {
 			text, icon = t.URL, "󰖟"
 		} else {
 			text, icon = filepath.Base(t.Path), icons.IconForPath(t.Path)
 		}
-		text = "Open " + sanitize(text) + h.styled(dim_style, " · "+MimeTypeForTarget(t))
-	default:
-		mimes := mime_types_of(h.targets)
-		text = fmt.Sprintf("Open %d items", len(h.targets)) + h.styled(dim_style, " · "+strings.Join(mimes, ", "))
+		text = "Open " + sanitize(text) + types
+	case len(h.targets) > 1:
+		text = fmt.Sprintf("Open %d items", len(h.targets)) + types
+	case len(h.input.MimeTypes) > 0:
+		text = "Choose an application for" + types
 	}
 	h.lp.MoveCursorTo(2, 1)
 	line := h.styled(accent_style, icon) + " " + text

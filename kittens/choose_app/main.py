@@ -55,7 +55,8 @@ one of:
 The program and its arguments use the same syntax as the :code:`Exec` key in
 :file:`.desktop` files, with :code:`%f` replaced by the path to a single file, :code:`%F` by
 the paths to one or more files, :code:`%u` by a single URL and :code:`%U` by one or more URLs.
-If none of these are present, the path to the file is added to the end. Programs that accept
+If none of these are present, the path to the file is added to the end. Use :code:`%%` for a
+literal :code:`%`. Programs that accept
 only a single file are run once for every file. Prefix the program with :code:`terminal:` to run it in a
 terminal, useful for terminal programs such as editors. Alternately, use :code:`desktop:application-id` to open
 with an installed application, for example: :code:`desktop:org.kde.okular`. Examples::
@@ -183,6 +184,36 @@ Forget the remembered applications for the types of the specified files or URLs.
 type=bool-set
 Clear the caches used by this kitten, this includes the remembered applications
 and the rendered icons.
+
+
+--content-type
+The MIME type to choose an application for. Useful when no files are specified.
+
+
+--display-name
+The name of the file or URL to display, instead of the names of the specified files.
+
+
+--recommend
+type=list
+The id of an application to recommend, can be specified multiple times. The applications
+are shown after the ones recently chosen for the type of file and before the other applications
+that can open it.
+
+
+--preselect
+The id of the application to select initially.
+
+
+--commands-as-desktop-files
+type=bool-set
+When the user chooses to open with a command, rather than an installed application, create a
+hidden :file:`.desktop` file for the command and output its id. Useful for programs that can only
+launch installed applications.
+
+
+--write-pid-to
+Path to a file to which to write the process ID (PID) of this process to.
 
 
 --write-output-to

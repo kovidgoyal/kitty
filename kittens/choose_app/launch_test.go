@@ -183,3 +183,64 @@ func TestLaunchDetached(t *testing.T) {
 	}
 	t.Fatalf("Detached program did not run")
 }
+
+func TestCommandDesktopFiles(t *testing.T) {
+	tdir := t.TempDir()
+	dirs := &XDGDirs{DataHome: filepath.Join(tdir, "home"), DataDirs: []string{filepath.Join(tdir, "sys")}, ConfigHome: filepath.Join(tdir, "config")}
+	target := Target{Path: "/some dir/a file.txt"}
+	ids := utils.NewSet[string]()
+	for _, c := range []Choice{
+		{Cmdline: []string{"nvim", "-R"}, Terminal: true},
+		{Cmdline: []string{"sh", "-c", `echo "$1" \ $HOME ` + "`x`" + ` 'q' # (y) > z; a|b & c*?~<`, "sh", "%F"}},
+		{Cmdline: []string{"my viewer", "--title=%c", "", "%u"}},
+		{Cmdline: []string{"multi\nline\targ", "%f"}},
+	} {
+		id, err := WriteCommandDesktopFile(dirs, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(id, command_desktop_file_prefix) || ids.Has(id) {
+			t.Fatalf("Invalid or duplicate desktop file id: %s", id)
+		}
+		ids.Add(id)
+		if again, err := WriteCommandDesktopFile(dirs, c); err != nil || again != id {
+			t.Fatalf("The same command did not give the same desktop file: %s != %s (%v)", again, id, err)
+		}
+		e, err := ParseDesktopFile(filepath.Join(dirs.DataHome, "applications", id), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !e.is_launchable() || e.ShouldShow(nil) || e.Terminal != c.Terminal {
+			t.Fatalf("Incorrect desktop file for %v: %#v", c, e)
+		}
+		ce, err := c.Entry(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected, err := ce.Commands(target)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.Name = ce.Name // %c expands to the name, which is the same
+		actual, err := e.Commands(target)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Fatalf("Desktop file for %v does not run the same command:\n%s\nExec=%s", c, diff, e.Exec)
+		}
+	}
+	// The desktop files are found by the application database, but not shown
+	db := new_app_database(dirs, func(m string) []string { return []string{m} })
+	for id := range ids.Iterable() {
+		if db.AppByID(id) == nil {
+			t.Fatalf("Desktop file %s not found by the database", id)
+		}
+	}
+	if len(db.AllApps()) != 0 {
+		t.Fatalf("Desktop files for commands are shown: %v", db.AllApps())
+	}
+	if _, err := WriteCommandDesktopFile(dirs, Choice{DesktopID: "x.desktop"}); err == nil {
+		t.Fatalf("Creating a desktop file for a desktop id did not fail")
+	}
+}

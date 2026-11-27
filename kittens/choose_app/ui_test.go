@@ -50,7 +50,7 @@ func TestChooserItems(t *testing.T) {
 		{"desktop:zathura.desktop", true}, {"desktop:okular-pdf.desktop", true},
 		{"desktop:editor.desktop", false}, {"desktop:viewer.desktop", false},
 	}
-	if diff := cmp.Diff(expected, summarize(build_items(db, store, []Target{pdf}))); diff != "" {
+	if diff := cmp.Diff(expected, summarize(build_items(db, store, NewChooserInput([]Target{pdf})))); diff != "" {
 		t.Fatalf("Incorrect items for PDF:\n%s", diff)
 	}
 	// Recently chosen applications come first, including custom commands
@@ -65,22 +65,33 @@ func TestChooserItems(t *testing.T) {
 		{"desktop:editor.desktop", true}, {"mupdf", true}, {"desktop:zathura.desktop", true}, {"desktop:okular-pdf.desktop", true},
 		{"desktop:viewer.desktop", false},
 	}
-	if diff := cmp.Diff(expected, summarize(build_items(db, store, []Target{pdf}))); diff != "" {
+	if diff := cmp.Diff(expected, summarize(build_items(db, store, NewChooserInput([]Target{pdf})))); diff != "" {
 		t.Fatalf("Incorrect items for PDF with recent choices:\n%s", diff)
 	}
 	// Multiple types recommend only the applications that can open all of them
-	both := summarize(build_items(db, store, []Target{png, pdf}))
+	both := summarize(build_items(db, store, NewChooserInput([]Target{png, pdf})))
 	if diff := cmp.Diff(summary{"desktop:zathura.desktop", true}, both[0]); diff != "" || both[1].Recommended {
 		t.Fatalf("Incorrect items for multiple types: %#v", both)
 	}
 	// With no targets there are no recommendations
-	for _, s := range summarize(build_items(db, store, nil)) {
+	for _, s := range summarize(build_items(db, store, NewChooserInput(nil))) {
 		if s.Recommended {
 			t.Fatalf("Recommended item with no targets: %#v", s)
 		}
 	}
 
-	items := build_items(db, store, []Target{pdf})
+	// Explicitly recommended applications come after the recent ones and the
+	// MIME type can be specified without files
+	input := &ChooserInput{MimeTypes: []string{"application/pdf"}, Recommend: []Choice{ChoiceForDesktopID("viewer"), ChoiceForDesktopID("not-installed")}}
+	expected = []summary{
+		{"desktop:editor.desktop", true}, {"mupdf", true}, {"desktop:viewer.desktop", true},
+		{"desktop:zathura.desktop", true}, {"desktop:okular-pdf.desktop", true},
+	}
+	if diff := cmp.Diff(expected, summarize(build_items(db, store, input))); diff != "" {
+		t.Fatalf("Incorrect items with explicit recommendations:\n%s", diff)
+	}
+
+	items := build_items(db, store, NewChooserInput([]Target{pdf}))
 	m := fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
 	for query, expected := range map[string][]string{
 		"":     {"desktop:editor.desktop", "mupdf", "desktop:zathura.desktop", "desktop:okular-pdf.desktop", "desktop:viewer.desktop"},

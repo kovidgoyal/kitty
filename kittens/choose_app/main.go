@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -119,22 +120,46 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		}
 		return utils.IfElse(err == nil, 0, 1), err
 	}
-	result, err := run_chooser(opts, resolver, targets)
+	input := NewChooserInput(targets)
+	if opts.ContentType != "" {
+		input.MimeTypes = utils.Uniq(append([]string{opts.ContentType}, input.MimeTypes...))
+	}
+	input.DisplayName, input.Preselect = opts.DisplayName, opts.Preselect
+	for _, id := range opts.Recommend {
+		input.Recommend = append(input.Recommend, ChoiceForDesktopID(id))
+	}
+	if opts.WritePidTo != "" {
+		if err = utils.AtomicWriteFile(opts.WritePidTo, strings.NewReader(strconv.Itoa(os.Getpid())), 0o600); err != nil {
+			return 1, fmt.Errorf("failed to write the process id to %s with error: %w", opts.WritePidTo, err)
+		}
+	}
+	result, err := run_chooser(opts, resolver, input)
 	if err != nil {
 		write_output(opts, nil, err)
 		return 1, err
 	}
-	write_output(opts, result, nil)
 	if result == nil {
+		write_output(opts, nil, nil)
 		return 1, nil
 	}
-	record_choice(resolver.Store, targets, result)
+	output := *result
+	if opts.CommandsAsDesktopFiles && output.Choice.DesktopID == "" {
+		id, err := WriteCommandDesktopFile(db.dirs, output.Choice)
+		if err != nil {
+			write_output(opts, nil, err)
+			return 1, err
+		}
+		output.Choice = Choice{DesktopID: id}
+	}
+	write_output(opts, &output, nil)
+	// the original command is recorded, so that it is used as is when opening files
+	record_choice(resolver.Store, input.MimeTypes, result)
 	return 0, nil
 }
 
 // record_choice records the choice even if not remembered, to rank it higher in future
-func record_choice(store *ChoiceStore, targets []Target, result *Result) {
-	for _, m := range mime_types_of(targets) {
+func record_choice(store *ChoiceStore, mimes []string, result *Result) {
+	for _, m := range mimes {
 		if err := store.RecordChoice(m, result.Choice, result.Remember); err != nil {
 			fmt.Fprintln(os.Stderr, "Warning: could not save the chosen application:", err)
 		}
@@ -158,9 +183,10 @@ func ask(opts *Options, resolver *Resolver, targets []Target) (*Result, error) {
 		// the chooser running in the panel records the choice itself
 		return ask_in_panel(opts, targets)
 	}
-	result, err := run_chooser(opts, resolver, targets)
+	input := NewChooserInput(targets)
+	result, err := run_chooser(opts, resolver, input)
 	if err == nil && result != nil {
-		record_choice(resolver.Store, targets, result)
+		record_choice(resolver.Store, input.MimeTypes, result)
 	}
 	return result, err
 }
@@ -198,14 +224,14 @@ func write_output(opts *Options, result *Result, err error) {
 	}
 }
 
-func run_chooser(opts *Options, resolver *Resolver, targets []Target) (result *Result, err error) {
+func run_chooser(opts *Options, resolver *Resolver, input *ChooserInput) (result *Result, err error) {
 	lp, err := loop.New()
 	if err != nil {
 		return nil, err
 	}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 	lp.ColorSchemeChangeNotifications()
-	h := NewHandler(lp, resolver.Settings, resolver.DB, resolver.Store, targets)
+	h := NewHandler(lp, resolver.Settings, resolver.DB, resolver.Store, input)
 	defer func() {
 		h.icon_display.Cleanup()
 		h.cmd_rl.Shutdown() // saves the command history

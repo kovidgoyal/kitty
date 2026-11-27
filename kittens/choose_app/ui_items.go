@@ -56,13 +56,30 @@ func mime_types_of(targets []Target) []string {
 	return utils.Uniq(utils.Map(MimeTypeForTarget, targets))
 }
 
+// ChooserInput is what the chooser is choosing an application for
+type ChooserInput struct {
+	Targets []Target
+	// The MIME types to choose for, those of the targets by default
+	MimeTypes []string
+	// Applications to recommend, after the ones recently chosen for the MIME types
+	Recommend []Choice
+	// The desktop file id of the application to select initially
+	Preselect string
+	// Shown to the user instead of the names of the targets
+	DisplayName string
+}
+
+func NewChooserInput(targets []Target) *ChooserInput {
+	return &ChooserInput{Targets: targets, MimeTypes: mime_types_of(targets)}
+}
+
 // recommended_choices returns the applications recommended for opening all the
-// targets: those recently chosen for their type first, then the ones that can
-// open their type in order of preference. When the targets have different
-// types, only applications suitable for all of them are recommended,
-// unless there are none, in which case those suitable for any are.
-func recommended_choices(db *AppDatabase, store *ChoiceStore, targets []Target) (ans []Choice) {
-	mimes := mime_types_of(targets)
+// MIME types: those recently chosen for the type first, then the explicitly
+// recommended ones, then the ones that can open the type in order of
+// preference. When there are multiple types, only applications suitable for
+// all of them are recommended, unless there are none, in which case those
+// suitable for any are.
+func recommended_choices(db *AppDatabase, store *ChoiceStore, mimes []string, extra []Choice) (ans []Choice) {
 	per_mime := make([][]Choice, len(mimes))
 	for i, m := range mimes {
 		var q []Choice
@@ -72,6 +89,11 @@ func recommended_choices(db *AppDatabase, store *ChoiceStore, targets []Target) 
 			}
 		}
 		for _, c := range store.Recent(m) {
+			if _, err := c.Entry(db); err == nil {
+				add(c)
+			}
+		}
+		for _, c := range extra {
 			if _, err := c.Entry(db); err == nil {
 				add(c)
 			}
@@ -107,13 +129,13 @@ func recommended_choices(db *AppDatabase, store *ChoiceStore, targets []Target) 
 
 // build_items returns the recommended applications in order of preference,
 // followed by all other applications sorted by name
-func build_items(db *AppDatabase, store *ChoiceStore, targets []Target) (ans []*item) {
+func build_items(db *AppDatabase, store *ChoiceStore, input *ChooserInput) (ans []*item) {
 	seen := utils.NewSet[string]()
 	// Applications can have multiple desktop files with the same name and
 	// command, for example, for different file types, show only the first
 	type name_and_exec struct{ name, exec string }
 	seen_names := utils.NewSet[name_and_exec]()
-	for _, c := range recommended_choices(db, store, targets) {
+	for _, c := range recommended_choices(db, store, input.MimeTypes, input.Recommend) {
 		e, err := c.Entry(db)
 		if err != nil {
 			continue
