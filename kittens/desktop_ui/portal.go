@@ -1099,8 +1099,9 @@ type AppChooserResponse struct {
 	Choice struct {
 		Desktop_id string `json:"desktop_id"`
 	} `json:"choice"`
-	Error       string `json:"error"`
-	Interrupted bool   `json:"interrupted"`
+	Error            string `json:"error"`
+	Interrupted      bool   `json:"interrupted"`
+	Activation_token string `json:"activation_token"`
 }
 
 // parse_app_chooser_response returns the portal response for the output of
@@ -1125,8 +1126,13 @@ func parse_app_chooser_response(raw []byte, activation_token string) (response u
 	}
 	// The portal uses desktop file ids without the .desktop suffix
 	results = vmap{"choice": dbus.MakeVariant(strings.TrimSuffix(result.Choice.Desktop_id, ".desktop"))}
+	// The spec requires a new token when the user interacted with the
+	// chooser, use the one the chooser got from the terminal, if any,
+	// otherwise return the one we were given, as allowed by the spec
+	if result.Activation_token != "" {
+		activation_token = result.Activation_token
+	}
 	if activation_token != "" {
-		// We have no way to generate a new token, so return the one we were given, as allowed by the spec
 		results["activation_token"] = dbus.MakeVariant(activation_token)
 	}
 	return RESPONSE_SUCCESS, results

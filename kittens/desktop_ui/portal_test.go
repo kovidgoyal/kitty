@@ -77,6 +77,8 @@ func TestAppChooser(t *testing.T) {
 	}{
 		{`{"choice": {"desktop_id": "org.kde.okular.desktop"}, "remember": true}`, "", RESPONSE_SUCCESS, vmap{"choice": dbus.MakeVariant("org.kde.okular")}},
 		{`{"choice": {"desktop_id": "firefox.desktop"}}`, "tok", RESPONSE_SUCCESS, vmap{"choice": dbus.MakeVariant("firefox"), "activation_token": dbus.MakeVariant("tok")}},
+		{`{"choice": {"desktop_id": "firefox.desktop"}, "activation_token": "new"}`, "tok", RESPONSE_SUCCESS, vmap{"choice": dbus.MakeVariant("firefox"), "activation_token": dbus.MakeVariant("new")}},
+		{`{"choice": {"desktop_id": "firefox.desktop"}, "activation_token": "new"}`, "", RESPONSE_SUCCESS, vmap{"choice": dbus.MakeVariant("firefox"), "activation_token": dbus.MakeVariant("new")}},
 		{`{"interrupted": true}`, "", RESPONSE_CANCELED, nil},
 		{`{"error": "boom"}`, "", RESPONSE_ENDED, nil},
 		{`{"choice": {"cmdline": ["x"]}}`, "", RESPONSE_ENDED, nil},

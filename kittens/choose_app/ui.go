@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/kovidgoyal/kitty/tools/config"
 	"github.com/kovidgoyal/kitty/tools/fzf"
@@ -38,7 +39,17 @@ const (
 type Result struct {
 	Choice   Choice
 	Remember bool
+	// An XDG activation token for launching the chosen application, if the terminal provided one
+	ActivationToken string
 }
+
+// Identifiers for activation token requests, see docs/misc-protocol.rst
+const (
+	activation_token_query_id   = "choose-app-query"
+	activation_token_request_id = "choose-app-token"
+	// How long to wait for the terminal to provide an activation token
+	activation_token_timeout = time.Second
+)
 
 type color_scheme int
 
@@ -76,6 +87,8 @@ type Handler struct {
 
 	// non-fatal problems to report on exit
 	warnings []string
+	// Whether the terminal can provide XDG activation tokens
+	activation_tokens_supported bool
 
 	screen_size      loop.ScreenSize
 	scroll           scroll_indicator
@@ -161,6 +174,18 @@ func (h *Handler) on_color_scheme_change(p loop.ColorPreference) error {
 }
 
 func (h *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
+	if etype == loop.OSC {
+		if resp, ok := loop.ParseActivationTokenResponse(payload); ok {
+			switch {
+			case resp.IsQueryReply && resp.Id == activation_token_query_id:
+				h.activation_tokens_supported = true
+			case !resp.IsQueryReply && resp.Id == activation_token_request_id && h.result != nil:
+				h.result.ActivationToken = resp.Token
+				h.lp.Quit(0)
+			}
+			return nil
+		}
+	}
 	if etype == loop.APC {
 		if h.scroll.thumb != nil && !h.scroll.thumb.Supported && h.scroll.thumb.IsSupportResponse(payload) {
 			h.scroll.thumb.Supported = true
@@ -269,8 +294,25 @@ func (h *Handler) ensure_current_visible() {
 // Accepting {{{
 
 func (h *Handler) accept(c Choice) error {
+	if h.result != nil {
+		// already accepted, waiting for an activation token
+		return nil
+	}
 	h.result = &Result{Choice: c, Remember: h.remember}
-	h.lp.Quit(0)
+	if !h.activation_tokens_supported {
+		h.lp.Quit(0)
+		return nil
+	}
+	// Get an activation token so that the chosen application can get focus,
+	// the user has just interacted with this window, so the compositor will
+	// provide one. Quit without one if it takes too long.
+	h.lp.RequestActivationToken(activation_token_request_id)
+	if _, err := h.lp.AddTimer(activation_token_timeout, false, func(loop.IdType) error {
+		h.lp.Quit(0)
+		return nil
+	}); err != nil {
+		h.lp.Quit(0)
+	}
 	return nil
 }
 
@@ -333,6 +375,7 @@ func (h *Handler) OnInitialize() (string, error) {
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.StartBracketedPaste()
 	h.lp.RequestCurrentColorScheme()
+	h.lp.QueryActivationTokenSupport(activation_token_query_id)
 	h.icon_display.Initialize(h.lp)
 	h.scroll.thumb = graphics.NewScrollThumb(h.icon_display.next_id)
 	h.icon_display.next_id++

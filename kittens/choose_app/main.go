@@ -204,6 +204,9 @@ func write_output(opts *Options, result *Result, err error) {
 		default:
 			payload["choice"] = result.Choice
 			payload["remember"] = result.Remember
+			if result.ActivationToken != "" {
+				payload["activation_token"] = result.ActivationToken
+			}
 		}
 		b, merr := json.MarshalIndent(payload, "", "  ")
 		if merr != nil {

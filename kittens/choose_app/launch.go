@@ -35,8 +35,9 @@ type open_error struct {
 func (e *open_error) Error() string { return e.err.Error() }
 func (e *open_error) Unwrap() error { return e.err }
 
-// launch_func runs a command in the background, in the specified working directory
-type launch_func func(argv []string, cwd string) error
+// launch_func runs a command in the background, in the specified working
+// directory, with extra environment variables of the form key=value
+type launch_func func(argv []string, cwd string, env []string) error
 
 // ask_func asks the user to choose an application for the targets,
 // returning nil if the user cancels
@@ -44,9 +45,13 @@ type ask_func func(targets []Target) (*Result, error)
 
 // launch_detached runs the command in a new session, with its standard
 // input and output connected to /dev/null, without waiting for it.
-func launch_detached(argv []string, cwd string) error {
+func launch_detached(argv []string, cwd string, env []string) error {
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
+	if len(env) > 0 {
+		// later values override earlier ones for duplicate keys
+		cmd.Env = append(os.Environ(), env...)
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	// nil means /dev/null for os/exec
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = nil, nil, nil
@@ -71,8 +76,9 @@ func (s *Settings) terminal_command(argv []string) ([]string, error) {
 	return append(prefix, argv...), nil
 }
 
-// launch opens the targets with the chosen application
-func launch(settings *Settings, db *AppDatabase, choice Choice, targets []Target, run launch_func) error {
+// launch opens the targets with the chosen application. The activation
+// token, if any, is used for the first command, as tokens can be used only once.
+func launch(settings *Settings, db *AppDatabase, choice Choice, targets []Target, activation_token string, run launch_func) error {
 	e, err := choice.Entry(db)
 	if err != nil {
 		return err
@@ -88,13 +94,17 @@ func launch(settings *Settings, db *AppDatabase, choice Choice, targets []Target
 		}
 	}
 	var errs []error
-	for _, cmd := range cmds {
+	for i, cmd := range cmds {
 		if e.Terminal {
 			if cmd, err = settings.terminal_command(cmd); err != nil {
 				return err
 			}
 		}
-		if err = run(cmd, cwd); err != nil {
+		var env []string
+		if i == 0 && activation_token != "" {
+			env = append(env, "XDG_ACTIVATION_TOKEN="+activation_token)
+		}
+		if err = run(cmd, cwd, env); err != nil {
 			errs = append(errs, fmt.Errorf("failed to run %s with error: %w", join_cmdline(cmd), err))
 		}
 	}
@@ -169,7 +179,8 @@ func open_targets(r *Resolver, targets []Target, always_ask bool, ask ask_func, 
 		exit_code = max(exit_code, code)
 	}
 	for _, g := range groups {
-		if err := launch(r.Settings, r.DB, g.choice, g.targets, run); err != nil {
+		// launched with the token from the environment, if any, the same as xdg-open
+		if err := launch(r.Settings, r.DB, g.choice, g.targets, "", run); err != nil {
 			fail(err, exit_launch_error)
 		}
 	}
@@ -184,7 +195,7 @@ func open_targets(r *Resolver, targets []Target, always_ask bool, ask ask_func, 
 			fail(fmt.Errorf("no application chosen to open: %s", m), exit_no_app)
 			continue
 		}
-		if err := launch(r.Settings, r.DB, result.Choice, by_mime[m], run); err != nil {
+		if err := launch(r.Settings, r.DB, result.Choice, by_mime[m], result.ActivationToken, run); err != nil {
 			fail(err, exit_launch_error)
 		}
 	}
@@ -245,10 +256,11 @@ func ask_in_panel(opts *Options, settings *Settings, targets []Target) (*Result,
 		return nil, fmt.Errorf("the chooser in the kitty panel did not produce any output: %w", err)
 	}
 	var output struct {
-		Choice      *Choice `json:"choice"`
-		Remember    bool    `json:"remember"`
-		Interrupted bool    `json:"interrupted"`
-		Error       string  `json:"error"`
+		Choice          *Choice `json:"choice"`
+		Remember        bool    `json:"remember"`
+		Interrupted     bool    `json:"interrupted"`
+		Error           string  `json:"error"`
+		ActivationToken string  `json:"activation_token"`
 	}
 	if err = json.Unmarshal(raw, &output); err != nil {
 		return nil, fmt.Errorf("the chooser in the kitty panel produced invalid output: %w", err)
@@ -259,5 +271,5 @@ func ask_in_panel(opts *Options, settings *Settings, targets []Target) (*Result,
 	case output.Interrupted || output.Choice == nil:
 		return nil, nil
 	}
-	return &Result{Choice: *output.Choice, Remember: output.Remember}, nil
+	return &Result{Choice: *output.Choice, Remember: output.Remember, ActivationToken: output.ActivationToken}, nil
 }

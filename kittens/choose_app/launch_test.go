@@ -17,6 +17,7 @@ import (
 type launched struct {
 	Argv []string
 	Cwd  string
+	Env  []string
 }
 
 func TestOpenTargets(t *testing.T) {
@@ -60,8 +61,8 @@ func TestOpenTargets(t *testing.T) {
 	kitty := utils.KittyExe()
 
 	var runs []launched
-	run := func(argv []string, cwd string) error {
-		runs = append(runs, launched{argv, cwd})
+	run := func(argv []string, cwd string, env []string) error {
+		runs = append(runs, launched{argv, cwd, env})
 		return nil
 	}
 	var asked [][]Target
@@ -78,9 +79,9 @@ func TestOpenTargets(t *testing.T) {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([]launched{
-		{[]string{"viewer", a_pdf}, "/viewer/dir"}, {[]string{"viewer", b_pdf}, "/viewer/dir"},
-		{[]string{"imv", a_png, b_png}, cwd},
-		{[]string{kitty, "--", "nvim", a_md}, cwd},
+		{[]string{"viewer", a_pdf}, "/viewer/dir", nil}, {[]string{"viewer", b_pdf}, "/viewer/dir", nil},
+		{[]string{"imv", a_png, b_png}, cwd, nil},
+		{[]string{kitty, "--", "nvim", a_md}, cwd, nil},
 	}, runs); diff != "" {
 		t.Fatalf("Incorrect launches:\n%s", diff)
 	}
@@ -97,8 +98,8 @@ func TestOpenTargets(t *testing.T) {
 		t.Fatalf("Incorrect questions:\n%s", diff)
 	}
 	if diff := cmp.Diff([]launched{
-		{[]string{"viewer", a_pdf}, "/viewer/dir"},
-		{[]string{kitty, "--", "editor", a_txt, b_txt}, cwd},
+		{[]string{"viewer", a_pdf}, "/viewer/dir", nil},
+		{[]string{kitty, "--", "editor", a_txt, b_txt}, cwd, nil},
 	}, runs); diff != "" {
 		t.Fatalf("Incorrect launches after asking:\n%s", diff)
 	}
@@ -143,7 +144,7 @@ func TestOpenTargets(t *testing.T) {
 		t.Fatalf("Cancelling not reported correctly, or known files not opened: %v %v", err, runs)
 	}
 	reset()
-	err = open_targets(r, targets(a_pdf), false, ask, func([]string, string) error { return errors.New("boom") })
+	err = open_targets(r, targets(a_pdf), false, ask, func([]string, string, []string) error { return errors.New("boom") })
 	if exit_code(err) != exit_launch_error || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("Launch failure not reported correctly: %v", err)
 	}
@@ -151,6 +152,20 @@ func TestOpenTargets(t *testing.T) {
 	err = open_targets(r, targets(a_txt), false, func([]Target) (*Result, error) { return nil, errors.New("no panel") }, run)
 	if exit_code(err) != exit_no_app || !strings.Contains(err.Error(), "no panel") {
 		t.Fatalf("Ask failure not reported correctly: %v", err)
+	}
+	// The activation token from asking is used for the first command only,
+	// and not for applications launched without asking
+	reset()
+	answer = &Result{Choice: ChoiceForDesktopID("viewer"), ActivationToken: "tok"}
+	if err = open_targets(r, targets(a_txt, b_txt, a_png), false, ask, run); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]launched{
+		{[]string{"imv", a_png}, cwd, nil},
+		{[]string{"viewer", a_txt}, "/viewer/dir", []string{"XDG_ACTIVATION_TOKEN=tok"}},
+		{[]string{"viewer", b_txt}, "/viewer/dir", nil},
+	}, runs); diff != "" {
+		t.Fatalf("Incorrect use of activation token:\n%s", diff)
 	}
 	// URLs are not checked for existence
 	reset()
@@ -166,16 +181,16 @@ func TestOpenTargets(t *testing.T) {
 func TestLaunchDetached(t *testing.T) {
 	tdir := t.TempDir()
 	out := filepath.Join(tdir, "out")
-	if err := launch_detached([]string{"sh", "-c", "pwd > out.tmp; mv out.tmp out"}, tdir); err != nil {
+	if err := launch_detached([]string{"sh", "-c", "echo $PWD $KT_TEST_VAR > out.tmp; mv out.tmp out"}, tdir, []string{"KT_TEST_VAR=val"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := launch_detached([]string{filepath.Join(tdir, "nonexistent-program")}, tdir); err == nil {
+	if err := launch_detached([]string{filepath.Join(tdir, "nonexistent-program")}, tdir, nil); err == nil {
 		t.Fatalf("Launching a non-existent program did not fail")
 	}
 	for range 500 {
 		if data, err := os.ReadFile(out); err == nil {
-			if strings.TrimSpace(string(data)) != tdir {
-				t.Fatalf("Program not run in the correct directory: %s", data)
+			if strings.TrimSpace(string(data)) != tdir+" val" {
+				t.Fatalf("Program not run in the correct directory or environment: %s", data)
 			}
 			return
 		}
