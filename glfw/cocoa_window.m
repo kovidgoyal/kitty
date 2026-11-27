@@ -4613,9 +4613,7 @@ set_image_for_dragging_item(NSDraggingItem *draggingItem, const GLFWimage *thumb
 
 static int
 add_drag_item(NSMutableArray<NSDraggingItem *> *dragItems, id<NSPasteboardWriting> writer) {
-    if (!writer) return ENOMEM;
     NSDraggingItem *dragItem = [[[NSDraggingItem alloc] initWithPasteboardWriter:writer] autorelease];
-    if (!dragItem) return ENOMEM;
     [dragItem setDraggingFrame:NSMakeRect(0, 0, 32, 32) contents:nil];
     [dragItems addObject:dragItem];
     return 0;
@@ -4636,9 +4634,14 @@ add_promised_drag_item(
                                                                                                    isDir:is_dir
                                                                                               instanceId:_glfw.drag.instance_id] autorelease];
     if (!delegate) return ENOMEM;
-    // A custom pasteboard UTI may not be a valid file type. Keep the original MIME type for data requests.
+    // AppKit refuses to start a drag session if a file promise has a type that is not data or a
+    // directory, such as the undeclared UTIs used for custom MIME types. Use a dynamic UTI conforming
+    // to public.data instead, it still maps back to the MIME type on the drop side.
     UTType *fileType = [UTType typeWithIdentifier:uti];
-    if (![fileType conformsToType:UTTypeData] && ![fileType conformsToType:UTTypeDirectory]) fileType = UTTypeData;
+    if (![fileType conformsToType:UTTypeData] && ![fileType conformsToType:UTTypeDirectory]) {
+        fileType = [UTType typeWithMIMEType:@(mime_type) conformingToType:UTTypeData];
+        if (!fileType) fileType = UTTypeData;
+    }
     NSFilePromiseProvider *provider = [[[NSFilePromiseProvider alloc] initWithFileType:fileType.identifier delegate:delegate] autorelease];
     int err = add_drag_item(dragItems, provider);
     if (!err) [delegates addObject:delegate];
@@ -4653,34 +4656,40 @@ add_uri_list_drag_items(
     const char *uri_list,
     size_t uri_list_sz,
     bool use_promises) {
-    if (!uri_list || !uri_list_sz || memchr(uri_list, '\0', uri_list_sz)) return EINVAL;
-    NSString *input = [[[NSString alloc] initWithBytes:uri_list length:uri_list_sz encoding:NSUTF8StringEncoding] autorelease];
-    if (!input) return EINVAL;
-    NSArray *lines = [input componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+    // Lines are split and indexed exactly as parse_uri_list() in kitty/dnd.c does, so that the
+    // indices in kitty-internal/uri-list-item-N refer to the same URIs. Invalid entries are skipped
+    // rather than failing the entire drag.
+    const char *p = uri_list, *limit = uri_list + uri_list_sz;
     size_t count = 0;
-    for (NSString *rawLine in lines) {
-        NSString *line = [rawLine stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-        if (line.length == 0 || [line hasPrefix:@"#"]) continue;
+    while (p < limit) {
+        while (p < limit && (*p == '\r' || *p == '\n')) p++;
+        const char *line_start = p;
+        while (p < limit && *p != '\r' && *p != '\n') p++;
+        const char *line_end = p;
+        while (line_end > line_start && (line_end[-1] == ' ' || line_end[-1] == '\t')) line_end--;
+        if (line_end == line_start || *line_start == '#') continue;
+        const size_t idx = count++;
+        NSString *line = [[[NSString alloc] initWithBytes:line_start length:line_end - line_start encoding:NSUTF8StringEncoding] autorelease];
+        if (!line) continue;
         NSURL *url = [NSURL URLWithString:line];
         // AppKit drops relative URLs from the pasteboard, but still counts their drag images.
-        if (url.scheme.length == 0 || (url.isFileURL && ![url.path hasPrefix:@"/"])) return EINVAL;
+        if (!url || url.scheme.length == 0 || (url.isFileURL && ![url.path hasPrefix:@"/"])) continue;
         int err;
         if (use_promises && url.isFileURL) {
             NSString *filename = url.lastPathComponent;
             const char *name = filename.UTF8String;
             if (!name || !*name || strlen(name) != [filename lengthOfBytesUsingEncoding:NSUTF8StringEncoding] || strchr(name, '/') || strcmp(name, ".") == 0 ||
                 strcmp(name, "..") == 0)
-                return EINVAL;
+                continue;
             NSURLComponents *components = [NSURLComponents componentsWithString:line];
             bool is_dir = [components.percentEncodedPath hasSuffix:@"/"];
             char buf[64];
-            snprintf(buf, sizeof(buf), "kitty-internal/uri-list-item-%zu", count);
+            snprintf(buf, sizeof(buf), "kitty-internal/uri-list-item-%zu", idx);
             err = add_promised_drag_item(window, dragItems, delegates, UTTypeFileURL.identifier, buf, name, is_dir);
         } else err = add_drag_item(dragItems, url);
         if (err) return err;
-        count++;
     }
-    return count ? 0 : EINVAL;
+    return 0;
 }
 
 static int
@@ -4690,17 +4699,17 @@ add_drag_items(
     NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates,
     const GLFWDragSourceItem *mime_item) {
     // macOS uses individual URL writers for pre-sent URI lists, or file promises for remote files.
-    if (strcmp(mime_item->mime_type, "text/uri-list") == 0 && (mime_item->optional_data || mime_item->is_remote_client)) {
+    // A remote client that does not pre-send its URI list gets a generic promise, kitty reports
+    // the error once the drag has started.
+    if (strcmp(mime_item->mime_type, "text/uri-list") == 0 && mime_item->optional_data && mime_item->data_size) {
         return add_uri_list_drag_items(window, dragItems, delegates, mime_item->optional_data, mime_item->data_size, mime_item->is_remote_client);
     }
     if (![NSString stringWithUTF8String:mime_item->mime_type]) return EINVAL;
     NSString *utiString = mime_to_uti(mime_item->mime_type);
-    if (utiString.length == 0) return EINVAL;
     if (!mime_item->optional_data) return add_promised_drag_item(window, dragItems, delegates, utiString, mime_item->mime_type, NULL, false);
 
     NSPasteboardItem *pbItem = [[[NSPasteboardItem alloc] init] autorelease];
     NSData *data = [NSData dataWithBytes:mime_item->optional_data length:mime_item->data_size];
-    if (!pbItem || !data) return ENOMEM;
     if (![pbItem setData:data forType:utiString]) return EINVAL;
     return add_drag_item(dragItems, pbItem);
 }
@@ -4717,7 +4726,6 @@ _glfwPlatformStartDrag(_GLFWwindow *window, const GLFWimage *thumbnail) {
         }
         NSMutableArray<NSDraggingItem *> *dragItems = [NSMutableArray array];
         NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates = [NSMutableArray array];
-        if (!dragItems || !delegates) return ENOMEM;
         for (size_t i = 0; i < _glfw.drag.item_count; i++) {
             int err = add_drag_items(window, dragItems, delegates, _glfw.drag.items + i);
             if (err) return err;
@@ -4751,13 +4759,12 @@ _glfwPlatformStartDrag(_GLFWwindow *window, const GLFWimage *thumbnail) {
         // Retain the delegates for the session only after the complete batch has been validated.
         if (delegates.count) {
             if (!file_promise_providers) file_promise_providers = [[NSMutableArray alloc] init];
-            if (!file_promise_providers) return ENOMEM;
             [file_promise_providers addObjectsFromArray:delegates];
         }
         GLFWContentView *v = window->ns.view;
         NSDraggingSession *s = [v beginDraggingSessionWithItems:dragItems event:event source:[v draggingSource]];
         if (!s) {
-            [file_promise_providers removeAllObjects];
+            [file_promise_providers removeObjectsInArray:delegates];
             return EIO;
         }
         _glfw.ns.drag_session = [s retain];
