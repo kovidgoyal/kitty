@@ -253,6 +253,12 @@ Variables that kitty sets when running child programs
    Set when enabling :ref:`shell_integration` with :program:`fish`, allowing
    :program:`fish` to automatically load the integration script.
 
+.. envvar:: XDG_ACTIVATION_TOKEN
+
+   On Wayland, set by kitty, when available, in the environment of programs
+   it launches, so they can receive keyboard focus. Programs running inside
+   kitty can request tokens using the :ref:`activation_tokens` protocol.
+
 .. envvar:: ENV
 
    Set when enabling :ref:`shell_integration` with :program:`bash`, allowing
