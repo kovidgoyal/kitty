@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kovidgoyal/kitty/tools/fzf"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -329,5 +330,12 @@ func TestTileSize(t *testing.T) {
 	cfg := NewConfig()
 	if s, err := settings_from_config(cfg); err != nil || s.tiles != default_tile_geometry {
 		t.Fatalf("Default settings do not give the default tile geometry: %#v %v", s, err)
+	}
+}
+
+func TestActivationTokenIds(t *testing.T) {
+	a, b := activation_token_id("token"), activation_token_id("token")
+	if a == b || !loop.IsValidActivationTokenId(a) || !loop.IsValidActivationTokenId(activation_token_id("query")) {
+		t.Fatalf("Invalid or non-unique activation token ids: %#v %#v", a, b)
 	}
 }

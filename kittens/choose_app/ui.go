@@ -4,6 +4,7 @@ package choose_app
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -43,13 +44,16 @@ type Result struct {
 	ActivationToken string
 }
 
-// Identifiers for activation token requests, see docs/misc-protocol.rst
-const (
-	activation_token_query_id   = "choose-app-query"
-	activation_token_request_id = "choose-app-token"
-	// How long to wait for the terminal to provide an activation token
-	activation_token_timeout = time.Second
-)
+// How long to wait for the terminal to provide an activation token
+const activation_token_timeout = time.Second
+
+// activation_token_id returns a unique identifier for activation token
+// requests, see docs/misc-protocol.rst, so that a late reply to a request from
+// another run of this kitten in the same terminal is not mistaken for a reply
+// to this one
+func activation_token_id(kind string) string {
+	return fmt.Sprintf("choose-app-%s-%d-%s", kind, os.Getpid(), utils.RandomFilename())
+}
 
 type color_scheme int
 
@@ -89,6 +93,10 @@ type Handler struct {
 	warnings []string
 	// Whether the terminal can provide XDG activation tokens
 	activation_tokens_supported bool
+	// Whether an activation token is needed for the chosen application
+	want_activation_token bool
+	// Identifiers for the activation token query and request
+	activation_token_query_id, activation_token_request_id string
 
 	screen_size      loop.ScreenSize
 	scroll           scroll_indicator
@@ -177,9 +185,9 @@ func (h *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) erro
 	if etype == loop.OSC {
 		if resp, ok := loop.ParseActivationTokenResponse(payload); ok {
 			switch {
-			case resp.IsQueryReply && resp.Id == activation_token_query_id:
+			case resp.IsQueryReply && resp.Id == h.activation_token_query_id:
 				h.activation_tokens_supported = true
-			case !resp.IsQueryReply && resp.Id == activation_token_request_id && h.result != nil:
+			case !resp.IsQueryReply && resp.Id == h.activation_token_request_id && h.result != nil:
 				h.result.ActivationToken = resp.Token
 				h.lp.Quit(0)
 			}
@@ -299,14 +307,18 @@ func (h *Handler) accept(c Choice) error {
 		return nil
 	}
 	h.result = &Result{Choice: c, Remember: h.remember}
-	if !h.activation_tokens_supported {
+	if !h.want_activation_token || !h.activation_tokens_supported {
 		h.lp.Quit(0)
 		return nil
 	}
 	// Get an activation token so that the chosen application can get focus,
-	// the user has just interacted with this window, so the compositor will
+	// the user has just interacted with this window, so the terminal will
 	// provide one. Quit without one if it takes too long.
-	h.lp.RequestActivationToken(activation_token_request_id)
+	h.activation_token_request_id = activation_token_id("token")
+	if err := h.lp.RequestActivationToken(h.activation_token_request_id); err != nil {
+		h.lp.Quit(0)
+		return nil
+	}
 	if _, err := h.lp.AddTimer(activation_token_timeout, false, func(loop.IdType) error {
 		h.lp.Quit(0)
 		return nil
@@ -375,7 +387,12 @@ func (h *Handler) OnInitialize() (string, error) {
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.StartBracketedPaste()
 	h.lp.RequestCurrentColorScheme()
-	h.lp.QueryActivationTokenSupport(activation_token_query_id)
+	if h.want_activation_token {
+		h.activation_token_query_id = activation_token_id("query")
+		if err := h.lp.QueryActivationTokenSupport(h.activation_token_query_id); err != nil {
+			return "", err
+		}
+	}
 	h.icon_display.Initialize(h.lp)
 	h.scroll.thumb = graphics.NewScrollThumb(h.icon_display.next_id)
 	h.icon_display.next_id++
@@ -398,6 +415,11 @@ func (h *Handler) OnResize(old, new_size loop.ScreenSize) error {
 }
 
 func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) error {
+	if h.result != nil {
+		// a choice has been made, waiting for an activation token
+		ev.Handled = true
+		return nil
+	}
 	if h.in_command_mode {
 		return h.command_mode_key_event(ev)
 	}
@@ -415,6 +437,9 @@ func (h *Handler) OnKeyEvent(ev *loop.KeyEvent) error {
 }
 
 func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) error {
+	if h.result != nil {
+		return nil
+	}
 	if h.in_command_mode {
 		if err := h.cmd_rl.OnText(text, from_key_event, in_bracketed_paste); err != nil {
 			return err
@@ -431,6 +456,9 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) e
 }
 
 func (h *Handler) OnMouseEvent(ev *loop.MouseEvent) error {
+	if h.result != nil {
+		return nil
+	}
 	consumed, scroll_redraw := h.handle_scroll_mouse(ev)
 	if consumed {
 		if scroll_redraw && h.result == nil {

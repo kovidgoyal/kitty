@@ -235,6 +235,9 @@ func run_chooser(opts *Options, resolver *Resolver, input *ChooserInput) (result
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 	lp.ColorSchemeChangeNotifications()
 	h := NewHandler(lp, resolver.Settings, resolver.DB, resolver.Store, input)
+	// The token is used when opening files or by programs using the JSON
+	// output, such as the AppChooser portal
+	h.want_activation_token = opts.Open || opts.OutputFormat == "json"
 	defer func() {
 		h.icon_display.Cleanup()
 		h.cmd_rl.Shutdown() // saves the command history

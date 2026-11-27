@@ -16,17 +16,39 @@ var _ = fmt.Print
 // docs/misc-protocol.rst
 const ACTIVATION_TOKEN_CODE = 5524
 
+// IsValidActivationTokenId returns true if id can be used as the identifier
+// of an activation token request: 1 to 64 characters from a-z A-Z 0-9 _ + . -
+func IsValidActivationTokenId(id string) bool {
+	if len(id) < 1 || len(id) > 64 {
+		return false
+	}
+	for _, c := range []byte(id) {
+		if !(c == '_' || c == '+' || c == '.' || c == '-' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
 // QueryActivationTokenSupport asks the terminal whether it can provide XDG
 // activation tokens, use ParseActivationTokenResponse() to handle the reply
-func (self *Loop) QueryActivationTokenSupport(id string) {
+func (self *Loop) QueryActivationTokenSupport(id string) error {
+	if !IsValidActivationTokenId(id) {
+		return fmt.Errorf("invalid activation token request identifier: %#v", id)
+	}
 	self.QueueWriteString(fmt.Sprintf("\x1b]%d;i=%s:p=?\x1b\\", ACTIVATION_TOKEN_CODE, id))
+	return nil
 }
 
 // RequestActivationToken asks the terminal for an XDG activation token, use
 // ParseActivationTokenResponse() to handle the reply, which can arrive after
-// the replies to later requests
-func (self *Loop) RequestActivationToken(id string) {
+// the replies to later requests. Use a different identifier for every request.
+func (self *Loop) RequestActivationToken(id string) error {
+	if !IsValidActivationTokenId(id) {
+		return fmt.Errorf("invalid activation token request identifier: %#v", id)
+	}
 	self.QueueWriteString(fmt.Sprintf("\x1b]%d;i=%s\x1b\\", ACTIVATION_TOKEN_CODE, id))
+	return nil
 }
 
 // ActivationTokenResponse is a reply to QueryActivationTokenSupport() or RequestActivationToken()

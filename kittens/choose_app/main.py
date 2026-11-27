@@ -250,7 +250,9 @@ default=text
 The format in which to write the output. The :code:`text` format is :code:`desktop:` followed
 by the id of the chosen application, or the chosen command line. The :code:`json` format
 is an object with the key :code:`choice` containing either :code:`desktop_id` or :code:`cmdline`
-and the key :code:`remember` indicating if the user chose to remember the choice.
+and the key :code:`remember` indicating if the user chose to remember the choice. When running in kitty,
+it also has the key :code:`activation_token` with an XDG activation token, for the chosen application to
+get keyboard focus when launched.
 If the user cancels the :code:`json` output contains the key :code:`interrupted` and
 if an error occurs the key :code:`error`.
 
