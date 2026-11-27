@@ -2710,19 +2710,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         w->hide_on_focus_loss = lsc->hide_on_focus_loss;
     }
     update_os_window_references();
-    // Only windows that are shown and can take keyboard focus get it when
-    // created, other windows, such as hidden ones and panels that do not take
-    // focus, are focused only when they get a focus in event. Otherwise they
-    // would be considered focused without ever having focus and, never
-    // getting a focus out event, would remain so.
-    const bool initially_focused = window_state != WINDOW_HIDDEN && (!lsc || lsc->focus_policy == GLFW_FOCUS_EXCLUSIVE);
-    if (initially_focused && (!w->is_layer_shell || global_state.is_apple)) {
-        for (size_t i = 0; i < global_state.num_os_windows; i++) {
-            // On some platforms (macOS) newly created windows don't get the initial focus in event
-            OSWindow *q = global_state.os_windows + i;
-            q->is_focused = q == w ? true : false;
-        }
-    }
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
@@ -2757,8 +2744,21 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetDragSourceCallback(glfw_window, drag_source_callback);
     glfwSetDropEventCallback(glfw_window, drop_dest_callback);
     monotonic_t now = monotonic();
-    w->is_focused = initially_focused;
-    if (initially_focused) record_os_window_focus_change_for_shaders(w, true);
+    // The initial focus in event can arrive while the window is being
+    // created, before the focus callback is set, so use the actual focus
+    // state, the compositor/window manager might not focus a new window at
+    // all, for instance, due to focus stealing prevention. macOS does not send
+    // the initial focus in event for newly created windows, so there, windows
+    // that are shown and can take keyboard focus are assumed to get it.
+    const bool initially_focused = global_state.is_apple ? window_state != WINDOW_HIDDEN && (!lsc || lsc->focus_policy == GLFW_FOCUS_EXCLUSIVE)
+                                                         : glfwGetWindowAttrib(glfw_window, GLFW_FOCUSED) != 0;
+    if (initially_focused) {
+        for (size_t i = 0; i < global_state.num_os_windows; i++) {
+            OSWindow *q = global_state.os_windows + i;
+            q->is_focused = q == w ? true : false;
+        }
+        record_os_window_focus_change_for_shaders(w, true);
+    }
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
     w->mouse_activate_deadline = -1;
