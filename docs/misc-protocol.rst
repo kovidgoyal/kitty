@@ -47,8 +47,12 @@ with the escape code::
 
     <OSC> 5524 ; i=<id> <ST>
 
-Here, ``<id>`` is an identifier chosen by the program, of up to 64 characters from
-``a-z A-Z 0-9 _ + . -``, used to match the reply to the request. kitty replies with::
+Here, ``<id>`` is an :ref:`identifier <identifier>` chosen by the program, used to match the reply
+to the request. That is, it must consist solely of characters from the set ``[a-zA-Z0-9_-+.]``:
+the letters ``a-z``, ``A-Z``, the digits ``0-9``, the underscore, the hyphen, the plus sign and
+the period. It must be at least one and at most 64 characters long. Requests with any other
+identifier, including an empty one, are ignored, as the identifier is echoed in the reply.
+kitty replies with::
 
     <OSC> 5524 ; i=<id> ; <token> <ST>
 

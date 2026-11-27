@@ -3,12 +3,12 @@
 
 # Requesting XDG activation tokens (OSC 5524), see docs/misc-protocol.rst
 
-import re
 from base64 import standard_b64encode
 from typing import NamedTuple
 
 OSC_CODE = 5524
-ID_PATTERN = re.compile(r'[a-zA-Z0-9_+.-]{1,64}')
+# The maximum length of an identifier, see docs/misc-protocol.rst
+MAX_ID_LENGTH = 64
 # Tokens are only given if the user pressed a key or mouse button in the
 # window within this many seconds
 MAX_SECONDS_SINCE_INPUT = 10
@@ -24,6 +24,14 @@ class InvalidRequest(ValueError):
 class Request(NamedTuple):
     id: str
     is_query: bool = False
+
+
+def is_valid_identifier(ident: str) -> bool:
+    # The same identifiers as the desktop notifications protocol (OSC 99),
+    # which are echoed in replies, so anything else is rejected
+    from .notifications import sanitize_identifier_pat
+
+    return 0 < len(ident) <= MAX_ID_LENGTH and sanitize_identifier_pat().search(ident) is None
 
 
 def parse_request(raw: str) -> Request:
@@ -43,7 +51,7 @@ def parse_request(raw: str) -> Request:
             if val != '?':
                 raise InvalidRequest(f'unknown value for p: {val!r}')
             is_query = True
-    if not ID_PATTERN.fullmatch(ident):
+    if not is_valid_identifier(ident):
         raise InvalidRequest(f'missing or invalid identifier: {ident!r}')
     return Request(ident, is_query)
 

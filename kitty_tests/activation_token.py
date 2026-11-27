@@ -18,9 +18,29 @@ class TestActivationToken(BaseTest):
             'i=abc;ignored payload': Request('abc'),
             'i=abc:x=unknown': Request('abc'),
             'i=' + 'a' * 64: Request('a' * 64),
+            'i=aZ09-_+.': Request('aZ09-_+.'),
         }.items():
             self.ae(parse_request(raw), expected, raw)
-        for raw in ('', 'i=', 'abc', 'i=a b', 'i=' + 'a' * 65, 'i=a:p=x', 'i=a\x1b', 'i=a:junk', 'i=a\n', 'i=a\n:p=?', 'i=\na', 'i=a\r'):
+        invalid = (
+            '',
+            'i=',
+            'abc',
+            'i=a b',
+            'i=' + 'a' * 65,
+            'i=a:p=x',
+            'i=a\x1b',
+            'i=a:junk',
+            'i=a\n',
+            'i=a\n:p=?',
+            'i=\na',
+            'i=a\r',
+            'i=a/b',
+            'i=a@b',
+            'i=a^b',
+            'i=a,b',
+            'i=a\u00e9',
+        )
+        for raw in invalid:
             with self.assertRaises(InvalidRequest, msg=repr(raw)):
                 parse_request(raw)
 
