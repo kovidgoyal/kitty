@@ -291,7 +291,7 @@ Detailed list of changes
   found, pass the last one to the notification server instead of the first
 
 - Preserve the existing destination when the transfer kitten fails to create a
-  received symbolic link
+  received symbolic or hard link
 
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

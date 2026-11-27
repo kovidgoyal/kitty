@@ -3,10 +3,13 @@
 package utils
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestAtomicWriteFileSymlinkChain(t *testing.T) {
@@ -60,5 +63,44 @@ func TestAtomicWriteFileSymlinkFailure(t *testing.T) {
 				t.Fatalf("Stray files left behind after failed write: %v %v", entries, err)
 			}
 		})
+	}
+}
+
+func TestAtomicTempName(t *testing.T) {
+	dir := t.TempDir()
+	for _, base := range []string{"short", strings.Repeat("a", 255), strings.Repeat("a", 31) + "é" + strings.Repeat("b", 200)} {
+		name := atomic_temp_name(filepath.Join(dir, base))
+		if filepath.Dir(name) != dir {
+			t.Fatalf("Temp name %q not in the destination directory", name)
+		}
+		b := filepath.Base(name)
+		if len(b) > 64 || !utf8.ValidString(b) || !strings.HasPrefix(b, "."+base[:min(len(base), 5)]) {
+			t.Fatalf("Unexpected temp name: %q", b)
+		}
+	}
+}
+
+func TestAtomicCreateLinkErrors(t *testing.T) {
+	for _, hardlink := range []bool{false, true} {
+		dir := t.TempDir()
+		target, dest := filepath.Join(dir, "target"), filepath.Join(dir, "dest")
+		if err := os.WriteFile(target, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(dest, "child"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		var err error
+		if hardlink {
+			err = AtomicCreateHardlink(target, dest)
+		} else {
+			err = AtomicCreateSymlink(target, dest)
+		}
+		if !errors.Is(err, syscall.EISDIR) || !strings.Contains(err.Error(), dest) {
+			t.Fatalf("Unexpected error replacing a directory with a link: %v", err)
+		}
+		if entries, err := os.ReadDir(dir); err != nil || len(entries) != 2 {
+			t.Fatalf("Stray files left behind after failed link: %v %v", entries, err)
+		}
 	}
 }

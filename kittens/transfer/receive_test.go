@@ -367,3 +367,126 @@ func TestReceivePreservesExistingDirectory(t *testing.T) {
 		})
 	}
 }
+
+// Return a manager that will create a link at dest of the specified type
+// pointing to target, which must be a regular file for hard links.
+func link_manager(hardlink bool, target, dest string) manager {
+	if hardlink {
+		return manager{files: []*remote_file{
+			{ftype: FileType_regular, remote_id: "1", expanded_local_path: target, permissions: 0o644},
+			{ftype: FileType_link, remote_target: "1", expanded_local_path: dest},
+		}}
+	}
+	return manager{files: []*remote_file{{
+		ftype: FileType_symlink, expanded_local_path: dest, remote_symlink_value: target, permissions: 0o777}}}
+}
+
+func TestReceiveLinkReplacesEmptyDirectory(t *testing.T) {
+	for _, hardlink := range []bool{false, true} {
+		t.Run(fmt.Sprintf("hardlink=%t", hardlink), func(t *testing.T) {
+			dir := t.TempDir()
+			target, dest := filepath.Join(dir, "target"), filepath.Join(dir, "dest")
+			if err := os.WriteFile(target, []byte("contents"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(dest, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			m := link_manager(hardlink, target, dest)
+			if err := m.finalize_transfer(); err != nil {
+				t.Fatal(err)
+			}
+			if hardlink {
+				a, aerr := os.Lstat(target)
+				b, berr := os.Lstat(dest)
+				if aerr != nil || berr != nil || !os.SameFile(a, b) {
+					t.Fatalf("Destination is not a hard link to the target: %v %v", aerr, berr)
+				}
+			} else if actual, err := os.Readlink(dest); err != nil || actual != target {
+				t.Fatalf("Incorrect symlink target: %q, %v", actual, err)
+			}
+			assert_no_temp_files(t, dir, "dest", "target")
+		})
+	}
+}
+
+func TestReceiveLinkPreservesNonEmptyDirectory(t *testing.T) {
+	for _, hardlink := range []bool{false, true} {
+		t.Run(fmt.Sprintf("hardlink=%t", hardlink), func(t *testing.T) {
+			dir := t.TempDir()
+			target, dest := filepath.Join(dir, "target"), filepath.Join(dir, "dest")
+			if err := os.WriteFile(target, []byte("contents"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(dest, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			child := filepath.Join(dest, "child")
+			if err := os.WriteFile(child, []byte("keep"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			m := link_manager(hardlink, target, dest)
+			err := m.finalize_transfer()
+			if err == nil {
+				t.Fatal("Replacing a non-empty directory with a link should fail")
+			}
+			if !strings.Contains(err.Error(), dest) {
+				t.Fatalf("Error does not mention the destination: %v", err)
+			}
+			if data, err := os.ReadFile(child); err != nil || string(data) != "keep" {
+				t.Fatalf("Directory contents were not preserved: %q, %v", data, err)
+			}
+			assert_no_temp_files(t, dir, "dest", "target")
+		})
+	}
+}
+
+func TestReceiveHardlinkPreservesExistingFileOnError(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "existing")
+	const original = "keep these contents"
+	if err := os.WriteFile(dest, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// The link target does not exist on disk, so linking to it fails
+	m := manager{files: []*remote_file{
+		{ftype: FileType_link, remote_target: "1", expanded_local_path: dest},
+		{ftype: FileType_regular, remote_id: "1", expanded_local_path: filepath.Join(dir, "missing")},
+	}}
+	if err := m.finalize_transfer(); err == nil {
+		t.Fatal("Creating a hard link to a missing file should fail")
+	}
+	if data, err := os.ReadFile(dest); err != nil || string(data) != original {
+		t.Fatalf("Existing destination was not preserved: %q, %v", data, err)
+	}
+	assert_no_temp_files(t, dir, "existing")
+}
+
+func TestReceiveHardlinkOverExistingLinks(t *testing.T) {
+	for _, same := range []bool{false, true} {
+		t.Run(fmt.Sprintf("same=%t", same), func(t *testing.T) {
+			dir := t.TempDir()
+			target, dest := filepath.Join(dir, "target"), filepath.Join(dir, "dest")
+			if err := os.WriteFile(target, []byte("contents"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if same {
+				if err := os.Link(target, dest); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.WriteFile(dest, []byte("other"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			m := link_manager(true, target, dest)
+			if err := m.finalize_transfer(); err != nil {
+				t.Fatal(err)
+			}
+			a, aerr := os.Lstat(target)
+			b, berr := os.Lstat(dest)
+			if aerr != nil || berr != nil || !os.SameFile(a, b) {
+				t.Fatalf("Destination is not a hard link to the target: %v %v", aerr, berr)
+			}
+			assert_no_temp_files(t, dir, "dest", "target")
+		})
+	}
+}

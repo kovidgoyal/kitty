@@ -564,6 +564,26 @@ func (self *handler) do_error_quit(loop.IdType) error {
 	return nil
 }
 
+// Links cannot be atomically renamed over a directory, so remove an empty
+// directory at path to allow it to be replaced by a link. Non-empty directories
+// are left in place and an error is returned.
+func remove_empty_dir_for_link(path string) error {
+	st, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	if !st.IsDir() {
+		return nil
+	}
+	if err = os.Remove(path); err != nil {
+		return fmt.Errorf("Cannot replace the directory %s with a link: %w", path, err)
+	}
+	return nil
+}
+
 func (self *manager) finalize_transfer() (err error) {
 	self.transfer_done = true
 	rid_map := make(map[string]*remote_file)
@@ -582,8 +602,9 @@ func (self *manager) finalize_transfer() (err error) {
 				return fmt.Errorf(`Hard link with remote id: {%s} not found`, f.remote_target)
 			}
 			if err = os.MkdirAll(filepath.Dir(f.expanded_local_path), 0o755); err == nil {
-				os.Remove(f.expanded_local_path)
-				err = os.Link(tgt.expanded_local_path, f.expanded_local_path)
+				if err = remove_empty_dir_for_link(f.expanded_local_path); err == nil {
+					err = utils.AtomicCreateHardlink(tgt.expanded_local_path, f.expanded_local_path)
+				}
 			}
 			if err != nil {
 				return fmt.Errorf(`Failed to create link with error: %w`, err)
@@ -607,6 +628,9 @@ func (self *manager) finalize_transfer() (err error) {
 			}
 			if err = os.MkdirAll(filepath.Dir(f.expanded_local_path), 0o755); err != nil {
 				return fmt.Errorf("Failed to create directory with error: %w", err)
+			}
+			if err = remove_empty_dir_for_link(f.expanded_local_path); err != nil {
+				return err
 			}
 			if err = utils.AtomicCreateSymlink(lt, f.expanded_local_path); err != nil {
 				return fmt.Errorf(`Failed to create symlink with error: %w`, err)
