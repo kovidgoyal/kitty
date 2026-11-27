@@ -274,14 +274,9 @@ func (h *Handler) accept_current() error {
 	return h.accept(h.matches[h.current].choice)
 }
 
-// use_command switches to typing a command, starting with the search text or,
-// if there is none, the current item if it is a custom command, for editing
+// use_command switches to typing a command, starting with the search text.
+// Previously used commands are available from the history of the command line.
 func (h *Handler) use_command() error {
-	if h.query == "" && h.current >= 0 && h.current < len(h.matches) {
-		if c := h.matches[h.current].choice; c.DesktopID == "" && len(c.Cmdline) > 0 {
-			return h.enter_command_mode(join_cmdline(c.Cmdline), c.Terminal)
-		}
-	}
 	return h.enter_command_mode(h.query, false)
 }
 

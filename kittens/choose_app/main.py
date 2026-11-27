@@ -86,6 +86,18 @@ Whether the application chosen for a type of file is remembered and used to open
 without asking. Can be toggled in the chooser with :sc:`toggle_remember <kitten-choose_app.toggle_remember>`.
 """,
 )
+opt(
+    'terminal',
+    'kitty',
+    long_text="""
+The terminal used to run terminal programs, such as applications whose :file:`.desktop` file
+specifies :code:`Terminal=true` or commands marked to run in a terminal. The command line of the
+program is appended to this. The default of :code:`kitty` runs them in a new kitty OS window.
+For example, to use a new tab in an existing kitty instance::
+
+    terminal kitty --single-instance --instance-group=choose-app
+""",
+)
 egr()  # }}}
 
 agr('appearance', 'Appearance')  # {{{
@@ -133,6 +145,27 @@ map('Last application', 'last_app end next last')
 egr()  # }}}
 
 OPTIONS = r"""
+--open
+type=bool-set
+Open the specified files or URLs, instead of printing the chosen application. Files and URLs are opened
+with the application specified by :opt:`open_with <kitten-choose_app.open_with>`, the application previously
+remembered for their type or the default application for the desktop, in that order. If none of these exist,
+the user is asked to choose. This makes this kitten a replacement for :program:`xdg-open`.
+
+
+--ask
+type=bool-set
+When opening files, always ask which application to use, even if one is known.
+
+
+--ask-in
+choices=auto,terminal,panel
+default=auto
+Where to show the chooser when opening files. :code:`terminal` uses the terminal
+this kitten is running in, :code:`panel` uses a kitty overlay panel and :code:`auto` uses the
+terminal if there is one, otherwise a panel.
+
+
 --list
 type=bool-set
 Instead of asking the user to choose, print the applications that can open
@@ -186,7 +219,8 @@ completion=type:file ext:conf group:"Config files" kwds:none,NONE
 help_text = """\
 Choose an application to open the specified files or URLs with. Applications
 are found the same way as the KDE and GNOME desktops do, from the installed
-:file:`.desktop` files and the :file:`mimeapps.list` files.
+:file:`.desktop` files and the :file:`mimeapps.list` files. Use the :option:`--open`
+option to open the files with the chosen application, as a replacement for :program:`xdg-open`.
 """
 
 usage = '[file or URL ...]'

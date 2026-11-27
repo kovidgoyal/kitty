@@ -4,6 +4,7 @@ package choose_app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -107,6 +108,17 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		}
 		return 0, nil
 	}
+	if opts.Open {
+		if len(targets) == 0 {
+			return 1, fmt.Errorf("must specify at least one file or URL to open")
+		}
+		err = open_targets(resolver, targets, opts.Ask, func(t []Target) (*Result, error) { return ask(opts, resolver, t) }, launch_detached)
+		var oe *open_error
+		if errors.As(err, &oe) {
+			return oe.exit_code, oe.err
+		}
+		return utils.IfElse(err == nil, 0, 1), err
+	}
 	result, err := run_chooser(opts, resolver, targets)
 	if err != nil {
 		write_output(opts, nil, err)
@@ -116,13 +128,41 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if result == nil {
 		return 1, nil
 	}
-	// Record the choice even if not remembered, to rank it higher in future
+	record_choice(resolver.Store, targets, result)
+	return 0, nil
+}
+
+// record_choice records the choice even if not remembered, to rank it higher in future
+func record_choice(store *ChoiceStore, targets []Target, result *Result) {
 	for _, m := range mime_types_of(targets) {
-		if rerr := store.RecordChoice(m, result.Choice, result.Remember); rerr != nil {
-			fmt.Fprintln(os.Stderr, "Warning: could not save the chosen application:", rerr)
+		if err := store.RecordChoice(m, result.Choice, result.Remember); err != nil {
+			fmt.Fprintln(os.Stderr, "Warning: could not save the chosen application:", err)
 		}
 	}
-	return 0, nil
+}
+
+// ask asks the user to choose an application to open the targets with, in
+// this terminal or a kitty panel
+func ask(opts *Options, resolver *Resolver, targets []Target) (*Result, error) {
+	in_terminal := false
+	switch opts.AskIn {
+	case "terminal":
+		if !can_ask_in_terminal() {
+			return nil, fmt.Errorf("cannot ask in the terminal as STDIN or STDOUT is not a terminal")
+		}
+		in_terminal = true
+	case "auto":
+		in_terminal = can_ask_in_terminal()
+	}
+	if !in_terminal {
+		// the chooser running in the panel records the choice itself
+		return ask_in_panel(opts, targets)
+	}
+	result, err := run_chooser(opts, resolver, targets)
+	if err == nil && result != nil {
+		record_choice(resolver.Store, targets, result)
+	}
+	return result, err
 }
 
 // write_output writes the result, which is nil if the user cancelled
