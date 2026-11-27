@@ -127,6 +127,24 @@ static bool (*utf8_decode_to_esc_impl)(UTF8Decoder *d, const uint8_t *src, size_
 
 bool
 utf8_decode_to_esc(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
+    // Text between escape codes is often only a few bytes, for example, one char
+    // per SGR code in colored text, too short for the SIMD decoder to pay off.
+    // Copy short runs of ASCII directly, as the scalar decoder is slower than
+    // the SIMD decoder for them, and use the scalar decoder for the rest.
+    const uint8_t *esc = memchr(src, 0x1b, MIN(src_sz, (size_t)16));
+    if (esc) {
+        const size_t n = esc - src;
+        uint8_t all_bits = 0;
+        for (size_t i = 0; i < n; i++) all_bits |= src[i];
+        if (all_bits & 0x80 || d->state.cur != UTF8_ACCEPT) return utf8_decode_to_esc_scalar(d, src, src_sz);
+        d->output.pos = 0;
+        utf8_decoder_ensure_capacity(d, n);
+        for (size_t i = 0; i < n; i++) d->output.storage[i] = src[i];
+        d->output.pos = n;
+        d->num_consumed = n + 1;
+        zero_at_ptr(&d->state);
+        return true;
+    }
     return utf8_decode_to_esc_impl(d, src, src_sz);
 }
 

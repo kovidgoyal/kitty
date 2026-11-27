@@ -258,7 +258,8 @@ class TestParser(BaseTest):
             cuts = sorted(rng.sample(range(1, len(data)), min(len(data) - 1, rng.choice((0, 0, 1, 3)))))
             parts = [data[a:b] for a, b in zip([0] + cuts, cuts + [len(data)])]
             expected = decode(parts, 1)
-            for which in (2, 3):
+            # 0 is the dispatcher, which mixes the scalar and SIMD decoders
+            for which in (0, 2, 3):
                 if not unsupported(which):
                     self.ae(expected, decode(parts, which), f'seed={seed} {which=} {parts=}')
         test_utf8_decode_to_sentinel(b'', -1)
@@ -329,6 +330,20 @@ class TestParser(BaseTest):
                     x(prefix + b'\xc3', b'\xa4' + suffix)
                     x(prefix + b'\xe2', b'\x89\xa4' + suffix)
                     x(prefix + b'\xe2\x89', b'\xa4' + suffix)
+
+        # The dispatcher decodes short runs before an ESC without SIMD,
+        # including when an incomplete sequence from the previous call is pending
+        for which in (0, 2, 3):
+            x = partial(t, which=which)
+            for n in range(18):
+                x(b'a' * n + b'\x1b')
+                x(b'a' * n + '日'.encode() + b'\x1bb')
+            for pending in (b'\xc3', b'\xe2', b'\xe2\x89', b'\xf0\x9f\x98'):
+                for after in (b'', b'ab', '日'.encode(), b'\x80ab', b'\xa4ab'):
+                    x(b'z' + pending, after + b'\x1bcd')
+                    x(b'z' * 40 + pending, after + b'\x1bcd')
+            for invalid in (b'\x80', b'\xff', b'\xc0\x80', b'\xed\xa0\x80'):
+                x(b'ab' + invalid + b'cd\x1b')
 
         def test_expected(src, expected, which=2):
             if unsupported(which):
