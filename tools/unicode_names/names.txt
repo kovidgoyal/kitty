@@ -1,4 +1,4 @@
-51180 23592
+51946 23769
 0 null
 1 start of heading
 2 start of text
@@ -1352,6 +1352,7 @@
 1364 armenian capital letter keh
 1365 armenian capital letter oh
 1366 armenian capital letter feh
+1368 modifier letter armenian small eh
 1369 armenian modifier letter left half ring
 1370 armenian apostrophe
 1371 armenian emphasis mark
@@ -1402,6 +1403,8 @@
 1416 armenian small letter yi with stroke
 1417 armenian full stop
 1418 armenian hyphen
+1419 modifier letter armenian small ini
+1420 modifier letter armenian small yi
 1421 right-facing armenian eternity sign
 1422 left-facing armenian eternity sign
 1423 armenian dram sign
@@ -1460,6 +1463,8 @@
 1477 hebrew mark lower dot
 1478 hebrew punctuation nun hafukha
 1479 hebrew point qamats qatan
+1480 hebrew point sheva na mudgash
+1481 hebrew point dagesh hazaq mudgash
 1488 hebrew letter alef
 1489 hebrew letter bet
 1490 hebrew letter gimel
@@ -2684,6 +2689,8 @@
 2891 oriya vowel sign o
 2892 oriya vowel sign au
 2893 oriya sign virama
+2899 oriya sign dot above
+2900 oriya sign double dot above
 2901 oriya sign overline
 2902 oriya ai length mark
 2903 oriya au length mark
@@ -6152,6 +6159,8 @@
 6875 combining down tack above
 6876 combining diaeresis with raised left dot
 6877 combining dot-and-ring below
+6878 combining grave-dot
+6879 combining dot-acute
 6880 combining left tack above
 6881 combining right tack above
 6882 combining minus sign above
@@ -6164,6 +6173,11 @@
 6889 combining left angle centred above
 6890 combining upwards arrow above
 6891 combining double rightwards arrow above
+6892 combining caron-acute
+6893 combining vertical-line-double-acute
+6894 combining double grave accent below
+6895 combining double acute accent below
+6896 combining double comma above
 6912 balinese sign ulu ricem
 6913 balinese sign ulu candra
 6914 balinese sign cecek
@@ -7526,6 +7540,7 @@
 8332 subscript equals sign
 8333 subscript left parenthesis
 8334 subscript right parenthesis
+8335 modifier letter high and low vertical line
 8336 latin subscript small letter a
 8337 latin subscript small letter e
 8338 latin subscript small letter o
@@ -7539,6 +7554,9 @@
 8346 latin subscript small letter p
 8347 latin subscript small letter s
 8348 latin subscript small letter t
+8349 latin subscript small letter w
+8350 latin subscript small letter y
+8351 latin subscript small letter z
 8352 euro-currency sign
 8353 colon sign
 8354 cruzeiro sign
@@ -7573,6 +7591,9 @@
 8383 bitcoin sign
 8384 som sign
 8385 saudi riyal sign
+8386 rufiyaa sign
+8387 uae dirham sign
+8388 omani rial sign
 8400 combining left harpoon above
 8401 combining right harpoon above
 8402 combining long vertical line overlay
@@ -10928,6 +10949,10 @@
 11867 bottom half left parenthesis
 11868 bottom half right parenthesis
 11869 oblique hyphen
+11872 wiggly exclamation mark
+11873 inverted wiggly exclamation mark
+11874 left parenthesis with middle ring
+11875 right parenthesis with middle ring
 11904 cjk radical repeat
 11905 cjk radical cliff
 11906 cjk radical second one
@@ -14318,6 +14343,8 @@
 42970 latin capital letter lambda	lamda
 42971 latin small letter lambda	lamda
 42972 latin capital letter lambda with stroke	lamda
+42973 latin capital letter closed omega
+42978 latin capital letter r with long leg
 42993 modifier letter capital s
 42994 modifier letter capital c
 42995 modifier letter capital f
@@ -15096,6 +15123,8 @@
 43881 modifier letter small turned w
 43882 modifier letter left tack
 43883 modifier letter right tack
+43884 latin capital letter script r
+43885 latin capital letter script r with ring
 43888 cherokee small letter a
 43889 cherokee small letter e
 43890 cherokee small letter i
@@ -22240,6 +22269,11 @@
 67512 modifier letter alveolar click
 67513 modifier letter retroflex click with retroflex hook
 67514 modifier letter small s with curl
+67515 modifier letter small turned t
+67516 modifier letter inverted glottal stop
+67517 modifier letter stretched c
+67518 modifier letter small turned k
+67519 modifier letter small esh with double bar
 67584 cypriot syllable a
 67585 cypriot syllable e
 67586 cypriot syllable i
@@ -23342,6 +23376,13 @@
 69317 arabic small yeh barree with two dots below
 69318 arabic letter thin noon
 69319 arabic letter yeh with four dots below
+69321 arabic small baseline fatha
+69322 arabic small baseline dotless head of khah
+69323 arabic northeast pointing arrowhead above
+69324 arabic northeast pointing arrowhead below
+69325 arabic southwest pointing arrowhead below
+69326 arabic small circle above
+69327 arabic large circle above
 69328 arabic biblical end of verse
 69329 arabic ligature alayhaa as-salaatu was-salaam
 69330 arabic ligature alayhim as-salaatu was-salaam
@@ -23351,6 +23392,38 @@
 69334 arabic ligature quddisa sirruhumaa
 69335 arabic ligature quddisat asraaruhum
 69336 arabic ligature nawwara allaahu marqadah
+69337 arabic crown letter beh
+69338 arabic crown letter peh
+69339 arabic crown letter teh
+69340 arabic crown letter theh
+69341 arabic crown letter jeem
+69342 arabic crown letter hah
+69343 arabic crown letter khah
+69344 arabic crown letter seen
+69345 arabic crown letter sheen
+69346 arabic crown letter sad
+69347 arabic crown letter dad
+69348 arabic crown letter tah
+69349 arabic crown letter zah
+69350 arabic crown letter ain
+69351 arabic crown letter ghain
+69352 arabic crown letter feh
+69353 arabic crown letter qaf
+69354 arabic crown letter kaf
+69355 arabic crown letter meem
+69356 arabic crown letter noon
+69357 arabic crown letter heh
+69358 arabic crown letter yeh
+69360 arabic small low upright rectangular zero
+69361 arabic square below
+69362 arabic filled square below
+69363 arabic small high noon with fatha
+69364 arabic small low noon with fatha
+69365 arabic small high noon with damma
+69366 arabic small low noon with damma
+69367 arabic small high heh initial form
+69368 arabic small high word kabbir
+69369 arabic mark crown
 69370 arabic double vertical bar below
 69371 arabic small low noon
 69372 arabic combining alef overlay
@@ -25333,6 +25406,7 @@
 72455 devanagari sign western nine-like bhale
 72456 devanagari sign reversed nine-like bhale
 72457 devanagari sign mindu
+72458 devanagari letter alternate ddda
 72544 sharada vowel sign oe
 72545 sharada vowel sign ooe
 72546 sharada vowel sign ue
@@ -25742,6 +25816,8 @@
 73191 tolong siki digit seven
 73192 tolong siki digit eight
 73193 tolong siki digit nine
+73200 bengali sign combining anusvara above
+73201 bengali letter alternate bargiya ba
 73440 makasar letter ka
 73441 makasar letter ga
 73442 makasar letter nga
@@ -26939,11 +27015,23 @@
 74860 cuneiform numeric sign seven u variant form
 74861 cuneiform numeric sign eight u variant form
 74862 cuneiform numeric sign nine u variant form
+74863 cuneiform numeric sign seven ash tenu
 74864 cuneiform punctuation sign old assyrian word divider
 74865 cuneiform punctuation sign vertical colon
 74866 cuneiform punctuation sign diagonal colon
 74867 cuneiform punctuation sign diagonal tricolon
 74868 cuneiform punctuation sign diagonal quadcolon
+74869 cuneiform numeric sign eight ash tenu
+74870 cuneiform numeric sign nine ash tenu
+74871 cuneiform numeric sign ash times one dish tenu
+74872 cuneiform numeric sign ash times two dish tenu
+74873 cuneiform numeric sign ash times three dish tenu
+74874 cuneiform numeric sign ash times four dish tenu
+74875 cuneiform numeric sign ash times five dish tenu
+74876 cuneiform numeric sign ash times six dish tenu
+74877 cuneiform numeric sign ash times seven dish tenu
+74878 cuneiform numeric sign ash times eight dish tenu
+74879 cuneiform numeric sign ash times nine dish tenu
 74880 cuneiform sign ab times nun tenu
 74881 cuneiform sign ab times shu2
 74882 cuneiform sign ad times esh2
@@ -27140,6 +27228,317 @@
 75073 cuneiform sign za7
 75074 cuneiform sign zu over zu plus sar
 75075 cuneiform sign zu5 times three dish tenu
+75088 cuneiform numeric sign one n01
+75089 cuneiform numeric sign two n01
+75090 cuneiform numeric sign three n01
+75091 cuneiform numeric sign four n01
+75092 cuneiform numeric sign five n01
+75093 cuneiform numeric sign six n01
+75094 cuneiform numeric sign seven n01
+75095 cuneiform numeric sign eight n01
+75096 cuneiform numeric sign nine n01
+75097 cuneiform numeric sign one n08
+75098 cuneiform numeric sign two n08
+75099 cuneiform numeric sign three n08
+75100 cuneiform numeric sign four n08
+75101 cuneiform numeric sign five n08
+75102 cuneiform numeric sign six n08
+75103 cuneiform numeric sign seven n08
+75104 cuneiform numeric sign eight n08
+75105 cuneiform numeric sign nine n08
+75106 cuneiform numeric sign one n14
+75107 cuneiform numeric sign two n14
+75108 cuneiform numeric sign three n14
+75109 cuneiform numeric sign four n14
+75110 cuneiform numeric sign five n14
+75111 cuneiform numeric sign six n14
+75112 cuneiform numeric sign seven n14
+75113 cuneiform numeric sign eight n14
+75114 cuneiform numeric sign nine n14
+75115 cuneiform numeric sign one n34
+75116 cuneiform numeric sign two n34
+75117 cuneiform numeric sign three n34
+75118 cuneiform numeric sign four n34
+75119 cuneiform numeric sign five n34
+75120 cuneiform numeric sign six n34
+75121 cuneiform numeric sign seven n34
+75122 cuneiform numeric sign eight n34
+75123 cuneiform numeric sign nine n34
+75124 cuneiform numeric sign one n48
+75125 cuneiform numeric sign two n48
+75126 cuneiform numeric sign three n48
+75127 cuneiform numeric sign four n48
+75128 cuneiform numeric sign five n48
+75129 cuneiform numeric sign one n45
+75130 cuneiform numeric sign two n45
+75131 cuneiform numeric sign three n45
+75132 cuneiform numeric sign four n45
+75133 cuneiform numeric sign five n45
+75134 cuneiform numeric sign six n45
+75135 cuneiform numeric sign seven n45
+75136 cuneiform numeric sign eight n45
+75137 cuneiform numeric sign nine n45
+75138 cuneiform numeric sign one n50
+75139 cuneiform numeric sign two n50
+75140 cuneiform numeric sign three n50
+75141 cuneiform numeric sign four n50
+75142 cuneiform numeric sign five n50
+75143 cuneiform numeric sign one eighth iku curved
+75144 cuneiform numeric sign one eighth iku curved variant form
+75145 cuneiform numeric sign one n01 reversed
+75146 cuneiform numeric sign one quarter iku curved variant form
+75147 cuneiform numeric sign one half iku curved variant form
+75148 cuneiform numeric sign one n22
+75149 cuneiform numeric sign two n22
+75150 cuneiform numeric sign one buru curved
+75151 cuneiform numeric sign two buru curved
+75152 cuneiform numeric sign three buru curved
+75153 cuneiform numeric sign four buru curved
+75154 cuneiform numeric sign five buru curved
+75155 cuneiform numeric sign one ban2 curved
+75156 cuneiform numeric sign two ban2 curved
+75157 cuneiform numeric sign three ban2 curved
+75158 cuneiform numeric sign four ban2 curved
+75159 cuneiform numeric sign five ban2 curved
+75160 cuneiform numeric sign ninda2 times she plus one ash curved
+75161 cuneiform numeric sign ninda2 times she plus two ash curved
+75162 cuneiform numeric sign one n51
+75163 cuneiform numeric sign two n51
+75164 cuneiform numeric sign three n51
+75165 cuneiform numeric sign four n51
+75166 cuneiform numeric sign five n51
+75167 cuneiform numeric sign six n51
+75168 cuneiform numeric sign seven n51
+75169 cuneiform numeric sign eight n51
+75170 cuneiform numeric sign nine n51
+75171 cuneiform numeric sign one n54
+75172 cuneiform numeric sign two n54
+75173 cuneiform numeric sign three n54
+75174 cuneiform numeric sign four n54
+75175 cuneiform numeric sign five n54
+75176 cuneiform numeric sign one n56
+75177 cuneiform numeric sign two n56
+75178 cuneiform numeric sign one n24
+75179 cuneiform numeric sign one n26
+75180 cuneiform numeric sign one n28
+75181 cuneiform numeric sign one n29a
+75182 cuneiform numeric sign one n29b
+75183 cuneiform numeric sign one n30a
+75184 cuneiform numeric sign one n30c
+75185 cuneiform numeric sign one n30d
+75186 cuneiform numeric sign one n30e
+75187 cuneiform numeric sign one n31
+75188 cuneiform numeric sign one n32
+75189 cuneiform numeric sign one n33
+75190 cuneiform numeric sign one n39a
+75191 cuneiform numeric sign two n39a
+75192 cuneiform numeric sign three n39a
+75193 cuneiform numeric sign four n39a
+75194 cuneiform numeric sign one n39b
+75195 cuneiform numeric sign two n39b
+75196 cuneiform numeric sign three n39b
+75197 cuneiform numeric sign four n39b
+75198 cuneiform numeric sign one n02
+75199 cuneiform numeric sign two n02
+75200 cuneiform numeric sign three n02
+75201 cuneiform numeric sign four n02
+75202 cuneiform numeric sign five n02
+75203 cuneiform numeric sign six n02
+75204 cuneiform numeric sign seven n02
+75205 cuneiform numeric sign eight n02
+75206 cuneiform numeric sign nine n02
+75207 cuneiform numeric sign one n15
+75208 cuneiform numeric sign two n15
+75209 cuneiform numeric sign three n15
+75210 cuneiform numeric sign four n15
+75211 cuneiform numeric sign five n15
+75212 cuneiform numeric sign one n35
+75213 cuneiform numeric sign two n35
+75214 cuneiform numeric sign three n35
+75215 cuneiform numeric sign four n35
+75216 cuneiform numeric sign five n35
+75217 cuneiform numeric sign one n06
+75218 cuneiform numeric sign two n06
+75219 cuneiform numeric sign three n06
+75220 cuneiform numeric sign four n06
+75221 cuneiform numeric sign five n06
+75222 cuneiform numeric sign six n06
+75223 cuneiform numeric sign seven n06
+75224 cuneiform numeric sign eight n06
+75225 cuneiform numeric sign nine n06
+75226 cuneiform numeric sign one n21
+75227 cuneiform numeric sign two n21
+75228 cuneiform numeric sign three n21
+75229 cuneiform numeric sign four n21
+75230 cuneiform numeric sign five n21
+75231 cuneiform numeric sign one n38
+75232 cuneiform numeric sign one n52
+75233 cuneiform numeric sign two n52
+75234 cuneiform numeric sign three n52
+75235 cuneiform numeric sign four n52
+75236 cuneiform numeric sign five n52
+75237 cuneiform numeric sign six n52
+75238 cuneiform numeric sign seven n52
+75239 cuneiform numeric sign eight n52
+75240 cuneiform numeric sign nine n52
+75241 cuneiform numeric sign one n60
+75242 cuneiform numeric sign one n24a
+75243 cuneiform numeric sign one n40
+75244 cuneiform numeric sign two n40
+75245 cuneiform numeric sign three n40
+75246 cuneiform numeric sign four n40
+75247 cuneiform numeric sign one n03
+75248 cuneiform numeric sign two n03
+75249 cuneiform numeric sign three n03
+75250 cuneiform numeric sign four n03
+75251 cuneiform numeric sign five n03
+75252 cuneiform numeric sign one n18
+75253 cuneiform numeric sign two n18
+75254 cuneiform numeric sign three n18
+75255 cuneiform numeric sign four n18
+75256 cuneiform numeric sign five n18
+75257 cuneiform numeric sign six n18
+75258 cuneiform numeric sign seven n18
+75259 cuneiform numeric sign eight n18
+75260 cuneiform numeric sign nine n18
+75261 cuneiform numeric sign one n45a
+75262 cuneiform numeric sign one n24b
+75263 cuneiform numeric sign one n26b
+75264 cuneiform numeric sign one n28b
+75265 cuneiform numeric sign one n29ab
+75266 cuneiform numeric sign one n41
+75267 cuneiform numeric sign two n41
+75268 cuneiform numeric sign three n41
+75269 cuneiform numeric sign four n41
+75270 cuneiform numeric sign one n04
+75271 cuneiform numeric sign two n04
+75272 cuneiform numeric sign three n04
+75273 cuneiform numeric sign four n04
+75274 cuneiform numeric sign five n04
+75275 cuneiform numeric sign one n19
+75276 cuneiform numeric sign two n19
+75277 cuneiform numeric sign three n19
+75278 cuneiform numeric sign four n19
+75279 cuneiform numeric sign five n19
+75280 cuneiform numeric sign six n19
+75281 cuneiform numeric sign seven n19
+75282 cuneiform numeric sign eight n19
+75283 cuneiform numeric sign nine n19
+75284 cuneiform numeric sign one n46
+75285 cuneiform numeric sign two n46
+75286 cuneiform numeric sign one n36
+75287 cuneiform numeric sign two n36
+75288 cuneiform numeric sign three n36
+75289 cuneiform numeric sign four n36
+75290 cuneiform numeric sign five n36
+75291 cuneiform numeric sign six n36
+75292 cuneiform numeric sign seven n36
+75293 cuneiform numeric sign eight n36
+75294 cuneiform numeric sign nine n36
+75295 cuneiform numeric sign one n49
+75296 cuneiform numeric sign two n49
+75297 cuneiform numeric sign three n49
+75298 cuneiform numeric sign four n49
+75299 cuneiform numeric sign one n25
+75300 cuneiform numeric sign one n27
+75301 cuneiform numeric sign one n28c
+75302 cuneiform numeric sign one n29ac
+75303 cuneiform numeric sign one n30ac
+75304 cuneiform numeric sign one n30cc
+75305 cuneiform numeric sign one n42a
+75306 cuneiform numeric sign two n42a
+75307 cuneiform numeric sign three n42a
+75308 cuneiform numeric sign four n42a
+75309 cuneiform numeric sign one n42b
+75310 cuneiform numeric sign two n42b
+75311 cuneiform numeric sign three n42b
+75312 cuneiform numeric sign four n42b
+75313 cuneiform numeric sign one n05
+75314 cuneiform numeric sign two n05
+75315 cuneiform numeric sign three n05
+75316 cuneiform numeric sign four n05
+75317 cuneiform numeric sign five n05
+75318 cuneiform numeric sign one n20
+75319 cuneiform numeric sign two n20
+75320 cuneiform numeric sign three n20
+75321 cuneiform numeric sign four n20
+75322 cuneiform numeric sign five n20
+75323 cuneiform numeric sign six n20
+75324 cuneiform numeric sign seven n20
+75325 cuneiform numeric sign eight n20
+75326 cuneiform numeric sign nine n20
+75327 cuneiform numeric sign one n47
+75328 cuneiform numeric sign two n47
+75329 cuneiform numeric sign one n37
+75330 cuneiform numeric sign two n37
+75331 cuneiform numeric sign one n09
+75332 cuneiform numeric sign one n11
+75333 cuneiform numeric sign one n12
+75334 cuneiform numeric sign one n07a
+75335 cuneiform numeric sign two n07a
+75336 cuneiform numeric sign three n07a
+75337 cuneiform numeric sign one n07b
+75338 cuneiform numeric sign two n07b
+75339 cuneiform numeric sign three n07b
+75340 cuneiform numeric sign one n01 flat
+75341 cuneiform numeric sign two n01 flat
+75342 cuneiform numeric sign three n01 flat
+75343 cuneiform numeric sign four n01 flat
+75344 cuneiform numeric sign five n01 flat
+75345 cuneiform numeric sign six n01 flat
+75346 cuneiform numeric sign seven n01 flat
+75347 cuneiform numeric sign eight n01 flat
+75348 cuneiform numeric sign nine n01 flat
+75349 cuneiform numeric sign one n08 flat
+75350 cuneiform numeric sign one n14 flat
+75351 cuneiform numeric sign two n14 flat
+75352 cuneiform numeric sign three n14 flat
+75353 cuneiform numeric sign four n14 flat
+75354 cuneiform numeric sign five n14 flat
+75355 cuneiform numeric sign six n14 flat
+75356 cuneiform numeric sign seven n14 flat
+75357 cuneiform numeric sign eight n14 flat
+75358 cuneiform numeric sign nine n14 flat
+75359 cuneiform numeric sign one n34 flat
+75360 cuneiform numeric sign two n34 flat
+75361 cuneiform numeric sign three n34 flat
+75362 cuneiform numeric sign four n34 flat
+75363 cuneiform numeric sign five n34 flat
+75364 cuneiform numeric sign six n34 flat
+75365 cuneiform numeric sign seven n34 flat
+75366 cuneiform numeric sign eight n34 flat
+75367 cuneiform numeric sign nine n34 flat
+75368 cuneiform numeric sign one n45 flat
+75369 cuneiform numeric sign two n45 flat
+75370 cuneiform numeric sign one n22 flat
+75371 cuneiform numeric sign two n22 flat
+75372 cuneiform numeric sign one n51 flat
+75373 cuneiform numeric sign two n51 flat
+75374 cuneiform numeric sign three n51 flat
+75375 cuneiform numeric sign four n51 flat
+75376 cuneiform numeric sign five n51 flat
+75377 cuneiform numeric sign six n51 flat
+75378 cuneiform numeric sign seven n51 flat
+75379 cuneiform numeric sign eight n51 flat
+75380 cuneiform numeric sign nine n51 flat
+75381 cuneiform numeric sign one n34 flat tenu
+75382 cuneiform numeric sign one n04 flat
+75383 cuneiform numeric sign two n04 flat
+75384 cuneiform numeric sign three n04 flat
+75385 cuneiform numeric sign four n04 flat
+75386 cuneiform numeric sign five n04 flat
+75387 cuneiform numeric sign one n19 flat
+75388 cuneiform numeric sign two n19 flat
+75389 cuneiform numeric sign three n19 flat
+75390 cuneiform numeric sign four n19 flat
+75391 cuneiform numeric sign five n19 flat
+75392 cuneiform numeric sign six n19 flat
+75393 cuneiform numeric sign seven n19 flat
+75394 cuneiform numeric sign eight n19 flat
+75395 cuneiform numeric sign nine n19 flat
+75396 cuneiform numeric sign one n46 flat
+75397 cuneiform numeric sign two n46 flat
+75398 cuneiform numeric sign one n36 flat
 77712 cypro-minoan sign cm001
 77713 cypro-minoan sign cm002
 77714 cypro-minoan sign cm004
@@ -35449,9 +35848,14 @@
 101587 khitan small script character-18cd3
 101588 khitan small script character-18cd4
 101589 khitan small script character-18cd5
+101590 khitan small script character-18cd6
+101591 khitan small script character-18cd7
+101592 khitan small script character-18cd8
+101593 khitan small script character-18cd9
+101594 khitan small script character-18cda
 101631 khitan small script character-18cff
 101632 <tangut ideograph supplement, first>
-101662 <tangut ideograph supplement, last>
+101664 <tangut ideograph supplement, last>
 101760 tangut component-769
 101761 tangut component-770
 101762 tangut component-771
@@ -35567,6 +35971,59 @@
 101872 tangut component-881
 101873 tangut component-882
 101874 tangut component-883
+101888 <jurchen character, first>
+102801 <jurchen character, last>
+102816 jurchen radical-01
+102817 jurchen radical-02
+102818 jurchen radical-03
+102819 jurchen radical-04
+102820 jurchen radical-05
+102821 jurchen radical-06
+102822 jurchen radical-07
+102823 jurchen radical-08
+102824 jurchen radical-09
+102825 jurchen radical-10
+102826 jurchen radical-11
+102827 jurchen radical-12
+102828 jurchen radical-13
+102829 jurchen radical-14
+102830 jurchen radical-15
+102831 jurchen radical-16
+102832 jurchen radical-17
+102833 jurchen radical-18
+102834 jurchen radical-19
+102835 jurchen radical-20
+102836 jurchen radical-21
+102837 jurchen radical-22
+102838 jurchen radical-23
+102839 jurchen radical-24
+102840 jurchen radical-25
+102841 jurchen radical-26
+102842 jurchen radical-27
+102843 jurchen radical-28
+102844 jurchen radical-29
+102845 jurchen radical-30
+102846 jurchen radical-31
+102847 jurchen radical-32
+102848 jurchen radical-33
+102849 jurchen radical-34
+102850 jurchen radical-35
+102851 jurchen radical-36
+102852 jurchen radical-37
+102853 jurchen radical-38
+102854 jurchen radical-39
+102855 jurchen radical-40
+102856 jurchen radical-41
+102857 jurchen radical-42
+102858 jurchen radical-43
+102859 jurchen radical-44
+102860 jurchen radical-45
+102861 jurchen radical-46
+102862 jurchen radical-47
+102863 jurchen radical-48
+102864 jurchen radical-49
+102865 jurchen radical-50
+102866 jurchen radical-51
 110576 katakana letter minnan tone-2
 110577 katakana letter minnan tone-3
 110578 katakana letter minnan tone-4
@@ -35871,6 +36328,12 @@
 110880 katakana letter archaic yi
 110881 katakana letter archaic ye
 110882 katakana letter archaic wu
+110883 hiragana digraph koto
+110884 katakana digraph toki
+110885 katakana digraph tote
+110886 katakana digraph yori
+110887 katakana letter alternate ne
+110888 katakana letter alternate wi
 110898 hiragana letter small ko
 110928 hiragana letter small wi
 110929 hiragana letter small we
@@ -35880,6 +36343,7 @@
 110949 katakana letter small we
 110950 katakana letter small wo
 110951 katakana letter small n
+110952 katakana letter small archaic ye
 110960 nushu character-1b170
 110961 nushu character-1b171
 110962 nushu character-1b172
@@ -37135,6 +37599,12 @@
 118478 bellona
 118479 amphitrite
 118480 leukothea
+118482 alchemical symbol for oil inverted
+118483 alchemical symbol for moon-jupiter
+118484 alchemical symbol for salt of tartar
+118493 square root of square root
+118494 square root of square root of square root
+118495 square root of square root of square root of square root
 118496 geomantic figure populus
 118497 geomantic figure tristitia
 118498 geomantic figure albus
@@ -37152,6 +37622,19 @@
 118510 geomantic figure cauda draconis
 118511 geomantic figure via
 118512 medium small white circle with horizontal bar
+118513 leibnizian division sign
+118514 leibnizian multiplication sign
+118515 leibnizian multiplication-division sign
+118516 leibnizian fraction reduction sign-1
+118517 leibnizian fraction reduction sign-2
+118518 sector with chord
+118519 sector with double arc
+118520 sector with chord and dotted arc
+118521 measured angle with double arc
+118522 measured angle with concave arc
+118523 measured angle with double concave arc
+118524 angle opening up
+118525 hyperbola
 118528 znamenny combining mark gorazdo nizko s kryzhem on left
 118529 znamenny combining mark nizko s kryzhem on left
 118530 znamenny combining mark tsata on left
@@ -37622,6 +38105,8 @@
 119076 musical symbol f clef ottava bassa
 119077 musical symbol drum clef-1
 119078 musical symbol drum clef-2
+119079 musical symbol combining stress
+119080 musical symbol combining unstress
 119081 musical symbol multiple measure rest
 119082 musical symbol double sharp
 119083 musical symbol double flat
@@ -37816,6 +38301,27 @@
 119272 musical symbol kievan flat sign
 119273 musical symbol sori
 119274 musical symbol koron
+119275 musical symbol half sharp
+119276 musical symbol one and a half sharp
+119277 musical symbol reversed flat
+119278 musical symbol reversed flat and flat
+119279 musical symbol half sharp up
+119280 musical symbol half sharp down
+119281 musical symbol one and a half sharp up
+119282 musical symbol one and a half sharp down
+119283 musical symbol reversed flat up
+119284 musical symbol reversed flat down
+119285 musical symbol reversed flat and flat up
+119286 musical symbol reversed flat and flat down
+119287 musical symbol digit two with stroke
+119288 musical symbol digit four with stroke
+119289 musical symbol digit five with stroke
+119290 musical symbol digit six with stroke
+119291 musical symbol digit seven with stroke
+119292 musical symbol digit nine with stroke
+119293 musical symbol digit five with low stroke
+119294 musical symbol digit seven with low stroke
+119295 musical symbol longa rest
 119296 greek vocal notation symbol-1
 119297 greek vocal notation symbol-2
 119298 greek vocal notation symbol-3
@@ -37886,6 +38392,56 @@
 119363 combining greek musical tetraseme
 119364 combining greek musical pentaseme
 119365 greek musical leimma
+119376 musical symbol combining flag-6
+119377 musical symbol combining flag-7
+119378 musical symbol combining flag-8
+119379 musical symbol two hundred fifty-sixth rest
+119380 musical symbol five hundred twelfth rest
+119381 musical symbol one thousand twenty-fourth rest
+119382 musical symbol flat with stroke
+119383 musical symbol flat with double stroke
+119384 musical symbol flat with double stem
+119385 musical symbol half sharp with stroke
+119386 musical symbol sharp with stroke
+119387 musical symbol combining tremolo-4
+119388 musical symbol combining tremolo-5
+119389 musical symbol fingered tremolo-4
+119390 musical symbol fingered tremolo-5
+119391 musical symbol combining buzz roll stem
+119392 musical symbol triple flat
+119393 musical symbol suspension
+119394 musical symbol heavy double barline
+119395 musical symbol system divider
+119396 musical symbol niente
+119397 musical symbol crescendo with ring
+119398 musical symbol decrescendo with ring
+119399 musical symbol diamond notehead whole
+119400 musical symbol diamond notehead white
+119401 musical symbol diamond notehead black
+119402 musical symbol diamond notehead half-filled
+119403 musical symbol triangular fermata
+119404 musical symbol double triangular fermata
+119405 musical symbol square fermata
+119406 musical symbol double square fermata
+119407 musical symbol henze long fermata
+119408 musical symbol henze short fermata
+119409 musical symbol curlew
+119410 musical symbol salzedo breath mark
+119411 musical symbol organ pedal heel
+119412 musical symbol organ pedal toe
+119413 musical symbol g clef optionally ottava bassa
+119414 musical symbol double g clef
+119415 musical symbol g clef ottava bassa with c clef
+119416 musical symbol c clef ottava bassa
+119417 musical symbol g clef quindicesima alta
+119418 musical symbol g clef quindicesima bassa
+119419 musical symbol f clef quindicesima alta
+119420 musical symbol f clef quindicesima bassa
+119421 musical symbol c clef quindicesima bassa
+119422 musical symbol tablature clef
+119423 musical symbol arpeggiato up with arrow
+119424 musical symbol combining stem bow behind bridge
+119425 musical symbol combining stem bow on top of bridge
 119488 kaktovik numeral zero
 119489 kaktovik numeral one
 119490 kaktovik numeral two
@@ -38692,6 +39248,7 @@
 120483 mathematical monospace small z
 120484 mathematical italic small dotless i
 120485 mathematical italic small dotless j
+120486 mathematical italic small ligature long s with descender s
 120488 mathematical bold capital alpha
 120489 mathematical bold capital beta
 120490 mathematical bold capital gamma
@@ -39706,6 +40263,35 @@
 121517 signwriting rotation modifier-14
 121518 signwriting rotation modifier-15
 121519 signwriting rotation modifier-16
+121600 leibnizian equals sign
+121601 leibnizian equals sign with double verticals
+121602 leibnizian equals sign with small s
+121603 leibnizian greater-than
+121604 leibnizian less-than
+121605 leibnizian greater-than with small p
+121606 leibnizian less-than with small p
+121607 leibnizian greater-than or less-than
+121608 inverted square left open box operator
+121609 inverted square right open box operator
+121610 two-line greater-than
+121611 two-line less-than
+121612 commensurability
+121613 incommensurability
+121614 commensurability in square
+121615 incommensurability in square
+121616 cartesian equals sign
+121617 leibnizian congruence
+121618 leibnizian congruence with vertical bar
+121619 leibnizian congruence-2
+121620 leibnizian congruence-2 inverted
+121621 leibnizian congruence-2 with horizontal bar
+121622 leibnizian congruence-2 with horizontal and vertical bar
+121623 leibnizian coincidence
+121624 inverted lazy s over lazy s
+121625 leibnizian similarity
+121626 leibnizian similarity-2
+121627 leibnizian dissimilarity
+121628 facit symbol
 122624 latin small letter feng digraph with trill
 122625 latin small letter reversed script g
 122626 latin letter small capital turned g
@@ -39737,12 +40323,163 @@
 122652 latin small letter tesh digraph with retroflex hook
 122653 latin small letter c with retroflex hook
 122654 latin small letter s with curl
+122655 latin small letter d-eth digraph
+122656 latin small letter d-lezh digraph
+122657 latin small letter d-lezh digraph with retroflex hook
+122658 latin small letter tl digraph with belt
+122659 latin small letter tl digraph with retroflex hook and belt
+122660 latin small letter t-theta digraph
 122661 latin small letter d with mid-height left hook
 122662 latin small letter l with mid-height left hook
 122663 latin small letter n with mid-height left hook
 122664 latin small letter r with mid-height left hook
 122665 latin small letter s with mid-height left hook
 122666 latin small letter t with mid-height left hook
+122667 latin small letter dezh digraph with curl
+122668 latin small letter tesh digraph with curl
+122669 latin small letter d with hook and palatal hook
+122670 latin small letter dz digraph with palatal hook
+122671 latin small letter eth with palatal hook
+122672 latin letter small capital g with palatal hook
+122673 latin small letter gamma with palatal hook
+122674 latin small letter h with stroke and palatal hook
+122675 latin small letter phi with palatal hook
+122676 latin small letter q with palatal hook
+122677 latin letter small capital r with palatal hook
+122678 latin letter small capital inverted r with palatal hook
+122679 latin small letter r with tail and palatal hook
+122680 latin small letter ts digraph with palatal hook
+122681 latin small letter v with hook and palatal hook
+122682 latin letter pharyngeal voiced fricative with palatal hook
+122683 latin small letter beta with palatal hook
+122684 latin small letter theta with palatal hook
+122685 latin small letter chi with palatal hook
+122686 latin small letter barred turned h
+122687 latin small letter barred w
+122688 latin capital letter barred a
+122689 latin small letter barred a
+122690 latin small letter barred open o
+122691 latin letter small capital barred e
+122692 latin small letter barred open e
+122693 latin small letter g with stroke and palatal hook
+122694 latin small letter barred h
+122695 latin small letter barred h with hook
+122696 latin capital letter barred k
+122697 latin small letter barred k
+122698 latin capital letter barred m
+122699 latin small letter barred m
+122700 latin small letter barred m with hook
+122701 latin capital letter barred n
+122702 latin small letter barred n
+122703 latin small letter barred eng
+122704 latin small letter turned r with stroke
+122705 latin capital letter barred v
+122706 latin small letter barred v
+122707 latin small letter barred closed omega
+122708 latin small letter barred chi
+122709 latin small letter y with low stroke
+122710 latin letter glottal stop with double stroke
+122711 latin small letter turned r with mid-height left hook
+122712 latin small letter split o
+122713 latin small letter split u
+122714 latin small letter half a
+122715 latin small letter stretched c-h digraph
+122716 latin small letter lunate ee
+122717 latin small letter ie
+122718 latin small letter oi digraph
+122719 latin small letter ou digraph
+122720 latin small letter omega with loop
+122721 latin small letter r with left tie
+122722 latin small letter esh-h digraph
+122723 latin small letter stretched t-h digraph
+122724 latin small letter reversed t-h digraph
+122725 latin small letter wh digraph
+122726 latin small letter reversed z
+122727 latin small letter lezh with curl
+122728 latin capital letter phonotypic a with swash
+122729 latin small letter phonotypic a with swash
+122730 latin capital letter phonotypic roundtop a
+122731 latin small letter phonotypic roundtop a
+122732 latin capital letter reversed scruple
+122733 latin small letter reversed scruple
+122734 latin capital letter phonotypic diphthong ai
+122735 latin small letter phonotypic diphthong ai
+122736 latin small letter i with pigtail at bottom
+122737 latin small letter stretched i
+122738 latin capital letter o with curl
+122739 latin small letter o with curl
+122740 latin capital letter closed omega with long stem
+122741 latin small letter closed omega with long stem
+122742 latin capital letter turned closed omega
+122743 latin small letter turned closed omega
+122744 latin capital letter phonotypic th
+122745 latin small letter phonotypic th
+122746 latin capital letter u with hook tail
+122747 latin small letter u with hook tail
+122748 latin capital letter u with notch at bottom
+122749 latin small letter u with notch at bottom
+122750 latin capital letter reversed u
+122751 latin small letter reversed u
+122752 latin capital letter a with topbar
+122753 latin capital letter e with bent topbar
+122768 latin small letter c with low slash
+122769 latin small letter c with looped cedilla
+122770 latin small letter c with right loop
+122771 latin small letter d rotunda with descending crossing loop
+122772 latin small letter r rotunda with loop
+122773 latin small ligature long s with descender s
+122774 latin small letter long s with top loop
+122829 modifier letter small turned r with mid-height left hook
+122830 modifier letter small split o
+122831 modifier letter small split u
+122832 latin subscript small letter gamma
+122833 modifier letter small capital p
+122834 modifier letter small b with stroke
+122835 modifier letter small d with stroke
+122836 modifier letter small g with stroke
+122837 modifier letter small l with stroke
+122838 modifier letter small l with bar
+122839 modifier letter small turned r with stroke
+122840 modifier letter small barred turned h
+122841 modifier letter small j with stroke
+122842 modifier letter small upsilon with stroke
+122843 modifier letter small barred w
+122844 modifier letter small n with long right leg
+122845 modifier letter small r with long leg
+122846 modifier letter small db digraph
+122847 modifier letter small qp digraph
+122848 modifier letter small dezh digraph with curl
+122849 modifier letter small dezh digraph with retroflex hook
+122850 modifier letter small esh with curl
+122851 modifier letter small esh with retroflex hook
+122852 modifier letter small tesh digraph with curl
+122853 modifier letter small tesh digraph with retroflex hook
+122854 modifier letter small ezh with curl
+122855 modifier letter small ezh with retroflex hook
+122856 modifier letter small capital d
+122857 modifier letter small capital a
+122858 modifier letter small capital e
+122859 modifier letter small reversed r with fishhook
+122860 modifier letter small squat reversed esh
+122861 modifier letter small turned h with fishhook
+122862 modifier letter small turned h with fishhook and tail
+122863 modifier letter small d with curl
+122864 modifier letter small l with curl
+122865 modifier letter small n with curl
+122866 modifier letter small t with curl
+122867 modifier letter small greek psi
+122868 modifier letter small greek omega
+122869 modifier letter small d with palatal hook
+122870 modifier letter small h with palatal hook
+122871 modifier letter small n with palatal hook
+122872 modifier letter small s with palatal hook
+122873 modifier letter small z with palatal hook
+122874 modifier letter small c with hook
+122875 modifier letter small k with hook
+122876 modifier letter small p with hook
+122877 modifier letter small q with hook
+122878 modifier letter small t with hook
+122879 modifier letter small t with hook and retroflex hook
 122880 combining glagolitic letter azu
 122881 combining glagolitic letter buky
 122882 combining glagolitic letter vede
@@ -41147,6 +41884,7 @@
 127403 squared uhd
 127404 squared vod
 127405 mask work symbol
+127406 tomobiki symbol
 127462 regional indicator symbol letter a
 127463 regional indicator symbol letter b
 127464 regional indicator symbol letter c
@@ -42222,6 +42960,7 @@
 128726 hut
 128727 elevator
 128728 landslide
+128729 lighthouse
 128732 wireless
 128733 playground slide
 128734 wheel
@@ -42470,6 +43209,8 @@
 128983 circled square
 128984 negative circled square
 128985 nine pointed white star
+128986 black circle with white vertical bar
+128987 bullet in double circle
 128992 large orange circle
 128993 large yellow circle
 128994 large green circle
@@ -42483,6 +43224,21 @@
 129002 large purple square
 129003 large brown square
 129008 heavy equals sign
+129009 circle with double vertical and horizontal line
+129010 double circle with double horizontal line
+129011 circled bottom right oblique half black circle
+129012 left half white circle
+129013 right half white circle
+129014 transparent cube
+129015 white cube
+129016 horizontal double white small square
+129017 vertical double white small square
+129018 white square with bottom half bisected
+129019 white square with top half bisected
+129020 white square with horizontal and vertical bisecting lines
+129021 lower left flattened right triangle
+129022 lower right flattened right triangle
+129023 rhombus
 129024 leftwards arrow with small triangle arrowhead
 129025 upwards arrow with small triangle arrowhead
 129026 rightwards arrow with small triangle arrowhead
@@ -43036,6 +43792,9 @@
 129672 flute
 129673 harp
 129674 trombone
+129675 meteor
+129676 eraser
+129677 net with handle
 129678 treasure chest
 129679 shovel
 129680 ringed planet
@@ -43094,6 +43853,7 @@
 129733 person with crown
 129734 fingerprint
 129736 hairy creature
+129740 monarch butterfly
 129741 orca
 129742 moose
 129743 donkey
@@ -43110,6 +43870,7 @@
 129754 ginger root
 129755 pea pod
 129756 root vegetable
+129757 pickle
 129759 splatter
 129760 melting face
 129761 saluting face
@@ -43122,6 +43883,7 @@
 129768 shaking face
 129769 face with bags under eyes
 129770 distorted face
+129771 cracking face
 129775 fight cloud
 129776 hand with index finger and thumb crossed
 129777 rightwards hand
@@ -43132,6 +43894,8 @@
 129782 heart hands
 129783 leftwards pushing hand
 129784 rightwards pushing hand
+129785 leftwards thumb sign
+129786 rightwards thumb sign
 129792 block sextant-1
 129793 block sextant-2
 129794 block sextant-12
@@ -43387,7 +44151,7 @@
 173824 <cjk ideograph extension c, first>
 177983 <cjk ideograph extension c, last>
 177984 <cjk ideograph extension d, first>
-178205 <cjk ideograph extension d, last>
+178206 <cjk ideograph extension d, last>
 178208 <cjk ideograph extension e, first>
 183981 <cjk ideograph extension e, last>
 183984 <cjk ideograph extension f, first>
@@ -43942,6 +44706,8 @@
 205743 <cjk ideograph extension h, last>
 205744 <cjk ideograph extension j, first>
 210041 <cjk ideograph extension j, last>
+249856 <seal character, first>
+261183 <seal character, last>
 917505 language tag
 917536 tag space
 917537 tag exclamation mark

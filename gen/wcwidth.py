@@ -57,7 +57,8 @@ def get_data(fname: str, folder: str = 'UCD') -> Iterable[str]:
 @lru_cache(maxsize=2)
 def unicode_version() -> tuple[int, int, int]:
     for line in get_data('ReadMe.txt'):
-        m = re.search(r'Version\s+(\d+)\.(\d+)\.(\d+)', line)
+        # The ReadMe of Unicode 18 says version rather than Version
+        m = re.search(r'Version\s+(\d+)\.(\d+)\.(\d+)', line, re.IGNORECASE)
         if m is not None:
             return int(m.group(1)), int(m.group(2)), int(m.group(3))
     raise ValueError('Could not find Unicode Version')
@@ -690,7 +691,6 @@ class GraphemeSegmentationProps(NamedTuple):
 
 
 control_grapheme_breaks = 'CR', 'LF', 'Control'
-linker_or_extend = 'Linker', 'Extend'
 
 
 def bitfield_declaration_as_c(name: str, fields: dict[str, int], *alternate_fields: dict[str, int]) -> str:
@@ -730,12 +730,8 @@ def bitfield_declaration_as_c(name: str, fields: dict[str, int], *alternate_fiel
 
 class GraphemeSegmentationState(NamedTuple):
     grapheme_break: str = ''  # set at runtime
-    # True if the last character ends a sequence of Indic_Conjunct_Break values:  consonant {extend|linker}*
-    incb_consonant_extended: bool = True
-    # True if the last character ends a sequence of Indic_Conjunct_Break values:  consonant {extend|linker}* linker
-    incb_consonant_extended_linker: bool = True
-    # True if the last character ends a sequence of Indic_Conjunct_Break values:  consonant {extend|linker}* linker {extend|linker}*
-    incb_consonant_extended_linker_extended: bool = True
+    # True if the last character ends a sequence of Indic_Conjunct_Break values:  linker extend*
+    incb_linker_extended: bool = True
     # True if the last character ends an emoji modifier sequence \p{Extended_Pictographic} Extend*
     emoji_modifier_sequence: bool = True
     # True if the last character was immediately preceded by an emoji modifier sequence   \p{Extended_Pictographic} Extend*
@@ -743,7 +739,7 @@ class GraphemeSegmentationState(NamedTuple):
 
     @classmethod
     def make(cls) -> 'GraphemeSegmentationState':
-        return GraphemeSegmentationState('AtStart', False, False, False, False, False)
+        return GraphemeSegmentationState('AtStart', False, False, False)
 
     @classmethod
     def fields(cls) -> dict[str, int]:
@@ -792,8 +788,8 @@ class GraphemeSegmentationState(NamedTuple):
             elif prop in ('Extend', 'ZWJ', 'SpacingMark') or prev == 'Prepend':
                 add_to_cell = True
             # No break within certain combinations of Indic_Conjunct_Break values
-            # Between consonant {extend|linker}* linker {extend|linker}* and consonant (GB9c).
-            elif self.incb_consonant_extended_linker_extended and incb == 'Consonant':
+            # Between linker extend* and consonant (GB9c).
+            elif self.incb_linker_extended and incb == 'Consonant':
                 add_to_cell = True
             # No break within emoji modifier sequences or emoji zwj sequences (GB11).
             elif prev == 'ZWJ' and self.emoji_modifier_sequence_before_last_char and p.is_extended_pictographic:
@@ -806,18 +802,14 @@ class GraphemeSegmentationState(NamedTuple):
                     prop = 'Private_Expecting_RI'
             # Break everywhere else GB999
 
-        incb_consonant_extended_linker = self.incb_consonant_extended and incb == 'Linker'
-        incb_consonant_extended_linker_extended = incb_consonant_extended_linker or (self.incb_consonant_extended_linker_extended and incb in linker_or_extend)
-        incb_consonant_extended = incb == 'Consonant' or (self.incb_consonant_extended and incb in linker_or_extend)
+        incb_linker_extended = incb == 'Linker' or (self.incb_linker_extended and incb == 'Extend')
         emoji_modifier_sequence_before_last_char = self.emoji_modifier_sequence
         emoji_modifier_sequence = (self.emoji_modifier_sequence and prop == 'Extend') or p.is_extended_pictographic
 
         return GraphemeSegmentationResult(
             GraphemeSegmentationState(
                 grapheme_break=prop,
-                incb_consonant_extended=incb_consonant_extended,
-                incb_consonant_extended_linker=incb_consonant_extended_linker,
-                incb_consonant_extended_linker_extended=incb_consonant_extended_linker_extended,
+                incb_linker_extended=incb_linker_extended,
                 emoji_modifier_sequence=emoji_modifier_sequence,
                 emoji_modifier_sequence_before_last_char=emoji_modifier_sequence_before_last_char,
             ),
@@ -893,13 +885,15 @@ class GraphemeSegmentationKey(NamedTuple):
         lines: list[str] = []
         a = lines.append
         shift = GraphemeSegmentationProps.used_bits()
+        # The key has the bits of both the state and the char properties
+        key_bits = clamped_bitsize(GraphemeSegmentationState.used_bits() + shift)
         if for_go:
-            base_type = f'uint{GraphemeSegmentationState.bitsize()}'
+            base_type = f'uint{key_bits}'
             a(f'func grapheme_segmentation_key(r GraphemeSegmentationResult, ch CharProps) ({base_type}) {{')
-            a(f'\treturn (r.State() << {shift}) | ch.GraphemeSegmentationProperty()')
+            a(f'\treturn ({base_type}(r.State()) << {shift}) | {base_type}(ch.GraphemeSegmentationProperty())')
             a('}')
         else:
-            base_type = f'uint{GraphemeSegmentationState.bitsize()}_t'
+            base_type = f'uint{key_bits}_t'
             a(f'static inline {base_type} {cls.__name__}(GraphemeSegmentationResult r, CharProps ch){{')
             a(f'\treturn (r.state << {shift}) | ch.grapheme_segmentation_property;')
             a('}')

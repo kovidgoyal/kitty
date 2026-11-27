@@ -64,25 +64,19 @@ typedef union CharProps {
 static_assert(sizeof(CharProps) == sizeof(uint32_t), "Fix the ordering of CharProps");
 // EndCharPropsDeclaration }}}
 
-// GraphemeSegmentationResultDeclaration: uses 10 bits {{{
+// GraphemeSegmentationResultDeclaration: uses 8 bits {{{
 typedef union GraphemeSegmentationResult {
     struct __attribute__((packed)) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
         uint8_t emoji_modifier_sequence_before_last_char : 1;
         uint8_t emoji_modifier_sequence : 1;
-        uint8_t incb_consonant_extended_linker_extended : 1;
-        uint8_t incb_consonant_extended_linker : 1;
-        uint8_t incb_consonant_extended : 1;
+        uint8_t incb_linker_extended : 1;
         uint8_t grapheme_break : 4;
         uint8_t add_to_current_cell : 1;
-        uint8_t : 6;
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        uint8_t : 6;
         uint8_t add_to_current_cell : 1;
         uint8_t grapheme_break : 4;
-        uint8_t incb_consonant_extended : 1;
-        uint8_t incb_consonant_extended_linker : 1;
-        uint8_t incb_consonant_extended_linker_extended : 1;
+        uint8_t incb_linker_extended : 1;
         uint8_t emoji_modifier_sequence : 1;
         uint8_t emoji_modifier_sequence_before_last_char : 1;
 #else
@@ -91,18 +85,18 @@ typedef union GraphemeSegmentationResult {
     };
     struct __attribute__((packed)) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        uint16_t state : 9;
-        uint8_t : 7;
+        uint8_t state : 7;
+        uint8_t : 1;
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        uint8_t : 7;
-        uint16_t state : 9;
+        uint8_t : 1;
+        uint8_t state : 7;
 #else
 #error "Unsupported endianness"
 #endif
     };
-    uint16_t val;
+    uint8_t val;
 } GraphemeSegmentationResult;
-static_assert(sizeof(GraphemeSegmentationResult) == sizeof(uint16_t), "Fix the ordering of GraphemeSegmentationResult");
+static_assert(sizeof(GraphemeSegmentationResult) == sizeof(uint8_t), "Fix the ordering of GraphemeSegmentationResult");
 // EndGraphemeSegmentationResultDeclaration }}}
 
 // UCBDeclaration {{{

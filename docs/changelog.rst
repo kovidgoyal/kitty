@@ -274,6 +274,8 @@ Detailed list of changes
   katakana voiced sound marks also widen the cell they combine into. See
   :ref:`spacing_marks` for details (:iss:`8533`)
 
+- Add support for Unicode 18
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

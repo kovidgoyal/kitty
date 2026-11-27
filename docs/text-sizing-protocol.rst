@@ -370,7 +370,7 @@ The algorithm for splitting text into cells
    are brought to light in that discussion, there may be small changes to the
    algorithm to address them. Additionally, in the future if the Unicode standard
    changes in ways that affect this algorithm, it will be updated. Currently the
-   algorithm is based on Unicode version 17.
+   algorithm is based on Unicode version 18.
 
 Here, we specify how a terminal must split up text into cells, where a cell is
 a width one unit in the character grid the terminal displays.
@@ -384,7 +384,7 @@ A terminal using this algorithm must decode the bytes they receive
 into Unicode scalar values (i.e., code points except surrogates) using UTF-8.
 When it encounters any UTF-8 ill-formed subsequences,
 it must replace each
-`maximal subpart of the ill-formed subsequence <https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G66453>`__
+`maximal subpart of the ill-formed subsequence <https://www.unicode.org/versions/Unicode18.0.0/core-spec/chapter-3/#G66453>`__
 with a :code:`U+FFFD REPLACEMENT CHARACTER` (�).
 
 For each decoded code point:
