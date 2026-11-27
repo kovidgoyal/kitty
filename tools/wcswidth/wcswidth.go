@@ -17,8 +17,10 @@ type WCWidthIterator struct {
 	prev_width, current_width int
 	seg                       GraphemeSegmentationResult
 	can_combine               bool
-	parser                    EscapeCodeParser
-	rune_count                uint
+	// Whether the last rune was added to the cell before it, rather than starting a new cell
+	combined   bool
+	parser     EscapeCodeParser
+	rune_count uint
 }
 
 func CreateWCWidthIterator() *WCWidthIterator {
@@ -40,6 +42,7 @@ func (self *WCWidthIterator) Reset() {
 	self.current_width = 0
 	self.rune_count = 0
 	self.can_combine = false
+	self.combined = false
 	self.seg = 0
 	self.parser.Reset()
 }
@@ -70,10 +73,26 @@ func (self *WCWidthIterator) handle_st_terminated(data []byte) error {
 
 func (self *WCWidthIterator) handle_rune(ch rune) error {
 	self.rune_count += 1
+	self.combined = false
 	cp := CharPropsFor(ch)
+	if cp.Is_invalid() == 1 {
+		// As in the terminal, invalid chars, which include control chars, are
+		// ignored, except for the ones that move the cursor, after which there
+		// is no previous cell to combine with
+		switch ch {
+		case '\b', '\t', '\n', '\v', '\f', '\r':
+			self.prev_width = 0
+			self.can_combine = false
+			self.seg = 0
+			self.prev_ch = ch
+		}
+		return nil
+	}
 	self.seg = self.seg.Step(cp)
 	if self.can_combine && self.seg.Add_to_current_cell() == 1 {
+		self.combined = true
 		switch ch {
+		// A variation selector that does not apply leaves the width of the cell unchanged
 		case 0xfe0f:
 			if CharPropsFor(self.prev_ch).Is_emoji_presentation_base() == 1 && self.prev_width == 1 {
 				self.current_width += 1
@@ -94,12 +113,11 @@ func (self *WCWidthIterator) handle_rune(ch rune) error {
 			}
 		}
 	} else {
-		width := cp.Width()
-		switch width {
-		case -1:
+		switch cp.Width() {
 		case 0:
 			// A zero width char after a grapheme boundary is added to the previous cell, if there is
 			// one, otherwise it is discarded, unless it is a spacing mark, which is then in a cell of its own
+			self.combined = self.can_combine
 			if cp.Spacing_width() > 0 {
 				prev := 0
 				if self.can_combine {
@@ -111,15 +129,13 @@ func (self *WCWidthIterator) handle_rune(ch rune) error {
 			} else if !self.can_combine {
 				self.prev_width = 0
 			}
-			self.can_combine = true
-			self.prev_ch = ch
-			return nil
 		case 2:
 			self.prev_width = 2
+			self.current_width += 2
 		default:
 			self.prev_width = 1
+			self.current_width += 1
 		}
-		self.current_width += self.prev_width
 		self.can_combine = true
 	}
 	self.prev_ch = ch

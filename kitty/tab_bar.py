@@ -32,7 +32,6 @@ from .fast_data_types import (
     get_options,
     pt_to_px,
     set_tab_bar_render_data,
-    split_into_graphemes,
     update_tab_bar_edge_colors,
     viewport_for_window,
     wcswidth,
@@ -41,7 +40,7 @@ from .progress import ProgressState
 from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .typing_compat import EdgeLiteral, PowerlineStyle
-from .utils import color_as_int, log_error, sgr_sanitizer_pat
+from .utils import color_as_int, log_error, sgr_sanitizer_pat, split_into_cells
 
 if is_macos:
     from .fast_data_types import cocoa_is_secure_input_enabled  # type: ignore
@@ -428,7 +427,8 @@ def wrap_title(title: str, width: int) -> str:
 
     SGR escapes are zero width, so they never count towards the width and are
     left attached to the text that follows them. Splitting happens on grapheme
-    boundaries so that a wrap can never land inside a multi-codepoint grapheme.
+    boundaries, as the terminal puts them into cells, so that a wrap can never
+    land inside a multi-codepoint grapheme or before a spacing mark.
     """
     if width < 1:
         return title
@@ -446,7 +446,7 @@ def wrap_title(title: str, width: int) -> str:
                 cur += part
                 cur_width += part_width
             else:
-                ginfo = tuple((max(0, wcswidth(g)), len(g)) for g in split_into_graphemes(part))
+                ginfo = tuple((max(0, wcswidth(g)), len(g)) for g in split_into_cells(part))
                 n = len(ginfo)
                 i = 0
                 pos = 0
@@ -491,7 +491,7 @@ def truncate_line(line: str, width: int) -> str:
             out += part
             cur_width += part_width
         else:
-            for grapheme in split_into_graphemes(part):
+            for grapheme in split_into_cells(part):
                 w = max(0, wcswidth(grapheme))
                 if cur_width + w > width - 1:
                     return out + '…'

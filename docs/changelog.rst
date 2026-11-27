@@ -270,9 +270,9 @@ Detailed list of changes
   and Myanmar, now widen the cell they combine into, up to four cells, instead
   of being squeezed into the width of the first character of the grapheme.
   This matches the widths wcwidth() based programs, such as shells, readline
-  and tmux, compute and gives these scripts room to render. The halfwidth
-  katakana voiced sound marks also widen the cell they combine into. See
-  :ref:`spacing_marks` for details (:iss:`8533`)
+  and tmux, compute for most text and gives these scripts room to render. The
+  halfwidth katakana voiced sound marks also widen the cell they combine into.
+  See :ref:`spacing_marks` for details (:iss:`8533`)
 
 - Add support for Unicode 18
 

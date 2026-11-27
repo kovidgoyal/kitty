@@ -2221,6 +2221,36 @@ class TestScreen(BaseTest):
         draw_multicell(s, '\u093f')
         self.ae((s.cursor.x, str(s.line(0))), (1, '\u093f'))
 
+        # a spacing mark after a cell without text is in a cell of its own
+        for mark, width in (('\u093f', 1), ('\u0bca', 2), ('\u0e33', 1)):
+            s = self.create_screen(cols=10)
+            s.cursor_position(1, 5)
+            s.draw(mark)
+            self.ae((s.cursor.x, s.cpu_cells(0, 4)['text']), (4 + width, mark), repr(mark))
+        # also after nonspacing marks, which are dropped as they have no cell to be added to
+        for batched in (True, False):
+            test_set_batched_non_ascii_draw(batched)
+            try:
+                s = self.create_screen(cols=10)
+                s.cursor_position(1, 3)
+                s.draw('\u0302\u0300\u0bbe')
+                self.ae((s.cursor.x, s.cpu_cells(0, 2)['text']), (3, '\u0bbe'), f'batched: {batched}')
+            finally:
+                test_set_batched_non_ascii_draw(True)
+        # a char widened to more than the width of the screen is discarded
+        # without affecting the chars before it or moving the cursor back
+        s = self.create_screen(cols=2)
+        s.draw('x\u0995\u09cb\u0982')
+        self.ae((s.cpu_cells(0, 0)['text'], s.cpu_cells(0, 0)['mcd']), ('x', None))
+        self.ae(str(s.line(0)), 'x')
+        self.ae(str(s.line(1)), '\u0982')
+        s = self.create_screen(cols=3)
+        s.draw('ab\u0995')
+        self.ae((s.cursor.x, s.cursor.y), (3, 0))
+        s.draw('\u09cb\u0982')
+        self.ae(str(s.line(0)), 'ab')
+        self.ae(s.cpu_cells(0, 1)['mcd'], None)
+
         # rewrapping keeps a widened char whole
         s = self.create_screen(cols=10, lines=5)
         s.draw('abcdefgh\u0995\u09cb\u0982')
@@ -2397,6 +2427,16 @@ class TestScreen(BaseTest):
         self.ae(contents(), text)
         s.historybuf.pagerhist_rewrap(2)
         self.ae(contents(), '\x1b[mso\rft\x1b[m\rbr\rea\rk\nne\rxt\r😼\rca\rt')
+        # a spacing mark is never wrapped away from the cell it is added to
+        for text, expected in (
+            ('ab\u0915\u093f', 'ab\u0915\u093f'),
+            ('abc\u0915\u093f', 'abc\r\u0915\u093f'),
+            ('ab\u1000\u1031\u102c', 'ab\u1000\u1031\u102c'),
+        ):
+            s = self.create_screen(options={'scrollback_pager_history_size': 2048})
+            w(text)
+            s.historybuf.pagerhist_rewrap(3)
+            self.ae(contents(), expected)
 
         s = self.create_screen(options={'scrollback_pager_history_size': 8})
         w('😼')

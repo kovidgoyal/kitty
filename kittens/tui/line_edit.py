@@ -5,8 +5,23 @@ from collections.abc import Callable
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.key_encoding import EventType, KeyEvent
+from kitty.utils import split_into_cells
 
 from .operations import RESTORE_CURSOR, SAVE_CURSOR, move_cursor_by, set_cursor_shape
+
+
+def cell_boundaries(text: str) -> list[int]:
+    # The positions, in columns, of the starts of the cells text occupies and of
+    # its end. Cells can be more than two columns wide, as spacing marks widen
+    # the cell they are added to.
+    ans = [0]
+    end = 0
+    for c in split_into_cells(text):
+        end += len(c)
+        w = wcswidth(text[:end])
+        if w > ans[-1]:
+            ans.append(w)
+    return ans
 
 
 class LineEdit:
@@ -88,8 +103,7 @@ class LineEdit:
             self.cursor_pos = 0
             return
         if self.cursor_pos:
-            before, after = self.split_at_cursor(-1)
-            self.cursor_pos = wcswidth(before)
+            self.cursor_pos = max((x for x in cell_boundaries(self.current_input) if x < self.cursor_pos), default=0)
 
     def _right(self) -> None:
         if not self.current_input:
@@ -99,8 +113,7 @@ class LineEdit:
         if self.cursor_pos >= max_pos:
             self.cursor_pos = max_pos
             return
-        before, after = self.split_at_cursor(1)
-        self.cursor_pos += 1 + int(wcswidth(before) == self.cursor_pos)
+        self.cursor_pos = min((x for x in cell_boundaries(self.current_input) if x > self.cursor_pos), default=max_pos)
 
     def _move_loop(self, func: Callable[[], None], num: int) -> bool:
         before = self.cursor_pos

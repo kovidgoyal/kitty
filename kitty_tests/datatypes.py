@@ -691,6 +691,12 @@ class TestDataTypes(BaseTest):
         self.ae(tpl('a\U0001f337b', 4), 3)
         self.ae(tpl('a\x1b[31mbc', 2), 7)
         # spacing marks and variation selectors are accounted for
+        # control chars have no width and, unless they move the cursor, do not
+        # affect the cell before them, as in the terminal
+        self.ae(wcswidth('a\tb'), 2)
+        self.ae(wcswidth('a\u200b\x01'), 1)
+        self.ae(wcswidth('\u0937\u0903\u0903\u0903\x07\u0903\u0903'), 4)
+        self.ae(wcswidth('\u0915\n\u093f'), 2)
         self.ae(tpl('\u0915\u093fa', 2), 2)
         self.ae(tpl('\u0915\u093fa', 3), 3)
         self.ae(tpl('\u0b9f\u0bcaa', 2), 1)

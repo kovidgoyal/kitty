@@ -589,6 +589,17 @@ to. How much a code point widens a cell is its *spacing width*:
 
 * For all other code points it is zero.
 
+The spacing width, and the width of the precomposed letters with spacing marks
+above, are chosen so that a grapheme has the same width regardless of its
+Unicode normalization form. Text in different normalization forms looks the
+same, and normalization can happen anywhere text is processed, so it must not
+change the layout of the text. Note that this means this algorithm deliberately
+differs from the ``wcwidth()`` of the C library, which gives the precomposed two
+part vowels, such as :code:`U+0BCA`, and the precomposed letters with spacing
+marks a width of one, so that it gives a grapheme a different width depending on
+whether it is composed, as text normally is, or decomposed. It also gives the
+spacing marks with a spacing width of zero a width of one or two.
+
 When a code point with a non-zero spacing width is added to the previous cell,
 the previous cell is widened by its spacing width, up to a maximum width of
 four cells. This is the case regardless of the code point the cell starts with,
@@ -646,11 +657,13 @@ with, was chosen because:
   consonant with a two part vowel and an anusvara or visarga, which are four
   cells wide, for example, the Bengali abbreviation কোং (company).
 
-* Up to four cells, the width is the same as the sum of the ``wcwidth()`` of
-  the code points, which is what the C library, readline, shells and terminal
-  multiplexers compute, so these programs agree with terminals implementing
-  this algorithm without any changes. A maximum of two would disagree with them
-  for every grapheme three cells wide.
+* For graphemes up to four cells wide, apart from those containing the
+  precomposed two part vowels or letters described above, the width is the
+  same as the sum of the ``wcwidth()`` of the code points, which is what the C
+  library, readline, shells and terminal multiplexers compute, so these
+  programs agree with terminals implementing this algorithm for most text
+  without any changes. A maximum of two would disagree with them for every
+  grapheme three cells wide.
 
 * A maximum keeps the width of a cell bounded, so that terminals can store it
   in a fixed number of bits, any grapheme fits on a line at least four cells

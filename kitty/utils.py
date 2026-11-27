@@ -41,10 +41,12 @@ from .fast_data_types import (
     WINDOW_NORMAL,
     Color,
     Shlex,
+    char_props_for,
     get_boss,
     get_options,
     monotonic,
     open_tty,
+    split_into_graphemes,
 )
 from .fast_data_types import timed_debug_print as _timed_debug_print
 from .types import run_once
@@ -1297,3 +1299,18 @@ def as_file_url(wd: str, *components: str) -> str:
     from urllib.parse import quote
 
     return 'file://' + quote(path)
+
+
+def split_into_cells(text: str) -> list[str]:
+    """Split text into the groups of code points the terminal puts into a cell each.
+
+    These are its graphemes, except that a grapheme that starts with a zero
+    width code point, such as some spacing marks, is added to the cell before it.
+    """
+    ans: list[str] = []
+    for g in split_into_graphemes(text):
+        if ans and char_props_for(g[0])['width'] == 0:
+            ans[-1] += g
+        else:
+            ans.append(g)
+    return ans

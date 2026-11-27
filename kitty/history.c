@@ -688,14 +688,15 @@ pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     WCSState wcs_state;
     initialize_wcs_state(&wcs_state);
 
-#define WRITE_CHAR()                                                                                 \
-    {                                                                                                \
-        if (num_in_current_line + ch_width > cells_in_line) {                                        \
-            pagerhist_write_bytes(nph, (const uint8_t *)"\r", 1);                                    \
-            num_in_current_line = 0;                                                                 \
-        }                                                                                            \
-        if (ch_width >= 0 || (int)num_in_current_line >= -ch_width) num_in_current_line += ch_width; \
-        pagerhist_write_bytes(nph, record, count);                                                   \
+#define WRITE_CHAR()                                                                                      \
+    {                                                                                                     \
+        /* a char added to the previous cell, such as a spacing mark, must not be wrapped away from it */ \
+        if (num_in_current_line + ch_width > cells_in_line && !wcs_state.last_combined) {                 \
+            pagerhist_write_bytes(nph, (const uint8_t *)"\r", 1);                                         \
+            num_in_current_line = 0;                                                                      \
+        }                                                                                                 \
+        if (ch_width >= 0 || (int)num_in_current_line >= -ch_width) num_in_current_line += ch_width;      \
+        pagerhist_write_bytes(nph, record, count);                                                        \
     }
 
     while (ringbuf_bytes_used(ph->ringbuf)) {

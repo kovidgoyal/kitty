@@ -526,9 +526,14 @@ class TestTabBar(BaseTest):
         self.ae(wrap_title('日本', 4).split('\n'), ['日本'])
         # wide chars: part fits on new line after breaking
         self.ae(wrap_title('ab日本語', 4).split('\n'), ['ab日', '本語'])
+        # spacing marks widen the cell they are added to and are never wrapped away from it,
+        # even when they follow a grapheme break, as Myanmar AA does
+        self.ae(wrap_title('ab\u1000\u1031\u102c', 4).split('\n'), ['ab', '\u1000\u1031\u102c'])
+        self.ae(wrap_title('a\u0915\u093fb', 3).split('\n'), ['a\u0915\u093f', 'b'])
 
     def test_truncate_line(self) -> None:
         self.ae(truncate_line('abcdef', 4), 'abc…')
+        self.ae(truncate_line('a\u1000\u1031\u102cb', 4), 'a…')
         self.ae(truncate_line('日本語', 4), '日…')
         # the ellipsis marks dropped content, so it is added even when the text
         # itself would have fit

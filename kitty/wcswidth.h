@@ -15,6 +15,8 @@ typedef struct {
     int prev_width;
     WCSParserState parser_state;
     bool can_combine;
+    // Whether the last char was added to the cell before it, rather than starting a new cell
+    bool last_combined;
     GraphemeSegmentationResult seg;
 } WCSState;
 

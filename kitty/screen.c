@@ -3141,11 +3141,20 @@ move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell
     // Move the char, of old_width cells starting at xpos in the line ypos, whose
     // cells are cp, to the first place at or after it with enough room for it at
     // its new width, which is the width of c, the cell to write.
-    index_type before = self->cursor->y;
+    const index_type before = self->cursor->y;
     // Remove the char from its current cells before moving it, so that it is
     // not removed as a multicell char in the way and the cells it is moved to
     // can include its current cells
     for (index_type x = xpos; x < xpos + old_width && x < self->columns; x++) cp[x] = (CPUCell){0};
+    // The char can be on the row above the cursor, which the text loop does not mark dirty
+    linebuf_mark_line_dirty(self->linebuf, ypos);
+    if (c.width > self->columns) {
+        // The char is too wide for the screen and is discarded, leaving the
+        // cursor where it was. The cell before the cursor is now empty, so the
+        // combining chars that follow are not added to some other char.
+        init_segmentation_state(self, s);
+        return;
+    }
     // Taken before the move, which can scroll the char's row up
     const bool may_reorder = self->linebuf->line_attrs[ypos].bidi_may_reorder;
     self->cursor->x = xpos;
@@ -3316,6 +3325,19 @@ map_char(Screen *self, const uint32_t ch) {
 static bool batched_non_ascii_draw_disabled_for_tests = false;
 
 static bool
+cell_takes_combining_chars(const CPUCell *c) {
+    // Whether combining chars can be added to the cell, see add_combining_chars()
+    return cell_has_text(c) && !(c->is_multicell && c->y);
+}
+
+static bool
+spacing_mark_combines_with_prev_cell(const text_loop_state *s, CharProps cp) {
+    // A spacing mark that cannot be added to the previous cell, because it has
+    // no text, is in a cell of its own, as it is when there is no previous cell
+    return !cp.spacing_width || cell_takes_combining_chars(s->prev.cc);
+}
+
+static bool
 is_batchable_combining_char(char_type ch) {
     // A combining char that only adds to the text of a cell or, for spacing marks,
     // also widens it, see draw_combining_char()
@@ -3334,7 +3356,9 @@ draw_combining_char_run_(Screen *self, text_loop_state *s, char_type ch, CharPro
     size_t n = 0;
     unsigned spacing_width = props.spacing_width;
     GraphemeSegmentationResult seg = s->seg;
-    if (!batched_non_ascii_draw_disabled_for_tests && is_batchable_combining_char(ch)) {
+    // When the previous cell cannot take combining chars, they are dropped, except
+    // for spacing marks, which are put into cells of their own, so draw them one at a time
+    if (!batched_non_ascii_draw_disabled_for_tests && is_batchable_combining_char(ch) && cell_takes_combining_chars(s->prev.cc)) {
         run[n++] = ch;
         for (size_t k = 0; k < num_rest && n < MAX_RUN; k++) {
             const char_type c = map_char(self, rest[k]);
@@ -3671,7 +3695,7 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
                 continue;
             }
             s->seg = grapheme_segmentation_step(s->seg, cp);
-            if (UNLIKELY(s->seg.add_to_current_cell && s->prev.cc)) {
+            if (UNLIKELY(s->seg.add_to_current_cell && s->prev.cc && spacing_mark_combines_with_prev_cell(s, cp))) {
                 if (implicit) i += draw_combining_char_run_implicit(self, s, ch, cp, chars + i + 1, num_chars - i - 1, record);
                 else i += draw_combining_char_run(self, s, ch, cp, chars + i + 1, num_chars - i - 1);
                 continue;
@@ -3682,7 +3706,7 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
                     // Preserve zero width chars as combining chars even though
                     // they were not added to the prev cell by grapheme segmentation.
                     // Zero width chars can only be represented as combining chars.
-                    if (s->prev.cc) {
+                    if (s->prev.cc && spacing_mark_combines_with_prev_cell(s, cp)) {
                         const char_type before = s->prev.cc->ch_and_idx;
                         draw_combining_char(self, s, ch, cp);
                         if (implicit) record_combining_write(self, s, before, record, bidi_char_sets_may_reorder(ch));

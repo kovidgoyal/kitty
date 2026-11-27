@@ -101,6 +101,12 @@ func TestWCSWidth(t *testing.T) {
 	wcswidth("\u0bca", 2)
 	wcswidth("\u094d\u0903", 1)
 	wcswidth("a\x1b[22bcd", 25)
+	// control chars have no width and, unless they move the cursor, do not
+	// affect the cell before them, as in the terminal
+	wcswidth("a\tb", 2)
+	wcswidth("a\u200b\x01", 1)
+	wcswidth("\u0937\u0903\u0903\u0903\x07\u0903\u0903", 4)
+	wcswidth("\u0915\n\u093f", 2)
 	// Flags individually and together
 	wcwidth("\U0001f1ee\U0001f1f3", 2, 2)
 	wcswidth("\U0001f1ee\U0001f1f3", 2)
@@ -145,6 +151,12 @@ func TestCellIterator(t *testing.T) {
 	f("a🌷ò", "a", "🌷", "ò")
 	f("a🌷\ufe0eò", "a", "🌷\ufe0e", "ò")
 	f("òne", "ò", "n", "e")
+	// chars added to the current cell that widen it do not start a new cell
+	f("\u0915\u093fa", "\u0915\u093f", "a")
+	f("\u0b9f\u0bca\u0b95", "\u0b9f\u0bca", "\u0b95")
+	f("\u1000\u1031\u102cx", "\u1000\u1031\u102c", "x")
+	f("\u2764\ufe0fa", "\u2764\ufe0f", "a")
+	f("\u0e08\u0e33a", "\u0e08\u0e33", "a")
 
 	r := func(text string, expected ...string) {
 		ci := NewCellIterator(text).GotoEnd()
@@ -160,6 +172,7 @@ func TestCellIterator(t *testing.T) {
 	r("abc", "c", "b", "a")
 	r("a🌷ò", "ò", "🌷", "a")
 	r("òne", "e", "n", "ò")
+	r("\u0915\u093fa", "a", "\u0915\u093f")
 
 	ci := NewCellIterator("123")
 	ci.Forward()

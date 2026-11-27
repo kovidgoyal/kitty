@@ -41,6 +41,19 @@ class TestTUI(BaseTest):
         self.ae(le.cursor_pos, 0)
         le.backspace()
         self.assertTrue(le.pending_bell)
+        # cells can be wider than two cells, as spacing marks widen them, the
+        # cursor moves over whole cells
+        le.clear()
+        le.on_text('\u0b9f\u0bcaa\U0001f600\u1000\u1031\u102c', False)
+        self.ae(le.cursor_pos, 9)
+        positions = []
+        while le.left():
+            positions.append(le.cursor_pos)
+        self.ae(positions, [6, 4, 3, 0])
+        positions = []
+        while le.right():
+            positions.append(le.cursor_pos)
+        self.ae(positions, [3, 4, 6, 9])
 
     def test_multiprocessing_spawn(self):
         from kitty.multiprocessing import test_spawn

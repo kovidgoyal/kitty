@@ -93,7 +93,9 @@ func (self *CellIterator) Forward() (has_more bool) {
 		}
 		change_in_width := fi.width_iter.current_width - width_before
 		cc.tail = fi.pos
-		if cc.width > 0 && change_in_width > 0 {
+		// A rune that is added to the current cell, such as a spacing mark or a
+		// variation selector, can increase its width, without starting a new cell
+		if cc.width > 0 && change_in_width > 0 && !fi.width_iter.combined {
 			self.current = self.text[cc.head:pos_before]
 			cc.width = change_in_width
 			cc.head = pos_before

@@ -969,6 +969,19 @@ def read_command_response(fd: int, timeout: float, list: List[bytes]) -> None:
 def split_into_graphemes(string: str) -> List[str]:
     pass
 
+class CharProps(TypedDict):
+    width: int
+    spacing_width: int
+    is_extended_pictographic: bool
+    grapheme_break: int
+    indic_conjunct_break: int
+    category: str
+    is_emoji: bool
+    is_emoji_presentation_base: bool
+
+def char_props_for(ch: str) -> CharProps:
+    pass
+
 def wcswidth(string: str) -> int:
     pass
 
