@@ -1057,7 +1057,7 @@ cell_update_uniform_block(
 
         float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
-        uint32_t default_fg, url_style, inverted, main_cursor_is_special, extra_cursor_fg, extra_cursor_bg;
+        uint32_t default_fg, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
 
         uint32_t columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
         uint32_t cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -1098,7 +1098,6 @@ cell_update_uniform_block(
     rd->default_fg = COLOR(default_fg);
     rd->extra_cursor_fg = screen->extra_cursors.color.text.val;
     rd->extra_cursor_bg = screen->extra_cursors.color.cursor.val;
-    rd->main_cursor_is_special = IS_SPECIAL_COLOR(cursor_color);
     rd->bg_colors0 = COLOR(default_bg);
     rd->bg_opacities0 = bg_alpha;
     rd->fg_override_threshold = OPT(text_fg_override_threshold);
@@ -1179,7 +1178,7 @@ cell_update_uniform_block(
             }
         }
         // If you change the following algorithm remember to change it in the cell shader for extra cursors too
-        if (rd->main_cursor_is_special) {
+        if (IS_SPECIAL_COLOR(cursor_color)) {
             if (line_for_cursor && line_cell_style(line_for_cursor, cell_color_x)->attrs.dim) {
                 cell_fg = dimmed_cursor_color(cell_fg, cell_bg, OPT(dim_opacity));
                 pick_cursor_color(cell_fg, cell_bg, &main_cursor_fg, &main_cursor_bg, rd->default_fg, rd->bg_colors0);
