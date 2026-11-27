@@ -134,12 +134,9 @@ func (h *Handler) thumb_units_per_cell() int {
 }
 
 // scroll_indicator_column returns the zero based column of the scroll
-// indicator. It is not in the rightmost columns, as when the window has
-// scrollback, kitty does not report mouse events over its own scrollbar, at
-// the right edge of the window, to programs, even when the scrollbar is not
-// shown, which would prevent hovering over and dragging the thumb.
+// indicator, the rightmost column
 func scroll_indicator_column(screen_width int) int {
-	return max(0, screen_width-3)
+	return max(0, screen_width-1)
 }
 
 // draw_scroll_indicator draws the scroll bar to the right of the grid
