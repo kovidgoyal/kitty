@@ -1050,8 +1050,37 @@ cancel_os_window_bell_attention(OSWindow *w) {
     }
 }
 
+static void window_focus_callback(GLFWwindow *w, int focused);
+
+static void
+unfocus_stale_os_windows(GLFWwindow *focused_window) {
+    // On macOS, new windows are assumed to be focused when created, as macOS
+    // does not send the focus in event until the window is shown. If the
+    // window never actually becomes key, for instance, because it was created
+    // with --keep-focus and focus went back to another window, it never gets
+    // a focus out event and remains focused. Since only one window can be key,
+    // when a window gets focus, any other window that is still marked focused
+    // but is not actually key is stale, so send it a focus out.
+    id_type stale[16];
+    size_t num_stale = 0;
+    for (size_t i = 0; i < global_state.num_os_windows && num_stale < arraysz(stale); i++) {
+        OSWindow *q = global_state.os_windows + i;
+        if (q->handle && q->handle != focused_window && q->is_focused && !glfwGetWindowAttrib(q->handle, GLFW_FOCUSED)) stale[num_stale++] = q->id;
+    }
+    // Look the windows up again each time, as the callback calls into Python,
+    // which can close OS windows
+    for (size_t i = 0; i < num_stale; i++) {
+        OSWindow *q = os_window_for_id(stale[i]);
+        if (q && q->handle && q->is_focused) {
+            debug_input("Unfocusing OS window 0x%llu as it is not actually focused\n", q->id);
+            window_focus_callback(q->handle, 0);
+        }
+    }
+}
+
 static void
 window_focus_callback(GLFWwindow *w, int focused) {
+    if (focused && global_state.is_apple) unfocus_stale_os_windows(w);
     if (!set_callback_window(w)) return;
 #define osw global_state.callback_os_window
     debug_input("\x1b[35mon_focus_change\x1b[m: window id: 0x%llu focused: %d\n", osw->id, focused);
