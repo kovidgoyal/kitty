@@ -183,7 +183,10 @@ as_file_url(const char *wd, const char *middle, const char *filename) {
             RAII_PyObject(func, PyObject_GetAttrString(module, "as_file_url"));
             if (func) {
                 RAII_PyObject(ret, PyObject_CallFunction(func, "sss", wd, middle, filename));
-                if (ret) return strdup(PyUnicode_AsUTF8(ret));
+                if (ret) {
+                    const char *ans = PyUnicode_AsUTF8(ret);
+                    if (ans) return strdup(ans);
+                }
             }
         }
     }
@@ -200,7 +203,10 @@ sanitized_filename_from_url(const char *url) {
             RAII_PyObject(func, PyObject_GetAttrString(module, "sanitized_filename_from_url"));
             if (func) {
                 RAII_PyObject(ret, PyObject_CallFunction(func, "s", url));
-                if (ret) return strdup(PyUnicode_AsUTF8(ret));
+                if (ret) {
+                    const char *ans = PyUnicode_AsUTF8(ret);
+                    if (ans) return strdup(ans);
+                }
             }
         }
     }

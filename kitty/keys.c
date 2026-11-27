@@ -460,12 +460,15 @@ pyinject_key(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
                     found = true;
                 }
             }
-            if (!found && !global_state.num_os_windows) {
-                PyErr_SetString(PyExc_Exception, "No OS Windows available to inject key presses into");
-                return NULL;
+            if (!found) {
+                if (!global_state.num_os_windows) {
+                    PyErr_SetString(PyExc_Exception, "No OS Windows available to inject key presses into");
+                    return NULL;
+                }
+                // No OS window is focused, use the first one
+                global_state.callback_os_window = global_state.os_windows;
+                found = true;
             }
-            global_state.callback_os_window = global_state.os_windows;
-            found = true;
         }
     }
     GLFWkeyevent ev = {.key = key, .shifted_key = shifted_key, .alternate_key = alternate_key, .text = text, .action = action, .mods = mods};
