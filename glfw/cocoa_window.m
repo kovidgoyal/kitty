@@ -4622,9 +4622,14 @@ add_drag_item(NSMutableArray<NSDraggingItem *> *dragItems, id<NSPasteboardWritin
 }
 
 static int
-add_promised_drag_item(_GLFWwindow *window, NSMutableArray<NSDraggingItem *> *dragItems,
-                       NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates, NSString *uti,
-                       const char *mime_type, const char *filename, bool is_dir) {
+add_promised_drag_item(
+    _GLFWwindow *window,
+    NSMutableArray<NSDraggingItem *> *dragItems,
+    NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates,
+    NSString *uti,
+    const char *mime_type,
+    const char *filename,
+    bool is_dir) {
     GLFWFilePromiseProviderDelegate *delegate = [[[GLFWFilePromiseProviderDelegate alloc] initWithWindow:window
                                                                                                 mimeType:mime_type
                                                                                                 fileName:filename
@@ -4641,8 +4646,13 @@ add_promised_drag_item(_GLFWwindow *window, NSMutableArray<NSDraggingItem *> *dr
 }
 
 static int
-add_uri_list_drag_items(_GLFWwindow *window, NSMutableArray<NSDraggingItem *> *dragItems,
-                        NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates, const char *uri_list, size_t uri_list_sz, bool use_promises) {
+add_uri_list_drag_items(
+    _GLFWwindow *window,
+    NSMutableArray<NSDraggingItem *> *dragItems,
+    NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates,
+    const char *uri_list,
+    size_t uri_list_sz,
+    bool use_promises) {
     if (!uri_list || !uri_list_sz || memchr(uri_list, '\0', uri_list_sz)) return EINVAL;
     NSString *input = [[[NSString alloc] initWithBytes:uri_list length:uri_list_sz encoding:NSUTF8StringEncoding] autorelease];
     if (!input) return EINVAL;
@@ -4658,8 +4668,9 @@ add_uri_list_drag_items(_GLFWwindow *window, NSMutableArray<NSDraggingItem *> *d
         if (use_promises && url.isFileURL) {
             NSString *filename = url.lastPathComponent;
             const char *name = filename.UTF8String;
-            if (!name || !*name || strlen(name) != [filename lengthOfBytesUsingEncoding:NSUTF8StringEncoding] ||
-                strchr(name, '/') || strcmp(name, ".") == 0 || strcmp(name, "..") == 0) return EINVAL;
+            if (!name || !*name || strlen(name) != [filename lengthOfBytesUsingEncoding:NSUTF8StringEncoding] || strchr(name, '/') || strcmp(name, ".") == 0 ||
+                strcmp(name, "..") == 0)
+                return EINVAL;
             NSURLComponents *components = [NSURLComponents componentsWithString:line];
             bool is_dir = [components.percentEncodedPath hasSuffix:@"/"];
             char buf[64];
@@ -4673,8 +4684,11 @@ add_uri_list_drag_items(_GLFWwindow *window, NSMutableArray<NSDraggingItem *> *d
 }
 
 static int
-add_drag_items(_GLFWwindow *window, NSMutableArray<NSDraggingItem *> *dragItems,
-               NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates, const GLFWDragSourceItem *mime_item) {
+add_drag_items(
+    _GLFWwindow *window,
+    NSMutableArray<NSDraggingItem *> *dragItems,
+    NSMutableArray<GLFWFilePromiseProviderDelegate *> *delegates,
+    const GLFWDragSourceItem *mime_item) {
     // macOS uses individual URL writers for pre-sent URI lists, or file promises for remote files.
     if (strcmp(mime_item->mime_type, "text/uri-list") == 0 && (mime_item->optional_data || mime_item->is_remote_client)) {
         return add_uri_list_drag_items(window, dragItems, delegates, mime_item->optional_data, mime_item->data_size, mime_item->is_remote_client);
