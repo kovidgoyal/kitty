@@ -34,6 +34,16 @@ opt(
 )
 opt('contrast', 'normal', choices=('normal', 'high'), long_text='The preferred contrast level.')
 opt(
+    'icon_theme',
+    '',
+    long_text="""
+The name of the icon theme for your system, used by programs to find icons, for example: :code:`breeze`. By default,
+the icon theme configured for KDE in :file:`kdeglobals` or for GTK in :file:`settings.ini` is used, if any.
+It can be changed subsequently by using
+:code:`kitten desktop-ui set-setting --namespace org.gnome.desktop.interface icon-theme "'breeze'"`.
+""",
+)
+opt(
     'file_chooser_size',
     '',
     long_text="""

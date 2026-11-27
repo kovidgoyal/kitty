@@ -21,6 +21,7 @@ import (
 	"github.com/kovidgoyal/dbus"
 	"github.com/kovidgoyal/dbus/introspect"
 	"github.com/kovidgoyal/dbus/prop"
+	"github.com/kovidgoyal/kitty/kittens/choose_app"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
@@ -33,6 +34,8 @@ const PORTAL_APPEARANCE_NAMESPACE = "org.freedesktop.appearance"
 const PORTAL_COLOR_SCHEME_KEY = "color-scheme"
 const PORTAL_ACCENT_COLOR_KEY = "accent-color"
 const PORTAL_CONTRAST_KEY = "contrast"
+const PORTAL_INTERFACE_NAMESPACE = "org.gnome.desktop.interface"
+const PORTAL_ICON_THEME_KEY = "icon-theme"
 const PORTAL_BUS_NAME = "org.freedesktop.impl.portal.desktop.kitty"
 const DESKTOP_OBJECT_PATH = "/org/freedesktop/portal/desktop"
 const SETTINGS_INTERFACE = "org.freedesktop.impl.portal.Settings"
@@ -107,7 +110,20 @@ func NewPortal(opts *Config, server_options *ServerOptions) (p *Portal, err erro
 		contrast = 1
 	}
 	ans.settings[PORTAL_APPEARANCE_NAMESPACE][PORTAL_CONTRAST_KEY] = dbus.MakeVariant(contrast)
+	if theme := icon_theme(opts); theme != "" {
+		ans.settings[PORTAL_INTERFACE_NAMESPACE] = map[string]dbus.Variant{PORTAL_ICON_THEME_KEY: dbus.MakeVariant(theme)}
+	}
 	return &ans, nil
+}
+
+// icon_theme returns the icon theme from the settings, or the KDE and GTK
+// configuration files. It must not use the settings portal, as this is the
+// settings portal.
+func icon_theme(opts *Config) string {
+	if opts.Icon_theme != "" {
+		return opts.Icon_theme
+	}
+	return choose_app.XDGDirsFromEnvironment().IconThemeFromConfigFiles()
 }
 
 type PropSpec map[string]*prop.Prop

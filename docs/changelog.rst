@@ -133,6 +133,10 @@ Detailed list of changes
   uses it to implement the AppChooser portal, used by programs such as
   Flatpaks to choose the application to open files and links with
 
+- :doc:`desktop-ui kitten </kittens/desktop-ui>`: Provide the icon theme to
+  programs via the settings portal, from the new ``icon_theme`` option or the
+  KDE and GTK configuration
+
 - New rendering engine with pluggable GPU drivers: kitty now renders with
   **Metal** on macOS and **Vulkan** on Linux and BSD, falling back to OpenGL.
   On systems with no usable GPU, such as virtual machines, it falls back to

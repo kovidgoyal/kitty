@@ -3,6 +3,8 @@
 package desktop_ui
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -103,5 +105,45 @@ func TestAppChooser(t *testing.T) {
 	patched := string(patch_portals_conf([]byte("[preferred]\ndefault=gtk\norg.freedesktop.impl.portal.AppChooser=gnome\n")))
 	if !strings.Contains(patched, APP_CHOOSER_INTERFACE+"=kitty;*") || strings.Contains(patched, "AppChooser=gnome") || !strings.Contains(patched, "default=gtk") {
 		t.Fatalf("Incorrectly patched portals.conf:\n%s", patched)
+	}
+}
+
+func TestIconThemeSetting(t *testing.T) {
+	tdir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tdir)
+	t.Setenv("XDG_CURRENT_DESKTOP", "")
+	read := func(opts *Config) (string, bool) {
+		p, err := NewPortal(opts, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, derr := p.Read(PORTAL_INTERFACE_NAMESPACE, PORTAL_ICON_THEME_KEY)
+		if derr != nil {
+			return "", false
+		}
+		var ans string
+		if err := v.Store(&ans); err != nil {
+			t.Fatal(err)
+		}
+		return ans, true
+	}
+	if theme, found := read(NewConfig()); found {
+		t.Fatalf("Icon theme provided when none is configured: %#v", theme)
+	}
+	if err := os.MkdirAll(filepath.Join(tdir, "gtk-3.0"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tdir, "gtk-3.0", "settings.ini"), []byte("[Settings]\ngtk-icon-theme-name=Papirus\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if theme, _ := read(NewConfig()); theme != "Papirus" {
+		t.Fatalf("Icon theme not read from the GTK settings: %#v", theme)
+	}
+	opts := NewConfig()
+	if err := opts.Parse("icon_theme", "breeze"); err != nil {
+		t.Fatal(err)
+	}
+	if theme, _ := read(opts); theme != "breeze" {
+		t.Fatalf("Icon theme setting not used: %#v", theme)
 	}
 }

@@ -85,7 +85,10 @@ func icon_theme_from_portal() string {
 	return ""
 }
 
-func (x *XDGDirs) icon_theme_from_config_files() string {
+// IconThemeFromConfigFiles returns the icon theme from the KDE and GTK
+// configuration files, without using the settings portal, or the empty
+// string if none is configured
+func (x *XDGDirs) IconThemeFromConfigFiles() string {
 	kde := [3]string{filepath.Join(x.ConfigHome, "kdeglobals"), "Icons", "Theme"}
 	candidates := [][3]string{
 		{filepath.Join(x.ConfigHome, "gtk-4.0", "settings.ini"), "Settings", "gtk-icon-theme-name"},
@@ -116,7 +119,7 @@ func (x *XDGDirs) IconThemeName() string {
 	if ans := icon_theme_from_portal(); ans != "" {
 		return ans
 	}
-	return x.icon_theme_from_config_files()
+	return x.IconThemeFromConfigFiles()
 }
 
 // split_theme_name splits the name of an icon theme into the name of its

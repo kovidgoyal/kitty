@@ -36,11 +36,11 @@ func TestIconLookup(t *testing.T) {
 	// Theme detection from config files
 	w("config/gtk-3.0/settings.ini", "[Settings]\ngtk-icon-theme-name = \"GtkTheme\"\n")
 	w("config/kdeglobals", "[General]\nTheme=wrong\n[Icons]\nTheme[$e]=KdeTheme\n")
-	if q := dirs.icon_theme_from_config_files(); q != "GtkTheme" {
+	if q := dirs.IconThemeFromConfigFiles(); q != "GtkTheme" {
 		t.Fatalf("Incorrect icon theme with no desktop: %#v", q)
 	}
 	dirs.CurrentDesktops = []string{"KDE"}
-	if q := dirs.icon_theme_from_config_files(); q != "KdeTheme" {
+	if q := dirs.IconThemeFromConfigFiles(); q != "KdeTheme" {
 		t.Fatalf("Incorrect icon theme on KDE: %#v", q)
 	}
 
