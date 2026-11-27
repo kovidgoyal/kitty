@@ -85,10 +85,12 @@ func (self *WCWidthIterator) handle_rune(ch rune) error {
 				self.prev_width = 1
 			}
 		default:
-			// Thai/Lao SARA AM: a SpacingMark with non-zero width widens a narrow base cell
-			if cp.Grapheme_break() == uint8(GBP_SpacingMark) && cp.Width() > 0 && self.prev_width == 1 {
-				self.current_width += 1
-				self.prev_width = 2
+			if cp.Spacing_width() > 0 {
+				// A spacing mark widens the cell it is added to, or is in a cell of its
+				// own when there is no previous cell
+				w := CellWidthWithSpacingMark(self.prev_width, cp)
+				self.current_width += w - self.prev_width
+				self.prev_width = w
 			}
 		}
 	} else {
@@ -96,7 +98,22 @@ func (self *WCWidthIterator) handle_rune(ch rune) error {
 		switch width {
 		case -1:
 		case 0:
-			self.prev_width = 0
+			// A zero width char after a grapheme boundary is added to the previous cell, if there is
+			// one, otherwise it is discarded, unless it is a spacing mark, which is then in a cell of its own
+			if cp.Spacing_width() > 0 {
+				prev := 0
+				if self.can_combine {
+					prev = self.prev_width
+				}
+				w := CellWidthWithSpacingMark(prev, cp)
+				self.current_width += w - prev
+				self.prev_width = w
+			} else if !self.can_combine {
+				self.prev_width = 0
+			}
+			self.can_combine = true
+			self.prev_ch = ch
+			return nil
 		case 2:
 			self.prev_width = 2
 		default:
@@ -107,6 +124,20 @@ func (self *WCWidthIterator) handle_rune(ch rune) error {
 	}
 	self.prev_ch = ch
 	return nil
+}
+
+// The maximum width in cells that spacing marks can widen a cell to, see the
+// Spacing marks section of docs/text-sizing-protocol.rst
+const MAX_SPACING_MARK_CELL_WIDTH = 4
+
+// The width of a cell of width cell_width after spacing_mark is added to it. A
+// cell of width zero means there is no previous cell, so the mark is in a cell
+// of its own.
+func CellWidthWithSpacingMark(cell_width int, spacing_mark CharProps) int {
+	if cell_width >= MAX_SPACING_MARK_CELL_WIDTH {
+		return cell_width
+	}
+	return min(MAX_SPACING_MARK_CELL_WIDTH, cell_width+int(spacing_mark.Spacing_width()))
 }
 
 func (self *WCWidthIterator) ParseByte(b byte) (ans int) {

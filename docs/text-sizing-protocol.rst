@@ -362,7 +362,8 @@ The algorithm for splitting text into cells
    kitty comes with a utility to test terminal compliance with this algorithm.
    Install kitty and run: ``kitten __width_test__`` in any terminal to test it.
    This uses tests published by the Unicode consortium, `GraphemeBreakTest.txt
-   <https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt>`__.
+   <https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt>`__,
+   along with tests of the :ref:`spacing_marks` rules.
 
 .. warning::
    This algorithm is under public discussion in :iss:`8533`. If serious issues
@@ -408,9 +409,11 @@ For each decoded code point:
    the Unicode standard.
 
 #. If there is no previous cell and the code point's width is zero,
-   the code point is discarded and its processing is finished. In bidi mode
-   a discarded LRM or RLM can still set the direction of a paragraph, see
-   :ref:`bidi_support`.
+   the code point is discarded and its processing is finished, unless it has a
+   non-zero *spacing width* (see :ref:`spacing_marks`), in which case it is
+   added to the current cell and the cursor is moved forward (right) by its
+   spacing width. In bidi mode a discarded LRM or RLM can still set the
+   direction of a paragraph, see :ref:`bidi_support`.
 
 #. If there is a previous cell, the
    `Grapheme segmentation algorithm UAX29-C1-1 <https://www.unicode.org/reports/tr29/#C1-1>`__
@@ -419,15 +422,14 @@ For each decoded code point:
 
 #. If there is no boundary, the current code point is added to the previous
    cell and processing of the code point is finished. See the :ref:`var_select`
-   section below for handling of Unicode Variation selectors. If the code point has
-   ``Grapheme_Cluster_Break=SpacingMark`` and a non-zero width and the previous
-   cell is a single, unscaled cell whose width was not set explicitly using the
-   ``w`` key of this protocol, the previous cell becomes two cells wide. This
-   affects only :code:`U+0E33 THAI CHARACTER SARA AM` and
-   :code:`U+0EB3 LAO VOWEL SIGN AM`.
+   section below for handling of Unicode Variation selectors. If the code point
+   has a non-zero spacing width, the previous cell is widened, see the
+   :ref:`spacing_marks` section below.
 
 #. If there is a boundary, but the width of the current code point is zero,
-   it is added to the previous cell and processing is finished.
+   it is added to the previous cell and processing is finished. If the code
+   point has a non-zero spacing width, the previous cell is widened, see the
+   :ref:`spacing_marks` section below.
 
 #. The code point is added to the current cell and the cursor is moved forward
    (right) by either 1 or 2 cells depending on the width of the code point.
@@ -459,8 +461,18 @@ described by the rules below, in order of decreasing priority:
    :code:`RGI_Emoji_Modifier_Sequence` and :code:`RGI_Emoji_Tag_Sequence` have width two.
    All code points in :code:`RGI_Emoji_Flag_Sequence` have width two.
 
+#. *Precomposed letters with spacing marks*: These have width two. They are the
+   letters (Unicode category :code:`Lo`) whose canonical decomposition is a
+   letter followed by a code point with a spacing width of one, see
+   :ref:`spacing_marks`, so that they have the same width as their decomposed
+   forms. They are the ten code points: :code:`U+0B94` (Tamil),
+   :code:`U+1B06, U+1B08, U+1B0A, U+1B0C, U+1B0E, U+1B12` (Balinese) and
+   :code:`U+11383, U+1138E, U+11391` (Tulu-Tigalari).
+
 #. *Marks*: These are all zero width code points. They are code points with Unicode
-   categories whose first letter is :code:`M`. Additionally,
+   categories whose first letter is :code:`M`. This includes the spacing marks
+   (category :code:`Mc`), which do not occupy cells of their own, instead they
+   widen the cell they are added to, see :ref:`spacing_marks`. Additionally,
    code points with Unicode category: :code:`Cf`. Finally, they include
    all modifier code points from :code:`RGI_Emoji_Modifier_Sequence` in the
    *Wide emoji* rule above.
@@ -491,9 +503,15 @@ When adding a code point to the previous cell these have to be handled specially
   rule above that is followed by ``FE0F`` then the width of the
   previous cell is increased to two.
 
-In all three of these cases the width the application requested with the ``w`` key
+In both of these cases the width the application requested with the ``w`` key
 wins: a cell whose width was set explicitly is never re-sized by a variation
-selector or a spacing mark.
+selector, nor by a spacing mark.
+
+A variation selector must immediately follow the code point it applies to, so
+it is always processed before any spacing marks in the same cell. Thus a
+spacing mark after a variation selector widens the cell from the width the
+variation selector gave it, and a variation selector after a spacing mark has
+no effect.
 
 Note that the rule for ``U+FE0E`` is particularly problematic for terminals as
 it means that the width of a string cannot be determined without knowing the
@@ -537,3 +555,109 @@ is such a function in the Python language:
 Then, using ``wcswidth()`` the application can split long text into lines of
 width no more than the screen width and use the above function to write each
 line to the terminal robustly.
+
+.. _spacing_marks:
+
+Spacing marks
+^^^^^^^^^^^^^^^^
+
+Many scripts, such as Devanagari, Bengali, Tamil, Malayalam, Sinhala, Myanmar
+and Khmer, write vowel signs and some other signs as `spacing marks
+<https://www.unicode.org/versions/latest/core-spec/chapter-3/#G62466>`__.
+These are combining marks that have a positive advance width, they take up
+horizontal space next to the code point they combine with, before it, after it
+or on both sides of it. Grapheme segmentation puts them in the same grapheme as
+that code point, but squeezing the grapheme into the width of its first code
+point makes it unreadable. Instead, spacing marks widen the cell they are added
+to. How much a code point widens a cell is its *spacing width*:
+
+* For code points with Unicode category :code:`Mc` (spacing marks) it is the
+  number of code points in the full canonical decomposition of the code point
+  that have category :code:`Mc` and a canonical combining class of either
+  :code:`0` or :code:`9`. This is one for most spacing marks and two for the
+  two part vowels, such as :code:`U+0BCA TAMIL VOWEL SIGN O`, which then
+  widen a cell by as much as the two spacing marks they decompose into. The
+  spacing marks with other canonical combining classes, combining musical
+  symbols, Hangul tone marks and Vietnamese reading marks, which attach to code
+  points of fixed width, have a spacing width of zero.
+
+* For the four code points :code:`U+0E33 THAI CHARACTER SARA AM`,
+  :code:`U+0EB3 LAO VOWEL SIGN AM`, :code:`U+FF9E HALFWIDTH KATAKANA VOICED
+  SOUND MARK` and :code:`U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK`,
+  which are not spacing marks but combine with the previous code point and take
+  up horizontal space, it is one.
+
+* For all other code points it is zero.
+
+When a code point with a non-zero spacing width is added to the previous cell,
+the previous cell is widened by its spacing width, up to a maximum width of
+four cells. This is the case regardless of the code point the cell starts with,
+and of whether there is a grapheme boundary before the spacing mark, see the
+steps of the algorithm above. However, a cell is only widened if it is a single
+cell, or a multicell character of scale one whose width was not set explicitly
+using the ``w`` key of this protocol. When the widened cell no longer fits in
+its line, it is moved to the start of the next line, in the same way as a
+character that is too wide to fit at the end of a line is. When it is wider
+than the screen, it is discarded. Thus, for example:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Code points
+     - Description
+     - Width
+   * - :code:`U+0915 U+093F`
+     - Devanagari: क + vowel sign I
+     - 2
+   * - :code:`U+0937 U+0903 U+0903`
+     - Devanagari: ष + two visargas
+     - 3
+   * - :code:`U+0B9F U+0BCA`
+     - Tamil: ட + vowel sign O
+     - 3
+   * - :code:`U+0B9F U+0BC6 U+0BBE`
+     - Tamil: the same, decomposed
+     - 3
+   * - :code:`U+1000 U+1031 U+102C`
+     - Myanmar: က + vowel signs E and AA
+     - 3
+   * - :code:`U+0995 U+09CB U+0982`
+     - Bengali: ক + vowel sign O + anusvara
+     - 4
+   * - :code:`U+0937 and six U+0903`
+     - Devanagari: ष + six visargas
+     - 4
+
+The maximum width of four, rather than two, which is the maximum width
+of the narrow and wide characters that wcwidth() based implementations deal
+with, was chosen because:
+
+* A maximum of two has no basis in the properties of the scripts involved,
+  it is an artifact of ``wcwidth()`` only ever returning zero, one or two,
+  a range designed for CJK text.
+
+* Very common graphemes need three cells, such as a consonant with a two part
+  vowel, (Tamil கொ, Bengali কো, Malayalam കൊ, Myanmar ကော) or with a vowel sign
+  and a spacing anusvara or visarga (Malayalam കാം, Devanagari षोः). A maximum
+  of two would squeeze these into two thirds of their natural width, the very
+  problem spacing marks widening cells is meant to fix.
+
+* The widest graphemes in real text, made of spacing marks alone, are a
+  consonant with a two part vowel and an anusvara or visarga, which are four
+  cells wide, for example, the Bengali abbreviation কোং (company).
+
+* Up to four cells, the width is the same as the sum of the ``wcwidth()`` of
+  the code points, which is what the C library, readline, shells and terminal
+  multiplexers compute, so these programs agree with terminals implementing
+  this algorithm without any changes. A maximum of two would disagree with them
+  for every grapheme three cells wide.
+
+* A maximum keeps the width of a cell bounded, so that terminals can store it
+  in a fixed number of bits, any grapheme fits on a line at least four cells
+  wide, and text with large numbers of spacing marks cannot move the cursor
+  arbitrarily far. Allowing more than four cells would benefit no text that
+  occurs in practice.
+
+Note that this does not apply to *conjuncts*, where consonants are joined by a
+virama, such as :code:`U+0915 U+094D U+0937` (क्ष), the second consonant of a
+conjunct is in the same grapheme as the first one and adds no width.

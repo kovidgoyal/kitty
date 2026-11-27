@@ -43,6 +43,7 @@ func cpos_from_report(csi string) (ans cpos, err error) {
 type test_struct struct {
 	description               string
 	num                       int
+	num_reports               int
 	expected_cursor_positions []int
 	actual_cursor_positions   []cpos
 	payload                   string
@@ -79,7 +80,8 @@ func run_tests(tests []*test_struct) (err error) {
 			if t.payload_gen != nil {
 				payload = t.payload_gen(screen_width)
 			}
-			expected_num_reports += strings.Count(payload, cursor_position_report)
+			t.num_reports = strings.Count(payload, cursor_position_report)
+			expected_num_reports += t.num_reports
 			buf.WriteString(payload)
 			buf.WriteString(reset_line)
 			if buf.Len() > 512*1024 {
@@ -131,7 +133,7 @@ func run_tests(tests []*test_struct) (err error) {
 					} else {
 						num_reports++
 						t := tests[current_test_idx]
-						if len(t.actual_cursor_positions) >= len(t.expected_cursor_positions) && current_test_idx+1 < len(tests) {
+						for len(t.actual_cursor_positions) >= t.num_reports && current_test_idx+1 < len(tests) {
 							current_test_idx += 1
 							t = tests[current_test_idx]
 						}
@@ -212,7 +214,61 @@ func create_tests(gb_tests []kitty.GraphemeBreakTest, width_in_cells int) (tests
 		num: len(tests) + 1, description: "Check that combining characters are merged into last cell even when cursor is on the next line",
 		payload_gen: wrap_gen, tester: wrap_tester}
 	tests = append(tests, &test)
+	// The expected widths of these are fixed, rather than computed by kitty's
+	// own wcswidth, so that they test the specification, not just agreement with kitty
+	for _, t := range spacing_mark_tests {
+		rt, _ := json.Marshal(t.text)
+		tests = append(tests, &test_struct{
+			num: len(tests) + 1, description: fmt.Sprintf("Spacing marks: %s: Text: %s", t.description, string(rt)),
+			payload: t.text + cursor_position_report, expected_cursor_positions: []int{t.width}})
+	}
+	// The base is never put into the last column, as terminals differ in how
+	// they report the position of a cursor that is waiting to wrap
+	for _, t := range []struct {
+		base, mark string
+		width      int
+	}{{"\u0995", "\u09cb", 3}, {"\u0995", "\u09cb\u0982", 4}} {
+		rt, _ := json.Marshal(t.base + t.mark)
+		tests = append(tests, &test_struct{
+			num:         len(tests) + 1,
+			description: fmt.Sprintf("Spacing marks: a char widened by a spacing mark that no longer fits in its line moves onto the next line: Text: %s", string(rt)),
+			payload_gen: func(width_in_cells int) string {
+				return strings.Repeat(" ", width_in_cells-t.width+1) + t.base + cursor_position_report + t.mark + cursor_position_report
+			},
+			tester: func(actual_cursor_positions []cpos, screen_width int) string {
+				before, after := actual_cursor_positions[0], actual_cursor_positions[1]
+				if after.y != before.y+1 || after.x != t.width {
+					return fmt.Sprintf("The cursor should have moved to x=%d on the next line after adding the spacing mark, instead it moved from: %v -> %v", t.width, before, after)
+				}
+				return ""
+			}})
+	}
 	return
+}
+
+type spacing_mark_test struct {
+	text, description string
+	width             int
+}
+
+// See the Spacing marks section of docs/text-sizing-protocol.rst
+var spacing_mark_tests = []spacing_mark_test{
+	{"\u0915\u093f", "a spacing mark widens the cell it is added to", 2},
+	{"\u0937\u0903\u0903", "every spacing mark widens the cell", 3},
+	{"\u0b95\u0bbe", "including spacing marks with Grapheme_Cluster_Break=Extend", 2},
+	{"\u1000\u1031\u102c", "and those that follow a grapheme break", 3},
+	{"\u0b9f\u0bca", "a two part vowel counts as two spacing marks", 3},
+	{"\u0b9f\u0bc6\u0bbe", "the same as its decomposed form", 3},
+	{"\u0995\u09cb\u0982", "a two part vowel and an anusvara", 4},
+	{"\u0937\u0903\u0903\u0903\u0903\u0903\u0903", "the width is capped at four", 4},
+	{"\u0e08\u0e33\u0e33", "Thai SARA AM widens the cell it is added to", 3},
+	{"\uff76\uff9e", "halfwidth katakana voiced sound mark widens the cell it is added to", 2},
+	{"\u0b94", "a letter that decomposes into a letter and a spacing mark is wide", 2},
+	{"\U0001d158\U0001d165\U0001d16e", "spacing marks with combining classes other than 0 and 9 add no width", 1},
+	{"\uac00\u302e", "spacing marks with combining classes other than 0 and 9 add no width", 2},
+	{"\U0001f600\u093e", "spacing marks widen cells regardless of the base", 3},
+	{"\u0915\u0903\ufe0f", "VS16 after a spacing mark has no effect", 2},
+	{"\u231a\ufe0e\u093e", "a spacing mark after VS15 widens the narrowed emoji", 2},
 }
 
 func main(allowed_tests *utils.Set[int]) (rc int, err error) {

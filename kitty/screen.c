@@ -3135,30 +3135,32 @@ move_cursor_past_multicell(Screen *self, index_type required_width) {
 }
 
 static void
-move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell *cpu_cell, index_type xpos, index_type ypos) {
+move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell *cp, index_type xpos, index_type ypos, index_type old_width, CPUCell c) {
+    // Move the char, of old_width cells starting at xpos in the line ypos, whose
+    // cells are cp, to the first place at or after it with enough room for it at
+    // its new width, which is the width of c, the cell to write.
     index_type before = self->cursor->y;
-    // Remove the char from its current cell before moving it, so that it is
+    // Remove the char from its current cells before moving it, so that it is
     // not removed as a multicell char in the way and the cells it is moved to
-    // can include its current cell
-    const CPUCell c = *cpu_cell;
-    *cpu_cell = (CPUCell){0};
+    // can include its current cells
+    for (index_type x = xpos; x < xpos + old_width && x < self->columns; x++) cp[x] = (CPUCell){0};
     // Taken before the move, which can scroll the char's row up
     const bool may_reorder = self->linebuf->line_attrs[ypos].bidi_may_reorder;
     self->cursor->x = xpos;
     self->cursor->y = ypos;
-    if (move_cursor_past_multicell(self, 2)) {
-        CPUCell *cp;
-        linebuf_init_cells(self->linebuf, self->cursor->y, &cp, NULL);
+    if (move_cursor_past_multicell(self, c.width)) {
+        CPUCell *dest;
+        linebuf_init_cells(self->linebuf, self->cursor->y, &dest, NULL);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         if (UNLIKELY(self->linebuf->bidi_stamped)) {
             bidi_line_gets_text(self, self->cursor->y);
             self->linebuf->line_attrs[self->cursor->y].bidi_may_reorder |= may_reorder;
         }
-        cp[self->cursor->x] = c;
-        self->cursor->x++;
-        cp[self->cursor->x] = c;
-        cp[self->cursor->x].x = 1;
-        self->cursor->x++;
+        for (index_type x = 0; x < c.width; x++) {
+            dest[self->cursor->x] = c;
+            dest[self->cursor->x].x = x;
+            self->cursor->x++;
+        }
     }
     // A move from the bottom row scrolls, leaving the cursor on the same row number with s->cp pointing at the row above it
     if (self->cursor->y == before && linebuf_cpu_cells_for_line(self->linebuf, before) == s->cp) init_segmentation_state(self, s);
@@ -3166,28 +3168,50 @@ move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell
 }
 
 static void
-widen_cell_to_two(Screen *self, text_loop_state *s, CPUCell *cp, index_type xpos) {
-    CPUCell *cpu_cell = cp + xpos;
-    cpu_cell->is_multicell = true;
-    cpu_cell->width = 2;
-    cpu_cell->natural_width = true;
-    if (!cpu_cell->scale) cpu_cell->scale = 1;
-    if (xpos + 1 < self->columns) {
-        CPUCell *second = cp + xpos + 1;
-        if (second->is_multicell) {
-            if (second->y) {
-                move_widened_char_past_multiline_chars(self, s, cpu_cell, xpos, s->prev.y);
+widen_cell(Screen *self, text_loop_state *s, CPUCell *cp, index_type xpos, index_type new_width) {
+    // Widen the char starting at xpos in the line s->prev.y, whose cells are cp,
+    // to new_width cells. The char must be a single cell or a multicell char of
+    // scale one, that is, it occupies a single row. This is used by variation
+    // selectors and spacing marks. If the char does not fit in its line at its new
+    // width, it is moved to the next line, or, if it is wider than the screen,
+    // discarded, as a wide char that is too wide is.
+    const CPUCell *cpu_cell = cp + xpos;
+    const index_type old_width = cpu_cell->is_multicell ? cpu_cell->width : 1;
+    if (new_width <= old_width) return;
+    CPUCell c = *cpu_cell;
+    c.is_multicell = true;
+    c.width = new_width;
+    c.natural_width = true;
+    c.x = 0;
+    c.y = 0;
+    if (!c.scale) c.scale = 1;
+    if (xpos + new_width > self->columns) {
+        move_widened_char_past_multiline_chars(self, s, cp, xpos, s->prev.y, old_width, c);
+        return;
+    }
+    for (index_type x = xpos + old_width; x < xpos + new_width; x++) {
+        if (cp[x].is_multicell) {
+            if (cp[x].y) {
+                move_widened_char_past_multiline_chars(self, s, cp, xpos, s->prev.y, old_width, c);
                 return;
             }
-            nuke_multicell_char_at(self, xpos + 1, s->prev.y, false);
+            nuke_multicell_char_at(self, x, s->prev.y, false);
         }
-        // both halves of the widened char have the style of the original cell
-        self->cursor->x++;
-        *second = *cpu_cell;
-        second->x = 1;
-    } else {
-        move_widened_char_past_multiline_chars(self, s, cpu_cell, xpos, s->prev.y);
     }
+    // all the cells of the widened char have the style of the original cell
+    for (index_type x = 0; x < new_width; x++) {
+        cp[xpos + x] = c;
+        cp[xpos + x].x = x;
+    }
+    // The cursor is on the line of the char, after it, since the char fits in its line
+    self->cursor->x = MAX(self->cursor->x, xpos + new_width);
+}
+
+static bool
+cell_can_be_widened_by_spacing_mark(const CPUCell *c) {
+    // A single cell or a multicell char with a single row whose width was not
+    // set explicitly by the text sizing protocol
+    return !c->is_multicell || (c->natural_width && c->scale == 1 && !c->subscale_n);
 }
 
 static bool
@@ -3196,7 +3220,7 @@ is_emoji_presentation_base(char_type ch) {
 }
 
 static void
-draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
+draw_combining_char(Screen *self, text_loop_state *s, char_type ch, CharProps props) {
     CPUCell *cp;
     linebuf_init_cells(self->linebuf, s->prev.y, &cp, NULL);
     // the extent of the char is found once, and used for both adding the char and halving its width
@@ -3207,13 +3231,13 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
     unsigned base_pos = self->lc->count - 2;
     if (ch == VS16) { // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
         if (self->lc->chars[base_pos + 1] == VS16 && !cp[xpos].is_multicell && is_emoji_presentation_base(self->lc->chars[base_pos])) {
-            widen_cell_to_two(self, s, cp, xpos);
+            widen_cell(self, s, cp, xpos, 2);
         }
     } else if (ch == VS15) {
         const CPUCell *cpu_cell = cp + xpos;
         // natural_width is false when the width was set explicitly by the text sizing
         // protocol, in which case the application's width wins over the variation selector,
-        // matching how VS16 and Thai/Lao SARA AM leave such cells alone.
+        // matching how VS16 and spacing marks leave such cells alone.
         if (self->lc->chars[base_pos + 1] == VS15 && cpu_cell->is_multicell && cpu_cell->natural_width && cpu_cell->width == 2 &&
             is_emoji_presentation_base(self->lc->chars[base_pos])) {
             const index_type old_limit = xpos + cpu_cell->scale * cpu_cell->width;
@@ -3228,12 +3252,11 @@ draw_combining_char(Screen *self, text_loop_state *s, char_type ch) {
             }
             init_segmentation_state(self, s);
         }
-    } else if (s->seg.grapheme_break == GBP_SpacingMark && !cp[xpos].is_multicell && wcwidth_std(char_props_for(ch)) > 0) {
-        // Thai/Lao SARA AM is a SpacingMark with non-zero width, it widens a narrow base cell.
-        // s->seg was just stepped with ch, and grapheme_segmentation_step() copies the
-        // grapheme break property of ch into it, so no extra char_props_for() lookup is
-        // needed to reject the overwhelmingly common case of a zero width combining char.
-        widen_cell_to_two(self, s, cp, xpos);
+    } else if (props.spacing_width && cell_can_be_widened_by_spacing_mark(cp + xpos)) {
+        // A spacing mark widens the cell it is added to, up to MAX_SPACING_MARK_CELL_WIDTH
+        const unsigned old_width = cp[xpos].is_multicell ? cp[xpos].width : 1;
+        const unsigned new_width = cell_width_with_spacing_mark(old_width, props);
+        if (new_width > old_width) widen_cell(self, s, cp, xpos, new_width);
     }
 }
 
@@ -3291,9 +3314,9 @@ map_char(Screen *self, const uint32_t ch) {
 static bool batched_non_ascii_draw_disabled_for_tests = false;
 
 static bool
-is_plain_combining_char(char_type ch, GraphemeSegmentationResult seg, CharProps props) {
+is_plain_combining_char(char_type ch, CharProps props) {
     // A combining char that only adds to the text of a cell, see draw_combining_char()
-    return ch != VS15 && ch != VS16 && !(seg.grapheme_break == GBP_SpacingMark && wcwidth_std(props) > 0);
+    return ch != VS15 && ch != VS16 && !props.spacing_width;
 }
 
 static inline __attribute__((always_inline)) size_t
@@ -3306,21 +3329,21 @@ draw_combining_char_run_(Screen *self, text_loop_state *s, char_type ch, CharPro
     char_type run[MAX_RUN];
     size_t n = 0;
     GraphemeSegmentationResult seg = s->seg;
-    if (!batched_non_ascii_draw_disabled_for_tests && is_plain_combining_char(ch, seg, props)) {
+    if (!batched_non_ascii_draw_disabled_for_tests && is_plain_combining_char(ch, props)) {
         run[n++] = ch;
         for (size_t k = 0; k < num_rest && n < MAX_RUN; k++) {
             const char_type c = map_char(self, rest[k]);
             const CharProps p = char_props_for(c);
             if (p.is_invalid) break;
             const GraphemeSegmentationResult next = grapheme_segmentation_step(seg, p);
-            if (!next.add_to_current_cell || !is_plain_combining_char(c, next, p)) break;
+            if (!next.add_to_current_cell || !is_plain_combining_char(c, p)) break;
             seg = next;
             run[n++] = c;
         }
     }
 #undef MAX_RUN
     if (n < 2) {
-        draw_combining_char(self, s, ch);
+        draw_combining_char(self, s, ch, props);
         return 0;
     }
     CPUCell *cp;
@@ -3632,14 +3655,16 @@ draw_text_loop_(Screen *self, const uint32_t *chars, size_t num_chars, text_loop
                     // Zero width chars can only be represented as combining chars.
                     if (s->prev.cc) {
                         const char_type before = s->prev.cc->ch_and_idx;
-                        draw_combining_char(self, s, ch);
+                        draw_combining_char(self, s, ch, cp);
                         if (implicit) record_combining_write(self, s, before, record, bidi_char_sets_may_reorder(ch));
-                    } else if (implicit && (ch | 1) == 0x200f) { // LRM, RLM
-                        set_record_at_leading_mark(self, ch, record);
+                        continue;
                     }
-                    continue;
-                }
-                char_width = 1;
+                    if (cp.spacing_width) char_width = cp.spacing_width; // a spacing mark with no previous cell is in a cell of its own
+                    else {
+                        if (implicit && (ch | 1) == 0x200f) set_record_at_leading_mark(self, ch, record); // LRM, RLM
+                        continue;
+                    }
+                } else char_width = 1;
             }
         }
 
@@ -3918,6 +3943,12 @@ screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const
                 if (lc.count) handle_variable_width_multicell_command(self, mcd, &lc);
                 switch (wcwidth_std(cp)) {
                     case 0:
+                        // a spacing mark with no previous char is in a cell of its own
+                        if (cp.spacing_width) {
+                            lc.chars[0] = ch;
+                            lc.count = 1;
+                        } else lc.count = 0;
+                        break;
                     case -1: lc.count = 0; break;
                     default:
                         lc.chars[0] = ch;
@@ -8904,37 +8935,14 @@ screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
     int kind = PyUnicode_KIND(str);
     void *data = PyUnicode_DATA(str);
     Py_ssize_t len = PyUnicode_GET_LENGTH(str), i;
-    char_type prev_ch = 0;
-    int prev_width = 0;
-    bool in_sgr = false;
-    unsigned long width_so_far = 0;
-    for (i = start_pos; i < len && width_so_far < num_cells; i++) {
-        char_type ch = PyUnicode_READ(kind, data, i);
-        if (in_sgr) {
-            if (ch == 'm') in_sgr = false;
-            continue;
-        }
-        if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '[') {
-            in_sgr = true;
-            continue;
-        }
-        if (ch == 0xfe0f) {
-            if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
-                width_so_far += 1;
-                prev_width = 2;
-            } else prev_width = 0;
-        } else {
-            int w = wcwidth_std(char_props_for(ch));
-            switch (w) {
-                case -1:
-                case 0: prev_width = 0; break;
-                case 2: prev_width = 2; break;
-                default: prev_width = 1; break;
-            }
-            if (width_so_far + prev_width > num_cells) { break; }
-            width_so_far += prev_width;
-        }
-        prev_ch = ch;
+    // Use the same width rules as wcswidth() so that variation selectors and spacing marks are accounted for
+    WCSState state;
+    initialize_wcs_state(&state);
+    long width_so_far = 0;
+    for (i = start_pos; i < len && width_so_far < (long)num_cells; i++) {
+        const int w = wcswidth_step(&state, PyUnicode_READ(kind, data, i));
+        if (width_so_far + w > (long)num_cells) break;
+        width_so_far += w;
     }
     return PyLong_FromUnsignedLong(i);
 }

@@ -630,12 +630,50 @@ class TestDataTypes(BaseTest):
         self.ae(wcswidth('\U0001f610\ufe0e'), 1)
         self.ae(wcswidth('\U0001f1e6a'), 3)
         self.ae(wcswidth('\U0001f1e6a\U0001f1e8a'), 6)
-        # Thai/Lao SARA AM is a SpacingMark with width 1, it widens the cell it combines into
-        self.ae(wcswidth('จำ'), 2)
-        self.ae(wcswidth('ำ'), 1)
-        self.ae(wcswidth('กิ'), 1)
-        self.ae(wcswidth('จำำ'), 2)
-        self.ae(wcswidth('ກຳ'), 2)
+        # Spacing marks widen the cell they are added to, see the Spacing marks section of the text sizing protocol
+        # Thai SARA AM
+        self.ae(wcswidth('\u0e08\u0e33'), 2)
+        self.ae(wcswidth('\u0e33'), 1)
+        # a nonspacing mark adds no width
+        self.ae(wcswidth('\u0e01\u0e34'), 1)
+        self.ae(wcswidth('\u0e08\u0e33\u0e33'), 3)
+        # Lao AM
+        self.ae(wcswidth('\u0e81\u0eb3'), 2)
+        # Devanagari vowel sign I, which is to the left of its base
+        self.ae(wcswidth('\u0915\u093f'), 2)
+        # visarga
+        self.ae(wcswidth('\u0937\u0903'), 2)
+        self.ae(wcswidth('\u0937\u0903\u0903'), 3)
+        # Tamil AA, a spacing mark with Grapheme_Cluster_Break=Extend
+        self.ae(wcswidth('\u0b95\u0bbe'), 2)
+        # Tamil O, a two part vowel, has a spacing width of two
+        self.ae(wcswidth('\u0b9f\u0bca'), 3)
+        # and its decomposed form has the same width
+        self.ae(wcswidth('\u0b9f\u0bc6\u0bbe'), 3)
+        # Myanmar AA follows a grapheme break, it is added to the previous cell
+        self.ae(wcswidth('\u1000\u1031\u102c'), 3)
+        self.ae(wcswidth('\u1019\u1039\u1018\u102c\u1037'), 2)
+        # Bengali: consonant, two part vowel and anusvara
+        self.ae(wcswidth('\u0995\u09cb\u0982'), 4)
+        # the width is capped at four
+        self.ae(wcswidth('\u0937\u0903\u0903\u0903\u0903\u0903\u0903'), 4)
+        # halfwidth katakana voiced sound mark
+        self.ae(wcswidth('\uff76\uff9e'), 2)
+        # a letter that decomposes into a letter and a spacing mark
+        self.ae(wcswidth('\u0b94'), 2)
+        # spacing marks with combining classes other than 0 and 9 add no width
+        self.ae(wcswidth('\U0001d158\U0001d165\U0001d16e'), 1)
+        self.ae(wcswidth('\uac00\u302e'), 2)
+        # regardless of the base
+        self.ae(wcswidth('\U0001f600\u093e'), 3)
+        # VS16 after a spacing mark has no effect
+        self.ae(wcswidth('\u0915\u0903\ufe0f'), 2)
+        # a spacing mark after VS15 widens the narrowed emoji
+        self.ae(wcswidth('\u231a\ufe0e\u093e'), 2)
+        # a spacing mark with no base is in a cell of its own
+        self.ae(wcswidth('\u093f'), 1)
+        self.ae(wcswidth('\u0bca'), 2)
+        self.ae(wcswidth('\u094d\u0903'), 1)
         self.ae(wcswidth('\U0001f1e6\U0001f1e8a'), 3)
         self.ae(wcswidth('\U0001f1e6\U0001f1e8\U0001f1e6'), 4)
         self.ae(wcswidth('a\u00adb'), 2)
@@ -652,6 +690,15 @@ class TestDataTypes(BaseTest):
         self.ae(tpl('a\U0001f337', 3), 2)
         self.ae(tpl('a\U0001f337b', 4), 3)
         self.ae(tpl('a\x1b[31mbc', 2), 7)
+        # spacing marks and variation selectors are accounted for
+        self.ae(tpl('\u0915\u093fa', 2), 2)
+        self.ae(tpl('\u0915\u093fa', 3), 3)
+        self.ae(tpl('\u0b9f\u0bcaa', 2), 1)
+        self.ae(tpl('\u2764\ufe0fa', 2), 2)
+        self.ae(tpl('\u2764\ufe0fa', 1), 1)
+        self.ae(char_props_for('\u0bca')['spacing_width'], 2)
+        self.ae(char_props_for('\u093f')['spacing_width'], 1)
+        self.ae(char_props_for('\U0001d165')['spacing_width'], 0)
 
         self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
@@ -1159,7 +1206,8 @@ class TestDataTypes(BaseTest):
                     yield cell
                 else:
                     for i, g in enumerate(gp[:-1]):
-                        if wcswidth(gp[i + 1][0]) != 0:
+                        # zero width chars, including spacing marks, are added to the previous cell even after a grapheme break
+                        if char_props_for(gp[i + 1][0])['width'] != 0:
                             raise AssertionError(f'cell {cell!r} contains grapheme break point at non zero width character for Test #{i}: {test["comment"]}')
                     yield from gp
 

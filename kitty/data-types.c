@@ -737,9 +737,11 @@ py_char_props_for(PyObject *self UNUSED, PyObject *ch) {
     CharProps cp = char_props_for(c);
 #define B(x) #x, cp.x ? Py_True : Py_False
     return Py_BuildValue(
-        "{si sO sB sB ss sO sO}",
+        "{si sB sO sB sB ss sO sO}",
         "width",
         wcwidth_std(cp),
+        "spacing_width",
+        cp.spacing_width,
         B(is_extended_pictographic),
         "grapheme_break",
         cp.grapheme_break,

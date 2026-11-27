@@ -266,6 +266,14 @@ Detailed list of changes
 - A new option :opt:`ime_preedit_style` to control how the pre-edit text of
   input methods and dictation is styled (:iss:`10739`)
 
+- Unicode: Spacing combining marks, such as the vowel signs of Indic scripts
+  and Myanmar, now widen the cell they combine into, up to four cells, instead
+  of being squeezed into the width of the first character of the grapheme.
+  This matches the widths wcwidth() based programs, such as shells, readline
+  and tmux, compute and gives these scripts room to render. The halfwidth
+  katakana voiced sound marks also widen the cell they combine into. See
+  :ref:`spacing_marks` for details (:iss:`8533`)
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

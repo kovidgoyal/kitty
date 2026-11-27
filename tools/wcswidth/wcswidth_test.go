@@ -56,12 +56,50 @@ func TestWCSWidth(t *testing.T) {
 	wcswidth("\U0001F1E6\U0001F1E8a", 3)
 	wcswidth("\U0001F1E6\U0001F1E8\U0001F1E6", 4)
 	wcswidth("a\u00adb", 2)
-	// Thai/Lao SARA AM is a SpacingMark with width 1, it widens the cell it combines into
-	wcswidth("จำ", 2)
-	wcswidth("ำ", 1)
-	wcswidth("กิ", 1)
-	wcswidth("จำำ", 2)
-	wcswidth("ກຳ", 2)
+	// Spacing marks widen the cell they are added to, see the Spacing marks section of the text sizing protocol
+	// Thai SARA AM
+	wcswidth("\u0e08\u0e33", 2)
+	wcswidth("\u0e33", 1)
+	// a nonspacing mark adds no width
+	wcswidth("\u0e01\u0e34", 1)
+	wcswidth("\u0e08\u0e33\u0e33", 3)
+	// Lao AM
+	wcswidth("\u0e81\u0eb3", 2)
+	// Devanagari vowel sign I, which is to the left of its base
+	wcswidth("\u0915\u093f", 2)
+	// visarga
+	wcswidth("\u0937\u0903", 2)
+	wcswidth("\u0937\u0903\u0903", 3)
+	// Tamil AA, a spacing mark with Grapheme_Cluster_Break=Extend
+	wcswidth("\u0b95\u0bbe", 2)
+	// Tamil O, a two part vowel, has a spacing width of two
+	wcswidth("\u0b9f\u0bca", 3)
+	// and its decomposed form has the same width
+	wcswidth("\u0b9f\u0bc6\u0bbe", 3)
+	// Myanmar AA follows a grapheme break, it is added to the previous cell
+	wcswidth("\u1000\u1031\u102c", 3)
+	wcswidth("\u1019\u1039\u1018\u102c\u1037", 2)
+	// Bengali: consonant, two part vowel and anusvara
+	wcswidth("\u0995\u09cb\u0982", 4)
+	// the width is capped at four
+	wcswidth("\u0937\u0903\u0903\u0903\u0903\u0903\u0903", 4)
+	// halfwidth katakana voiced sound mark
+	wcswidth("\uff76\uff9e", 2)
+	// a letter that decomposes into a letter and a spacing mark
+	wcswidth("\u0b94", 2)
+	// spacing marks with combining classes other than 0 and 9 add no width
+	wcswidth("\U0001d158\U0001d165\U0001d16e", 1)
+	wcswidth("\uac00\u302e", 2)
+	// regardless of the base
+	wcswidth("\U0001f600\u093e", 3)
+	// VS16 after a spacing mark has no effect
+	wcswidth("\u0915\u0903\ufe0f", 2)
+	// a spacing mark after VS15 widens the narrowed emoji
+	wcswidth("\u231a\ufe0e\u093e", 2)
+	// a spacing mark with no base is in a cell of its own
+	wcswidth("\u093f", 1)
+	wcswidth("\u0bca", 2)
+	wcswidth("\u094d\u0903", 1)
 	wcswidth("a\x1b[22bcd", 25)
 	// Flags individually and together
 	wcwidth("\U0001f1ee\U0001f1f3", 2, 2)

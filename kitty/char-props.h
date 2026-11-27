@@ -9,13 +9,14 @@
 
 #include "data-types.h"
 
-// CharPropsDeclaration: uses 23 bits {{{
+// CharPropsDeclaration: uses 25 bits {{{
 typedef union CharProps {
     struct __attribute__((packed)) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
         uint8_t is_extended_pictographic : 1;
         uint8_t indic_conjunct_break : 2;
         uint8_t grapheme_break : 4;
+        uint8_t spacing_width : 2;
         uint8_t is_punctuation : 1;
         uint8_t is_word_char : 1;
         uint8_t is_combining_char : 1;
@@ -26,9 +27,9 @@ typedef union CharProps {
         uint8_t category : 5;
         uint8_t is_emoji : 1;
         uint8_t shifted_width : 3;
-        uint16_t : 9;
+        uint8_t : 7;
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        uint16_t : 9;
+        uint8_t : 7;
         uint8_t shifted_width : 3;
         uint8_t is_emoji : 1;
         uint8_t category : 5;
@@ -39,6 +40,7 @@ typedef union CharProps {
         uint8_t is_combining_char : 1;
         uint8_t is_word_char : 1;
         uint8_t is_punctuation : 1;
+        uint8_t spacing_width : 2;
         uint8_t grapheme_break : 4;
         uint8_t indic_conjunct_break : 2;
         uint8_t is_extended_pictographic : 1;
@@ -177,6 +179,18 @@ void init_char_props(void);
 static inline int
 wcwidth_std(CharProps ch) {
     return (int)ch.shifted_width - 4 /*=width_shift*/;
+}
+
+// The maximum width in cells that spacing marks can widen a cell to, see the
+// Spacing marks section of docs/text-sizing-protocol.rst
+#define MAX_SPACING_MARK_CELL_WIDTH 4u
+
+static inline unsigned
+cell_width_with_spacing_mark(unsigned cell_width, CharProps spacing_mark) {
+    // The width of a cell of width cell_width after spacing_mark is added to it.
+    // A cell of width zero means there is no previous cell, so the mark is in a cell of its own.
+    const unsigned w = cell_width + spacing_mark.spacing_width;
+    return cell_width >= MAX_SPACING_MARK_CELL_WIDTH ? cell_width : (w > MAX_SPACING_MARK_CELL_WIDTH ? MAX_SPACING_MARK_CELL_WIDTH : w);
 }
 static inline bool
 is_private_use(CharProps ch) {
