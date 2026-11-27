@@ -205,6 +205,10 @@ Detailed list of changes
 - Remote control: Automatically remove stale UNIX sockets left behind by a
   killed kitty instance when using :option:`kitty --listen-on`
 
+- Fix DIM/FAINT text under a block cursor that uses a fixed
+  :opt:`cursor_text_color` being hard to read. Such text is now drawn
+  undimmed in the cursor text color (:pull:`10948`)
+
 - Fix selections jumping to other text when only part of the screen scrolls,
   for example, in programs that use a scroll region to append output above
   their input area (:iss:`10930`)

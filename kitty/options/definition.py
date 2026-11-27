@@ -377,8 +377,9 @@ opt(
     long_text="""
 The color of text under the cursor. If you want it rendered with the
 background color of the cell underneath instead, use the special keyword:
-`background`. Note that if :opt:`cursor` is set to :code:`none` then this option
-is ignored. Note that some themes set this value, so if you want to override it,
+`background`. Text with the DIM/FAINT attribute is not dimmed under
+a block cursor, to keep it legible. Note that if :opt:`cursor` is set to
+:code:`none` then this option is ignored. Note that some themes set this value, so if you want to override it,
 place your value after the lines where the theme file is included.
 """,
 )
