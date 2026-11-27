@@ -72,3 +72,24 @@ void cocoa_report_live_notifications(const char *ident);
 void cocoa_set_dock_badge(const char *label);
 void cocoa_clear_dock_badge_if_set(void);
 bool cocoa_yield_reopen_to_other_instance(void);
+
+#ifdef __OBJC__
+// Objective-C exceptions must not unwind through C code, as that leaves it in
+// an inconsistent state. Functions called from C code catch and log them using
+// these macros, see GLFW_GUARD_BEGIN in glfw/cocoa_platform.h for details. Use
+// COCOA_PY_GUARD_END in functions called from Python, it additionally sets a
+// Python exception. Use as:
+//     COCOA_GUARD_BEGIN; ... function body ... COCOA_GUARD_END(return value on exception);
+void cocoa_log_exception(id exception, const char *where, bool log, bool set_python_error);
+#define COCOA_GUARD_BEGIN @try {
+#define COCOA_GUARD_END_(set_python_error, ...)                                                          \
+    }                                                                                                    \
+    @catch (id cocoa_guard_exception) {                                                                  \
+        static unsigned cocoa_guard_reports = 0;                                                         \
+        cocoa_log_exception(cocoa_guard_exception, __func__, cocoa_guard_reports < 8, set_python_error); \
+        if (cocoa_guard_reports < 8) cocoa_guard_reports++;                                              \
+        return __VA_ARGS__;                                                                              \
+    }
+#define COCOA_GUARD_END(...) COCOA_GUARD_END_(false, __VA_ARGS__)
+#define COCOA_PY_GUARD_END(...) COCOA_GUARD_END_(true, __VA_ARGS__)
+#endif

@@ -10,6 +10,7 @@
 #include "fonts.h"
 #include "unicode-data.h"
 #include "font-select.h"
+#include "cocoa_window.h"
 #include <structmember.h>
 #include <stdint.h>
 #include <math.h>
@@ -525,6 +526,7 @@ lc_as_fallback(const ListOfChars *lc) {
 
 PyObject *
 create_fallback_face(PyObject *base_face, const ListOfChars *lc, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
+    COCOA_GUARD_BEGIN;
     CTFace *self = (CTFace *)base_face;
     RAII_CoreFoundation(CTFontRef, new_font, NULL);
     RAII_CoreFoundation(CFStringRef, str, lc_as_fallback(lc));
@@ -560,6 +562,7 @@ create_fallback_face(PyObject *base_face, const ListOfChars *lc, bool bold, bool
         }
     }
     return ans;
+    COCOA_PY_GUARD_END(NULL);
 }
 
 unsigned int
@@ -974,6 +977,7 @@ destroy_hb_buffer(hb_buffer_t **x) {
 
 static PyObject *
 render_codepoint(CTFace *self, PyObject *args) {
+    COCOA_GUARD_BEGIN;
     unsigned long cp, fg = 0xffffff;
     if (!PyArg_ParseTuple(args, "k|k", &cp, &fg)) return NULL;
     const int num_chars = 1;
@@ -1004,6 +1008,7 @@ render_codepoint(CTFace *self, PyObject *args) {
         }
     }
     return Py_BuildValue("Nkk", pbuf, canvas_width, canvas_height);
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static PyObject *
@@ -1097,6 +1102,7 @@ ensure_ui_font(size_t in_height) {
 
 bool
 cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height) {
+    COCOA_GUARD_BEGIN;
     if (!ensure_ui_font(height)) return false;
     CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
     if (color_space == NULL) return false;
@@ -1160,10 +1166,12 @@ cocoa_render_line_of_text(const char *text, const color_type fg, const color_typ
     CFRelease(line);
     CGContextRelease(ctx);
     return true;
+    COCOA_GUARD_END(false);
 }
 
 size_t
 cocoa_text_width_for_single_line(const char *text, const size_t height) {
+    COCOA_GUARD_BEGIN;
     if (!text || !text[0]) return 0;
     if (!ensure_ui_font(height)) return 0;
     NSAttributedString *str = [[NSAttributedString alloc] initWithString:@(text) attributes:@{(NSString *)kCTFontAttributeName : (__bridge id)system_ui_font}];
@@ -1175,6 +1183,7 @@ cocoa_text_width_for_single_line(const char *text, const size_t height) {
     double width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
     CFRelease(line);
     return (size_t)ceil(width);
+    COCOA_GUARD_END(0);
 }
 
 uint8_t *

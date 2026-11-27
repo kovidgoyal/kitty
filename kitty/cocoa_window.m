@@ -637,18 +637,22 @@ drain_pending_notifications(BOOL granted) {
 
 static PyObject *
 cocoa_remove_delivered_notification(PyObject *self UNUSED, PyObject *x) {
+    COCOA_GUARD_BEGIN;
     if (!PyUnicode_Check(x)) {
         PyErr_SetString(PyExc_TypeError, "identifier must be a string");
         return NULL;
     }
     if (remove_delivered_notification(PyUnicode_AsUTF8(x))) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static PyObject *
 cocoa_live_delivered_notifications(PyObject *self UNUSED, PyObject *x UNUSED) {
+    COCOA_GUARD_BEGIN;
     if (live_delivered_notifications()) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static UNNotificationCategory *
@@ -679,6 +683,7 @@ set_notification_categories(UNUserNotificationCenter *center, PyObject *categori
 
 static PyObject *
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
+    COCOA_GUARD_BEGIN;
     const char *identifier = "", *title = "", *body = "", *appname = "", *image_path = "";
     int urgency = 1;
     PyObject *category, *categories;
@@ -719,6 +724,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
                             dispatch_async(dispatch_get_main_queue(), ^{ drain_pending_notifications(granted); });
                           }];
     Py_RETURN_NONE;
+    COCOA_PY_GUARD_END(NULL);
 }
 
 @interface ServiceProvider : NSObject
@@ -1007,11 +1013,14 @@ cocoa_create_global_menu(void) {
 
 void
 cocoa_application_lifecycle_event(bool application_launch_finished) {
+    COCOA_GUARD_BEGIN;
     if (!application_launch_finished) cocoa_create_global_menu(); // applicationWillFinishLaunching
+    COCOA_GUARD_END();
 }
 
 void
 cocoa_update_menu_bar_title(PyObject *pytitle) {
+    COCOA_GUARD_BEGIN;
     if (!pytitle) return;
     NSString *title = nil;
     if (OPT(macos_menubar_title_max_length) > 0 && PyUnicode_GetLength(pytitle) > OPT(macos_menubar_title_max_length)) {
@@ -1034,6 +1043,7 @@ cocoa_update_menu_bar_title(PyObject *pytitle) {
         [title_menu setSubmenu:m];
         [m release];
     }
+    COCOA_GUARD_END();
 }
 
 void
@@ -1043,6 +1053,7 @@ cocoa_clear_global_shortcuts(void) {
 
 void
 cocoa_recreate_global_menu(void) {
+    COCOA_GUARD_BEGIN;
     if (title_menu != NULL) {
         NSMenu *bar = [NSApp mainMenu];
         [bar removeItem:title_menu];
@@ -1064,6 +1075,7 @@ cocoa_recreate_global_menu(void) {
     } else cocoa_create_global_menu();
     SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
     update_secure_input_menu_bar_indicator(k.isDesired);
+    COCOA_GUARD_END();
 }
 
 
@@ -1080,42 +1092,55 @@ cocoa_alt_option_key_pressed(NSUInteger flags) {
 
 void
 cocoa_toggle_secure_keyboard_entry(void) {
+    COCOA_GUARD_BEGIN;
     SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
     [k toggle];
     [[NSUserDefaults standardUserDefaults] setBool:k.isDesired forKey:@"SecureKeyboardEntry"];
     update_secure_input_menu_bar_indicator(k.isDesired);
+    COCOA_GUARD_END();
 }
 
 void
 cocoa_hide(void) {
+    COCOA_GUARD_BEGIN;
     [[NSApplication sharedApplication] performSelectorOnMainThread:@selector(hide:) withObject:nil waitUntilDone:NO];
+    COCOA_GUARD_END();
 }
 
 void
 cocoa_hide_others(void) {
+    COCOA_GUARD_BEGIN;
     [[NSApplication sharedApplication] performSelectorOnMainThread:@selector(hideOtherApplications:) withObject:nil waitUntilDone:NO];
+    COCOA_GUARD_END();
 }
 
 void
 cocoa_minimize(void *w) {
+    COCOA_GUARD_BEGIN;
     NSWindow *window = (NSWindow *)w;
     if (window && !window.miniaturized) [window performSelectorOnMainThread:@selector(performMiniaturize:) withObject:nil waitUntilDone:NO];
+    COCOA_GUARD_END();
 }
 
 void
 cocoa_focus_window(void *w) {
+    COCOA_GUARD_BEGIN;
     NSWindow *window = (NSWindow *)w;
     [window makeKeyWindow];
+    COCOA_GUARD_END();
 }
 
 long
 cocoa_window_number(void *w) {
+    COCOA_GUARD_BEGIN;
     NSWindow *window = (NSWindow *)w;
     return [window windowNumber];
+    COCOA_GUARD_END(0);
 }
 
 size_t
 cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
+    COCOA_GUARD_BEGIN;
     NSWindow *window = (NSWindow *)w;
     if (!window) return 0;
     NSArray *window_array = @[ @([window windowNumber]) ];
@@ -1129,10 +1154,12 @@ cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
     } else ans = 0;
     CFRelease(spaces);
     return ans;
+    COCOA_GUARD_END(0);
 }
 
 static PyObject *
 cocoa_get_lang(PyObject UNUSED *self, PyObject *args UNUSED) {
+    COCOA_GUARD_BEGIN;
     @autoreleasepool {
         NSString *lang_code = [[NSLocale currentLocale] languageCode];
         NSString *country_code = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
@@ -1140,10 +1167,12 @@ cocoa_get_lang(PyObject UNUSED *self, PyObject *args UNUSED) {
         return Py_BuildValue(
             "sss", lang_code ? [lang_code UTF8String] : "", country_code ? [country_code UTF8String] : "", identifier ? [identifier UTF8String] : "");
     } // autoreleasepool
+    COCOA_PY_GUARD_END(NULL);
 }
 
 monotonic_t
 cocoa_cursor_blink_interval(void) {
+    COCOA_GUARD_BEGIN;
     @autoreleasepool {
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
         double on_period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriodOn"];
@@ -1158,15 +1187,19 @@ cocoa_cursor_blink_interval(void) {
         return ans > max_value ? 0ll : ms_double_to_monotonic_t(ans);
 
     } // autoreleasepool
+    COCOA_GUARD_END(-1);
 }
 
 void
 cocoa_set_activation_policy(bool hide_from_tasks) {
+    COCOA_GUARD_BEGIN;
     [NSApp setActivationPolicy:(hide_from_tasks ? NSApplicationActivationPolicyAccessory : NSApplicationActivationPolicyRegular)];
+    COCOA_GUARD_END();
 }
 
 static PyObject *
 cocoa_set_url_handler(PyObject UNUSED *self, PyObject *args) {
+    COCOA_GUARD_BEGIN;
     @autoreleasepool {
         const char *url_scheme = NULL, *bundle_id = NULL;
         if (!PyArg_ParseTuple(args, "s|z", &url_scheme, &bundle_id)) return NULL;
@@ -1189,10 +1222,12 @@ cocoa_set_url_handler(PyObject UNUSED *self, PyObject *args) {
         PyErr_Format(PyExc_OSError, "Failed to set default handler with error code: %d", err);
         return NULL;
     } // autoreleasepool
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static PyObject *
 cocoa_set_app_icon(PyObject UNUSED *self, PyObject *args) {
+    COCOA_GUARD_BEGIN;
     @autoreleasepool {
         const char *icon_path = NULL, *app_path = NULL;
         if (!PyArg_ParseTuple(args, "s|z", &icon_path, &app_path)) return NULL;
@@ -1236,12 +1271,14 @@ cocoa_set_app_icon(PyObject UNUSED *self, PyObject *args) {
         return NULL;
 
     } // autoreleasepool
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static NSImage *custom_dock_icon = nil;
 
 static PyObject *
 cocoa_set_dock_icon(PyObject UNUSED *self, PyObject *args) {
+    COCOA_GUARD_BEGIN;
     @autoreleasepool {
         const char *icon_path = NULL;
         if (!PyArg_ParseTuple(args, "s", &icon_path)) return NULL;
@@ -1260,6 +1297,7 @@ cocoa_set_dock_icon(PyObject UNUSED *self, PyObject *args) {
         return NULL;
 
     } // autoreleasepool
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static NSSound *beep_sound = nil;
@@ -1282,6 +1320,7 @@ cleanup(void) {
 
 void
 cocoa_system_beep(const char *path) {
+    COCOA_GUARD_BEGIN;
     if (!path) {
         NSBeep();
         return;
@@ -1293,6 +1332,7 @@ cocoa_system_beep(const char *path) {
     }
     if (beep_sound) [beep_sound play];
     else NSBeep();
+    COCOA_GUARD_END();
 }
 
 static void
@@ -1304,6 +1344,30 @@ uncaughtExceptionHandler(NSException *exception) {
 void
 cocoa_set_uncaught_exception_handler(void) {
     NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
+}
+
+void
+cocoa_log_exception(id exception, const char *where, bool log, bool set_python_error) {
+    @try {
+        @autoreleasepool {
+            NSString *d = [exception description], *stack = nil;
+            if ([exception isKindOfClass:[NSException class]]) {
+                NSException *e = exception;
+                d = [NSString stringWithFormat:@"%@: %@", e.name, e.reason];
+                // The stack at the point the exception was thrown
+                stack = [e.callStackSymbols componentsJoinedByString:@"\n"];
+            }
+            const char *desc = d.UTF8String;
+            if (log) {
+                log_error("Caught Objective-C exception in %s: %s", where, desc ? desc : "unknown");
+                if (stack.UTF8String) log_error("Exception stack:\n%s", stack.UTF8String);
+            }
+            if (set_python_error && !PyErr_Occurred()) PyErr_Format(PyExc_RuntimeError, "Objective-C exception in %s: %s", where, desc ? desc : "unknown");
+        }
+    } @catch (id) {
+        if (log) log_error("Caught Objective-C exception in %s", where);
+        if (set_python_error && !PyErr_Occurred()) PyErr_Format(PyExc_RuntimeError, "Objective-C exception in %s", where);
+    }
 }
 
 static PyObject *
@@ -1364,6 +1428,7 @@ render_emoji(NSString *text, unsigned image_size, const char *output_path) {
 
 static PyObject *
 bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
+    COCOA_GUARD_BEGIN;
     @autoreleasepool {
         const char *b, *output_path = NULL;
         int image_type = 1;
@@ -1395,6 +1460,7 @@ bundle_image_as_png(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
         }
         return convert_image_to_png(icon, image_size, output_path);
     }
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static PyObject *
@@ -1489,6 +1555,7 @@ animate_dock_progress_bar(id_type timer_id UNUSED, void *data UNUSED) {
 
 static PyObject *
 cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
+    COCOA_GUARD_BEGIN;
     float percent = -100;
     if (!PyArg_ParseTuple(args, "|f", &percent)) return NULL;
     NSDockTile *dockTile = [NSApp dockTile];
@@ -1532,6 +1599,7 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
     [dockTile setContentView:(remove_pbar && custom_dock_icon == nil) ? nil : dock_content_view];
     [dockTile display];
     Py_RETURN_NONE;
+    COCOA_PY_GUARD_END(NULL);
 }
 // }}}
 
@@ -1541,12 +1609,14 @@ static bool dock_badge_is_set = false;
 
 void
 cocoa_set_dock_badge(const char *label) {
+    COCOA_GUARD_BEGIN;
     @autoreleasepool {
         NSDockTile *dockTile = [NSApp dockTile];
         [dockTile setBadgeLabel:label ? @(label) : nil];
         [dockTile display];
         dock_badge_is_set = (label != NULL);
     }
+    COCOA_GUARD_END();
 }
 
 void
@@ -1558,12 +1628,15 @@ cocoa_clear_dock_badge_if_set(void) {
 
 static PyObject *
 cocoa_is_secure_input_enabled(PyObject *self UNUSED, PyObject *args UNUSED) {
+    COCOA_GUARD_BEGIN;
     SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
     return Py_NewRef(k.isDesired ? Py_True : Py_False);
+    COCOA_PY_GUARD_END(NULL);
 }
 
 static PyObject *
 cocoa_get_machine_id(PyObject *self UNUSED, PyObject *args UNUSED) {
+    COCOA_GUARD_BEGIN;
     static char ans[1024] = {0};
     static bool done = false;
     if (!done) {
@@ -1583,6 +1656,7 @@ cocoa_get_machine_id(PyObject *self UNUSED, PyObject *args UNUSED) {
         }
     }
     return PyUnicode_FromString(ans);
+    COCOA_PY_GUARD_END(NULL);
 }
 
 // Keychain {{{
@@ -1785,6 +1859,7 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_cocoa(PyObject *module) {
+    COCOA_GUARD_BEGIN;
     cocoa_clear_global_shortcuts();
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
@@ -1808,10 +1883,12 @@ init_cocoa(PyObject *module) {
                                                                   }
                                                                 }];
     return true;
+    COCOA_PY_GUARD_END(false);
 }
 
 bool
 cocoa_yield_reopen_to_other_instance(void) {
+    COCOA_GUARD_BEGIN;
     // When a notification is clicked, macOS delivers the response to the kitty
     // instance that posted it, which brings itself forward. Then usernoted asks
     // LaunchServices to bring the application forward by bundle URL, which
@@ -1844,4 +1921,5 @@ cocoa_yield_reopen_to_other_instance(void) {
 #undef NSApplicationActivateIgnoringOtherApps
     }
     return true;
+    COCOA_GUARD_END(false);
 }
