@@ -605,11 +605,10 @@ func (self *manager) finalize_transfer() (err error) {
 			if lt == "" {
 				return fmt.Errorf("Symlink %s sent without target", f.expanded_local_path)
 			}
-			os.Remove(f.expanded_local_path)
 			if err = os.MkdirAll(filepath.Dir(f.expanded_local_path), 0o755); err != nil {
 				return fmt.Errorf("Failed to create directory with error: %w", err)
 			}
-			if err = os.Symlink(lt, f.expanded_local_path); err != nil {
+			if err = utils.AtomicCreateSymlink(lt, f.expanded_local_path); err != nil {
 				return fmt.Errorf(`Failed to create symlink with error: %w`, err)
 			}
 		}

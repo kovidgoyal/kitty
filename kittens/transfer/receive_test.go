@@ -5,11 +5,13 @@ package transfer
 import (
 	"bytes"
 	"compress/zlib"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -200,6 +202,53 @@ func TestReceiveReplacesExistingLinks(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestReceiveSymlinkPreservesExistingFileOnError(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "existing")
+	const original = "keep these contents"
+	if err := os.WriteFile(dest, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := manager{files: []*remote_file{{
+		ftype:                FileType_symlink,
+		expanded_local_path:  dest,
+		remote_symlink_value: strings.Repeat("directory/", 1024),
+	}}}
+	if err := m.finalize_transfer(); err == nil {
+		t.Fatal("Receiving a symlink with an overlong target should fail")
+	}
+	if data, err := os.ReadFile(dest); err != nil || string(data) != original {
+		t.Fatalf("Existing destination was not preserved: %q, %v", data, err)
+	}
+	assert_no_temp_files(t, dir, "existing")
+}
+
+func TestReceiveSymlinkReplacesLongBasename(t *testing.T) {
+	dir := t.TempDir()
+	name := strings.Repeat("a", 255)
+	dest := filepath.Join(dir, name)
+	if err := os.WriteFile(dest, []byte("old contents"), 0o600); err != nil {
+		if errors.Is(err, syscall.ENAMETOOLONG) {
+			t.Skip("Test filesystem does not support 255-byte filenames")
+		}
+		t.Fatal(err)
+	}
+	const target = "relative/target"
+	m := manager{files: []*remote_file{{
+		ftype:                FileType_symlink,
+		expanded_local_path:  dest,
+		remote_symlink_value: target,
+		permissions:          0o777,
+	}}}
+	if err := m.finalize_transfer(); err != nil {
+		t.Fatal(err)
+	}
+	if actual, err := os.Readlink(dest); err != nil || actual != target {
+		t.Fatalf("Incorrect symlink target: %q, %v", actual, err)
+	}
+	assert_no_temp_files(t, dir, name)
 }
 
 func TestReceiveInterruptedLeavesDestinationIntact(t *testing.T) {
