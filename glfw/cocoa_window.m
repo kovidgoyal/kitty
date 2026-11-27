@@ -5080,10 +5080,15 @@ _glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {
 int
 _glfwPlatformDragDataReady(const char *mime_type, const char *data, size_t sz, int type) {
     if (!file_promise_providers) return 0;
-    for (GLFWFilePromiseProviderDelegate *d in file_promise_providers) {
-        if ([d is_mimetype:mime_type]) {
-            if (type == -1) [d request_drag_data];
-            else [d promised_data_ready:data sz:sz type:type];
+    @autoreleasepool {
+        // Iterate over a copy as finishing a transfer removes the delegate from
+        // file_promise_providers. Mutating it during enumeration throws an exception
+        // that unwinds through the VT parser, which is our caller, corrupting its state.
+        for (GLFWFilePromiseProviderDelegate *d in [NSArray arrayWithArray:file_promise_providers]) {
+            if ([d is_mimetype:mime_type]) {
+                if (type == -1) [d request_drag_data];
+                else [d promised_data_ready:data sz:sz type:type];
+            }
         }
     }
     return 0;
