@@ -127,6 +127,9 @@ static bool (*utf8_decode_to_esc_impl)(UTF8Decoder *d, const uint8_t *src, size_
 
 bool
 utf8_decode_to_esc(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
+    // Text between escape codes is often only a few bytes, for example, one char
+    // per SGR code in colored text, too short for the SIMD decoder to pay off
+    if (memchr(src, 0x1b, MIN(src_sz, (size_t)16))) return utf8_decode_to_esc_scalar(d, src, src_sz);
     return utf8_decode_to_esc_impl(d, src, src_sz);
 }
 
