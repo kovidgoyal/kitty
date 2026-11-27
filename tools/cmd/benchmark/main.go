@@ -273,6 +273,46 @@ func unicode() (r result, err error) {
 	return text_benchmark("Unicode text", data, cells, default_settings())
 }
 
+// Sentences in scripts that use many spacing combining marks: vowel signs, two
+// part vowels, anusvara, visarga and the like
+const indic_sentences = "सभी मनुष्यों को गौरव और अधिकारों के मामले में जन्मजात स्वतन्त्रता और समानता प्राप्त है। उन्हें बुद्धि और अन्तरात्मा की देन प्राप्त है और परस्पर उन्हें भाईचारे के भाव से बर्ताव करना चाहिये। " +
+	"সমস্ত মানুষ স্বাধীনভাবে সমান মর্যাদা এবং অধিকার নিয়ে জন্মগ্রহণ করে। তাঁদের বিবেক এবং বুদ্ধি আছে; সুতরাং সকলেরই একে অপরের প্রতি ভ্রাতৃত্বসুলভ মনোভাব নিয়ে আচরণ করা উচিত। কোং কোম্পানি বিশ্ববিদ্যালয়ে " +
+	"மனிதப் பிறவியினர் சகலரும் சுதந்திரமாகவே பிறக்கின்றனர்; அவர்கள் மதிப்பிலும், உரிமைகளிலும் சமமானவர்கள், அவர்கள் நியாயத்தையும் மனச்சாட்சியையும் இயற்பண்பாகப் பெற்றவர்கள். அவர்கள் ஒருவருடனொருவர் சகோதர உணர்வுப் பாங்கில் நடந்துகொள்ளல் வேண்டும். " +
+	"മനുഷ്യരെല്ലാവരും തുല്യാവകാശങ്ങളോടും അന്തസ്സോടും സ്വാതന്ത്ര്യത്തോടുംകൂടി ജനിച്ചിട്ടുള്ളവരാണ്. അന്യോന്യം ഭ്രാതൃഭാവത്തോടെ പെരുമാറുവാനാണ് മനുഷ്യന് വിവേകബുദ്ധിയും മനസ്സാക്ഷിയും സിദ്ധമായിരിക്കുന്നത്. കൊം കാം " +
+	"လူတိုင်းသည် တူညီ လွတ်လပ်သော ဂုဏ်သိက္ခာဖြင့် လည်းကောင်း၊ တူညီလွတ်လပ်သော အခွင့်အရေးများဖြင့် လည်းကောင်း၊ မွေးဖွားလာသူများ ဖြစ်သည်။"
+
+func indic_text() string {
+	// The payload must be the same bytes regardless of the widths the terminal
+	// gives these graphemes, so that runs with different width rules can be
+	// compared, so lines are a random number of words from a fixed seed rather than
+	// filled to a width in cells
+	words := strings.Fields(indic_sentences)
+	r := rand.New(rand.NewPCG(3, 4))
+	var b strings.Builder
+	b.Grow(num_text_lines * 256)
+	for range num_text_lines {
+		n := r.IntN(14)
+		for i := range n {
+			if i > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(words[r.IntN(len(words))])
+		}
+		b.WriteString("\r\n")
+	}
+	return b.String()
+}
+
+func indic() (r result, err error) {
+	// The number of cells depends on the width rules of the terminal, so compare runs by MB/s
+	const desc = "Indic and Myanmar text"
+	duration, data_sz, reps, err := benchmark_data(desc, indic_text(), default_settings())
+	if err != nil {
+		return result{}, err
+	}
+	return result{"", desc, data_sz, duration, reps, 0}, nil
+}
+
 func unique_unicode() (r result, err error) {
 	const cell_count = 256 * 1024
 	const combining_count = 0x70
@@ -461,6 +501,7 @@ func all_benchmarks() []benchmark {
 		{"scrollback", "the ascii text, on the main screen so lines scrolled off the screen go into the scrollback", ascii_with_scrollback},
 		{"render", "the ascii text, with rendering allowed while it is processed", ascii_with_rendering},
 		{"bidi", "the ascii text, with rendering allowed while it is processed, in bidi mode", ascii_with_bidi},
+		{"indic", "lines of words in Indic scripts and Myanmar, which have many spacing combining marks", indic},
 		{"unique_unicode", "cells with many distinct multi-codepoint graphemes", unique_unicode},
 		{"csi", "ASCII text mixed with many CSI escape codes", ascii_with_csi},
 		{"long_escape_codes", "long OSC escape codes", long_escape_codes},

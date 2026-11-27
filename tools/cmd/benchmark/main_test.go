@@ -59,3 +59,18 @@ func TestBenchmarkTextPayloadsAreComparable(t *testing.T) {
 		}
 	}
 }
+
+func TestIndicPayloadIsFixed(t *testing.T) {
+	// Runs of the benchmark with different width rules are compared by MB/s, so
+	// the payload must not change from run to run
+	a := indic_text()
+	if a != indic_text() {
+		t.Fatalf("The indic payload is not the same every time")
+	}
+	if strings.ContainsAny(strings.ReplaceAll(a, "\r\n", ""), "\t\r\n") {
+		t.Fatalf("The indic payload contains unexpected control characters")
+	}
+	if !strings.Contains(a, "কোং") {
+		t.Fatalf("The indic payload is missing a cluster with a two part vowel and an anusvara")
+	}
+}
