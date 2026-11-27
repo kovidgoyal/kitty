@@ -570,12 +570,15 @@ class TestNotifications(BaseTest):
                 # the icon chosen for notifications, with the cache following
                 # changes to the theme
                 portal_theme = 'br-dark'
-                with tempfile.TemporaryDirectory() as cdir, patch.multiple(
-                    fdt,
-                    create=True,
-                    dbus_set_notification_callback=lambda *a: None,
-                    dbus_send_notification=send_notification,
-                    dbus_close_notification=lambda *a: True,
+                with (
+                    tempfile.TemporaryDirectory() as cdir,
+                    patch.multiple(
+                        fdt,
+                        create=True,
+                        dbus_set_notification_callback=lambda *a: None,
+                        dbus_send_notification=send_notification,
+                        dbus_close_notification=lambda *a: True,
+                    ),
                 ):
                     di = FreeDesktopIntegration(None)
                     nm = NotificationManager(di, Channel(), lambda *a, **kw: None, base_cache_dir=cdir)
