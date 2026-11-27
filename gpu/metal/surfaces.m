@@ -95,9 +95,13 @@ surface_create(void *driver, const GPUNativeWindow *native, const GPUSurfaceConf
         [s->layer setOpaque:config->transparent ? NO : YES];
         [s->layer setMaximumDrawableCount:3];
         [s->layer setAllowsNextDrawableTimeout:YES];
-        // kitty paces rendering itself, using CADisplayLink, as with OpenGL,
-        // where the swap interval is zero, see surface_set_swap_interval()
-        [s->layer setDisplaySyncEnabled:NO];
+        // kitty paces rendering using CADisplayLink, but that controls only
+        // when frames are rendered, not when they are presented. Without
+        // display sync drawables are presented as soon as the GPU finishes
+        // with them, which can be in the middle of a scanout, causing
+        // tearing. See surface_set_swap_interval()
+        s->swap_interval = config->swap_interval;
+        [s->layer setDisplaySyncEnabled:s->swap_interval > 0 ? YES : NO];
         configure_layer(s);
         // Make the view layer hosting, the layer must be set before wantsLayer
         [s->view setLayer:s->layer];

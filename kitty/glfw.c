@@ -40,12 +40,8 @@ default_swap_interval(void) {
 // Must be called with the surface current
 static void
 apply_swap_interval(gpu_surface_t surface, int val) {
-    (void)val;
-    (void)surface;
-#ifndef __APPLE__
     if (val < 0) val = default_swap_interval();
     gpu_surface_set_swap_interval(surface, val);
-#endif
 }
 
 // GPU surfaces {{{
@@ -456,15 +452,11 @@ cocoa_os_window_resized(GLFWwindow *w) {
 // Apply a changed value of the render_interval option to an existing OS Window
 void
 apply_render_interval_to_os_window(OSWindow *w) {
-#ifdef __APPLE__
-    (void)w;
-#else
     // The swap interval is zero during a live resize, it is restored when the resize ends
     if (!w->handle || !w->gpu_surface || w->live_resize.in_progress) return;
     gpu_surface_t orig_surface = make_os_window_context_current(w);
     apply_swap_interval(w->gpu_surface, -1);
     if (orig_surface) gpu_make_surface_current(orig_surface);
-#endif
     w->needs_render = true;
 }
 
@@ -473,14 +465,14 @@ change_live_resize_state(OSWindow *w, bool in_progress) {
     if (in_progress != w->live_resize.in_progress) {
         w->live_resize.in_progress = in_progress;
         w->live_resize.num_of_resize_events = 0;
-#ifdef __APPLE__
-        cocoa_out_of_sequence_render(w);
-#else
+        // During a live resize the window contents must be presented
+        // immediately, without waiting for the next vertical blank
         gpu_surface_t orig_surface = make_os_window_context_current(w);
         apply_swap_interval(w->gpu_surface, in_progress ? 0 : -1);
-        if (orig_surface) gpu_make_surface_current(orig_surface);
-
+#ifdef __APPLE__
+        cocoa_out_of_sequence_render(w);
 #endif
+        if (orig_surface) gpu_make_surface_current(orig_surface);
     }
 }
 
