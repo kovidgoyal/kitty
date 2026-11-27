@@ -21,8 +21,8 @@ var _ = fmt.Print
 // MIME associations, see
 // https://specifications.freedesktop.org/basedir-spec/latest/
 type XDGDirs struct {
-	DataHome, ConfigHome string
-	DataDirs, ConfigDirs []string
+	DataHome, ConfigHome, Home string
+	DataDirs, ConfigDirs       []string
 	// The components of XDG_CURRENT_DESKTOP
 	CurrentDesktops []string
 	// The localized key suffixes to use in order of preference
@@ -51,6 +51,7 @@ func abs_or_default(val, defval string) string {
 
 func XDGDirsFromEnvironment() *XDGDirs {
 	return &XDGDirs{
+		Home:            utils.Expanduser("~"),
 		DataHome:        abs_or_default(os.Getenv("XDG_DATA_HOME"), "~/.local/share"),
 		ConfigHome:      abs_or_default(os.Getenv("XDG_CONFIG_HOME"), "~/.config"),
 		DataDirs:        split_dirs(os.Getenv("XDG_DATA_DIRS"), "/usr/local/share:/usr/share"),
