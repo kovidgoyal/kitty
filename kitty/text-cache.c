@@ -346,7 +346,7 @@ tc_gc_begin(TextCache *self) {
     // Avoid rehashing repeatedly as the live entries are re-inserted, the live
     // set of the previous collection is the best estimate of their number.
     // Failing to do so is harmless, the map grows as needed.
-    if (self->adds_between_gcs) (void)vt_reserve(&self->map, self->adds_between_gcs);
+    if (self->adds_between_gcs) (void)vt_reserve(&self->map, self->adds_between_gcs + MAX(TEXT_CACHE_ADDS_BETWEEN_GCS, self->adds_between_gcs));
     return gc;
 }
 
