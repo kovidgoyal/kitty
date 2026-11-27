@@ -192,9 +192,15 @@ func TestLaunchDetached(t *testing.T) {
 	if err := launch_detached([]string{filepath.Join(tdir, "nonexistent-program")}, tdir, nil); err == nil {
 		t.Fatalf("Launching a non-existent program did not fail")
 	}
+	// On macOS the temp dir is under /var which is a symlink to /private/var
+	// and $PWD in the child is the resolved path
+	rtdir, err := filepath.EvalSymlinks(tdir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for range 500 {
 		if data, err := os.ReadFile(out); err == nil {
-			if strings.TrimSpace(string(data)) != tdir+" val" {
+			if q := strings.TrimSpace(string(data)); q != tdir+" val" && q != rtdir+" val" {
 				t.Fatalf("Program not run in the correct directory or environment: %s", data)
 			}
 			return
