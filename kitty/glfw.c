@@ -3166,6 +3166,14 @@ glfw_get_system_color_theme(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject *
+glfw_get_icon_theme_name(PyObject UNUSED *self, PyObject *args UNUSED) {
+    // Returns an empty string if GLFW is not loaded or the desktop settings do
+    // not specify an icon theme.
+    const char *name = glfwGetIconThemeName ? glfwGetIconThemeName() : NULL;
+    return PyUnicode_FromString(name ? name : "");
+}
+
+static PyObject *
 glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
     int key, native_key;
     if (!PyArg_ParseTuple(args, "ii", &key, &native_key)) return NULL;
@@ -4429,6 +4437,7 @@ static PyMethodDef module_methods[] = {
     METHODB(wayland_compositor_data, METH_NOARGS),
     METHODB(get_click_interval, METH_NOARGS),
     METHODB(glfw_get_keyboard_repeat_interval, METH_NOARGS),
+    METHODB(glfw_get_icon_theme_name, METH_NOARGS),
     METHODB(is_layer_shell_supported, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(strip_csi, METH_O),

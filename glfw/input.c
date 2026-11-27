@@ -1632,3 +1632,12 @@ glfwGetTitlebarFont(void) {
     return (GLFWTitlebarFont){.point_size = 11, .text_scale = 1, .bold = true};
 #endif
 }
+
+GLFWAPI const char *
+glfwGetIconThemeName(void) {
+#if defined(_GLFW_WAYLAND) || defined(_GLFW_X11)
+    return glfw_current_icon_theme();
+#else
+    return "";
+#endif
+}

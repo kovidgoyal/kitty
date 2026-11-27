@@ -486,3 +486,95 @@ class TestNotifications(BaseTest):
             finally:
                 xdg_data_home.clear_override()
                 xdg_data_dirs.clear_override()
+
+    def test_icon_theme(self):
+        import kitty.fast_data_types as fdt
+        from kitty.xdg import XDGIconCache, icon_dirs, icon_theme_name, xdg_config_home
+
+        portal_theme = ''
+        app_icons: list[object] = []
+
+        def send_notification(**kw: object) -> int:
+            app_icons.append(kw['app_icon'])
+            return len(app_icons)
+
+        with (
+            tempfile.TemporaryDirectory() as tdir,
+            patch.dict(os.environ, {'XDG_CURRENT_DESKTOP': 'sway'}),
+            patch.multiple(fdt, create=True, glfw_get_icon_theme_name=lambda: portal_theme),
+        ):
+            home, sysdir, cfg = (os.path.join(tdir, x) for x in ('home', 'sys', 'cfg'))
+
+            def w(path: str, text: str = '') -> None:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, 'w') as f:
+                    f.write(text)
+
+            # A cursor only default theme in home hides the system default
+            # theme index.theme, which is what kitty used to stop at
+            w(os.path.join(home, 'default', 'index.theme'), '[Icon Theme]\nName=Some cursors\n')
+            w(os.path.join(sysdir, 'default', 'index.theme'), '[Icon Theme]\nInherits=adw\n')
+            w(os.path.join(sysdir, 'adw', 'index.theme'), '[Icon Theme]\nName=adw\n')
+            w(os.path.join(sysdir, 'adw', '16', 'adw-icon.svg'))
+            w(os.path.join(sysdir, 'br-dark', 'index.theme'), '[Icon Theme]\nInherits = br , hicolor\n')
+            w(os.path.join(sysdir, 'br', 'index.theme'), '[Icon Theme]\nInherits=hicolor\n')
+            w(os.path.join(sysdir, 'br', 'actions', '22', 'Tools-Wizard.svg'))
+            w(os.path.join(sysdir, 'hicolor', '48x48', 'apps', 'hi-icon.png'))
+            w(os.path.join(sysdir, 'unrelated', '16', 'unrelated-icon.png'))
+
+            icon_dirs.set_override([home, sysdir])
+            xdg_config_home.set_override(cfg)
+            try:
+                c = XDGIconCache()
+                # theme inheritance
+                self.ae(c.themes_to_search('br-dark'), ['br-dark', 'br', 'hicolor'])
+                self.ae(c.themes_to_search('default'), ['default', 'adw', 'hicolor'])
+                for theme, present, absent in (
+                    ('br-dark', ('tools-wizard', 'Tools-Wizard', 'hi-icon'), ('adw-icon', 'unrelated-icon')),
+                    ('', ('adw-icon', 'hi-icon'), ('tools-wizard', 'unrelated-icon')),
+                ):
+                    for name in present:
+                        self.assertTrue(c.icon_exists(name, theme), f'{name} not found in theme: {theme!r}')
+                    for name in absent:
+                        self.assertFalse(c.icon_exists(name, theme), f'{name} unexpectedly found in theme: {theme!r}')
+
+                # theme name from config files
+                self.ae(icon_theme_name(), '')
+                w(os.path.join(cfg, 'kdeglobals'), '[General]\nTheme=wrong\n[Icons]\nTheme[$e]=kde-theme\n')
+                self.ae(icon_theme_name(), 'kde-theme')
+                w(os.path.join(cfg, 'gtk-3.0', 'settings.ini'), '[Settings]\ngtk-icon-theme-name = "gtk3-theme"\n')
+                self.ae(icon_theme_name(), 'gtk3-theme')
+                w(os.path.join(cfg, 'gtk-4.0', 'settings.ini'), '[Settings]\ngtk-icon-theme-name=gtk4-theme\n')
+                self.ae(icon_theme_name(), 'gtk4-theme')
+                with patch.dict(os.environ, {'XDG_CURRENT_DESKTOP': 'KDE'}):
+                    self.ae(icon_theme_name(), 'kde-theme')
+                portal_theme = 'portal-theme'
+                self.ae(icon_theme_name(), 'portal-theme')
+
+                # the icon chosen for notifications, with the cache following
+                # changes to the theme
+                portal_theme = 'br-dark'
+                with tempfile.TemporaryDirectory() as cdir, patch.multiple(
+                    fdt,
+                    create=True,
+                    dbus_set_notification_callback=lambda *a: None,
+                    dbus_send_notification=send_notification,
+                    dbus_close_notification=lambda *a: True,
+                ):
+                    di = FreeDesktopIntegration(None)
+                    nm = NotificationManager(di, Channel(), lambda *a, **kw: None, base_cache_dir=cdir)
+                    di.notification_manager = nm
+
+                    def notify(*names: str) -> object:
+                        m = ':'.join(f'n={standard_b64encode(x.encode()).decode()}' for x in names)
+                        nm.handle_notification_cmd(1, 99, f'i=n{len(app_icons)}:{m};title')
+                        return app_icons[-1]
+
+                    self.ae(notify('app-id', 'tools-wizard', 'missing'), 'tools-wizard')
+                    self.ae(notify('app-id', 'warning', 'tools-wizard'), 'dialog-warning')
+                    self.ae(notify('app-id', 'other-missing'), 'other-missing')
+                    portal_theme = ''  # falls back to gtk4-theme which does not exist, so default
+                    self.ae(notify('tools-wizard', 'adw-icon'), 'adw-icon')
+            finally:
+                icon_dirs.clear_override()
+                xdg_config_home.clear_override()

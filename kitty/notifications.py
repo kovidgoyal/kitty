@@ -820,19 +820,24 @@ class FreeDesktopIntegration(DesktopIntegration):
 
     def notify(self, nc: NotificationCommand, existing_desktop_notification_id: int | None) -> int:
         from .fast_data_types import dbus_send_notification
-        from .xdg import icon_exists, icon_for_appname, kitty_desktop_entry
+        from .xdg import icon_exists, icon_for_appname, icon_theme_name, kitty_desktop_entry
 
         app_icon = ''
         if nc.icon_names:
+            theme = icon_theme_name()
             for name in nc.icon_names:
                 if sn := standard_icon_names.get(name):
                     app_icon = sn[0]
                     break
-                if icon_exists(name):
+                if icon_exists(name, theme):
                     app_icon = name
                     break
             if not app_icon:
-                app_icon = nc.icon_path or nc.icon_names[0]
+                # None of the names were found locally, let the notification
+                # server try to resolve one. Earlier names are typically more
+                # specific, such as application identifiers for other
+                # platforms, so the last name is the most likely to exist.
+                app_icon = nc.icon_path or nc.icon_names[-1]
         else:
             app_icon = nc.icon_path or icon_for_appname(nc.application_name)
         if not app_icon:
@@ -869,7 +874,7 @@ class FreeDesktopIntegration(DesktopIntegration):
             desktop_entry=kitty_desktop_entry() if nc.application_name in ('', 'kitty') else '',
         )
         if debug_desktop_integration:
-            log_error(f'Requested creation of notification with {desktop_notification_id=}')
+            log_error(f'Requested creation of notification with {desktop_notification_id=} {app_icon=}')
         if existing_desktop_notification_id and replaces_dbus_id:
             self.dbus_to_desktop.pop(replaces_dbus_id, None)
             self.desktop_to_dbus.pop(existing_desktop_notification_id, None)

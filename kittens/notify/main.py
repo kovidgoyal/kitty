@@ -13,6 +13,8 @@ type=list
 The name of the icon to use for the notification. An icon with this name
 will be searched for on the computer running the terminal emulator. Can
 be specified multiple times, the first name that is found will be used.
+On Linux, if none of the names are found and there is no icon path, the last
+name is passed to the notification server for it to resolve.
 Standard names: {', '.join(sorted(standard_icon_names))}
 
 

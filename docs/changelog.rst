@@ -285,6 +285,11 @@ Detailed list of changes
 - Fix screenshots and thumbnails no longer working after two were requested
   at the same time
 
+- Linux: Desktop notifications: Look up icon names in the icon theme
+  configured in the desktop settings instead of only the default theme, so
+  that icons from themes such as Breeze are found. When none of the names are
+  found, pass the last one to the notification server instead of the first
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

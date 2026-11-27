@@ -3991,6 +3991,10 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialize
  * configured in the desktop settings. */
 GLFWAPI GLFWTitlebarFont glfwGetTitlebarFont(void);
 
+/*! @brief Returns the name of the icon theme configured in the desktop
+ * settings, or an empty string if it is not known. */
+GLFWAPI const char *glfwGetIconThemeName(void);
+
 /*! @brief Sets the refresh callback for the specified window.
  *
  *  This function sets the refresh callback of the specified window, which is

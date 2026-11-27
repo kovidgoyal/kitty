@@ -13,6 +13,7 @@
 void glfw_initialize_desktop_settings(void);
 void glfw_wait_for_desktop_settings(monotonic_t timeout);
 void glfw_current_cursor_theme(const char **theme, int *size);
+const char *glfw_current_icon_theme(void);
 GLFWColorScheme glfw_current_system_color_theme(bool);
 
 typedef enum { TITLEBAR_BUTTON_NONE, TITLEBAR_BUTTON_CLOSE, TITLEBAR_BUTTON_MAXIMIZE, TITLEBAR_BUTTON_MINIMIZE, TITLEBAR_BUTTON_COUNT } GLFWTitlebarButton;

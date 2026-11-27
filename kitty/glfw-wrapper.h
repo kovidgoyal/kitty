@@ -2137,6 +2137,10 @@ typedef GLFWTitlebarFont (*glfwGetTitlebarFont_func)(void);
 GFW_EXTERN glfwGetTitlebarFont_func glfwGetTitlebarFont_impl;
 #define glfwGetTitlebarFont glfwGetTitlebarFont_impl
 
+typedef const char* (*glfwGetIconThemeName_func)(void);
+GFW_EXTERN glfwGetIconThemeName_func glfwGetIconThemeName_impl;
+#define glfwGetIconThemeName glfwGetIconThemeName_impl
+
 typedef GLFWwindowrefreshfun (*glfwSetWindowRefreshCallback_func)(GLFWwindow*, GLFWwindowrefreshfun);
 GFW_EXTERN glfwSetWindowRefreshCallback_func glfwSetWindowRefreshCallback_impl;
 #define glfwSetWindowRefreshCallback glfwSetWindowRefreshCallback_impl

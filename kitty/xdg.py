@@ -33,40 +33,78 @@ def icon_dirs() -> list[str]:
     return ans
 
 
+@run_once
+def xdg_config_home() -> str:
+    return os.environ.get('XDG_CONFIG_HOME') or os.path.expanduser('~/.config')
+
+
+def read_ini_value(path: str, section: str, key: str) -> str:
+    # Minimal reader for the INI style files used by GTK and KDE. KDE keys
+    # can have flags such as Theme[$e] which are ignored.
+    header = f'[{section}]'
+    in_section = False
+    with suppress(OSError), open(path, errors='replace') as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('['):
+                in_section = line == header
+            elif in_section:
+                k, sep, v = line.partition('=')
+                if sep and k.partition('[')[0].strip() == key:
+                    return v.strip().strip('"\'')
+    return ''
+
+
+def icon_theme_from_config_files() -> str:
+    cfg = xdg_config_home()
+    kde = (os.path.join(cfg, 'kdeglobals'), 'Icons', 'Theme')
+    gtk = [(os.path.join(cfg, f'gtk-{v}', 'settings.ini'), 'Settings', 'gtk-icon-theme-name') for v in ('4.0', '3.0')]
+    is_kde = 'KDE' in os.environ.get('XDG_CURRENT_DESKTOP', '').upper().split(':')
+    for path, section, key in ([kde] + gtk) if is_kde else (gtk + [kde]):
+        if ans := read_ini_value(path, section, key):
+            return ans
+    return ''
+
+
+def icon_theme_name() -> str:
+    # The icon theme from the desktop settings portal, falling back to the
+    # KDE and GTK config files. Empty if no theme is configured.
+    from .fast_data_types import glfw_get_icon_theme_name
+
+    return glfw_get_icon_theme_name() or icon_theme_from_config_files()
+
+
 class XDGIconCache:
     def __init__(self) -> None:
         self.existing_icon_names: set[str] = set()
-        self.scanned = False
+        self.scanned_theme: str | None = None
 
-    def find_inherited_themes(self, basedir: str, seen_indexes: set[str], themes_to_search: set[str]) -> bool:
-        if basedir not in seen_indexes:
-            seen_indexes.add(basedir)
-            with suppress(OSError), open(os.path.join(basedir, 'index.theme')) as f:
-                raw = f.read()
-                if m := re.search(r'^Inherits\s*=\s*(.+?)$', raw, re.MULTILINE):
-                    for x in m.group(1).split(','):
-                        themes_to_search.add(x.strip())
-                return True
-        return False
-
-    def scan(self) -> None:
-        themes_to_search: set[str] = set()
-        self.scanned = True
-        seen_indexes: set[str] = set()
-        for icdir in icon_dirs():
-            if self.find_inherited_themes(os.path.join(icdir, 'default'), seen_indexes, themes_to_search):
-                break
-        themes_to_search.add('hicolor')
-        while True:
-            before = len(themes_to_search)
+    def themes_to_search(self, theme: str) -> list[str]:
+        # theme and all the themes it inherits from. The inherits of all
+        # index.theme files for a theme are used, so that a theme that has
+        # no Inherits in one base dir, such as a cursor only default theme
+        # in the users home, does not hide the ones in the other base dirs.
+        ans: list[str] = []
+        queue = [theme]
+        while queue:
+            t = queue.pop(0)
+            if t in ans:
+                continue
+            ans.append(t)
             for icdir in icon_dirs():
-                for theme in tuple(themes_to_search):
-                    self.find_inherited_themes(os.path.join(icdir, theme), seen_indexes, themes_to_search)
-            if len(themes_to_search) == before:
-                break
-        for icdir in icon_dirs():
-            for theme in themes_to_search:
-                self.scan_theme_dir(os.path.join(icdir, theme))
+                with suppress(OSError), open(os.path.join(icdir, t, 'index.theme'), errors='replace') as f:
+                    if m := re.search(r'^Inherits\s*=\s*(.+?)\s*$', f.read(), re.MULTILINE):
+                        queue.extend(x for x in (x.strip() for x in m.group(1).split(',')) if x)
+        if 'hicolor' not in ans:
+            ans.append('hicolor')
+        return ans
+
+    def scan(self, theme: str) -> None:
+        self.scanned_theme = theme
+        self.existing_icon_names = set()
+        for t in self.themes_to_search(theme or 'default'):
+            for icdir in icon_dirs():
+                self.scan_theme_dir(os.path.join(icdir, t))
         self.scan_theme_dir('/usr/share/pixmaps')
 
     def scan_theme_dir(self, base: str) -> None:
@@ -77,9 +115,11 @@ class XDGIconCache:
                     if sep == '.' and ext in ('svg', 'png', 'xpm'):
                         self.existing_icon_names.add(icon_name)
 
-    def icon_exists(self, name: str) -> bool:
-        if not self.scanned:
-            self.scan()
+    def icon_exists(self, name: str, theme: str | None = None) -> bool:
+        if theme is None:
+            theme = icon_theme_name()
+        if theme != self.scanned_theme:
+            self.scan(theme)
         return name.lower() in self.existing_icon_names
 
 

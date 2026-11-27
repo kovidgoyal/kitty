@@ -22,6 +22,7 @@ static const char *supported_namespaces[3] = {FDO_DESKTOP_NAMESPACE, GNOME_DESKT
 
 
 static char theme_name[128] = {0};
+static char icon_theme_name[256] = {0};
 static char interface_font[256];
 
 static char titlebar_font[256];
@@ -437,6 +438,8 @@ process_gnome_setting(const char *key, DBusMessageIter *value) {
                 cursor_theme_changed = true;
             }
         }
+    } else if (strcmp(key, "icon-theme") == 0) {
+        read_string_setting(value, icon_theme_name, sizeof(icon_theme_name));
     } else if (strcmp(key, "font-name") == 0) {
         if (read_string_setting(value, interface_font, sizeof(interface_font))) titlebar_settings_dirty = true;
     } else if (strcmp(key, "text-scaling-factor") == 0 && dbus_message_iter_get_arg_type(value) == DBUS_TYPE_DOUBLE) {
@@ -550,6 +553,11 @@ void
 glfw_current_cursor_theme(const char **theme, int *size) {
     *theme = theme_name[0] ? theme_name : NULL;
     *size = (theme_size > 0 && theme_size < 2048) ? theme_size : 32;
+}
+
+const char *
+glfw_current_icon_theme(void) {
+    return icon_theme_name;
 }
 
 static void
