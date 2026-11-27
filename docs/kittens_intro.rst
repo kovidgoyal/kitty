@@ -16,6 +16,7 @@ Extend with kittens
    kittens/command-palette
    kittens/quick-access-terminal
    kittens/choose-files
+   kittens/choose-app
    kittens/dnd
    kittens/panel
    kittens/remote_file
@@ -73,6 +74,11 @@ Some prominent kittens:
 
 :doc:`Choose files <kittens/choose-files>`
     Preview and select files at the speed of thought
+
+
+:doc:`Choose applications <kittens/choose-app>`
+    Choose the application to open files and URLs with, with a keyboard first
+    interface, and use it as a replacement for :program:`xdg-open`
 
 
 :doc:`Drag and drop from the shell <kittens/dnd>`

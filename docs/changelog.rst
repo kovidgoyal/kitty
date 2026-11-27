@@ -125,6 +125,12 @@ Detailed list of changes
 1.0.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new :doc:`choose-app kitten </kittens/choose-app>` to choose the
+  application used to open files and URLs, from a grid of application icons,
+  using a keyboard first interface. It finds applications the same way KDE and
+  GNOME do, remembers choices and can be used as a replacement for
+  :program:`xdg-open`
+
 - New rendering engine with pluggable GPU drivers: kitty now renders with
   **Metal** on macOS and **Vulkan** on Linux and BSD, falling back to OpenGL.
   On systems with no usable GPU, such as virtual machines, it falls back to

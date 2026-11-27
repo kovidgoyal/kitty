@@ -83,7 +83,7 @@ opt(
     option_type='to_bool',
     long_text="""
 Whether the application chosen for a type of file is remembered and used to open that type of file in future
-without asking. Can be toggled in the chooser with :sc:`toggle_remember <kitten-choose_app.toggle_remember>`.
+without asking. Can be toggled in the chooser with :sc:`kitten-choose_app.toggle_remember`.
 """,
 )
 opt(
