@@ -152,7 +152,12 @@ func TestDesktopEntryExec(t *testing.T) {
 		t.Fatalf("Exec line with no program did not fail")
 	}
 
-	tdir := t.TempDir()
+	// resolve symlinks as on macOS the temp dir is under /var which is a
+	// symlink to /private/var and os.Getwd() returns the resolved path
+	tdir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	odd := filepath.Join(tdir, "a:b.txt")
 	if err := os.WriteFile(odd, nil, 0o644); err != nil {
 		t.Fatal(err)
