@@ -18,6 +18,7 @@ import (
 var _ = fmt.Print
 
 const desktop_choice_prefix = "desktop:"
+const terminal_choice_prefix = "terminal:"
 
 // Choice is the application chosen to open a file or URL, either an
 // installed application or a custom command line
@@ -25,12 +26,14 @@ type Choice struct {
 	DesktopID string `json:"desktop_id,omitempty"`
 	// A command line using the same field codes as the Exec key of desktop files
 	Cmdline []string `json:"cmdline,omitempty"`
+	// Whether the command line must be run in a terminal
+	Terminal bool `json:"terminal,omitempty"`
 }
 
 func (c Choice) IsEmpty() bool { return c.DesktopID == "" && len(c.Cmdline) == 0 }
 
 func (c Choice) Equal(o Choice) bool {
-	return c.DesktopID == o.DesktopID && slices.Equal(c.Cmdline, o.Cmdline)
+	return c.DesktopID == o.DesktopID && c.Terminal == o.Terminal && slices.Equal(c.Cmdline, o.Cmdline)
 }
 
 func join_cmdline(cmd []string) string {
@@ -45,7 +48,7 @@ func (c Choice) String() string {
 	if c.DesktopID != "" {
 		return desktop_choice_prefix + c.DesktopID
 	}
-	return join_cmdline(c.Cmdline)
+	return utils.IfElse(c.Terminal, terminal_choice_prefix, "") + join_cmdline(c.Cmdline)
 }
 
 func ChoiceForDesktopID(id string) Choice {
@@ -73,7 +76,7 @@ func (c Choice) Entry(db *AppDatabase) (*DesktopEntry, error) {
 		toks[i] = exec_token{text: x}
 	}
 	cmd := join_cmdline(c.Cmdline)
-	return &DesktopEntry{ID: cmd, Name: cmd, Exec: cmd, exec_tokens: toks, entry_type: true}, nil
+	return &DesktopEntry{ID: cmd, Name: cmd, Exec: cmd, exec_tokens: toks, entry_type: true, Terminal: c.Terminal}, nil
 }
 
 type criterion_type int
@@ -146,8 +149,32 @@ func ParseOpenWith(spec string) (ans OpenWithRule, err error) {
 		}
 		ans.Choice = ChoiceForDesktopID(id)
 	} else {
-		ans.Choice = Choice{Cmdline: parts[1:]}
+		ans.Choice, err = parse_cmdline_choice(parts[1:])
+		if err != nil {
+			return ans, fmt.Errorf("invalid open_with %#v: %w", spec, err)
+		}
 	}
+	return
+}
+
+// parse_cmdline_choice creates a choice from a command line, which is run in
+// a terminal if it starts with terminal:
+func parse_cmdline_choice(parts []string) (ans Choice, err error) {
+	if len(parts) > 0 {
+		if rest, found := strings.CutPrefix(parts[0], terminal_choice_prefix); found {
+			ans.Terminal = true
+			parts = slices.Clone(parts)
+			if rest == "" {
+				parts = parts[1:]
+			} else {
+				parts[0] = rest
+			}
+		}
+	}
+	if len(parts) == 0 || parts[0] == "" {
+		return ans, fmt.Errorf("no program specified")
+	}
+	ans.Cmdline = parts
 	return
 }
 
@@ -221,6 +248,7 @@ func LoadSettings(config_paths, overrides []string) (ans *Settings, err error) {
 	if err = p.LoadConfig("choose-app.conf", config_paths, overrides); err != nil {
 		return nil, err
 	}
+	cfg.KeyboardShortcuts = config.ResolveShortcuts(cfg.KeyboardShortcuts)
 	return settings_from_config(cfg)
 }
 

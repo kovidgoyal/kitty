@@ -56,12 +56,13 @@ The program and its arguments use the same syntax as the :code:`Exec` key in
 :file:`.desktop` files, with :code:`%f` replaced by the path to a single file, :code:`%F` by
 the paths to one or more files, :code:`%u` by a single URL and :code:`%U` by one or more URLs.
 If none of these are present, the path to the file is added to the end. Programs that accept
-only a single file are run once for every file. Alternately, use :code:`desktop:application-id` to open
+only a single file are run once for every file. Prefix the program with :code:`terminal:` to run it in a
+terminal, useful for terminal programs such as editors. Alternately, use :code:`desktop:application-id` to open
 with an installed application, for example: :code:`desktop:org.kde.okular`. Examples::
 
     open_with mime:image/* imv %F
     open_with ext:pdf,epub zathura %f
-    open_with glob:~/notes/** kitty --hold nvim %F
+    open_with glob:~/notes/** terminal:nvim %F
     open_with scheme:https,http desktop:firefox
 """,
 )
@@ -76,6 +77,15 @@ when no :opt:`open_with <kitten-choose_app.open_with>` rule matches and no
 application has been remembered for the type of file.
 """,
 )
+opt(
+    'remember_choice',
+    'no',
+    option_type='to_bool',
+    long_text="""
+Whether the application chosen for a type of file is remembered and used to open that type of file in future
+without asking. Can be toggled in the chooser with :sc:`toggle_remember <kitten-choose_app.toggle_remember>`.
+""",
+)
 egr()  # }}}
 
 agr('appearance', 'Appearance')  # {{{
@@ -88,6 +98,38 @@ The dark or light variant of the theme is used automatically, based on the backg
 if it is installed, for example, :code:`breeze-dark` instead of :code:`breeze`.
 """,
 )
+egr()  # }}}
+
+agr('shortcuts', 'Keyboard shortcuts')  # {{{
+map('Quit', 'quit esc quit')
+map('Quit', 'quit ctrl+c quit')
+
+map('Open with the current application', 'accept enter accept')
+map(
+    'Type a command',
+    'use_command ctrl+enter use_command',
+    long_text="""
+Type a command line to open with, instead of using an installed application. Any text typed into the search
+box is used as the start of the command. The command uses the same syntax as the
+:opt:`open_with <kitten-choose_app.open_with>` setting, and can be run in a terminal. When typing the
+command, this shortcut accepts it, the same as :kbd:`Enter`.
+""",
+)
+map('Toggle remembering the choice', 'toggle_remember --allow-fallback=shifted,ascii alt+r toggle remember')
+map(
+    'Toggle running in a terminal',
+    'toggle_terminal --allow-fallback=shifted,ascii alt+t toggle terminal',
+    long_text='When typing a command, toggle whether the command is run in a terminal.',
+)
+
+map('Next application', 'next_app right next 1')
+map('Previous application', 'prev_app left next -1')
+map('Application below', 'down_app down next down')
+map('Application above', 'up_app up next up')
+map('Page down', 'page_down page_down next page_down')
+map('Page up', 'page_up page_up next page_up')
+map('First application', 'first_app home next first')
+map('Last application', 'last_app end next last')
 egr()  # }}}
 
 OPTIONS = r"""
@@ -108,6 +150,25 @@ Forget the remembered applications for the types of the specified files or URLs.
 type=bool-set
 Clear the caches used by this kitten, this includes the remembered applications
 and the rendered icons.
+
+
+--write-output-to
+Path to a file to which the output is written in addition to STDOUT.
+
+
+--output-format
+choices=text,json
+default=text
+The format in which to write the output. The :code:`text` format is :code:`desktop:` followed
+by the id of the chosen application, or the chosen command line. The :code:`json` format
+is an object with the key :code:`choice` containing either :code:`desktop_id` or :code:`cmdline`
+and the key :code:`remember` indicating if the user chose to remember the choice.
+If the user cancels the :code:`json` output contains the key :code:`interrupted` and
+if an error occurs the key :code:`error`.
+
+
+--title
+Window title to use for the chooser.
 
 
 --override -o

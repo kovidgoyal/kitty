@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
@@ -105,7 +107,95 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		}
 		return 0, nil
 	}
-	return 1, fmt.Errorf("the interactive chooser is not implemented yet, use --list")
+	result, err := run_chooser(opts, resolver, targets)
+	if err != nil {
+		write_output(opts, nil, err)
+		return 1, err
+	}
+	write_output(opts, result, nil)
+	if result == nil {
+		return 1, nil
+	}
+	// Record the choice even if not remembered, to rank it higher in future
+	for _, m := range mime_types_of(targets) {
+		if rerr := store.RecordChoice(m, result.Choice, result.Remember); rerr != nil {
+			fmt.Fprintln(os.Stderr, "Warning: could not save the chosen application:", rerr)
+		}
+	}
+	return 0, nil
+}
+
+// write_output writes the result, which is nil if the user cancelled
+func write_output(opts *Options, result *Result, err error) {
+	var text string
+	if opts.OutputFormat == "json" {
+		payload := map[string]any{}
+		switch {
+		case err != nil:
+			payload["error"] = err.Error()
+		case result == nil:
+			payload["interrupted"] = true
+		default:
+			payload["choice"] = result.Choice
+			payload["remember"] = result.Remember
+		}
+		b, merr := json.MarshalIndent(payload, "", "  ")
+		if merr != nil {
+			fmt.Fprintln(os.Stderr, "Failed to serialize output:", merr)
+			return
+		}
+		text = string(b) + "\n"
+	} else if err == nil && result != nil {
+		text = result.Choice.String() + "\n"
+	}
+	if text != "" && err == nil {
+		os.Stdout.WriteString(text)
+	}
+	if opts.WriteOutputTo != "" {
+		if werr := utils.AtomicWriteFile(opts.WriteOutputTo, strings.NewReader(text), 0o600); werr != nil {
+			fmt.Fprintln(os.Stderr, "Failed to write output to", opts.WriteOutputTo, "with error:", werr)
+		}
+	}
+}
+
+func run_chooser(opts *Options, resolver *Resolver, targets []Target) (result *Result, err error) {
+	lp, err := loop.New()
+	if err != nil {
+		return nil, err
+	}
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
+	lp.ColorSchemeChangeNotifications()
+	h := NewHandler(lp, resolver.Settings, resolver.DB, resolver.Store, targets)
+	defer func() {
+		h.icon_display.Cleanup()
+		h.cmd_rl.Shutdown() // saves the command history
+		for _, w := range h.warnings {
+			fmt.Fprintln(os.Stderr, "Warning:", w)
+		}
+	}()
+	lp.OnInitialize = func() (string, error) {
+		lp.SetWindowTitle(utils.IfElse(opts.Title != "", opts.Title, "Choose an application"))
+		return h.OnInitialize()
+	}
+	lp.OnFinalize = h.OnFinalize
+	lp.OnResize = h.OnResize
+	lp.OnKeyEvent = h.OnKeyEvent
+	lp.OnText = h.OnText
+	lp.OnMouseEvent = h.OnMouseEvent
+	lp.OnEscapeCode = h.on_escape_code
+	lp.OnWakeup = h.OnWakeup
+	lp.OnColorSchemeChange = h.on_color_scheme_change
+	if err = lp.Run(); err != nil {
+		return nil, err
+	}
+	if ds := lp.DeathSignalName(); ds != "" {
+		lp.KillIfSignalled()
+		return nil, nil
+	}
+	if lp.ExitCode() != 0 {
+		return nil, nil
+	}
+	return h.result, nil
 }
 
 func EntryPoint(parent *cli.Command) {
