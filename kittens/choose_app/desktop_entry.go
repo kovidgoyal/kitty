@@ -38,6 +38,8 @@ type DesktopEntry struct {
 
 	entry_type, no_display, hidden bool
 	dir_priority                   int
+	// Pre-split arguments, used instead of Exec, if not nil
+	exec_tokens []exec_token
 }
 
 // IDWithoutSuffix returns the desktop file id without the .desktop suffix,

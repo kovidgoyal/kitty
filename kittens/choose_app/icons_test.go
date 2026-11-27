@@ -176,7 +176,7 @@ func TestIconRendering(t *testing.T) {
 	svg := write_test_file(t, filepath.Join(tdir, "icon.svg"), `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"><rect width="10" height="20" fill="red"/></svg>`)
 	bad := write_test_file(t, filepath.Join(tdir, "bad.svg"), "not an svg")
 
-	none := *r
+	none := NewIconRenderer(cache_dir)
 	none.rsvg_convert, none.magick = "", ""
 	if _, err := none.Render(svg, 32); !errors.Is(err, ErrNoRasterizer) {
 		t.Fatalf("Rendering with no rasterizer did not fail correctly: %v", err)
@@ -206,7 +206,7 @@ func TestIconRendering(t *testing.T) {
 		t.Fatalf("Rendering with no rasterizer did not fail even though cached: %s", p2)
 	}
 	// A cached result is used without re-rendering
-	r2 := *r
+	r2 := NewIconRenderer(cache_dir)
 	r2.rsvg_convert, r2.magick = "/nonexistent/rsvg", ""
 	if p2, err := r2.Render(svg, 32); err != nil || p2 != p {
 		t.Fatalf("Cached icon not used: %#v %v", p2, err)

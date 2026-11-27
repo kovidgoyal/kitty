@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -116,22 +117,26 @@ func (t Target) as_url() string {
 
 func (t Target) String() string { return t.as_url() }
 
-func (d *DesktopEntry) has_field_code(codes string) (bool, error) {
-	toks, err := tokenize_exec(d.Exec)
-	if err != nil {
-		return false, err
+// tokens returns the arguments of the Exec line of this entry
+func (d *DesktopEntry) tokens() ([]exec_token, error) {
+	if d.exec_tokens != nil {
+		return d.exec_tokens, nil
 	}
+	return tokenize_exec(d.Exec)
+}
+
+func has_field_code(toks []exec_token, codes string) bool {
 	for _, t := range toks {
 		for i := 0; i+1 < len(t.text); i++ {
 			if t.text[i] == '%' {
 				if strings.IndexByte(codes, t.text[i+1]) > -1 {
-					return true, nil
+					return true
 				}
 				i++
 			}
 		}
 	}
-	return false, nil
+	return false
 }
 
 // expand_token expands the field codes in a single argument. Field codes for
@@ -198,24 +203,16 @@ func (d *DesktopEntry) expand_token(tok exec_token, targets []Target) (ans []str
 // invocation result in one command line per target. Applications with no
 // field codes for files get the file appended, the same as GLib does.
 func (d *DesktopEntry) Commands(targets ...Target) (ans [][]string, err error) {
-	toks, err := tokenize_exec(d.Exec)
+	toks, err := d.tokens()
 	if err != nil {
 		return nil, err
 	}
 	if len(toks) == 0 {
 		return nil, fmt.Errorf("the Exec line of %s is empty", d.ID)
 	}
-	takes_list, err := d.has_field_code("FU")
-	if err != nil {
-		return nil, err
-	}
-	takes_single, err := d.has_field_code("fu")
-	if err != nil {
-		return nil, err
-	}
+	takes_list, takes_single := has_field_code(toks, "FU"), has_field_code(toks, "fu")
 	if !takes_list && !takes_single && len(targets) > 0 {
-		toks = append(toks, exec_token{text: "%f"})
-		takes_single = true
+		toks = append(slices.Clip(toks), exec_token{text: "%f"})
 	}
 	expand := func(targets []Target) (cmd []string) {
 		for _, tok := range toks {
