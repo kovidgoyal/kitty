@@ -304,6 +304,13 @@ tc_should_gc(const TextCache *self) {
     return self->adds_since_last_gc > MAX(TEXT_CACHE_ADDS_BETWEEN_GCS, self->adds_between_gcs);
 }
 
+// The map size needed to hold the given number of live entries plus the
+// entries added before the next collection, see tc_should_gc()
+static inline size_t
+gc_map_size(size_t live) {
+    return live + MAX((size_t)TEXT_CACHE_ADDS_BETWEEN_GCS, live);
+}
+
 struct TextCacheGCData {
     Chars *old_items;
     char_type old_count;
@@ -343,10 +350,13 @@ tc_gc_begin(TextCache *self) {
     vt_init(&self->bound_map);
     vt_cleanup(&self->map);
     vt_init(&self->map);
-    // Avoid rehashing repeatedly as the live entries are re-inserted, the live
-    // set of the previous collection is the best estimate of their number.
-    // Failing to do so is harmless, the map grows as needed.
-    if (self->adds_between_gcs) (void)vt_reserve(&self->map, self->adds_between_gcs + MAX(TEXT_CACHE_ADDS_BETWEEN_GCS, self->adds_between_gcs));
+    // Size the map up front for both the live entries that are about to be
+    // re-inserted and the entries that will be added before the next
+    // collection, using the live set of the previous collection as the
+    // estimate of the current one. This avoids rehashing as the live entries
+    // are re-inserted and again in tc_gc_end(). Failing to do so is harmless,
+    // the map grows as needed.
+    if (self->adds_between_gcs) (void)vt_reserve(&self->map, gc_map_size(self->adds_between_gcs));
     return gc;
 }
 
@@ -369,9 +379,11 @@ tc_gc_end(TextCache *self, TextCacheGCData *gc) {
     // scale with the live set so remapping cost stays amortized
     self->adds_between_gcs = self->array.count;
     // Size the map for the entries that will be added before the next
-    // collection, to avoid rehashing repeatedly as it grows. Failing to do so
-    // is harmless, the map grows as needed.
-    (void)vt_reserve(&self->map, self->array.count + MAX(TEXT_CACHE_ADDS_BETWEEN_GCS, self->array.count));
+    // collection, to avoid rehashing repeatedly as it grows. This is a no-op
+    // unless the live set grew since the previous collection, as
+    // tc_gc_begin() already reserved for that. Failing to do so is harmless,
+    // the map grows as needed.
+    (void)vt_reserve(&self->map, gc_map_size(self->array.count));
     free(gc->map);
     // The entries that are still referenced hold their own reference to their glyph
     release_glyphs(gc->old_glyphs, MIN(gc->old_glyphs_capacity, gc->old_count));
