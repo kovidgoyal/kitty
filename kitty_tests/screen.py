@@ -117,6 +117,15 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(4)), 'ab123')
         self.ae((s.cursor.x, s.cursor.y), (2, 4))
 
+    def test_bell_callback_resizing_screen_while_drawing(self):
+        # The bell callback runs Python code that can resize the screen in the
+        # middle of drawing a run of text, which frees the line buffers being drawn into
+        s = self.create_screen(cols=10, lines=5)
+        s.callbacks.on_bell = lambda: s.resize(3, 20)
+        parse_bytes(s, b'abc\x07def')
+        self.ae(str(s.line(s.cursor.y)), 'abcdef')
+        self.ae(s.cursor.x, 6)
+
     def test_draw_batched_ascii_run(self):
         # The batched fast path for runs of printable ASCII in draw_text_loop
         # must behave identically to drawing char by char

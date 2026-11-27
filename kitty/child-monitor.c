@@ -1250,11 +1250,21 @@ prepare_to_render_os_window(
 
 static void
 thumbnail_callback(OSWindow *os_window) {
-#define tc global_state.thumbnail_callback
+    // Work on a copy of the request and clear it, as the Python callback can
+    // issue the next request
+    const __typeof__(global_state.thumbnail_callback) tc = global_state.thumbnail_callback;
+    global_state.thumbnail_callback.os_window = 0;
     Region region = {.right = os_window->viewport_width, .bottom = os_window->viewport_height};
     if (tc.window) {
         Window *w = window_for_window_id(tc.window);
-        if (!w) return;
+        if (!w) {
+            // The window went away, fail the request so that requests queued after it are issued
+            if (global_state.boss) {
+                RAII_PyObject(r, PyObject_CallMethod(global_state.boss, tc.callback, "KKyII", os_window->id, tc.window, "", 0u, 0u));
+                if (!r) PyErr_Print();
+            }
+            return;
+        }
         region.left = w->render_data.geometry.left;
         region.top = w->render_data.geometry.top;
         region.right = w->render_data.geometry.right;
@@ -1288,7 +1298,6 @@ thumbnail_callback(OSWindow *os_window) {
         if (!r) PyErr_Print();
         else Py_DECREF(r);
     }
-#undef tc
 }
 
 static void
@@ -1325,10 +1334,7 @@ render_prepared_os_window(
     }
     draw_rounded_borders(br, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     setup_os_window_for_rendering(os_window, tab, active_window, false, now);
-    if (global_state.thumbnail_callback.os_window == os_window->id) {
-        thumbnail_callback(os_window);
-        global_state.thumbnail_callback.os_window = 0;
-    }
+    if (global_state.thumbnail_callback.os_window == os_window->id) thumbnail_callback(os_window);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab;
     os_window->last_num_tabs = os_window->num_tabs;
@@ -1670,7 +1676,11 @@ close_os_window(ChildMonitor *self, OSWindow *os_window) {
         }
     }
     destroy_os_window(os_window);
-    call_boss(on_os_window_closed, "KiiiiOO", os_window->id, x, y, w, h, was_maximized ? Py_True : Py_False, is_layer_shell ? Py_True : Py_False);
+    const id_type os_window_id = os_window->id;
+    call_boss(on_os_window_closed, "KiiiiOO", os_window_id, x, y, w, h, was_maximized ? Py_True : Py_False, is_layer_shell ? Py_True : Py_False);
+    // Python code, such as watchers run when windows are closed, can create OS
+    // windows, re-allocating the array of OS windows
+    if (!(os_window = os_window_for_id(os_window_id))) return;
     for (size_t t = 0; t < os_window->num_tabs; t++) {
         Tab *tab = os_window->tabs + t;
         for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
@@ -1692,6 +1702,8 @@ process_pending_closes(ChildMonitor *self) {
             case CONFIRMABLE_CLOSE_REQUESTED:
                 os_window->close_request = CLOSE_BEING_CONFIRMED;
                 call_boss(confirm_os_window_close, "K", os_window->id);
+                // Python code can create OS windows, re-allocating the array of OS windows
+                os_window = global_state.os_windows + w - 1;
                 if (os_window->close_request == IMPERATIVE_CLOSE_REQUESTED) {
                     close_os_window(self, os_window);
                 } else has_open_windows = true;

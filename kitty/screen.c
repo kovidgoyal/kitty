@@ -3424,7 +3424,12 @@ draw_combining_char_run_implicit(Screen *self, text_loop_state *s, char_type ch,
 static void
 draw_control_char(Screen *self, text_loop_state *s, uint32_t ch) {
     switch (ch) {
-        case BEL: screen_bell(self); break;
+        case BEL:
+            screen_bell(self);
+            // The bell callback runs Python code that can resize the screen,
+            // freeing the line buffers the text loop state points into
+            init_text_loop_line(self, s);
+            break;
         case BS: {
             index_type before = self->cursor->y;
             screen_backspace(self);

@@ -279,6 +279,12 @@ Detailed list of changes
 - Fix a crash when pressing a key immediately after clicking a hyperlink that
   opens an overlay window (:iss:`10953`)
 
+- Fix crashes in rare cases when a mouse mapping, scroll mapping, watcher or
+  bell handler creates or resizes windows while kitty is processing an event
+
+- Fix screenshots and thumbnails no longer working after two were requested
+  at the same time
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

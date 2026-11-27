@@ -1143,8 +1143,10 @@ add_press(Window *w, int button, int modifiers) {
     Screen *screen = w->render_data.screen;
     int count = multi_click_count(w, button);
     if (count > 1) {
-        if (screen) dispatch_mouse_event(w, button, count, modifiers, screen->modes.mouse_tracking_mode != 0);
+        // Clear the queue before dispatching as the dispatch can run Python
+        // code that adds windows, re-allocating the windows array, invalidating q
         if (count > 2) q->length = 0;
+        if (screen) dispatch_mouse_event(w, button, count, modifiers, screen->modes.mouse_tracking_mode != 0);
     }
 }
 #undef N
@@ -1280,7 +1282,12 @@ HANDLER(handle_button_event) {
 
     if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;
 
-    if (osw->is_focused && window_idx != t->active_window && !is_release) { call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id); }
+    const id_type wid = w->id;
+    if (osw->is_focused && window_idx != t->active_window && !is_release) {
+        call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id);
+        // Python code can add windows, tabs and OS windows, re-allocating their arrays
+        if (!(osw = global_state.callback_os_window) || !(w = window_for_id(wid))) return;
+    }
 
     Screen *screen = w->render_data.screen;
     if (!screen) return;
@@ -1289,8 +1296,11 @@ HANDLER(handle_button_event) {
     if (!set_mouse_position(w, &a, &b)) return;
     if (!is_release) arm_potential_drag(w, button);
     if (button == GLFW_MOUSE_BUTTON_LEFT && !is_release) osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS);
-    id_type wid = w->id;
-    if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
+    const bool handled = dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0);
+    // the windows and tabs arrays might have been re-alloced in dispatch_mouse_event
+    w = window_for_id(wid);
+    if (!w || !(screen = w->render_data.screen)) return;
+    if (!handled) {
         if (detailed_mouse_events(screen)) {
             // Releases are reported below, if their presses were reported
             if (!is_release) report_detailed_press(w, button, all_modifiers);
@@ -1302,10 +1312,6 @@ HANDLER(handle_button_event) {
             }
         }
     }
-    // the windows array might have been re-alloced in dispatch_mouse_event
-    w = NULL;
-    for (size_t i = 0; i < t->num_windows && !w; i++)
-        if (t->windows[i].id == wid) w = t->windows + i;
     // The release of every button whose press was reported is reported, even
     // if kitty also handled it
     if (w && is_release && w->render_data.screen && detailed_mouse_events(w->render_data.screen)) {
@@ -2255,21 +2261,45 @@ dispatch_mapped_scroll_axis(OSWindow *osw, Window *w, const GLFWScrollEvent *ev,
     return true;
 }
 
+// The mapped actions can run Python code that re-allocates the arrays of
+// windows and OS windows. osw is always global_state.callback_os_window which
+// is kept valid across such re-allocations, so look it and the window up again.
+static bool
+refetch_after_mapped_scroll(id_type os_window_id, id_type window_id, OSWindow **osw, Window **w) {
+    *osw = global_state.callback_os_window;
+    *w = NULL;
+    if (!*osw || (*osw)->id != os_window_id) {
+        *osw = NULL;
+        return false;
+    }
+    *w = window_for_id(window_id);
+    return *w != NULL;
+}
+
 // Returns true if either axis of the scroll event is mapped, in which case the
-// whole event is consumed.
+// whole event is consumed and the mapped gesture state of the OS window is
+// updated. Note that osw and w must not be used after this function returns
+// true as the mapped actions can run Python code that re-allocates the arrays
+// they point into.
 static bool
 dispatch_mapped_scroll(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, int mods, bool grabbed) {
+    const id_type os_window_id = osw->id, window_id = w->id;
     // A partial step does not carry over to a different window, modifiers or mouse mode
-    if (osw->scroll.mapped_window_id != w->id || osw->scroll.mapped_modifiers != mods || osw->scroll.mapped_grabbed != grabbed)
+    if (osw->scroll.mapped_window_id != window_id || osw->scroll.mapped_modifiers != mods || osw->scroll.mapped_grabbed != grabbed)
         osw->scroll.mapped_pending_pixels_x = osw->scroll.mapped_pending_pixels_y = 0;
     // Both axes are always dispatched, so that a diagonal gesture can fire both
     const bool consumed_y = ev->y_offset != 0.0 && dispatch_mapped_scroll_axis(osw, w, ev, true, mods, grabbed);
-    const bool consumed_x = ev->x_offset != 0.0 && dispatch_mapped_scroll_axis(osw, w, ev, false, mods, grabbed);
+    if (consumed_y) refetch_after_mapped_scroll(os_window_id, window_id, &osw, &w);
+    const bool consumed_x = osw && w && ev->x_offset != 0.0 && dispatch_mapped_scroll_axis(osw, w, ev, false, mods, grabbed);
     if (!consumed_x && !consumed_y) return false;
-    osw->scroll.mapped_window_id = w->id;
-    osw->scroll.mapped_modifiers = mods;
-    osw->scroll.mapped_grabbed = grabbed;
-    osw->scroll.mapped_last_event_at = monotonic();
+    refetch_after_mapped_scroll(os_window_id, window_id, &osw, &w);
+    if (osw) {
+        osw->scroll.mapped_window_id = window_id;
+        osw->scroll.mapped_modifiers = mods;
+        osw->scroll.mapped_grabbed = grabbed;
+        osw->scroll.mapped_last_event_at = monotonic();
+        osw->scroll.mapped_gesture = true;
+    }
     return true;
 }
 
@@ -2484,8 +2514,8 @@ scroll_event_in_window(OSWindow *osw, Window *w, const GLFWScrollEvent *ev, unsi
     if (ev->momentum_type == GLFW_NO_MOMENTUM_DATA) {
         const bool grabbed = screen->modes.mouse_tracking_mode != NO_TRACKING;
         const int mods = ev->keyboard_modifiers & MOUSE_MAPPING_MODS_MASK;
-        if (dispatch_mapped_scroll(osw, w, ev, mods, grabbed)) osw->scroll.mapped_gesture = true;
-        else if (osw->scroll.mapped_gesture) {
+        if (dispatch_mapped_scroll(osw, w, ev, mods, grabbed)) return;
+        if (osw->scroll.mapped_gesture) {
             osw->scroll.mapped_gesture = continues_mapped_gesture(osw, w, ev, mods, grabbed);
             // The gesture now extends to this event, so the next one is timed from here
             if (osw->scroll.mapped_gesture) osw->scroll.mapped_last_event_at = monotonic();
@@ -3063,8 +3093,15 @@ send_mock_scroll_event_to_window(PyObject *self UNUSED, PyObject *args) {
         return NULL;
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (!w) return NULL;
-    // Scroll state is per OS window, mock windows share this one
+    // Scroll state is per OS window, mock windows share this one. The window is
+    // put in a tab of it so that it can be looked up by id, as for real windows.
     static OSWindow osw = {0};
+    Tab tab = {.windows = w, .num_windows = 1};
+    osw.tabs = &tab;
+    osw.num_tabs = 1;
+    osw.active_tab = 0;
+    OSWindow *saved_callback_os_window = global_state.callback_os_window;
+    global_state.callback_os_window = &osw;
     ev.offset_type = offset_type;
     ev.momentum_type = momentum_type;
     ev.source = source;
@@ -3074,6 +3111,9 @@ send_mock_scroll_event_to_window(PyObject *self UNUSED, PyObject *args) {
     ev.unscaled.y = ev.y_offset;
     ev.timestamp = w->render_data.screen->mouse_events.clock_origin + timestamp_us * 1000;
     scroll_event_in_window(&osw, w, &ev, w->render_data.screen->cell_size.width, w->render_data.screen->cell_size.height);
+    global_state.callback_os_window = saved_callback_os_window;
+    osw.tabs = NULL;
+    osw.num_tabs = 0;
     Py_RETURN_NONE;
 }
 

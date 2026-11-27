@@ -851,8 +851,20 @@ touch_point_state_name(GLFWTouchPointState t) {
 
 // Moves the mouse position kitty uses to the finger and reports the move, without
 // showing the mouse cursor, which is not where the finger is
+// The OS window of the current touch gesture. It is looked up afresh for every
+// mouse event synthesized from a touch, as dispatching those events can run Python
+// code that creates OS windows, re-allocating the array of OS windows.
+static OSWindow *
+touch_os_window(void) {
+    OSWindow *osw = os_window_for_id(touch_gesture.os_window_id);
+    global_state.callback_os_window = osw;
+    return osw;
+}
+
 static void
-touch_move_mouse(OSWindow *osw, double x, double y, int mods) {
+touch_move_mouse(double x, double y, int mods) {
+    OSWindow *osw = touch_os_window();
+    if (!osw) return;
     const monotonic_t now = monotonic();
     osw->last_mouse_activity_at = now;
     osw->cursor_blink_zero_time = now;
@@ -864,7 +876,9 @@ touch_move_mouse(OSWindow *osw, double x, double y, int mods) {
 }
 
 static void
-touch_press_left_button(OSWindow *osw, int action, int mods) {
+touch_press_left_button(int action, int mods) {
+    OSWindow *osw = touch_os_window();
+    if (!osw) return;
     global_state.mods_at_last_key_or_button_event = mods;
     dispatch_mouse_button(osw, GLFW_MOUSE_BUTTON_LEFT, action, mods, 0);
 }
@@ -872,10 +886,10 @@ touch_press_left_button(OSWindow *osw, int action, int mods) {
 // The momentum scroller delivers its scroll events through scroll_callback() at
 // once, which clears global_state.callback_os_window, so it is restored afterwards
 static void
-touch_scroll(GLFWwindow *w, OSWindow *osw, double dx, double dy, bool stopped, int mods, monotonic_t timestamp) {
+touch_scroll(GLFWwindow *w, double dx, double dy, bool stopped, int mods, monotonic_t timestamp) {
     if (!glfwFeedMomentumScroller) return;
     glfwFeedMomentumScroller(w, dx, dy, mods, stopped, timestamp);
-    global_state.callback_os_window = osw;
+    touch_os_window();
 }
 
 static void
@@ -884,11 +898,11 @@ touch_gesture_reset(void) {
 }
 
 static void
-touch_gesture_cancel(OSWindow *osw, int mods) {
+touch_gesture_cancel(int mods) {
     switch (touch_gesture.state) {
         case TOUCH_SELECTING:
             // The button is let go, so that it is not left held down
-            if (osw) touch_press_left_button(osw, GLFW_RELEASE, mods);
+            touch_press_left_button(GLFW_RELEASE, mods);
             break;
         case TOUCH_SCROLLING:
             if (glfwCancelMomentumScroll) glfwCancelMomentumScroll();
@@ -901,25 +915,25 @@ touch_gesture_cancel(OSWindow *osw, int mods) {
 }
 
 static void
-touch_gesture_moved(GLFWwindow *w, OSWindow *osw, const GLFWTouchPoint *p, int mods, monotonic_t timestamp) {
+touch_gesture_moved(GLFWwindow *w, const GLFWTouchPoint *p, int mods, monotonic_t timestamp) {
     switch (touch_gesture.state) {
         case TOUCH_PENDING:
             if (fabs(p->x - touch_gesture.start_x) <= TOUCH_TAP_SLOP && fabs(p->y - touch_gesture.start_y) <= TOUCH_TAP_SLOP) return;
             if (timestamp - touch_gesture.down_at >= TOUCH_SELECT_HOLD) {
                 touch_gesture.state = TOUCH_SELECTING;
-                touch_move_mouse(osw, touch_gesture.start_x, touch_gesture.start_y, mods);
-                touch_press_left_button(osw, GLFW_PRESS, mods);
-                touch_move_mouse(osw, p->x, p->y, mods);
+                touch_move_mouse(touch_gesture.start_x, touch_gesture.start_y, mods);
+                touch_press_left_button(GLFW_PRESS, mods);
+                touch_move_mouse(p->x, p->y, mods);
             } else {
                 touch_gesture.state = TOUCH_SCROLLING;
                 // Scroll events go to the kitty window under the mouse position, and
                 // are reported at it to programs that track the mouse
-                touch_move_mouse(osw, touch_gesture.start_x, touch_gesture.start_y, mods);
-                touch_scroll(w, osw, p->x - touch_gesture.start_x, p->y - touch_gesture.start_y, false, mods, timestamp);
+                touch_move_mouse(touch_gesture.start_x, touch_gesture.start_y, mods);
+                touch_scroll(w, p->x - touch_gesture.start_x, p->y - touch_gesture.start_y, false, mods, timestamp);
             }
             break;
-        case TOUCH_SELECTING: touch_move_mouse(osw, p->x, p->y, mods); break;
-        case TOUCH_SCROLLING: touch_scroll(w, osw, p->x - touch_gesture.last_x, p->y - touch_gesture.last_y, false, mods, timestamp); break;
+        case TOUCH_SELECTING: touch_move_mouse(p->x, p->y, mods); break;
+        case TOUCH_SCROLLING: touch_scroll(w, p->x - touch_gesture.last_x, p->y - touch_gesture.last_y, false, mods, timestamp); break;
         case TOUCH_IDLE:
         case TOUCH_IGNORED: break;
     }
@@ -928,15 +942,15 @@ touch_gesture_moved(GLFWwindow *w, OSWindow *osw, const GLFWTouchPoint *p, int m
 }
 
 static void
-touch_gesture_released(GLFWwindow *w, OSWindow *osw, int mods, monotonic_t timestamp) {
+touch_gesture_released(GLFWwindow *w, int mods, monotonic_t timestamp) {
     switch (touch_gesture.state) {
         case TOUCH_PENDING:
-            touch_move_mouse(osw, touch_gesture.start_x, touch_gesture.start_y, mods);
-            touch_press_left_button(osw, GLFW_PRESS, mods);
-            touch_press_left_button(osw, GLFW_RELEASE, mods);
+            touch_move_mouse(touch_gesture.start_x, touch_gesture.start_y, mods);
+            touch_press_left_button(GLFW_PRESS, mods);
+            touch_press_left_button(GLFW_RELEASE, mods);
             break;
-        case TOUCH_SELECTING: touch_press_left_button(osw, GLFW_RELEASE, mods); break;
-        case TOUCH_SCROLLING: touch_scroll(w, osw, 0, 0, true, mods, timestamp); break;
+        case TOUCH_SELECTING: touch_press_left_button(GLFW_RELEASE, mods); break;
+        case TOUCH_SCROLLING: touch_scroll(w, 0, 0, true, mods, timestamp); break;
         case TOUCH_IDLE:
         case TOUCH_IGNORED: break;
     }
@@ -969,13 +983,13 @@ touch_callback(GLFWwindow *w, const GLFWTouchEvent *ev) {
         return;
     }
     if (ev->type == GLFW_TOUCH_CANCEL) {
-        touch_gesture_cancel(osw, mods);
+        touch_gesture_cancel(mods);
         request_tick_callback();
         global_state.callback_os_window = NULL;
         return;
     }
     if (ev->type == GLFW_TOUCH_BEGIN) {
-        touch_gesture_cancel(osw, mods);
+        touch_gesture_cancel(mods);
         touch_gesture.os_window_id = osw->id;
         if (ev->num_points == 1) {
             const GLFWTouchPoint *p = ev->points;
@@ -995,8 +1009,8 @@ touch_callback(GLFWwindow *w, const GLFWTouchEvent *ev) {
             continue;
         }
         switch (p->state) {
-            case GLFW_TOUCH_POINT_MOVED: touch_gesture_moved(w, osw, p, mods, ev->timestamp); break;
-            case GLFW_TOUCH_POINT_RELEASED: touch_gesture_released(w, osw, mods, ev->timestamp); break;
+            case GLFW_TOUCH_POINT_MOVED: touch_gesture_moved(w, p, mods, ev->timestamp); break;
+            case GLFW_TOUCH_POINT_RELEASED: touch_gesture_released(w, mods, ev->timestamp); break;
             case GLFW_TOUCH_POINT_PRESSED:
             case GLFW_TOUCH_POINT_STATIONARY: break;
         }
@@ -1230,6 +1244,7 @@ static void
 drop_dest_callback(GLFWwindow *window, GLFWDropEvent *ev) {
     if (!set_callback_window(window)) return;
     OSWindow *os_window = global_state.callback_os_window;
+    const id_type os_window_id = os_window->id;
     Window *w = NULL;
     id_type wid = global_state.mouse_hover_in_window;
     bool is_kitty_ui_drag = false;
@@ -1246,6 +1261,8 @@ drop_dest_callback(GLFWwindow *window, GLFWDropEvent *ev) {
             global_state.drop_dest.drop_has_happened = false;
             global_state.drop_dest.os_window_id = os_window->id;
             on_mouse_position_update(ev->xpos, ev->ypos, 0);
+            // The mouse event handlers can run Python code that creates OS windows, re-allocating the array of OS windows
+            if (!(os_window = os_window_for_id(os_window_id))) break;
             os_window->last_drag_event.x = (int)os_window->mouse_x;
             os_window->last_drag_event.y = (int)os_window->mouse_y;
             // Re-evaluate which kitty window is now under the cursor after the
@@ -1296,7 +1313,19 @@ drop_dest_callback(GLFWwindow *window, GLFWDropEvent *ev) {
                 on_drop_move, "KiiOO", os_window->id, os_window->last_drag_event.x, os_window->last_drag_event.y, ev->from_self ? Py_True : Py_False, Py_True);
             break;
         case GLFW_DROP_DROP:
-            if (w && OPT(focus_follows_mouse).on_drop) { call_boss(set_active_window, "KO", w->id, Py_True); }
+            if (w && OPT(focus_follows_mouse).on_drop) {
+                wid = w->id;
+                call_boss(set_active_window, "KO", wid, Py_True);
+                // Python code can re-allocate the arrays of windows and OS windows, and,
+                // on macOS, focusing another OS window synchronously clears callback_os_window
+                os_window = os_window_for_id(os_window_id);
+                w = window_for_window_id(wid);
+                if (!os_window || (is_client_drop && !w)) {
+                    ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+                    break;
+                }
+                global_state.callback_os_window = os_window;
+            }
             Py_CLEAR(global_state.drop_dest.data);
             global_state.drop_dest.drop_has_happened = true;
             global_state.drop_dest.client_window_data_request = 0;
