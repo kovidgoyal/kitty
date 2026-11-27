@@ -290,6 +290,9 @@ Detailed list of changes
   that icons from themes such as Breeze are found. When none of the names are
   found, pass the last one to the notification server instead of the first
 
+- Preserve the existing destination when the transfer kitten fails to create a
+  received symbolic link
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

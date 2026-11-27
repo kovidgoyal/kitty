@@ -24,8 +24,10 @@ func AtomicCreateSymlink(oldname, newname string) (err error) {
 	if et, err := os.Readlink(newname); err == nil && et == oldname {
 		return nil
 	}
+	dir, _ := filepath.Split(newname)
 	for {
-		tempname := newname + RandomFilename()
+		// A short basename also works with destinations at the filesystem's name length limit.
+		tempname := dir + ".kitty-symlink-" + RandomFilename()
 		err = os.Symlink(oldname, tempname)
 		if err == nil {
 			err = os.Rename(tempname, newname)
