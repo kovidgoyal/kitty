@@ -181,8 +181,8 @@ func TestIconRendering(t *testing.T) {
 	if _, err := none.Render(svg, 32); !errors.Is(err, ErrNoRasterizer) {
 		t.Fatalf("Rendering with no rasterizer did not fail correctly: %v", err)
 	}
-	if r.rsvg_convert == "" && r.magick == "" {
-		t.Skip("Neither rsvg-convert nor ImageMagick available")
+	if r.rsvg_convert == "" {
+		t.Skip("rsvg-convert not available")
 	}
 	p, err := r.Render(svg, 32)
 	if err != nil {

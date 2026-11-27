@@ -44,11 +44,21 @@ func IconCacheDir() string {
 	return filepath.Join(utils.CacheDir(), "choose-app", "icons")
 }
 
+// find_exe returns the full path to the named executable or an empty string
+// if it is not installed. Unlike utils.FindExe it does not fall back to the
+// bare name.
+func find_exe(name string) string {
+	if ans := utils.Which(name); ans != "" {
+		return ans
+	}
+	return utils.Which(name, utils.DefaultExeSearchPaths()...)
+}
+
 func NewIconRenderer(cache_dir string) *IconRenderer {
-	ans := &IconRenderer{cache_dir: cache_dir, rsvg_convert: utils.FindExe("rsvg-convert")}
-	if ans.magick = utils.FindExe("magick"); ans.magick == "" {
+	ans := &IconRenderer{cache_dir: cache_dir, rsvg_convert: find_exe("rsvg-convert")}
+	if ans.magick = find_exe("magick"); ans.magick == "" {
 		// ImageMagick 6
-		ans.magick = utils.FindExe("convert")
+		ans.magick = find_exe("convert")
 	}
 	return ans
 }

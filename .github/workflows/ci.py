@@ -152,7 +152,7 @@ def install_deps() -> None:
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libfribidi-dev libx11-xcb-dev zsh'
             ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev libbrotli-dev'
             ' libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb'
-            ' libwayland-dev wayland-protocols glslang-tools'
+            ' libwayland-dev wayland-protocols glslang-tools librsvg2-bin'
         )
         # for some reason these directories are world writable which causes zsh
         # compinit to break
