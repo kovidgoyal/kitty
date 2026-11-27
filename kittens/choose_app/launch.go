@@ -76,12 +76,40 @@ func (s *Settings) terminal_command(argv []string) ([]string, error) {
 	return append(prefix, argv...), nil
 }
 
+// launchers are the ways of starting applications
+type launchers struct {
+	run      launch_func
+	activate activate_func
+}
+
+var default_launchers = launchers{run: launch_detached, activate: dbus_activate}
+
 // launch opens the targets with the chosen application. The activation
-// token, if any, is used for the first command, as tokens can be used only once.
-func launch(settings *Settings, db *AppDatabase, choice Choice, targets []Target, activation_token string, run launch_func) error {
+// token, if any, is used for the first command, as tokens can be used only
+// once. Applications that support it are started via D-Bus, falling back to
+// running their Exec line, if any, if that fails.
+func launch(settings *Settings, db *AppDatabase, choice Choice, targets []Target, activation_token string, l launchers) error {
 	e, err := choice.Entry(db)
 	if err != nil {
 		return err
+	}
+	if e.DBusActivatable {
+		if bus_name, ok := e.dbus_name(); ok {
+			token := activation_token
+			if token == "" {
+				// the token we were started with, the same as when running Exec
+				token = os.Getenv("XDG_ACTIVATION_TOKEN")
+			}
+			uris := utils.Map(Target.as_url, targets)
+			aerr := l.activate(bus_name, uris, token)
+			if aerr == nil {
+				return nil
+			}
+			if e.Exec == "" {
+				return aerr
+			}
+			fmt.Fprintf(os.Stderr, "Warning: %s, running it with its Exec line instead\n", aerr)
+		}
 	}
 	cmds, err := e.Commands(targets...)
 	if err != nil {
@@ -104,7 +132,7 @@ func launch(settings *Settings, db *AppDatabase, choice Choice, targets []Target
 		if i == 0 && activation_token != "" {
 			env = append(env, "XDG_ACTIVATION_TOKEN="+activation_token)
 		}
-		if err = run(cmd, cwd, env); err != nil {
+		if err = l.run(cmd, cwd, env); err != nil {
 			errs = append(errs, fmt.Errorf("failed to run %s with error: %w", join_cmdline(cmd), err))
 		}
 	}
@@ -134,7 +162,7 @@ func group_targets[K comparable](targets []Target, key func(Target) K) (keys []K
 // remembered for them, asking the user to choose for the rest, once per
 // MIME type. If always_ask is true, the user is asked for all targets.
 // Returns an open_error for failures.
-func open_targets(r *Resolver, targets []Target, always_ask bool, ask ask_func, run launch_func) error {
+func open_targets(r *Resolver, targets []Target, always_ask bool, ask ask_func, l launchers) error {
 	var missing []string
 	for _, t := range targets {
 		if t.Path != "" {
@@ -180,7 +208,7 @@ func open_targets(r *Resolver, targets []Target, always_ask bool, ask ask_func, 
 	}
 	for _, g := range groups {
 		// launched with the token from the environment, if any, the same as xdg-open
-		if err := launch(r.Settings, r.DB, g.choice, g.targets, "", run); err != nil {
+		if err := launch(r.Settings, r.DB, g.choice, g.targets, "", l); err != nil {
 			fail(err, exit_launch_error)
 		}
 	}
@@ -195,7 +223,7 @@ func open_targets(r *Resolver, targets []Target, always_ask bool, ask ask_func, 
 			fail(fmt.Errorf("no application chosen to open: %s", m), exit_no_app)
 			continue
 		}
-		if err := launch(r.Settings, r.DB, result.Choice, by_mime[m], result.ActivationToken, run); err != nil {
+		if err := launch(r.Settings, r.DB, result.Choice, by_mime[m], result.ActivationToken, l); err != nil {
 			fail(err, exit_launch_error)
 		}
 	}

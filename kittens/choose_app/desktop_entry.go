@@ -33,8 +33,11 @@ type DesktopEntry struct {
 	TryExec     string   `json:"-"`
 	WorkingDir  string   `json:"working_dir,omitempty"`
 	Terminal    bool     `json:"terminal,omitempty"`
-	OnlyShowIn  []string `json:"-"`
-	NotShowIn   []string `json:"-"`
+	// Whether the application should be started via D-Bus rather than
+	// by running Exec, see the D-Bus Activation section of the spec
+	DBusActivatable bool     `json:"dbus_activatable,omitempty"`
+	OnlyShowIn      []string `json:"-"`
+	NotShowIn       []string `json:"-"`
 
 	entry_type, no_display, hidden bool
 	dir_priority                   int
@@ -285,6 +288,8 @@ func ParseDesktopEntry(r io.Reader, locales []string) (ans *DesktopEntry, err er
 			ans.WorkingDir = unescape_string(val)
 		case "Terminal":
 			ans.Terminal = parse_bool(val)
+		case "DBusActivatable":
+			ans.DBusActivatable = parse_bool(val)
 		case "NoDisplay":
 			ans.no_display = parse_bool(val)
 		case "Hidden":
@@ -325,8 +330,14 @@ func ParseDesktopFile(path string, locales []string) (ans *DesktopEntry, err err
 
 // is_launchable returns true if the entry is an application that can be run
 func (d *DesktopEntry) is_launchable() bool {
-	if !d.entry_type || d.hidden || d.Exec == "" || d.Name == "" {
+	if !d.entry_type || d.hidden || d.Name == "" {
 		return false
+	}
+	if d.Exec == "" {
+		// The spec allows applications started via D-Bus to have no Exec line
+		if _, ok := d.dbus_name(); !d.DBusActivatable || !ok {
+			return false
+		}
 	}
 	if d.TryExec != "" {
 		if filepath.IsAbs(d.TryExec) {

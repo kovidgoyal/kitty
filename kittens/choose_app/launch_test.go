@@ -72,10 +72,15 @@ func TestOpenTargets(t *testing.T) {
 		return answer, nil
 	}
 	reset := func() { runs, asked = nil, nil }
+	no_activate := func(string, []string, string) error {
+		t.Fatalf("D-Bus activation used for an application that does not support it")
+		return nil
+	}
+	l := launchers{run: run, activate: no_activate}
 
 	// Files are grouped by application, single file applications are run
 	// once per file and terminal programs run in kitty
-	if err = open_targets(r, targets(a_pdf, a_png, b_pdf, b_png, a_md), false, ask, run); err != nil {
+	if err = open_targets(r, targets(a_pdf, a_png, b_pdf, b_png, a_md), false, ask, l); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([]launched{
@@ -91,7 +96,7 @@ func TestOpenTargets(t *testing.T) {
 
 	// Unknown files are asked about once per MIME type
 	reset()
-	if err = open_targets(r, targets(a_txt, a_pdf, b_txt), false, ask, run); err != nil {
+	if err = open_targets(r, targets(a_txt, a_pdf, b_txt), false, ask, l); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([][]Target{targets(a_txt, b_txt)}, asked); diff != "" {
@@ -106,7 +111,7 @@ func TestOpenTargets(t *testing.T) {
 
 	// Always asking
 	reset()
-	if err = open_targets(r, targets(a_pdf), true, ask, run); err != nil {
+	if err = open_targets(r, targets(a_pdf), true, ask, l); err != nil {
 		t.Fatal(err)
 	}
 	if len(asked) != 1 || len(runs) != 1 || runs[0].Argv[2] != "editor" {
@@ -116,7 +121,7 @@ func TestOpenTargets(t *testing.T) {
 	// A custom terminal
 	reset()
 	settings.Terminal = "foot -e"
-	if err = open_targets(r, targets(a_md), false, ask, run); err != nil {
+	if err = open_targets(r, targets(a_md), false, ask, l); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([]string{"foot", "-e", "nvim", a_md}, runs[0].Argv); diff != "" {
@@ -133,23 +138,23 @@ func TestOpenTargets(t *testing.T) {
 		return -1
 	}
 	reset()
-	err = open_targets(r, targets(a_pdf, filepath.Join(tdir, "missing.pdf")), false, ask, run)
+	err = open_targets(r, targets(a_pdf, filepath.Join(tdir, "missing.pdf")), false, ask, l)
 	if exit_code(err) != exit_missing_file || !strings.Contains(err.Error(), "missing.pdf") || len(runs) != 0 {
 		t.Fatalf("Missing file not reported correctly: %v %v", err, runs)
 	}
 	reset()
 	answer = nil
-	err = open_targets(r, targets(a_txt, a_pdf), false, ask, run)
+	err = open_targets(r, targets(a_txt, a_pdf), false, ask, l)
 	if exit_code(err) != exit_no_app || len(runs) != 1 {
 		t.Fatalf("Cancelling not reported correctly, or known files not opened: %v %v", err, runs)
 	}
 	reset()
-	err = open_targets(r, targets(a_pdf), false, ask, func([]string, string, []string) error { return errors.New("boom") })
+	err = open_targets(r, targets(a_pdf), false, ask, launchers{run: func([]string, string, []string) error { return errors.New("boom") }, activate: no_activate})
 	if exit_code(err) != exit_launch_error || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("Launch failure not reported correctly: %v", err)
 	}
 	reset()
-	err = open_targets(r, targets(a_txt), false, func([]Target) (*Result, error) { return nil, errors.New("no panel") }, run)
+	err = open_targets(r, targets(a_txt), false, func([]Target) (*Result, error) { return nil, errors.New("no panel") }, l)
 	if exit_code(err) != exit_no_app || !strings.Contains(err.Error(), "no panel") {
 		t.Fatalf("Ask failure not reported correctly: %v", err)
 	}
@@ -157,7 +162,7 @@ func TestOpenTargets(t *testing.T) {
 	// and not for applications launched without asking
 	reset()
 	answer = &Result{Choice: ChoiceForDesktopID("viewer"), ActivationToken: "tok"}
-	if err = open_targets(r, targets(a_txt, b_txt, a_png), false, ask, run); err != nil {
+	if err = open_targets(r, targets(a_txt, b_txt, a_png), false, ask, l); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([]launched{
@@ -170,7 +175,7 @@ func TestOpenTargets(t *testing.T) {
 	// URLs are not checked for existence
 	reset()
 	answer = &Result{Choice: Choice{Cmdline: []string{"browser", "%u"}}}
-	if err = open_targets(r, []Target{{URL: "https://example.com"}}, false, ask, run); err != nil {
+	if err = open_targets(r, []Target{{URL: "https://example.com"}}, false, ask, l); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff([]string{"browser", "https://example.com"}, runs[0].Argv); diff != "" {

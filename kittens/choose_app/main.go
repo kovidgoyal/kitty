@@ -113,7 +113,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		if len(targets) == 0 {
 			return 1, fmt.Errorf("must specify at least one file or URL to open")
 		}
-		err = open_targets(resolver, targets, opts.Ask, func(t []Target) (*Result, error) { return ask(opts, resolver, t) }, launch_detached)
+		err = open_targets(resolver, targets, opts.Ask, func(t []Target) (*Result, error) { return ask(opts, resolver, t) }, default_launchers)
 		var oe *open_error
 		if errors.As(err, &oe) {
 			return oe.exit_code, oe.err

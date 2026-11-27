@@ -89,7 +89,9 @@ requires your compositor to support panels. This can be controlled with :option:
 Use :option:`--ask <kitty +kitten choose_app --ask>` to always ask, like the
 :guilabel:`Open with` menu of file managers. Applications are run in the
 background and terminal programs are run in a new kitty window, which can be
-changed with :opt:`terminal <kitten-choose_app.terminal>`. The exit codes are the same as
+changed with :opt:`terminal <kitten-choose_app.terminal>`. Applications whose
+:file:`.desktop` file says they can be started via D-Bus are started that
+way, falling back to running them normally if that fails. The exit codes are the same as
 those of :program:`xdg-open`.
 
 To have all programs that use :program:`xdg-open` use this kitten instead,
