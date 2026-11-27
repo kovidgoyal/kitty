@@ -359,6 +359,7 @@ static NSDate *application_finished_launching_at = nil;
 
 GLFWAPI GLFWColorScheme
 glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
+    GLFW_GUARD_BEGIN;
     (void)query_if_unintialized;
     int theme_type = GLFW_COLOR_SCHEME_NO_PREFERENCE;
     NSAppearance *changedAppearance = NSApp.effectiveAppearance;
@@ -369,6 +370,7 @@ glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
         theme_type = GLFW_COLOR_SCHEME_LIGHT;
     }
     return theme_type;
+    GLFW_GUARD_END(GLFW_COLOR_SCHEME_NO_PREFERENCE);
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id> *)change context:(void *)context {
@@ -419,7 +421,39 @@ glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
 @end
 
 @implementation GLFWApplication
+- (void)reportException:(NSException *)exception {
+    // Exceptions that reach the event loop are caught by AppKit and only logged
+    // to the system log, so make them visible in the kitty log as well.
+    _glfwCocoaLogException(exception, "the event loop");
+    [super reportException:exception];
+}
 @end
+
+void
+_glfwCocoaLogException(id exception, const char *where) {
+    @try {
+        @autoreleasepool {
+            NSString *desc = [exception description];
+            NSArray<NSString *> *frames = nil;
+            if ([exception isKindOfClass:[NSException class]]) {
+                NSException *e = exception;
+                desc = [NSString stringWithFormat:@"%@: %@", e.name, e.reason];
+                frames = e.callStackSymbols;
+            }
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Caught Objective-C exception in %s: %s", where, desc.UTF8String);
+            // Report the stack at the point the exception was thrown, in chunks that fit in an error message
+            NSMutableString *chunk = [NSMutableString string];
+            for (NSString *frame in frames) {
+                if (chunk.length && chunk.length + frame.length + 1 >= _GLFW_MESSAGE_SIZE - 64) {
+                    _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Exception stack:\n%s", chunk.UTF8String);
+                    [chunk setString:@""];
+                }
+                [chunk appendFormat:@"%@\n", frame];
+            }
+            if (chunk.length) _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Exception stack:\n%s", chunk.UTF8String);
+        }
+    } @catch (id) { _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Caught Objective-C exception in %s", where); }
+}
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -780,6 +814,7 @@ static void create_tick_source(void);
 
 int
 _glfwPlatformInit(bool *supports_window_occlusion) {
+    GLFW_GUARD_BEGIN;
     @autoreleasepool {
         *supports_window_occlusion = true;
         _glfw.ns.helper = [[GLFWHelper alloc] init];
@@ -921,6 +956,7 @@ _glfwPlatformInit(bool *supports_window_occlusion) {
         return true;
 
     } // autoreleasepool
+    GLFW_GUARD_END(false);
 }
 static NSDate *
 get_process_start_time(pid_t pid) {
@@ -942,6 +978,7 @@ static void remove_all_timers(void);
 
 void
 _glfwPlatformTerminate(void) {
+    GLFW_GUARD_BEGIN;
     @autoreleasepool {
         // Kill the AutoFill helper process that macOS Tahoe starts and fails to
         // shutdown on application exit, see https://github.com/kovidgoyal/kitty/issues/9299
@@ -1007,6 +1044,7 @@ _glfwPlatformTerminate(void) {
         }
 
     } // autoreleasepool
+    GLFW_GUARD_END();
 }
 
 const char *
@@ -1063,8 +1101,10 @@ _glfwPlatformPostEmptyEvent(void) {
 
 void
 _glfwPlatformStopMainLoop(void) {
+    GLFW_GUARD_BEGIN;
     [NSApp stop:nil];
     _glfwCocoaPostEmptyEvent();
+    GLFW_GUARD_END();
 }
 
 void
@@ -1188,6 +1228,7 @@ schedule_timer(Timer *t, bool enabled) {
 
 unsigned long long
 _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback) {
+    GLFW_GUARD_BEGIN;
     static unsigned long long timer_counter = 0;
     if (num_timers >= timers_capacity && !resize_timers(MAX(MIN_TIMERS_CAPACITY, 2 * timers_capacity))) {
         _glfwInputError(GLFW_OUT_OF_MEMORY, "Out of memory adding timer");
@@ -1204,20 +1245,24 @@ _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callba
     t->armed = false;
     schedule_timer(t, true);
     return timer_counter;
+    GLFW_GUARD_END(0);
 }
 
 void
 _glfwPlatformRemoveTimer(unsigned long long timer_id) {
+    GLFW_GUARD_BEGIN;
     for (size_t i = 0; i < num_timers; i++) {
         if (timers[i].id == timer_id) {
             remove_timer_at(i);
             break;
         }
     }
+    GLFW_GUARD_END();
 }
 
 void
 _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled) {
+    GLFW_GUARD_BEGIN;
     for (size_t i = 0; i < num_timers; i++) {
         if (timers[i].id == timer_id) {
             Timer *t = timers + i;
@@ -1226,6 +1271,7 @@ _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool
             break;
         }
     }
+    GLFW_GUARD_END();
 }
 
 void

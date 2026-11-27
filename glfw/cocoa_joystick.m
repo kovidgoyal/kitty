@@ -256,6 +256,7 @@ removeCallback(void *context UNUSED, IOReturn result UNUSED, void *sender UNUSED
 
 bool
 _glfwPlatformInitJoysticks(void) {
+    GLFW_GUARD_BEGIN;
     CFMutableArrayRef matching;
     const long usages[] = {kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
 
@@ -299,10 +300,12 @@ _glfwPlatformInitJoysticks(void) {
     // joysticks
     CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, false);
     return true;
+    GLFW_GUARD_END(false);
 }
 
 void
 _glfwPlatformTerminateJoysticks(void) {
+    GLFW_GUARD_BEGIN;
     int jid;
 
     for (jid = 0; jid <= GLFW_JOYSTICK_LAST; jid++) closeJoystick(_glfw.joysticks + jid);
@@ -311,11 +314,13 @@ _glfwPlatformTerminateJoysticks(void) {
         CFRelease(_glfw.ns.hidManager);
         _glfw.ns.hidManager = NULL;
     }
+    GLFW_GUARD_END();
 }
 
 
 int
 _glfwPlatformPollJoystick(_GLFWjoystick *js, int mode) {
+    GLFW_GUARD_BEGIN;
     if (mode & _GLFW_POLL_AXES) {
         CFIndex i;
 
@@ -367,6 +372,7 @@ _glfwPlatformPollJoystick(_GLFWjoystick *js, int mode) {
     }
 
     return js->present;
+    GLFW_GUARD_END(false);
 }
 
 void

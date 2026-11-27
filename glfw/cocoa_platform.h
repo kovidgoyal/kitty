@@ -278,3 +278,25 @@ void _glfwRequestRenderFrame(_GLFWwindow *w);
 void _glfwCocoaPostEmptyEvent(void);
 
 uint32_t vk_to_unicode_key_with_current_layout(uint16_t keycode);
+
+#if defined(__OBJC__)
+// Objective-C exceptions must not unwind through the C code that calls into
+// GLFW, as that leaves it in an inconsistent state, for example, when the VT
+// parser is in the middle of dispatching an escape code. Entry points called
+// from C code catch and log them using these macros. With the zero cost
+// exception model used on 64-bit macOS, there is no overhead unless an
+// exception is actually thrown. Use as:
+//     GLFW_GUARD_BEGIN; ... function body ... GLFW_GUARD_END(return value on exception);
+void _glfwCocoaLogException(id exception, const char *where);
+#define GLFW_GUARD_BEGIN @try {
+#define GLFW_GUARD_END(...)                                         \
+    }                                                               \
+    @catch (id glfw_guard_exception) {                              \
+        static unsigned glfw_guard_reports = 0;                     \
+        if (glfw_guard_reports < 8) {                               \
+            glfw_guard_reports++;                                   \
+            _glfwCocoaLogException(glfw_guard_exception, __func__); \
+        }                                                           \
+        return __VA_ARGS__;                                         \
+    }
+#endif

@@ -411,6 +411,7 @@ _glfwPlatformGetMonitorPos(_GLFWmonitor *monitor, int *xpos, int *ypos) {
 
 void
 _glfwPlatformGetMonitorContentScale(_GLFWmonitor *monitor, float *xscale, float *yscale) {
+    GLFW_GUARD_BEGIN;
     if (!refreshMonitorScreen(monitor)) return;
 
     const NSRect points = [monitor->ns.screen frame];
@@ -418,10 +419,12 @@ _glfwPlatformGetMonitorContentScale(_GLFWmonitor *monitor, float *xscale, float 
 
     if (xscale) *xscale = (float)(pixels.size.width / points.size.width);
     if (yscale) *yscale = (float)(pixels.size.height / points.size.height);
+    GLFW_GUARD_END();
 }
 
 void
 _glfwPlatformGetMonitorWorkarea(_GLFWmonitor *monitor, int *xpos, int *ypos, int *width, int *height) {
+    GLFW_GUARD_BEGIN;
     if (!refreshMonitorScreen(monitor)) return;
 
     const NSRect frameRect = [monitor->ns.screen visibleFrame];
@@ -430,10 +433,12 @@ _glfwPlatformGetMonitorWorkarea(_GLFWmonitor *monitor, int *xpos, int *ypos, int
     if (ypos) *ypos = (int)_glfwTransformYNS(frameRect.origin.y + frameRect.size.height - 1);
     if (width) *width = (int)frameRect.size.width;
     if (height) *height = (int)frameRect.size.height;
+    GLFW_GUARD_END();
 }
 
 GLFWvidmode *
 _glfwPlatformGetVideoModes(_GLFWmonitor *monitor, int *count) {
+    GLFW_GUARD_BEGIN;
     *count = 0;
 
     CFArrayRef modes = CGDisplayCopyAllDisplayModes(monitor->ns.displayID, NULL);
@@ -460,10 +465,12 @@ _glfwPlatformGetVideoModes(_GLFWmonitor *monitor, int *count) {
 
     CFRelease(modes);
     return result;
+    GLFW_GUARD_END(NULL);
 }
 
 bool
 _glfwPlatformGetVideoMode(_GLFWmonitor *monitor, GLFWvidmode *mode) {
+    GLFW_GUARD_BEGIN;
     CGDisplayModeRef native = CGDisplayCopyDisplayMode(monitor->ns.displayID);
     if (!native) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to query display mode");
@@ -472,10 +479,12 @@ _glfwPlatformGetVideoMode(_GLFWmonitor *monitor, GLFWvidmode *mode) {
     *mode = vidmodeFromCGDisplayMode(native, monitor->ns.fallbackRefreshRate);
     CGDisplayModeRelease(native);
     return true;
+    GLFW_GUARD_END(false);
 }
 
 bool
 _glfwPlatformGetGammaRamp(_GLFWmonitor *monitor, GLFWgammaramp *ramp) {
+    GLFW_GUARD_BEGIN;
     uint32_t size = CGDisplayGammaTableCapacity(monitor->ns.displayID);
     CGGammaValue *values = calloc(size * 3, sizeof(CGGammaValue));
 
@@ -491,10 +500,12 @@ _glfwPlatformGetGammaRamp(_GLFWmonitor *monitor, GLFWgammaramp *ramp) {
 
     free(values);
     return true;
+    GLFW_GUARD_END(false);
 }
 
 void
 _glfwPlatformSetGammaRamp(_GLFWmonitor *monitor, const GLFWgammaramp *ramp) {
+    GLFW_GUARD_BEGIN;
     CGGammaValue *values = calloc(ramp->size * 3, sizeof(CGGammaValue));
 
     for (unsigned int i = 0; i < ramp->size; i++) {
@@ -506,6 +517,7 @@ _glfwPlatformSetGammaRamp(_GLFWmonitor *monitor, const GLFWgammaramp *ramp) {
     CGSetDisplayTransferByTable(monitor->ns.displayID, ramp->size, values, values + ramp->size, values + ramp->size * 2);
 
     free(values);
+    GLFW_GUARD_END();
 }
 
 
