@@ -251,3 +251,50 @@ func TestCommandCompleter(t *testing.T) {
 		t.Fatalf("Incorrect current word index: %d", c.CurrentWordIdx)
 	}
 }
+
+func TestGridScroll(t *testing.T) {
+	// A header and 4 rows of tiles, of total height 1 + 4*7 = 29
+	rows := []grid_row{{header: "H"}, {items: []int{0}}, {items: []int{1}}, {items: []int{2}}, {items: []int{3}}}
+	g := new_grid_scroll(rows, 15)
+	if diff := cmp.Diff([]int{0, 1, 8, 15, 22}, g.offsets); diff != "" || g.total != 29 {
+		t.Fatalf("Incorrect offsets: %d\n%s", g.total, diff)
+	}
+	if !g.scrollable() || g.max_first_row() != 3 || g.clamp(10) != 3 || g.clamp(-1) != 0 {
+		t.Fatalf("Incorrect scroll limits: %v %d", g.scrollable(), g.max_first_row())
+	}
+	// The thumb is viewport/total of the track and moves from top to bottom
+	track := 15 * 8
+	start, size := g.thumb(0, 8)
+	if start != 0 || size != track*15/29 {
+		t.Fatalf("Incorrect thumb at the top: %d %d", start, size)
+	}
+	if start, _ = g.thumb(3, 8); start != track-size {
+		t.Fatalf("Incorrect thumb at the bottom: %d", start)
+	}
+	if start, _ = g.thumb(10, 8); start != track-size {
+		t.Fatalf("Thumb not clamped: %d", start)
+	}
+	// Dragging the thumb to a position scrolls to the closest row
+	for _, tc := range []struct {
+		top  float64
+		want int
+	}{{-5, 0}, {0, 0}, {float64(track - size), 3}, {1000, 3}, {float64(track-size) * 8 / 15, 2}} {
+		if got := g.row_for_thumb(tc.top, 8); got != tc.want {
+			t.Errorf("Thumb at %v gave row %d instead of %d", tc.top, got, tc.want)
+		}
+	}
+	if g.row_for_offset(14) != 3 || g.row_for_offset(5) != 2 || g.row_for_offset(100) != 3 {
+		t.Fatalf("Incorrect rows for offsets")
+	}
+	// Everything fits
+	g = new_grid_scroll(rows, 40)
+	if g.scrollable() || g.max_first_row() != 0 {
+		t.Fatalf("Grid that fits is scrollable")
+	}
+	if _, size := g.thumb(0, 8); size != 0 {
+		t.Fatalf("Thumb shown when everything fits")
+	}
+	if new_grid_scroll(nil, 10).max_first_row() != 0 {
+		t.Fatalf("Incorrect max first row for an empty grid")
+	}
+}

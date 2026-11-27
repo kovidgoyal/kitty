@@ -5,6 +5,7 @@ package mouse_demo
 import (
 	"strings"
 
+	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
@@ -71,7 +72,7 @@ type text_area struct {
 	grab_offset    float64
 	hovering_thumb bool
 	// The image used to draw the thumb, when the terminal supports images
-	thumb_image thumb_image
+	thumb_image graphics.ScrollThumb
 }
 
 func (t *text_area) wrap(width int) {
@@ -182,10 +183,7 @@ func (t *text_area) paint_row(lp *loop.Loop, row int) {
 // indicator is drawn with block characters in steps of one eighth of a cell,
 // so that it moves smoothly as the text scrolls. Its geometry is then computed
 // in these steps.
-const eighths_per_cell = 8
-
-// lower_blocks[n] is a block filling the lower n eighths of a cell
-var lower_blocks = [eighths_per_cell + 1]string{" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"}
+const eighths_per_cell = graphics.EighthsPerCell
 
 // thumb returns the position and size of the thumb of the scroll indicator
 // in units of 1/units_per_cell of a cell, with zero being the top of the
@@ -225,7 +223,7 @@ func (t *text_area) thumb_pixels() (top, height, track float64) {
 // The thumb is positioned in pixels when drawn as an image and in eighths
 // of a cell when drawn with block characters
 func (t *text_area) thumb_units_per_cell() int {
-	if t.thumb_image.supported {
+	if t.thumb_image.Supported {
 		return t.cell_height
 	}
 	return eighths_per_cell
@@ -254,7 +252,7 @@ func (t *text_area) hit_test(ev *loop.MouseEvent) (on_indicator bool, where int)
 
 // draw_scroll_indicator draws the scroll bar in the right edge of the box
 func (t *text_area) draw_scroll_indicator(lp *loop.Loop) {
-	if t.thumb_image.supported {
+	if t.thumb_image.Supported {
 		t.draw_scroll_indicator_image(lp)
 		return
 	}
@@ -267,19 +265,7 @@ func (t *text_area) draw_scroll_indicator(lp *loop.Loop) {
 	x := t.box_left + t.box_width
 	for row := range t.inner_height {
 		lp.MoveCursorTo(x, t.inner_top+row+1)
-		cell_top, cell_bottom := row*eighths_per_cell, (row+1)*eighths_per_cell
-		a, b := max(start, cell_top), min(end, cell_bottom)
-		switch {
-		case b <= a:
-			lp.QueueWriteString("│")
-		case b == cell_bottom:
-			// The thumb covers the lower part, or all, of this cell
-			lp.QueueWriteString("\x1b[" + color + "m" + lower_blocks[b-a] + "\x1b[m")
-		default:
-			// The thumb covers the upper part of this cell, draw the lower
-			// part, not covered by it, in the background color using reverse video
-			lp.QueueWriteString("\x1b[" + color + ";7m" + lower_blocks[cell_bottom-b] + "\x1b[m")
-		}
+		lp.QueueWriteString(graphics.ThumbBlockCell(row, start, end, color))
 	}
 }
 
@@ -288,20 +274,20 @@ func (t *text_area) draw_scroll_indicator(lp *loop.Loop) {
 func (t *text_area) draw_scroll_indicator_image(lp *loop.Loop) {
 	start, size := t.thumb(t.cell_height)
 	if size == 0 {
-		t.thumb_image.hide(lp)
+		t.thumb_image.Hide(lp)
 		return
 	}
 	x := t.box_left + t.box_width - 1
-	key := thumb_image_key{width: t.cell_width, height: size, hovered: t.dragging || t.hovering_thumb}
-	t.thumb_image.draw(lp, key, x, t.inner_top, start, t.cell_height)
+	key := graphics.ScrollThumbKey{Width: t.cell_width, Height: size, Hovered: t.dragging || t.hovering_thumb}
+	t.thumb_image.Draw(lp, key, x, t.inner_top, start, t.cell_height)
 }
 
 // set_images_supported is called when the terminal is found to support images
 func (t *text_area) set_images_supported(lp *loop.Loop) {
-	if t.thumb_image.supported {
+	if t.thumb_image.Supported {
 		return
 	}
-	t.thumb_image.supported = true
+	t.thumb_image.Supported = true
 	if t.visible {
 		// Replace the thumb drawn with block characters by the line
 		t.draw_right_edge(lp)
@@ -384,7 +370,7 @@ func (t *text_area) drag_to(lp *loop.Loop, y int) {
 // Must be called after clearing the screen.
 func (t *text_area) draw(lp *loop.Loop) {
 	// Clearing the screen removes the thumb image
-	t.thumb_image.forget()
+	t.thumb_image.Forget()
 	if !t.visible {
 		return
 	}
@@ -397,7 +383,7 @@ func (t *text_area) draw(lp *loop.Loop) {
 	}
 	lp.MoveCursorTo(t.box_left+1, t.box_top+t.box_height)
 	lp.QueueWriteString("╰" + strings.Repeat("─", t.inner_width) + "╯")
-	if t.thumb_image.supported {
+	if t.thumb_image.Supported {
 		t.draw_right_edge(lp)
 	}
 	t.draw_scroll_indicator(lp)

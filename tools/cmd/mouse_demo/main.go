@@ -12,10 +12,15 @@ import (
 	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print
+
+// The id of the image used for the thumb of the scroll indicator
+const thumb_image_id = 7301
+
 var debugprintln = tty.DebugPrintln
 var _ = debugprintln
 
@@ -193,6 +198,7 @@ func Run(args []string) (rc int, err error) {
 	var current_mouse_event *loop.MouseEvent
 	var dnd dnd_state
 	var text text_area
+	text.thumb_image = *graphics.NewScrollThumb(thumb_image_id)
 
 	// build_box_lines computes the drop box content lines based on current state.
 	build_box_lines := func() []string {
@@ -604,7 +610,7 @@ func Run(args []string) (rc int, err error) {
 		lp.SetCursorVisible(false)
 		lp.StartAcceptingDrops("", "text/plain", "text/uri-list")
 		lp.QuerySmoothScrolling()
-		query_graphics_support(lp)
+		text.thumb_image.Query(lp)
 		draw_all()
 		return "", nil
 	}
@@ -613,7 +619,7 @@ func Run(args []string) (rc int, err error) {
 		case etype == loop.OSC && loop.IsSmoothScrollQueryResponse(raw) && !text.supported:
 			text.set_supported()
 			draw_all()
-		case etype == loop.APC && is_graphics_support_response(raw):
+		case etype == loop.APC && text.thumb_image.IsSupportResponse(raw):
 			lp.StartAtomicUpdate()
 			text.set_images_supported(lp)
 			lp.EndAtomicUpdate()
@@ -622,7 +628,7 @@ func Run(args []string) (rc int, err error) {
 	}
 	lp.OnFinalize = func() string {
 		lp.RemoveSmoothScrollRegion(text_region_id)
-		text.thumb_image.free(lp)
+		text.thumb_image.Free(lp)
 		lp.SetCursorVisible(true)
 		lp.StopAcceptingDrops()
 		return ""

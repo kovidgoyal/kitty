@@ -78,6 +78,7 @@ type Handler struct {
 	warnings []string
 
 	screen_size      loop.ScreenSize
+	scroll           scroll_indicator
 	shortcut_tracker config.ShortcutTracker
 	mouse_state      tui.MouseState
 
@@ -160,6 +161,10 @@ func (h *Handler) on_color_scheme_change(p loop.ColorPreference) error {
 
 func (h *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
 	if etype == loop.APC {
+		if h.scroll.thumb != nil && !h.scroll.thumb.Supported && h.scroll.thumb.IsSupportResponse(payload) {
+			h.scroll.thumb.Supported = true
+			return h.draw_screen()
+		}
 		if gc := graphics.GraphicsCommandFromAPC(payload); gc != nil && h.icon_display.HandleGraphicsCommand(gc) {
 			return h.draw_screen()
 		}
@@ -189,7 +194,11 @@ func (h *Handler) set_query(q string) error {
 	return nil
 }
 
-func (h *Handler) grid_width() int { return max(1, int(h.screen_size.WidthCells)-2) }
+// grid_width is the width of the grid, which starts in the second column and
+// ends with an empty column before the scroll indicator
+func (h *Handler) grid_width() int {
+	return max(1, scroll_indicator_column(int(h.screen_size.WidthCells))-2)
+}
 
 func (h *Handler) layout() {
 	h.rows = layout_grid(h.matches, h.query == "", num_grid_columns(h.grid_width()))
@@ -232,30 +241,24 @@ func (h *Handler) move(how string) {
 	}
 }
 
-// ensure_current_visible scrolls the grid so that the current item is visible
+// ensure_current_visible scrolls the grid so that the current item is
+// visible. When scrolling up to it, the header of its section is shown too.
 func (h *Handler) ensure_current_visible() {
+	g := h.scroll_geometry()
+	h.first_row = g.clamp(h.first_row)
 	r, _ := position_of(h.rows, h.current)
 	if r < 0 {
 		h.first_row = 0
 		return
 	}
-	if r > 0 && h.rows[r-1].is_header() {
-		// keep the section header visible with its first row
-		r--
-	}
 	if r < h.first_row {
 		h.first_row = r
+		if r > 0 && h.rows[r-1].is_header() {
+			h.first_row = r - 1
+		}
 		return
 	}
-	for h.first_row < r {
-		height := 0
-		cr, _ := position_of(h.rows, h.current)
-		for _, row := range h.rows[h.first_row : cr+1] {
-			height += row.height()
-		}
-		if height <= h.grid_height() {
-			break
-		}
+	for h.first_row < r && g.offsets[r]+h.rows[r].height()-g.offsets[h.first_row] > g.viewport {
 		h.first_row++
 	}
 }
@@ -330,6 +333,9 @@ func (h *Handler) OnInitialize() (string, error) {
 	h.lp.StartBracketedPaste()
 	h.lp.RequestCurrentColorScheme()
 	h.icon_display.Initialize(h.lp)
+	h.scroll.thumb = graphics.NewScrollThumb(h.icon_display.next_id)
+	h.icon_display.next_id++
+	h.scroll.thumb.Query(h.lp)
 	h.load_icons()
 	if err = h.draw_screen(); err != nil {
 		return "", err
@@ -381,7 +387,14 @@ func (h *Handler) OnText(text string, from_key_event, in_bracketed_paste bool) e
 }
 
 func (h *Handler) OnMouseEvent(ev *loop.MouseEvent) error {
-	redraw := h.mouse_state.UpdateState(ev)
+	consumed, scroll_redraw := h.handle_scroll_mouse(ev)
+	if consumed {
+		if scroll_redraw && h.result == nil {
+			return h.draw_screen()
+		}
+		return nil
+	}
+	redraw := h.mouse_state.UpdateState(ev) || scroll_redraw
 	if err := h.mouse_state.DispatchEventToHoveredRegions(ev); err != nil {
 		return err
 	}
@@ -397,6 +410,9 @@ func (h *Handler) OnWakeup() error {
 
 func (h *Handler) OnFinalize() string {
 	h.icon_display.Finalize(h.lp)
+	if h.scroll.thumb != nil {
+		h.scroll.thumb.Free(h.lp)
+	}
 	return ""
 }
 
@@ -420,6 +436,10 @@ func (h *Handler) draw_screen() (err error) {
 	h.icon_display.StartRender()
 	if h.in_command_mode {
 		h.icon_display.FinishRender(lp) // removes all icons
+		h.scroll.visible = false
+		if h.scroll.thumb != nil {
+			h.scroll.thumb.Hide(lp)
+		}
 		h.draw_command_screen()
 		h.mouse_state.UpdateHoveredIds()
 		h.mouse_state.ApplyHoverStyles(lp)
@@ -432,6 +452,7 @@ func (h *Handler) draw_screen() (err error) {
 		return err
 	}
 	h.icon_display.FinishRender(lp)
+	h.draw_scroll_indicator(header_height + search_bar_height)
 	h.draw_footer()
 	h.mouse_state.UpdateHoveredIds()
 	h.mouse_state.ApplyHoverStyles(lp)
