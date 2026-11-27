@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/kovidgoyal/kitty/tools/fzf"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 func TestChooserItems(t *testing.T) {
@@ -129,7 +130,7 @@ func TestChooserGrid(t *testing.T) {
 	for i := range items {
 		items[i] = &item{recommended: i < 2}
 	}
-	rows := layout_grid(items, true, 3)
+	rows := layout_grid(items, true, 3, default_tile_geometry)
 	type r struct {
 		H string
 		I []int
@@ -137,14 +138,17 @@ func TestChooserGrid(t *testing.T) {
 	var actual []r
 	for _, x := range rows {
 		actual = append(actual, r{x.header, x.items})
+		if x.height() != utils.IfElse(x.is_header(), 1, default_tile_geometry.height()) {
+			t.Fatalf("Incorrect row height: %d", x.height())
+		}
 	}
 	if diff := cmp.Diff([]r{{"Recommended", nil}, {"", []int{0, 1}}, {"Other applications", nil}, {"", []int{2, 3, 4}}, {"", []int{5, 6}}}, actual); diff != "" {
 		t.Fatalf("Incorrect layout:\n%s", diff)
 	}
-	if n := len(layout_grid(items, false, 3)); n != 3 {
+	if n := len(layout_grid(items, false, 3, default_tile_geometry)); n != 3 {
 		t.Fatalf("Incorrect number of rows without sections: %d", n)
 	}
-	if rows := layout_grid(items[2:], true, 3); rows[0].header != "All applications" {
+	if rows := layout_grid(items[2:], true, 3, default_tile_geometry); rows[0].header != "All applications" {
 		t.Fatalf("Incorrect header with no recommendations: %#v", rows[0])
 	}
 	for _, tc := range []struct{ idx, amt, expected int }{
@@ -155,7 +159,7 @@ func TestChooserGrid(t *testing.T) {
 			t.Errorf("Moving %d from %d gave %d instead of %d", tc.amt, tc.idx, actual, tc.expected)
 		}
 	}
-	if num_grid_columns(5) != 1 || num_grid_columns(tile_width*3+1) != 3 {
+	if num_grid_columns(5, default_tile_geometry) != 1 || num_grid_columns(default_tile_geometry.width()*3+1, default_tile_geometry) != 3 {
 		t.Fatalf("Incorrect number of grid columns")
 	}
 }
@@ -254,7 +258,7 @@ func TestCommandCompleter(t *testing.T) {
 
 func TestGridScroll(t *testing.T) {
 	// A header and 4 rows of tiles, of total height 1 + 4*7 = 29
-	rows := []grid_row{{header: "H"}, {items: []int{0}}, {items: []int{1}}, {items: []int{2}}, {items: []int{3}}}
+	rows := []grid_row{{header: "H"}, {items: []int{0}, tile_height: 7}, {items: []int{1}, tile_height: 7}, {items: []int{2}, tile_height: 7}, {items: []int{3}, tile_height: 7}}
 	g := new_grid_scroll(rows, 15)
 	if diff := cmp.Diff([]int{0, 1, 8, 15, 22}, g.offsets); diff != "" || g.total != 29 {
 		t.Fatalf("Incorrect offsets: %d\n%s", g.total, diff)
@@ -296,5 +300,34 @@ func TestGridScroll(t *testing.T) {
 	}
 	if new_grid_scroll(nil, 10).max_first_row() != 0 {
 		t.Fatalf("Incorrect max first row for an empty grid")
+	}
+}
+
+func TestTileSize(t *testing.T) {
+	for _, tc := range []struct {
+		icon_size, tile_width string
+		ok                    bool
+	}{{"3", "16", true}, {"1", "8", true}, {"7", "64", true}, {"8", "16", false}, {"3", "7", false}, {"3", "65", false}} {
+		cfg := NewConfig()
+		if err := cfg.Parse("icon_size", tc.icon_size); err != nil {
+			t.Fatal(err)
+		}
+		if err := cfg.Parse("tile_width", tc.tile_width); err != nil {
+			t.Fatal(err)
+		}
+		s, err := settings_from_config(cfg)
+		if (err == nil) != tc.ok {
+			t.Fatalf("Validity of icon_size %s and tile_width %s not detected: %v", tc.icon_size, tc.tile_width, err)
+		}
+		if err == nil && (s.tiles.width() != int(cfg.Tile_width) || s.tiles.icon_rows != int(cfg.Icon_size) || s.tiles.height() != int(cfg.Icon_size)+4) {
+			t.Fatalf("Incorrect tile geometry: %#v", s.tiles)
+		}
+	}
+	if default_tile_geometry != (tile_geometry{icon_rows: 3, name_lines: 2, content_width: 14}) {
+		t.Fatalf("Default tile geometry changed: %#v", default_tile_geometry)
+	}
+	cfg := NewConfig()
+	if s, err := settings_from_config(cfg); err != nil || s.tiles != default_tile_geometry {
+		t.Fatalf("Default settings do not give the default tile geometry: %#v %v", s, err)
 	}
 }

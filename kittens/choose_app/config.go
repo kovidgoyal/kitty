@@ -240,6 +240,7 @@ func (r OpenWithRule) Matches(t Target, mime_types []string) bool {
 type Settings struct {
 	*Config
 	Rules []OpenWithRule
+	tiles tile_geometry
 }
 
 func LoadSettings(config_paths, overrides []string) (ans *Settings, err error) {
@@ -254,6 +255,13 @@ func LoadSettings(config_paths, overrides []string) (ans *Settings, err error) {
 
 func settings_from_config(cfg *Config) (ans *Settings, err error) {
 	ans = &Settings{Config: cfg}
+	if cfg.Icon_size < 1 || cfg.Icon_size > max_icon_rows {
+		return nil, fmt.Errorf("icon_size must be between 1 and %d, not %d", max_icon_rows, cfg.Icon_size)
+	}
+	if cfg.Tile_width < min_tile_width || cfg.Tile_width > max_tile_width {
+		return nil, fmt.Errorf("tile_width must be between %d and %d, not %d", min_tile_width, max_tile_width, cfg.Tile_width)
+	}
+	ans.tiles = new_tile_geometry(int(cfg.Icon_size), int(cfg.Tile_width))
 	for _, spec := range cfg.Open_with {
 		rule, err := ParseOpenWith(spec)
 		if err != nil {

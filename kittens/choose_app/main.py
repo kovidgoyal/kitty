@@ -103,6 +103,21 @@ egr()  # }}}
 
 agr('appearance', 'Appearance')  # {{{
 opt(
+    'icon_size',
+    '3',
+    option_type='positive_int',
+    long_text='The height of application icons, in lines. Must be between 1 and 7. Larger icons mean fewer applications fit on screen.',
+)
+opt(
+    'tile_width',
+    '16',
+    option_type='positive_int',
+    long_text="""
+The width, in cells, of the tiles showing the applications. Names that do not fit in two lines of this width are
+shortened. Must be between 8 and 64.
+""",
+)
+opt(
     'panel_size',
     '',
     long_text="""

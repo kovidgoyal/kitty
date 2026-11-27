@@ -10,36 +10,55 @@ import (
 
 var _ = fmt.Print
 
-// Dimensions of a tile in cells. A tile has a one cell border, which is
-// drawn only for the current tile, the icon and two lines for the name.
+// tile_geometry is the size of a tile in cells. A tile has a one cell
+// border, which is drawn only for the current tile, the icon and the lines
+// for the name.
+type tile_geometry struct {
+	icon_rows, name_lines, content_width int
+}
+
+func (t tile_geometry) width() int  { return t.content_width + 2 }
+func (t tile_geometry) height() int { return t.icon_rows + t.name_lines + 2 }
+
 const (
-	tile_icon_rows     = 3
-	tile_name_lines    = 2
-	tile_content_width = 14
-	tile_width         = tile_content_width + 2
-	tile_height        = tile_icon_rows + tile_name_lines + 2
+	default_icon_rows  = 3
+	default_tile_width = 16
+	// The largest scale supported by the text sizing protocol, used to draw
+	// placeholders for missing icons
+	max_icon_rows = 7
+	// Narrower tiles cannot show useful names
+	min_tile_width = 8
+	max_tile_width = 64
 )
+
+func new_tile_geometry(icon_rows, width int) tile_geometry {
+	return tile_geometry{icon_rows: icon_rows, name_lines: 2, content_width: width - 2}
+}
+
+var default_tile_geometry = new_tile_geometry(default_icon_rows, default_tile_width)
 
 // grid_row is either a section header or a row of tiles
 type grid_row struct {
 	header string
 	// indices into the list of matching items
 	items []int
+	// the height of a row of tiles
+	tile_height int
 }
 
 func (r grid_row) is_header() bool { return r.header != "" }
-func (r grid_row) height() int     { return utils.IfElse(r.is_header(), 1, tile_height) }
+func (r grid_row) height() int     { return utils.IfElse(r.is_header(), 1, r.tile_height) }
 
-func num_grid_columns(width int) int {
-	return max(1, width/tile_width)
+func num_grid_columns(width int, tiles tile_geometry) int {
+	return max(1, width/tiles.width())
 }
 
 // layout_grid arranges the matching items into rows. With sections, the
 // recommended items and the others are placed in separate sections.
-func layout_grid(items []*item, with_sections bool, ncols int) (rows []grid_row) {
+func layout_grid(items []*item, with_sections bool, ncols int, tiles tile_geometry) (rows []grid_row) {
 	add_tiles := func(start, end int) {
 		for i := start; i < end; i += ncols {
-			r := grid_row{}
+			r := grid_row{tile_height: tiles.height()}
 			for j := i; j < min(end, i+ncols); j++ {
 				r.items = append(r.items, j)
 			}

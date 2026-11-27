@@ -79,6 +79,7 @@ type Handler struct {
 
 	screen_size      loop.ScreenSize
 	scroll           scroll_indicator
+	tiles            tile_geometry
 	shortcut_tracker config.ShortcutTracker
 	mouse_state      tui.MouseState
 
@@ -96,7 +97,7 @@ type Handler struct {
 func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *ChoiceStore, input *ChooserInput) *Handler {
 	h := &Handler{
 		lp: lp, settings: settings, db: db, store: store, dirs: db.dirs, input: input, targets: input.Targets,
-		matcher: fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME), remember: settings.Remember_choice,
+		matcher: fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME), remember: settings.Remember_choice, tiles: settings.tiles,
 		icon_renderer: NewIconRenderer(IconCacheDir()),
 	}
 	h.base_theme = sync.OnceValue(func() string {
@@ -122,7 +123,7 @@ func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *Choic
 // Icons {{{
 
 func (h *Handler) load_icons() {
-	px := tile_icon_rows * int(h.screen_size.CellHeight)
+	px := h.tiles.icon_rows * int(h.screen_size.CellHeight)
 	if px < 1 {
 		return
 	}
@@ -201,7 +202,7 @@ func (h *Handler) grid_width() int {
 }
 
 func (h *Handler) layout() {
-	h.rows = layout_grid(h.matches, h.query == "", num_grid_columns(h.grid_width()))
+	h.rows = layout_grid(h.matches, h.query == "", num_grid_columns(h.grid_width(), h.tiles), h.tiles)
 }
 
 func (h *Handler) grid_height() int {
@@ -210,7 +211,7 @@ func (h *Handler) grid_height() int {
 
 // visible_tile_rows returns the number of rows of tiles that fit on screen
 func (h *Handler) visible_tile_rows() int {
-	return max(1, h.grid_height()/tile_height)
+	return max(1, h.grid_height()/h.tiles.height())
 }
 
 func (h *Handler) move(how string) {
@@ -347,7 +348,7 @@ func (h *Handler) OnInitialize() (string, error) {
 func (h *Handler) OnResize(old, new_size loop.ScreenSize) error {
 	h.screen_size = new_size
 	h.search_rl.ClearCachedScreenSize()
-	if tile_icon_rows*int(new_size.CellHeight) != h.icon_px {
+	if h.tiles.icon_rows*int(new_size.CellHeight) != h.icon_px {
 		h.load_icons()
 	}
 	return h.draw_screen()
@@ -628,10 +629,10 @@ func (h *Handler) draw_tile(it *item, idx, x, y int) error {
 	lp := h.lp
 	is_current := idx == h.current
 	if is_current {
-		h.draw_frame(x, y, tile_width, tile_height, accent_style)
+		h.draw_frame(x, y, h.tiles.width(), h.tiles.height(), accent_style)
 	}
-	for row := y; row < y+tile_height; row++ {
-		h.mouse_state.AddCellRegion("tile-"+strconv.Itoa(idx), x, row, x+tile_width-1, row, func(string) error {
+	for row := y; row < y+h.tiles.height(); row++ {
+		h.mouse_state.AddCellRegion("tile-"+strconv.Itoa(idx), x, row, x+h.tiles.width()-1, row, func(string) error {
 			h.current = idx
 			return h.accept_current()
 		}).HoverStyle = "none"
@@ -640,7 +641,7 @@ func (h *Handler) draw_tile(it *item, idx, x, y int) error {
 	icon_drawn := false
 	if h.icon_display.CanDisplay() && it.entry.Icon != "" {
 		if ii, found := h.icon_loader.get(it.entry.Icon); found {
-			if err := h.icon_display.Place(lp, ii, uint32(idx+1), x+1, y+1, tile_content_width, tile_icon_rows, h.screen_size); err != nil {
+			if err := h.icon_display.Place(lp, ii, uint32(idx+1), x+1, y+1, h.tiles.content_width, h.tiles.icon_rows, h.screen_size); err != nil {
 				return err
 			}
 			icon_drawn = true
@@ -660,18 +661,18 @@ func (h *Handler) draw_tile(it *item, idx, x, y int) error {
 		if glyph == "" {
 			glyph = "\uf489" // the Nerd Fonts terminal icon
 		}
-		lp.MoveCursorTo(x+2+(tile_content_width-tile_icon_rows)/2, y+2)
+		lp.MoveCursorTo(x+2+(h.tiles.content_width-h.tiles.icon_rows)/2, y+2)
 		pre, post, _ := strings.Cut(h.styled(dim_style, " "), " ")
 		lp.QueueWriteString(pre)
-		lp.DrawSizedText(glyph, loop.SizedText{Scale: tile_icon_rows})
+		lp.DrawSizedText(glyph, loop.SizedText{Scale: h.tiles.icon_rows})
 		lp.QueueWriteString(post)
 	}
 	// The name
 	runes := []rune(it.entry.Name)
-	for i, line := range wrap_name(it.entry.Name, tile_content_width, tile_name_lines) {
+	for i, line := range wrap_name(it.entry.Name, h.tiles.content_width, h.tiles.name_lines) {
 		text := h.render_name_line(runes, line, it.name_positions, is_current)
 		w := wcswidth.Stringwidth(string(runes[line.start:line.end])) + utils.IfElse(line.ellipsis, 1, 0)
-		lp.MoveCursorTo(x+2+(tile_content_width-w)/2, y+tile_icon_rows+2+i)
+		lp.MoveCursorTo(x+2+(h.tiles.content_width-w)/2, y+h.tiles.icon_rows+2+i)
 		lp.QueueWriteString(text)
 	}
 	return nil
@@ -692,8 +693,8 @@ func (h *Handler) draw_grid(y int) error {
 		}
 		return nil
 	}
-	ncols := num_grid_columns(h.grid_width())
-	left := 1 + (h.grid_width()-ncols*tile_width)/2
+	ncols := num_grid_columns(h.grid_width(), h.tiles)
+	left := 1 + (h.grid_width()-ncols*h.tiles.width())/2
 	bottom := y + height
 	for r := h.first_row; r < len(h.rows); r++ {
 		row := h.rows[r]
@@ -705,7 +706,7 @@ func (h *Handler) draw_grid(y int) error {
 			lp.QueueWriteString(h.styled(section_style, row.header))
 		} else {
 			for c, idx := range row.items {
-				if err := h.draw_tile(h.matches[idx], idx, left+c*tile_width, y); err != nil {
+				if err := h.draw_tile(h.matches[idx], idx, left+c*h.tiles.width(), y); err != nil {
 					return err
 				}
 			}
