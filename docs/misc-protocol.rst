@@ -69,20 +69,38 @@ where ``<code>`` is one of:
     OS window. A token allows another program to take keyboard focus, so it is
     given only to the window the user is interacting with.
 
+``ENOINPUT``
+    The user has not pressed a key or mouse button in the window recently, within
+    the last ten seconds in kitty. Programs should request tokens in response to
+    user actions, such as the user choosing a program to launch.
+
 ``EFAILED``
     The compositor did not provide a token, for example, because it does not
     support XDG activation, or a request from this window is already in progress.
 
 Tokens are single use, programs should request a new one for every program they
-launch. Requests with an invalid identifier are ignored. To find out if the terminal
-supports this, send::
+launch. Programs should use a different identifier for every request, so that
+a reply that arrives late, for example, after the program has given up waiting
+for it, is not mistaken for the reply to a later request. Requests with a missing
+or invalid identifier, malformed metadata or an unknown value for ``p`` are ignored.
+Unknown keys in the metadata are ignored. To find out if the terminal supports this, send::
 
     <OSC> 5524 ; i=<id> : p=? <ST>
 
 kitty replies immediately with ``<OSC> 5524 ; i=<id> : p=? ; ok <ST>``. Programs can
 send the primary device attributes request (``<CSI> c``) right after, as all terminals reply to it,
 if its reply arrives without a reply to the query, the terminal does not support
-this protocol. Unknown keys in the metadata are ignored.
+this protocol.
+
+Terminal emulators implementing this protocol should take care to give tokens only
+to programs the user is interacting with, as a program with a token can
+take keyboard focus away from whatever the user is doing. In particular, they should
+check that the window the program is running in has keyboard focus *and* that the
+user has pressed a key or mouse button in it recently, both when the request is
+received and when the token is obtained from the compositor, as the user may have
+switched away in the meantime. They should also limit the number of requests in
+progress per window, without letting a request the compositor never responds to
+block later requests indefinitely.
 
 .. _mouse_leave_window:
 

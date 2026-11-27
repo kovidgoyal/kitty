@@ -339,6 +339,8 @@ typedef struct Window {
     } size_mismatch_padding;
     ClickQueue click_queues[8];
     monotonic_t last_drag_scroll_at;
+    // When the user last pressed a key or mouse button in this window, zero if never
+    monotonic_t last_user_input_at;
     uint32_t last_special_key_pressed;
     WindowBarData title_bar_data, url_target_bar_data;
     id_type redirect_keys_to_overlay;

@@ -291,6 +291,7 @@ on_key_input(const GLFWkeyevent *ev) {
         return;
     }
     if (OPT(mouse_hide.hide_wait) < 0 && !is_no_action_key(key, native_key)) hide_mouse(global_state.callback_os_window);
+    if (action == GLFW_PRESS || (!key && !native_key && text[0])) w->last_user_input_at = monotonic();
     Screen *screen = w->render_data.screen;
     id_type active_window_id = w->id;
 

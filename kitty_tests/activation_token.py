@@ -20,7 +20,7 @@ class TestActivationToken(BaseTest):
             'i=' + 'a' * 64: Request('a' * 64),
         }.items():
             self.ae(parse_request(raw), expected, raw)
-        for raw in ('', 'i=', 'abc', 'i=a b', 'i=' + 'a' * 65, 'i=a:p=x', 'i=a\x1b', 'i=a:junk'):
+        for raw in ('', 'i=', 'abc', 'i=a b', 'i=' + 'a' * 65, 'i=a:p=x', 'i=a\x1b', 'i=a:junk', 'i=a\n', 'i=a\n:p=?', 'i=\na', 'i=a\r'):
             with self.assertRaises(InvalidRequest, msg=repr(raw)):
                 parse_request(raw)
 

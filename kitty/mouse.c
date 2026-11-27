@@ -1287,6 +1287,7 @@ HANDLER(handle_button_event) {
 
     Tab *t = osw->tabs + osw->active_tab;
     bool is_release = !osw->mouse_button_pressed[button];
+    if (!is_release) w->last_user_input_at = monotonic();
     clear_potential_drag(w, button, is_release);
 
     if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;

@@ -8,7 +8,13 @@ from base64 import standard_b64encode
 from typing import NamedTuple
 
 OSC_CODE = 5524
-ID_PATTERN = re.compile(r'^[a-zA-Z0-9_+.-]{1,64}$')
+ID_PATTERN = re.compile(r'[a-zA-Z0-9_+.-]{1,64}')
+# Tokens are only given if the user pressed a key or mouse button in the
+# window within this many seconds
+MAX_SECONDS_SINCE_INPUT = 10
+# A request for which the compositor has not provided a token within this many
+# seconds is considered to have failed, so that the window can request again
+PENDING_REQUEST_TIMEOUT = 5
 
 
 class InvalidRequest(ValueError):
@@ -37,7 +43,7 @@ def parse_request(raw: str) -> Request:
             if val != '?':
                 raise InvalidRequest(f'unknown value for p: {val!r}')
             is_query = True
-    if not ID_PATTERN.match(ident):
+    if not ID_PATTERN.fullmatch(ident):
         raise InvalidRequest(f'missing or invalid identifier: {ident!r}')
     return Request(ident, is_query)
 

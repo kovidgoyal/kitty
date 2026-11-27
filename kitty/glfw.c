@@ -3411,9 +3411,16 @@ static void
 activation_token_callback(GLFWwindow *window UNUSED, const char *token, void *data) {
     if (!token || !token[0]) {
         token = "";
-        log_error("Wayland: Did not get activation token from compositor. Use a better compositor.");
+        // Programs can request tokens via OSC 5524, so do not flood the log
+        static bool logged = false;
+        if (!logged) {
+            logged = true;
+            log_error("Wayland: Did not get activation token from compositor. Use a better compositor.");
+        }
     }
-    PyObject *ret = PyObject_CallFunction(data, "s", token);
+    // Tokens should be UTF-8, but the compositor might not ensure it
+    RAII_PyObject(pytoken, PyUnicode_DecodeUTF8(token, strlen(token), "replace"));
+    PyObject *ret = pytoken ? PyObject_CallFunctionObjArgs(data, pytoken, NULL) : NULL;
     if (ret == NULL) PyErr_Print();
     else Py_DECREF(ret);
     Py_CLEAR(data);

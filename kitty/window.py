@@ -92,6 +92,7 @@ from .fast_data_types import (
     remove_timer,
     replace_c0_codes_except_nl_space_tab,
     run_with_activation_token,
+    seconds_since_last_user_input,
     set_redirect_keys_to_overlay,
     set_window_logo,
     set_window_padding,
@@ -877,7 +878,8 @@ class Window:
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self.needs_attention = False
-        self.activation_token_pending = False
+        self.activation_token_requested_at = 0.0
+        self.activation_token_invalid_request_logged = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
         self.default_title = os.path.basename(child.argv[0] or appname)
@@ -1725,12 +1727,23 @@ class Window:
 
     def activation_token_request(self, raw_data: memoryview) -> None:
         # OSC 5524, see docs/misc-protocol.rst
-        from .activation_token import InvalidRequest, error_reply, parse_request, query_reply, token_reply
+        from .activation_token import (
+            MAX_SECONDS_SINCE_INPUT,
+            PENDING_REQUEST_TIMEOUT,
+            InvalidRequest,
+            error_reply,
+            parse_request,
+            query_reply,
+            token_reply,
+        )
 
         try:
             req = parse_request(str(raw_data, 'utf-8', 'replace'))
         except InvalidRequest as e:
-            log_error(f'Ignoring invalid OSC 5524 activation token request: {e}')
+            if not self.activation_token_invalid_request_logged:
+                # log only once, so that programs cannot flood the log
+                self.activation_token_invalid_request_logged = True
+                log_error(f'Ignoring invalid OSC 5524 activation token request: {e}')
             return
 
         def send(payload: str) -> None:
@@ -1742,28 +1755,48 @@ class Window:
         if not is_wayland():
             send(error_reply(req, 'EUNSUPPORTED'))
             return
-        # A token allows another program to take focus, so only grant it to
-        # the window the user is interacting with: the active window of the
-        # OS window that has keyboard focus.
-        tm = get_boss().os_window_map.get(self.os_window_id)
-        if tm is None or tm.active_window is not self or not is_os_window_focused(self.os_window_id):
-            send(error_reply(req, 'ENOTFOCUSED'))
+        error = self.activation_token_denial(MAX_SECONDS_SINCE_INPUT)
+        if error:
+            send(error_reply(req, error))
             return
-        if self.activation_token_pending:
+        now = monotonic()
+        if self.activation_token_requested_at and now - self.activation_token_requested_at < PENDING_REQUEST_TIMEOUT:
             send(error_reply(req, 'EFAILED'))
             return
-        self.activation_token_pending = True
+        self.activation_token_requested_at = requested_at = now
         window_id = self.id
 
         def on_token(token: str) -> None:
             w = get_boss().window_id_map.get(window_id)
-            if w is not None:
-                w.activation_token_pending = False
-                w.screen.send_escape_code_to_child(ESC_OSC, token_reply(req, token) if token else error_reply(req, 'EFAILED'))
+            if w is None:
+                return
+            if w.activation_token_requested_at == requested_at:
+                w.activation_token_requested_at = 0
+            # the user might have switched to another window while the
+            # compositor was providing the token
+            error = w.activation_token_denial(MAX_SECONDS_SINCE_INPUT + PENDING_REQUEST_TIMEOUT)
+            if error:
+                reply = error_reply(req, error)
+            else:
+                reply = token_reply(req, token) if token else error_reply(req, 'EFAILED')
+            w.screen.send_escape_code_to_child(ESC_OSC, reply)
 
-        if not run_with_activation_token(on_token):
-            self.activation_token_pending = False
+        if not run_with_activation_token(on_token, self.os_window_id):
+            self.activation_token_requested_at = 0
             send(error_reply(req, 'EFAILED'))
+
+    def activation_token_denial(self, max_seconds_since_input: float) -> str:
+        # A token allows another program to take focus, so only grant it to
+        # the window the user is interacting with: the active window of the
+        # OS window that has keyboard focus, in which the user has recently
+        # pressed a key or mouse button. Returns the error code if not granted.
+        tm = get_boss().os_window_map.get(self.os_window_id)
+        if tm is None or tm.active_window is not self or not is_os_window_focused(self.os_window_id):
+            return 'ENOTFOCUSED'
+        since_input = seconds_since_last_user_input(self.id)
+        if since_input < 0 or since_input > max_seconds_since_input:
+            return 'ENOINPUT'
+        return ''
 
     def program_status_report(self, raw_data: memoryview) -> None:
         # OSC 7501 https://www.superlogical.com/rex/docs/build/program-status
