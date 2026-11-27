@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
-# Fast-forward the current branch of this tree to the same branch in the
-# kitty source tree on the ox machine, copying over any new commits.
+# Copy any new commits from the same branch in the kitty source tree on the ox
+# machine onto the current branch of this tree. The copied commits are signed
+# and have any Co-authored-by trailers removed from their messages. Since this
+# rewrites the commits, commits on ox that have already been copied are
+# detected by their patch ids and skipped.
 
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -22,8 +26,31 @@ def run(what: str) -> None:
         raise SystemExit(ret.returncode)
 
 
-def output(what: str) -> None:
+def output(what: str) -> str:
     return subprocess.check_output(shlex.split(what)).decode('utf-8').strip()
+
+
+def clean_message(msg: str) -> str:
+    lines = [x for x in msg.splitlines() if not re.match(r'\s*co-authored-by\s*:', x, flags=re.IGNORECASE)]
+    return '\n'.join(lines).rstrip() + '\n'
+
+
+class CopyFailed(Exception):
+    pass
+
+
+def copy_commit(commit: str) -> None:
+    fmt = '%an%x00%ae%x00%ad%x00%B'
+    name, email, date, msg = subprocess.check_output(
+        ['git', 'log', '-1', '--date=raw', f'--format={fmt}', commit]).decode('utf-8').split('\0', 3)
+    if subprocess.run(['git', 'cherry-pick', '--no-commit', commit]).returncode != 0:
+        raise CopyFailed(f'Failed to cherry-pick {commit}')
+    env = dict(os.environ, GIT_AUTHOR_NAME=name, GIT_AUTHOR_EMAIL=email, GIT_AUTHOR_DATE=date)
+    if subprocess.run(
+        ['git', 'commit', '--quiet', '--no-verify', '--allow-empty', '-S', '--cleanup=verbatim', '-F', '-'],
+        input=clean_message(msg).encode('utf-8'), env=env,
+    ).returncode != 0:
+        raise CopyFailed(f'Failed to commit {commit}')
 
 
 branch = sys.argv[1] if len(sys.argv) > 1 else output('git branch --show-current')
@@ -36,7 +63,21 @@ if output('git branch --show-current') != branch:
 
 before = output('git rev-parse HEAD')
 run(f'git fetch ssh://{HOST}/{REMOTE_PATH} {branch}')
-run('git merge --ff-only FETCH_HEAD')
+remote_head = output('git rev-parse FETCH_HEAD')
+# Commits reachable from FETCH_HEAD but not HEAD whose changes are not
+# already present in HEAD, oldest first
+new_commits = [x[2:] for x in output(f'git cherry HEAD {remote_head}').splitlines() if x.startswith('+ ')]
+if not new_commits:
+    print('No new commits to copy')
+    raise SystemExit(0)
+
+for commit in new_commits:
+    try:
+        copy_commit(commit)
+    except (CopyFailed, subprocess.CalledProcessError) as err:
+        subprocess.run(['git', 'cherry-pick', '--quit'])
+        subprocess.run(['git', 'reset', '--quiet', '--hard', before])
+        raise SystemExit(f'{err}, branch reset to its original state')
+
 after = output('git rev-parse HEAD')
-if before != after:
-    run(f'git log --oneline {before}..{after}')
+run(f'git log --oneline {before}..{after}')
