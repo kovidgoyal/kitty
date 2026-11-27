@@ -902,7 +902,7 @@ def application_logout_requested_at() -> float:
 def global_font_size(val: float = -1.0) -> float:
     pass
 
-def focus_os_window(os_window_id: int, also_raise: bool = True, activation_token: Optional[str] = None) -> bool:
+def focus_os_window(os_window_id: int, also_raise: bool = True, activation_token: Optional[str] = None, force: bool = False) -> bool:
     pass
 
 def toggle_secure_input() -> None:

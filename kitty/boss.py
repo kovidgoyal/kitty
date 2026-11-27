@@ -776,7 +776,12 @@ class Boss:
         return True
 
     def set_active_window(
-        self, window: Window | int, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False, activation_token: str = ''
+        self,
+        window: Window | int,
+        switch_os_window_if_needed: bool = False,
+        for_keep_focus: bool = False,
+        activation_token: str = '',
+        force_os_window_switch: bool = False,
     ) -> int | None:
         if isinstance(window, int):
             window = self.window_id_map.get(window, 0)
@@ -789,13 +794,13 @@ class Boss:
                         if tab is not self.active_tab:
                             tm.set_active_tab(tab, for_keep_focus=window.tabref() if for_keep_focus else None)
                         tab.set_active_window(w, for_keep_focus=window if for_keep_focus else None)
-                        if switch_os_window_if_needed and current_focused_os_window_id() != os_window_id:
+                        if switch_os_window_if_needed and (force_os_window_switch or current_focused_os_window_id() != os_window_id):
                             if activation_token or not is_wayland():
-                                focus_os_window(os_window_id, True, activation_token)
+                                focus_os_window(os_window_id, True, activation_token, force_os_window_switch)
                             else:
 
                                 def doit(token: str = '') -> None:
-                                    focus_os_window(os_window_id, True, token)
+                                    focus_os_window(os_window_id, True, token, force_os_window_switch)
 
                                 if not run_with_activation_token(doit):
                                     doit()

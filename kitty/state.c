@@ -1386,11 +1386,14 @@ PYWRAP0(application_logout_requested_at) {
 
 PYWRAP1(focus_os_window) {
     id_type os_window_id;
-    int also_raise = 1;
+    int also_raise = 1, force = 0;
     const char *activation_token = NULL;
-    PA("K|pz", &os_window_id, &also_raise, &activation_token);
+    PA("K|pzp", &os_window_id, &also_raise, &activation_token, &force);
     WITH_OS_WINDOW(os_window_id)
-    if (!os_window->is_focused || (activation_token && activation_token[0])) focus_os_window(os_window, also_raise, activation_token);
+    // force is needed when the OS window might not actually have focus, even
+    // though it is marked focused, for instance, while the window manager has
+    // yet to focus a newly created OS window
+    if (force || !os_window->is_focused || (activation_token && activation_token[0])) focus_os_window(os_window, also_raise, activation_token);
     Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;
