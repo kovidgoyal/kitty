@@ -30,6 +30,7 @@ const (
 	mime_cache_max_suffix_tree_depth    = 256
 	mime_cache_header_size              = 40
 	mime_cache_alias_list_offset_pos    = 4
+	mime_cache_parent_list_offset_pos   = 8
 	mime_cache_literal_list_offset_pos  = 12
 	mime_cache_suffix_tree_offset_pos   = 16
 	mime_cache_glob_list_offset_pos     = 20
@@ -360,6 +361,88 @@ func (caches mime_caches) aliases(mime string) (ans []string) {
 	return
 }
 
+// parents_of calls add for every direct parent of the specified canonical MIME
+// type. The parent list is sorted by MIME type.
+func (c *mime_cache) parents_of(mime []byte, add func(string)) {
+	list_offset, ok := c.u32(mime_cache_parent_list_offset_pos)
+	if !ok {
+		return
+	}
+	n, ok := c.u32(uint64(list_offset))
+	if !ok {
+		return
+	}
+	lo, hi := uint64(0), uint64(n)
+	for lo < hi {
+		mid := lo + (hi-lo)/2
+		entry := uint64(list_offset) + 4 + 8*mid
+		mime_offset, ok := c.u32(entry)
+		if !ok {
+			return
+		}
+		q, ok := c.cstring(mime_offset)
+		if !ok {
+			return
+		}
+		switch cmp := bytes.Compare(q, mime); {
+		case cmp < 0:
+			lo = mid + 1
+		case cmp > 0:
+			hi = mid
+		default:
+			parents_offset, ok := c.u32(entry + 4)
+			if !ok {
+				return
+			}
+			num_parents, ok := c.u32(uint64(parents_offset))
+			if !ok {
+				return
+			}
+			for i := range uint64(num_parents) {
+				if po, ok := c.u32(uint64(parents_offset) + 4 + 4*i); ok {
+					if p, ok := c.cstring(po); ok {
+						add(string(p))
+					}
+				}
+			}
+			return
+		}
+	}
+}
+
+func (caches mime_caches) canonical(mime string) string {
+	for _, c := range caches {
+		if canonical := c.canonical_mime_type([]byte(mime)); canonical != "" {
+			return canonical
+		}
+	}
+	return mime
+}
+
+// ancestors returns the canonical form of mime followed by all its ancestors
+// in breadth first order. text/plain is an implicit ancestor of all text/*
+// types, as per the shared-mime-info spec.
+func (caches mime_caches) ancestors(mime string) (ans []string) {
+	seen := NewSet[string](8)
+	queue := []string{caches.canonical(mime)}
+	for len(queue) > 0 {
+		q := queue[0]
+		queue = queue[1:]
+		if seen.Has(q) {
+			continue
+		}
+		seen.Add(q)
+		ans = append(ans, q)
+		for _, c := range caches {
+			c.parents_of([]byte(q), func(p string) { queue = append(queue, caches.canonical(p)) })
+		}
+		if strings.HasPrefix(q, "text/") && q != "text/plain" {
+			queue = append(queue, "text/plain")
+		}
+	}
+	return
+}
+
 func load_mime_cache(path string) (*mime_cache, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -491,3 +574,10 @@ var mime_type_aliases_cache = struct {
 	sync.RWMutex
 	m map[string][]string
 }{m: make(map[string][]string)}
+
+// MimeTypeAncestors returns the canonical form of the specified MIME type
+// followed by all the types it is a subclass of, nearest first, as known to
+// the shared-mime-info mime.cache files.
+func MimeTypeAncestors(mime string) []string {
+	return system_mime_caches().ancestors(mime)
+}

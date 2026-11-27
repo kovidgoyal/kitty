@@ -7,6 +7,7 @@ import (
 
 	"github.com/kovidgoyal/kitty/kittens/ask"
 	"github.com/kovidgoyal/kitty/kittens/broadcast"
+	"github.com/kovidgoyal/kitty/kittens/choose_app"
 	"github.com/kovidgoyal/kitty/kittens/choose_files"
 	"github.com/kovidgoyal/kitty/kittens/choose_fonts"
 	"github.com/kovidgoyal/kitty/kittens/clipboard"
@@ -111,6 +112,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	choose_fonts.EntryPoint(root)
 	// choose-files
 	choose_files.EntryPoint(root)
+	// choose-app
+	choose_app.EntryPoint(root)
 	// command-palette
 	command_palette.EntryPoint(root)
 	// query-terminal

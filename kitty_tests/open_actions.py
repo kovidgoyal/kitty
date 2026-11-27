@@ -324,6 +324,8 @@ MIME_CACHE_TEST_TYPES = """
 <mime-type type="application/json"><glob pattern="*.kjson"/><alias type="application/x-kt-json"/></mime-type>
 <mime-type type="text/x-kt-make"><glob pattern="Makefile" case-sensitive="true"/></mime-type>
 <mime-type type="text/x-kt-system"><glob pattern="*.kuser"/></mime-type>
+<mime-type type="application/x-kt-child"><sub-class-of type="application/x-kt-parent"/><sub-class-of type="text/x-kt-ext"/></mime-type>
+<mime-type type="application/x-kt-parent"><sub-class-of type="application/x-kt-grandparent"/></mime-type>
 """
 
 MIME_CACHE_TEST_EXPECTATIONS = {

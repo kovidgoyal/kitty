@@ -24,6 +24,8 @@ const mime_cache_test_types = `
 <mime-type type="application/json"><glob pattern="*.kjson"/><alias type="application/x-kt-json"/></mime-type>
 <mime-type type="text/x-kt-make"><glob pattern="Makefile" case-sensitive="true"/></mime-type>
 <mime-type type="text/x-kt-system"><glob pattern="*.kuser"/></mime-type>
+<mime-type type="application/x-kt-child"><sub-class-of type="application/x-kt-parent"/><sub-class-of type="text/x-kt-ext"/></mime-type>
+<mime-type type="application/x-kt-parent"><sub-class-of type="application/x-kt-grandparent"/></mime-type>
 `
 
 func TestMimeCache(t *testing.T) {
@@ -108,6 +110,16 @@ func TestMimeCache(t *testing.T) {
 	}
 	if actual := (mime_caches{}).aliases("text/x-kt-ext"); len(actual) != 1 || actual[0] != "text/x-kt-ext" {
 		t.Errorf("Incorrect aliases with no caches: %#v", actual)
+	}
+	for q, expected := range map[string][]string{
+		"application/x-kt-child": {"application/x-kt-child", "application/x-kt-parent", "text/x-kt-ext", "application/x-kt-grandparent", "text/plain"},
+		"text/x-kt-old":          {"text/x-kt-ext", "text/plain"},
+		"text/plain":             {"text/plain"},
+		"unknown/x-kt":           {"unknown/x-kt"},
+	} {
+		if actual := caches.ancestors(q); strings.Join(actual, " ") != strings.Join(expected, " ") {
+			t.Errorf("Incorrect ancestors for %#v: %#v != %#v", q, expected, actual)
+		}
 	}
 	if _, err := load_mime_cache(filepath.Join(tdir, "missing", "mime", "mime.cache")); err == nil {
 		t.Fatalf("Loading a non-existent cache did not fail")
