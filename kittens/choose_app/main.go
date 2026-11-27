@@ -181,7 +181,7 @@ func ask(opts *Options, resolver *Resolver, targets []Target) (*Result, error) {
 	}
 	if !in_terminal {
 		// the chooser running in the panel records the choice itself
-		return ask_in_panel(opts, targets)
+		return ask_in_panel(opts, resolver.Settings, targets)
 	}
 	input := NewChooserInput(targets)
 	result, err := run_chooser(opts, resolver, input)

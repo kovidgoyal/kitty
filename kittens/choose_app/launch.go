@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
+	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 )
@@ -200,7 +201,7 @@ func can_ask_in_terminal() bool {
 }
 
 // ask_in_panel runs the chooser in a kitty overlay panel and returns its result
-func ask_in_panel(opts *Options, targets []Target) (*Result, error) {
+func ask_in_panel(opts *Options, settings *Settings, targets []Target) (*Result, error) {
 	tdir, err := os.MkdirTemp("", "kitty-choose-app-")
 	if err != nil {
 		return nil, err
@@ -214,11 +215,16 @@ func ask_in_panel(opts *Options, targets []Target) (*Result, error) {
 			return nil, fmt.Errorf("could not find the kitten executable: %w", err)
 		}
 	}
-	args := []string{
-		"+kitten", "panel", "--layer=overlay", "--edge=center", "--focus-policy=exclusive", "--grab-keyboard",
+	size_args, err := tui.CenteredPanelArgs(settings.Panel_size)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Warning: ignoring panel_size:", err)
+	}
+	args := []string{"+kitten", "panel", "--layer=overlay", "--focus-policy=exclusive", "--grab-keyboard"}
+	args = append(args, size_args...)
+	args = append(args,
 		"-o", "background_opacity=0.85", exe, "choose-app", "--output-format=json", "--write-output-to", output_path,
 		"--title", utils.IfElse(opts.Title != "", opts.Title, "Open with"),
-	}
+	)
 	for _, x := range opts.Config {
 		args = append(args, "--config", x)
 	}

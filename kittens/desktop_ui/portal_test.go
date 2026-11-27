@@ -88,20 +88,6 @@ func TestAppChooser(t *testing.T) {
 		}
 	}
 
-	for spec, want := range map[string][3]string{
-		"":         {"center", "", ""},
-		"25 80":    {"center-sized", "25", "80"},
-		" 30  100": {"center-sized", "30", "100"},
-		"5 80":     {"center", "", ""},
-		"x 80":     {"center", "", ""},
-		"25":       {"center", "", ""},
-	} {
-		edge, lines, columns := panel_size("test", spec)
-		if got := [3]string{edge, lines, columns}; got != want {
-			t.Errorf("Incorrect panel size for %#v: %v != %v", spec, got, want)
-		}
-	}
-
 	patched := string(patch_portals_conf([]byte("[preferred]\ndefault=gtk\norg.freedesktop.impl.portal.AppChooser=gnome\n")))
 	if !strings.Contains(patched, APP_CHOOSER_INTERFACE+"=kitty;*") || strings.Contains(patched, "AppChooser=gnome") || !strings.Contains(patched, "default=gtk") {
 		t.Fatalf("Incorrectly patched portals.conf:\n%s", patched)

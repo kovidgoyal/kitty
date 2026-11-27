@@ -103,6 +103,15 @@ egr()  # }}}
 
 agr('appearance', 'Appearance')  # {{{
 opt(
+    'panel_size',
+    '',
+    long_text="""
+The size in lines and columns of the overlay panel used to ask which application to open files with, when
+not running in a terminal, see :option:`kitty +kitten choose_app --open`. By default it is full screen.
+For example: :code:`panel_size 25 80` will cause the panel to be of size 25 lines and 80 columns.
+""",
+)
+opt(
     'icon_theme',
     '',
     long_text="""

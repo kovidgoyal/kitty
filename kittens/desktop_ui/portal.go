@@ -22,6 +22,7 @@ import (
 	"github.com/kovidgoyal/dbus/introspect"
 	"github.com/kovidgoyal/dbus/prop"
 	"github.com/kovidgoyal/kitty/kittens/choose_app"
+	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
@@ -802,32 +803,6 @@ type ChooserResponse struct {
 	Current_filter string   `json:"current_filter"`
 }
 
-// panel_size returns the panel edge and size arguments for the specified
-// size setting, of the form: lines columns
-func panel_size(what, spec string) (edge, lines, columns string) {
-	edge = "center"
-	if spec == "" {
-		return
-	}
-	l, c, _ := strings.Cut(strings.TrimSpace(spec), " ")
-	l, c = strings.TrimSpace(l), strings.TrimSpace(c)
-	li, err := strconv.Atoi(l)
-	if err != nil {
-		log.Printf("%s size %s invalid with error: %s\n", what, spec, err)
-		return
-	}
-	ci, err := strconv.Atoi(c)
-	if err != nil {
-		log.Printf("%s size %s invalid with error: %s\n", what, spec, err)
-		return
-	}
-	if li < 10 || ci < 40 {
-		log.Printf("%s size %s too small, ignoring", what, spec)
-		return
-	}
-	return "center-sized", l, c
-}
-
 // run_kitten_in_panel runs a kitten in a kitty overlay panel, to handle the
 // portal request with the specified handle. kitten_args returns the command
 // line for the kitten, which must write its output to output_path and its
@@ -864,15 +839,16 @@ func (self *Portal) run_kitten_in_panel(handle dbus.ObjectPath, what, size strin
 	cmd := func() *exec.Cmd {
 		self.lock.Lock()
 		defer self.lock.Unlock()
-		edge, lines, columns := panel_size(what, size)
+		size_args, err := tui.CenteredPanelArgs(size)
+		if err != nil {
+			log.Printf("ignoring the %s size: %s", what, err)
+		}
 		args := []string{
-			"+kitten", "panel", "--layer=overlay", "--edge=" + edge, "--focus-policy=exclusive",
+			"+kitten", "panel", "--layer=overlay", "--focus-policy=exclusive",
 			"-o", "background_opacity=0.85", "--wait-for-single-instance-window-close",
 			"--grab-keyboard", "--single-instance", "--instance-group", "cfp-" + strconv.Itoa(os.Getpid()),
 		}
-		if edge == "center-sized" {
-			args = append(args, "--lines="+lines, "--columns="+columns)
-		}
+		args = append(args, size_args...)
 		for _, x := range self.opts.File_chooser_kitty_conf {
 			args = append(args, `-c`, x)
 		}
