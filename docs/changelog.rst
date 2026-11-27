@@ -263,6 +263,9 @@ Detailed list of changes
 - X11: Fix dropping files into programs that accept drops, such as the
   :doc:`dnd kitten </kittens/dnd>`, failing silently (:iss:`10944`)
 
+- A new option :opt:`ime_preedit_style` to control how the pre-edit text of
+  input methods and dictation is styled (:iss:`10739`)
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

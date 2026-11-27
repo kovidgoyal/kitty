@@ -4456,6 +4456,58 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.decoration, before.decoration)
         self.ae(s.cursor.decoration_fg, before.decoration_fg)
 
+    def test_ime_preedit_style_option(self):
+        from kitty.options.utils import ime_preedit_style
+
+        def draw(spec, prefix=b''):
+            s = self.create_screen(cols=10, lines=3, options={'ime_preedit_style': ime_preedit_style(spec)})
+            parse_bytes(s, prefix + b'xy')
+            s.test_draw_overlay_line('ab', 0, 0)
+            return [s.line(0).cursor_from(x) for x in (0, 1)]
+
+        for c in draw('underline=dashed'):
+            self.assertFalse(c.italic)
+            self.ae(c.decoration, 5)
+            self.ae(c.decoration_fg, (0xFFFACD << 8) | 2)
+        for c in draw('none'):
+            self.assertFalse(c.italic)
+            self.assertFalse(c.reverse)
+            self.ae(c.decoration, 0)
+        for c in draw('reverse'):
+            self.assertTrue(c.reverse)
+            self.ae(c.decoration, 0)
+        # reverse toggles the formatting of the text at the cursor
+        for c in draw('reverse', b'\x1b[7m'):
+            self.assertFalse(c.reverse)
+        # without an underline, the underline at the cursor is kept
+        for c in draw('bold', b'\x1b[4:3m'):
+            self.assertTrue(c.bold)
+            self.ae(c.decoration, 3)
+        # underline=none removes it
+        for c in draw('underline=none', b'\x1b[4:3;58:2::1:2:3m'):
+            self.ae(c.decoration, 0)
+            self.ae(c.decoration_fg, 0)
+        for c in draw('reverse underline'):
+            self.assertTrue(c.reverse)
+            self.ae(c.decoration, 1)
+            self.ae(c.decoration_fg, (0xFFFACD << 8) | 2)
+        # black is a color, not the absence of one
+        for c in draw('underline=curly underline_color=#000000'):
+            self.ae(c.decoration_fg, 2)
+        for c in draw('bold dim italic strikethrough underline=dotted underline_color=#ff8800'):
+            self.assertTrue(c.bold)
+            self.assertTrue(c.dim)
+            self.assertTrue(c.italic)
+            self.assertTrue(c.strikethrough)
+            self.ae(c.decoration, 4)
+            self.ae(c.decoration_fg, (0xFF8800 << 8) | 2)
+
+        # Invalid items are ignored
+        st = ime_preedit_style('Italic bogus underline=wavy underline_color=notacolor')
+        self.assertTrue(st.italic)
+        self.ae(st.underline, -1)
+        self.assertIsNone(st.underline_color)
+
     def test_ime_preedit_stays_on_its_row(self):
         # Only the pre-edit row is restored after the pre-edit text is drawn into it, so the draw must not change other rows
         # A combining mark at column 0 does not join the wrapped last cell of the row above

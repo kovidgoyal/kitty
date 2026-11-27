@@ -3770,6 +3770,36 @@ config is not supported.
 )
 
 opt(
+    'ime_preedit_style',
+    'italic underline=dashed',
+    option_type='ime_preedit_style',
+    ctype='!ime_preedit_style',
+    long_text="""
+The style used to draw pre-edit text, the text being composed with an input
+method (IME) before it is committed, for example when typing CJK text or
+using macOS dictation. The value is a space separated list of styles from:
+:code:`bold`, :code:`dim`, :code:`italic`, :code:`reverse`,
+:code:`strikethrough` and :code:`underline=style`. The underline style can be
+one of: :code:`none`, :code:`straight`, :code:`double`, :code:`curly`,
+:code:`dotted`, :code:`dashed`, a plain :code:`underline` meaning
+:code:`straight`. The color of the underline is the
+:opt:`selection_background` color (or the foreground color, if that is
+:code:`none`), unless set with :code:`underline_color=color`, which has no
+effect without an underline. The styles are added to the formatting of the
+text at the cursor, with :code:`reverse` inverting it and :code:`underline=none`
+removing its underline. Use :code:`none` on its own to keep the formatting of
+the text at the cursor unchanged. For example, as italics are generally not
+used in CJK text, CJK users might prefer::
+
+    ime_preedit_style underline=dashed
+
+And to get the reverse video of older kitty versions::
+
+    ime_preedit_style reverse
+""",
+)
+
+opt(
     'wayland_enable_ime',
     'yes',
     option_type='to_bool',

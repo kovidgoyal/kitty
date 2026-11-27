@@ -8,7 +8,7 @@ import tempfile
 
 from kitty.constants import SOFTWARE_GPU_DRIVERS, available_gpu_drivers, gpu_driver_path, kitty_exe
 from kitty.fast_data_types import Color, test_cursor_blink_easing_function
-from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, build_action_aliases, to_color
+from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, ImePreeditStyle, build_action_aliases, to_color
 from kitty.utils import log_error, shlex_split
 
 from .base import BaseTest
@@ -516,6 +516,14 @@ def conf_parsing(self):
     self.ae(opts.mouse_hide_wait[1], 0)
     self.ae(opts.mouse_hide_wait[2], 40)
     self.ae(opts.mouse_hide_wait[3], True)
+    self.ae(defaults.ime_preedit_style, ImePreeditStyle(italic=True, underline=5))
+    self.ae(p('ime_preedit_style none').ime_preedit_style, ImePreeditStyle())
+    self.ae(p('ime_preedit_style reverse').ime_preedit_style, ImePreeditStyle(reverse=True))
+    self.ae(p('ime_preedit_style underline=none').ime_preedit_style, ImePreeditStyle(underline=0))
+    self.ae(
+        p('ime_preedit_style Bold underline=single underline_color=red').ime_preedit_style,
+        ImePreeditStyle(bold=True, underline=1, underline_color=Color(255, 0, 0)),
+    )
     self.ae(opts.color23, Color(255, 0, 0))
     self.assertFalse(opts.keyboard_modes[''].keymap)
     opts = p("url_excluded_characters '''")

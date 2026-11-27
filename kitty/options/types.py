@@ -11,8 +11,9 @@ import kitty.fast_data_types
 from kitty.fonts import FontSpec
 import kitty.fonts
 from kitty.options.utils import (
-    AliasMap, KeyDefinition, KeyFallbackType, KeyMapOptions, KeyboardModeMap, MouseHideWait, MouseMap,
-    MouseMapping, NotifyOnCmdFinish, RenderInterval, TabBarMarginHeight, URLMappings
+    AliasMap, ImePreeditStyle, KeyDefinition, KeyFallbackType, KeyMapOptions, KeyboardModeMap,
+    MouseHideWait, MouseMap, MouseMapping, NotifyOnCmdFinish, RenderInterval, TabBarMarginHeight,
+    URLMappings
 )
 import kitty.options.utils
 from kitty.types import FloatEdges
@@ -378,6 +379,7 @@ option_names = (
     'gpu_driver',
     'hide_window_decorations',
     'hyperlink_target_position',
+    'ime_preedit_style',
     'inactive_border_color',
     'inactive_tab_background',
     'inactive_tab_font_style',
@@ -603,6 +605,7 @@ class Options:
     gpu_driver: tuple[str, ...] = ('metal', 'vulkan', 'opengl', 'software')
     hide_window_decorations: int = 0
     hyperlink_target_position: choices_for_hyperlink_target_position = 'top'
+    ime_preedit_style: ImePreeditStyle = ImePreeditStyle(bold=False, dim=False, italic=True, reverse=False, strikethrough=False, underline=5, underline_color=None)
     inactive_border_color: Color = Color(204, 204, 204)
     inactive_tab_background: Color = Color(153, 153, 153)
     inactive_tab_font_style: tuple[bool, bool] = (False, False)

@@ -205,6 +205,12 @@ typedef struct Options {
     } animation;
     unsigned undercurl_style;
     struct {
+        bool bold, dim, italic, reverse, strikethrough, has_underline_color;
+        // -1 to leave the underline of the text at the cursor unchanged
+        int underline;
+        color_type underline_color;
+    } ime_preedit_style;
+    struct {
         float thickness;
         int unit;
     } underline_exclusion;

@@ -8259,24 +8259,34 @@ screen_draw_overlay_line(Screen *self) {
     self->modes.mIRM = false;
     Cursor *orig_cursor = self->cursor;
     self->cursor = &(self->overlay_line.original_line.cursor);
-    // Mark the pre-edit text as distinct from committed text: italic, with a
-    // dashed underline in the highlight color. Underline rather than reverse
-    // video matches what other terminals do (VTE and foot both underline), and
-    // dashed avoids colliding with the styles applications already use: curly
-    // for spell checking and straight for hyperlinks. Saved and restored around
-    // the draw, like the modes above.
+    // Mark the pre-edit text as distinct from committed text using
+    // ime_preedit_style, by default italic, with a dashed underline in the
+    // highlight color. Underline rather than reverse video matches what other
+    // terminals do (VTE and foot both underline), and dashed avoids colliding
+    // with the styles applications already use: curly for spell checking and
+    // straight for hyperlinks. Saved and restored around the draw, like the
+    // modes above.
     const CellStyle orig_style = self->cursor->style;
-    self->cursor->style.attrs.italic = true;
-    self->cursor->style.attrs.decoration = 5; // dashed
-    self->cursor->style.decoration_fg = ((colorprofile_to_color_with_fallback(
-                                              self->color_profile,
-                                              self->color_profile->overridden.highlight_bg,
-                                              self->color_profile->configured.highlight_bg,
-                                              self->color_profile->overridden.default_fg,
-                                              self->color_profile->configured.default_fg) &
-                                          COL_MASK)
-                                         << 8) |
-                                        2;
+    if (OPT(ime_preedit_style).bold) self->cursor->style.attrs.bold = true;
+    if (OPT(ime_preedit_style).dim) self->cursor->style.attrs.dim = true;
+    if (OPT(ime_preedit_style).italic) self->cursor->style.attrs.italic = true;
+    if (OPT(ime_preedit_style).strikethrough) self->cursor->style.attrs.strike = true;
+    // Toggle rather than set, so that pre-edit text over reversed text still stands out
+    if (OPT(ime_preedit_style).reverse) self->cursor->style.attrs.reverse ^= true;
+    if (OPT(ime_preedit_style).underline == 0) {
+        self->cursor->style.attrs.decoration = 0;
+        self->cursor->style.decoration_fg = 0;
+    } else if (OPT(ime_preedit_style).underline > 0) {
+        self->cursor->style.attrs.decoration = OPT(ime_preedit_style).underline;
+        const color_type underline_color = OPT(ime_preedit_style).has_underline_color ? OPT(ime_preedit_style).underline_color
+                                                                                      : colorprofile_to_color_with_fallback(
+                                                                                            self->color_profile,
+                                                                                            self->color_profile->overridden.highlight_bg,
+                                                                                            self->color_profile->configured.highlight_bg,
+                                                                                            self->color_profile->overridden.default_fg,
+                                                                                            self->color_profile->configured.default_fg);
+        self->cursor->style.decoration_fg = ((underline_color & COL_MASK) << 8) | 2;
+    }
     self->cursor->x = xstart;
     self->cursor->y = self->overlay_line.ynum;
     self->overlay_line.xnum = 0;
@@ -10602,6 +10612,8 @@ test_draw_overlay_line(Screen *self, PyObject *args) {
     self->overlay_line.ynum = ynum;
     self->overlay_line.preedit_cursor = preedit_cursor;
     self->overlay_line.is_active = true;
+    // As screen_update_overlay_text() does, so the text is drawn with the formatting at the cursor
+    cursor_copy_to(self->cursor, &(self->overlay_line.original_line.cursor));
     screen_draw_overlay_line(self);
     return PyLong_FromUnsignedLong(self->overlay_line.cursor_x);
 }

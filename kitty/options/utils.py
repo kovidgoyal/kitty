@@ -745,6 +745,46 @@ def url_style(x: str) -> int:
     return url_style_map.get(x, url_style_map['curly'])
 
 
+class ImePreeditStyle(NamedTuple):
+    bold: bool = False
+    dim: bool = False
+    italic: bool = False
+    reverse: bool = False
+    strikethrough: bool = False
+    # -1 means leave the underline of the text at the cursor unchanged
+    underline: int = -1
+    underline_color: Color | None = None
+
+
+def ime_preedit_style(x: str) -> ImePreeditStyle:
+    flags = {'bold': False, 'dim': False, 'italic': False, 'reverse': False, 'strikethrough': False}
+    underline = -1
+    underline_color: Color | None = None
+    for item in x.split():
+        key, sep, val = item.partition('=')
+        key = key.lower()
+        if not sep:
+            if key in flags:
+                flags[key] = True
+            elif key == 'underline':
+                underline = url_style_map['straight']
+            elif key != 'none':
+                log_error(f'Ignoring unknown ime_preedit_style: {item}')
+        elif key == 'underline':
+            if (u := url_style_map.get(val.lower())) is None:
+                log_error(f'Ignoring unknown underline style in ime_preedit_style: {val}')
+            else:
+                underline = u
+        elif key == 'underline_color':
+            try:
+                underline_color = to_color(val)
+            except ValueError:
+                log_error(f'Ignoring invalid underline color in ime_preedit_style: {val}')
+        else:
+            log_error(f'Ignoring unknown ime_preedit_style: {item}')
+    return ImePreeditStyle(underline=underline, underline_color=underline_color, **flags)
+
+
 def url_prefixes(x: str) -> tuple[str, ...]:
     return tuple(a.lower() for a in x.replace(',', ' ').split())
 

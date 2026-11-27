@@ -16,10 +16,10 @@ from kitty.options.utils import (
     deprecated_input_delay, deprecated_macos_show_window_title_in_menubar_alias,
     deprecated_render_options, deprecated_scrollback_indicator_opacity, deprecated_send_text,
     disable_ligatures, edge_width, env, filter_notification, font_features, gpu_driver,
-    hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map, modify_font,
-    mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
-    parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remap_modifiers,
-    remote_control_password, render_interval, resize_debounce_time, scrollback_lines,
+    hide_window_decorations, ime_preedit_style, macos_option_as_alt, macos_titlebar_color, menu_map,
+    modify_font, mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width,
+    parse_font_spec, parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging,
+    remap_modifiers, remote_control_password, render_interval, resize_debounce_time, scrollback_lines,
     scrollback_pager_history_size, scrollbar_color, shell_integration, show_hyperlink_targets,
     store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_margin_height,
     tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, tab_title_wrap,
@@ -1063,6 +1063,9 @@ class Parser:
         ans["hyperlink_target_position"] = val
 
     choices_for_hyperlink_target_position = frozenset(('top', 'bottom', 'below', 'tooltip'))
+
+    def ime_preedit_style(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['ime_preedit_style'] = ime_preedit_style(val)
 
     def inactive_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['inactive_border_color'] = to_color(val)

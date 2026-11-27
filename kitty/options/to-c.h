@@ -300,6 +300,32 @@ mouse_hide_wait(PyObject *val, Options *opts) {
 }
 
 static inline void
+ime_preedit_style(PyObject *val, Options *opts) {
+    if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 7) {
+        PyErr_SetString(PyExc_TypeError, "ime_preedit_style is not a 7-item tuple");
+        return;
+    }
+#define B(i, name)                                         \
+    {                                                      \
+        int r = PyObject_IsTrue(PyTuple_GET_ITEM(val, i)); \
+        if (r < 0) return;                                 \
+        opts->ime_preedit_style.name = r;                  \
+    }
+    B(0, bold);
+    B(1, dim);
+    B(2, italic);
+    B(3, reverse);
+    B(4, strikethrough);
+#undef B
+    const long underline = PyLong_AsLong(PyTuple_GET_ITEM(val, 5));
+    if (underline == -1 && PyErr_Occurred()) return;
+    opts->ime_preedit_style.underline = underline < 0 ? -1 : (int)MIN(underline, 5l);
+    PyObject *color = PyTuple_GET_ITEM(val, 6);
+    opts->ime_preedit_style.has_underline_color = color != Py_None;
+    opts->ime_preedit_style.underline_color = color_or_none_as_int(color);
+}
+
+static inline void
 cursor_trail_decay(PyObject *src, Options *opts) {
     opts->cursor_trail_decay_fast = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 0));
     opts->cursor_trail_decay_slow = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));
