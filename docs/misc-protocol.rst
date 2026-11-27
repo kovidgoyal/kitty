@@ -56,7 +56,8 @@ kitty replies with::
 
     <OSC> 5524 ; i=<id> ; <token> <ST>
 
-where ``<token>`` is the token, :ref:`base64` encoded. Note that getting a token
+where ``<token>`` is the token, :ref:`base64` encoded. Every valid request gets
+exactly one reply, either the token or an error. Note that getting a token
 requires a round trip to the compositor, so the reply can come after replies to later
 requests, such as the primary device attributes request. If a token cannot be provided,
 kitty replies with::
@@ -82,10 +83,16 @@ where ``<code>`` is one of:
     The compositor did not provide a token, for example, because it does not
     support XDG activation, or a request from this window is already in progress.
 
+``ETIMEDOUT``
+    The compositor did not respond in time, within five seconds in kitty. A token
+    the compositor provides after this is discarded.
+
 Tokens are single use, programs should request a new one for every program they
-launch. Programs should use a different identifier for every request, so that
-a reply that arrives late, for example, after the program has given up waiting
-for it, is not mistaken for the reply to a later request. Requests with a missing
+launch. As every request gets a reply, programs can wait for it, without needing
+their own timeout. Programs that do not want to wait that long, for example, because the user
+is waiting, can stop waiting earlier and should then use a different identifier for every
+request, so that the reply, when it arrives, is not mistaken for the reply to a later request.
+Requests with a missing
 or invalid identifier, malformed metadata or an unknown value for ``p`` are ignored.
 Unknown keys in the metadata are ignored. To find out if the terminal supports this, send::
 
@@ -103,8 +110,10 @@ check that the window the program is running in has keyboard focus *and* that th
 user has pressed a key or mouse button in it recently, both when the request is
 received and when the token is obtained from the compositor, as the user may have
 switched away in the meantime. They should also limit the number of requests in
-progress per window, without letting a request the compositor never responds to
-block later requests indefinitely.
+progress per window. They must reply to every valid request exactly once, using
+``ETIMEDOUT`` if the compositor does not respond within a few seconds, so that
+a request the compositor never responds to does not block later requests
+and programs are not left waiting forever.
 
 .. _mouse_leave_window:
 

@@ -878,7 +878,7 @@ class Window:
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self.needs_attention = False
-        self.activation_token_requested_at = 0.0
+        self.activation_token_request_pending = False
         self.activation_token_invalid_request_logged = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
@@ -1729,7 +1729,7 @@ class Window:
         # OSC 5524, see docs/misc-protocol.rst
         from .activation_token import (
             MAX_SECONDS_SINCE_INPUT,
-            PENDING_REQUEST_TIMEOUT,
+            REPLY_TIMEOUT,
             InvalidRequest,
             error_reply,
             parse_request,
@@ -1759,31 +1759,42 @@ class Window:
         if error:
             send(error_reply(req, error))
             return
-        now = monotonic()
-        if self.activation_token_requested_at and now - self.activation_token_requested_at < PENDING_REQUEST_TIMEOUT:
+        if self.activation_token_request_pending:
             send(error_reply(req, 'EFAILED'))
             return
-        self.activation_token_requested_at = requested_at = now
+        self.activation_token_request_pending = True
         window_id = self.id
+        # Every request gets exactly one reply, the token or an error from the
+        # compositor, or ETIMEDOUT if the compositor does not respond in time,
+        # whichever comes first
+        done = False
+        timer_id = 0
+
+        def finish(reply: str) -> None:
+            nonlocal done
+            if done:
+                return
+            done = True
+            if timer_id:
+                remove_timer(timer_id)
+            w = get_boss().window_id_map.get(window_id)
+            if w is not None:
+                w.activation_token_request_pending = False
+                w.screen.send_escape_code_to_child(ESC_OSC, reply)
 
         def on_token(token: str) -> None:
             w = get_boss().window_id_map.get(window_id)
-            if w is None:
-                return
-            if w.activation_token_requested_at == requested_at:
-                w.activation_token_requested_at = 0
             # the user might have switched to another window while the
             # compositor was providing the token
-            error = w.activation_token_denial(MAX_SECONDS_SINCE_INPUT + PENDING_REQUEST_TIMEOUT)
+            error = w.activation_token_denial(MAX_SECONDS_SINCE_INPUT + REPLY_TIMEOUT) if w is not None else 'EFAILED'
             if error:
-                reply = error_reply(req, error)
+                finish(error_reply(req, error))
             else:
-                reply = token_reply(req, token) if token else error_reply(req, 'EFAILED')
-            w.screen.send_escape_code_to_child(ESC_OSC, reply)
+                finish(token_reply(req, token) if token else error_reply(req, 'EFAILED'))
 
+        timer_id = add_timer(lambda _: finish(error_reply(req, 'ETIMEDOUT')), REPLY_TIMEOUT, False)
         if not run_with_activation_token(on_token, self.os_window_id):
-            self.activation_token_requested_at = 0
-            send(error_reply(req, 'EFAILED'))
+            finish(error_reply(req, 'EFAILED'))
 
     def activation_token_denial(self, max_seconds_since_input: float) -> str:
         # A token allows another program to take focus, so only grant it to

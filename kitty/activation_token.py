@@ -12,9 +12,9 @@ MAX_ID_LENGTH = 64
 # Tokens are only given if the user pressed a key or mouse button in the
 # window within this many seconds
 MAX_SECONDS_SINCE_INPUT = 10
-# A request for which the compositor has not provided a token within this many
-# seconds is considered to have failed, so that the window can request again
-PENDING_REQUEST_TIMEOUT = 5
+# If the compositor does not provide a token within this many seconds, the
+# request is answered with ETIMEDOUT and any later token is discarded
+REPLY_TIMEOUT = 5
 
 
 class InvalidRequest(ValueError):
