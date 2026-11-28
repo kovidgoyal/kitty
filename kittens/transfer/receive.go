@@ -1102,7 +1102,7 @@ func (self *handler) draw_files() {
 			bytes_per_sec: safe_divide(p.transfered_stats_amt, p.transfered_stats_interval.Abs().Seconds()),
 		})
 		self.lp.Println()
-	} else {
+	} else if !is_complete {
 		self.lp.Println(`File data transfer has not yet started`)
 	}
 }
