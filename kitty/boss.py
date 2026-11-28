@@ -631,7 +631,7 @@ class Boss:
     def serialize_state_as_session(self, session_path: str = '', ser_opts: SaveAsSessionOptions | None = None) -> Iterator[str]:
         if ser_opts is None:
             ser_opts = default_save_as_session_opts()
-        matched_windows = frozenset(self.match_windows(ser_opts.match)) if ser_opts.match else None
+        matched_windows = frozenset(self.match_windows(ser_opts.match, for_session_save=True)) if ser_opts.match else None
         s = {current_focused_os_window_id(): 2, last_focused_os_window_id(): 1}
         is_first = True
         for os_window_id in sorted(self.os_window_map, key=lambda wid: s.get(wid, 0)):
@@ -656,7 +656,9 @@ class Boss:
         for tab in self.all_tabs:
             yield from tab
 
-    def match_windows(self, match: str, self_window: Optional['Window'] = None, all_windows: Iterable[Window] | None = None) -> Iterator[Window]:
+    def match_windows(
+        self, match: str, self_window: Optional['Window'] = None, all_windows: Iterable[Window] | None = None, *, for_session_save: bool = False
+    ) -> Iterator[Window]:
         all_windows = self.all_windows if all_windows is None else all_windows
         if match == 'all':
             yield from all_windows
@@ -674,6 +676,8 @@ class Boss:
         prev_active_session = most_recent_session()
 
         def get_matches(location: str, query: str, candidates: set[int]) -> set[int]:
+            if for_session_save and location == 'session' and query == '.':
+                return {wid for wid in candidates if self.window_id_map[wid].effective_session_name == active_session}
             if location == 'id' and query.startswith('-'):
                 try:
                     q = int(query)

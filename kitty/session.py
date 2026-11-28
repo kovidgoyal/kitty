@@ -744,7 +744,7 @@ directory is moved elsewhere.
 If specified, only save all windows (and their parent tabs/OS Windows) that match the specified
 search expression. See :ref:`search_syntax` for details on the search language. In particular if
 you want to only save windows that are present in the currently active session,
-use :code:`--match=session:.`.
+use :code:`--match=session:.`. This includes windows that inherit the active session from their tab.
 If none of the matching windows can be saved, an error is shown and any existing session file is left unchanged.
 
 
@@ -765,7 +765,7 @@ saved on Wayland as it does not allow applications to position their windows.
 
 
 def show_nothing_to_save_error(boss: BossType, opts: SaveAsSessionOptions) -> None:
-    if opts.match and next(boss.match_windows(opts.match), None) is None:
+    if opts.match and next(boss.match_windows(opts.match, for_session_save=True), None) is None:
         msg = _('No windows match: {0}').format(opts.match)
     elif opts.match:
         msg = _('None of the matching windows can be saved in a session, for example, because they are running UI kittens.')

@@ -312,6 +312,9 @@ Detailed list of changes
 - Include the Python type stub (``.pyi``) files in the installed package, for
   better editor integration (:iss:`10955`)
 
+- Sessions: Include windows that inherit their session from their tab when
+  saving the active session with ``save_as_session --match=session:.``
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

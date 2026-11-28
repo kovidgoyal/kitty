@@ -94,7 +94,7 @@ class TestSessions(BaseTest):
         serialized: tuple[str, ...] = ('launch',)
         matched: tuple[str, ...] = ()
         boss.serialize_state_as_session.side_effect = lambda *a: iter(serialized)
-        boss.match_windows.side_effect = lambda *a: iter(matched)
+        boss.match_windows.side_effect = lambda *a, **kw: iter(matched)
 
         def save(*args: str) -> None:
             for m in (boss.show_error, boss.match_windows, boss.get_save_filepath):
@@ -129,7 +129,7 @@ class TestSessions(BaseTest):
                     save(match, '.')
                     self.ae(existing.read_bytes(), b'launch')
                     assert_error('No windows match: title:^editor$')
-                    boss.match_windows.assert_called_with('title:^editor$')
+                    boss.match_windows.assert_called_with('title:^editor$', for_session_save=True)
                 matched = ('window',)
                 with self.subTest(destination='active session, matched windows not saveable'):
                     save(match, '.')
@@ -149,6 +149,90 @@ class TestSessions(BaseTest):
                     boss.get_save_filepath.assert_not_called()
                     assert_error('None of the matching windows')
         boss.edit_file.assert_not_called()
+
+    def test_save_as_session_includes_inherited_windows(self) -> None:
+        from functools import partial
+
+        from kitty.boss import Boss
+        from kitty.launch import LaunchSpec
+        from kitty.tabs import Tab, TabManager
+        from kitty.window import Window
+
+        class SessionWindow(SimpleNamespace):
+            __hash__ = object.__hash__
+            __eq__ = object.__eq__
+            effective_session_name = Window.effective_session_name
+            matches = Window.matches
+            matches_query = Window.matches_query
+
+        class Group(list[SessionWindow]):
+            docks = ()
+
+            def __init__(self, window: SessionWindow) -> None:
+                super().__init__([window])
+                self.id = window.id
+
+        class SessionBoss(SimpleNamespace):
+            active_session = Boss.active_session
+            match_windows = Boss.match_windows
+            serialize_state_as_session = Boss.serialize_state_as_session
+
+        opts = self.set_options()
+        with TemporaryDirectory() as tmp:
+            tab = SimpleNamespace(
+                name='work',
+                created_in_session_name='work',
+                enabled_layouts=['tall'],
+                _current_layout_name='tall',
+                serialize_layout_state_for_session=dict,
+            )
+            windows = [
+                SessionWindow(
+                    id=wid,
+                    created_in_session_name=session_name,
+                    tabref=lambda: tab,
+                    cwd_for_serialization=tmp,
+                    last_focused_at=wid,
+                    as_launch_command=Mock(return_value=['launch', '/bin/true', label]),
+                )
+                for wid, (label, session_name) in enumerate((('explicit', 'work'), ('inherited', ''), ('other', 'elsewhere')), 1)
+            ]
+            groups = [Group(w) for w in windows]
+            tab.windows = SimpleNamespace(active_group=groups[1], groups=groups, tab_docks=(), dock_owner=lambda g: None)
+            tab.active_window = windows[1]
+            tab.serialize_state_as_session = partial(Tab.serialize_state_as_session, cast(Tab, tab))
+            tm = SimpleNamespace(tabs=[tab], active_tab=tab, wm_class='', wm_name='', os_window_docks=())
+            tm.serialize_state_as_session = partial(TabManager.serialize_state_as_session, cast(TabManager, tm))
+            boss = SessionBoss(
+                active_tab=tab,
+                os_window_map={1: tm},
+                all_windows=windows,
+                window_id_map={w.id: w for w in windows},
+                show_error=Mock(),
+            )
+            path = Path(tmp, 'work.kitty-session')
+            with patch.dict('kitty.session.seen_session_paths', work=str(path)):
+                for match, expected in (
+                    ('all', ['explicit', 'inherited', 'other']),
+                    ('session:.', ['explicit', 'inherited']),
+                    ('session:. and id:2', ['inherited']),
+                    ('session:^$', ['inherited']),
+                ):
+                    with self.subTest(match=match):
+                        boss.show_error.reset_mock()
+                        save_as_session(cast(Boss, boss), ('--save-only', f'--match={match}', '.'))
+                        boss.show_error.assert_not_called()
+                        (saved,) = parse_session(path.read_text(), opts, session_path=str(path))
+                        self.ae([cast(LaunchSpec, w.launch_spec).args[-1] for w in saved.tabs[0].windows], expected)
+
+                self.ae([w.id for w in boss.match_windows('session:.')], [1])
+
+                previous = path.read_bytes()
+                windows[1].as_launch_command.return_value = None
+                save_as_session(cast(Boss, boss), ('--save-only', '--match=session:. and id:2', '.'))
+                self.ae(path.read_bytes(), previous)
+                boss.show_error.assert_called_once()
+                self.assertIn('None of the matching windows', boss.show_error.call_args.args[1])
 
     def test_save_as_session_preserves_literal_dollars(self) -> None:
         from functools import partial
