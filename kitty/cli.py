@@ -540,6 +540,10 @@ def seq_as_rst(seq: OptionSpecSeq, usage: str | None, message: str | None, appna
             t = t.replace('#placeholder_for_formatting#', '')
             a('')
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
+            if (defval is not None or opt.choices) and t.splitlines()[-1][:1].isspace():
+                # help text ends with an indented block such as a definition
+                # list, a blank line is needed before the following paragraph
+                a('')
             if defval is not None:
                 a(textwrap.indent(f'Default: :code:`{escape_rst(str(defval))}`', ' ' * 4))
             if opt.choices:
