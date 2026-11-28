@@ -8,25 +8,25 @@ Choosing applications to open files with
 
 .. versionadded:: 1.0.0
 
-The choose-app kitten lets you choose the application used to open files and
-URLs, quickly, with just a few key strokes. It finds installed applications
-the same way the KDE and GNOME desktops do, from the :file:`.desktop` files
-and the :file:`mimeapps.list` files on your system, and shows them as a grid
-of icons, with the applications recommended for the type of file first.
-It can also open files directly, as a replacement for :program:`xdg-open`, only
-asking you to choose when it does not already know which application to use.
+The choose-app kitten opens files and URLs with the appropriate application, as
+a replacement for :program:`xdg-open`. When it does not already know which
+application to use, it lets you choose one, quickly, with just a few key
+strokes. It finds installed applications the same way the KDE and GNOME
+desktops do, from the :file:`.desktop` files and the :file:`mimeapps.list`
+files on your system, and shows them as a grid of icons, with the applications
+recommended for the type of file first.
 
 Simply run it as::
 
-    kitten choose-app some-file.pdf
+    kitten choose-app some-file.pdf https://example.com
 
-Type a few letters from the name of the application and once it becomes the
+When you are asked to choose, type a few letters from the name of the application and once it becomes the
 selected one, press :kbd:`Enter`. The letters do not need to be adjacent, as
 long as they are in the same order as in the name, so :kbd:`lbw` matches
 :guilabel:`LibreOffice Writer`. Applications also match their descriptions,
 keywords and the names of their programs. You can also use the arrow keys or
-the mouse to select an application. The chosen application is printed to
-:file:`STDOUT`, see :option:`--output-format <kitty +kitten choose_app --output-format>`.
+the mouse to select an application. Use :option:`--ask <kitty +kitten choose_app --ask>`
+to always be asked, like the :guilabel:`Open with` menu of file managers.
 
 .. note:: Application icons are displayed using the :doc:`graphics protocol
    </graphics-protocol>`. To display icons in the SVG format, used by most
@@ -49,7 +49,7 @@ before choosing. You can make this the default with
 :opt:`remember_choice <kitten-choose_app.remember_choice>`. To forget the application
 remembered for a type of file, use::
 
-    kitten choose-app --forget some-file.pdf
+    kitten choose-app --action=forget some-file.pdf
 
 
 Using a command instead of an application
@@ -67,13 +67,8 @@ of them are present, the path to the file is added at the end. Turn on
 for terminal programs, such as editors.
 
 
-Opening files, as a replacement for xdg-open
+How files are opened
 ------------------------------------------------
-
-With the :option:`--open <kitty +kitten choose_app --open>` option, the kitten
-opens the specified files and URLs, instead of printing the chosen application::
-
-    kitten choose-app --open some-file.pdf https://example.com
 
 Each file is opened with, in order of preference:
 
@@ -86,8 +81,7 @@ If none of these exist, you are asked to choose, once for every type of file.
 When run in a terminal, the kitten asks in that terminal, otherwise it asks in
 an overlay :doc:`panel </kittens/panel>` on top of all other windows, which
 requires your compositor to support panels. This can be controlled with :option:`--ask-in <kitty +kitten choose_app --ask-in>`.
-Use :option:`--ask <kitty +kitten choose_app --ask>` to always ask, like the
-:guilabel:`Open with` menu of file managers. Applications are run in the
+Applications are run in the
 background and terminal programs are run in a new kitty window, which can be
 changed with :opt:`terminal <kitten-choose_app.terminal>`. Applications whose
 :file:`.desktop` file says they can be started via D-Bus are started that
@@ -102,7 +96,7 @@ with the contents:
 .. code-block:: sh
 
     #!/bin/sh
-    exec kitten choose-app --open "$@"
+    exec kitten choose-app "$@"
 
 Note that some programs, particularly sandboxed ones such as Flatpaks, instead
 use the OpenURI desktop portal to open files, which shows a chooser
@@ -130,7 +124,18 @@ You can specify the programs used to open different types of files and URLs in
 To see which applications can open a file, and which one would be used to open
 it, without asking, use::
 
-    kitten choose-app --list some-file.pdf
+    kitten choose-app --action=list some-file.pdf
+
+
+Choosing an application without opening files
+------------------------------------------------
+
+To only choose an application, for use in scripts and other programs, use::
+
+    kitten choose-app --action=print some-file.pdf
+
+This always asks you to choose and prints the chosen application to
+:file:`STDOUT`, instead of opening the file, see :option:`--output-format <kitty +kitten choose_app --output-format>`.
 
 
 Configuration

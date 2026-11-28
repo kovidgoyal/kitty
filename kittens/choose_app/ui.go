@@ -95,6 +95,8 @@ type Handler struct {
 	activation_tokens_supported bool
 	// Whether an activation token is needed for the chosen application
 	want_activation_token bool
+	// the label for the accept action, describing what happens to the chosen application
+	accept_label string
 	// Identifiers for the activation token query and request
 	activation_token_query_id, activation_token_request_id string
 
@@ -129,7 +131,7 @@ func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *Choic
 	h := &Handler{
 		lp: lp, settings: settings, db: db, store: store, dirs: db.dirs, input: input, targets: input.Targets,
 		matcher: fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME), remember: settings.Remember_choice, tiles: settings.tiles,
-		icon_renderer: NewIconRenderer(IconCacheDir()),
+		icon_renderer: NewIconRenderer(IconCacheDir()), accept_label: "choose",
 	}
 	h.base_theme = sync.OnceValue(func() string {
 		if settings.Icon_theme != "" {
@@ -938,7 +940,7 @@ func (h *Handler) draw_footer() {
 		lp.QueueWriteString(wcswidth.TruncateToVisualLength(strings.Join(parts, " · "), width))
 	}
 	hints := []string{}
-	for _, x := range [][2]string{{"accept", "open"}, {"use_command", "type a command"}, {"toggle remember", "remember"}, {"quit", "cancel"}} {
+	for _, x := range [][2]string{{"accept", h.accept_label}, {"use_command", "type a command"}, {"toggle remember", "remember"}, {"quit", "cancel"}} {
 		if sc := h.shortcut_for(x[0]); sc != "" {
 			hints = append(hints, h.styled(accent_style, sc)+" "+x[1])
 		}

@@ -595,7 +595,7 @@ def kitten_clis() -> None:
             print('})')
             gopts, ac = go_options_for_kitten(kitten)
             for opt in gopts:
-                print(opt.as_option('ans'))
+                print(opt.as_option('ans', group=opt.group))
                 od.append(opt.struct_declaration())
                 ser.append('\n'.join(opt.as_string_for_commandline()))
             if ac is not None:

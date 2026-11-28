@@ -58,7 +58,7 @@ func TestAppChooser(t *testing.T) {
 		Choices: []string{"org.kde.okular", "firefox"}, LastChoice: "firefox", Filename: "report.pdf", Uri: "file:///x/report.pdf",
 	}, "/out", "/pid")
 	want := []string{
-		"choose-app", "--output-format=json", "--write-output-to", "/out", "--write-pid-to", "/pid", "--commands-as-desktop-files",
+		"choose-app", "--action=print", "--ask-in=terminal", "--output-format=json", "--write-output-to", "/out", "--write-pid-to", "/pid", "--commands-as-desktop-files",
 		"--title", "Open with", "--content-type", "application/pdf", "--display-name", "report.pdf",
 		"--recommend", "org.kde.okular", "--recommend", "firefox", "--preselect", "firefox",
 	}

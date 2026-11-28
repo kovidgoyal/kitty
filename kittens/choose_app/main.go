@@ -64,13 +64,11 @@ func forget(store *ChoiceStore, targets []Target) error {
 }
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
-	if opts.ClearCache {
+	if opts.Action == "clear-cache" {
 		if err = os.RemoveAll(filepath.Dir(ChoicesPath())); err != nil {
 			return 1, fmt.Errorf("failed to clear the cache with error: %w", err)
 		}
-		if len(args) == 0 {
-			return 0, nil
-		}
+		return 0, nil
 	}
 	settings, err := LoadSettings(opts.Config, opts.Override)
 	if err != nil {
@@ -86,7 +84,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if serr != nil {
 		fmt.Fprintln(os.Stderr, "Warning:", serr)
 	}
-	if opts.Forget {
+	if opts.Action == "forget" {
 		if len(targets) == 0 {
 			return 1, fmt.Errorf("must specify at least one file or URL to forget the remembered application for")
 		}
@@ -100,7 +98,8 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		fmt.Fprintln(os.Stderr, "Warning:", e)
 	}
 	resolver := &Resolver{Settings: settings, Store: store, DB: db}
-	if opts.List {
+	switch opts.Action {
+	case "list":
 		if len(targets) == 0 {
 			return 1, fmt.Errorf("must specify at least one file or URL to list applications for")
 		}
@@ -108,18 +107,27 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 			return 1, err
 		}
 		return 0, nil
-	}
-	if opts.Open {
+	case "print":
+		return print_choice(opts, resolver, targets)
+	case "open":
 		if len(targets) == 0 {
 			return 1, fmt.Errorf("must specify at least one file or URL to open")
 		}
-		err = open_targets(resolver, targets, opts.Ask, func(t []Target) (*Result, error) { return ask(opts, resolver, t) }, default_launchers)
+		err = open_targets(resolver, targets, opts.Ask, func(t []Target) (*Result, error) {
+			return ask(opts, resolver, NewChooserInput(t), []string{"--for-opening"})
+		}, default_launchers)
 		var oe *open_error
 		if errors.As(err, &oe) {
 			return oe.exit_code, oe.err
 		}
 		return utils.IfElse(err == nil, 0, 1), err
+	default:
+		return 1, fmt.Errorf("unknown action: %s", opts.Action)
 	}
+}
+
+// print_choice asks the user to choose an application and prints it
+func print_choice(opts *Options, resolver *Resolver, targets []Target) (rc int, err error) {
 	input := NewChooserInput(targets)
 	if opts.ContentType != "" {
 		input.MimeTypes = utils.Uniq(append([]string{opts.ContentType}, input.MimeTypes...))
@@ -133,7 +141,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 			return 1, fmt.Errorf("failed to write the process id to %s with error: %w", opts.WritePidTo, err)
 		}
 	}
-	result, err := run_chooser(opts, resolver, input)
+	result, err := ask(opts, resolver, input, print_panel_args(opts))
 	if err != nil {
 		write_output(opts, nil, err)
 		return 1, err
@@ -143,8 +151,10 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return 1, nil
 	}
 	output := *result
+	// when the chooser runs in a panel, the command has already been
+	// converted to a desktop file by it
 	if opts.CommandsAsDesktopFiles && output.Choice.DesktopID == "" {
-		id, err := WriteCommandDesktopFile(db.dirs, output.Choice)
+		id, err := WriteCommandDesktopFile(resolver.DB.dirs, output.Choice)
 		if err != nil {
 			write_output(opts, nil, err)
 			return 1, err
@@ -152,9 +162,28 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		output.Choice = Choice{DesktopID: id}
 	}
 	write_output(opts, &output, nil)
-	// the original command is recorded, so that it is used as is when opening files
-	record_choice(resolver.Store, input.MimeTypes, result)
 	return 0, nil
+}
+
+// print_panel_args returns the options used by the chooser when it is run in
+// a panel to print the chosen application
+func print_panel_args(opts *Options) (ans []string) {
+	if opts.ContentType != "" {
+		ans = append(ans, "--content-type", opts.ContentType)
+	}
+	if opts.DisplayName != "" {
+		ans = append(ans, "--display-name", opts.DisplayName)
+	}
+	for _, id := range opts.Recommend {
+		ans = append(ans, "--recommend", id)
+	}
+	if opts.Preselect != "" {
+		ans = append(ans, "--preselect", opts.Preselect)
+	}
+	if opts.CommandsAsDesktopFiles {
+		ans = append(ans, "--commands-as-desktop-files")
+	}
+	return
 }
 
 // record_choice records the choice even if not remembered, to rank it higher in future
@@ -167,8 +196,8 @@ func record_choice(store *ChoiceStore, mimes []string, result *Result) {
 }
 
 // ask asks the user to choose an application to open the targets with, in
-// this terminal or a kitty panel
-func ask(opts *Options, resolver *Resolver, targets []Target) (*Result, error) {
+// this terminal or a kitty panel, to which panel_args are passed
+func ask(opts *Options, resolver *Resolver, input *ChooserInput, panel_args []string) (*Result, error) {
 	in_terminal := false
 	switch opts.AskIn {
 	case "terminal":
@@ -181,10 +210,10 @@ func ask(opts *Options, resolver *Resolver, targets []Target) (*Result, error) {
 	}
 	if !in_terminal {
 		// the chooser running in the panel records the choice itself
-		return ask_in_panel(opts, resolver.Settings, targets)
+		return ask_in_panel(opts, resolver.Settings, input.Targets, panel_args)
 	}
-	input := NewChooserInput(targets)
 	result, err := run_chooser(opts, resolver, input)
+	// the original command is recorded, so that it is used as is when opening files
 	if err == nil && result != nil {
 		record_choice(resolver.Store, input.MimeTypes, result)
 	}
@@ -237,7 +266,10 @@ func run_chooser(opts *Options, resolver *Resolver, input *ChooserInput) (result
 	h := NewHandler(lp, resolver.Settings, resolver.DB, resolver.Store, input)
 	// The token is used when opening files or by programs using the JSON
 	// output, such as the AppChooser portal
-	h.want_activation_token = opts.Open || opts.OutputFormat == "json"
+	h.want_activation_token = opts.Action == "open" || opts.OutputFormat == "json"
+	// the chooser in a panel is run with --action=print even when the
+	// targets are going to be opened, so --for-opening is used to indicate that
+	h.accept_label = utils.IfElse(opts.Action == "open" || opts.ForOpening, "open", "choose")
 	defer func() {
 		h.icon_display.Cleanup()
 		h.cmd_rl.Shutdown() // saves the command history

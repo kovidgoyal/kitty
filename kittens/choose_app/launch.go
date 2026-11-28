@@ -240,7 +240,7 @@ func can_ask_in_terminal() bool {
 }
 
 // ask_in_panel runs the chooser in a kitty overlay panel and returns its result
-func ask_in_panel(opts *Options, settings *Settings, targets []Target) (*Result, error) {
+func ask_in_panel(opts *Options, settings *Settings, targets []Target, extra_args []string) (*Result, error) {
 	tdir, err := os.MkdirTemp("", "kitty-choose-app-")
 	if err != nil {
 		return nil, err
@@ -261,7 +261,7 @@ func ask_in_panel(opts *Options, settings *Settings, targets []Target) (*Result,
 	args := []string{"+kitten", "panel", "--layer=overlay", "--focus-policy=exclusive", "--grab-keyboard"}
 	args = append(args, size_args...)
 	args = append(args,
-		"-o", "background_opacity=0.85", exe, "choose-app", "--output-format=json", "--write-output-to", output_path,
+		"-o", "background_opacity=0.85", exe, "choose-app", "--action=print", "--ask-in=terminal", "--output-format=json", "--write-output-to", output_path,
 		"--title", utils.IfElse(opts.Title != "", opts.Title, "Open with"),
 	)
 	for _, x := range opts.Config {
@@ -270,6 +270,7 @@ func ask_in_panel(opts *Options, settings *Settings, targets []Target) (*Result,
 	for _, x := range opts.Override {
 		args = append(args, "--override", x)
 	}
+	args = append(args, extra_args...)
 	args = append(args, "--")
 	for _, t := range targets {
 		args = append(args, t.as_path())

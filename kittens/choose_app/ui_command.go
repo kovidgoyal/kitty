@@ -258,7 +258,7 @@ func (h *Handler) draw_command_screen() {
 	add_toggle("toggle-remember-cmd", h.remember, "remember", "toggle remember", h.toggle_remember)
 	hints := []string{}
 	if sc := h.shortcut_for("accept"); sc != "" {
-		hints = append(hints, h.styled(accent_style, sc)+" open")
+		hints = append(hints, h.styled(accent_style, sc)+" "+h.accept_label)
 	}
 	hints = append(hints, h.styled(accent_style, "tab")+" complete", h.styled(accent_style, "up/down")+" history")
 	if sc := h.shortcut_for("quit"); sc != "" {

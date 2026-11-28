@@ -42,7 +42,9 @@ go_type_map = {
 
 
 class GoOption:
-    def __init__(self, x: OptionDefinition) -> None:
+    def __init__(self, x: OptionDefinition, group: str = '') -> None:
+        # the title of the group of options this option belongs to, if any
+        self.group = group
         flags = sorted(x.aliases, key=len)
         short = ''
         self.aliases = []
@@ -126,9 +128,12 @@ class GoOption:
 
 
 def go_options_for_seq(seq: 'OptionSpecSeq') -> Iterator[GoOption]:
+    group = ''
     for x in seq:
-        if not isinstance(x, str):
-            yield GoOption(x)
+        if isinstance(x, str):
+            group = x
+        else:
+            yield GoOption(x, group)
 
 
 def surround(x: str, start: int, end: int) -> str:

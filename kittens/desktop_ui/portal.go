@@ -1073,7 +1073,7 @@ type ChooseAppData struct {
 // choose_app_args returns the command line for the choose-app kitten
 func choose_app_args(cad ChooseAppData, output_path, pid_path string) []string {
 	args := []string{
-		"choose-app", "--output-format=json", "--write-output-to", output_path, "--write-pid-to", pid_path,
+		"choose-app", "--action=print", "--ask-in=terminal", "--output-format=json", "--write-output-to", output_path, "--write-pid-to", pid_path,
 		"--commands-as-desktop-files", "--title", "Open with",
 	}
 	content_type := cad.ContentType

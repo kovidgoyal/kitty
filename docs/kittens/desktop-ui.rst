@@ -59,7 +59,7 @@ Check the current value using::
 Programs that open files and links using the OpenURI portal, such as Flatpak
 applications, will show the :doc:`choose-app kitten </kittens/choose-app>`
 when they need you to choose the application to open a file with. Applications
-chosen there are shared with :program:`kitten choose-app --open`, the
+chosen there are shared with :program:`kitten choose-app`, the
 :program:`xdg-open` replacement. Commands typed in the chooser, instead of
 choosing an installed application, are saved as hidden :file:`.desktop` files
 named :file:`kitty-choose-app-*.desktop` in :file:`~/.local/share/applications`,

@@ -122,7 +122,7 @@ opt(
     '',
     long_text="""
 The size in lines and columns of the overlay panel used to ask which application to open files with, when
-not running in a terminal, see :option:`kitty +kitten choose_app --open`. By default it is full screen.
+not running in a terminal, see :option:`kitty +kitten choose_app --ask-in`. By default it is full screen.
 For example: :code:`panel_size 25 80` will cause the panel to be of size 25 lines and 80 columns.
 """,
 )
@@ -170,12 +170,31 @@ map('Last application', 'last_app end next last')
 egr()  # }}}
 
 OPTIONS = r"""
---open
-type=bool-set
-Open the specified files or URLs, instead of printing the chosen application. Files and URLs are opened
-with the application specified by :opt:`open_with <kitten-choose_app.open_with>`, the application previously
-remembered for their type or the default application for the desktop, in that order. If none of these exist,
-the user is asked to choose. This makes this kitten a replacement for :program:`xdg-open`.
+--action
+choices=open,print,list,forget,clear-cache
+default=open
+The action to perform:
+
+:code:`open`
+    Open the specified files or URLs, as a replacement for :program:`xdg-open`. Each file or URL is opened
+    with the application specified by :opt:`open_with <kitten-choose_app.open_with>`, the application
+    remembered for its type or the default application for the desktop, in that order. If none of these exist,
+    the user is asked to choose.
+
+:code:`print`
+    Ask the user to choose an application and print it, instead of opening anything,
+    see :option:`--output-format`.
+
+:code:`list`
+    Print the applications that can open each of the specified files or URLs as JSON. The applications are
+    listed in order of preference, the system default application, if any, first. Also shows how each file or
+    URL would be opened without asking, if possible.
+
+:code:`forget`
+    Forget the remembered applications for the types of the specified files or URLs.
+
+:code:`clear-cache`
+    Clear the caches used by this kitten, this includes the remembered applications and the rendered icons.
 
 
 --ask
@@ -186,28 +205,48 @@ When opening files, always ask which application to use, even if one is known.
 --ask-in
 choices=auto,terminal,panel
 default=auto
-Where to show the chooser when opening files. :code:`terminal` uses the terminal
-this kitten is running in, :code:`panel` uses a kitty overlay panel and :code:`auto` uses the
+Where to show the chooser when opening files or printing the chosen application. :code:`terminal` uses the
+terminal this kitten is running in, :code:`panel` uses a kitty overlay panel and :code:`auto` uses the
 terminal if there is one, otherwise a panel.
 
 
---list
-type=bool-set
-Instead of asking the user to choose, print the applications that can open
-each of the specified files or URLs as JSON. The applications are listed in
-order of preference, the system default application, if any, first. Also
-shows how each file or URL would be opened without asking, if possible.
+--title
+Window title to use for the chooser.
 
 
---forget
-type=bool-set
-Forget the remembered applications for the types of the specified files or URLs.
+--override -o
+type=list
+Override individual configuration options, can be specified multiple times.
+Syntax: :italic:`name=value`.
 
 
---clear-cache
-type=bool-set
-Clear the caches used by this kitten, this includes the remembered applications
-and the rendered icons.
+--config
+type=list
+completion=type:file ext:conf group:"Config files" kwds:none,NONE
+{config_help}
+
+
+# Options for --action=print, ignored for other actions
+
+--output-format
+choices=text,json
+default=text
+The format in which to write the output. The :code:`text` format is :code:`desktop:` followed
+by the id of the chosen application, or the chosen command line. The :code:`json` format
+is an object with the key :code:`choice` containing either :code:`desktop_id` or :code:`cmdline`
+and the key :code:`remember` indicating if the user chose to remember the choice. When running in kitty,
+it also has the key :code:`activation_token` with an XDG activation token, for the chosen application to
+get keyboard focus when launched.
+If the user cancels the :code:`json` output contains the key :code:`interrupted` and
+if an error occurs the key :code:`error`.
+
+
+--write-output-to
+Path to a file to which the output is written in addition to STDOUT.
+
+
+--write-pid-to
+Path to a file to which to write the process ID (PID) of this process to.
 
 
 --content-type
@@ -229,55 +268,25 @@ that can open it.
 The id of the application to select initially.
 
 
+--for-opening
+type=bool-set
+!
+
+
 --commands-as-desktop-files
 type=bool-set
 When the user chooses to open with a command, rather than an installed application, create a
 hidden :file:`.desktop` file for the command and output its id. Useful for programs that can only
 launch installed applications.
-
-
---write-pid-to
-Path to a file to which to write the process ID (PID) of this process to.
-
-
---write-output-to
-Path to a file to which the output is written in addition to STDOUT.
-
-
---output-format
-choices=text,json
-default=text
-The format in which to write the output. The :code:`text` format is :code:`desktop:` followed
-by the id of the chosen application, or the chosen command line. The :code:`json` format
-is an object with the key :code:`choice` containing either :code:`desktop_id` or :code:`cmdline`
-and the key :code:`remember` indicating if the user chose to remember the choice. When running in kitty,
-it also has the key :code:`activation_token` with an XDG activation token, for the chosen application to
-get keyboard focus when launched.
-If the user cancels the :code:`json` output contains the key :code:`interrupted` and
-if an error occurs the key :code:`error`.
-
-
---title
-Window title to use for the chooser.
-
-
---override -o
-type=list
-Override individual configuration options, can be specified multiple times.
-Syntax: :italic:`name=value`.
-
-
---config
-type=list
-completion=type:file ext:conf group:"Config files" kwds:none,NONE
-{config_help}
 """.format(config_help=CONFIG_HELP.format(conf_name='choose-app', appname=appname)).format
 
 help_text = """\
-Choose an application to open the specified files or URLs with. Applications
-are found the same way as the KDE and GNOME desktops do, from the installed
-:file:`.desktop` files and the :file:`mimeapps.list` files. Use the :option:`--open`
-option to open the files with the chosen application, as a replacement for :program:`xdg-open`.
+Open the specified files or URLs with the appropriate application, as a replacement for
+:program:`xdg-open`, asking which application to use only when none is known for the
+type of file. Applications are found the same way as the KDE and GNOME desktops do, from
+the installed :file:`.desktop` files and the :file:`mimeapps.list` files. Use
+:option:`--action` to instead choose an application and print it, list the applications
+that can open the files, forget remembered choices, etc.
 """
 
 usage = '[file or URL ...]'
