@@ -33,6 +33,9 @@ type objc_runtime struct {
 	send_uint func(obj, sel objc_id) uint
 	send_idx  func(obj, sel objc_id, i uint) objc_id
 	send_out  func(obj, sel objc_id, out unsafe.Pointer, key, err objc_id) uintptr
+	send_rect func(obj, sel objc_id, rect unsafe.Pointer, a, b objc_id) objc_id
+	send_rep  func(obj, sel objc_id, typ uint, props objc_id) objc_id
+	send_save func(obj, sel, path objc_id, atomically bool) uintptr
 
 	sels, classes map[string]objc_id
 }
@@ -54,7 +57,7 @@ var load_objc = sync.OnceValues(func() (*objc_runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, fptr := range []any{&r.send, &r.send1, &r.send_cstr, &r.send_str, &r.send_uint, &r.send_idx, &r.send_out} {
+	for _, fptr := range []any{&r.send, &r.send1, &r.send_cstr, &r.send_str, &r.send_uint, &r.send_idx, &r.send_out, &r.send_rect, &r.send_rep, &r.send_save} {
 		purego.RegisterFunc(fptr, msg_send)
 	}
 	return r, nil
@@ -213,5 +216,41 @@ func macos_display_names(paths []string) (ans []string, err error) {
 			ans[i] = r.gostring(r.msg1(fm, "displayNameAtPath:", r.nsstring(p)))
 		}
 	})
+	return
+}
+
+// The value of NSBitmapImageFileTypePNG
+const ns_png_file_type = 4
+
+// macos_write_icon writes the icon of the file, as shown by Finder, to
+// output_path as a PNG image, using the image closest to the specified size
+func macos_write_icon(path, output_path string, px int) (err error) {
+	if werr := with_objc(func(r *objc_runtime) {
+		ws := r.msg(r.class("NSWorkspace"), "sharedWorkspace")
+		img := r.msg1(ws, "iconForFile:", r.nsstring(path))
+		if img == 0 {
+			err = fmt.Errorf("no icon found for %s", path)
+			return
+		}
+		// an NSRect of the desired size, in points, used to select the image
+		rect := [4]float64{0, 0, float64(px), float64(px)}
+		cg := r.send_rect(img, r.sel("CGImageForProposedRect:context:hints:"), unsafe.Pointer(&rect), 0, 0)
+		runtime.KeepAlive(&rect)
+		if cg == 0 {
+			err = fmt.Errorf("failed to get an image for the icon of %s", path)
+			return
+		}
+		rep := r.msg(r.msg1(r.msg(r.class("NSBitmapImageRep"), "alloc"), "initWithCGImage:", cg), "autorelease")
+		data := r.send_rep(rep, r.sel("representationUsingType:properties:"), ns_png_file_type, r.msg(r.class("NSDictionary"), "dictionary"))
+		if data == 0 {
+			err = fmt.Errorf("failed to convert the icon of %s to PNG", path)
+			return
+		}
+		if r.send_save(data, r.sel("writeToFile:atomically:"), r.nsstring(output_path), true)&0xff == 0 {
+			err = fmt.Errorf("failed to write the icon of %s to %s", path, output_path)
+		}
+	}); werr != nil {
+		return werr
+	}
 	return
 }

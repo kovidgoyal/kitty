@@ -152,10 +152,17 @@ func (r *IconRenderer) Render(src string, px int) (string, error) {
 	if strings.EqualFold(filepath.Ext(src), ".png") {
 		return src, nil
 	}
-	if r.rsvg_convert == "" && r.magick == "" {
+	bundle := is_app_bundle(src)
+	if !bundle && r.rsvg_convert == "" && r.magick == "" {
 		return "", ErrNoRasterizer
 	}
-	st, err := os.Stat(src)
+	stat_path := src
+	if bundle {
+		// the modification time of the bundle directory does not change when
+		// the application is updated
+		stat_path = filepath.Join(src, "Contents", "Info.plist")
+	}
+	st, err := os.Stat(stat_path)
 	if err != nil {
 		return "", err
 	}
@@ -182,7 +189,12 @@ func (r *IconRenderer) Render(src string, px int) (string, error) {
 	tpath := tf.Name()
 	tf.Close()
 	defer func() { _ = os.Remove(tpath) }()
-	if err = r.render(src, tpath, px); err != nil {
+	if bundle {
+		err = render_app_bundle_icon(src, tpath, px)
+	} else {
+		err = r.render(src, tpath, px)
+	}
+	if err != nil {
 		if !errors.Is(err, ErrNoRasterizer) {
 			_ = utils.AtomicWriteFile(failure_path, strings.NewReader(err.Error()), 0o644)
 		}

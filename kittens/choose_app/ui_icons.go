@@ -88,7 +88,7 @@ func (l *icon_loader) load(dirs *XDGDirs, renderer *IconRenderer, theme_for func
 		l.theme, l.px, l.icons, l.errors = theme, px, map[string]icon_info{}, nil
 		l.mutex.Unlock()
 		wakeup()
-		paths := dirs.FindIcons(theme, px, names...)
+		paths := find_icon_paths(dirs, theme, px, names)
 		jobs := make(chan string, len(names))
 		for _, n := range names {
 			if _, found := paths[n]; found {

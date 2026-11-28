@@ -5,6 +5,7 @@
 package choose_app
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -23,3 +24,15 @@ func LoadAppDatabase() *AppDatabase {
 func platform_mime_type_for_path(path string) string { return mime_type_for_path(path) }
 
 func set_platform_defaults(*Config) {}
+
+func icon_theme_name(dirs *XDGDirs) string { return dirs.IconThemeName() }
+
+func find_icon_paths(dirs *XDGDirs, theme string, px int, names []string) map[string]string {
+	return dirs.FindIcons(theme, px, names...)
+}
+
+func is_app_bundle(string) bool { return false }
+
+func render_app_bundle_icon(src, output_path string, px int) error {
+	return errors.New("rendering the icons of application bundles is only supported on macOS")
+}

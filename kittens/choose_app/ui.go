@@ -137,7 +137,7 @@ func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *Choic
 		if settings.Icon_theme != "" {
 			return settings.Icon_theme
 		}
-		return h.dirs.IconThemeName()
+		return icon_theme_name(h.dirs)
 	})
 	h.scroller = scrolling.Scroller{Id: grid_region_id, Capacity: grid_region_capacity, Paint: h.paint_grid_line}
 	h.indicator = scrolling.Indicator{TrackStyle: "\x1b[2m"}

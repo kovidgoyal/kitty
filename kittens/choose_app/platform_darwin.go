@@ -152,7 +152,7 @@ func read_bundle(path string) (*DesktopEntry, error) {
 	}
 	stem := strings.TrimSuffix(filepath.Base(path), ".app")
 	e := &DesktopEntry{
-		ID: utils.IfElse(info.Identifier != "", info.Identifier, path), Path: path, bundle_path: path,
+		ID: utils.IfElse(info.Identifier != "", info.Identifier, path), Path: path, bundle_path: path, Icon: path,
 		Name:    utils.IfElse(info.DisplayName != "", info.DisplayName, utils.IfElse(info.Name != "", info.Name, stem)),
 		Comment: category_name(info.Category), entry_type: true,
 		no_display: plist_bool(info.UIElement) || plist_bool(info.BackgroundOnly),
@@ -197,7 +197,7 @@ func (d *darwin_apps) add(path string, show bool) *DesktopEntry {
 	}
 	// use the path as found, as that is what the user knows, for example
 	// /Applications/Safari.app rather than the cryptex it links to
-	e.Path, e.bundle_path = path, path
+	e.Path, e.bundle_path, e.Icon = path, path, path
 	if existing := d.db.by_id[e.ID]; existing != nil {
 		e = existing
 	} else {
@@ -329,4 +329,39 @@ func LoadAppDatabase() *AppDatabase {
 	d.sort()
 	db.lookup_associations = d.lookup
 	return db
+}
+
+// Application icons are rendered by macOS, there are no icon themes
+func icon_theme_name(*XDGDirs) string { return "" }
+
+func is_app_bundle(path string) bool { return strings.HasSuffix(path, ".app") }
+
+// find_icon_paths returns the paths to the icons, which for applications are
+// the paths to their bundles
+func find_icon_paths(dirs *XDGDirs, theme string, px int, names []string) map[string]string {
+	var others []string
+	ans := make(map[string]string, len(names))
+	for _, n := range names {
+		if is_app_bundle(n) {
+			ans[n] = n
+		} else {
+			others = append(others, n)
+		}
+	}
+	if len(others) > 0 {
+		for k, v := range dirs.FindIcons(theme, px, others...) {
+			ans[k] = v
+		}
+	}
+	return ans
+}
+
+// render_app_bundle_icon writes the icon of the application bundle, as shown
+// by Finder, as a PNG file, using the image closest to the specified size
+func render_app_bundle_icon(src, output_path string, px int) error {
+	if real_path, err := filepath.EvalSymlinks(src); err == nil {
+		// the icons of symlinks have an alias arrow badge
+		src = real_path
+	}
+	return macos_write_icon(src, output_path, px)
 }

@@ -35,7 +35,8 @@ to always be asked, like the :guilabel:`Open with` menu of file managers.
    <https://imagemagick.org>`__ must be installed. Rendered icons are cached
    in the kitty cache directory. The icon theme configured for your desktop is
    used, automatically switching to its dark or light variant, if any,
-   depending on the background color of the terminal.
+   depending on the background color of the terminal. On macOS, application
+   icons are the ones shown by Finder and no extra programs are needed.
 
 
 macOS

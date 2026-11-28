@@ -144,7 +144,28 @@ func TestDarwinLaunchServices(t *testing.T) {
 	if e := db.DefaultAppFor("inode/directory"); e == nil || e.ID != "com.apple.finder" {
 		t.Fatalf("Finder is not the default application for folders: %#v", e)
 	}
-	if e := db.AppByID("com.apple.finder"); e == nil || !e.ShouldShow(nil) {
-		t.Fatalf("Finder is not shown: %#v", e)
+	finder := db.AppByID("com.apple.finder")
+	if finder == nil || !finder.ShouldShow(nil) {
+		t.Fatalf("Finder is not shown: %#v", finder)
+	}
+	paths := find_icon_paths(db.dirs, "", 64, []string{finder.Icon})
+	if paths[finder.Icon] != finder.bundle_path {
+		t.Fatalf("the icon of Finder is not its bundle: %#v", paths)
+	}
+	r := NewIconRenderer(t.TempDir())
+	rendered, err := r.Render(finder.Icon, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ii, err := read_icon_info(rendered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ii.width < 64 || ii.height < 64 {
+		t.Fatalf("the icon of Finder is too small: %dx%d", ii.width, ii.height)
+	}
+	// the second render must come from the cache
+	if again, err := r.Render(finder.Icon, 64); err != nil || again != rendered {
+		t.Fatalf("the icon was not cached: %s != %s, error: %v", again, rendered, err)
 	}
 }
