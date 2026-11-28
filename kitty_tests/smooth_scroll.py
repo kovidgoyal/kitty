@@ -822,7 +822,7 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, 1), 1)
         ae(s.smooth_scroll_overflow(1, True), ('好', ''))
         ae((cell(s, 2, 1)['x'], cell(s, 2, 1)['mcd']['width']), (1, 2))
-        ae(str(s.line(1)), '  xy')
+        ae(str(s.line(1)), '  好xy')  # the text of a split char is in its first cell present
         # and restored when scrolling back
         ae(s.smooth_scroll(1, -1), -1)
         ae((cell(s, 2, 1)['x'], cell(s, 3, 1)['x']), (0, 1))
@@ -839,13 +839,13 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, -2 * W), -2)
         ae(str(s.line(1)), '    好')
         ae(s.smooth_scroll(1, -1), -1)
-        ae(s.smooth_scroll_overflow(1, False), ('', ''))  # the char is followed by blank cells, nearest first
+        ae(s.smooth_scroll_overflow(1, False), ('好', ''))  # the right half of the char, the nearest first
         ae(cell(s, 5, 1)['x'], 0)
         ae(s.smooth_scroll(1, 2 * W), 3)
         s = setup()
         ae(s.smooth_scroll(1, -3 * W), -3)
         ae(cell(s, 5, 1)['x'], 0)
-        ae(s.smooth_scroll_overflow(1, False)[0], '')  # the right half of the char
+        ae(s.smooth_scroll_overflow(1, False)[0], '好')  # the right half of the char
         s.cursor_position(2, 6)
         s.draw('Z')
         self.assertIsNone(cell(s, 5, 1)['mcd'])
@@ -903,7 +903,7 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, 2 * W), 2)
         s.cursor_position(1, 2)
         s.draw('́')
-        ae(str(s.line(0)), 'abcdefg')
+        ae(str(s.line(0)), 'Xabcdefg')  # the text of the split char is in its first cell present
         ae([cell(s, x, 0)['text'] for x in range(1, 3)], ['a', 'b'])
         ae(s.smooth_scroll(1, -2 * W), -2)
         ae(str(s.line(0)), 'Xabcdefg')
@@ -934,7 +934,7 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, W), 1)
         s.cursor_position(1, 2)
         s.draw('︎')
-        ae(str(s.line(0)), 'abc')
+        ae(str(s.line(0)), '⌚abc')
         ae((cell(s, 0, 0)['x'], cell(s, 0, 0)['mcd']['width']), (1, 2))
         ae(s.smooth_scroll(1, -W), -1)
         ae(str(s.line(0)), '⌚abc')
@@ -944,9 +944,9 @@ class TestSmoothScroll(BaseTest):
         self.assertTrue(s.smooth_scroll_define(1, 0, 1, 20, 2, 1, False, True))
         ae(s.smooth_scroll(1, W), 1)
         s.detect_url(3, 0)
-        # the URL continues over the char, as when it is complete, only the
-        # text of its first cell, which is in the overflow buffer, is missing
-        ae(''.join(s.text_for_marked_url()), 'http://exampleabcdefabc')
+        # the URL continues over the char, as when it is complete, whose text
+        # is in its first cell present
+        ae(''.join(s.text_for_marked_url()), 'http://exampleabcdef⌚abc')
 
         # A selection starting on a split char does not extend to the cells
         # before it, outside the region, which are not part of the char
@@ -956,7 +956,7 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, W), 1)
         s.start_selection(2, 0)
         s.update_selection(3, 0)
-        ae(s.text_for_selection(False, False), ('c',))
+        ae(s.text_for_selection(False, False), ('好c',))  # the text of the split char is in its first cell present
 
         # A multiline char with its lower row in the overflow buffer below a vertically scrolled region
         s = self.create_screen(cols=10, lines=4)

@@ -23,6 +23,10 @@ typedef struct {
     // The bidi record of the paragraph its text ends in, which the history lines continuing it continue, see
     // ansi_bidi_row_start()
     uint8_t bidi_open;
+    // The cells of the last line written to it, of last_line_xnum cells, the row above the oldest line of the history, used to
+    // write the multiline chars of which only some rows are present, see ANSILineState. NULL when there is no such line.
+    CPUCell *last_line;
+    index_type last_line_xnum;
 } PagerHistoryBuf;
 
 

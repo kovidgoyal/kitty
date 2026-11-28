@@ -229,6 +229,10 @@ Detailed list of changes
 - Remote control: Automatically remove stale UNIX sockets left behind by a
   killed kitty instance when using :option:`kitty --listen-on`
 
+- Fix adjacent characters drawn with an explicit width using the
+  :doc:`text sizing protocol <text-sizing-protocol>` being merged into a single
+  character in the scrollback pager and when copying as ANSI text
+
 - Fix DIM/FAINT text under a block cursor that uses a fixed
   :opt:`cursor_text_color` being hard to read. Such text is now drawn
   undimmed in the cursor text color (:pull:`10948`)

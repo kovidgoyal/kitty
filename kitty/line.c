@@ -56,8 +56,14 @@ ensure_space_in_ansi_output_buf(ANSILineState *s, size_t extra) {
     ensure_space_for(s->output_buf, buf, s->output_buf->buf[0], s->output_buf->len + extra, capacity, 2048, false);
 }
 
+typedef struct MulticellAnsiPart {
+    index_type columns, rows;
+} MulticellAnsiPart;
+
 static unsigned
-write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
+write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd, const MulticellAnsiPart *part) {
+    // When part is not NULL, the escape code draws the part of the char
+    // that is part->columns by part->rows cells from the cell mcd
     ensure_space_in_ansi_output_buf(s, 128);
     s->current_multicell_state = mcd;
     s->escape_code_written = true;
@@ -67,7 +73,7 @@ write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
     w(']');
     for (unsigned i = 0; i < sizeof(xstr(TEXT_SIZE_CODE)) - 1; i++) w(xstr(TEXT_SIZE_CODE)[i]);
     w(';');
-    if (!mcd->natural_width) {
+    if (!mcd->natural_width || part) {
         w('w');
         w('=');
         nonnegative_integer_as_utf32(mcd->width, s->output_buf);
@@ -103,6 +109,32 @@ write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
         nonnegative_integer_as_utf32(mcd->halign, s->output_buf);
         w(':');
     }
+    if (part) {
+        if (mcd->x) {
+            w('x');
+            w('=');
+            nonnegative_integer_as_utf32(mcd->x, s->output_buf);
+            w(':');
+        }
+        if (mcd->y) {
+            w('y');
+            w('=');
+            nonnegative_integer_as_utf32(mcd->y, s->output_buf);
+            w(':');
+        }
+        if (part->columns != (index_type)mcd_x_limit(mcd) - mcd->x) {
+            w('c');
+            w('=');
+            nonnegative_integer_as_utf32(part->columns, s->output_buf);
+            w(':');
+        }
+        if (part->rows != (index_type)mcd->scale - mcd->y) {
+            w('r');
+            w('=');
+            nonnegative_integer_as_utf32(part->rows, s->output_buf);
+            w(':');
+        }
+    }
     if (s->output_buf->buf[s->output_buf->len - 1] == ':') s->output_buf->len--;
     w(';');
 #undef w
@@ -120,7 +152,7 @@ close_multicell(ANSILineState *s) {
 
 static void
 start_multicell_if_needed(ANSILineState *s, const CPUCell *c) {
-    if (!c->natural_width || c->scale > 1 || c->subscale_n || c->subscale_d || c->valign || c->halign) write_multicell_ansi_prefix(s, c);
+    if (!c->natural_width || c->scale > 1 || c->subscale_n || c->subscale_d || c->valign || c->halign) write_multicell_ansi_prefix(s, c, NULL);
 }
 
 static bool
@@ -128,22 +160,79 @@ multicell_is_continuation_of_previous(const CPUCell *prev, const CPUCell *curr) 
     if (prev->scale != curr->scale || prev->subscale_n != curr->subscale_n || prev->subscale_d != curr->subscale_d || prev->valign != curr->valign ||
         prev->halign != curr->halign)
         return false;
-    if (prev->natural_width) return curr->natural_width;
-    return prev->width == curr->width && !curr->natural_width;
+    // All the text of an escape code with a non-zero width is drawn in a single block, so only chars of natural width, whose
+    // text is split into cells, can be written in the same escape code
+    return prev->natural_width && curr->natural_width;
 }
 
 static index_type
-text_in_cell_ansi(ANSILineState *s, const CPUCell *c, TextCache *tc, bool skip_multiline_non_zero_lines) {
+rows_continuing_multicell_char(ANSILineState *s, const Line *line, MulticellColumns cols, int step, index_type max) {
+    // The number of rows, up to max, next to the line being written, below it
+    // when step is 1 and above it when step is -1, that continue the
+    // multicell char whose cells in the line are in the columns cols. Rows
+    // that are not known are assumed to continue it.
+    const CPUCell *ref = line->cpu_cells + cols.start;
+    for (index_type n = 0; n < max; n++) {
+        const int dy = step * (int)(n + 1);
+        const CPUCell *other;
+        if (!s->neighbour_row || !s->neighbour_row(s->neighbour_row_ctx, dy, &other)) return max;
+        if (!other || !continues_multicell_char(other + cols.start, ref, (index_type)((int)ref->y + dy))) return n;
+        const MulticellColumns ocols = multicell_char_columns(other, line->xnum, cols.start);
+        if (ocols.start != cols.start || ocols.limit != cols.limit) return n;
+    }
+    return max;
+}
+
+static index_type
+text_in_cell_ansi(ANSILineState *s, const Line *line, index_type x, bool skip_multiline_non_zero_lines) {
+    // A multicell char is written at its first cell. When
+    // skip_multiline_non_zero_lines is true, chars continuing from the row
+    // above are not written, as they are written with it. A complete char,
+    // whose top row is the line, is written as such, with its rows below the
+    // line, as a terminal skips the cells of the rows after the first of a
+    // multiline char when writing the lines below. Otherwise the part of the
+    // char present, from the line down, is written, see the "Drawing part of
+    // a character" section of docs/text-sizing-protocol.rst.
+    const CPUCell *c = line->cpu_cells + x;
+    TextCache *tc = line->text_cache;
     index_type num_cells_to_skip_for_tab = 0;
+    bool is_part = false;
     if (c->is_multicell) {
-        if (c->x || (skip_multiline_non_zero_lines && c->y)) return num_cells_to_skip_for_tab;
-        if (s->current_multicell_state) {
-            if (!multicell_is_continuation_of_previous(s->current_multicell_state, c)) {
-                close_multicell(s);
-                start_multicell_if_needed(s, c);
+        const MulticellColumns cols = multicell_char_columns(line->cpu_cells, line->xnum, x);
+        if (x != cols.start) return num_cells_to_skip_for_tab;
+        if (skip_multiline_non_zero_lines && c->y && rows_continuing_multicell_char(s, line, cols, -1, 1)) {
+            if (s->skipped_limit != cols.start) s->skipped_start = cols.start;
+            s->skipped_limit = cols.limit;
+            return num_cells_to_skip_for_tab;
+        }
+        const index_type below = c->scale > c->y + 1u ? c->scale - c->y - 1u : 0;
+        const index_type down = below ? rows_continuing_multicell_char(s, line, cols, 1, below) : 0;
+        if (!c->y && down == below && multicell_char_columns_are_complete(line->cpu_cells, cols)) {
+            if (s->current_multicell_state) {
+                if (!multicell_is_continuation_of_previous(s->current_multicell_state, c)) {
+                    close_multicell(s);
+                    start_multicell_if_needed(s, c);
+                }
+            } else start_multicell_if_needed(s, c);
+        } else {
+            close_multicell(s);
+            if (c->y && s->skipped_limit && s->skipped_limit == x) {
+                // A terminal moves the cursor past the cells not written when
+                // writing text over them, except for the same cells of the
+                // same char, which this part can be, so move it explicitly
+                ensure_space_in_ansi_output_buf(s, 16);
+                s->output_buf->buf[s->output_buf->len++] = 0x1b;
+                s->output_buf->buf[s->output_buf->len++] = '[';
+                nonnegative_integer_as_utf32(x - s->skipped_start, s->output_buf);
+                s->output_buf->buf[s->output_buf->len++] = 'C';
+                s->escape_code_written = true;
             }
-        } else start_multicell_if_needed(s, c);
+            const MulticellAnsiPart part = {.columns = cols.limit - cols.start, .rows = down + 1};
+            write_multicell_ansi_prefix(s, c, &part);
+            is_part = true;
+        }
     } else close_multicell(s);
+    s->skipped_limit = 0;
 
     size_t pos = s->output_buf->len;
     if (c->ch_is_idx) {
@@ -164,6 +253,8 @@ text_in_cell_ansi(ANSILineState *s, const CPUCell *c, TextCache *tc, bool skip_m
             } break;
         }
     }
+    // A part is never continued by the next char, as it is drawn in a block of cells of its own
+    if (is_part) close_multicell(s);
     return num_cells_to_skip_for_tab;
 }
 
@@ -476,7 +567,12 @@ unicode_in_range(
     const bool add_trailing_newline,
     const bool skip_zero_cells,
     bool skip_multiline_non_zero_lines,
+    bool (*neighbour_row)(void *ctx, int dy, const CPUCell **cells),
+    void *neighbour_row_ctx,
     ANSIBuf *buf) {
+    // The text of a multicell char is in the first of its cells in the line,
+    // and, when skip_multiline_non_zero_lines is true, only in the top row of
+    // the part of it present, see text_in_cell_ansi()
     static const size_t initial_cap = 4096;
     ListOfChars lc;
     if (!buf->buf) {
@@ -496,7 +592,16 @@ unicode_in_range(
             lc.chars = buf->buf + buf->len;
             lc.capacity = buf->capacity - buf->len;
         }
-        if (self->cpu_cells[i].is_multicell && (self->cpu_cells[i].x || (skip_multiline_non_zero_lines && self->cpu_cells[i].y))) continue;
+        const CPUCell *c = self->cpu_cells + i;
+        if (c->is_multicell) {
+            if (c->x && multicell_char_columns(self->cpu_cells, self->xnum, i).start != i) continue;
+            if (skip_multiline_non_zero_lines && c->y) {
+                const CPUCell *above;
+                // rows that are not known are assumed to continue the char
+                if (!neighbour_row || !neighbour_row(neighbour_row_ctx, -1, &above)) continue;
+                if (above && continues_multicell_char(above + i, c, c->y - 1u)) continue;
+            }
+        }
         if (!lc.chars[0]) {
             if (skip_zero_cells) continue;
             lc.chars[0] = ' ';
@@ -517,7 +622,7 @@ unicode_in_range(
 PyObject *
 line_as_unicode(Line *self, bool skip_zero_cells, ANSIBuf *buf) {
     size_t before = buf->len;
-    if (!unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells, true, buf)) return PyErr_NoMemory();
+    if (!unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells, true, NULL, NULL, buf)) return PyErr_NoMemory();
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf->buf + before, buf->len - before);
     buf->len = before;
     return ans;
@@ -656,6 +761,7 @@ bool
 line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char, bool skip_multiline_non_zero_lines) {
     s->limit = MIN(stop_before, xlimit_for_line(self));
     s->current_multicell_state = NULL;
+    s->skipped_limit = 0;
     s->escape_code_written = false;
     if (prefix_char) write_ch_to_ansi_buf(s, prefix_char);
 
@@ -694,7 +800,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
             }
         }
 
-        index_type num_cells_to_skip_for_tab = text_in_cell_ansi(s, self->cpu_cells + s->pos, self->text_cache, skip_multiline_non_zero_lines);
+        index_type num_cells_to_skip_for_tab = text_in_cell_ansi(s, self, s->pos, skip_multiline_non_zero_lines);
         const CPUCell *next = self->cpu_cells + s->pos + 1;
         while (num_cells_to_skip_for_tab && s->pos + 1 < s->limit && cell_is_char(next, ' ')) {
             num_cells_to_skip_for_tab--;
@@ -1162,11 +1268,25 @@ mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf) {
     Py_DECREF(text);
 }
 
+// The rows around the line being written by as_text_generic(), see ANSILineState
+typedef struct GenericNeighbourRows {
+    void *container;
+    container_row_func *row_cells;
+    int y;
+} GenericNeighbourRows;
+
+static bool
+generic_neighbour_row(void *ctx, int dy, const CPUCell **cells) {
+    const GenericNeighbourRows *r = ctx;
+    return r->row_cells(r->container, r->y + dy, cells);
+}
+
 PyObject *
 as_text_generic(
     PyObject *args,
     void *container,
     get_line_func get_line,
+    container_row_func *row_cells,
     index_type lines,
     ANSIBuf *ansibuf,
     bool add_trailing_newline,
@@ -1200,7 +1320,8 @@ as_text_generic(
     RAII_PyObject(cr, PyUnicode_FromString("\r"));
     RAII_PyObject(sgr_reset, PyUnicode_FromString("\x1b[m"));
     if (nl == NULL || cr == NULL || sgr_reset == NULL) return NULL;
-    ANSILineState s = {.output_buf = ansibuf};
+    GenericNeighbourRows neighbours = {.container = container, .row_cells = row_cells};
+    ANSILineState s = {.output_buf = ansibuf, .neighbour_row = generic_neighbour_row, .neighbour_row_ctx = &neighbours};
     ansibuf->active_hyperlink_id = 0;
     // before any line is got, as the lines may be views that reading the lines above changes
     if (as_ansi && bidi_above && lines) ansi_bidi_continue(&s, bidi_above(container), continues_previous || continues_previous_arg);
@@ -1221,7 +1342,9 @@ as_text_generic(
             // see https://github.com/kovidgoyal/kitty/issues/2381
             zero_at_ptr(&s.prev_style);
             ansi_bidi_row_start(&s, line);
-            line_as_ansi(line, &s, 0, line->xnum, 0, true);
+            neighbours.y = (int)y;
+            // The rows above the first line are written before it only when the output continues theirs
+            line_as_ansi(line, &s, 0, line->xnum, 0, y > 0 || continues_previous || continues_previous_arg);
             // the paragraph is cut by the end of the lines unless the output below continues it
             ansi_bidi_row_end(&s, line->cpu_cells[line->xnum - 1].next_char_was_wrapped && (y + 1 < lines || continued_by_next));
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);

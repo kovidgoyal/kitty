@@ -504,6 +504,20 @@ linebuf_copy_line_to(LineBuf *self, Line *line, index_type where) {
     self->line_attrs[where].has_dirty_text = true;
 }
 
+// The rows around a line being written as ANSI, see ANSILineState
+typedef struct LineBufNeighbourRows {
+    LineBuf *linebuf;
+    index_type y;
+} LineBufNeighbourRows;
+
+static bool row_cells(void *x, int y, const CPUCell **cells);
+
+static bool
+linebuf_neighbour_row(void *ctx, int dy, const CPUCell **cells) {
+    const LineBufNeighbourRows *r = ctx;
+    return row_cells(r->linebuf, (int)r->y + dy, cells);
+}
+
 static PyObject *
 as_ansi(LineBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
@@ -511,8 +525,10 @@ as_ansi(LineBuf *self, PyObject *callback) {
     // remove trailing empty lines
     index_type ylimit = self->ynum - 1;
     ANSIBuf output = {0};
-    ANSILineState s = {.output_buf = &output};
+    LineBufNeighbourRows neighbours = {.linebuf = self};
+    ANSILineState s = {.output_buf = &output, .neighbour_row = linebuf_neighbour_row, .neighbour_row_ctx = &neighbours};
     do {
+        neighbours.y = ylimit;
         init_line(self, &l, self->line_map[ylimit]);
         output.len = 0;
         line_as_ansi(&l, &s, 0, l.xnum, 0, true);
@@ -523,6 +539,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     for (index_type i = 0; i <= ylimit; i++) {
         bool output_newline = !linebuf_line_ends_with_continuation(self, i);
         output.len = 0;
+        neighbours.y = i;
         init_line(self, &l, self->line_map[i]);
         // only the bidi record, as init_line() does not set the attrs
         line_attrs_set_bidi(&l.attrs, self->line_attrs[i]);
@@ -556,10 +573,17 @@ get_line(void *x, int y) {
     return self->line;
 }
 
+static bool
+row_cells(void *x, int y, const CPUCell **cells) {
+    LineBuf *self = (LineBuf *)x;
+    *cells = y < 0 || y >= (int)self->ynum ? NULL : linebuf_cpu_cells_for_line(self, y);
+    return true;
+}
+
 static PyObject *
 as_text(LineBuf *self, PyObject *args) {
     ANSIBuf output = {0};
-    PyObject *ans = as_text_generic(args, self, get_line, self->ynum, &output, false, NULL, false);
+    PyObject *ans = as_text_generic(args, self, get_line, row_cells, self->ynum, &output, false, NULL, false);
     free(output.buf);
     return ans;
 }

@@ -161,6 +161,18 @@ typedef struct ANSILineOutput {
     // The bidi record of the paragraph being written, see ansi_bidi_row_start(), 0 when none is open, and the record whose
     // controls line_as_ansi() is to write before the text of the next line it writes
     uint8_t bidi_open, bidi_prefix;
+    // The rows around the line being written, used to write the multiline
+    // chars of which only some rows are present, see line_as_ansi(). Sets
+    // *cells to the cells of the row dy rows below the line, above it for
+    // negative dy, or to NULL when there is no such row. Returns false when
+    // the row is not known, multiline chars are then assumed to continue into
+    // it. When NULL, no rows are known.
+    bool (*neighbour_row)(void *ctx, int dy, const CPUCell **cells);
+    void *neighbour_row_ctx;
+    // The columns [skipped_start, skipped_limit) of the cells just before the
+    // current one that were not written, as they continue multiline chars
+    // written with the rows above, skipped_limit is zero when there are none
+    index_type skipped_start, skipped_limit;
 } ANSILineState;
 
 static inline void

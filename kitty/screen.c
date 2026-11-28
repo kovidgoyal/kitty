@@ -7686,12 +7686,58 @@ select_cell(SelectedCells *sc, int y, index_type x) {
 }
 
 static bool
+range_row_cells(Screen *self, int y, const CPUCell **cells) {
+    // The cells of range line y, see container_row_func. All rows of the
+    // screen and the scrollback are known, so that multiline chars crossing
+    // the edges of the lines being written are written as they are.
+    if (y >= (int)self->lines) {
+        *cells = NULL;
+        return true;
+    }
+    if (y >= 0) {
+        *cells = linebuf_cpu_cells_for_line(self->linebuf, y);
+        return true;
+    }
+    // The scrollback is above the main screen only
+    if (self->linebuf != self->main_linebuf) {
+        *cells = NULL;
+        return true;
+    }
+    return historybuf_row_cells(self->historybuf, -(int64_t)y - 1, cells);
+}
+
+// The rows around a range line being written as ANSI, see ANSILineState
+typedef struct RangeNeighbourRows {
+    Screen *screen;
+    int y;
+} RangeNeighbourRows;
+
+static bool
+range_neighbour_row(void *ctx, int dy, const CPUCell **cells) {
+    // Selections are of the screen and the scrollback, the rows above the
+    // scrollback, which are not known, are not part of them
+    const RangeNeighbourRows *r = ctx;
+    if (!range_row_cells(r->screen, r->y + dy, cells)) *cells = NULL;
+    return true;
+}
+
+static bool
+continues_from_row_above(Screen *self, int y, index_type x, const CPUCell *c) {
+    // Whether the cell c, in column x of range line y, continues a multiline
+    // char from the row above, rather than being the top row of the part of
+    // the char present. Selections are of the screen and the scrollback, so
+    // the rows above the scrollback, which are not known, do not continue it.
+    if (!c->is_multicell || !c->y) return false;
+    const CPUCell *above;
+    return range_row_cells(self, y - 1, &above) && above && continues_multicell_char(above + x, c, c->y - 1u);
+}
+
+static bool
 flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int *y_limit, SelectedCells *sc) {
     // Find the cells whose text is in the selection. Returns false on allocation failure.
     IterationData idata;
     bool has_history = self->linebuf == self->main_linebuf;
     iteration_data(s, &idata, self->columns, has_history ? -self->historybuf->count : 0, 0);
-    Line *line;
     *miny = idata.y;
     *y_limit = MIN(idata.y_limit, (int)self->lines);
     if (*miny >= *y_limit) return true;
@@ -7710,22 +7756,20 @@ flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int 
         for (index_type x = xr.x; x < xr.x_limit; x++) {
             c = temp.cpu_cells + x;
             select_cell(sc, y, x);
-            if (c->is_multicell && c->y) {
-                for (int ym = y - c->y; ym < y; ym++) {
-                    line = checked_range_line(self, ym);
-                    if (line) {
-                        select_cell(sc, ym, x);
-                        *miny = MIN(*miny, ym);
-                    }
-                }
+            // The text of a multiline char is written in the top row of the
+            // part of it present, which can be partial, so select that row
+            for (int ym = y; ym > sc->y_start && continues_from_row_above(self, ym, x, c); ym--) {
+                select_cell(sc, ym - 1, x);
+                *miny = MIN(*miny, ym - 1);
             }
         }
     }
-    // remove lines from bottom that contain only y > 0 cells from multicell
+    // remove lines from bottom that contain only cells of multiline chars continuing from the rows above, whose text is in those rows
     while (*y_limit > *miny) {
         range_line(self, *y_limit - 1, &temp);
         for (index_type x = 0; x < temp.xnum; x++) {
-            if (is_cell_selected(sc, *y_limit - 1, x) && temp.cpu_cells[x].ch_and_idx && (!temp.cpu_cells[x].is_multicell || !temp.cpu_cells[x].y)) return true;
+            const CPUCell *c = temp.cpu_cells + x;
+            if (is_cell_selected(sc, *y_limit - 1, x) && c->ch_and_idx && !continues_from_row_above(self, *y_limit - 1, x, c)) return true;
         }
         (*y_limit)--;
     }
@@ -7743,8 +7787,10 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     RAII_PyObject(nl, PyUnicode_FromString("\n"));
     RAII_PyObject(empty, PyUnicode_FromString(""));
     if (!ans || !nl || !empty) return NULL;
+    RangeNeighbourRows neighbours = {.screen = self};
     for (int i = 0, y = min_y; y < y_limit; y++, i++) {
         Line *line = range_line_(self, y);
+        neighbours.y = y;
         index_type x_limit = line->xnum, x_start = 0;
         while (x_limit && !is_cell_selected(&sc, y, x_limit - 1)) x_limit--;
         while (x_start < x_limit && !is_cell_selected(&sc, y, x_start)) x_start++;
@@ -7770,7 +7816,9 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
             while (x_start < x_limit) {
                 index_type end = x_start;
                 while (end < x_limit && is_cell_selected(&sc, y, end)) end++;
-                if (!unicode_in_range(line, x_start, end, true, add_trailing_newline, false, !is_first_line, &self->as_ansi_buf)) return PyErr_NoMemory();
+                if (!unicode_in_range(
+                        line, x_start, end, true, add_trailing_newline, false, !is_first_line, range_neighbour_row, &neighbours, &self->as_ansi_buf))
+                    return PyErr_NoMemory();
                 x_start = MAX(x_start + 1, end);
             }
             text = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, self->as_ansi_buf.buf + before, self->as_ansi_buf.len - before);
@@ -7788,7 +7836,8 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
     RAII_SelectedCells(sc);
     if (!flag_selection_to_extract_text(self, sel, &min_y, &y_limit, &sc)) return PyErr_NoMemory();
     if (min_y >= y_limit) return PyTuple_New(0);
-    ANSILineState s = {.output_buf = &self->as_ansi_buf};
+    RangeNeighbourRows neighbours = {.screen = self};
+    ANSILineState s = {.output_buf = &self->as_ansi_buf, .neighbour_row = range_neighbour_row, .neighbour_row_ctx = &neighbours};
     s.output_buf->active_hyperlink_id = 0;
     s.output_buf->len = 0;
     RAII_PyObject(ans, PyTuple_New(y_limit - min_y + 1));
@@ -7802,6 +7851,7 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         const bool is_first_line = y == min_y;
         s.output_buf->len = 0;
         Line *line = range_line_(self, y);
+        neighbours.y = y;
         ansi_bidi_row_start(&s, line);
         const bool bidi_continued = line->cpu_cells[line->xnum - 1].next_char_was_wrapped && y + 1 < y_limit;
         index_type x_limit = line->xnum, x_start = 0;
@@ -8207,7 +8257,7 @@ append_row_to_ime_text(Screen *self, index_type y, index_type start, index_type 
     limit = MIN(limit, trim_trailing ? xlimit_for_line(line) : line->xnum);
     start = MIN(start, line->xnum);
     if (start >= limit) return true;
-    return unicode_in_range(line, start, limit, true, false, false, true, buf);
+    return unicode_in_range(line, start, limit, true, false, false, true, NULL, NULL, buf);
 }
 
 bool
@@ -8615,6 +8665,36 @@ get_range_line(void *x, int y) {
     return range_line_(x, y);
 }
 
+static bool
+visual_row_cells(void *x, int y, const CPUCell **cells) {
+    Screen *self = x;
+    return range_row_cells(self, y - (int)self->scrolled_by, cells);
+}
+
+static bool
+range_row_cells_(void *x, int y, const CPUCell **cells) {
+    return range_row_cells(x, y, cells);
+}
+
+// The lines of the scrollback, from the oldest, as range lines, so that the
+// rows of the screen below the newest are known
+static Line *
+get_history_line(void *x, int y) {
+    Screen *self = x;
+    return range_line_(self, y - (int)self->historybuf->count);
+}
+
+static bool
+history_row_cells(void *x, int y, const CPUCell **cells) {
+    Screen *self = x;
+    return range_row_cells(self, y - (int)self->historybuf->count, cells);
+}
+
+static uint8_t
+pagerhist_bidi_above(void *x) {
+    return historybuf_pagerhist_bidi_open(((Screen *)x)->historybuf);
+}
+
 static uint8_t
 visual_bidi_above(void *x) {
     Screen *self = x;
@@ -8628,22 +8708,22 @@ range_bidi_above(void *x) {
 
 static PyObject *
 as_text(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_visual_line, self->lines, &self->as_ansi_buf, false, visual_bidi_above, false);
+    return as_text_generic(args, self, get_visual_line, visual_row_cells, self->lines, &self->as_ansi_buf, false, visual_bidi_above, false);
 }
 
 static PyObject *
 as_text_non_visual(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_range_line, self->lines, &self->as_ansi_buf, false, range_bidi_above, false);
+    return as_text_generic(args, self, get_range_line, range_row_cells_, self->lines, &self->as_ansi_buf, false, range_bidi_above, false);
 }
 
 static PyObject *
 as_text_for_history_buf(Screen *self, PyObject *args) {
-    return as_text_history_buf(self->historybuf, args, &self->as_ansi_buf);
+    return as_text_generic(args, self, get_history_line, history_row_cells, self->historybuf->count, &self->as_ansi_buf, true, pagerhist_bidi_above, false);
 }
 
 static PyObject *
 as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
-    return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf, false, range_bidi_above, false);
+    return as_text_generic(args, self, get_line, range_row_cells_, self->lines, &self->as_ansi_buf, false, range_bidi_above, false);
 }
 
 static PyObject *
@@ -8666,6 +8746,12 @@ static Line *
 get_line_from_offset(void *x, int y) {
     OutputOffset *r = x;
     return range_line_(r->screen, r->start + y);
+}
+
+static bool
+offset_row_cells(void *x, int y, const CPUCell **cells) {
+    OutputOffset *r = x;
+    return range_row_cells(r->screen, r->start + y, cells);
 }
 
 static uint8_t
@@ -8941,7 +9027,9 @@ cmd_output(Screen *self, PyObject *args) {
     const bool after_pagerhist = oo.reached_upper_limit && self->linebuf == self->main_linebuf && OPT(scrollback_pager_history_size) > 0;
     if (found) {
         RAII_PyObject(
-            ret, as_text_generic(as_text_args, &oo, get_line_from_offset, oo.num_lines, &self->as_ansi_buf, false, offset_bidi_above, after_pagerhist));
+            ret,
+            as_text_generic(
+                as_text_args, &oo, get_line_from_offset, offset_row_cells, oo.num_lines, &self->as_ansi_buf, false, offset_bidi_above, after_pagerhist));
         if (!ret) return NULL;
     }
     if (after_pagerhist) Py_RETURN_TRUE;
