@@ -793,6 +793,26 @@ class TestFileTransmission(BaseTest):
                         self.ae(stat.S_IMODE(target.stat().st_mode), 0o600)
                         self.ae(os.listdir(dest.parent), ['received'])
 
+    def test_transfer_receive_directories_only(self):
+        self.direction_receive = True
+        for confirm_paths in (False, True):
+            with self.subTest(confirm_paths=confirm_paths):
+                self.clean_tdir()
+                src = Path(self.tdir) / 'source'
+                dest = Path(self.tdir) / 'dest'
+                (src / 'nested' / 'empty').mkdir(parents=True)
+                dest.mkdir()
+                received = dest / src.name
+                args = ['--confirm-paths'] if confirm_paths else []
+                with self.run_kitten([*args, str(src), str(dest)]) as pty, pty:
+                    if confirm_paths:
+                        pty.wait_till(lambda: 'to continue or' in pty.screen_contents())
+                        self.assertFalse(received.exists())
+                        pty.write_to_child('y')
+                    pty.wait_till_child_exits(require_exit_code=0)
+                    self.assertFalse(pty.fc.active_sends)
+                self.assertTrue((received / 'nested' / 'empty').is_dir())
+
     def test_transfer_receive(self):
         self.direction_receive = True
         self.basic_transfer_tests()
