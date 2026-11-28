@@ -32,6 +32,17 @@ type Scroller struct {
 	// outside the content, the row must then be drawn blank. Paint must
 	// draw the whole row, but nothing outside it, and must not cause the
 	// screen to scroll.
+	//
+	// Characters taller than one line, such as text drawn at a larger scale
+	// with the text sizing protocol, must be drawn line by line, as parts,
+	// see loop.SizedText and loop.TextSizingPartsQuery, as a line can be
+	// drawn without the lines around it. A line can be drawn again while
+	// the lines around it are on the screen, for example, the partially
+	// visible line at the edge of the rectangle, or when restored by the
+	// terminal after moving out of the rectangle, so Paint must not erase
+	// the cells in which it draws parts, as erasing them erases the whole
+	// character, including its parts in the other lines. Drawing parts over
+	// the same parts replaces them in place.
 	Paint func(row, line int)
 
 	// Whether the terminal supports the smooth scrolling protocol

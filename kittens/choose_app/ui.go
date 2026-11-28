@@ -110,8 +110,9 @@ type Handler struct {
 	want_current_visible bool
 	// The first error placing an icon while drawing the grid
 	paint_err error
-	// Placeholders for applications without icons, rendered as images
-	placeholders     map[string]icon_info
+	// Whether the terminal supports drawing part of a character with the
+	// text sizing protocol, used to draw placeholders row by row
+	text_parts       loop.TextSizingPartsQuery
 	tiles            tile_geometry
 	shortcut_tracker config.ShortcutTracker
 	mouse_state      tui.MouseState
@@ -141,7 +142,6 @@ func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *Choic
 	})
 	h.scroller = scrolling.Scroller{Id: grid_region_id, Capacity: grid_region_capacity, Paint: h.paint_grid_line}
 	h.indicator = scrolling.Indicator{TrackStyle: "\x1b[2m"}
-	h.placeholders = map[string]icon_info{}
 	h.search_rl = readline.New(lp, readline.RlInit{DontMarkPrompts: true})
 	h.init_command_rl()
 	h.command_entry = new_command_entry_item()
@@ -198,6 +198,12 @@ func (h *Handler) on_color_scheme_change(p loop.ColorPreference) error {
 }
 
 func (h *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
+	if h.text_parts.HandleEscapeCode(etype, payload) {
+		if h.text_parts.Done && h.text_parts.Supported {
+			return h.draw_screen()
+		}
+		return nil
+	}
 	if etype == loop.OSC && loop.IsSmoothScrollQueryResponse(payload) {
 		if !h.scroller.Supported() {
 			h.scroller.SetSupported()
@@ -219,7 +225,7 @@ func (h *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) erro
 	}
 	if etype == loop.APC {
 		if t := h.indicator.Thumb; t != nil && !t.Supported && t.IsSupportResponse(payload) {
-			// Indexed color data is supported, used for the thumb and placeholders
+			// Indexed color data is supported, used for the thumb
 			t.Supported = true
 			return h.draw_screen()
 		}
@@ -406,6 +412,7 @@ func (h *Handler) OnInitialize() (string, error) {
 		}
 	}
 	h.lp.QuerySmoothScrolling()
+	h.text_parts.Query(h.lp)
 	h.icon_display.Initialize(h.lp)
 	h.indicator.Thumb = graphics.NewScrollThumb(h.icon_display.next_id)
 	h.icon_display.next_id++
@@ -767,20 +774,23 @@ func (h *Handler) render_name_line(runes []rune, line wrapped_line, positions []
 }
 
 // draw_tile_line draws line k of the tile of the specified item, in the zero
-// based row y of the screen, which is the specified row of the grid area
-func (h *Handler) draw_tile_line(it *item, idx, x, y, k, row int) {
+// based row y of the screen, which is the specified row of the grid area.
+// with_placeholder is whether a placeholder is drawn instead of its icon.
+func (h *Handler) draw_tile_line(it *item, idx, x, y, k, row int, with_placeholder bool) {
 	lp := h.lp
 	t := h.tiles
 	if idx == h.current {
 		h.draw_frame_line(x, y, t.width(), t.height(), k, accent_style)
 	}
 	if ik := k - 1; ik >= 0 && ik < t.icon_rows {
-		// The icon is placed from its first line, the terminal clips it to
-		// the grid and reveals the rest as it is scrolled. When its first
-		// line is above the grid, the part of it below is placed from the
-		// first row. Placing it again replaces it, as the same placement id
-		// is used.
-		if ik == 0 || row == 0 {
+		if with_placeholder {
+			h.draw_placeholder_line(it, x, y, ik)
+		} else if ik == 0 || row == 0 {
+			// The icon is placed from its first line, the terminal clips it
+			// to the grid and reveals the rest as it is scrolled. When its
+			// first line is above the grid, the part of it below is placed
+			// from the first row. Placing it again replaces it, as the same
+			// placement id is used.
 			h.draw_icon(it, idx, x, y-ik, ik)
 		}
 		return
@@ -798,90 +808,134 @@ func (h *Handler) draw_tile_line(it *item, idx, x, y, k, row int) {
 	}
 }
 
+// icon_for returns the icon of the item, if it is loaded and the terminal can display it
+func (h *Handler) icon_for(it *item) (icon_info, bool) {
+	if !h.icon_display.CanDisplay() || it.entry.Icon == "" {
+		return icon_info{}, false
+	}
+	return h.icon_loader.get(it.entry.Icon)
+}
+
 // draw_icon draws the icon of the item, in the box of the icon, whose top
 // is in the zero based row box_y, which can be above the grid, the first
 // skip_rows rows of the box not being drawn
 func (h *Handler) draw_icon(it *item, idx, x, box_y, skip_rows int) {
+	t := h.tiles
+	ii, found := h.icon_for(it)
+	if !found {
+		return
+	}
+	if err := h.icon_display.Place(h.lp, ii, uint32(idx+1), x+1, box_y, t.content_width, t.icon_rows, skip_rows, h.screen_size); err != nil && h.paint_err == nil {
+		h.paint_err = err
+	}
+}
+
+// placeholder_layout returns the text of the placeholder for an application
+// without an icon, the first letter of its name, drawn in the box of the
+// icon of the tile whose left edge is the zero based column x, scaled to
+// the height of the box, its width in cells at normal size and the zero
+// based column of its left edge. ok is false when it does not fit.
+func (h *Handler) placeholder_layout(it *item, x int) (glyph string, width, left int, ok bool) {
+	t := h.tiles
+	if glyph = placeholder_text(it); glyph == command_placeholder {
+		glyph = "\uf489" // the Nerd Fonts terminal icon
+	}
+	width = max(1, wcswidth.Stringwidth(glyph))
+	if t.icon_rows < 1 || t.icon_rows*width > t.content_width {
+		return "", 0, 0, false
+	}
+	return glyph, width, x + 1 + (t.content_width-t.icon_rows*width)/2, true
+}
+
+// draw_placeholder_line draws line ik of the placeholder of the item in the
+// tile whose left edge is the zero based column x, in the zero based row y
+// of the screen. Each line is drawn separately, as part of the scaled
+// placeholder, so that it can be partially displayed, as the grid is
+// scrolled. Terminals that cannot draw parts of characters draw it only when
+// it is entirely in the grid.
+func (h *Handler) draw_placeholder_line(it *item, x, y, ik int) {
 	lp := h.lp
 	t := h.tiles
-	if h.icon_display.CanDisplay() {
-		ii, found := icon_info{}, false
-		if it.entry.Icon != "" {
-			ii, found = h.icon_loader.get(it.entry.Icon)
-		}
-		if !found {
-			ii, found = h.placeholder_image(it)
-		}
-		if found {
-			if err := h.icon_display.Place(lp, ii, uint32(idx+1), x+1, box_y, t.content_width, t.icon_rows, skip_rows, h.screen_size); err != nil && h.paint_err == nil {
-				h.paint_err = err
-			}
+	glyph, width, left, ok := h.placeholder_layout(it, x)
+	if !ok {
+		return
+	}
+	spec := loop.SizedText{Scale: t.icon_rows, Width: width}
+	if h.text_parts.Supported {
+		spec.Part_y, spec.Part_rows = ik, 1
+	} else {
+		top := h.scroller.Top()
+		if y -= ik; y < top || y+t.icon_rows > top+h.scroller.Height() {
 			return
 		}
 	}
-	// A placeholder, the first letter of the name, drawn with the text sizing
-	// protocol, only when it is entirely in the grid, as it cannot be
-	// partially displayed
-	top := h.scroller.Top()
-	if skip_rows > 0 || box_y < top || box_y+t.icon_rows > top+h.scroller.Height() {
-		return
-	}
-	glyph := placeholder_text(it)
-	if glyph == command_placeholder {
-		glyph = "\uf489" // the Nerd Fonts terminal icon
-	}
-	lp.MoveCursorTo(x+2+(t.content_width-t.icon_rows)/2, box_y+1)
+	lp.MoveCursorTo(left+1, y+1)
 	pre, post, _ := strings.Cut(h.styled(dim_style, " "), " ")
 	lp.QueueWriteString(pre)
-	lp.DrawSizedText(glyph, loop.SizedText{Scale: t.icon_rows})
+	lp.DrawSizedText(glyph, spec)
 	lp.QueueWriteString(post)
 }
 
-// placeholder_image returns the placeholder for an application without an
-// icon as an image, if the terminal supports images with indexed color data
-func (h *Handler) placeholder_image(it *item) (icon_info, bool) {
-	if h.indicator.Thumb == nil || !h.indicator.Thumb.Supported {
-		return icon_info{}, false
+// placeholder_columns returns the zero based columns [start, end) of the
+// parts of placeholders drawn in the specified line of the specified row of
+// the grid, those of the tiles whose with_placeholder is true
+func (h *Handler) placeholder_columns(gr grid_row, k int, with_placeholder []bool) (ans [][2]int) {
+	t := h.tiles
+	if !h.text_parts.Supported || k < 1 || k > t.icon_rows {
+		return
 	}
-	text := placeholder_text(it)
-	w, ht := h.tiles.content_width*int(h.screen_size.CellWidth), h.tiles.icon_rows*int(h.screen_size.CellHeight)
-	if w < 1 || ht < 1 {
-		return icon_info{}, false
+	for c, idx := range gr.items {
+		if with_placeholder[c] {
+			if _, width, left, ok := h.placeholder_layout(h.matches[idx], h.grid_left+c*t.width()); ok {
+				ans = append(ans, [2]int{left, left + t.icon_rows*width})
+			}
+		}
 	}
-	key := fmt.Sprintf("placeholder:%s:%dx%d", text, w, ht)
-	if ii, found := h.placeholders[key]; found {
-		return ii, ii.indexed_data != nil
-	}
-	data, err := render_placeholder(text, w, ht, 0.8)
-	if err != nil {
-		h.warnings = append(h.warnings, err.Error())
-	}
-	// Failures are cached as well, so that they are reported only once
-	ii := icon_info{path: key, width: w, height: ht, indexed_data: data}
-	h.placeholders[key] = ii
-	return ii, data != nil
+	return
 }
 
 // paint_grid_line draws the specified line of the grid in the specified row
 // of the grid area, called by the scroller for the lines that move into it
+// and to draw lines again
 func (h *Handler) paint_grid_line(row, line int) {
 	lp := h.lp
 	y := h.scroller.Top() + row
-	lp.MoveCursorTo(1, y+1)
-	// Erase the row, except for the scroll indicator, outside the scroll region
-	lp.QueueWriteString(fmt.Sprintf("\x1b[m\x1b[%dX", h.scroller.Width()))
+	left, right := h.scroller.Left(), h.scroller.Left()+h.scroller.Width()
+	lp.QueueWriteString("\x1b[m")
+	erase := func(start, end int) {
+		if end > start {
+			lp.MoveCursorTo(start+1, y+1)
+			lp.QueueWriteString(fmt.Sprintf("\x1b[%dX", end-start))
+		}
+	}
 	r, k := h.grid.row_at(line)
-	if r < 0 || r >= len(h.rows) {
+	if r < 0 || r >= len(h.rows) || h.rows[r].is_header() {
+		// Erase the row, except for the scroll indicator, outside the scroll region
+		erase(left, right)
+		if r >= 0 && r < len(h.rows) {
+			lp.MoveCursorTo(h.grid_left+3, y+1)
+			lp.QueueWriteString(h.styled(section_style, h.rows[r].header))
+		}
 		return
 	}
 	gr := h.rows[r]
-	if gr.is_header() {
-		lp.MoveCursorTo(h.grid_left+3, y+1)
-		lp.QueueWriteString(h.styled(section_style, gr.header))
-		return
-	}
+	with_placeholder := make([]bool, len(gr.items))
 	for c, idx := range gr.items {
-		h.draw_tile_line(h.matches[idx], idx, h.grid_left+c*h.tiles.width(), y, k, row)
+		_, found := h.icon_for(h.matches[idx])
+		with_placeholder[c] = !found
+	}
+	// Erase the row, except for the cells of the parts of placeholders, as
+	// erasing them would erase the whole placeholder, including its parts in
+	// the rows above and below. They are drawn over, which replaces them in
+	// place when they are unchanged.
+	pos := left
+	for _, cols := range h.placeholder_columns(gr, k, with_placeholder) {
+		erase(pos, cols[0])
+		pos = max(pos, cols[1])
+	}
+	erase(pos, right)
+	for c, idx := range gr.items {
+		h.draw_tile_line(h.matches[idx], idx, h.grid_left+c*h.tiles.width(), y, k, row, with_placeholder[c])
 	}
 }
 

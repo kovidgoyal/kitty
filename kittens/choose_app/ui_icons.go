@@ -23,13 +23,9 @@ var _ = fmt.Print
 
 // A rendered icon ready for display
 type icon_info struct {
-	// The path to the rendered icon, a PNG file, or, for images rendered
-	// in memory, a key identifying the image
+	// The path to the rendered icon, a PNG file
 	path          string
 	width, height int
-	// The pixels of images rendered in memory, as palette index and alpha
-	// pairs, see the graphics protocol docs for indexed color data
-	indexed_data []byte
 }
 
 // icon_loader finds and renders icons in the background
@@ -243,11 +239,7 @@ func (d *icon_display) transmit(lp *loop.Loop, ii icon_info) (id uint32, err err
 	d.next_id++
 	gc := d.new_command()
 	gc.SetAction(graphics.GRT_action_transmit).SetImageId(id).SetFormat(graphics.GRT_format_png).SetQuiet(graphics.GRT_quiet_silent)
-	if ii.indexed_data != nil {
-		gc.SetFormat(graphics.GRT_format_indexed_alpha).SetDataWidth(uint64(ii.width)).SetDataHeight(uint64(ii.height))
-		gc.SetTransmission(graphics.GRT_transmission_direct)
-		err = gc.WriteWithPayloadToLoop(lp, ii.indexed_data)
-	} else if d.files_supported {
+	if d.files_supported {
 		gc.SetTransmission(graphics.GRT_transmission_file)
 		err = gc.WriteWithPayloadToLoop(lp, []byte(ii.path))
 	} else {

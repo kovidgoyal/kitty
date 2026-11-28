@@ -322,45 +322,49 @@ func TestActivationTokenIds(t *testing.T) {
 	}
 }
 
-func TestPlaceholderImage(t *testing.T) {
-	w, h := 40, 30
-	data, err := render_placeholder("A", w, h, 0.8)
-	if err != nil {
-		t.Fatal(err)
+func TestPlaceholderLayout(t *testing.T) {
+	tiles := new_tile_geometry(3, 16)
+	h := &Handler{tiles: tiles, grid_left: 2}
+	h.matches = []*item{
+		{entry: &DesktopEntry{Name: "alpha"}, choice: Choice{DesktopID: "a.desktop"}},
+		{entry: &DesktopEntry{Name: "bravo"}, choice: Choice{DesktopID: "b.desktop"}},
+		{entry: &DesktopEntry{Name: "中文"}, choice: Choice{DesktopID: "x.desktop"}},
 	}
-	if len(data) != 2*w*h {
-		t.Fatalf("Incorrect size of placeholder data: %d", len(data))
+	glyph, width, left, ok := h.placeholder_layout(h.matches[0], 10)
+	if !ok || glyph != "A" || width != 1 || left != 10+1+(tiles.content_width-3)/2 {
+		t.Fatalf("Incorrect placeholder layout: %#v %d %d %v", glyph, width, left, ok)
 	}
-	// The text is drawn in the foreground color, centered horizontally
-	var left, right, count int
-	for i := 0; i < len(data); i += 2 {
-		if data[i+1] > 0 {
-			if data[i] != placeholder_color {
-				t.Fatalf("Incorrect placeholder color: %d", data[i])
+	if glyph, _, _, _ := h.placeholder_layout(h.matches[2], 0); glyph != "\uf489" {
+		t.Fatalf("Incorrect placeholder for a name without a single cell first letter: %#v", glyph)
+	}
+	// placeholders that do not fit in the tile are not drawn
+	h.tiles = new_tile_geometry(7, 8)
+	if _, _, _, ok := h.placeholder_layout(h.matches[0], 0); ok {
+		t.Fatalf("Placeholder wider than the tile laid out")
+	}
+	h.tiles = tiles
+
+	// The columns of the parts of placeholders, which are not erased when
+	// drawing a line of the grid, as that would erase the whole placeholder
+	gr := grid_row{items: []int{0, 1, 2}, tile_height: tiles.height()}
+	with_placeholder := []bool{true, false, true}
+	if cols := h.placeholder_columns(gr, 1, with_placeholder); cols != nil {
+		t.Fatalf("Placeholder columns without support for drawing parts: %v", cols)
+	}
+	h.text_parts.Supported = true
+	expected := [][2]int{}
+	for _, c := range []int{0, 2} {
+		_, _, left, _ := h.placeholder_layout(h.matches[c], h.grid_left+c*tiles.width())
+		expected = append(expected, [2]int{left, left + 3})
+	}
+	for k := range tiles.height() {
+		cols := h.placeholder_columns(gr, k, with_placeholder)
+		if k >= 1 && k <= tiles.icon_rows {
+			if diff := cmp.Diff(expected, cols); diff != "" {
+				t.Fatalf("Incorrect placeholder columns in line %d:\n%s", k, diff)
 			}
-			if x := (i / 2) % w; x < w/2 {
-				left++
-			} else {
-				right++
-			}
-			count++
-		}
-	}
-	if count == 0 || abs(left-right) > count/4 {
-		t.Fatalf("Placeholder text not drawn or not centered: %d %d", left, right)
-	}
-	for _, tc := range []struct {
-		it       *item
-		expected string
-	}{
-		{&item{entry: &DesktopEntry{Name: "firefox"}, choice: Choice{DesktopID: "firefox.desktop"}}, "F"},
-		{&item{entry: &DesktopEntry{Name: "中文"}, choice: Choice{DesktopID: "x.desktop"}}, command_placeholder},
-		{&item{entry: &DesktopEntry{Name: "vim"}}, command_placeholder},
-	} {
-		if got := placeholder_text(tc.it); got != tc.expected {
-			t.Fatalf("Incorrect placeholder text for %#v: %#v", tc.it.entry.Name, got)
+		} else if cols != nil {
+			t.Fatalf("Placeholder columns in line %d: %v", k, cols)
 		}
 	}
 }
-
-func abs(x int) int { return max(x, -x) }
