@@ -176,6 +176,8 @@ typedef struct ANSILineOutput {
     // Whether the cells not written run to the end of the previous line,
     // which continues on this one, and whether that line was such a line
     bool skipped_before_line, skipped_to_end_of_continued_line;
+    // Whether the previous line continues on this one and whether text was written for a cell of this line
+    bool previous_line_continued, wrote_text;
 } ANSILineState;
 
 static inline void

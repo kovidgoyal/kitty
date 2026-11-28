@@ -238,6 +238,7 @@ text_in_cell_ansi(ANSILineState *s, const Line *line, index_type x, bool skip_mu
     s->skipped_limit = 0;
     s->skipped_before_line = false;
 
+    s->wrote_text = true;
     size_t pos = s->output_buf->len;
     if (c->ch_is_idx) {
         tc_chars_at_index_ansi(tc, c->ch_or_idx, s->output_buf);
@@ -773,9 +774,59 @@ ansi_bidi_close(ANSILineState *s) {
     if (a.bidi_rtl) write_ascii_to_ansi_buf(s, "\x1b[0 k");
 }
 
+static index_type
+continued_line_limit(const Line *self, ANSILineState *s, bool skip_multiline_non_zero_lines) {
+    // The blank cells at the end of a line that continues on the next line are
+    // written as well, so that a terminal writing the text wraps it at the
+    // same place, rather than continuing the next line after the last
+    // non-blank cell. Except when they are fewer than the cells of the char
+    // at the start of the next line, which was wrapped as it did not fit in
+    // them, as a terminal writing the text wraps it as well. They are also
+    // not written when the next line is not known.
+    const index_type xlimit = xlimit_for_line(self);
+    if (xlimit == self->xnum) return xlimit;
+    // When the cells before them are not written, as they continue a
+    // multiline char written with the rows above, a terminal writing the text
+    // is before those cells, so the blank cells are written to move past them
+    const CPUCell *last = self->cpu_cells + xlimit - 1;
+    if (xlimit && skip_multiline_non_zero_lines && last->is_multicell && last->y &&
+        rows_continuing_multicell_char(s, self, multicell_char_columns(self->cpu_cells, self->xnum, xlimit - 1), -1, 1))
+        return self->xnum;
+    const CPUCell *below;
+    if (!s->neighbour_row || !s->neighbour_row(s->neighbour_row_ctx, 1, &below) || !below) return xlimit;
+    // The cells at the start of the next line continuing a multiline char
+    // from this line are not written in it, so they are not a char that was wrapped
+    if (below->is_multicell && below->y && continues_multicell_char(self->cpu_cells, below, below->y - 1u)) return self->xnum;
+    const index_type width = below->is_multicell ? multicell_char_columns(below, self->xnum, 0).limit : 1;
+    return self->xnum - xlimit < width ? xlimit : self->xnum;
+}
+
+static void
+finish_ansi_line(const Line *self, ANSILineState *s, bool continues_previous_line, bool continued) {
+    if (continues_previous_line && !s->wrote_text) {
+        // A terminal writing the text is at the end of the line above, which
+        // continues on this line, until text is written for this line, so
+        // that the line break after this line would be written in this line.
+        // So write a space in its first blank cell, the cells before it are
+        // not written, as they continue multiline chars written with the rows
+        // above, and a terminal moves text written over them past them.
+        for (index_type x = 0; x < self->xnum; x++) {
+            if (!self->cpu_cells[x].ch_and_idx && !self->cpu_cells[x].is_multicell) {
+                write_ch_to_ansi_buf(s, ' ');
+                break;
+            }
+        }
+    }
+    s->previous_line_continued = continued;
+}
+
 bool
 line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_before, char_type prefix_char, bool skip_multiline_non_zero_lines) {
-    s->limit = MIN(stop_before, xlimit_for_line(self));
+    const bool continued = self->cpu_cells[self->xnum - 1].next_char_was_wrapped;
+    s->limit = MIN(stop_before, continued ? continued_line_limit(self, s, skip_multiline_non_zero_lines) : xlimit_for_line(self));
+    const bool continues_previous_line = s->previous_line_continued && start_at == 0;
+    s->previous_line_continued = false;
+    s->wrote_text = false;
     s->current_multicell_state = NULL;
     s->skipped_limit = 0;
     s->skipped_before_line = s->skipped_to_end_of_continued_line && start_at == 0;
@@ -795,6 +846,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
     if (UNLIKELY(s->bidi_prefix)) ansi_bidi_write_prefix(s);
     if (s->limit <= start_at) {
         if (s->output_buf->active_hyperlink_id && start_at == 0 && !self->cpu_cells[0].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
+        finish_ansi_line(self, s, continues_previous_line, continued && stop_before >= self->xnum);
         return s->escape_code_written;
     }
 
@@ -826,6 +878,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
             next++;
         }
     }
+    finish_ansi_line(self, s, continues_previous_line, continued && stop_before >= self->xnum);
     close_multicell(s);
     // A terminal writing the text of the next line moves the cursor past the cells not written at the end of this line
     s->skipped_to_end_of_continued_line = s->skipped_limit == self->xnum && self->cpu_cells[self->xnum - 1].next_char_was_wrapped;
@@ -1363,6 +1416,20 @@ as_text_generic(
             zero_at_ptr(&s.prev_style);
             ansi_bidi_row_start(&s, line);
             neighbours.y = (int)y;
+            if (!y && (continues_previous || continues_previous_arg)) {
+                // The output continues that of the line above, which can
+                // continue on this line, and end with cells not written, as
+                // they continue a multiline char written with the rows above it
+                const CPUCell *above, *above2;
+                s.previous_line_continued = generic_neighbour_row(&neighbours, -1, &above) && above && above[line->xnum - 1].next_char_was_wrapped;
+                if (s.previous_line_continued) {
+                    const CPUCell *last = above + line->xnum - 1;
+                    // rows that are not known are assumed to continue the char, as in line_as_ansi()
+                    s.skipped_to_end_of_continued_line =
+                        last->is_multicell && last->y &&
+                        (!generic_neighbour_row(&neighbours, -2, &above2) || (above2 && continues_multicell_char(above2 + line->xnum - 1, last, last->y - 1u)));
+                }
+            }
             // The rows above the first line are written before it only when the output continues theirs
             line_as_ansi(line, &s, 0, line->xnum, 0, y > 0 || continues_previous || continues_previous_arg);
             // the paragraph is cut by the end of the lines unless the output below continues it

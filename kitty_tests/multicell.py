@@ -652,6 +652,138 @@ class TestMulticell(BaseTest):
         # the lower rows of the char in the scrollback are written as a part
         self.assertRegex(as_text(s, as_ansi=True, add_history=True), '\x1b]66;w=1:s=3:y=[12](:r=1)?;A\x07')
 
+    def test_soft_wrapped_lines_as_ansi(self):
+        # Writing the ANSI text of soft wrapped lines back wraps them at the same places
+        from kitty.window import as_text
+
+        ae = self.ae
+
+        def cells(s, with_history):
+            rows = []
+            for y in range(-s.historybuf.count if with_history else 0, s.lines):
+                row = []
+                for x in range(s.columns):
+                    c = s.cpu_cells(y, x)
+                    row.append(c['text'].strip() if c['mcd'] is None else (c['x'], c['y'], c['mcd']['scale'], c['mcd']['width']))
+                rows.append(row)
+            empty = [''] * s.columns
+            while rows and rows[0] == empty:
+                del rows[0]
+            while rows and rows[-1] == empty:
+                del rows[-1]
+            return rows
+
+        def round_trip(setup, cols=6, lines=5, scrollback=0, add_history=False):
+            s = self.create_screen(cols=cols, lines=lines, scrollback=scrollback)
+            parse_bytes(s, setup)
+            ansi = as_text(s, as_ansi=True, add_history=add_history)
+            r = self.create_screen(cols=cols, lines=lines, scrollback=50)
+            parse_bytes(r, ansi.replace('\n', '\r\n').encode())
+            ae(cells(r, True), cells(s, add_history), repr(ansi))
+            return ansi
+
+        # the blank cells before a char that did not fit at the end of a line are not written
+        ae(round_trip(b'aaaa\xf0\x9f\x98\x9bbb', cols=5).rstrip(), '\x1b[maaaa\x1b[m\U0001f61bbb')
+        # soft wrapped lines ending with blank cells or cells continuing chars
+        # from the lines above, followed by lines that write no text or start
+        # with parts, also across the scrollback and the screen
+        for cols, lines, with_history, data in (
+            (
+                7,
+                7,
+                False,
+                (
+                    b'\x1b[4;6H\xe5\xa5\xbd'
+                    b'\x1b[4;5H\x1b]66;w=1:s=2:n=0:d=0:v=0:h=0:x=1:y=0:c=0:r=2;\xe5\xa5\xbd\x07'
+                    b'\x1b[6;7H\x1b]66;w=3:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=3:r=0;A\x07'
+                    b'\x1b[5;6H\x1b]66;w=3:s=1:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=1;B\x07'
+                    b'\x1b[1;2H\x1b]66;w=2:s=2:n=0:d=0:v=0:h=0:x=3:y=0:c=1:r=0;B\x07'
+                    b'\x1b[5;3H\x1b]66;w=3:s=2:n=0:d=0:v=0:h=0:x=5:y=1:c=1:r=1;\xe5\xa5\xbd\x07'
+                ),
+            ),
+            (
+                10,
+                7,
+                False,
+                (
+                    b'\x1b[1;3H\x1b]66;w=3:s=3:n=0:d=0:v=0:h=0:x=8:y=0:c=0:r=1;A\x07'
+                    b'\x1b[1;3H\x1b]66;w=1:s=3:n=0:d=0:v=0:h=0:x=0:y=2:c=1:r=1;B\x07'
+                    b'\x1b[3;10H\xe5\xa5\xbd'
+                    b'\x1b[7;1H\x1b]66;w=3:s=3:n=0:d=0:v=0:h=0:x=6:y=2:c=0:r=1;\xe5\xa5\xbd\x07'
+                    b'\x1b[2;4H\x1b]66;w=3:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=0:r=0;A\x07'
+                    b'\x1b[7;9H\x1b]66;w=3:s=3:n=0:d=0:v=0:h=0:x=8:y=1:c=0:r=0;A\x07'
+                    b'\x1b[1;7H\x1b]66;w=1:s=3:n=0:d=0:v=0:h=0:x=0:y=1:c=1:r=0;B\x07'
+                    b'\x1b[1;8H\x1b]66;w=3:s=3:n=0:d=0:v=0:h=0:x=4:y=1:c=4:r=2;\xe5\xa5\xbd\x07'
+                    b'\x1b[5;7H\x1b]66;w=2:s=1:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=1;\xe5\xa5\xbd\x07'
+                ),
+            ),
+            (
+                11,
+                7,
+                False,
+                (
+                    b'\x1b[5;4H\x1b]66;w=1:s=2:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=2;\xe5\xa5\xbd\x07'
+                    b'\x1b[1;8H\x1b]66;w=1:s=2:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=0;\xe5\xa5\xbd\x07'
+                    b'\x1b[2;3H\x1b]66;w=3:s=1:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=0;B\x07'
+                    b'\x1b[5;8H\xe5\xa5\xbd'
+                    b'\x1b[2;7H\x1b]66;w=2:s=3:n=0:d=0:v=0:h=0:x=3:y=2:c=1:r=1;A\x07'
+                    b'\x1b[2;7H\x1b]66;w=1:s=2:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=0;A\x07'
+                    b'\x1b[6;11H\x1b]66;w=2:s=2:n=0:d=0:v=0:h=0:x=3:y=0:c=0:r=0;\xe5\xa5\xbd\x07'
+                    b'\x1b[2;10H\x1b]66;w=2:s=2:n=0:d=0:v=0:h=0:x=0:y=1:c=4:r=0;\xe5\xa5\xbd\x07'
+                ),
+            ),
+            (
+                5,
+                7,
+                False,
+                (
+                    b'\x1b[3;4H\x1b]66;w=1:s=2:n=0:d=0:v=0:h=0:x=1:y=1:c=0:r=1;\xe5\xa5\xbd\x07'
+                    b'\x1b[4;1Hx'
+                    b'\x1b[2;5H\x1b]66;w=2:s=2:n=0:d=0:v=0:h=0:x=2:y=1:c=2:r=0;\xe5\xa5\xbd\x07'
+                    b'\x1b[1;3H\x1b]66;w=1:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=1:r=0;A\x07'
+                    b'\x1b[4;4H\xe5\xa5\xbd'
+                    b'\x1b[4;5Hab'
+                    b'\x1b[6;1H\xe5\xa5\xbd'
+                    b'\x1b[3;4H\x1b]66;w=1:s=3:n=0:d=0:v=0:h=0:x=1:y=2:c=2:r=0;\xe5\xa5\xbd\x07'
+                    b'\x1b[2;4H\x1b]66;w=1:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=0:r=0;A\x07'
+                ),
+            ),
+            (
+                7,
+                7,
+                True,
+                (
+                    b'\x1b[6;1Hab'
+                    b'\x1b[5;2H\x1b]66;w=1:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=1:r=0;A\x07'
+                    b'\x1b[3;1H\x1b]66;w=1:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=0:r=0;B\x07'
+                    b'\x1b[3;3H\x1b]66;w=1:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=0:r=1;\xe5\xa5\xbd\x07'
+                    b'\x1b[6;4H\x1b]66;w=1:s=1:n=0:d=0:v=0:h=0:x=0:y=0:c=1:r=0;A\x07'
+                    b'\x1b[3;5H\x1b]66;w=3:s=2:n=0:d=0:v=0:h=0:x=2:y=0:c=0:r=1;\xe5\xa5\xbd\x07'
+                    b'\x1b[2;7H\x1b]66;w=2:s=3:n=0:d=0:v=0:h=0:x=2:y=0:c=2:r=0;B\x07'
+                    b'\x1b[6;4H\x1b]66;w=3:s=2:n=0:d=0:v=0:h=0:x=4:y=0:c=1:r=2;\xe5\xa5\xbd\x07'
+                    b'\x1b[7;1H\n\n'
+                ),
+            ),
+            (
+                7,
+                3,
+                True,
+                (
+                    b'\x1b[2;4H\x1b]66;w=2:s=3:n=0:d=0:v=0:h=0:x=5:y=0:c=1:r=1;B\x07'
+                    b'\x1b[1;1Hab'
+                    b'\x1b[2;1H\x1b]66;w=3:s=2:n=0:d=0:v=0:h=0:x=1:y=1:c=4:r=1;B\x07'
+                    b'\x1b[3;6H\x1b]66;w=2:s=1:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=1;B\x07'
+                    b'\x1b[2;6H\x1b]66;w=3:s=2:n=0:d=0:v=0:h=0:x=3:y=0:c=0:r=0;A\x07'
+                    b'\x1b[1;7H\x1b]66;w=1:s=2:n=0:d=0:v=0:h=0:x=0:y=0:c=1:r=2;A\x07'
+                    b'\x1b[3;1H\x1b]66;w=3:s=2:n=0:d=0:v=0:h=0:x=5:y=1:c=0:r=1;\xe5\xa5\xbd\x07'
+                    b'\x1b[2;6H\x1b]66;w=3:s=2:n=0:d=0:v=0:h=0:x=1:y=1:c=4:r=0;B\x07'
+                    b'\x1b[3;1H\x1b]66;w=1:s=2:n=0:d=0:v=0:h=0:x=1:y=0:c=1:r=2;B\x07'
+                    b'\x1b[3;1H\n'
+                ),
+            ),
+        ):
+            round_trip(data, cols=cols, lines=lines, scrollback=lines if with_history else 0, add_history=with_history)
+
     def test_partial_multiline_chars(self):
         # Multiline chars can be partially scrolled off the edges of the screen
         # or the history buffer, such chars are kept and rendered partially.
