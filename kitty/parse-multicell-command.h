@@ -22,7 +22,11 @@ scale='s',
 subscale_n='n',
 subscale_d='d',
 vertical_align='v',
-horizontal_align='h'
+horizontal_align='h',
+part_x='x',
+part_y='y',
+part_columns='c',
+part_rows='r'
     };
 
     enum KEYS key = 'a';
@@ -40,6 +44,10 @@ case subscale_n: value_state = UINT; break;
 case subscale_d: value_state = UINT; break;
 case vertical_align: value_state = UINT; break;
 case horizontal_align: value_state = UINT; break;
+case part_x: value_state = UINT; break;
+case part_y: value_state = UINT; break;
+case part_columns: value_state = UINT; break;
+case part_rows: value_state = UINT; break;
                     default:
                         REPORT_ERROR("Malformed MultiCellCommand control block, invalid key character: 0x%x", key);
                         return;
@@ -91,7 +99,7 @@ case horizontal_align: value_state = UINT; break;
                 READ_UINT;
 #define U(x) case x: g.x = code; break
                 switch(key) {
-                    U(width); U(scale); U(subscale_n); U(subscale_d); U(vertical_align); U(horizontal_align);
+                    U(width); U(scale); U(subscale_n); U(subscale_d); U(vertical_align); U(horizontal_align); U(part_x); U(part_y); U(part_columns); U(part_rows);
                     default: break;
                 }
                 state = AFTER_VALUE;
@@ -136,8 +144,8 @@ case horizontal_align: value_state = UINT; break;
             break;
     }
 
-    REPORT_VA_COMMAND("K s { sI sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
-"width", (unsigned int)g.width, "scale", (unsigned int)g.scale, "subscale_n", (unsigned int)g.subscale_n, "subscale_d", (unsigned int)g.subscale_d, "vertical_align", (unsigned int)g.vertical_align, "horizontal_align", (unsigned int)g.horizontal_align,
+    REPORT_VA_COMMAND("K s { sI sI sI sI sI sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
+"width", (unsigned int)g.width, "scale", (unsigned int)g.scale, "subscale_n", (unsigned int)g.subscale_n, "subscale_d", (unsigned int)g.subscale_d, "vertical_align", (unsigned int)g.vertical_align, "horizontal_align", (unsigned int)g.horizontal_align, "part_x", (unsigned int)g.part_x, "part_y", (unsigned int)g.part_y, "part_columns", (unsigned int)g.part_columns, "part_rows", (unsigned int)g.part_rows,
 "", (char*)parser_buf + payload_start, g.payload_sz);
 
     screen_handle_multicell_command(self->screen, &g, parser_buf + payload_start);

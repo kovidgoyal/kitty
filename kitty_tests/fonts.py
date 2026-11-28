@@ -692,6 +692,38 @@ class Rendering(FontBaseTest):
             self.ae([line.sprite_at(x) for x in range(s.columns)], [0] * s.columns)
             s.cursor_position(1, 1)
 
+    def test_render_parts_of_multicell_chars(self):
+        # The cells of a part of a multicell char, drawn with the x, y, c and r
+        # keys of the text sizing protocol, are rendered as those cells of the
+        # complete char, wherever they are drawn, whether or not the complete
+        # char was rendered before
+        def sprites(s, y):
+            line = s.line(y)
+            test_render_line(line)
+            return [line.sprite_at(x) for x in range(s.columns)]
+
+        for ch, width, scale in (('P', 1, 2), ('猫', 2, 1), ('Q', 2, 2), ('R', 3, 1)):
+            cols = width * scale
+            for x0 in range(cols):
+                for y0 in range(scale):
+                    parts = self.create_screen(cols=10, lines=scale, scrollback=0)
+                    parts.draw('ab')
+                    parts.cursor_position(1, 4)
+                    draw_multicell(parts, ch, width=width, scale=scale, part=(x0, y0, 1, 1))
+                    parts.draw('cd')
+                    got = sprites(parts, 0)
+                    whole = self.create_screen(cols=10, lines=scale, scrollback=0)
+                    whole.draw('ab')
+                    whole.cursor_position(1, 4)
+                    draw_multicell(whole, ch, width=width, scale=scale)
+                    whole.draw('cd')
+                    self.ae(got[3], sprites(whole, y0)[3 + x0], (ch, x0, y0))
+                    # the cells around the part are not affected by it
+                    whole_top = sprites(whole, 0)
+                    self.ae(got[:2], whole_top[:2])
+                    if scale == 1:
+                        self.ae(got[4:6], whole_top[3 + cols : 5 + cols])
+
     def test_render_line_with_split_multicell_chars(self):
         # A horizontally scrolled smooth scroll region can split wide chars,
         # leaving some of their cells in a line without the others. These

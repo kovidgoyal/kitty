@@ -162,6 +162,12 @@ Detailed list of changes
   :doc:`choose-app </kittens/choose-app>` kittens use it to scroll smoothly,
   pixel by pixel, with touchpads and high resolution mouse wheels
 
+- :doc:`Text sizing protocol </text-sizing-protocol>`: Allow programs to
+  :ref:`draw only part of a character <text_sizing_parts>` occupying multiple
+  cells, for example, only the bottom row of a large heading or one cell of a
+  wide character, so that such characters can be scrolled into smooth scroll
+  regions row by row and column by column
+
 - A new mode (``5523``) to :ref:`report all mouse events to programs in full
   detail <detailed_mouse_events>`, in an encoding that is valid ECMA-48, unlike
   SGR pixel mouse reporting, which uses negative numbers. Every event has the

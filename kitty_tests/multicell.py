@@ -140,6 +140,117 @@ class TestMulticell(BaseTest):
                 self.ae(c['y'], y, f'cols: {cols}')
             self.ae(str(s.line(0)), 'A' if cols == 3 else 'AX')
 
+    def test_multicell_parts(self):
+        # Drawing part of the block of a multicell char, see the "Drawing part
+        # of a character" section of docs/text-sizing-protocol.rst
+        ae = self.ae
+
+        def cells(s, y, xs):
+            ans = []
+            for x in xs:
+                c = s.cpu_cells(y, x)
+                ans.append(None if c['mcd'] is None else (c['x'], c['y'], c['mcd']['scale'], c['mcd']['width']))
+            return ans
+
+        def draw_at(s, y, x, *a, **kw):
+            s.cursor_position(y + 1, x + 1)
+            multicell(s, *a, **kw)
+
+        # the bottom row of a double sized char, in the cursor row
+        s = self.create_screen(cols=6, lines=3)
+        s.cursor_position(2, 2)
+        s.draw('ab')
+        draw_at(s, 1, 1, 'A', width=1, scale=2, part=(0, 1, 0, 1))
+        ae((s.cursor.x, s.cursor.y), (3, 1))
+        ae(cells(s, 1, range(1, 3)), [(0, 1, 2, 1), (1, 1, 2, 1)])
+        ae(cells(s, 0, range(1, 3)), [None, None])
+        ae(cells(s, 2, range(1, 3)), [None, None])
+        # the right column of the top right quarter of a triple sized wide char
+        s = self.create_screen(cols=8, lines=4)
+        draw_at(s, 0, 2, '好', width=2, scale=3, part=(4, 0, 2, 2))
+        ae((s.cursor.x, s.cursor.y), (4, 0))
+        for y in (0, 1):
+            ae(cells(s, y, range(1, 5)), [None, (4, y, 3, 2), (5, y, 3, 2), None])
+        ae(cells(s, 2, range(2, 4)), [None, None])
+        # one cell of a wide char
+        s = self.create_screen(cols=4, lines=2)
+        multicell(s, '好', width=2, part=(1, 0, 1, 0))
+        ae((s.cursor.x, cells(s, 0, range(2))), (1, [(1, 0, 1, 2), None]))
+        # a part with no rows below the cursor fits without scrolling the screen
+        s = self.create_screen(cols=4, lines=2, scrollback=5)
+        draw_at(s, 1, 0, 'A', width=1, scale=2, part=(0, 0, 0, 1))
+        ae((s.historybuf.count, cells(s, 1, range(2))), (0, [(0, 0, 2, 1), (1, 0, 2, 1)]))
+        # a part wrapped onto the next line as a char of its width
+        s = self.create_screen(cols=4, lines=3)
+        draw_at(s, 0, 3, 'A', width=1, scale=2, part=(0, 0, 2, 1))
+        ae((s.cursor.x, s.cursor.y), (2, 1))
+        ae(cells(s, 1, range(2)), [(0, 0, 2, 1), (1, 0, 2, 1)])
+
+        # invalid parts are ignored
+        for kw in (
+            dict(part=(1, 0, 0, 0)),  # no width
+            dict(width=1, scale=2, part=(2, 0, 0, 0)),
+            dict(width=1, scale=2, part=(0, 2, 0, 0)),
+            dict(width=1, scale=2, part=(1, 0, 2, 0)),
+            dict(width=1, scale=2, part=(0, 1, 0, 2)),
+            dict(width=8, part=(1, 0, 0, 0)),
+            dict(width=1, scale=8, part=(1, 0, 0, 0)),
+        ):
+            s = self.create_screen(cols=20, lines=8)
+            multicell(s, 'A', **kw)
+            ae((s.cursor.x, s.cursor.y, cells(s, 0, range(1))), (0, 0, [None]), kw)
+
+        # parts drawn next to each other form a single char
+        s = self.create_screen(cols=6, lines=4)
+        draw_at(s, 2, 1, 'A', width=1, scale=2, part=(0, 1, 0, 1))
+        draw_at(s, 1, 1, 'A', width=1, scale=2, part=(0, 0, 1, 1))
+        draw_at(s, 1, 2, 'A', width=1, scale=2, part=(1, 0, 1, 1))
+        for y in (1, 2):
+            ae(cells(s, y, range(1, 3)), [(0, y - 1, 2, 1), (1, y - 1, 2, 1)])
+        # which is erased as a whole
+        s.cursor_position(3, 3)
+        parse_bytes(s, b'\x1b[X')
+        for y in (1, 2):
+            ae(cells(s, y, range(1, 3)), [None, None])
+        # parts of different chars do not
+        s = self.create_screen(cols=6, lines=4)
+        draw_at(s, 1, 0, 'A', width=1, scale=2, part=(0, 0, 0, 1))
+        draw_at(s, 2, 0, 'B', width=1, scale=2, part=(0, 1, 0, 1))
+        s.cursor_position(3, 1)
+        parse_bytes(s, b'\x1b[X')
+        ae((cells(s, 1, range(2)), cells(s, 2, range(2))), ([(0, 0, 2, 1), (1, 0, 2, 1)], [None, None]))
+        # nor do parts that do not line up
+        s = self.create_screen(cols=6, lines=4)
+        draw_at(s, 1, 0, 'A', width=1, scale=2, part=(0, 0, 0, 1))
+        draw_at(s, 2, 1, 'A', width=1, scale=2, part=(0, 1, 0, 1))
+        s.cursor_position(3, 2)
+        parse_bytes(s, b'\x1b[X')
+        ae((cells(s, 1, range(2)), cells(s, 2, range(1, 3))), ([(0, 0, 2, 1), (1, 0, 2, 1)], [None, None]))
+
+        # drawing the cells of a char again over the same cells keeps its other cells
+        s = self.create_screen(cols=6, lines=4)
+        draw_at(s, 1, 1, 'A', scale=2)
+        draw_at(s, 2, 1, 'A', width=1, scale=2, part=(0, 1, 0, 1))
+        draw_at(s, 1, 2, 'A', width=1, scale=2, part=(1, 0, 1, 2))
+        for y in (1, 2):
+            ae(cells(s, y, range(1, 3)), [(0, y - 1, 2, 1), (1, y - 1, 2, 1)])
+        # with the new style
+        s.cursor.bold = True
+        draw_at(s, 2, 1, 'A', width=1, scale=2, part=(0, 1, 0, 1))
+        ae((s.line(1).cursor_from(1).bold, s.line(2).cursor_from(1).bold), (False, True))
+        # drawing the cells of another char over its lower rows skips them, as for any char
+        draw_at(s, 2, 1, 'B', width=1, scale=2, part=(0, 1, 0, 1))
+        ae((s.cursor.x, cells(s, 2, range(1, 5))), (5, [(0, 1, 2, 1), (1, 1, 2, 1), (0, 1, 2, 1), (1, 1, 2, 1)]))
+        ae(cells(s, 1, range(1, 5)), [(0, 0, 2, 1), (1, 0, 2, 1), None, None])
+        # as does drawing the same char at other positions in its block
+        draw_at(s, 2, 1, 'A', width=1, scale=2, part=(1, 1, 1, 1))
+        ae((s.cursor.x, cells(s, 1, range(1, 3))), (6, [(0, 0, 2, 1), (1, 0, 2, 1)]))
+        # and drawing them over its top row removes it entirely
+        draw_at(s, 1, 1, 'C', width=1, scale=2, part=(0, 0, 0, 1))
+        ae(cells(s, 1, range(1, 3)), [(0, 0, 2, 1), (1, 0, 2, 1)])
+        ae(cells(s, 2, range(1, 3)), [None, None])
+        ae(s.cpu_cells(1, 1)['text'], 'C')
+
     def test_partial_multiline_chars(self):
         # Multiline chars can be partially scrolled off the edges of the screen
         # or the history buffer, such chars are kept and rendered partially.

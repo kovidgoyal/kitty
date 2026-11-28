@@ -81,6 +81,14 @@ There are only a handful of metadata keys, defined in the table below:
 
     "h", "Integer from 0 to 2",  "0", "The horizontal alignment to use for fractionally scaled text (n < d). ``0`` - left, ``1`` - right, ``2`` - centered"
 
+    "x", "Integer from 0 to 48", "0", "The first column of the block of ``s * w`` by ``s`` cells to draw, see :ref:`text_sizing_parts`."
+
+    "y", "Integer from 0 to 6", "0", "The first row of the block to draw, see :ref:`text_sizing_parts`."
+
+    "c", "Integer from 0 to 49", "0", "The number of columns of the block to draw. When zero, all columns from ``x`` to the right edge of the block. See :ref:`text_sizing_parts`."
+
+    "r", "Integer from 0 to 7", "0", "The number of rows of the block to draw. When zero, all rows from ``y`` to the bottom edge of the block. See :ref:`text_sizing_parts`."
+
 
 How it works
 ------------------
@@ -176,6 +184,71 @@ following for each pair::
     ... repeat for each pair of characters
 
 
+.. _text_sizing_parts:
+
+Drawing part of a character
+-------------------------------
+
+.. versionadded:: 1.0.0
+
+Programs sometimes need to show only some of the cells of a character
+occupying multiple cells. For example, when scrolling text by individual rows
+or columns, using the :doc:`smooth scrolling protocol
+<smooth-scrolling-protocol>`, or a viewport that cuts through a large heading,
+only the rows of the heading inside the viewport should be drawn, and only one
+of the two cells of a wide character at the edge of a horizontally scrolled
+view. The ``x``, ``y``, ``c`` and ``r`` keys allow this. They select a
+rectangle of the block of ``s * w`` by ``s`` cells the character occupies,
+``c`` columns wide and ``r`` rows high, whose top left cell is in column ``x``
+and row ``y`` of the block, counting from zero. Only the cells in that
+rectangle are drawn, the rest of the character is not. For example, to draw
+the bottom row of a double sized ``A``::
+
+    <OSC> _text_size_code ; s=2:w=1:y=1:r=1 ; A <terminator>
+
+which draws the two cells of the bottom half of the ``A`` at the cursor
+position, in the cursor row, and to draw only the left cell of a wide
+character::
+
+    <OSC> _text_size_code ; w=2:c=1 ; 猫 <terminator>
+
+These keys can only be used with a non-zero ``w``, as the size of the block
+must be known. The rectangle must be inside the block, that is, ``x + c`` must
+be no more than ``s * w`` and ``y + r`` no more than ``s``, with zero values of
+``c`` and ``r`` replaced by the columns and rows from ``x`` and ``y`` to the
+edges of the block. Escape codes with values of these keys that do not meet
+these requirements must be ignored.
+
+Drawing part of a character behaves exactly as drawing a character in a block
+of ``c`` by ``r`` cells, as described in :ref:`text_sizing_wrap`, except that
+the terminal renders the corresponding part of the character, as it would be
+rendered in its complete block, in each of the cells. In particular, the cursor
+moves ``c`` cells to the right. The cells drawn keep their position in the
+complete character: the rules for overwriting characters below apply to them
+using the row of the complete character they are in. So, for example,
+overwriting the bottom half of a double sized character drawn by itself with
+normal text skips over it, as for any cell after the first row of a multicell
+character, use erase controls, such as ``EL`` and ``ECH``, to remove it.
+
+When the cells of a character are next to each other, in the same positions
+relative to each other as in its complete block, they form a single
+character, regardless of whether they were drawn together or separately. For
+example, drawing the top row of a double sized ``A`` with ``y=0:r=1`` and then
+the bottom row with ``y=1:r=1`` in the row below it, in the same columns,
+results in the complete character, exactly as if it had been drawn in a single
+escape code. The cells must have the same text and metadata, that is, the same
+values of all keys other than ``x``, ``y``, ``c`` and ``r``. The terminal treats
+the cells that form a character together, for example, for erasing them, while
+other cells of the same character elsewhere on the screen are separate
+characters.
+
+Drawing cells of a character, using this escape code, over cells that already
+contain the same cells of the same character, at the same positions in its
+block, replaces them without erasing the other cells of the character, unlike
+the overwriting rules below. This allows programs to draw the rows of a
+character individually, for example, to draw again only one row of the
+screen, without having to draw the rest of the character.
+
 Fixing the character width issue for the terminal ecosystem
 ---------------------------------------------------------------------
 
@@ -215,6 +288,8 @@ exact number of cells the client expects.
    See the section on :ref:`detect_text_sizing` on how client applications can
    query for terminal emulator support.
 
+
+.. _text_sizing_wrap:
 
 Wrapping and overwriting behavior
 -------------------------------------
@@ -274,6 +349,12 @@ If the cursor position in the three responses is the same, the terminal does
 not support this protocol at all, if the second response has the cursor
 moved by two cells, then the width part is supported and if the third response has the
 cursor moved by another two cells, then the scale part is supported.
+
+To detect support for :ref:`drawing part of a character <text_sizing_parts>`,
+send ``CR``, ``CPR``, ``\e]_text_size_code;w=2:c=1; \a`` and ``CPR``. If the
+cursor moved by one cell, drawing parts is supported. Terminals that ignore
+the escape code entirely, because of the unknown key, do not move it and
+terminals that ignore the unknown key move it by two cells.
 
 
 Interaction with other terminal controls

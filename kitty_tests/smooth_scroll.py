@@ -318,7 +318,7 @@ class TestSmoothScroll(BaseTest):
             for x in (2, 3):
                 self.assertIsNone(cell(s, x, y)['mcd'], (x, y))
 
-        # A blank row entering next to a char tears it
+        # A char crossing the bottom edge is removed when scrolling
         s = self.create_screen(cols=10, lines=6)
         self.assertTrue(s.smooth_scroll_define(1, 0, 1, 10, 4))
         s.cursor_position(4, 3)
@@ -331,10 +331,19 @@ class TestSmoothScroll(BaseTest):
         s.cursor_position(2, 3)
         multicell(s, 'A', scale=2)
         ae(s.smooth_scroll(1, 1), 1)  # top row of the char in the overflow buffer
-        s.smooth_scroll_remove(1)  # discarding it tears the char
-        for y in range(6):
-            for x in (2, 3):
-                self.assertIsNone(cell(s, x, y)['mcd'], (x, y))
+        s.smooth_scroll_remove(1)  # discarding it keeps the bottom row of the char, partially drawn
+        ae([(cell(s, x, 1)['x'], cell(s, x, 1)['y'], cell(s, x, 1)['text']) for x in (2, 3)], [(0, 1, ''), (1, 1, '')])
+        self.assertIsNone(cell(s, 2, 0)['mcd'])
+        # as is the remaining row when a blank row enters next to it
+        s = self.create_screen(cols=10, lines=6)
+        self.assertTrue(s.smooth_scroll_define(1, 0, 1, 10, 5, 1))
+        s.cursor_position(2, 3)
+        multicell(s, 'A', scale=2)
+        ae(s.smooth_scroll(1, 2 * H), 2)  # the top row of the char dropped from the overflow buffer
+        ae(s.smooth_scroll(1, -H), -1)  # its bottom row restored, with a blank row above it
+        ae(s.smooth_scroll(1, -H), -1)
+        ae([(cell(s, x, 2)['x'], cell(s, x, 2)['y']) for x in (2, 3)], [(0, 1), (1, 1)])
+        self.assertIsNone(cell(s, 2, 1)['mcd'])
 
         # With the scrollback as the overflow buffer chars split into it are kept
         s = self.create_screen(cols=10, lines=6, scrollback=10)
@@ -346,6 +355,89 @@ class TestSmoothScroll(BaseTest):
         ae(s.historybuf.count, 1)
         s.smooth_scroll_remove(1)
         ae(cell(s, 2, 0)['y'], 1)
+
+    def test_smooth_scroll_draw_parts(self):
+        # Programs draw only the cells of multicell chars that move into a
+        # region, using the keys of the text sizing protocol for drawing part
+        # of a char, see docs/smooth-scrolling-protocol.rst
+        ae = self.ae
+        W = 10
+
+        def cells(s, y, xs):
+            ans = []
+            for x in xs:
+                c = s.cpu_cells(y, x)
+                ans.append(None if c['mcd'] is None else (c['x'], c['y']))
+            return ans
+
+        def draw_at(s, y, x, *a, **kw):
+            s.cursor_position(y + 1, x + 1)
+            multicell(s, *a, **kw)
+
+        complete = [[(0, 0), (1, 0)], [(0, 1), (1, 1)]]
+
+        # A double sized char scrolled into a region from below, row by row,
+        # does not overwrite the status bar below the region
+        s = self.create_screen(cols=6, lines=6)
+        s.cursor_position(5, 1)
+        s.draw('STATUS')
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 6, 4, 2, True))
+        ae(s.smooth_scroll(1, H), 1)
+        draw_at(s, 3, 0, 'A', width=1, scale=2, part=(0, 0, 0, 1))
+        ae(s.smooth_scroll(1, H), 1)
+        ae(cells(s, 2, range(2)), complete[0])  # the top row of the char is kept as it moves up
+        draw_at(s, 3, 0, 'A', width=1, scale=2, part=(0, 1, 0, 1))
+        ae([cells(s, y, range(2)) for y in (2, 3)], complete)
+        ae(str(s.line(4)), 'STATUS')
+        # the partially visible row below the region can be drawn again
+        # without affecting the row of the char in the region
+        ae(s.smooth_scroll(1, -5), -1)
+        ae(region(s)['offset'], -15)
+        ae(s.smooth_scroll(1, H - 15), 1)
+        s.cursor.bold = True
+        draw_at(s, 3, 0, 'A', width=1, scale=2, part=(0, 1, 0, 1))
+        ae(s.smooth_scroll(1, -(H - 15)), -1)
+        ae(cells(s, 3, range(2)), complete[0])
+        ae(s.smooth_scroll_overflow(1, False)[0], '')
+        ae(s.smooth_scroll(1, 5), 1)
+        ae([cells(s, y, range(2)) for y in (2, 3)], complete)
+        ae((s.line(2).cursor_from(0).bold, s.line(3).cursor_from(0).bold), (False, True))
+        ae(str(s.line(4)), 'STATUS')
+
+        # The char scrolled out of the top of the region, beyond its capacity,
+        # and back into it, row by row
+        for i in range(5):
+            ae(s.smooth_scroll(1, H), 1)
+        ae(region(s)['num_before'], 2)  # a blank row and the bottom row of the char, its top row was dropped
+        ae(s.smooth_scroll(1, -2 * H), -2)
+        ae(cells(s, 0, range(2)), complete[1])  # the bottom row of the char is kept alone
+        ae(region(s)['num_before'], 0)
+        ae(s.smooth_scroll(1, -H), -1)
+        ae(cells(s, 1, range(2)), complete[1])  # and kept when a blank row moves in above it
+        draw_at(s, 0, 0, 'A', width=1, scale=2, part=(0, 0, 0, 1))  # the program draws the row that moved in
+        ae([cells(s, y, range(2)) for y in (0, 1)], complete)
+        ae(str(s.line(4)), 'STATUS')
+
+        # A wide char scrolled into a horizontally scrolling region, column by
+        # column, does not overwrite the cells to its right
+        s = self.create_screen(cols=6, lines=1)
+        s.cursor_position(1, 5)
+        s.draw('ZZ')
+        self.assertTrue(s.smooth_scroll_define(1, 0, 0, 4, 1, 1, False, True))
+        ae(s.smooth_scroll(1, W), 1)
+        draw_at(s, 0, 3, '好', width=2, part=(0, 0, 1, 0))
+        ae((s.cursor.x, cells(s, 0, range(6))), (4, [None, None, None, (0, 0), None, None]))
+        ae(s.smooth_scroll(1, W), 1)
+        draw_at(s, 0, 3, '好', width=2, part=(1, 0, 1, 0))
+        ae(cells(s, 0, range(6)), [None, None, (0, 0), (1, 0), None, None])
+        ae(str(s.line(0)), '  好ZZ')
+        # and out of its left edge, beyond its capacity, and back into it
+        ae(s.smooth_scroll(1, 4 * W), 4)
+        ae(s.smooth_scroll(1, -W), -1)
+        ae(cells(s, 0, range(2)), [(1, 0), None])
+        ae(s.smooth_scroll(1, -W), -1)
+        draw_at(s, 0, 0, '好', width=2, part=(0, 0, 1, 0))
+        ae(str(s.line(0)), '好  ZZ')
 
     def test_smooth_scroll_gc(self):
         ae = self.ae
@@ -760,14 +852,15 @@ class TestSmoothScroll(BaseTest):
         ae(s.smooth_scroll(1, 1), 1)
         self.assertIsNone(cell(s, 5, 1)['mcd'])
 
-        # A char whose other half was dropped from the overflow buffer is torn
+        # A char whose other half was dropped from the overflow buffer is kept
         # when a blank column enters next to it
         s = setup()
         ae(s.smooth_scroll(1, 2 * W), 2)  # both halves moved out, the left half dropped
         ae(s.smooth_scroll(1, -W), -1)
         ae(cell(s, 2, 1)['x'], 1)
         ae(s.smooth_scroll(1, -W), -1)
-        self.assertIsNone(cell(s, 3, 1)['mcd'])
+        ae(cell(s, 3, 1)['x'], 1)
+        self.assertIsNone(cell(s, 2, 1)['mcd'])
 
         # Wide chars crossing the edges into cells outside the rectangle are removed
         s = self.create_screen(cols=10, lines=4)

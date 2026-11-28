@@ -349,6 +349,10 @@ def parsers() -> None:
         'd': ('subscale_d', 'uint'),
         'v': ('vertical_align', 'uint'),
         'h': ('horizontal_align', 'uint'),
+        'x': ('part_x', 'uint'),
+        'y': ('part_y', 'uint'),
+        'c': ('part_columns', 'uint'),
+        'r': ('part_rows', 'uint'),
     }
     text = generate(
         'parse_multicell_code',

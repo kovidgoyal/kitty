@@ -147,6 +147,8 @@ typedef struct {
 
 typedef struct MultiCellCommand {
     unsigned int width, scale, subscale_n, subscale_d, vertical_align, horizontal_align;
+    // The part of the block of the char to draw, see the "Drawing part of a character" section of docs/text-sizing-protocol.rst
+    unsigned int part_x, part_y, part_columns, part_rows;
     size_t payload_sz;
 } MultiCellCommand;
 

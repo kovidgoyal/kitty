@@ -641,6 +641,60 @@ type SizedText struct {
 	Scale, Subscale_numerator, Subscale_denominator int
 	Horizontal_alignment, Vertical_alignment        Alignment
 	Width                                           int
+	// Draw only part of the block of Scale * Width by Scale cells of the
+	// text: Part_columns columns and Part_rows rows, starting at the column
+	// Part_x and row Part_y of the block, counting from zero. Zero values of
+	// Part_columns and Part_rows mean all columns and rows to the edges of the
+	// block. Requires a non-zero Width. See the "Drawing part of a character"
+	// section of the text sizing protocol docs, use QueryTerminal() with
+	// the method described there to detect support.
+	Part_x, Part_y, Part_columns, Part_rows int
+}
+
+// The escape code to draw text with the text sizing protocol
+func SizedTextEscapeCode(text string, spec SizedText) string {
+	b := strings.Builder{}
+	b.Grow(len(text) + 40)
+	b.WriteString("\x1b]66;")
+	sep := ""
+	add := func(key byte, val int) {
+		fmt.Fprintf(&b, "%s%c=%d", sep, key, val)
+		sep = ":"
+	}
+	if spec.Scale > 1 {
+		add('s', min(spec.Scale, 7))
+	}
+	if spec.Width > 0 {
+		add('w', min(spec.Width, 7))
+	}
+	if spec.Subscale_numerator > 0 {
+		add('n', min(spec.Subscale_numerator, 15))
+	}
+	if spec.Subscale_denominator > spec.Subscale_numerator {
+		add('d', min(spec.Subscale_denominator, 15))
+	}
+	if spec.Horizontal_alignment > ALIGN_START {
+		add('h', int(spec.Horizontal_alignment))
+	}
+	if spec.Vertical_alignment > ALIGN_START {
+		add('v', int(spec.Vertical_alignment))
+	}
+	if spec.Part_x > 0 {
+		add('x', spec.Part_x)
+	}
+	if spec.Part_y > 0 {
+		add('y', spec.Part_y)
+	}
+	if spec.Part_columns > 0 {
+		add('c', spec.Part_columns)
+	}
+	if spec.Part_rows > 0 {
+		add('r', spec.Part_rows)
+	}
+	b.WriteString(";")
+	b.WriteString(text)
+	b.WriteString("\a")
+	return b.String()
 }
 
 func (self *Loop) RecoverFromPanicInGoRoutine() {
@@ -656,38 +710,7 @@ func (self *Loop) RecoverFromPanicInGoRoutine() {
 }
 
 func (self *Loop) DrawSizedText(text string, spec SizedText) {
-	b := strings.Builder{}
-	b.Grow(len(text) + 24)
-	b.WriteString("\x1b]66;")
-	sep := ""
-	if spec.Scale > 1 {
-		fmt.Fprintf(&b, "%ss=%d", sep, min(spec.Scale, 7))
-		sep = ":"
-	}
-	if spec.Width > 0 {
-		fmt.Fprintf(&b, "%sw=%d", sep, min(spec.Width, 7))
-		sep = ":"
-	}
-	if spec.Subscale_numerator > 0 {
-		fmt.Fprintf(&b, "%sn=%d", sep, min(spec.Subscale_numerator, 15))
-		sep = ":"
-	}
-	if spec.Subscale_denominator > spec.Subscale_numerator {
-		fmt.Fprintf(&b, "%sd=%d", sep, min(spec.Subscale_denominator, 15))
-		sep = ":"
-	}
-	if spec.Horizontal_alignment > ALIGN_START {
-		fmt.Fprintf(&b, "%sh=%d", sep, spec.Horizontal_alignment)
-		sep = ":"
-	}
-	if spec.Vertical_alignment > ALIGN_START {
-		fmt.Fprintf(&b, "%sv=%d", sep, spec.Vertical_alignment)
-		sep = ":"
-	}
-	b.WriteString(";")
-	b.WriteString(text)
-	b.WriteString("\a")
-	self.QueueWriteString(b.String())
+	self.QueueWriteString(SizedTextEscapeCode(text, spec))
 }
 
 func (self *Loop) QueueDnDData(cmd DndCommand) IdType {
