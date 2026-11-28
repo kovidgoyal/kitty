@@ -907,8 +907,21 @@ func (self *handler) transmit_one() {
 	}
 }
 
-func (self *handler) start_transfer() {
+func (self *handler) finish_transfer() error {
+	self.manager.send(FileTransmissionCommand{Action: Action_finish}, self.lp.QueueWriteString)
+	self.quit_after_write_code = 0
+	return self.refresh_progress(0)
+}
+
+func (self *handler) start_transfer() error {
 	self.transmit_started = true
+	if len(self.manager.files_to_be_transferred) == 0 {
+		if err := self.manager.finalize_transfer(); err != nil {
+			self.abort_with_error(err)
+			return nil
+		}
+		return self.finish_transfer()
+	}
 	n := len(self.manager.files)
 	msg := `Transmitting signature of`
 	if self.manager.use_rsync {
@@ -927,6 +940,7 @@ func (self *handler) start_transfer() {
 	}
 	self.transmit_iterator = self.manager.request_files()
 	self.transmit_one()
+	return self.refresh_progress(0)
 }
 
 func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (err error) {
@@ -978,20 +992,15 @@ func (self *handler) on_file_transfer_response(ftc *FileTransmissionCommand) (er
 		}
 		if self.cli_opts.ConfirmPaths {
 			self.confirm_paths()
-		} else {
-			self.start_transfer()
+			return nil
 		}
+		return self.start_transfer()
 	}
 	if self.manager.transfer_done {
-		self.manager.send(FileTransmissionCommand{Action: Action_finish}, self.lp.QueueWriteString)
-		self.quit_after_write_code = 0
-		if err = self.refresh_progress(0); err != nil {
-			return err
-		}
-	} else if self.transmit_started {
-		if err = self.refresh_progress(0); err != nil {
-			return err
-		}
+		return self.finish_transfer()
+	}
+	if self.transmit_started {
+		return self.refresh_progress(0)
 	}
 	return
 }
@@ -1135,8 +1144,7 @@ func (self *handler) on_text(text string, from_key_event, in_bracketed_paste boo
 	if self.check_paths_printed && !self.transmit_started {
 		switch strings.ToLower(text) {
 		case "y":
-			self.start_transfer()
-			return nil
+			return self.start_transfer()
 		case "n":
 			self.abort_with_error(fmt.Errorf(`Canceled by user`))
 			return nil
