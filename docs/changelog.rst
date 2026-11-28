@@ -309,6 +309,9 @@ Detailed list of changes
 - Preserve the existing destination when the transfer kitten fails to create a
   received symbolic or hard link
 
+- Include the Python type stub (``.pyi``) files in the installed package, for
+  better editor integration (:iss:`10955`)
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
