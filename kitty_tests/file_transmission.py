@@ -813,6 +813,40 @@ class TestFileTransmission(BaseTest):
                     self.assertFalse(pty.fc.active_sends)
                 self.assertTrue((received / 'nested' / 'empty').is_dir())
 
+    def test_transfer_receive_readonly_directory(self):
+        self.direction_receive = True
+        payload = b'directory contents'
+        for with_file in (False, True):
+            with self.subTest(with_file=with_file):
+                self.clean_tdir()
+                src = Path(self.tdir) / 'source'
+                empty = src / 'empty'
+                dest = Path(self.tdir) / 'dest'
+                received = dest / src.name
+                empty.mkdir(parents=True)
+                dest.mkdir()
+                if with_file:
+                    (src / 'file').write_bytes(payload)
+                empty.chmod(0o750)
+                os.utime(empty, (1234, 1234))
+                os.utime(src, (2345, 2345))
+                src.chmod(0o555)
+                try:
+                    with self.run_kitten([str(src), str(dest)]) as pty, pty:
+                        pty.wait_till_child_exits(require_exit_code=0)
+                        self.assertFalse(pty.fc.active_sends)
+                    self.assertTrue((received / 'empty').is_dir())
+                    for original, result in ((src, received), (empty, received / 'empty')):
+                        before, after = original.stat(), result.stat()
+                        self.ae(stat.S_IMODE(after.st_mode), stat.S_IMODE(before.st_mode))
+                        self.ae(after.st_mtime_ns, before.st_mtime_ns)
+                    if with_file:
+                        self.ae((received / 'file').read_bytes(), payload)
+                finally:
+                    src.chmod(0o755)
+                    if received.is_dir():
+                        received.chmod(0o755)
+
     def test_transfer_receive(self):
         self.direction_receive = True
         self.basic_transfer_tests()
