@@ -518,7 +518,7 @@ escape code introducer ``CSI >`` and the final ``M`` omitted::
     4:111;10;5;95;83;0;1;9:520000;0;120;1:5000;1;0;0  one click of a wheel, downwards
     4:112;10;5;95;83;0;1;9:830000;0;30:1;1:5000;1;0;0 a quarter click of a high resolution wheel, upwards
     4:113;10;5;95;83;0;1;12:0;0;0;2:1000;2;1;0        two fingers start a scroll on a touchpad
-    4:114;10;5;95;83;0;1;12:8000;0;42:1;2:1000;2;2;0  the fingers move upwards by 42 pixels, 8 ms later   
+    4:114;10;5;95;83;0;1;12:8000;0;42:1;2:1000;2;2;0  the fingers move upwards by 42 pixels, 8 ms later
     4:115;10;5;95;83;0;1;12:16000;0;0;2:1000;2;3;0    the fingers are lifted
     4:116;10;5;95;83;0;1;12:17000;0;35:1;2:1000;2;1;1 momentum scrolling begins
     6:117;10;5;95;83;0;1;15:0                         the mouse leaves the window
@@ -527,6 +527,8 @@ escape code introducer ``CSI >`` and the final ``M`` omitted::
 
 Bidirectional text
 -------------------------------------------------------------------------------------
+
+.. versionadded:: 1.0.0
 
 By default kitty leaves the layout of bidirectional text to the program, as
 described in the :opt:`force_ltr` option. A program can instead ask kitty to
@@ -688,6 +690,8 @@ The status is shown in the tab bar via the :code:`tab.program_status` field of
 
 Glyphs registered by programs
 ---------------------------------
+
+.. versionadded:: 1.0.0
 
 kitty implements the `Glyph Protocol
 <https://github.com/raphamorim/rio/blob/main/specs/glyph-protocol.md>`__,
