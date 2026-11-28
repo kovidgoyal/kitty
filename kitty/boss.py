@@ -1940,9 +1940,9 @@ class Boss:
     def all_loaded_session_names(self) -> Iterator[str]:
         seen = set()
         for w in self.all_windows:
-            if w.created_in_session_name and w.created_in_session_name not in seen:
-                seen.add(w.created_in_session_name)
-                yield w.created_in_session_name
+            if (name := w.effective_session_name) and name not in seen:
+                seen.add(name)
+                yield name
 
     def refresh_active_tab_bar(self) -> bool:
         tm = self.active_tab_manager

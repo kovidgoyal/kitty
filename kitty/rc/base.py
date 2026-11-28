@@ -106,8 +106,11 @@ active window, one being the previously active window and so on.
 The field :code:`neighbor` refers to a neighbor of the active window in the specified direction, which can be:
 :code:`left`, :code:`right`, :code:`top` or :code:`bottom`.
 
-The field :code:`session` matches windows that were created in the specified session.
-Use the expression :code:`^$` to match windows that were not created in a session and
+The field :code:`session` matches windows that belong to the specified session.
+A window belongs to the session it was created in or, if it was not created in a session,
+to the session its tab was created in. Windows in OS window docks do not belong to the
+session of their tab.
+Use the expression :code:`^$` to match windows that do not belong to a session and
 :code:`.` to match the currently active session and :code:`~` to match either the currently
 active session or the last active session when no session is active.
 
@@ -156,7 +159,7 @@ The :code:`recent` number matches recently active tabs in the currently active O
 active tab, one the previously active tab and so on.
 
 The field :code:`session` matches tabs that were created in the specified session.
-Use the expression :code:`^$` to match windows that were not created in a session and
+Use the expression :code:`^$` to match tabs that were not created in a session and
 :code:`.` to match the currently active session and :code:`~` to match either the currently
 active session or the last active session when no session is active.
 

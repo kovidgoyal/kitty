@@ -241,10 +241,12 @@ all the major keywords you can use in kitty session files:
 Making newly created windows join an existing session
 ---------------------------------------------------------
 
-Normally, after activating a session, if you create new windows/tabs
-they don't belong to the session. If you would prefer to have them belong
-to the currently active session, you can use the :ac:`new_window_with_cwd`
-and :ac:`new_tab_with_cwd` actions instead, like this::
+Normally, after activating a session, if you create new tabs or OS windows
+they don't belong to the session. New windows created in a tab of the session
+belong to the session of that tab. If you would prefer to have new windows,
+tabs and OS windows always belong to the currently active session, you can use
+the :ac:`new_window_with_cwd`, :ac:`new_tab_with_cwd` and
+:ac:`new_os_window_with_cwd` actions instead, like this::
 
     map kitty_mod+enter new_window_with_cwd
     map kitty_mod+t new_tab_with_cwd

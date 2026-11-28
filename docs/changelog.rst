@@ -324,6 +324,11 @@ Detailed list of changes
 - Include the Python type stub (``.pyi``) files in the installed package, for
   better editor integration (:iss:`10955`)
 
+- Sessions: Windows that were not created in a session now belong to the
+  session of their tab when matching ``session:`` in :ref:`search expressions
+  <search_syntax>`, closing a session and choosing sessions. This fixes
+  ``save_as_session --match=session:.`` leaving out such windows (:pull:`10956`)
+
 0.51.1 [2026-11-23]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

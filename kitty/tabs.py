@@ -1581,7 +1581,7 @@ class Tab:  # {{{
     @property
     def active_session_name(self) -> str:
         w = self.active_window
-        return '' if w is None else w.created_in_session_name
+        return '' if w is None else w.effective_session_name
 
     def __contains__(self, window: Window) -> bool:
         return window in self.windows

@@ -436,7 +436,7 @@ def create_sessions(
 
 
 def window_for_session_name(boss: BossType, session_name: str, allow_fallback: bool = True) -> WindowType | None:
-    windows = [w for w in boss.all_windows if w.created_in_session_name == session_name]
+    windows = [w for w in boss.all_windows if w.effective_session_name == session_name]
     if allow_fallback and not windows:
         tabs = (t for t in boss.all_tabs if t.created_in_session_name == session_name)
         windows = [t.active_window for t in tabs if t.active_window]
@@ -566,7 +566,7 @@ def close_session_with_confirm(boss: BossType, cmdline: Sequence[str]) -> None:
             return
     else:
         name = path_or_name
-    windows = tuple(w for w in boss.all_windows if w.created_in_session_name == name)
+    windows = tuple(w for w in boss.all_windows if w.effective_session_name == name)
     if not windows:
         return
     msg, num_active_windows = boss.close_windows_with_confirmation_msg(windows, boss.active_window)

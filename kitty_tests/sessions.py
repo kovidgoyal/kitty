@@ -150,6 +150,104 @@ class TestSessions(BaseTest):
                     assert_error('None of the matching windows')
         boss.edit_file.assert_not_called()
 
+    def test_session_matching_includes_inherited_windows(self) -> None:
+        # Windows created in no session belong to the session of their tab, except
+        # for OS window docks, both when matching session: queries and when
+        # saving with --match=session:.
+        from functools import partial
+
+        from kitty.boss import Boss
+        from kitty.launch import LaunchSpec
+        from kitty.tabs import Tab, TabManager
+        from kitty.window import Window
+
+        class SessionWindow(SimpleNamespace):
+            __hash__ = object.__hash__
+            __eq__ = object.__eq__
+            effective_session_name = Window.effective_session_name
+            matches = Window.matches
+            matches_query = Window.matches_query
+
+        class Group(list[SessionWindow]):
+            docks = ()
+
+            def __init__(self, window: SessionWindow) -> None:
+                super().__init__([window])
+                self.id = window.id
+
+        class SessionBoss(SimpleNamespace):
+            active_session = Boss.active_session
+            match_windows = Boss.match_windows
+            serialize_state_as_session = Boss.serialize_state_as_session
+
+        opts = self.set_options()
+        with TemporaryDirectory() as tmp:
+            tab = SimpleNamespace(
+                name='work',
+                created_in_session_name='work',
+                enabled_layouts=['tall'],
+                _current_layout_name='tall',
+                serialize_layout_state_for_session=dict,
+            )
+            windows = [
+                SessionWindow(
+                    id=wid,
+                    created_in_session_name=session_name,
+                    tabref=lambda: tab,
+                    cwd_for_serialization=tmp,
+                    last_focused_at=wid,
+                    as_launch_command=Mock(return_value=['launch', '/bin/true', label]),
+                )
+                for wid, (label, session_name) in enumerate((('explicit', 'work'), ('inherited', ''), ('other', 'elsewhere'), ('os window dock', '')), 1)
+            ]
+            os_window_dock = windows[3]
+            groups = [Group(w) for w in windows[:3]]
+            tab.windows = SimpleNamespace(
+                active_group=groups[1], groups=groups, tab_docks=(), dock_owner=lambda g: None, is_in_os_window_dock=lambda w: w is os_window_dock
+            )
+            tab.active_window = windows[1]
+            tab.serialize_state_as_session = partial(Tab.serialize_state_as_session, cast(Tab, tab))
+            tm = SimpleNamespace(tabs=[tab], active_tab=tab, wm_class='', wm_name='', os_window_docks=())
+            tm.serialize_state_as_session = partial(TabManager.serialize_state_as_session, cast(TabManager, tm))
+            boss = SessionBoss(
+                active_tab=tab,
+                os_window_map={1: tm},
+                all_windows=windows,
+                window_id_map={w.id: w for w in windows},
+                show_error=Mock(),
+            )
+            self.ae(boss.active_session, 'work')
+            self.ae([w.effective_session_name for w in windows], ['work', 'work', 'elsewhere', ''])
+
+            def matched_ids(query: str) -> list[int]:
+                return sorted(w.id for w in boss.match_windows(query))
+
+            with patch('kitty.boss.most_recent_session', return_value='elsewhere'):
+                for query, expected in (
+                    ('session:.', [1, 2]),
+                    ('session:~', [1, 2, 3]),
+                    ('session:^work$', [1, 2]),
+                    ('session:^$', [4]),
+                    ('not session:.', [3, 4]),
+                    ('session:. and id:2', [2]),
+                ):
+                    with self.subTest(query=query):
+                        self.ae(matched_ids(query), expected)
+
+            path = Path(tmp, 'work.kitty-session')
+            with patch.dict('kitty.session.seen_session_paths', work=str(path)):
+                for match, expected_labels in (
+                    ('all', ['explicit', 'inherited', 'other']),
+                    ('session:.', ['explicit', 'inherited']),
+                    ('session:. and id:2', ['inherited']),
+                ):
+                    with self.subTest(match=match):
+                        boss.show_error.reset_mock()
+                        save_as_session(cast(Boss, boss), ('--save-only', f'--match={match}', '.'))
+                        boss.show_error.assert_not_called()
+                        (saved,) = parse_session(path.read_text(), opts, session_path=str(path))
+                        self.ae([cast(LaunchSpec, w.launch_spec).args[-1] for w in saved.tabs[0].windows], expected_labels)
+
     def test_save_as_session_preserves_literal_dollars(self) -> None:
         from functools import partial
 

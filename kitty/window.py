@@ -1016,11 +1016,16 @@ class Window:
 
     @property
     def effective_session_name(self) -> str:
-        "The session this window belongs to: the one it was created in, or else the one its tab was created in"
+        """
+        The session this window belongs to: the one it was created in, or else the one its tab was created in.
+        OS window docks move between the tabs of their OS window, so they do not belong to the session of a tab.
+        """
         if self.created_in_session_name:
             return self.created_in_session_name
         tab = self.tabref()
-        return '' if tab is None else tab.created_in_session_name
+        if tab is None or tab.windows.is_in_os_window_dock(self):
+            return ''
+        return tab.created_in_session_name
 
     @property
     def current_colors(self) -> dict[str, int | None | tuple[tuple[Color, float], ...]]:
@@ -1056,13 +1061,15 @@ class Window:
                     return True
             return False
         if field == 'session':
+            # Windows created in no session can belong to the session of their tab
+            session_name = self.effective_session_name
             match pat.pattern:
                 case '.':
-                    return self.created_in_session_name == active_session
+                    return session_name == active_session
                 case '~':
-                    return self.created_in_session_name == active_session or self.created_in_session_name == most_recent_session
+                    return session_name == active_session or session_name == most_recent_session
 
-            return pat.search(self.created_in_session_name) is not None
+            return pat.search(session_name) is not None
         return False
 
     def matches_query(
