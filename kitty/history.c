@@ -106,8 +106,11 @@ static void
 pagerhist_remember_last_line(PagerHistoryBuf *ph, const CPUCell *cells, index_type xnum) {
     if (ph->last_line_xnum != xnum) {
         pagerhist_forget_last_line(ph);
-        // Without the line, the chars continuing from it in the history are written as parts
-        if (!(ph->last_line = malloc(sizeof(CPUCell) * xnum))) return;
+        if (!(ph->last_line = malloc(sizeof(CPUCell) * xnum))) {
+            // Without the line, the chars continuing from it in the history are written as parts
+            log_error("Out of memory remembering the last line of the scrollback pager history");
+            return;
+        }
         ph->last_line_xnum = xnum;
     }
     memcpy(ph->last_line, cells, sizeof(CPUCell) * xnum);
@@ -532,6 +535,8 @@ void
 historybuf_delete_newest_lines(HistoryBuf *self, index_type count) {
     if (!count) return;
     count = MIN(self->count, count);
+    // With no lines left, the last line of the pager history no longer adjoins the lines added after
+    if (count >= self->count && self->pagerhist) pagerhist_forget_last_line(self->pagerhist);
     self->num_pushed -= count;
     self->bidi_walked = 0;
     self->line0_cache_valid = false;
@@ -562,6 +567,8 @@ historybuf_delete_lines(HistoryBuf *self, index_type num_newer, index_type count
     if (!count || num_newer >= self->count) return;
     count = MIN(count, self->count - num_newer);
     const index_type oldest_deleted = num_newer + count - 1;
+    // The last line of the pager history no longer adjoins the oldest line when it is deleted
+    if (oldest_deleted + 1 >= self->count && self->pagerhist) pagerhist_forget_last_line(self->pagerhist);
     // Remove the parts of multicell chars that are cut by the deletion: those
     // that start above the deleted lines and extend into them...
     init_line(self, index_of(self, oldest_deleted), self->line);
@@ -982,10 +989,12 @@ historybuf_finish_rewrap(HistoryBuf *dest, HistoryBuf *src) {
     for (index_type i = 0; i < dest->count; i++) attrptr(dest, (dest->start_of_data + i) % dest->ynum)->has_dirty_text = true;
     dest->pagerhist = src->pagerhist;
     src->pagerhist = NULL;
-    if (dest->pagerhist && dest->xnum != src->xnum) {
-        // its lines are rewrapped, so its last line no longer adjoins the history
+    if (dest->pagerhist) {
+        // Its last line no longer adjoins the oldest line of the history when
+        // its lines are rewrapped or when lines that did not fit in the
+        // history were dropped while rewrapping, without being written to it
         pagerhist_forget_last_line(dest->pagerhist);
-        if (ringbuf_bytes_used(dest->pagerhist->ringbuf)) dest->pagerhist->rewrap_needed = true;
+        if (dest->xnum != src->xnum && ringbuf_bytes_used(dest->pagerhist->ringbuf)) dest->pagerhist->rewrap_needed = true;
     }
     pagerhist_close_bidi_if_history_empty(dest);
 }

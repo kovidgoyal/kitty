@@ -2878,6 +2878,8 @@ render_line(
         index_type start, count;
     } split_chars[MAX_SPLIT_CHARS_PER_LINE];
     unsigned num_split_chars = 0;
+    // The first cell of the first split char that did not fit in split_chars, line->xnum when all fit
+    index_type split_chars_overflow_at = line->xnum;
     // Each stretch of cells at one embedding level is rendered on its own, so runs never span two levels without a test
     // per cell
     while (i < line->xnum) {
@@ -2916,7 +2918,7 @@ render_line(
                     if (num_split_chars < arraysz(split_chars)) {
                         split_chars[num_split_chars].start = i;
                         split_chars[num_split_chars++].count = num_incomplete;
-                    }
+                    } else split_chars_overflow_at = MIN(split_chars_overflow_at, i);
                     run_font = basic_font;
                     i += num_incomplete - 1;
                     first_cell_in_run = i + 1;
@@ -3017,6 +3019,17 @@ render_line(
     // Must be after the sprites are copied, as rendering a line uses the shared render scratch space
     for (unsigned k = 0; k < num_split_chars; k++)
         render_split_multicell_char(fg_, line, split_chars[k].start, split_chars[k].count, disable_ligature_strategy, lc, levels);
+    // Lines rarely have more split chars than fit in split_chars, find the others again
+    for (index_type x = split_chars_overflow_at; x < line->xnum;) {
+        if (!line->cpu_cells[x].is_multicell) {
+            x++;
+            continue;
+        }
+        const MulticellColumns cols = multicell_char_columns(line->cpu_cells, line->xnum, x);
+        if (cols.start == x && !multicell_char_columns_are_complete(line->cpu_cells, cols))
+            render_split_multicell_char(fg_, line, x, cols.limit - x, disable_ligature_strategy, lc, levels);
+        x = MAX(cols.limit, x + 1);
+    }
 }
 
 StringCanvas

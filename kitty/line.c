@@ -216,15 +216,18 @@ text_in_cell_ansi(ANSILineState *s, const Line *line, index_type x, bool skip_mu
             } else start_multicell_if_needed(s, c);
         } else {
             close_multicell(s);
-            if (s->skipped_limit && s->skipped_limit == x) {
+            if (s->skipped_limit ? s->skipped_limit == x : (s->skipped_before_line && x == 0)) {
                 // A terminal moves the cursor past the cells not written when
                 // writing text over them, but parts are drawn exactly at the
-                // cursor, so move it explicitly
-                ensure_space_in_ansi_output_buf(s, 16);
+                // cursor. So write a space, which is moved past them, and move
+                // back over it, rather than moving the cursor forward, which
+                // would not wrap when the cells are at the start of a line
+                // that continues the line above.
+                ensure_space_in_ansi_output_buf(s, 4);
+                s->output_buf->buf[s->output_buf->len++] = ' ';
                 s->output_buf->buf[s->output_buf->len++] = 0x1b;
                 s->output_buf->buf[s->output_buf->len++] = '[';
-                nonnegative_integer_as_utf32(x - s->skipped_start, s->output_buf);
-                s->output_buf->buf[s->output_buf->len++] = 'C';
+                s->output_buf->buf[s->output_buf->len++] = 'D';
                 s->escape_code_written = true;
             }
             const MulticellAnsiPart part = {.columns = cols.limit - cols.start, .rows = down + 1};
@@ -233,6 +236,7 @@ text_in_cell_ansi(ANSILineState *s, const Line *line, index_type x, bool skip_mu
         }
     } else close_multicell(s);
     s->skipped_limit = 0;
+    s->skipped_before_line = false;
 
     size_t pos = s->output_buf->len;
     if (c->ch_is_idx) {
@@ -621,8 +625,20 @@ unicode_in_range(
 
 PyObject *
 line_as_unicode(Line *self, bool skip_zero_cells, ANSIBuf *buf) {
+    return line_as_unicode_with_rows(self, skip_zero_cells, true, NULL, NULL, buf);
+}
+
+PyObject *
+line_as_unicode_with_rows(
+    Line *self,
+    bool skip_zero_cells,
+    bool skip_multiline_non_zero_lines,
+    bool (*neighbour_row)(void *ctx, int dy, const CPUCell **cells),
+    void *neighbour_row_ctx,
+    ANSIBuf *buf) {
     size_t before = buf->len;
-    if (!unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells, true, NULL, NULL, buf)) return PyErr_NoMemory();
+    if (!unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells, skip_multiline_non_zero_lines, neighbour_row, neighbour_row_ctx, buf))
+        return PyErr_NoMemory();
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf->buf + before, buf->len - before);
     buf->len = before;
     return ans;
@@ -762,6 +778,8 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
     s->limit = MIN(stop_before, xlimit_for_line(self));
     s->current_multicell_state = NULL;
     s->skipped_limit = 0;
+    s->skipped_before_line = s->skipped_to_end_of_continued_line && start_at == 0;
+    s->skipped_to_end_of_continued_line = false;
     s->escape_code_written = false;
     if (prefix_char) write_ch_to_ansi_buf(s, prefix_char);
 
@@ -809,6 +827,8 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
         }
     }
     close_multicell(s);
+    // A terminal writing the text of the next line moves the cursor past the cells not written at the end of this line
+    s->skipped_to_end_of_continued_line = s->skipped_limit == self->xnum && self->cpu_cells[self->xnum - 1].next_char_was_wrapped;
     if (s->output_buf->active_hyperlink_id && s->limit < self->xnum && !self->cpu_cells[s->limit].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
     return s->escape_code_written;
 }
@@ -1350,7 +1370,9 @@ as_text_generic(
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
             if (t && ansibuf->len > 0) APPEND(sgr_reset);
         } else {
-            t = line_as_unicode(line, false, ansibuf);
+            neighbours.y = (int)y;
+            // As for ANSI text, the rows above the first line are written before it only when the output continues theirs
+            t = line_as_unicode_with_rows(line, false, y > 0 || continues_previous || continues_previous_arg, generic_neighbour_row, &neighbours, ansibuf);
         }
         APPEND_AND_DECREF(t);
         if (insert_wrap_markers) APPEND(cr);

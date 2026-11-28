@@ -3845,7 +3845,7 @@ typedef struct MulticellPart {
 static bool
 is_same_cell_of_char(const CPUCell *c, const CPUCell *mcd) {
     // Whether c is the cell of the char mcd at the position of mcd in its block
-    return continues_multicell_char_horizontally(c, mcd, mcd->x) && c->valign == mcd->valign && c->halign == mcd->halign;
+    return continues_multicell_char_horizontally(c, mcd, mcd->x);
 }
 
 static bool
@@ -7817,9 +7817,12 @@ flag_selection_to_extract_text(Screen *self, const Selection *s, int *miny, int 
             select_cell(sc, y, x);
             // The text of a multiline char is written in the top row of the
             // part of it present, which can be partial, so select that row
-            for (int ym = y; ym > sc->y_start && continues_from_row_above(self, ym, x, c); ym--) {
+            const CPUCell *cur = c;
+            for (int ym = y; ym > sc->y_start && continues_from_row_above(self, ym, x, cur); ym--) {
                 select_cell(sc, ym - 1, x);
                 *miny = MIN(*miny, ym - 1);
+                // the cell of the char in the row above, which is present as it continues the char
+                cur = scrollback_row_cells(self, ym - 1) + x;
             }
         }
     }
@@ -8316,7 +8319,8 @@ append_row_to_ime_text(Screen *self, index_type y, index_type start, index_type 
     limit = MIN(limit, trim_trailing ? xlimit_for_line(line) : line->xnum);
     start = MIN(start, line->xnum);
     if (start >= limit) return true;
-    return unicode_in_range(line, start, limit, true, false, false, true, NULL, NULL, buf);
+    RangeNeighbourRows neighbours = {.screen = self, .y = (int)y};
+    return unicode_in_range(line, start, limit, true, false, false, true, range_neighbour_row, &neighbours, buf);
 }
 
 bool
@@ -8745,8 +8749,12 @@ get_history_line(void *x, int y) {
 
 static bool
 history_row_cells(void *x, int y, const CPUCell **cells) {
+    // The scrollback is above the main screen, whichever screen is active
     Screen *self = x;
-    return range_row_cells(self, y - (int)self->historybuf->count, cells);
+    const int ry = y - (int)self->historybuf->count;
+    if (ry < 0) return historybuf_row_cells(self->historybuf, -(int64_t)ry - 1, cells);
+    *cells = ry < (int)self->lines ? linebuf_cpu_cells_for_line(self->main_linebuf, (index_type)ry) : NULL;
+    return true;
 }
 
 static uint8_t

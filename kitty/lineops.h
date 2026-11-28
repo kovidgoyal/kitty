@@ -171,6 +171,14 @@ bool unicode_in_range(
     void *neighbour_row_ctx,
     ANSIBuf *);
 PyObject *line_as_unicode(Line *, bool, ANSIBuf *);
+// As line_as_unicode() with the rows around the line, as for ANSILineState, see unicode_in_range()
+PyObject *line_as_unicode_with_rows(
+    Line *self,
+    bool skip_zero_cells,
+    bool skip_multiline_non_zero_lines,
+    bool (*neighbour_row)(void *ctx, int dy, const CPUCell **cells),
+    void *neighbour_row_ctx,
+    ANSIBuf *buf);
 
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_init_line_at(LineBuf *, index_type, Line *);

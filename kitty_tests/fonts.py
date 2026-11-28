@@ -724,6 +724,19 @@ class Rendering(FontBaseTest):
                     if scale == 1:
                         self.ae(got[4:6], whole_top[3 + cols : 5 + cols])
 
+    def test_render_many_split_multicell_chars(self):
+        # Lines can have any number of split chars, more than are collected while rendering the runs
+        s = self.create_screen(cols=50, lines=1, scrollback=0)
+        for i in range(24):
+            draw_multicell(s, '猫', width=2, part=(i % 2, 0, 1, 0))
+            s.draw('x')
+        line = s.line(0)
+        test_render_line(line)
+        sprites = [line.sprite_at(x) for x in range(0, 48, 2)]
+        ae = self.ae
+        ae(sprites[:2] * 12, sprites)
+        self.assertNotIn(0, sprites)
+
     def test_render_line_with_split_multicell_chars(self):
         # A horizontally scrolled smooth scroll region can split wide chars,
         # leaving some of their cells in a line without the others. These
