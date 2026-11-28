@@ -232,7 +232,7 @@ func run_chooser(opts *Options, resolver *Resolver, input *ChooserInput) (result
 	if err != nil {
 		return nil, err
 	}
-	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING).DetailedMouseEvents()
 	lp.ColorSchemeChangeNotifications()
 	h := NewHandler(lp, resolver.Settings, resolver.DB, resolver.Store, input)
 	// The token is used when opening files or by programs using the JSON

@@ -19,6 +19,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
+	"github.com/kovidgoyal/kitty/tools/tui/scrolling"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
@@ -76,7 +77,6 @@ type Handler struct {
 	matches   []*item
 	rows      []grid_row
 	current   int // index into matches
-	first_row int // first row of the grid that is displayed
 	query     string
 	search_rl *readline.Readline
 	matcher   *fzf.FuzzyMatcher
@@ -98,8 +98,18 @@ type Handler struct {
 	// Identifiers for the activation token query and request
 	activation_token_query_id, activation_token_request_id string
 
-	screen_size      loop.ScreenSize
-	scroll           scroll_indicator
+	screen_size loop.ScreenSize
+	// The grid as lines of cells, scrolled by the scroller, and its left edge
+	grid      grid_scroll
+	grid_left int
+	scroller  scrolling.Scroller
+	indicator scrolling.Indicator
+	// Whether to scroll the current item into view after drawing the grid
+	want_current_visible bool
+	// The first error placing an icon while drawing the grid
+	paint_err error
+	// Placeholders for applications without icons, rendered as images
+	placeholders     map[string]icon_info
 	tiles            tile_geometry
 	shortcut_tracker config.ShortcutTracker
 	mouse_state      tui.MouseState
@@ -127,6 +137,9 @@ func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *Choic
 		}
 		return h.dirs.IconThemeName()
 	})
+	h.scroller = scrolling.Scroller{Id: grid_region_id, Capacity: grid_region_capacity, Paint: h.paint_grid_line}
+	h.indicator = scrolling.Indicator{TrackStyle: "\x1b[2m"}
+	h.placeholders = map[string]icon_info{}
 	h.search_rl = readline.New(lp, readline.RlInit{DontMarkPrompts: true})
 	h.init_command_rl()
 	h.command_entry = new_command_entry_item()
@@ -136,6 +149,7 @@ func NewHandler(lp *loop.Loop, settings *Settings, db *AppDatabase, store *Choic
 		ps := ChoiceForDesktopID(input.Preselect)
 		if idx := slices.IndexFunc(h.all_items, func(it *item) bool { return it.choice.Equal(ps) }); idx > -1 {
 			h.current = idx
+			h.want_current_visible = true
 		}
 	}
 	return h
@@ -182,6 +196,13 @@ func (h *Handler) on_color_scheme_change(p loop.ColorPreference) error {
 }
 
 func (h *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
+	if etype == loop.OSC && loop.IsSmoothScrollQueryResponse(payload) {
+		if !h.scroller.Supported() {
+			h.scroller.SetSupported()
+			return h.draw_screen()
+		}
+		return nil
+	}
 	if etype == loop.OSC {
 		if resp, ok := loop.ParseActivationTokenResponse(payload); ok {
 			switch {
@@ -195,8 +216,9 @@ func (h *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) erro
 		}
 	}
 	if etype == loop.APC {
-		if h.scroll.thumb != nil && !h.scroll.thumb.Supported && h.scroll.thumb.IsSupportResponse(payload) {
-			h.scroll.thumb.Supported = true
+		if t := h.indicator.Thumb; t != nil && !t.Supported && t.IsSupportResponse(payload) {
+			// Indexed color data is supported, used for the thumb and placeholders
+			t.Supported = true
 			return h.draw_screen()
 		}
 		if gc := graphics.GraphicsCommandFromAPC(payload); gc != nil && h.icon_display.HandleGraphicsCommand(gc) {
@@ -224,7 +246,8 @@ func (h *Handler) set_query(q string) error {
 		matches = append(matches, h.command_entry)
 	}
 	h.matches = matches
-	h.current, h.first_row = 0, 0
+	h.current = 0
+	h.scroller.SetPosition(0)
 	return nil
 }
 
@@ -235,7 +258,15 @@ func (h *Handler) grid_width() int {
 }
 
 func (h *Handler) layout() {
-	h.rows = layout_grid(h.matches, h.query == "", num_grid_columns(h.grid_width(), h.tiles), h.tiles)
+	ncols := num_grid_columns(h.grid_width(), h.tiles)
+	h.rows = layout_grid(h.matches, h.query == "", ncols, h.tiles)
+	h.grid = new_grid_scroll(h.rows)
+	h.grid_left = 1 + (h.grid_width()-ncols*h.tiles.width())/2
+	top, height, x := header_height+search_bar_height, max(0, h.grid_height()), scroll_indicator_column(int(h.screen_size.WidthCells))
+	h.scroller.SetNumLines(h.grid.total)
+	// The scroll region is the grid, up to the scroll indicator
+	h.scroller.SetGeometry(0, top, x, height, int(h.screen_size.CellHeight))
+	h.indicator.SetGeometry(x, top, height, int(h.screen_size.CellWidth), int(h.screen_size.CellHeight))
 }
 
 func (h *Handler) grid_height() int {
@@ -273,28 +304,7 @@ func (h *Handler) move(how string) {
 			h.lp.Beep()
 		}
 	}
-}
-
-// ensure_current_visible scrolls the grid so that the current item is
-// visible. When scrolling up to it, the header of its section is shown too.
-func (h *Handler) ensure_current_visible() {
-	g := h.scroll_geometry()
-	h.first_row = g.clamp(h.first_row)
-	r, _ := position_of(h.rows, h.current)
-	if r < 0 {
-		h.first_row = 0
-		return
-	}
-	if r < h.first_row {
-		h.first_row = r
-		if r > 0 && h.rows[r-1].is_header() {
-			h.first_row = r - 1
-		}
-		return
-	}
-	for h.first_row < r && g.offsets[r]+h.rows[r].height()-g.offsets[h.first_row] > g.viewport {
-		h.first_row++
-	}
+	h.want_current_visible = true
 }
 
 // }}}
@@ -393,10 +403,11 @@ func (h *Handler) OnInitialize() (string, error) {
 			return "", err
 		}
 	}
+	h.lp.QuerySmoothScrolling()
 	h.icon_display.Initialize(h.lp)
-	h.scroll.thumb = graphics.NewScrollThumb(h.icon_display.next_id)
+	h.indicator.Thumb = graphics.NewScrollThumb(h.icon_display.next_id)
 	h.icon_display.next_id++
-	h.scroll.thumb.Query(h.lp)
+	h.indicator.Thumb.Query(h.lp)
 	h.load_icons()
 	if err = h.draw_screen(); err != nil {
 		return "", err
@@ -408,6 +419,8 @@ func (h *Handler) OnInitialize() (string, error) {
 func (h *Handler) OnResize(old, new_size loop.ScreenSize) error {
 	h.screen_size = new_size
 	h.search_rl.ClearCachedScreenSize()
+	// The terminal removes smooth scroll regions when it is resized
+	h.scroller.Invalidate()
 	if h.tiles.icon_rows*int(new_size.CellHeight) != h.icon_px {
 		h.load_icons()
 	}
@@ -459,20 +472,40 @@ func (h *Handler) OnMouseEvent(ev *loop.MouseEvent) error {
 	if h.result != nil {
 		return nil
 	}
-	consumed, scroll_redraw := h.handle_scroll_mouse(ev)
+	// Scrolling and drawing the lines that move into the grid must be done
+	// in a single atomic update
+	h.lp.StartAtomicUpdate()
+	defer h.lp.EndAtomicUpdate()
+	h.paint_err = nil
+	// Scrolling draws the lines that move into the grid and the scroll
+	// indicator, keep the cursor in the search bar
+	h.lp.SaveCursorPosition()
+	consumed := h.handle_grid_mouse(ev)
+	h.lp.RestoreCursorPosition()
+	if h.paint_err != nil {
+		return h.paint_err
+	}
 	if consumed {
-		if scroll_redraw && h.result == nil {
-			return h.draw_screen()
-		}
+		h.update_pointer_shape(ev.Cell.X, ev.Cell.Y)
 		return nil
 	}
-	redraw := h.mouse_state.UpdateState(ev) || scroll_redraw
+	redraw := h.mouse_state.UpdateState(ev)
+	if ev.Event_type == loop.MOUSE_CLICK && ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
+		if idx := h.tile_at(ev.Cell.X, ev.Cell.Y); idx > -1 {
+			h.current = idx
+			return h.accept_current()
+		}
+	}
 	if err := h.mouse_state.DispatchEventToHoveredRegions(ev); err != nil {
 		return err
 	}
-	if redraw && h.result == nil {
+	if h.result != nil {
+		return nil
+	}
+	if redraw {
 		return h.draw_screen()
 	}
+	h.update_pointer_shape(ev.Cell.X, ev.Cell.Y)
 	return nil
 }
 
@@ -481,10 +514,9 @@ func (h *Handler) OnWakeup() error {
 }
 
 func (h *Handler) OnFinalize() string {
+	h.scroller.Remove(h.lp)
 	h.icon_display.Finalize(h.lp)
-	if h.scroll.thumb != nil {
-		h.scroll.thumb.Free(h.lp)
-	}
+	h.indicator.Free(h.lp)
 	return ""
 }
 
@@ -494,10 +526,38 @@ func (h *Handler) OnFinalize() string {
 
 func (h *Handler) styled(style, text string) string { return h.lp.SprintStyled(style, text) }
 
+// update_pointer_shape sets the shape of the mouse pointer, which is at the
+// specified zero based cell, for the grid and the scroll indicator. Elsewhere
+// it is set by the mouse state for the cell regions.
+func (h *Handler) update_pointer_shape(x, y int) {
+	ps := loop.DEFAULT_POINTER
+	switch {
+	case h.indicator.Dragging:
+		ps = loop.GRABBING_POINTER
+	case h.indicator.Hovering:
+		ps = loop.GRAB_POINTER
+	case h.tile_at(x, y) > -1:
+		ps = loop.POINTER_POINTER
+	default:
+		if !h.in_grid(x, y) {
+			// Over the cell regions, if any
+			return
+		}
+	}
+	if ps == loop.DEFAULT_POINTER {
+		h.lp.ClearPointerShapes()
+	} else if cur, has := h.lp.CurrentPointerShape(); !has || cur != ps {
+		h.lp.PopPointerShape()
+		h.lp.PushPointerShape(ps)
+	}
+}
+
 func (h *Handler) draw_screen() (err error) {
 	lp := h.lp
-	lp.StartAtomicUpdate()
-	defer lp.EndAtomicUpdate()
+	if !lp.IsAtomicUpdateActive() {
+		lp.StartAtomicUpdate()
+		defer lp.EndAtomicUpdate()
+	}
 	lp.ClearScreenButNotGraphics()
 	h.mouse_state.ClearCellRegions()
 	if epoch := h.icon_loader.Epoch(); epoch != h.icon_epoch {
@@ -508,9 +568,11 @@ func (h *Handler) draw_screen() (err error) {
 	h.icon_display.StartRender()
 	if h.in_command_mode {
 		h.icon_display.FinishRender(lp) // removes all icons
-		h.scroll.visible = false
-		if h.scroll.thumb != nil {
-			h.scroll.thumb.Hide(lp)
+		// The command screen is drawn over the grid
+		h.scroller.Remove(lp)
+		h.indicator.Dragging, h.indicator.Hovering = false, false
+		if h.indicator.Thumb != nil {
+			h.indicator.Thumb.Hide(lp)
 		}
 		h.draw_command_screen()
 		h.mouse_state.UpdateHoveredIds()
@@ -519,15 +581,15 @@ func (h *Handler) draw_screen() (err error) {
 	}
 	h.draw_header()
 	h.layout()
-	h.ensure_current_visible()
-	if err = h.draw_grid(header_height + search_bar_height); err != nil {
+	if err = h.draw_grid(); err != nil {
 		return err
 	}
 	h.icon_display.FinishRender(lp)
-	h.draw_scroll_indicator(header_height + search_bar_height)
+	h.draw_scroll_indicator()
 	h.draw_footer()
 	h.mouse_state.UpdateHoveredIds()
 	h.mouse_state.ApplyHoverStyles(lp)
+	h.update_pointer_shape(h.mouse_state.Cell.X, h.mouse_state.Cell.Y)
 	// draw the search bar last so the cursor ends up in it
 	h.draw_search_bar(header_height)
 	return nil
@@ -570,21 +632,27 @@ func sanitize(text string) string {
 }
 
 func (h *Handler) draw_frame(x, y, width, height int, style string) {
+	for i := range height {
+		h.draw_frame_line(x, y+i, width, height, i, style)
+	}
+}
+
+// draw_frame_line draws line i of a frame of the specified height, in the
+// zero based row y
+func (h *Handler) draw_frame_line(x, y, width, height, i int, style string) {
 	lp := h.lp
 	pre, post, _ := strings.Cut(h.styled(style, " "), " ")
 	lp.QueueWriteString(pre)
-	for i := range height {
-		lp.MoveCursorTo(x+1, y+i+1)
-		switch i {
-		case 0:
-			lp.QueueWriteString("╭" + strings.Repeat("─", width-2) + "╮")
-		case height - 1:
-			lp.QueueWriteString("╰" + strings.Repeat("─", width-2) + "╯")
-		default:
-			lp.QueueWriteString("│")
-			lp.MoveCursorHorizontally(width - 2)
-			lp.QueueWriteString("│")
-		}
+	lp.MoveCursorTo(x+1, y+1)
+	switch i {
+	case 0:
+		lp.QueueWriteString("╭" + strings.Repeat("─", width-2) + "╮")
+	case height - 1:
+		lp.QueueWriteString("╰" + strings.Repeat("─", width-2) + "╯")
+	default:
+		lp.QueueWriteString("│")
+		lp.MoveCursorHorizontally(width - 2)
+		lp.QueueWriteString("│")
 	}
 	lp.QueueWriteString(post)
 }
@@ -696,95 +764,140 @@ func (h *Handler) render_name_line(runes []rune, line wrapped_line, positions []
 	return b.String()
 }
 
-func (h *Handler) draw_tile(it *item, idx, x, y int) error {
+// draw_tile_line draws line k of the tile of the specified item, in the zero
+// based row y of the screen, which is the specified row of the grid area
+func (h *Handler) draw_tile_line(it *item, idx, x, y, k, row int) {
 	lp := h.lp
-	is_current := idx == h.current
-	if is_current {
-		h.draw_frame(x, y, h.tiles.width(), h.tiles.height(), accent_style)
+	t := h.tiles
+	if idx == h.current {
+		h.draw_frame_line(x, y, t.width(), t.height(), k, accent_style)
 	}
-	for row := y; row < y+h.tiles.height(); row++ {
-		h.mouse_state.AddCellRegion("tile-"+strconv.Itoa(idx), x, row, x+h.tiles.width()-1, row, func(string) error {
-			h.current = idx
-			return h.accept_current()
-		}).HoverStyle = "none"
+	if ik := k - 1; ik >= 0 && ik < t.icon_rows {
+		// The icon is placed from its first line, the terminal clips it to
+		// the grid and reveals the rest as it is scrolled. When its first
+		// line is above the grid, the part of it below is placed from the
+		// first row. Placing it again replaces it, as the same placement id
+		// is used.
+		if ik == 0 || row == 0 {
+			h.draw_icon(it, idx, x, y-ik, ik)
+		}
+		return
 	}
-	// The icon
-	icon_drawn := false
-	if h.icon_display.CanDisplay() && it.entry.Icon != "" {
-		if ii, found := h.icon_loader.get(it.entry.Icon); found {
-			if err := h.icon_display.Place(lp, ii, uint32(idx+1), x+1, y+1, h.tiles.content_width, h.tiles.icon_rows, h.screen_size); err != nil {
-				return err
-			}
-			icon_drawn = true
+	if nk := k - 1 - t.icon_rows; nk >= 0 && nk < t.name_lines {
+		runes := []rune(it.entry.Name)
+		lines := wrap_name(it.entry.Name, t.content_width, t.name_lines)
+		if nk < len(lines) {
+			line := lines[nk]
+			text := h.render_name_line(runes, line, it.name_positions, idx == h.current)
+			w := wcswidth.Stringwidth(string(runes[line.start:line.end])) + utils.IfElse(line.ellipsis, 1, 0)
+			lp.MoveCursorTo(x+2+(t.content_width-w)/2, y+1)
+			lp.QueueWriteString(text)
 		}
 	}
-	if !icon_drawn {
-		// A placeholder, the first letter of the name at triple size
-		glyph := ""
-		if !it.is_custom_command() {
-			for _, r := range it.entry.Name {
-				if wcswidth.Runewidth(r) == 1 {
-					glyph = strings.ToUpper(string(r))
-				}
-				break
-			}
-		}
-		if glyph == "" {
-			glyph = "\uf489" // the Nerd Fonts terminal icon
-		}
-		lp.MoveCursorTo(x+2+(h.tiles.content_width-h.tiles.icon_rows)/2, y+2)
-		pre, post, _ := strings.Cut(h.styled(dim_style, " "), " ")
-		lp.QueueWriteString(pre)
-		lp.DrawSizedText(glyph, loop.SizedText{Scale: h.tiles.icon_rows})
-		lp.QueueWriteString(post)
-	}
-	// The name
-	runes := []rune(it.entry.Name)
-	for i, line := range wrap_name(it.entry.Name, h.tiles.content_width, h.tiles.name_lines) {
-		text := h.render_name_line(runes, line, it.name_positions, is_current)
-		w := wcswidth.Stringwidth(string(runes[line.start:line.end])) + utils.IfElse(line.ellipsis, 1, 0)
-		lp.MoveCursorTo(x+2+(h.tiles.content_width-w)/2, y+h.tiles.icon_rows+2+i)
-		lp.QueueWriteString(text)
-	}
-	return nil
 }
 
-func (h *Handler) draw_grid(y int) error {
+// draw_icon draws the icon of the item, in the box of the icon, whose top
+// is in the zero based row box_y, which can be above the grid, the first
+// skip_rows rows of the box not being drawn
+func (h *Handler) draw_icon(it *item, idx, x, box_y, skip_rows int) {
 	lp := h.lp
-	height := h.grid_height()
-	if height < 1 {
+	t := h.tiles
+	if h.icon_display.CanDisplay() {
+		ii, found := icon_info{}, false
+		if it.entry.Icon != "" {
+			ii, found = h.icon_loader.get(it.entry.Icon)
+		}
+		if !found {
+			ii, found = h.placeholder_image(it)
+		}
+		if found {
+			if err := h.icon_display.Place(lp, ii, uint32(idx+1), x+1, box_y, t.content_width, t.icon_rows, skip_rows, h.screen_size); err != nil && h.paint_err == nil {
+				h.paint_err = err
+			}
+			return
+		}
+	}
+	// A placeholder, the first letter of the name, drawn with the text sizing
+	// protocol, only when it is entirely in the grid, as it cannot be
+	// partially displayed
+	top := h.scroller.Top()
+	if skip_rows > 0 || box_y < top || box_y+t.icon_rows > top+h.scroller.Height() {
+		return
+	}
+	glyph := placeholder_text(it)
+	if glyph == command_placeholder {
+		glyph = "\uf489" // the Nerd Fonts terminal icon
+	}
+	lp.MoveCursorTo(x+2+(t.content_width-t.icon_rows)/2, box_y+1)
+	pre, post, _ := strings.Cut(h.styled(dim_style, " "), " ")
+	lp.QueueWriteString(pre)
+	lp.DrawSizedText(glyph, loop.SizedText{Scale: t.icon_rows})
+	lp.QueueWriteString(post)
+}
+
+// placeholder_image returns the placeholder for an application without an
+// icon as an image, if the terminal supports images with indexed color data
+func (h *Handler) placeholder_image(it *item) (icon_info, bool) {
+	if h.indicator.Thumb == nil || !h.indicator.Thumb.Supported {
+		return icon_info{}, false
+	}
+	text := placeholder_text(it)
+	w, ht := h.tiles.content_width*int(h.screen_size.CellWidth), h.tiles.icon_rows*int(h.screen_size.CellHeight)
+	if w < 1 || ht < 1 {
+		return icon_info{}, false
+	}
+	key := fmt.Sprintf("placeholder:%s:%dx%d", text, w, ht)
+	if ii, found := h.placeholders[key]; found {
+		return ii, ii.indexed_data != nil
+	}
+	data, err := render_placeholder(text, w, ht, 0.8)
+	if err != nil {
+		h.warnings = append(h.warnings, err.Error())
+	}
+	// Failures are cached as well, so that they are reported only once
+	ii := icon_info{path: key, width: w, height: ht, indexed_data: data}
+	h.placeholders[key] = ii
+	return ii, data != nil
+}
+
+// paint_grid_line draws the specified line of the grid in the specified row
+// of the grid area, called by the scroller for the lines that move into it
+func (h *Handler) paint_grid_line(row, line int) {
+	lp := h.lp
+	y := h.scroller.Top() + row
+	lp.MoveCursorTo(1, y+1)
+	// Erase the row, except for the scroll indicator, outside the scroll region
+	lp.QueueWriteString(fmt.Sprintf("\x1b[m\x1b[%dX", h.scroller.Width()))
+	r, k := h.grid.row_at(line)
+	if r < 0 || r >= len(h.rows) {
+		return
+	}
+	gr := h.rows[r]
+	if gr.is_header() {
+		lp.MoveCursorTo(h.grid_left+3, y+1)
+		lp.QueueWriteString(h.styled(section_style, gr.header))
+		return
+	}
+	for c, idx := range gr.items {
+		h.draw_tile_line(h.matches[idx], idx, h.grid_left+c*h.tiles.width(), y, k, row)
+	}
+}
+
+func (h *Handler) draw_grid() error {
+	if h.grid_height() < 1 {
 		return nil
+	}
+	h.paint_err = nil
+	h.scroller.Draw(h.lp)
+	if h.want_current_visible {
+		h.want_current_visible = false
+		h.ensure_current_visible()
 	}
 	if len(h.matches) == 0 {
-		lp.MoveCursorTo(3, y+2)
-		if h.query == "" {
-			lp.QueueWriteString("No applications found")
-		} else {
-			lp.QueueWriteString("No applications found")
-		}
-		return nil
+		h.lp.MoveCursorTo(3, h.scroller.Top()+2)
+		h.lp.QueueWriteString("No applications found")
 	}
-	ncols := num_grid_columns(h.grid_width(), h.tiles)
-	left := 1 + (h.grid_width()-ncols*h.tiles.width())/2
-	bottom := y + height
-	for r := h.first_row; r < len(h.rows); r++ {
-		row := h.rows[r]
-		if y+row.height() > bottom {
-			break
-		}
-		if row.is_header() {
-			lp.MoveCursorTo(left+2, y+1)
-			lp.QueueWriteString(h.styled(section_style, row.header))
-		} else {
-			for c, idx := range row.items {
-				if err := h.draw_tile(h.matches[idx], idx, left+c*h.tiles.width(), y); err != nil {
-					return err
-				}
-			}
-		}
-		y += row.height()
-	}
-	return nil
+	return h.paint_err
 }
 
 // shortcut_for returns the keys bound to the specified action and arguments

@@ -5,6 +5,8 @@ package diff
 import (
 	"fmt"
 	"regexp"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
+	"github.com/kovidgoyal/kitty/tools/tui/scrolling"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
@@ -52,21 +55,43 @@ type AsyncResult struct {
 var image_collection *graphics.ImageCollection
 
 type screen_size struct{ rows, columns, num_lines, cell_width, cell_height int }
+
+// The id of the smooth scroll region in which the diff is displayed
+const diff_region_id = 1
+
+// The number of screen lines the terminal keeps on each side of the smooth
+// scroll region, so that they are restored when changing the direction of scrolling
+const diff_region_capacity = 4
+
+// The number of rows used by the sticky header: the title of the file and the separator below it
+const sticky_header_rows = 2
+
 type Handler struct {
-	async_results                                       chan AsyncResult
-	mouse_selection                                     tui.MouseSelection
-	image_count                                         int
-	shortcut_tracker                                    config.ShortcutTracker
-	left, right                                         string
-	collection                                          *Collection
-	diff_map                                            map[string]*Patch
-	logical_lines                                       *LogicalLines
-	terminal_capabilities_received                      bool
-	lp                                                  *loop.Loop
-	current_context_count, original_context_count       int
-	added_count, removed_count                          int
-	screen_size                                         screen_size
-	scroll_pos, max_scroll_pos                          ScrollPos
+	async_results                                 chan AsyncResult
+	mouse_selection                               tui.MouseSelection
+	image_count                                   int
+	shortcut_tracker                              config.ShortcutTracker
+	left, right                                   string
+	collection                                    *Collection
+	diff_map                                      map[string]*Patch
+	logical_lines                                 *LogicalLines
+	terminal_capabilities_received                bool
+	lp                                            *loop.Loop
+	current_context_count, original_context_count int
+	added_count, removed_count                    int
+	screen_size                                   screen_size
+	// Scrolls the screen lines of the diff, see paint_row(). Its lines are
+	// the screen lines of the diff after the ones displayed in the sticky
+	// header, indexed from zero.
+	scroller scrolling.Scroller
+	// line_starts[i] is the index of the first screen line of logical line i
+	line_starts      []int
+	num_screen_lines int
+	// The number of rows at the top of the screen used for the sticky
+	// header. The screen lines displayed in it when at the start of the
+	// diff, the title of the first file and the separator below it, are not
+	// displayed in the scroll region.
+	sticky_rows                                         int
 	restore_position                                    *ScrollPos
 	inputting_command                                   bool
 	statusline_message                                  string
@@ -97,6 +122,11 @@ func (self *Handler) update_screen_size(sz loop.ScreenSize) {
 
 func (self *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
 	switch etype {
+	case loop.OSC:
+		if loop.IsSmoothScrollQueryResponse(payload) && !self.scroller.Supported() {
+			self.scroller.SetSupported()
+			self.draw_screen()
+		}
 	case loop.APC:
 		gc := graphics.GraphicsCommandFromAPC(payload)
 		if gc != nil {
@@ -109,6 +139,7 @@ func (self *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) e
 }
 
 func (self *Handler) finalize() {
+	self.scroller.Remove(self.lp)
 	image_collection.Finalize(self.lp)
 }
 
@@ -159,6 +190,7 @@ func (self *Handler) on_color_scheme_change(cp loop.ColorPreference) error {
 
 func (self *Handler) initialize() {
 	self.rl = readline.New(self.lp, readline.RlInit{DontMarkPrompts: true, Prompt: "/"})
+	self.scroller = scrolling.Scroller{Id: diff_region_id, Capacity: diff_region_capacity, Paint: self.paint_row}
 	self.lp.OnEscapeCode = self.on_escape_code
 	self.lp.OnColorSchemeChange = self.on_color_scheme_change
 	image_collection = graphics.NewImageCollection()
@@ -319,12 +351,9 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 		if err != nil {
 			return err
 		}
-		self.scroll_pos = ScrollPos{}
+		self.set_scroll_pos(ScrollPos{})
 		if self.restore_position != nil {
-			self.scroll_pos = *self.restore_position
-			if self.max_scroll_pos.Less(self.scroll_pos) {
-				self.scroll_pos = self.max_scroll_pos
-			}
+			self.set_scroll_pos(*self.restore_position)
 			self.restore_position = nil
 		}
 		self.draw_screen()
@@ -340,13 +369,12 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 func (self *Handler) on_resize(old_size, new_size loop.ScreenSize) error {
 	self.clear_mouse_selection()
 	self.update_screen_size(new_size)
+	// The terminal removes smooth scroll regions when it is resized
+	self.scroller.Invalidate()
 	if self.diff_map != nil && self.collection != nil && self.terminal_capabilities_received {
 		err := self.render_diff()
 		if err != nil {
 			return err
-		}
-		if self.max_scroll_pos.Less(self.scroll_pos) {
-			self.scroll_pos = self.max_scroll_pos
 		}
 	}
 	self.draw_screen()
@@ -360,18 +388,27 @@ func (self *Handler) render_diff() (err error) {
 	if self.screen_size.rows < 2 {
 		return fmt.Errorf("Screen too short, need at least 2 rows")
 	}
+	var prev_pos ScrollPos
+	had_lines := self.logical_lines != nil
+	if had_lines {
+		prev_pos = self.scroll_pos()
+	}
+	prev_line_starts := self.line_starts
 	self.logical_lines, err = render(self.collection, self.diff_map, self.screen_size, self.largest_line_number, self.images_resized_to)
 	if err != nil {
 		return err
 	}
-	last := self.logical_lines.Len() - 1
-	self.max_scroll_pos.logical_line = last
-	if last > -1 {
-		self.max_scroll_pos.screen_line = len(self.logical_lines.At(last).screen_lines) - 1
-	} else {
-		self.max_scroll_pos.screen_line = 0
+	self.line_starts = make([]int, self.logical_lines.Len())
+	self.num_screen_lines = 0
+	for i := range self.line_starts {
+		self.line_starts[i] = self.num_screen_lines
+		self.num_screen_lines += len(self.logical_lines.At(i).screen_lines)
 	}
-	self.logical_lines.IncrementScrollPosBy(&self.max_scroll_pos, -self.screen_size.num_lines+1)
+	self.update_scroller_geometry()
+	if had_lines && !slices.Equal(prev_line_starts, self.line_starts) {
+		// Keep the same line at the top of the screen
+		self.set_scroll_pos(prev_pos)
+	}
 	if self.current_search != nil {
 		self.current_search.search(self.logical_lines)
 	}
@@ -399,9 +436,89 @@ func (self *Handler) draw_image_pair(ll *LogicalLine, starting_row int) {
 	}
 }
 
+// update_scroller_geometry sets the geometry of the scroll region, below the
+// sticky header, if any, and above the status line
+func (self *Handler) update_scroller_geometry() {
+	self.sticky_rows = 0
+	ll := self.logical_lines
+	if conf != nil && conf.Sticky_header && ll != nil && len(ll.title_line_indices) > 0 && ll.title_line_indices[0] == 0 && self.screen_size.num_lines > 2*sticky_header_rows {
+		self.sticky_rows = sticky_header_rows
+	}
+	self.scroller.SetNumLines(max(0, self.num_screen_lines-self.sticky_rows))
+	self.scroller.SetGeometry(0, self.sticky_rows, self.screen_size.columns, self.screen_size.num_lines-self.sticky_rows, self.screen_size.cell_height)
+}
+
+// pos_for_line returns the position of the screen line with the specified index
+func (self *Handler) pos_for_line(idx int) ScrollPos {
+	if len(self.line_starts) == 0 {
+		return ScrollPos{}
+	}
+	idx = max(0, min(idx, self.num_screen_lines-1))
+	i := sort.Search(len(self.line_starts), func(i int) bool { return self.line_starts[i] > idx }) - 1
+	return ScrollPos{i, idx - self.line_starts[i]}
+}
+
+// line_for_pos returns the index of the screen line at the specified position
+func (self *Handler) line_for_pos(pos ScrollPos) int {
+	if len(self.line_starts) == 0 {
+		return 0
+	}
+	l := max(0, min(pos.logical_line, len(self.line_starts)-1))
+	return self.line_starts[l] + max(0, pos.screen_line)
+}
+
+// scroll_pos returns the position of the screen line in the first row of the scroll region
+func (self *Handler) scroll_pos() ScrollPos {
+	return self.pos_for_line(self.sticky_rows + self.scroller.FirstLine())
+}
+
+// max_scroll_pos returns the position of the screen line in the first row
+// of the scroll region when scrolled to the end
+func (self *Handler) max_scroll_pos() ScrollPos {
+	return self.pos_for_line(self.sticky_rows + self.scroller.MaxFirstLine())
+}
+
+// set_scroll_pos sets the position without scrolling, for use before drawing the screen
+func (self *Handler) set_scroll_pos(pos ScrollPos) {
+	self.scroller.SetPosition((self.line_for_pos(pos) - self.sticky_rows) * self.screen_size.cell_height)
+}
+
+// scroll_to_pos scrolls the screen line at the specified position to the
+// first row of the scroll region, or as close to it as possible. Must be
+// called inside an atomic update.
+func (self *Handler) scroll_to_pos(pos ScrollPos) bool {
+	return self.scroller.ScrollToLine(self.lp, self.line_for_pos(pos)-self.sticky_rows)
+}
+
+// scroll_lines scrolls by the specified number of whole lines, keeping any
+// fractional offset of the scroll region. Must be called inside an atomic update.
+func (self *Handler) scroll_lines(amt int) bool {
+	return self.scroller.ScrollPixels(self.lp, amt*self.screen_size.cell_height)
+}
+
+// do_scroll calls scroll inside an atomic update and if it scrolled, updates
+// the sticky header and status line, returning whether it scrolled
+func (self *Handler) do_scroll(scroll func() bool) bool {
+	if self.logical_lines == nil {
+		return false
+	}
+	if !self.lp.IsAtomicUpdateActive() {
+		self.lp.StartAtomicUpdate()
+		defer self.lp.EndAtomicUpdate()
+	}
+	if scroll() {
+		self.draw_sticky_header()
+		self.draw_status_line()
+		return true
+	}
+	return false
+}
+
 func (self *Handler) draw_screen() {
-	self.lp.StartAtomicUpdate()
-	defer self.lp.EndAtomicUpdate()
+	if !self.lp.IsAtomicUpdateActive() {
+		self.lp.StartAtomicUpdate()
+		defer self.lp.EndAtomicUpdate()
+	}
 	if self.image_count > 0 {
 		self.resize_all_images_if_needed()
 		image_collection.DeleteAllVisiblePlacements(self.lp)
@@ -409,68 +526,76 @@ func (self *Handler) draw_screen() {
 	lp.MoveCursorTo(1, 1)
 	lp.ClearToEndOfScreen()
 	if self.logical_lines == nil || self.diff_map == nil || self.collection == nil || !self.terminal_capabilities_received {
+		// The region would draw this message shifted
+		self.scroller.Remove(lp)
 		lp.Println(`Calculating diff, please wait...`)
 		return
 	}
-	pos := self.scroll_pos
-	seen_images := utils.NewSet[int]()
-	num_written := 0
-	if conf != nil && conf.Sticky_header {
-		num_written = self.draw_sticky_header(&pos)
-	}
-	for ; num_written < self.screen_size.num_lines; num_written++ {
-		ll := self.logical_lines.At(pos.logical_line)
-		if ll == nil || self.logical_lines.ScreenLineAt(pos) == nil {
-			num_written--
-		} else {
-			is_image := ll.line_type == IMAGE_LINE
-			ll.render_screen_line(pos.screen_line, lp, self.logical_lines.margin_size, self.logical_lines.columns)
-			if is_image && !seen_images.Has(pos.logical_line) && pos.screen_line >= ll.image_lines_offset {
-				seen_images.Add(pos.logical_line)
-				self.draw_image_pair(ll, pos.screen_line-ll.image_lines_offset)
-			}
-			if self.current_search != nil {
-				if mkp := self.current_search.markup_line(pos, num_written); mkp != "" {
-					lp.QueueWriteString(mkp)
-				}
-			}
-			if mkp := self.add_mouse_selection_to_line(pos, num_written); mkp != "" {
-				lp.QueueWriteString(mkp)
-			}
-			lp.MoveCursorVertically(1)
-			lp.QueueWriteString("\x1b[m\r")
-		}
-		if self.logical_lines.IncrementScrollPosBy(&pos, 1) == 0 {
-			break
-		}
-	}
+	self.scroller.Draw(lp)
+	self.draw_sticky_header()
 	self.draw_status_line()
 }
 
-func (self *Handler) draw_sticky_header(pos *ScrollPos) int {
+// paint_row draws the screen line with the specified index, relative to the
+// first line of the scroll region, in the specified row of the scroll
+// region, called by the scroller for the rows that move into the scroll region
+func (self *Handler) paint_row(row, line int) {
+	lp := self.lp
+	y := self.sticky_rows + row
+	lp.MoveCursorTo(1, y+1)
+	lp.QueueWriteString("\x1b[m")
+	lp.ClearToEndOfLine()
+	idx := self.sticky_rows + line
+	if idx < 0 || idx >= self.num_screen_lines {
+		return
+	}
+	pos := self.pos_for_line(idx)
+	ll := self.logical_lines.At(pos.logical_line)
+	ll.render_screen_line(pos.screen_line, lp, self.logical_lines.margin_size, self.logical_lines.columns)
+	lp.QueueWriteString("\x1b[m\r")
+	// Images are placed from their first line, the terminal clips them to
+	// the scroll region and reveals the rest as it is scrolled. When the
+	// first line is above the scroll region, the part of the image below
+	// it is placed from the first row. Placing an image again replaces it,
+	// as the same placement id is used.
+	if ll.line_type == IMAGE_LINE && pos.screen_line >= ll.image_lines_offset && (row == 0 || pos.screen_line == ll.image_lines_offset) {
+		self.draw_image_pair(ll, pos.screen_line-ll.image_lines_offset)
+	}
+	if self.current_search != nil {
+		if mkp := self.current_search.markup_line(pos, y); mkp != "" {
+			lp.QueueWriteString(mkp)
+		}
+	}
+	if mkp := self.add_mouse_selection_to_line(pos, y); mkp != "" {
+		lp.QueueWriteString(mkp)
+	}
+}
+
+// draw_sticky_header draws the title of the file and the separator below
+// it, for the file the screen line above the scroll region would be in, if
+// the sticky header was not there, so that the header of the next file
+// scrolls into the scroll region below it and replaces it, once it scrolls
+// past its top
+func (self *Handler) draw_sticky_header() {
+	if self.sticky_rows == 0 {
+		return
+	}
+	lp := self.lp
+	for y := range self.sticky_rows {
+		lp.MoveCursorTo(1, y+1)
+		lp.QueueWriteString("\x1b[m")
+		lp.ClearToEndOfLine()
+	}
+	pos := self.pos_for_line(self.scroller.FirstLine())
 	title_idx := self.logical_lines.TitleLineIdxFor(pos.logical_line)
 	if title_idx < 0 {
-		return 0
+		return
 	}
-	// If the next line is a different file's TITLE_LINE, skip sticky so the
-	// real title flows into view naturally instead of being consumed.
-	next := pos.logical_line + 1
-	if next < self.logical_lines.Len() && self.logical_lines.At(next).line_type == TITLE_LINE && next != title_idx {
-		return 0
+	for y := range sticky_header_rows {
+		lp.MoveCursorTo(1, y+1)
+		self.logical_lines.At(title_idx+y).render_screen_line(0, lp, self.logical_lines.margin_size, self.logical_lines.columns)
+		lp.QueueWriteString("\x1b[m")
 	}
-	// file title
-	self.logical_lines.At(title_idx).render_screen_line(0, self.lp, self.logical_lines.margin_size, self.logical_lines.columns)
-	self.lp.MoveCursorVertically(1)
-	self.lp.QueueWriteString("\x1b[m\r")
-	self.logical_lines.IncrementScrollPosBy(pos, 1)
-
-	// separator
-	self.logical_lines.At(title_idx+1).render_screen_line(0, self.lp, self.logical_lines.margin_size, self.logical_lines.columns)
-	self.lp.MoveCursorVertically(1)
-	self.lp.QueueWriteString("\x1b[m\r")
-	self.logical_lines.IncrementScrollPosBy(pos, 1)
-
-	return 2
 }
 
 func (self *Handler) draw_status_line() {
@@ -485,8 +610,8 @@ func (self *Handler) draw_status_line() {
 	} else if self.statusline_message != "" {
 		self.lp.QueueWriteString(message_format(wcswidth.TruncateToVisualLength(sanitize(self.statusline_message), self.screen_size.columns)))
 	} else {
-		num := self.logical_lines.NumScreenLinesTo(self.scroll_pos)
-		den := self.logical_lines.NumScreenLinesTo(self.max_scroll_pos)
+		num := self.scroller.FirstLine()
+		den := self.scroller.MaxFirstLine()
 		var frac int
 		if den > 0 {
 			frac = int((float64(num) * 100.0) / float64(den))
@@ -538,9 +663,7 @@ func (self *Handler) do_search(query string) {
 		self.statusline_message = fmt.Sprintf("No matches for: %#v", query)
 		self.lp.Beep()
 	} else {
-		if self.scroll_to_next_match(false, true) {
-			self.draw_screen()
-		} else {
+		if !self.do_scroll_to(func() bool { return self.scroll_to_next_match(false, true) }) {
 			self.lp.Beep()
 		}
 	}
@@ -584,58 +707,63 @@ func (self *Handler) on_key_event(ev *loop.KeyEvent) error {
 	return nil
 }
 
-func (self *Handler) scroll_lines(amt int) (delta int) {
-	before := self.scroll_pos
-	delta = self.logical_lines.IncrementScrollPosBy(&self.scroll_pos, amt)
-	if delta > 0 && self.max_scroll_pos.Less(self.scroll_pos) {
-		self.scroll_pos = self.max_scroll_pos
-		delta = self.logical_lines.Minus(self.scroll_pos, before)
-	}
+// do_scroll_to calls scroll_to inside an atomic update, updating the sticky
+// header and status line, returning the result of scroll_to
+func (self *Handler) do_scroll_to(scroll_to func() bool) (found bool) {
+	self.do_scroll(func() bool {
+		before := self.scroller.Position()
+		found = scroll_to()
+		return self.scroller.Position() != before
+	})
 	return
 }
 
+// scroll_to_next_change scrolls to the next (or previous) change, returning
+// whether there is one. Must be called inside an atomic update.
 func (self *Handler) scroll_to_next_change(backwards bool) bool {
+	cur := self.scroll_pos()
 	if backwards {
-		for i := self.scroll_pos.logical_line - 1; i >= 0; i-- {
+		for i := cur.logical_line - 1; i >= 0; i-- {
 			line := self.logical_lines.At(i)
 			if line.is_change_start {
-				self.scroll_pos = ScrollPos{i, 0}
-				return true
+				return self.scroll_to_pos(ScrollPos{i, 0})
 			}
 		}
 	} else {
-		for i := self.scroll_pos.logical_line + 1; i < self.logical_lines.Len(); i++ {
+		for i := cur.logical_line + 1; i < self.logical_lines.Len(); i++ {
 			line := self.logical_lines.At(i)
 			if line.is_change_start {
-				self.scroll_pos = ScrollPos{i, 0}
-				return true
+				return self.scroll_to_pos(ScrollPos{i, 0})
 			}
 		}
 	}
 	return false
 }
 
+// scroll_to_next_file scrolls to the next (or previous) file, returning
+// whether there is one. Must be called inside an atomic update.
 func (self *Handler) scroll_to_next_file(backwards bool) bool {
+	cur := self.scroll_pos()
 	if backwards {
-		for i := self.scroll_pos.logical_line - 1; i >= 0; i-- {
+		for i := cur.logical_line - 1; i >= 0; i-- {
 			line := self.logical_lines.At(i)
 			if line.line_type == TITLE_LINE {
-				self.scroll_pos = ScrollPos{i, 0}
-				return true
+				return self.scroll_to_pos(ScrollPos{i, 0})
 			}
 		}
 	} else {
-		for i := self.scroll_pos.logical_line + 1; i < self.logical_lines.Len(); i++ {
+		for i := cur.logical_line + 1; i < self.logical_lines.Len(); i++ {
 			line := self.logical_lines.At(i)
 			if line.line_type == TITLE_LINE {
-				self.scroll_pos = ScrollPos{i, 0}
-				return true
+				return self.scroll_to_pos(ScrollPos{i, 0})
 			}
 		}
 	}
 	return false
 }
 
+// scroll_to_next_match scrolls to the next (or previous) match, returning
+// whether there is one. Must be called inside an atomic update.
 func (self *Handler) scroll_to_next_match(backwards, include_current_match bool) bool {
 	if self.current_search == nil {
 		return false
@@ -651,17 +779,17 @@ func (self *Handler) scroll_to_next_match(backwards, include_current_match bool)
 		offset *= -1
 		delta *= -1
 	}
-	pos := self.scroll_pos
+	pos := self.scroll_pos()
 	if offset != 0 && self.logical_lines.IncrementScrollPosBy(&pos, offset) == 0 {
 		return false
 	}
+	max_pos := self.max_scroll_pos()
 	for {
 		if self.current_search.Has(pos) {
-			self.scroll_pos = pos
-			self.draw_screen()
+			self.scroll_to_pos(pos)
 			return true
 		}
-		if self.logical_lines.IncrementScrollPosBy(&pos, delta) == 0 || self.max_scroll_pos.Less(pos) {
+		if self.logical_lines.IncrementScrollPosBy(&pos, delta) == 0 || max_pos.Less(pos) {
 			break
 		}
 	}
@@ -674,7 +802,7 @@ func (self *Handler) change_context_count(val int) bool {
 		return false
 	}
 	self.current_context_count = val
-	p := self.scroll_pos
+	p := self.scroll_pos()
 	self.restore_position = &p
 	self.clear_mouse_selection()
 	self.generate_diff()
@@ -717,44 +845,41 @@ func (self *Handler) dispatch_action(name, args string) error {
 			args = "1"
 		}
 		amt, err := strconv.Atoi(args)
-		if err == nil {
-			if self.scroll_lines(amt) == 0 {
-				self.lp.Beep()
-			} else {
-				self.draw_screen()
-			}
-		} else {
+		if err != nil || !self.do_scroll(func() bool { return self.scroll_lines(amt) }) {
 			self.lp.Beep()
 		}
 	case `scroll_to`:
-		done := false
+		if self.logical_lines == nil {
+			self.lp.Beep()
+			break
+		}
+		prev := strings.Contains(args, `prev`)
+		var done bool
 		switch {
 		case strings.Contains(args, "file"):
-			done = self.scroll_to_next_file(strings.Contains(args, `prev`))
+			done = self.do_scroll_to(func() bool { return self.scroll_to_next_file(prev) })
 		case strings.Contains(args, `change`):
-			done = self.scroll_to_next_change(strings.Contains(args, `prev`))
+			done = self.do_scroll_to(func() bool { return self.scroll_to_next_change(prev) })
 		case strings.Contains(args, `match`):
-			done = self.scroll_to_next_match(strings.Contains(args, `prev`), false)
+			done = self.do_scroll_to(func() bool { return self.scroll_to_next_match(prev, false) })
 		case strings.Contains(args, `page`):
-			amt := self.screen_size.num_lines
+			amt := self.scroller.Height()
 			if strings.Contains(args, `half`) {
 				amt = amt / 2
 			}
-			if strings.Contains(args, `prev`) {
+			if prev {
 				amt *= -1
 			}
-			done = self.scroll_lines(amt) != 0
+			done = self.do_scroll(func() bool { return self.scroll_lines(amt) })
 		default:
-			npos := ScrollPos{}
-			if strings.Contains(args, `end`) {
-				npos = self.max_scroll_pos
-			}
-			done = npos != self.scroll_pos
-			self.scroll_pos = npos
+			done = self.do_scroll(func() bool {
+				if strings.Contains(args, `end`) {
+					return self.scroller.ScrollTo(self.lp, self.scroller.MaxPosition())
+				}
+				return self.scroller.ScrollTo(self.lp, 0)
+			})
 		}
-		if done {
-			self.draw_screen()
-		} else {
+		if !done {
 			self.lp.Beep()
 		}
 	case `change_context`:
@@ -784,8 +909,7 @@ func (self *Handler) on_mouse_event(ev *loop.MouseEvent) error {
 	if self.logical_lines == nil {
 		return nil
 	}
-	if ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&(loop.MOUSE_WHEEL_UP|loop.MOUSE_WHEEL_DOWN) != 0 {
-		self.handle_wheel_event(ev.Buttons&(loop.MOUSE_WHEEL_UP) != 0)
+	if self.handle_wheel_event(ev) {
 		return nil
 	}
 	if ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {

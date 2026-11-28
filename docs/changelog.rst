@@ -158,7 +158,9 @@ Detailed list of changes
 - A new :doc:`smooth scrolling protocol <smooth-scrolling-protocol>` that lets
   programs define up to four rectangular regions of the screen that the
   terminal scrolls, vertically or horizontally, by amounts in pixels, with
-  images moving along with the text
+  images moving along with the text. The :doc:`diff </kittens/diff>` and
+  :doc:`choose-app </kittens/choose-app>` kittens use it to scroll smoothly,
+  pixel by pixel, with touchpads and high resolution mouse wheels
 
 - A new mode (``5523``) to :ref:`report all mouse events to programs in full
   detail <detailed_mouse_events>`, in an encoding that is valid ECMA-48, unlike

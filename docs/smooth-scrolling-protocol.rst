@@ -49,8 +49,10 @@ scroll the box of text with a touchpad or a high resolution mouse wheel::
 
     kitten mouse-demo
 
-Its source code, in :file:`tools/cmd/mouse_demo/text_area.go`, is a complete
-example of using this protocol.
+Its source code, in :file:`tools/cmd/mouse_demo/text_area.go`, together with
+:file:`tools/tui/scrolling/scroller.go`, which implements scrolling lines of
+content in a region and is also used by the diff and choose-app kittens, is a
+complete example of using this protocol.
 
 The escape code
 -----------------

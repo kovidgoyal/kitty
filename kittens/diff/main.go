@@ -189,10 +189,10 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 	}
 
 	lp, err = loop.New()
-	loop.MouseTrackingMode(lp, loop.BUTTONS_AND_DRAG_MOUSE_TRACKING)
 	if err != nil {
 		return 1, err
 	}
+	lp.MouseTrackingMode(loop.BUTTONS_AND_DRAG_MOUSE_TRACKING).DetailedMouseEvents()
 	lp.ColorSchemeChangeNotifications()
 	h := Handler{left: left, right: right, lp: lp}
 	lp.OnInitialize = func() (string, error) {
@@ -200,6 +200,9 @@ func main(_ *cli.Command, opts_ *Options, args []string) (rc int, err error) {
 		lp.SetCursorShape(loop.BAR_CURSOR, true)
 		lp.AllowLineWrapping(false)
 		lp.SetWindowTitle(fmt.Sprintf("%s vs. %s", left, right))
+		// Sent before querying capabilities, so that the reply arrives before
+		// the diff is first drawn
+		lp.QuerySmoothScrolling()
 		lp.QueryCapabilities()
 		h.initialize()
 		return "", nil

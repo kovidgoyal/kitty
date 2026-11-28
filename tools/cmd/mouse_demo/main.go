@@ -12,7 +12,6 @@ import (
 	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
-	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
@@ -197,8 +196,7 @@ func Run(args []string) (rc int, err error) {
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING).DetailedMouseEvents()
 	var current_mouse_event *loop.MouseEvent
 	var dnd dnd_state
-	var text text_area
-	text.thumb_image = *graphics.NewScrollThumb(thumb_image_id)
+	text := new_text_area(lp, thumb_image_id)
 
 	// build_box_lines computes the drop box content lines based on current state.
 	build_box_lines := func() []string {
@@ -350,9 +348,9 @@ func Run(args []string) (rc int, err error) {
 		// The scroll indicator of the text box takes precedence, the mouse
 		// can be anywhere while dragging its thumb
 		switch {
-		case text.dragging:
+		case text.indicator.Dragging:
 			want_shape, ps = true, loop.GRABBING_POINTER
-		case text.hovering_thumb:
+		case text.indicator.Hovering:
 			want_shape, ps = true, loop.GRAB_POINTER
 		}
 		cur, has_shape := lp.CurrentPointerShape()
@@ -610,16 +608,16 @@ func Run(args []string) (rc int, err error) {
 		lp.SetCursorVisible(false)
 		lp.StartAcceptingDrops("", "text/plain", "text/uri-list")
 		lp.QuerySmoothScrolling()
-		text.thumb_image.Query(lp)
+		text.indicator.Thumb.Query(lp)
 		draw_all()
 		return "", nil
 	}
 	lp.OnEscapeCode = func(etype loop.EscapeCodeType, raw []byte) error {
 		switch {
-		case etype == loop.OSC && loop.IsSmoothScrollQueryResponse(raw) && !text.supported:
-			text.set_supported()
+		case etype == loop.OSC && loop.IsSmoothScrollQueryResponse(raw) && !text.scroller.Supported():
+			text.scroller.SetSupported()
 			draw_all()
-		case etype == loop.APC && text.thumb_image.IsSupportResponse(raw):
+		case etype == loop.APC && text.indicator.Thumb.IsSupportResponse(raw):
 			lp.StartAtomicUpdate()
 			text.set_images_supported(lp)
 			lp.EndAtomicUpdate()
@@ -627,8 +625,8 @@ func Run(args []string) (rc int, err error) {
 		return nil
 	}
 	lp.OnFinalize = func() string {
-		lp.RemoveSmoothScrollRegion(text_region_id)
-		text.thumb_image.Free(lp)
+		text.scroller.Remove(lp)
+		text.indicator.Free(lp)
 		lp.SetCursorVisible(true)
 		lp.StopAcceptingDrops()
 		return ""
@@ -641,14 +639,7 @@ func Run(args []string) (rc int, err error) {
 		defer lp.EndAtomicUpdate()
 		switch {
 		case text.handle_mouse(lp, ev):
-		case ev.Event_type == loop.MOUSE_WHEEL:
-			_, lines := ev.Wheel.Lines(text.cell_height, lines_per_click)
-			text.scroll(lp, lines)
-		case ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.MOUSE_WHEEL_UP != 0:
-			// The terminal does not support detailed wheel events
-			text.scroll(lp, -lines_per_click)
-		case ev.Event_type == loop.MOUSE_PRESS && ev.Buttons&loop.MOUSE_WHEEL_DOWN != 0:
-			text.scroll(lp, lines_per_click)
+		case text.handle_wheel(lp, ev):
 		}
 		current_mouse_event = ev
 		draw_top()

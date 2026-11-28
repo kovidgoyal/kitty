@@ -23,8 +23,13 @@ var _ = fmt.Print
 
 // A rendered icon ready for display
 type icon_info struct {
+	// The path to the rendered icon, a PNG file, or, for images rendered
+	// in memory, a key identifying the image
 	path          string
 	width, height int
+	// The pixels of images rendered in memory, as palette index and alpha
+	// pairs, see the graphics protocol docs for indexed color data
+	indexed_data []byte
 }
 
 // icon_loader finds and renders icons in the background
@@ -238,7 +243,11 @@ func (d *icon_display) transmit(lp *loop.Loop, ii icon_info) (id uint32, err err
 	d.next_id++
 	gc := d.new_command()
 	gc.SetAction(graphics.GRT_action_transmit).SetImageId(id).SetFormat(graphics.GRT_format_png).SetQuiet(graphics.GRT_quiet_silent)
-	if d.files_supported {
+	if ii.indexed_data != nil {
+		gc.SetFormat(graphics.GRT_format_indexed_alpha).SetDataWidth(uint64(ii.width)).SetDataHeight(uint64(ii.height))
+		gc.SetTransmission(graphics.GRT_transmission_direct)
+		err = gc.WriteWithPayloadToLoop(lp, ii.indexed_data)
+	} else if d.files_supported {
 		gc.SetTransmission(graphics.GRT_transmission_file)
 		err = gc.WriteWithPayloadToLoop(lp, []byte(ii.path))
 	} else {
@@ -269,34 +278,62 @@ func (d *icon_display) StartRender() {
 
 // Place displays the icon with its top left corner in the specified cell
 // (zero based), scaled to fit in a box of the specified size in cells,
-// centered. placement_id must be unique among the icons on screen and non-zero.
-func (d *icon_display) Place(lp *loop.Loop, ii icon_info, placement_id uint32, x, y, width_cells, height_cells int, sz loop.ScreenSize) error {
+// centered. placement_id must be unique among the icons on screen and
+// non-zero. The first skip_rows rows of the box are not drawn, for boxes
+// that start above the area in which they are displayed, as images cannot
+// be placed above the screen.
+func (d *icon_display) Place(lp *loop.Loop, ii icon_info, placement_id uint32, x, y, width_cells, height_cells, skip_rows int, sz loop.ScreenSize) error {
+	if skip_rows >= height_cells {
+		return nil
+	}
 	id, err := d.transmit(lp, ii)
 	if err != nil {
 		return err
 	}
 	cw, ch := max(1, int(sz.CellWidth)), max(1, int(sz.CellHeight))
 	box_w, box_h := width_cells*cw, height_cells*ch
+	// The top of the part of the box that is drawn, in pixels
+	visible_top := skip_rows * ch
 	gc := d.new_command()
 	gc.SetAction(graphics.GRT_action_display).SetImageId(id).SetPlacementId(placement_id).SetCursorMovement(graphics.GRT_cursor_static).SetQuiet(graphics.GRT_quiet_silent)
 	// The terminal scales the image to exactly fill the specified number of
-	// rows or columns, preserving the aspect ratio when only one is specified
+	// rows or columns, preserving the aspect ratio when only one is
+	// specified. When part of the image is not drawn, only the rest of it
+	// is placed, using a source rectangle.
 	if ii.width*box_h <= ii.height*box_w {
 		// fills the height, center horizontally
 		left := (box_w - ii.width*box_h/ii.height) / 2
 		x += left / cw
-		gc.SetRows(uint64(height_cells)).SetXOffset(uint64(left % cw))
+		gc.SetXOffset(uint64(left % cw))
+		if skip_rows > 0 {
+			src_top := visible_top * ii.height / box_h
+			gc.SetTopEdge(uint64(src_top)).SetHeight(uint64(ii.height - src_top))
+			y += skip_rows
+		}
+		gc.SetRows(uint64(height_cells - skip_rows))
 	} else {
 		// fills the width, center vertically
-		top := (box_h - ii.height*box_w/ii.width) / 2
-		y += top / ch
-		gc.SetColumns(uint64(width_cells)).SetYOffset(uint64(top % ch))
+		height := ii.height * box_w / ii.width
+		top := (box_h - height) / 2
+		if top >= visible_top {
+			y += top / ch
+			gc.SetYOffset(uint64(top % ch))
+		} else {
+			src_top := (visible_top - top) * ii.height / max(1, height)
+			gc.SetTopEdge(uint64(src_top)).SetHeight(uint64(max(1, ii.height-src_top)))
+			y += skip_rows
+		}
+		gc.SetColumns(uint64(width_cells))
 	}
 	lp.MoveCursorTo(x+1, y+1)
 	if err = gc.WriteWithPayloadToLoop(lp, nil); err != nil {
 		return err
 	}
-	d.placing.Add(placement_key{id, placement_id})
+	k := placement_key{id, placement_id}
+	d.placing.Add(k)
+	// Icons are also placed between renders, as the grid is scrolled, so
+	// that FinishRender() can remove them if they are not placed again
+	d.placed.Add(k)
 	return nil
 }
 

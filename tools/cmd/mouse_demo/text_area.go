@@ -7,6 +7,7 @@ import (
 
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/tui/scrolling"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
@@ -45,8 +46,6 @@ type text_line struct {
 }
 
 type text_area struct {
-	// Whether the terminal supports the smooth scrolling protocol
-	supported bool
 	// The wrapped lines of text and the width they were wrapped for
 	lines        []text_line
 	wrapped_for  int
@@ -58,21 +57,18 @@ type text_area struct {
 	box_left, box_top, box_width, box_height         int
 	inner_left, inner_top, inner_width, inner_height int
 	text_left                                        int
-	// The line of text in the first row of the interior and the offset of the
-	// region in pixels, see the smooth scrolling protocol docs
-	first_line, offset int
-	// Scroll amounts are accumulated in fractions of a pixel
-	pending_pixels float64
-	// The position in pixels used when the terminal does not support smooth scrolling
-	fallback_pos int
-	// The state of the thumb of the scroll indicator: whether it is being
-	// dragged, the vertical distance in pixels from its top to the mouse when
-	// the drag started, and whether the mouse is over it
-	dragging       bool
-	grab_offset    float64
-	hovering_thumb bool
-	// The image used to draw the thumb, when the terminal supports images
-	thumb_image graphics.ScrollThumb
+	lp                                               *loop.Loop
+	// Scrolls the lines of text in the interior of the box
+	scroller scrolling.Scroller
+	// The scroll bar in the right edge of the box
+	indicator scrolling.Indicator
+}
+
+func new_text_area(lp *loop.Loop, thumb_image_id uint32) *text_area {
+	t := &text_area{lp: lp}
+	t.scroller = scrolling.Scroller{Id: text_region_id, Capacity: text_region_capacity, Paint: t.paint_row}
+	t.indicator = scrolling.Indicator{Thumb: graphics.NewScrollThumb(thumb_image_id), AlwaysDrawTrack: true}
+	return t
 }
 
 func (t *text_area) wrap(width int) {
@@ -115,29 +111,6 @@ func (t *text_area) wrap(width int) {
 	}
 }
 
-// set_supported is called when the terminal is found to support smooth scrolling
-func (t *text_area) set_supported() {
-	if t.supported {
-		return
-	}
-	pos := t.fallback_pos
-	t.supported = true
-	t.first_line = pos / t.cell_height
-	t.offset = t.first_line*t.cell_height - pos
-}
-
-// The scroll position in pixels and its maximum
-func (t *text_area) position() int {
-	if !t.supported {
-		return t.fallback_pos
-	}
-	return t.first_line*t.cell_height - t.offset
-}
-
-func (t *text_area) max_position() int {
-	return max(0, len(t.lines)-t.inner_height) * t.cell_height
-}
-
 // layout positions the box in the rows [top, screen_height) of the screen
 func (t *text_area) layout(top int, sz loop.ScreenSize) {
 	sw, sh := int(sz.WidthCells), int(sz.HeightCells)
@@ -155,21 +128,15 @@ func (t *text_area) layout(top int, sz loop.ScreenSize) {
 	t.inner_width, t.inner_height = t.box_width-2, t.box_height-2
 	text_width := max(1, min(t.inner_width-4, max_text_col_width))
 	t.text_left = t.inner_left + (t.inner_width-text_width)/2
-	pos := t.position()
 	t.wrap(text_width)
-	// Start the region at a whole line, its offset is zero when it is defined
-	pos = max(0, min(pos, t.max_position()))
-	t.first_line = (pos + t.cell_height/2) / t.cell_height
-	t.offset = 0
-	t.fallback_pos = t.first_line * t.cell_height
+	t.scroller.SetNumLines(len(t.lines))
+	t.scroller.SetGeometry(t.inner_left, t.inner_top, t.inner_width, t.inner_height, t.cell_height)
+	t.indicator.SetGeometry(t.box_left+t.box_width-1, t.inner_top, t.inner_height, t.cell_width, t.cell_height)
 }
 
-func (t *text_area) paint_row(lp *loop.Loop, row int) {
+func (t *text_area) paint_row(row, idx int) {
+	lp := t.lp
 	lp.MoveCursorTo(t.inner_left+1, t.inner_top+row+1)
-	idx := t.first_line + row
-	if !t.supported {
-		idx = t.fallback_pos/t.cell_height + row
-	}
 	text, sgr := "", ""
 	if idx >= 0 && idx < len(t.lines) {
 		text, sgr = t.lines[idx].text, t.lines[idx].sgr
@@ -179,129 +146,19 @@ func (t *text_area) paint_row(lp *loop.Loop, row int) {
 	lp.QueueWriteString(strings.Repeat(" ", left) + sgr + text + "\x1b[m" + strings.Repeat(" ", right))
 }
 
-// When the terminal does not support images, the thumb of the scroll
-// indicator is drawn with block characters in steps of one eighth of a cell,
-// so that it moves smoothly as the text scrolls. Its geometry is then computed
-// in these steps.
-const eighths_per_cell = graphics.EighthsPerCell
-
-// thumb returns the position and size of the thumb of the scroll indicator
-// in units of 1/units_per_cell of a cell, with zero being the top of the
-// interior of the box. size is zero when all the text fits in the box.
-func (t *text_area) thumb(units_per_cell int) (start, size int) {
-	total := len(t.lines)
-	if total <= t.inner_height || t.inner_height < 1 {
-		return 0, 0
-	}
-	track := t.inner_height * units_per_cell
-	// The thumb is at least one cell high, so that it is easy to grab and,
-	// when drawn with block characters, no cell contains only the middle of
-	// the thumb, which cannot be drawn with them
-	size = max(units_per_cell, track*t.inner_height/total)
-	frac := float64(t.position()) / float64(max(1, t.max_position()))
-	start = int(frac*float64(track-size) + 0.5)
-	return
-}
-
-// The horizontal extent, in zero based cells, in which the scroll indicator
-// responds to the mouse: the indicator in the right edge of the box and the
-// cell to its left, as a single cell is a small target
-func (t *text_area) indicator_hit_cols() (first, last int) {
-	last = t.box_left + t.box_width - 1
-	return last - 1, last
-}
-
-// thumb_pixels returns the top of the thumb, relative to the top of the
-// interior of the box, its height and the height of the track, in pixels
-func (t *text_area) thumb_pixels() (top, height, track float64) {
-	units := t.thumb_units_per_cell()
-	start, size := t.thumb(units)
-	px_per_unit := float64(t.cell_height) / float64(units)
-	return float64(start) * px_per_unit, float64(size) * px_per_unit, float64(t.inner_height * t.cell_height)
-}
-
-// The thumb is positioned in pixels when drawn as an image and in eighths
-// of a cell when drawn with block characters
-func (t *text_area) thumb_units_per_cell() int {
-	if t.thumb_image.Supported {
-		return t.cell_height
-	}
-	return eighths_per_cell
-}
-
-// hit_test returns whether the mouse is over the scroll indicator and if so,
-// whether it is over the thumb, or above or below it
-func (t *text_area) hit_test(ev *loop.MouseEvent) (on_indicator bool, where int) {
-	first, last := t.indicator_hit_cols()
-	if !t.visible || ev.Cell.X < first || ev.Cell.X > last || ev.Cell.Y < t.inner_top || ev.Cell.Y >= t.inner_top+t.inner_height {
-		return false, 0
-	}
-	top, height, _ := t.thumb_pixels()
-	if height == 0 {
-		return false, 0
-	}
-	y := float64(ev.Pixel.Y - t.inner_top*t.cell_height)
-	switch {
-	case y < top:
-		return true, -1
-	case y >= top+height:
-		return true, 1
-	}
-	return true, 0
-}
-
-// draw_scroll_indicator draws the scroll bar in the right edge of the box
 func (t *text_area) draw_scroll_indicator(lp *loop.Loop) {
-	if t.thumb_image.Supported {
-		t.draw_scroll_indicator_image(lp)
-		return
-	}
-	start, size := t.thumb(eighths_per_cell)
-	end := start + size
-	color := "36"
-	if t.dragging || t.hovering_thumb {
-		color = "96"
-	}
-	x := t.box_left + t.box_width
-	for row := range t.inner_height {
-		lp.MoveCursorTo(x, t.inner_top+row+1)
-		lp.QueueWriteString(graphics.ThumbBlockCell(row, start, end, color))
-	}
-}
-
-// draw_scroll_indicator_image draws the scroll bar as a line in the right
-// edge of the box, with the thumb an image over it
-func (t *text_area) draw_scroll_indicator_image(lp *loop.Loop) {
-	start, size := t.thumb(t.cell_height)
-	if size == 0 {
-		t.thumb_image.Hide(lp)
-		return
-	}
-	x := t.box_left + t.box_width - 1
-	key := graphics.ScrollThumbKey{Width: t.cell_width, Height: size, Hovered: t.dragging || t.hovering_thumb}
-	t.thumb_image.Draw(lp, key, x, t.inner_top, start, t.cell_height)
+	t.indicator.SetFromScroller(&t.scroller)
+	t.indicator.Draw(lp)
 }
 
 // set_images_supported is called when the terminal is found to support images
 func (t *text_area) set_images_supported(lp *loop.Loop) {
-	if t.thumb_image.Supported {
+	if t.indicator.Thumb.Supported {
 		return
 	}
-	t.thumb_image.Supported = true
+	t.indicator.Thumb.Supported = true
 	if t.visible {
-		// Replace the thumb drawn with block characters by the line
-		t.draw_right_edge(lp)
 		t.draw_scroll_indicator(lp)
-	}
-}
-
-// draw_right_edge draws the line in the right edge of the box, over which the
-// thumb image is drawn
-func (t *text_area) draw_right_edge(lp *loop.Loop) {
-	x := t.box_left + t.box_width
-	for row := range t.inner_height {
-		lp.MoveCursorTo(x, t.inner_top+row+1)
-		lp.QueueWriteString("│")
 	}
 }
 
@@ -310,67 +167,34 @@ func (t *text_area) draw_right_edge(lp *loop.Loop) {
 // consumed. Must be called inside an atomic update.
 func (t *text_area) handle_mouse(lp *loop.Loop, ev *loop.MouseEvent) bool {
 	if !t.visible {
-		t.dragging, t.hovering_thumb = false, false
+		t.indicator.Dragging, t.indicator.Hovering = false, false
 		return false
 	}
-	left_held := ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0
-	on_indicator, where := t.hit_test(ev)
-	consumed := false
-	was_hovering, was_dragging := t.hovering_thumb, t.dragging
-	switch ev.Event_type {
-	case loop.MOUSE_PRESS:
-		if left_held && on_indicator {
-			consumed = true
-			if where == 0 {
-				top, _, _ := t.thumb_pixels()
-				t.dragging = true
-				t.grab_offset = float64(ev.Pixel.Y-t.inner_top*t.cell_height) - top
-			} else {
-				// Page up or down
-				t.scroll_pixels(lp, where*max(1, t.inner_height-1)*t.cell_height)
-			}
-		}
-	case loop.MOUSE_MOVE:
-		if t.dragging {
-			if left_held {
-				consumed = true
-				t.drag_to(lp, ev.Pixel.Y)
-			} else {
-				// The release was not reported, for instance, because it
-				// happened outside the window
-				t.dragging = false
-			}
-		}
-	case loop.MOUSE_RELEASE:
-		if t.dragging && ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
-			consumed = true
-			t.dragging = false
-		}
-	}
-	t.hovering_thumb = ev.Event_type != loop.MOUSE_LEAVE && on_indicator && where == 0
-	if was_hovering != t.hovering_thumb || was_dragging != t.dragging {
+	consumed, changed := t.indicator.HandleMouse(ev, scrolling.IndicatorActions{
+		ScrollTo: func(pos int) { t.scroll_to(lp, pos) },
+		Page: func(direction int) {
+			t.scroll_to(lp, t.scroller.Position()+direction*max(1, t.inner_height-1)*t.cell_height)
+		},
+	})
+	if changed {
 		t.draw_scroll_indicator(lp)
 	}
 	return consumed
 }
 
-// drag_to scrolls the text so that the thumb, dragged by the mouse, is at
-// the specified vertical pixel position of the mouse
-func (t *text_area) drag_to(lp *loop.Loop, y int) {
-	_, height, track := t.thumb_pixels()
-	if track <= height {
-		return
+func (t *text_area) scroll_to(lp *loop.Loop, pos int) {
+	if t.scroller.ScrollTo(lp, pos) {
+		t.draw_scroll_indicator(lp)
 	}
-	top := max(0, min(float64(y-t.inner_top*t.cell_height)-t.grab_offset, track-height))
-	target := int(top/(track-height)*float64(t.max_position()) + 0.5)
-	t.scroll_pixels(lp, target-t.position())
 }
 
 // draw draws the box and all its text and defines the smooth scroll region.
 // Must be called after clearing the screen.
 func (t *text_area) draw(lp *loop.Loop) {
 	// Clearing the screen removes the thumb image
-	t.thumb_image.Forget()
+	t.indicator.Thumb.Forget()
+	// and the smooth scroll region, when it is resized
+	t.scroller.Invalidate()
 	if !t.visible {
 		return
 	}
@@ -379,84 +203,22 @@ func (t *text_area) draw(lp *loop.Loop) {
 	for row := range t.inner_height {
 		lp.MoveCursorTo(t.box_left+1, t.inner_top+row+1)
 		lp.QueueWriteString("│")
-		t.paint_row(lp, row)
 	}
 	lp.MoveCursorTo(t.box_left+1, t.box_top+t.box_height)
 	lp.QueueWriteString("╰" + strings.Repeat("─", t.inner_width) + "╯")
-	if t.thumb_image.Supported {
-		t.draw_right_edge(lp)
-	}
+	t.scroller.Draw(lp)
 	t.draw_scroll_indicator(lp)
-	if t.supported {
-		lp.DefineSmoothScrollRegion(loop.SmoothScrollRegion{
-			Id: text_region_id, X: uint32(t.inner_left + 1), Y: uint32(t.inner_top + 1),
-			Width: uint32(t.inner_width), Height: uint32(t.inner_height), Capacity: text_region_capacity,
-		})
-	}
 }
 
-// scroll scrolls the text by the specified number of lines, which can be
-// fractional. Must be called inside an atomic update, so that the rows moving
-// into the region are drawn together with the scrolling.
-func (t *text_area) scroll(lp *loop.Loop, lines float64) {
-	if !t.visible {
-		return
-	}
-	t.pending_pixels += lines * float64(t.cell_height)
-	d := int(t.pending_pixels)
-	t.pending_pixels -= float64(d)
-	if d != 0 && !t.scroll_pixels(lp, d) {
-		// At the start or end of the text
-		t.pending_pixels = 0
-	}
-}
-
-// scroll_pixels scrolls the text by the specified number of pixels, limited
-// to the text, returning false if it could not be scrolled at all. Must be
-// called inside an atomic update, so that the rows moving into the region are
-// drawn together with the scrolling.
-func (t *text_area) scroll_pixels(lp *loop.Loop, d int) bool {
+// handle_wheel scrolls the text in response to wheel events, returning true
+// if the event is a wheel event. Must be called inside an atomic update.
+func (t *text_area) handle_wheel(lp *loop.Loop, ev *loop.MouseEvent) bool {
 	if !t.visible {
 		return false
 	}
-	pos := t.position()
-	d = max(0, min(pos+d, t.max_position())) - pos
-	if d == 0 {
-		return false
-	}
-	if !t.supported {
-		before := t.fallback_pos / t.cell_height
-		t.fallback_pos += d
-		if t.fallback_pos/t.cell_height != before {
-			for row := range t.inner_height {
-				t.paint_row(lp, row)
-			}
-		}
+	is_wheel, scrolled := t.scroller.HandleWheel(lp, ev, lines_per_click)
+	if scrolled {
 		t.draw_scroll_indicator(lp)
-		return true
 	}
-	// The same calculation as performed by the terminal, to know which rows
-	// move into the region, see the smooth scrolling protocol docs
-	h := t.cell_height
-	moved, shift := t.offset-d, 0
-	if d > 0 {
-		if moved < 0 {
-			shift = (-moved + h - 1) / h
-		}
-	} else if moved > 0 {
-		shift = -((moved + h - 1) / h)
-	}
-	t.offset = moved + shift*h
-	t.first_line += shift
-	lp.SmoothScroll(text_region_id, d)
-	n := min(max(shift, -shift), t.inner_height)
-	start := 0
-	if shift > 0 {
-		start = t.inner_height - n
-	}
-	for row := start; row < start+n; row++ {
-		t.paint_row(lp, row)
-	}
-	t.draw_scroll_indicator(lp)
-	return true
+	return is_wheel
 }

@@ -260,47 +260,29 @@ func TestCommandCompleter(t *testing.T) {
 func TestGridScroll(t *testing.T) {
 	// A header and 4 rows of tiles, of total height 1 + 4*7 = 29
 	rows := []grid_row{{header: "H"}, {items: []int{0}, tile_height: 7}, {items: []int{1}, tile_height: 7}, {items: []int{2}, tile_height: 7}, {items: []int{3}, tile_height: 7}}
-	g := new_grid_scroll(rows, 15)
+	g := new_grid_scroll(rows)
 	if diff := cmp.Diff([]int{0, 1, 8, 15, 22}, g.offsets); diff != "" || g.total != 29 {
 		t.Fatalf("Incorrect offsets: %d\n%s", g.total, diff)
 	}
-	if !g.scrollable() || g.max_first_row() != 3 || g.clamp(10) != 3 || g.clamp(-1) != 0 {
-		t.Fatalf("Incorrect scroll limits: %v %d", g.scrollable(), g.max_first_row())
-	}
-	// The thumb is viewport/total of the track and moves from top to bottom
-	track := 15 * 8
-	start, size := g.thumb(0, 8)
-	if start != 0 || size != track*15/29 {
-		t.Fatalf("Incorrect thumb at the top: %d %d", start, size)
-	}
-	if start, _ = g.thumb(3, 8); start != track-size {
-		t.Fatalf("Incorrect thumb at the bottom: %d", start)
-	}
-	if start, _ = g.thumb(10, 8); start != track-size {
-		t.Fatalf("Thumb not clamped: %d", start)
-	}
-	// Dragging the thumb to a position scrolls to the closest row
-	for _, tc := range []struct {
-		top  float64
-		want int
-	}{{-5, 0}, {0, 0}, {float64(track - size), 3}, {1000, 3}, {float64(track-size) * 8 / 15, 2}} {
-		if got := g.row_for_thumb(tc.top, 8); got != tc.want {
-			t.Errorf("Thumb at %v gave row %d instead of %d", tc.top, got, tc.want)
+	for line, expected := range map[int][2]int{-1: {-1, 0}, 0: {0, 0}, 1: {1, 0}, 7: {1, 6}, 8: {2, 0}, 28: {4, 6}, 29: {-1, 0}} {
+		if r, k := g.row_at(line); r != expected[0] || k != expected[1] {
+			t.Fatalf("Incorrect row for line %d: (%d, %d) != %v", line, r, k, expected)
 		}
 	}
-	if g.row_for_offset(14) != 3 || g.row_for_offset(5) != 2 || g.row_for_offset(100) != 3 {
-		t.Fatalf("Incorrect rows for offsets")
+	if r, _ := new_grid_scroll(nil).row_at(0); r != -1 {
+		t.Fatalf("Empty grid has a row")
 	}
-	// Everything fits
-	g = new_grid_scroll(rows, 40)
-	if g.scrollable() || g.max_first_row() != 0 {
-		t.Fatalf("Grid that fits is scrollable")
-	}
-	if _, size := g.thumb(0, 8); size != 0 {
-		t.Fatalf("Thumb shown when everything fits")
-	}
-	if new_grid_scroll(nil, 10).max_first_row() != 0 {
-		t.Fatalf("Incorrect max first row for an empty grid")
+	// Scrolling a row into view
+	for _, tc := range []struct{ top, bottom, pos, viewport, expected int }{
+		{10, 17, 5, 15, -1},
+		{10, 17, 12, 15, 10},
+		{10, 17, 0, 15, 2},
+		// Rows taller than the viewport show their top
+		{10, 30, 0, 15, 10},
+	} {
+		if got := target_for_row(tc.top, tc.bottom, tc.pos, tc.viewport); got != tc.expected {
+			t.Fatalf("Incorrect scroll target for %v: %d", tc, got)
+		}
 	}
 }
 
@@ -339,3 +321,46 @@ func TestActivationTokenIds(t *testing.T) {
 		t.Fatalf("Invalid or non-unique activation token ids: %#v %#v", a, b)
 	}
 }
+
+func TestPlaceholderImage(t *testing.T) {
+	w, h := 40, 30
+	data, err := render_placeholder("A", w, h, 0.8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) != 2*w*h {
+		t.Fatalf("Incorrect size of placeholder data: %d", len(data))
+	}
+	// The text is drawn in the foreground color, centered horizontally
+	var left, right, count int
+	for i := 0; i < len(data); i += 2 {
+		if data[i+1] > 0 {
+			if data[i] != placeholder_color {
+				t.Fatalf("Incorrect placeholder color: %d", data[i])
+			}
+			if x := (i / 2) % w; x < w/2 {
+				left++
+			} else {
+				right++
+			}
+			count++
+		}
+	}
+	if count == 0 || abs(left-right) > count/4 {
+		t.Fatalf("Placeholder text not drawn or not centered: %d %d", left, right)
+	}
+	for _, tc := range []struct {
+		it       *item
+		expected string
+	}{
+		{&item{entry: &DesktopEntry{Name: "firefox"}, choice: Choice{DesktopID: "firefox.desktop"}}, "F"},
+		{&item{entry: &DesktopEntry{Name: "中文"}, choice: Choice{DesktopID: "x.desktop"}}, command_placeholder},
+		{&item{entry: &DesktopEntry{Name: "vim"}}, command_placeholder},
+	} {
+		if got := placeholder_text(tc.it); got != tc.expected {
+			t.Fatalf("Incorrect placeholder text for %#v: %#v", tc.it.entry.Name, got)
+		}
+	}
+}
+
+func abs(x int) int { return max(x, -x) }

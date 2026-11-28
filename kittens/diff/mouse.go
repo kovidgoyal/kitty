@@ -47,15 +47,28 @@ var RelevantKittyOpts = sync.OnceValue(func() KittyOpts {
 	return read_relevant_kitty_opts()
 })
 
-func (self *Handler) handle_wheel_event(up bool) {
-	amt := int(math.Round(RelevantKittyOpts().Wheel_scroll_multiplier))
-	if amt == 0 {
-		amt = 1
+// handle_wheel_event scrolls in response to wheel events, smoothly, pixel by
+// pixel, for high resolution wheels and touchpads, when the terminal supports
+// it. Returns true if the event is a wheel event.
+func (self *Handler) handle_wheel_event(ev *loop.MouseEvent) (is_wheel bool) {
+	// Used when the terminal does not report the number of lines per wheel click
+	lines_per_click := math.Round(RelevantKittyOpts().Wheel_scroll_multiplier)
+	if lines_per_click == 0 {
+		lines_per_click = 1
 	}
-	if up {
-		amt *= -1
-	}
-	_ = self.dispatch_action(`scroll_by`, strconv.Itoa(amt))
+	self.do_scroll(func() (scrolled bool) {
+		is_wheel, scrolled = self.scroller.HandleWheel(self.lp, ev, lines_per_click)
+		return
+	})
+	return
+}
+
+// pos_for_row returns the position of the screen line displayed in the
+// specified row of the screen, which must be in the scroll region, and
+// whether there is a line there
+func (self *Handler) pos_for_row(y int) (ScrollPos, bool) {
+	idx := self.sticky_rows + self.scroller.LineAtRow(y-self.sticky_rows)
+	return self.pos_for_line(idx), idx >= 0 && idx < self.num_screen_lines
 }
 
 type line_pos struct {
@@ -93,21 +106,25 @@ func (self *Handler) line_pos_from_pos(x int, pos ScrollPos) *line_pos {
 
 func (self *Handler) start_mouse_selection(ev *loop.MouseEvent) {
 	available_cols := self.logical_lines.columns / 2
-	if ev.Cell.Y >= self.screen_size.num_lines || ev.Cell.X < self.logical_lines.margin_size || (ev.Cell.X >= available_cols && ev.Cell.X < available_cols+self.logical_lines.margin_size) {
+	if ev.Cell.Y >= self.screen_size.num_lines || ev.Cell.Y < self.sticky_rows || ev.Cell.X < self.logical_lines.margin_size || (ev.Cell.X >= available_cols && ev.Cell.X < available_cols+self.logical_lines.margin_size) {
 		return
 	}
-	pos := self.scroll_pos
-	self.logical_lines.IncrementScrollPosBy(&pos, ev.Cell.Y)
+	pos, ok := self.pos_for_row(ev.Cell.Y)
+	if !ok {
+		return
+	}
 	ll := self.logical_lines.At(pos.logical_line)
 	if ll.line_type == EMPTY_LINE || ll.line_type == IMAGE_LINE {
 		return
 	}
-	self.mouse_selection.StartNewSelection(ev, self.line_pos_from_pos(ev.Cell.X, pos), 0, self.screen_size.num_lines-1, self.screen_size.cell_width, self.screen_size.cell_height)
+	self.mouse_selection.StartNewSelection(ev, self.line_pos_from_pos(ev.Cell.X, pos), self.sticky_rows, self.screen_size.num_lines-1, self.screen_size.cell_width, self.screen_size.cell_height)
 }
 
 func (self *Handler) drag_scroll_tick(timer_id loop.IdType) error {
 	return self.mouse_selection.DragScrollTick(timer_id, self.lp, self.drag_scroll_tick, func(amt int, ev *loop.MouseEvent) error {
-		if self.scroll_lines(amt) != 0 {
+		self.lp.StartAtomicUpdate()
+		defer self.lp.EndAtomicUpdate()
+		if self.do_scroll(func() bool { return self.scroll_lines(amt) }) {
 			self.do_update_mouse_selection(ev)
 			self.draw_screen()
 		}
@@ -131,10 +148,8 @@ func (self *Handler) update_mouse_selection(ev *loop.MouseEvent) {
 }
 
 func (self *Handler) do_update_mouse_selection(ev *loop.MouseEvent) (changed bool) {
-	pos := self.scroll_pos
-	y := ev.Cell.Y
-	y = utils.Max(0, utils.Min(y, self.screen_size.num_lines-1))
-	self.logical_lines.IncrementScrollPosBy(&pos, y)
+	y := max(self.sticky_rows, min(ev.Cell.Y, self.screen_size.num_lines-1))
+	pos, _ := self.pos_for_row(y)
 	x := self.mouse_selection.StartLine().MinX()
 	return self.mouse_selection.Update(ev, self.line_pos_from_pos(x, pos))
 }
