@@ -3071,6 +3071,18 @@ move_cursor_past_multicell(Screen *self, index_type required_width) {
 }
 
 static void
+move_cursor_to_fit(Screen *self, index_type required_width) {
+    // Move the cursor so that required_width cells fit in the line after it,
+    // to the next line or back, as for any char, but, unlike
+    // move_cursor_past_multicell(), never past the lower rows of multiline
+    // chars. Used for parts of chars, which are drawn exactly where requested,
+    // removing the chars in the way.
+    if (self->cursor->x + required_width <= self->columns) return;
+    if (self->modes.mDECAWM && linefeed_moves_to_new_line(self)) continue_to_next_line(self);
+    else self->cursor->x = required_width > self->columns ? 0 : self->columns - required_width;
+}
+
+static void
 move_widened_char_past_multiline_chars(Screen *self, text_loop_state *s, CPUCell *cp, index_type xpos, index_type ypos, index_type old_width, CPUCell c) {
     // Move the char, of old_width cells starting at xpos in the line ypos, whose
     // cells are cp, to the first place at or after it with enough room for it at
@@ -3857,6 +3869,9 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc,
     // Draw the cells of the multicell char mcd in part of its block, or all of
     // them when part is NULL
     const MulticellPart whole = {.columns = mcd.width * mcd.scale, .rows = mcd.scale};
+    // Parts are drawn exactly where requested, unlike complete chars, which
+    // are moved past the lower rows of multiline chars in their way
+    const bool is_part = part != NULL;
     if (!part) part = &whole;
     index_type width = part->columns;
     index_type height = part->rows;
@@ -3876,7 +3891,8 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc,
     }
     // Cells drawn over the same cells of the same char replace them in place,
     // they are neither skipped, as lower rows of a multiline char, nor removed
-    if (!span_has_same_cells_of_char(self, mcd, part)) move_cursor_past_multicell(self, width);
+    if (is_part) move_cursor_to_fit(self, width);
+    else if (!span_has_same_cells_of_char(self, mcd, part)) move_cursor_past_multicell(self, width);
     const bool moved_to_other_rows = self->cursor->y != first_row;
     if (height > 1) {
         if (self->cursor->y <= self->margin_bottom) {

@@ -362,7 +362,9 @@ Characters occupying multiple cells
    rectangle, it would overwrite the cells outside it. Drawing the cells of a
    character again, in the same positions, does not affect its other cells,
    so rows containing parts of characters can be drawn again individually,
-   for example, the partially visible row at the edge of the region.
+   for example, the partially visible row at the edge of the region, as long
+   as the cells of the parts are not erased first, which would erase the
+   whole character.
 
 Selections
    Selections inside the rectangle of a region move with its cells.

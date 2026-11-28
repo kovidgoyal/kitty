@@ -238,18 +238,24 @@ class TestMulticell(BaseTest):
         s.cursor.bold = True
         draw_at(s, 2, 1, 'A', width=1, scale=2, part=(0, 1, 0, 1))
         ae((s.line(1).cursor_from(1).bold, s.line(2).cursor_from(1).bold), (False, True))
-        # drawing the cells of another char over its lower rows skips them, as for any char
+        # parts are drawn exactly at the cursor, drawing the cells of another
+        # char over its lower rows removes it entirely, rather than skipping
+        # them, as for complete chars
         draw_at(s, 2, 1, 'B', width=1, scale=2, part=(0, 1, 0, 1))
-        ae((s.cursor.x, cells(s, 2, range(1, 5))), (5, [(0, 1, 2, 1), (1, 1, 2, 1), (0, 1, 2, 1), (1, 1, 2, 1)]))
-        ae(cells(s, 1, range(1, 5)), [(0, 0, 2, 1), (1, 0, 2, 1), None, None])
+        ae((s.cursor.x, cells(s, 2, range(1, 5))), (3, [(0, 1, 2, 1), (1, 1, 2, 1), None, None]))
+        ae(cells(s, 1, range(1, 5)), [None, None, None, None])
+        ae(s.line(2).cursor_from(1).bold, True)
+        self.assertNotIn('A', str(s.line(1)))
         # as does drawing the same char at other positions in its block
-        draw_at(s, 2, 1, 'A', width=1, scale=2, part=(1, 1, 1, 1))
-        ae((s.cursor.x, cells(s, 1, range(1, 3))), (6, [(0, 0, 2, 1), (1, 0, 2, 1)]))
-        # and drawing them over its top row removes it entirely
-        draw_at(s, 1, 1, 'C', width=1, scale=2, part=(0, 0, 0, 1))
+        draw_at(s, 1, 1, 'B', width=1, scale=2, part=(0, 0, 0, 1))
         ae(cells(s, 1, range(1, 3)), [(0, 0, 2, 1), (1, 0, 2, 1)])
-        ae(cells(s, 2, range(1, 3)), [None, None])
-        ae(s.cpu_cells(1, 1)['text'], 'C')
+        draw_at(s, 2, 1, 'B', width=1, scale=2, part=(1, 1, 1, 1))
+        ae((s.cursor.x, cells(s, 1, range(1, 3)), cells(s, 2, range(1, 3))), (2, [None, None], [(1, 1, 2, 1), None]))
+        # complete chars are still moved past the lower rows of multiline chars
+        s = self.create_screen(cols=6, lines=4)
+        draw_at(s, 1, 1, 'A', scale=2)
+        draw_at(s, 2, 1, 'C', scale=1)
+        ae((cells(s, 2, range(1, 4)), s.cpu_cells(2, 3)['text']), ([(0, 1, 2, 1), (1, 1, 2, 1), (0, 0, 1, 1)], 'C'))
 
     def test_multicell_parts_as_ansi(self):
         # Chars of which only some cells are present are written as the parts
@@ -346,6 +352,15 @@ class TestMulticell(BaseTest):
         draw_at(s, 2, 2, 'A', width=1, scale=3, part=(1, 2, 2, 1))
         ansi = round_trip(s)
         self.assertIn('\x1b[2C\x1b]66;w=1:s=3:x=1:y=2;A\a', ansi)
+        # also when the cells not written start at the first column, after cells not written elsewhere in a line above
+        s = self.create_screen(cols=8, lines=4)
+        draw_at(s, 0, 3, 'X', scale=2)
+        draw_at(s, 1, 5, 'P', width=1, scale=2, part=(0, 1, 0, 1))
+        draw_at(s, 1, 0, 'Y', scale=2)
+        draw_at(s, 2, 2, 'Q', width=1, scale=2, part=(0, 1, 0, 1))
+        ansi = round_trip(s)
+        self.assertIn('\x1b[2C\x1b]66;w=1:s=2:y=1;P\a', ansi)
+        self.assertIn('\x1b[2C\x1b]66;w=1:s=2:y=1;Q\a', ansi)
 
         # chars split between the scrollback and the screen
         s = setup(scrollback=20)

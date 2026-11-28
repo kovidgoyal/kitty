@@ -201,7 +201,7 @@ text_in_cell_ansi(ANSILineState *s, const Line *line, index_type x, bool skip_mu
         const MulticellColumns cols = multicell_char_columns(line->cpu_cells, line->xnum, x);
         if (x != cols.start) return num_cells_to_skip_for_tab;
         if (skip_multiline_non_zero_lines && c->y && rows_continuing_multicell_char(s, line, cols, -1, 1)) {
-            if (s->skipped_limit != cols.start) s->skipped_start = cols.start;
+            if (!s->skipped_limit || s->skipped_limit != cols.start) s->skipped_start = cols.start;
             s->skipped_limit = cols.limit;
             return num_cells_to_skip_for_tab;
         }
@@ -216,10 +216,10 @@ text_in_cell_ansi(ANSILineState *s, const Line *line, index_type x, bool skip_mu
             } else start_multicell_if_needed(s, c);
         } else {
             close_multicell(s);
-            if (c->y && s->skipped_limit && s->skipped_limit == x) {
+            if (s->skipped_limit && s->skipped_limit == x) {
                 // A terminal moves the cursor past the cells not written when
-                // writing text over them, except for the same cells of the
-                // same char, which this part can be, so move it explicitly
+                // writing text over them, but parts are drawn exactly at the
+                // cursor, so move it explicitly
                 ensure_space_in_ansi_output_buf(s, 16);
                 s->output_buf->buf[s->output_buf->len++] = 0x1b;
                 s->output_buf->buf[s->output_buf->len++] = '[';

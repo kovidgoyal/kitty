@@ -223,12 +223,17 @@ Drawing part of a character behaves exactly as drawing a character in a block
 of ``c`` by ``r`` cells, as described in :ref:`text_sizing_wrap`, except that
 the terminal renders the corresponding part of the character, as it would be
 rendered in its complete block, in each of the cells. In particular, the cursor
-moves ``c`` cells to the right. The cells drawn keep their position in the
-complete character: the rules for overwriting characters below apply to them
-using the row of the complete character they are in. So, for example,
-overwriting the bottom half of a double sized character drawn by itself with
-normal text skips over it, as for any cell after the first row of a multicell
-character, use erase controls, such as ``EL`` and ``ECH``, to remove it.
+moves ``c`` cells to the right. Unlike complete characters, parts are always
+drawn exactly at the cursor position, the rule for overwriting cells after the
+first row of a multicell character below, which moves the cursor past them,
+does not apply. Instead, the multicell characters in the cells drawn are
+erased. The cells drawn keep their position in the complete character: when
+other text is drawn over them, the rules for overwriting characters below
+apply to them using the row of the complete character they are in. So, for
+example, overwriting the bottom half of a double sized character drawn by
+itself with normal text skips over it, as for any cell after the first row of
+a multicell character, use erase controls, such as ``EL`` and ``ECH``, or draw
+a part over it, to remove it.
 
 When the cells of a character are next to each other, in the same positions
 relative to each other as in its complete block, they form a single
@@ -247,7 +252,10 @@ contain the same cells of the same character, at the same positions in its
 block, replaces them without erasing the other cells of the character, unlike
 the overwriting rules below. This allows programs to draw the rows of a
 character individually, for example, to draw again only one row of the
-screen, without having to draw the rest of the character.
+screen, without having to draw the rest of the character. Note that erasing
+the cells first, for example, with ``ECH``, would erase the whole character,
+including its cells in the other rows, so a program drawing a row again should
+erase only the other cells of the row.
 
 Fixing the character width issue for the terminal ecosystem
 ---------------------------------------------------------------------
