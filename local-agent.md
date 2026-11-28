@@ -4,6 +4,7 @@ copy_resource: bypy/b/linux/64/pkg/slang
 add_to_path: bypy/b/linux/64/pkg/slang/bin
 prepend_to_path: kitty/launcher
 pre_commit: ./autoformat
+pydep: sphinx-design
 
 # System Instructions & Project Context
 
@@ -91,3 +92,6 @@ Before declaring a task complete, you must follow this exact verification lifecy
    them by running kitty and using the remote control API as described above.
 6. If the change you have made is user facing, and you are on master, update the docs/changelog.rst
    file with a brief description of your changes
+7. If you changed docs or added new options/cli flags or similar run:
+    make FAIL_WARN=1 docs
+    to make sure docs are not broken
