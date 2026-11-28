@@ -430,12 +430,16 @@ their interactions with multicell characters.
 **Insert lines** (``CSI L`` aka ``IL``)
     When inserting ``n`` lines at cursor position ``y`` any multi-line
     characters that are split at the line ``y`` must be erased. A split happens
-    when the second or subsequent row of the multi-line character is on the line
-    ``y``. The insertion causes ``n`` lines to be removed from the bottom of
-    the screen, any multi-line characters are split at the bottom of the screen
-    must be erased. A split is when any row of the multi-line character except
-    the last row is on the last line of the screen after the insertion of ``n``
-    lines.
+    when a multi-line character has rows on both the line ``y`` and the line
+    above it. The insertion causes ``n`` lines to be removed from the bottom
+    of the scroll region. When the bottom of the scroll region is the last line
+    of the screen, multi-line characters with some of their rows removed this
+    way are partially scrolled off the bottom of the screen and must be kept,
+    their remaining rows are displayed partially, as for characters scrolled
+    off the bottom of the screen when scrolling down. Otherwise, multi-line
+    characters with some of their rows removed this way must be erased, as must
+    multi-line characters that cross the bottom of the scroll region, with
+    rows both in the region and below it, as the insertion would separate them.
 
 **Delete lines** (``CSI M`` aka ``DL``)
     When deleting ``n`` lines at cursor position ``y`` any multicell character

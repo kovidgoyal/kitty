@@ -7034,6 +7034,17 @@ screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *overlay_l
 static bool range_row_cells(Screen *self, int y, const CPUCell **cells);
 
 static const CPUCell *
+scrollback_row_cells(Screen *self, int y) {
+    // The cells of range line y, NULL when it is not in the screen or the
+    // scrollback. Unlike range_row_cells() the row above the scrollback, the
+    // last line of the pager history, is not included, as it cannot be
+    // displayed or selected.
+    if (y < -(int)self->historybuf->count) return NULL;
+    const CPUCell *cells;
+    return range_row_cells(self, y, &cells) ? cells : NULL;
+}
+
+static const CPUCell *
 rendered_row_cells(Screen *self, int y) {
     // The cells of range line y as rendered, from the snapshot while rendering
     // is paused, NULL when there is no such row. Unlike the lines, getting
@@ -7043,8 +7054,7 @@ rendered_row_cells(Screen *self, int y) {
         if (row < 0 || row >= (int)self->paused_rendering.linebuf->ynum) return NULL;
         return linebuf_cpu_cells_for_line(self->paused_rendering.linebuf, (index_type)row);
     }
-    const CPUCell *cells;
-    return range_row_cells(self, y, &cells) ? cells : NULL;
+    return scrollback_row_cells(self, y);
 }
 
 static bool
@@ -7763,9 +7773,9 @@ typedef struct RangeNeighbourRows {
 static bool
 range_neighbour_row(void *ctx, int dy, const CPUCell **cells) {
     // Selections are of the screen and the scrollback, the rows above the
-    // scrollback, which are not known, are not part of them
+    // scrollback, including the last line of the pager history, are not part of them
     const RangeNeighbourRows *r = ctx;
-    if (!range_row_cells(r->screen, r->y + dy, cells)) *cells = NULL;
+    *cells = scrollback_row_cells(r->screen, r->y + dy);
     return true;
 }
 
@@ -7774,10 +7784,11 @@ continues_from_row_above(Screen *self, int y, index_type x, const CPUCell *c) {
     // Whether the cell c, in column x of range line y, continues a multiline
     // char from the row above, rather than being the top row of the part of
     // the char present. Selections are of the screen and the scrollback, so
-    // the rows above the scrollback, which are not known, do not continue it.
+    // the rows above the scrollback, including the last line of the pager
+    // history, do not continue it.
     if (!c->is_multicell || !c->y) return false;
-    const CPUCell *above;
-    return range_row_cells(self, y - 1, &above) && above && continues_multicell_char(above + x, c, c->y - 1u);
+    const CPUCell *above = scrollback_row_cells(self, y - 1);
+    return above && continues_multicell_char(above + x, c, c->y - 1u);
 }
 
 static bool

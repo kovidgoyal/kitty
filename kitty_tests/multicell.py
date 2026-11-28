@@ -516,6 +516,65 @@ class TestMulticell(BaseTest):
             parse_bytes(s, seq)
             ae([cell_y(s, y) for y in range(s.lines)], [None] * s.lines, seq)
 
+    def test_multicell_chars_in_scrollback(self):
+        # Multiline chars split between the scrollback and the screen, and
+        # those whose top rows were moved out of the top of the scrollback,
+        # into the pager history or discarded
+        from kitty.window import as_text
+
+        ae = self.ae
+
+        def screen(scrollback, num_lines, **opts):
+            s = self.create_screen(cols=6, lines=5, scrollback=scrollback, options=opts or None)
+            s.draw('top')
+            s.cursor_position(2, 1)
+            multicell(s, 'A', scale=3)
+            s.draw('x')
+            parse_bytes(s, b'\x1b[5;1H' + b'\n' * num_lines)
+            return s
+
+        def selected_rows(s, y0, y1):
+            # the range lines highlighted when selecting the visual rows y0 to y1
+            s.start_selection(0, y0)
+            s.update_selection(3, y1)
+            sel = s.current_selections()
+            leading = len(sel) // s.columns - s.lines
+            ans = [y - s.scrolled_by for y in range(-leading, s.lines) if sel[(y + leading) * s.columns] & 1]
+            return ans
+
+        # split between the scrollback and the screen
+        s = screen(5, 2)
+        ae([s.cpu_cells(y, 0)['y'] for y in (-1, 0, 1)], [0, 1, 2])
+        ae(as_text(s, as_ansi=True, add_history=True).count('A'), 1)
+        self.assertIn('\x1b]66;s=3;A\x07x', as_text(s, as_ansi=True, add_history=True))
+        self.assertIn('\x1b]66;w=1:s=3:y=1;A\x07', as_text(s, as_ansi=True))
+        s.start_selection(0, -1)
+        s.update_selection(3, 1)
+        ae(s.text_for_selection(False, False), ('Ax',))
+        ae(s.text_for_selection(True, False), ('\x1b]66;s=3;A\x07x', '\x1b[m'))
+        s.scroll(2, True)
+        ae(selected_rows(s, 1, 1), [-1, 0, 1])
+
+        # with the top row in the pager history or discarded
+        for ph in (1024, 0):
+            s = screen(2, 7, scrollback_pager_history_size=ph)
+            top = -s.historybuf.count
+            ae([s.cpu_cells(y, 0)['y'] for y in (top, top + 1)], [1, 2], ph)
+            ansi = as_text(s, as_ansi=True, add_history=True)
+            ae(ansi.count('A'), 1, ph)
+            if ph:
+                # written complete into the pager history, which the scrollback continues
+                self.assertIn('\x1b]66;s=3;A\x07x', s.historybuf.pagerhist_as_text())
+            else:
+                self.assertIn('\x1b]66;w=1:s=3:y=1;A\x07', ansi)
+            # selections are only of the scrollback and the screen
+            s.start_selection(0, top)
+            s.update_selection(3, top)
+            ae(s.text_for_selection(False, False), ('A',), ph)
+            ae(s.text_for_selection(True, False), ('\x1b]66;w=1:s=3:y=1;A\x07', '\x1b[m'), ph)
+            s.scroll(s.historybuf.count, True)
+            ae(selected_rows(s, 0, 0), [top, top + 1], ph)
+
     def test_partial_multiline_chars(self):
         # Multiline chars can be partially scrolled off the edges of the screen
         # or the history buffer, such chars are kept and rendered partially.
