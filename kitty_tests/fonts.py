@@ -1695,6 +1695,31 @@ class BidiLigatureRendering(BidiRenderingBase):
                 sprites = self.screen_sprites(text, strategy, cursor_x)
                 self.ae(sprites[2:4] != [single, single], ligated)
 
+    def test_ligatures_at_cursor_in_multiline_chars(self):
+        # Ligatures are disabled in the rows of the char under the cursor
+        # that are present, a part of a char is not under the cursor when the
+        # row above it is not part of the char
+        def sprites(setup, strategy, cursor):
+            s = self.create_screen(cols=8, lines=3, scrollback=0)
+            s.disable_ligatures = strategy
+            parse_bytes(s, setup)
+            s.cursor.x, s.cursor.y = cursor
+            s.test_update_cell_data(self.font_size, self.dpi, self.dpi)
+            return [
+                [bytes(self.sprites[sprite_idx_to_pos(s.line(y).sprite_at(x), setup_for_testing.xnum, setup_for_testing.ynum)]) for x in range(1, 5)]
+                for y in range(3)
+            ]
+
+        complete = b'\x1b[1;2H\x1b]66;s=2:w=2;==\x07'
+        part = b'\x1b[2;2H\x1b]66;s=2:w=2:y=1;==\x07'
+        ae = self.ae
+        # the cursor on the bottom row of a complete char
+        self.assertNotEqual(sprites(complete, 'never', (2, 1))[0], sprites(complete, 'always', (2, 1))[0])
+        ae(sprites(complete, 'cursor', (2, 1))[:2], sprites(complete, 'always', (2, 1))[:2])
+        # the cursor above a part, on a row that is not part of the char
+        ae(sprites(part, 'cursor', (2, 0))[1], sprites(part, 'never', (2, 0))[1])
+        ae(sprites(part, 'cursor', (2, 1))[1], sprites(part, 'always', (2, 1))[1])
+
 
 def test_chars(chars: str = '╌', sz: int = 128) -> None:
     # kitty +runpy "from kitty.fonts.box_drawing import test_chars; test_chars('XXX')"

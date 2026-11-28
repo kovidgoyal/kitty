@@ -2793,13 +2793,9 @@ run_fonts_are_equal(const RunFont *a, const RunFont *b) {
 }
 
 static bool
-multicell_intersects_cursor(const Line *line, index_type lnum, const Cursor *cursor) {
-    const CPUCell *c = line->cpu_cells + cursor->x;
-    if (c->is_multicell) {
-        index_type min_y = lnum > c->y ? lnum - c->y : 0;
-        index_type max_y = lnum + (c->scale - c->y - 1);
-        return min_y <= cursor->y && cursor->y <= max_y;
-    } else return lnum == cursor->y;
+char_intersects_cursor(index_type lnum, const RenderCursor *cursor) {
+    // Whether the cell in the column of the cursor of the line lnum is in the char under the cursor
+    return cursor->char_top <= lnum && lnum < cursor->char_limit;
 }
 
 // The maximum width in cells of a multicell char that is rendered when split, see render_line()
@@ -2844,12 +2840,19 @@ level_stretch_end(const uint8_t *levels, index_type i, index_type xnum) {
 // bidi engine guarantees
 void
 render_line(
-    FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc, const uint8_t *levels) {
+    FONTS_DATA_HANDLE fg_,
+    Line *line,
+    index_type lnum,
+    const RenderCursor *render_cursor,
+    DisableLigature disable_ligature_strategy,
+    ListOfChars *lc,
+    const uint8_t *levels) {
+    const Cursor *cursor = render_cursor ? render_cursor->cursor : NULL;
 #define RENDER                                                                                                          \
     if (run_font.font_idx != NO_FONT && i > first_cell_in_run) {                                                        \
         int cursor_offset = -1;                                                                                         \
         if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x <= i && cursor->x < line->xnum && \
-            multicell_intersects_cursor(line, lnum, cursor))                                                            \
+            char_intersects_cursor(lnum, render_cursor))                                                                \
             cursor_offset = cursor->x - first_cell_in_run;                                                              \
         render_run(                                                                                                     \
             fg,                                                                                                         \

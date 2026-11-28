@@ -1821,20 +1821,20 @@ screen_prepare_smooth_scroll_render(Screen *self) {
 }
 
 static void
-ssr_render_line_if_dirty(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data, const Cursor *cursor, BidiMaps *b, bool fixed) {
+ssr_render_line_if_dirty(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data, BidiMaps *b, bool fixed) {
     // Render a line that is drawn only in the strip of a region. It is never the cursor row. In a frame with bidi maps it is
     // rendered at the levels bidi_strip_line_levels() gives, which are stored for the order of its strip row.
     if (!line->attrs.has_dirty_text) return;
     const uint8_t *levels = UNLIKELY(b) ? bidi_strip_line_levels(b, line, fixed) : NULL;
-    render_line(fonts_data, line, self->lines, (Cursor *)cursor, self->disable_ligatures, self->lc, levels);
+    render_line(fonts_data, line, self->lines, NULL, self->disable_ligatures, self->lc, levels);
     if (UNLIKELY(self->bidi_maps)) bidi_store_line_levels(line, levels);
     if (screen_has_marker(self)) mark_text_in_line(self->marker, line, &self->as_ansi_buf);
 }
 
 static void
-ssr_render_overflow_line(Screen *self, SmoothScrollRegion *r, index_type y, Line *line, FONTS_DATA_HANDLE fonts_data, const Cursor *cursor, BidiMaps *b) {
+ssr_render_overflow_line(Screen *self, SmoothScrollRegion *r, index_type y, Line *line, FONTS_DATA_HANDLE fonts_data, BidiMaps *b) {
     linebuf_init_line_at(r->overflow, y, line);
-    ssr_render_line_if_dirty(self, line, fonts_data, cursor, b, false);
+    ssr_render_line_if_dirty(self, line, fonts_data, b, false);
     linebuf_mark_line_clean(r->overflow, y);
 }
 
@@ -1858,7 +1858,6 @@ ssr_update_strip_cell_data(Screen *self, uint8_t *address, FONTS_DATA_HANDLE fon
     // Write the cells of the strips of the shifted regions, see SmoothScrollRenderRegion
     const SmoothScrollRender *sr = &self->smooth_scroll_render;
     const bool paused = self->paused_rendering.expires_at != 0;
-    const Cursor *cursor = paused ? &self->paused_rendering.cursor : self->cursor;
     LineBuf *lb = paused ? self->paused_rendering.linebuf : self->linebuf;
     const index_type row_offset = paused ? (index_type)paused_snapshot_row_offset(self) : 0;
     Line line = {.text_cache = self->text_cache};
@@ -1875,7 +1874,7 @@ ssr_update_strip_cell_data(Screen *self, uint8_t *address, FONTS_DATA_HANDLE fon
                 for (int edge = 0; edge < 2; edge++) {
                     const bool before = edge == 0;
                     const index_type n = before ? r->num_before : r->num_after;
-                    ssr_render_overflow_line(self, r, before ? y : rr->height + y, &line, fonts_data, cursor, NULL);
+                    ssr_render_overflow_line(self, r, before ? y : rr->height + y, &line, fonts_data, NULL);
                     ssr_write_strip_cells(b, n ? &line : NULL, ssr_nearest_column(r, before), 1, row + (before ? 0 : w + 1));
                 }
                 linebuf_init_line_at(lb, rr->top + y + row_offset, &line);
@@ -1892,7 +1891,7 @@ ssr_update_strip_cell_data(Screen *self, uint8_t *address, FONTS_DATA_HANDLE fon
                 if (paused) {
                     LineBuf *hr = self->paused_rendering.smooth_scroll.history_row;
                     linebuf_init_line_at(hr, 0, &line);
-                    ssr_render_line_if_dirty(self, &line, fonts_data, cursor, b, !self->paused_rendering.pixel_scroll);
+                    ssr_render_line_if_dirty(self, &line, fonts_data, b, !self->paused_rendering.pixel_scroll);
                     linebuf_mark_line_clean(hr, 0);
                     lp = &line;
                 } else if (self->historybuf->count) {
@@ -1901,14 +1900,14 @@ ssr_update_strip_cell_data(Screen *self, uint8_t *address, FONTS_DATA_HANDLE fon
                     // With pixel scrolling the line is on view, rendered at its levels. Without, it is drawn as with bidi mode
                     // off and stays dirty, so that a frame showing it on view does not take those levels as its own.
                     const bool fixed = !pixel_scroll_enabled(self);
-                    ssr_render_line_if_dirty(self, &line, fonts_data, cursor, b, fixed);
+                    ssr_render_line_if_dirty(self, &line, fonts_data, b, fixed);
                     if (UNLIKELY(b) && fixed) historybuf_mark_line_dirty(self->historybuf, 0);
                     else historybuf_mark_line_clean(self->historybuf, 0);
                     lp = &line;
                 }
                 x = rr->left;
             } else if (before ? r->num_before : r->num_after) {
-                ssr_render_overflow_line(self, r, ssr_slot(r, before, 0), &line, fonts_data, cursor, b);
+                ssr_render_overflow_line(self, r, ssr_slot(r, before, 0), &line, fonts_data, b);
                 lp = &line;
             }
             ssr_write_strip_cells(b, lp, x, w, row);
@@ -7092,6 +7091,24 @@ screen_multicell_char_rows_for_cursor(Screen *self, const CPUCell *ref, index_ty
     return n;
 }
 
+static RenderCursor
+render_cursor_for(Screen *self, const Cursor *cursor) {
+    // The cursor with the rows of the char under it, as rendered, only those
+    // present, as it can be partial, see RenderCursor
+    RenderCursor ans = {.cursor = cursor, .char_top = cursor->y, .char_limit = cursor->y + 1};
+    if (cursor->x >= self->columns || cursor->y >= self->lines) return ans;
+    const CPUCell *cells = rendered_row_cells(self, (int)cursor->y);
+    if (!cells || !cells[cursor->x].is_multicell) return ans;
+    const CPUCell *c = cells + cursor->x;
+    for (index_type k = 1; k <= c->y && k <= cursor->y; k++) {
+        const CPUCell *above = rendered_row_cells(self, (int)(cursor->y - k));
+        if (!above || !continues_multicell_char(above + cursor->x, c, c->y - k)) break;
+        ans.char_top = cursor->y - k;
+    }
+    ans.char_limit = cursor->y + screen_multicell_char_rows_for_cursor(self, c, cursor->x, cursor->y);
+    return ans;
+}
+
 bool
 screen_large_cursor_extent(Screen *self, const Line *line, index_type x, index_type y, index_type *num_rows, index_type *num_cols) {
     // Whether a cursor at (x, y) in linebuf coordinates, whose line as
@@ -7241,6 +7258,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
             // The map of the pause: no upload runs while paused
             BidiMaps *b = UNLIKELY(linebuf->bidi_stamped) ? bidi_maps_for_upload(self, linebuf, linebuf->ynum) : NULL;
             if (!b && self->bidi_maps) self->bidi_maps->valid = self->bidi_maps->reusable = false;
+            const RenderCursor render_cursor = render_cursor_for(self, &self->paused_rendering.cursor);
             for (index_type y = 0; y < linebuf->ynum; y++) {
                 linebuf_init_line(linebuf, y);
                 const uint8_t *levels = NULL;
@@ -7249,7 +7267,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
                 if (linebuf->line->attrs.has_dirty_text || relevel) {
                     // The extra leading row and scrollback rows are never the cursor row
                     const index_type lnum = (int)y < row_offset ? self->lines : y - (index_type)row_offset;
-                    render_line(fonts_data, linebuf->line, lnum, &self->paused_rendering.cursor, self->disable_ligatures, self->lc, levels);
+                    render_line(fonts_data, linebuf->line, lnum, &render_cursor, self->disable_ligatures, self->lc, levels);
                     if (UNLIKELY(b)) bidi_store_levels(b, y, linebuf->line);
                     // Cell images are not rendered here: this would modify the live grman using snapshot row numbers
                     if (linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, linebuf->line, &self->as_ansi_buf);
@@ -7278,6 +7296,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     const uint8_t *levels = NULL;
     const uint16_t *v2l = NULL;
     bool relevel = false;
+    const RenderCursor render_cursor = render_cursor_for(self, self->cursor);
     for (unsigned int render_row = 0; render_row < render_lines; render_row++) {
         const int virtual_y = (int)render_row - render_row_offset;
         bool is_history = false;
@@ -7297,7 +7316,8 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
             // the unicode placeholder was first scanned can alter it.
             screen_render_line_graphics(self, linep, virtual_y - (int)self->scrolled_by);
             if (force_history_render || linep->attrs.has_dirty_text || relevel) {
-                render_line(fonts_data, linep, lnum, self->cursor, self->disable_ligatures, self->lc, levels);
+                // the lines of the history are not rows of the char under the cursor, which is on the screen
+                render_line(fonts_data, linep, lnum, NULL, self->disable_ligatures, self->lc, levels);
                 if (UNLIKELY(mapped)) bidi_store_levels(b, render_row, linep);
 #ifdef DEBUG
                 else if (b) bidi_check_unmapped_levels(linep);
@@ -7307,7 +7327,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
             }
         } else {
             if (linep->attrs.has_dirty_text || (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor.y == lnum)) || relevel) {
-                render_line(fonts_data, linep, lnum, self->cursor, self->disable_ligatures, self->lc, levels);
+                render_line(fonts_data, linep, lnum, &render_cursor, self->disable_ligatures, self->lc, levels);
                 if (UNLIKELY(mapped)) bidi_store_levels(b, render_row, linep);
 #ifdef DEBUG
                 else if (b) bidi_check_unmapped_levels(linep);
@@ -8606,7 +8626,9 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
         memset(b->row_levels, BIDI_LEVEL_FIXED, line->xnum);
         levels = b->row_levels;
     }
-    render_line(fonts_data, line, ol.ynum, self->cursor, self->disable_ligatures, self->lc, levels);
+    // The pre-edit text is on the row of the cursor, in chars that are one row high
+    const RenderCursor render_cursor = {.cursor = self->cursor, .char_top = ol.ynum, .char_limit = ol.ynum + 1};
+    render_line(fonts_data, line, ol.ynum, &render_cursor, self->disable_ligatures, self->lc, levels);
     line_save_cells(line, 0, line->xnum, ol.render_cells, ol.cpu_cells);
     line_reset_cells(line, 0, line->xnum, ol.original_line.render_cells, ol.original_line.cpu_cells);
     ol.is_dirty = false;
