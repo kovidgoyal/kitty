@@ -1151,14 +1151,8 @@ cell_update_uniform_block(
         line_for_cursor = screen_line_for_cursor(screen, cursor->x, cursor->y, &overlay_line_for_cursor);
         if (line_for_cursor) {
             colors_for_cell(line_for_cursor, cp, &cell_color_x, &cell_fg, &cell_bg, &reversed);
-            const CPUCell *cursor_cell;
-            const bool large_cursor = ((cursor_cell = &line_for_cursor->cpu_cells[cursor->x])->is_multicell) && cursor_cell->x == 0 && cursor_cell->y == 0;
-            if (large_cursor) {
-                // The cursor covers the cells of the char that are present, a
-                // char can be cut off at the edges of the screen or split by a
-                // smooth scroll region, with its other cells in the overflow buffers
-                const index_type num_rows = screen_multicell_char_rows_for_cursor(screen, cursor_cell, cursor->x, cursor->y);
-                const index_type num_cols = multicell_char_columns(line_for_cursor->cpu_cells, line_for_cursor->xnum, cursor->x).limit - cursor->x;
+            index_type num_rows, num_cols;
+            if (screen_large_cursor_extent(screen, line_for_cursor, cursor->x, cursor->y, &num_rows, &num_cols)) {
                 switch (cs) {
                     case CURSOR_BEAM: rd->cursor_y2 += num_rows - 1; break;
                     case CURSOR_UNDERLINE:

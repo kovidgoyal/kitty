@@ -270,7 +270,6 @@ do_screen_reset(Screen *self, bool is_hard_reset) {
         bidi_layout_moved(self);
         // all buffers are now empty
         self->multiline_chars_used = false;
-        zero_at_ptr(&self->multiline_chars_cut_off_at_bottom);
         self->last_visited_prompt.is_set = false;
         self->scrolled_by = 0;
         self->pixel_scroll_offset_y = 0;
@@ -793,38 +792,37 @@ nuke_multiline_char_intersecting_with(Screen *self, index_type x_start, index_ty
     }
 }
 
-static bool *
-multiline_chars_cut_off_at_bottom(Screen *self) {
-    return self->multiline_chars_cut_off_at_bottom + (self->linebuf == self->alt_linebuf ? 1 : 0);
-}
-
 static void
-nuke_multiline_chars_extending_below(Screen *self, index_type bottom) {
-    // Remove chars extending below the line bottom when a new line is about to come in below it, tearing
-    // them. When bottom is the last line of the screen these are chars cut off at the bottom of the screen.
-    bool *cut_off = multiline_chars_cut_off_at_bottom(self);
-    const bool at_screen_bottom = bottom + 1 >= self->lines;
-    if (at_screen_bottom && !*cut_off) return;
-    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, bottom);
-    if (cells_have_multiline_chars(cp, self->columns)) {
-        for (index_type x = 0; x < self->columns; x++) {
-            if (cp[x].is_multicell && cp[x].y + 1u < cp[x].scale) nuke_multicell_char_at(self, x, bottom, false);
-        }
+nuke_multiline_chars_crossing(Screen *self, int upper) {
+    // Remove the multiline chars that continue from the range line upper into
+    // the line below it, which is on the screen, as an operation is about to
+    // separate the two lines, tearing them. Must be called before the lines
+    // are moved. Only the chars actually continuing are removed, rather than
+    // trusting the y and scale of cells, as chars can be partial.
+    const int lower = upper + 1;
+    if (!self->multiline_chars_used || lower < 0 || lower >= (int)self->lines) return;
+    const CPUCell *above;
+    if (upper >= 0) above = linebuf_cpu_cells_for_line(self->linebuf, upper);
+    else if (self->linebuf == self->main_linebuf && -upper <= (int)self->historybuf->count) above = historybuf_cpu_cells(self->historybuf, -(upper + 1));
+    else return;
+    const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, lower);
+    if (!cells_have_multiline_chars(cp, self->columns)) return;
+    for (index_type x = 0; x < self->columns; x++) {
+        if (cp[x].is_multicell && cp[x].y && continues_multicell_char(above + x, cp + x, cp[x].y - 1u)) nuke_multicell_char_at(self, x, lower, false);
     }
-    if (at_screen_bottom) *cut_off = false;
 }
 
 static void
 nuke_multiline_chars_torn_by_scroll(Screen *self, index_type top, index_type bottom, bool up, bool history_adjoins_top) {
-    // Scrolling the region [top, bottom] moves its lines by one, removing the line
-    // at one edge and bringing a new line in at the other. Multiline chars
-    // that end up cut off at the edge of the screen (or of the history buffer)
-    // are left alone, they are partially scrolled off and are rendered as
-    // such. Chars that would end up torn, with the rows adjacent to the
-    // remaining part of the char being from unrelated lines, are removed.
-    // history_adjoins_top must be true when the line removed from (up) or
-    // brought into (down) the top of the region is moved into or out of the
-    // history buffer.
+    // Scrolling the region [top, bottom] moves its lines by one, removing the
+    // line at one edge and bringing a new line in at the other. Multiline
+    // chars that end up cut off at the edge of the screen (or of the history
+    // buffer) are left alone, they are partially scrolled off and are
+    // rendered as such, as are chars of which only some rows were present
+    // before. Chars that would be torn, with some of their rows removed or
+    // separated from the others, are removed. history_adjoins_top must be
+    // true when the line removed from (up) or brought into (down) the top of
+    // the region is moved into or out of the history buffer.
     if (!self->multiline_chars_used || top >= bottom || bottom >= self->lines) return;
 #define has_multiline(y) cells_have_multiline_chars(linebuf_cpu_cells_for_line(self->linebuf, y), self->columns)
     if (up) {
@@ -834,24 +832,15 @@ nuke_multiline_chars_torn_by_scroll(Screen *self, index_type top, index_type bot
         // history line.
         const bool at_edge = top == 0 && (history_adjoins_top || self->linebuf == self->alt_linebuf);
         if (!at_edge && has_multiline(top)) nuke_multiline_char_intersecting_with(self, 0, self->columns, top, top + 1, false);
-        // A new line comes in at the bottom
-        nuke_multiline_chars_extending_below(self, bottom);
+        // A new line comes in at the bottom, separating the chars crossing the bottom edge of the region
+        nuke_multiline_chars_crossing(self, (int)bottom);
     } else {
         // The bottom line is removed, cutting chars at the edge of the screen
-        // if it is the last line of the screen. Rather than scanning for such
-        // chars here, the flag is set unconditionally, the next scroll up scans
-        // for them once and clears it.
-        if (bottom + 1 < self->lines) {
-            if (has_multiline(bottom)) nuke_multiline_char_intersecting_with(self, 0, self->columns, bottom, bottom + 1, false);
-        } else *multiline_chars_cut_off_at_bottom(self) = true;
-        // A new line comes in at the top, tearing chars that extend above the
-        // top line unless the new line is the history line above the top line
-        if (!(top == 0 && history_adjoins_top) && has_multiline(top)) {
-            const CPUCell *cp = linebuf_cpu_cells_for_line(self->linebuf, top);
-            for (index_type x = 0; x < self->columns; x++) {
-                if (cp[x].is_multicell && cp[x].y > 0) nuke_multicell_char_at(self, x, top, false);
-            }
-        }
+        // if it is the last line of the screen
+        if (bottom + 1 < self->lines && has_multiline(bottom)) nuke_multiline_char_intersecting_with(self, 0, self->columns, bottom, bottom + 1, false);
+        // A new line comes in at the top, separating the chars crossing the
+        // top edge of the region, unless it is the history line above them
+        if (!(top == 0 && history_adjoins_top)) nuke_multiline_chars_crossing(self, (int)top - 1);
     }
 #undef has_multiline
 }
@@ -5675,15 +5664,14 @@ screen_insert_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
-        // remove split multiline chars at top edge
-        CPUCell *cells = linebuf_cpu_cells_for_line(self->linebuf, self->cursor->y);
-        for (index_type x = 0; x < self->columns; x++) {
-            if (cells[x].is_multicell && cells[x].y) nuke_multicell_char_at(self, x, self->cursor->y, false);
-        }
-        const bool at_screen_bottom = bottom + 1 >= self->lines;
-        // remove chars straddling the bottom margin, as the lines at the bottom
-        // of the region are pushed out, tearing them
-        if (self->multiline_chars_used && !at_screen_bottom) nuke_multiline_chars_extending_below(self, bottom);
+        // remove multiline chars split at the cursor line
+        nuke_multiline_chars_crossing(self, (int)self->cursor->y - 1);
+        // and at the bottom of the region, chars crossing the bottom margin,
+        // and chars whose lower rows are pushed out of the region, except at
+        // the bottom of the screen, where they are partially scrolled off, as
+        // when scrolling down
+        nuke_multiline_chars_crossing(self, (int)bottom);
+        if (bottom + 1 < self->lines && (int64_t)bottom >= (int64_t)self->cursor->y + count) nuke_multiline_chars_crossing(self, (int)(bottom - count));
         if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, self->cursor->y, bottom, false, false);
         screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
@@ -5699,13 +5687,6 @@ screen_insert_lines(Screen *self, unsigned int count) {
         self->is_dirty = true;
         clear_all_selections(self);
         screen_carriage_return(self);
-        if (self->multiline_chars_used) {
-            // Chars whose lower rows were pushed out of the region are now cut
-            // off at its bottom. At the bottom of the screen they are partially
-            // scrolled off, as when scrolling down, otherwise they are torn.
-            if (at_screen_bottom) *multiline_chars_cut_off_at_bottom(self) = true;
-            else nuke_multiline_chars_extending_below(self, bottom);
-        }
     }
 }
 
@@ -5729,13 +5710,11 @@ static void
 screen_delete_lines_impl(Screen *self, index_type start, index_type count, index_type top, index_type bottom) {
     index_type y = start;
     if (UNLIKELY(self->smooth_scroll.count)) ssr_lines_moved(self, start, bottom, true, false);
+    // remove the multiline chars intersecting the deleted lines [start, start + count)
     nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
-    y += count;
-    y = MIN(bottom, y);
-    nuke_multiline_char_intersecting_with(self, 0, self->columns, y, y + 1, false);
-    // blank lines come in at the bottom, tearing chars that extend below it, which
-    // includes chars that are cut off at the bottom of the screen
-    if (self->multiline_chars_used) nuke_multiline_chars_extending_below(self, bottom);
+    if ((int64_t)start + count <= (int64_t)bottom) nuke_multiline_chars_crossing(self, (int)(start + count - 1));
+    // blank lines come in at the bottom, separating the chars crossing the bottom margin
+    nuke_multiline_chars_crossing(self, (int)bottom);
     screen_dirty_line_graphics(self, top, bottom, self->linebuf == self->main_linebuf);
     linebuf_delete_lines(self->linebuf, count, start, bottom);
     if (UNLIKELY(self->linebuf->bidi_stamped)) {
@@ -7036,6 +7015,33 @@ screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *overlay_l
     return overlay_line;
 }
 
+static bool range_row_cells(Screen *self, int y, const CPUCell **cells);
+
+static const CPUCell *
+rendered_row_cells(Screen *self, int y) {
+    // The cells of range line y as rendered, from the snapshot while rendering
+    // is paused, NULL when there is no such row. Unlike the lines, getting
+    // them does not change the shared line objects.
+    if (self->paused_rendering.expires_at) {
+        const int row = y + paused_snapshot_row_offset(self);
+        if (row < 0 || row >= (int)self->paused_rendering.linebuf->ynum) return NULL;
+        return linebuf_cpu_cells_for_line(self->paused_rendering.linebuf, (index_type)row);
+    }
+    const CPUCell *cells;
+    return range_row_cells(self, y, &cells) ? cells : NULL;
+}
+
+static bool
+multicell_char_continues_from_row_above_for_cursor(Screen *self, const CPUCell *ref, index_type x, index_type y) {
+    // Whether the multicell char whose cell, as rendered, at (x, y) in linebuf
+    // coordinates is ref continues from the row above, rather than that row
+    // being the top row of the part of it present. Does not change the shared
+    // line objects, so the line returned by screen_line_for_cursor() stays valid.
+    if (!ref->is_multicell || !ref->y) return false;
+    const CPUCell *above = rendered_row_cells(self, (int)y - 1);
+    return above && continues_multicell_char(above + x, ref, ref->y - 1u);
+}
+
 index_type
 screen_multicell_char_rows_for_cursor(Screen *self, const CPUCell *ref, index_type x, index_type y) {
     // The number of rows, from row y down, of the multicell char whose cell,
@@ -7059,6 +7065,24 @@ screen_multicell_char_rows_for_cursor(Screen *self, const CPUCell *ref, index_ty
     }
     return n;
 }
+
+bool
+screen_large_cursor_extent(Screen *self, const Line *line, index_type x, index_type y, index_type *num_rows, index_type *num_cols) {
+    // Whether a cursor at (x, y) in linebuf coordinates, whose line as
+    // rendered is line, is large, covering the num_rows by num_cols cells of
+    // a multicell char. It is large in the top left cell of the part of the
+    // char present, which covers only the cells present, as a char can be cut
+    // off at the edges of the screen, split by a smooth scroll region, with
+    // its other cells in the overflow buffers, or drawn partially.
+    const CPUCell *c = line->cpu_cells + x;
+    if (!c->is_multicell) return false;
+    const MulticellColumns cols = multicell_char_columns(line->cpu_cells, line->xnum, x);
+    if (cols.start != x || multicell_char_continues_from_row_above_for_cursor(self, c, x, y)) return false;
+    *num_rows = screen_multicell_char_rows_for_cursor(self, c, x, y);
+    *num_cols = cols.limit - x;
+    return true;
+}
+
 
 // Bidi upload {{{
 static bool
@@ -7473,11 +7497,19 @@ apply_selection(Screen *self, uint8_t *data, size_t stride, Selection *s, uint8_
         XRange xr = xrange_for_iteration_with_multicells(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
             line_start[stride * x] |= set_mask;
-            CPUCell *c = &line->cpu_cells[x];
+            const CPUCell *c = &line->cpu_cells[x];
             if (c->is_multicell && c->scale > 1) {
-                for (int ym = MAX(0, y_in_data - c->y); ym < y_in_data; ym++) data[stride * (self->columns * ym + x)] |= set_mask;
-                for (int ym = y_in_data + 1; ym < MIN((int)self->lines + extra_leading_rows, y_in_data + c->scale - c->y); ym++)
-                    data[stride * (self->columns * ym + x)] |= set_mask;
+                // The rows of the char above and below, only those present, as it can be partial
+                for (int k = 1; k <= (int)c->y && y_in_data - k >= 0; k++) {
+                    const CPUCell *other = rendered_row_cells(self, y - k);
+                    if (!other || !continues_multicell_char(other + x, c, c->y - (index_type)k)) break;
+                    data[stride * (self->columns * (y_in_data - k) + x)] |= set_mask;
+                }
+                for (int k = 1; (int)c->y + k < (int)c->scale && y_in_data + k < (int)self->lines + extra_leading_rows; k++) {
+                    const CPUCell *other = rendered_row_cells(self, y + k);
+                    if (!other || !continues_multicell_char(other + x, c, c->y + (index_type)k)) break;
+                    data[stride * (self->columns * (y_in_data + k) + x)] |= set_mask;
+                }
             }
         }
     }
@@ -11173,6 +11205,18 @@ test_cursor_x(Screen *self, PyObject *args) {
 }
 
 static PyObject *
+test_large_cursor_extent(Screen *self, PyObject *args) {
+    // The (rows, columns) covered by a cursor at (x, y), None when it is not large
+    unsigned int x, y;
+    if (!PyArg_ParseTuple(args, "II", &x, &y)) return NULL;
+    Line overlay_line = {0};
+    Line *line = screen_line_for_cursor(self, x, y, &overlay_line);
+    index_type rows, cols;
+    if (!line || !screen_large_cursor_extent(self, line, x, y, &rows, &cols)) Py_RETURN_NONE;
+    return Py_BuildValue("II", rows, cols);
+}
+
+static PyObject *
 test_ch_and_idx(PyObject *self UNUSED, PyObject *val) {
     CPUCell c = {0};
     if (PyLong_Check(val)) {
@@ -11208,6 +11252,7 @@ static PyMethodDef methods[] = {
     METHODB(test_bidi_logical_click, METH_VARARGS),
     METHODB(test_hyperlink_under_mouse, METH_NOARGS),
     METHODB(test_cursor_x, METH_VARARGS),
+    METHODB(test_large_cursor_extent, METH_VARARGS),
     METHODB(test_gc_style_table, METH_VARARGS),
     METHODB(test_draw_overlay_line, METH_VARARGS),
     METHODB(test_update_overlay_text, METH_VARARGS),

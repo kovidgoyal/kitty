@@ -271,10 +271,6 @@ typedef struct {
     monotonic_t last_glyph_limit_gc_at;
     // set once a multiline (scale > 1) char has been drawn, used to skip scanning for such chars in hot paths
     bool multiline_chars_used;
-    // set when multiline chars may be cut off at the bottom of the main ([0]) or
-    // alternate ([1]) screen, which only happens when scrolling down, used to
-    // avoid scanning for them on every linefeed
-    bool multiline_chars_cut_off_at_bottom[2];
     Cursor *cursor;
     Savepoint main_savepoint, alt_savepoint;
     PyObject *callbacks, *test_child;
@@ -614,6 +610,7 @@ bool screen_pause_rendering(Screen *self, bool pause, int for_in_ms);
 void screen_check_pause_rendering(Screen *self, monotonic_t now);
 Line *screen_line_for_cursor(Screen *self, index_type x, index_type y, Line *overlay_line);
 index_type screen_multicell_char_rows_for_cursor(Screen *self, const CPUCell *ref, index_type x, index_type y);
+bool screen_large_cursor_extent(Screen *self, const Line *line, index_type x, index_type y, index_type *num_rows, index_type *num_cols);
 void screen_designate_charset(Screen *self, uint32_t which, uint32_t as);
 void screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params);
 // Must be called when the detailed reporting of mouse events or mouse tracking

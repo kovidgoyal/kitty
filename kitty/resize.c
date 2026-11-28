@@ -186,34 +186,14 @@ update_tracked_cursors(Rewrap *r, index_type num_cells, index_type src_y, index_
     }
 }
 
-static void
-update_tracked_cursors_for_dropped_cells(Rewrap *r, index_type num_cells) {
-    // Cursors on cells of src that are not copied to dest are placed where the
-    // cells would have been. As for update_tracked_cursors() cursors beyond the
-    // content of the src line are placed relative to the current position, in
-    // case nothing after the dropped cells is copied.
-    if (!r->src_is_in_linebuf) return;
-    const index_type src_y = r->src.y - r->src.hb_count;
-    for (TrackCursor *t = r->cursors; !t->is_sentinel; t++) {
-        if (t->y == src_y && r->src.x <= t->x) {
-            if (t->x < r->src.x + num_cells) {
-                t->dest_y = r->dest.y;
-                t->dest_x = MIN(r->dest.x, dest_xnum);
-            } else if (t->x >= r->src_x_limit) {
-                t->dest_y = r->dest.y;
-                t->dest_x = MIN(r->dest.x + (t->x - (r->src.x + num_cells)), dest_xnum);
-            }
-        }
-    }
-}
-
 static bool
 find_space_in_dest_line(Rewrap *r, index_type num_cells) {
     while (r->dest.x + num_cells <= dest_xnum) {
         index_type before = r->dest.x;
         for (index_type x = r->dest.x; x < r->dest.x + num_cells; x++) {
             if (r->dest.line.cpu_cells[x].is_multicell) {
-                r->dest.x = x + mcd_x_limit(r->dest.line.cpu_cells + x);
+                // past the cells of the char, which can be partial
+                r->dest.x = multicell_char_columns(r->dest.line.cpu_cells, dest_xnum, x).limit;
                 break;
             }
         }
@@ -250,11 +230,12 @@ carry_bidi_bit(Rewrap *r) {
 }
 
 static void
-copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
-    // multiline_char_is_complete() has checked that all rows are present in src,
-    // the bound is kept so that this never reads out of bounds
+copy_multiline_extra_lines(Rewrap *r, index_type mc_width, index_type num_rows) {
+    // Copy the rows below the first of the multicell char at the src and dest
+    // positions, num_rows in all, which src_rows_continuing_char() has checked
+    // are present in src. The bound is kept so that this never reads out of bounds.
     const index_type num_src_lines = r->src.hb_count + r->src.lb->ynum;
-    for (index_type i = 1; i < src_cell->scale && r->src.y + i < num_src_lines; i++) {
+    for (index_type i = 1; i < num_rows && i <= r->sb->ynum && r->src.y + i < num_src_lines; i++) {
         init_src_line_basic(r, r->src.y + i, &r->src.scratch_line, false);
         linebuf_init_line_at(r->sb, i - 1, &r->dest.scratch_line);
         linebuf_mark_line_dirty(r->sb, i - 1);
@@ -264,19 +245,31 @@ copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
     }
 }
 
-
-static bool
-multiline_char_is_complete(Rewrap *r, const CPUCell *src_cell) {
-    // whether all rows of the multiline char starting at src_cell are present in src, they
-    // can be missing if the char is partially scrolled off or torn
-    const CPUCell ref = *src_cell;
-    const index_type num_src_lines = r->src.hb_count + r->src.lb->ynum;
-    for (index_type i = 1; i < ref.scale; i++) {
-        if (r->src.y + i >= num_src_lines) return false;
-        init_src_line_basic(r, r->src.y + i, &r->src.scratch_line, false);
-        if (!continues_multicell_char(r->src.scratch_line.cpu_cells + r->src.x, &ref, i)) return false;
+static index_type
+src_rows_continuing_char(Rewrap *r, MulticellColumns cols, int step, index_type max) {
+    // The number of src rows, up to max, below the current one when step is 1
+    // and above it when step is -1, that continue the multicell char whose
+    // cells in the current row are in the columns cols, with the same columns.
+    // Chars can be partial, with some of their rows scrolled off, torn, or
+    // drawn partially, so rows are not trusted to be present.
+    const CPUCell ref = r->src.line.cpu_cells[cols.start];
+    const int64_t num_src_lines = r->src.hb_count + r->src.lb->ynum;
+    for (index_type n = 0; n < max; n++) {
+        const int dy = step * (int)(n + 1);
+        const int64_t y = (int64_t)r->src.y + dy;
+        if (y < 0 || y >= num_src_lines) return n;
+        // The src row is got from where it is, regardless of how far the
+        // copying has progressed, as the row above can be in the history
+        // while the current one is in the linebuf. src is not modified while
+        // copying, so the rows above are intact.
+        if (y >= (int64_t)r->src.hb_count) linebuf_init_line_at(r->src.lb, (index_type)(y - r->src.hb_count), &r->src.scratch_line);
+        else historybuf_init_line(r->src.hb, r->src.hb->count - (index_type)y - 1, &r->src.scratch_line);
+        const CPUCell *other = r->src.scratch_line.cpu_cells;
+        if (!continues_multicell_char(other + cols.start, &ref, (index_type)((int)ref.y + dy))) return n;
+        const MulticellColumns ocols = multicell_char_columns(other, src_xnum, cols.start);
+        if (ocols.start != cols.start || ocols.limit != cols.limit) return n;
     }
-    return true;
+    return max;
 }
 
 static void
@@ -285,38 +278,31 @@ multiline_copy_src_to_dest(Rewrap *r) {
     index_type mc_width;
     while (r->src.x < r->src_x_limit) {
         c = &r->src.line.cpu_cells[r->src.x];
+        index_type num_rows = 1;
         if (c->is_multicell) {
-            // The char can be missing some of its columns, if it was split by
-            // a horizontally scrolled smooth scroll region, so only the cells
-            // that actually continue it are used, and it is dropped if it is
-            // incomplete, as it cannot be placed consistently in dest
+            // The char can be partial, missing some of its columns or rows,
+            // so only the cells that actually continue it are copied, as a
+            // block, from the top row of the part of it present
             const MulticellColumns cols = multicell_char_columns(r->src.line.cpu_cells, src_xnum, r->src.x);
-            const bool complete = cols.start == r->src.x && multicell_char_columns_are_complete(r->src.line.cpu_cells, cols);
-            mc_width = complete ? mcd_x_limit(c) : cols.limit - r->src.x;
+            mc_width = cols.limit - r->src.x;
             if (mc_width > dest_xnum) {
                 update_tracked_cursors(r, mc_width, r->src.y, r->dest.y, r->src_x_limit);
                 r->src.x += mc_width;
                 continue;
-            } else if (c->y) {
-                r->src.x += mc_width;
-                continue;
-            } else if (!complete) {
-                update_tracked_cursors_for_dropped_cells(r, mc_width);
-                r->src.x += mc_width;
-                continue;
-            } else if (c->scale > 1 && !multiline_char_is_complete(r, c)) {
-                // partial multiline chars are dropped as they cannot be placed consistently in dest
-                update_tracked_cursors_for_dropped_cells(r, mc_width);
+            }
+            if (c->y && src_rows_continuing_char(r, cols, -1, 1)) {
+                // copied with the row above
                 r->src.x += mc_width;
                 continue;
             }
+            if (c->scale > c->y + 1u) num_rows += src_rows_continuing_char(r, cols, 1, c->scale - c->y - 1u);
         } else mc_width = 1;
         find_space_in_dest(r, mc_width);
         copy_range(&r->src.line, r->src.x, &r->dest.line, r->dest.x, mc_width);
         if (UNLIKELY(r->join_bidi_record)) join_bidi_record(r);
         carry_bidi_bit(r);
         update_tracked_cursors(r, mc_width, r->src.y, r->dest.y, r->src_x_limit);
-        if (c->is_multicell && c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
+        if (num_rows > 1) copy_multiline_extra_lines(r, mc_width, num_rows);
         r->src.x += mc_width;
         r->dest.x += mc_width;
     }
