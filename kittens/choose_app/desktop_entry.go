@@ -43,6 +43,9 @@ type DesktopEntry struct {
 	dir_priority                   int
 	// Pre-split arguments, used instead of Exec, if not nil
 	exec_tokens []exec_token
+	// The path to the application bundle on macOS, which is opened with
+	// LaunchServices instead of running Exec
+	bundle_path string
 }
 
 // IDWithoutSuffix returns the desktop file id without the .desktop suffix,

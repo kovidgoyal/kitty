@@ -933,8 +933,8 @@ func (h *Handler) draw_footer() {
 				parts = append(parts, sanitize(desc))
 			}
 		}
-		if e.Exec != "" {
-			parts = append(parts, h.styled(dim_style, sanitize(e.Exec)))
+		if detail := utils.IfElse(e.bundle_path != "", e.bundle_path, e.Exec); detail != "" {
+			parts = append(parts, h.styled(dim_style, sanitize(detail)))
 		}
 		lp.MoveCursorTo(2, y)
 		lp.QueueWriteString(wcswidth.TruncateToVisualLength(strings.Join(parts, " · "), width))

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -203,6 +205,10 @@ func (d *DesktopEntry) expand_token(tok exec_token, targets []Target) (ans []str
 // invocation result in one command line per target. Applications with no
 // field codes for files get the file appended, the same as GLib does.
 func (d *DesktopEntry) Commands(targets ...Target) (ans [][]string, err error) {
+	if d.bundle_path != "" {
+		// targets are absolute paths or URLs, so cannot be mistaken for options
+		return [][]string{append([]string{"/usr/bin/open", "-a", d.bundle_path}, utils.Map(Target.as_path, targets)...)}, nil
+	}
 	toks, err := d.tokens()
 	if err != nil {
 		return nil, err

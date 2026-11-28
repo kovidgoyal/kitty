@@ -75,7 +75,9 @@ opt(
     long_text="""
 Whether to open files with the default application configured for the desktop in :file:`mimeapps.list`, without asking,
 when no :opt:`open_with <kitten-choose_app.open_with>` rule matches and no
-application has been remembered for the type of file.
+application has been remembered for the type of file. On macOS, the default
+application is the one configured in Finder, and this option defaults to
+:code:`no`, since almost every type of file has a default application there.
 """,
 )
 opt(

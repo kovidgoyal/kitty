@@ -52,10 +52,7 @@ func (c Choice) String() string {
 }
 
 func ChoiceForDesktopID(id string) Choice {
-	if !strings.HasSuffix(id, ".desktop") {
-		id += ".desktop"
-	}
-	return Choice{DesktopID: id}
+	return Choice{DesktopID: normalize_app_id(id)}
 }
 
 // Entry returns the application for this choice, creating one for custom
@@ -245,6 +242,7 @@ type Settings struct {
 
 func LoadSettings(config_paths, overrides []string) (ans *Settings, err error) {
 	cfg := NewConfig()
+	set_platform_defaults(cfg)
 	p := config.ConfigParser{LineHandler: cfg.Parse}
 	if err = p.LoadConfig("choose-app.conf", config_paths, overrides); err != nil {
 		return nil, err

@@ -38,6 +38,27 @@ to always be asked, like the :guilabel:`Open with` menu of file managers.
    depending on the background color of the terminal.
 
 
+macOS
+--------
+
+The kitten works on macOS as well, as a nicer, interactive, version of the
+:program:`open` command, though it is not a drop-in replacement for it, as it
+does not support the various options of :program:`open`. Applications are found
+in the standard :file:`Applications` folders and the applications for a type of
+file are the ones Finder shows in its :guilabel:`Open With` menu, with the
+default one first. Since almost every type of file has a default application on
+macOS, you are asked to choose, unless you have remembered an application or
+have an :opt:`open_with <kitten-choose_app.open_with>` rule for the type of file. To use the default
+application without asking instead, turn on :opt:`use_system_defaults <kitten-choose_app.use_system_defaults>`.
+
+Applications are identified by their bundle identifiers, for example,
+:code:`com.apple.Preview`, so use :code:`desktop:com.apple.Preview` to refer
+to an application in :opt:`open_with <kitten-choose_app.open_with>`. Types of
+files that have no MIME type use MIME types of the form
+:code:`x-apple-uti/com.apple.rtfd`. Use :code:`--action=list` to see the
+identifiers of the applications and the MIME type for a file.
+
+
 Remembering choices
 ----------------------
 

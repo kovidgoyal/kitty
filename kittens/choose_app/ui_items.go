@@ -133,7 +133,7 @@ func build_items(db *AppDatabase, store *ChoiceStore, input *ChooserInput) (ans 
 	seen := utils.NewSet[string]()
 	// Applications can have multiple desktop files with the same name and
 	// command, for example, for different file types, show only the first
-	type name_and_exec struct{ name, exec string }
+	type name_and_exec struct{ name, exec, bundle string }
 	seen_names := utils.NewSet[name_and_exec]()
 	for _, c := range recommended_choices(db, store, input.MimeTypes, input.Recommend) {
 		e, err := c.Entry(db)
@@ -141,13 +141,13 @@ func build_items(db *AppDatabase, store *ChoiceStore, input *ChooserInput) (ans 
 			continue
 		}
 		seen.Add(e.ID)
-		if k := (name_and_exec{e.Name, e.Exec}); !seen_names.Has(k) {
+		if k := (name_and_exec{e.Name, e.Exec, e.bundle_path}); !seen_names.Has(k) {
 			seen_names.Add(k)
 			ans = append(ans, &item{entry: e, choice: c, recommended: true, rank: len(ans)})
 		}
 	}
 	for _, e := range db.AllApps() {
-		if k := (name_and_exec{e.Name, e.Exec}); !seen.Has(e.ID) && !seen_names.Has(k) {
+		if k := (name_and_exec{e.Name, e.Exec, e.bundle_path}); !seen.Has(e.ID) && !seen_names.Has(k) {
 			seen_names.Add(k)
 			ans = append(ans, &item{entry: e, choice: Choice{DesktopID: e.ID}, rank: len(ans)})
 		}

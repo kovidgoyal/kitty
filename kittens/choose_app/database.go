@@ -150,6 +150,11 @@ type AppDatabase struct {
 	Errors []error
 
 	mime_ancestors func(string) []string
+	// If not nil, called once for every MIME type, before its default and
+	// associated applications are looked up, to fill them in. Used for
+	// platforms that look up applications for MIME types on demand.
+	lookup_associations func(db *AppDatabase, mime string)
+	looked_up           *utils.Set[string]
 }
 
 // desktop_file_id returns the desktop file id for a desktop file at relpath
@@ -271,23 +276,24 @@ func new_app_database(dirs *XDGDirs, mime_ancestors func(string) []string) *AppD
 	return db
 }
 
-// LoadAppDatabase scans the system for installed applications and MIME associations
-func LoadAppDatabase() *AppDatabase {
-	return new_app_database(XDGDirsFromEnvironment(), utils.MimeTypeAncestors)
-}
-
 // AllApps returns all applications that should be shown to the user, sorted by name
 func (db *AppDatabase) AllApps() []*DesktopEntry {
 	return utils.Filter(db.apps, func(e *DesktopEntry) bool { return e.ShouldShow(db.dirs.CurrentDesktops) })
 }
 
-// AppByID returns the application with the specified desktop file id, which
-// may or may not have the .desktop suffix
-func (db *AppDatabase) AppByID(id string) *DesktopEntry {
-	if !strings.HasSuffix(id, ".desktop") {
-		id += ".desktop"
+// normalize_app_id adds the suffix used by application ids, if missing, so
+// that users can specify desktop file ids without the .desktop suffix
+func normalize_app_id(id string) string {
+	if !strings.HasSuffix(id, app_id_suffix) {
+		id += app_id_suffix
 	}
-	return db.by_id[id]
+	return id
+}
+
+// AppByID returns the application with the specified id, for desktop files
+// the .desktop suffix is optional
+func (db *AppDatabase) AppByID(id string) *DesktopEntry {
+	return db.by_id[normalize_app_id(id)]
 }
 
 // mime_types_for returns the MIME type, its aliases and ancestors in order
@@ -304,6 +310,17 @@ func (db *AppDatabase) mime_types_for(mime string) (ans []string) {
 		add(m)
 		for _, a := range utils.MimeTypeAliases(m) {
 			add(a)
+		}
+	}
+	if db.lookup_associations != nil {
+		if db.looked_up == nil {
+			db.looked_up = utils.NewSet[string]()
+		}
+		for _, m := range ans {
+			if !db.looked_up.Has(m) {
+				db.looked_up.Add(m)
+				db.lookup_associations(db, m)
+			}
 		}
 	}
 	return
@@ -347,10 +364,20 @@ func (db *AppDatabase) AppsFor(mime string) (ans []*DesktopEntry) {
 // specified target. URLs use the x-scheme-handler/scheme type.
 func MimeTypeForTarget(t Target) string {
 	if t.URL != "" {
-		scheme, _, _ := strings.Cut(t.URL, ":")
-		return "x-scheme-handler/" + strings.ToLower(scheme)
+		return mime_type_for_url(t.URL)
 	}
-	if ans := utils.GuessMimeTypeWithFileSystemAccess(t.Path); ans != "" {
+	return platform_mime_type_for_path(t.Path)
+}
+
+func mime_type_for_url(u string) string {
+	scheme, _, _ := strings.Cut(u, ":")
+	return "x-scheme-handler/" + strings.ToLower(scheme)
+}
+
+// mime_type_for_path guesses the MIME type of a file from its name and
+// whether it is a directory or an executable
+func mime_type_for_path(path string) string {
+	if ans := utils.GuessMimeTypeWithFileSystemAccess(path); ans != "" {
 		return ans
 	}
 	return "application/octet-stream"
