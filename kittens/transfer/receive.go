@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -586,6 +587,16 @@ func remove_empty_dir_for_link(path string) error {
 
 func (self *manager) finalize_transfer() (err error) {
 	self.transfer_done = true
+	directories := make(map[string]*remote_file)
+	defer func() {
+		// Restore directory metadata after creating their contents, deepest first.
+		dirs := slices.SortedFunc(maps.Values(directories), func(a, b *remote_file) int {
+			return len(b.expanded_local_path) - len(a.expanded_local_path)
+		})
+		for _, f := range dirs {
+			f.apply_metadata()
+		}
+	}()
 	rid_map := make(map[string]*remote_file)
 	for _, f := range self.files {
 		rid_map[f.remote_id] = f
@@ -596,6 +607,8 @@ func (self *manager) finalize_transfer() (err error) {
 			if err = os.MkdirAll(f.expanded_local_path, 0o755); err != nil {
 				return fmt.Errorf("Failed to create directory with error: %w", err)
 			}
+			directories[f.expanded_local_path] = f
+			continue
 		case FileType_link:
 			tgt, found := rid_map[f.remote_target]
 			if !found {
@@ -636,6 +649,8 @@ func (self *manager) finalize_transfer() (err error) {
 				return fmt.Errorf(`Failed to create symlink with error: %w`, err)
 			}
 		}
+		// A link can replace an empty directory at the same path.
+		delete(directories, f.expanded_local_path)
 		f.apply_metadata()
 	}
 	return
